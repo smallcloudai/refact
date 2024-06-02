@@ -115,25 +115,41 @@ fn passthrough_messages_to_json(
     let big_json: serde_json::Value = serde_json::from_str(&messages_str).unwrap();
 
     // TODO: remove, parsed only for debug log
-    let messages: Vec<crate::call_validation::ChatMessage> = big_json["messages"].as_array().unwrap().iter().map(|x|
-        serde_json::from_value(x.clone()).unwrap()
-    ).collect();
-    for msg in messages.iter() {
-        info!("PASSTHROUGH MSG: {:?}", msg);
-    }
-    let tools_mb: Option<Vec<serde_json::Value>> = match big_json["tools"].as_array() {
-        Some(x) => Some(x.iter().map(|x| x.clone()).collect()),
-        None => None,
-    };
-    if let Some(tools) = tools_mb {
-        for tool in tools.iter() {
-            info!("PASSTHROUGH TOOL: {:?}", tool);
+    if false {
+        let messages: Vec<crate::call_validation::ChatMessage> = big_json["messages"].as_array().unwrap().iter().map(|x|
+            serde_json::from_value(x.clone()).unwrap()
+        ).collect();
+        for msg in messages.iter() {
+            info!("PASSTHROUGH MSG: {:?}", msg);
         }
+        let tools_mb: Option<Vec<serde_json::Value>> = match big_json["tools"].as_array() {
+            Some(x) => Some(x.iter().map(|x| x.clone()).collect()),
+            None => None,
+        };
+        if let Some(tools) = tools_mb {
+            for tool in tools.iter() {
+                info!("PASSTHROUGH TOOL: {:?}", tool);
+            }
+        }
+    }
+    // dump to file
+    {
+        let mut messages_file = File::create("/tmp/aaa_messages.json").unwrap();
+        let messages_json = serde_json::to_string_pretty(&big_json["messages"]).unwrap();
+        messages_file.write_all(messages_json.as_bytes()).unwrap();
+
+        let mut tools_file = File::create("/tmp/aaa_tools.json").unwrap();
+        let tools_json = serde_json::to_string_pretty(&big_json["tools"]).unwrap();
+        tools_file.write_all(tools_json.as_bytes()).unwrap();
     }
 
     data["messages"] = big_json["messages"].clone();
     data["tools"] = big_json["tools"].clone();
 }
+
+use std::fs::File;
+use std::io::Write;
+
 
 #[derive(Serialize)]
 struct EmbeddingsPayloadOpenAI {

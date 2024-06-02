@@ -28,7 +28,7 @@ pub async fn at_tools_merged(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String
         ("note_to_self".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
     ]);
 
-    let tconfig_maybe = crate::toolbox::toolbox_config::load_customization_high_level(gcx.clone()).await;
+    let tconfig_maybe = crate::toolbox::toolbox_config::load_customization(gcx.clone()).await;
     if tconfig_maybe.is_err() {
         tracing::error!("Error loading toolbox config: {:?}", tconfig_maybe.err().unwrap());
     } else {
@@ -49,35 +49,35 @@ pub async fn at_tools_merged(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String
 const AT_DICT: &str = r####"
 tools:
   - name: "workspace"
-    description: "Using given query, find all pieces of code in the project by vectorizing query and finding all similar pieces of code by comparing their cosien distances."
+    description: "Find similar pieces of code using vector database"
     parameters:
       - name: "query"
         type: "string"
-        description: "Short text written in natural language. Single line or a paragraph. Query will be vectorized and used to find similar pieces of code in the project."
+        description: "Single line, paragraph or code sample."
     parameters_required:
       - "query"
   - name: "file"
-    description: "Read the file located using given file_path and provide its content"
+    description: "Read the file, the same as cat shell command, but skeletonizes files that are too large."
     parameters:
-      - name: "file_path"
+      - name: "path"
         type: "string"
-        description: "absolute path to the file or filename to be found within the project."
+        description: "Either absolute path or preceeding_dirs/file.ext"
     parameters_required:
-      - "file_path"
+      - "path"
   - name: "definition"
-    description: "Find definition of a symbol in a project using AST. Symbol could be: function, method, class, type alias."
+    description: "Read definition of a symbol in the project using AST"
     parameters:
       - name: "symbol"
         type: "string"
-        description: "The name of the symbol (function, method, class, type alias) to find within the project."
+        description: "The name of a function, method, class, type alias"
     parameters_required:
       - "symbol"
   - name: "references"
-    description: "Find usages of a symbol in a project using AST. Symbol could be: function, method, class, type alias."
+    description: "Read usages of a symbol within a project using AST"
     parameters:
       - name: "symbol"
         type: "string"
-        description: "The name of the symbol (function, method, class, type alias) to find within the project."
+        description: "The name of a function, method, class, type alias"
     parameters_required:
       - "symbol"
   - name: "note_to_self"

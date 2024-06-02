@@ -14,16 +14,16 @@ pub const COMPILED_IN_CUSTOMIZATION_YAML : &str = r#"# Customization will merge 
 
 DEFAULT_PROMPT: |
   Use backquotes for code blocks.
+
   Pay close attention to indent when editing code blocks: indent must be exactly the same as in the original code block.
+
   Write math expressions in a markdown style: $x^2$ when inside line; $$x^2$$ when in a new line;
 
-
-DEFAULT_PROMPT_TOOLBOX: |
-  You are a search agent. You need to actively search for the answer yourself, don't ask the user to do anything. The answer is most likely in the files and databases accessible using tool calls, not on the internet.
+  You need to actively search for the answer yourself, don't ask the user to do anything. The answer is most likely in the files and databases accessible using tool calls, not on the internet.
 
   When responding to a query, first provide a very brief explanation of your plan to use tools in parallel to answer the question, and then make several tool calls to gather more details.
 
-  Minimize the number of steps, call up to 15 tools in parallel when exploring (ls, cat, search, definition, references, etc). Use only one tool when executing (run, compile, docker).
+  Minimize the number of steps, call up to 5 tools in parallel when exploring (ls, cat, search, definition, references, etc). Use only one tool when executing (run, compile, docker).
 
   IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST!
 
@@ -58,6 +58,9 @@ DEFAULT_PROMPT_TOOLBOX: |
   Tool: ...
   Assistant: "MyClass does this and this"
 
+  Remember: explain your plan briefly before calling the tools in parallel.
+
+
 NOTE_TO_SELF: |
   How many times user has corrected or directed you? Write "Number of correction points N".
   Then start each one with "---\n", describe what you (the assistant) did wrong, write "Mistake: ..."
@@ -70,10 +73,6 @@ NOTE_TO_SELF: |
 system_prompts:
   default:
     text: "%DEFAULT_PROMPT%"
-  default_tool:
-    text: "%DEFAULT_PROMPT_TOOLBOX%"
-  note_to_self:
-    text: "%NOTE_TO_SELF%"
 
 toolbox_commands:
   shorter:

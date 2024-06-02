@@ -12,12 +12,12 @@ pub struct AttFile;
 #[async_trait]
 impl AtTool for AttFile {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
-        let file_path = match args.get("file_path") {
+        let p = match args.get("path") {
             Some(x) => x.to_string().clone(),
             None => { return Err("missing file path".to_string()); }
         };
 
-        let context_file = execute_at_file(ccx, file_path).await?;
+        let context_file = execute_at_file(ccx, p).await?;
         let text = text_on_clip(&context_file, true);
 
         let mut results = vec_context_file_to_context_tools(vec![context_file]);

@@ -21,7 +21,7 @@ pub async fn handle_v1_tools_available(
         }
     }
 
-    let tconfig_maybe = crate::toolbox::toolbox_config::load_customization_high_level(gcx.clone()).await;
+    let tconfig_maybe = crate::toolbox::toolbox_config::load_customization(gcx.clone()).await;
     if tconfig_maybe.is_err() {
         tracing::error!("Error loading toolbox config: {:?}", tconfig_maybe.err().unwrap());
     } else {

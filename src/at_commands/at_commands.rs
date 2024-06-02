@@ -66,7 +66,7 @@ pub async fn at_commands_dict(_gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Stri
     ]);
 
     // Don't need custom at-commands?
-    // let tconfig_maybe = crate::toolbox::toolbox_config::load_customization_high_level(gcx.clone()).await;
+    // let tconfig_maybe = crate::toolbox::toolbox_config::load_customization(gcx.clone()).await;
     // if tconfig_maybe.is_err() {
     //     error!("Error loading toolbox config: {:?}", tconfig_maybe.err().unwrap());
     // } else {

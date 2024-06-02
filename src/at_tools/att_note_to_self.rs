@@ -29,10 +29,10 @@ impl AtTool for AtNoteToSelf {
 
         // open file "note20240531.txt" and write arg0 to it
         let fname = notes_dir_path.join(format!(
-            "note{}_{}.txt",
+            "note{}_{:06x}.txt",
             chrono::Local::now().format("%Y%m%d"),
-            rand::thread_rng().gen_range(0x100000..0x1000000).to_string())
-        );
+            rand::thread_rng().gen_range(0x100000..0x1000000)
+        ));
         let file_maybe = tokio::fs::File::create(fname.clone()).await;
         if file_maybe.is_err() {
             return Err(format!("Error creating file {}", fname.clone().display()));

@@ -176,7 +176,7 @@ fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, Str
     Ok(work_config)
 }
 
-pub async fn load_customization_high_level(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolboxConfig, String> {
+pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolboxConfig, String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let user_config_path = cache_dir.join("customization.yaml");
 
@@ -201,7 +201,7 @@ pub async fn load_customization_high_level(gcx: Arc<ARwLock<GlobalContext>>) -> 
 }
 
 pub async fn get_default_system_prompt(global_context: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
-    let tconfig = load_customization_high_level(global_context.clone()).await?;
+    let tconfig = load_customization(global_context.clone()).await?;
     match tconfig.system_prompts.get("default").and_then(|x|Some(x.text.clone())) {
         Some(x) => Ok(x),
         None => Err("no default system prompt found".to_string()),
