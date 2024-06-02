@@ -194,6 +194,7 @@ pub struct PostprocessSettings {
     pub comments_propogate_up_coef: f32, // mark comments above a symbol as useful, with this coef
     pub close_small_gaps: bool,
     pub take_floor: f32,                 // take/dont value
+    pub max_files_n: usize,              // don't produce more than n files in output
 }
 
 impl PostprocessSettings {
@@ -206,6 +207,7 @@ impl PostprocessSettings {
             close_small_gaps: true,
             comments_propogate_up_coef: 0.99,
             take_floor: 0.0,
+            max_files_n: 10,
         }
     }
 }
@@ -501,10 +503,12 @@ pub async fn postprocess_at_results2(
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
+    max_files_n: usize,
 ) -> Vec<ContextFile> {
     let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), &messages).await;
 
-    let settings = PostprocessSettings::new();
+    let mut settings = PostprocessSettings::new();
+    settings.max_files_n = max_files_n;
     let (mut lines_in_files, mut lines_by_useful) = postprocess_rag_stage_3_6(
         global_context.clone(),
         messages,
@@ -542,11 +546,14 @@ pub async fn postprocess_rag_stage_7_9(
         let filename = lineref.fref.cpath.to_string_lossy().to_string();
 
         if !files_mentioned_set.contains(&filename) {
+            if files_mentioned_set.len() >= settings.max_files_n {
+                continue;
+            }
             files_mentioned_set.insert(filename.clone());
             files_mentioned_sequence.push(lineref.fref.cpath.clone());
             if !single_file_mode {
                 ntokens += count_tokens(&tokenizer.read().unwrap(), &filename.as_str());
-                ntokens += 5;  // any overhead: file_sep, new line, etc
+                ntokens += 5;  // a margin for any overhead: file_sep, new line, etc
             }
         }
         if tokens_count + ntokens > tokens_limit {
@@ -694,7 +701,7 @@ pub async fn run_at_commands(
         );
 
         let (messages_for_postprocessing, _) = execute_at_commands_in_query(&mut user_posted, &context, true, top_n).await;
-        
+
         let t0 = std::time::Instant::now();
         let processed = postprocess_at_results2(
             global_context.clone(),
@@ -702,6 +709,7 @@ pub async fn run_at_commands(
             tokenizer.clone(),
             context_limit,
             false,
+            top_n,
         ).await;
         info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
         if processed.len() > 0 {

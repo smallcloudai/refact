@@ -310,12 +310,14 @@ impl ScratchpadAbstract for SingleFileFIM {
 
             info!(" -- post processing starts --");
             let post_t0 = Instant::now();
+            let max_files_n = 10;
             let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
                 self.global_context.clone(),
                 ast_messages,
                 self.t.tokenizer.clone(),
                 rag_tokens_n,
                 false,
+                max_files_n,
             ).await;
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);

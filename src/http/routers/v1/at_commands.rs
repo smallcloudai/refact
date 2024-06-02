@@ -116,12 +116,12 @@ pub async fn handle_v1_command_preview(
         }
     };
 
-    let top_n = 10;  // sync with top_n in chats
-    
+    let top_n = 7;  // sync with top_n in chats
+
     let at_context = AtCommandsContext::new(global_context.clone()).await;
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut query, &at_context, false, top_n).await;
-    
+
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
     let processed = postprocess_at_results2(
         global_context.clone(),
@@ -129,6 +129,7 @@ pub async fn handle_v1_command_preview(
         tokenizer_arc.clone(),
         rag_n_ctx,
         false,
+        top_n,
     ).await;
     let mut preview: Vec<ChatMessage> = vec![];
     if processed.len() > 0 {
@@ -184,7 +185,7 @@ async fn command_completion(
         Some((x, idx)) => (x.clone(), idx),
         None => return (vec![], false, -1, -1),
     };
-    
+
     let cmd = match at_command_names.iter().find(|x|x == &&q_cmd.value).and_then(|x|context.at_commands.get(x)) {
         Some(x) => x,
         None => {
