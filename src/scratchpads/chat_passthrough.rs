@@ -94,7 +94,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         tools_mb: Option<Vec<serde_json::Value>>,
     ) -> Result<String, String> {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
-        let top_n: usize = 10;
+        let top_n: usize = 7;
         let (messages, undroppable_msg_n) = if self.allow_at {
             run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &self.post.messages, top_n, &mut self.has_rag_results).await
         } else {

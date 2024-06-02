@@ -6,7 +6,7 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::at_tools::at_tools::AtTool;
-use crate::call_validation::{ContextFile, ContextEnum, ChatMessage};
+use crate::call_validation::{ContextFile, ContextEnum};
 use crate::global_context::GlobalContext;
 
 use crate::at_commands::at_workspace::AtWorkspace;
@@ -95,9 +95,9 @@ pub fn filter_only_context_file_from_context_tool(tools: &Vec<ContextEnum>) -> V
         }).collect::<Vec<ContextFile>>()
 }
 
-pub fn filter_only_chat_messages_from_context_tool(tools: &Vec<ContextEnum>) -> Vec<ChatMessage> {
-    tools.iter()
-       .filter_map(|x| {
-            if let ContextEnum::ChatMessage(data) = x { Some(data.clone()) } else { None }
-        }).collect::<Vec<ChatMessage>>()
-}
+// pub fn filter_only_chat_messages_from_context_tool(tools: &Vec<ContextEnum>) -> Vec<ChatMessage> {
+//     tools.iter()
+//        .filter_map(|x| {
+//             if let ContextEnum::ChatMessage(data) = x { Some(data.clone()) } else { None }
+//         }).collect::<Vec<ChatMessage>>()
+// }

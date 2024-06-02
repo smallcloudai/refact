@@ -100,6 +100,7 @@ pub async fn run_tools(
         tokenizer.clone(),
         context_limit,
         false,
+        top_n,
     ).await;
 
     if !context_file.is_empty() {

@@ -81,6 +81,7 @@ pub async fn run_at_commands(
             tokenizer.clone(),
             context_limit,
             false,
+            top_n,
         ).await;
         if post_processed.len() > 0 {
             // post-processed files after all custom messages
@@ -150,7 +151,7 @@ pub async fn execute_at_commands_in_query(
         };
         let cmd_lock = cmd.lock().await;
         let args = words.iter().skip(w_idx + 1).map(|x|x.clone()).collect::<Vec<_>>();
-        
+
         let mut cmd_member = AtCommandMember::new("cmd".to_string(), word.clone(), *pos1, *pos2);
         let mut arg_members = vec![];
         for (text, pos1, pos2) in args.iter().map(|x|x.clone()) {

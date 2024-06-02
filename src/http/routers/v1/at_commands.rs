@@ -12,7 +12,7 @@ use tokenizers::Tokenizer;
 use tracing::info;
 
 use crate::cached_tokenizers;
-use crate::at_commands::at_commands::{AtCommandsContext, filter_only_chat_messages_from_context_tool};
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
@@ -116,39 +116,31 @@ pub async fn handle_v1_command_preview(
         }
     };
 
-    let top_n = 10;  // sync with top_n in chats
+    let top_n = 7;  // sync with top_n in chats
 
     let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, true).await;
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut ccx, &mut query).await;
 
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
-
     let processed = postprocess_at_results2(
         global_context.clone(),
         &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
         tokenizer_arc.clone(),
         rag_n_ctx,
         false,
+        top_n,
     ).await;
-
-    let mut preview = vec![];
-    for p in processed {
-        let message = ChatMessage::new(
-            "tool".to_string(),
-            serde_json::to_string(&p).unwrap()
-        );
+    let mut preview: Vec<ChatMessage> = vec![];
+    if processed.len() > 0 {
+        let message = ChatMessage {
+            role: "context_file".to_string(),
+            content: serde_json::to_string(&processed).unwrap(),
+            tool_calls: None,
+            tool_call_id: "".to_string(),
+        };
         preview.push(message.clone());
     }
-
-    for c in filter_only_chat_messages_from_context_tool(&messages_for_postprocessing) {
-        let message = ChatMessage::new(
-            "tool".to_string(),
-            serde_json::to_string(&c).unwrap()
-        );
-        preview.push(message);
-    }
-
     let mut highlights = vec![];
     for h in vec_highlights {
         highlights.push(Highlight {
