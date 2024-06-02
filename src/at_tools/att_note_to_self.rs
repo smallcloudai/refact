@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use async_trait::async_trait;
-use rand::Rng;
 use serde_json::Value;
 use tokio::io::AsyncWriteExt;
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -29,9 +28,9 @@ impl AtTool for AtNoteToSelf {
 
         // open file "note20240531.txt" and write arg0 to it
         let fname = notes_dir_path.join(format!(
-            "note{}_{:06x}.txt",
+            "note{}_{}.txt",
             chrono::Local::now().format("%Y%m%d"),
-            rand::thread_rng().gen_range(0x100000..0x1000000)
+            tool_call_id
         ));
         let file_maybe = tokio::fs::File::create(fname.clone()).await;
         if file_maybe.is_err() {

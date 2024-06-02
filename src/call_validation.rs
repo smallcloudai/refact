@@ -272,4 +272,5 @@ pub struct ChatPost {
     #[serde(default)]
     pub tools: Option<Vec<serde_json::Value>>,
     // pub tool_choice: Option<String>,
+    // pub note_only;
 }

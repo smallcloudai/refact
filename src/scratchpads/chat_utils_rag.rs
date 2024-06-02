@@ -40,7 +40,7 @@ pub struct FileLine {
 }
 
 pub fn max_tokens_for_rag_chat(n_ctx: usize, maxgen: usize) -> usize {
-    (n_ctx as i32 - maxgen as i32 - RESERVE_FOR_QUESTION_AND_FOLLOWUP as i32).max(0) as usize
+    ((n_ctx/2) as i32 - maxgen as i32 - RESERVE_FOR_QUESTION_AND_FOLLOWUP as i32).max(0) as usize
 }
 
 pub fn context_to_fim_debug_page(

@@ -123,7 +123,7 @@ pub async fn handle_v1_command_preview(
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut ccx, &mut query).await;
 
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
-    
+
     let processed = postprocess_at_results2(
         global_context.clone(),
         &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
@@ -131,7 +131,7 @@ pub async fn handle_v1_command_preview(
         rag_n_ctx,
         false,
     ).await;
-    
+
     let mut preview = vec![];
     for p in processed {
         let message = ChatMessage::new(
@@ -140,7 +140,7 @@ pub async fn handle_v1_command_preview(
         );
         preview.push(message.clone());
     }
-    
+
     for c in filter_only_chat_messages_from_context_tool(&messages_for_postprocessing) {
         let message = ChatMessage::new(
             "tool".to_string(),
@@ -161,7 +161,7 @@ pub async fn handle_v1_command_preview(
     }
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(serde_json::to_string(
+        .body(Body::from(serde_json::to_string_pretty(
             &json!({"messages": preview, "model": model_name, "highlight": highlights})
         ).unwrap()))
         .unwrap())
