@@ -65,12 +65,15 @@ export function useEventBusForHost() {
         return;
       }
 
-      if (isTakeNotesFromChat(event.data)) {
+      if (isTakeNotesFromChat(event.data)) {  // TAKE_NOTES
         setTakingNotes(true);
         const { messages, model } = event.data.payload;
         const controller = new AbortController();
-        sendChat(messages, model, controller, false, lspUrl)
-          .then((res) => res.json())
+        sendChat(messages, model, controller, false, lspUrl, take_note=true)
+          .then((res) => {
+              let _ = res.json();
+              // TODO: repost it with only_deterministic_messages=true flag
+          })
           .catch((err) => {
             // eslint-disable-next-line no-console
             console.error(err);

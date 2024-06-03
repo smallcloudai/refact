@@ -917,7 +917,9 @@ export const useEventBusForChat = () => {
   }, [state.chat, state.take_notes]);
 
   useEffect(() => {
+    // this does nothing and returns a clean-up function:
     return () => {
+      // the clean up function is called when the component unmounts (chat is closed)
       // eslint-disable-next-line react-hooks/exhaustive-deps
       const { chat, take_notes } = noteRef.current;
       if (!take_notes) return;
@@ -932,6 +934,7 @@ export const useEventBusForChat = () => {
         type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
         payload: { ...chat, messages },
       };
+      // only_deterministic_messages
 
       postMessage(action);
     };

@@ -265,6 +265,7 @@ export async function sendChat(
   abortController: AbortController,
   stream: boolean | undefined = true,
   lspUrl?: string,
+  take_note: boolean = false,
 ) {
   const jsonMessages = messages.reduce<
     {
@@ -309,7 +310,7 @@ export async function sendChat(
     },
     stream,
     // stream: false,
-    tools: toolsResponse,
+    tools: toolsResponse, // TODO: take_note ? "note_to_self" : everything other then "note_to_self"
     // tools: TOOLS, // works
     // tools: [], // causes bugs
     // tools: toolsResponse.slice(0, 1), // can cause bugs
