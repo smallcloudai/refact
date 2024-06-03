@@ -12,7 +12,7 @@ export const ChatWithSideBar: React.FC = () => {
     <Theme>
       <Flex>
         <HistorySideBar takingNotes={takeingNotes} />
-        <Chat />
+        <Chat style={{ width: "calc(100vw - 260px)" }} />
       </Flex>
     </Theme>
   );
