@@ -32,6 +32,8 @@ impl AtTool for AtNoteToSelf {
             chrono::Local::now().format("%Y%m%d"),
             tool_call_id
         ));
+        
+        let _make_dir_if_not_there = tokio::fs::create_dir_all(notes_dir_path).await;
         let file_maybe = tokio::fs::File::create(fname.clone()).await;
         if file_maybe.is_err() {
             return Err(format!("Error creating file {}", fname.clone().display()));
