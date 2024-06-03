@@ -223,6 +223,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           messages,
         },
         selected_snippet: action.payload.snippet ?? state.selected_snippet,
+        take_notes: false,
       };
     }
 
