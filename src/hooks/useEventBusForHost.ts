@@ -6,6 +6,8 @@ import {
   getAtCommandPreview,
   isDetailMessage,
   getPrompts,
+  formatMessagesForLsp,
+  LspChatMessage,
 } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
@@ -43,8 +45,6 @@ export function useEventBusForHost() {
         return;
       }
 
-      // console.log(event.data);
-
       if (isStopStreamingFromChat(event.data)) {
         controller.current.abort();
         controller.current = new AbortController();
@@ -65,15 +65,43 @@ export function useEventBusForHost() {
         return;
       }
 
-      if (isTakeNotesFromChat(event.data)) {  // TAKE_NOTES
+      if (isTakeNotesFromChat(event.data)) {
+        // TAKE_NOTES
         setTakingNotes(true);
         const { messages, model } = event.data.payload;
-        const controller = new AbortController();
-        sendChat(messages, model, controller, false, lspUrl, take_note=true)
-          .then((res) => {
-              let _ = res.json();
-              // TODO: repost it with only_deterministic_messages=true flag
+        // console.log({ messages });
+        const messagesForLsp = formatMessagesForLsp(messages);
+        sendChat({
+          messages: messagesForLsp,
+          model,
+          stream: false,
+          lspUrl,
+          takeNote: true,
+        })
+          .then(async (res) => {
+            const json = (await res.json()) as {
+              choices: { message: LspChatMessage }[];
+              deterministic_messages: LspChatMessage[];
+              model: string;
+            };
+
+            const choices = json.choices.map((choice) => choice.message);
+
+            const messagesAndNotes = [
+              ...messagesForLsp,
+              ...json.deterministic_messages,
+              ...choices,
+            ];
+
+            return sendChat({
+              messages: messagesAndNotes,
+              model: json.model,
+              stream: false,
+              lspUrl,
+              takeNote: true,
+            });
           })
+          .then((res) => res.json())
           .catch((err) => {
             // eslint-disable-next-line no-console
             console.error(err);
@@ -209,8 +237,14 @@ function handleSend(
   controller: AbortController,
   lspUrl?: string,
 ) {
-  // console.log({ chat });
-  sendChat(chat.messages, chat.model, controller, true, lspUrl)
+  const messages = formatMessagesForLsp(chat.messages);
+  sendChat({
+    messages,
+    model: chat.model,
+    abortController: controller,
+    stream: true,
+    lspUrl,
+  })
     .then((response) => {
       if (!response.ok) {
         return Promise.reject(new Error(response.statusText));

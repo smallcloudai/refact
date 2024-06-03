@@ -1,4 +1,4 @@
-import { getApiKey } from "../utils/ApiKey";
+import { getApiKey } from "../../utils/ApiKey";
 const CHAT_URL = `/v1/chat`;
 const CAPS_URL = `/v1/caps`;
 const STATISTIC_URL = `/v1/get-dashboard-plots`;
@@ -205,82 +205,36 @@ export type ChatResponse =
   | ChatUserMessageResponse
   | ToolResponse;
 
-// @ts-expect-error hardcode valueas, can be removed if unsued
-const _TOOLS = [
-  {
-    function: {
-      description:
-        "Find definition of a symbol in a project using AST. Symbol could be: function, method, class, type alias.",
-      name: "definition",
-      parameters: {
-        properties: {
-          symbol: {
-            description:
-              "The name of the symbol (function, method, class, type alias) to find within the project.",
-            type: "string",
-          },
-        },
-        required: ["symbol"],
-        type: "object",
-      },
-    },
-    type: "function",
-  },
-  {
-    function: {
-      description:
-        "Read the file located using given file_path and provide its content",
-      name: "file",
-      parameters: {
-        properties: {
-          file_path: {
-            description:
-              "absolute path to the file or filename to be found within the project.",
-            type: "string",
-          },
-        },
-        required: ["file_path"],
-        type: "object",
-      },
-    },
-    type: "function",
-  },
-  {
-    function: {
-      description: "Compile the project",
-      name: "compile",
-      parameters: {
-        properties: {},
-        required: [],
-        type: "object",
-      },
-    },
-    type: "function",
-  },
-];
+type StreamArgs =
+  | {
+      stream: true;
+      abortController: AbortController;
+    }
+  | { stream: false; abortController?: undefined | AbortController };
 
-export async function sendChat(
-  messages: ChatMessages,
-  model: string,
-  abortController: AbortController,
-  stream: boolean | undefined = true,
-  lspUrl?: string,
-  take_note: boolean = false,
-) {
-  const jsonMessages = messages.reduce<
-    {
-      role: string;
-      content: string | null;
-      tool_calls?: Omit<ToolCall, "index">[];
-      tool_call_id?: string;
-    }[]
-  >((acc, message) => {
+type SendChatArgs = {
+  messages: LspChatMessage[];
+  model: string;
+  lspUrl?: string;
+  takeNote?: boolean;
+  onlyDeterministicMessages?: boolean;
+} & StreamArgs;
+
+export type LspChatMessage = {
+  role: ChatRole;
+  content: string | null;
+  tool_calls?: Omit<ToolCall, "index">[];
+  tool_call_id?: string;
+};
+
+export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
+  return messages.reduce<LspChatMessage[]>((acc, message) => {
     if (isAssistantMessage(message)) {
       return acc.concat([
         {
           role: message[0],
           content: message[1],
-          tool_calls: message[2],
+          tool_calls: message[2] ?? undefined,
         },
       ]);
     }
@@ -299,23 +253,33 @@ export async function sendChat(
       typeof message[1] === "string" ? message[1] : JSON.stringify(message[1]);
     return [...acc, { role: message[0], content }];
   }, []);
+}
 
+export async function sendChat({
+  messages,
+  model,
+  abortController,
+  stream,
+  lspUrl,
+  takeNote = false,
+  onlyDeterministicMessages: only_deterministic_messages,
+}: SendChatArgs): Promise<Response> {
   const toolsResponse = await getAvailableTools();
 
+  const tools = takeNote
+    ? toolsResponse.filter((tool) => tool.function.name === "note_to_self")
+    : toolsResponse.filter((tool) => tool.function.name !== "note_to_self");
+
   const body = JSON.stringify({
-    messages: jsonMessages,
+    messages,
     model: model,
     parameters: {
       max_new_tokens: 2048,
     },
     stream,
-    // stream: false,
-    tools: toolsResponse, // TODO: take_note ? "note_to_self" : everything other then "note_to_self"
-    // tools: TOOLS, // works
-    // tools: [], // causes bugs
-    // tools: toolsResponse.slice(0, 1), // can cause bugs
-    // tools: toolsResponse.slice(1) // can work
+    tools: tools,
     max_tokens: 2048,
+    only_deterministic_messages,
   });
 
   const apiKey = getApiKey();
@@ -334,7 +298,7 @@ export async function sendChat(
     redirect: "follow",
     cache: "no-cache",
     referrer: "no-referrer",
-    signal: abortController.signal,
+    signal: abortController?.signal,
     credentials: "same-origin",
   });
 }
