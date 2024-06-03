@@ -1,5 +1,8 @@
 .markdown {
-  /* overflow-x: scroll; */
+}
+
+.markdown pre {
+  margin: 0;
 }
 
 .pre {
@@ -16,15 +19,11 @@
 .command {
   padding: 0;
   width: 100%;
-  /* overflow-x: scroll; */
 }
 
 .button {
-  width: 100%;
-  display: flex;
-  text-align: unset;
   position: relative;
-  padding: 0;
+  cursor: pointer;
 }
 
 .content pre {
