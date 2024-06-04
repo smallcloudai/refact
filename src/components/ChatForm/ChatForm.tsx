@@ -318,11 +318,20 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         trimmedValue,
         checkboxes,
         showControls,
+        config.features?.vecdb ?? false,
       );
       onSubmit(valueIncludingChecks);
       setValue(() => "");
     }
-  }, [value, isStreaming, isOnline, checkboxes, showControls, onSubmit]);
+  }, [
+    value,
+    isStreaming,
+    isOnline,
+    checkboxes,
+    showControls,
+    config.features?.vecdb,
+    onSubmit,
+  ]);
 
   const handleEnter = useOnPressedEnter(handleSubmit);
 
@@ -335,7 +344,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   );
 
   useEffect(() => {
-    const input = addCheckboxValuesToInput(value, checkboxes, showControls);
+    const input = addCheckboxValuesToInput(
+      value,
+      checkboxes,
+      showControls,
+      config.features?.vecdb ?? false,
+    );
     requestPreviewFiles(input);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkboxes]);
@@ -347,6 +361,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           query,
           checkboxes,
           showControls,
+          config.features?.vecdb ?? false,
         );
         requestCommandsCompletion(query, cursor);
 
@@ -354,6 +369,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       },
       [
         checkboxes,
+        config.features?.vecdb,
         requestCommandsCompletion,
         requestPreviewFiles,
         showControls,
