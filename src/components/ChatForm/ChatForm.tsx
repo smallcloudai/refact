@@ -21,6 +21,7 @@ import { useConfig } from "../../contexts/config-context";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { useEffectOnce } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
+import { usePreviewFileRequest } from "./usePreviewFileRequest";
 
 type useCheckboxStateProps = {
   activeFile: ChatState["active_file"];
@@ -281,6 +282,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       ast: config.features?.ast ?? false,
     });
 
+  usePreviewFileRequest({
+    isCommandExecutable: commands.is_cmd_executable,
+    requestPreviewFiles: requestPreviewFiles,
+    query: value,
+    showControls,
+    vecdb: config.features?.vecdb ?? false,
+    checkboxes,
+  });
+
   useEffect(() => {
     if (
       caps.available_caps.length === 0 &&
@@ -343,37 +353,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [setInteracted],
   );
 
-  useEffect(() => {
-    const input = addCheckboxValuesToInput(
-      value,
-      checkboxes,
-      showControls,
-      config.features?.vecdb ?? false,
-    );
-    requestPreviewFiles(input);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkboxes]);
-
   const handleAtCommandsRequest: ComboBoxProps["requestCommandsCompletion"] =
     useCallback(
       (query: string, cursor: number) => {
-        const inputWithCheckboxes = addCheckboxValuesToInput(
-          query,
-          checkboxes,
-          showControls,
-          config.features?.vecdb ?? false,
-        );
         requestCommandsCompletion(query, cursor);
-
-        requestPreviewFiles(inputWithCheckboxes);
       },
-      [
-        checkboxes,
-        config.features?.vecdb,
-        requestCommandsCompletion,
-        requestPreviewFiles,
-        showControls,
-      ],
+      [requestCommandsCompletion],
     );
 
   if (error) {
