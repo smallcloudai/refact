@@ -217,7 +217,7 @@ async def ask_using_http(
                         deterministic.append(Message(**j))
                     else:
                         print("unrecognized streaming data (2):", j)
-                choices = choice_collector.choices
+                choices = [(None if not x.content else x) for x in choice_collector.choices]
     return join_messages_and_choices(messages, deterministic, choices, verbose)
 
 
