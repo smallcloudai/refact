@@ -14,6 +14,7 @@ import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { CommandLine } from "../CommandLine";
+import { MemoryContent } from "./MemoryContent";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
@@ -125,6 +126,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                   error={text.finish_reason === "call_failed"}
                 />
               );
+            } else if (role === "context_memory") {
+              return <MemoryContent key={index} items={text} />;
             } else {
               return null;
               // return <Markdown key={index}>{text}</Markdown>;

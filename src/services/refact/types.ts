@@ -3,7 +3,8 @@ export type ChatRole =
   | "assistant"
   | "context_file"
   | "system"
-  | "tool";
+  | "tool"
+  | "context_memory";
 
 export type ChatContextFile = {
   file_name: string;
@@ -12,6 +13,11 @@ export type ChatContextFile = {
   line2: number;
   usefulness?: number;
   usefullness?: number;
+};
+
+export type ContextMemory = {
+  memo_id: string;
+  memo_text: string;
 };
 
 export type ToolCall = {
@@ -32,10 +38,16 @@ export type ToolResult = {
 
 interface BaseMessage
   extends Array<
-    string | ChatContextFile[] | ToolCall[] | ToolResult | undefined | null
+    | string
+    | ChatContextFile[]
+    | ToolCall[]
+    | ToolResult
+    | undefined
+    | null
+    | ContextMemory[]
   > {
   0: ChatRole;
-  1: null | string | ChatContextFile[] | ToolResult;
+  1: null | string | ChatContextFile[] | ToolResult | ContextMemory[];
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
@@ -64,16 +76,26 @@ export interface ToolMessage extends BaseMessage {
   1: ToolResult;
 }
 
+export interface MemoryMessage extends BaseMessage {
+  0: "context_memory";
+  1: ContextMemory[];
+}
+
 export function isUserMessage(message: ChatMessage): message is UserMessage {
   return message[0] === "user";
 }
+
+/**
+ * {"content":"[{\"memo_id\":\"about_frog_class.txt\",\"memo_text\":\"The Frog class is used to test the project, located in tests folder.\\n\"},{\"memo_id\":\"answer_in_spanish.txt\",\"memo_text\":\"User actually preferes answers in Spanish, so do that.\\n\"}]","role":"context_memory","tool_call_id":"","tool_calls":null}
+ */
 
 export type ChatMessage =
   | UserMessage
   | AssistantMessage
   | ChatContextFileMessage
   | SystemMessage
-  | ToolMessage;
+  | ToolMessage
+  | MemoryMessage;
 
 export type ChatMessages = ChatMessage[];
 
@@ -145,7 +167,7 @@ export type ChatChoice = {
 
 export type ChatUserMessageResponse = {
   id: string;
-  role: "user" | "context_file";
+  role: "user" | "context_file" | "context_memory";
   content: string;
 };
 
@@ -162,7 +184,11 @@ export function isChatUserMessageResponse(
   if (!("id" in json)) return false;
   if (!("content" in json)) return false;
   if (!("role" in json)) return false;
-  return json.role === "user" || json.role === "context_file";
+  return (
+    json.role === "user" ||
+    json.role === "context_file" ||
+    json.role === "context_memory"
+  );
 }
 
 export function isToolResponse(json: unknown): json is ToolResponse {

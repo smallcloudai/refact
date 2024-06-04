@@ -76,6 +76,8 @@ function formatChatResponse(
   if (isChatUserMessageResponse(response)) {
     if (response.role === "context_file") {
       return [...messages, [response.role, JSON.parse(response.content)]];
+    } else if (response.role === "context_memory") {
+      return [...messages, [response.role, JSON.parse(response.content)]];
     }
     return [...messages, [response.role, response.content]];
   }
@@ -162,6 +164,7 @@ export function reducer(postMessage: typeof window.postMessage) {
 
     if (isThisChat && isResponseToChat(action)) {
       const hasUserMessage = isChatUserMessageResponse(action.payload);
+
       const current = hasUserMessage
         ? state.chat.messages.slice(0, state.previous_message_length)
         : state.chat.messages;
