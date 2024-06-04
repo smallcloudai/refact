@@ -79,7 +79,7 @@ async def do_all():
             if args.user:
                 messages.append(chat_client.Message(role="user", content=args.user))
             else:
-                DEPTH = 1
+                DEPTH = 2
                 messages.append(chat_client.Message(role="user", content=PLEASE_WRITE_NOTE))
         else:
             print("Last message is not an assistant message without calls, skip adding any user message")
@@ -105,6 +105,7 @@ async def do_all():
             temperature=0.6,
             stream=args.stream,
             max_tokens=2048,
+            only_deterministic_messages=(args.note and step_n==1),
         )
         assert(len(assistant_choices)==N)
         messages = assistant_choices[0]

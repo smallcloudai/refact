@@ -71,7 +71,7 @@ def messages_to_dicts(
 def join_messages_and_choices(
     orig_messages: List[Message],
     deterministic_messages: List[Message],
-    choices: List[Message],
+    choices: List[Optional[Message]],
     verbose: bool
 ) -> List[List[Message]]:
     messages = list(orig_messages)
@@ -86,6 +86,8 @@ def join_messages_and_choices(
                 termcolor.colored(str(msg.finish_reason), "red"))
     output = [copy.deepcopy(messages) for _ in range(len(choices))]
     for i, msg in enumerate(choices):
+        if msg is None:
+            continue
         if verbose and isinstance(msg.content, str):
             print("result[%d]" % i,
                 termcolor.colored(msg.content, "yellow"),
@@ -162,6 +164,7 @@ async def ask_using_http(
     stream: bool = False,
     verbose: bool = True,
     max_tokens: int = 1000,
+    only_deterministic_messages: bool = False,
 ) -> List[List[Message]]:
     deterministic: List[Message] = []
     post_me = {
@@ -174,6 +177,7 @@ async def ask_using_http(
         "stream": stream,
         "tools": tools,
         "max_tokens": max_tokens,
+        "only_deterministic_messages": only_deterministic_messages,
     }
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:
@@ -214,10 +218,7 @@ async def ask_using_http(
                     else:
                         print("unrecognized streaming data (2):", j)
                 choices = choice_collector.choices
-    # for msg in choices:
-    #     print("CHOICE", msg)
-    choices_not_none: List[Message] = [msg for msg in choices if msg is not None]
-    return join_messages_and_choices(messages, deterministic, choices_not_none, verbose)
+    return join_messages_and_choices(messages, deterministic, choices, verbose)
 
 
 async def ask_using_openai_client(

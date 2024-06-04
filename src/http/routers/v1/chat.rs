@@ -106,6 +106,7 @@ async fn chat(
             client1,
             api_key,
             &chat_post.parameters,
+            chat_post.only_deterministic_messages,
         ).await
     } else {
         crate::restream::scratchpad_interaction_stream(
@@ -117,6 +118,7 @@ async fn chat(
             client1,
             api_key,
             chat_post.parameters.clone(),
+            chat_post.only_deterministic_messages,
         ).await
     }
 }

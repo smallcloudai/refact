@@ -26,6 +26,7 @@ pub async fn scratchpad_interaction_not_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: &SamplingParameters,
+    only_deterministic_messages: bool,
 ) -> Result<Response<Body>, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage, slowdown_arc) = {
@@ -36,7 +37,9 @@ pub async fn scratchpad_interaction_not_stream(
     };
     let mut save_url: String = String::new();
     let _ = slowdown_arc.acquire().await;
-    let mut model_says = if endpoint_style == "hf" {
+    let mut model_says = if only_deterministic_messages {
+        Ok(serde_json::Value::Object(serde_json::Map::new()))
+    } else if endpoint_style == "hf" {
         forward_to_hf_endpoint::forward_to_hf_style_endpoint(
             &mut save_url,
             bearer.clone(),
@@ -76,7 +79,13 @@ pub async fn scratchpad_interaction_not_stream(
     crate::global_context::look_for_piggyback_fields(global_context.clone(), &model_says).await;
 
     let scratchpad_result: Result<serde_json::Value, String>;
-    if let Some(hf_arr) = model_says.as_array() {
+    if only_deterministic_messages {
+        if let Ok(det_msgs) = scratchpad.response_spontaneous() {
+            model_says["deterministic_messages"] = json!(det_msgs);
+            model_says["choices"] = serde_json::Value::Array(vec![]);
+        }
+        scratchpad_result = Ok(model_says.clone());
+    } else if let Some(hf_arr) = model_says.as_array() {
         let choices = hf_arr.iter()
             .map(|x| {
                 x.get("generated_text").unwrap().as_str().unwrap().to_string()
@@ -155,6 +164,7 @@ pub async fn scratchpad_interaction_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: SamplingParameters,
+    only_deterministic_messages: bool,
 ) -> Result<Response<Body>, ScratchError> {
     let t1 = std::time::SystemTime::now();
     let evstream = stream! {
@@ -180,6 +190,9 @@ pub async fn scratchpad_interaction_stream(
                 error!("response_spontaneous error: {}", err_str);
                 let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
                 yield Result::<_, String>::Ok(value_str);
+            }
+            if only_deterministic_messages {
+                break;
             }
             // info!("prompt: {:?}", prompt);
             let event_source_maybe = if endpoint_style == "hf" {

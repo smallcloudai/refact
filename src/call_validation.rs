@@ -272,5 +272,6 @@ pub struct ChatPost {
     #[serde(default)]
     pub tools: Option<Vec<serde_json::Value>>,
     // pub tool_choice: Option<String>,
-    // pub note_only;
+    #[serde(default)]
+    pub only_deterministic_messages: bool,  // means don't sample from the model
 }
