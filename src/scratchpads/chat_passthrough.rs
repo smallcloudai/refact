@@ -5,11 +5,11 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_tools::execute_att::run_tools;
-use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, ContextMemory, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
@@ -127,6 +127,21 @@ impl ScratchpadAbstract for ChatPassthrough {
                     },
                     Err(e) => { error!("error parsing context file: {}", e); }
                 }
+            } else if msg.role == "context_memory" {
+                match serde_json::from_str(&msg.content) {
+                    Ok(res) => {
+                        let mems: Vec<ContextMemory> = res;
+                        for mem in mems.iter() {
+                            filtered_msgs.push(ChatMessage::new(
+                                "assistant".to_string(),
+                                format!("Note to self: {}", mem.memo_text.clone())
+                            ));
+                        }
+                    }
+                    Err(e) => { error!("error parsing context memory: {}", e); }
+                }
+            } else {
+                warn!("unknown role: {}", msg.role);
             }
         }
         let big_json = serde_json::json!({
