@@ -99,6 +99,7 @@ export function useEventBusForHost() {
               stream: false,
               lspUrl,
               takeNote: true,
+              onlyDeterministicMessages: true,
             });
           })
           .then((res) => res.json())
