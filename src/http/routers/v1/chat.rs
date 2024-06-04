@@ -72,6 +72,7 @@ async fn chat(
     }
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.2)));
     chat_post.model = model_name.clone();
+    // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
     let (client1, api_key) = {
         let cx_locked = global_context.write().await;
         (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())

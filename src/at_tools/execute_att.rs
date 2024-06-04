@@ -90,7 +90,16 @@ pub async fn run_tools(
             }
             assert!(have_answer);
         } else {
-            warn!("tool use: function {:?} not found", &t_call.function.name);
+            let e = format!("tool use: function {:?} not found", &t_call.function.name);
+            warn!(e);
+            let tool_failed_message = ChatMessage {
+                role: "tool".to_string(),
+                content: e.to_string(),
+                tool_calls: None,
+                tool_call_id: t_call.id.to_string(),
+            };
+            context_messages.push(tool_failed_message.clone());
+            stream_back_to_user.push_in_json(json!(tool_failed_message));
         }
     }
 
