@@ -88,7 +88,7 @@ export function useEventBusForHost() {
             const choices = json.choices.map((choice) => choice.message);
 
             const messagesAndNotes = [
-              ...messagesForLsp,
+              ...messagesForLsp.slice(0, -1), // remove duplicated user message
               ...json.deterministic_messages,
               ...choices,
             ];
