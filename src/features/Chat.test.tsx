@@ -72,7 +72,7 @@ describe("Chat", () => {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
           id: "foo",
-          messages: [["user", "hello\n"]],
+          messages: [["user", "@local-notes-to-self\nhello\n"]],
           model: "", // not added because it's default
           title: "",
           attach_file: false,
@@ -226,7 +226,7 @@ describe("Chat", () => {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
           id: "foo",
-          messages: [["user", "hello\n"]],
+          messages: [["user", "@local-notes-to-self\nhello\n"]],
           model: "test-model",
           title: "",
           attach_file: false,
@@ -382,7 +382,7 @@ describe("Chat", () => {
           attach_file: false,
           messages: [
             ["system", SYSTEM_PROMPTS.insert_jokes.text],
-            ["user", "hello\n"],
+            ["user", "@local-notes-to-self\nhello\n"],
           ],
         },
       },
