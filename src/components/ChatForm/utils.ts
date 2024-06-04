@@ -21,11 +21,8 @@ export function addCheckboxValuesToInput(
     result = `${checkboxes.selected_lines.value ?? ""}\n` + result;
   }
 
-  if (
-    checkboxes.search_workspace.checked &&
-    checkboxes.search_workspace.hide !== true
-  ) {
-    result = `@workspace\n` + result;
+  if (checkboxes.use_memory.checked && checkboxes.use_memory.hide !== true) {
+    result = `@local-notes-to-self\n` + result;
   }
 
   if (
@@ -37,6 +34,13 @@ export function addCheckboxValuesToInput(
 
   if (checkboxes.file_upload.checked && checkboxes.file_upload.hide !== true) {
     result = `@file ${checkboxes.file_upload.value ?? ""}\n` + result;
+  }
+
+  if (
+    checkboxes.search_workspace.checked &&
+    checkboxes.search_workspace.hide !== true
+  ) {
+    result = `@workspace\n` + result;
   }
 
   if (!result.endsWith("\n")) {
