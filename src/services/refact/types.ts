@@ -32,7 +32,7 @@ export type ToolCall = {
 
 export type ToolResult = {
   tool_call_id: string;
-  finish_reason: string; // "call_failed" | "call_worked";
+  finish_reason?: string; // "call_failed" | "call_worked";
   content: string;
 };
 
@@ -63,7 +63,7 @@ export interface UserMessage extends BaseMessage {
 export interface AssistantMessage extends BaseMessage {
   0: "assistant";
   1: string | null;
-  2?: ToolCall[];
+  2?: ToolCall[] | null;
 }
 
 export interface SystemMessage extends BaseMessage {

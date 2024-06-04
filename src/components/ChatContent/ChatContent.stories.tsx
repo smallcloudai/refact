@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { ChatContent } from ".";
-import { MARS_ROVER_CHAT, CHAT_FUNCTIONS_MESSAGES } from "../../__fixtures__";
+import {
+  MARS_ROVER_CHAT,
+  CHAT_FUNCTIONS_MESSAGES,
+  FROG_CHAT,
+} from "../../__fixtures__";
 
 const noop = () => ({});
 
@@ -28,5 +32,11 @@ export const WithFunctions: Story = {
   args: {
     ...meta.args,
     messages: CHAT_FUNCTIONS_MESSAGES,
+  },
+};
+
+export const Notes: Story = {
+  args: {
+    messages: FROG_CHAT.messages,
   },
 };

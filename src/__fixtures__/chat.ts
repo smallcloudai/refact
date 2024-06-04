@@ -15,25 +15,6 @@ export const MARS_ROVER_CHAT: ChatThread = {
     //   "system",
     //   "Use backquotes for code blocks. Pay close attention to indent when editing code blocks: indent must be exactly the same as in the original code block.",
     // ],
-    [
-      "context_memory",
-      [
-        {
-          memo_id: "note20240603_call_U54RGiVERn2zDEIpXuNIHLGy.txt",
-          memo_text: "Number of correction points 1\n",
-        },
-        {
-          memo_id: "note20240603_call_E1u9kD6fvb23q56QecnwC6QP.txt",
-          memo_text:
-            "Failed to retrieve the content of the files when attempting to explain the different properties of Frog and Toad.\n",
-        },
-        {
-          memo_id: "note20240603_call_t8R0pFerpCcvdtTkRwiw2e6S.txt",
-          memo_text:
-            "Repeated the same unsuccessful attempt to fetch the content of the files.\n",
-        },
-      ],
-    ],
     ["user", "mars rover kata"],
     [
       "context_file",
@@ -456,3 +437,174 @@ export const CHAT_FUNCTIONS_MESSAGES: ChatMessages =
 
     return acc;
   }, []);
+
+export const FROG_CHAT: ChatThread = {
+  id: "77b6a451-5598-44c0-bd5b-cfc19e3f4e60",
+  messages: [
+    [
+      "context_memory",
+      [
+        {
+          memo_id: "note20240604_call_56uppUKhQv5bGmcEBlH7QX5w.txt",
+          memo_text: "Number of correction points 1\n",
+        },
+        {
+          memo_id: "note20240604_call_WCmczUa2WUQINsoSvqq0kUPk.txt",
+          memo_text: "Number of correction points 1\n",
+        },
+        {
+          memo_id: "note20240603_call_U54RGiVERn2zDEIpXuNIHLGy.txt",
+          memo_text: "Number of correction points 1\n",
+        },
+        {
+          memo_id: "note20240603_call_E1u9kD6fvb23q56QecnwC6QP.txt",
+          memo_text:
+            "Failed to retrieve the content of the files when attempting to explain the different properties of Frog and Toad.\n",
+        },
+        {
+          memo_id: "note20240603_call_t8R0pFerpCcvdtTkRwiw2e6S.txt",
+          memo_text:
+            "Repeated the same unsuccessful attempt to fetch the content of the files.\n",
+        },
+      ],
+    ],
+    ["user", "\nWhat is the difference between a frog and a toad?\n"],
+    [
+      "assistant",
+      null,
+      [
+        {
+          function: {
+            arguments: '{"path": "frog.txt"}',
+            name: "file",
+          },
+          id: "call_NSSpdvLovaH50zZUug463YRI",
+          index: 0,
+          type: "function",
+        },
+        {
+          function: {
+            arguments: '{"path": "toad.txt"}',
+            name: "file",
+          },
+          id: "call_cmTkaNJ0roopnMcNfG4raxny",
+          index: 1,
+          type: "function",
+        },
+      ],
+    ],
+    [
+      "tool",
+      {
+        tool_call_id: "call_NSSpdvLovaH50zZUug463YRI",
+        content:
+          "attached file: /Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+      },
+    ],
+    [
+      "tool",
+      {
+        tool_call_id: "call_cmTkaNJ0roopnMcNfG4raxny",
+        content:
+          "attached file: /Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+      },
+    ],
+    [
+      "context_file",
+      [
+        {
+          file_content:
+            "import numpy as np\n\nDT = 0.01\n\nclass Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n\n    def bounce_off_banks(self, pond_width, pond_height):\n        if self.x < 0:\n            self.vx = np.abs(self.vx)\n        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n            self.vy = np.abs(self.vy)\n        elif self.y > pond_height:\n            self.vy = -np.abs(self.vy)\n\n    def jump(self, pond_width, pond_height):\n        self.x += self.vx * DT\n        self.y += self.vy * DT\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n\n",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+          line1: 1,
+          line2: 27,
+          usefulness: 0,
+        },
+      ],
+    ],
+    [
+      "assistant",
+      null,
+      [
+        {
+          function: {
+            arguments:
+              '{"path":"/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/toad.py"}',
+            name: "file",
+          },
+          id: "call_8ER9PVREdkt37h84LZyc97c9",
+          index: 0,
+          type: "function",
+        },
+      ],
+    ],
+    [
+      "tool",
+      {
+        tool_call_id: "call_8ER9PVREdkt37h84LZyc97c9",
+        content:
+          "attached file: /Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+      },
+    ],
+    [
+      "context_file",
+      [
+        {
+          file_content:
+            "import numpy as np\n\nDT = 0.01\n\nclass Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n\n    def bounce_off_banks(self, pond_width, pond_height):\n        if self.x < 0:\n            self.vx = np.abs(self.vx)\n        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n            self.vy = np.abs(self.vy)\n        elif self.y > pond_height:\n            self.vy = -np.abs(self.vy)\n\n    def jump(self, pond_width, pond_height):\n        self.x += self.vx * DT\n        self.y += self.vy * DT\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n\n",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+          line1: 1,
+          line2: 27,
+          usefulness: 0,
+        },
+      ],
+    ],
+    [
+      "assistant",
+      'The content of the files "frog.py" and "toad.py" seems to be the same. It appears that there was an issue with retrieving the correct content for the "toad.py" file. Let me attempt to fetch the content of the "toad.py" file again.',
+      [
+        {
+          function: {
+            arguments:
+              '{"path":"/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/toad.py"}',
+            name: "file",
+          },
+          id: "call_1bHhD3bVIzvOueSDq1otYX4i",
+          index: 0,
+          type: "function",
+        },
+      ],
+    ],
+    [
+      "tool",
+      {
+        tool_call_id: "call_1bHhD3bVIzvOueSDq1otYX4i",
+        content:
+          "attached file: /Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+      },
+    ],
+    [
+      "context_file",
+      [
+        {
+          file_content:
+            "import numpy as np\n\nDT = 0.01\n\nclass Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n\n    def bounce_off_banks(self, pond_width, pond_height):\n        if self.x < 0:\n            self.vx = np.abs(self.vx)\n        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n            self.vy = np.abs(self.vy)\n        elif self.y > pond_height:\n            self.vy = -np.abs(self.vy)\n\n    def jump(self, pond_width, pond_height):\n        self.x += self.vx * DT\n        self.y += self.vy * DT\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n\n",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+          line1: 1,
+          line2: 27,
+          usefulness: 0,
+        },
+      ],
+    ],
+    [
+      "assistant",
+      'It seems that there was an issue with retrieving the content of the "toad.py" file. Since the content of the "frog.py" file has been successfully retrieved, I will analyze the content and provide the differences between a frog and a toad based on the code.\nBased on the content of the "frog.py" file, it defines a class named "Frog" with methods for initializing the frog\'s position and velocity, bouncing off the banks of a pond, and jumping within the pond. The use of the numpy library for mathematical operations is also evident.\n\nHowever, since the content of the "toad.py" file was not retrieved successfully, I am unable to provide the specific differences between a frog and a toad based on the code. It seems that there might be an issue with the file retrieval process. If there are specific characteristics or differences you would like to know about frogs and toads, please let me know, and I can attempt to gather the information from other sources.',
+      null,
+    ],
+  ],
+  title: "",
+  model: "",
+};
