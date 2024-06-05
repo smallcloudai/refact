@@ -46,7 +46,7 @@ export const CommandLine: React.FC<CommandLineProps> = ({
 
   const [open, setOpen] = React.useState(false);
   return (
-    <Box m="3">
+    <Box m="2">
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
           <Flex className={styles.button}>
