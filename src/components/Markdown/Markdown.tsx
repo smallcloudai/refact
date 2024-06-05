@@ -28,6 +28,7 @@ export type MarkdownProps = Pick<
 export const Markdown: React.FC<MarkdownProps> = ({ children, ...rest }) => {
   return (
     <ReactMarkdown
+      className={styles.relative}
       remarkPlugins={[remarkBreaks, remarkMath]}
       rehypePlugins={[rehypeKatex]}
       components={{
