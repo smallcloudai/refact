@@ -1,22 +1,11 @@
 use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
 use std::path::{Component, PathBuf};
 use std::sync::Arc;
 use crate::global_context::GlobalContext;
-use ropey::Rope;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use strsim::normalized_damerau_levenshtein;
 use tracing::info;
 
-
-
-#[derive(Debug, Eq, Hash, PartialEq, Clone)]
-pub struct Document {
-    pub path: PathBuf,
-    // #[allow(dead_code)]
-    // pub language_id: String,
-    pub text: Option<Rope>,
-}
 
 pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, String>>, Arc<Vec<String>>)
 {
