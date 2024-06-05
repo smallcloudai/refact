@@ -536,7 +536,7 @@ export function createInitialState(): ChatState {
       fetching: false,
     },
     selected_system_prompt: null,
-    take_notes: false,
+    take_notes: true,
   };
 }
 
@@ -588,7 +588,7 @@ export const useEventBusForChat = () => {
   const sendMessages = useCallback(
     (messages: ChatMessages, attach_file = state.active_file.attach) => {
       clearError();
-      setTakeNotes(true);
+      // setTakeNotes(true);
       dispatch({
         type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
         payload: { id: state.chat.id, disable: true },
@@ -634,7 +634,7 @@ export const useEventBusForChat = () => {
       state.chat.model,
       state.selected_system_prompt,
       clearError,
-      setTakeNotes,
+      // setTakeNotes,
       maybeDefaultPrompt,
       postMessage,
     ],
@@ -742,7 +742,7 @@ export const useEventBusForChat = () => {
   }, [clearError, postMessage, state.chat.id]);
 
   const openChatInNewTab = useCallback(() => {
-    setTakeNotes(false);
+    setTakeNotes(true);
 
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.OPEN_IN_CHAT_IN_TAB,
@@ -921,7 +921,6 @@ export const useEventBusForChat = () => {
   }, [state.chat, state.take_notes]);
 
   useEffect(() => {
-    // this does nothing and returns a clean-up function:
     return () => {
       // the clean up function is called when the component unmounts (chat is closed)
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -938,7 +937,6 @@ export const useEventBusForChat = () => {
         type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
         payload: { ...chat, messages },
       };
-      // only_deterministic_messages
 
       postMessage(action);
     };
