@@ -215,6 +215,10 @@ export function reducer(postMessage: typeof window.postMessage) {
         return count;
       }, 0);
 
+      const hasNotes = messages.some(
+        (message) => message[0] === "context_memory",
+      );
+
       return {
         ...state,
         waiting_for_response: false,
@@ -226,7 +230,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           messages,
         },
         selected_snippet: action.payload.snippet ?? state.selected_snippet,
-        take_notes: false,
+        take_notes: !hasNotes,
       };
     }
 
