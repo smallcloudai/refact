@@ -202,7 +202,7 @@ impl PythonParser {
     pub fn new() -> Result<PythonParser, ParserError> {
         let mut parser = Parser::new();
         parser
-            .set_language(language())
+            .set_language(&language())
             .map_err(internal_error)?;
         Ok(PythonParser { parser })
     }
