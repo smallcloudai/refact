@@ -6,6 +6,7 @@ export function addCheckboxValuesToInput(
   input: string,
   checkboxes: Record<string, Checkbox>,
   showControls: boolean,
+  _vecdb: boolean,
 ) {
   if (!showControls) {
     return input;
@@ -37,6 +38,8 @@ export function addCheckboxValuesToInput(
 
   if (checkboxes.file_upload.checked && checkboxes.file_upload.hide !== true) {
     result = `@file ${checkboxes.file_upload.value ?? ""}\n` + result;
+    // const cmd = vecdb ? "@file-search" : "@file";
+    // result = `${cmd} ${checkboxes.file_upload.value ?? ""}\n` + result;
   }
 
   if (!result.endsWith("\n")) {
