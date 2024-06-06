@@ -749,14 +749,19 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestPreviewFiles = useCallback(
-    (input: string) => {
-      const message: RequestPreviewFiles = {
-        type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES,
-        payload: { id: state.chat.id, query: input },
-      };
-      postMessage(message);
-    },
+    useDebounceCallback(
+      function (input: string) {
+        const message: RequestPreviewFiles = {
+          type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES,
+          payload: { id: state.chat.id, query: input },
+        };
+        postMessage(message);
+      },
+      500,
+      { leading: true },
+    ),
     [postMessage, state.chat.id],
   );
 
