@@ -16,20 +16,18 @@ pub struct AttAstLookupSymbols;
 impl AtTool for AttAstLookupSymbols {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         info!("execute tool: lookup_symbols_at {:?}", args);
-
-        let file_path = match args.get("file_path") {
-            Some(x) => x.to_string(),
-            None => return Err("no file path".to_string()),
+        let path = match args.get("path") {
+            Some(Value::String(s)) => s,
+            Some(v) => { return Err(format!("argument `path` is not a string: {:?}", v)) },
+            None => { return Err("argument `path` is missing".to_string()) }
         };
         let line_n = match args.get("line_number") {
-            Some(x) => x.as_u64().map(|x|x as usize),
+            Some(Value::Number(n)) if n.is_u64() => Some(n.as_u64().unwrap() as usize),
+            Some(v) => return Err(format!("argument `line_number` is not a valid u64: {:?}", v)),
             None => return Err("no line_number".to_string()),
         };
-        if line_n.is_none() {
-            return Err("line_number is incorrect".to_string());
-        }
-        
-        let results = execute_at_ast_lookup_symbols(ccx, &file_path, line_n.unwrap()).await?;
+
+        let results = execute_at_ast_lookup_symbols(ccx, &path, line_n.unwrap()).await?;
         let text = text_on_clip(&results, false);
         let mut results = vec_context_file_to_context_tools(results);
         results.push(ContextEnum::ChatMessage(ChatMessage {

@@ -13,11 +13,18 @@ pub struct AttFile;
 impl AtTool for AttFile {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let p = match args.get("path") {
-            Some(x) => x.to_string().clone(),
-            None => { return Err("missing file path".to_string()); }
+            Some(Value::String(s)) => s,
+            Some(v) => { return Err(format!("argument `path` is not a string: {:?}", v)) },
+            None => { return Err("argument `path` is missing".to_string()) }
         };
+        // TODO: optional line n
+        // let line_n = match args.get("line") {
+        //     Some(Value::Number(n)) if n.is_u64() => Some(n.as_u64().unwrap() as usize),
+        //     Some(v) => return Err(format!("argument `line` is not a valid u64: {:?}", v)),
+        //     None => return Err("line".to_string()),
+        // };
 
-        let context_file = execute_at_file(ccx, p).await?;
+        let context_file = execute_at_file(ccx, p.clone()).await?;
         let text = text_on_clip(&context_file, true);
 
         let mut results = vec_context_file_to_context_tools(vec![context_file]);
