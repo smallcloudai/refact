@@ -974,7 +974,7 @@
       "ast_fields": {
         "guid": "3ebd295e-edd7-47d4-9f7e-f07990397225",
         "name": "Student",
-        "language": "Python",
+        "language": "Java",
         "file_path": "file:///main.java",
         "namespace": "",
         "parent_guid": "ceb6e5f7-7cfd-4e62-8294-844ab3e41812",
@@ -1016,7 +1016,7 @@
           }
         },
         "linked_decl_guid": null,
-        "caller_guid": null,
+        "caller_guid": "d85991e9-efa0-448d-a865-6c6c5b0a7384",
         "is_error": false
       },
       "template_types": []
@@ -1399,7 +1399,7 @@
       "ast_fields": {
         "guid": "63be3d02-c9fb-4311-9ebe-f3f879b60200",
         "name": "println",
-        "language": "Python",
+        "language": "Java",
         "file_path": "file:///main.java",
         "namespace": "",
         "parent_guid": "ceb6e5f7-7cfd-4e62-8294-844ab3e41812",
@@ -1598,7 +1598,7 @@
           }
         },
         "linked_decl_guid": null,
-        "caller_guid": "ceb6e5f7-7cfd-4e62-8294-844ab3e41812",
+        "caller_guid": "ba24db72-f103-4d33-9947-cd0c94ce3bac",
         "is_error": false
       }
     }
@@ -1712,7 +1712,7 @@
       "ast_fields": {
         "guid": "14d07d72-f627-4f36-98c0-623fa1f9a103",
         "name": "println",
-        "language": "Python",
+        "language": "Java",
         "file_path": "file:///main.java",
         "namespace": "",
         "parent_guid": "ceb6e5f7-7cfd-4e62-8294-844ab3e41812",
@@ -2570,8 +2570,8 @@
     "FunctionCall": {
       "ast_fields": {
         "guid": "ea0d44a2-1a7a-4e29-80de-b39b47cb34f8",
-        "name": "HashMap<>",
-        "language": "Python",
+        "name": "HashMap",
+        "language": "Java",
         "file_path": "file:///main.java",
         "namespace": "",
         "parent_guid": "4a47eec7-f144-4580-b3c6-2845d7599de6",
@@ -2613,7 +2613,7 @@
           }
         },
         "linked_decl_guid": null,
-        "caller_guid": null,
+        "caller_guid": "34458d1d-efd4-4491-827f-06334dedbb8b",
         "is_error": false
       },
       "template_types": []
@@ -2805,7 +2805,7 @@
       "ast_fields": {
         "guid": "59049b35-3311-4b21-8ec1-f303e34efd35",
         "name": "get",
-        "language": "Python",
+        "language": "Java",
         "file_path": "file:///main.java",
         "namespace": "",
         "parent_guid": "ef8f6481-c66e-488a-85e9-8274f17e651a",
@@ -3387,7 +3387,7 @@
       "ast_fields": {
         "guid": "4c91e6e5-04ac-4e9f-8a94-eb8b4dc406ca",
         "name": "println",
-        "language": "Python",
+        "language": "Java",
         "file_path": "file:///main.java",
         "namespace": "",
         "parent_guid": "d5526436-ab05-4ea7-8445-390e8abddb61",
