@@ -70,6 +70,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     requestCommandsCompletion(value, cursor);
   }, [requestCommandsCompletion, value]);
 
+  const closeCombobox = useCallback(() => {
+    combobox.hide();
+    combobox.setState("items", []);
+    combobox.setState("activeId", null);
+    combobox.setState("activeValue", undefined);
+  }, [combobox]);
+
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const state = combobox.getState();
@@ -99,11 +106,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       const wasArrowLeftOrRight =
         event.key === "ArrowLeft" || event.key === "ArrowRight";
       if (wasArrowLeftOrRight) {
-        combobox.hide();
+        closeCombobox();
       }
 
       if (wasArrowLeftOrRight && state.open) {
-        combobox.hide();
+        closeCombobox();
       }
 
       const tabOrEnterOrSpace =
@@ -119,16 +126,16 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
           commands.replace,
           command,
         );
-        combobox.hide();
+        closeCombobox();
         onChange(nextValue);
         setMoveCursorTo(commands.replace[0] + command.length);
       }
 
       if (event.key === "Escape") {
-        combobox.hide();
+        closeCombobox();
       }
     },
-    [combobox, commands.replace, hasMatches, onChange, onSubmit, state],
+    [closeCombobox, combobox, commands, hasMatches, onChange, onSubmit, state],
   );
 
   const handleChange = useCallback(
@@ -145,12 +152,12 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       const textarea = ref.current;
       if (!textarea) return;
 
-      combobox.hide();
+      closeCombobox();
       const nextValue = replaceRange(textarea.value, commands.replace, item);
       onChange(nextValue);
       setMoveCursorTo(commands.replace[0] + item.length);
     },
-    [combobox, commands.replace, onChange],
+    [commands.replace, onChange, closeCombobox],
   );
 
   const popoverWidth = ref.current
@@ -161,7 +168,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     const maybeItem = combobox.item(state.activeId);
     if (state.open && maybeItem === null) {
       const first = combobox.first();
-      combobox.setActiveId(first);
+      if (combobox.item(first)) {
+        combobox.setActiveId(first);
+      }
     }
   }, [combobox, state]);
 
