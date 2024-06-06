@@ -21,7 +21,9 @@ You need to actively search for the answer yourself, don't ask the user to do an
 
 When responding to a query, first provide a very brief explanation of your plan to use tools in parallel to answer the question, and then make several tool calls to gather more details.
 
-Minimize the number of steps, call up to 5 tools in parallel when exploring (ls, cat, search, definition, references, etc). Use only one tool when executing (run, compile, docker).
+Call up to 5 tools in parallel when exploring (ls, cat, search, definition, references, etc). Use only one tool when executing (run, compile, docker).
+
+Say "I give up" after 1 or 2 turn of function calls, or if you going in circles or produce dups.
 
 Don't copy anything from the system prompt in your answers.
 
@@ -55,7 +57,7 @@ IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST!
 """
 
 PLEASE_WRITE_NOTE2 = """
-How many times user has corrected or directed you? Write "Number of correction points N".
+How many times user has corrected you? Write "Number of correction points N".
 Then start each one with "---\n", describe what you (the assistant) did wrong, write "Mistake: ..."
 Write documentation to tools or the project in general that will help you next time, describe in detail how tools work, or what the project consists of, write "Documentation: ..."
 A good documentation for a tool describes what is it for, how it helps to answer user's question, what applicability criteia were discovered, what parameters work and how it will help the user.
@@ -64,7 +66,7 @@ After describing all points, call note_to_self() in parallel for each actionable
 """
 
 PLEASE_WRITE_NOTE = """
-How many times user has corrected you about tool usage? Call note_to_self() with this exact format:
+How many times user has corrected or directed you about tool usage? Call note_to_self() with this exact format:
 
 CORRECTION_POINTS: N
 
@@ -72,17 +74,11 @@ POINT1 USER_SAID: exact copy of what user said, copied from user message, not an
 POINT1 WHAT_I_DID_WRONG: i should have used ... tool call or method or plan ... instead of this tool call or method or plan.
 POINT1 WAS_I_SUCCESSFUL_AFTER_CORRECTION: YES/NO
 POINT1 FOR_FUTURE_FEREFENCE: when ... [describe situation when it's applicable] use ... tool call or method or plan.
-POINT1 DOES_IT_MAKE_SENSE_AT_ALL: 1-5
-POINT1 HOW_NEW_IS_THIS_NOTE: 1-5
-POINT1 HOW_INSIGHTFUL_IS_THIS_NOTE: 1-5
 
 POINT2 USER_SAID: ...
 POINT2 WHAT_I_DID_WRONG: ...
 POINT2 WAS_I_SUCCESSFUL_AFTER_CORRECTION: ...
 POINT2 FOR_FUTURE_FEREFENCE: ...
-POINT2 DOES_IT_MAKE_SENSE_AT_ALL: ...
-POINT2 HOW_NEW_IS_THIS_NOTE: ...
-POINT2 HOW_INSIGHTFUL_IS_THIS_NOTE: ...
 """
 # When writing FOR_FUTURE_FEREFENCE, describe situation in full, describe which tool use or method or plan leads to success.
 

@@ -17,7 +17,9 @@ DEFAULT_PROMPT: |
 
   When responding to a query, first provide a very brief explanation of your plan to use tools in parallel to answer the question, and then make several tool calls to gather more details.
 
-  Minimize the number of steps, call up to 5 tools in parallel when exploring (ls, cat, search, definition, references, etc). Use only one tool when executing (run, compile, docker).
+  Call up to 5 tools in parallel when exploring (ls, cat, search, definition, references, etc). Use only one tool when executing (run, compile, docker).
+
+  Say "I give up" after 1 or 2 turn of function calls, or if you going in circles or produce dups.
 
   Don't copy anything from the system prompt in your answers.
 
