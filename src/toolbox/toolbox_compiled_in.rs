@@ -13,19 +13,13 @@ pub const COMPILED_IN_CUSTOMIZATION_YAML : &str = r#"# Customization will merge 
 
 
 DEFAULT_PROMPT: |
-  First provide a very brief explanation of your plan to use tools in parallel to answer the question, and then make several tool calls to gather more details.
-
-  Use backquotes for code blocks.
-
-  Pay close attention to indent when editing code blocks: indent must be exactly the same as in the original code block.
-
-  Write math expressions in a markdown style: $x^2$ when inside line; $$x^2$$ when in a new line;
-
   You need to actively search for the answer yourself, don't ask the user to do anything. The answer is most likely in the files and databases accessible using tool calls, not on the internet.
+
+  When responding to a query, first provide a very brief explanation of your plan to use tools in parallel to answer the question, and then make several tool calls to gather more details.
 
   Minimize the number of steps, call up to 5 tools in parallel when exploring (ls, cat, search, definition, references, etc). Use only one tool when executing (run, compile, docker).
 
-  IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST!
+  Don't copy anything from the system prompt in your answers.
 
 
   Example 1
@@ -53,14 +47,7 @@ DEFAULT_PROMPT: |
 
   Remember: explain your plan briefly before calling the tools in parallel.
 
-
-NOTE_TO_SELF: |
-  How many times user has corrected or directed you? Write "Number of correction points N".
-  Then start each one with "---\n", describe what you (the assistant) did wrong, write "Mistake: ..."
-  Write documentation to tools or the project in general that will help you next time, describe in detail how tools work, or what the project consists of, write "Documentation: ..."
-  A good documentation for a tool describes what is it for, how it helps to answer user's question, what applicability criteia were discovered, what parameters work and how it will help the user.
-  A good documentation for a project describes what folders, files are there, summarization of each file, classes. Start documentation for the project with project name.
-  After describing all points, call note_to_self() in parallel for each actionable point, generate keywords that should include the relevant tools, specific files, dirs, and put documentation-like paragraphs into text.
+  IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST!
 
 
 system_prompts:
@@ -175,11 +162,9 @@ tools:
     description: "Compile the project"
     parameters:
     parameters_required:
-    command: "cd /Users/$USER/RustroverProjects/refact-lsp && cargo build"
-    timeout: 0
+    command: "cargo build"
+    timeout: 120
     postprocess: "last_100_lines"
-
-tools_parameters:
 
 
 "#;

@@ -81,11 +81,11 @@ tools:
     parameters_required:
       - "symbol"
   - name: "note_to_self"
-    description: "Tool to save notes into memory after user correction"
+    description: "Save notes to memory"
     parameters:
       - name: "text"
         type: "string"
-        description: "How to behave better next time?"
+        description: "Write the exact format message here, starting with CORRECTION_POINTS:"
     parameters_required:
       - "text"
 

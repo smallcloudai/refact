@@ -62,7 +62,6 @@ pub async fn at_commands_dict(_gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Stri
         ("@references".to_string(), Arc::new(AMutex::new(Box::new(AtAstReference::new()) as Box<dyn AtCommand + Send>))),
         ("@symbols-at".to_string(), Arc::new(AMutex::new(Box::new(AtAstLookupSymbols::new()) as Box<dyn AtCommand + Send>))),
         ("@local-notes-to-self".to_string(), Arc::new(AMutex::new(Box::new(AtLocalNotesToSelf::new()) as Box<dyn AtCommand + Send>))),
-        ("@execute".to_string(), Arc::new(AMutex::new(Box::new(AtExecuteCommand::new()) as Box<dyn AtCommand + Send>))),
     ]);
 
     // Don't need custom at-commands?

@@ -23,7 +23,7 @@ class ToolCallDict(BaseModel):
 
 
 class Message(BaseModel):
-    role: Literal["system", "assistant", "user", "tool", "context_file"]
+    role: Literal["system", "assistant", "user", "tool", "context_file", "context_memory"]
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCallDict]] = None
     finish_reason: str = ""
@@ -43,7 +43,7 @@ def messages_to_dicts(
         tools_namesonly = [x["function"]["name"] for x in tools] if tools else []
         print(termcolor.colored("------ call chat %s T=%0.2f tools=%s ------" % (model_name, temperature, tools_namesonly), "red"))
     for x in messages:
-        if x.role in ["system", "user", "assistant", "tool", "context_file"]:
+        if x.role in ["system", "user", "assistant", "tool", "context_file", "context_memory"]:
             listofdict.append({
                 "role": x.role,
                 "content": x.content,
@@ -101,15 +101,15 @@ def join_messages_and_choices(
     return output
 
 
-async def tools_fetch_and_filter(base_url: str, tools_turn_on: Set[str]) -> Optional[List[Dict[str, Any]]]:
+async def tools_fetch_and_filter(base_url: str, tools_turn_on: Optional[Set[str]]) -> Optional[List[Dict[str, Any]]]:
     async def get_tools():
         async with aiohttp.ClientSession() as session:
             async with session.get(base_url + "/at-tools-available", timeout=1) as response:
                 assert response.status == 200
                 return await response.json()
     tools = None
-    if tools_turn_on:
-        tools = await get_tools()
+    tools = await get_tools()
+    if tools_turn_on is not None:
         tools = [x for x in tools if x["type"] == "function" and x["function"]["name"] in tools_turn_on]
     return tools
 
