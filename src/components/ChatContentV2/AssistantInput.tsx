@@ -1,13 +1,17 @@
 import React from "react";
 import { Markdown, MarkdownProps } from "../Markdown";
 
-import { Container } from "@radix-ui/themes";
+import { Container, Flex } from "@radix-ui/themes";
+import { ToolCall, ToolResult } from "../../events";
+import { ToolContent } from "./ToolsContent";
 
 type ChatInputProps = Pick<
   MarkdownProps,
   "onNewFileClick" | "onPasteClick" | "canPaste"
 > & {
-  children: string;
+  message: string | null;
+  toolCalls?: ToolCall[] | null;
+  toolResults: Record<string, ToolResult>;
 };
 
 function fallbackCopying(text: string) {
@@ -29,28 +33,35 @@ function fallbackCopying(text: string) {
 export const AssistantInput: React.FC<ChatInputProps> = (props) => {
   return (
     <Container py="4" position="relative">
-      {/* <Heading as="h4" size="4">
-        Assistant
-      </Heading> */}
+      <Flex gap="2" direction="column">
+        {props.toolCalls && (
+          <ToolContent
+            toolCalls={props.toolCalls}
+            results={props.toolResults}
+          />
+        )}
 
-      <Markdown
-        onCopyClick={(text: string) => {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          if (window.navigator?.clipboard?.writeText) {
-            window.navigator.clipboard.writeText(text).catch(() => {
-              // eslint-disable-next-line no-console
-              console.log("failed to copy to clipboard");
-            });
-          } else {
-            fallbackCopying(text);
-          }
-        }}
-        onNewFileClick={props.onNewFileClick}
-        onPasteClick={props.onPasteClick}
-        canPaste={props.canPaste}
-      >
-        {props.children}
-      </Markdown>
+        {props.message && (
+          <Markdown
+            onCopyClick={(text: string) => {
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+              if (window.navigator?.clipboard?.writeText) {
+                window.navigator.clipboard.writeText(text).catch(() => {
+                  // eslint-disable-next-line no-console
+                  console.log("failed to copy to clipboard");
+                });
+              } else {
+                fallbackCopying(text);
+              }
+            }}
+            onNewFileClick={props.onNewFileClick}
+            onPasteClick={props.onPasteClick}
+            canPaste={props.canPaste}
+          >
+            {props.message}
+          </Markdown>
+        )}
+      </Flex>
     </Container>
   );
 };
