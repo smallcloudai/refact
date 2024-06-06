@@ -29,7 +29,7 @@ impl RustParser {
     pub fn new() -> Result<RustParser, ParserError> {
         let mut parser = Parser::new();
         parser
-            .set_language(language())
+            .set_language(&language())
             .map_err(internal_error)?;
         Ok(RustParser { parser })
     }

@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
-// use std::fs;
 use std::path::PathBuf;
 
 use itertools::Itertools;
@@ -180,6 +179,7 @@ pub(crate) fn base_test(parser: &mut Box<dyn AstLanguageParser>,
                         path: &PathBuf,
                         code: &str, symbols_str: &str) {
     let symbols = parser.parse(code, &path);
+    // use std::fs;
     // let symbols_str_ = serde_json::to_string_pretty(&symbols).unwrap();
     // fs::write("output.json", symbols_str_).expect("Unable to write file");
     check_duplicates(&symbols);

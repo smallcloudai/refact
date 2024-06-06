@@ -129,7 +129,7 @@ impl TSParser {
     pub fn new() -> Result<Self, ParserError> {
         let mut parser = Parser::new();
         parser
-            .set_language(language())
+            .set_language(&language())
             .map_err(internal_error)?;
         Ok(Self { parser })
     }

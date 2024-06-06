@@ -1174,14 +1174,14 @@
         "childs_guid": [],
         "full_range": {
           "start_byte": 441,
-          "end_byte": 462,
+          "end_byte": 463,
           "start_point": {
             "row": 23,
             "column": 0
           },
           "end_point": {
-            "row": 23,
-            "column": 21
+            "row": 24,
+            "column": 0
           }
         },
         "declaration_range": {
@@ -1226,14 +1226,14 @@
         "childs_guid": [],
         "full_range": {
           "start_byte": 463,
-          "end_byte": 528,
+          "end_byte": 529,
           "start_point": {
             "row": 24,
             "column": 0
           },
           "end_point": {
-            "row": 24,
-            "column": 65
+            "row": 25,
+            "column": 0
           }
         },
         "declaration_range": {
@@ -1434,14 +1434,14 @@
         "childs_guid": [],
         "full_range": {
           "start_byte": 649,
-          "end_byte": 690,
+          "end_byte": 691,
           "start_point": {
             "row": 30,
             "column": 0
           },
           "end_point": {
-            "row": 30,
-            "column": 41
+            "row": 31,
+            "column": 0
           }
         },
         "declaration_range": {
