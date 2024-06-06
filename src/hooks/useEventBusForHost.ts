@@ -98,7 +98,7 @@ export function useEventBusForHost() {
             if (isDetailMessage(res)) return;
             const message: ReceiveAtCommandCompletion = {
               type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION,
-              payload: { id, ...res },
+              payload: { ...res, id },
             };
 
             window.postMessage(message, "*");
@@ -258,8 +258,8 @@ function handleSend(
             {
               type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
               payload: {
-                id: chat.id,
                 ...json,
+                id: chat.id,
               },
             },
             "*",
