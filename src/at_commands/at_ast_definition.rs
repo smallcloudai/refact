@@ -86,7 +86,7 @@ pub fn text_on_clip(symbol_path: &String, results: &Vec<ContextFile>) -> String 
             format!("`{}` (defined in {})", symbol_path, file_name)
         }
     } else {
-        symbol_path.clone()
+        format!("`{}` (definition not found in AST tree)", symbol_path)
     }
 }
 
@@ -100,10 +100,10 @@ impl AtCommand for AtAstDefinition {
         info!("execute @definition {:?}", args);
         let mut symbol = match args.get(0) {
             Some(x) => x.clone(),
-            None => { 
+            None => {
                 cmd.ok = false; cmd.reason = Some("symbol is missing".to_string());
                 args.clear();
-                return Err("symbol is missing".to_string()); 
+                return Err("symbol is missing".to_string());
             },
         };
         correct_at_arg(ccx, self.params[0].clone(), &mut symbol).await;

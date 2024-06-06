@@ -180,6 +180,7 @@ impl AstModule {
                     AstQuerySearchResult {
                         query_text: query,
                         search_results: symbol_structs,
+                        refs_n: results.len(),
                     }
                 )
             }
@@ -224,6 +225,7 @@ impl AstModule {
                     AstQuerySearchResult {
                         query_text: query,
                         search_results: symbol_structs,
+                        refs_n: results.len(),
                     }
                 )
             }
@@ -257,11 +259,12 @@ impl AstModule {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
                     info!("found {last_30_chars}");
                 }
-                info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                info!("ast search_related_declarations time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(
                     AstQuerySearchResult {
                         query_text: guid.to_string(),
                         search_results: symbol_structs,
+                        refs_n: results.len(),
                     }
                 )
             }
@@ -295,11 +298,12 @@ impl AstModule {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
                     info!("found {last_30_chars}");
                 }
-                info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                info!("ast search_usages_by_declarations time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(
                     AstQuerySearchResult {
                         query_text: declaration_guid.to_string(),
                         search_results: symbol_structs,
+                        refs_n: results.len(),
                     }
                 )
             }

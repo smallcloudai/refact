@@ -12,8 +12,8 @@ use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 
 
-pub fn text_on_clip(symbol_path: &String) -> String {
-    format!("\"usages of {}\"", symbol_path)
+pub fn text_on_clip(symbol_path: &String, refs_n: usize) -> String {
+    format!("`{}` (found {} usages)", symbol_path, refs_n)
 }
 
 async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
@@ -50,7 +50,7 @@ impl AtAstReference {
     }
 }
 
-pub async fn execute_at_ast_reference(ccx: &mut AtCommandsContext, symbol_path: &String) -> Result<Vec<ContextFile>, String> {
+pub async fn execute_at_ast_reference(ccx: &mut AtCommandsContext, symbol_path: &String) -> Result<(Vec<ContextFile>, usize), String> {
     let ast = ccx.global_context.read().await.ast_module.clone();
     let x = match &ast {
         Some(ast) => {
@@ -60,7 +60,7 @@ pub async fn execute_at_ast_reference(ccx: &mut AtCommandsContext, symbol_path: 
                 true,
                 10
             ).await {
-                Ok(res) => Ok(results2message(&res).await),
+                Ok(res) => Ok((results2message(&res).await, res.refs_n)),
                 Err(err) => Err(err)
             }
         }
@@ -88,8 +88,9 @@ impl AtCommand for AtAstReference {
         args.clear();
         args.push(symbol_path.clone());
 
-        let results = vec_context_file_to_context_tools(execute_at_ast_reference(ccx, &symbol_path.text).await?);
-        let text = text_on_clip(&symbol_path.text);
+        let (query_result, refs_n) = execute_at_ast_reference(ccx, &symbol_path.text).await?;
+        let results = vec_context_file_to_context_tools(query_result);
+        let text = text_on_clip(&symbol_path.text, refs_n);
         Ok((results, text))
     }
     fn depends_on(&self) -> Vec<String> {

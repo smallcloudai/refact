@@ -16,12 +16,16 @@ pub struct AttAstReference;
 impl AtTool for AttAstReference {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         info!("execute @references {:?}", args);
-        let symbol_path = match args.get("symbol") {
-            Some(x) => x.to_string(),
-            None => return Err("no symbol path".to_string()),
+        let symbol = match args.get("symbol") {
+            Some(Value::String(s)) => s,
+            Some(v) => { return Err(format!("argument `symbol` is not a string: {:?}", v)) },
+            None => { return Err("argument `symbol` is missing".to_string()) }
         };
-        let mut results = vec_context_file_to_context_tools(execute_at_ast_reference(ccx, &symbol_path).await?);
-        let text = text_on_clip(&symbol_path);
+
+        let (query_result, refs_n) = execute_at_ast_reference(ccx, &symbol).await?;
+
+        let mut results = vec_context_file_to_context_tools(query_result);
+        let text = text_on_clip(&symbol, refs_n);
 
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
