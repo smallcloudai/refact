@@ -1,7 +1,7 @@
 import React from "react";
 import { Markdown, MarkdownProps } from "../Markdown";
 
-import { Container, Flex } from "@radix-ui/themes";
+import { Container, Box } from "@radix-ui/themes";
 import { ToolCall, ToolResult } from "../../events";
 import { ToolContent } from "./ToolsContent";
 
@@ -32,16 +32,13 @@ function fallbackCopying(text: string) {
 
 export const AssistantInput: React.FC<ChatInputProps> = (props) => {
   return (
-    <Container py="4" position="relative">
-      <Flex gap="2" direction="column">
-        {props.toolCalls && (
-          <ToolContent
-            toolCalls={props.toolCalls}
-            results={props.toolResults}
-          />
-        )}
+    <Container position="relative">
+      {props.toolCalls && (
+        <ToolContent toolCalls={props.toolCalls} results={props.toolResults} />
+      )}
 
-        {props.message && (
+      {props.message && (
+        <Box py="4">
           <Markdown
             onCopyClick={(text: string) => {
               // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -60,8 +57,8 @@ export const AssistantInput: React.FC<ChatInputProps> = (props) => {
           >
             {props.message}
           </Markdown>
-        )}
-      </Flex>
+        </Box>
+      )}
     </Container>
   );
 };

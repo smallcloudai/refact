@@ -55,7 +55,7 @@ export const ToolContent: React.FC<{
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
-          <Flex gap="2" pb="2" align="center">
+          <Flex gap="2" align="center">
             <Text weight="light" size="1">
               {allResolved ? "Used" : "Using"} {toolCalls.length}{" "}
               {toolCalls.length > 1 ? "tools" : "tool"}

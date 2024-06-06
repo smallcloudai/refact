@@ -19,39 +19,53 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
     setShowTextArea(false);
   };
 
-  if (showTextArea) {
-    return (
-      <RetryForm
-        onSubmit={handleSubmit}
-        value={props.children}
-        onClose={() => setShowTextArea(false)}
-      />
-    );
-  }
+  const handleShowTextArea = (value: boolean) => {
+    setShowTextArea(value);
+    setShowEditButton(false);
+  };
 
   return (
     <Container
-      minHeight="5"
       position="relative"
       onMouseEnter={() => setShowEditButton(true)}
       onMouseLeave={() => setShowEditButton(false)}
       pt="4"
+      // size="2"
+      // align="right"
+      // width="auto"
     >
-      <Text>
-        <Markdown>{props.children}</Markdown>
-      </Text>
+      {showTextArea ? (
+        <RetryForm
+          onSubmit={handleSubmit}
+          value={props.children}
+          onClose={() => handleShowTextArea(false)}
+        />
+      ) : (
+        <Flex
+          gap="2"
+          direction="column"
+          display="inline-flex"
+          justify="end"
+          // align="end"
+          // flexShrink="1"
+        >
+          <Text>
+            <Markdown>{props.children}</Markdown>
+          </Text>
 
-      <Flex p="2" className={styles.footer} position="relative">
-        {showEditButton && (
-          <Button
-            variant="ghost"
-            size="1"
-            onClick={() => setShowTextArea(true)}
-          >
-            <Pencil1Icon />
-          </Button>
-        )}
-      </Flex>
+          <Flex className={styles.footer} position="relative">
+            {showEditButton && (
+              <Button
+                variant="soft"
+                size="1"
+                onClick={() => handleShowTextArea(true)}
+              >
+                <Pencil1Icon />
+              </Button>
+            )}
+          </Flex>
+        </Flex>
+      )}
     </Container>
   );
 };
