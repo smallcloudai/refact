@@ -281,4 +281,6 @@ pub struct ChatPost {
     // pub tool_choice: Option<String>,
     #[serde(default)]
     pub only_deterministic_messages: bool,  // means don't sample from the model
+    #[serde(default)]
+    pub chat_id: String,
 }

@@ -97,6 +97,19 @@ async fn chat(
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
     info!("chat prompt {:?}", t1.elapsed());
+    if !chat_post.chat_id.is_empty() {
+        let cache_dir = {
+            let gcx_locked = global_context.read().await;
+            gcx_locked.cache_dir.clone()
+        };
+        let notes_dir_path = cache_dir.join("chats");
+        let _ = std::fs::create_dir_all(&notes_dir_path);
+        let notes_path = notes_dir_path.join(format!("chat{}_{}.json",
+            chrono::Local::now().format("%Y%m%d"),
+            chat_post.chat_id,
+        ));
+        let _ = std::fs::write(&notes_path, serde_json::to_string_pretty(&chat_post.messages).unwrap());
+    }
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {
         crate::restream::scratchpad_interaction_not_stream(
             global_context.clone(),
