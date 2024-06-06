@@ -23,7 +23,8 @@
   background: none;
 }
 
-.code_block *::selection {
+.code_block::selection,
+.code_block ::selection {
   background-color: var(
     --refact-chat-code-selection-color,
     rgba(173, 214, 255, 0.5)
