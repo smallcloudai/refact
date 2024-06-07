@@ -1,4 +1,4 @@
-import argparse, os, json, termcolor
+import argparse, json, termcolor, time
 # os.environ["OPENAI_LOG"] = "debug"
 # os.environ["OPENAI_LOG_JSON"] = "true"
 import asyncio
@@ -78,16 +78,7 @@ POINT2 FOR_FUTURE_FEREFENCE: ...
 """
 
 
-USER_MESSAGE_BY_DEFAULT = """
-```
-            try {
-                result = manageVehicleBO.deleteVehicle(selectedVehicle);
-            } catch (Exception e) {
-                Logger.getLogger("").log(Level.SEVERE, null, e);
-            }
-```
-list all types in functions in this code
-"""
+USER_MESSAGE_BY_DEFAULT = "What is Frog?"
 
 
 async def do_all():
@@ -110,7 +101,8 @@ async def do_all():
                 DEPTH = 2
                 messages.append(chat_client.Message(role="user", content=PLEASE_WRITE_NOTE))
         else:
-            print("Last message is not an assistant message without calls, skip adding any user message")
+            print("PROBABLY BAD HISTORY: last message is not an assistant message without calls, skip adding any user message")
+            time.sleep(1)
     else:
         messages = [
             # chat_client.Message(role="system", content="You are a coding assistant. Call tools in parallel for efficiency."),
@@ -127,7 +119,7 @@ async def do_all():
     for step_n in range(DEPTH):
         print("-"*40 + " step %d " % step_n + "-"*40)
         N = 1
-        tools_turn_on = {"remember_how_to_use_tools"} if args.note else {"definition", "references", "compile", "memorize"}
+        tools_turn_on = {"remember_how_to_use_tools"} if args.note else {"definition", "references", "compile", "memorize", "file"}
         tools = await chat_client.tools_fetch_and_filter(base_url="http://127.0.0.1:8001/v1", tools_turn_on=tools_turn_on)
         assistant_choices = await chat_client.ask_using_http(
             "http://127.0.0.1:8001/v1",

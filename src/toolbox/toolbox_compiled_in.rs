@@ -156,20 +156,16 @@ toolbox_commands:
     messages: []
 
 
-# CUSTOM TOOLS AND AT-COMMANDS
-# be sure that parameters used in tools are defined in tools_parameters
+# CUSTOM TOOLS
 
-
-tools:
-  - name: "compile"
-    description: "Compile the project"
-    parameters:
-    parameters_required:
-    command: "cargo build"
-    timeout: 120
-    postprocess: "last_100_lines"
-
-
+# tools:
+#   - name: "compile"
+#     description: "Compile the project"
+#     parameters:
+#     parameters_required:
+#     command: "cargo build"
+#     timeout: 120
+#     postprocess: "last_100_lines"
 "#;
 
 
