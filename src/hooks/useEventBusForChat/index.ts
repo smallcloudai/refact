@@ -75,19 +75,19 @@ function formatChatResponse(
       return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
 
-    if (acc.length === 0 && cur.delta.role && cur.delta.content) {
-      return acc.concat([[cur.delta.role, cur.delta.content]]);
+    if (acc.length === 0 && cur.delta.role) {
+      return acc.concat([[cur.delta.role, cur.delta.content ?? ""]]);
     }
 
     const lastMessage = acc[acc.length - 1];
-    if (lastMessage[0] === "assistant") {
+    if (acc.length > 0 && lastMessage[0] === "assistant") {
       const last = acc.slice(0, -1);
       const currentMessage = lastMessage[1];
       const content = cur.delta.content ?? "";
       return last.concat([["assistant", currentMessage + content]]);
     }
 
-    if (cur.delta.role === null || !cur.delta.content) {
+    if (!cur.delta.role || !cur.delta.content) {
       return acc;
     }
 
