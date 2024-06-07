@@ -12,7 +12,7 @@ fn text_on_clip(from_tool_call: bool) -> String {
     if !from_tool_call {
         return "".to_string();
     }
-    return "attached note to self".to_string();
+    unimplemented!()
 }
 
 pub struct AtLocalNotesToSelf {

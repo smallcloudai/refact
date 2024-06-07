@@ -14,11 +14,16 @@ pub struct AttAstDefinition;
 #[async_trait]
 impl AtTool for AttAstDefinition {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
-        let symbol = match args.get("symbol") {
-            Some(Value::String(s)) => s,
+        let mut symbol = match args.get("symbol") {
+            Some(Value::String(s)) => s.clone(),
             Some(v) => { return Err(format!("argument `symbol` is not a string: {:?}", v)) },
             None => { return Err("argument `symbol` is missing".to_string()) }
         };
+
+        if let Some(dot_index) = symbol.find('.') {
+            symbol = symbol[dot_index+1..].to_string();
+        }
+
         let ast = ccx.global_context.read().await.ast_module.clone();
         let vector_of_context_file = run_at_definition(&ast, &symbol).await?;
         let text = text_on_clip(&symbol, &vector_of_context_file);

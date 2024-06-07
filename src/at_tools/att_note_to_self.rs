@@ -26,25 +26,41 @@ impl AtTool for AtNoteToSelf {
             None => { return Err("argument `text` is not a string".to_string()) }
         };
 
-        // open file "note20240531.txt" and write arg0 to it
-        let fname = notes_dir_path.join(format!(
-            "note{}_{}.txt",
-            chrono::Local::now().format("%Y%m%d"),
-            tool_call_id
-        ));
-        
-        let _make_dir_if_not_there = tokio::fs::create_dir_all(notes_dir_path).await;
-        let file_maybe = tokio::fs::File::create(fname.clone()).await;
-        if file_maybe.is_err() {
-            return Err(format!("Error creating file {}", fname.clone().display()));
+        let mut shortdesc = match args.get("id") {
+            Some(Value::String(s)) => s.clone(),
+            Some(v) => { return Err(format!("argument `shortdesc` is not a string: {:?}", v)) },
+            None => { "".to_string() }
+        };
+
+        let simple_ascii_snake_re = regex::Regex::new(r"^[a-z0-9_]+$").unwrap();
+        if simple_ascii_snake_re.is_match(shortdesc.as_str()) {
+            shortdesc = "_".to_string() + shortdesc.as_str();
+        } else {
+            shortdesc = "".to_string();
         }
 
-        let mut buf = String::new();
-        buf.push_str(text.as_str());
-        buf.push_str("\n");
-        let did_it_work = file_maybe.unwrap().write_all(buf.as_bytes()).await;
-        if did_it_work.is_err() {
-            return Err(format!("Error writing to file {}", fname.clone().display()));
+        let has_correction_points_re = regex::Regex::new(r"CORRECTION_POINTS").unwrap();
+        if !has_correction_points_re.is_match(text.as_str()) {
+            let fname = notes_dir_path.join(format!(
+                "note{}_{}{}.txt",
+                chrono::Local::now().format("%Y%m%d"),
+                tool_call_id,
+                shortdesc
+            ));
+
+            let _make_dir_if_not_there = tokio::fs::create_dir_all(notes_dir_path).await;
+            let file_maybe = tokio::fs::File::create(fname.clone()).await;
+            if file_maybe.is_err() {
+                return Err(format!("Error creating file {}", fname.clone().display()));
+            }
+
+            let mut buf = String::new();
+            buf.push_str(text.as_str());
+            buf.push_str("\n");
+            let did_it_work = file_maybe.unwrap().write_all(buf.as_bytes()).await;
+            if did_it_work.is_err() {
+                return Err(format!("Error writing to file {}", fname.clone().display()));
+            }
         }
 
         let mut results = vec![];

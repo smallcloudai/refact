@@ -66,21 +66,28 @@ After describing all points, call note_to_self() in parallel for each actionable
 """
 
 PLEASE_WRITE_NOTE = """
-How many times user has corrected or directed you about tool usage? Call note_to_self() with this exact format:
+How many times did you used a tool incorrectly, so it didn't produce the indended result? Call remember_how_to_use_tools() with this exact format:
 
 CORRECTION_POINTS: N
 
-POINT1 USER_SAID: exact copy of what user said, copied from user message, not an interpretation.
 POINT1 WHAT_I_DID_WRONG: i should have used ... tool call or method or plan ... instead of this tool call or method or plan.
-POINT1 WAS_I_SUCCESSFUL_AFTER_CORRECTION: YES/NO
 POINT1 FOR_FUTURE_FEREFENCE: when ... [describe situation when it's applicable] use ... tool call or method or plan.
 
-POINT2 USER_SAID: ...
 POINT2 WHAT_I_DID_WRONG: ...
-POINT2 WAS_I_SUCCESSFUL_AFTER_CORRECTION: ...
 POINT2 FOR_FUTURE_FEREFENCE: ...
 """
-# When writing FOR_FUTURE_FEREFENCE, describe situation in full, describe which tool use or method or plan leads to success.
+
+
+USER_MESSAGE_BY_DEFAULT = """
+```
+            try {
+                result = manageVehicleBO.deleteVehicle(selectedVehicle);
+            } catch (Exception e) {
+                Logger.getLogger("").log(Level.SEVERE, null, e);
+            }
+```
+list all types in functions in this code
+"""
 
 
 async def do_all():
@@ -108,7 +115,7 @@ async def do_all():
         messages = [
             # chat_client.Message(role="system", content="You are a coding assistant. Call tools in parallel for efficiency."),
             chat_client.Message(role="system", content=SYSTEM_PROMPT),
-            chat_client.Message(role="user", content=("Explain what Frog is" if not args.user else args.user)),
+            chat_client.Message(role="user", content=(USER_MESSAGE_BY_DEFAULT if not args.user else args.user)),
         ]
 
     # This replaces system prompt even with history to be able to tune it
@@ -120,7 +127,7 @@ async def do_all():
     for step_n in range(DEPTH):
         print("-"*40 + " step %d " % step_n + "-"*40)
         N = 1
-        tools_turn_on = {"note_to_self"} if args.note else {"definition", "references", "compile"}
+        tools_turn_on = {"remember_how_to_use_tools"} if args.note else {"definition", "references", "compile", "memorize"}
         tools = await chat_client.tools_fetch_and_filter(base_url="http://127.0.0.1:8001/v1", tools_turn_on=tools_turn_on)
         assistant_choices = await chat_client.ask_using_http(
             "http://127.0.0.1:8001/v1",

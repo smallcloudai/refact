@@ -76,7 +76,7 @@ impl AtCommand for AtAstReference {
     }
     async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @references {:?}", args);
-        let mut symbol_path = match args.get(0) {
+        let mut symbol = match args.get(0) {
             Some(x) => x.clone(),
             None => {
                 cmd.ok = false; cmd.reason = Some("no symbol path".to_string());
@@ -84,13 +84,14 @@ impl AtCommand for AtAstReference {
                 return Err("no symbol path".to_string());
             },
         };
-        correct_at_arg(ccx, self.params[0].clone(), &mut symbol_path).await;
-        args.clear();
-        args.push(symbol_path.clone());
 
-        let (query_result, refs_n) = execute_at_ast_reference(ccx, &symbol_path.text).await?;
+        correct_at_arg(ccx, self.params[0].clone(), &mut symbol).await;
+        args.clear();
+        args.push(symbol.clone());
+
+        let (query_result, refs_n) = execute_at_ast_reference(ccx, &symbol.text).await?;
         let results = vec_context_file_to_context_tools(query_result);
-        let text = text_on_clip(&symbol_path.text, refs_n);
+        let text = text_on_clip(&symbol.text, refs_n);
         Ok((results, text))
     }
     fn depends_on(&self) -> Vec<String> {

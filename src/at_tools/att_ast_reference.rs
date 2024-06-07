@@ -16,11 +16,15 @@ pub struct AttAstReference;
 impl AtTool for AttAstReference {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         info!("execute @references {:?}", args);
-        let symbol = match args.get("symbol") {
-            Some(Value::String(s)) => s,
+        let mut symbol = match args.get("symbol") {
+            Some(Value::String(s)) => s.clone(),
             Some(v) => { return Err(format!("argument `symbol` is not a string: {:?}", v)) },
             None => { return Err("argument `symbol` is missing".to_string()) }
         };
+
+        if let Some(dot_index) = symbol.find('.') {
+            symbol = symbol[dot_index+1..].to_string();
+        }
 
         let (query_result, refs_n) = execute_at_ast_reference(ccx, &symbol).await?;
 

@@ -25,7 +25,8 @@ pub async fn at_tools_merged(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String
         ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_definition::AttAstDefinition{}) as Box<dyn AtTool + Send>))),
         ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_reference::AttAstReference{}) as Box<dyn AtTool + Send>))),
         // ("symbols_at".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_lookup_symbols::AttAstLookupSymbols{}) as Box<dyn AtTool + Send>))),
-        ("note_to_self".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
+        ("remember_how_to_use_tools".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
+        ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
     ]);
 
     let tconfig_maybe = crate::toolbox::toolbox_config::load_customization(gcx.clone()).await;
@@ -80,16 +81,28 @@ tools:
         description: "The name of a function, method, class, type alias"
     parameters_required:
       - "symbol"
-  - name: "note_to_self"
-    description: "Save notes to memory"
+  - name: "remember_how_to_use_tools"
+    description: Save a note to memory.
     parameters:
       - name: "text"
         type: "string"
-        description: "Write the exact format message here, starting with CORRECTION_POINTS:"
+        description: "Write the exact format message here, starting with CORRECTION_POINTS"
     parameters_required:
       - "text"
+  - name: "memorize_if_user_asks"
+    description: |
+        DO NOT CALL UNLESS USER EXPLICITLY ASKS. Use this format exactly:
+        when ... [describe situation when it's applicable] use ... tool call or method or plan
+    parameters:
+      - name: "text"
+        type: "string"
+        description: "Follow the format in function description."
+    parameters_required:
+      - "text"
+      - "shortdesc"
 
 "####;
+// description: "ascii_lowercase_snake_string that can be used as identifier of the topic, 2-3 words shortened to fit 25 chars, avoid generic words, especially 'tools'"
 
 
 #[derive(Deserialize)]
