@@ -67,7 +67,7 @@ interface BaseDelta {
 
 interface AssistantDelta extends BaseDelta {
   role: "assistant" | null;
-  content: string;
+  content: string | null;
 }
 interface ChatContextFileDelta extends BaseDelta {
   role: "context_file";

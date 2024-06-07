@@ -83,7 +83,8 @@ function formatChatResponse(
     if (lastMessage[0] === "assistant") {
       const last = acc.slice(0, -1);
       const currentMessage = lastMessage[1];
-      return last.concat([["assistant", currentMessage + cur.delta.content]]);
+      const content = cur.delta.content ?? "";
+      return last.concat([["assistant", currentMessage + content]]);
     }
 
     if (cur.delta.role === null) {
