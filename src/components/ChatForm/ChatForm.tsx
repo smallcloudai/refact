@@ -74,7 +74,7 @@ const useControlsState = ({
         checked: true,
         label: "Use memory",
         disabled: false,
-        hide: false,
+        hide: true,
         info: {
           text: "Uses notes previously written by assistant, to improve on mistakes. Setting this checkbox is equivalent to @local-notes-to-self command in the text.",
           link: "https://docs.refact.ai/features/ai-chat/",
