@@ -7,12 +7,12 @@ import { Chat } from "../../features/Chat.tsx";
 import "./web.css";
 
 export const ChatWithSideBar: React.FC = () => {
-  useEventBusForHost();
+  const { takeingNotes } = useEventBusForHost();
   return (
     <Theme>
       <Flex>
-        <HistorySideBar />
-        <Chat style={{ maxWidth: "calc(100vw - 260px)" }} />
+        <HistorySideBar takingNotes={takeingNotes} />
+        <Chat style={{ width: "calc(100vw - 260px)" }} />
       </Flex>
     </Theme>
   );

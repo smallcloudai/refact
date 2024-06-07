@@ -1,9 +1,15 @@
-import { useEffect, useReducer, useCallback, useMemo } from "react";
+import { useEffect, useReducer, useCallback, useMemo, useRef } from "react";
 import {
   type ChatContextFile,
   type ChatMessages,
   type ChatResponse,
   isChatContextFileMessage,
+  isChatContextFileDelta,
+  isAssistantMessage,
+  isAssistantDelta,
+  isToolCallDelta,
+  isToolResponse,
+  isChatResponseChoice,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -31,7 +37,6 @@ import {
   type RequestAtCommandCompletion,
   isReceiveAtCommandCompletion,
   type SetSelectedAtCommand,
-  // isSetSelectedAtCommand,
   isReceiveAtCommandPreview,
   isChatUserMessageResponse,
   isChatSetLastModelUsed,
@@ -55,9 +60,14 @@ import {
   type SystemPrompts,
   RequestPreviewFiles,
   type CommandCompletionResponse,
+  type ToolResult,
+  isSetTakeNotes,
+  SetTakeNotes,
+  TakeNotesFromChat,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
+import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
 
 function formatChatResponse(
   messages: ChatMessages,
@@ -66,32 +76,73 @@ function formatChatResponse(
   if (isChatUserMessageResponse(response)) {
     if (response.role === "context_file") {
       return [...messages, [response.role, JSON.parse(response.content)]];
+    } else if (response.role === "context_memory") {
+      return [...messages, [response.role, JSON.parse(response.content)]];
     }
     return [...messages, [response.role, response.content]];
   }
 
+  if (isToolResponse(response)) {
+    const { tool_call_id, content, finish_reason } = response;
+    const toolResult: ToolResult = { tool_call_id, content, finish_reason };
+    return [...messages, [response.role, toolResult]];
+  }
+
+  if (!isChatResponseChoice(response)) {
+    // console.log("Not a good response");
+    // console.log(response);
+    return messages;
+  }
+
   return response.choices.reduce<ChatMessages>((acc, cur) => {
-    if (cur.delta.role === "context_file") {
+    if (isChatContextFileDelta(cur.delta)) {
       return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
 
-    if (acc.length === 0 && cur.delta.role) {
-      return acc.concat([[cur.delta.role, cur.delta.content ?? ""]]);
+    if (
+      messages.length === 0 &&
+      "content" in cur.delta &&
+      typeof cur.delta.content === "string" &&
+      cur.delta.role
+    ) {
+      return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
 
     const lastMessage = acc[acc.length - 1];
-    if (acc.length > 0 && lastMessage[0] === "assistant") {
+
+    if (isToolCallDelta(cur.delta)) {
+      if (!isAssistantMessage(lastMessage)) {
+        return acc.concat([["assistant", null, cur.delta.tool_calls]]);
+      }
+
       const last = acc.slice(0, -1);
-      const currentMessage = lastMessage[1];
-      const content = cur.delta.content ?? "";
-      return last.concat([["assistant", currentMessage + content]]);
+      const collectedCalls = lastMessage[2] ?? [];
+      const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
+      return last.concat([["assistant", lastMessage[1], calls]]);
     }
 
-    if (!cur.delta.role || !cur.delta.content) {
+    if (isAssistantMessage(lastMessage) && isAssistantDelta(cur.delta)) {
+      const last = acc.slice(0, -1);
+      const currentMessage = lastMessage[1] ?? "";
+      const toolCalls = lastMessage[2];
+      return last.concat([
+        ["assistant", currentMessage + cur.delta.content, toolCalls],
+      ]);
+    } else if (
+      isAssistantDelta(cur.delta) &&
+      typeof cur.delta.content === "string"
+    ) {
+      return acc.concat([["assistant", cur.delta.content]]);
+    }
+
+    if (cur.delta.role === null || cur.finish_reason !== null) {
       return acc;
     }
 
-    return acc.concat([[cur.delta.role, cur.delta.content]]);
+    // console.log("Fall though");
+    // console.log({ cur, lastMessage });
+
+    return acc;
   }, messages);
 }
 
@@ -113,6 +164,7 @@ export function reducer(postMessage: typeof window.postMessage) {
 
     if (isThisChat && isResponseToChat(action)) {
       const hasUserMessage = isChatUserMessageResponse(action.payload);
+
       const current = hasUserMessage
         ? state.chat.messages.slice(0, state.previous_message_length)
         : state.chat.messages;
@@ -174,6 +226,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           messages,
         },
         selected_snippet: action.payload.snippet ?? state.selected_snippet,
+        take_notes: false,
       };
     }
 
@@ -296,16 +349,6 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    // if (isThisChat && isSetSelectedAtCommand(action)) {
-    //   return {
-    //     ...state,
-    //     rag_commands: {
-    //       ...state.rag_commands,
-    //       selected_command: action.payload.command,
-    //     },
-    //   };
-    // }
-
     if (isThisChat && isReceiveAtCommandPreview(action)) {
       const filesInPreview = action.payload.preview.reduce<ChatContextFile[]>(
         (acc, curr) => {
@@ -408,6 +451,13 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
+    if (isThisChat && isSetTakeNotes(action)) {
+      return {
+        ...state,
+        take_notes: action.payload.take_notes,
+      };
+    }
+
     return state;
   };
 }
@@ -437,6 +487,7 @@ export type ChatState = {
     fetching: boolean;
   };
   selected_system_prompt: null | string;
+  take_notes: boolean;
 };
 
 export function createInitialState(): ChatState {
@@ -485,6 +536,7 @@ export function createInitialState(): ChatState {
       fetching: false,
     },
     selected_system_prompt: null,
+    take_notes: true,
   };
 }
 
@@ -515,17 +567,42 @@ export const useEventBusForChat = () => {
     });
   }, [state.chat.id]);
 
+  const setTakeNotes = useCallback(
+    (take_notes: boolean) => {
+      const action: SetTakeNotes = {
+        type: EVENT_NAMES_TO_CHAT.SET_TAKE_NOTES,
+        payload: { id: state.chat.id, take_notes },
+      };
+
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
+
+  const maybeDefaultPrompt: string | null = useMemo(() => {
+    return "default" in state.system_prompts.prompts
+      ? state.system_prompts.prompts.default.text
+      : null;
+  }, [state.system_prompts.prompts]);
+
   const sendMessages = useCallback(
     (messages: ChatMessages, attach_file = state.active_file.attach) => {
       clearError();
+      // setTakeNotes(true);
       dispatch({
         type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
         payload: { id: state.chat.id, disable: true },
       });
 
+      const messagesWithSystemPrompt: ChatMessages =
+        state.selected_system_prompt &&
+        state.selected_system_prompt !== maybeDefaultPrompt
+          ? [["system", state.selected_system_prompt], ...messages]
+          : messages;
+
       const payload: ChatThread = {
         id: state.chat.id,
-        messages: messages,
+        messages: messagesWithSystemPrompt,
         title: state.chat.title,
         model: state.chat.model,
         attach_file,
@@ -535,6 +612,7 @@ export const useEventBusForChat = () => {
         type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES,
         payload,
       });
+
       postMessage({
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload,
@@ -550,42 +628,25 @@ export const useEventBusForChat = () => {
       dispatch(snippetMessage);
     },
     [
-      clearError,
-      postMessage,
       state.active_file.attach,
       state.chat.id,
-      state.chat.model,
       state.chat.title,
+      state.chat.model,
+      state.selected_system_prompt,
+      clearError,
+      // setTakeNotes,
+      maybeDefaultPrompt,
+      postMessage,
     ],
   );
 
-  const maybeDefaultPrompt: string | null = useMemo(() => {
-    return "default" in state.system_prompts.prompts
-      ? state.system_prompts.prompts.default.text
-      : null;
-  }, [state.system_prompts.prompts]);
-
   const askQuestion = useCallback(
     (question: string) => {
-      const maybeMessagesWithSystemPrompt: ChatMessages =
-        state.selected_system_prompt &&
-        state.selected_system_prompt !== maybeDefaultPrompt &&
-        state.chat.messages.length === 0
-          ? [["system", state.selected_system_prompt]]
-          : state.chat.messages;
-
-      const messages = maybeMessagesWithSystemPrompt.concat([
-        ["user", question],
-      ]);
+      const messages = state.chat.messages.concat([["user", question]]);
 
       sendMessages(messages);
     },
-    [
-      sendMessages,
-      state.chat.messages,
-      state.selected_system_prompt,
-      maybeDefaultPrompt,
-    ],
+    [sendMessages, state.chat.messages],
   );
 
   const requestCaps = useCallback(() => {
@@ -681,11 +742,13 @@ export const useEventBusForChat = () => {
   }, [clearError, postMessage, state.chat.id]);
 
   const openChatInNewTab = useCallback(() => {
+    setTakeNotes(true);
+
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.OPEN_IN_CHAT_IN_TAB,
       payload: { id: state.chat.id },
     });
-  }, [postMessage, state.chat.id]);
+  }, [postMessage, state.chat.id, setTakeNotes]);
 
   const sendToSideBar = useCallback(() => {
     postMessage({
@@ -838,7 +901,63 @@ export const useEventBusForChat = () => {
     sendReadyMessage();
   }, [sendReadyMessage]);
 
-  // console.log({ state });
+  useEffect(() => {
+    if (!state.streaming && state.chat.messages.length > 0) {
+      const lastMessage = state.chat.messages[state.chat.messages.length - 1];
+
+      if (
+        isAssistantMessage(lastMessage) &&
+        lastMessage[2] &&
+        lastMessage[2].length > 0
+      ) {
+        sendMessages(state.chat.messages);
+      }
+    }
+  }, [sendMessages, state.chat.messages, state.streaming]);
+
+  // TODO: Turn this into a hook
+  const noteRef = useRef<Pick<ChatState, "chat" | "take_notes">>({
+    chat: state.chat,
+    take_notes: state.take_notes,
+  });
+  useEffect(() => {
+    noteRef.current.chat = state.chat;
+    noteRef.current.take_notes = state.take_notes;
+  }, [state.chat, state.take_notes]);
+
+  useEffect(() => {
+    return () => {
+      // the clean up function is called when the component unmounts (chat is closed)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const { chat, take_notes } = noteRef.current;
+      if (!take_notes) return;
+      if (chat.messages.length === 0) return;
+
+      const messages: ChatMessages = [
+        ...chat.messages,
+        ["user", TAKE_NOTE_MESSAGE],
+      ];
+
+      const action: TakeNotesFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
+        payload: { ...chat, messages },
+      };
+
+      postMessage(action);
+    };
+  }, [postMessage, state.chat.id]);
+
+  // useEffect(() => {
+  //   window.debugChat =
+  //     window.debugChat ||
+  //     function () {
+  //       console.log(state.chat);
+  //     };
+
+  //   return () => {
+  //     window.debugChat = undefined;
+  //   };
+  // }, [state.chat]);
 
   return {
     state,

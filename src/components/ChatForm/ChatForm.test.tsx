@@ -110,7 +110,8 @@ describe("ChatForm", () => {
     const textarea = app.container.querySelector("textarea")!;
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
-    expect(fakeOnSubmit).toHaveBeenCalledWith("@workspace\nfoo\n");
+    const expected = "@workspace\nfoo\n";
+    expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
   });
 
   test("checkbox lookup symbols", async () => {
@@ -137,9 +138,9 @@ describe("ChatForm", () => {
     const textarea = app.container.querySelector("textarea")!;
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
-    expect(fakeOnSubmit).toHaveBeenCalledWith(
-      `@file ${activeFile.path}:${activeFile.line1}-${activeFile.line2}\n@symbols-at ${activeFile.path}:${activeFile.cursor}\nfoo\n`,
-    );
+    const epexted = `@file ${activeFile.path}:${activeFile.line1}-${activeFile.line2}\n@symbols-at ${activeFile.path}:${activeFile.cursor}\nfoo\n`;
+
+    expect(fakeOnSubmit).toHaveBeenCalledWith(epexted);
   });
 
   test("checkbox snippet", async () => {
@@ -162,6 +163,7 @@ describe("ChatForm", () => {
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     const markdown = "```python\nprint(1)\n```\n";
-    expect(fakeOnSubmit).toHaveBeenCalledWith(`${markdown}\nfoo\n`);
+    const expected = `${markdown}\nfoo\n`;
+    expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
   });
 });

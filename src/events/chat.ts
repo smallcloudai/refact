@@ -23,6 +23,7 @@ export enum EVENT_NAMES_FROM_CHAT {
   REQUEST_AT_COMMAND_COMPLETION = "chat_request_at_command_completion",
   REQUEST_PREVIEW_FILES = "chat_request_preview_files",
   REQUEST_PROMPTS = "chat_request_prompts",
+  TAKE_NOTES = "chat_take_notes",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -50,6 +51,7 @@ export enum EVENT_NAMES_TO_CHAT {
   RECEIVE_PROMPTS = "chat_receive_prompts",
   RECEIVE_PROMPTS_ERROR = "chat_receive_prompts_error",
   SET_SELECTED_SYSTEM_PROMPT = "chat_set_selected_system_prompt",
+  SET_TAKE_NOTES = "chat_set_take_notes",
 }
 
 export type ChatThread = {
@@ -207,6 +209,18 @@ export function isStopStreamingFromChat(
 ): action is StopStreamingFromChat {
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.STOP_STREAMING;
+}
+
+export interface TakeNotesFromChat extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES;
+  payload: ChatThread;
+}
+
+export function isTakeNotesFromChat(
+  action: unknown,
+): action is TakeNotesFromChat {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.TAKE_NOTES;
 }
 
 export interface ActionToChat extends BaseAction {
@@ -553,4 +567,17 @@ export function isReceiveTokenCount(
 ): action is ReceiveTokenCount {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_TOKEN_COUNT;
+}
+
+export interface SetTakeNotes extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_TAKE_NOTES;
+  payload: {
+    id: string;
+    take_notes: boolean;
+  };
+}
+
+export function isSetTakeNotes(action: unknown): action is SetTakeNotes {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_TAKE_NOTES;
 }

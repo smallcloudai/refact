@@ -145,6 +145,7 @@ const meta: Meta<typeof ChatForm> = {
     ],
     selectedSnippet: { code: "", language: "", basename: "", path: "" },
     removePreviewFileByName: () => ({}),
+    requestPreviewFiles: () => ({}),
     requestCommandsCompletion: () => ({}),
     setSelectedCommand: () => ({}),
     onTextAreaHeightChange: noop,

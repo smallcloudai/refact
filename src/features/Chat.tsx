@@ -7,7 +7,7 @@ import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../components/PageWrapper";
 
-export const Chat: React.FC<{ style?: React.CSSProperties }> = () => {
+export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
   const { host, tabbed } = useConfig();
 
   const chatContentRef = useRef<HTMLDivElement>(null);
@@ -38,7 +38,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = () => {
     host === "vscode" && tabbed ? sendToSideBar : undefined;
 
   return (
-    <PageWrapper host={host}>
+    <PageWrapper host={host} style={style}>
       {host === "vscode" && !tabbed && (
         <Flex gap="2" pb="3" wrap="wrap">
           <Button size="1" variant="surface" onClick={backFromChat}>

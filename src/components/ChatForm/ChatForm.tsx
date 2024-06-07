@@ -69,6 +69,18 @@ const useControlsState = ({
 
   const defaultState = useMemo(() => {
     return {
+      use_memory: {
+        name: "use_memory",
+        checked: true,
+        label: "Use memory",
+        disabled: false,
+        hide: true,
+        info: {
+          text: "Uses notes previously written by assistant, to improve on mistakes. Setting this checkbox is equivalent to @local-notes-to-self command in the text.",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "documentation",
+        },
+      },
       search_workspace: {
         name: "search_workspace",
         checked: false,
@@ -162,6 +174,10 @@ const useControlsState = ({
 
       const nextValue = {
         ...prev,
+        // use_memory: {
+        //   ...prev.use_memory,
+        //   hide: false,
+        // },
         search_workspace: {
           ...prev.search_workspace,
           hide: !vecdb,

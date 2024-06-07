@@ -1,0 +1,31 @@
+.markdown {
+}
+
+.markdown pre {
+  margin: 0;
+}
+
+.pre {
+  padding: var(--space-2) !important;
+  margin: 0 !important;
+}
+
+.code {
+  color: inherit;
+  background: none;
+  padding: 0;
+}
+
+.command {
+  padding: 0;
+  width: 100%;
+}
+
+.button {
+  position: relative;
+  cursor: pointer;
+}
+
+.content pre {
+  margin: 0 !important;
+}
