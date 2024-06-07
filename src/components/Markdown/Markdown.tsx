@@ -21,15 +21,22 @@ import "katex/dist/katex.min.css";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
-  "children"
+  "children" | "allowedElements" | "unwrapDisallowed"
 > &
   Partial<MarkdownControls>;
 
-export const Markdown: React.FC<MarkdownProps> = ({ children, ...rest }) => {
+export const Markdown: React.FC<MarkdownProps> = ({
+  children,
+  allowedElements,
+  unwrapDisallowed,
+  ...rest
+}) => {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkBreaks, remarkMath]}
       rehypePlugins={[rehypeKatex]}
+      allowedElements={allowedElements}
+      unwrapDisallowed={unwrapDisallowed}
       components={{
         ol(props) {
           return (

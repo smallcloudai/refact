@@ -11,6 +11,45 @@ export type UserInputProps = {
   disableRetry?: boolean;
 };
 
+function processLines(
+  lines: string[],
+  processedLinesMemo: JSX.Element[] = [],
+): JSX.Element[] {
+  if (lines.length === 0) return processedLinesMemo;
+
+  const head = lines[0];
+  const tail = lines.slice(1);
+  const nextBackTicksIndex = tail.findIndex((l) => l.startsWith("```"));
+  const key = `line-${processedLinesMemo.length + 1}`;
+
+  if (!head.startsWith("```") || nextBackTicksIndex === -1) {
+    const processedLines = processedLinesMemo.concat(
+      <Text as="div" key={key}>
+        {head}
+      </Text>,
+    );
+    return processLines(tail, processedLines);
+  }
+
+  const endIndex = nextBackTicksIndex + 1;
+
+  const code = [head].concat(tail.slice(0, endIndex)).join("\n");
+  const processedLines = processedLinesMemo.concat(
+    <Markdown key={key}>{code}</Markdown>,
+  );
+
+  const next = tail.slice(endIndex);
+  return processLines(next, processedLines);
+}
+
+const ContentWithMarkdownCodeBlocks: React.FC<{ children: string }> = ({
+  children,
+}) => {
+  const lines = children.split("\n");
+  const elements = processLines(lines);
+  return <Box py="4">{elements}</Box>;
+};
+
 export const UserInput: React.FC<UserInputProps> = (props) => {
   const [showTextArea, setShowTextArea] = useState(false);
   const handleSubmit = (value: string) => {
@@ -48,11 +87,9 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
           Retry
         </RightButton>
 
-        <Box py="4">
-          <Text>
-            <Markdown>{props.children}</Markdown>
-          </Text>
-        </Box>
+        <ContentWithMarkdownCodeBlocks>
+          {props.children}
+        </ContentWithMarkdownCodeBlocks>
       </Box>
     </Card>
   );

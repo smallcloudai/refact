@@ -43,7 +43,7 @@ export async function getAvailableTools(
   });
 
   if (!response.ok) {
-    throw new Error(response.statusText);
+    return [];
   }
 
   // TODO: add type guards
