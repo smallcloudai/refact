@@ -50,7 +50,7 @@ pub async fn execute_at_ast_reference(ccx: &mut AtCommandsContext, symbol_path: 
     let ast = ccx.global_context.read().await.ast_module.clone();
     let x = match &ast {
         Some(ast) => {
-            match ast.read().await.search_by_name(
+            match ast.read().await.search_by_fullpath(
                 symbol_path.clone(),
                 RequestSymbolType::Usage,
                 true,

@@ -40,7 +40,7 @@ async fn run_at_definition(ast: &Option<Arc<ARwLock<AstModule>>>, symbol: &Strin
 {
     return match &ast {
         Some(ast) => {
-            match ast.read().await.search_by_name(
+            match ast.read().await.search_by_fullpath(
                 symbol.clone(),
                 RequestSymbolType::Declaration,
                 true,

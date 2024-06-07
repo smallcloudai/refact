@@ -189,6 +189,53 @@ impl AstModule {
         }
     }
 
+    pub async fn search_by_fullpath(
+        &self,
+        query: String,
+        request_symbol_type: RequestSymbolType,
+        try_fuzzy_if_not_found: bool,
+        top_n: usize,
+    ) -> Result<AstQuerySearchResult, String> {
+        let t0 = std::time::Instant::now();
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        match ast_ref.search_by_fullpath(query.as_str(), request_symbol_type, None, None, try_fuzzy_if_not_found, true) {
+            Ok(results) => {
+                let symbol_structs = results
+                    .iter()
+                    .take(top_n)
+                    .filter_map(|s| {
+                        let info_struct = s.borrow().symbol_info_struct();
+                        let name = info_struct.name.clone();
+                        let content = info_struct.get_content_blocked().ok()?;
+                        Some(SymbolsSearchResultStruct {
+                            symbol_declaration: info_struct,
+                            content: content,
+                            usefulness: jaro_winkler(&query, &name) as f32 * 100.0,
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                for r in symbol_structs.iter() {
+                    let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
+                    info!("def-distance {:.3}, found {last_30_chars}", r.usefulness);
+                }
+                info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                Ok(
+                    AstQuerySearchResult {
+                        query_text: query,
+                        search_results: symbol_structs,
+                        refs_n: results.len(),
+                    }
+                )
+            }
+            Err(e) => Err(e.to_string())
+        }
+    }
+
     pub async fn search_by_content(
         &self,
         query: String,
@@ -431,6 +478,16 @@ impl AstModule {
             }
         };
         Ok(ast_ref.get_symbols_names(request_symbol_type))
+    }
+
+    pub async fn get_symbols_paths(&self, request_symbol_type: RequestSymbolType) -> Result<Vec<String>, String> {
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        Ok(ast_ref.get_symbols_paths(request_symbol_type))
     }
 
     pub async fn ast_index_status(&self) -> AstIndexStatus {
