@@ -75,7 +75,7 @@ function formatChatResponse(
       return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
 
-    if (acc.length === 0 && cur.delta.role) {
+    if (acc.length === 0 && cur.delta.role && cur.delta.content) {
       return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
 
@@ -87,7 +87,7 @@ function formatChatResponse(
       return last.concat([["assistant", currentMessage + content]]);
     }
 
-    if (cur.delta.role === null) {
+    if (cur.delta.role === null || !cur.delta.content) {
       return acc;
     }
 
