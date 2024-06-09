@@ -1,26 +1,26 @@
 use std::sync::Arc;
-use async_trait::async_trait;
 use tokio::process::Command;
 use tokio::sync::Mutex as AMutex;
 use tokio::time::{timeout, Duration};
+use crate::at_commands::at_commands::AtParam;
 
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::execute_at::AtCommandMember;
-use crate::call_validation::{ChatMessage, ContextEnum};
+// use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
+// use crate::at_commands::execute_at::AtCommandMember;
+// use crate::call_validation::{ChatMessage, ContextEnum};
 use tracing::info;
 
 
-pub struct AtExecuteCommand {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
-}
+// pub struct AtExecuteCommand {
+//     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
+// }
 
-impl AtExecuteCommand {
-    pub fn new() -> Self {
-        AtExecuteCommand {
-            params: vec![],
-        }
-    }
-}
+// impl AtExecuteCommand {
+//     pub fn new() -> Self {
+//         AtExecuteCommand {
+//             params: vec![],
+//         }
+//     }
+// }
 
 pub async fn execute_cmd(command: &String, timeout_secs: usize) -> Result<(String, String), String>
 {
