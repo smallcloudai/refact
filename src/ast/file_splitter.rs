@@ -1,5 +1,6 @@
 use std::sync::{Arc, Weak};
 use std::collections::HashMap;
+use std::io::Write;
 use tokio::sync::RwLock;
 use md5;
 use tokenizers::Tokenizer;
@@ -7,7 +8,6 @@ use tracing::info;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use std::sync::RwLock as StdRwLock;
 use crate::ast::treesitter::structs::SymbolType;
-use crate::call_validation::ContextFile;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 use crate::vecdb::file_splitter::FileSplitter;
@@ -19,6 +19,7 @@ fn str_hash(s: &String) -> String {
 }
 
 const DEBUG: bool = false;
+
 
 pub struct AstBasedFileSplitter {
     // soft_window: usize,
@@ -39,11 +40,12 @@ impl AstBasedFileSplitter {
         &self,
         doc: &Document,
         tokenizer: Arc<StdRwLock<Tokenizer>>,
-        gcx_weak: Weak<RwLock<GlobalContext>>,
+        _gcx_weak: Weak<RwLock<GlobalContext>>,
         tokens_limit: usize
     ) -> Result<Vec<SplitResult>, String> {
         // let doc = doc.clone();
         assert!(doc.text.is_some());
+        let doc_text: String = doc.text_as_string().unwrap();
         let path = doc.path.clone();
         let path_str = doc.path.to_str().unwrap();
 
@@ -67,68 +69,90 @@ impl AstBasedFileSplitter {
         };
 
         let mut files_markup: HashMap<String, Arc<crate::scratchpads::chat_utils_rag::File>> = HashMap::new();
-        files_markup.insert(path_str.to_string(), Arc::new(crate::scratchpads::chat_utils_rag::File { markup: ast_markup, cpath: path.clone(), cpath_symmetry_breaker: 0.0 }));
+        files_markup.insert(path_str.to_string(), Arc::new(crate::scratchpads::chat_utils_rag::File { markup: ast_markup.clone(), cpath: path.clone(), cpath_symmetry_breaker: 0.0 }));
+
+        pub fn count_tokens(
+            tokenizer: Arc<StdRwLock<Tokenizer>>,
+            text: &str,
+        ) -> usize {
+            let tokenizer_locked = tokenizer.write().unwrap();
+            let tokens = match tokenizer_locked.encode(text, false) {
+                Ok(tokens) => tokens,
+                Err(err) => {
+                    tracing::warn!("Encoding error: {}", err);
+                    return 0;
+                }
+            };
+            tokens.len()
+        }
 
         let mut chunks: Vec<SplitResult> = Vec::new();
-        for symbol in symbols_struct {
-            let go_via_postprocessing = match symbol.symbol_type {
+        for symbol in ast_markup.symbols_sorted_by_path_len {
+            let need_in_vecdb_at_all = match symbol.symbol_type {
                 SymbolType::StructDeclaration | SymbolType::FunctionDeclaration | SymbolType::TypeAlias => true,
                 _ => false,
             };
-            if go_via_postprocessing {
-                let full_range = symbol.full_range;
-                let messages = vec![ContextFile {
-                    file_name: symbol.file_path.to_str().unwrap().parse().unwrap(),
-                    file_content: "".to_string(),
-                    line1: full_range.start_point.row + 1,
-                    line2: full_range.end_point.row + 1,
-                    symbol: symbol.guid.clone(),
-                    gradient_type: -1,
-                    usefulness: 100.0,
-                    is_body_important: false
-                }];
-                let single_file_mode = true;
+            if !need_in_vecdb_at_all {
+                continue;
+            }
+            let text_short = symbol.shortened_text;
+            let text_row1 = symbol.full_range.start_point.row;
+            let text_row2 = symbol.full_range.end_point.row;
+            let text_orig = doc_text.split("\n").skip(text_row1).take(text_row2 - text_row1 + 1).collect::<Vec<_>>().join("\n");
+            // let text_short_tok_n = count_tokens(tokenizer.clone(), text_short.as_str());
+            let text_orig_tok_n = count_tokens(tokenizer.clone(), text_orig.as_str());
 
-                let mut settings = crate::scratchpads::chat_utils_rag::PostprocessSettings::new();
-                settings.take_floor = 50.0;
-                settings.useful_background = 0.0;
-                settings.useful_symbol_default = 0.0;
-                settings.close_small_gaps = false;
-                let (mut lines_in_files, mut lines_by_useful) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage_3_6(
-                    gcx_weak.upgrade().unwrap(),
-                    &messages,
-                    &files_markup,
-                    &settings,
-                ).await;
+            let (symbol_str, shortened) = if text_orig_tok_n < tokens_limit {
+                (text_orig.clone(), false)
+            } else {
+                (text_short.clone(), true)
+            };
+            let symbol_lines = symbol_str.split("\n").collect::<Vec<_>>();
 
-                let res = crate::scratchpads::chat_utils_rag::postprocess_rag_stage_7_9(
-                    &mut lines_in_files,
-                    &mut lines_by_useful,
-                    tokenizer.clone(),
-                    tokens_limit,
-                    single_file_mode,
-                    &settings,
-                ).await;
+            let mut accum: String = String::new();
+            let mut lines_so_far: usize = 0;
+            let mut tokens_so_far: usize = 0;
 
-                if let Some(first) = res.first() {
-                    let mut content = first.file_content.clone();
-                    if content.starts_with("...\n") {
-                        content = content[4..].to_string();
-                    }
-                    if DEBUG {
-                        info!("{:?} content updated {}:{}-{}:\n{}", symbol.name,
-                            path.display(),
-                            symbol.full_range.start_point.row,
-                            symbol.full_range.end_point.row,
-                            content);
-                    }
-                    chunks.push(SplitResult {
-                        file_path: path.clone(),
-                        window_text: content.clone(),
-                        window_text_hash: str_hash(&content),
-                        start_line: symbol.full_range.start_point.row as u64,
-                        end_line: symbol.full_range.end_point.row as u64,
-                    });
+            let mut flush_accum = |i: usize, lines_so_far: usize, accum: &String| {
+                let (row1, row2) = if shortened {
+                    (symbol.full_range.start_point.row, symbol.full_range.end_point.row)
+                } else {
+                    (symbol.full_range.start_point.row + i - lines_so_far, symbol.full_range.end_point.row + i)
+                };
+                chunks.push(SplitResult {
+                    file_path: path.clone(),
+                    window_text: accum.clone(),
+                    window_text_hash: str_hash(&accum),
+                    start_line: row1 as u64,
+                    end_line: row2 as u64,
+                    symbol_path: symbol.symbol_path.clone(),
+                });
+            };
+
+            for (line_i, line) in symbol_lines.clone().into_iter().enumerate() {
+                let tok_n: usize = count_tokens(tokenizer.clone(), line);
+                if tokens_so_far + tok_n > tokens_limit {
+                    flush_accum(line_i, lines_so_far, &accum);
+                    accum.clear();
+                    tokens_so_far = 0;
+                    lines_so_far = 0;
+                }
+                accum.push_str(line);
+                accum.push('\n');
+                tokens_so_far += tok_n;
+                lines_so_far += 1;
+            }
+            flush_accum(symbol_lines.len(), lines_so_far, &accum);
+        }
+        let path_vecdb = path.with_extension("vecdb");
+        if DEBUG {
+            if let Ok(mut file) = std::fs::File::create(path_vecdb) {
+                let mut writer = std::io::BufWriter::new(&mut file);
+                for chunk in chunks.iter() {
+                    let beautiful_line = format!("\n\n------- {}:{}-{} ------\n", chunk.symbol_path, chunk.start_line, chunk.end_line);
+                    let _ = writer.write_all(beautiful_line.as_bytes());
+                    let _ = writer.write_all(chunk.window_text.as_bytes());
+                    let _ = writer.write_all(b"\n");
                 }
             }
         }

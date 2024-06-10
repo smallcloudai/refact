@@ -118,7 +118,7 @@ impl AstSymbolFields {
             ..Default::default()
         }
     }
-    
+
     pub fn from_fields(fields: &AstSymbolFields) -> Self {
         Self {
             language: fields.language,
@@ -147,6 +147,7 @@ pub struct SymbolInformation {
     pub declaration_range: Range,
     #[serde(with = "RangeDef")]
     pub definition_range: Range,
+    pub shortened_text: String,
 }
 
 impl SymbolInformation {
@@ -234,7 +235,12 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
             full_range: self.full_range().clone(),
             declaration_range: self.declaration_range().clone(),
             definition_range: self.definition_range().clone(),
+            shortened_text: self.shortened_text(),
         }
+    }
+
+    fn shortened_text(&self) -> String {
+        return "".to_string();
     }
 
     fn guid(&self) -> &Uuid {
@@ -357,6 +363,7 @@ pub struct StructDeclaration {
     pub ast_fields: AstSymbolFields,
     pub template_types: Vec<TypeDef>,
     pub inherited_types: Vec<TypeDef>,
+    pub shortened_text: String,
 }
 
 impl Default for StructDeclaration {
@@ -365,6 +372,7 @@ impl Default for StructDeclaration {
             ast_fields: AstSymbolFields::default(),
             template_types: vec![],
             inherited_types: vec![],
+            shortened_text: String::new(),
         }
     }
 }
@@ -379,6 +387,10 @@ impl AstSymbolInstance for StructDeclaration {
 
     fn fields_mut(&mut self) -> &mut AstSymbolFields {
         &mut self.ast_fields
+    }
+
+    fn shortened_text(&self) -> String {
+        self.shortened_text.clone()
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any { self }

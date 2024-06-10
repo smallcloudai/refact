@@ -64,6 +64,7 @@ pub struct SplitResult {
     pub window_text_hash: String,
     pub start_line: u64,
     pub end_line: u64,
+    pub symbol_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -2,6 +2,8 @@ use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
+
+#[cfg(test)]
 use itertools::Itertools;
 
 use parking_lot::RwLock;
@@ -13,7 +15,7 @@ use uuid::Uuid;
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
-use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid};
+use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid, class_shortened_version};
 
 pub(crate) struct JavaParser {
     pub parser: Parser,
@@ -207,6 +209,7 @@ fn parse_function_arg(parent: &Node, code: &str) -> FunctionArg {
     arg
 }
 
+
 impl JavaParser {
     pub fn new() -> Result<JavaParser, ParserError> {
         let mut parser = Parser::new();
@@ -220,8 +223,8 @@ impl JavaParser {
         &mut self,
         info: &CandidateInfo<'a>,
         code: &str,
-        candidates: &mut VecDeque<CandidateInfo<'a>>)
-        -> Vec<AstSymbolInstanceArc> {
+        candidates: &mut VecDeque<CandidateInfo<'a>>,
+    ) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
 
@@ -239,6 +242,9 @@ impl JavaParser {
         if let Some(name_node) = info.node.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name_node.byte_range()).to_string();
         }
+
+        class_shortened_version(&mut decl.shortened_text, 0, &info.node, code);
+        tracing::info!("shortened version of {}\n{}\n", decl.ast_fields.name, &decl.shortened_text);
 
         if let Some(node) = info.node.child_by_field_name("superclass") {
             symbols.extend(self.find_error_usages(&node, code, &info.ast_fields.file_path, &decl.ast_fields.guid));
@@ -284,7 +290,7 @@ impl JavaParser {
                 parent_guid: decl.ast_fields.guid.clone(),
             })
         }
-        
+
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
@@ -418,7 +424,7 @@ impl JavaParser {
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = info.ast_fields.is_error;
         symbols.extend(self.find_error_usages(&info.node, code, &info.ast_fields.file_path, &info.parent_guid));
-        
+
         if let Some(name) = info.node.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name.byte_range()).to_string();
         }
@@ -579,7 +585,7 @@ impl JavaParser {
                 if JAVA_KEYWORDS.contains(&name.as_str()) {
                     return symbols;
                 }
-                
+
                 let mut usage = VariableUsage::default();
                 usage.ast_fields.name = name;
                 usage.ast_fields.language = LanguageId::Java;
@@ -675,7 +681,7 @@ impl JavaParser {
                 parent_guid: decl.ast_fields.guid.clone(),
             });
         }
-        
+
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
@@ -701,7 +707,7 @@ impl JavaParser {
         }
         if let Some(type_) = info.node.child_by_field_name("type") {
             symbols.extend(self.find_error_usages(&type_, code, &info.ast_fields.file_path, &info.parent_guid));
-            if let Some(dtype) =  parse_type(&type_, code) { 
+            if let Some(dtype) =  parse_type(&type_, code) {
                 if let Some(name) = dtype.name {
                     decl.ast_fields.name = name;
                 } else {
@@ -732,7 +738,7 @@ impl JavaParser {
                 parent_guid: info.parent_guid.clone(),
             });
         }
-        
+
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }

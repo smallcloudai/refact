@@ -1,7 +1,7 @@
 use md5;
 
-use crate::files_in_workspace::{Document};
 use crate::vecdb::structs::SplitResult;
+use crate::files_in_workspace::Document;
 
 fn str_hash(s: &String) -> String {
     let digest = md5::compute(s);
@@ -59,6 +59,7 @@ impl FileSplitter {
                     window_text_hash: str_hash(&batch.join("\n")),
                     start_line,
                     end_line,
+                    symbol_path: "".to_string(),
                 });
 
                 batch = to_next_batch.to_vec();
@@ -78,6 +79,7 @@ impl FileSplitter {
                 window_text_hash: str_hash(&batch.join("\n")),
                 start_line,
                 end_line,
+                symbol_path: "".to_string(),
             });
         }
 
