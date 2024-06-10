@@ -50,7 +50,8 @@ fn results2message(results: &Vec<Record>) -> Vec<ContextFile> {
 pub async fn execute_at_workspace(ccx: &mut AtCommandsContext, query: &String) -> Result<Vec<ContextFile>, String> {
     match *ccx.global_context.read().await.vec_db.lock().await {
         Some(ref db) => {
-            let search_result = db.vecdb_search(query.clone(), ccx.top_n).await?;
+            let top_n_twice_as_big = ccx.top_n * 2;  // top_n will be cut at postprocessing stage, and we really care about top_n files, not pieces
+            let search_result = db.vecdb_search(query.clone(), top_n_twice_as_big).await?;
             let results = search_result.results.clone();
             return Ok(results2message(&results));
         }
