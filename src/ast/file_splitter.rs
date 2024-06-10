@@ -101,7 +101,7 @@ impl AstBasedFileSplitter {
             let text_orig = doc_text.split("\n").skip(text_row1).take(text_row2 - text_row1 + 1).collect::<Vec<_>>().join("\n");
             let text_orig_tok_n = count_tokens(tokenizer.clone(), text_orig.as_str());
 
-            let (symbol_str, shortened) = if text_orig_tok_n < tokens_limit {
+            let (symbol_str, shortened) = if text_short.is_empty() || text_orig_tok_n < tokens_limit {
                 (text_orig.clone(), false)
             } else {
                 (text_short.clone(), true)
@@ -114,9 +114,9 @@ impl AstBasedFileSplitter {
 
             let mut flush_accum = |i: usize, lines_so_far: usize, accum: &String| {
                 let (row1, row2) = if shortened {
-                    (symbol.full_range.start_point.row, symbol.full_range.end_point.row)
+                    (text_row1, text_row2)
                 } else {
-                    (symbol.full_range.start_point.row + i - lines_so_far, symbol.full_range.start_point.row + i)
+                    (text_row1 + i - lines_so_far, text_row1 + i)
                 };
                 chunks.push(SplitResult {
                     file_path: path.clone(),
