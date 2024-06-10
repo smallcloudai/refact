@@ -1,5 +1,8 @@
+use std::sync::Arc;
 use md5;
-
+use tokenizers::Tokenizer;
+use std::sync::RwLock as StdRwLock;
+use crate::ast::count_tokens;
 use crate::vecdb::structs::SplitResult;
 use crate::files_in_workspace::Document;
 
@@ -21,64 +24,50 @@ impl FileSplitter {
         }
     }
 
-    pub async fn vectorization_split(&self, doc: &Document) -> Result<Vec<SplitResult>, String> {
+    pub async fn vectorization_split(&self, doc: &Document,
+                                     tokenizer: Arc<StdRwLock<Tokenizer>>,
+                                     tokens_limit: usize,
+                                    ) -> Result<Vec<SplitResult>, String> {
         let text = match doc.clone().get_text_or_read_from_disk().await {
             Ok(s) => s,
             Err(e) => return Err(e.to_string())
         };
 
         let mut chunks = Vec::new();
-        let mut batch = Vec::new();
-        let mut batch_size = 0;
-        let mut soft_batch = Vec::new();
+        let mut current_line = String::default();
+        let mut current_token_n = 0;
+
         let mut current_line_number: u64 = 0;
-        for line in text.lines() {
-            batch_size += line.len();
-            if batch_size > self.soft_window {
-                soft_batch.push(line.to_string());
-            } else {
-                batch.push(line.to_string());
-            }
-
-            if batch_size >= self.hard_window {
-                let best_break_line_n = soft_batch.iter()
-                    .rposition(|l| l.trim().is_empty())
-                    .unwrap_or(soft_batch.len());
-
-                let (remaining, to_next_batch) = soft_batch.split_at(best_break_line_n);
-                batch.extend_from_slice(remaining);
-                assert!(batch.len() > 0);
-
-                let start_line = current_line_number;
-                let end_line = start_line + (batch.len() - 1) as u64;  // range includes end line
-                current_line_number += batch.len() as u64;
-
+        let mut idx_last_line: u64 = 0;
+        for (line_idx, line) in text.lines().enumerate() {
+            let line_with_newline = if current_line.is_empty() { line.to_string() } else { format!("\n{}", line) };
+            let text_orig_tok_n = count_tokens(tokenizer.clone(), line_with_newline.as_str());
+            if current_token_n + text_orig_tok_n > tokens_limit {
                 chunks.push(SplitResult {
                     file_path: doc.path.clone(),
-                    window_text: batch.join("\n"),
-                    window_text_hash: str_hash(&batch.join("\n")),
-                    start_line,
-                    end_line,
+                    window_text: current_line.clone(),
+                    window_text_hash: str_hash(&current_line),
+                    start_line: current_line_number,
+                    end_line: (line_idx - 1) as u64,
                     symbol_path: "".to_string(),
                 });
-
-                batch = to_next_batch.to_vec();
-                soft_batch.clear();
-                batch_size = batch.iter().map(|s| s.len()).sum();
+                current_line = line.to_string();
+                current_token_n = text_orig_tok_n;
+                current_line_number = line_idx as u64;
+            } else {
+                current_token_n += text_orig_tok_n;
+                current_line = format!("{}{}", current_line, line_with_newline);
             }
+            idx_last_line = line_idx as u64;
         }
 
-        if !batch.is_empty() || !soft_batch.is_empty() {
-            batch.extend(soft_batch);
-            let start_line = current_line_number;
-            let end_line = start_line + (batch.len() - 1) as u64;
-
+        if !current_line.is_empty() {
             chunks.push(SplitResult {
                 file_path: doc.path.clone(),
-                window_text: batch.join("\n"),
-                window_text_hash: str_hash(&batch.join("\n")),
-                start_line,
-                end_line,
+                window_text: current_line.clone(),
+                window_text_hash: str_hash(&current_line),
+                start_line: current_line_number,
+                end_line: idx_last_line,
                 symbol_path: "".to_string(),
             });
         }

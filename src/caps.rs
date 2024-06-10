@@ -66,6 +66,8 @@ pub struct CodeAssistantCaps {
     pub endpoint_embeddings_style: String,
     #[serde(default)]
     pub size_embeddings: i32,
+    #[serde(default)]
+    pub embedding_n_ctx: usize,
     pub running_models: Vec<String>,
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
@@ -165,6 +167,10 @@ pub async fn load_caps(
     r1.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &r1.telemetry_basic_retrieve_my_own)?;
     r1.endpoint_embeddings_template = relative_to_full_url(&caps_url, &r1.endpoint_embeddings_template)?;
     r1.tokenizer_path_template = relative_to_full_url(&caps_url, &r1.tokenizer_path_template)?;
+    if r1.embedding_n_ctx == usize::default() {
+        r1.embedding_n_ctx = 512;
+    }
+    
     info!("caps {} completion models", r1.code_completion_models.len());
     info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
     info!("caps {} chat models", r1.code_chat_models.len());

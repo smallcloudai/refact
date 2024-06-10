@@ -1,22 +1,23 @@
-use std::sync::{Arc, Weak};
 use std::collections::HashMap;
 use std::io::Write;
-use tokio::sync::RwLock;
-use md5;
-use tokenizers::Tokenizer;
-use tracing::info;
-use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
+use std::sync::{Arc, Weak};
 use std::sync::RwLock as StdRwLock;
+
+use tokenizers::Tokenizer;
+use tokio::sync::RwLock;
+use tracing::info;
+use uuid::Uuid;
+
+use crate::ast::chunk_utils::get_chunks;
+use crate::ast::structs::FileASTMarkup;
+use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
+use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
+use crate::ast::treesitter::skeletonizer::make_formatter;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::structs::SplitResult;
-
-fn str_hash(s: &String) -> String {
-    let digest = md5::compute(s);
-    format!("{:x}", digest)
-}
 
 const DEBUG: bool = true;
 
@@ -41,11 +42,9 @@ impl AstBasedFileSplitter {
         doc: &Document,
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         _gcx_weak: Weak<RwLock<GlobalContext>>,
-        tokens_limit: usize
+        tokens_limit: usize,
     ) -> Result<Vec<SplitResult>, String> {
         assert!(doc.text.is_some());
-        let doc_text: String = doc.text_as_string().unwrap();
-        let doc_text_line_cnt = doc_text.lines().count();
         let path = doc.path.clone();
         let path_str = doc.path.to_str().unwrap();
 
@@ -53,96 +52,65 @@ impl AstBasedFileSplitter {
             Ok(parser) => parser,
             Err(_e) => {
                 // info!("cannot find a parser for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e.message);
-                return self.fallback_file_splitter.vectorization_split(&doc).await;
+                return self.fallback_file_splitter.vectorization_split(&doc, tokenizer.clone(), tokens_limit).await;
             }
         };
 
-        let symbols_struct = parser.parse(doc.text_as_string().unwrap().as_str(), &path)
-            .iter().map(|s| s.read().symbol_info_struct())
-            .collect::<Vec<_>>();
-        let ast_markup: crate::ast::structs::FileASTMarkup = match crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols_struct) {
+        let mut guid_to_children: HashMap<Uuid, Vec<Uuid>> = Default::default();
+        let mut symbols_struct: Vec<SymbolInformation> = Default::default();
+        {
+            let symbols = parser.parse(doc.text_as_string().unwrap().as_str(), &path);
+            let _ = symbols.into_iter().for_each(|s| {
+                let s = s.read();
+                guid_to_children.insert(s.guid().clone(), s.childs_guid().clone());
+                symbols_struct.push(s.symbol_info_struct());
+            });
+        }
+
+        let ast_markup: FileASTMarkup = match crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols_struct) {
             Ok(x) => x,
             Err(e) => {
                 info!("lowlevel_file_markup failed for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e);
-                return self.fallback_file_splitter.vectorization_split(&doc).await;
+                return self.fallback_file_splitter.vectorization_split(&doc, tokenizer.clone(), tokens_limit).await;
             }
         };
 
         let mut files_markup: HashMap<String, Arc<crate::scratchpads::chat_utils_rag::File>> = HashMap::new();
         files_markup.insert(path_str.to_string(), Arc::new(crate::scratchpads::chat_utils_rag::File { markup: ast_markup.clone(), cpath: path.clone(), cpath_symmetry_breaker: 0.0 }));
-
-        pub fn count_tokens(
-            tokenizer: Arc<StdRwLock<Tokenizer>>,
-            text: &str,
-        ) -> usize {
-            let tokenizer_locked = tokenizer.write().unwrap();
-            let tokens = match tokenizer_locked.encode(text, false) {
-                Ok(tokens) => tokens,
-                Err(err) => {
-                    tracing::warn!("Encoding error: {}", err);
-                    return 0;
-                }
-            };
-            tokens.len()
-        }
+        let guid_to_info: HashMap<Uuid, &SymbolInformation> = ast_markup.symbols_sorted_by_path_len.iter().map(|s| (s.guid.clone(), s)).collect();
+        let guids: Vec<_> = guid_to_info.iter().map(|(s, _)| s.clone()).collect();
 
         let mut chunks: Vec<SplitResult> = Vec::new();
-        for symbol in ast_markup.symbols_sorted_by_path_len {
+        for guid in guids {
+            let symbol = guid_to_info.get(&guid).unwrap();
             let need_in_vecdb_at_all = match symbol.symbol_type {
-                SymbolType::StructDeclaration | SymbolType::FunctionDeclaration | SymbolType::TypeAlias => true,
+                SymbolType::StructDeclaration | SymbolType::FunctionDeclaration | 
+                SymbolType::TypeAlias | SymbolType::ClassFieldDeclaration => true,
                 _ => false,
             };
             if !need_in_vecdb_at_all {
                 continue;
             }
-            let text_short = symbol.text_condensed;
-            let text_row1 = symbol.full_range.start_point.row;
-            let text_row2 = symbol.full_range.end_point.row;
-            let text_orig = doc_text.split("\n").skip(text_row1).take(text_row2 - text_row1 + 1).collect::<Vec<_>>().join("\n");
-            let text_orig_tok_n = count_tokens(tokenizer.clone(), text_orig.as_str());
-
-            let (symbol_str, shortened) = if text_short.is_empty() || text_orig_tok_n < tokens_limit {
-                (text_orig.clone(), false)
-            } else {
-                (text_short.clone(), true)
-            };
-            let symbol_lines = symbol_str.split("\n").collect::<Vec<_>>();
-
-            let mut accum: String = String::new();
-            let mut lines_so_far: usize = 0;
-            let mut tokens_so_far: usize = 0;
-
-            let mut flush_accum = |i: usize, lines_so_far: usize, accum: &String| {
-                let (row1, row2) = if shortened {
-                    (text_row1, text_row2)
-                } else {
-                    (text_row1 + i - lines_so_far, text_row1 + i)
-                };
-                chunks.push(SplitResult {
-                    file_path: path.clone(),
-                    window_text: accum.clone(),
-                    window_text_hash: str_hash(&accum),
-                    start_line: row1 as u64,
-                    end_line: row2 as u64,
-                    symbol_path: symbol.symbol_path.clone(),
-                });
-                assert!(row2 <= doc_text_line_cnt);
-            };
-
-            for (line_i, line) in symbol_lines.clone().into_iter().enumerate() {
-                let tok_n: usize = count_tokens(tokenizer.clone(), line);
-                if tokens_so_far + tok_n > tokens_limit {
-                    flush_accum(line_i, lines_so_far, &accum);
-                    accum.clear();
-                    tokens_so_far = 0;
-                    lines_so_far = 0;
+            let formatter = make_formatter(&symbol.language);
+            if symbol.symbol_type == SymbolType::StructDeclaration {
+                if let Some(children) = guid_to_children.get(&symbol.guid) {
+                    if !children.is_empty() {
+                        let skeleton_line = formatter.make_skeleton(&symbol, &guid_to_children, &guid_to_info);
+                        let chunks_ = get_chunks(&skeleton_line, &symbol.file_path,
+                                                 &symbol.symbol_path,
+                                                 (symbol.full_range.start_point.row, symbol.full_range.end_point.row),
+                                                 tokenizer.clone(), tokens_limit, 0, true);
+                        chunks.extend(chunks_);
+                    }
                 }
-                accum.push_str(line);
-                accum.push('\n');
-                tokens_so_far += tok_n;
-                lines_so_far += 1;
             }
-            flush_accum(symbol_lines.len(), lines_so_far, &accum);
+
+            let (declaration, top_bottom_rows) = formatter.get_declaration_with_comments(&symbol, &guid_to_children, &guid_to_info);
+            if !declaration.is_empty() {
+                let chunks_ = get_chunks(&declaration, &symbol.file_path,
+                                         &symbol.symbol_path, top_bottom_rows, tokenizer.clone(), tokens_limit, 0, true);
+                chunks.extend(chunks_);
+            }
         }
         let path_vecdb = path.with_extension("vecdb");
         if DEBUG {

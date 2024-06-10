@@ -153,7 +153,6 @@ async fn vectorize_thread(
     tokenizer: Arc<StdRwLock<Tokenizer>>,
     gcx_weak: Weak<RwLock<GlobalContext>>,
 ) {
-    const SPLIT_DATA_MAX_TOKENS: usize = 256;
     const B: usize = 64;
 
     let mut files_total: usize = 0;
@@ -242,7 +241,7 @@ async fn vectorize_thread(
         }
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size, constants.splitter_soft_limit);
-        let split_data = file_splitter.vectorization_split(&doc, tokenizer.clone(), gcx_weak.clone(), SPLIT_DATA_MAX_TOKENS).await.unwrap_or_else(|err| {
+        let split_data = file_splitter.vectorization_split(&doc, tokenizer.clone(), gcx_weak.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
             info!("{}", err);
             vec![]
         });

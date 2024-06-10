@@ -13,6 +13,7 @@ use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
 use parking_lot::RwLock;
 use ropey::Rope;
 use serde::{Deserialize, Serialize};
+use similar::DiffableStr;
 use tokio::fs::read_to_string;
 use tree_sitter::{Point, Range};
 use uuid::Uuid;
@@ -147,10 +148,6 @@ pub struct SymbolInformation {
     pub declaration_range: Range,
     #[serde(with = "RangeDef")]
     pub definition_range: Range,
-    #[serde(default)]
-    pub text_condensed: String,
-    #[serde(default)]
-    pub text_comments: String,
 }
 
 impl SymbolInformation {
@@ -163,6 +160,16 @@ impl SymbolInformation {
         start_row = min(start_row, end_row);
 
         Ok(text.slice(text.line_to_char(start_row)..text.line_to_char(end_row)).to_string())
+    }
+    
+    pub async fn get_declaration_content(&self) -> io::Result<String> {
+        let content = read_to_string(&self.file_path).await?;
+        Ok(content.slice(self.declaration_range.start_byte..self.declaration_range.end_byte).to_string())
+    }
+
+    pub fn get_declaration_content_blocked(&self) -> io::Result<String> {
+        let content = fs::read_to_string(&self.file_path)?;
+        Ok(content.slice(self.declaration_range.start_byte..self.declaration_range.end_byte).to_string())
     }
 
     pub fn get_content_blocked(&self) -> io::Result<String> {
@@ -238,17 +245,7 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
             full_range: self.full_range().clone(),
             declaration_range: self.declaration_range().clone(),
             definition_range: self.definition_range().clone(),
-            text_condensed: self.text_condensed(),
-            text_comments: self.text_comments(),
         }
-    }
-
-    fn text_condensed(&self) -> String {
-        return "".to_string();
-    }
-
-    fn text_comments(&self) -> String {
-        return "".to_string();
     }
 
     fn guid(&self) -> &Uuid {
@@ -371,8 +368,6 @@ pub struct StructDeclaration {
     pub ast_fields: AstSymbolFields,
     pub template_types: Vec<TypeDef>,
     pub inherited_types: Vec<TypeDef>,
-    pub text_condensed: String,
-    pub text_comments: String,
 }
 
 impl Default for StructDeclaration {
@@ -381,8 +376,6 @@ impl Default for StructDeclaration {
             ast_fields: AstSymbolFields::default(),
             template_types: vec![],
             inherited_types: vec![],
-            text_condensed: String::new(),
-            text_comments: String::new(),
         }
     }
 }
@@ -397,14 +390,6 @@ impl AstSymbolInstance for StructDeclaration {
 
     fn fields_mut(&mut self) -> &mut AstSymbolFields {
         &mut self.ast_fields
-    }
-
-    fn text_condensed(&self) -> String {
-        self.text_condensed.clone()
-    }
-
-    fn text_comments(&self) -> String {
-        self.text_comments.clone()
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any { self }

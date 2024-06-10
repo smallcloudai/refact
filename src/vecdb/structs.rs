@@ -24,7 +24,7 @@ pub struct VecdbConstants {
     pub model_name: String,
     pub embedding_size: i32,
     pub tokenizer: Arc<StdRwLock<Tokenizer>>,
-    // pub vectorizer_n_ctx    -- TODO: add this constant
+    pub vectorizer_n_ctx: usize,
     pub endpoint_embeddings_template: String,
     pub endpoint_embeddings_style: String,
     pub cooldown_secs: u64,

@@ -209,6 +209,12 @@ impl RustParser {
 
         if let Some(name_node) = parent.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name_node.byte_range()).to_string();
+            decl.ast_fields.declaration_range = Range {
+                start_byte: decl.ast_fields.full_range.start_byte,
+                end_byte: name_node.end_byte(),
+                start_point: decl.ast_fields.full_range.start_point,
+                end_point: name_node.end_position(),
+            }
         }
         if let Some(type_node) = parent.child_by_field_name("type") {
             symbols.extend(self.find_error_usages(&type_node, code, path, &decl.ast_fields.guid));
@@ -227,6 +233,12 @@ impl RustParser {
                 }
             } else {
                 decl.ast_fields.name = code.slice(type_node.byte_range()).to_string();
+            }
+            decl.ast_fields.declaration_range = Range {
+                start_byte: decl.ast_fields.full_range.start_byte,
+                end_byte: type_node.end_byte(),
+                start_point: decl.ast_fields.full_range.start_point,
+                end_point: type_node.end_position(),
             }
         }
 
@@ -262,6 +274,7 @@ impl RustParser {
                 }
                 &_ => {}
             }
+            decl.ast_fields.definition_range = body_node.range();
         }
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));

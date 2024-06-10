@@ -1,0 +1,12 @@
+public class Person {
+  private String name;
+  private int age;
+  public abstract void a();
+  public String getName() { ... }
+  public void setName(String name) { ... }
+  public int getAge() { ... }
+  public void setAge(int age) { ... }
+  @Override
+  public String toString() { ... }
+  public static void main(String[] args) { ... }
+}

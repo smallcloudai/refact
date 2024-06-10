@@ -15,7 +15,7 @@ use uuid::Uuid;
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::parsers::{AstLanguageParser, internal_error, ParserError};
-use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid, class_shortened_version};
+use crate::ast::treesitter::parsers::utils::{CandidateInfo, get_guid};
 
 pub(crate) struct JavaParser {
     pub parser: Parser,
@@ -243,9 +243,6 @@ impl JavaParser {
             decl.ast_fields.name = code.slice(name_node.byte_range()).to_string();
         }
 
-        class_shortened_version(&mut decl.text_condensed, 0, &info.node, code);
-        // tracing::info!("shortened version of {}\n{}\n", decl.ast_fields.name, &decl.text_condensed);
-
         if let Some(node) = info.node.child_by_field_name("superclass") {
             symbols.extend(self.find_error_usages(&node, code, &info.ast_fields.file_path, &decl.ast_fields.guid));
             for i in 0..node.child_count() {
@@ -277,12 +274,12 @@ impl JavaParser {
 
 
         if let Some(body) = info.node.child_by_field_name("body") {
-            decl.ast_fields.declaration_range = body.range();
-            decl.ast_fields.definition_range = Range {
+            decl.ast_fields.definition_range = body.range();
+            decl.ast_fields.declaration_range = Range {
                 start_byte: decl.ast_fields.full_range.start_byte,
-                end_byte: decl.ast_fields.declaration_range.start_byte,
+                end_byte: decl.ast_fields.definition_range.start_byte,
                 start_point: decl.ast_fields.full_range.start_point,
-                end_point: decl.ast_fields.declaration_range.start_point,
+                end_point: decl.ast_fields.definition_range.start_point,
             };
             candidates.push_back(CandidateInfo {
                 ast_fields: decl.ast_fields.clone(),
@@ -377,6 +374,7 @@ impl JavaParser {
                     let mut decl = ClassFieldDeclaration::default();
                     decl.ast_fields.language = info.ast_fields.language;
                     decl.ast_fields.full_range = info.node.range();
+                    decl.ast_fields.declaration_range = info.node.range();
                     decl.ast_fields.file_path = info.ast_fields.file_path.clone();
                     decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
                     decl.ast_fields.guid = get_guid();
@@ -419,6 +417,7 @@ impl JavaParser {
         let mut decl = ClassFieldDeclaration::default();
         decl.ast_fields.language = info.ast_fields.language;
         decl.ast_fields.full_range = info.node.range();
+        decl.ast_fields.declaration_range = info.node.range();
         decl.ast_fields.file_path = info.ast_fields.file_path.clone();
         decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
         decl.ast_fields.guid = get_guid();
@@ -454,19 +453,19 @@ impl JavaParser {
         #[allow(unused)]
             let text = code.slice(info.node.byte_range());
         match kind {
-            "class_declaration" | "interface_declaration" | "enum_declaration" => {
+            "class_declaration" | "interface_declaration" | "enum_declaration" | "annotation_type_declaration" => {
                 symbols.extend(self.parse_struct_declaration(info, code, candidates));
             }
             "local_variable_declaration" => {
                 symbols.extend(self.parse_variable_definition(info, code, candidates));
             }
-            "method_declaration" => {
+            "method_declaration" | "annotation_type_element_declaration" => {
                 symbols.extend(self.parse_function_declaration(info, code, candidates));
             }
             "method_invocation" | "object_creation_expression" => {
                 symbols.extend(self.parse_call_expression(info, code, candidates));
             }
-            "field_declaration" => {
+            "field_declaration" | "constant_declaration" => {
                 symbols.extend(self.parse_field_declaration(info, code, candidates));
             }
             "enum_constant" => {
@@ -552,6 +551,7 @@ impl JavaParser {
                     });
                 }
             }
+            "package_declaration" => {}
             _ => {
                 for i in 0..info.node.child_count() {
                     let child = info.node.child(i).unwrap();
@@ -680,6 +680,8 @@ impl JavaParser {
                 node: body_node,
                 parent_guid: decl.ast_fields.guid.clone(),
             });
+        } else {
+            decl.ast_fields.declaration_range = decl.ast_fields.full_range;
         }
 
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
