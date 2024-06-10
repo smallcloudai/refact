@@ -244,7 +244,7 @@ impl JavaParser {
         }
 
         class_shortened_version(&mut decl.shortened_text, 0, &info.node, code);
-        tracing::info!("shortened version of {}\n{}\n", decl.ast_fields.name, &decl.shortened_text);
+        // tracing::info!("shortened version of {}\n{}\n", decl.ast_fields.name, &decl.shortened_text);
 
         if let Some(node) = info.node.child_by_field_name("superclass") {
             symbols.extend(self.find_error_usages(&node, code, &info.ast_fields.file_path, &decl.ast_fields.guid));

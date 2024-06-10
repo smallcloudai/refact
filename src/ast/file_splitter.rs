@@ -18,7 +18,7 @@ fn str_hash(s: &String) -> String {
     format!("{:x}", digest)
 }
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 
 pub struct AstBasedFileSplitter {
@@ -43,9 +43,9 @@ impl AstBasedFileSplitter {
         _gcx_weak: Weak<RwLock<GlobalContext>>,
         tokens_limit: usize
     ) -> Result<Vec<SplitResult>, String> {
-        // let doc = doc.clone();
         assert!(doc.text.is_some());
         let doc_text: String = doc.text_as_string().unwrap();
+        let doc_text_line_cnt = doc_text.lines().count();
         let path = doc.path.clone();
         let path_str = doc.path.to_str().unwrap();
 
@@ -99,7 +99,6 @@ impl AstBasedFileSplitter {
             let text_row1 = symbol.full_range.start_point.row;
             let text_row2 = symbol.full_range.end_point.row;
             let text_orig = doc_text.split("\n").skip(text_row1).take(text_row2 - text_row1 + 1).collect::<Vec<_>>().join("\n");
-            // let text_short_tok_n = count_tokens(tokenizer.clone(), text_short.as_str());
             let text_orig_tok_n = count_tokens(tokenizer.clone(), text_orig.as_str());
 
             let (symbol_str, shortened) = if text_orig_tok_n < tokens_limit {
@@ -117,7 +116,7 @@ impl AstBasedFileSplitter {
                 let (row1, row2) = if shortened {
                     (symbol.full_range.start_point.row, symbol.full_range.end_point.row)
                 } else {
-                    (symbol.full_range.start_point.row + i - lines_so_far, symbol.full_range.end_point.row + i)
+                    (symbol.full_range.start_point.row + i - lines_so_far, symbol.full_range.start_point.row + i)
                 };
                 chunks.push(SplitResult {
                     file_path: path.clone(),
@@ -127,6 +126,7 @@ impl AstBasedFileSplitter {
                     end_line: row2 as u64,
                     symbol_path: symbol.symbol_path.clone(),
                 });
+                assert!(row2 <= doc_text_line_cnt);
             };
 
             for (line_i, line) in symbol_lines.clone().into_iter().enumerate() {

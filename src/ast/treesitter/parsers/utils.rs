@@ -101,12 +101,12 @@ fn output_append_node_text(
         let tabs = "    ".repeat(indent);
         output.push_str(&tabs);
     }
-    let name = if let Some(name_node) = node.child_by_field_name("name") {
-        code.slice(name_node.byte_range()).to_string()
-    } else {
-        "".to_string()
-    };
-    tracing::info!("{}node {:?} name={:?} takes range {}-{}", "    ".repeat(indent), node.kind(), name, node.start_position(), node.end_position());
+    // let name = if let Some(name_node) = node.child_by_field_name("name") {
+    //     code.slice(name_node.byte_range()).to_string()
+    // } else {
+    //     "".to_string()
+    // };
+    // tracing::info!("{}node {:?} name={:?} takes range {}-{}", "    ".repeat(indent), node.kind(), name, node.start_position(), node.end_position());
     let start_byte = node.start_byte();
     let end_byte = node.end_byte();
     let r = &code[start_byte..end_byte];
