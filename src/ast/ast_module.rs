@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstEventType, AstIndexService};
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceRc};
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceRc;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 

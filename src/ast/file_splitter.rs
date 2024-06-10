@@ -95,7 +95,7 @@ impl AstBasedFileSplitter {
             if !need_in_vecdb_at_all {
                 continue;
             }
-            let text_short = symbol.shortened_text;
+            let text_short = symbol.text_condensed;
             let text_row1 = symbol.full_range.start_point.row;
             let text_row2 = symbol.full_range.end_point.row;
             let text_orig = doc_text.split("\n").skip(text_row1).take(text_row2 - text_row1 + 1).collect::<Vec<_>>().join("\n");

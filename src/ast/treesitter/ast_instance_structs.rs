@@ -147,7 +147,8 @@ pub struct SymbolInformation {
     pub declaration_range: Range,
     #[serde(with = "RangeDef")]
     pub definition_range: Range,
-    pub shortened_text: String,
+    pub text_condensed: String,
+    pub text_comments: String,
 }
 
 impl SymbolInformation {
@@ -235,11 +236,16 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
             full_range: self.full_range().clone(),
             declaration_range: self.declaration_range().clone(),
             definition_range: self.definition_range().clone(),
-            shortened_text: self.shortened_text(),
+            text_condensed: self.text_condensed(),
+            text_comments: self.text_comments(),
         }
     }
 
-    fn shortened_text(&self) -> String {
+    fn text_condensed(&self) -> String {
+        return "".to_string();
+    }
+
+    fn text_comments(&self) -> String {
         return "".to_string();
     }
 
@@ -363,7 +369,8 @@ pub struct StructDeclaration {
     pub ast_fields: AstSymbolFields,
     pub template_types: Vec<TypeDef>,
     pub inherited_types: Vec<TypeDef>,
-    pub shortened_text: String,
+    pub text_condensed: String,
+    pub text_comments: String,
 }
 
 impl Default for StructDeclaration {
@@ -372,7 +379,8 @@ impl Default for StructDeclaration {
             ast_fields: AstSymbolFields::default(),
             template_types: vec![],
             inherited_types: vec![],
-            shortened_text: String::new(),
+            text_condensed: String::new(),
+            text_comments: String::new(),
         }
     }
 }
@@ -389,8 +397,12 @@ impl AstSymbolInstance for StructDeclaration {
         &mut self.ast_fields
     }
 
-    fn shortened_text(&self) -> String {
-        self.shortened_text.clone()
+    fn text_condensed(&self) -> String {
+        self.text_condensed.clone()
+    }
+
+    fn text_comments(&self) -> String {
+        self.text_comments.clone()
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any { self }
