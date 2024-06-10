@@ -512,8 +512,20 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
             if is_this_inside_blacklisted_dir(&p) {  // important to filter BEFORE canonical_path
                 continue;
             }
-            let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
-            docs.push(Document { path: cpath, text: None });
+
+            let mut go_ahead = true;
+            {
+                let is_it_good = is_valid_file(p);
+                if is_it_good.is_err() {
+                    info!("{:?} ignoring changes: {}", p, is_it_good.err().unwrap());
+                    go_ahead = false;
+                }
+            }
+
+            if go_ahead {
+                let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
+                docs.push(Document { path: cpath, text: None });
+            }
         }
         if docs.is_empty() {
             return;
