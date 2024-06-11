@@ -16,7 +16,8 @@ html[data-bs-theme='dark'] body {
     display: inline-flex;
     align-items: center;
 }
-.nav-mode {
+.nav-mode,
+.login-mode {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -29,6 +30,7 @@ html[data-bs-theme='dark'] body {
     margin-bottom: 2px;
     background: none;
 }
+.login-mode svg,
 .nav-mode svg {
     width: 22px;
     height: 22px;
@@ -43,7 +45,8 @@ html[data-bs-theme='dark'] .nav-sun {
 html[data-bs-theme='light'] .nav-moon {
     display: block;
 }
-html[data-bs-theme='dark'] .nav-mode svg path {
+html[data-bs-theme='dark'] .nav-mode svg path,
+html[data-bs-theme='dark'] .login-mode svg path {
     fill: var(--bs-nav-link-color);
 }
 html[data-bs-theme='dark'] .navbar-brand svg path:not(.k) {
@@ -1326,4 +1329,75 @@ html[data-bs-theme='dark'] .dropdown-panel-add-finetune {
 .cm-s-monokai .CodeMirror-matchingbracket {
   text-decoration: underline;
   color: white !important;
+}
+
+:root {
+    --dark-blue: #144289;
+    --dark-blue-hover: #2d62b3;
+    --dark-disabled: #343f50;
+    --dark-red: #93333c;
+    --dark-red-hover: #b13440;
+    --dark-red-disabled: #55292d;
+}
+/* Dark mode */
+html[data-bs-theme='dark'] .btn-primary {
+    --bs-btn-bg: var(--dark-blue);
+    --bs-btn-border-color: var(--dark-blue);
+    --bs-btn-hover-bg: var(--dark-blue-hover);
+    --bs-btn-hover-border-color: var(--dark-blue-hover);
+    --bs-btn-active-bg: var(--dark-blue-hover);
+    --bs-btn-active-border-color: var(--dark-blue-hover);
+    --bs-btn-disabled-bg: var(--dark-disabled);
+    --bs-btn-disabled-border-color: var(--dark-disabled);
+}
+html[data-bs-theme='dark'] .btn-outline-primary {
+    --bs-btn-color: var(--dark-blue-hover);
+    --bs-btn-border-color: var(--dark-blue-hover);
+    --bs-btn-hover-bg: var(--dark-blue-hover);
+    --bs-btn-hover-border-color: var(--dark-blue-hover);
+    --bs-btn-active-bg: var(--dark-blue);
+    --bs-btn-active-border-color: var(--dark-blue);
+    --bs-btn-disabled-color: var(--dark-blue);
+    --bs-btn-disabled-border-color: var(--dark-blue)
+}
+
+html[data-bs-theme='dark'] .form-check-input:checked {
+    background-color: var(--dark-blue);
+    border-color: var(--dark-blue);
+}
+html[data-bs-theme='dark'] .fake-link {
+    color: var(--dark-blue);
+}
+html[data-bs-theme='dark'] .fake-link:hover {
+    color: var(--dark-blue-hover);
+}
+html[data-bs-theme='dark'] .btn-outline-danger {
+    --bs-btn-color: var(--dark-red);
+    --bs-btn-border-color: var(--dark-red);
+    --bs-btn-hover-bg: var(--dark-red);
+    --bs-btn-hover-border-color: var(--dark-red);
+    --bs-btn-active-bg: var(--dark-red);
+    --bs-btn-active-border-color: var(--dark-red);
+    --bs-btn-disabled-color: var(--dark-red);
+    --bs-btn-disabled-border-color: var(--dark-red)
+}
+html[data-bs-theme='dark'] .btn-danger {
+    --bs-btn-bg: var(--dark-red);
+    --bs-btn-border-color: var(--dark-red);
+    --bs-btn-hover-bg: var(--dark-red-hover);
+    --bs-btn-hover-border-color: var(--dark-red-hover);
+    --bs-btn-active-bg: var(--dark-red-hover);
+    --bs-btn-active-border-color: var(--dark-red-hover);
+    --bs-btn-disabled-bg: var(--dark-red-disabled);
+    --bs-btn-disabled-border-color: var(--dark-red-disabled);
+}
+html[data-bs-theme='dark'] .dropdown-item.active,
+html[data-bs-theme='dark'] .dropdown-item:active {
+    background-color: var(--dark-blue-hover) !important;
+}
+html[data-bs-theme='dark'] .nav-link {
+    color: var(--dark-blue-hover);
+}
+html[data-bs-theme='dark'] footer {
+    opacity: 0.5; 
 }
