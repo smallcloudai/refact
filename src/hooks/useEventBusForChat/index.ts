@@ -69,7 +69,7 @@ import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
 import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
 
-function formatChatResponse(
+export function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
 ): ChatMessages {
@@ -121,7 +121,11 @@ function formatChatResponse(
       return last.concat([["assistant", lastMessage[1], calls]]);
     }
 
-    if (isAssistantMessage(lastMessage) && isAssistantDelta(cur.delta)) {
+    if (
+      isAssistantMessage(lastMessage) &&
+      isAssistantDelta(cur.delta) &&
+      typeof cur.delta.content === "string"
+    ) {
       const last = acc.slice(0, -1);
       const currentMessage = lastMessage[1] ?? "";
       const toolCalls = lastMessage[2];
@@ -133,6 +137,9 @@ function formatChatResponse(
       typeof cur.delta.content === "string"
     ) {
       return acc.concat([["assistant", cur.delta.content]]);
+    } else if (cur.delta.role === "assistant") {
+      // empty message from JB
+      return acc;
     }
 
     if (cur.delta.role === null || cur.finish_reason !== null) {
@@ -791,7 +798,7 @@ export const useEventBusForChat = () => {
     [postMessage, state.chat.id],
   );
 
-  // TODO: hoist this hook to context so useCallback isn't  needed
+  // TODO: hoist this hook to context so useCallback isn't needed
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestCommandsCompletion = useCallback(
     useDebounceCallback(
@@ -904,7 +911,6 @@ export const useEventBusForChat = () => {
   useEffect(() => {
     if (!state.streaming && state.chat.messages.length > 0) {
       const lastMessage = state.chat.messages[state.chat.messages.length - 1];
-
       if (
         isAssistantMessage(lastMessage) &&
         lastMessage[2] &&
