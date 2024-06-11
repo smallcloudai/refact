@@ -122,6 +122,13 @@ export async function init(general_error) {
             document.querySelector('#status-ssh').innerHTML = error.message;
         });
     });
+
+    const model_links = document.querySelectorAll('.settings-tab-model-link');
+    model_links.forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            document.querySelector(`[data-tab=${link.getAttribute('data-tab')}]`).click();
+        });
+    });
 }
 
 function mask_integrations_input(el) {
