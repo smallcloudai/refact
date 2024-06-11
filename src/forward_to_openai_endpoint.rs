@@ -64,7 +64,11 @@ pub async fn forward_to_openai_style_endpoint(
     if status_code != 200 {
         info!("forward_to_openai_style_endpoint: {} {}\n{}", url, status_code, response_txt);
     }
-    Ok(serde_json::from_str(&response_txt).unwrap())
+    let parsed_json: serde_json::Value = match serde_json::from_str(&response_txt) {
+        Ok(json) => json,
+        Err(e) => return Err(format!("Failed to parse JSON response: {}\n{}", e, response_txt)),
+    };
+    Ok(parsed_json)
 }
 
 pub async fn forward_to_openai_style_endpoint_streaming(
@@ -90,6 +94,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "stream": true,
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
+        "stop": sampling_parameters.stop,
     });
     info!("STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {

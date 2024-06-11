@@ -137,12 +137,16 @@ class ChoiceDeltaCollector:
                     while len(choice.tool_calls) <= tool_idx:
                         choice.tool_calls.append(ToolCallDict(id="", function=FunctionDict(arguments="", name=""), type=""))
                     tool = choice.tool_calls[tool_idx]
-                    tool.id = plus_tool.get("id", tool.id)
-                    tool.type = plus_tool.get("type", tool.type)
-                    if "function" in plus_tool:
+                    if (i := plus_tool.get("id", None)) is not None and isinstance(i, str):
+                        tool.id = i
+                    if (t := plus_tool.get("type", None)) is not None and isinstance(t, str):
+                        tool.type = t
+                    if (function_plus := plus_tool.get("function", None)) is not None:
                         function_plus = plus_tool["function"]
-                        tool.function.name += function_plus.get("name", "")
-                        tool.function.arguments += function_plus.get("arguments", "")
+                        if (n := function_plus.get("name", None)) is not None and isinstance(n, str):
+                            tool.function.name += n
+                        if (a := function_plus.get("arguments", None)) is not None and isinstance(a, str):
+                            tool.function.arguments += a
             elif plus_content := delta.get("content"):
                 # print("CONTENT", plus_content)
                 choice.content += plus_content

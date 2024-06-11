@@ -54,7 +54,7 @@ async fn chat(
     allow_at: bool,
 ) -> Result<Response<Body>, ScratchError> {
     let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
-        info!("{:?}", body_bytes);
+        info!("chat handler cannot parse input:\n{:?}", body_bytes);
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
