@@ -14,6 +14,7 @@ pub trait VecdbSearch: Send {
         &self,
         query: String,
         top_n: usize,
+        filter_mb: Option<String>,
     ) -> Result<SearchResult, String>;
 }
 

@@ -4,9 +4,11 @@ use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 use uuid::Uuid;
+
+use crate::vecdb;
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ContextFile, ContextEnum};
-use crate::vecdb::structs::{Record, VecdbSearch};
+use crate::vecdb::structs::VecdbSearch;
 
 
 pub fn text_on_clip(query: &String, from_tool_call: bool) -> String {
@@ -29,7 +31,7 @@ impl AtWorkspace {
     }
 }
 
-fn results2message(results: &Vec<Record>) -> Vec<ContextFile> {
+fn results2message(results: &Vec<vecdb::structs::Record>) -> Vec<ContextFile> {
     let mut vector_of_context_file: Vec<ContextFile> = vec![];
     for i in 0..results.len() {
         let r = &results[i];
@@ -47,11 +49,11 @@ fn results2message(results: &Vec<Record>) -> Vec<ContextFile> {
     vector_of_context_file
 }
 
-pub async fn execute_at_workspace(ccx: &mut AtCommandsContext, query: &String) -> Result<Vec<ContextFile>, String> {
+pub async fn execute_at_workspace(ccx: &mut AtCommandsContext, query: &String, vecdb_scope_filter_mb: Option<String>) -> Result<Vec<ContextFile>, String> {
     match *ccx.global_context.read().await.vec_db.lock().await {
         Some(ref db) => {
             let top_n_twice_as_big = ccx.top_n * 2;  // top_n will be cut at postprocessing stage, and we really care about top_n files, not pieces
-            let search_result = db.vecdb_search(query.clone(), top_n_twice_as_big).await?;
+            let search_result = db.vecdb_search(query.clone(), top_n_twice_as_big, vecdb_scope_filter_mb).await?;
             let results = search_result.results.clone();
             return Ok(results2message(&results));
         }
@@ -70,7 +72,7 @@ impl AtCommand for AtWorkspace {
         info!("execute @workspace {:?}", args1);
         let query = args.iter().map(|x|x.text.clone()).collect::<Vec<_>>().join(" ");
 
-        let vector_of_context_file = execute_at_workspace(ccx, &query).await?;
+        let vector_of_context_file = execute_at_workspace(ccx, &query, None).await?;
         let text = text_on_clip(&query, false);
         Ok((vec_context_file_to_context_tools(vector_of_context_file), text))
     }

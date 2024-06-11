@@ -671,12 +671,14 @@ impl VecDBHandler {
     pub async fn search(
         &mut self,
         embedding: &Vec<f32>,
-        top_n: usize
+        top_n: usize,
+        vecdb_scope_filter_mb: Option<String>,
     ) -> vectordb::error::Result<Vec<Record>> {
         let query = self
             .data_table
             .clone()
             .search(Some(Float32Array::from(embedding.clone())))
+            .filter(vecdb_scope_filter_mb)
             .limit(top_n)
             .use_index(true)
             .execute()

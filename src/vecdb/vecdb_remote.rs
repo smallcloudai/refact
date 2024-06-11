@@ -15,6 +15,7 @@ impl VecdbSearch for VecDbRemote {
         &self,
         query: String,
         top_n: usize,
+        _vecdb_scope_filter_mb: Option<String>,
     ) -> Result<SearchResult, String> {
         let url = "http://127.0.0.1:8008/v1/vdb-search".to_string();
         let mut headers = HeaderMap::new();

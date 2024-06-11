@@ -101,7 +101,7 @@ fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
     }
 }
 
-async fn parameter_repair_candidates(
+pub async fn parameter_repair_candidates(
     value: &String,
     ccx: &AtCommandsContext,
 ) -> Vec<String>
