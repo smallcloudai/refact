@@ -39,7 +39,7 @@ export const RetryForm: React.FC<{
       />
       <Flex
         align="center"
-        // justify="center"
+        justify="center"
         gap="1"
         direction="row"
         p="2"
