@@ -20,3 +20,13 @@
 .chevron__close {
   transform: rotate(180deg);
 }
+
+.userInput {
+  text-align: left;
+  cursor: default;
+  user-select: auto;
+  max-width: 100%;
+  padding: var(--space-4);
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}

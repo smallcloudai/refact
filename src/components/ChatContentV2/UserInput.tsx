@@ -3,7 +3,36 @@ import { Text, Container, Button, Flex } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
 import styles from "./ChatContent.module.css";
-import { Pencil1Icon } from "@radix-ui/react-icons";
+
+function processLines(
+  lines: string[],
+  processedLinesMemo: JSX.Element[] = [],
+): JSX.Element[] {
+  if (lines.length === 0) return processedLinesMemo;
+
+  const [head, ...tail] = lines;
+  const nextBackTicksIndex = tail.findIndex((l) => l.startsWith("```"));
+  const key = `line-${processedLinesMemo.length + 1}`;
+
+  if (!head.startsWith("```") || nextBackTicksIndex === -1) {
+    const processedLines = processedLinesMemo.concat(
+      <Text as="div" key={key}>
+        {head}
+      </Text>,
+    );
+    return processLines(tail, processedLines);
+  }
+
+  const endIndex = nextBackTicksIndex + 1;
+
+  const code = [head].concat(tail.slice(0, endIndex)).join("\n");
+  const processedLines = processedLinesMemo.concat(
+    <Markdown key={key}>{code}</Markdown>,
+  );
+
+  const next = tail.slice(endIndex);
+  return processLines(next, processedLines);
+}
 
 export type UserInputProps = {
   children: string;
@@ -13,7 +42,6 @@ export type UserInputProps = {
 
 export const UserInput: React.FC<UserInputProps> = (props) => {
   const [showTextArea, setShowTextArea] = useState(false);
-  const [showEditButton, setShowEditButton] = useState(false);
   const handleSubmit = (value: string) => {
     props.onRetry(value);
     setShowTextArea(false);
@@ -21,19 +49,13 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
 
   const handleShowTextArea = (value: boolean) => {
     setShowTextArea(value);
-    setShowEditButton(false);
   };
 
+  const lines = props.children.split("\n");
+  const elements = processLines(lines);
+
   return (
-    <Container
-      position="relative"
-      onMouseEnter={() => setShowEditButton(true)}
-      onMouseLeave={() => setShowEditButton(false)}
-      pt="4"
-      // size="2"
-      // align="right"
-      // width="auto"
-    >
+    <Container position="relative" pt="4">
       {showTextArea ? (
         <RetryForm
           onSubmit={handleSubmit}
@@ -41,29 +63,16 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
           onClose={() => handleShowTextArea(false)}
         />
       ) : (
-        <Flex
-          gap="2"
-          direction="column"
-          display="inline-flex"
-          justify="end"
-          // align="end"
-          // flexShrink="1"
-        >
-          <Text>
-            <Markdown>{props.children}</Markdown>
-          </Text>
-
-          <Flex className={styles.footer} position="relative">
-            {showEditButton && (
-              <Button
-                variant="soft"
-                size="1"
-                onClick={() => handleShowTextArea(true)}
-              >
-                <Pencil1Icon />
-              </Button>
-            )}
-          </Flex>
+        <Flex direction="column" justify="end" align="start">
+          <Button
+            variant="ghost"
+            size="4"
+            onClick={() => handleShowTextArea(true)}
+            className={styles.userInput}
+            my="4"
+          >
+            {elements}
+          </Button>
         </Flex>
       )}
     </Container>
