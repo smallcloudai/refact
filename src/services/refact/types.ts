@@ -143,14 +143,14 @@ interface BaseDelta {
 
 interface AssistantDelta extends BaseDelta {
   role?: "assistant" | null;
-  content: string | null; // might be undefined, will be null if tool_calls
+  content?: string | null; // might be undefined, will be null if tool_calls
 }
 
 export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
   // if (!("role" in delta)) return false;
-  if ("role" in delta && delta.role === "assistant") return true;
+  if ("role" in delta && delta.role !== "assistant") return false;
   if (!("content" in delta)) return false;
   return true;
 }
@@ -179,11 +179,11 @@ export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {
   return Array.isArray(delta.tool_calls);
 }
 
-type Delta = AssistantDelta | ChatContextFileDelta | ToolCallDelta;
+type Delta = AssistantDelta | ChatContextFileDelta | ToolCallDelta | BaseDelta;
 
 export type ChatChoice = {
   delta: Delta;
-  finish_reason: "stop" | "abort" | "tool_calls" | null;
+  finish_reason?: "stop" | "abort" | "tool_calls" | null;
   index: number;
 };
 

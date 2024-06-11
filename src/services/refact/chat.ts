@@ -22,6 +22,7 @@ type SendChatArgs = {
   lspUrl?: string;
   takeNote?: boolean;
   onlyDeterministicMessages?: boolean;
+  chatId?: string;
 } & StreamArgs;
 
 export type LspChatMessage = {
@@ -67,12 +68,17 @@ export async function sendChat({
   lspUrl,
   takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
+  chatId: chat_id,
 }: SendChatArgs): Promise<Response> {
   const toolsResponse = await getAvailableTools();
 
   const tools = takeNote
-    ? toolsResponse.filter((tool) => tool.function.name === "note_to_self")
-    : toolsResponse.filter((tool) => tool.function.name !== "note_to_self");
+    ? toolsResponse.filter(
+        (tool) => tool.function.name === "remember_how_to_use_tools",
+      )
+    : toolsResponse.filter(
+        (tool) => tool.function.name !== "remember_how_to_use_tools",
+      );
 
   const body = JSON.stringify({
     messages,
@@ -84,6 +90,7 @@ export async function sendChat({
     tools: tools,
     max_tokens: 2048,
     only_deterministic_messages,
+    chat_id,
   });
 
   const apiKey = getApiKey();

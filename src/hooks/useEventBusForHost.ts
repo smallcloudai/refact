@@ -68,6 +68,7 @@ export function useEventBusForHost() {
       if (isTakeNotesFromChat(event.data)) {
         // TAKE_NOTES
         setTakingNotes(true);
+        const chatId: string = event.data.payload.id;
         const { messages, model } = event.data.payload;
         // console.log({ messages });
         const messagesForLsp = formatMessagesForLsp(messages);
@@ -100,6 +101,7 @@ export function useEventBusForHost() {
               lspUrl,
               takeNote: true,
               onlyDeterministicMessages: true,
+              chatId: chatId,
             });
           })
           .then((res) => res.json())
