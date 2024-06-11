@@ -147,7 +147,9 @@ pub struct SymbolInformation {
     pub declaration_range: Range,
     #[serde(with = "RangeDef")]
     pub definition_range: Range,
+    #[serde(default)]
     pub text_condensed: String,
+    #[serde(default)]
     pub text_comments: String,
 }
 
