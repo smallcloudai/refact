@@ -23,11 +23,19 @@ impl AtTool for AttFile {
         //     Some(v) => return Err(format!("argument `line` is not a valid u64: {:?}", v)),
         //     None => return Err("line".to_string()),
         // };
+        
+        let mut results = vec![];
+        let text = match execute_at_file(ccx, p.clone(), true).await {
+            Ok(res) => {
+                let text = text_on_clip(&res, true);
+                results.extend(vec_context_file_to_context_tools(vec![res]));
+                text
+            },
+            Err(e) => {
+                e
+            }
+        };
 
-        let context_file = execute_at_file(ccx, p.clone()).await?;
-        let text = text_on_clip(&context_file, true);
-
-        let mut results = vec_context_file_to_context_tools(vec![context_file]);
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
             content: text,

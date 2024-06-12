@@ -1,16 +1,17 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Component, PathBuf};
 use std::sync::Arc;
+use itertools::Itertools;
 use crate::global_context::GlobalContext;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use strsim::normalized_damerau_levenshtein;
 use tracing::info;
 
 
-pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, String>>, Arc<Vec<String>>)
+pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, HashSet<String>>>, Arc<Vec<String>>)
 {
     let cache_dirty_arc: Arc<AMutex<bool>>;
-    let mut cache_correction_arc: Arc<HashMap<String, String>>;
+    let mut cache_correction_arc: Arc<HashMap<String, HashSet<String>>>;
     let mut cache_fuzzy_arc: Arc<Vec<String>>;
     {
         let gcx_locked = global_context.read().await;
@@ -31,7 +32,7 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
         let paths_from_workspace: Vec<PathBuf> = global_context.read().await.documents_state.workspace_files.lock().unwrap().clone();
         let paths_from_jsonl: Vec<PathBuf> = global_context.read().await.documents_state.jsonl_files.lock().unwrap().clone();
 
-        let mut cache_correction = HashMap::<String, String>::new();
+        let mut cache_correction = HashMap::<String, HashSet<String>>::new();
         let mut cache_fuzzy_set = HashSet::<String>::new();
         let mut cnt = 0;
 
@@ -42,7 +43,7 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
             cache_fuzzy_set.insert(file_name);
             cnt += 1;
 
-            cache_correction.insert(path_str.clone(), path_str.clone());
+            cache_correction.entry(path_str.clone()).or_insert_with(HashSet::new).insert(path_str.clone());
             // chop off directory names one by one
             let mut index = 0;
             while let Some(slashpos) = path_str[index .. ].find(|c| c == '/' || c == '\\') {
@@ -50,7 +51,7 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
                 index = absolute_slashpos + 1;
                 let slashpos_to_end = &path_str[index .. ];
                 if !slashpos_to_end.is_empty() {
-                    cache_correction.insert(slashpos_to_end.to_string(), path_str.clone());
+                    cache_correction.entry(slashpos_to_end.to_string()).or_insert_with(HashSet::new).insert(path_str.clone());
                 }
             }
         }
@@ -83,7 +84,7 @@ pub async fn correct_to_nearest_filename(
 
     if let Some(fixed) = (*cache_correction_arc).get(&correction_candidate.clone()) {
         // info!("found {:?} in cache_correction, returning [{:?}]", correction_candidate, fixed);
-        return vec![fixed.clone()];
+        return fixed.into_iter().cloned().collect::<Vec<String>>();
     } else {
         info!("not found {} in cache_correction", correction_candidate);
     }
@@ -100,13 +101,14 @@ pub async fn correct_to_nearest_filename(
             }
         }
         info!("the top{} nearest matches {:?}", top_n, top_n_records);
-        let sorted_paths = top_n_records.iter().map(|(path, _)| {
-            let mut x = path.clone();
-            if let Some(fixed) = (*cache_correction_arc).get(&x) {
-                x = fixed.clone();
+        let mut sorted_paths: Vec<String> = vec![];
+        for path in top_n_records.iter().sorted_by(|a, b|a.1.partial_cmp(&b.1).unwrap()).rev().map(|(path, _)| path) {
+            if let Some(fixed) = (*cache_correction_arc).get(path) {
+                sorted_paths.extend(fixed.into_iter().cloned());
+            } else {
+                sorted_paths.push(path.clone());
             }
-            x
-        }).collect::<Vec<String>>();
+        }
         return sorted_paths;
     }
 

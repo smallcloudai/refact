@@ -33,16 +33,22 @@ impl AtWorkspace {
 
 fn results2message(results: &Vec<vecdb::structs::Record>) -> Vec<ContextFile> {
     let mut vector_of_context_file: Vec<ContextFile> = vec![];
-    for i in 0..results.len() {
-        let r = &results[i];
+    for r in results {
+        let file_name = r.file_path.to_str().unwrap().to_string();
+        let mut usefulness = r.usefulness;
+        // diversifying results
+        let chunk_n =  vector_of_context_file.iter().map(|x|&x.file_name).filter(|x|**x == file_name).count();
+        usefulness *= 1. / (chunk_n as f32 * 0.1 + 1.);
+        // info!("file_name {}; usefulness {}", file_name, usefulness);
+        
         vector_of_context_file.push(ContextFile {
-            file_name: r.file_path.to_str().unwrap().to_string(),
+            file_name,
             file_content: r.window_text.clone(),
             line1: r.start_line as usize + 1,
             line2: r.end_line as usize + 1,
             symbol: Uuid::default(),
             gradient_type: -1,
-            usefulness: r.usefulness,
+            usefulness,
             is_body_important: false
         });
     }

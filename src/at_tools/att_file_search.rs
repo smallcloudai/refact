@@ -23,7 +23,7 @@ impl AtTool for AttFileSearch {
             None => return Err("Missing argument `query` for att_file_search".to_string())
         };
 
-        let vector_of_context_file = execute_at_file_search(ccx, &file_path, &query).await?;
+        let vector_of_context_file = execute_at_file_search(ccx, &file_path, &query, true).await?;
         let text = text_on_clip(&query, &file_path, true);
 
         let mut results = vec_context_file_to_context_tools(vector_of_context_file);

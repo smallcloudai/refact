@@ -35,8 +35,14 @@ pub fn text_on_clip(query: &String, file_path: &String, from_tool_call: bool) ->
 }
 
 
-pub async fn execute_at_file_search(ccx: &mut AtCommandsContext, file_path: &String, query: &String) -> Result<Vec<ContextFile>, String> {
-    let candidates = parameter_repair_candidates(file_path, ccx).await;
+pub async fn execute_at_file_search(
+    ccx: &mut AtCommandsContext,
+    file_path: &String,
+    query: &String,
+    from_tool_call: bool,
+) -> Result<Vec<ContextFile>, String> {
+    let fuzzy = !from_tool_call;
+    let candidates = parameter_repair_candidates(file_path, ccx, fuzzy).await;
     if candidates.is_empty() {
         info!("parameter {:?} is uncorrectable :/", file_path);
         return Err(format!("parameter {:?} is uncorrectable :/", file_path));
@@ -73,7 +79,7 @@ impl AtCommand for AtFileSearch {
         // note: skipping file_path which is first argument
         let query = args.iter().skip(1).map(|x|x.text.clone()).collect::<Vec<_>>().join(" ");
 
-        let vector_of_context_file = execute_at_file_search(ccx, &file_path.text, &query).await?;
+        let vector_of_context_file = execute_at_file_search(ccx, &file_path.text, &query, false).await?;
         let text = text_on_clip(&query, &file_path.text, false);
 
         Ok((vec_context_file_to_context_tools(vector_of_context_file), text))
