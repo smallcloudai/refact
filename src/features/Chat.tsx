@@ -80,6 +80,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
       />
 
       <ChatForm
+        chatId={state.chat.id}
         isStreaming={state.streaming}
         showControls={state.chat.messages.length === 0 && !state.streaming}
         error={state.error}

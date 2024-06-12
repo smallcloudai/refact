@@ -5,13 +5,8 @@ import { Checkbox } from "./ChatControls";
 export function addCheckboxValuesToInput(
   input: string,
   checkboxes: Record<string, Checkbox>,
-  showControls: boolean,
   _vecdb: boolean,
 ) {
-  if (!showControls) {
-    return input;
-  }
-
   // prompts go to start
   let result = input;
 

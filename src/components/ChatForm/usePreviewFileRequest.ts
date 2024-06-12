@@ -8,22 +8,20 @@ type UsePreviewFileRequestArgs = {
   requestPreviewFiles: (input: string) => void;
   checkboxes: Record<string, Checkbox>;
   query: string;
-  showControls: boolean;
   vecdb: boolean;
 };
 export const usePreviewFileRequest = ({
   isCommandExecutable,
   requestPreviewFiles,
   query,
-  showControls,
   vecdb,
   checkboxes,
 }: UsePreviewFileRequestArgs) => {
   const [prevValue, setValue] = useState<boolean>(isCommandExecutable);
 
   const input = useMemo(
-    () => addCheckboxValuesToInput(query, checkboxes, showControls, vecdb),
-    [checkboxes, query, showControls, vecdb],
+    () => addCheckboxValuesToInput(query, checkboxes, vecdb),
+    [checkboxes, query, vecdb],
   );
 
   useEffect(() => {

@@ -10,6 +10,7 @@ const noop = () => ({});
 const App: React.FC<Partial<ChatFormProps>> = (props) => {
   const defaultProps: ChatFormProps = {
     removePreviewFileByName: noop,
+    chatId: "chatId",
     selectedSnippet: { code: "", language: "", path: "", basename: "" },
     onSubmit: noop,
     isStreaming: false,
