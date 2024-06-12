@@ -132,16 +132,16 @@ fn _replace_variables_in_system_prompts(config: &mut ToolboxConfig, variables: &
 
 fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, String> {
     let default_unstructured: serde_yaml::Value = serde_yaml::from_str(crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML)
-        .map_err(|e| format!("Error parsing default YAML: {}", e))?;
+        .map_err(|e| format!("Error parsing default YAML: {}\n{}", e, crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML))?;
     let user_unstructured: serde_yaml::Value = serde_yaml::from_str(user_yaml)
-        .map_err(|e| format!("Error parsing customization.yaml: {}", e))?;
+        .map_err(|e| format!("Error parsing customization.yaml: {}\n{}", e, user_yaml))?;
 
     let mut variables: HashMap<String, String> = HashMap::new();
     _extract_mapping_values(&default_unstructured.as_mapping(), &mut variables);
     _extract_mapping_values(&user_unstructured.as_mapping(), &mut variables);
 
     let work_config_deserialize: ToolboxConfigDeserialize = serde_yaml::from_str(crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML)
-        .map_err(|e| format!("Error parsing default ToolboxConfig: {}", e))?;
+        .map_err(|e| format!("Error parsing default ToolboxConfig: {}\n{}", e, crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML))?;
     let tools = work_config_deserialize.tools.iter()
         .map(|x|AtToolCustDict::new(x, &work_config_deserialize.tools_parameters))
         .collect::<Vec<AtToolCustDict>>();
@@ -153,7 +153,7 @@ fn _load_and_mix_with_users_config(user_yaml: &str) -> Result<ToolboxConfig, Str
     };
 
     let user_config_deserialize: ToolboxConfigDeserialize = serde_yaml::from_str(user_yaml)
-        .map_err(|e| format!("Error parsing user ToolboxConfig: {}", e))?;
+        .map_err(|e| format!("Error parsing user ToolboxConfig: {}\n{}", e, user_yaml))?;
     let user_tools = user_config_deserialize.tools.iter()
        .map(|x|AtToolCustDict::new(x, &user_config_deserialize.tools_parameters))
        .collect::<Vec<AtToolCustDict>>();
