@@ -57,7 +57,7 @@ tools:
         description: "Single line, paragraph or code sample."
     parameters_required:
       - "query"
-      
+
   - name: "file"
     description: "Read the file, the same as cat shell command, but skeletonizes files that are too large."
     parameters:
@@ -66,7 +66,7 @@ tools:
         description: "Either absolute path or preceeding_dirs/file.ext"
     parameters_required:
       - "path"
-     
+
   - name: "file_search"
     description: "Search for text within file, returning contexts where the text appears."
     parameters:
@@ -79,25 +79,25 @@ tools:
     parameters_required:
       - "file_path"
       - "query"
- 
+
   - name: "definition"
     description: "Read definition of a symbol in the project using AST"
     parameters:
       - name: "symbol"
         type: "string"
-        description: "The name of a function, method, class, type alias"
+        description: "The exact name of a function, method, class, type alias. No spaces allowed."
     parameters_required:
       - "symbol"
-      
+
   - name: "references"
-    description: "Read usages of a symbol within a project using AST"
+    description: "Find usages of a symbol within a project using AST"
     parameters:
       - name: "symbol"
         type: "string"
-        description: "The name of a function, method, class, type alias"
+        description: "The exact name of a function, method, class, type alias. No spaces allowed."
     parameters_required:
       - "symbol"
-      
+
   - name: "remember_how_to_use_tools"
     description: Save a note to memory.
     parameters:
@@ -106,7 +106,7 @@ tools:
         description: "Write the exact format message here, starting with CORRECTION_POINTS"
     parameters_required:
       - "text"
-      
+
   - name: "memorize_if_user_asks"
     description: |
         DO NOT CALL UNLESS USER EXPLICITLY ASKS. Use this format exactly:
@@ -188,7 +188,7 @@ impl AtToolDict {
 pub fn at_tools_compiled_in_only() -> Result<Vec<AtToolDict>, String> {
     let at_dict: AtDictDeserialize = serde_yaml::from_str(AT_DICT)
         .map_err(|e|format!("Failed to parse AT_DICT: {}", e))?;
-    
+
     // TODO: filter out some tools that depend on vecdb or ast if those are disabled
 
     Ok(at_dict.tools)
