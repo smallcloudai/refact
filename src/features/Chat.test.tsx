@@ -518,7 +518,7 @@ describe("Chat", () => {
             ["user", "hello"],
             ["assistant", "hello there", toolCalls],
             ["tool", toolResult],
-            ["user", "hello"],
+            ["user", "hello\n"],
           ],
         },
       },

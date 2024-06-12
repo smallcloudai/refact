@@ -476,6 +476,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       <ChatControls
         host={config.host}
         checkboxes={checkboxes}
+        showControls={showControls}
         onCheckedChange={toggleCheckbox}
         selectProps={{
           value: model || caps.default_cap,
