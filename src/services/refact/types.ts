@@ -127,9 +127,10 @@ interface AssistantDelta extends BaseDelta {
 export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
-  // if (!("role" in delta)) return false;
-  if ("role" in delta && delta.role !== "assistant") return false;
+  if ("role" in delta && delta.role !== null && delta.role !== "assistant")
+    return false;
   if (!("content" in delta)) return false;
+  if (typeof delta.content !== "string") return false;
   return true;
 }
 interface ChatContextFileDelta extends BaseDelta {
@@ -154,6 +155,7 @@ export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
   if (!("tool_calls" in delta)) return false;
+  if (delta.tool_calls === null) return false;
   return Array.isArray(delta.tool_calls);
 }
 
