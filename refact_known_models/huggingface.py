@@ -33,6 +33,7 @@ huggingface_mini_db = {
         "required_memory_mb": 8000,
         "T": 8192,
         "filter_caps": ["completion", "finetune"],
+        "deprecated": True,
     },
     "starcoder/3b/base": {
         "backend": "transformers",
@@ -41,6 +42,7 @@ huggingface_mini_db = {
         "required_memory_mb": 12000,
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
+        "deprecated": True,
     },
     "starcoder/7b/base": {
         "backend": "transformers",
@@ -49,6 +51,7 @@ huggingface_mini_db = {
         "required_memory_mb": 20000,
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
+        "deprecated": True,
     },
     "wizardcoder/15b": {
         "backend": "autogptq",
@@ -66,6 +69,7 @@ huggingface_mini_db = {
         "required_memory_mb": 8000,
         "T": 2048,
         "filter_caps": ["chat"],
+        "deprecated": True,
     },
     "wizardlm/13b": {
         "backend": "autogptq",
@@ -74,6 +78,7 @@ huggingface_mini_db = {
         "required_memory_mb": 14000,
         "T": 2048,
         "filter_caps": ["chat"],
+        "deprecated": True,
     },
     "llama2/7b": {
         "backend": "autogptq",
@@ -82,6 +87,7 @@ huggingface_mini_db = {
         "required_memory_mb": 8000,
         "T": 2048,
         "filter_caps": ["chat"],
+        "deprecated": True,
     },
     "llama2/13b": {
         "backend": "autogptq",
@@ -90,6 +96,7 @@ huggingface_mini_db = {
         "required_memory_mb": 14000,
         "T": 2048,
         "filter_caps": ["chat"],
+        "deprecated": True,
     },
     "codellama/7b": {
         "backend": "transformers",
@@ -108,6 +115,7 @@ huggingface_mini_db = {
         },
         "T": 2048,
         "filter_caps": ["chat"],
+        "deprecated": True,
     },
     "deepseek-coder/1.3b/base": {
         "backend": "transformers",
@@ -207,17 +215,6 @@ huggingface_mini_db = {
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
         "filter_caps": ["completion"],
     },
-    # NOTE: this model family uses tiktoken tokenizer, we cannot use them in refact-lsp for now
-    # "stable/2b/lm": {
-    #     "backend": "transformers",
-    #     "model_path": "stabilityai/stablelm-2-1_6b",
-    #     "model_class_kwargs": {
-    #         "attn_implementation": "flash_attention_2",
-    #     },
-    #     "required_memory_mb": 8000,
-    #     "T": 4096,
-    #     "filter_caps": ["chat"],
-    # },
     "starcoder2/3b/base": {
         "backend": "transformers",
         "model_path": "bigcode/starcoder2-3b",
