@@ -131,14 +131,6 @@ huggingface_mini_db = {
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
     },
-    "deepseek-coder/6.7b/base": {
-        "backend": "transformers",
-        "model_path": "deepseek-ai/deepseek-coder-6.7b-base",
-        "hidden": True,  # we see some kind of problem with this model (nan's while loss calculation)
-        "model_class_kwargs": {},
-        "T": 4096,
-        "filter_caps": ["completion", "finetune"],
-    },
     "magicoder/6.7b": {
         "backend": "autogptq",
         "model_path": "TheBloke/Magicoder-S-DS-6.7B-GPTQ",
@@ -165,17 +157,6 @@ huggingface_mini_db = {
         },
         "required_memory_mb": 35000,
         "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
-        "filter_caps": ["chat"],
-    },
-    "phind/34b/v2": {
-        "backend": "transformers",
-        "model_path": "Phind/Phind-CodeLlama-34B-v2",
-        "hidden": True,  # this model unexpectedly stops while sampling with </s> looks like a bug
-        "model_class_kwargs": {
-            "load_in_4bit": True,
-        },
-        "required_memory_mb": 24000,
-        "T": 4095,
         "filter_caps": ["chat"],
     },
     "deepseek-coder/6.7b/instruct": {
