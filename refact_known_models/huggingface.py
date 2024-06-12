@@ -220,7 +220,9 @@ huggingface_mini_db = {
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
     },
-    # NOTE: this repo is gated so we need /tokenizer handler to load tokenizer from docker directly
+    # NOTE: we should add quantized model due to bnb quantization issues:
+    # "load_in_8bit": True  works too slow
+    # "load_in_4bit": True  too often generates bad results
     "llama3/8b/instruct": {
         "backend": "transformers",
         "model_path": "meta-llama/Meta-Llama-3-8B-Instruct",
@@ -228,7 +230,7 @@ huggingface_mini_db = {
             "torch_dtype": "bf16",
         },
         "required_memory_mb": 20000,
-        "T": 4096,
+        "T": 8192,
         "filter_caps": ["chat"],
     },
 }
