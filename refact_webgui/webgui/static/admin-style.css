@@ -30,3 +30,54 @@ html {
   width: 340px;
   height: auto;
 }
+.login-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  cursor: pointer;
+  outline: 0 !important;
+  margin-right: 10px;
+  margin-bottom: 2px;
+  background: none;
+  padding: 20px;
+  position: absolute;
+  right: 20px;
+  top: 20px;
+}
+.login-mode svg {
+  width: 22px;
+  height: 22px;
+}
+.nav-moon,
+.nav-sun {
+  display: none;
+}
+html[data-bs-theme='dark'] .nav-sun {
+  display: block;
+}
+html[data-bs-theme='light'] .nav-moon {
+  display: block;
+}
+html[data-bs-theme='dark'] .login-mode svg path {
+  fill: #adb5bd;
+}
+html[data-bs-theme='dark'] .admin-logo path:not(.k) {
+  fill: rgba(255,255,255,0.65);
+}
+:root {
+  --dark-blue: #144289;
+  --dark-blue-hover: #2d62b3;
+}
+html[data-bs-theme='dark'] .btn-primary {
+  --bs-btn-bg: var(--dark-blue);
+  --bs-btn-border-color: var(--dark-blue);
+  --bs-btn-hover-bg: var(--dark-blue-hover);
+  --bs-btn-hover-border-color: var(--dark-blue-hover);
+  --bs-btn-active-bg: var(--dark-blue-hover);
+  --bs-btn-active-border-color: var(--dark-blue-hover);
+  --bs-btn-disabled-bg: var(--dark-disabled);
+  --bs-btn-disabled-border-color: var(--dark-disabled);
+}

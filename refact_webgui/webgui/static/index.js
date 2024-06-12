@@ -279,3 +279,23 @@ function logout_button_init() {
 }
 
 logout_button_init()
+
+
+const site_mode = document.querySelector('.nav-mode');
+
+let stored_theme = localStorage.getItem('theme') || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+if (stored_theme) {
+    document.documentElement.setAttribute('data-bs-theme', stored_theme)
+}
+
+site_mode.addEventListener('click', () => {
+    var current_theme = document.documentElement.getAttribute("data-bs-theme");
+    var target_theme = "light";
+
+    if (current_theme === "light") {
+        target_theme = "dark";
+    }
+
+    document.documentElement.setAttribute('data-bs-theme', target_theme)
+    localStorage.setItem('theme', target_theme);
+});
