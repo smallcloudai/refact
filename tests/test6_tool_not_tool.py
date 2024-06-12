@@ -63,17 +63,18 @@ async def single_test(ask_this, *, tools_must_be):
 
 
 async def all_tests():
+    print("model is %s" % MODEL)
     print("---- must be no calls ----")
-    # await single_test(ask_this="What is the meaning of life?", tools_must_be=False)
+    await single_test(ask_this="What is the meaning of life?", tools_must_be=False)
     await single_test(ask_this="What is your name?", tools_must_be=False)
-    # await single_test(ask_this="What is your faviorite color?", tools_must_be=False)
-    # await single_test(ask_this="Explain string theory", tools_must_be=False)
+    await single_test(ask_this="Explain string theory", tools_must_be=False)
     await single_test(ask_this="Write pygame example", tools_must_be=False)
     await single_test(ask_this="```\n@validator('input')\n```\nWhy is this outdated in fastapi?", tools_must_be=False)
     print("---- must be calls ----")
     await single_test(ask_this="What is Frog?", tools_must_be=True)
     await single_test(ask_this="Why is there type conversion service in this project?", tools_must_be=True)
     await single_test(ask_this="list methods of ConversionService", tools_must_be=True)
+    await single_test(ask_this="explain `public class ReadableBytesTypeConverter implements FormattingTypeConverter<CharSequence, Number, ReadableBytes>`", tools_must_be=True)
 
 
 if __name__ == "__main__":
