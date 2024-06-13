@@ -45,7 +45,8 @@ pub struct VecDbCaps {
 impl AstModule {
     pub async fn ast_indexer_init(
         ast_index_max_files: usize,
-        shutdown_flag: Arc<AtomicBool>
+        shutdown_flag: Arc<AtomicBool>,
+        ast_light_mode: bool
     ) -> Result<AstModule, String> {
         let status = Arc::new(AMutex::new(AstIndexStatus {
             files_unparsed: 0,
@@ -55,7 +56,7 @@ impl AstModule {
             state: "starting".to_string(),
         }));
         let ast_index = Arc::new(AMutex::new(AstIndex::init(
-            ast_index_max_files, shutdown_flag
+            ast_index_max_files, shutdown_flag, ast_light_mode
         )));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(
             ast_index.clone(),

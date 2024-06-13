@@ -52,6 +52,8 @@ pub struct CommandLine {
     pub verbose: bool,
     #[structopt(long, help="Use AST. For it to start working, give it a jsonl files list or LSP workspace folders.")]
     pub ast: bool,
+    #[structopt(long, help="Use AST light mode. Could be useful for large projects and weak systems. In this mode we don't parse variables")]
+    pub ast_light_mode: bool,
     #[structopt(long, help="Use vector database. Give it a jsonl files list or LSP workspace folders, and also caps need to have an embedding model.")]
     pub vecdb: bool,
     #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to vecdb and ast")]
@@ -261,7 +263,10 @@ pub async fn create_global_context(
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {
         let ast_module = Arc::new(ARwLock::new(
-            AstModule::ast_indexer_init(cmdline.ast_index_max_files, shutdown_flag.clone()).await.expect("Failed to initialize ast module")
+            AstModule::ast_indexer_init(
+                cmdline.ast_index_max_files, shutdown_flag.clone(),
+                cmdline.ast_light_mode
+            ).await.expect("Failed to initialize ast module")
         ));
         gcx.write().await.ast_module = Some(ast_module);
     }

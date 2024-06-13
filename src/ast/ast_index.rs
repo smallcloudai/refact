@@ -42,6 +42,7 @@ pub struct AstIndex {
     import_components_succ_solution_index: HashMap<String, ImportDeclaration>,
     ast_index_max_files: usize,
     has_changes: bool,
+    ast_light_mode: bool,
 }
 
 unsafe impl Send for AstIndex {}
@@ -65,7 +66,8 @@ pub(crate) struct IndexingStats {
 impl AstIndex {
     pub fn init(
         ast_index_max_files: usize,
-        shutdown_flag: Arc<AtomicBool>
+        shutdown_flag: Arc<AtomicBool>,
+        ast_light_mode: bool,
     ) -> AstIndex {
         AstIndex {
             shutdown_flag,
@@ -78,6 +80,7 @@ impl AstIndex {
             import_components_succ_solution_index: HashMap::new(),
             ast_index_max_files,
             has_changes: false,
+            ast_light_mode,
         }
     }
 
@@ -126,7 +129,22 @@ impl AstIndex {
             );
             return Err("ast index too many files".to_string());
         }
-        let mut symbols_cloned = symbols
+        let symbols_filtered = if self.ast_light_mode {
+            symbols
+                .iter()
+                .filter(|s| {
+                    let symbol_type = s.read().symbol_type();
+                    let is_reference_type = symbol_type == SymbolType::VariableUsage
+                        || symbol_type == SymbolType::FunctionCall
+                        || symbol_type == SymbolType::VariableDefinition;
+                    !is_reference_type
+                })
+                .cloned()
+                .collect::<Vec<_>>()
+        } else {
+            symbols
+        };
+        let mut symbols_cloned = symbols_filtered
             .iter()
             .map(|sym| {
                 let mut write_lock = sym.write();
@@ -137,7 +155,7 @@ impl AstIndex {
         if has_removed {
             self.resolve_declaration_symbols(&mut symbols_cloned);
             let (_, import_components_succ_solution_index) = self.resolve_imports(
-                &mut symbols_cloned, &self.import_components_succ_solution_index
+                &mut symbols_cloned, &self.import_components_succ_solution_index,
             );
             self.import_components_succ_solution_index.extend(import_components_succ_solution_index);
             self.merge_usages_to_declarations(&mut symbols_cloned);
@@ -860,7 +878,7 @@ impl AstIndex {
         info!("Resolving import symbols");
         let t0 = std::time::Instant::now();
         let (stats, import_components_succ_solution_index) = self.resolve_imports(
-            &mut symbols, &self.import_components_succ_solution_index
+            &mut symbols, &self.import_components_succ_solution_index,
         );
         if self.shutdown_flag.load(Ordering::SeqCst) {
             info!("Aborting ast indexing, shutdown signal received");
@@ -986,12 +1004,12 @@ impl AstIndex {
     fn merge_usages_to_declarations(&self, symbols: &mut Vec<AstSymbolInstanceRc>) -> IndexingStats {
         fn get_caller_depth(
             symbol: &AstSymbolInstanceRc,
-            guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceRc>
+            guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceRc>,
         ) -> Option<usize> {
             match symbol.borrow().get_caller_guid() {
-                Some(_) => {},
+                Some(_) => {}
                 None => {
-                    return None
+                    return None;
                 }
             };
 
@@ -1001,7 +1019,7 @@ impl AstIndex {
                 let caller_guid = match current_symbol.borrow().get_caller_guid().clone() {
                     Some(g) => g,
                     None => {
-                        return Some(current_depth)
+                        return Some(current_depth);
                     }
                 };
                 match guid_by_symbols.get(&caller_guid) {
@@ -1021,7 +1039,7 @@ impl AstIndex {
         }
 
         let mut stats = IndexingStats { found: 0, non_found: 0 };
-        let search_by_name_extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceRc> =  symbols
+        let search_by_name_extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceRc> = symbols
             .iter()
             .map(|x| {
                 let x_ref = x.borrow();
