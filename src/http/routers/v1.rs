@@ -23,6 +23,7 @@ use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
 use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
 use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
 use crate::http::routers::v1::lsp_like_handlers::{handle_v1_lsp_did_change, handle_v1_lsp_add_folder, handle_v1_lsp_initialize, handle_v1_lsp_remove_folder};
+use crate::http::routers::v1::status::handle_v1_rag_status;
 use crate::http::routers::v1::toolbox::handle_v1_customization;
 use crate::http::routers::v1::toolbox::handle_v1_rewrite_assistant_says_to_at_commands;
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
@@ -41,6 +42,7 @@ pub mod vecdb;
 mod at_commands;
 mod ast;
 mod at_tools;
+mod status;
 
 pub fn make_v1_router() -> Router {
     Router::new()
@@ -59,7 +61,7 @@ pub fn make_v1_router() -> Router {
         .route("/vdb-status", telemetry_get!(handle_v1_vecdb_status))
         .route("/at-command-completion", telemetry_post!(handle_v1_command_completion))
         .route("/at-command-preview", telemetry_post!(handle_v1_command_preview))
-        
+
         .route("/at-tools-available", telemetry_get!(handle_v1_tools_available))
 
         .route("/lsp-initialize", telemetry_post!(handle_v1_lsp_initialize))
@@ -81,6 +83,7 @@ pub fn make_v1_router() -> Router {
         .route("/ast-clear-index", telemetry_get!(handle_v1_ast_clear_index))
         .route("/ast-status", telemetry_get!(handle_v1_ast_status))
 
+        .route("/rag-status", telemetry_get!(handle_v1_rag_status))
         // experimental
         .route("/customization", telemetry_get!(handle_v1_customization))
         .route("/rewrite-assistant-says-to-at-commands", telemetry_post!(handle_v1_rewrite_assistant_says_to_at_commands))

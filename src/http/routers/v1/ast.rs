@@ -432,7 +432,7 @@ pub async fn handle_v1_ast_status(
     let ast_module = global_context.read().await.ast_module.clone();
     match &ast_module {
         Some(ast) => {
-            let status = ast.write().await.ast_index_status().await;
+            let status = ast.read().await.ast_index_status().await;
             let json_string = serde_json::to_string_pretty(&status).map_err(|e| {
                 ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
             })?;

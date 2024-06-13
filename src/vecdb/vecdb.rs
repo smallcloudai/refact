@@ -198,8 +198,10 @@ pub async fn vecdb_background_reload(
                 consts.unwrap(),
             ).await {
                 Ok(_) => {
+                    gcx.write().await.vec_db_error = "".to_string();
                 }
                 Err(err) => {
+                    gcx.write().await.vec_db_error = err.clone();
                     error!("vecdb: init failed: {}", err);
                     // gcx.vec_db stays None, the rest of the system continues working
                 }

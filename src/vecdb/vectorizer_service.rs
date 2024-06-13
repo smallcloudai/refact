@@ -9,6 +9,7 @@ use tokio::sync::{Mutex as AMutex, RwLock};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 use tracing::{info, warn};
+use crate::ast::ast_index_service::AstEvent;
 
 use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::get_embedding_with_retry;
@@ -155,19 +156,20 @@ async fn vectorize_thread(
     const SPLIT_DATA_MAX_TOKENS: usize = 256;
     const B: usize = 64;
 
+    let mut files_total: usize = 0;
     let mut reported_unprocessed: usize = 0;
     let mut reported_vecdb_complete: bool = false;
     let mut embed_q: Vec<SplitResult> = vec![];
 
     loop {
-        let (doc_mb, unprocessed_files_count) = {
+        let (doc_mb, files_unprocessed) = {
             let mut queue_locked = queue.lock().await;
             let q_len =  queue_locked.len();
             (queue_locked.pop_front(), q_len)
         };
 
         loop {
-            if embed_q.len() >= B || (!embed_q.is_empty() && unprocessed_files_count == 0) {
+            if embed_q.len() >= B || (!embed_q.is_empty() && files_unprocessed == 0) {
                 vectorize_batch_from_q(&mut embed_q, status.clone(), client.clone(), &constants, &api_key, vecdb_handler_ref.clone(), B).await.unwrap_or_else(|err| {
                     warn!("Error vectorizing: {}", err);
                 });
@@ -176,23 +178,31 @@ async fn vectorize_thread(
             }
         }
 
-        if (unprocessed_files_count + 99).div(100) != (reported_unprocessed + 99).div(100) {
-            info!("have {} unprocessed files", unprocessed_files_count);
-            reported_unprocessed = unprocessed_files_count;
+        if (files_unprocessed + 99).div(100) != (reported_unprocessed + 99).div(100) {
+            info!("have {} unprocessed files", files_unprocessed);
+            reported_unprocessed = files_unprocessed;
         }
-        status.lock().await.unprocessed_files_count = unprocessed_files_count;
-        reported_vecdb_complete &= unprocessed_files_count==0;
+
+        reported_vecdb_complete &= files_unprocessed == 0;
 
         let mut doc = {
             match doc_mb {
-                Some(doc) => doc,
+                Some(doc) => {
+                    let mut locked_status = status.lock().await;
+                    locked_status.files_unprocessed = files_unprocessed;
+                    if files_unprocessed > files_total {
+                        files_total = files_unprocessed;
+                    }
+                    locked_status.files_total = files_total;
+                    locked_status.state = "parsing".to_string();
+                    doc
+                },
                 None => {
                     // No files left to process
                     if !reported_vecdb_complete {
                         let t0 = std::time::Instant::now();
                         vecdb_handler_ref.lock().await.update_indexed_file_paths().await;
                         info!("update_indexed_file_paths: it took {:.3}s", t0.elapsed().as_secs_f64());
-
                         reported_vecdb_complete = true;
                         // For now, we do not create index 'cause it hurts quality of retrieval
                         // info!("VECDB Creating index");
@@ -202,8 +212,16 @@ async fn vectorize_thread(
                         // }
                         let _ = write!(std::io::stderr(), "VECDB COMPLETE\n");
                         info!("VECDB COMPLETE"); // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
-                        let status_locked = status.lock().await;
-                        info!("vectorizer since start {} API calls, {} vectors", status_locked.requests_made_since_start, status_locked.vectors_made_since_start);
+                        {
+                            let mut locked_status = status.lock().await;
+                            locked_status.files_unprocessed = 0;
+                            locked_status.files_total = 0;
+                            locked_status.state = "done".to_string();
+                            info!(
+                                "vectorizer since start {} API calls, {} vectors",
+                                locked_status.requests_made_since_start, locked_status.vectors_made_since_start
+                            );
+                        }
                     }
                     tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
                     continue;
@@ -264,11 +282,13 @@ impl FileVectorizerService {
         let output_queue = Arc::new(AMutex::new(VecDeque::new()));
         let status = Arc::new(AMutex::new(
             VecDbStatus {
-                unprocessed_files_count: 0,
+                files_unprocessed: 0,
+                files_total: 0,
                 requests_made_since_start: 0,
                 vectors_made_since_start: 0,
                 db_size: 0,
                 db_cache_size: 0,
+                state: "starting".to_string(),
             }
         ));
         FileVectorizerService {

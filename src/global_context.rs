@@ -91,6 +91,7 @@ pub struct GlobalContext {
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
     pub ast_module: Option<Arc<ARwLock<AstModule>>>,
+    pub vec_db_error: String,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
 }
@@ -257,6 +258,7 @@ pub async fn create_global_context(
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vec_db: Arc::new(AMutex::new(None)),
         ast_module: None,
+        vec_db_error: String::new(),
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState::new(workspace_dirs).await,
     };
