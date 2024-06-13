@@ -30,3 +30,15 @@
   min-height: var(--base-button-height);
   height: auto;
 }
+
+.tool_content {
+  --radix-collapsible-content-height: 50px;
+}
+.tool_result {
+  width: 100%;
+}
+
+.tool_result_button {
+  text-align: left;
+  justify-content: start;
+}

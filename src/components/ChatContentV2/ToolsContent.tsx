@@ -1,17 +1,50 @@
 import React from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
-import { Container, Flex, Text, Box } from "@radix-ui/themes";
+import { Container, Flex, Text, Box, Button } from "@radix-ui/themes";
 import { ToolCall, ToolResult } from "../../events";
 import { ChevronDownIcon } from "@radix-ui/react-icons";
 import classNames from "classnames";
 import styles from "./ChatContent.module.css";
 import { Markdown } from "../CommandLine/Markdown";
 
+const Chevron: React.FC<{ open: boolean }> = ({ open }) => {
+  return (
+    <ChevronDownIcon
+      className={classNames(styles.chevron, {
+        [styles.chevron__open]: !open,
+        [styles.chevron__close]: open,
+      })}
+    />
+  );
+};
+
+const Result: React.FC<{ children: string }> = ({ children }) => {
+  const lines = children.split("\n");
+  const [open, setOpen] = React.useState(false);
+  if (lines.length < 3 || open)
+    return <Markdown className={styles.tool_result}>{children}</Markdown>;
+  const toShow = lines.slice(0, 3).join("\n") + "\n...";
+  return (
+    <Button
+      variant="ghost"
+      onClick={() => setOpen(true)}
+      asChild
+      className={styles.tool_result_button}
+    >
+      <Flex direction="column" position="relative" align="start">
+        <Markdown className={styles.tool_result}>{toShow}</Markdown>
+        <Box position="absolute" bottom="3" right="4">
+          Click for more
+        </Box>
+      </Flex>
+    </Button>
+  );
+};
+
 const ToolMessage: React.FC<{
   toolCall: ToolCall;
   result?: ToolResult;
 }> = ({ toolCall, result }) => {
-  // TODO: different component for each tool call name?
   const name = toolCall.function.name ?? "";
 
   const argsString = React.useMemo(() => {
@@ -36,7 +69,13 @@ const ToolMessage: React.FC<{
     return <Markdown>{functionCalled}</Markdown>;
   }
 
-  return <Markdown>{functionCalled + "\n" + result.content}</Markdown>;
+  // show more
+  return (
+    <Flex gap="2" direction="column">
+      <Markdown>{functionCalled}</Markdown>
+      <Result>{result.content}</Result>
+    </Flex>
+  );
 };
 
 export const ToolContent: React.FC<{
@@ -44,12 +83,14 @@ export const ToolContent: React.FC<{
   results: Record<string, ToolResult>;
 }> = ({ toolCalls, results }) => {
   const [open, setOpen] = React.useState(false);
-  const resultIds = Object.keys(results);
-  const allResolved = toolCalls.every(
-    (toolCall) => toolCall.id && resultIds.includes(toolCall.id),
-  );
 
   if (toolCalls.length === 0) return null;
+
+  const toolNames = toolCalls.reduce<string[]>((acc, toolCall) => {
+    if (!toolCall.function.name) return acc;
+    if (acc.includes(toolCall.function.name)) return acc;
+    return [...acc, toolCall.function.name];
+  }, []);
 
   return (
     <Container>
@@ -57,15 +98,9 @@ export const ToolContent: React.FC<{
         <Collapsible.Trigger asChild>
           <Flex gap="2" align="center">
             <Text weight="light" size="1">
-              {allResolved ? "Used" : "Using"} {toolCalls.length}{" "}
-              {toolCalls.length > 1 ? "tools" : "tool"}
+              Used {toolNames.join(", ")}
             </Text>
-            <ChevronDownIcon
-              className={classNames(styles.chevron, {
-                [styles.chevron__open]: !open,
-                [styles.chevron__close]: open,
-              })}
-            />
+            <Chevron open={open} />
           </Flex>
         </Collapsible.Trigger>
         <Collapsible.Content>
