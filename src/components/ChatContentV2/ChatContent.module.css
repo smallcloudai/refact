@@ -27,4 +27,6 @@
   user-select: auto;
   max-width: 100%;
   padding: var(--space-2);
+  min-height: var(--base-button-height);
+  height: auto;
 }
