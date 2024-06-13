@@ -44,10 +44,29 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     useImperativeHandle(ref, () => innerRef.current!, []);
 
+    const [autoScroll, setAutoScroll] = React.useState(true);
+
     useEffect(() => {
-      innerRef.current?.scrollIntoView &&
+      if (autoScroll && innerRef.current?.scrollIntoView) {
         innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
-    }, [messages]);
+      }
+    }, [messages, autoScroll]);
+
+    const handleScroll: React.UIEventHandler<HTMLDivElement> = (event) => {
+      if (!innerRef.current) return;
+      const parent = event.currentTarget.getBoundingClientRect();
+      const { bottom, height, top } = innerRef.current.getBoundingClientRect();
+      const isVisable =
+        top <= parent.top
+          ? parent.top - top <= height
+          : bottom - parent.bottom <= height;
+
+      if (isVisable && !autoScroll) {
+        setAutoScroll(true);
+      } else if (autoScroll) {
+        setAutoScroll(false);
+      }
+    };
 
     const toolCallsMap = React.useMemo(
       () =>
@@ -74,7 +93,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
     );
 
     return (
-      <ScrollArea style={{ flexGrow: 1, height: "auto" }} scrollbars="vertical">
+      <ScrollArea
+        style={{ flexGrow: 1, height: "auto" }}
+        scrollbars="vertical"
+        onScroll={handleScroll}
+      >
         <Flex direction="column" className={styles.content} px="1">
           {messages.length === 0 && <PlaceHolderText />}
           {messages.map((message, index) => {
