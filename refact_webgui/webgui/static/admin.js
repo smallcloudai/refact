@@ -1,3 +1,8 @@
+let stored_theme = localStorage.getItem('theme') || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+if (stored_theme) {
+    document.documentElement.setAttribute('data-bs-theme', stored_theme)
+}
+
 document.getElementById("login-form").addEventListener('submit', (event) => {
     event.preventDefault();
     const token = document.getElementById("token").value;
@@ -33,10 +38,6 @@ document.getElementById("login-form").addEventListener('submit', (event) => {
 
 const site_mode = document.querySelector('.login-mode');
 
- let stored_theme = localStorage.getItem('theme') || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
- if (stored_theme) {
-     document.documentElement.setAttribute('data-bs-theme', stored_theme)
- }
 
  site_mode.addEventListener('click', () => {
      var current_theme = document.documentElement.getAttribute("data-bs-theme");
