@@ -69,6 +69,10 @@ pub struct CodeAssistantCaps {
     pub running_models: Vec<String>,
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
+    #[serde(default)]
+    pub code_chat_default_system_prompt: String,
+    #[serde(default)]
+    pub customization: String,
 }
 
 pub async fn load_caps(
