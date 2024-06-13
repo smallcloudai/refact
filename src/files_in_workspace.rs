@@ -517,7 +517,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
             {
                 let is_it_good = is_valid_file(p);
                 if is_it_good.is_err() {
-                    info!("{:?} ignoring changes: {}", p, is_it_good.err().unwrap());
+                    // info!("{:?} ignoring changes: {}", p, is_it_good.err().unwrap());
                     go_ahead = false;
                 }
             }
