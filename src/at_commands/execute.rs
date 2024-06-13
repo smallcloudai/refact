@@ -176,12 +176,16 @@ impl AtCommandHighlight {
 }
 
 pub fn parse_words_from_line(line: &String) -> Vec<(String, usize, usize)> {
-    // TODO: make regex better
-    let word_regex = Regex::new(r#"(@?[^ !?@]*)"#).expect("Invalid regex");
+    fn trim_punctuation(s: &str) -> String {
+        s.trim_end_matches(&['!', '.', ',', '?'][..]).to_string()
+    }
+
+    let word_regex = Regex::new(r#"(@?\S*)"#).expect("Invalid regex");
     let mut results = vec![];
     for cap in word_regex.captures_iter(line) {
         if let Some(matched) = cap.get(1) {
-            results.push((matched.as_str().to_string(), matched.start(), matched.end()));
+            let trimmed_match = trim_punctuation(&matched.as_str().to_string());
+            results.push((trimmed_match.clone(), matched.start(), matched.start() + trimmed_match.len()));
         }
     }
     results
