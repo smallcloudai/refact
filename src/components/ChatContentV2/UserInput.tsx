@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Text, Container, Button, Flex } from "@radix-ui/themes";
+import { Text, Container, Button } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
 import styles from "./ChatContent.module.css";
@@ -42,6 +42,7 @@ export type UserInputProps = {
 
 export const UserInput: React.FC<UserInputProps> = (props) => {
   const [showTextArea, setShowTextArea] = useState(false);
+  const ref = React.useRef<HTMLButtonElement>(null);
   const handleSubmit = (value: string) => {
     props.onRetry(value);
     setShowTextArea(false);
@@ -49,6 +50,13 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
 
   const handleShowTextArea = (value: boolean) => {
     setShowTextArea(value);
+  };
+
+  const handleEditClick = () => {
+    const selection = window.getSelection();
+    if (selection?.type !== "Range") {
+      setShowTextArea(true);
+    }
   };
 
   const lines = props.children.split("\n");
@@ -63,17 +71,17 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
           onClose={() => handleShowTextArea(false)}
         />
       ) : (
-        <Flex direction="column" justify="end" align="start">
-          <Button
-            variant="ghost"
-            size="4"
-            onClick={() => handleShowTextArea(true)}
-            className={styles.userInput}
-            my="4"
-          >
-            {elements}
-          </Button>
-        </Flex>
+        <Button
+          ref={ref}
+          variant="soft"
+          size="4"
+          onClick={handleEditClick}
+          className={styles.userInput}
+          my="4"
+          asChild
+        >
+          <div>{elements}</div>
+        </Button>
       )}
     </Container>
   );
