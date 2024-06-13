@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle } from "react";
+import React from "react";
 import {
   ChatMessages,
   ToolCall,
@@ -15,6 +15,7 @@ import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { CommandLine } from "../CommandLine";
 import { MemoryContent } from "./MemoryContent";
+import { useAutoScroll } from "./useAutoScroll";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
@@ -40,33 +41,10 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       isStreaming,
     } = props;
 
-    const innerRef = React.useRef<HTMLDivElement>(null);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    useImperativeHandle(ref, () => innerRef.current!, []);
-
-    const [autoScroll, setAutoScroll] = React.useState(true);
-
-    useEffect(() => {
-      if (autoScroll && innerRef.current?.scrollIntoView) {
-        innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
-      }
-    }, [messages, autoScroll]);
-
-    const handleScroll: React.UIEventHandler<HTMLDivElement> = (event) => {
-      if (!innerRef.current) return;
-      const parent = event.currentTarget.getBoundingClientRect();
-      const { bottom, height, top } = innerRef.current.getBoundingClientRect();
-      const isVisable =
-        top <= parent.top
-          ? parent.top - top <= height
-          : bottom - parent.bottom <= height;
-
-      if (isVisable && !autoScroll) {
-        setAutoScroll(true);
-      } else if (autoScroll) {
-        setAutoScroll(false);
-      }
-    };
+    const { handleScroll, innerRef } = useAutoScroll({
+      ref,
+      messages,
+    });
 
     const toolCallsMap = React.useMemo(
       () =>

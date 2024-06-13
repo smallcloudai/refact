@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle } from "react";
+import React from "react";
 import {
   ChatMessages,
   ToolResult,
@@ -14,6 +14,7 @@ import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { MemoryContent } from "./MemoryContent";
+import { useAutoScroll } from "./useAutoScroll";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
@@ -39,14 +40,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       isStreaming,
     } = props;
 
-    const innerRef = React.useRef<HTMLDivElement>(null);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    useImperativeHandle(ref, () => innerRef.current!, []);
-
-    useEffect(() => {
-      innerRef.current?.scrollIntoView &&
-        innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
-    }, [messages]);
+    const { innerRef, handleScroll } = useAutoScroll({ ref, messages });
 
     const toolResultsMap = React.useMemo(() => {
       return messages.reduce<Record<string, ToolResult>>((acc, message) => {
@@ -60,7 +54,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
     }, [messages]);
 
     return (
-      <ScrollArea style={{ flexGrow: 1, height: "auto" }} scrollbars="vertical">
+      <ScrollArea
+        style={{ flexGrow: 1, height: "auto" }}
+        scrollbars="vertical"
+        onScroll={handleScroll}
+      >
         <Flex direction="column" className={styles.content} p="2" gap="2">
           {messages.length === 0 && <PlaceHolderText />}
           {messages.map((message, index) => {
