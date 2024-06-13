@@ -6,7 +6,7 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::at_tools::tools::Tool;
-use crate::call_validation::{ChatMessage, ContextFile, ContextEnum};
+use crate::call_validation::{ChatMessage, ContextFile, ContextEnum, ChatMessage};
 use crate::global_context::GlobalContext;
 
 use crate::at_commands::at_workspace::AtWorkspace;
@@ -16,6 +16,7 @@ use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
 use crate::at_commands::at_file_search::AtFileSearch;
 // use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
+use crate::at_commands::at_tree::AtTree;
 use crate::at_commands::execute_at::AtCommandMember;
 
 pub struct AtCommandsContext {
@@ -70,6 +71,7 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         ("@references".to_string(), Arc::new(AMutex::new(Box::new(AtAstReference::new()) as Box<dyn AtCommand + Send>))),
         ("@symbols-at".to_string(), Arc::new(AMutex::new(Box::new(AtAstLookupSymbols::new()) as Box<dyn AtCommand + Send>))),
         // ("@local-notes-to-self".to_string(), Arc::new(AMutex::new(Box::new(AtLocalNotesToSelf::new()) as Box<dyn AtCommand + Send>))),
+        ("@tree".to_string(), Arc::new(AMutex::new(Box::new(AtTree::new()) as Box<dyn AtCommand + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
@@ -121,9 +123,9 @@ pub fn filter_only_context_file_from_context_tool(tools: &Vec<ContextEnum>) -> V
         }).collect::<Vec<ContextFile>>()
 }
 
-// pub fn filter_only_chat_messages_from_context_tool(tools: &Vec<ContextEnum>) -> Vec<ChatMessage> {
-//     tools.iter()
-//        .filter_map(|x| {
-//             if let ContextEnum::ChatMessage(data) = x { Some(data.clone()) } else { None }
-//         }).collect::<Vec<ChatMessage>>()
-// }
+pub fn filter_only_chat_messages_from_context_tool(tools: &Vec<ContextEnum>) -> Vec<ChatMessage> {
+    tools.iter()
+       .filter_map(|x| {
+            if let ContextEnum::ChatMessage(data) = x { Some(data.clone()) } else { None }
+        }).collect::<Vec<ChatMessage>>()
+}

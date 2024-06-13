@@ -1,12 +1,19 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Component, PathBuf};
 use std::sync::Arc;
+use crate::global_context::GlobalContext;
 use itertools::Itertools;
 use tokio::sync::RwLock as ARwLock;
 use strsim::normalized_damerau_levenshtein;
 use tracing::info;
 
-use crate::global_context::GlobalContext;
+pub async fn paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
+    let file_paths_from_memory = global_context.read().await.documents_state.memory_document_map.keys().map(|x|x.clone()).collect::<Vec<_>>();
+    let paths_from_workspace: Vec<PathBuf> = global_context.read().await.documents_state.workspace_files.lock().unwrap().clone();
+    let paths_from_jsonl: Vec<PathBuf> = global_context.read().await.documents_state.jsonl_files.lock().unwrap().clone();
+    let paths_from_anywhere = file_paths_from_memory.into_iter().chain(paths_from_workspace.into_iter().chain(paths_from_jsonl.into_iter()));
+    paths_from_anywhere.collect::<Vec<PathBuf>>()
+}
 
 
 fn make_cache<I>(paths_iter: I) -> (
@@ -54,16 +61,7 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
     if *cache_dirty_ref {
         info!("Rebuilding files cache...");
         let start_time = Instant::now();
-
-        let (file_paths_from_memory, paths_from_workspace, paths_from_jsonl) = {
-            let cx = global_context.read().await;
-            let memory_docs = cx.documents_state.memory_document_map.keys().cloned().collect::<Vec<_>>();
-            let workspace_files = cx.documents_state.workspace_files.lock().unwrap().clone();
-            let jsonl_files = cx.documents_state.jsonl_files.lock().unwrap().clone();
-            (memory_docs, workspace_files, jsonl_files)
-        };
-
-        let paths_from_anywhere = file_paths_from_memory.into_iter().chain(paths_from_workspace.into_iter().chain(paths_from_jsonl.into_iter()));
+        let paths_from_anywhere = paths_from_anywhere(global_context.clone()).await;
         let (cache_correction, cache_fuzzy, cnt) = make_cache(paths_from_anywhere);
 
         info!("Rebuild completed in {}s, {} URLs => cache_correction.len is now {}", start_time.elapsed().as_secs(), cnt, cache_correction.len());
