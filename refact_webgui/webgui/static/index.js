@@ -4,6 +4,14 @@ const req = await fetch('list-plugins');
 const plugins = await req.json();
 let history_state = [];
 let create_h_state = true;
+
+
+let stored_theme = localStorage.getItem('theme') || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+if (stored_theme) {
+    document.documentElement.setAttribute('data-bs-theme', stored_theme)
+}
+
+
 // show navigation bar immediately, import later
 plugins_to_top_nav_bar(plugins);
 
@@ -280,14 +288,7 @@ function logout_button_init() {
 
 logout_button_init()
 
-
 const site_mode = document.querySelector('.nav-mode');
-
-let stored_theme = localStorage.getItem('theme') || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-if (stored_theme) {
-    document.documentElement.setAttribute('data-bs-theme', stored_theme)
-}
-
 site_mode.addEventListener('click', () => {
     var current_theme = document.documentElement.getAttribute("data-bs-theme");
     var target_theme = "light";
