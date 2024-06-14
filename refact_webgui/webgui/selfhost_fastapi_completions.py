@@ -83,8 +83,8 @@ class ChatContext(NlpSamplingParams):
     # TODO: validate using pydantic
     tools: Optional[List[Dict[str, Any]]] = None
     tool_choice: Optional[str] = None
-    stream: bool = True
-    stop: Optional[Any]
+    stream: Optional[bool] = True
+    stop: Optional[Any] = None
     n: int = 1
 
 
