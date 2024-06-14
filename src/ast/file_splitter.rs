@@ -19,7 +19,7 @@ use crate::global_context::GlobalContext;
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::structs::SplitResult;
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 
 pub struct AstBasedFileSplitter {
@@ -84,7 +84,7 @@ impl AstBasedFileSplitter {
         for guid in guids {
             let symbol = guid_to_info.get(&guid).unwrap();
             let need_in_vecdb_at_all = match symbol.symbol_type {
-                SymbolType::StructDeclaration | SymbolType::FunctionDeclaration | 
+                SymbolType::StructDeclaration | SymbolType::FunctionDeclaration |
                 SymbolType::TypeAlias | SymbolType::ClassFieldDeclaration => true,
                 _ => false,
             };
