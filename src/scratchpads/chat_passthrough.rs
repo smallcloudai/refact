@@ -146,7 +146,15 @@ impl ScratchpadAbstract for ChatPassthrough {
         }
         let big_json = serde_json::json!({
             "messages": filtered_msgs,
-            "tools": tools_mb,
+            "tools": if let Some(tools) = tools_mb {
+                if tools.is_empty() {
+                    None
+                } else {
+                    Some(tools)
+                }
+            } else {
+                None
+            },
         });
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
         if DEBUG {
