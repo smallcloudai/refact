@@ -22,7 +22,10 @@
 }
 
 .userInput {
-  display: inline-block;
+  display: inline-flex;
+  align-items: start;
+  flex-direction: column;
+  gap: 0;
   text-align: left;
   cursor: default;
   user-select: auto;
