@@ -23,7 +23,7 @@ const Result: React.FC<{ children: string }> = ({ children }) => {
   const [open, setOpen] = React.useState(false);
   if (lines.length < 3 || open)
     return <Markdown className={styles.tool_result}>{children}</Markdown>;
-  const toShow = lines.slice(0, 3).join("\n") + "\n...";
+  const toShow = lines.slice(0, 3).join("\n") + "\n ";
   return (
     <Button
       variant="ghost"
