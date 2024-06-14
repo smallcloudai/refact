@@ -9,6 +9,7 @@ import { PreTag, type PreTagProps } from "./Pre";
 import styles from "./Markdown.module.css";
 import type { Element } from "hast";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
+import { trimIndent } from "../../utils";
 
 export type MarkdownControls = {
   onCopyClick: (str: string) => void;
@@ -38,6 +39,7 @@ export const MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   const codeRef = React.useRef<HTMLElement | null>(null);
   const match = /language-(\w+)/.exec(className ?? "");
   const textWithOutTrailingNewLine = String(children).replace(/\n$/, "");
+  const textWithOutIndent = trimIndent(textWithOutTrailingNewLine);
 
   const preTagProps: PreTagProps =
     onCopyClick && onNewFileClick && onPasteClick
@@ -80,7 +82,7 @@ export const MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
           language={language}
           // useInlineStyles={false}
         >
-          {textWithOutTrailingNewLine}
+          {textWithOutIndent}
         </SyntaxHighlighter>
       </Text>
     );

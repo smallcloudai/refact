@@ -3,7 +3,6 @@ import { Text, Container, Button } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
 import styles from "./ChatContent.module.css";
-import { trimIndent } from "./utils";
 
 function processLines(
   lines: string[],
@@ -27,9 +26,8 @@ function processLines(
   const endIndex = nextBackTicksIndex + 1;
 
   const code = [head].concat(tail.slice(0, endIndex)).join("\n");
-  const unindentedCode = trimIndent(code);
   const processedLines = processedLinesMemo.concat(
-    <Markdown key={key}>{unindentedCode}</Markdown>,
+    <Markdown key={key}>{code}</Markdown>,
   );
 
   const next = tail.slice(endIndex);
