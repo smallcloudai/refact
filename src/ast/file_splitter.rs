@@ -19,17 +19,17 @@ use crate::global_context::GlobalContext;
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::structs::SplitResult;
 
-const DEBUG: bool = false;
-
+pub(crate) const DEBUG: bool = true;
+pub(crate) const INTERSECTION_LINES: usize = 3;
 
 pub struct AstBasedFileSplitter {
     fallback_file_splitter: FileSplitter,
 }
 
 impl AstBasedFileSplitter {
-    pub fn new() -> Self {
+    pub fn new(window_size: usize) -> Self {
         Self {
-            fallback_file_splitter: FileSplitter::new(),
+            fallback_file_splitter: FileSplitter::new(window_size),
         }
     }
 
@@ -95,7 +95,7 @@ impl AstBasedFileSplitter {
                         let chunks_ = get_chunks(&skeleton_line, &symbol.file_path,
                                                  &symbol.symbol_path,
                                                  (symbol.full_range.start_point.row, symbol.full_range.end_point.row),
-                                                 tokenizer.clone(), tokens_limit, 0, true);
+                                                 tokenizer.clone(), tokens_limit, INTERSECTION_LINES, true);
                         chunks.extend(chunks_);
                     }
                 }
@@ -104,7 +104,7 @@ impl AstBasedFileSplitter {
             let (declaration, top_bottom_rows) = formatter.get_declaration_with_comments(&symbol, &guid_to_children, &guid_to_info);
             if !declaration.is_empty() {
                 let chunks_ = get_chunks(&declaration, &symbol.file_path,
-                                         &symbol.symbol_path, top_bottom_rows, tokenizer.clone(), tokens_limit, 0, true);
+                                         &symbol.symbol_path, top_bottom_rows, tokenizer.clone(), tokens_limit, INTERSECTION_LINES, true);
                 chunks.extend(chunks_);
             }
         }

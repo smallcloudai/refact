@@ -239,7 +239,7 @@ async fn vectorize_thread(
             continue;
         }
 
-        let file_splitter = AstBasedFileSplitter::new();
+        let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
         let split_data = file_splitter.vectorization_split(&doc, tokenizer.clone(), gcx_weak.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
             info!("{}", err);
             vec![]

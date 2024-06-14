@@ -32,6 +32,7 @@ fn vecdb_constants(
         endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
         endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
         cooldown_secs: 20,
+        splitter_window_size: caps_locked.embedding_n_ctx / 2,
     }
 }
 

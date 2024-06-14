@@ -15,7 +15,7 @@ mod usages_declarations_merger;
 
 
 mod imports_resolver;
-mod chunk_utils;
+pub(crate) mod chunk_utils;
 
 pub fn count_tokens(
     tokenizer: Arc<StdRwLock<Tokenizer>>,
