@@ -78,7 +78,12 @@ export const ContextFile: React.FC<{
           </Box>
         </HoverCard.Trigger>
         <ScrollArea scrollbars="both" asChild>
-          <HoverCard.Content size="1" maxHeight="50vh" avoidCollisions>
+          <HoverCard.Content
+            size="1"
+            maxHeight="50vh"
+            maxWidth="90vw"
+            avoidCollisions
+          >
             <Markdown startingLineNumber={start}>{text}</Markdown>
           </HoverCard.Content>
         </ScrollArea>

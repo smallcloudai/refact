@@ -1,6 +1,10 @@
 .relative {
   position: relative;
 }
+.markdown {
+  position: relative;
+  max-width: 100%;
+}
 
 .floatButton {
   position: absolute;
