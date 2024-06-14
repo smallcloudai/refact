@@ -84,7 +84,6 @@ class ChatContext(NlpSamplingParams):
     tools: Optional[List[Dict[str, Any]]] = None
     tool_choice: Optional[str] = None
     stream: Optional[bool] = True
-    stop: Optional[Any] = None
     n: int = 1
 
 
