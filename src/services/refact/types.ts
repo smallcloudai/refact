@@ -30,6 +30,14 @@ export type ToolCall = {
   id?: string;
 };
 
+function isToolCall(call: unknown): call is ToolCall {
+  if (!call) return false;
+  if (typeof call !== "object") return false;
+  if (!("function" in call)) return false;
+  if (!("index" in call)) return false;
+  return true;
+}
+
 export type ToolResult = {
   tool_call_id: string;
   finish_reason?: string; // "call_failed" | "call_worked";
@@ -64,6 +72,10 @@ export interface AssistantMessage extends BaseMessage {
   0: "assistant";
   1: string | null;
   2?: ToolCall[] | null;
+}
+
+export interface ToolCallMessage extends AssistantMessage {
+  2: ToolCall[];
 }
 
 export interface SystemMessage extends BaseMessage {
@@ -113,6 +125,16 @@ export function isAssistantMessage(
 
 export function isToolMessage(message: ChatMessage): message is ToolMessage {
   return message[0] === "tool";
+}
+
+export function isToolCallMessage(
+  message: ChatMessage,
+): message is ToolCallMessage {
+  if (!isAssistantMessage(message)) return false;
+  const tool_calls = message[2];
+  if (!tool_calls) return false;
+  // TODO: check browser support of evey
+  return tool_calls.every(isToolCall);
 }
 
 interface BaseDelta {

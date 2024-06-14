@@ -2,7 +2,7 @@ import React from "react";
 import { ContextMemory } from "../../events";
 import { Badge, Flex, Text } from "@radix-ui/themes";
 import { CardStackIcon } from "@radix-ui/react-icons";
-import { HoverCard } from "@radix-ui/themes";
+import { HoverCard, Container } from "@radix-ui/themes";
 
 const Note: React.FC<ContextMemory> = ({ memo_id, memo_text }) => {
   return (
@@ -30,11 +30,13 @@ export const MemoryContent: React.FC<{ items: ContextMemory[] }> = ({
   items,
 }) => {
   return (
-    <Flex gap="2" p="1" wrap="wrap">
-      {items.map((item, index) => {
-        const key = `${item.memo_id}-${index}`;
-        return <Note key={key} {...item} />;
-      })}
-    </Flex>
+    <Container>
+      <Flex gap="2" p="1" wrap="wrap">
+        {items.map((item, index) => {
+          const key = `${item.memo_id}-${index}`;
+          return <Note key={key} {...item} />;
+        })}
+      </Flex>
+    </Container>
   );
 };

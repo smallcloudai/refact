@@ -1,5 +1,5 @@
 import React from "react";
-import { Flex } from "@radix-ui/themes";
+import { Flex, Container } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ChatContextFile } from "../../services/refact";
 import classnames from "classnames";
@@ -25,19 +25,21 @@ export const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({
 }) => {
   if (files.length === 0) return null;
   return (
-    <pre>
-      <Flex gap="1" wrap="nowrap" direction="column" px="2">
-        {files.map((file, index) => {
-          const lineText =
-            file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
-          const key = file.file_name + lineText + index;
-          return (
-            <ContextFile key={key} name={file.file_name + lineText}>
-              {file.file_content}
-            </ContextFile>
-          );
-        })}
-      </Flex>
-    </pre>
+    <Container>
+      <pre style={{ margin: 0 }}>
+        <Flex gap="1" wrap="nowrap" direction="column">
+          {files.map((file, index) => {
+            const lineText =
+              file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
+            const key = file.file_name + lineText + index;
+            return (
+              <ContextFile key={key} name={file.file_name + lineText}>
+                {file.file_content}
+              </ContextFile>
+            );
+          })}
+        </Flex>
+      </pre>
+    </Container>
   );
 };

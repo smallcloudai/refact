@@ -33,6 +33,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
 }) => {
   return (
     <ReactMarkdown
+      className={styles.relative}
       remarkPlugins={[remarkBreaks, remarkMath]}
       rehypePlugins={[rehypeKatex]}
       allowedElements={allowedElements}

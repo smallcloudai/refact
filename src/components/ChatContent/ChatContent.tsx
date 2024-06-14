@@ -1,9 +1,9 @@
-import React, { useEffect, useImperativeHandle } from "react";
+import React from "react";
 import {
   ChatMessages,
-  ToolCall,
-  isAssistantMessage,
+  ToolResult,
   isChatContextFileMessage,
+  isToolMessage,
 } from "../../services/refact";
 import type { MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
@@ -13,8 +13,8 @@ import { Flex, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
-import { CommandLine } from "../CommandLine";
 import { MemoryContent } from "./MemoryContent";
+import { useAutoScroll } from "./useAutoScroll";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
@@ -40,57 +40,18 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       isStreaming,
     } = props;
 
-    const innerRef = React.useRef<HTMLDivElement>(null);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    useImperativeHandle(ref, () => innerRef.current!, []);
+    const { innerRef, handleScroll } = useAutoScroll({ ref, messages });
 
-    const [autoScroll, setAutoScroll] = React.useState(true);
-
-    useEffect(() => {
-      if (autoScroll && innerRef.current?.scrollIntoView) {
-        innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
-      }
-    }, [messages, autoScroll]);
-
-    const handleScroll: React.UIEventHandler<HTMLDivElement> = (event) => {
-      if (!innerRef.current) return;
-      const parent = event.currentTarget.getBoundingClientRect();
-      const { bottom, height, top } = innerRef.current.getBoundingClientRect();
-      const isVisable =
-        top <= parent.top
-          ? parent.top - top <= height
-          : bottom - parent.bottom <= height;
-
-      if (isVisable && !autoScroll) {
-        setAutoScroll(true);
-      } else if (autoScroll) {
-        setAutoScroll(false);
-      }
-    };
-
-    const toolCallsMap = React.useMemo(
-      () =>
-        messages.reduce<Record<string, ToolCall | undefined>>(
-          (acc, message) => {
-            if (isAssistantMessage(message) && message[2]) {
-              const toolCals = message[2].reduce<Record<string, ToolCall>>(
-                (calls, toolCall) => {
-                  if (toolCall.id === undefined) return calls;
-                  return {
-                    ...calls,
-                    [toolCall.id]: toolCall,
-                  };
-                },
-                {},
-              );
-              return { ...acc, ...toolCals };
-            }
-            return acc;
-          },
-          {},
-        ),
-      [messages],
-    );
+    const toolResultsMap = React.useMemo(() => {
+      return messages.reduce<Record<string, ToolResult>>((acc, message) => {
+        if (!isToolMessage(message)) return acc;
+        const result = message[1];
+        return {
+          ...acc,
+          [result.tool_call_id]: result,
+        };
+      }, {});
+    }, [messages]);
 
     return (
       <ScrollArea
@@ -98,7 +59,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
         scrollbars="vertical"
         onScroll={handleScroll}
       >
-        <Flex direction="column" className={styles.content} px="1">
+        <Flex direction="column" className={styles.content} p="2" gap="2">
           {messages.length === 0 && <PlaceHolderText />}
           {messages.map((message, index) => {
             if (isChatContextFileMessage(message)) {
@@ -107,7 +68,6 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
             }
 
             const [role, text] = message;
-            // store tool_calls data
 
             if (role === "user") {
               const handleRetry = (question: string) => {
@@ -126,29 +86,19 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                 </UserInput>
               );
             } else if (role === "assistant") {
-              if (text === null) return null;
               return (
                 <AssistantInput
                   onNewFileClick={onNewFileClick}
                   onPasteClick={onPasteClick}
                   canPaste={canPaste}
                   key={index}
-                >
-                  {text}
-                </AssistantInput>
-              );
-            } else if (role === "tool") {
-              const toolCallData = toolCallsMap[text.tool_call_id];
-              if (toolCallData === undefined) return null;
-              return (
-                <CommandLine
-                  key={`tool-${index}-${text.tool_call_id}`}
-                  command={toolCallData.function.name ?? ""}
-                  args={toolCallData.function.arguments}
-                  result={text.content}
-                  error={text.finish_reason === "call_failed"}
+                  message={text}
+                  toolCalls={message[2]}
+                  toolResults={toolResultsMap}
                 />
               );
+            } else if (role === "tool") {
+              return null;
             } else if (role === "context_memory") {
               return <MemoryContent key={index} items={text} />;
             } else {
