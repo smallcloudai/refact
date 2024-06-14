@@ -249,7 +249,7 @@ describe("Chat", () => {
         chat: {
           id: "bar",
           messages: [
-            ["user", "hello"],
+            ["user", "hello 👋"],
             ["assistant", "hello there"],
             ["user", "how are you?"],
             ["assistant", "fine"],
@@ -262,13 +262,11 @@ describe("Chat", () => {
 
     postMessage(restoreChatAction);
 
-    await waitFor(() => expect(app.queryByText("hello")).not.toBeNull());
+    await waitFor(() => expect(app.queryByText("hello 👋")).not.toBeNull());
 
-    const retryButtons = app.queryAllByText("Retry");
+    const retryButton = app.getByText(/hello 👋/);
 
-    expect(retryButtons.length).toBe(2);
-
-    await user.click(retryButtons[0]);
+    await user.click(retryButton);
 
     const textarea: HTMLTextAreaElement | null =
       app.container.querySelector("textarea");
@@ -284,7 +282,7 @@ describe("Chat", () => {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
           id: "bar",
-          messages: [["user", "hello"]],
+          messages: [["user", "hello 👋"]],
           title: "hello",
           model: "gpt-3.5-turbo",
           attach_file: false,
