@@ -91,7 +91,7 @@ pub fn make_v1_router() -> Router {
         .route("/rewrite-assistant-says-to-at-commands", telemetry_post!(handle_v1_rewrite_assistant_says_to_at_commands))
 
         .route("/code-completion-prompt", telemetry_post!(handle_v1_code_completion_prompt))
-    
+
         .route("/diff-apply", telemetry_post!(handle_v1_diff_apply))
         .route("/diff-state", telemetry_post!(handle_v1_diff_state))
 }
