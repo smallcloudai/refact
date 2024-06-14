@@ -1,15 +1,8 @@
 import React, { useState } from "react";
-import { RightButton } from "../Buttons/Buttons";
-import { Card, Box, Text } from "@radix-ui/themes";
+import { Text, Container, Button } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
 import styles from "./ChatContent.module.css";
-
-export type UserInputProps = {
-  children: string;
-  onRetry: (value: string) => void;
-  disableRetry?: boolean;
-};
 
 function processLines(
   lines: string[],
@@ -17,8 +10,7 @@ function processLines(
 ): JSX.Element[] {
   if (lines.length === 0) return processedLinesMemo;
 
-  const head = lines[0];
-  const tail = lines.slice(1);
+  const [head, ...tail] = lines;
   const nextBackTicksIndex = tail.findIndex((l) => l.startsWith("```"));
   const key = `line-${processedLinesMemo.length + 1}`;
 
@@ -42,55 +34,55 @@ function processLines(
   return processLines(next, processedLines);
 }
 
-const ContentWithMarkdownCodeBlocks: React.FC<{ children: string }> = ({
-  children,
-}) => {
-  const lines = children.split("\n");
-  const elements = processLines(lines);
-  return <Box py="4">{elements}</Box>;
+export type UserInputProps = {
+  children: string;
+  onRetry: (value: string) => void;
+  disableRetry?: boolean;
 };
 
 export const UserInput: React.FC<UserInputProps> = (props) => {
   const [showTextArea, setShowTextArea] = useState(false);
+  const ref = React.useRef<HTMLButtonElement>(null);
   const handleSubmit = (value: string) => {
     props.onRetry(value);
     setShowTextArea(false);
   };
 
-  if (showTextArea) {
-    return (
-      <RetryForm
-        onSubmit={handleSubmit}
-        value={props.children}
-        onClose={() => setShowTextArea(false)}
-      />
-    );
-  }
+  const handleShowTextArea = (value: boolean) => {
+    setShowTextArea(value);
+  };
+
+  const handleEditClick = () => {
+    const selection = window.getSelection();
+    if (selection?.type !== "Range") {
+      setShowTextArea(true);
+    }
+  };
+
+  const lines = props.children.split("\n");
+  const elements = processLines(lines);
 
   return (
-    <Card
-      variant="classic"
-      m="1"
-      style={{
-        wordWrap: "break-word",
-        wordBreak: "break-word",
-        whiteSpace: "break-spaces",
-      }}
-    >
-      <Box style={{ minHeight: "var(--space-5)" }}>
-        <RightButton
-          className={styles.retryButton}
-          title="retry"
-          onClick={() => setShowTextArea(true)}
-          disabled={props.disableRetry}
+    <Container position="relative" pt="4">
+      {showTextArea ? (
+        <RetryForm
+          onSubmit={handleSubmit}
+          value={props.children}
+          onClose={() => handleShowTextArea(false)}
+        />
+      ) : (
+        <Button
+          ref={ref}
+          variant="soft"
+          size="4"
+          onClick={handleEditClick}
+          className={styles.userInput}
+          my="4"
+          asChild
         >
-          Retry
-        </RightButton>
-
-        <ContentWithMarkdownCodeBlocks>
-          {props.children}
-        </ContentWithMarkdownCodeBlocks>
-      </Box>
-    </Card>
+          <div>{elements}</div>
+        </Button>
+      )}
+    </Container>
   );
 };

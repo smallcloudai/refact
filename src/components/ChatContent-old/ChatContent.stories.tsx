@@ -9,7 +9,7 @@ import {
 const noop = () => ({});
 
 const meta = {
-  title: "Chat Content v2",
+  title: "Chat Content Old",
   component: ChatContent,
   args: {
     messages: MARS_ROVER_CHAT.messages,
