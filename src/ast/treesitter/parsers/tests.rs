@@ -254,11 +254,13 @@ pub(crate) fn base_declaration_formatter_test(lang: &LanguageId,
             continue;
         }
         let (line, (top_row, bottom_row)) = formatter.get_declaration_with_comments(&symbol, &guid_to_children, &guid_to_info);
-        decls.insert(Decl {
-            top_row,
-            bottom_row,
-            line,
-        });
+        if !line.is_empty() {
+            decls.insert(Decl {
+                top_row,
+                bottom_row,
+                line,
+            });
+        }
     }
     // use std::fs;
     // let symbols_str_ = serde_json::to_string_pretty(&decls).unwrap();

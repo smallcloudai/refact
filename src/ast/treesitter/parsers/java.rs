@@ -459,7 +459,7 @@ impl JavaParser {
             "local_variable_declaration" => {
                 symbols.extend(self.parse_variable_definition(info, code, candidates));
             }
-            "method_declaration" | "annotation_type_element_declaration" => {
+            "method_declaration" | "annotation_type_element_declaration" | "constructor_declaration" => {
                 symbols.extend(self.parse_function_declaration(info, code, candidates));
             }
             "method_invocation" | "object_creation_expression" => {
