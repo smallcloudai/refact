@@ -1,5 +1,7 @@
 import React from "react";
-import SyntaxHighlighter from "react-syntax-highlighter";
+import SyntaxHighlighter, {
+  type SyntaxHighlighterProps,
+} from "react-syntax-highlighter";
 import { Code, Text } from "@radix-ui/themes";
 import classNames from "classnames";
 import { PreTag, type PreTagProps } from "./Pre";
@@ -15,10 +17,13 @@ export type MarkdownControls = {
   canPaste: boolean;
 };
 
-export const MarkdownCodeBlock: React.FC<
-  React.JSX.IntrinsicElements["code"] &
-    Partial<MarkdownControls> & { node?: Element | undefined }
-> = ({
+type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] &
+  Partial<MarkdownControls> & { node?: Element | undefined } & Pick<
+    SyntaxHighlighterProps,
+    "showLineNumbers" | "startingLineNumber"
+  >;
+
+export const MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   children,
   className,
   color: _color,
@@ -61,6 +66,7 @@ export const MarkdownCodeBlock: React.FC<
     return (
       <Text size="2">
         <SyntaxHighlighter
+          {...rest}
           style={hljsStyle}
           className={className}
           PreTag={(props) => <PreTag {...props} {...preTagProps} />}
