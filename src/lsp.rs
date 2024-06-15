@@ -138,7 +138,7 @@ impl Backend {
                 max_new_tokens: params.parameters.max_new_tokens as usize,
                 temperature: Option::from(params.parameters.temperature),
                 top_p: None,
-                stop: None,
+                stop: vec![],
             },
             model: "".to_string(),
             scratchpad: "".to_string(),

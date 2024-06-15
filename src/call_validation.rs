@@ -26,7 +26,8 @@ pub struct SamplingParameters {
     pub max_new_tokens: usize,
     pub temperature: Option<f32>,
     pub top_p: Option<f32>,
-    pub stop: Option<Vec<String>>,
+    #[serde(default)]
+    pub stop: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

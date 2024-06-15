@@ -102,7 +102,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
             (self.post.messages.clone(), self.post.messages.len())
         };
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, context_size, &self.default_system_message)?;
-        sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
+        sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();
         let mut last_role = "assistant".to_string();

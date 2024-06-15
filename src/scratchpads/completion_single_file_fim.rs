@@ -182,7 +182,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             if !self.post.inputs.multiline {
                 stop_list.push("\n".to_string());  // This doesn't stop hf inference, only whole tokens do
             }
-            sampling_parameters_to_patch.stop = Some(stop_list);
+            sampling_parameters_to_patch.stop = stop_list;
         }
         let mut source = self.post.inputs.sources.get(
                 &self.post.inputs.cursor.file
