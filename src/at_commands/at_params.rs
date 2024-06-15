@@ -14,14 +14,13 @@ impl AtParamSymbolPathQuery {
     }
 }
 
-// TODO: move to at_lookup_symbols
 #[async_trait]
 impl AtParam for AtParamSymbolPathQuery {
     async fn is_value_valid(&self, value: &String, _: &AtCommandsContext) -> bool {
         !value.is_empty()
     }
 
-    async fn complete(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
+    async fn param_completion(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
         if value.is_empty() {
             return vec![];
         }
@@ -45,7 +44,7 @@ impl AtParam for AtParamSymbolPathQuery {
         return sorted_paths;
     }
 
-    fn complete_if_valid(&self) -> bool {
+    fn param_completion_valid(&self) -> bool {
         true
     }
 }
@@ -66,7 +65,7 @@ impl AtParam for AtParamSymbolReferencePathQuery {
         return true;
     }
 
-    async fn complete(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
+    async fn param_completion(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
         let ast = ccx.global_context.read().await.ast_module.clone();
         let index_paths = match &ast {
             Some(ast) => ast.read().await.get_symbols_names(RequestSymbolType::Usage).await.unwrap_or_default(),
@@ -85,7 +84,8 @@ impl AtParam for AtParamSymbolReferencePathQuery {
             .collect::<Vec<String>>();
         return sorted_paths;
     }
-    fn complete_if_valid(&self) -> bool {
+
+    fn param_completion_valid(&self) -> bool {
         true
     }
 }

@@ -75,21 +75,6 @@ impl AtAstDefinition {
     }
 }
 
-pub fn text_on_clip(symbol_path: &String, results: &Vec<ContextFile>) -> String {
-    let file_paths = results.iter().map(|x| x.file_name.clone()).collect::<Vec<_>>();
-    if let Some(path0) = file_paths.get(0) {
-        let path = PathBuf::from(path0);
-        let file_name = path.file_name().unwrap_or(OsStr::new(path0)).to_string_lossy();
-        if file_paths.len() > 1 {
-            format!("`{}` (defined in {} and other files)", symbol_path, file_name)
-        } else {
-            format!("`{}` (defined in {})", symbol_path, file_name)
-        }
-    } else {
-        format!("`{}` (definition not found in AST tree)", symbol_path)
-    }
-}
-
 #[async_trait]
 impl AtCommand for AtAstDefinition {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
@@ -111,10 +96,23 @@ impl AtCommand for AtAstDefinition {
         args.push(symbol.clone());
 
         let ast = ccx.global_context.read().await.ast_module.clone();
+        // TODO: don't produce files from fuzzy search, it's silly.
         let results = run_at_definition(&ast, &symbol.text).await?;
-        let text = text_on_clip(&symbol.text, &results);
-        Ok((vec_context_file_to_context_tools(results), text))
+        let file_paths = results.iter().map(|x| x.file_name.clone()).collect::<Vec<_>>();
+        let text = if let Some(path0) = file_paths.get(0) {
+            let path = PathBuf::from(path0);
+            let file_name = path.file_name().unwrap_or(OsStr::new(path0)).to_string_lossy();
+            if file_paths.len() > 1 {
+                format!("`{}` (defined in {} and other files)", &symbol.text, file_name)
+            } else {
+                format!("`{}` (defined in {})", &symbol.text, file_name)
+            }
+        } else {
+            format!("`{}` (definition not found in AST tree)", &symbol.text)
+        };
+        Ok((results.into_iter().map(|x| ContextEnum::ContextFile(x)).collect::<Vec<ContextEnum>>(), text))
     }
+
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }

@@ -114,16 +114,17 @@ pub async fn run_at_commands(
 pub async fn correct_at_arg(
     ccx: &AtCommandsContext,
     param: Arc<AMutex<dyn AtParam>>,
-    arg: &mut AtCommandMember
+    arg: &mut AtCommandMember,
 ) {
     let param_lock = param.lock().await;
     if param_lock.is_value_valid(&arg.text, ccx).await {
         return;
     }
-    let completion = match param_lock.complete(&arg.text, ccx).await.get(0) {
+    let completion = match param_lock.param_completion(&arg.text, ccx).await.get(0) {
         Some(x) => x.clone(),
         None => {
-            arg.ok = false; arg.reason = Some("incorrect argument; failed to complete".to_string());
+            arg.ok = false;
+            arg.reason = Some("incorrect argument; failed to complete".to_string());
             return;
         }
     };

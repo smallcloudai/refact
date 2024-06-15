@@ -102,7 +102,7 @@ fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
     }
 }
 
-pub async fn parameter_repair_candidates(
+pub async fn atfile_repair_candidates(
     value: &String,
     ccx: &AtCommandsContext,
     fuzzy: bool,
@@ -146,20 +146,20 @@ impl AtParam for AtParamFilePath {
     async fn is_value_valid(&self, _value: &String, _ccx: &AtCommandsContext) -> bool {
         return true;
     }
-    async fn complete(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
-        return parameter_repair_candidates(value, ccx, true).await;
-    }
-    fn complete_if_valid(&self) -> bool {true}
 
+    async fn param_completion(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
+        return atfile_repair_candidates(value, ccx, true).await;
+    }
+
+    fn param_completion_valid(&self) -> bool {true}
 }
 
-pub async fn get_context_file_from_file_text(
+pub async fn construct_context_file_from_file_text(
     ccx: &mut AtCommandsContext,
     candidates: Vec<String>,
     file_path: String,
     from_tool_call: bool,
 ) -> Result<ContextFile, String> {
-
     async fn get_file_text(ccx: &mut AtCommandsContext, file_path: &String, candidates: Vec<String>, from_tool_call: bool) -> Result<String, String> {
         if candidates.is_empty() {
             return if from_tool_call {
@@ -175,7 +175,12 @@ pub async fn get_context_file_from_file_text(
     }
 
     if from_tool_call && candidates.len() > 1 {
-        return Err(format!("file_path: {:?} is ambiguous. You may choose one of: {:?}", file_path, candidates.iter().take(5).collect::<Vec<_>>()));
+        let mut s = format!("path {:?} doesn't exist, call file() again with one of:", file_path);
+        for candidate in candidates.iter() {
+            s.push_str("\n");
+            s.push_str(&candidate);
+        }
+        return Err(s);
     }
 
     let mut file_path_from_c = candidates.get(0).map(|x|x.clone()).unwrap_or(file_path.clone());
@@ -217,23 +222,25 @@ pub async fn get_context_file_from_file_text(
 }
 
 pub async fn execute_at_file(
-    ccx: &mut AtCommandsContext, 
+    ccx: &mut AtCommandsContext,
     file_path: String,
     from_tool_call: bool,
 ) -> Result<ContextFile, String> {
-    let candidates = parameter_repair_candidates(&file_path, ccx, false).await;
-
+    let mut candidates = atfile_repair_candidates(&file_path, ccx, false).await;
     if from_tool_call {
-        return get_context_file_from_file_text(ccx, candidates, file_path, true).await;
+        if candidates.is_empty() {
+            candidates = atfile_repair_candidates(&file_path, ccx, true).await;
+        }
+        return construct_context_file_from_file_text(ccx, candidates, file_path, true).await;
     }
 
-    match get_context_file_from_file_text(ccx, candidates, file_path.clone(), false).await {
+    match construct_context_file_from_file_text(ccx, candidates, file_path.clone(), false).await {
         Ok(x) => { return Ok(x) },
         Err(e) => { info!("non-fuzzy at file has failed to get file_path: {:?}", e); }
     }
 
-    let candidates_fuzzy = parameter_repair_candidates(&file_path, ccx, true).await;
-    get_context_file_from_file_text(ccx, candidates_fuzzy, file_path, false).await
+    let candidates_fuzzy = atfile_repair_candidates(&file_path, ccx, true).await;
+    construct_context_file_from_file_text(ccx, candidates_fuzzy, file_path, false).await
 }
 
 #[async_trait]
@@ -242,12 +249,12 @@ impl AtCommand for AtFile {
         &self.params
     }
     async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
-        let mut file_path = match args.get(0) { 
-            Some(x) => x.clone(), 
-            None => { 
+        let mut file_path = match args.get(0) {
+            Some(x) => x.clone(),
+            None => {
                 cmd.ok = false; cmd.reason = Some("missing file path".to_string());
                 args.clear();
-                return Err("missing file path".to_string()); 
+                return Err("missing file path".to_string());
             }
         };
         correct_at_arg(ccx, self.params[0].clone(), &mut file_path).await;
@@ -257,7 +264,7 @@ impl AtCommand for AtFile {
         if !file_path.ok {
             return Err(format!("file_path is incorrect: {:?}. Reason: {:?}", file_path.text, file_path.reason));
         }
-        
+
         let context_file = execute_at_file(ccx, file_path.text.clone(), false).await?;
         info!("{:?}", context_file);
         let text = text_on_clip(&context_file, false);

@@ -208,13 +208,13 @@ async fn command_completion(
         let is_valid = param_locked.is_value_valid(&arg.value, ccx).await;
         if !is_valid {
             return if arg.focused {
-                (param_locked.complete(&arg.value, ccx).await, can_execute, arg.pos1, arg.pos2)
+                (param_locked.param_completion(&arg.value, ccx).await, can_execute, arg.pos1, arg.pos2)
             } else {
                 (vec![], false, -1, -1)
             }
         }
-        if is_valid && arg.focused && param_locked.complete_if_valid() {
-            return (param_locked.complete(&arg.value, ccx).await, can_execute, arg.pos1, arg.pos2);
+        if is_valid && arg.focused && param_locked.param_completion_valid() {
+            return (param_locked.param_completion(&arg.value, ccx).await, can_execute, arg.pos1, arg.pos2);
         }
     }
 
@@ -226,7 +226,7 @@ async fn command_completion(
     if !q_cmd.focused {
         match cmd.lock().await.params().get(args.len()) {
             Some(param) => {
-                return (param.lock().await.complete(&"".to_string(), ccx).await, false, cursor_abs, cursor_abs);
+                return (param.lock().await.param_completion(&"".to_string(), ccx).await, false, cursor_abs, cursor_abs);
             },
             None => {}
         }

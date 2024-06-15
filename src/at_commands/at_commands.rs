@@ -50,8 +50,8 @@ pub trait AtCommand: Send + Sync {
 #[async_trait]
 pub trait AtParam: Send + Sync {
     async fn is_value_valid(&self, value: &String, ccx: &AtCommandsContext) -> bool;
-    async fn complete(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String>;
-    fn complete_if_valid(&self) -> bool {false}
+    async fn param_completion(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String>;
+    fn param_completion_valid(&self) -> bool {false}
 }
 
 pub async fn at_commands_dict(_gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {
