@@ -31,7 +31,7 @@ pub fn text_on_clip(query: &String, file_path: &String, from_tool_call: bool) ->
     if !from_tool_call {
         return query.clone();
     }
-    return format!("performed vecdb search in file: {}for query: {}", file_path, query);
+    return format!("performed vecdb search in file: {}\nthe result is attached below", file_path);
 }
 
 
@@ -65,17 +65,17 @@ impl AtCommand for AtFileSearch {
         correct_at_arg(ccx, self.params[0].clone(), &mut file_path).await;
         args.clear();
         args.push(file_path.clone());
-        
+
         if !file_path.ok {
             return Err(format!("file_path is incorrect: {:?}. Reason: {:?}", file_path.text, file_path.reason));
         }
-        
+
         // note: skipping file_path which is first argument
         let query = args.iter().skip(1).map(|x|x.text.clone()).collect::<Vec<_>>().join(" ");
-        
+
         let vector_of_context_file = execute_at_file_search(ccx, &file_path.text, &query).await?;
         let text = text_on_clip(&query, &file_path.text, false);
-        
+
         Ok((vec_context_file_to_context_tools(vector_of_context_file), text))
     }
     fn depends_on(&self) -> Vec<String> {

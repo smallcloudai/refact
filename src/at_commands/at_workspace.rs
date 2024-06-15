@@ -15,7 +15,7 @@ pub fn text_on_clip(query: &String, from_tool_call: bool) -> String {
     if !from_tool_call {
         return query.clone();
     }
-    return format!("performed vecdb search for query: {}", query);
+    return format!("performed vecdb search, results below");
 }
 
 
