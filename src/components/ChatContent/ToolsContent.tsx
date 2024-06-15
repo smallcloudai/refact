@@ -98,7 +98,7 @@ export const ToolContent: React.FC<{
         <Collapsible.Trigger asChild>
           <Flex gap="2" align="center">
             <Text weight="light" size="1">
-              Used {toolNames.join(", ")}
+              🔨 {toolNames.join(", ")}
             </Text>
             <Chevron open={open} />
           </Flex>

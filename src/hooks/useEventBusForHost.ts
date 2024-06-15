@@ -7,7 +7,7 @@ import {
   isDetailMessage,
   getPrompts,
   formatMessagesForLsp,
-  LspChatMessage,
+  // LspChatMessage,
 } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
@@ -37,7 +37,8 @@ export function useEventBusForHost() {
   // this needs to be a ref because it is mutated in a useEffect
   const controller = useRef(new AbortController());
 
-  const [takeingNotes, setTakingNotes] = useState<boolean>(false);
+  const [takeingNotes] = useState<boolean>(false);
+  // const [takeingNotes, setTakingNotes] = useState<boolean>(false);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -67,49 +68,47 @@ export function useEventBusForHost() {
 
       if (isTakeNotesFromChat(event.data)) {
         // TAKE_NOTES
-        setTakingNotes(true);
-        const chatId: string = event.data.payload.id;
-        const { messages, model } = event.data.payload;
-        // console.log({ messages });
-        const messagesForLsp = formatMessagesForLsp(messages);
-        sendChat({
-          messages: messagesForLsp,
-          model,
-          stream: false,
-          lspUrl,
-          takeNote: true,
-        })
-          .then(async (res) => {
-            const json = (await res.json()) as {
-              choices: { message: LspChatMessage }[];
-              deterministic_messages: LspChatMessage[];
-              model: string;
-            };
-
-            const choices = json.choices.map((choice) => choice.message);
-
-            const messagesAndNotes = [
-              ...messagesForLsp.slice(0, -1), // remove duplicated user message
-              ...json.deterministic_messages,
-              ...choices,
-            ];
-
-            return sendChat({
-              messages: messagesAndNotes,
-              model: json.model,
-              stream: false,
-              lspUrl,
-              takeNote: true,
-              onlyDeterministicMessages: true,
-              chatId: chatId,
-            });
-          })
-          .then((res) => res.json())
-          .catch((err) => {
-            // eslint-disable-next-line no-console
-            console.error(err);
-          })
-          .finally(() => setTakingNotes(false));
+        // disable memory for the stable release
+        // setTakingNotes(true);
+        // const chatId: string = event.data.payload.id;
+        // const { messages, model } = event.data.payload;
+        // // console.log({ messages });
+        // const messagesForLsp = formatMessagesForLsp(messages);
+        // sendChat({
+        //   messages: messagesForLsp,
+        //   model,
+        //   stream: false,
+        //   lspUrl,
+        //   takeNote: true,
+        // })
+        //   .then(async (res) => {
+        //     const json = (await res.json()) as {
+        //       choices: { message: LspChatMessage }[];
+        //       deterministic_messages: LspChatMessage[];
+        //       model: string;
+        //     };
+        //     const choices = json.choices.map((choice) => choice.message);
+        //     const messagesAndNotes = [
+        //       ...messagesForLsp.slice(0, -1), // remove duplicated user message
+        //       ...json.deterministic_messages,
+        //       ...choices,
+        //     ];
+        //     return sendChat({
+        //       messages: messagesAndNotes,
+        //       model: model,
+        //       stream: false,
+        //       lspUrl,
+        //       takeNote: true,
+        //       onlyDeterministicMessages: true,
+        //       chatId: chatId,
+        //     });
+        //   })
+        //   .then((res) => res.json())
+        //   .catch((err) => {
+        //     // eslint-disable-next-line no-console
+        //     console.error(err);
+        //   })
+        //   .finally(() => setTakingNotes(false));
       }
 
       if (isSaveChatFromChat(event.data)) {
