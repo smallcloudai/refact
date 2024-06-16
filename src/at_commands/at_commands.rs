@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::at_tools::at_tools::AtTool;
+use crate::at_tools::tools::{AtTool, at_tools_merged};
 use crate::call_validation::{ContextFile, ContextEnum};
 use crate::global_context::GlobalContext;
 
@@ -32,7 +32,7 @@ impl AtCommandsContext {
         AtCommandsContext {
             global_context: global_context.clone(),
             at_commands: at_commands_dict(global_context.clone()).await,
-            at_tools: crate::at_tools::at_tools::at_tools_merged(global_context.clone()).await,
+            at_tools: at_tools_merged(global_context.clone()).await,
             top_n,
             is_preview
         }

@@ -6,7 +6,7 @@ use crate::call_validation::ChatMessage;
 use std::io::Write;
 use std::sync::Arc;
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
-use crate::at_tools::at_tools::{AtParamDict, make_openai_tool_value};
+use crate::at_tools::tools::{AtParamDict, make_openai_tool_value};
 
 
 #[derive(Deserialize)]
@@ -170,7 +170,7 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
     replace_variables_in_messages(&mut user_config, &variables);
     replace_variables_in_system_prompts(&mut work_config, &variables);
     replace_variables_in_system_prompts(&mut user_config, &variables);
-    
+
     let caps_config_deserialize: ToolboxConfigDeserialize = serde_yaml::from_str(caps_yaml)
         .map_err(|e| format!("Error parsing default ToolboxConfig: {}\n{}", e, caps_yaml))?;
     let caps_config = ToolboxConfig {
@@ -178,30 +178,30 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
         toolbox_commands: caps_config_deserialize.toolbox_commands,
         tools: vec![],
     };
-    
+
     work_config.system_prompts.extend(caps_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.toolbox_commands.extend(caps_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
 
     work_config.system_prompts.extend(user_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.toolbox_commands.extend(user_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.tools.extend(user_config.tools.iter().map(|x|x.clone()));
-    
+
     if !caps_default_system_prompt.is_empty() && work_config.system_prompts.get(caps_default_system_prompt).is_some() {
         work_config.system_prompts.insert("default".to_string(), work_config.system_prompts.get(caps_default_system_prompt).map(|x|x.clone()).unwrap());
     }
-    
+
     Ok(work_config)
 }
 
 pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolboxConfig, String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let caps = try_load_caps_quickly_if_not_present(gcx, 0).await.map_err(|e|format!("error loading caps: {e}"))?;
-    
+
     let (caps_config_text, caps_default_system_prompt) = {
         let caps_locked = caps.read().unwrap();
         (caps_locked.customization.clone(), caps_locked.code_chat_default_system_prompt.clone())
     };
-    
+
     let user_config_path = cache_dir.join("customization.yaml");
 
     if !user_config_path.exists() {

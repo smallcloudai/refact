@@ -12,7 +12,7 @@ pub async fn handle_v1_tools_available(
     _: hyper::body::Bytes,
 )  -> axum::response::Result<Response<Body>, ScratchError> {
     let mut result: Vec<serde_json::Value> = vec![];
-    let tools_compiled_in = crate::at_tools::at_tools::at_tools_compiled_in_only();
+    let tools_compiled_in = crate::at_tools::tools::at_tools_compiled_in_only();
     if tools_compiled_in.is_err() {
         tracing::error!("Error loading tools: {:?}", tools_compiled_in.err().unwrap());
     } else {

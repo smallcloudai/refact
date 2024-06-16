@@ -1,5 +1,5 @@
 mod att_ast_definition;
-pub mod at_tools;
+pub mod tools;
 pub mod execute_att;
 mod att_workspace;
 mod att_file;
