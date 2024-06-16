@@ -12,10 +12,6 @@ use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 
 
-pub fn text_on_clip(symbol_path: &String, refs_n: usize) -> String {
-    format!("`{}` (found {} usages)", symbol_path, refs_n)
-}
-
 async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
     // info!("results2message {:?}", result);
     let mut symbols = vec![];
@@ -91,7 +87,8 @@ impl AtCommand for AtAstReference {
 
         let (query_result, refs_n) = execute_at_ast_reference(ccx, &symbol.text).await?;
         let results = vec_context_file_to_context_tools(query_result);
-        let text = text_on_clip(&symbol.text, refs_n);
+        let text = format!("`{}` (found {} usages)", symbol.text, refs_n);
+
         Ok((results, text))
     }
     fn depends_on(&self) -> Vec<String> {
