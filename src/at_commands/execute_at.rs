@@ -20,11 +20,12 @@ pub async fn run_at_commands(
     original_messages: &Vec<ChatMessage>,
     top_n: usize,
     stream_back_to_user: &mut HasRagResults,
-) -> (Vec<ChatMessage>, usize) {
+) -> (Vec<ChatMessage>, usize, bool) {
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     info!("reserve_for_context {} tokens", reserve_for_context);
 
     let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, false).await;
+    let mut any_context_produced = false;
 
     let mut user_msg_starts = original_messages.len();
     let mut messages_with_at: usize = 0;
@@ -85,6 +86,7 @@ pub async fn run_at_commands(
         ).await;
         if post_processed.len() > 0 {
             // post-processed files after all custom messages
+            any_context_produced = true;
             let json_vec = post_processed.iter().map(|p| {
                 json!(p)
             }).collect::<Vec<Value>>();
@@ -108,7 +110,7 @@ pub async fn run_at_commands(
             }
         }
     }
-    return (rebuilt_messages.clone(), user_msg_starts)
+    return (rebuilt_messages.clone(), user_msg_starts, any_context_produced)
 }
 
 pub async fn correct_at_arg(

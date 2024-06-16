@@ -18,7 +18,6 @@ pub trait ScratchpadAbstract: Send {
         &mut self,
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
-        tools_mb: Option<Vec<serde_json::Value>>,
     ) -> Result<String, String>;
 
     fn response_n_choices(   // Not streaming, convert what model says (choices) to final result

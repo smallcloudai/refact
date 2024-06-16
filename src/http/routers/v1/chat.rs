@@ -92,7 +92,6 @@ async fn chat(
     let prompt = scratchpad.prompt(
         n_ctx,
         &mut chat_post.parameters,
-        chat_post.tools,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;

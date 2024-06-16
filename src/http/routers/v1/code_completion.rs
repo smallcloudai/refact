@@ -101,7 +101,6 @@ pub async fn handle_v1_code_completion(
     let prompt = scratchpad.prompt(
         n_ctx,
         &mut code_completion_post.parameters,
-        None,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
@@ -161,7 +160,7 @@ pub async fn handle_v1_code_completion_prompt(
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
 
-    let prompt = scratchpad.prompt(n_ctx, &mut post.parameters, None).await.map_err(|e|
+    let prompt = scratchpad.prompt(n_ctx, &mut post.parameters).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
 

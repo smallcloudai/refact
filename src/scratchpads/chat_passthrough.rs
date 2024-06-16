@@ -91,14 +91,13 @@ impl ScratchpadAbstract for ChatPassthrough {
         &mut self,
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
-        tools_mb: Option<Vec<serde_json::Value>>,
     ) -> Result<String, String> {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
         let top_n: usize = 7;
-        let (messages, undroppable_msg_n) = if self.allow_at {
+        let (messages, undroppable_msg_n, any_context_produced) = if self.allow_at {
             run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &self.post.messages, top_n, &mut self.has_rag_results).await
         } else {
-            (self.post.messages.clone(), self.post.messages.len())
+            (self.post.messages.clone(), self.post.messages.len(), false)
         };
         let (messages, _tools_success) = run_tools(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &messages, top_n, &mut self.has_rag_results).await;
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message).unwrap_or_else(|e| {
@@ -146,8 +145,8 @@ impl ScratchpadAbstract for ChatPassthrough {
         }
         let big_json = serde_json::json!({
             "messages": filtered_msgs,
-            "tools": if let Some(tools) = tools_mb {
-                if tools.is_empty() {
+            "tools": if let Some(tools) = &self.post.tools {
+                if tools.is_empty() || any_context_produced {
                     None
                 } else {
                     Some(tools)
