@@ -1,7 +1,5 @@
-class Calculator
-  def __init__(self, name)
-    ...
-  def add(self, x, y)
-    ...
-  def subtract(self, x, y)
-    ...
+[
+  {
+    "line": "class Calculator\n  def __init__(self, name)\n    ...\n  def add(self, x, y)\n    ...\n  def subtract(self, x, y)\n    ...\n"
+  }
+]

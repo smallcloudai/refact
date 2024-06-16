@@ -784,15 +784,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 262,
+          "end_byte": 269,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 9,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 9,
+            "column": 11
           }
         },
         "definition_range": {
@@ -844,15 +844,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 275,
+          "end_byte": 282,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 10,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 10,
+            "column": 11
           }
         },
         "definition_range": {
@@ -1757,15 +1757,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 881,
+          "end_byte": 887,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 40,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 40,
+            "column": 10
           }
         },
         "definition_range": {
@@ -1817,15 +1817,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 893,
+          "end_byte": 899,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 41,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 41,
+            "column": 10
           }
         },
         "definition_range": {

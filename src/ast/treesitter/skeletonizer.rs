@@ -16,7 +16,7 @@ pub trait SkeletonFormatter {
                      guid_to_info: &HashMap<Uuid, &SymbolInformation>) -> String {
         let mut res_line = symbol.get_declaration_content_blocked().unwrap()
             .split("\n")
-            .map(|x| x.trim_start().to_string())
+            .map(|x| x.trim_start().trim_end().to_string())
             .collect::<Vec<_>>();
         let children = guid_to_children.get(&symbol.guid).unwrap();
         let last: &mut String = res_line.last_mut().unwrap();
@@ -24,19 +24,19 @@ pub trait SkeletonFormatter {
             last.push_str(" { ... }");
             return res_line.join("\n");
         }
-        last.push_str("{");
+        last.push_str(" {");
         for child in children {
             let child_symbol = guid_to_info.get(&child).unwrap();
             match child_symbol.symbol_type {
                 SymbolType::FunctionDeclaration | SymbolType::ClassFieldDeclaration => {
                     let mut content = child_symbol.get_declaration_content_blocked().unwrap()
                         .split("\n")
-                        .map(|x| x.trim_start().to_string())
+                        .map(|x| x.trim_start().trim_end().to_string())
                         .collect::<Vec<_>>();
                     let last_: &mut String = content.last_mut().unwrap();
-                    if !last_.ends_with(";") {
+                    if !last_.ends_with(";") && !last_.ends_with("}") {
                         if child_symbol.symbol_type == SymbolType::FunctionDeclaration {
-                            last_.push_str("{ ... }");
+                            last_.push_str(" { ... }");
                         } else if child_symbol.symbol_type == SymbolType::ClassFieldDeclaration {
                             last_.push_str(",");
                         }
@@ -81,12 +81,37 @@ pub trait SkeletonFormatter {
         let mut all_top_syms = guid_to_info.values().filter(|info| info.full_range.start_point.row < top_row).collect::<Vec<_>>();
         // reverse sort
         all_top_syms.sort_by(|a, b| b.full_range.start_point.row.cmp(&a.full_range.start_point.row));
-        for sym in all_top_syms {
+        
+        let mut need_syms: Vec<&&SymbolInformation> = vec![];
+        {
+            for idx in 0..all_top_syms.len() {
+                let sym = all_top_syms[idx];
+                if sym.symbol_type != SymbolType::CommentDefinition {
+                    break;
+                }
+                let all_sym_on_this_line = all_top_syms.iter()
+                    .filter(|info| 
+                        info.full_range.start_point.row == sym.full_range.start_point.row ||
+                            info.full_range.end_point.row == sym.full_range.start_point.row).collect::<Vec<_>>();
+                
+                if all_sym_on_this_line.iter().all(|info| info.symbol_type == SymbolType::CommentDefinition) {
+                    need_syms.push(sym);
+                } else {
+                    break
+                }
+            }
+        }
+        
+        
+        for sym in need_syms {
             if sym.symbol_type != SymbolType::CommentDefinition {
                 break;
             }
             top_row = sym.full_range.start_point.row;
-            let content = sym.get_content_blocked().unwrap();
+            let mut content = sym.get_content_blocked().unwrap();
+            if content.ends_with("\n") {
+                content.pop();
+            }
             let lines = content.split("\n").collect::<Vec<_>>();
             let lines = lines.iter()
                 .map(|x| x.to_string())
@@ -96,12 +121,15 @@ pub trait SkeletonFormatter {
         
         let mut bottom_row = symbol.full_range.start_point.row;
         if symbol.symbol_type == SymbolType::StructDeclaration {
+            if res_line.is_empty() {
+                return ("".to_string(), (top_row, bottom_row));
+            }
             let mut content = symbol.get_declaration_content_blocked().unwrap().split("\n")
-                .map(|x| x.to_string())
+                .map(|x| x.trim_end().to_string())
                 .collect::<Vec<_>>();
             if let Some(last) = content.last_mut() {
                 if !last.ends_with(";") {
-                    last.push_str("{ ... }");
+                    last.push_str(" { ... }");
                 }
             }
             res_line.extend(content.into_iter());

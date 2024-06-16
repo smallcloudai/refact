@@ -1,0 +1,22 @@
+[
+  {
+    "top_row": 0,
+    "bottom_row": 1,
+    "line": "/// This is a simple struct representing a Point in 2D space\npub struct Point { ... }"
+  },
+  {
+    "top_row": 23,
+    "bottom_row": 26,
+    "line": "/// Returns the x coordinate of the Point\npub fn get_x(&self) -> f64 {\n    self.x\n}"
+  },
+  {
+    "top_row": 7,
+    "bottom_row": 21,
+    "line": "/// Creates a new Point with the given x and y coordinates\n///\n/// # Arguments\n///\n/// * `x` - The x coordinate\n/// * `y` - The y coordinate\n///\n/// # Example\n///\n/// ```\n/// let p = Point::new(3.0, 4.0);\n/// ```\npub fn new(x: f64, y: f64) -> Point {\n    Point { x, y }\n}"
+  },
+  {
+    "top_row": 28,
+    "bottom_row": 31,
+    "line": "/// Returns the y coordinate of the Point\npub fn get_y(&self) -> f64 {\n    self.y\n}"
+  }
+]

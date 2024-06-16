@@ -175,8 +175,14 @@ impl SymbolInformation {
     pub fn get_content_blocked(&self) -> io::Result<String> {
         let content = fs::read_to_string(&self.file_path)?;
         let lines: Vec<&str> = content.lines().collect();
+        let mut end_row = self.full_range.end_point.row + 1;
+        let raw_content = content.slice(self.full_range.start_byte..self.full_range.end_byte).to_string();
+        if raw_content.ends_with("\n") {
+            end_row -= 1;
+        }
+        
         let mut start_row = min(self.full_range.start_point.row, lines.len());
-        let end_row = min(self.full_range.end_point.row + 1, lines.len());
+        let end_row = min(end_row, lines.len());
         start_row = min(start_row, end_row);
         let selected_text = lines[start_row..end_row].join("\n");
         Ok(selected_text)

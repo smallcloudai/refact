@@ -123,12 +123,6 @@ impl CppParser {
 
         symbols.extend(self.find_error_usages(&info.node, code, &info.ast_fields.file_path, &decl.ast_fields.guid));
 
-        if let Some(name) = info.node.child_by_field_name("name") {
-            decl.ast_fields.name = code.slice(name.byte_range()).to_string();
-        } else {
-            decl.ast_fields.name = format!("anon-{}", decl.ast_fields.guid);
-        }
-
         let mut template_parent_node = info.node.parent();
         while let Some(parent) = template_parent_node {
             match parent.kind() {
@@ -141,6 +135,18 @@ impl CppParser {
             template_parent_node = parent.parent();
         }
 
+        if let Some(name) = info.node.child_by_field_name("name") {
+            decl.ast_fields.name = code.slice(name.byte_range()).to_string();
+            decl.ast_fields.declaration_range = Range {
+                start_byte: decl.ast_fields.full_range.start_byte,
+                end_byte: name.end_byte(),
+                start_point: decl.ast_fields.full_range.start_point,
+                end_point: name.end_position()
+            };
+        } else {
+            decl.ast_fields.name = format!("anon-{}", decl.ast_fields.guid);
+        }
+        
         if let Some(template_parent) = template_parent_node {
             symbols.extend(self.find_error_usages(&template_parent, code, &info.ast_fields.file_path,
                                                   &decl.ast_fields.guid));
@@ -171,22 +177,23 @@ impl CppParser {
                         decl.inherited_types.push(base_class);
                     }
                 }
+                decl.ast_fields.declaration_range = Range {
+                    start_byte: decl.ast_fields.full_range.start_byte,
+                    end_byte: base_class_clause.end_byte(),
+                    start_point: decl.ast_fields.full_range.start_point,
+                    end_point: base_class_clause.end_position()
+                };
             }
         }
         if let Some(body) = info.node.child_by_field_name("body") {
-            decl.ast_fields.declaration_range = body.range();
-            decl.ast_fields.definition_range = Range {
-                start_byte: decl.ast_fields.full_range.start_byte,
-                end_byte: decl.ast_fields.declaration_range.start_byte,
-                start_point: decl.ast_fields.full_range.start_point,
-                end_point: decl.ast_fields.declaration_range.start_point,
-            };
+            decl.ast_fields.definition_range = body.range();
             candidates.push_back(CandidateInfo {
                 ast_fields: decl.ast_fields.clone(),
                 node: body,
                 parent_guid: decl.ast_fields.guid.clone(),
             })
         }
+        
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
@@ -293,6 +300,7 @@ impl CppParser {
             decl.ast_fields.file_path = info.ast_fields.file_path.clone();
             decl.ast_fields.is_error = info.ast_fields.is_error;
             decl.ast_fields.full_range = info.node.range();
+            decl.ast_fields.declaration_range = info.node.range();
             decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
             decl.ast_fields.guid = get_guid();
             decl.ast_fields.name = name_l;
@@ -536,14 +544,7 @@ impl CppParser {
                         &_ => {}
                     }
                 }
-
-                decl.ast_fields.declaration_range = Range {
-                    start_byte: decl.ast_fields.full_range.start_byte,
-                    end_byte: parameters.end_byte(),
-                    start_point: decl.ast_fields.full_range.start_point,
-                    end_point: parameters.end_position(),
-                };
-                decl.ast_fields.definition_range = decl.ast_fields.declaration_range;
+                
             }
         }
 
@@ -553,18 +554,28 @@ impl CppParser {
 
         if let Some(body_node) = info.node.child_by_field_name("body") {
             decl.ast_fields.definition_range = body_node.range();
-            decl.ast_fields.declaration_range = Range {
-                start_byte: decl.ast_fields.full_range.start_byte,
-                end_byte: decl.ast_fields.definition_range.start_byte,
-                start_point: decl.ast_fields.full_range.start_point,
-                end_point: decl.ast_fields.definition_range.start_point,
-            };
             candidates.push_back(CandidateInfo {
                 ast_fields: decl.ast_fields.clone(),
                 node: body_node,
                 parent_guid: decl.ast_fields.guid.clone(),
             });
         }
+        
+        for i in 0..info.node.child_count() {
+            let child = info.node.child(i).unwrap();
+            if let Some(body) = info.node.field_name_for_child(i as u32) {
+                if body == "body" {
+                    break;
+                }
+            }
+            decl.ast_fields.declaration_range = Range {
+                start_byte: decl.ast_fields.full_range.start_byte,
+                end_byte: child.end_byte(),
+                start_point: decl.ast_fields.full_range.start_point,
+                end_point: child.end_position(),
+            };
+        }
+        
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }

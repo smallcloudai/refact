@@ -200,6 +200,8 @@ impl RustParser {
 
         decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
+        decl.ast_fields.declaration_range = parent.range();
+        decl.ast_fields.definition_range = parent.range();
         decl.ast_fields.file_path = path.clone();
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
@@ -255,6 +257,7 @@ impl RustParser {
                                 let type_node = field_declaration_node.child_by_field_name("type").unwrap();
                                 let mut decl_ = ClassFieldDeclaration::default();
                                 decl_.ast_fields.full_range = field_declaration_node.range();
+                                decl_.ast_fields.declaration_range = field_declaration_node.range();
                                 decl_.ast_fields.file_path = path.clone();
                                 decl_.ast_fields.parent_guid = Some(decl.ast_fields.guid.clone());
                                 decl_.ast_fields.guid = get_guid();

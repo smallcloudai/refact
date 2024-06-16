@@ -2,18 +2,19 @@
 mod tests {
     use std::fs::canonicalize;
     use std::path::PathBuf;
-    use crate::ast::treesitter::language_id::LanguageId;
 
+    use crate::ast::treesitter::language_id::LanguageId;
     use crate::ast::treesitter::parsers::AstLanguageParser;
     use crate::ast::treesitter::parsers::java::JavaParser;
     use crate::ast::treesitter::parsers::tests::{base_declaration_formatter_test, base_parser_test, base_skeletonizer_test};
 
     const MAIN_JAVA_CODE: &str = include_str!("cases/java/main.java");
     const MAIN_JAVA_SYMBOLS: &str = include_str!("cases/java/main.java.json");
-    
+
     const PERSON_JAVA_CODE: &str = include_str!("cases/java/person.java");
     const PERSON_JAVA_SKELETON: &str = include_str!("cases/java/person.java.skeleton");
     const PERSON_JAVA_DECLS: &str = include_str!("cases/java/person.java.decl_json");
+
     #[test]
     fn parser_test() {
         let mut parser: Box<dyn AstLanguageParser> = Box::new(JavaParser::new().expect("JavaParser::new"));

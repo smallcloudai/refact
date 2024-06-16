@@ -1,0 +1,22 @@
+[
+  {
+    "top_row": 22,
+    "bottom_row": 28,
+    "line": "/**\n * @brief Calculate the perimeter of the circle\n * @return The perimeter of the circle\n */\ndouble calculatePerimeter() override {\n    return 2 * 3.14159 * radius;\n}"
+  },
+  {
+    "top_row": 0,
+    "bottom_row": 3,
+    "line": "/**\n * @brief A class representing a circle, inheriting from Shape\n */\nclass Circle : public Shape { ... }"
+  },
+  {
+    "top_row": 14,
+    "bottom_row": 20,
+    "line": "/**\n * @brief Calculate the area of the circle\n * @return The area of the circle\n */\ndouble calculateArea() override {\n    return 3.14159 * radius * radius;\n}"
+  },
+  {
+    "top_row": 8,
+    "bottom_row": 12,
+    "line": "/**\n * @brief Constructor for Circle\n * @param r The radius of the circle\n */\nCircle(double r) : radius(r) {}"
+  }
+]

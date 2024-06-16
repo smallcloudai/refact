@@ -1,13 +1,5 @@
-public class Person {
-  private String name;
-  private int age;
-  public Person(String name, int age) { ... }
-  public abstract void a();
-  public String getName() { ... }
-  public void setName(String name) { ... }
-  public int getAge() { ... }
-  public void setAge(int age) { ... }
-  @Override
-  public String toString() { ... }
-  public static void main(String[] args) { ... }
-}
+[
+  {
+    "line": "public class Person {\n  private String name;\n  private int age;\n  public Person(String name, int age) { ... }\n  public abstract void a();\n  public String getName() { ... }\n  public void setName(String name) { ... }\n  public int getAge() { ... }\n  public void setAge(int age) { ... }\n  @Override\n  public String toString() { ... }\n  public static void main(String[] args) { ... }\n}"
+  }
+]

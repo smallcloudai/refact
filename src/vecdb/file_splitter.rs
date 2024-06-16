@@ -2,12 +2,11 @@ use std::io::Write;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 
-use md5;
 use tokenizers::Tokenizer;
 
 use crate::ast::chunk_utils::get_chunks;
 use crate::ast::count_tokens;
-use crate::ast::file_splitter::INTERSECTION_LINES;
+use crate::ast::file_splitter::LINES_OVERLAP;
 use crate::files_in_workspace::Document;
 use crate::vecdb::structs::SplitResult;
 
@@ -57,7 +56,7 @@ impl FileSplitter {
                 let _line = lines_accumulator.join("\n");
                 let chunks_ = get_chunks(&_line, &path, &"".to_string(),
                                          (top_row as usize, line_idx - 1),
-                                         tokenizer.clone(), tokens_limit, INTERSECTION_LINES, false);
+                                         tokenizer.clone(), tokens_limit, LINES_OVERLAP, false);
                 chunks.extend(chunks_);
                 lines_accumulator.clear();
                 token_n_accumulator = 0;
@@ -71,7 +70,7 @@ impl FileSplitter {
             let _line = lines_accumulator.join("\n");
             let chunks_ = get_chunks(&_line, &path, &"".to_string(),
                                      (top_row as usize, lines.len() - 1),
-                                     tokenizer.clone(), tokens_limit, INTERSECTION_LINES, false);
+                                     tokenizer.clone(), tokens_limit, LINES_OVERLAP, false);
             chunks.extend(chunks_);
         }
 

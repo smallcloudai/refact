@@ -1,0 +1,5 @@
+[
+  {
+    "line": "class Person {\n  private name: string,\n  private age: number,\n  constructor(name: string, age: number) { ... }\n  getName(): string { ... }\n  getAge(): number { ... }\n  setName(name: string): void { ... }\n  setAge(age: number): void { ... }\n}"
+  }
+]
