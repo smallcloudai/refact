@@ -23,17 +23,13 @@ const DEBUG: bool = false;
 
 
 pub struct AstBasedFileSplitter {
-    // soft_window: usize,
-    // hard_window: usize,
     fallback_file_splitter: FileSplitter,
 }
 
 impl AstBasedFileSplitter {
-    pub fn new(window_size: usize, soft_limit: usize) -> Self {
+    pub fn new() -> Self {
         Self {
-            // soft_window: window_size,
-            // hard_window: window_size + soft_limit,
-            fallback_file_splitter: FileSplitter::new(window_size, soft_limit),
+            fallback_file_splitter: FileSplitter::new(),
         }
     }
 

@@ -12,15 +12,12 @@ fn str_hash(s: &String) -> String {
 }
 
 pub struct FileSplitter {
-    soft_window: usize,
-    hard_window: usize,
 }
 
+
 impl FileSplitter {
-    pub fn new(window_size: usize, soft_limit: usize) -> Self {
+    pub fn new() -> Self {
         Self {
-            soft_window: window_size,
-            hard_window: window_size + soft_limit,
         }
     }
 

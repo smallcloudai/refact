@@ -9,7 +9,6 @@ use tokio::sync::{Mutex as AMutex, RwLock};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 use tracing::{info, warn};
-use crate::ast::ast_index_service::AstEvent;
 
 use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::get_embedding_with_retry;
@@ -240,7 +239,7 @@ async fn vectorize_thread(
             continue;
         }
 
-        let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size, constants.splitter_soft_limit);
+        let file_splitter = AstBasedFileSplitter::new();
         let split_data = file_splitter.vectorization_split(&doc, tokenizer.clone(), gcx_weak.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
             info!("{}", err);
             vec![]

@@ -28,8 +28,6 @@ pub struct VecdbConstants {
     pub endpoint_embeddings_template: String,
     pub endpoint_embeddings_style: String,
     pub cooldown_secs: u64,
-    pub splitter_window_size: usize,
-    pub splitter_soft_limit: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
