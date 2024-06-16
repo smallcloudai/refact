@@ -797,7 +797,6 @@ impl TSParser {
 
         #[cfg(test)]
         {
-            use itertools::Itertools;
             for symbol in symbols.iter_mut() {
                 let mut sym = symbol.write();
                 sym.fields_mut().childs_guid = sym.fields_mut().childs_guid.iter()
