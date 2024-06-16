@@ -1,6 +1,5 @@
 use std::collections::{HashMap, VecDeque};
 
-use itertools::Itertools;
 use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
@@ -54,6 +53,25 @@ pub trait SkeletonFormatter {
         res_line.join("\n")
     }
 
+    fn preprocess_content(&self, content: Vec<String>) -> Vec<String> {
+        let lines = content.iter()
+            .map(|x| x.replace("\r", "")
+                .replace("\t", "    ").to_string())
+            .collect::<Vec<_>>();
+        let intent_n = content.iter().map(|x| {
+            if x.is_empty() {
+                return usize::MAX;
+            } else { 
+                x.len() - x.trim_start().len()
+            }
+        }).min().unwrap();
+        let intent = " ".repeat(intent_n).to_string();
+
+        lines.iter().map(|x| if x.starts_with(&intent) {
+            x[intent_n..x.len()].to_string()
+        } else {x.to_string()}).collect::<Vec<_>>()
+    }
+
     fn get_declaration_with_comments(&self,
                                      symbol: &SymbolInformation,
                                      _guid_to_children: &HashMap<Uuid, Vec<Uuid>>,
@@ -71,24 +89,32 @@ pub trait SkeletonFormatter {
             let content = sym.get_content_blocked().unwrap();
             let lines = content.split("\n").collect::<Vec<_>>();
             let lines = lines.iter()
-                .map(|x| x.trim_start().to_string())
+                .map(|x| x.to_string())
                 .collect::<Vec<_>>();
             lines.into_iter().rev().for_each(|x| res_line.push_front(x));
-            // res_line.extend(lines);
         }
-        if res_line.is_empty() {
-            return ("".to_string(), (0, 0));
-        }
-        let content = symbol.get_declaration_content_blocked().unwrap().split("\n")
-            .map(|x| x.trim_start().to_string())
-            .collect::<Vec<_>>();
-        let mut declaration = format!("{}\n{}", res_line.into_iter().join("\n"), content.join("\n"));
-        if vec![SymbolType::FunctionDeclaration, SymbolType::StructDeclaration].contains(&symbol.symbol_type) {
-            if !declaration.ends_with(";") {
-                declaration.push_str("{ ... }");
+        
+        let mut bottom_row = symbol.full_range.start_point.row;
+        if symbol.symbol_type == SymbolType::StructDeclaration {
+            let mut content = symbol.get_declaration_content_blocked().unwrap().split("\n")
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>();
+            if let Some(last) = content.last_mut() {
+                if !last.ends_with(";") {
+                    last.push_str("{ ... }");
+                }
             }
+            res_line.extend(content.into_iter());
+        } else if symbol.symbol_type == SymbolType::FunctionDeclaration {
+            let content = symbol.get_content_blocked().unwrap().split("\n")
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>();
+            res_line.extend(content.into_iter());
+            bottom_row = symbol.full_range.end_point.row;
         }
-        (declaration, (top_row, symbol.full_range.start_point.row))
+        let res_line = self.preprocess_content(Vec::from_iter(res_line.into_iter()));
+        let declaration = res_line.join("\n");
+        (declaration, (top_row, bottom_row))
     }
 }
 

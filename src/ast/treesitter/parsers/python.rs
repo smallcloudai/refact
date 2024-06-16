@@ -381,9 +381,10 @@ impl PythonParser {
     pub fn parse_usages(&mut self, parent: &Node, code: &str, path: &PathBuf, parent_guid: &Uuid, is_error: bool, from_block: bool) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = vec![];
         let kind = parent.kind();
-        #[cfg(test)]
-            #[allow(unused)]
-            let text = code.slice(parent.byte_range());
+        let _text = code.slice(parent.byte_range());
+        if _text.contains("asdasd") {
+            let _text = code.slice(parent.byte_range());
+        }
         // TODO lambda https://github.com/tree-sitter/tree-sitter-python/blob/master/grammar.js#L830
         match kind {
             "expression_statement" | "module" | "block" |
@@ -856,23 +857,39 @@ impl SkeletonFormatter for PythonSkeletonFormatter {
             all_symbols.sort_by(|a, b| 
                 a.full_range.start_byte.cmp(&b.full_range.start_byte)
             );
-            for sym in all_symbols {
-                if sym.symbol_type != SymbolType::CommentDefinition {
-                    break;
+            if symbol.symbol_type == SymbolType::FunctionDeclaration {
+                res_line = symbol.get_content_blocked().unwrap().split("\n").map(|x| x.to_string()).collect::<Vec<_>>();
+                row = symbol.full_range.end_point.row;
+            } else {
+                let mut content_lines = symbol.get_declaration_content_blocked().unwrap()
+                    .split("\n")
+                    .map(|x| x.to_string().replace("\t", "    ")).collect::<Vec<_>>();
+                let mut intent_n = 0;
+                if let Some(first) = content_lines.first_mut() {
+                    intent_n = first.len() - first.trim_start().len();
                 }
-                row = sym.full_range.end_point.row;
-                let content = sym.get_content_blocked().unwrap();
-                let lines = content.split("\n").collect::<Vec<_>>();
-                let lines = lines.iter()
-                    .map(|x| x.trim_start().to_string())
-                    .map(|x| format!("  {}", x))
-                    .collect::<Vec<_>>();
-                res_line.extend(lines);
+                for sym in all_symbols {
+                    if sym.symbol_type != SymbolType::CommentDefinition {
+                        break;
+                    }
+                    row = sym.full_range.end_point.row;
+                    let content = sym.get_content_blocked().unwrap();
+                    let lines = content.split("\n").collect::<Vec<_>>();
+                    let lines = lines.iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>();
+                    res_line.extend(lines);
+                }
+                if res_line.is_empty() {
+                    return ("".to_string(), (0, 0));
+                }
+                res_line.push(format!("{}...", " ".repeat(intent_n + 4)));
+                content_lines.extend(res_line);
+                res_line = content_lines;
             }
-            if res_line.is_empty() {
-                return ("".to_string(), (0, 0))
-            }
-            let declaration = format!("{}\n{}\n  ...", &symbol.get_declaration_content_blocked().unwrap(), res_line.join("\n"));
+
+            let res_line = self.preprocess_content(Vec::from_iter(res_line.into_iter()));
+            let declaration = res_line.join("\n");
             return (declaration, (symbol.full_range.start_point.row, row));
         }
         ("".to_string(), (0, 0))

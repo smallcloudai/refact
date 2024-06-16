@@ -1,37 +1,47 @@
 [
   {
-    "top_row": 9,
-    "bottom_row": 15,
-    "line": "/**\n* Constructs a new Person with the specified name and age.\n*\n* @param name the name of the person\n* @param age  the age of the person\n*/\npublic Person(String name, int age) { ... }"
+    "top_row": 68,
+    "bottom_row": 71,
+    "line": "public static void main(String[] args) {\n    Person person = new Person(\"John Doe\", 30);\n    System.out.println(person);\n}"
   },
   {
-    "top_row": 58,
-    "bottom_row": 63,
-    "line": "/**\n* Returns a string representation of the person.\n*\n* @return a string representation of the person\n*/\n@Override\npublic String toString() { ... }"
+    "top_row": 40,
+    "bottom_row": 47,
+    "line": "/**\n * Gets the age of the person.\n *\n * @return the age of the person\n */\npublic int getAge() {\n    return age;\n}"
   },
   {
     "top_row": 22,
-    "bottom_row": 27,
-    "line": "/**\n* Gets the name of the person.\n*\n* @return the name of the person\n*/\npublic String getName() { ... }"
+    "bottom_row": 29,
+    "line": "/**\n * Gets the name of the person.\n *\n * @return the name of the person\n */\npublic String getName() {\n    return name;\n}"
+  },
+  {
+    "top_row": 49,
+    "bottom_row": 56,
+    "line": "/**\n * Sets the age of the person.\n *\n * @param age the new age of the person\n */\npublic void setAge(int age) {\n    this.age = age;\n}"
+  },
+  {
+    "top_row": 58,
+    "bottom_row": 66,
+    "line": "/**\n * Returns a string representation of the person.\n *\n * @return a string representation of the person\n */\n@Override\npublic String toString() {\n    return \"Person{name='\" + name + \"', age=\" + age + \"}\";\n}"
+  },
+  {
+    "top_row": 9,
+    "bottom_row": 18,
+    "line": "/**\n * Constructs a new Person with the specified name and age.\n *\n * @param name the name of the person\n * @param age  the age of the person\n */\npublic Person(String name, int age) {\n    this.name = name;\n    this.age = age;\n}"
+  },
+  {
+    "top_row": 20,
+    "bottom_row": 20,
+    "line": "public abstract void a();"
   },
   {
     "top_row": 0,
     "bottom_row": 3,
-    "line": "/**\n* Represents a simple model of a Person.\n*/\npublic class Person { ... }"
-  },
-  {
-    "top_row": 49,
-    "bottom_row": 54,
-    "line": "/**\n* Sets the age of the person.\n*\n* @param age the new age of the person\n*/\npublic void setAge(int age) { ... }"
-  },
-  {
-    "top_row": 40,
-    "bottom_row": 45,
-    "line": "/**\n* Gets the age of the person.\n*\n* @return the age of the person\n*/\npublic int getAge() { ... }"
+    "line": "/**\n * Represents a simple model of a Person.\n */\npublic class Person { ... }"
   },
   {
     "top_row": 31,
-    "bottom_row": 36,
-    "line": "/**\n* Sets the name of the person.\n*\n* @param name the new name of the person\n*/\npublic void setName(String name) { ... }"
+    "bottom_row": 38,
+    "line": "/**\n * Sets the name of the person.\n *\n * @param name the new name of the person\n */\npublic void setName(String name) {\n    this.name = name;\n}"
   }
 ]

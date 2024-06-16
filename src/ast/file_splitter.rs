@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::sync::{Arc, Weak};
 use std::sync::RwLock as StdRwLock;
+use itertools::Itertools;
 
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock;
@@ -41,6 +42,8 @@ impl AstBasedFileSplitter {
         tokens_limit: usize,
     ) -> Result<Vec<SplitResult>, String> {
         assert!(doc.text.is_some());
+        let doc_text: String = doc.text_as_string().unwrap();
+        let doc_lines: Vec<String> = doc_text.split("\n").map(|x| x.to_string()).collect();
         let path = doc.path.clone();
         let path_str = doc.path.to_str().unwrap();
 
@@ -74,10 +77,31 @@ impl AstBasedFileSplitter {
         let mut files_markup: HashMap<String, Arc<crate::scratchpads::chat_utils_rag::File>> = HashMap::new();
         files_markup.insert(path_str.to_string(), Arc::new(crate::scratchpads::chat_utils_rag::File { markup: ast_markup.clone(), cpath: path.clone(), cpath_symmetry_breaker: 0.0 }));
         let guid_to_info: HashMap<Uuid, &SymbolInformation> = ast_markup.symbols_sorted_by_path_len.iter().map(|s| (s.guid.clone(), s)).collect();
-        let guids: Vec<_> = guid_to_info.iter().map(|(s, _)| s.clone()).collect();
+        let guids: Vec<_> = guid_to_info.iter()
+            .sorted_by(|a, b| a.1.full_range.start_byte.cmp(&b.1.full_range.start_byte))
+            .map(|(s, _)| s.clone()).collect();
 
         let mut chunks: Vec<SplitResult> = Vec::new();
-        for guid in guids {
+        let mut unused_symbols_cluster_accumulator: Vec<&SymbolInformation> = Default::default();
+
+        let flush_accumulator = |
+            unused_symbols_cluster_accumulator_: &mut Vec<&SymbolInformation>,
+            chunks_: &mut Vec<SplitResult>,
+        | {
+            if !unused_symbols_cluster_accumulator_.is_empty() {
+                let top_row = unused_symbols_cluster_accumulator_.first().unwrap().full_range.start_point.row;
+                let bottom_row = unused_symbols_cluster_accumulator_.last().unwrap().full_range.end_point.row;
+                let content = doc_lines[top_row..bottom_row + 1].join("\n");
+                let chunks__ = get_chunks(&content, &path, &"".to_string(),
+                                         (top_row, bottom_row),
+                                         tokenizer.clone(), tokens_limit, INTERSECTION_LINES, false);
+                chunks_.extend(chunks__);
+                unused_symbols_cluster_accumulator_.clear();
+            }
+        };
+
+        
+        for guid in &guids {
             let symbol = guid_to_info.get(&guid).unwrap();
             let need_in_vecdb_at_all = match symbol.symbol_type {
                 SymbolType::StructDeclaration | SymbolType::FunctionDeclaration |
@@ -85,8 +109,23 @@ impl AstBasedFileSplitter {
                 _ => false,
             };
             if !need_in_vecdb_at_all {
+                let mut is_flushed = false;
+                let mut parent_guid = &symbol.parent_guid;
+                while let Some(_parent_sym) = guid_to_info.get(parent_guid) {
+                    if vec![SymbolType::StructDeclaration, SymbolType::FunctionDeclaration].contains(&_parent_sym.symbol_type) {
+                        flush_accumulator(&mut unused_symbols_cluster_accumulator, &mut chunks);
+                        is_flushed = true;
+                        break;
+                    }
+                    parent_guid = &_parent_sym.parent_guid;
+                }
+                if !is_flushed {
+                    unused_symbols_cluster_accumulator.push(symbol);
+                }
                 continue;
             }
+            flush_accumulator(&mut unused_symbols_cluster_accumulator, &mut chunks);
+            
             let formatter = make_formatter(&symbol.language);
             if symbol.symbol_type == SymbolType::StructDeclaration {
                 if let Some(children) = guid_to_children.get(&symbol.guid) {
@@ -100,7 +139,7 @@ impl AstBasedFileSplitter {
                     }
                 }
             }
-
+            
             let (declaration, top_bottom_rows) = formatter.get_declaration_with_comments(&symbol, &guid_to_children, &guid_to_info);
             if !declaration.is_empty() {
                 let chunks_ = get_chunks(&declaration, &symbol.file_path,
@@ -108,6 +147,9 @@ impl AstBasedFileSplitter {
                 chunks.extend(chunks_);
             }
         }
+
+        flush_accumulator(&mut unused_symbols_cluster_accumulator, &mut chunks);
+        
         let path_vecdb = path.with_extension("vecdb");
         if DEBUG {
             if let Ok(mut file) = std::fs::File::create(path_vecdb) {

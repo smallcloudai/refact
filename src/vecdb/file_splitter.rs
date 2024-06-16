@@ -1,18 +1,15 @@
 use std::io::Write;
 use std::sync::Arc;
+use std::sync::RwLock as StdRwLock;
+
 use md5;
 use tokenizers::Tokenizer;
-use std::sync::RwLock as StdRwLock;
+
 use crate::ast::chunk_utils::get_chunks;
 use crate::ast::count_tokens;
 use crate::ast::file_splitter::INTERSECTION_LINES;
-use crate::vecdb::structs::SplitResult;
 use crate::files_in_workspace::Document;
-
-fn str_hash(s: &String) -> String {
-    let digest = md5::compute(s);
-    format!("{:x}", digest)
-}
+use crate::vecdb::structs::SplitResult;
 
 pub struct FileSplitter {
     soft_window: usize,
@@ -77,7 +74,7 @@ impl FileSplitter {
                                      tokenizer.clone(), tokens_limit, INTERSECTION_LINES, false);
             chunks.extend(chunks_);
         }
-        
+
         if crate::ast::file_splitter::DEBUG {
             let path_vecdb = path.with_extension("vecdb");
             if let Ok(mut file) = std::fs::File::create(path_vecdb) {
