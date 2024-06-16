@@ -9,4 +9,4 @@ pub mod at_workspace;
 pub mod at_params;
 pub mod execute_at;
 pub mod at_local_notes_to_self;
-pub mod at_execute_cmd;
+pub mod at_local_cmdline;

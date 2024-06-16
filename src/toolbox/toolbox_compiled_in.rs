@@ -11,8 +11,6 @@ pub const COMPILED_IN_CUSTOMIZATION_YAML : &str = r#"# Customization will merge 
 #
 # You can also use top-level keys to reduce copy-paste, like you see there with DEFAULT_PROMPT.
 
-# You need to actively search for the answer yourself, don't ask the user to do anything. The answer is most likely in the files and databases accessible using tool calls, not on the internet.
-
 
 DEFAULT_PROMPT: |
   You are Refact Chat, a coding assistant.
@@ -128,18 +126,19 @@ toolbox_commands:
     description: "Show available commands"
     messages: []
 
-
-# CUSTOM TOOLS
-
-# tools:
-#   - name: "compile"
-#     description: "Compile the project"
-#     parameters:
-#     parameters_required:
-#     command: "cargo build"
-#     timeout: 120
-#     postprocess: "last_100_lines"
 "#;
+
+
+// # CUSTOM TOOLS
+
+// # tools:
+// #   - name: "compile"
+// #     description: "Compile the project"
+// #     parameters:
+// #     parameters_required:
+// #     command: "cargo build"
+// #     timeout: 120
+// #     postprocess: "last_100_lines"
 
 
 pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# Customization will override the default config you can see at the bottom of this file, in the comments.
