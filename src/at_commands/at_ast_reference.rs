@@ -53,7 +53,7 @@ pub async fn execute_at_ast_reference(ccx: &mut AtCommandsContext, symbol_path: 
             match ast.read().await.search_by_fullpath(
                 symbol_path.clone(),
                 RequestSymbolType::Usage,
-                true,
+                false,
                 10
             ).await {
                 Ok(res) => Ok((results2message(&res).await, res.refs_n)),

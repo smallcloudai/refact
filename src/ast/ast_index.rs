@@ -1365,21 +1365,24 @@ impl AstIndex {
 
         for symbol in symbols
             .iter()
-            .filter(|s| !s.borrow().is_type())
             .cloned() {
             if self.shutdown_flag.load(Ordering::SeqCst) {
                 return;
             }
-
             let full_path = get_symbol_full_path(&symbol, &self.symbols_by_guid);
-            if symbol.borrow().is_declaration() {
-                self.declaration_symbols_by_fullpath.entry(full_path)
-                    .or_insert_with(Vec::new)
-                    .push(symbol.clone());
-            } else {
-                self.usage_symbols_by_fullpath.entry(full_path)
-                    .or_insert_with(Vec::new)
-                    .push(symbol.clone());
+            if !full_path.is_empty() {
+                if symbol.borrow().is_declaration() {
+                    self.declaration_symbols_by_fullpath.entry(full_path)
+                        .or_insert_with(Vec::new)
+                        .push(symbol.clone());
+                } else {
+                    self.usage_symbols_by_fullpath.entry(full_path)
+                        .or_insert_with(Vec::new)
+                        .push(symbol.clone());
+                }
+            }
+            if symbol.borrow().is_type() {
+                continue
             }
 
             let (name, s_guid, mut types, is_declaration, symbol_type, parent_guid) = {

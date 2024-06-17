@@ -15,12 +15,20 @@ impl AtParamSymbolPathQuery {
 }
 
 fn full_path_score(path: &str, query: &str) -> f32 {
-    let mut score: f32 = jaro_winkler(&path, &query) as f32;
-    if score == 0.0 {
+    if jaro_winkler(&path, &query) <= 0.0 {
         return 0.0;
     }
-    for (idx, p) in path.split("::").collect::<Vec<_>>().into_iter().rev().enumerate() {
-        score *= jaro_winkler(&query, &p) as f32 * 1.0 / (idx + 1) as f32;
+
+    let mut score = 1.0;
+    for query_comp in query.split("::") {
+        for (idx, p) in path.split("::").collect::<Vec<_>>().into_iter().rev().enumerate() {
+            let current_score = jaro_winkler(&query_comp, &p) as f32;
+            // preliminary exit if we have a full match in the name
+            if current_score >= 0.99 {
+                return current_score;
+            }
+            score *= current_score * 1.0 / (idx + 1) as f32;
+        }
     }
     score
 }
