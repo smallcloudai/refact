@@ -8,6 +8,7 @@ passthrough_mini_db = {
         "resolve_as": "gpt-4o",
         "T": 128_000,
         "T_out": 4096,
+        "filter_caps": ["chat", "tools"],
     },
     "gpt-4-turbo": {
         "backend": "litellm",
@@ -16,6 +17,7 @@ passthrough_mini_db = {
         "resolve_as": "gpt-4-turbo",
         "T": 128_000,
         "T_out": 4096,
+        "filter_caps": ["chat", "tools"],
     },
     "gpt-4": {
         "backend": "litellm",
@@ -24,6 +26,7 @@ passthrough_mini_db = {
         "resolve_as": "gpt-4-0125-preview",
         "T": 128_000,
         "T_out": 4096,
+        "filter_caps": ["chat", "tools"],
     },
     "gpt-3.5-turbo": {
         "backend": "litellm",
@@ -32,6 +35,7 @@ passthrough_mini_db = {
         "resolve_as": "gpt-3.5-turbo-1106",
         "T": 16_000,
         "T_out": 4096,
+        "filter_caps": ["chat", "tools"],
     },
     "claude-3-haiku": {
         "backend": "litellm",
@@ -40,6 +44,7 @@ passthrough_mini_db = {
         "resolve_as": "claude-3-haiku-20240307",
         "T": 200_000,
         "T_out": 4096,
+        "filter_caps": ["chat", "tools"],
     },
     "claude-3-opus": {
         "backend": "litellm",
@@ -48,6 +53,7 @@ passthrough_mini_db = {
         "resolve_as": "claude-3-opus-20240229",
         "T": 200_000,
         "T_out": 4096,
+        "filter_caps": ["chat", "tools"],
     },
     "claude-3-sonnet": {
         "backend": "litellm",
@@ -56,6 +62,7 @@ passthrough_mini_db = {
         "resolve_as": "claude-3-sonnet-20240229",
         "T": 200_000,
         "T_out": 4096,
+        "filter_caps": ["chat", "tools"],
     },
     "claude-2.1": {
         "backend": "litellm",
@@ -64,6 +71,7 @@ passthrough_mini_db = {
         "resolve_as": "claude-2.1",
         "T": 100_000,
         "T_out": 4096,
+        "filter_caps": ["chat"],
     },
     "claude-instant-1.2": {
         "backend": "litellm",
@@ -72,5 +80,6 @@ passthrough_mini_db = {
         "resolve_as": "claude-instant-1.2",
         "T": 100_000,
         "T_out": 4096,
+        "filter_caps": ["chat"],
     },
 }
