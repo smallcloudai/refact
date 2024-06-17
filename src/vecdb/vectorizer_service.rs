@@ -16,6 +16,7 @@ use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::structs::{Record, SplitResult, VecdbConstants, VecDbStatus};
+use crate::vecdb::vecdb_cache::VecDBCache;
 
 const DEBUG_WRITE_VECDB_FILES: bool = false;
 
@@ -25,6 +26,7 @@ pub struct FileVectorizerService {
     update_request_queue: Arc<AMutex<VecDeque<Document>>>,
     output_queue: Arc<AMutex<VecDeque<Document>>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
+    vecdb_cache: Arc<AMutex<VecDBCache>>,
     status: Arc<AMutex<VecDbStatus>>,
     constants: VecdbConstants,
     api_key: String,
@@ -288,6 +290,7 @@ async fn cleanup_thread(vecdb_handler: Arc<AMutex<VecDBHandler>>) {
 impl FileVectorizerService {
     pub async fn new(
         vecdb_handler: Arc<AMutex<VecDBHandler>>,
+        vecdb_cache: Arc<AMutex<VecDBCache>>,
         constants: VecdbConstants,
         api_key: String,
     ) -> Self {
@@ -308,6 +311,7 @@ impl FileVectorizerService {
             update_request_queue: update_request_queue.clone(),
             output_queue: output_queue.clone(),
             vecdb_handler: vecdb_handler.clone(),
+            vecdb_cache: vecdb_cache.clone(),
             status: status.clone(),
             constants,
             api_key,
@@ -367,7 +371,7 @@ impl FileVectorizerService {
             Ok(res) => res,
             Err(err) => return Err(err)
         };
-        status.db_cache_size = match self.vecdb_handler.lock().await.cache_size().await {
+        status.db_cache_size = match self.vecdb_cache.lock().await.size().await {
             Ok(res) => res,
             Err(err) => return Err(err.to_string())
         };

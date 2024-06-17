@@ -17,6 +17,7 @@ use crate::files_in_workspace::Document;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
 use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants};
+use crate::vecdb::vecdb_cache::VecDBCache;
 
 
 fn vecdb_constants(
@@ -40,6 +41,7 @@ fn vecdb_constants(
 pub struct VecDb {
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
+    vecdb_cache: Arc<AMutex<VecDBCache>>,
     vectorizer_service: Arc<AMutex<FileVectorizerService>>,
     cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
     constants: VecdbConstants,
@@ -217,19 +219,26 @@ impl VecDb {
         cmdline: CommandLine,
         constants: VecdbConstants,
     ) -> Result<VecDb, String> {
-        let handler = match VecDBHandler::init(cache_dir, &constants.model_name, constants.embedding_size).await {
+        let handler = match VecDBHandler::init(constants.embedding_size).await {
+            Ok(res) => res,
+            Err(err) => { return Err(err) }
+        };
+        let cache = match VecDBCache::init(cache_dir, &constants.model_name, constants.embedding_size).await {
             Ok(res) => res,
             Err(err) => { return Err(err) }
         };
         let vecdb_handler = Arc::new(AMutex::new(handler));
+        let vecdb_cache = Arc::new(AMutex::new(cache));
         let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),
+            vecdb_cache.clone(),
             constants.clone(),
             cmdline.api_key.clone(),
         ).await));
         Ok(VecDb {
             vecdb_emb_client: Arc::new(AMutex::new(reqwest::Client::new())),
             vecdb_handler,
+            vecdb_cache,
             vectorizer_service,
             cmdline: cmdline.clone(),
             constants: constants.clone(),

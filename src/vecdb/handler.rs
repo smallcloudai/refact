@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -16,11 +16,8 @@ use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use futures_util::TryStreamExt;
 use itertools::Itertools;
 use lance::dataset::{WriteMode, WriteParams};
-use rusqlite::{OpenFlags, params, Result};
 use tempfile::{tempdir, TempDir};
-use tokio::fs;
 use tokio::sync::Mutex as AMutex;
-use tokio_rusqlite::Connection;
 use tracing::error;
 use tracing::info;
 use vectordb::database::Database;
@@ -30,12 +27,11 @@ use crate::vecdb::structs::{Record, SplitResult};
 
 impl Debug for VecDBHandler {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "VecDBHandler: {:?}", self.cache_database.type_id())
+        write!(f, "VecDBHandler: {:?}", self.data_table.type_id())
     }
 }
 
 pub struct VecDBHandler {
-    cache_database: Arc<AMutex<Connection>>,
     _data_database_temp_dir: TempDir,
     data_table: Table,
     schema: SchemaRef,
@@ -59,71 +55,9 @@ const TWO_WEEKS: i32 = 2 * 7 * 24 * 3600;
 const ONE_MONTH: i32 = 30 * 24 * 3600;
 const MIN_LIKES: i32 = 3;
 
-#[derive(Debug, PartialEq)]
-struct DataColumn {
-    name: String,
-    type_: String,
-}
-
-async fn check_and_recreate_table(db: Arc<AMutex<Connection>>) -> tokio_rusqlite::Result<()> {
-    let expected_schema = vec![
-        DataColumn { name: "vector".to_string(), type_: "BLOB".to_string() },
-        DataColumn { name: "window_text".to_string(), type_: "TEXT".to_string() },
-        DataColumn { name: "window_text_hash".to_string(), type_: "TEXT".to_string() },
-        DataColumn { name: "time_added".to_string(), type_: "INTEGER".to_string() },
-        DataColumn { name: "time_last_used".to_string(), type_: "INTEGER".to_string() },
-        DataColumn { name: "model_name".to_string(), type_: "TEXT".to_string() },
-        DataColumn { name: "used_counter".to_string(), type_: "INTEGER".to_string() },
-    ];
-    db.lock().await.call(move |conn| {
-        let mut stmt = conn.prepare("PRAGMA table_info(data);")?;
-        let schema_iter = stmt.query_map([], |row| {
-            Ok(DataColumn {
-                name: row.get(1)?,
-                type_: row.get(2)?,
-            })
-        })?;
-        let mut schema = Vec::new();
-        for column in schema_iter {
-            schema.push(column?);
-        }
-        if schema != expected_schema {
-            if schema.len() > 0 {
-                info!("vector cache database has invalid schema, recreating the database");
-            }
-            conn.execute("DROP TABLE IF EXISTS data", [])?;
-            conn.execute(
-                "CREATE TABLE data (
-                vector BLOB,
-                window_text TEXT NOT NULL,
-                window_text_hash TEXT NOT NULL,
-                time_added INTEGER NOT NULL,
-                time_last_used INTEGER NOT NULL,
-                model_name TEXT NOT NULL,
-                used_counter INTEGER NOT NULL
-            )", [])?;
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_window_text_hash ON data (window_text_hash)",
-                []
-            )?;
-        }
-        Ok(())
-    }).await
-}
 
 impl VecDBHandler {
-    pub async fn init(cache_dir: &PathBuf, model_name: &String, embedding_size: i32) -> Result<VecDBHandler, String> {
-        let cache_dir_str = match cache_dir.join("refact_vecdb_cache")
-            .join(format!("model_{}_esize_{}.sqlite",
-                          model_name.replace("/", "_"),
-                          embedding_size
-            )).to_str() {
-
-            Some(dir) => dir.to_string(),
-            None => {
-                return Err(format!("{:?}", "Cache directory is not a valid path"));
-            }
-        };
+    pub async fn init(embedding_size: i32) -> Result<VecDBHandler, String> {
         let data_database_temp_dir = match tempdir() {
             Ok(dir) => dir,
             Err(_) => return Err(format!("{:?}", "Error creating temp dir")),
@@ -131,21 +65,6 @@ impl VecDBHandler {
         let data_database_temp_dir_str = match data_database_temp_dir.path().to_str() {
             Some(path) => path,
             None => return Err(format!("{:?}", "Temp directory is not a valid path")),
-        };
-
-        if !cache_dir.join("refact_vecdb_cache").exists() {
-            match fs::create_dir_all(cache_dir.join("refact_vecdb_cache")).await {
-                Ok(_) => {}
-                Err(e) => return Err(format!("{:?}", e)),
-            }
-        }
-        let cache_database = match Connection::open_with_flags(
-            cache_dir_str, OpenFlags::SQLITE_OPEN_READ_WRITE
-                | OpenFlags::SQLITE_OPEN_CREATE
-                | OpenFlags::SQLITE_OPEN_NO_MUTEX
-                | OpenFlags::SQLITE_OPEN_URI).await {
-            Ok(db) => Arc::new(AMutex::new(db)),
-            Err(err) => return Err(format!("{:?}", err))
         };
         let temp_database = match Database::connect(data_database_temp_dir_str).await {
             Ok(db) => db,
@@ -166,11 +85,6 @@ impl VecDBHandler {
             Field::new("used_counter", DataType::UInt64, true),
         ]));
 
-        match check_and_recreate_table(cache_database.clone()).await {
-            Ok(_) => {}
-            Err(err) => return Err(format!("{:?}", err))
-        }
-
         let batches_iter = RecordBatchIterator::new(vec![].into_iter().map(Ok), schema.clone());
         let data_table = match temp_database.create_table("data", batches_iter, Option::from(WriteParams::default())).await {
             Ok(table) => table,
@@ -178,7 +92,6 @@ impl VecDBHandler {
         };
 
         Ok(VecDBHandler {
-            cache_database,
             _data_database_temp_dir: data_database_temp_dir,
             schema,
             data_table,
@@ -193,216 +106,12 @@ impl VecDBHandler {
             Ok(table) => { self.data_table = table }
             Err(err) => error!("Error while checking out the data table: {:?}", err)
         }
-        match self.cache_database.lock().await.call(|connection| {
-            connection.cache_flush()?;
-            Ok({})
-        }).await {
-            Ok(_) => {}
-            Err(err) => error!("Error while flushing cache: {:?}", err)
-        }
     }
-
-    async fn get_records_from_cache(&mut self, splits: &Vec<SplitResult>) -> Result<(Vec<Record>, Vec<SplitResult>), String> {
-        let placeholders: String = splits.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
-        let query = format!("SELECT * FROM data WHERE window_text_hash IN ({})", placeholders);
-        let splits_clone = splits.clone();
-        let found_hashes = match self.cache_database.lock().await.call(move |connection| {
-            let mut statement = connection.prepare(&query)?;
-            let params = rusqlite::params_from_iter(splits_clone.iter().map(|x| &x.window_text_hash));
-            let x = match statement.query_map(params, |row| {
-                let vector_blob: Vec<u8> = row.get(0)?;
-                let vector: Vec<f32> = vector_blob
-                    .chunks_exact(4)
-                    .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
-                    .collect();
-                let window_text: String = row.get(1)?;
-                let window_text_hash: String = row.get(2)?;
-                let time_added_timestamp: i64 = row.get(3)?;
-                let time_added = SystemTime::UNIX_EPOCH + Duration::from_secs(time_added_timestamp as u64);
-                let time_last_used_timestamp: i64 = row.get(4)?;
-                let time_last_used = SystemTime::UNIX_EPOCH + Duration::from_secs(time_last_used_timestamp as u64);
-                let model_name: String = row.get(5)?;
-                let used_counter: u64 = row.get(6)?;
-                Ok((
-                    window_text_hash,
-                    (vector, window_text, time_added, time_last_used, model_name, used_counter)
-                ))
-            }) {
-                Ok(mapped_rows) => {
-                    Ok(mapped_rows.filter_map(|r| r.ok()).collect::<HashMap<_, _>>())
-                },
-                Err(e) => {
-                    Err(tokio_rusqlite::Error::Rusqlite(e))
-                }
-            }; x
-        }).await {
-            Ok(records) => records,
-            Err(err) => return Err(format!("{:?}", err))
-        };
-        let mut records = vec![];
-        let mut non_found_splits = vec![];
-        for split in splits.iter() {
-            if let Some(query_data) = found_hashes.get(&split.window_text_hash) {
-                records.push(Record {
-                    vector: Some(query_data.0.clone()),
-                    window_text: split.window_text.clone(),
-                    window_text_hash: split.window_text_hash.clone(),
-                    file_path: split.file_path.clone(),
-                    start_line: split.start_line,
-                    end_line: split.end_line,
-                    time_added: query_data.2.clone(),
-                    time_last_used: query_data.3.clone(),
-                    model_name: query_data.4.clone(),
-                    used_counter: query_data.5.clone(),
-                    distance: -1.0,
-                    usefulness: 0.0,
-                })
-            } else {
-                non_found_splits.push(split.clone());
-            }
-        }
-        Ok((records, non_found_splits))
-    }
-
-    async fn insert_records_to_cache(&mut self, records: Vec<Record>) -> Result<(), String> {
-        match self.cache_database.lock().await.call(|connection| {
-            let transaction = connection.transaction()?;
-            for record in records {
-                let time_added = record.time_added.duration_since(
-                    SystemTime::UNIX_EPOCH
-                ).unwrap_or(Duration::ZERO)
-                    .as_secs();
-
-                let time_last_used = record.time_last_used.duration_since(
-                    SystemTime::UNIX_EPOCH
-                ).unwrap_or(Duration::ZERO)
-                    .as_secs();
-
-                let vector_as_bytes: Vec<u8> = record.vector.expect(
-                    "An attempt to push vector-less data to cache DB"
-                ).iter()
-                    .flat_map(|&num| num.to_ne_bytes())
-                    .collect();
-
-                match transaction.execute(
-                    "INSERT INTO data (vector, window_text, window_text_hash, time_added, \
-                    time_last_used, model_name, used_counter) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                    rusqlite::params![
-                    vector_as_bytes,
-                    record.window_text,
-                    record.window_text_hash,
-                    time_added as i64,
-                    time_last_used as i64,
-                    record.model_name,
-                    record.used_counter,
-                ],
-                ) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        info!("Error while inserting record to cache: {:?}", err);
-                        continue;
-                    }
-                }
-            }
-            match transaction.commit() {
-                Ok(_) => Ok(()),
-                Err(err) => Err(err.into())
-            }
-        }).await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(format!("{:?}", err))
-        }
-    }
-
-    #[allow(unused)]
-    async fn remove_records_from_cache(&mut self, file_path: String) -> Result<(), String> {
-        match self.cache_database.lock().await.call(move |connection| {
-            match connection.execute(
-                "DELETE FROM data WHERE file_path = ?1",
-                params![file_path],
-            ) {
-                Ok(_) => Ok(()),
-                Err(err) => Err(err.into())
-            }
-        }).await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(format!("{:?}", err))
-        }
-    }
-
-    async fn update_cache_records(&mut self, records: Vec<Record>) -> Result<(), String> {
-        let now = SystemTime::now().duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or(Duration::ZERO)
-            .as_secs();
-        match self.cache_database.lock().await.call(move |connection| {
-            let transaction = connection.transaction()?;
-            for record in records {
-                match transaction.execute(
-                    "UPDATE data SET time_last_used = ?, used_counter = ? WHERE window_text_hash = ?",
-                    params![
-                    now,
-                    record.used_counter,
-                    record.window_text_hash,
-                ],
-                ) {
-                    Ok(_) => {}
-                    Err(_) => {
-                        continue;
-                    }
-                };
-            }
-            match transaction.commit() {
-                Ok(_) => Ok(()),
-                Err(err) => Err(err.into())
-            }
-        }).await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(format!("{:?}", err))
-        }
-    }
-
-    async fn delete_old_records_from_cache(&mut self) -> Result<(), String> {
-        let now = SystemTime::now().duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or(Duration::ZERO)
-            .as_secs();
-
-        match self.cache_database.lock().await.call(move |connection| {
-            let transaction = connection.transaction()?;
-
-            transaction.execute(
-                "DELETE FROM data WHERE (?1 - time_last_used > ?2) AND (used_counter < ?3)",
-                params![now, TWO_WEEKS, MIN_LIKES],
-            )?;
-
-            transaction.execute(
-                "DELETE FROM data WHERE (?1 - time_last_used > ?2)",
-                params![now, ONE_MONTH],
-            )?;
-
-            transaction.commit()?;
-            Ok({})
-        }).await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(format!("{:?}", err))
-        }
-    }
-
     pub async fn size(&self) -> Result<usize, String> {
         match self.data_table.count_rows().await {
             Ok(size) => Ok(size),
             Err(err) => Err(format!("{:?}", err))
         }
-    }
-
-    pub async fn cache_size(&self) -> Result<usize, String> {
-        self.cache_database.lock().await.call(move |connection| {
-            let mut stmt = connection.prepare("SELECT COUNT(*) FROM data")?;
-            let count: usize = stmt.query_row([], |row| row.get(0))?;
-            Ok(count)
-        }).await
-            .map_err(|e| {
-                e.to_string()
-            })
     }
 
     pub async fn select_all_file_paths(&self) -> Vec<PathBuf> {
@@ -561,12 +270,6 @@ impl VecDBHandler {
             Some(res) => res
         };
 
-        match self.remove_records_from_cache(file_path_str.to_string()).await {
-            Ok(_) => {}
-            Err(err) => {
-                info!("Error while deleting from cache table: {:?}", err);
-            }
-        }
         // valerii: In documentation I found no way to preprocess strings to prevent SQL injections
         match self.data_table.delete(
             format!("(file_path = \"{}\")", file_path_str).as_str()  // TODO: Prevent a possible sql injection here
@@ -703,15 +406,6 @@ impl VecDBHandler {
         }
     }
 
-    pub async fn update_record_statistic(&mut self, records: Vec<Record>) {
-        match self.update_cache_records(records).await {
-            Ok(_) => {}
-            Err(err) => {
-                info!("Error while deleting from data table: {:?}", err);
-            }
-        }
-    }
-
     pub async fn cleanup_old_records(&mut self) -> Result<(), String> {
         info!("VECDB: Cleaning up old records");
 
@@ -722,7 +416,6 @@ impl VecDBHandler {
         let q = format!("{} - time_last_used > {ONE_MONTH}", now.as_secs());
         self.data_table.delete(&*q).await.expect("could not delete old records");
 
-        self.delete_old_records_from_cache().await.expect("could not delete old records");
         self.checkout().await;
         Ok(())
     }
