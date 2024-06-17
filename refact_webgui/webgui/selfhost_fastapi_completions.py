@@ -238,7 +238,7 @@ class BaseCompletionsRouter(APIRouter):
             if n_ctx := resolve_model_context_size(model, self._model_assigner):
                 d["n_ctx"] = n_ctx
             if "tools" in self._model_assigner.models_db_with_passthrough.get(model, {}).get("filter_caps", []):
-                d["tools"] = True
+                d["supports_tools"] = True
 
             rewrite_dict[model] = d
         return rewrite_dict
