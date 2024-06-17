@@ -24,6 +24,8 @@ pub struct ModelRecord {
     pub default_scratchpad: String,
     #[serde(default)]
     pub similar_models: Vec<String>,
+    #[serde(default)]
+    pub supports_tools: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -202,9 +204,11 @@ fn relative_to_full_url(
 
 fn apply_models_dict_patch(caps: &mut CodeAssistantCaps) {
     fn apply_model_record_patch(rec: &mut ModelRecord, rec_patched: &ModelRecord) {
-        // for now applying just n_ctx
         if rec_patched.n_ctx != usize::default() {
             rec.n_ctx = rec_patched.n_ctx;
+        }
+        if rec_patched.supports_tools {
+            rec.supports_tools = rec_patched.supports_tools;
         }
     }
 

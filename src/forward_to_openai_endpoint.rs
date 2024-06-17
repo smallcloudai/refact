@@ -10,6 +10,9 @@ use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
+use std::fs::File;
+use std::io::Write;
+
 use crate::call_validation::SamplingParameters;
 
 
@@ -137,8 +140,8 @@ fn passthrough_messages_to_json(
             }
         }
     }
-    // dump to file
-    {
+    // TODO: remove, dump to file
+    if false {
         let mut messages_file = File::create("/tmp/aaa_messages.json").unwrap();
         let messages_json = serde_json::to_string_pretty(&big_json["messages"]).unwrap();
         messages_file.write_all(messages_json.as_bytes()).unwrap();
@@ -149,11 +152,10 @@ fn passthrough_messages_to_json(
     }
 
     data["messages"] = big_json["messages"].clone();
-    data["tools"] = big_json["tools"].clone();
+    if let Some(tools) = big_json.get("tools") {
+        data["tools"] = tools.clone();
+    }
 }
-
-use std::fs::File;
-use std::io::Write;
 
 
 #[derive(Serialize)]

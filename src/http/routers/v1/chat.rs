@@ -16,7 +16,7 @@ use crate::scratchpads;
 async fn _lookup_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     chat_post: &ChatPost,
-) -> Result<(String, String, serde_json::Value, usize), String> {
+) -> Result<(String, String, serde_json::Value, usize, bool), String> {
     let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
         caps::which_model_to_use(
@@ -29,7 +29,7 @@ async fn _lookup_chat_scratchpad(
         &chat_post.scratchpad,
         &recommended_model_record.default_scratchpad,
     )?;
-    Ok((model_name, sname.clone(), patch.clone(), recommended_model_record.n_ctx))
+    Ok((model_name, sname.clone(), patch.clone(), recommended_model_record.n_ctx, recommended_model_record.supports_tools))
 }
 
 pub async fn handle_v1_chat_completions(
@@ -58,7 +58,7 @@ async fn chat(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = _lookup_chat_scratchpad(
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools) = _lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
     ).await.map_err(|e| {
@@ -85,6 +85,7 @@ async fn chat(
         &scratchpad_name,
         &scratchpad_patch,
         allow_at,
+        supports_tools,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;

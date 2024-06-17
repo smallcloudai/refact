@@ -56,6 +56,7 @@ pub struct ChatPassthrough {
     pub delta_sender: DeltaSender,
     pub global_context: Arc<ARwLock<GlobalContext>>,
     pub allow_at: bool,
+    pub supports_tools: bool,
 }
 
 impl ChatPassthrough {
@@ -64,6 +65,7 @@ impl ChatPassthrough {
         post: ChatPost,
         global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
+        supports_tools: bool,
     ) -> Self {
         ChatPassthrough {
             t: HasTokenizerAndEot::new(tokenizer),
@@ -73,6 +75,7 @@ impl ChatPassthrough {
             delta_sender: DeltaSender::new(),
             global_context,
             allow_at,
+            supports_tools,
         }
     }
 }
@@ -94,12 +97,14 @@ impl ScratchpadAbstract for ChatPassthrough {
     ) -> Result<String, String> {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
         let top_n: usize = 7;
-        let (messages, undroppable_msg_n, any_context_produced) = if self.allow_at {
+        let (mut messages, undroppable_msg_n, any_context_produced) = if self.allow_at {
             run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &self.post.messages, top_n, &mut self.has_rag_results).await
         } else {
             (self.post.messages.clone(), self.post.messages.len(), false)
         };
-        let (messages, _tools_success) = run_tools(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &messages, top_n, &mut self.has_rag_results).await;
+        if self.supports_tools {
+            (messages, _) = run_tools(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &messages, top_n, &mut self.has_rag_results).await;
+        };
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
@@ -143,9 +148,11 @@ impl ScratchpadAbstract for ChatPassthrough {
                 warn!("unknown role: {}", msg.role);
             }
         }
-        let big_json = serde_json::json!({
+        let mut big_json = serde_json::json!({
             "messages": filtered_msgs,
-            "tools": if let Some(tools) = &self.post.tools {
+        });
+        if self.supports_tools {
+            let tools = if let Some(tools) = &self.post.tools {
                 if tools.is_empty() || any_context_produced {
                     None
                 } else {
@@ -153,8 +160,9 @@ impl ScratchpadAbstract for ChatPassthrough {
                 }
             } else {
                 None
-            },
-        });
+            };
+            big_json["tools"] = serde_json::json!(tools);
+        }
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
         if DEBUG {
             for msg in &filtered_msgs {
