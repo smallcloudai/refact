@@ -21,9 +21,9 @@ const Chevron: React.FC<{ open: boolean }> = ({ open }) => {
 const Result: React.FC<{ children: string }> = ({ children }) => {
   const lines = children.split("\n");
   const [open, setOpen] = React.useState(false);
-  if (lines.length < 3 || open)
+  if (lines.length < 4 || open)
     return <Markdown className={styles.tool_result}>{children}</Markdown>;
-  const toShow = lines.slice(0, 3).join("\n") + "\n ";
+  const toShow = lines.slice(0, 6).join("\n") + "\n ";
   return (
     <Button
       variant="ghost"
@@ -45,6 +45,7 @@ const ToolMessage: React.FC<{
   toolCall: ToolCall;
   result?: ToolResult;
 }> = ({ toolCall, result }) => {
+  const results = result?.content ?? "";
   const name = toolCall.function.name ?? "";
 
   const argsString = React.useMemo(() => {
@@ -65,15 +66,15 @@ const ToolMessage: React.FC<{
 
   const functionCalled = "```python\n" + name + "(" + argsString + ")\n```";
 
-  if (!result?.content) {
-    return <Markdown>{functionCalled}</Markdown>;
-  }
+  const escapedBackticks = results.replace(/`+/g, (match) => {
+    if (match === "```") return match;
+    return "\\" + "`";
+  });
 
-  // show more
+  const content = functionCalled + "\n" + escapedBackticks;
   return (
     <Flex gap="2" direction="column">
-      <Markdown>{functionCalled}</Markdown>
-      <Result>{result.content}</Result>
+      <Result>{content}</Result>
     </Flex>
   );
 };
