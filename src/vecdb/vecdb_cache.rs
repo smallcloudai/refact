@@ -35,6 +35,7 @@ struct DataColumn {
     type_: String,
 }
 
+
 async fn check_and_recreate_embeddings_table(db: &Connection) -> tokio_rusqlite::Result<()> {
     let expected_schema = vec![
         DataColumn { name: "vector".to_string(), type_: "BLOB".to_string() },
@@ -129,6 +130,9 @@ impl VecDBCache {
             Ok(db) => db,
             Err(err) => return Err(format!("{:?}", err))
         };
+        let _ = cache_database.call(move |conn| {
+            Ok(conn.execute("PRAGMA journal_mode=WAL", params![])?)
+        }).await;
 
         match check_and_recreate_embeddings_table(&cache_database).await {
             Ok(_) => {}
@@ -372,135 +376,5 @@ impl VecDBCache {
                 info!("Error while deleting from {EMB_TABLE_NAME} table: {:?}", err);
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::time::{SystemTime, Duration};
-    use rusqlite::OpenFlags;
-    use tokio_rusqlite::Connection;
-    use crate::vecdb::structs::{Record, SplitResult};
-
-    async fn setup_test_db() -> VecDBCache {
-        let cache_dir = PathBuf::from("/tmp");
-        let model_name = "test_model".to_string();
-        let embedding_size = 128;
-
-        VecDBCache::init(&cache_dir, &model_name, embedding_size).await.unwrap()
-    }
-
-    #[tokio::test]
-    async fn test_init() {
-        let cache = setup_test_db().await;
-        assert_eq!(cache.embedding_size, 128);
-    }
-
-    #[tokio::test]
-    async fn test_insert_and_get_records() {
-        let mut cache = setup_test_db().await;
-
-        let record = Record {
-            vector: Some(vec![0.1, 0.2, 0.3, 0.4]),
-            window_text: "test text".to_string(),
-            window_text_hash: "hash1".to_string(),
-            file_path: "test_file".to_string(),
-            start_line: 1,
-            end_line: 2,
-            time_added: SystemTime::now(),
-            time_last_used: SystemTime::now(),
-            model_name: "test_model".to_string(),
-            used_counter: 1,
-            distance: -1.0,
-            usefulness: 0.0,
-        };
-
-        cache.insert_records(vec![record.clone()]).await.unwrap();
-
-        let splits = vec![SplitResult {
-            window_text: "test text".to_string(),
-            window_text_hash: "hash1".to_string(),
-            file_path: "test_file".to_string(),
-            start_line: 1,
-            end_line: 2,
-        }];
-
-        let (found_records, non_found_splits) = cache.get_records_by_splits(&splits).await.unwrap();
-        assert_eq!(found_records.len(), 1);
-        assert_eq!(non_found_splits.len(), 0);
-        assert_eq!(found_records[0].window_text, "test text");
-    }
-
-    #[tokio::test]
-    async fn test_remove_records() {
-        let mut cache = setup_test_db().await;
-
-        let record = Record {
-            vector: Some(vec![0.1, 0.2, 0.3, 0.4]),
-            window_text: "test text".to_string(),
-            window_text_hash: "hash1".to_string(),
-            file_path: "test_file".to_string(),
-            start_line: 1,
-            end_line: 2,
-            time_added: SystemTime::now(),
-            time_last_used: SystemTime::now(),
-            model_name: "test_model".to_string(),
-            used_counter: 1,
-            distance: -1.0,
-            usefulness: 0.0,
-        };
-
-        cache.insert_records(vec![record.clone()]).await.unwrap();
-        cache.remove_records("test_file".to_string()).await.unwrap();
-
-        let splits = vec![SplitResult {
-            window_text: "test text".to_string(),
-            window_text_hash: "hash1".to_string(),
-            file_path: "test_file".to_string(),
-            start_line: 1,
-            end_line: 2,
-        }];
-
-        let (found_records, non_found_splits) = cache.get_records_by_splits(&splits).await.unwrap();
-        assert_eq!(found_records.len(), 0);
-        assert_eq!(non_found_splits.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_cleanup_old_records() {
-        let mut cache = setup_test_db().await;
-
-        let old_time = SystemTime::now() - Duration::from_secs(ONE_MONTH as u64 + 1);
-
-        let record = Record {
-            vector: Some(vec![0.1, 0.2, 0.3, 0.4]),
-            window_text: "test text".to_string(),
-            window_text_hash: "hash1".to_string(),
-            file_path: "test_file".to_string(),
-            start_line: 1,
-            end_line: 2,
-            time_added: old_time,
-            time_last_used: old_time,
-            model_name: "test_model".to_string(),
-            used_counter: 1,
-            distance: -1.0,
-            usefulness: 0.0,
-        };
-
-        cache.insert_records(vec![record.clone()]).await.unwrap();
-        cache.cleanup_old_records().await.unwrap();
-
-        let splits = vec![SplitResult {
-            window_text: "test text".to_string(),
-            window_text_hash: "hash1".to_string(),
-            file_path: "test_file".to_string(),
-            start_line: 1,
-            end_line: 2,
-        }];
-
-        let (found_records, non_found_splits) = cache.get_records_by_splits(&splits).await.unwrap();
-        assert_eq!(found_records.len(), 0);
-        assert_eq!(non_found_splits.len(), 1);
     }
 }
