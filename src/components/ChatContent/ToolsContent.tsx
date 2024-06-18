@@ -21,10 +21,9 @@ const Chevron: React.FC<{ open: boolean }> = ({ open }) => {
 const Result: React.FC<{ children: string }> = ({ children }) => {
   const lines = children.split("\n");
   const [open, setOpen] = React.useState(false);
-  if (lines.length < 4 || open)
-  if (lines.length < 6 || open)
+  if (lines.length < 9 || open)
     return <Markdown className={styles.tool_result}>{children}</Markdown>;
-  const toShow = lines.slice(0, 6).join("\n") + "\n ";
+  const toShow = lines.slice(0, 9).join("\n") + "\n ";
   return (
     <Button
       variant="ghost"
