@@ -40,7 +40,7 @@ fn results2message(results: &Vec<vecdb::structs::Record>) -> Vec<ContextFile> {
         let chunk_n =  vector_of_context_file.iter().map(|x|&x.file_name).filter(|x|**x == file_name).count();
         usefulness *= 1. / (chunk_n as f32 * 0.1 + 1.);
         // info!("file_name {}; usefulness {}", file_name, usefulness);
-        
+
         vector_of_context_file.push(ContextFile {
             file_name,
             file_content: r.window_text.clone(),
@@ -63,7 +63,7 @@ pub async fn execute_at_workspace(ccx: &mut AtCommandsContext, query: &String, v
             let results = search_result.results.clone();
             return Ok(results2message(&results));
         }
-        None => Err("vecdb is not available".to_string())
+        None => Err("VecDB is not active. Possible reasons: VecDB is turned off in settings, or perhaps a vectorization model is not available.".to_string())
     }
 }
 
