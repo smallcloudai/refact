@@ -22,6 +22,7 @@ const Result: React.FC<{ children: string }> = ({ children }) => {
   const lines = children.split("\n");
   const [open, setOpen] = React.useState(false);
   if (lines.length < 4 || open)
+  if (lines.length < 6 || open)
     return <Markdown className={styles.tool_result}>{children}</Markdown>;
   const toShow = lines.slice(0, 6).join("\n") + "\n ";
   return (
