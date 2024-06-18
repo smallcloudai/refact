@@ -58,17 +58,17 @@ pub trait SkeletonFormatter {
             .map(|x| x.replace("\r", "")
                 .replace("\t", "    ").to_string())
             .collect::<Vec<_>>();
-        let intent_n = content.iter().map(|x| {
+        let indent_n = content.iter().map(|x| {
             if x.is_empty() {
                 return usize::MAX;
-            } else { 
+            } else {
                 x.len() - x.trim_start().len()
             }
-        }).min().unwrap();
-        let intent = " ".repeat(intent_n).to_string();
+        }).min().unwrap_or(0);
+        let intent = " ".repeat(indent_n).to_string();
 
         lines.iter().map(|x| if x.starts_with(&intent) {
-            x[intent_n..x.len()].to_string()
+            x[indent_n..x.len()].to_string()
         } else {x.to_string()}).collect::<Vec<_>>()
     }
 
@@ -81,7 +81,7 @@ pub trait SkeletonFormatter {
         let mut all_top_syms = guid_to_info.values().filter(|info| info.full_range.start_point.row < top_row).collect::<Vec<_>>();
         // reverse sort
         all_top_syms.sort_by(|a, b| b.full_range.start_point.row.cmp(&a.full_range.start_point.row));
-        
+
         let mut need_syms: Vec<&&SymbolInformation> = vec![];
         {
             for idx in 0..all_top_syms.len() {
@@ -90,10 +90,10 @@ pub trait SkeletonFormatter {
                     break;
                 }
                 let all_sym_on_this_line = all_top_syms.iter()
-                    .filter(|info| 
+                    .filter(|info|
                         info.full_range.start_point.row == sym.full_range.start_point.row ||
                             info.full_range.end_point.row == sym.full_range.start_point.row).collect::<Vec<_>>();
-                
+
                 if all_sym_on_this_line.iter().all(|info| info.symbol_type == SymbolType::CommentDefinition) {
                     need_syms.push(sym);
                 } else {
@@ -101,8 +101,8 @@ pub trait SkeletonFormatter {
                 }
             }
         }
-        
-        
+
+
         for sym in need_syms {
             if sym.symbol_type != SymbolType::CommentDefinition {
                 break;
@@ -118,7 +118,7 @@ pub trait SkeletonFormatter {
                 .collect::<Vec<_>>();
             lines.into_iter().rev().for_each(|x| res_line.push_front(x));
         }
-        
+
         let mut bottom_row = symbol.full_range.start_point.row;
         if symbol.symbol_type == SymbolType::StructDeclaration {
             if res_line.is_empty() {

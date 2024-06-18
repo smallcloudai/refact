@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 
@@ -74,18 +73,6 @@ impl FileSplitter {
             chunks.extend(chunks_);
         }
 
-        if crate::ast::file_splitter::DEBUG {
-            let path_vecdb = path.with_extension("vecdb");
-            if let Ok(mut file) = std::fs::File::create(path_vecdb) {
-                let mut writer = std::io::BufWriter::new(&mut file);
-                for chunk in chunks.iter() {
-                    let beautiful_line = format!("\n\n------- {}:{}-{} ------\n", chunk.symbol_path, chunk.start_line, chunk.end_line);
-                    let _ = writer.write_all(beautiful_line.as_bytes());
-                    let _ = writer.write_all(chunk.window_text.as_bytes());
-                    let _ = writer.write_all(b"\n");
-                }
-            }
-        }
         Ok(chunks)
     }
 }

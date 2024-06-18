@@ -17,6 +17,8 @@ use crate::global_context::GlobalContext;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::structs::{Record, SplitResult, VecdbConstants, VecDbStatus};
 
+const DEBUG_WRITE_VECDB_FILES: bool = false;
+
 
 #[derive(Debug)]
 pub struct FileVectorizerService {
@@ -244,6 +246,19 @@ async fn vectorize_thread(
             info!("{}", err);
             vec![]
         });
+
+        if DEBUG_WRITE_VECDB_FILES {
+            let path_vecdb = doc.path.with_extension("vecdb");
+            if let Ok(mut file) = std::fs::File::create(path_vecdb) {
+                let mut writer = std::io::BufWriter::new(&mut file);
+                for chunk in split_data.iter() {
+                    let beautiful_line = format!("\n\n------- {:?} {}-{} ------\n", chunk.symbol_path, chunk.start_line, chunk.end_line);
+                    let _ = writer.write_all(beautiful_line.as_bytes());
+                    let _ = writer.write_all(chunk.window_text.as_bytes());
+                    let _ = writer.write_all(b"\n");
+                }
+            }
+        }
 
         let file_split_data = {
             let mut vecdb_handler = vecdb_handler_ref.lock().await;

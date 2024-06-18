@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::io::Write;
 use std::sync::{Arc, Weak};
 use std::sync::RwLock as StdRwLock;
 use itertools::Itertools;
@@ -20,7 +19,6 @@ use crate::global_context::GlobalContext;
 use crate::vecdb::file_splitter::FileSplitter;
 use crate::vecdb::structs::SplitResult;
 
-pub(crate) const DEBUG: bool = true;
 pub(crate) const LINES_OVERLAP: usize = 3;
 
 pub struct AstBasedFileSplitter {
@@ -100,7 +98,7 @@ impl AstBasedFileSplitter {
             }
         };
 
-        
+
         for guid in &guids {
             let symbol = guid_to_info.get(&guid).unwrap();
             let need_in_vecdb_at_all = match symbol.symbol_type {
@@ -125,7 +123,7 @@ impl AstBasedFileSplitter {
                 continue;
             }
             flush_accumulator(&mut unused_symbols_cluster_accumulator, &mut chunks);
-            
+
             let formatter = make_formatter(&symbol.language);
             if symbol.symbol_type == SymbolType::StructDeclaration {
                 if let Some(children) = guid_to_children.get(&symbol.guid) {
@@ -139,7 +137,7 @@ impl AstBasedFileSplitter {
                     }
                 }
             }
-            
+
             let (declaration, top_bottom_rows) = formatter.get_declaration_with_comments(&symbol, &guid_to_children, &guid_to_info);
             if !declaration.is_empty() {
                 let chunks_ = get_chunks(&declaration, &symbol.file_path,
@@ -149,19 +147,7 @@ impl AstBasedFileSplitter {
         }
 
         flush_accumulator(&mut unused_symbols_cluster_accumulator, &mut chunks);
-        
-        let path_vecdb = path.with_extension("vecdb");
-        if DEBUG {
-            if let Ok(mut file) = std::fs::File::create(path_vecdb) {
-                let mut writer = std::io::BufWriter::new(&mut file);
-                for chunk in chunks.iter() {
-                    let beautiful_line = format!("\n\n------- {}:{}-{} ------\n", chunk.symbol_path, chunk.start_line, chunk.end_line);
-                    let _ = writer.write_all(beautiful_line.as_bytes());
-                    let _ = writer.write_all(chunk.window_text.as_bytes());
-                    let _ = writer.write_all(b"\n");
-                }
-            }
-        }
+
         Ok(chunks)
     }
 }
