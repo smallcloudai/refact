@@ -5,7 +5,7 @@ use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
-use crate::at_commands::at_file::{AtParamFilePath, atfile_repair_candidates};
+use crate::at_commands::at_file::{AtParamFilePath, at_file_repair_candidates};
 use crate::at_commands::at_workspace::execute_at_workspace;
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::call_validation::{ContextEnum, ContextFile};
@@ -42,7 +42,7 @@ pub async fn execute_at_file_search(
     from_tool_call: bool,
 ) -> Result<Vec<ContextFile>, String> {
     let fuzzy = !from_tool_call;
-    let candidates = atfile_repair_candidates(file_path, ccx, fuzzy).await;
+    let candidates = at_file_repair_candidates(file_path, ccx, fuzzy).await;
     if candidates.is_empty() {
         info!("parameter {:?} is uncorrectable :/", file_path);
         return Err(format!("parameter {:?} is uncorrectable :/", file_path));

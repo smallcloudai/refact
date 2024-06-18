@@ -2,63 +2,71 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Component, PathBuf};
 use std::sync::Arc;
 use itertools::Itertools;
-use crate::global_context::GlobalContext;
-use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
+use tokio::sync::RwLock as ARwLock;
 use strsim::normalized_damerau_levenshtein;
 use tracing::info;
 
+use crate::global_context::GlobalContext;
 
-pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, HashSet<String>>>, Arc<Vec<String>>)
-{
-    let cache_dirty_arc: Arc<AMutex<bool>>;
-    let mut cache_correction_arc: Arc<HashMap<String, HashSet<String>>>;
-    let mut cache_fuzzy_arc: Arc<Vec<String>>;
-    {
-        let gcx_locked = global_context.read().await;
-        cache_dirty_arc = gcx_locked.documents_state.cache_dirty.clone();
-        cache_correction_arc = gcx_locked.documents_state.cache_correction.clone();
-        cache_fuzzy_arc = gcx_locked.documents_state.cache_fuzzy.clone();
-    }
-    let mut cache_dirty_ref = cache_dirty_arc.lock().await;
-    if *cache_dirty_ref {
-        // Rebuild, cache_dirty_arc stays locked.
-        // Any other thread will wait at this if until the rebuild is complete.
-        // Sources:
-        // - documents_state.document_map
-        // - cx_locked.documents_state.workspace_files
-        // - global_context.read().await.cmdline.files_jsonl_path
-        info!("rebuilding files cache...");
-        let file_paths_from_memory = global_context.read().await.documents_state.memory_document_map.keys().map(|x|x.clone()).collect::<Vec<_>>();
-        let paths_from_workspace: Vec<PathBuf> = global_context.read().await.documents_state.workspace_files.lock().unwrap().clone();
-        let paths_from_jsonl: Vec<PathBuf> = global_context.read().await.documents_state.jsonl_files.lock().unwrap().clone();
 
-        let mut cache_correction = HashMap::<String, HashSet<String>>::new();
-        let mut cache_fuzzy_set = HashSet::<String>::new();
-        let mut cnt = 0;
+fn make_cache<I>(paths_iter: I) -> (
+    HashMap<String, HashSet<String>>, Vec<String>, usize
+) where I: IntoIterator<Item = PathBuf> {
+    let mut cache_correction = HashMap::<String, HashSet<String>>::new();
+    let mut cache_fuzzy_set = HashSet::<String>::new();
+    let mut cnt = 0;
 
-        let paths_from_anywhere = file_paths_from_memory.into_iter().chain(paths_from_workspace.into_iter().chain(paths_from_jsonl.into_iter()));
-        for path in paths_from_anywhere {
-            let path_str = path.to_str().unwrap_or_default().to_string();
-            let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-            cache_fuzzy_set.insert(file_name);
-            cnt += 1;
+    for path in paths_iter {
+        let path_str = path.to_str().unwrap_or_default().to_string();
+        let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+        cache_fuzzy_set.insert(file_name);
+        cnt += 1;
 
-            cache_correction.entry(path_str.clone()).or_insert_with(HashSet::new).insert(path_str.clone());
-            // chop off directory names one by one
-            let mut index = 0;
-            while let Some(slashpos) = path_str[index .. ].find(|c| c == '/' || c == '\\') {
-                let absolute_slashpos = index + slashpos;
-                index = absolute_slashpos + 1;
-                let slashpos_to_end = &path_str[index .. ];
-                if !slashpos_to_end.is_empty() {
-                    cache_correction.entry(slashpos_to_end.to_string()).or_insert_with(HashSet::new).insert(path_str.clone());
-                }
+        cache_correction.entry(path_str.clone()).or_insert_with(HashSet::new).insert(path_str.clone());
+        // chop off directory names one by one
+        let mut index = 0;
+        while let Some(slashpos) = path_str[index .. ].find(|c| c == '/' || c == '\\') {
+            let absolute_slashpos = index + slashpos;
+            index = absolute_slashpos + 1;
+            let slashpos_to_end = &path_str[index .. ];
+            if !slashpos_to_end.is_empty() {
+                cache_correction.entry(slashpos_to_end.to_string()).or_insert_with(HashSet::new).insert(path_str.clone());
             }
         }
-        let cache_fuzzy: Vec<String> = cache_fuzzy_set.into_iter().collect();
-        info!("rebuild over, {} urls => cache_correction.len is now {}", cnt, cache_correction.len());
-        // info!("cache_fuzzy {:?}", cache_fuzzy);
-        // info!("cache_correction {:?}", cache_correction);
+    }
+
+    (cache_correction, cache_fuzzy_set.into_iter().collect(), cnt)
+}
+
+use std::time::Instant;
+
+pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, HashSet<String>>>, Arc<Vec<String>>) {
+    let (cache_dirty_arc, mut cache_correction_arc, mut cache_fuzzy_arc) = {
+        let cx = global_context.read().await;
+        (
+            cx.documents_state.cache_dirty.clone(),
+            cx.documents_state.cache_correction.clone(),
+            cx.documents_state.cache_fuzzy.clone(),
+        )
+    };
+
+    let mut cache_dirty_ref = cache_dirty_arc.lock().await;
+    if *cache_dirty_ref {
+        info!("Rebuilding files cache...");
+        let start_time = Instant::now();
+
+        let (file_paths_from_memory, paths_from_workspace, paths_from_jsonl) = {
+            let cx = global_context.read().await;
+            let memory_docs = cx.documents_state.memory_document_map.keys().cloned().collect::<Vec<_>>();
+            let workspace_files = cx.documents_state.workspace_files.lock().unwrap().clone();
+            let jsonl_files = cx.documents_state.jsonl_files.lock().unwrap().clone();
+            (memory_docs, workspace_files, jsonl_files)
+        };
+
+        let paths_from_anywhere = file_paths_from_memory.into_iter().chain(paths_from_workspace.into_iter().chain(paths_from_jsonl.into_iter()));
+        let (cache_correction, cache_fuzzy, cnt) = make_cache(paths_from_anywhere);
+
+        info!("Rebuild completed in {}s, {} URLs => cache_correction.len is now {}", start_time.elapsed().as_secs(), cnt, cache_correction.len());
 
         cache_correction_arc = Arc::new(cache_correction);
         cache_fuzzy_arc = Arc::new(cache_fuzzy);
@@ -69,7 +77,8 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
         }
         *cache_dirty_ref = false;
     }
-    return (cache_correction_arc, cache_fuzzy_arc)
+
+    return (cache_correction_arc, cache_fuzzy_arc);
 }
 
 pub async fn correct_to_nearest_filename(
