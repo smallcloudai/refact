@@ -32,10 +32,14 @@ const Result: React.FC<{ children: string }> = ({ children }) => {
       className={styles.tool_result_button}
     >
       <Flex direction="column" position="relative" align="start">
-        <Markdown className={styles.tool_result}>{toShow}</Markdown>
-        <Box position="absolute" bottom="3" right="4">
+        <Markdown
+          className={classNames(styles.tool_result, styles.tool_result_hidden)}
+        >
+          {toShow}
+        </Markdown>
+        <Flex position="absolute" bottom="2" width="100%" justify="center">
           Click for more
-        </Box>
+        </Flex>
       </Flex>
     </Button>
   );

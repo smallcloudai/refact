@@ -42,6 +42,14 @@
   width: 100%;
 }
 
+.tool_result_hidden {
+  mask-image: linear-gradient(
+    to bottom,
+    var(--color-background) 50%,
+    transparent 100%
+  );
+}
+
 .tool_result_button {
   text-align: left;
   justify-content: start;
