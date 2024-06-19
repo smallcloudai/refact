@@ -17,7 +17,7 @@ async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
     let mut symbols = vec![];
     for res in &result.search_results {
         let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
-        let content = res.symbol_declaration.get_content().await.unwrap_or("".to_string());
+        let content = res.symbol_declaration.get_content_from_file().await.unwrap_or("".to_string());
         symbols.push(ContextFile {
             file_name,
             file_content: content,

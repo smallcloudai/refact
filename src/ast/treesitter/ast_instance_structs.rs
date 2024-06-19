@@ -1,9 +1,9 @@
+use std::{fs, io};
 use std::any::Any;
+use std::cell::RefCell;
 use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt::Debug;
-use std::{fs, io};
-use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -11,12 +11,12 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
 use parking_lot::RwLock;
-use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use similar::DiffableStr;
 use tokio::fs::read_to_string;
 use tree_sitter::{Point, Range};
 use uuid::Uuid;
+
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::structs::{RangeDef, SymbolType};
 
@@ -107,7 +107,7 @@ pub struct AstSymbolFields {
     pub linked_decl_guid: Option<Uuid>,
     pub caller_guid: Option<Uuid>,
     pub is_error: bool,
-    pub caller_depth: Option<usize>
+    pub caller_depth: Option<usize>,
 }
 
 impl AstSymbolFields {
@@ -125,7 +125,7 @@ impl AstSymbolFields {
             language: fields.language,
             file_path: fields.file_path.clone(),
             is_error: fields.is_error,
-           ..Default::default()
+            ..Default::default()
         }
     }
 }
@@ -151,30 +151,8 @@ pub struct SymbolInformation {
 }
 
 impl SymbolInformation {
-    pub async fn get_content(&self) -> io::Result<String> {
-        let content = read_to_string(&self.file_path).await?;
-        let text = Rope::from_str(content.as_str());
-
-        let mut start_row = min(self.full_range.start_point.row, text.len_lines());
-        let end_row = min(self.full_range.end_point.row + 1, text.len_lines());
-        start_row = min(start_row, end_row);
-
-        Ok(text.slice(text.line_to_char(start_row)..text.line_to_char(end_row)).to_string())
-    }
-
-    pub async fn get_declaration_content(&self) -> io::Result<String> {
-        let content = read_to_string(&self.file_path).await?;
-        Ok(content.slice(self.declaration_range.start_byte..self.declaration_range.end_byte).to_string())
-    }
-
-    pub fn get_declaration_content_blocked(&self) -> io::Result<String> {
-        let content = fs::read_to_string(&self.file_path)?;
-        Ok(content.slice(self.declaration_range.start_byte..self.declaration_range.end_byte).to_string())
-    }
-
-    pub fn get_content_blocked(&self) -> io::Result<String> {
-        let content = fs::read_to_string(&self.file_path)?;
-        let lines: Vec<&str> = content.lines().collect();
+    pub fn get_content(&self, content: &String) -> io::Result<String> {
+        let lines: Vec<&str> = content.split("\n").collect();
         let mut end_row = self.full_range.end_point.row + 1;
         let raw_content = content.slice(self.full_range.start_byte..self.full_range.end_byte).to_string();
         if raw_content.ends_with("\n") {
@@ -186,6 +164,30 @@ impl SymbolInformation {
         start_row = min(start_row, end_row);
         let selected_text = lines[start_row..end_row].join("\n");
         Ok(selected_text)
+    }
+
+    pub async fn get_content_from_file(&self) -> io::Result<String> {
+        let content = read_to_string(&self.file_path).await?;
+        self.get_content(&content)
+    }
+
+    pub fn get_content_from_file_blocked(&self) -> io::Result<String> {
+        let content = fs::read_to_string(&self.file_path)?;
+        self.get_content(&content)
+    }
+
+    pub fn get_declaration_content(&self, content: &String) -> io::Result<String> {
+        Ok(content.slice(self.declaration_range.start_byte..self.declaration_range.end_byte).to_string())
+    }
+
+    pub async fn get_declaration_content_from_file(&self) -> io::Result<String> {
+        let content = read_to_string(&self.file_path).await?;
+        self.get_declaration_content(&content)
+    }
+
+    pub fn get_declaration_content_from_file_blocked(&self) -> io::Result<String> {
+        let content = fs::read_to_string(&self.file_path)?;
+        self.get_declaration_content(&content)
     }
 }
 
@@ -220,7 +222,7 @@ impl Default for AstSymbolFields {
             linked_decl_guid: None,
             caller_guid: None,
             is_error: false,
-            caller_depth: None
+            caller_depth: None,
         }
     }
 }
@@ -616,7 +618,7 @@ pub struct ImportDeclaration {
     pub path_components: Vec<String>,
     pub alias: Option<String>,
     pub import_type: ImportType,
-    pub filepath_ref: Option<PathBuf>
+    pub filepath_ref: Option<PathBuf>,
 }
 
 impl Default for ImportDeclaration {
@@ -626,7 +628,7 @@ impl Default for ImportDeclaration {
             path_components: vec![],
             alias: None,
             import_type: ImportType::Unknown,
-            filepath_ref: None
+            filepath_ref: None,
         }
     }
 }
@@ -648,9 +650,9 @@ impl AstSymbolInstance for ImportDeclaration {
         vec![]
     }
 
-    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) {}
 
-    fn temporary_types_cleanup(&mut self) { }
+    fn temporary_types_cleanup(&mut self) {}
 
     fn is_type(&self) -> bool {
         false
@@ -890,9 +892,9 @@ impl AstSymbolInstance for CommentDefinition {
         vec![]
     }
 
-    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) {}
 
-    fn temporary_types_cleanup(&mut self) { }
+    fn temporary_types_cleanup(&mut self) {}
 
     fn is_declaration(&self) -> bool { true }
 
@@ -908,7 +910,7 @@ FunctionCall
 #[derive(DynPartialEq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct FunctionCall {
     pub ast_fields: AstSymbolFields,
-    pub template_types: Vec<TypeDef>
+    pub template_types: Vec<TypeDef>,
 }
 
 impl Default for FunctionCall {
@@ -941,9 +943,9 @@ impl AstSymbolInstance for FunctionCall {
         vec![]
     }
 
-    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) {}
 
-    fn temporary_types_cleanup(&mut self) { }
+    fn temporary_types_cleanup(&mut self) {}
 
     fn is_declaration(&self) -> bool { false }
 
@@ -990,9 +992,9 @@ impl AstSymbolInstance for VariableUsage {
         vec![]
     }
 
-    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) { }
+    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) {}
 
-    fn temporary_types_cleanup(&mut self) { }
+    fn temporary_types_cleanup(&mut self) {}
 
     fn is_declaration(&self) -> bool { false }
 

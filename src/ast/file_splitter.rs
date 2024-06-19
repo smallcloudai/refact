@@ -128,7 +128,7 @@ impl AstBasedFileSplitter {
             if symbol.symbol_type == SymbolType::StructDeclaration {
                 if let Some(children) = guid_to_children.get(&symbol.guid) {
                     if !children.is_empty() {
-                        let skeleton_line = formatter.make_skeleton(&symbol, &guid_to_children, &guid_to_info);
+                        let skeleton_line = formatter.make_skeleton(&symbol, &doc_text, &guid_to_children, &guid_to_info);
                         let chunks_ = get_chunks(&skeleton_line, &symbol.file_path,
                                                  &symbol.symbol_path,
                                                  (symbol.full_range.start_point.row, symbol.full_range.end_point.row),
@@ -138,7 +138,7 @@ impl AstBasedFileSplitter {
                 }
             }
 
-            let (declaration, top_bottom_rows) = formatter.get_declaration_with_comments(&symbol, &guid_to_children, &guid_to_info);
+            let (declaration, top_bottom_rows) = formatter.get_declaration_with_comments(&symbol, &doc_text, &guid_to_children, &guid_to_info);
             if !declaration.is_empty() {
                 let chunks_ = get_chunks(&declaration, &symbol.file_path,
                                          &symbol.symbol_path, top_bottom_rows, tokenizer.clone(), tokens_limit, LINES_OVERLAP, true);

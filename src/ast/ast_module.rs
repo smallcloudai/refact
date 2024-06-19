@@ -164,7 +164,7 @@ impl AstModule {
                     .filter_map(|s| {
                         let info_struct = s.borrow().symbol_info_struct();
                         let name = info_struct.name.clone();
-                        let content = info_struct.get_content_blocked().ok()?;
+                        let content = info_struct.get_content_from_file_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
@@ -209,7 +209,7 @@ impl AstModule {
                     .take(top_n)
                     .filter_map(|s| {
                         let info_struct = s.borrow().symbol_info_struct();
-                        let content = info_struct.get_content_blocked().ok()?;
+                        let content = info_struct.get_content_from_file_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
@@ -248,7 +248,7 @@ impl AstModule {
                     .iter()
                     .filter_map(|s| {
                         let info_struct = s.borrow().symbol_info_struct();
-                        let content = info_struct.get_content_blocked().ok()?;
+                        let content = info_struct.get_content_from_file_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
@@ -287,7 +287,7 @@ impl AstModule {
                     .iter()
                     .filter_map(|s| {
                         let info_struct = s.borrow().symbol_info_struct();
-                        let content = info_struct.get_content_blocked().ok()?;
+                        let content = info_struct.get_content_from_file_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
@@ -340,7 +340,7 @@ impl AstModule {
             );
         let symbol_to_search_res = |x: &AstSymbolInstanceRc| {
             let symbol_declaration = x.borrow().symbol_info_struct();
-            let content = symbol_declaration.get_content_blocked().unwrap_or_default();
+            let content = symbol_declaration.get_content_from_file_blocked().unwrap_or_default();
             let usefulness = *guid_to_usefulness
                 .get(&symbol_declaration.guid)
                 .expect("Guid has not found in `guid_to_usefulness` dict, \

@@ -12,9 +12,10 @@ struct BaseSkeletonFormatter;
 pub trait SkeletonFormatter {
     fn make_skeleton(&self,
                      symbol: &SymbolInformation,
+                     text: &String,
                      guid_to_children: &HashMap<Uuid, Vec<Uuid>>,
                      guid_to_info: &HashMap<Uuid, &SymbolInformation>) -> String {
-        let mut res_line = symbol.get_declaration_content_blocked().unwrap()
+        let mut res_line = symbol.get_declaration_content(text).unwrap()
             .split("\n")
             .map(|x| x.trim_start().trim_end().to_string())
             .collect::<Vec<_>>();
@@ -29,7 +30,7 @@ pub trait SkeletonFormatter {
             let child_symbol = guid_to_info.get(&child).unwrap();
             match child_symbol.symbol_type {
                 SymbolType::FunctionDeclaration | SymbolType::ClassFieldDeclaration => {
-                    let mut content = child_symbol.get_declaration_content_blocked().unwrap()
+                    let mut content = child_symbol.get_declaration_content(text).unwrap()
                         .split("\n")
                         .map(|x| x.trim_start().trim_end().to_string())
                         .collect::<Vec<_>>();
@@ -54,6 +55,9 @@ pub trait SkeletonFormatter {
     }
 
     fn preprocess_content(&self, content: Vec<String>) -> Vec<String> {
+        if content.is_empty() {
+            return vec![];
+        }
         let lines = content.iter()
             .map(|x| x.replace("\r", "")
                 .replace("\t", "    ").to_string())
@@ -74,6 +78,7 @@ pub trait SkeletonFormatter {
 
     fn get_declaration_with_comments(&self,
                                      symbol: &SymbolInformation,
+                                     text: &String,
                                      _guid_to_children: &HashMap<Uuid, Vec<Uuid>>,
                                      guid_to_info: &HashMap<Uuid, &SymbolInformation>) -> (String, (usize, usize)) {
         let mut res_line: VecDeque<String> = Default::default();
@@ -108,7 +113,7 @@ pub trait SkeletonFormatter {
                 break;
             }
             top_row = sym.full_range.start_point.row;
-            let mut content = sym.get_content_blocked().unwrap();
+            let mut content = sym.get_content(text).unwrap();
             if content.ends_with("\n") {
                 content.pop();
             }
@@ -124,7 +129,7 @@ pub trait SkeletonFormatter {
             if res_line.is_empty() {
                 return ("".to_string(), (top_row, bottom_row));
             }
-            let mut content = symbol.get_declaration_content_blocked().unwrap().split("\n")
+            let mut content = symbol.get_declaration_content(text).unwrap().split("\n")
                 .map(|x| x.trim_end().to_string())
                 .collect::<Vec<_>>();
             if let Some(last) = content.last_mut() {
@@ -134,7 +139,7 @@ pub trait SkeletonFormatter {
             }
             res_line.extend(content.into_iter());
         } else if symbol.symbol_type == SymbolType::FunctionDeclaration {
-            let content = symbol.get_content_blocked().unwrap().split("\n")
+            let content = symbol.get_content(text).unwrap().split("\n")
                 .map(|x| x.to_string())
                 .collect::<Vec<_>>();
             res_line.extend(content.into_iter());

@@ -815,9 +815,10 @@ pub struct PythonSkeletonFormatter;
 
 impl SkeletonFormatter for PythonSkeletonFormatter {
     fn make_skeleton(&self, symbol: &SymbolInformation,
+                     text: &String,
                      guid_to_children: &HashMap<Uuid, Vec<Uuid>>,
                      guid_to_info: &HashMap<Uuid, &SymbolInformation>) -> String {
-        let mut res_line = symbol.get_declaration_content_blocked().unwrap();
+        let mut res_line = symbol.get_declaration_content(text).unwrap();
         let children = guid_to_children.get(&symbol.guid).unwrap();
         if children.is_empty() {
             return format!("{res_line}\n  ...");
@@ -827,7 +828,7 @@ impl SkeletonFormatter for PythonSkeletonFormatter {
             let child_symbol = guid_to_info.get(&child).unwrap();
             match child_symbol.symbol_type {
                 SymbolType::FunctionDeclaration => {
-                    let content = child_symbol.get_declaration_content_blocked().unwrap();
+                    let content = child_symbol.get_declaration_content(text).unwrap();
                     let lines = content.lines().collect::<Vec<_>>();
                     for line in lines {
                         let trimmed_line = line.trim_start();
@@ -836,7 +837,7 @@ impl SkeletonFormatter for PythonSkeletonFormatter {
                     res_line = format!("{}    ...\n", res_line);
                 }
                 SymbolType::ClassFieldDeclaration => {
-                    res_line = format!("{}  {}\n", res_line, child_symbol.get_content_blocked().unwrap());
+                    res_line = format!("{}  {}\n", res_line, child_symbol.get_content(text).unwrap());
                 }
                 _ => {}
             }
@@ -846,6 +847,7 @@ impl SkeletonFormatter for PythonSkeletonFormatter {
     }
     fn get_declaration_with_comments(&self,
                                      symbol: &SymbolInformation,
+                                     text: &String,
                                      guid_to_children: &HashMap<Uuid, Vec<Uuid>>,
                                      guid_to_info: &HashMap<Uuid, &SymbolInformation>) -> (String, (usize, usize)) {
         if let Some(children) = guid_to_children.get(&symbol.guid) {
@@ -858,10 +860,10 @@ impl SkeletonFormatter for PythonSkeletonFormatter {
                 a.full_range.start_byte.cmp(&b.full_range.start_byte)
             );
             if symbol.symbol_type == SymbolType::FunctionDeclaration {
-                res_line = symbol.get_content_blocked().unwrap().split("\n").map(|x| x.to_string()).collect::<Vec<_>>();
+                res_line = symbol.get_content(text).unwrap().split("\n").map(|x| x.to_string()).collect::<Vec<_>>();
                 row = symbol.full_range.end_point.row;
             } else {
-                let mut content_lines = symbol.get_declaration_content_blocked().unwrap()
+                let mut content_lines = symbol.get_declaration_content(text).unwrap()
                     .split("\n")
                     .map(|x| x.to_string().replace("\t", "    ")).collect::<Vec<_>>();
                 let mut intent_n = 0;
@@ -873,7 +875,7 @@ impl SkeletonFormatter for PythonSkeletonFormatter {
                         break;
                     }
                     row = sym.full_range.end_point.row;
-                    let content = sym.get_content_blocked().unwrap();
+                    let content = sym.get_content(text).unwrap();
                     let lines = content.split("\n").collect::<Vec<_>>();
                     let lines = lines.iter()
                         .map(|x| x.to_string())

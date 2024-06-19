@@ -191,9 +191,9 @@ pub(crate) fn base_parser_test(parser: &mut Box<dyn AstLanguageParser>,
                                path: &PathBuf,
                                code: &str, symbols_str: &str) {
     let symbols = parser.parse(code, &path);
-    use std::fs;
-    let symbols_str_ = serde_json::to_string_pretty(&symbols).unwrap();
-    fs::write("output.json", symbols_str_).expect("Unable to write file");
+    // use std::fs;
+    // let symbols_str_ = serde_json::to_string_pretty(&symbols).unwrap();
+    // fs::write("output.json", symbols_str_).expect("Unable to write file");
     check_duplicates(&symbols);
     print(&symbols, code);
 
@@ -225,12 +225,12 @@ pub(crate) fn base_skeletonizer_test(lang: &LanguageId,
     let class_symbols: Vec<_> = ast_markup.symbols_sorted_by_path_len.iter().filter(|x| x.symbol_type == SymbolType::StructDeclaration).collect();
     let mut skeletons: HashSet<Skeleton> = Default::default();
     for symbol in class_symbols {
-        let skeleton_line = formatter.make_skeleton(&symbol, &guid_to_children, &guid_to_info);
+        let skeleton_line = formatter.make_skeleton(&symbol, &code.to_string(), &guid_to_children, &guid_to_info);
         skeletons.insert(Skeleton { line: skeleton_line });
     }
-    use std::fs;
-    let symbols_str_ = serde_json::to_string_pretty(&skeletons).unwrap();
-    fs::write("output.json", symbols_str_).expect("Unable to write file");
+    // use std::fs;
+    // let symbols_str_ = serde_json::to_string_pretty(&skeletons).unwrap();
+    // fs::write("output.json", symbols_str_).expect("Unable to write file");
     let ref_skeletons: Vec<Skeleton> = serde_json::from_str(&skeleton_ref_str).unwrap();
     let ref_skeletons: HashSet<Skeleton> = HashSet::from_iter(ref_skeletons.iter().cloned());
     assert_eq!(skeletons, ref_skeletons);
@@ -264,7 +264,7 @@ pub(crate) fn base_declaration_formatter_test(lang: &LanguageId,
         if !vec![SymbolType::StructDeclaration, SymbolType::FunctionDeclaration].contains(&symbol.symbol_type) {
             continue;
         }
-        let (line, (top_row, bottom_row)) = formatter.get_declaration_with_comments(&symbol, &guid_to_children, &guid_to_info);
+        let (line, (top_row, bottom_row)) = formatter.get_declaration_with_comments(&symbol, &code.to_string(), &guid_to_children, &guid_to_info);
         if !line.is_empty() {
             decls.insert(Decl {
                 top_row,
@@ -273,9 +273,9 @@ pub(crate) fn base_declaration_formatter_test(lang: &LanguageId,
             });
         }
     }
-    use std::fs;
-    let symbols_str_ = serde_json::to_string_pretty(&decls).unwrap();
-    fs::write("output.json", symbols_str_).expect("Unable to write file");
+    // use std::fs;
+    // let symbols_str_ = serde_json::to_string_pretty(&decls).unwrap();
+    // fs::write("output.json", symbols_str_).expect("Unable to write file");
     let ref_decls: Vec<Decl> = serde_json::from_str(&decls_ref_str).unwrap();
     let ref_decls: HashSet<Decl> = HashSet::from_iter(ref_decls.iter().cloned());
     assert_eq!(decls, ref_decls);
