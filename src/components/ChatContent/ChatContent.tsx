@@ -9,7 +9,7 @@ import type { MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, Text, Container } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
@@ -110,7 +110,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
               // return <Markdown key={index}>{text}</Markdown>;
             }
           })}
-          {isWaiting && <Spinner />}
+          {isWaiting && (
+            <Container py="4">
+              <Spinner />
+            </Container>
+          )}
           <div ref={innerRef} />
         </Flex>
       </ScrollArea>
