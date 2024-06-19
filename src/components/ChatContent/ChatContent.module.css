@@ -23,6 +23,7 @@
   padding: var(--space-2);
   min-height: var(--base-button-height);
   height: auto;
+  white-space: pre;
 }
 
 .tool_content {
