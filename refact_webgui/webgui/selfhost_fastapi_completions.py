@@ -311,14 +311,12 @@ class BaseCompletionsRouter(APIRouter):
 
     async def _local_tokenizer(self, model_path: str) -> str:
         model_dir = Path(env.DIR_WEIGHTS) / f"models--{model_path.replace('/', '--')}"
-        tokenizer_paths = list(model_dir.rglob("tokenizer.json"))
+        tokenizer_paths = list(sorted(model_dir.rglob("tokenizer.json"), key=lambda p: p.stat().st_ctime))
         if not tokenizer_paths:
             raise HTTPException(404, detail=f"tokenizer.json for {model_path} does not exist")
-        if len(tokenizer_paths) > 1:
-            raise HTTPException(404, detail=f"multiple tokenizer.json for {model_path}")
 
         data = ""
-        async with aiofiles.open(tokenizer_paths[0], mode='r') as f:
+        async with aiofiles.open(tokenizer_paths[-1], mode='r') as f:
             while True:
                 if not (chunk := await f.read(1024 * 1024)):
                     break
