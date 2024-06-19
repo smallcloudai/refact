@@ -169,7 +169,10 @@ pub const KNOWN_MODELS: &str = r####"
                     ],
                     "default_system_message": "You are a programming assistant."
                 }
-            }
+            },
+            "similar_models": [
+                "llama3/8b/instruct/vllm"
+            ]
         },
         "llama2/7b": {
             "n_ctx": 4096,
