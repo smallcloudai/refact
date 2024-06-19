@@ -40,7 +40,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       isStreaming,
     } = props;
 
-    const { innerRef, handleScroll } = useAutoScroll({ ref, messages });
+    const { innerRef, handleScroll } = useAutoScroll({
+      ref,
+      messages,
+      isStreaming,
+    });
 
     const toolResultsMap = React.useMemo(() => {
       return messages.reduce<Record<string, ToolResult>>((acc, message) => {

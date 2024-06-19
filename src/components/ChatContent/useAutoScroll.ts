@@ -4,20 +4,35 @@ import { type ChatMessages } from "../../events";
 type useAutoScrollProps = {
   ref: React.ForwardedRef<HTMLDivElement>;
   messages: ChatMessages;
+  isStreaming: boolean;
 };
 
-export function useAutoScroll({ ref, messages }: useAutoScrollProps) {
+export function useAutoScroll({
+  ref,
+  messages,
+  isStreaming,
+}: useAutoScrollProps) {
   const innerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   useImperativeHandle(ref, () => innerRef.current!, []);
 
-  const [autoScroll, setAutoScroll] = useState(true);
+  const [autoScroll, setAutoScroll] = useState(false);
+  const [isVisable, setIsVisable] = useState(true);
 
   useEffect(() => {
-    if (autoScroll && innerRef.current?.scrollIntoView) {
+    setAutoScroll(isStreaming);
+  }, [isStreaming]);
+
+  useEffect(() => {
+    if (
+      isStreaming &&
+      !isVisable &&
+      autoScroll &&
+      innerRef.current?.scrollIntoView
+    ) {
       innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
     }
-  }, [messages, autoScroll]);
+  }, [messages, autoScroll, isVisable, isStreaming]);
 
   const handleScroll: React.UIEventHandler<HTMLDivElement> = (event) => {
     if (!innerRef.current) return;
@@ -27,12 +42,7 @@ export function useAutoScroll({ ref, messages }: useAutoScrollProps) {
       top <= parent.top
         ? parent.top - top <= height
         : bottom - parent.bottom <= height;
-
-    if (isVisable && !autoScroll) {
-      setAutoScroll(true);
-    } else if (autoScroll) {
-      setAutoScroll(false);
-    }
+    setIsVisable(isVisable);
   };
 
   return { handleScroll, innerRef };
