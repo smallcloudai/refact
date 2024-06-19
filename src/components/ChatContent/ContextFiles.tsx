@@ -101,7 +101,7 @@ const ContextFilesContent: React.FC<{ files: ChatContextFile[] }> = ({
   return (
     <Container>
       <pre style={{ margin: 0 }}>
-        <Flex gap="1" wrap="nowrap" direction="column">
+        <Flex wrap="nowrap" direction="column">
           {files.map((file, index) => {
             const lineText =
               file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
