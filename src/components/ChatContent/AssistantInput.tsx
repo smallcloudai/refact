@@ -33,10 +33,6 @@ function fallbackCopying(text: string) {
 export const AssistantInput: React.FC<ChatInputProps> = (props) => {
   return (
     <Container position="relative">
-      {props.toolCalls && (
-        <ToolContent toolCalls={props.toolCalls} results={props.toolResults} />
-      )}
-
       {props.message && (
         <Box py="4">
           <Markdown
@@ -58,6 +54,9 @@ export const AssistantInput: React.FC<ChatInputProps> = (props) => {
             {props.message}
           </Markdown>
         </Box>
+      )}
+      {props.toolCalls && (
+        <ToolContent toolCalls={props.toolCalls} results={props.toolResults} />
       )}
     </Container>
   );
