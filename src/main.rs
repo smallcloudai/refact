@@ -1,9 +1,10 @@
 use std::io::Write;
+use std::env;
+use std::panic;
 
 use tokio::task::JoinHandle;
 use tracing::{info, Level};
 use tracing_appender;
-use std::panic;
 use backtrace;
 
 use crate::background_tasks::start_background_tasks;
@@ -72,11 +73,15 @@ async fn main() {
     }));
 
     {
-        info!("cache dir: {}", cache_dir.display());
-        info!("started with enduser_client_version==\"{}\"", gcx.read().await.cmdline.enduser_client_version);
-        let build_info: std::collections::HashMap<&str, &str> = crate::http::routers::info::get_build_info();
+        let build_info = crate::http::routers::info::get_build_info();
         for (k, v) in build_info {
             info!("{:>20} {}", k, v);
+        }
+        info!("cache dir: {}", cache_dir.display());
+        let mut api_key_at: usize = usize::MAX;
+        for (arg_n, arg_v) in env::args().enumerate() {
+            info!("cmdline[{}]: {:?}", arg_n, if arg_n != api_key_at { arg_v.as_str() } else { "***" } );
+            if arg_v == "--api-key" { api_key_at = arg_n + 1; }
         }
     }
     files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;

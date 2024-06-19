@@ -161,7 +161,7 @@ impl SymbolInformation {
 
         Ok(text.slice(text.line_to_char(start_row)..text.line_to_char(end_row)).to_string())
     }
-    
+
     pub async fn get_declaration_content(&self) -> io::Result<String> {
         let content = read_to_string(&self.file_path).await?;
         Ok(content.slice(self.declaration_range.start_byte..self.declaration_range.end_byte).to_string())
@@ -180,7 +180,7 @@ impl SymbolInformation {
         if raw_content.ends_with("\n") {
             end_row -= 1;
         }
-        
+
         let mut start_row = min(self.full_range.start_point.row, lines.len());
         let end_row = min(end_row, lines.len());
         start_row = min(start_row, end_row);

@@ -45,6 +45,8 @@ similar = "2.3.0"
 axum = "0.6.20"
 uuid = { version = "1", features = ["v4"] }
 lazy_static = "1.4.0"
+indexmap = {version = "1.9.1", features = ["serde-1"]}
+
 
 regex-automata = { version = "0.1.10", features = ["transducer"] }
 sorted-vec = "0.8.3"
