@@ -3,8 +3,6 @@ use std::collections::HashSet;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
-use std::time::SystemTime;
 
 use arrow::array::ArrayData;
 use arrow::buffer::Buffer;
@@ -18,12 +16,11 @@ use itertools::Itertools;
 use lance::dataset::{WriteMode, WriteParams};
 use tempfile::{tempdir, TempDir};
 use tokio::sync::Mutex as AMutex;
-use tracing::error;
 use tracing::info;
 use vectordb::database::Database;
 use vectordb::table::Table;
 
-use crate::vecdb::structs::{Record, SplitResult};
+use crate::vecdb::structs::Record;
 
 impl Debug for VecDBHandler {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -51,10 +48,6 @@ fn cosine_distance(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
     1.0 - cosine_similarity(vec1, vec2)
 }
 
-const TWO_WEEKS: i32 = 2 * 7 * 24 * 3600;
-const ONE_MONTH: i32 = 30 * 24 * 3600;
-const MIN_LIKES: i32 = 3;
-
 
 impl VecDBHandler {
     pub async fn init(embedding_size: i32) -> Result<VecDBHandler, String> {
@@ -79,10 +72,6 @@ impl VecDBHandler {
             Field::new("file_path", DataType::Utf8, true),
             Field::new("start_line", DataType::UInt64, true),
             Field::new("end_line", DataType::UInt64, true),
-            Field::new("time_added", DataType::UInt64, true),
-            Field::new("time_last_used", DataType::UInt64, true),
-            Field::new("model_name", DataType::Utf8, true),
-            Field::new("used_counter", DataType::UInt64, true),
         ]));
 
         let batches_iter = RecordBatchIterator::new(vec![].into_iter().map(Ok), schema.clone());
@@ -101,12 +90,6 @@ impl VecDBHandler {
         })
     }
 
-    async fn checkout(&mut self) {
-        match self.data_table.checkout_latest().await {
-            Ok(table) => { self.data_table = table }
-            Err(err) => error!("Error while checking out the data table: {:?}", err)
-        }
-    }
     pub async fn size(&self) -> Result<usize, String> {
         match self.data_table.count_rows().await {
             Ok(size) => Ok(size),
@@ -136,27 +119,7 @@ impl VecDBHandler {
         self.indexed_file_paths = Arc::new(AMutex::new(res));
     }
 
-    pub async fn try_add_from_cache(&mut self, data: Vec<SplitResult>) -> Vec<SplitResult> {
-        if data.is_empty() {
-            return vec![];
-        }
-
-        let (found_records, left_splits) = match self.get_records_from_cache(&data).await {
-            Ok(records) => records,
-            Err(err) => {
-                info!("Error while getting values from cache: {:?}", err);
-                return vec![];
-            }
-        };
-
-        match self.add_or_update(found_records, false).await {
-            Ok(_) => {}
-            Err(err) => info!("Error while adding values from cache: {:?}", err),
-        };
-        left_splits
-    }
-
-    pub async fn add_or_update(&mut self, records: Vec<Record>, add_to_cache: bool) -> Result<(), String> {
+    pub async fn add_or_update(&mut self, records: &Vec<Record>) -> Result<(), String> {
         fn make_emb_data(records: &Vec<Record>, embedding_size: i32) -> Result<ArrayData, String> {
             let vec_trait = Arc::new(Field::new("item", DataType::Float32, true));
             let mut emb_builder: Vec<f32> = vec![];
@@ -196,14 +159,6 @@ impl VecDBHandler {
         let file_paths: Vec<String> = records.iter().map(|x| x.file_path.to_str().unwrap_or("No filename").to_string()).collect();
         let start_lines: Vec<u64> = records.iter().map(|x| x.start_line).collect();
         let end_lines: Vec<u64> = records.iter().map(|x| x.end_line).collect();
-        let time_adds: Vec<u64> = records.iter().map(|x| x.time_added.duration_since(std::time::UNIX_EPOCH).unwrap_or(
-            Duration::from_secs(0)
-        ).as_secs()).collect();
-        let time_last_used: Vec<u64> = records.iter().map(|x| x.time_last_used.duration_since(std::time::UNIX_EPOCH).unwrap_or(
-            Duration::from_secs(0)
-        ).as_secs()).collect();
-        let model_names: Vec<String> = records.iter().map(|x| x.model_name.clone()).collect();
-        let used_counters: Vec<u64> = records.iter().map(|x| x.used_counter).collect();
         let data_batches_iter = RecordBatchIterator::new(
             vec![RecordBatch::try_new(
                 self.schema.clone(),
@@ -214,10 +169,6 @@ impl VecDBHandler {
                     Arc::new(StringArray::from(file_paths.clone())),
                     Arc::new(UInt64Array::from(start_lines.clone())),
                     Arc::new(UInt64Array::from(end_lines.clone())),
-                    Arc::new(UInt64Array::from(time_adds.clone())),
-                    Arc::new(UInt64Array::from(time_last_used.clone())),
-                    Arc::new(StringArray::from(model_names.clone())),
-                    Arc::new(UInt64Array::from(used_counters.clone())),
                 ],
             )],
             self.schema.clone(),
@@ -232,21 +183,10 @@ impl VecDBHandler {
                     Arc::new(StringArray::from(file_paths)),
                     Arc::new(UInt64Array::from(start_lines)),
                     Arc::new(UInt64Array::from(end_lines)),
-                    Arc::new(UInt64Array::from(time_adds)),
-                    Arc::new(UInt64Array::from(time_last_used)),
-                    Arc::new(StringArray::from(model_names)),
-                    Arc::new(UInt64Array::from(used_counters)),
                 ],
             )],
             self.schema.clone(),
         );
-
-        if add_to_cache {
-            match self.insert_records_to_cache(records).await {
-                Ok(_) => {}
-                Err(err) => return Err(format!("{:?}", err))
-            };
-        }
 
         let data_res = self.data_table.add(
             data_batches_iter, Option::from(WriteParams {
@@ -299,10 +239,6 @@ impl VecDBHandler {
     //     ).await
     // }
 
-    pub fn contains(&self, hash: &str) -> bool {
-        self.data_table_hashes.contains(hash)
-    }
-
     fn parse_table_iter(
         record_batch: RecordBatch,
         include_embedding: bool,
@@ -346,25 +282,6 @@ impl VecDBHandler {
                 end_line: as_primitive_array::<UInt64Type>(record_batch.column_by_name("end_line")
                     .expect("Missing column 'end_line'"))
                     .value(idx),
-                time_added: std::time::UNIX_EPOCH + Duration::from_secs(
-                    as_primitive_array::<UInt64Type>(
-                        record_batch.column_by_name("time_added")
-                            .expect("Missing column 'time_added'"))
-                        .value(idx)
-                ),
-                time_last_used: std::time::UNIX_EPOCH + Duration::from_secs(
-                    as_primitive_array::<UInt64Type>(
-                        record_batch.column_by_name("time_last_used")
-                            .expect("Missing column 'time_last_used'"))
-                        .value(idx)
-                ),
-                model_name: as_string_array(record_batch.column_by_name("model_name")
-                    .expect("Missing column 'model_name'"))
-                    .value(idx)
-                    .to_string(),
-                used_counter: as_primitive_array::<UInt64Type>(record_batch.column_by_name("used_counter")
-                    .expect("Missing column 'used_counter'"))
-                    .value(idx),
                 distance,
                 usefulness: 0.0,
             })
@@ -404,19 +321,5 @@ impl VecDBHandler {
             }
             Err(err) => Err(err),
         }
-    }
-
-    pub async fn cleanup_old_records(&mut self) -> Result<(), String> {
-        info!("VECDB: Cleaning up old records");
-
-        let now = SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap();
-        let q = format!("{} - time_last_used > {TWO_WEEKS} AND used_counter < {MIN_LIKES}", now.as_secs());
-        self.data_table.delete(&*q).await.expect("could not delete old records");
-
-        let q = format!("{} - time_last_used > {ONE_MONTH}", now.as_secs());
-        self.data_table.delete(&*q).await.expect("could not delete old records");
-
-        self.checkout().await;
-        Ok(())
     }
 }

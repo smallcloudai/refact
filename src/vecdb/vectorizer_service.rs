@@ -2,9 +2,10 @@ use std::collections::{HashMap, VecDeque};
 use std::io::Write;
 use std::ops::Div;
 use std::sync::{Arc, Weak};
-use std::time::SystemTime;
-use tokenizers::Tokenizer;
 use std::sync::RwLock as StdRwLock;
+use std::time::SystemTime;
+
+use tokenizers::Tokenizer;
 use tokio::sync::{Mutex as AMutex, RwLock};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
@@ -85,6 +86,7 @@ async fn vectorize_batch_from_q(
     constants: &VecdbConstants,
     api_key: &String,
     vecdb_handler_ref: Arc<AMutex<VecDBHandler>>,
+    vecdb_cache_ref: Arc<AMutex<VecDBCache>>,
     #[allow(non_snake_case)]
     B: usize,
 ) -> Result<(), String> {
@@ -96,7 +98,7 @@ async fn vectorize_batch_from_q(
         &constants.endpoint_embeddings_style.clone(),
         &constants.model_name.clone(),
         &constants.endpoint_embeddings_template.clone(),
-        batch.iter().map(|x|x.window_text.clone()).collect(),
+        batch.iter().map(|x| x.window_text.clone()).collect(),
         api_key,
         1,
     ).await?;
@@ -112,7 +114,6 @@ async fn vectorize_batch_from_q(
     }
 
     let mut records = vec![];
-    let now = SystemTime::now();
     for (i, data_res) in batch.iter().enumerate() {
         records.push(
             Record {
@@ -122,11 +123,7 @@ async fn vectorize_batch_from_q(
                 file_path: data_res.file_path.clone(),
                 start_line: data_res.start_line,
                 end_line: data_res.end_line,
-                time_added: now,
-                model_name: constants.model_name.clone(),
                 distance: -1.0,
-                used_counter: 0,
-                time_last_used: now,
                 usefulness: 0.0,
             }
         );
@@ -134,22 +131,62 @@ async fn vectorize_batch_from_q(
 
     if records.len() > 0 {
         info!("embeddings got {} records in {}ms", records.len(), t0.elapsed().as_millis());
-        match vecdb_handler_ref.lock().await.add_or_update(records, true).await {
+        match vecdb_handler_ref.lock().await.add_or_update(&records).await {
+            Err(e) => {
+                warn!("Error adding/updating records in VecDB: {}", e);
+            }
+            _ => {}
+        }
+        match vecdb_cache_ref.lock().await.insert_records(records).await {
             Err(e) => {
                 warn!("Error adding/updating records in VecDB: {}", e);
             }
             _ => {}
         }
     }
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;  // be nice to the server: up to 60 requests per minute
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;  // be nice to the server: up to 60 requests per minute
 
     Ok(())
+}
+
+async fn add_from_cache_to_vec_db(
+    delayed_cached_splits_q: &mut Vec<SplitResult>,
+    vecdb_handler_ref: Arc<AMutex<VecDBHandler>>,
+    vecdb_cache_ref: Arc<AMutex<VecDBCache>>,
+    group_size: usize,
+) {
+    info!("add_from_cache_to_vec_db: {} delayed cached splits in queue", delayed_cached_splits_q.len());
+    while !delayed_cached_splits_q.is_empty() {
+        let batch = delayed_cached_splits_q
+            .drain(..group_size.min(delayed_cached_splits_q.len()))
+            .collect::<Vec<_>>();
+        let t0 = std::time::Instant::now();
+        let records = match vecdb_cache_ref.lock().await.get_records_by_splits(&batch).await {
+            Ok((records, non_found_splits)) => {
+                assert!(non_found_splits.is_empty());
+                records
+            }
+            Err(err) => {
+                info!("Error getting records from cache: {}", err);
+                vec![]
+            }
+        };
+        info!("read {} delayed cached splits from cache db took {:.3}s", batch.len(), t0.elapsed().as_secs_f32());
+        match vecdb_handler_ref.lock().await.add_or_update(&records).await {
+            Err(e) => {
+                warn!("Error adding/updating records in VecDB: {}", e);
+            }
+            _ => {}
+        }
+    }
+    info!("add_from_cache_to_vec_db: done");
 }
 
 async fn vectorize_thread(
     client: Arc<AMutex<reqwest::Client>>,
     queue: Arc<AMutex<VecDeque<Document>>>,
     vecdb_handler_ref: Arc<AMutex<VecDBHandler>>,
+    vecdb_cache_ref: Arc<AMutex<VecDBCache>>,
     status: Arc<AMutex<VecDbStatus>>,
     constants: VecdbConstants,
     api_key: String,
@@ -162,17 +199,27 @@ async fn vectorize_thread(
     let mut reported_unprocessed: usize = 0;
     let mut reported_vecdb_complete: bool = false;
     let mut embed_q: Vec<SplitResult> = vec![];
+    let mut delayed_cached_splits_q: Vec<SplitResult> = vec![];
 
     loop {
         let (doc_mb, files_unprocessed) = {
             let mut queue_locked = queue.lock().await;
-            let q_len =  queue_locked.len();
+            let q_len = queue_locked.len();
             (queue_locked.pop_front(), q_len)
         };
 
         loop {
             if embed_q.len() >= B || (!embed_q.is_empty() && files_unprocessed == 0) {
-                vectorize_batch_from_q(&mut embed_q, status.clone(), client.clone(), &constants, &api_key, vecdb_handler_ref.clone(), B).await.unwrap_or_else(|err| {
+                vectorize_batch_from_q(
+                    &mut embed_q,
+                    status.clone(),
+                    client.clone(),
+                    &constants,
+                    &api_key,
+                    vecdb_handler_ref.clone(),
+                    vecdb_cache_ref.clone(),
+                    B,
+                ).await.unwrap_or_else(|err| {
                     warn!("Error vectorizing: {}", err);
                 });
             } else {
@@ -198,10 +245,17 @@ async fn vectorize_thread(
                     locked_status.files_total = files_total;
                     locked_status.state = "parsing".to_string();
                     doc
-                },
+                }
                 None => {
                     // No files left to process
                     if !reported_vecdb_complete {
+                        add_from_cache_to_vec_db(
+                            &mut delayed_cached_splits_q,
+                            vecdb_handler_ref.clone(),
+                            vecdb_cache_ref.clone(),
+                            1024,
+                        ).await;
+
                         let t0 = std::time::Instant::now();
                         vecdb_handler_ref.lock().await.update_indexed_file_paths().await;
                         info!("update_indexed_file_paths: it took {:.3}s", t0.elapsed().as_secs_f64());
@@ -262,30 +316,19 @@ async fn vectorize_thread(
             }
         }
 
-        let file_split_data = {
-            let mut vecdb_handler = vecdb_handler_ref.lock().await;
-            let res = split_data
-                .iter()
-                .filter(|x| !vecdb_handler.contains(&x.window_text_hash))
-                .cloned() // Clone to avoid borrowing issues
-                .collect();
-            vecdb_handler.try_add_from_cache(res).await
-        };
-        embed_q.extend(file_split_data);
+        {
+            let vecdb_cache = vecdb_cache_ref.lock().await;
+            for split_item in split_data.into_iter() {
+                if vecdb_cache.contains(&split_item.window_text_hash) {
+                    delayed_cached_splits_q.push(split_item);
+                } else {
+                    embed_q.push(split_item);
+                }
+            }
+        }
     }
 }
 
-async fn cleanup_thread(vecdb_handler: Arc<AMutex<VecDBHandler>>) {
-    loop {
-        {
-            let mut vecdb = vecdb_handler.lock().await;
-            let _ = vecdb.cleanup_old_records().await;
-            // By the time we do not create index 'cause it hurts quality of retrieval
-            // let _ = vecdb.create_index().await;
-        }
-        tokio::time::sleep(tokio::time::Duration::from_secs(2 * 3600)).await;
-    }
-}
 
 impl FileVectorizerService {
     pub async fn new(
@@ -339,21 +382,15 @@ impl FileVectorizerService {
                 vecdb_client.clone(),
                 self.output_queue.clone(),
                 self.vecdb_handler.clone(),
+                self.vecdb_cache.clone(),
                 self.status.clone(),
                 constants,
                 self.api_key.clone(),
                 tokenizer,
-                Arc::downgrade(&gcx.clone())
+                Arc::downgrade(&gcx.clone()),
             )
         );
-
-        let cleanup_thread_handle = tokio::spawn(
-            cleanup_thread(
-                self.vecdb_handler.clone()
-            )
-        );
-
-        return vec![cooldown_queue_join_handle, retrieve_thread_handle, cleanup_thread_handle];
+        return vec![cooldown_queue_join_handle, retrieve_thread_handle];
     }
 
     pub async fn vectorizer_enqueue_files(&self, documents: &Vec<Document>, force: bool) {

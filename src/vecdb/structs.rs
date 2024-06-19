@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::time::SystemTime;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock as StdRwLock;
@@ -51,10 +50,6 @@ pub struct Record {
     pub file_path: PathBuf,
     pub start_line: u64,
     pub end_line: u64,
-    pub time_added: SystemTime,
-    pub time_last_used: SystemTime,
-    pub model_name: String,
-    pub used_counter: u64,
     pub distance: f32,
     pub usefulness: f32,
 }

@@ -41,7 +41,6 @@ fn vecdb_constants(
 pub struct VecDb {
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
-    vecdb_cache: Arc<AMutex<VecDBCache>>,
     vectorizer_service: Arc<AMutex<FileVectorizerService>>,
     cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
     constants: VecdbConstants,
@@ -238,7 +237,6 @@ impl VecDb {
         Ok(VecDb {
             vecdb_emb_client: Arc::new(AMutex::new(reqwest::Client::new())),
             vecdb_handler,
-            vecdb_cache,
             vectorizer_service,
             cmdline: cmdline.clone(),
             constants: constants.clone(),
@@ -306,9 +304,6 @@ impl VecdbSearch for VecDb {
             rec.usefulness = 100.0 - 75.0 * ((rec.distance.abs() - dist0) / (dist0 + 0.01)).max(0.0).min(1.0);
             info!("distance {:.3} -> useful {:.1}, found {}:{}-{}", rec.distance, rec.usefulness, last_35_chars, rec.start_line, rec.end_line);
         }
-        let t2 = std::time::Instant::now();
-        handler_locked.update_record_statistic(results.clone()).await;
-        info!("update_record_statistic {:.3}s", t2.elapsed().as_secs_f64());
         Ok(
             SearchResult {
                 query_text: query,
