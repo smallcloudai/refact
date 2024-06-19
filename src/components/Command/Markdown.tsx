@@ -1,7 +1,7 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 
-import styles from "./CommandLine.module.css";
+import styles from "./Command.module.css";
 
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { Code } from "@radix-ui/themes";
