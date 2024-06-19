@@ -2,21 +2,10 @@ import React from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Container, Flex, Text, Box, Button } from "@radix-ui/themes";
 import { ToolCall, ToolResult } from "../../events";
-import { ChevronDownIcon } from "@radix-ui/react-icons";
 import classNames from "classnames";
 import styles from "./ChatContent.module.css";
 import { Markdown } from "../CommandLine/Markdown";
-
-const Chevron: React.FC<{ open: boolean }> = ({ open }) => {
-  return (
-    <ChevronDownIcon
-      className={classNames(styles.chevron, {
-        [styles.chevron__open]: !open,
-        [styles.chevron__close]: open,
-      })}
-    />
-  );
-};
+import { Chevron } from "../Collapsible";
 
 const Result: React.FC<{ children: string }> = ({ children }) => {
   const lines = children.split("\n");
