@@ -30,6 +30,7 @@ type useCheckboxStateProps = {
   ast: boolean;
   allBoxes: boolean;
   chatId: string;
+  canUseTools: boolean;
 };
 
 const useControlsState = ({
@@ -39,6 +40,7 @@ const useControlsState = ({
   ast,
   allBoxes,
   chatId,
+  canUseTools,
 }: useCheckboxStateProps) => {
   const [interacted, setInteracted] = React.useState(false);
 
@@ -90,9 +92,21 @@ const useControlsState = ({
         checked: false,
         label: "Search workspace",
         disabled: false,
-        hide: !vecdb || !allBoxes,
+        hide: !vecdb || !allBoxes || canUseTools,
         info: {
           text: "Searches all files in your workspace using vector database, uses the whole text in the input box as a search query. Setting this checkbox is equivalent to @workspace command in the text.",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "documentation",
+        },
+      },
+      use_tools: {
+        name: "use_tolls",
+        checked: true,
+        label: "Use tools",
+        disabled: false,
+        hide: !canUseTools,
+        info: {
+          text: "Allow the ai to uses tool",
           link: "https://docs.refact.ai/features/ai-chat/",
           linkText: "documentation",
         },
@@ -147,6 +161,7 @@ const useControlsState = ({
     markdown,
     snippet.code,
     vecdb,
+    canUseTools,
   ]);
 
   const [checkboxes, setCheckboxes] =
@@ -283,6 +298,7 @@ export type ChatFormProps = {
   onSetSystemPrompt: (prompt: string) => void;
   selectedSystemPrompt: null | string;
   chatId: string;
+  canUseTools: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -310,6 +326,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onSetSystemPrompt,
   selectedSystemPrompt,
   chatId,
+  canUseTools,
 }) => {
   const config = useConfig();
   const [value, setValue] = React.useState("");
@@ -321,6 +338,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       vecdb: config.features?.vecdb ?? false,
       ast: config.features?.ast ?? false,
       allBoxes: showControls,
+      canUseTools,
       chatId,
     });
 

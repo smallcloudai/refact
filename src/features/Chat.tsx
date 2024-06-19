@@ -116,6 +116,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         onSetSystemPrompt={setSelectedSystemPrompt}
         selectedSystemPrompt={state.selected_system_prompt}
         requestPreviewFiles={requestPreviewFiles}
+        canUseTools={state.tools.length > 0}
       />
 
       <Flex justify="between" pl="1" pr="1" pt="1">

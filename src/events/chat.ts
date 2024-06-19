@@ -7,6 +7,7 @@ import {
   ChatContextFileMessage,
   SystemPrompts,
   isSystemPrompts,
+  ToolCommand,
 } from "../services/refact";
 
 export enum EVENT_NAMES_FROM_CHAT {
@@ -24,6 +25,7 @@ export enum EVENT_NAMES_FROM_CHAT {
   REQUEST_PREVIEW_FILES = "chat_request_preview_files",
   REQUEST_PROMPTS = "chat_request_prompts",
   TAKE_NOTES = "chat_take_notes",
+  REQUEST_TOOLS = "chat_request_has_tool_check",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -52,6 +54,8 @@ export enum EVENT_NAMES_TO_CHAT {
   RECEIVE_PROMPTS_ERROR = "chat_receive_prompts_error",
   SET_SELECTED_SYSTEM_PROMPT = "chat_set_selected_system_prompt",
   SET_TAKE_NOTES = "chat_set_take_notes",
+  RECEIVE_TOOLS = "chat_receive_tools_chat",
+  SET_USE_TOOLS = "chat_set_use_tools",
 }
 
 export type ChatThread = {
@@ -221,6 +225,16 @@ export function isTakeNotesFromChat(
 ): action is TakeNotesFromChat {
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.TAKE_NOTES;
+}
+
+export interface RequestTools extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS;
+  payload: { id: string };
+}
+
+export function isRequestTools(action: unknown): action is RequestTools {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS;
 }
 
 export interface ActionToChat extends BaseAction {
@@ -580,4 +594,24 @@ export interface SetTakeNotes extends ActionToChat {
 export function isSetTakeNotes(action: unknown): action is SetTakeNotes {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.SET_TAKE_NOTES;
+}
+
+export interface RecieveTools extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS;
+  payload: { id: string; tools: ToolCommand[] };
+}
+
+export function isRecieveTools(action: unknown): action is RecieveTools {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS;
+}
+
+export interface SetUseTools extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_USE_TOOLS;
+  payload: { id: string; use_tools: boolean };
+}
+
+export function isSetUseTools(action: unknown): action is SetUseTools {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_USE_TOOLS;
 }

@@ -10,6 +10,7 @@ import {
   isToolCallDelta,
   isToolResponse,
   isChatResponseChoice,
+  ToolCommand,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -64,6 +65,8 @@ import {
   isSetTakeNotes,
   SetTakeNotes,
   TakeNotesFromChat,
+  RequestTools,
+  isRecieveTools,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -465,6 +468,22 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
+    if (isThisChat && isRecieveTools(action)) {
+      const { tools } = action.payload;
+      if (tools.length === 0) {
+        return {
+          ...state,
+          tools: [],
+          use_tools: false,
+        };
+      }
+
+      return {
+        ...state,
+        tools,
+      };
+    }
+
     return state;
   };
 }
@@ -495,6 +514,8 @@ export type ChatState = {
   };
   selected_system_prompt: null | string;
   take_notes: boolean;
+  tools: ToolCommand[];
+  use_tools: boolean;
 };
 
 export function createInitialState(): ChatState {
@@ -544,6 +565,8 @@ export function createInitialState(): ChatState {
     },
     selected_system_prompt: null,
     take_notes: true,
+    tools: [],
+    use_tools: false,
   };
 }
 
@@ -952,6 +975,18 @@ export const useEventBusForChat = () => {
       postMessage(action);
     };
   }, [postMessage, state.chat.id]);
+
+  const requestTools = useCallback(() => {
+    const action: RequestTools = {
+      type: EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS,
+      payload: { id: state.chat.id },
+    };
+    postMessage(action);
+  }, [postMessage, state.chat.id]);
+
+  useEffect(() => {
+    requestTools();
+  }, [requestTools]);
 
   // useEffect(() => {
   //   window.debugChat =

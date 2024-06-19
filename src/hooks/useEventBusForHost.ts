@@ -7,6 +7,7 @@ import {
   isDetailMessage,
   getPrompts,
   formatMessagesForLsp,
+  getAvailableTools,
   // LspChatMessage,
 } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
@@ -27,6 +28,8 @@ import {
   ReceivePromptsError,
   isRequestPreviewFiles,
   isTakeNotesFromChat,
+  isRequestTools,
+  RecieveTools,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
@@ -218,6 +221,26 @@ export function useEventBusForHost() {
             };
 
             window.postMessage(message, "*");
+          });
+      }
+
+      if (isRequestTools(event.data)) {
+        const id = event.data.payload.id;
+        getAvailableTools(lspUrl)
+          .then((tools) => {
+            const action: RecieveTools = {
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS,
+              payload: { id, tools },
+            };
+            window.postMessage(action, "*");
+          })
+          .catch(() => {
+            const action: RecieveTools = {
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS,
+              payload: { id, tools: [] },
+            };
+
+            window.postMessage(action, "*");
           });
       }
     };
