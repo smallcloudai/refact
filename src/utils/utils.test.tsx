@@ -1,5 +1,6 @@
 import { describe, test, expect } from "vitest";
-import { trimIndentFromMarkdown, trimIndent } from "./trimIndent";
+import { trimIndentFromMarkdown, trimIndent, filename } from ".";
+
 const spaces = "    ";
 describe("trim indent from markdown", () => {
   const tests = [
@@ -35,4 +36,15 @@ describe("trim indent", () => {
     const result = trimIndent(input);
     expect(result).toBe(expected);
   });
+});
+
+describe("filename", () => {
+  const tests = [
+    ["/user/foo.txt", "foo.txt"],
+    ["C:\\user\\bar.py", "bar.py"],
+  ];
+
+  test.each(tests)("when given %s is should return %s", (input, expected) =>
+    expect(filename(input)).toEqual(expected),
+  );
 });
