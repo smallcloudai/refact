@@ -4,14 +4,16 @@ import { Container, Flex, Text, Box, Button } from "@radix-ui/themes";
 import { ToolCall, ToolResult } from "../../events";
 import classNames from "classnames";
 import styles from "./ChatContent.module.css";
-import { Markdown } from "../CommandLine/Markdown";
+import { CommandMarkdown, ResultMarkdown } from "../Command";
 import { Chevron } from "../Collapsible";
 
 const Result: React.FC<{ children: string }> = ({ children }) => {
   const lines = children.split("\n");
   const [open, setOpen] = React.useState(false);
   if (lines.length < 9 || open)
-    return <Markdown className={styles.tool_result}>{children}</Markdown>;
+    return (
+      <ResultMarkdown className={styles.tool_result}>{children}</ResultMarkdown>
+    );
   const toShow = lines.slice(0, 9).join("\n") + "\n ";
   return (
     <Button
@@ -21,11 +23,11 @@ const Result: React.FC<{ children: string }> = ({ children }) => {
       className={styles.tool_result_button}
     >
       <Flex direction="column" position="relative" align="start">
-        <Markdown
+        <ResultMarkdown
           className={classNames(styles.tool_result, styles.tool_result_hidden)}
         >
           {toShow}
-        </Markdown>
+        </ResultMarkdown>
         <Flex position="absolute" bottom="2" width="100%" justify="center">
           Click for more
         </Flex>
@@ -64,10 +66,10 @@ const ToolMessage: React.FC<{
     return "\\" + "`";
   });
 
-  const content = functionCalled + "\n" + escapedBackticks;
   return (
-    <Flex gap="2" direction="column">
-      <Result>{content}</Result>
+    <Flex direction="column">
+      <CommandMarkdown>{functionCalled}</CommandMarkdown>
+      <Result>{escapedBackticks}</Result>
     </Flex>
   );
 };
