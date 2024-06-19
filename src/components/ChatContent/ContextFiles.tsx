@@ -73,7 +73,7 @@ export const ContextFile: React.FC<{
     <Box position="relative">
       <HoverCard.Root onOpenChange={setOpen} open={open}>
         <HoverCard.Trigger>
-          <Box>
+          <Box display="inline-block">
             <Small className={classnames(styles.file, props.className)}>
               📎 <TruncateLeft>{name}</TruncateLeft>
             </Small>
