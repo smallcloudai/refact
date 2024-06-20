@@ -1,4 +1,3 @@
-import sys
 import click
 import copy
 import json
@@ -18,7 +17,8 @@ import torch as th
 import torch.distributed as dist
 
 from refact_utils.scripts import env
-from refact_utils.scripts.env import safe_paths_join
+# TODO: there is a bug with large zip files and path joining so we need to investigate it
+# from refact_utils.scripts.env import safe_paths_join
 from refact_utils.finetune.utils import finetune_train_defaults
 from self_hosting_machinery.finetune.configuration.finetune_config import base_config, ConfigBuilder
 from self_hosting_machinery.finetune.scripts.auxiliary.dataset import (
@@ -170,8 +170,8 @@ def gpu_filter_and_build_config(
 def _copy_source_files(jsonl_src, jsonl_dst, pname, run_id):
     for d in jsonlines.open(jsonl_src):
         try:
-            src_path = safe_paths_join(env.PP_DIR_UNPACKED(pname), d["path"])
-            dst_path = safe_paths_join(env.PERRUN_DIR_UNPACKED(run_id), d["path"])
+            src_path = os.path.join(env.PP_DIR_UNPACKED(pname), d["path"])
+            dst_path = os.path.join(env.PERRUN_DIR_UNPACKED(run_id), d["path"])
         except ValueError as e:
             raise ValueError(f'copy source files error: {e}')
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
