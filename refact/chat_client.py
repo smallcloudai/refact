@@ -23,7 +23,7 @@ class ToolCallDict(BaseModel):
 
 
 class Message(BaseModel):
-    role: Literal["system", "assistant", "user", "tool", "context_file", "context_memory"]
+    role: Literal["system", "assistant", "user", "tool", "diff", "context_file", "context_memory"]
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCallDict]] = None
     finish_reason: str = ""

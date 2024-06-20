@@ -6,14 +6,14 @@ use serde_json::Value;
 
 use crate::at_commands::at_ast_lookup_symbols::{execute_at_ast_lookup_symbols, text_on_clip};
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
-use crate::at_tools::tools::AtTool;
+use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 
 pub struct AttAstLookupSymbols;
 
 #[async_trait]
-impl AtTool for AttAstLookupSymbols {
+impl Tool for AttAstLookupSymbols {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         info!("execute tool: lookup_symbols_at {:?}", args);
         let path = match args.get("path") {

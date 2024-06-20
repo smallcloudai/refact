@@ -38,7 +38,7 @@ pub async fn run_tools(
         return (original_messages.clone(), false);
     }
 
-    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, false).await;
+    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, false, original_messages).await;
     let at_tools = ccx.at_tools.clone();
 
     let mut context_messages: Vec<ChatMessage> = original_messages.iter().map(|m| m.clone()).collect();
@@ -80,7 +80,7 @@ pub async fn run_tools(
                 if let ContextEnum::ChatMessage(ref raw_msg) = msg {
                     context_messages.push(raw_msg.clone());
                     stream_back_to_user.push_in_json(json!(raw_msg.clone()));
-                    if raw_msg.role == "tool" && raw_msg.tool_call_id == t_call.id {
+                    if (raw_msg.role == "tool" || raw_msg.role == "diff") && raw_msg.tool_call_id == t_call.id {
                         have_answer = true;
                     }
                 }

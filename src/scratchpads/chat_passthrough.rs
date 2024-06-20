@@ -98,7 +98,7 @@ impl ScratchpadAbstract for ChatPassthrough {
     ) -> Result<String, String> {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
         let top_n: usize = 7;
-        let (mut messages, undroppable_msg_n, any_context_produced) = if self.allow_at {
+        let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
             run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &self.post.messages, top_n, &mut self.has_rag_results).await
         } else {
             (self.post.messages.clone(), self.post.messages.len(), false)
@@ -115,6 +115,15 @@ impl ScratchpadAbstract for ChatPassthrough {
         for msg in &limited_msgs {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" || msg.role == "tool" {
                 filtered_msgs.push(msg.clone());
+
+            } else if msg.role == "diff" {
+                filtered_msgs.push(ChatMessage {
+                    role: "tool".to_string(),
+                    content: msg.content.clone(),
+                    tool_calls: None,
+                    tool_call_id: msg.tool_call_id.clone(),
+                });
+
             } else if msg.role == "context_file" {
                 match serde_json::from_str(&msg.content) {
                     Ok(res) => {
@@ -154,8 +163,9 @@ impl ScratchpadAbstract for ChatPassthrough {
         });
         if self.supports_tools {
             let tools = if let Some(tools) = &self.post.tools {
-                if tools.is_empty() || any_context_produced {
-                    None
+                // if tools.is_empty() || any_context_produced {
+                if tools.is_empty() {
+                        None
                 } else {
                     Some(tools)
                 }
@@ -163,6 +173,9 @@ impl ScratchpadAbstract for ChatPassthrough {
                 None
             };
             big_json["tools"] = serde_json::json!(tools);
+            info!("PASSTHROUGH TOOLS {:?}", tools);
+        } else {
+            info!("PASSTHROUGH TOOLS NOT SUPPORTED");
         }
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
         if DEBUG {

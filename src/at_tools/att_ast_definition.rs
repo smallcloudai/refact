@@ -9,13 +9,13 @@ use crate::ast::ast_index::RequestSymbolType;
 use crate::ast::structs::AstQuerySearchResult;
 use crate::at_commands::at_ast_definition::results2message;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::tools::AtTool;
+use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 pub struct AttAstDefinition;
 
 #[async_trait]
-impl AtTool for AttAstDefinition {
+impl Tool for AttAstDefinition {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let mut symbol = match args.get("symbol") {
             Some(Value::String(s)) => s.clone(),

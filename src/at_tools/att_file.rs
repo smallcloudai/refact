@@ -5,7 +5,7 @@ use serde_json::Value;
 use uuid::Uuid;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{at_file_repair_candidates, get_project_paths, text_on_clip};
-use crate::at_tools::tools::AtTool;
+use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 
@@ -51,7 +51,7 @@ async fn get_file_text(ccx: &mut AtCommandsContext, file_path: &String, candidat
 }
 
 #[async_trait]
-impl AtTool for AttFile {
+impl Tool for AttFile {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let p = match args.get("path") {
             Some(Value::String(s)) => s,

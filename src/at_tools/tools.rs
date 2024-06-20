@@ -12,22 +12,23 @@ use crate::global_context::GlobalContext;
 
 
 #[async_trait]
-pub trait AtTool: Send + Sync {
+pub trait Tool: Send + Sync {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String>;
     fn depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
 }
 
-pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtTool + Send>>>>
+pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>
 {
     let tools_all =  HashMap::from([
-        ("search_workspace".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_workspace::AttWorkspace{}) as Box<dyn AtTool + Send>))),
-        ("search_file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file_search::AttFileSearch{}) as Box<dyn AtTool + Send>))),
-        ("file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file::AttFile{}) as Box<dyn AtTool + Send>))),
-        ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_definition::AttAstDefinition{}) as Box<dyn AtTool + Send>))),
-        ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_reference::AttAstReference{}) as Box<dyn AtTool + Send>))),
+        ("search_workspace".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_workspace::AttWorkspace{}) as Box<dyn Tool + Send>))),
+        ("search_file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file_search::AttFileSearch{}) as Box<dyn Tool + Send>))),
+        ("file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file::AttFile{}) as Box<dyn Tool + Send>))),
+        ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_definition::AttAstDefinition{}) as Box<dyn Tool + Send>))),
+        ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_reference::AttAstReference{}) as Box<dyn Tool + Send>))),
         // ("symbols_at".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_lookup_symbols::AttAstLookupSymbols{}) as Box<dyn AtTool + Send>))),
         // ("remember_how_to_use_tools".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
         // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
+        ("patch".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_patch::ToolPatch{}) as Box<dyn Tool + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
@@ -60,14 +61,14 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
                     command: cust.command,
                     timeout: cust.timeout,
                     postprocess: cust.postprocess,
-                }) as Box<dyn AtTool + Send>)));
+                }) as Box<dyn Tool + Send>)));
         }
     }
 
     result
 }
 
-const AT_DICT: &str = r####"
+const TOOLS: &str = r####"
 tools:
   - name: "search_workspace"
     description: "Find similar pieces of code or text using vector database"
@@ -117,8 +118,29 @@ tools:
         description: "The exact name of a function, method, class, type alias. No spaces allowed."
     parameters_required:
       - "symbol"
+
+  - name: "patch"
+    description: "Fix, edit, create or delete a single source file. Call patch() in parallel to generate changes to several files."
+    parameters:
+      - name: "path"
+        type: "string"
+        description: "Either absolute path or preceeding_dirs/file.ext"
+      - name: "todo"
+        type: "string"
+        description: "Describe in one paragraph what changes to the file are required."
+    parameters_required:
+      - "path"
+      - "todo"
 "####;
 
+// - "op"
+// - name: "op"
+// type: "string"
+// description: "Operation on a file: 'new', 'edit', 'remove'"
+// - "lookup_definitions"
+// - name: "lookup_definitions"
+// type: "string"
+// description: "Comma separated types that might be useful in making this change"
 // - name: "remember_how_to_use_tools"
 // description: Save a note to memory.
 // parameters:
@@ -142,12 +164,12 @@ tools:
 
 
 #[derive(Deserialize)]
-pub struct AtDictDeserialize {
-    pub tools: Vec<AtToolDict>,
+pub struct DictDeserialize {
+    pub tools: Vec<ToolDict>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct AtToolDict {
+pub struct ToolDict {
     pub name: String,
     pub description: String,
     pub parameters: Vec<AtParamDict>,
@@ -193,7 +215,7 @@ pub fn make_openai_tool_value(
     function_json
 }
 
-impl AtToolDict {
+impl ToolDict {
     pub fn into_openai_style(self) -> serde_json::Value {
         make_openai_tool_value(
             self.name,
@@ -204,9 +226,9 @@ impl AtToolDict {
     }
 }
 
-pub fn at_tools_compiled_in_only() -> Result<Vec<AtToolDict>, String> {
-    let at_dict: AtDictDeserialize = serde_yaml::from_str(AT_DICT)
-        .map_err(|e|format!("Failed to parse AT_DICT: {}", e))?;
+pub fn at_tools_compiled_in_only() -> Result<Vec<ToolDict>, String> {
+    let at_dict: DictDeserialize = serde_yaml::from_str(TOOLS)
+        .map_err(|e|format!("Failed to parse TOOLS: {}", e))?;
 
     // TODO: filter out some tools that depend on vecdb or ast if those are disabled
 

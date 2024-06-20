@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokio::io::AsyncWriteExt;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::tools::AtTool;
+use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 
@@ -11,7 +11,7 @@ pub struct AtNoteToSelf {
 }
 
 #[async_trait]
-impl AtTool for AtNoteToSelf {
+impl Tool for AtNoteToSelf {
     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String>
     {
         let cache_dir = {

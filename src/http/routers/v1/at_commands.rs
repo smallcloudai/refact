@@ -57,7 +57,7 @@ pub async fn handle_v1_command_completion(
     let post = serde_json::from_slice::<CommandCompletionPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let top_n = post.top_n;
-    let ccx = AtCommandsContext::new(global_context.clone(), top_n, true).await;
+    let ccx = AtCommandsContext::new(global_context.clone(), top_n, true, &vec![]).await;
     let at_command_names = ccx.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
 
     let mut completions: Vec<String> = vec![];
@@ -118,7 +118,7 @@ pub async fn handle_v1_command_preview(
 
     let top_n = 7;  // sync with top_n in chats
 
-    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, true).await;
+    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, true, &vec![]).await;
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut ccx, &mut query).await;
 

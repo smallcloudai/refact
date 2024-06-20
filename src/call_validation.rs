@@ -45,6 +45,7 @@ pub struct CodeCompletionPost {
     pub no_cache: bool,
     #[serde(default)]
     pub use_ast: bool,
+    #[allow(dead_code)]
     #[serde(default)]
     pub use_vecdb: bool,
     #[serde(default)]

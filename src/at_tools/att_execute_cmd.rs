@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_local_cmdline::execute_cmd;
-use crate::at_tools::tools::AtTool;
+use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 
@@ -14,7 +14,7 @@ pub struct AttExecuteCommand {
 }
 
 #[async_trait]
-impl AtTool for AttExecuteCommand {
+impl Tool for AttExecuteCommand {
     async fn execute(&self, _ccx: &mut AtCommandsContext, tool_call_id: &String, _args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let (stdout, stderr) = execute_cmd(&self.command, self.timeout).await?;
 

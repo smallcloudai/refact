@@ -13,7 +13,7 @@ use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 use crate::scratchpads;
 
-async fn _lookup_chat_scratchpad(
+pub async fn lookup_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     chat_post: &ChatPost,
 ) -> Result<(String, String, serde_json::Value, usize, bool), String> {
@@ -58,7 +58,7 @@ async fn chat(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools) = _lookup_chat_scratchpad(
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools) = lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
     ).await.map_err(|e| {

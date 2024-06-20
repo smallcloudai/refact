@@ -17,7 +17,7 @@ use crate::nicer_logs;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::telemetry::telemetry_structs;
 
-pub async fn scratchpad_interaction_not_stream(
+pub async fn scratchpad_interaction_not_stream_json(
     global_context: Arc<ARwLock<GlobalContext>>,
     mut scratchpad: Box<dyn ScratchpadAbstract>,
     scope: String,
@@ -27,7 +27,7 @@ pub async fn scratchpad_interaction_not_stream(
     bearer: String,
     parameters: &SamplingParameters,
     only_deterministic_messages: bool,
-) -> Result<Response<Body>, ScratchError> {
+) -> Result<serde_json::Value, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage, slowdown_arc) = {
         let cx = global_context.write().await;
@@ -144,7 +144,32 @@ pub async fn scratchpad_interaction_not_stream(
             format!("scratchpad: {}", problem))
         );
     }
-    let mut scratchpad_response_json = scratchpad_result.unwrap();
+    return Ok(scratchpad_result.unwrap());
+}
+
+pub async fn scratchpad_interaction_not_stream(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    scratchpad: Box<dyn ScratchpadAbstract>,
+    scope: String,
+    prompt: &str,
+    model_name: String,
+    client: reqwest::Client,
+    bearer: String,
+    parameters: &SamplingParameters,
+    only_deterministic_messages: bool,
+) -> Result<Response<Body>, ScratchError> {
+    let t2 = std::time::SystemTime::now();
+    let mut scratchpad_response_json = scratchpad_interaction_not_stream_json(
+        global_context,
+        scratchpad,
+        scope,
+        prompt,
+        model_name,
+        client,
+        bearer,
+        parameters,
+        only_deterministic_messages,
+    ).await?;
     scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
     let txt = serde_json::to_string_pretty(&scratchpad_response_json).unwrap();
     // info!("handle_v1_code_completion return {}", txt);

@@ -25,11 +25,11 @@ pub struct ToolboxConfigDeserialize {
 pub struct ToolboxConfig {
     pub system_prompts: HashMap<String, SystemPrompt>,
     pub toolbox_commands: HashMap<String, ToolboxCommand>,
-    pub tools: Vec<AtToolCustDict>,
+    pub tools: Vec<ToolCustDict>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct AtToolCustDict {
+pub struct ToolCustDict {
     pub name: String,
     pub description: String,
     pub parameters: Vec<AtParamDict>,
@@ -39,9 +39,9 @@ pub struct AtToolCustDict {
     pub postprocess: String,
 }
 
-impl AtToolCustDict {
+impl ToolCustDict {
     pub fn new(cmd: &AtToolCustDictDeserialize, params: &Vec<AtParamDict>) -> Self {
-        AtToolCustDict {
+        ToolCustDict {
             name: cmd.name.clone(),
             description: cmd.description.clone(),
             parameters: cmd.parameters.iter()
@@ -145,8 +145,8 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
     let work_config_deserialize: ToolboxConfigDeserialize = serde_yaml::from_str(crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML)
         .map_err(|e| format!("Error parsing default ToolboxConfig: {}\n{}", e, crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML))?;
     let tools = work_config_deserialize.tools.iter()
-        .map(|x|AtToolCustDict::new(x, &work_config_deserialize.tools_parameters))
-        .collect::<Vec<AtToolCustDict>>();
+        .map(|x|ToolCustDict::new(x, &work_config_deserialize.tools_parameters))
+        .collect::<Vec<ToolCustDict>>();
 
     let mut work_config = ToolboxConfig {
         system_prompts: work_config_deserialize.system_prompts,
@@ -157,8 +157,8 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
     let user_config_deserialize: ToolboxConfigDeserialize = serde_yaml::from_str(user_yaml)
         .map_err(|e| format!("Error parsing user ToolboxConfig: {}\n{}", e, user_yaml))?;
     let user_tools = user_config_deserialize.tools.iter()
-       .map(|x|AtToolCustDict::new(x, &user_config_deserialize.tools_parameters))
-       .collect::<Vec<AtToolCustDict>>();
+       .map(|x|ToolCustDict::new(x, &user_config_deserialize.tools_parameters))
+       .collect::<Vec<ToolCustDict>>();
 
     let mut user_config = ToolboxConfig {
         system_prompts: user_config_deserialize.system_prompts,
