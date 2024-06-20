@@ -183,10 +183,10 @@ const useControlsState = ({
   const toggleCheckbox = useCallback(
     (name: string, value: boolean | string) => {
       setInteracted(true);
+      if (name === "use_tools") {
+        setUseTools(!!value);
+      }
       setCheckboxes((prev) => {
-        if (name === "use_tools") {
-          setUseTools(!!value);
-        }
         const checkbox: Checkbox = { ...prev[name], checked: !!value };
         const maybeAddFile: Record<string, Checkbox> =
           name === "lookup_symbols" && !!value
@@ -225,7 +225,7 @@ const useControlsState = ({
         },
         use_tools: {
           ...prev.use_tools,
-          // checked: useTools,
+          checked: useTools,
           hide: !canUseTools,
         },
         lookup_symbols: {
