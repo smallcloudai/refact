@@ -116,7 +116,7 @@ async fn vectorize_batch_from_q(
     let mut records = vec![];
     for (i, data_res) in batch.iter().enumerate() {
         if batch_result[i].is_empty() {
-            info!("skipping an empty embedding split", data_res.window_text);
+            info!("skipping an empty embedding split");
             continue;
         }
         records.push(
