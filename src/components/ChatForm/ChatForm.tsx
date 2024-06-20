@@ -30,6 +30,10 @@ type useCheckboxStateProps = {
   ast: boolean;
   allBoxes: boolean;
   chatId: string;
+  canUseTools: boolean;
+  setUseTools: (value: boolean) => void;
+  useTools: boolean;
+  host: string;
 };
 
 const useControlsState = ({
@@ -39,6 +43,10 @@ const useControlsState = ({
   ast,
   allBoxes,
   chatId,
+  canUseTools,
+  setUseTools,
+  useTools,
+  host,
 }: useCheckboxStateProps) => {
   const [interacted, setInteracted] = React.useState(false);
 
@@ -90,9 +98,21 @@ const useControlsState = ({
         checked: false,
         label: "Search workspace",
         disabled: false,
-        hide: !vecdb || !allBoxes,
+        hide: !vecdb || !allBoxes || canUseTools,
         info: {
           text: "Searches all files in your workspace using vector database, uses the whole text in the input box as a search query. Setting this checkbox is equivalent to @workspace command in the text.",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "documentation",
+        },
+      },
+      use_tools: {
+        name: "use_tools",
+        checked: useTools,
+        label: "Use tools",
+        disabled: false,
+        hide: !canUseTools,
+        info: {
+          text: "Allow the ai to uses tool",
           link: "https://docs.refact.ai/features/ai-chat/",
           linkText: "documentation",
         },
@@ -131,22 +151,25 @@ const useControlsState = ({
         label: `Selected ${codeLineCount} lines`,
         value: markdown,
         disabled: !snippet.code,
-        hide: false,
+        hide: host === "web",
         info: {
           text: "Adds the currently selected lines as a snippet for analysis or modification. Equivalent to code in triple backticks ``` in the text.",
         },
       },
     } as const;
   }, [
-    activeFile.name,
+    vecdb,
     allBoxes,
-    ast,
-    codeLineCount,
+    canUseTools,
+    useTools,
+    snippet.code,
+    activeFile.name,
     filePathWithLines,
     fullPathWithCursor,
+    ast,
+    codeLineCount,
     markdown,
-    snippet.code,
-    vecdb,
+    host,
   ]);
 
   const [checkboxes, setCheckboxes] =
@@ -160,6 +183,9 @@ const useControlsState = ({
   const toggleCheckbox = useCallback(
     (name: string, value: boolean | string) => {
       setInteracted(true);
+      if (name === "use_tools") {
+        setUseTools(!!value);
+      }
       setCheckboxes((prev) => {
         const checkbox: Checkbox = { ...prev[name], checked: !!value };
         const maybeAddFile: Record<string, Checkbox> =
@@ -170,7 +196,7 @@ const useControlsState = ({
         return nextValue;
       });
     },
-    [setCheckboxes, setInteracted],
+    [setCheckboxes, setInteracted, setUseTools],
   );
 
   useEffect(() => {
@@ -195,7 +221,12 @@ const useControlsState = ({
         // },
         search_workspace: {
           ...prev.search_workspace,
-          hide: !vecdb || !allBoxes,
+          hide: !vecdb || !allBoxes || canUseTools,
+        },
+        use_tools: {
+          ...prev.use_tools,
+          checked: useTools,
+          hide: !canUseTools,
         },
         lookup_symbols: {
           ...prev.lookup_symbols,
@@ -241,6 +272,8 @@ const useControlsState = ({
     snippet.code,
     vecdb,
     allBoxes,
+    canUseTools,
+    useTools,
   ]);
 
   useEffect(() => {
@@ -283,6 +316,9 @@ export type ChatFormProps = {
   onSetSystemPrompt: (prompt: string) => void;
   selectedSystemPrompt: null | string;
   chatId: string;
+  canUseTools: boolean;
+  setUseTools: (value: boolean) => void;
+  useTools: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -310,6 +346,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onSetSystemPrompt,
   selectedSystemPrompt,
   chatId,
+  canUseTools,
+  setUseTools,
+  useTools,
 }) => {
   const config = useConfig();
   const [value, setValue] = React.useState("");
@@ -322,6 +361,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       ast: config.features?.ast ?? false,
       allBoxes: showControls,
       chatId,
+      canUseTools,
+      setUseTools,
+      useTools,
+      host: config.host,
     });
 
   usePreviewFileRequest({
@@ -334,7 +377,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   useEffect(() => {
     if (
-      caps.available_caps.length === 0 &&
+      Object.keys(caps.available_caps).length === 0 &&
       !caps.default_cap &&
       !caps.fetching
     ) {
@@ -346,6 +389,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     caps.default_cap,
     caps.fetching,
     value,
+    caps.available_caps,
   ]);
 
   useEffectOnce(() => {
@@ -481,7 +525,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         selectProps={{
           value: model || caps.default_cap,
           onChange: onSetChatModel,
-          options: caps.available_caps,
+          options: Object.keys(caps.available_caps),
         }}
         promptsProps={{
           value: selectedSystemPrompt ?? "",

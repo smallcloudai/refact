@@ -7,7 +7,7 @@ import {
   isAssistantMessage,
   isToolMessage,
 } from "./types";
-import { getAvailableTools } from "./tools";
+import { ToolCommand } from "./tools";
 
 type StreamArgs =
   | {
@@ -23,6 +23,7 @@ type SendChatArgs = {
   takeNote?: boolean;
   onlyDeterministicMessages?: boolean;
   chatId?: string;
+  tools: ToolCommand[] | null;
 } & StreamArgs;
 
 export type LspChatMessage = {
@@ -66,19 +67,20 @@ export async function sendChat({
   abortController,
   stream,
   lspUrl,
-  takeNote = false,
+  // takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
   chatId: chat_id,
+  tools,
 }: SendChatArgs): Promise<Response> {
-  const toolsResponse = await getAvailableTools();
+  // const toolsResponse = await getAvailableTools();
 
-  const tools = takeNote
-    ? toolsResponse.filter(
-        (tool) => tool.function.name === "remember_how_to_use_tools",
-      )
-    : toolsResponse.filter(
-        (tool) => tool.function.name !== "remember_how_to_use_tools",
-      );
+  // const tools = takeNote
+  //   ? toolsResponse.filter(
+  //       (tool) => tool.function.name === "remember_how_to_use_tools",
+  //     )
+  //   : toolsResponse.filter(
+  //       (tool) => tool.function.name !== "remember_how_to_use_tools",
+  //     );
 
   const body = JSON.stringify({
     messages,
@@ -87,7 +89,7 @@ export async function sendChat({
       max_new_tokens: 2048,
     },
     stream,
-    tools: tools,
+    tools,
     max_tokens: 2048,
     only_deterministic_messages,
     chat_id,

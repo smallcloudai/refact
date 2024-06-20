@@ -1,29 +1,27 @@
 import { getApiKey } from "../../utils/ApiKey";
 import { AT_TOOLS_AVAILABLE_URL } from "./consts";
 
-type AtParamDict = {
+export type ToolParams = {
   name: string;
   type: string;
   description: string;
 };
 
-type AtToolFunction = {
+export type ToolFunction = {
   name: string;
   description: string;
-  parameters: AtParamDict[];
+  parameters: ToolParams[];
   parameters_required: string[];
 };
 
-type AtToolCommand = {
-  function: AtToolFunction;
+export type ToolCommand = {
+  function: ToolFunction;
   type: "function";
 };
 
-export type AtToolResponse = AtToolCommand[];
-
 export async function getAvailableTools(
   lspUrl?: string,
-): Promise<AtToolResponse> {
+): Promise<ToolCommand[]> {
   const toolsUrl = lspUrl
     ? `${lspUrl.replace(/\/*$/, "")}${AT_TOOLS_AVAILABLE_URL}`
     : AT_TOOLS_AVAILABLE_URL;
@@ -47,5 +45,5 @@ export async function getAvailableTools(
   }
 
   // TODO: add type guards
-  return (await response.json()) as unknown as AtToolResponse;
+  return (await response.json()) as unknown as ToolCommand[];
 }

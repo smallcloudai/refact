@@ -7,6 +7,8 @@ import {
   isDetailMessage,
   getPrompts,
   formatMessagesForLsp,
+  getAvailableTools,
+  ToolCommand,
   // LspChatMessage,
 } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
@@ -27,6 +29,8 @@ import {
   ReceivePromptsError,
   isRequestPreviewFiles,
   isTakeNotesFromChat,
+  isRequestTools,
+  RecieveTools,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
@@ -62,7 +66,12 @@ export function useEventBusForHost() {
           model: payload.model,
         });
 
-        handleSend(event.data.payload, controller.current, lspUrl);
+        handleSend(
+          event.data.payload,
+          controller.current,
+          event.data.payload.tools,
+          lspUrl,
+        );
         return;
       }
 
@@ -220,6 +229,26 @@ export function useEventBusForHost() {
             window.postMessage(message, "*");
           });
       }
+
+      if (isRequestTools(event.data)) {
+        const id = event.data.payload.id;
+        getAvailableTools(lspUrl)
+          .then((tools) => {
+            const action: RecieveTools = {
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS,
+              payload: { id, tools },
+            };
+            window.postMessage(action, "*");
+          })
+          .catch(() => {
+            const action: RecieveTools = {
+              type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS,
+              payload: { id, tools: [] },
+            };
+
+            window.postMessage(action, "*");
+          });
+      }
     };
 
     window.addEventListener("message", listener);
@@ -237,6 +266,7 @@ export function useEventBusForHost() {
 function handleSend(
   chat: ChatThread,
   controller: AbortController,
+  tools: ToolCommand[] | null,
   lspUrl?: string,
 ) {
   const messages = formatMessagesForLsp(chat.messages);
@@ -245,6 +275,7 @@ function handleSend(
     model: chat.model,
     abortController: controller,
     stream: true,
+    tools,
     lspUrl,
   })
     .then((response) => {
