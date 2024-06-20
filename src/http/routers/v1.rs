@@ -62,7 +62,7 @@ pub fn make_v1_router() -> Router {
         .route("/at-command-completion", telemetry_post!(handle_v1_command_completion))
         .route("/at-command-preview", telemetry_post!(handle_v1_command_preview))
 
-        .route("/at-tools-available", telemetry_get!(handle_v1_tools_available))
+        .route("/tools", telemetry_get!(handle_v1_tools_available))
 
         .route("/lsp-initialize", telemetry_post!(handle_v1_lsp_initialize))
         .route("/lsp-did-changed", telemetry_post!(handle_v1_lsp_did_change))
