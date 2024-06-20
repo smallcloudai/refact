@@ -4,7 +4,11 @@ import remarkBreaks from "remark-breaks";
 import classNames from "classnames";
 // import "./highlightjs.css";
 import styles from "./Markdown.module.css";
-import { MarkdownCodeBlock, type MarkdownControls } from "./CodeBlock";
+import {
+  MarkdownCodeBlock,
+  type MarkdownControls,
+  type MarkdownCodeBlockProps,
+} from "./CodeBlock";
 import {
   Text,
   Heading,
@@ -23,7 +27,8 @@ export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
   "children" | "allowedElements" | "unwrapDisallowed"
 > &
-  Partial<MarkdownControls>;
+  Partial<MarkdownControls> &
+  Pick<MarkdownCodeBlockProps, "startingLineNumber" | "showLineNumbers">;
 
 export const Markdown: React.FC<MarkdownProps> = ({
   children,

@@ -426,4 +426,16 @@ export const CHAT_WITH_DIFFS: ChatMessages = [
       },
     ],
   ],
+  ["user", "A longer diff"],
+  ["assistant", "here you go"],
+  [
+    "diff",
+    [
+      {
+        file_name: "long.py",
+        file_action: "new",
+        lines_add: "def main():    file1.f(6);    ".repeat(6),
+      },
+    ],
+  ],
 ];
