@@ -3,6 +3,7 @@ import {
   ChatMessages,
   ToolResult,
   isChatContextFileMessage,
+  isDiffMessage,
   isToolMessage,
 } from "../../services/refact";
 import type { MarkdownProps } from "../Markdown";
@@ -15,6 +16,7 @@ import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
+import { DiffContent } from "./DiffContent";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
@@ -69,6 +71,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
             if (isChatContextFileMessage(message)) {
               const [, files] = message;
               return <ContextFiles key={index} files={files} />;
+            }
+
+            if (isDiffMessage(message)) {
+              const [, diffs] = message;
+              return <DiffContent key={index} diffs={diffs} />;
             }
 
             const [role, text] = message;

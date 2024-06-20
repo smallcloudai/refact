@@ -4,6 +4,7 @@ import {
   MARS_ROVER_CHAT,
   CHAT_FUNCTIONS_MESSAGES,
   FROG_CHAT,
+  CHAT_WITH_DIFFS,
 } from "../../__fixtures__";
 
 const noop = () => ({});
@@ -38,5 +39,11 @@ export const WithFunctions: Story = {
 export const Notes: Story = {
   args: {
     messages: FROG_CHAT.messages,
+  },
+};
+
+export const WithDiffs: Story = {
+  args: {
+    messages: CHAT_WITH_DIFFS,
   },
 };

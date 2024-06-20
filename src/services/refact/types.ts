@@ -4,7 +4,8 @@ export type ChatRole =
   | "context_file"
   | "system"
   | "tool"
-  | "context_memory";
+  | "context_memory"
+  | "diff";
 
 export type ChatContextFile = {
   file_name: string;
@@ -53,9 +54,16 @@ interface BaseMessage
     | undefined
     | null
     | ContextMemory[]
+    | DiffAction[]
   > {
   0: ChatRole;
-  1: null | string | ChatContextFile[] | ToolResult | ContextMemory[];
+  1:
+    | null
+    | string
+    | ChatContextFile[]
+    | ToolResult
+    | ContextMemory[]
+    | DiffAction[];
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
@@ -93,13 +101,23 @@ export interface MemoryMessage extends BaseMessage {
   1: ContextMemory[];
 }
 
+// TODO: There maybe sub-types for this
+export type DiffAction = {
+  file_name: string;
+  file_action: "new" | "edit";
+  line1?: number;
+  line2?: number;
+  lines_remove?: string;
+  lines_add?: string;
+};
+export interface DiffMessage extends BaseMessage {
+  0: "diff";
+  1: DiffAction[];
+}
+
 export function isUserMessage(message: ChatMessage): message is UserMessage {
   return message[0] === "user";
 }
-
-/**
- * {"content":"[{\"memo_id\":\"about_frog_class.txt\",\"memo_text\":\"The Frog class is used to test the project, located in tests folder.\\n\"},{\"memo_id\":\"answer_in_spanish.txt\",\"memo_text\":\"User actually preferes answers in Spanish, so do that.\\n\"}]","role":"context_memory","tool_call_id":"","tool_calls":null}
- */
 
 export type ChatMessage =
   | UserMessage
@@ -107,7 +125,8 @@ export type ChatMessage =
   | ChatContextFileMessage
   | SystemMessage
   | ToolMessage
-  | MemoryMessage;
+  | MemoryMessage
+  | DiffMessage;
 
 export type ChatMessages = ChatMessage[];
 
@@ -125,6 +144,10 @@ export function isAssistantMessage(
 
 export function isToolMessage(message: ChatMessage): message is ToolMessage {
   return message[0] === "tool";
+}
+
+export function isDiffMessage(message: ChatMessage): message is DiffMessage {
+  return message[0] === "diff";
 }
 
 export function isToolCallMessage(
