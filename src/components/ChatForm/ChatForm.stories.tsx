@@ -64,7 +64,29 @@ const meta: Meta<typeof ChatForm> = {
     caps: {
       fetching: false,
       default_cap: "foo",
-      available_caps: ["bar", long, "baz"],
+      available_caps: {
+        bar: {
+          default_scratchpad: "",
+          n_ctx: 2048,
+          similar_models: [],
+          supports_tools: false,
+          supports_scratchpads: {},
+        },
+        [long]: {
+          default_scratchpad: "",
+          n_ctx: 2048,
+          similar_models: [],
+          supports_tools: false,
+          supports_scratchpads: {},
+        },
+        baz: {
+          default_scratchpad: "",
+          n_ctx: 2048,
+          similar_models: [],
+          supports_tools: false,
+          supports_scratchpads: {},
+        },
+      },
       error: "",
     },
     error: null,
