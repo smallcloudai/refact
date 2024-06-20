@@ -144,7 +144,7 @@ async fn vectorize_batch_from_q(
             _ => {}
         }
     }
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;  // be nice to the server: up to 60 requests per minute
+    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;  // be nice to the server: up to 60 requests per minute
 
     Ok(())
 }
