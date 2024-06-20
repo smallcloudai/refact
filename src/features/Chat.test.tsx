@@ -76,6 +76,7 @@ describe("Chat", () => {
           model: "", // not added because it's default
           title: "",
           attach_file: false,
+          tools: null,
         },
       },
       "*",
@@ -230,6 +231,7 @@ describe("Chat", () => {
           model: "test-model",
           title: "",
           attach_file: false,
+          tools: null,
         },
       },
       "*",
@@ -286,6 +288,7 @@ describe("Chat", () => {
           title: "hello",
           model: "gpt-3.5-turbo",
           attach_file: false,
+          tools: null,
         },
       },
       "*",
@@ -378,6 +381,7 @@ describe("Chat", () => {
           title: "",
           model: "",
           attach_file: false,
+          tools: null,
           messages: [
             ["system", SYSTEM_PROMPTS.insert_jokes.text],
             ["user", "hello\n"],
@@ -512,6 +516,7 @@ describe("Chat", () => {
           title: "hello",
           model: "gpt-3.5-turbo",
           attach_file: false,
+          tools: null,
           messages: [
             ["user", "hello"],
             ["assistant", "hello there", toolCalls],

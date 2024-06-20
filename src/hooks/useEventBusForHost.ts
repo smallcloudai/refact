@@ -8,6 +8,7 @@ import {
   getPrompts,
   formatMessagesForLsp,
   getAvailableTools,
+  ToolCommand,
   // LspChatMessage,
 } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
@@ -65,7 +66,12 @@ export function useEventBusForHost() {
           model: payload.model,
         });
 
-        handleSend(event.data.payload, controller.current, lspUrl);
+        handleSend(
+          event.data.payload,
+          controller.current,
+          event.data.payload.tools,
+          lspUrl,
+        );
         return;
       }
 
@@ -260,6 +266,7 @@ export function useEventBusForHost() {
 function handleSend(
   chat: ChatThread,
   controller: AbortController,
+  tools: ToolCommand[] | null,
   lspUrl?: string,
 ) {
   const messages = formatMessagesForLsp(chat.messages);
@@ -268,6 +275,7 @@ function handleSend(
     model: chat.model,
     abortController: controller,
     stream: true,
+    tools,
     lspUrl,
   })
     .then((response) => {

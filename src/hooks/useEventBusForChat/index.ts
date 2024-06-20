@@ -11,6 +11,7 @@ import {
   isToolResponse,
   isChatResponseChoice,
   ToolCommand,
+  CodeChatModel,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -67,6 +68,9 @@ import {
   TakeNotesFromChat,
   RequestTools,
   isRecieveTools,
+  SetUseTools,
+  QuestionFromChat,
+  isSetUseTools,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -204,6 +208,7 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isRestoreChat(action)) {
+      // TODO: set use_tool
       const messages: ChatMessages = action.payload.chat.messages.map(
         (message) => {
           if (message[0] === "context_file" && typeof message[1] === "string") {
@@ -264,16 +269,20 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isChatReceiveCaps(action)) {
+      // TODO: check caps that the model supports tools
       const default_cap = action.payload.caps.code_chat_default_model;
-      const available_caps = Object.keys(action.payload.caps.code_chat_models);
-      const error = available_caps.length === 0 ? "No available caps" : null;
+      const available_caps = action.payload.caps.code_chat_models;
+      const cap_names = Object.keys(available_caps);
+      const error = cap_names.length === 0 ? "No available caps" : null;
+      // const cap = state.chat.model || default_cap
+      // const tools = available_caps[cap].supports_tools
 
       return {
         ...state,
         error,
         caps: {
           fetching: false,
-          default_cap: default_cap || available_caps[0] || "",
+          default_cap: default_cap || cap_names[0] || "",
           available_caps,
           error: null,
         },
@@ -484,6 +493,13 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
+    if (isThisChat && isSetUseTools(action)) {
+      return {
+        ...state,
+        use_tools: action.payload.use_tools,
+      };
+    }
+
     return state;
   };
 }
@@ -491,7 +507,8 @@ export function reducer(postMessage: typeof window.postMessage) {
 export type ChatCapsState = {
   fetching: boolean;
   default_cap: string;
-  available_caps: string[];
+  // available_caps: string[];
+  available_caps: Record<string, CodeChatModel>;
   error: null | string;
 };
 
@@ -514,7 +531,8 @@ export type ChatState = {
   };
   selected_system_prompt: null | string;
   take_notes: boolean;
-  tools: ToolCommand[];
+  // Check caps if model has tools
+  tools: ToolCommand[] | null;
   use_tools: boolean;
 };
 
@@ -540,7 +558,7 @@ export function createInitialState(): ChatState {
     caps: {
       fetching: false,
       default_cap: "",
-      available_caps: [],
+      available_caps: {},
       error: null,
     },
     commands: {
@@ -565,7 +583,7 @@ export function createInitialState(): ChatState {
     },
     selected_system_prompt: null,
     take_notes: true,
-    tools: [],
+    tools: null,
     use_tools: false,
   };
 }
@@ -630,7 +648,7 @@ export const useEventBusForChat = () => {
           ? [["system", state.selected_system_prompt], ...messages]
           : messages;
 
-      const payload: ChatThread = {
+      const thread: ChatThread = {
         id: state.chat.id,
         messages: messagesWithSystemPrompt,
         title: state.chat.title,
@@ -640,13 +658,15 @@ export const useEventBusForChat = () => {
 
       dispatch({
         type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES,
-        payload,
+        payload: thread,
       });
 
-      postMessage({
+      const action: QuestionFromChat = {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-        payload,
-      });
+        payload: { ...thread, tools: state.use_tools ? state.tools : null },
+      };
+
+      postMessage(action);
 
       const snippetMessage: ChatSetSelectedSnippet = {
         type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET,
@@ -663,8 +683,9 @@ export const useEventBusForChat = () => {
       state.chat.title,
       state.chat.model,
       state.selected_system_prompt,
+      state.use_tools,
+      state.tools,
       clearError,
-      // setTakeNotes,
       maybeDefaultPrompt,
       postMessage,
     ],
@@ -689,17 +710,18 @@ export const useEventBusForChat = () => {
   }, [postMessage, state.chat.id]);
 
   const maybeRequestCaps = useCallback(() => {
+    const caps = Object.keys(state.caps.available_caps);
     if (
       state.chat.messages.length === 0 &&
-      state.caps.available_caps.length === 0 &&
+      caps.length === 0 &&
       !state.caps.fetching
     ) {
       requestCaps();
     }
   }, [
-    state.chat.messages.length,
-    state.caps.available_caps.length,
+    state.caps.available_caps,
     state.caps.fetching,
+    state.chat.messages.length,
     requestCaps,
   ]);
 
@@ -988,6 +1010,17 @@ export const useEventBusForChat = () => {
     requestTools();
   }, [requestTools]);
 
+  const setUseTools = useCallback(
+    (value: boolean) => {
+      const action: SetUseTools = {
+        type: EVENT_NAMES_TO_CHAT.SET_USE_TOOLS,
+        payload: { id: state.chat.id, use_tools: value },
+      };
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
+
   // useEffect(() => {
   //   window.debugChat =
   //     window.debugChat ||
@@ -1020,5 +1053,6 @@ export const useEventBusForChat = () => {
     startNewChat,
     setSelectedSystemPrompt,
     requestPreviewFiles,
+    setUseTools,
   };
 };

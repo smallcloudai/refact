@@ -7,5 +7,8 @@ import { render } from "./lib";
 const element = document.getElementById("refact-chat");
 
 if (element) {
-  render(element, { host: "web", features: { statistics: false } });
+  render(element, {
+    host: "web",
+    features: { statistics: false, vecdb: true, ast: true },
+  });
 }

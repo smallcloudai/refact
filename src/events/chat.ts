@@ -169,7 +169,7 @@ export function isPasteDiffFromChat(
 
 export interface QuestionFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION;
-  payload: ChatThread;
+  payload: ChatThread & { tools: ToolCommand[] | null };
 }
 
 export function isQuestionFromChat(

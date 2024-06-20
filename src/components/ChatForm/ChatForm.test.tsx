@@ -1,13 +1,16 @@
 import { render } from "../../utils/test-utils";
 import { describe, expect, test, vi } from "vitest";
 import { ChatForm, ChatFormProps } from "./ChatForm";
-import { ConfigProvider } from "../../contexts/config-context";
+import { ConfigProvider, type Config } from "../../contexts/config-context";
 import React from "react";
 import { SYSTEM_PROMPTS } from "../../__fixtures__";
 
 const noop = () => ({});
 
-const App: React.FC<Partial<ChatFormProps>> = (props) => {
+const App: React.FC<Partial<ChatFormProps & { host?: Config["host"] }>> = ({
+  host,
+  ...props
+}) => {
   const defaultProps: ChatFormProps = {
     removePreviewFileByName: noop,
     chatId: "chatId",
@@ -20,7 +23,7 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     caps: {
       fetching: false,
       default_cap: "foo",
-      available_caps: [],
+      available_caps: {},
       error: "",
     },
     error: "",
@@ -50,13 +53,16 @@ const App: React.FC<Partial<ChatFormProps>> = (props) => {
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
     selectedSystemPrompt: null,
+    canUseTools: false,
+    setUseTools: noop,
+    useTools: false,
     ...props,
   };
 
   return (
     <ConfigProvider
       config={{
-        host: "web",
+        host: host ?? "web",
         features: {
           vecdb: true,
           ast: true,
@@ -153,11 +159,14 @@ describe("ChatForm", () => {
       path: "/Users/refact/projects/print1.py",
       basename: "print1.py",
     };
-    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
+    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} host="ide" />);
 
-    app.rerender(<App onSubmit={fakeOnSubmit} selectedSnippet={snippet} />);
+    app.rerender(
+      <App onSubmit={fakeOnSubmit} selectedSnippet={snippet} host="ide" />,
+    );
 
     const label = app.queryByText(/Selected \d* lines/);
+    // app.debug();
     expect(label).not.toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const textarea = app.container.querySelector("textarea")!;

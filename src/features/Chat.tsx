@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { ChatForm } from "../components/ChatForm";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
@@ -32,10 +32,23 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
     maybeRequestCaps,
     startNewChat,
     setSelectedSystemPrompt,
+    setUseTools,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
+
+  const canUseTools = useMemo(() => {
+    if (state.tools === null || state.tools.length === 0) return false;
+    const model = state.chat.model || state.caps.default_cap;
+    if (state.caps.available_caps[model].supports_tools) return true;
+    return false;
+  }, [
+    state.tools,
+    state.chat.model,
+    state.caps.default_cap,
+    state.caps.available_caps,
+  ]);
 
   return (
     <PageWrapper host={host} style={style}>
@@ -116,7 +129,9 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         onSetSystemPrompt={setSelectedSystemPrompt}
         selectedSystemPrompt={state.selected_system_prompt}
         requestPreviewFiles={requestPreviewFiles}
-        canUseTools={state.tools.length > 0}
+        canUseTools={canUseTools}
+        setUseTools={setUseTools}
+        useTools={state.use_tools}
       />
 
       <Flex justify="between" pl="1" pr="1" pt="1">
