@@ -115,6 +115,10 @@ async fn vectorize_batch_from_q(
 
     let mut records = vec![];
     for (i, data_res) in batch.iter().enumerate() {
+        if batch_result[i].is_empty() {
+            info!("skipping an empty embedding split", data_res.window_text);
+            continue;
+        }
         records.push(
             Record {
                 vector: Some(batch_result[i].clone()),
@@ -139,7 +143,7 @@ async fn vectorize_batch_from_q(
         }
         match vecdb_cache_ref.lock().await.insert_records(records).await {
             Err(e) => {
-                warn!("Error adding/updating records in VecDB: {}", e);
+                warn!("Error adding records to the cacheDB: {}", e);
             }
             _ => {}
         }
@@ -249,6 +253,7 @@ async fn vectorize_thread(
                 None => {
                     // No files left to process
                     if !reported_vecdb_complete {
+                        // add left splits
                         add_from_cache_to_vec_db(
                             &mut delayed_cached_splits_q,
                             vecdb_handler_ref.clone(),
@@ -325,6 +330,15 @@ async fn vectorize_thread(
                     embed_q.push(split_item);
                 }
             }
+        }
+        // Do not keep too many split in the memory
+        if delayed_cached_splits_q.len() > 1024 {
+            add_from_cache_to_vec_db(
+                &mut delayed_cached_splits_q,
+                vecdb_handler_ref.clone(),
+                vecdb_cache_ref.clone(),
+                1024,
+            ).await;
         }
     }
 }
