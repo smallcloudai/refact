@@ -28,7 +28,10 @@ export type MarkdownProps = Pick<
   "children" | "allowedElements" | "unwrapDisallowed"
 > &
   Partial<MarkdownControls> &
-  Pick<MarkdownCodeBlockProps, "startingLineNumber" | "showLineNumbers">;
+  Pick<
+    MarkdownCodeBlockProps,
+    "startingLineNumber" | "showLineNumbers" | "useInlineStyles"
+  >;
 
 export const Markdown: React.FC<MarkdownProps> = ({
   children,

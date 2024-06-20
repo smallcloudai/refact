@@ -45,3 +45,11 @@
   text-align: left;
   justify-content: start;
 }
+
+.diff pre {
+  margin: 0;
+  padding: 0;
+}
+
+.diff code {
+}

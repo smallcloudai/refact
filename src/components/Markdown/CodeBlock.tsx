@@ -21,7 +21,7 @@ export type MarkdownControls = {
 export type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] &
   Partial<MarkdownControls> & { node?: Element | undefined } & Pick<
     SyntaxHighlighterProps,
-    "showLineNumbers" | "startingLineNumber"
+    "showLineNumbers" | "startingLineNumber" | "useInlineStyles"
   >;
 
 export const MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
