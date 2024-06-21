@@ -47,7 +47,7 @@ export const Diff: React.FC<{ diff: DiffAction }> = ({ diff }) => {
     <Box>
       <Text size="1">{diff.file_name}</Text>
       <ScrollArea scrollbars="horizontal">
-        <Box className={styles.diff}>
+        <Box className={styles.diff} py="2">
           {removeString && (
             <Highlight
               className={styles.diff_first}
