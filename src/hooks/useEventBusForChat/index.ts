@@ -847,12 +847,12 @@ export const useEventBusForChat = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestCommandsCompletion = useCallback(
     useDebounceCallback(
-      function (
+      (
         query: string,
         cursor: number,
         // eslint-disable-next-line @typescript-eslint/no-inferrable-types
         number: number = 5,
-      ) {
+      ) => {
         const action: RequestAtCommandCompletion = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
           payload: { id: state.chat.id, query, cursor, number },
@@ -860,9 +860,9 @@ export const useEventBusForChat = () => {
         postMessage(action);
       },
       500,
-      { leading: true },
+      { leading: true, maxWait: 250 },
     ),
-    [state.chat.id],
+    [state.chat.id, postMessage],
   );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps

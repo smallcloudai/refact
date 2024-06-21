@@ -436,14 +436,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [setInteracted],
   );
 
-  const handleAtCommandsRequest: ComboBoxProps["requestCommandsCompletion"] =
-    useCallback(
-      (query: string, cursor: number) => {
-        requestCommandsCompletion(query, cursor);
-      },
-      [requestCommandsCompletion],
-    );
-
   if (error) {
     return (
       <ErrorCallout mt="2" onClick={clearError} timeout={null}>
@@ -479,7 +471,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
         <ComboBox
           commands={commands}
-          requestCommandsCompletion={handleAtCommandsRequest}
+          requestCommandsCompletion={requestCommandsCompletion}
           value={value}
           onChange={handleChange}
           onSubmit={(event) => {
