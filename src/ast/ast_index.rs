@@ -408,6 +408,7 @@ impl AstIndex {
         &self,
         symbol: &AstSymbolInstanceRc,
         base_usefulness: f32,
+        symbols_by_guid: &HashMap<Uuid, AstSymbolInstanceRc>
     ) -> (Vec<AstSymbolInstanceRc>, HashMap<Uuid, f32>) {
         let mut current_symbol = symbol.clone();
         let mut parents_symbols: Vec<AstSymbolInstanceRc> = vec![];
@@ -415,14 +416,17 @@ impl AstIndex {
         let mut level: u64 = 0;
         loop {
             let parent_guid = current_symbol.borrow().parent_guid().unwrap_or_default();
-            if let Some(parent_symbol) = self.symbols_by_guid.get(&parent_guid) {
+            if let Some(parent_symbol) = symbols_by_guid.get(&parent_guid) {
                 parents_symbols.extend(
                     parent_symbol
                         .borrow()
                         .types()
                         .iter()
                         .filter_map(|t| t.guid.clone())
-                        .filter_map(|g| self.symbols_by_guid.get(&g))
+                        .filter_map(|g| match self.symbols_by_guid.get(&g) {
+                            None => symbols_by_guid.get(&g),
+                            Some(item) => Some(item)
+                        })
                         .cloned()
                         .map(|s| {
                             *guid_to_usefulness
@@ -540,11 +544,12 @@ impl AstIndex {
         let t_decl_ms = t_decl_t0.elapsed().as_millis() as i32;
 
         // use usage symbol's parents to get definition of extra types (template types, signature types, parent classes, ...)
+        let local_symbols_by_guid = file_symbols.iter().map(|s| (s.borrow().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
         let (declarations_matched_by_parent, guid_to_usefulness_to_merge) = if let Some(symbol) = unfiltered_cursor_symbols
             .iter()
             .filter(|s| !s.borrow().is_declaration())
             .next() {
-            self.get_declarations_by_parent(symbol, 70.0)
+            self.get_declarations_by_parent(symbol, 70.0, &local_symbols_by_guid)
         } else {
             (vec![], HashMap::new())
         };
