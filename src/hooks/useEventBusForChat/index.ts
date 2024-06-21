@@ -954,7 +954,7 @@ export const useEventBusForChat = () => {
   }, [sendReadyMessage]);
 
   useEffect(() => {
-    if (!state.streaming && state.chat.messages.length > 0) {
+    if (!state.streaming && state.chat.messages.length > 0 && !state.error) {
       const lastMessage = state.chat.messages[state.chat.messages.length - 1];
       if (
         isAssistantMessage(lastMessage) &&
@@ -964,7 +964,7 @@ export const useEventBusForChat = () => {
         sendMessages(state.chat.messages);
       }
     }
-  }, [sendMessages, state.chat.messages, state.streaming]);
+  }, [sendMessages, state.chat.messages, state.streaming, state.error]);
 
   // TODO: Turn this into a hook
   const noteRef = useRef<Pick<ChatState, "chat" | "take_notes">>({
