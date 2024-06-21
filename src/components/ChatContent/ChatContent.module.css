@@ -67,9 +67,9 @@
   padding-bottom: 0 !important;
 }
 
-.diff_second,
-.diff_second > pre,
-.diff_second > pre > pre {
+.diff_first + .diff_second,
+.diff_first + .diff_second > pre,
+.diff_first + .diff_second > pre > pre {
   margin-top: 0;
   padding-top: 0 !important;
 }

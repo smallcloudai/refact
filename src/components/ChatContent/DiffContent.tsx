@@ -88,14 +88,16 @@ export const Diff: React.FC<{ diff: DiffAction }> = ({ diff }) => {
     <Box>
       <Text size="1">{diff.file_name}</Text>
       <ScrollArea scrollbars="horizontal">
-        <Box className={styles.diff} py="4">
-          <Markdown
-            className={styles.diff_first}
-            showLineNumbers={!!diff.line1}
-            startingLineNumber={diff.line1}
-          >
-            {removeString}
-          </Markdown>
+        <Box className={styles.diff}>
+          {diff.lines_remove && (
+            <Markdown
+              className={styles.diff_first}
+              showLineNumbers={!!diff.line1}
+              startingLineNumber={diff.line1}
+            >
+              {removeString}
+            </Markdown>
+          )}
           <Markdown
             className={styles.diff_second}
             showLineNumbers={!!diff.line1}
@@ -111,7 +113,7 @@ export const Diff: React.FC<{ diff: DiffAction }> = ({ diff }) => {
 
 export const DiffContent: React.FC<{ diffs: DiffAction[] }> = ({ diffs }) => {
   return (
-    <Container py="4">
+    <Container>
       <Flex direction="column" display="inline-flex" maxWidth="100%">
         {diffs.map((diff, i) => (
           <Diff key={i} diff={diff} />
