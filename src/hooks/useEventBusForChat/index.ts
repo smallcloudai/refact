@@ -12,6 +12,9 @@ import {
   isChatResponseChoice,
   ToolCommand,
   CodeChatModel,
+  ContextMemory,
+  DiffAction,
+  isDiffResponse,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -75,6 +78,7 @@ import {
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
 import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
+import { parseOrElse } from "../../utils";
 
 export function formatChatResponse(
   messages: ChatMessages,
@@ -82,10 +86,13 @@ export function formatChatResponse(
 ): ChatMessages {
   if (isChatUserMessageResponse(response)) {
     if (response.role === "context_file") {
-      return [...messages, [response.role, JSON.parse(response.content)]];
+      const content = parseOrElse<ChatContextFile[]>(response.content, []);
+      return [...messages, [response.role, content]];
     } else if (response.role === "context_memory") {
-      return [...messages, [response.role, JSON.parse(response.content)]];
+      const content = parseOrElse<ContextMemory[]>(response.content, []);
+      return [...messages, [response.role, content]];
     }
+
     return [...messages, [response.role, response.content]];
   }
 
@@ -93,6 +100,11 @@ export function formatChatResponse(
     const { tool_call_id, content, finish_reason } = response;
     const toolResult: ToolResult = { tool_call_id, content, finish_reason };
     return [...messages, [response.role, toolResult]];
+  }
+
+  if (isDiffResponse(response)) {
+    const content = parseOrElse<DiffAction[]>(response.content, []);
+    return [...messages, [response.role, content]];
   }
 
   if (!isChatResponseChoice(response)) {
@@ -843,7 +855,6 @@ export const useEventBusForChat = () => {
     [postMessage, state.chat.id],
   );
 
-  // TODO: hoist this hook to context so useCallback isn't needed
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestCommandsCompletion = useCallback(
     useDebounceCallback(

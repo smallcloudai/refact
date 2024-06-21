@@ -248,6 +248,19 @@ export function isToolResponse(json: unknown): json is ToolResponse {
   return json.role === "tool";
 }
 
+export type DiffResponse = {
+  role: "diff";
+  content: string;
+};
+
+export function isDiffResponse(json: unknown): json is DiffResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("content" in json)) return false;
+  if (!("role" in json)) return false;
+  return json.role === "diff";
+}
+
 type ChatResponseChoice = {
   choices: ChatChoice[];
   created: number;
