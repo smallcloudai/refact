@@ -46,10 +46,8 @@
   justify-content: start;
 }
 
-.diff pre {
+.diff_pre {
   margin: 0;
-  padding: 0;
-}
-
-.diff code {
+  line-height: normal;
+  font-size: var(--font-size-1);
 }

@@ -1,10 +1,15 @@
 import React from "react";
 import { Text, Container, Box, Flex } from "@radix-ui/themes";
 import { DiffAction } from "../../events";
-import { Markdown } from "../Markdown";
 import { ScrollArea } from "../ScrollArea";
-
+import SyntaxHighlighter, {
+  type SyntaxHighlighterProps,
+} from "react-syntax-highlighter";
+import classNames from "classnames";
+import ReactMarkdown from "react-markdown";
+import { type Element } from "hast";
 import styles from "./ChatContent.module.css";
+import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 
 function toDiffMarkdown(str: string, type: "add" | "remove") {
   const replacement = type === "add" ? "\n+" : "\n-";
@@ -16,7 +21,58 @@ function toDiffMarkdown(str: string, type: "add" | "remove") {
   return "```diff" + replacement + replaceEscapedEOL + "\n```";
 }
 
-// TODO: Add custom markdown compoents
+// TODO: add this to the Markdown components
+
+type CodeBlockProps = React.JSX.IntrinsicElements["code"] & {
+  node?: Element | undefined;
+  style?: Record<string, React.CSSProperties>;
+} & Pick<
+    SyntaxHighlighterProps,
+    "showLineNumbers" | "startingLineNumber" | "style"
+  >;
+
+const CodeBlock: React.FC<CodeBlockProps> = ({
+  children,
+  className,
+  color: _color,
+  ref: _ref,
+  node: _node,
+  ...rest
+}) => {
+  const match = /language-(\w+)/.exec(className ?? "");
+  const textWithOutTrailingNewLine = String(children).replace(/\n$/, "");
+
+  const language: string = match && match.length > 0 ? match[1] : "text";
+  return (
+    <SyntaxHighlighter
+      className={className}
+      PreTag={(props) => (
+        <pre {...props} className={classNames(styles.diff_pre)} />
+      )}
+      language={language}
+      {...rest}
+    >
+      {textWithOutTrailingNewLine.trim()}
+    </SyntaxHighlighter>
+  );
+};
+
+type MarkdownProps = {
+  children?: string;
+  className?: string;
+} & Pick<CodeBlockProps, "showLineNumbers" | "startingLineNumber">;
+
+const Markdown: React.FC<MarkdownProps> = ({ children, ...rest }) => {
+  return (
+    <ReactMarkdown
+      components={{
+        code: (props) => <CodeBlock {...props} {...rest} style={hljsStyle} />,
+      }}
+    >
+      {children}
+    </ReactMarkdown>
+  );
+};
 
 export const Diff: React.FC<{ diff: DiffAction }> = ({ diff }) => {
   const removeString =
