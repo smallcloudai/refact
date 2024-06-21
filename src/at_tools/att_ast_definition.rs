@@ -42,10 +42,10 @@ impl AtTool for AttAstDefinition {
                 6,
             ).await?;
             if search_results_fuzzy.search_results.len() == 0 {
-                return Err("There is no `{}` in the syntax tree, and no similar names found :/".to_string());
+                return Err(format!("There is no `{}` in the syntax tree, and no similar names found :/", symbol).to_string());
             } else {
                 let mut s = String::new();
-                s.push_str("There is no `{}` in the syntax tree, call again with one of these close names:\n");
+                s.push_str(format!("There is no `{}` in the syntax tree, call again with one of these close names:\n", symbol).as_str());
                 let all_names_unique = search_results_fuzzy.search_results.iter()
                     .map(|r| r.symbol_declaration.name.clone())
                     .sorted()
