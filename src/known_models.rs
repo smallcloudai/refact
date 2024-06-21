@@ -133,7 +133,8 @@ pub const KNOWN_MODELS: &str = r####"
                 "claude-2.1",
                 "claude-3-haiku",
                 "claude-3-opus",
-                "claude-3-sonnet"
+                "claude-3-sonnet",
+                "claude-3-5-sonnet"
             ]
         },
         "starchat/15b/beta": {
