@@ -62,9 +62,14 @@ type MarkdownProps = {
   className?: string;
 } & Pick<CodeBlockProps, "showLineNumbers" | "startingLineNumber">;
 
-const Markdown: React.FC<MarkdownProps> = ({ children, ...rest }) => {
+const Markdown: React.FC<MarkdownProps> = ({
+  children,
+  className,
+  ...rest
+}) => {
   return (
     <ReactMarkdown
+      className={className}
       components={{
         code: (props) => <CodeBlock {...props} {...rest} style={hljsStyle} />,
       }}
@@ -83,14 +88,16 @@ export const Diff: React.FC<{ diff: DiffAction }> = ({ diff }) => {
     <Box>
       <Text size="1">{diff.file_name}</Text>
       <ScrollArea scrollbars="horizontal">
-        <Box className={styles.diff}>
+        <Box className={styles.diff} py="4">
           <Markdown
+            className={styles.diff_first}
             showLineNumbers={!!diff.line1}
             startingLineNumber={diff.line1}
           >
             {removeString}
           </Markdown>
           <Markdown
+            className={styles.diff_second}
             showLineNumbers={!!diff.line1}
             startingLineNumber={diff.line1}
           >
