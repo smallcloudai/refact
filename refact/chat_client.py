@@ -104,7 +104,7 @@ def join_messages_and_choices(
 async def tools_fetch_and_filter(base_url: str, tools_turn_on: Optional[Set[str]]) -> Optional[List[Dict[str, Any]]]:
     async def get_tools():
         async with aiohttp.ClientSession() as session:
-            async with session.get(base_url + "/at-tools-available", timeout=1) as response:
+            async with session.get(base_url + "/tools", timeout=1) as response:
                 assert response.status == 200
                 return await response.json()
     tools = None
