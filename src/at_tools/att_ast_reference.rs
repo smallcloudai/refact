@@ -31,14 +31,14 @@ impl AtTool for AttAstReference {
         let ast_mb = ccx.global_context.read().await.ast_module.clone();
         let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
 
-        let search_results: crate::ast::structs::AstQuerySearchResult = ast.read().await.search_by_name(
+        let search_results: crate::ast::structs::AstQuerySearchResult = ast.read().await.search_by_fullpath(
             symbol.clone(),
             RequestSymbolType::Usage,
             false,
             ccx.top_n,
         ).await?;
         if search_results.search_results.len() == 0 {
-            let search_results_fuzzy: crate::ast::structs::AstQuerySearchResult = ast.read().await.search_by_name(
+            let search_results_fuzzy: crate::ast::structs::AstQuerySearchResult = ast.read().await.search_by_fullpath(
                 symbol.clone(),
                 RequestSymbolType::Usage,
                 true,
