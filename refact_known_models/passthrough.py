@@ -37,6 +37,15 @@ passthrough_mini_db = {
         "T_out": 4096,
         "filter_caps": ["chat", "tools"],
     },
+    "claude-3-5-sonnet": {
+        "backend": "litellm",
+        "provider": "anthropic",
+        "tokenizer_path": "Xenova/claude-tokenizer",
+        "resolve_as": "claude-3-5-sonnet-20240620",
+        "T": 200_000,
+        "T_out": 4096,
+        "filter_caps": ["chat", "tools"],
+    },
     "claude-3-haiku": {
         "backend": "litellm",
         "provider": "anthropic",
