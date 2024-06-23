@@ -107,12 +107,13 @@ const useControlsState = ({
       },
       use_tools: {
         name: "use_tools",
-        checked: useTools,
-        label: "Use tools",
+        // defaultChecked: true,  // TODO doesn't work
+        checked: useTools, // TODO doesn't work even if set to true
+        label: "Allow model to use tools",
         disabled: false,
         hide: !canUseTools,
         info: {
-          text: "Allow the ai to uses tool",
+          text: "Allow the model to call various functions to help you, especially search to gather more information.",
           link: "https://docs.refact.ai/features/ai-chat/",
           linkText: "documentation",
         },
