@@ -17,9 +17,9 @@ pub trait AtTool: Send + Sync {
     fn depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
 }
 
-pub async fn at_tools_merged(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtTool + Send>>>>
+pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtTool + Send>>>>
 {
-    let mut result =  HashMap::from([
+    let tools_all =  HashMap::from([
         ("search_workspace".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_workspace::AttWorkspace{}) as Box<dyn AtTool + Send>))),
         ("search_file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file_search::AttFileSearch{}) as Box<dyn AtTool + Send>))),
         ("file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file::AttFile{}) as Box<dyn AtTool + Send>))),
@@ -29,6 +29,25 @@ pub async fn at_tools_merged(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String
         // ("remember_how_to_use_tools".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
         // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
     ]);
+
+    let (ast_on, vecdb_on) = {
+        let gcx = gcx.read().await;
+        let vecdb = gcx.vec_db.lock().await;
+        (gcx.ast_module.is_some(), vecdb.is_some())
+    };
+
+    let mut result = HashMap::new();
+    for (key, value) in tools_all {
+        let command = value.lock().await;
+        let depends_on = command.depends_on();
+        if depends_on.contains(&"ast".to_string()) && !ast_on {
+            continue;
+        }
+        if depends_on.contains(&"vecdb".to_string()) && !vecdb_on {
+            continue;
+        }
+        result.insert(key, value.clone());
+    }
 
     let tconfig_maybe = crate::toolbox::toolbox_config::load_customization(gcx.clone()).await;
     if tconfig_maybe.is_err() {
