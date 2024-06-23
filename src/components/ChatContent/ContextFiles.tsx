@@ -75,7 +75,7 @@ export const ContextFile: React.FC<{
         <HoverCard.Trigger>
           <Box display="inline-block">
             <Small className={classnames(styles.file, props.className)}>
-              📎 <TruncateLeft>{name}</TruncateLeft>
+              &nbsp;&nbsp;&nbsp;&nbsp;<TruncateLeft>{name}</TruncateLeft>
             </Small>
           </Box>
         </HoverCard.Trigger>
@@ -133,7 +133,7 @@ export const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({
         <Collapsible.Trigger asChild>
           <Flex gap="2" align="start" pb="2">
             <Text weight="light" size="1">
-              🖇️ Attached {fileNames.join(", ")}
+              📎 {fileNames.join(", ")}
             </Text>
             <Chevron open={open} />
           </Flex>
