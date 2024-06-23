@@ -7,3 +7,5 @@
 *.js            text eol=lf 
 *.ts            text eol=lf 
 *.py            text eol=lf 
+tests/emergency_frog_situation/frog.py text eol=crlf
+
