@@ -13,8 +13,13 @@ pub async fn telemetry_wrapper(func: impl Fn(Extension<SharedGlobalContext>, hyp
                                path: Uri,
                                method: Method,
                                ex: Extension<SharedGlobalContext>,
-                               body_bytes: hyper::body::Bytes) -> Result<Response<Body>, ScratchError> {
-    info!("\n--- HTTP {} starts ---\n", path.path().trim_start_matches('/'));
+                               body_bytes: hyper::body::Bytes) -> Result<Response<Body>, ScratchError>
+{
+    let handler_name = path.path().trim_start_matches('/');
+    let no_spam = handler_name == "rag-status";
+    if !no_spam {
+        info!("\n--- HTTP {} starts ---\n", handler_name);
+    }
     let t0 = std::time::Instant::now();
     let result = Box::pin(func(ex.clone(), body_bytes)).await;
     if let Err(e) = result {
@@ -31,7 +36,9 @@ pub async fn telemetry_wrapper(func: impl Fn(Extension<SharedGlobalContext>, hyp
         error!("{} returning \"{}\"", path, e.status_code);
         return Ok(e.to_response());
     }
-    info!("{} completed {}ms", path, t0.elapsed().as_millis());
+    if !no_spam {
+        info!("{} completed {}ms", path, t0.elapsed().as_millis());
+    }
     return Ok(result.unwrap());
 }
 
