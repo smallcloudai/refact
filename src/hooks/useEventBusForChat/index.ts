@@ -187,7 +187,6 @@ export function reducer(postMessage: typeof window.postMessage) {
       const messages = formatChatResponse(current, action.payload);
       return {
         ...state,
-        // prevent_send: true,
         waiting_for_response: false,
         streaming: true,
         previous_message_length: messages.length,
