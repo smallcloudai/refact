@@ -31,6 +31,7 @@ import {
   isTakeNotesFromChat,
   isRequestTools,
   RecieveTools,
+  isReadyMessage,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
@@ -38,6 +39,7 @@ import { getStatisticData } from "../services/refact";
 export function useEventBusForHost() {
   const { lspUrl } = useConfig();
   const { saveChat } = useChatHistory();
+  const [currentChatId, setCuttentChat] = useState("");
   // this needs to be a ref because it is mutated in a useEffect
   const controller = useRef(new AbortController());
 
@@ -48,6 +50,10 @@ export function useEventBusForHost() {
     const listener = (event: MessageEvent) => {
       if (event.source !== window) {
         return;
+      }
+
+      if (isReadyMessage(event.data)) {
+        setCuttentChat(event.data.payload.id);
       }
 
       if (isStopStreamingFromChat(event.data)) {
@@ -260,6 +266,7 @@ export function useEventBusForHost() {
 
   return {
     takeingNotes,
+    currentChatId,
   };
 }
 

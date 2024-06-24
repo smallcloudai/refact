@@ -12,12 +12,14 @@ export const Sidebar: React.FC<
   {
     onCreateNewChat: () => void;
     takingNotes: boolean;
+    currentChatId: string;
   } & ChatHistoryProps
 > = ({
   history,
   onHistoryItemClick,
   onCreateNewChat,
   onDeleteHistoryItem,
+  currentChatId,
   takingNotes,
 }) => {
   const [isOpenedStatistic, setIsOpenedStatistic] = useState(false);
@@ -25,6 +27,8 @@ export const Sidebar: React.FC<
     setIsOpenedStatistic(false);
   };
   const { features } = useConfig();
+
+  // const [currentItem, setItem] = useState("")
 
   return (
     <Box className={styles.sidebar}>
@@ -59,6 +63,7 @@ export const Sidebar: React.FC<
             history={history}
             onHistoryItemClick={onHistoryItemClick}
             onDeleteHistoryItem={onDeleteHistoryItem}
+            currentChatId={currentChatId}
           />
           <Flex p="2" gap="1">
             <Settings />

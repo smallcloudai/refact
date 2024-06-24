@@ -9,6 +9,7 @@ export type ChatHistoryProps = {
   onHistoryItemClick: (id: string) => void;
   onDeleteHistoryItem: (id: string) => void;
   onOpenChatInTab?: (id: string) => void;
+  currentChatId?: string;
 };
 
 export const ChatHistory: React.FC<ChatHistoryProps> = ({
@@ -16,6 +17,7 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({
   onHistoryItemClick,
   onDeleteHistoryItem,
   onOpenChatInTab,
+  currentChatId,
 }) => {
   return (
     <Box
@@ -34,6 +36,7 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({
               onDelete={onDeleteHistoryItem}
               key={chat.id}
               chat={chat}
+              disabled={chat.id === currentChatId}
             />
           ))}
         </Flex>
