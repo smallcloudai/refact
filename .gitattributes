@@ -1,5 +1,3 @@
-* text=false
-
 *.skeleton      text eol=lf
 *.rs            text eol=lf 
 *.cpp           text eol=lf 
