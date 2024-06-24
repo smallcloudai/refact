@@ -109,25 +109,35 @@ export function formatChatResponse(
     }
 
     if (
-      messages.length === 0 &&
+      acc.length === 0 &&
       "content" in cur.delta &&
       typeof cur.delta.content === "string" &&
       cur.delta.role
     ) {
-      return acc.concat([[cur.delta.role, cur.delta.content]]);
+      if (cur.delta.role === "assistant") {
+        return acc.concat([
+          [cur.delta.role, cur.delta.content, cur.delta.tool_calls],
+        ]);
+      }
+      return acc.concat([cur.delta.role, cur.delta.content]);
     }
 
     const lastMessage = acc[acc.length - 1];
 
     if (isToolCallDelta(cur.delta)) {
       if (!isAssistantMessage(lastMessage)) {
-        return acc.concat([["assistant", null, cur.delta.tool_calls]]);
+        return acc.concat([
+          ["assistant", cur.delta.content ?? "", cur.delta.tool_calls],
+        ]);
       }
 
       const last = acc.slice(0, -1);
       const collectedCalls = lastMessage[2] ?? [];
       const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
-      return last.concat([["assistant", lastMessage[1], calls]]);
+      const content = cur.delta.content;
+      const message = content ? lastMessage[1] + content : lastMessage[1];
+
+      return last.concat([["assistant", message, calls]]);
     }
 
     if (

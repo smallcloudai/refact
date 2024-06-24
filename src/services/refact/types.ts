@@ -144,6 +144,7 @@ interface BaseDelta {
 interface AssistantDelta extends BaseDelta {
   role?: "assistant" | null;
   content?: string | null; // might be undefined, will be null if tool_calls
+  tool_calls?: ToolCall[];
 }
 
 export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
@@ -171,6 +172,7 @@ export function isChatContextFileDelta(
 
 interface ToolCallDelta extends BaseDelta {
   tool_calls: ToolCall[];
+  content?: string | null;
 }
 
 export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {
