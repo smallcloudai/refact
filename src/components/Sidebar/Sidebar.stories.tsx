@@ -7,6 +7,7 @@ const meta = {
   args: {
     history: [],
     takingNotes: false,
+    currentChatId: "",
   },
 } satisfies Meta<typeof Sidebar>;
 
