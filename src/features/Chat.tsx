@@ -2,7 +2,7 @@ import React, { useMemo, useRef } from "react";
 import { ChatForm } from "../components/ChatForm";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
-import { Flex, Button, Text } from "@radix-ui/themes";
+import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../components/PageWrapper";
@@ -34,6 +34,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
     startNewChat,
     setSelectedSystemPrompt,
     setUseTools,
+    enableSend,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -52,6 +53,15 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
     state.caps.default_cap,
     state.caps.available_caps,
   ]);
+
+  const unCalledTools = React.useMemo(() => {
+    if (state.chat.messages.length === 0) return false;
+    const last = state.chat.messages[state.chat.messages.length - 1];
+    if (last[0] !== "assistant") return false;
+    const maybeTools = last[2];
+    if (maybeTools && maybeTools.length > 0) return true;
+    return false;
+  }, [state.chat.messages]);
 
   return (
     <PageWrapper host={host} style={style}>
@@ -94,7 +104,16 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         canPaste={state.active_file.can_paste}
         ref={chatContentRef}
       />
-
+      {!state.streaming && state.prevent_send && unCalledTools && (
+        <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
+          <Card>
+            <Flex direction="column" align="center" gap="2">
+              Chat was interupted with uncalled tools calls.
+              <Button onClick={() => enableSend(true)}>Call Tools</Button>
+            </Flex>
+          </Card>
+        </Container>
+      )}
       <ChatForm
         chatId={state.chat.id}
         isStreaming={state.streaming}
@@ -136,7 +155,6 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         setUseTools={setUseTools}
         useTools={state.use_tools}
       />
-
       <Flex justify="between" pl="1" pr="1" pt="1">
         {state.chat.messages.length > 0 && (
           <Text size="1">

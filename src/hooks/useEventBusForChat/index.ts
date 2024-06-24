@@ -71,6 +71,8 @@ import {
   SetUseTools,
   QuestionFromChat,
   isSetUseTools,
+  SetEnableSend,
+  isSetEnableSend,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -185,6 +187,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       const messages = formatChatResponse(current, action.payload);
       return {
         ...state,
+        // prevent_send: true,
         waiting_for_response: false,
         streaming: true,
         previous_message_length: messages.length,
@@ -233,6 +236,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       return {
         ...state,
         waiting_for_response: false,
+        prevent_send: true,
         streaming: false,
         error: null,
         previous_message_length: lastAssistantMessage,
@@ -313,6 +317,7 @@ export function reducer(postMessage: typeof window.postMessage) {
 
       return {
         ...state,
+        prevent_send: false,
         waiting_for_response: false,
         streaming: false,
       };
@@ -322,6 +327,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       return {
         ...state,
         streaming: false,
+        prevent_send: true,
         waiting_for_response: false,
         error:
           typeof action.payload.message === "string"
@@ -500,6 +506,13 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
+    if (isThisChat && isSetEnableSend(action)) {
+      return {
+        ...state,
+        prevent_send: !action.payload.enable_send,
+      };
+    }
+
     return state;
   };
 }
@@ -514,6 +527,7 @@ export type ChatCapsState = {
 
 export type ChatState = {
   chat: ChatThread;
+  prevent_send: boolean;
   waiting_for_response: boolean;
   streaming: boolean;
   previous_message_length: number;
@@ -539,6 +553,7 @@ export type ChatState = {
 export function createInitialState(): ChatState {
   return {
     streaming: false,
+    prevent_send: false,
     waiting_for_response: false,
     error: null,
     previous_message_length: 0,
@@ -954,7 +969,12 @@ export const useEventBusForChat = () => {
   }, [sendReadyMessage]);
 
   useEffect(() => {
-    if (!state.streaming && state.chat.messages.length > 0 && !state.error) {
+    if (
+      !state.streaming &&
+      state.chat.messages.length > 0 &&
+      !state.error &&
+      !state.prevent_send
+    ) {
       const lastMessage = state.chat.messages[state.chat.messages.length - 1];
       if (
         isAssistantMessage(lastMessage) &&
@@ -964,7 +984,13 @@ export const useEventBusForChat = () => {
         sendMessages(state.chat.messages);
       }
     }
-  }, [sendMessages, state.chat.messages, state.streaming, state.error]);
+  }, [
+    sendMessages,
+    state.chat.messages,
+    state.streaming,
+    state.error,
+    state.prevent_send,
+  ]);
 
   // TODO: Turn this into a hook
   const noteRef = useRef<Pick<ChatState, "chat" | "take_notes">>({
@@ -1021,6 +1047,18 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
+  const enableSend = useCallback(
+    (value: boolean) => {
+      const action: SetEnableSend = {
+        type: EVENT_NAMES_TO_CHAT.SET_ENABLE_SEND,
+        payload: { id: state.chat.id, enable_send: value },
+      };
+
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
+
   // useEffect(() => {
   //   window.debugChat =
   //     window.debugChat ||
@@ -1054,5 +1092,6 @@ export const useEventBusForChat = () => {
     setSelectedSystemPrompt,
     requestPreviewFiles,
     setUseTools,
+    enableSend,
   };
 };

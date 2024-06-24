@@ -56,6 +56,7 @@ export enum EVENT_NAMES_TO_CHAT {
   SET_TAKE_NOTES = "chat_set_take_notes",
   RECEIVE_TOOLS = "chat_receive_tools_chat",
   SET_USE_TOOLS = "chat_set_use_tools",
+  SET_ENABLE_SEND = "chat_set_enable_send",
 }
 
 export type ChatThread = {
@@ -614,4 +615,14 @@ export interface SetUseTools extends ActionToChat {
 export function isSetUseTools(action: unknown): action is SetUseTools {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.SET_USE_TOOLS;
+}
+
+export interface SetEnableSend extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.SET_ENABLE_SEND;
+  payload: { id: string; enable_send: boolean };
+}
+
+export function isSetEnableSend(action: unknown): action is SetEnableSend {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.SET_ENABLE_SEND;
 }
