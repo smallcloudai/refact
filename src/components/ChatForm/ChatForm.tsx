@@ -166,8 +166,6 @@ const useControlsState = ({
     snippet.code,
     activeFile.name,
     filePathWithLines,
-    fullPathWithCursor,
-    ast,
     codeLineCount,
     markdown,
     host,
