@@ -4,7 +4,7 @@ export type CodeChatModel = {
   default_scratchpad: string;
   n_ctx: number;
   similar_models: string[];
-  supports_tools: boolean;
+  supports_tools?: boolean | null | undefined;
   supports_scratchpads: Record<
     string,
     {

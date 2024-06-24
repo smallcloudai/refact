@@ -6,6 +6,7 @@ import { Flex, Button, Text } from "@radix-ui/themes";
 import { useConfig } from "../contexts/config-context";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../components/PageWrapper";
+import { CodeChatModel } from "../events";
 
 export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
   const { host, tabbed } = useConfig();
@@ -40,8 +41,9 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
 
   const canUseTools = useMemo(() => {
     if (state.tools === null || state.tools.length === 0) return false;
-    const model = state.chat.model || state.caps.default_cap;
-    if (state.caps.available_caps[model].supports_tools) return true;
+    const modelName = state.chat.model || state.caps.default_cap;
+    const model: CodeChatModel = state.caps.available_caps[modelName];
+    if ("supports_tools" in model && model.supports_tools) return true;
     return false;
   }, [
     state.tools,
