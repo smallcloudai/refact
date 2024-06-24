@@ -12,6 +12,7 @@ import {
   isChatResponseChoice,
   ToolCommand,
   CodeChatModel,
+  ChatMessage,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -119,7 +120,9 @@ export function formatChatResponse(
           [cur.delta.role, cur.delta.content, cur.delta.tool_calls],
         ]);
       }
-      return acc.concat([cur.delta.role, cur.delta.content]);
+      // TODO: narrow this
+      const message = [cur.delta.role, cur.delta.content] as ChatMessage;
+      return acc.concat([message]);
     }
 
     const lastMessage = acc[acc.length - 1];
