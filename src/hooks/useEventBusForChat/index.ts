@@ -177,8 +177,9 @@ export function formatChatResponse(
 
 export function reducer(postMessage: typeof window.postMessage) {
   return function (state: ChatState, action: ActionToChat): ChatState {
-    const isThisChat =
-      action.payload?.id && action.payload.id === state.chat.id ? true : false;
+    const isThisChat = Boolean(
+      action.payload?.id && action.payload.id === state.chat.id,
+    );
 
     function maybeTakeNotes() {
       if (!state.take_notes || state.chat.messages.length === 0) return;
@@ -379,18 +380,37 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isThisChat && isChatDoneStreaming(action)) {
-      postMessage({
-        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-        payload: state.chat,
-      });
+    if (isChatDoneStreaming(action)) {
+      if (isThisChat) {
+        postMessage({
+          type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+          payload: state.chat,
+        });
 
-      return {
-        ...state,
-        prevent_send: false,
-        waiting_for_response: false,
-        streaming: false,
-      };
+        return {
+          ...state,
+          prevent_send: false,
+          waiting_for_response: false,
+          streaming: false,
+        };
+      }
+
+      for (let i = 0; i < state.chat_cache.length; i++) {
+        const chat = state.chat_cache[i];
+        if (chat.id === action.payload.id) {
+          const chat_cache = [...state.chat_cache];
+          chat_cache.splice(i, 1);
+          postMessage({
+            type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+            payload: chat,
+          });
+
+          return {
+            ...state,
+            chat_cache,
+          };
+        }
+      }
     }
 
     if (isThisChat && isChatErrorStreaming(action)) {
