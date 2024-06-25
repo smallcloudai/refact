@@ -3,6 +3,7 @@ import { describe, test, vi, expect, afterEach } from "vitest";
 import { render, cleanup } from "../../utils/test-utils";
 import { ComboBox, type ComboBoxProps } from "./ComboBox";
 import { TextArea, type TextAreaProps } from "../TextArea";
+import { useDebounceCallback } from "usehooks-ts";
 
 const defaultCommands = ["@file ", "@workspace "];
 const defaultArgs = ["/foo ", "/bar "];
@@ -33,128 +34,133 @@ const App = (props: Partial<ComboBoxProps>) => {
     is_cmd_executable: false,
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fakeRequestCommands = React.useCallback(
-    (query: string, cursor: number) => {
-      if (query === "@" && cursor === 1) {
-        setCommands({
-          completions: defaultCommands,
-          replace: [0, cursor],
-          is_cmd_executable: false,
-        });
-        return;
-      }
+    useDebounceCallback(
+      (query: string, cursor: number) => {
+        if (query === "@" && cursor === 1) {
+          setCommands({
+            completions: defaultCommands,
+            replace: [0, cursor],
+            is_cmd_executable: false,
+          });
+          return;
+        }
 
-      if (query === "@file " && cursor === 6) {
-        setCommands({
-          completions: defaultArgs,
-          replace: [6, 6],
-          is_cmd_executable: false,
-        });
-        return;
-      }
+        if (query === "@file " && cursor === 6) {
+          setCommands({
+            completions: defaultArgs,
+            replace: [6, 6],
+            is_cmd_executable: false,
+          });
+          return;
+        }
 
-      if (query === "@\nhello" && cursor === 1) {
-        setCommands({
-          completions: defaultCommands,
-          replace: [0, 1],
-          is_cmd_executable: false,
-        });
-        return;
-      }
+        if (query === "@\nhello" && cursor === 1) {
+          setCommands({
+            completions: defaultCommands,
+            replace: [0, 1],
+            is_cmd_executable: false,
+          });
+          return;
+        }
 
-      if (query === "@file\nhello" && cursor === 5) {
+        if (query === "@file\nhello" && cursor === 5) {
+          setCommands({
+            completions: [],
+            replace: [-1, -1],
+            is_cmd_executable: false,
+          });
+          return;
+        }
+
+        if (
+          (query === "@file \nhello" && cursor === 6) ||
+          (query === "@file f\nhello" && cursor === 7)
+        ) {
+          setCommands({
+            completions: defaultArgs,
+            replace: [6, cursor],
+            is_cmd_executable: false,
+          });
+          return;
+        }
+
+        // TODO how does an exicutable comand respond?
+
+        if (
+          (query === "@f" && cursor === 2) ||
+          (query === "@fil" && cursor === 4) ||
+          (query === "@fi" && cursor === 3)
+        ) {
+          setCommands({
+            completions: ["@file "],
+            replace: [0, query.length],
+            is_cmd_executable: true,
+          });
+          return;
+        }
+
+        if (query === "@file f" && cursor === 7) {
+          setCommands({
+            completions: defaultArgs,
+            replace: [6, 7],
+            is_cmd_executable: true,
+          });
+
+          return;
+        }
+
+        if (query === "@file /foo " && cursor === 11) {
+          setCommands({
+            completions: [],
+            replace: [-1, -1],
+            is_cmd_executable: false,
+          });
+          return;
+        }
+
+        if (
+          (query === "@file /fo" && cursor === 9) ||
+          (query === "@file /f" && cursor === 8) ||
+          (query === "@file /" && cursor === 7)
+        ) {
+          setCommands({
+            completions: defaultArgs,
+            replace: [-1, -1],
+            is_cmd_executable: false,
+          });
+          return;
+        }
+
+        if (query === "@file /foo \n@" && cursor === 13) {
+          setCommands({
+            completions: defaultCommands,
+            replace: [12, cursor],
+            is_cmd_executable: false,
+          });
+          return;
+        }
+
+        // Use to run with the lsp
+        // console.log({ query, cursor });
+        // void getCommands(query, cursor).then((commands) => {
+        //   if (commands) {
+        //     console.log({ commands });
+        //     setCommands(commands);
+        //   }
+        // });
+        // return;
+
         setCommands({
           completions: [],
           replace: [-1, -1],
           is_cmd_executable: false,
         });
-        return;
-      }
-
-      if (
-        (query === "@file \nhello" && cursor === 6) ||
-        (query === "@file f\nhello" && cursor === 7)
-      ) {
-        setCommands({
-          completions: defaultArgs,
-          replace: [6, cursor],
-          is_cmd_executable: false,
-        });
-        return;
-      }
-
-      // TODO how does an exicutable comand respond?
-
-      if (
-        (query === "@f" && cursor === 2) ||
-        (query === "@fil" && cursor === 4) ||
-        (query === "@fi" && cursor === 3)
-      ) {
-        setCommands({
-          completions: ["@file "],
-          replace: [0, query.length],
-          is_cmd_executable: true,
-        });
-        return;
-      }
-
-      if (query === "@file f" && cursor === 7) {
-        setCommands({
-          completions: defaultArgs,
-          replace: [6, 7],
-          is_cmd_executable: true,
-        });
-
-        return;
-      }
-
-      if (query === "@file /foo " && cursor === 11) {
-        setCommands({
-          completions: [],
-          replace: [-1, -1],
-          is_cmd_executable: false,
-        });
-        return;
-      }
-
-      if (
-        (query === "@file /fo" && cursor === 9) ||
-        (query === "@file /f" && cursor === 8) ||
-        (query === "@file /" && cursor === 7)
-      ) {
-        setCommands({
-          completions: defaultArgs,
-          replace: [-1, -1],
-          is_cmd_executable: false,
-        });
-        return;
-      }
-
-      if (query === "@file /foo \n@" && cursor === 13) {
-        setCommands({
-          completions: defaultCommands,
-          replace: [12, cursor],
-          is_cmd_executable: false,
-        });
-        return;
-      }
-
-      // Use to run with the lsp
-      // console.log({ query, cursor });
-      // void getCommands(query, cursor).then((commands) => {
-      //   if (commands) {
-      //     console.log({ commands });
-      //     setCommands(commands);
-      //   }
-      // });
-      // return;
-
-      setCommands({
-        completions: [],
-        replace: [-1, -1],
-        is_cmd_executable: false,
-      });
-    },
+      },
+      0,
+      { leading: true },
+    ),
     [],
   );
 

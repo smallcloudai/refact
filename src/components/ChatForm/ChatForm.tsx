@@ -107,12 +107,13 @@ const useControlsState = ({
       },
       use_tools: {
         name: "use_tools",
-        checked: useTools,
-        label: "Use tools",
+        // defaultChecked: true,  // TODO doesn't work
+        checked: useTools, // TODO doesn't work even if set to true
+        label: "Allow model to use tools",
         disabled: false,
         hide: !canUseTools,
         info: {
-          text: "Allow the ai to uses tool",
+          text: "Allow the model to call various functions to help you, especially search to gather more information.",
           link: "https://docs.refact.ai/features/ai-chat/",
           linkText: "documentation",
         },
@@ -131,20 +132,20 @@ const useControlsState = ({
           linkText: "documentation",
         },
       },
-      lookup_symbols: {
-        name: "lookup_symbols",
-        checked: !!snippet.code && !!activeFile.name,
-        label: "Lookup symbols at cursor",
-        value: fullPathWithCursor,
-        disabled: !activeFile.name,
-        hide: !ast || !allBoxes,
-        defaultChecked: !!snippet.code && !!activeFile.name,
-        info: {
-          text: "Extracts symbols around the cursor position and searches for them in the AST index. Equivalent to @symbols-at file_name.ext:CURSOR_LINE in the text",
-          link: "https://docs.refact.ai/features/ai-chat/",
-          linkText: "documentation",
-        },
-      },
+      // lookup_symbols: {
+      //   name: "lookup_symbols",
+      //   checked: !!snippet.code && !!activeFile.name,
+      //   label: "Lookup symbols at cursor",
+      //   value: fullPathWithCursor,
+      //   disabled: !activeFile.name,
+      //   hide: !ast || !allBoxes,
+      //   defaultChecked: !!snippet.code && !!activeFile.name,
+      //   info: {
+      //     text: "Extracts symbols around the cursor position and searches for them in the AST index. Equivalent to @symbols-at file_name.ext:CURSOR_LINE in the text",
+      //     link: "https://docs.refact.ai/features/ai-chat/",
+      //     linkText: "documentation",
+      //   },
+      // },
       selected_lines: {
         name: "selected_lines",
         checked: !!snippet.code,
@@ -165,8 +166,6 @@ const useControlsState = ({
     snippet.code,
     activeFile.name,
     filePathWithLines,
-    fullPathWithCursor,
-    ast,
     codeLineCount,
     markdown,
     host,
@@ -201,9 +200,9 @@ const useControlsState = ({
 
   useEffect(() => {
     setCheckboxes((prev) => {
-      const lookupDisabled = prev.lookup_symbols.checked
-        ? false
-        : !activeFile.name;
+      // const lookupDisabled = prev.lookup_symbols.checked
+      //   ? false
+      //   : !activeFile.name;
 
       const selectedLineDisabled = prev.selected_lines.checked
         ? false
@@ -228,15 +227,15 @@ const useControlsState = ({
           checked: useTools,
           hide: !canUseTools,
         },
-        lookup_symbols: {
-          ...prev.lookup_symbols,
-          value: fullPathWithCursor,
-          disabled: lookupDisabled,
-          hide: !ast || !allBoxes,
-          checked: interacted
-            ? prev.lookup_symbols.checked
-            : !!snippet.code && !!activeFile.name,
-        },
+        // lookup_symbols: {
+        //   ...prev.lookup_symbols,
+        //   value: fullPathWithCursor,
+        //   disabled: lookupDisabled,
+        //   hide: !ast || !allBoxes,
+        //   checked: interacted
+        //     ? prev.lookup_symbols.checked
+        //     : !!snippet.code && !!activeFile.name,
+        // },
         selected_lines: {
           ...prev.selected_lines,
           label: `Selected ${codeLineCount} lines`,
@@ -436,14 +435,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [setInteracted],
   );
 
-  const handleAtCommandsRequest: ComboBoxProps["requestCommandsCompletion"] =
-    useCallback(
-      (query: string, cursor: number) => {
-        requestCommandsCompletion(query, cursor);
-      },
-      [requestCommandsCompletion],
-    );
-
   if (error) {
     return (
       <ErrorCallout mt="2" onClick={clearError} timeout={null}>
@@ -479,7 +470,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
         <ComboBox
           commands={commands}
-          requestCommandsCompletion={handleAtCommandsRequest}
+          requestCommandsCompletion={requestCommandsCompletion}
           value={value}
           onChange={handleChange}
           onSubmit={(event) => {

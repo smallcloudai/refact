@@ -21,12 +21,12 @@ export function addCheckboxValuesToInput(
     result = `@local-notes-to-self\n` + result;
   }
 
-  if (
-    checkboxes.lookup_symbols.checked &&
-    checkboxes.lookup_symbols.hide !== true
-  ) {
-    result = `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n` + result;
-  }
+  // if (
+  //   checkboxes.lookup_symbols.checked &&
+  //   checkboxes.lookup_symbols.hide !== true
+  // ) {
+  //   result = `@symbols-at ${checkboxes.lookup_symbols.value ?? ""}\n` + result;
+  // }
 
   if (checkboxes.file_upload.checked && checkboxes.file_upload.hide !== true) {
     result = `@file ${checkboxes.file_upload.value ?? ""}\n` + result;

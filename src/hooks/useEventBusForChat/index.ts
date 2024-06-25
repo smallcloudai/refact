@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useCallback, useMemo, useRef } from "react";
+import { useEffect, useReducer, useCallback, useMemo } from "react";
 import {
   type ChatContextFile,
   type ChatMessages,
@@ -15,6 +15,7 @@ import {
   ContextMemory,
   DiffAction,
   isDiffResponse,
+  ChatMessage,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -68,12 +69,15 @@ import {
   type ToolResult,
   isSetTakeNotes,
   SetTakeNotes,
-  TakeNotesFromChat,
   RequestTools,
   isRecieveTools,
   SetUseTools,
   QuestionFromChat,
   isSetUseTools,
+  SetEnableSend,
+  isSetEnableSend,
+  StopStreamingFromChat,
+  TakeNotesFromChat,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -119,25 +123,37 @@ export function formatChatResponse(
     }
 
     if (
-      messages.length === 0 &&
+      acc.length === 0 &&
       "content" in cur.delta &&
       typeof cur.delta.content === "string" &&
       cur.delta.role
     ) {
-      return acc.concat([[cur.delta.role, cur.delta.content]]);
+      if (cur.delta.role === "assistant") {
+        return acc.concat([
+          [cur.delta.role, cur.delta.content, cur.delta.tool_calls],
+        ]);
+      }
+      // TODO: narrow this
+      const message = [cur.delta.role, cur.delta.content] as ChatMessage;
+      return acc.concat([message]);
     }
 
     const lastMessage = acc[acc.length - 1];
 
     if (isToolCallDelta(cur.delta)) {
       if (!isAssistantMessage(lastMessage)) {
-        return acc.concat([["assistant", null, cur.delta.tool_calls]]);
+        return acc.concat([
+          ["assistant", cur.delta.content ?? "", cur.delta.tool_calls],
+        ]);
       }
 
       const last = acc.slice(0, -1);
       const collectedCalls = lastMessage[2] ?? [];
       const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
-      return last.concat([["assistant", lastMessage[1], calls]]);
+      const content = cur.delta.content;
+      const message = content ? lastMessage[1] + content : lastMessage[1];
+
+      return last.concat([["assistant", message, calls]]);
     }
 
     if (
@@ -176,6 +192,35 @@ export function reducer(postMessage: typeof window.postMessage) {
   return function (state: ChatState, action: ActionToChat): ChatState {
     const isThisChat =
       action.payload?.id && action.payload.id === state.chat.id ? true : false;
+
+    function saveAndStopStreaming() {
+      const stopStreaming: StopStreamingFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING,
+        payload: { id: state.chat.id },
+      };
+      postMessage(stopStreaming);
+
+      const save: SaveChatFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+        payload: state.chat,
+      };
+      postMessage(save);
+    }
+
+    function maybeTakeNotes() {
+      if (!state.take_notes || state.chat.messages.length === 0) return;
+      const messagesWithNote: ChatMessages = [
+        ...state.chat.messages,
+        ["user", TAKE_NOTE_MESSAGE],
+      ];
+
+      const notes: TakeNotesFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
+        payload: { ...state.chat, messages: messagesWithNote },
+      };
+
+      postMessage(notes);
+    }
 
     // console.log(action.type, { isThisChat });
     // console.log(action.payload);
@@ -220,7 +265,12 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isRestoreChat(action)) {
-      // TODO: set use_tool
+      if (state.streaming) {
+        saveAndStopStreaming();
+      } else {
+        maybeTakeNotes();
+      }
+
       const messages: ChatMessages = action.payload.chat.messages.map(
         (message) => {
           if (message[0] === "context_file" && typeof message[1] === "string") {
@@ -245,6 +295,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       return {
         ...state,
         waiting_for_response: false,
+        prevent_send: true,
         streaming: false,
         error: null,
         previous_message_length: lastAssistantMessage,
@@ -258,6 +309,12 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isCreateNewChat(action)) {
+      if (state.streaming) {
+        saveAndStopStreaming();
+      } else {
+        maybeTakeNotes();
+      }
+
       const nextState = createInitialState();
 
       return {
@@ -325,6 +382,7 @@ export function reducer(postMessage: typeof window.postMessage) {
 
       return {
         ...state,
+        prevent_send: false,
         waiting_for_response: false,
         streaming: false,
       };
@@ -334,6 +392,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       return {
         ...state,
         streaming: false,
+        prevent_send: true,
         waiting_for_response: false,
         error:
           typeof action.payload.message === "string"
@@ -512,6 +571,13 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
+    if (isThisChat && isSetEnableSend(action)) {
+      return {
+        ...state,
+        prevent_send: !action.payload.enable_send,
+      };
+    }
+
     return state;
   };
 }
@@ -526,6 +592,7 @@ export type ChatCapsState = {
 
 export type ChatState = {
   chat: ChatThread;
+  prevent_send: boolean;
   waiting_for_response: boolean;
   streaming: boolean;
   previous_message_length: number;
@@ -551,6 +618,7 @@ export type ChatState = {
 export function createInitialState(): ChatState {
   return {
     streaming: false,
+    prevent_send: false,
     waiting_for_response: false,
     error: null,
     previous_message_length: 0,
@@ -596,7 +664,7 @@ export function createInitialState(): ChatState {
     selected_system_prompt: null,
     take_notes: true,
     tools: null,
-    use_tools: false,
+    use_tools: true,
   };
 }
 
@@ -673,9 +741,14 @@ export const useEventBusForChat = () => {
         payload: thread,
       });
 
+      const tools =
+        state.use_tools && state.tools && state.tools.length > 0
+          ? state.tools
+          : null;
+
       const action: QuestionFromChat = {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-        payload: { ...thread, tools: state.use_tools ? state.tools : null },
+        payload: { ...thread, tools },
       };
 
       postMessage(action);
@@ -723,17 +796,14 @@ export const useEventBusForChat = () => {
 
   const maybeRequestCaps = useCallback(() => {
     const caps = Object.keys(state.caps.available_caps);
-    if (
-      state.chat.messages.length === 0 &&
-      caps.length === 0 &&
-      !state.caps.fetching
-    ) {
+    if (state.caps.fetching || state.error) return;
+    if (caps.length === 0) {
       requestCaps();
     }
   }, [
     state.caps.available_caps,
     state.caps.fetching,
-    state.chat.messages.length,
+    state.error,
     requestCaps,
   ]);
 
@@ -858,12 +928,12 @@ export const useEventBusForChat = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestCommandsCompletion = useCallback(
     useDebounceCallback(
-      function (
+      (
         query: string,
         cursor: number,
         // eslint-disable-next-line @typescript-eslint/no-inferrable-types
         number: number = 5,
-      ) {
+      ) => {
         const action: RequestAtCommandCompletion = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
           payload: { id: state.chat.id, query, cursor, number },
@@ -871,9 +941,9 @@ export const useEventBusForChat = () => {
         postMessage(action);
       },
       500,
-      { leading: true },
+      { leading: true, maxWait: 250 },
     ),
-    [state.chat.id],
+    [state.chat.id, postMessage],
   );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -965,7 +1035,12 @@ export const useEventBusForChat = () => {
   }, [sendReadyMessage]);
 
   useEffect(() => {
-    if (!state.streaming && state.chat.messages.length > 0 && !state.error) {
+    if (
+      !state.streaming &&
+      state.chat.messages.length > 0 &&
+      !state.error &&
+      !state.prevent_send
+    ) {
       const lastMessage = state.chat.messages[state.chat.messages.length - 1];
       if (
         isAssistantMessage(lastMessage) &&
@@ -975,39 +1050,13 @@ export const useEventBusForChat = () => {
         sendMessages(state.chat.messages);
       }
     }
-  }, [sendMessages, state.chat.messages, state.streaming, state.error]);
-
-  // TODO: Turn this into a hook
-  const noteRef = useRef<Pick<ChatState, "chat" | "take_notes">>({
-    chat: state.chat,
-    take_notes: state.take_notes,
-  });
-  useEffect(() => {
-    noteRef.current.chat = state.chat;
-    noteRef.current.take_notes = state.take_notes;
-  }, [state.chat, state.take_notes]);
-
-  useEffect(() => {
-    return () => {
-      // the clean up function is called when the component unmounts (chat is closed)
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      const { chat, take_notes } = noteRef.current;
-      if (!take_notes) return;
-      if (chat.messages.length === 0) return;
-
-      const messages: ChatMessages = [
-        ...chat.messages,
-        ["user", TAKE_NOTE_MESSAGE],
-      ];
-
-      const action: TakeNotesFromChat = {
-        type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
-        payload: { ...chat, messages },
-      };
-
-      postMessage(action);
-    };
-  }, [postMessage, state.chat.id]);
+  }, [
+    sendMessages,
+    state.chat.messages,
+    state.streaming,
+    state.error,
+    state.prevent_send,
+  ]);
 
   const requestTools = useCallback(() => {
     const action: RequestTools = {
@@ -1027,6 +1076,18 @@ export const useEventBusForChat = () => {
         type: EVENT_NAMES_TO_CHAT.SET_USE_TOOLS,
         payload: { id: state.chat.id, use_tools: value },
       };
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
+
+  const enableSend = useCallback(
+    (value: boolean) => {
+      const action: SetEnableSend = {
+        type: EVENT_NAMES_TO_CHAT.SET_ENABLE_SEND,
+        payload: { id: state.chat.id, enable_send: value },
+      };
+
       dispatch(action);
     },
     [state.chat.id],
@@ -1065,5 +1126,6 @@ export const useEventBusForChat = () => {
     setSelectedSystemPrompt,
     requestPreviewFiles,
     setUseTools,
+    enableSend,
   };
 };

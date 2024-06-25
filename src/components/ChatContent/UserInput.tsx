@@ -16,7 +16,7 @@ function processLines(
 
   if (!head.startsWith("```") || nextBackTicksIndex === -1) {
     const processedLines = processedLinesMemo.concat(
-      <Text size="2" as="div" key={key}>
+      <Text size="2" as="div" key={key} wrap="wrap">
         {head}
       </Text>,
     );

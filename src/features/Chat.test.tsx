@@ -244,6 +244,8 @@ describe("Chat", () => {
 
     const { user, ...app } = render(<Chat />);
 
+    setUpCapsForChat("foo");
+
     const restoreChatAction: RestoreChat = {
       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
       payload: {
@@ -527,5 +529,49 @@ describe("Chat", () => {
       },
       "*",
     );
+  });
+
+  test("Prevent send when restored with uncalled tool_calls", async () => {
+    vi.mock("uuid", () => ({ v4: () => "foo" }));
+
+    const app = render(<Chat />);
+
+    const restoreChatAction: RestoreChat = {
+      type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
+      payload: {
+        id: "foo",
+        chat: {
+          id: "bar",
+          messages: [
+            ["user", "hello 👋"],
+            [
+              "assistant",
+              "calling tools",
+              [
+                {
+                  function: {
+                    arguments: '{"file": "foo.txt"}',
+                    name: "cat",
+                  },
+                  index: 0,
+                  type: "function",
+                  id: "test",
+                },
+              ],
+            ],
+          ],
+          title: "hello",
+          model: "gpt-3.5-turbo",
+        },
+      },
+    };
+
+    postMessage(restoreChatAction);
+
+    await waitFor(() => expect(app.queryByText("hello 👋")).not.toBeNull());
+
+    const button = app.queryByText(/resume/i);
+
+    expect(button).not.toBeNull();
   });
 });

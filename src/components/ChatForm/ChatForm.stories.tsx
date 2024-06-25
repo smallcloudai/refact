@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ChatForm } from "./ChatForm";
 import { SYSTEM_PROMPTS } from "../../__fixtures__";
 import { ConfigProvider } from "../../contexts/config-context";
+import { useDebounceCallback } from "usehooks-ts";
 
 const testCommands = [
   "@workspace",
@@ -168,7 +169,7 @@ const meta: Meta<typeof ChatForm> = {
     selectedSnippet: { code: "", language: "", basename: "", path: "" },
     removePreviewFileByName: () => ({}),
     requestPreviewFiles: () => ({}),
-    requestCommandsCompletion: () => ({}),
+    // requestCommandsCompletion: () => ({}),
     setSelectedCommand: () => ({}),
     onTextAreaHeightChange: noop,
     prompts: SYSTEM_PROMPTS,
@@ -176,13 +177,16 @@ const meta: Meta<typeof ChatForm> = {
     selectedSystemPrompt: null,
   },
   decorators: [
-    (Children) => (
-      <ConfigProvider
-        config={{ host: "vscode", features: { vecdb: true, ast: true } }}
-      >
-        <Children />
-      </ConfigProvider>
-    ),
+    (Children) => {
+      const requestCommandsCompletion = useDebounceCallback(() => ({}), 0);
+      return (
+        <ConfigProvider
+          config={{ host: "vscode", features: { vecdb: true, ast: true } }}
+        >
+          <Children requestCommandsCompletion={requestCommandsCompletion} />
+        </ConfigProvider>
+      );
+    },
   ],
 } satisfies Meta<typeof ChatForm>;
 
