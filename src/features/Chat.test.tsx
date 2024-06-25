@@ -244,6 +244,8 @@ describe("Chat", () => {
 
     const { user, ...app } = render(<Chat />);
 
+    setUpCapsForChat("foo");
+
     const restoreChatAction: RestoreChat = {
       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
       payload: {
