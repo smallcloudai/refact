@@ -654,7 +654,7 @@ export function createInitialState(): ChatState {
     selected_system_prompt: null,
     take_notes: true,
     tools: null,
-    use_tools: false,
+    use_tools: true,
   };
 }
 
@@ -731,9 +731,14 @@ export const useEventBusForChat = () => {
         payload: thread,
       });
 
+      const tools =
+        state.use_tools && state.tools && state.tools.length > 0
+          ? state.tools
+          : null;
+
       const action: QuestionFromChat = {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-        payload: { ...thread, tools: state.use_tools ? state.tools : null },
+        payload: { ...thread, tools },
       };
 
       postMessage(action);
