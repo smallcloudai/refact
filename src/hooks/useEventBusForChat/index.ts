@@ -182,8 +182,6 @@ export function reducer(postMessage: typeof window.postMessage) {
       action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
     function saveAndStopStreaming() {
-      // TODO: add take notes here
-      console.log("Save and stop streaming");
       const stopStreaming: StopStreamingFromChat = {
         type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING,
         payload: { id: state.chat.id },
