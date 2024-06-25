@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useCallback, useMemo, useRef } from "react";
+import { useEffect, useReducer, useCallback, useMemo } from "react";
 import {
   type ChatContextFile,
   type ChatMessages,
@@ -66,7 +66,6 @@ import {
   type ToolResult,
   isSetTakeNotes,
   SetTakeNotes,
-  TakeNotesFromChat,
   RequestTools,
   isRecieveTools,
   SetUseTools,
@@ -74,6 +73,8 @@ import {
   isSetUseTools,
   SetEnableSend,
   isSetEnableSend,
+  StopStreamingFromChat,
+  TakeNotesFromChat,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -180,6 +181,37 @@ export function reducer(postMessage: typeof window.postMessage) {
     const isThisChat =
       action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
+    function saveAndStopStreaming() {
+      // TODO: add take notes here
+      console.log("Save and stop streaming");
+      const stopStreaming: StopStreamingFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING,
+        payload: { id: state.chat.id },
+      };
+      postMessage(stopStreaming);
+
+      const save: SaveChatFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+        payload: state.chat,
+      };
+      postMessage(save);
+    }
+
+    function maybeTakeNotes() {
+      if (!state.take_notes || state.chat.messages.length === 0) return;
+      const messagesWithNote: ChatMessages = [
+        ...state.chat.messages,
+        ["user", TAKE_NOTE_MESSAGE],
+      ];
+
+      const notes: TakeNotesFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
+        payload: { ...state.chat, messages: messagesWithNote },
+      };
+
+      postMessage(notes);
+    }
+
     // console.log(action.type, { isThisChat });
     // console.log(action.payload);
 
@@ -223,7 +255,12 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isRestoreChat(action)) {
-      // TODO: set use_tool
+      if (state.streaming) {
+        saveAndStopStreaming();
+      } else {
+        maybeTakeNotes();
+      }
+
       const messages: ChatMessages = action.payload.chat.messages.map(
         (message) => {
           if (message[0] === "context_file" && typeof message[1] === "string") {
@@ -262,6 +299,12 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isCreateNewChat(action)) {
+      if (state.streaming) {
+        saveAndStopStreaming();
+      } else {
+        maybeTakeNotes();
+      }
+
       const nextState = createInitialState();
 
       return {
@@ -1003,38 +1046,6 @@ export const useEventBusForChat = () => {
     state.error,
     state.prevent_send,
   ]);
-
-  // TODO: Turn this into a hook
-  const noteRef = useRef<Pick<ChatState, "chat" | "take_notes">>({
-    chat: state.chat,
-    take_notes: state.take_notes,
-  });
-  useEffect(() => {
-    noteRef.current.chat = state.chat;
-    noteRef.current.take_notes = state.take_notes;
-  }, [state.chat, state.take_notes]);
-
-  useEffect(() => {
-    return () => {
-      // the clean up function is called when the component unmounts (chat is closed)
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      const { chat, take_notes } = noteRef.current;
-      if (!take_notes) return;
-      if (chat.messages.length === 0) return;
-
-      const messages: ChatMessages = [
-        ...chat.messages,
-        ["user", TAKE_NOTE_MESSAGE],
-      ];
-
-      const action: TakeNotesFromChat = {
-        type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
-        payload: { ...chat, messages },
-      };
-
-      postMessage(action);
-    };
-  }, [postMessage, state.chat.id]);
 
   const requestTools = useCallback(() => {
     const action: RequestTools = {
