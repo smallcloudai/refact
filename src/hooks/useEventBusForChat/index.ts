@@ -73,7 +73,6 @@ import {
   isSetUseTools,
   SetEnableSend,
   isSetEnableSend,
-  StopStreamingFromChat,
   TakeNotesFromChat,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
@@ -181,20 +180,6 @@ export function reducer(postMessage: typeof window.postMessage) {
     const isThisChat =
       action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
-    function saveAndStopStreaming() {
-      const stopStreaming: StopStreamingFromChat = {
-        type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING,
-        payload: { id: state.chat.id },
-      };
-      postMessage(stopStreaming);
-
-      const save: SaveChatFromChat = {
-        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-        payload: state.chat,
-      };
-      postMessage(save);
-    }
-
     function maybeTakeNotes() {
       if (!state.take_notes || state.chat.messages.length === 0) return;
       const messagesWithNote: ChatMessages = [
@@ -210,7 +195,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       postMessage(notes);
     }
 
-    // console.log(action.type, { isThisChat });
+    console.log(action.type, { isThisChat, action });
     // console.log(action.payload);
 
     if (isThisChat && isSetDisableChat(action)) {
@@ -253,14 +238,22 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isRestoreChat(action)) {
-      if (state.streaming) {
-        saveAndStopStreaming();
-      } else {
+      if (!state.streaming) {
         maybeTakeNotes();
       }
 
-      const messages: ChatMessages = action.payload.chat.messages.map(
-        (message) => {
+      const new_chat_id = action.payload.chat.id;
+
+      let messages: ChatMessages | undefined = undefined;
+
+      for (const chat of state.chat_cache) {
+        if (chat.id === new_chat_id) {
+          messages = chat.messages;
+        }
+      }
+
+      if (messages === undefined) {
+        messages = action.payload.chat.messages.map((message) => {
           if (message[0] === "context_file" && typeof message[1] === "string") {
             let file: ChatContextFile[] = [];
             try {
@@ -272,13 +265,17 @@ export function reducer(postMessage: typeof window.postMessage) {
           }
 
           return message;
-        },
-      );
+        });
+      }
 
       const lastAssistantMessage = messages.reduce((count, message, index) => {
         if (message[0] === "assistant") return index + 1;
         return count;
       }, 0);
+
+      const chat_cache = state.streaming
+        ? [...state.chat_cache, state.chat]
+        : state.chat_cache;
 
       return {
         ...state,
@@ -291,19 +288,22 @@ export function reducer(postMessage: typeof window.postMessage) {
           ...action.payload.chat,
           messages,
         },
+        chat_cache,
         selected_snippet: action.payload.snippet ?? state.selected_snippet,
         take_notes: false,
       };
     }
 
     if (isThisChat && isCreateNewChat(action)) {
-      if (state.streaming) {
-        saveAndStopStreaming();
-      } else {
+      if (!state.streaming) {
         maybeTakeNotes();
       }
 
       const nextState = createInitialState();
+
+      const chat_cache = state.streaming
+        ? [...state.chat_cache, state.chat]
+        : state.chat_cache;
 
       return {
         ...nextState,
@@ -311,6 +311,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           ...nextState.chat,
           model: state.chat.model,
         },
+        chat_cache,
         selected_snippet: action.payload?.snippet ?? state.selected_snippet,
       };
     }
@@ -580,6 +581,7 @@ export type ChatCapsState = {
 
 export type ChatState = {
   chat: ChatThread;
+  chat_cache: ChatThread[];
   prevent_send: boolean;
   waiting_for_response: boolean;
   streaming: boolean;
@@ -623,6 +625,7 @@ export function createInitialState(): ChatState {
       title: "",
       model: "",
     },
+    chat_cache: [],
     caps: {
       fetching: false,
       default_cap: "",
