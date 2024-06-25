@@ -206,24 +206,40 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isThisChat && isResponseToChat(action)) {
+    if (isResponseToChat(action)) {
       const hasUserMessage = isChatUserMessageResponse(action.payload);
 
-      const current = hasUserMessage
-        ? state.chat.messages.slice(0, state.previous_message_length)
-        : state.chat.messages;
-      const messages = formatChatResponse(current, action.payload);
-      return {
-        ...state,
-        waiting_for_response: false,
-        streaming: true,
-        previous_message_length: messages.length,
-        files_in_preview: [],
-        chat: {
+      const res = { ...state };
+
+      if (isThisChat) {
+        const current = hasUserMessage
+          ? state.chat.messages.slice(0, state.previous_message_length)
+          : state.chat.messages;
+        const messages = formatChatResponse(current, action.payload);
+        res.files_in_preview = [];
+        res.waiting_for_response = false;
+        res.streaming = true;
+        res.previous_message_length = messages.length;
+        res.chat = {
           ...state.chat,
           messages,
-        },
-      };
+        };
+      } else {
+        // update cache
+        for (let i = 0; i < res.chat_cache.length; i++) {
+          const chat = res.chat_cache[i];
+          if (chat.id === action.payload.id) {
+            res.chat_cache = [...res.chat_cache];
+            const messages = formatChatResponse(chat.messages, action.payload);
+            res.chat_cache[i] = {
+              ...chat,
+              messages,
+            };
+          }
+        }
+      }
+
+      return res;
     }
 
     if (isThisChat && isBackupMessages(action)) {
