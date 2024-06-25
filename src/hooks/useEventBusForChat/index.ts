@@ -786,19 +786,11 @@ export const useEventBusForChat = () => {
 
   const maybeRequestCaps = useCallback(() => {
     const caps = Object.keys(state.caps.available_caps);
-    if (
-      state.chat.messages.length === 0 &&
-      caps.length === 0 &&
-      !state.caps.fetching
-    ) {
+    if (state.caps.fetching) return;
+    if (caps.length === 0) {
       requestCaps();
     }
-  }, [
-    state.caps.available_caps,
-    state.caps.fetching,
-    state.chat.messages.length,
-    requestCaps,
-  ]);
+  }, [state.caps.available_caps, state.caps.fetching, requestCaps]);
 
   const requestPrompts = useCallback(() => {
     const message: RequestPrompts = {
