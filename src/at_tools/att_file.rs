@@ -44,7 +44,8 @@ async fn get_file_text(ccx: &mut AtCommandsContext, file_path: &String, candidat
         return Err(format!("The path {:?} is ambiguous.\n\nIt could be interpreted as:\n{}", file_path, candidates.join("\n")));
     }
 
-    get_file_text_from_memory_or_disk(ccx.global_context.clone(), &f_path).await.map(|x|(f_path.to_string_lossy().to_string(), x))
+    let corrected = candidates[0].clone();
+    get_file_text_from_memory_or_disk(ccx.global_context.clone(), &PathBuf::from(corrected.clone())).await.map(|x|(corrected, x))
 }
 
 #[async_trait]
