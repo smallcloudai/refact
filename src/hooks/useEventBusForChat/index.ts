@@ -196,6 +196,18 @@ export function reducer(postMessage: typeof window.postMessage) {
       postMessage(notes);
     }
 
+    function addChatToCache(chat_cache: ChatThread[], chat: ChatThread) {
+      for (let i = 0; i < chat_cache.length; i++) {
+        if (chat_cache[i].id !== chat.id) {
+          continue;
+        }
+
+        chat_cache[i] = chat;
+        return;
+      }
+      chat_cache.push(chat);
+    }
+
     // console.log(action.type, { isThisChat, action });
     // console.log(action.payload);
 
@@ -260,13 +272,18 @@ export function reducer(postMessage: typeof window.postMessage) {
       }
 
       const new_chat_id = action.payload.chat.id;
+      const chat_cache = [...state.chat_cache];
 
       let messages: ChatMessages | undefined = undefined;
 
-      for (const chat of state.chat_cache) {
-        if (chat.id === new_chat_id) {
-          messages = chat.messages;
+      for (let i = 0; i < chat_cache.length; i++) {
+        const chat = chat_cache[i];
+        if (chat.id !== new_chat_id) {
+          continue;
         }
+
+        messages = chat.messages;
+        chat_cache.splice(i, 1);
       }
 
       if (messages === undefined) {
@@ -285,14 +302,14 @@ export function reducer(postMessage: typeof window.postMessage) {
         });
       }
 
+      if (state.streaming) {
+        addChatToCache(chat_cache, state.chat);
+      }
+
       const lastAssistantMessage = messages.reduce((count, message, index) => {
         if (message[0] === "assistant") return index + 1;
         return count;
       }, 0);
-
-      const chat_cache = state.streaming
-        ? [...state.chat_cache, state.chat]
-        : state.chat_cache;
 
       return {
         ...state,
@@ -312,15 +329,14 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isCreateNewChat(action)) {
-      if (!state.streaming) {
+      const nextState = createInitialState();
+      const chat_cache = [...state.chat_cache];
+
+      if (state.streaming) {
+        addChatToCache(chat_cache, state.chat);
+      } else {
         maybeTakeNotes();
       }
-
-      const nextState = createInitialState();
-
-      const chat_cache = state.streaming
-        ? [...state.chat_cache, state.chat]
-        : state.chat_cache;
 
       return {
         ...nextState,
