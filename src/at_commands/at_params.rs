@@ -25,9 +25,9 @@ fn full_path_score(path: &str, query: &str) -> f32 {
             let current_score = jaro_winkler(&query_comp, &p) as f32;
             // preliminary exit if we have a full match in the name
             if current_score >= 0.99 {
-                return current_score;
+                return score;
             }
-            score *= current_score * 1.0 / (idx + 1) as f32;
+            score *= current_score * (1.0 / (idx + 1) as f32);
         }
     }
     score
