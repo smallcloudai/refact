@@ -109,7 +109,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
           <Card>
             <Flex direction="column" align="center" gap="2">
               Chat was interupted with uncalled tools calls.
-              <Button onClick={() => enableSend(true)}>Call Tools</Button>
+              <Button onClick={() => enableSend(true)}>Resume</Button>
             </Flex>
           </Card>
         </Container>

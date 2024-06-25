@@ -568,7 +568,7 @@ describe("Chat", () => {
 
     await waitFor(() => expect(app.queryByText("hello 👋")).not.toBeNull());
 
-    const button = app.queryByText(/call tools/i);
+    const button = app.queryByText(/resume/i);
 
     expect(button).not.toBeNull();
   });
