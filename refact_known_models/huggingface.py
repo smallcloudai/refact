@@ -233,4 +233,14 @@ huggingface_mini_db = {
         "T": 8192,
         "filter_caps": ["chat"],
     },
+    "deepseek-coder-v2/16b/instruct": {
+        "backend": "transformers",
+        "model_path": "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct",
+        "model_class_kwargs": {
+            "torch_dtype": "bf16",
+        },
+        "required_memory_mb": 80000,
+        "T": 16384,  # in fact this model can handle 128K context
+        "filter_caps": ["completion", "chat"],
+    },
 }
