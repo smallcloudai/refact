@@ -196,18 +196,6 @@ export function reducer(postMessage: typeof window.postMessage) {
       postMessage(notes);
     }
 
-    function addChatToCache(chat_cache: ChatThread[], chat: ChatThread) {
-      for (let i = 0; i < chat_cache.length; i++) {
-        if (chat_cache[i].id !== chat.id) {
-          continue;
-        }
-
-        chat_cache[i] = chat;
-        return;
-      }
-      chat_cache.push(chat);
-    }
-
     // console.log(action.type, { isThisChat, action });
     // console.log(action.payload);
 
@@ -241,23 +229,21 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (!isThisChat && isResponseToChat(action)) {
-      for (let i = 0; i < state.chat_cache.length; i++) {
-        const chat = state.chat_cache[i];
-        if (chat.id === action.payload.id) {
-          const chat_cache = [...state.chat_cache];
-          const messages = formatChatResponse(chat.messages, action.payload);
-          chat_cache[i] = {
-            ...chat,
-            messages,
-          };
-          return {
-            ...state,
-            chat_cache,
-          };
-        }
+      if (!(action.payload.id in state.chat_cache)) {
+        return state;
       }
 
-      return state;
+      const chat_cache = { ...state.chat_cache };
+      const chat = chat_cache[action.payload.id];
+      const messages = formatChatResponse(chat.messages, action.payload);
+      chat_cache[action.payload.id] = {
+        ...chat,
+        messages,
+      };
+      return {
+        ...state,
+        chat_cache,
+      };
     }
 
     if (isThisChat && isBackupMessages(action)) {
@@ -277,18 +263,12 @@ export function reducer(postMessage: typeof window.postMessage) {
       }
 
       const new_chat_id = action.payload.chat.id;
-      const chat_cache = [...state.chat_cache];
+      const chat_cache = { ...state.chat_cache };
 
       let messages: ChatMessages | undefined = undefined;
 
-      for (let i = 0; i < chat_cache.length; i++) {
-        const chat = chat_cache[i];
-        if (chat.id !== new_chat_id) {
-          continue;
-        }
-
-        messages = chat.messages;
-        chat_cache.splice(i, 1);
+      if (new_chat_id in chat_cache) {
+        messages = chat_cache[new_chat_id].messages;
       }
 
       if (messages === undefined) {
@@ -308,7 +288,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       }
 
       if (state.streaming) {
-        addChatToCache(chat_cache, state.chat);
+        chat_cache[state.chat.id] = state.chat;
       }
 
       const lastAssistantMessage = messages.reduce((count, message, index) => {
@@ -335,10 +315,10 @@ export function reducer(postMessage: typeof window.postMessage) {
 
     if (isThisChat && isCreateNewChat(action)) {
       const nextState = createInitialState();
-      const chat_cache = [...state.chat_cache];
+      const chat_cache = { ...state.chat_cache };
 
       if (state.streaming) {
-        addChatToCache(chat_cache, state.chat);
+        chat_cache[state.chat.id] = state.chat;
       } else {
         maybeTakeNotes();
       }
@@ -416,22 +396,23 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (!isThisChat && isChatDoneStreaming(action)) {
-      for (let i = 0; i < state.chat_cache.length; i++) {
-        const chat = state.chat_cache[i];
-        if (chat.id === action.payload.id) {
-          const chat_cache = [...state.chat_cache];
-          chat_cache.splice(i, 1);
-          postMessage({
-            type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-            payload: chat,
-          });
-
-          return {
-            ...state,
-            chat_cache,
-          };
-        }
+      if (!(action.payload.id in state.chat_cache)) {
+        return state;
       }
+
+      const chat = state.chat_cache[action.payload.id];
+      const chat_cache = { ...state.chat_cache };
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete chat_cache[action.payload.id];
+      postMessage({
+        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+        payload: chat,
+      });
+
+      return {
+        ...state,
+        chat_cache,
+      };
     }
 
     if (isThisChat && isChatErrorStreaming(action)) {
@@ -638,7 +619,7 @@ export type ChatCapsState = {
 
 export type ChatState = {
   chat: ChatThread;
-  chat_cache: ChatThread[];
+  chat_cache: Record<string, ChatThread>;
   prevent_send: boolean;
   waiting_for_response: boolean;
   streaming: boolean;
@@ -682,7 +663,7 @@ export function createInitialState(): ChatState {
       title: "",
       model: "",
     },
-    chat_cache: [],
+    chat_cache: {},
     caps: {
       fetching: false,
       default_cap: "",
