@@ -219,40 +219,45 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isResponseToChat(action)) {
+    if (isThisChat && isResponseToChat(action)) {
       const hasUserMessage = isChatUserMessageResponse(action.payload);
 
-      const res = { ...state };
+      const current = hasUserMessage
+        ? state.chat.messages.slice(0, state.previous_message_length)
+        : state.chat.messages;
+      const messages = formatChatResponse(current, action.payload);
 
-      if (isThisChat) {
-        const current = hasUserMessage
-          ? state.chat.messages.slice(0, state.previous_message_length)
-          : state.chat.messages;
-        const messages = formatChatResponse(current, action.payload);
-        res.files_in_preview = [];
-        res.waiting_for_response = false;
-        res.streaming = true;
-        res.previous_message_length = messages.length;
-        res.chat = {
+      return {
+        ...state,
+        files_in_preview: [],
+        waiting_for_response: false,
+        streaming: true,
+        previous_message_length: messages.length,
+        chat: {
           ...state.chat,
           messages,
-        };
-      } else {
-        // update cache
-        for (let i = 0; i < res.chat_cache.length; i++) {
-          const chat = res.chat_cache[i];
-          if (chat.id === action.payload.id) {
-            res.chat_cache = [...res.chat_cache];
-            const messages = formatChatResponse(chat.messages, action.payload);
-            res.chat_cache[i] = {
-              ...chat,
-              messages,
-            };
-          }
+        },
+      };
+    }
+
+    if (!isThisChat && isResponseToChat(action)) {
+      for (let i = 0; i < state.chat_cache.length; i++) {
+        const chat = state.chat_cache[i];
+        if (chat.id === action.payload.id) {
+          const chat_cache = [...state.chat_cache];
+          const messages = formatChatResponse(chat.messages, action.payload);
+          chat_cache[i] = {
+            ...chat,
+            messages,
+          };
+          return {
+            ...state,
+            chat_cache,
+          };
         }
       }
 
-      return res;
+      return state;
     }
 
     if (isThisChat && isBackupMessages(action)) {
@@ -396,21 +401,21 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isChatDoneStreaming(action)) {
-      if (isThisChat) {
-        postMessage({
-          type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-          payload: state.chat,
-        });
+    if (isThisChat && isChatDoneStreaming(action)) {
+      postMessage({
+        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+        payload: state.chat,
+      });
 
-        return {
-          ...state,
-          prevent_send: false,
-          waiting_for_response: false,
-          streaming: false,
-        };
-      }
+      return {
+        ...state,
+        prevent_send: false,
+        waiting_for_response: false,
+        streaming: false,
+      };
+    }
 
+    if (!isThisChat && isChatDoneStreaming(action)) {
       for (let i = 0; i < state.chat_cache.length; i++) {
         const chat = state.chat_cache[i];
         if (chat.id === action.payload.id) {
