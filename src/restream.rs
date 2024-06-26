@@ -26,6 +26,7 @@ pub async fn scratchpad_interaction_not_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: &SamplingParameters,
+    only_deterministic_messages: bool,
 ) -> Result<Response<Body>, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage, slowdown_arc) = {
@@ -36,7 +37,9 @@ pub async fn scratchpad_interaction_not_stream(
     };
     let mut save_url: String = String::new();
     let _ = slowdown_arc.acquire().await;
-    let model_says = if endpoint_style == "hf" {
+    let mut model_says = if only_deterministic_messages {
+        Ok(serde_json::Value::Object(serde_json::Map::new()))
+    } else if endpoint_style == "hf" {
         forward_to_hf_endpoint::forward_to_hf_style_endpoint(
             &mut save_url,
             bearer.clone(),
@@ -76,7 +79,13 @@ pub async fn scratchpad_interaction_not_stream(
     crate::global_context::look_for_piggyback_fields(global_context.clone(), &model_says).await;
 
     let scratchpad_result: Result<serde_json::Value, String>;
-    if let Some(hf_arr) = model_says.as_array() {
+    if only_deterministic_messages {
+        if let Ok(det_msgs) = scratchpad.response_spontaneous() {
+            model_says["deterministic_messages"] = json!(det_msgs);
+            model_says["choices"] = serde_json::Value::Array(vec![]);
+        }
+        scratchpad_result = Ok(model_says.clone());
+    } else if let Some(hf_arr) = model_says.as_array() {
         let choices = hf_arr.iter()
             .map(|x| {
                 x.get("generated_text").unwrap().as_str().unwrap().to_string()
@@ -85,15 +94,29 @@ pub async fn scratchpad_interaction_not_stream(
         scratchpad_result = scratchpad.response_n_choices(choices, stopped);
 
     } else if let Some(oai_choices) = model_says.get("choices") {
-        let choices = oai_choices.as_array().unwrap().iter()
-            .map(|x| {
-                x.get("text").unwrap().as_str().unwrap().to_string()
-            }).collect::<Vec<_>>();
-        let stopped = oai_choices.as_array().unwrap().iter()
-            .map(|x| {
-                x.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap().to_string().starts_with("stop")
-            }).collect::<Vec<_>>();
-        scratchpad_result = scratchpad.response_n_choices(choices, stopped);
+        info!("oai_choices: {:?}", oai_choices);
+        let choice0 = oai_choices.as_array().unwrap().get(0).unwrap();
+        if let Some(_msg) = choice0.get("message") {
+            if let Ok(det_msgs) = scratchpad.response_spontaneous() {
+                model_says["deterministic_messages"] = json!(det_msgs);
+            }
+            // new style openai response, used in passthrough
+            scratchpad_result = Ok(model_says.clone());
+        } else {
+            // TODO: restore order using 'index'
+            // for oai_choice in oai_choices.as_array().unwrap() {
+            //     let index = oai_choice.get("index").unwrap().as_u64().unwrap() as usize;
+            // }
+            let choices = oai_choices.as_array().unwrap().iter()
+                .map(|x| {
+                    x.get("text").unwrap().as_str().unwrap().to_string()
+                }).collect::<Vec<_>>();
+            let stopped = oai_choices.as_array().unwrap().iter()
+                .map(|x| {
+                    x.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap().to_string().starts_with("stop")
+                }).collect::<Vec<_>>();
+                scratchpad_result = scratchpad.response_n_choices(choices, stopped);
+        }
 
     } else if let Some(err) = model_says.get("error") {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
@@ -116,14 +139,13 @@ pub async fn scratchpad_interaction_not_stream(
         );
     }
 
-    if let Err(scratchpad_result_str) = scratchpad_result {
+    if let Err(problem) = scratchpad_result {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
-            format!("scratchpad: {}", scratchpad_result_str))
+            format!("scratchpad: {}", problem))
         );
     }
     let mut scratchpad_response_json = scratchpad_result.unwrap();
     scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
-
     let txt = serde_json::to_string_pretty(&scratchpad_response_json).unwrap();
     // info!("handle_v1_code_completion return {}", txt);
     let response = Response::builder()
@@ -142,6 +164,7 @@ pub async fn scratchpad_interaction_stream(
     client: reqwest::Client,
     bearer: String,
     parameters: SamplingParameters,
+    only_deterministic_messages: bool,
 ) -> Result<Response<Body>, ScratchError> {
     let t1 = std::time::SystemTime::now();
     let evstream = stream! {
@@ -155,22 +178,23 @@ pub async fn scratchpad_interaction_stream(
         let mut save_url: String = String::new();
         let _ = slowdown_arc.acquire().await;
         loop {
-            {
-                let value_maybe = scratch.response_spontaneous();
-                if let Ok(value) = value_maybe {
-                    for el in value {
-                        let value_str = format!("data: {}\n\n", serde_json::to_string(&el).unwrap());
-                        info!("yield: {:?}", nicer_logs::first_n_chars(&value_str, 40));
-                        yield Result::<_, String>::Ok(value_str);
-                    }
-                } else {
-                    let err_str = value_maybe.unwrap_err();
-                    error!("response_spontaneous error: {}", err_str);
-                    let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
+            let value_maybe = scratch.response_spontaneous();
+            if let Ok(value) = value_maybe {
+                for el in value {
+                    let value_str = format!("data: {}\n\n", serde_json::to_string(&el).unwrap());
+                    info!("yield: {:?}", nicer_logs::first_n_chars(&value_str, 40));
                     yield Result::<_, String>::Ok(value_str);
                 }
+            } else {
+                let err_str = value_maybe.unwrap_err();
+                error!("response_spontaneous error: {}", err_str);
+                let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
+                yield Result::<_, String>::Ok(value_str);
             }
-
+            if only_deterministic_messages {
+                break;
+            }
+            // info!("prompt: {:?}", prompt);
             let event_source_maybe = if endpoint_style == "hf" {
                 forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
                     &mut save_url,
@@ -221,14 +245,6 @@ pub async fn scratchpad_interaction_stream(
                         if message.data.starts_with("[DONE]") {
                             break;
                         }
-                        // test_countdown -= 1;
-                        // if test_countdown == 0 {
-                        //     error!("test_countdown!");
-                        //     let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": "test_countdown happened"})).unwrap());
-                        //     yield Result::<_, String>::Ok(value_str);
-                        //     problem_reported = true;
-                        //     break;
-                        // }
                         let json = serde_json::from_str::<serde_json::Value>(&message.data).unwrap();
                         crate::global_context::look_for_piggyback_fields(global_context.clone(), &json).await;
                         let value_maybe = _push_streaming_json_into_scratchpad(
@@ -327,15 +343,17 @@ fn _push_streaming_json_into_scratchpad(
         let choice0 = &choices[0];
         let mut value: serde_json::Value;
         let finish_reason = choice0.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
-        let stop_toks = !finish_reason.is_empty() && finish_reason.starts_with("stop");
-        let stop_length = !finish_reason.is_empty() && !finish_reason.starts_with("stop");
-        if let Some(delta) = choice0.get("delta") {
+        if let Some(_delta) = choice0.get("delta") {
             // passthrough messages case
-            let _role = delta.get("role").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
-            let content = delta.get("content").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
-            (value, *finished) = scratch.response_streaming(content, stop_toks, stop_length)?;
+            // let _role = delta.get("role").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
+            // let content = delta.get("content").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
+            // (value, *finished) = scratch.response_streaming(content, stop_toks, stop_length)?;
+            value = json.clone();
+            *finished = !finish_reason.is_empty();
         } else {
             // normal case
+            let stop_toks = !finish_reason.is_empty() && finish_reason.starts_with("stop");
+            let stop_length = !finish_reason.is_empty() && !finish_reason.starts_with("stop");
             let text = choice0.get("text").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
             (value, *finished) = scratch.response_streaming(text, stop_toks, stop_length)?;
         }

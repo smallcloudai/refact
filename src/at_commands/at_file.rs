@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use async_trait::async_trait;
 use regex::Regex;
 use tokio::sync::Mutex as AMutex;
@@ -5,20 +6,19 @@ use tracing::info;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
+use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
-use crate::call_validation::ContextFile;
+use crate::call_validation::{ContextFile, ContextEnum};
 
 
 pub struct AtFile {
-    pub name: String,
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
 }
 
 impl AtFile {
     pub fn new() -> Self {
         AtFile {
-            name: "@file".to_string(),
             params: vec![
                 Arc::new(AMutex::new(AtParamFilePath::new()))
             ],
@@ -102,114 +102,146 @@ fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
     }
 }
 
-async fn parameter_repair_candidates(
+pub async fn at_file_repair_candidates(
     value: &String,
-    context: &AtCommandsContext,
-    top_n: usize
-) -> Vec<String>
-{
+    ccx: &AtCommandsContext,
+    fuzzy: bool,
+) -> Vec<String> {
     let mut correction_candidate = value.clone();
     let colon_mb = colon_lines_range_from_arg(&mut correction_candidate);
 
-    let fuzzy = true;
     let result: Vec<String> = crate::files_correction::correct_to_nearest_filename(
-        context.global_context.clone(),
+        ccx.global_context.clone(),
         &correction_candidate,
         fuzzy,
-        top_n,
+        ccx.top_n,
     ).await;
 
-    return result.iter().map(|x| {
+    result.iter().map(|x| {
         let mut x = x.clone();
         put_colon_back_to_arg(&mut x, &colon_mb);
         x
-    }).collect();
+    }).collect()
+}
+
+pub fn text_on_clip(result: &ContextFile, from_tool_call: bool) -> String {
+    if !from_tool_call {
+        return "".to_string();
+    }
+    return format!("attached file: {}", result.file_name.clone());
 }
 
 #[derive(Debug)]
-pub struct AtParamFilePath {
-    pub name: String,
-}
+pub struct AtParamFilePath {}
 
 impl AtParamFilePath {
     pub fn new() -> Self {
-        Self {
-            name: "file_path".to_string()
-        }
+        Self {}
     }
 }
 
 #[async_trait]
 impl AtParam for AtParamFilePath {
-    fn name(&self) -> &String {
-        &self.name
+    async fn is_value_valid(&self, _value: &String, _ccx: &AtCommandsContext) -> bool {
+        return true;
     }
 
-    async fn is_value_valid(&self, value: &String, context: &AtCommandsContext) -> bool {
-        let mut value = value.clone();
-        colon_lines_range_from_arg(&mut value);
-        let (cache_correction_arc, _cache_fuzzy_arc) = crate::files_correction::files_cache_rebuild_as_needed(context.global_context.clone()).await;
-        // it's dangerous to use cache_correction_arc without a mutex, but should be fine as long as it's read-only
-        // (another thread never writes to the map itself, it can only replace the arc with a different map)
-        if (*cache_correction_arc).contains_key(&value) {
-            info!("@file found {:?} in cache_correction", value);
-            return true;
+    async fn param_completion(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
+        let candidates =  at_file_repair_candidates(value, ccx, false).await;
+        if !candidates.is_empty() {
+            return candidates;
         }
-        info!("@file not found {:?} in cache_correction", value);
-        false
+        let file_path = PathBuf::from(value);
+        if file_path.is_relative() {
+            let project_paths = get_project_paths(ccx).await;
+            let options = project_paths.iter().map(|x|x.join(&file_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
+            if !options.is_empty() {
+                return options.iter().map(|x| x.to_string_lossy().to_string()).collect();
+            }
+        }
+        return at_file_repair_candidates(value, ccx, true).await;
     }
 
-    async fn complete(&self, value: &String, context: &AtCommandsContext, top_n: usize) -> Vec<String> {
-        return parameter_repair_candidates(value, context, top_n).await;
+    fn param_completion_valid(&self) -> bool {true}
+}
+
+pub async fn get_project_paths(ccx: &AtCommandsContext) -> Vec<PathBuf> {
+    let cx = ccx.global_context.read().await;
+    let workspace_folders = cx.documents_state.workspace_folders.lock().unwrap();
+    workspace_folders.iter().cloned().collect::<Vec<_>>()
+}
+
+pub async fn context_file_from_file_path(
+    ccx: &mut AtCommandsContext,
+    candidates: Vec<String>,
+    file_path: String,
+) -> Result<ContextFile, String> {
+    let mut file_path_from_c = candidates.get(0).map(|x|x.clone()).unwrap_or(file_path.clone());
+    let mut line1 = 0;
+    let mut line2 = 0;
+    let colon_kind_mb = colon_lines_range_from_arg(&mut file_path_from_c);
+    let gradient_type = gradient_type_from_range_kind(&colon_kind_mb);
+
+    let file_content = get_file_text_from_memory_or_disk(ccx.global_context.clone(), &PathBuf::from(&file_path_from_c)).await?;
+
+    if let Some(colon) = &colon_kind_mb {
+        line1 = colon.line1;
+        line2 = colon.line2;
     }
+    if line1 == 0 && line2 == 0 {
+        line2 = file_content.lines().count();
+    }
+
+    Ok(ContextFile {
+        file_name: file_path_from_c,
+        file_content,
+        line1,
+        line2,
+        symbol: Uuid::default(),
+        gradient_type,
+        usefulness: 100.0,
+        is_body_important: false
+    })
+}
+
+pub async fn execute_at_file(ccx: &mut AtCommandsContext, file_path: String) -> Result<ContextFile, String> {
+    let candidates = at_file_repair_candidates(&file_path, ccx, false).await;
+    
+    match context_file_from_file_path(ccx, candidates, file_path.clone()).await {
+        Ok(x) => { return Ok(x) },
+        Err(e) => { info!("non-fuzzy at file has failed to get file_path: {:?}", e); }
+    }
+
+    let candidates_fuzzy = at_file_repair_candidates(&file_path, ccx, true).await;
+    context_file_from_file_path(ccx, candidates_fuzzy, file_path).await
 }
 
 #[async_trait]
 impl AtCommand for AtFile {
-    fn name(&self) -> &String {
-        &self.name
-    }
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, _query: &String, args: &Vec<String>, top_n: usize, context: &AtCommandsContext) -> Result<(Vec<ContextFile>, String), String> {
-        let correctable_file_path = args[0].clone();
-        let candidates = parameter_repair_candidates(&correctable_file_path, context, top_n).await;
-        if candidates.len() == 0 {
-            info!("parameter {:?} is uncorrectable :/", &correctable_file_path);
-            return Err(format!("parameter {:?} is uncorrectable :/", &correctable_file_path));
-        }
-        let mut file_path = candidates[0].clone();
-
-        let mut line1 = 0;
-        let mut line2 = 0;
-
-        let colon_kind_mb = colon_lines_range_from_arg(&mut file_path);
-
-        let gradient_type = gradient_type_from_range_kind(&colon_kind_mb);
-
-        let cpath = crate::files_correction::canonical_path(&file_path);
-        let file_text = get_file_text_from_memory_or_disk(context.global_context.clone(), &cpath).await?;
-
-        if let Some(colon) = &colon_kind_mb {
-            line1 = colon.line1;
-            line2 = colon.line2;
-        }
-        if line1 == 0 && line2 == 0 {
-            line2 = file_text.lines().count()
-        }
-
-        let context_file = ContextFile {
-            file_name: file_path.clone(),
-            file_content: file_text,
-            line1,
-            line2,
-            symbol: Uuid::default(),
-            gradient_type,
-            usefulness: 100.0,
-            is_body_important: false
+    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+        let mut file_path = match args.get(0) {
+            Some(x) => x.clone(),
+            None => {
+                cmd.ok = false; cmd.reason = Some("missing file path".to_string());
+                args.clear();
+                return Err("missing file path".to_string());
+            }
         };
-        Ok((vec![context_file], "".to_string()))
+        correct_at_arg(ccx, self.params[0].clone(), &mut file_path).await;
+        args.clear();
+        args.push(file_path.clone());
+
+        if !file_path.ok {
+            return Err(format!("file_path is incorrect: {:?}. Reason: {:?}", file_path.text, file_path.reason));
+        }
+
+        let context_file = execute_at_file(ccx, file_path.text.clone()).await?;
+        info!("{:?}", context_file);
+        let text = text_on_clip(&context_file, false);
+        Ok((vec_context_file_to_context_tools(vec![context_file]), text))
     }
 }
 
@@ -243,7 +275,6 @@ mod tests {
             let mut value = String::from("invalid");
             let result = colon_lines_range_from_arg(&mut value);
             assert_eq!(result, None);
-
         }
     }
 }

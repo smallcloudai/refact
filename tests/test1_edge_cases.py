@@ -102,5 +102,5 @@ def test_edge_cases(model, stream):
 if __name__ == "__main__":
     test_edge_cases(
         model="",     # use default model if empty
-        stream=True   # both stream and not stream should work
+        stream=False   # both stream and not stream should work
     )

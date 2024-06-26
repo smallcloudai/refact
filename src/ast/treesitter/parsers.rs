@@ -35,7 +35,7 @@ fn internal_error<E: Display>(err: E) -> ParserError {
     }
 }
 
-fn get_ast_parser(language_id: LanguageId) -> Result<Box<dyn AstLanguageParser + 'static>, ParserError> {
+pub(crate) fn get_ast_parser(language_id: LanguageId) -> Result<Box<dyn AstLanguageParser + 'static>, ParserError> {
     match language_id {
         LanguageId::Rust => {
             let parser = rust::RustParser::new()?;

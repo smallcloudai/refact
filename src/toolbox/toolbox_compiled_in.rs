@@ -11,10 +11,18 @@ pub const COMPILED_IN_CUSTOMIZATION_YAML : &str = r#"# Customization will merge 
 #
 # You can also use top-level keys to reduce copy-paste, like you see there with DEFAULT_PROMPT.
 
+
 DEFAULT_PROMPT: |
-  Use backquotes for code blocks.
-  Pay close attention to indent when editing code blocks: indent must be exactly the same as in the original code block.
-  Write math expressions in a markdown style: $x^2$ when inside line; $$x^2$$ when in a new line;
+  You are Refact Chat, a coding assistant.
+
+  Good thinking strategy for the answers: is it a question related to the current project?
+  Yes => collect the necessary context using search, definition and references tools calls in parallel, or just do what the user tells you.
+  No => answer the question without calling any tools.
+
+  Explain your plan briefly before calling the tools in parallel.
+
+  IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST! USE TOOLS IN PARALLEL!
+
 
 system_prompts:
   default:
@@ -121,6 +129,18 @@ toolbox_commands:
 "#;
 
 
+// # CUSTOM TOOLS
+
+// # tools:
+// #   - name: "compile"
+// #     description: "Compile the project"
+// #     parameters:
+// #     parameters_required:
+// #     command: "cargo build"
+// #     timeout: 120
+// #     postprocess: "last_100_lines"
+
+
 pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# Customization will override the default config you can see at the bottom of this file, in the comments.
 # You can find the default config by searching for COMPILED_IN_CUSTOMIZATION_YAML in `refact-lsp` repo.
 # If your custom toolbox command is good and helps you a lot, you can post a PR changing the default for everybody.
@@ -146,6 +166,14 @@ toolbox_commands:
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRewrite this specific code block into a very inefficient and cryptic one, but still correct. Rename variables to misleading gibberish. Add unnecessary complexity. Make O(N) worse. Don't forget about bad formatting and random spaces.\n\n```\n%CODE_SELECTION%```\n"
 
+
+# CUSTOM TOOLS AND AT-COMMANDS
+# be sure that parameters used in tools are defined in tools_parameters
+
+
+tools:
+
+tools_parameters:
 
 
 # To help you write by analogy, the default config as was compiled-in at the time of the first run of refact-lsp:

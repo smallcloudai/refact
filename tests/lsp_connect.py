@@ -5,7 +5,6 @@ from typing import Optional, Dict, Tuple
 
 import pylspclient
 
-from termcolor import colored
 from dataclasses import dataclass
 
 
@@ -71,7 +70,7 @@ class LSPCall:
         self._connect2lsp(self._connect_options)
 
     def shutdown(self):
-        print(colored('LSPCall is shutting down...', 'magenta'))
+        print('LSPCall is shutting down...')
         try:
             self._lsp_client.shutdown()
             self._lsp_endpoint.join()

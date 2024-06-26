@@ -88,16 +88,6 @@ impl fmt::Display for LanguageId {
     }
 }
 
-pub(crate) struct LanguageIdError {
-    language_id: String,
-}
-
-impl fmt::Display for LanguageIdError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Invalid language id: {}", self.language_id)
-    }
-}
-
 impl From<&str> for LanguageId {
     fn from(value: &str) -> Self {
         match value {

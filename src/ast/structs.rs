@@ -32,6 +32,7 @@ pub struct AstCursorSearchResult {
 pub struct AstQuerySearchResult {
     pub query_text: String,
     pub search_results: Vec<SymbolsSearchResultStruct>,
+    pub refs_n: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

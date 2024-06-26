@@ -2,6 +2,8 @@ use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
+
+#[cfg(test)]
 use itertools::Itertools;
 
 use parking_lot::RwLock;
@@ -207,6 +209,7 @@ fn parse_function_arg(parent: &Node, code: &str) -> FunctionArg {
     arg
 }
 
+
 impl JavaParser {
     pub fn new() -> Result<JavaParser, ParserError> {
         let mut parser = Parser::new();
@@ -220,8 +223,8 @@ impl JavaParser {
         &mut self,
         info: &CandidateInfo<'a>,
         code: &str,
-        candidates: &mut VecDeque<CandidateInfo<'a>>)
-        -> Vec<AstSymbolInstanceArc> {
+        candidates: &mut VecDeque<CandidateInfo<'a>>,
+    ) -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
 
@@ -271,12 +274,12 @@ impl JavaParser {
 
 
         if let Some(body) = info.node.child_by_field_name("body") {
-            decl.ast_fields.declaration_range = body.range();
-            decl.ast_fields.definition_range = Range {
+            decl.ast_fields.definition_range = body.range();
+            decl.ast_fields.declaration_range = Range {
                 start_byte: decl.ast_fields.full_range.start_byte,
-                end_byte: decl.ast_fields.declaration_range.start_byte,
+                end_byte: decl.ast_fields.definition_range.start_byte,
                 start_point: decl.ast_fields.full_range.start_point,
-                end_point: decl.ast_fields.declaration_range.start_point,
+                end_point: decl.ast_fields.definition_range.start_point,
             };
             candidates.push_back(CandidateInfo {
                 ast_fields: decl.ast_fields.clone(),
@@ -284,7 +287,7 @@ impl JavaParser {
                 parent_guid: decl.ast_fields.guid.clone(),
             })
         }
-        
+
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
@@ -371,6 +374,7 @@ impl JavaParser {
                     let mut decl = ClassFieldDeclaration::default();
                     decl.ast_fields.language = info.ast_fields.language;
                     decl.ast_fields.full_range = info.node.range();
+                    decl.ast_fields.declaration_range = info.node.range();
                     decl.ast_fields.file_path = info.ast_fields.file_path.clone();
                     decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
                     decl.ast_fields.guid = get_guid();
@@ -413,12 +417,13 @@ impl JavaParser {
         let mut decl = ClassFieldDeclaration::default();
         decl.ast_fields.language = info.ast_fields.language;
         decl.ast_fields.full_range = info.node.range();
+        decl.ast_fields.declaration_range = info.node.range();
         decl.ast_fields.file_path = info.ast_fields.file_path.clone();
         decl.ast_fields.parent_guid = Some(info.parent_guid.clone());
         decl.ast_fields.guid = get_guid();
         decl.ast_fields.is_error = info.ast_fields.is_error;
         symbols.extend(self.find_error_usages(&info.node, code, &info.ast_fields.file_path, &info.parent_guid));
-        
+
         if let Some(name) = info.node.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name.byte_range()).to_string();
         }
@@ -448,19 +453,19 @@ impl JavaParser {
         #[allow(unused)]
             let text = code.slice(info.node.byte_range());
         match kind {
-            "class_declaration" | "interface_declaration" | "enum_declaration" => {
+            "class_declaration" | "interface_declaration" | "enum_declaration" | "annotation_type_declaration" => {
                 symbols.extend(self.parse_struct_declaration(info, code, candidates));
             }
             "local_variable_declaration" => {
                 symbols.extend(self.parse_variable_definition(info, code, candidates));
             }
-            "method_declaration" => {
+            "method_declaration" | "annotation_type_element_declaration" | "constructor_declaration" => {
                 symbols.extend(self.parse_function_declaration(info, code, candidates));
             }
             "method_invocation" | "object_creation_expression" => {
                 symbols.extend(self.parse_call_expression(info, code, candidates));
             }
-            "field_declaration" => {
+            "field_declaration" | "constant_declaration" => {
                 symbols.extend(self.parse_field_declaration(info, code, candidates));
             }
             "enum_constant" => {
@@ -546,6 +551,7 @@ impl JavaParser {
                     });
                 }
             }
+            "package_declaration" => {}
             _ => {
                 for i in 0..info.node.child_count() {
                     let child = info.node.child(i).unwrap();
@@ -579,7 +585,7 @@ impl JavaParser {
                 if JAVA_KEYWORDS.contains(&name.as_str()) {
                     return symbols;
                 }
-                
+
                 let mut usage = VariableUsage::default();
                 usage.ast_fields.name = name;
                 usage.ast_fields.language = LanguageId::Java;
@@ -674,8 +680,10 @@ impl JavaParser {
                 node: body_node,
                 parent_guid: decl.ast_fields.guid.clone(),
             });
+        } else {
+            decl.ast_fields.declaration_range = decl.ast_fields.full_range;
         }
-        
+
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
@@ -701,7 +709,7 @@ impl JavaParser {
         }
         if let Some(type_) = info.node.child_by_field_name("type") {
             symbols.extend(self.find_error_usages(&type_, code, &info.ast_fields.file_path, &info.parent_guid));
-            if let Some(dtype) =  parse_type(&type_, code) { 
+            if let Some(dtype) =  parse_type(&type_, code) {
                 if let Some(name) = dtype.name {
                     decl.ast_fields.name = name;
                 } else {
@@ -732,7 +740,7 @@ impl JavaParser {
                 parent_guid: info.parent_guid.clone(),
             });
         }
-        
+
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }

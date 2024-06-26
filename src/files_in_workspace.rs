@@ -104,7 +104,7 @@ pub struct DocumentsState {
     // query on windows: C:/Users/user/Documents/file.ext
     pub memory_document_map: HashMap<PathBuf, Arc<ARwLock<Document>>>,   // if a file is open in IDE, and it's outside workspace dirs, it will be in this map and not in workspace_files
     pub cache_dirty: Arc<AMutex<bool>>,
-    pub cache_correction: Arc<HashMap<String, String>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
+    pub cache_correction: Arc<HashMap<String, HashSet<String>>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
     pub cache_fuzzy: Arc<Vec<String>>,                   // slow linear search
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
     pub total_reset: bool,
@@ -139,7 +139,7 @@ impl DocumentsState {
             jsonl_files: Arc::new(StdMutex::new(Vec::new())),
             memory_document_map: HashMap::new(),
             cache_dirty: Arc::new(AMutex::<bool>::new(false)),
-            cache_correction: Arc::new(HashMap::<String, String>::new()),
+            cache_correction: Arc::new(HashMap::<String, HashSet<String>>::new()),
             cache_fuzzy: Arc::new(Vec::<String>::new()),
             fs_watcher: Arc::new(ARwLock::new(watcher)),
             total_reset: false,
@@ -209,7 +209,9 @@ pub async fn file_watcher_total_reset(gcx_weak: Weak<ARwLock<GlobalContext>>) {
 pub async fn read_file_from_disk(path: &PathBuf) -> Result<Rope, String> {
     tokio::fs::read_to_string(path).await
         .map(|x|Rope::from_str(&x))
-        .map_err(|e| format!("failed to read file {}: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e))
+        .map_err(|e|
+            format!("failed to read file {}: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e)
+        )
 }
 
 async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<PathBuf>> {
@@ -512,8 +514,20 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
             if is_this_inside_blacklisted_dir(&p) {  // important to filter BEFORE canonical_path
                 continue;
             }
-            let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
-            docs.push(Document { path: cpath, text: None });
+
+            let mut go_ahead = true;
+            {
+                let is_it_good = is_valid_file(p);
+                if is_it_good.is_err() {
+                    // info!("{:?} ignoring changes: {}", p, is_it_good.err().unwrap());
+                    go_ahead = false;
+                }
+            }
+
+            if go_ahead {
+                let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
+                docs.push(Document { path: cpath, text: None });
+            }
         }
         if docs.is_empty() {
             return;

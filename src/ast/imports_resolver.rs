@@ -299,6 +299,24 @@ pub fn possible_filepath_candidates(
                 "js",
             )
         }
+        LanguageId::Java => {
+            prefixes_based_imports_retrieval(
+                prefixes,
+                min_prefix,
+                file_path,
+                path_components,
+                "java",
+            )
+        }
+        LanguageId::CSharp => {
+            prefixes_based_imports_retrieval(
+                prefixes,
+                min_prefix,
+                file_path,
+                path_components,
+                "cs",
+            )
+        }
         LanguageId::Python => {
             prefixes_based_imports_retrieval(
                 prefixes,

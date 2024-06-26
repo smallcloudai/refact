@@ -15,7 +15,7 @@ use tracing::{error, info};
 
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
 use crate::files_in_workspace;
-use crate::files_in_workspace::on_did_delete;
+use crate::files_in_workspace::{on_did_change, on_did_delete, read_file_from_disk};
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
 use crate::telemetry;
@@ -138,7 +138,7 @@ impl Backend {
                 max_new_tokens: params.parameters.max_new_tokens as usize,
                 temperature: Option::from(params.parameters.temperature),
                 top_p: None,
-                stop: None,
+                stop: vec![],
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -319,10 +319,18 @@ impl LanguageServer for Backend {
             let cpath = crate::files_correction::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
             on_did_delete(gcx, &cpath).await;
         }
+        async fn on_create(event: FileEvent, gcx: Arc<ARwLock<GlobalContext>>) {
+            let cpath = crate::files_correction::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
+            let text = read_file_from_disk(&cpath).await.map(|x|x.to_string()).unwrap_or("".to_string());
+            on_did_change(gcx, &cpath, &text).await;
+        }
 
         for event in params.changes {
             if event.typ == FileChangeType::DELETED {
                 on_delete(event, self.gcx.clone()).await;
+            }
+            else if event.typ == FileChangeType::CREATED {
+                on_create(event, self.gcx.clone()).await;
             }
         }
     }

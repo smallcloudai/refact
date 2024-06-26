@@ -1,6 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap as StdHashMap};
-use hashbrown::{HashMap, HashSet};
+use std::collections::HashMap as StdHashMap;
 use std::hash::Hash;
 use std::io::Write;
 use std::path::PathBuf;
@@ -8,6 +7,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use hashbrown::{HashMap, HashSet};
 use itertools::Itertools;
 use rand::Rng;
 use rayon::prelude::*;
@@ -34,7 +34,9 @@ const TOO_MANY_SYMBOLS_IN_FILE: usize = 10000;
 pub struct AstIndex {
     shutdown_flag: Arc<AtomicBool>,
     declaration_symbols_by_name: HashMap<String, Vec<AstSymbolInstanceRc>>,
+    declaration_symbols_by_fullpath: HashMap<String, Vec<AstSymbolInstanceRc>>,
     usage_symbols_by_name: HashMap<String, Vec<AstSymbolInstanceRc>>,
+    usage_symbols_by_fullpath: HashMap<String, Vec<AstSymbolInstanceRc>>,
     symbols_by_guid: HashMap<Uuid, AstSymbolInstanceRc>,
     path_by_symbols: HashMap<PathBuf, Vec<AstSymbolInstanceRc>>,
     type_guid_to_dependent_guids: HashMap<Uuid, HashSet<Uuid>>,
@@ -42,6 +44,7 @@ pub struct AstIndex {
     import_components_succ_solution_index: HashMap<String, ImportDeclaration>,
     ast_index_max_files: usize,
     has_changes: bool,
+    ast_light_mode: bool,
 }
 
 unsafe impl Send for AstIndex {}
@@ -65,12 +68,15 @@ pub(crate) struct IndexingStats {
 impl AstIndex {
     pub fn init(
         ast_index_max_files: usize,
-        shutdown_flag: Arc<AtomicBool>
+        shutdown_flag: Arc<AtomicBool>,
+        ast_light_mode: bool,
     ) -> AstIndex {
         AstIndex {
             shutdown_flag,
             declaration_symbols_by_name: HashMap::new(),
+            declaration_symbols_by_fullpath: HashMap::new(),
             usage_symbols_by_name: HashMap::new(),
+            usage_symbols_by_fullpath: HashMap::new(),
             symbols_by_guid: HashMap::new(),
             path_by_symbols: HashMap::new(),
             type_guid_to_dependent_guids: HashMap::new(),
@@ -78,6 +84,7 @@ impl AstIndex {
             import_components_succ_solution_index: HashMap::new(),
             ast_index_max_files,
             has_changes: false,
+            ast_light_mode,
         }
     }
 
@@ -126,7 +133,22 @@ impl AstIndex {
             );
             return Err("ast index too many files".to_string());
         }
-        let mut symbols_cloned = symbols
+        let symbols_filtered = if self.ast_light_mode {
+            symbols
+                .iter()
+                .filter(|s| {
+                    let symbol_type = s.read().symbol_type();
+                    let is_reference_type = symbol_type == SymbolType::VariableUsage
+                        || symbol_type == SymbolType::FunctionCall
+                        || symbol_type == SymbolType::VariableDefinition;
+                    !is_reference_type
+                })
+                .cloned()
+                .collect::<Vec<_>>()
+        } else {
+            symbols
+        };
+        let mut symbols_cloned = symbols_filtered
             .iter()
             .map(|sym| {
                 let mut write_lock = sym.write();
@@ -137,7 +159,7 @@ impl AstIndex {
         if has_removed {
             self.resolve_declaration_symbols(&mut symbols_cloned);
             let (_, import_components_succ_solution_index) = self.resolve_imports(
-                &mut symbols_cloned, &self.import_components_succ_solution_index
+                &mut symbols_cloned, &self.import_components_succ_solution_index,
             );
             self.import_components_succ_solution_index.extend(import_components_succ_solution_index);
             self.merge_usages_to_declarations(&mut symbols_cloned);
@@ -202,7 +224,9 @@ impl AstIndex {
 
     pub fn clear_index(&mut self) {
         self.declaration_symbols_by_name.clear();
+        self.declaration_symbols_by_fullpath.clear();
         self.usage_symbols_by_name.clear();
+        self.usage_symbols_by_fullpath.clear();
         self.symbols_by_guid.clear();
         self.path_by_symbols.clear();
         self.type_guid_to_dependent_guids.clear();
@@ -210,8 +234,10 @@ impl AstIndex {
         self.has_changes = true;
     }
 
-    pub(crate) fn search_by_name(
+    fn search_by_name_or_path_base(
         &self,
+        declaration_symbols_index: &HashMap<String, Vec<AstSymbolInstanceRc>>,
+        usage_symbols_index: &HashMap<String, Vec<AstSymbolInstanceRc>>,
         query: &str,
         request_symbol_type: RequestSymbolType,
         exception_doc: Option<Document>,
@@ -249,25 +275,25 @@ impl AstIndex {
 
         let symbols = match request_symbol_type {
             RequestSymbolType::Declaration => {
-                let mut symbols = exact_search(&self.declaration_symbols_by_name, query);
+                let mut symbols = exact_search(&declaration_symbols_index, query);
                 if try_fuzzy_if_not_found && symbols.is_empty() {
-                    symbols = fuzzy_search(&self.declaration_symbols_by_name, query);
+                    symbols = fuzzy_search(&declaration_symbols_index, query);
                 }
                 symbols
             }
             RequestSymbolType::Usage => {
-                let mut symbols = exact_search(&self.usage_symbols_by_name, query);
+                let mut symbols = exact_search(&usage_symbols_index, query);
                 if try_fuzzy_if_not_found && symbols.is_empty() {
-                    symbols = fuzzy_search(&self.usage_symbols_by_name, query);
+                    symbols = fuzzy_search(&usage_symbols_index, query);
                 }
                 symbols
             }
             RequestSymbolType::All => {
-                let mut symbols = exact_search(&self.declaration_symbols_by_name, query);
-                symbols.extend(exact_search(&self.usage_symbols_by_name, query));
+                let mut symbols = exact_search(&declaration_symbols_index, query);
+                symbols.extend(exact_search(&usage_symbols_index, query));
                 if try_fuzzy_if_not_found && symbols.is_empty() {
-                    symbols = fuzzy_search(&self.declaration_symbols_by_name, query);
-                    symbols.extend(fuzzy_search(&self.usage_symbols_by_name, query));
+                    symbols = fuzzy_search(&declaration_symbols_index, query);
+                    symbols.extend(fuzzy_search(&usage_symbols_index, query));
                 }
                 symbols
             }
@@ -297,6 +323,48 @@ impl AstIndex {
         } else {
             Ok(symbols_it.cloned().collect::<Vec<_>>())
         }
+    }
+
+    pub(crate) fn search_by_name(
+        &self,
+        query: &str,
+        request_symbol_type: RequestSymbolType,
+        exception_doc: Option<Document>,
+        language: Option<LanguageId>,
+        try_fuzzy_if_not_found: bool,
+        sort_results: bool,
+    ) -> Result<Vec<AstSymbolInstanceRc>, String> {
+        self.search_by_name_or_path_base(
+            &self.declaration_symbols_by_name,
+            &self.usage_symbols_by_name,
+            query,
+            request_symbol_type,
+            exception_doc,
+            language,
+            try_fuzzy_if_not_found,
+            sort_results,
+        )
+    }
+
+    pub(crate) fn search_by_fullpath(
+        &self,
+        query: &str,
+        request_symbol_type: RequestSymbolType,
+        exception_doc: Option<Document>,
+        language: Option<LanguageId>,
+        try_fuzzy_if_not_found: bool,
+        sort_results: bool,
+    ) -> Result<Vec<AstSymbolInstanceRc>, String> {
+        self.search_by_name_or_path_base(
+            &self.declaration_symbols_by_fullpath,
+            &self.usage_symbols_by_fullpath,
+            query,
+            request_symbol_type,
+            exception_doc,
+            language,
+            try_fuzzy_if_not_found,
+            sort_results,
+        )
     }
 
     pub(crate) fn search_by_content(
@@ -390,6 +458,7 @@ impl AstIndex {
         &self,
         symbol: &AstSymbolInstanceRc,
         base_usefulness: f32,
+        symbols_by_guid: &HashMap<Uuid, AstSymbolInstanceRc>
     ) -> (Vec<AstSymbolInstanceRc>, HashMap<Uuid, f32>) {
         let mut current_symbol = symbol.clone();
         let mut parents_symbols: Vec<AstSymbolInstanceRc> = vec![];
@@ -397,14 +466,17 @@ impl AstIndex {
         let mut level: u64 = 0;
         loop {
             let parent_guid = current_symbol.borrow().parent_guid().unwrap_or_default();
-            if let Some(parent_symbol) = self.symbols_by_guid.get(&parent_guid) {
+            if let Some(parent_symbol) = symbols_by_guid.get(&parent_guid) {
                 parents_symbols.extend(
                     parent_symbol
                         .borrow()
                         .types()
                         .iter()
                         .filter_map(|t| t.guid.clone())
-                        .filter_map(|g| self.symbols_by_guid.get(&g))
+                        .filter_map(|g| match self.symbols_by_guid.get(&g) {
+                            None => symbols_by_guid.get(&g),
+                            Some(item) => Some(item)
+                        })
                         .cloned()
                         .map(|s| {
                             *guid_to_usefulness
@@ -522,11 +594,12 @@ impl AstIndex {
         let t_decl_ms = t_decl_t0.elapsed().as_millis() as i32;
 
         // use usage symbol's parents to get definition of extra types (template types, signature types, parent classes, ...)
+        let local_symbols_by_guid = file_symbols.iter().map(|s| (s.borrow().guid().clone(), s.clone())).collect::<HashMap<_, _>>();
         let (declarations_matched_by_parent, guid_to_usefulness_to_merge) = if let Some(symbol) = unfiltered_cursor_symbols
             .iter()
             .filter(|s| !s.borrow().is_declaration())
             .next() {
-            self.get_declarations_by_parent(symbol, 70.0)
+            self.get_declarations_by_parent(symbol, 70.0, &local_symbols_by_guid)
         } else {
             (vec![], HashMap::new())
         };
@@ -811,18 +884,54 @@ impl AstIndex {
         &self,
         request_symbol_type: RequestSymbolType,
     ) -> Vec<String> {
-        self.symbols_by_guid
-            .iter()
-            .filter(|(_guid, s)| {
-                let s_ref = s.borrow();
-                match request_symbol_type {
-                    RequestSymbolType::Declaration => s_ref.is_declaration(),
-                    RequestSymbolType::Usage => !s_ref.is_declaration(),
-                    RequestSymbolType::All => true,
-                }
-            })
-            .map(|(_guid, s)| s.borrow().name().to_string())
-            .collect()
+        match request_symbol_type {
+            RequestSymbolType::Declaration => {
+                self.declaration_symbols_by_name
+                    .iter()
+                    .map(|(name, _)| name.to_string())
+                    .collect()
+            }
+            RequestSymbolType::Usage => {
+                self.usage_symbols_by_name
+                    .iter()
+                    .map(|(name, _)| name.to_string())
+                    .collect()
+            }
+            RequestSymbolType::All => {
+                self.declaration_symbols_by_name
+                    .iter()
+                    .chain(self.usage_symbols_by_name.iter())
+                    .map(|(name, _)| name.to_string())
+                    .collect()
+            }
+        }
+    }
+
+    pub fn get_symbols_paths(
+        &self,
+        request_symbol_type: RequestSymbolType,
+    ) -> Vec<String> {
+        match request_symbol_type {
+            RequestSymbolType::Declaration => {
+                self.declaration_symbols_by_fullpath
+                    .iter()
+                    .map(|(name, _)| name.to_string())
+                    .collect()
+            }
+            RequestSymbolType::Usage => {
+                self.usage_symbols_by_fullpath
+                    .iter()
+                    .map(|(name, _)| name.to_string())
+                    .collect()
+            }
+            RequestSymbolType::All => {
+                self.declaration_symbols_by_fullpath
+                    .iter()
+                    .chain(self.usage_symbols_by_fullpath.iter())
+                    .map(|(name, _)| name.to_string())
+                    .collect()
+            }
+        }
     }
 
     pub(crate) fn symbols_by_guid(&self) -> &HashMap<Uuid, AstSymbolInstanceRc> {
@@ -860,7 +969,7 @@ impl AstIndex {
         info!("Resolving import symbols");
         let t0 = std::time::Instant::now();
         let (stats, import_components_succ_solution_index) = self.resolve_imports(
-            &mut symbols, &self.import_components_succ_solution_index
+            &mut symbols, &self.import_components_succ_solution_index,
         );
         if self.shutdown_flag.load(Ordering::SeqCst) {
             info!("Aborting ast indexing, shutdown signal received");
@@ -986,12 +1095,12 @@ impl AstIndex {
     fn merge_usages_to_declarations(&self, symbols: &mut Vec<AstSymbolInstanceRc>) -> IndexingStats {
         fn get_caller_depth(
             symbol: &AstSymbolInstanceRc,
-            guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceRc>
+            guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceRc>,
         ) -> Option<usize> {
             match symbol.borrow().get_caller_guid() {
-                Some(_) => {},
+                Some(_) => {}
                 None => {
-                    return None
+                    return None;
                 }
             };
 
@@ -1001,7 +1110,7 @@ impl AstIndex {
                 let caller_guid = match current_symbol.borrow().get_caller_guid().clone() {
                     Some(g) => g,
                     None => {
-                        return Some(current_depth)
+                        return Some(current_depth);
                     }
                 };
                 match guid_by_symbols.get(&caller_guid) {
@@ -1021,7 +1130,7 @@ impl AstIndex {
         }
 
         let mut stats = IndexingStats { found: 0, non_found: 0 };
-        let search_by_name_extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceRc> =  symbols
+        let search_by_name_extra_index: HashMap<(String, Uuid, String), AstSymbolInstanceRc> = symbols
             .iter()
             .map(|x| {
                 let x_ref = x.borrow();
@@ -1256,10 +1365,24 @@ impl AstIndex {
 
         for symbol in symbols
             .iter()
-            .filter(|s| !s.borrow().is_type())
             .cloned() {
             if self.shutdown_flag.load(Ordering::SeqCst) {
                 return;
+            }
+            let full_path = get_symbol_full_path(&symbol, &self.symbols_by_guid);
+            if !full_path.is_empty() {
+                if symbol.borrow().is_declaration() {
+                    self.declaration_symbols_by_fullpath.entry(full_path)
+                        .or_insert_with(Vec::new)
+                        .push(symbol.clone());
+                } else {
+                    self.usage_symbols_by_fullpath.entry(full_path)
+                        .or_insert_with(Vec::new)
+                        .push(symbol.clone());
+                }
+            }
+            if symbol.borrow().is_type() {
+                continue
             }
 
             let (name, s_guid, mut types, is_declaration, symbol_type, parent_guid) = {
@@ -1327,3 +1450,28 @@ pub fn read_file_from_disk_block(path: &PathBuf) -> Result<String, String> {
     std::fs::read_to_string(path).map_err(|e| format!("Failed to read file from disk: {}", e))
 }
 
+fn get_symbol_full_path(
+    symbol: &AstSymbolInstanceRc,
+    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceRc>,
+) -> String {
+    let mut current_symbol = symbol.clone();
+    let mut current_path = current_symbol.borrow().name().to_string();
+
+    loop {
+        let parent_guid = match current_symbol.borrow().parent_guid().clone() {
+            Some(g) => g,
+            None => {
+                return current_path;
+            }
+        };
+        match guid_by_symbols.get(&parent_guid) {
+            Some(s) => {
+                current_symbol = s.clone();
+                current_path = format!("{}::{}", s.borrow().name(), current_path);
+            }
+            None => {
+                return current_path;
+            }
+        }
+    }
+}

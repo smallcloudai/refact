@@ -10,8 +10,11 @@ use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
-use crate::call_validation;
+use std::fs::File;
+use std::io::Write;
+
 use crate::call_validation::SamplingParameters;
+
 
 pub async fn forward_to_openai_style_endpoint(
     save_url: &mut String,
@@ -33,16 +36,17 @@ pub async fn forward_to_openai_style_endpoint(
     }
     let mut data = json!({
         "model": model_name,
-        "echo": false,
         "stream": false,
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
         "stop": sampling_parameters.stop,
     });
+    info!("NOT STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {
-        _passthrough_messages_to_json(&mut data, prompt);
+        passthrough_messages_to_json(&mut data, prompt);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
+        data["echo"] = serde_json::Value::Bool(false);
     }
     // When cancelling requests, coroutine ususally gets aborted here on the following line.
     let req = client.post(&url)
@@ -63,7 +67,11 @@ pub async fn forward_to_openai_style_endpoint(
     if status_code != 200 {
         info!("forward_to_openai_style_endpoint: {} {}\n{}", url, status_code, response_txt);
     }
-    Ok(serde_json::from_str(&response_txt).unwrap())
+    let parsed_json: serde_json::Value = match serde_json::from_str(&response_txt) {
+        Ok(json) => json,
+        Err(e) => return Err(format!("Failed to parse JSON response: {}\n{}", e, response_txt)),
+    };
+    Ok(parsed_json)
 }
 
 pub async fn forward_to_openai_style_endpoint_streaming(
@@ -89,9 +97,11 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "stream": true,
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
+        "stop": sampling_parameters.stop,
     });
+    info!("STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {
-        _passthrough_messages_to_json(&mut data, prompt);
+        passthrough_messages_to_json(&mut data, prompt);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
     }
@@ -104,14 +114,47 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     Ok(event_source)
 }
 
-fn _passthrough_messages_to_json(
+fn passthrough_messages_to_json(
     data: &mut serde_json::Value,
     prompt: &str,
 ) {
     assert!(prompt.starts_with("PASSTHROUGH "));
     let messages_str = &prompt[12..];
-    let messages: Vec<call_validation::ChatMessage> = serde_json::from_str(&messages_str).unwrap();
-    data["messages"] = serde_json::json!(messages);
+    let big_json: serde_json::Value = serde_json::from_str(&messages_str).unwrap();
+
+    // TODO: remove, parsed only for debug log
+    if false {
+        let messages: Vec<crate::call_validation::ChatMessage> = big_json["messages"].as_array().unwrap().iter().map(|x|
+            serde_json::from_value(x.clone()).unwrap()
+        ).collect();
+        for msg in messages.iter() {
+            info!("PASSTHROUGH MSG: {:?}", msg);
+        }
+        let tools_mb: Option<Vec<serde_json::Value>> = match big_json["tools"].as_array() {
+            Some(x) => Some(x.iter().map(|x| x.clone()).collect()),
+            None => None,
+        };
+        if let Some(tools) = tools_mb {
+            for tool in tools.iter() {
+                info!("PASSTHROUGH TOOL: {:?}", tool);
+            }
+        }
+    }
+    // TODO: remove, dump to file
+    if false {
+        let mut messages_file = File::create("/tmp/aaa_messages.json").unwrap();
+        let messages_json = serde_json::to_string_pretty(&big_json["messages"]).unwrap();
+        messages_file.write_all(messages_json.as_bytes()).unwrap();
+
+        let mut tools_file = File::create("/tmp/aaa_tools.json").unwrap();
+        let tools_json = serde_json::to_string_pretty(&big_json["tools"]).unwrap();
+        tools_file.write_all(tools_json.as_bytes()).unwrap();
+    }
+
+    data["messages"] = big_json["messages"].clone();
+    if let Some(tools) = big_json.get("tools") {
+        data["tools"] = tools.clone();
+    }
 }
 
 

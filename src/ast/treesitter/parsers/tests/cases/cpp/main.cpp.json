@@ -256,14 +256,14 @@
         },
         "declaration_range": {
           "start_byte": 139,
-          "end_byte": 156,
+          "end_byte": 155,
           "start_point": {
             "row": 5,
             "column": 0
           },
           "end_point": {
             "row": 5,
-            "column": 17
+            "column": 16
           }
         },
         "definition_range": {
@@ -725,6 +725,18 @@
           }
         },
         "declaration_range": {
+          "start_byte": 506,
+          "end_byte": 518,
+          "start_point": {
+            "row": 24,
+            "column": 0
+          },
+          "end_point": {
+            "row": 24,
+            "column": 12
+          }
+        },
+        "definition_range": {
           "start_byte": 519,
           "end_byte": 802,
           "start_point": {
@@ -734,18 +746,6 @@
           "end_point": {
             "row": 41,
             "column": 1
-          }
-        },
-        "definition_range": {
-          "start_byte": 506,
-          "end_byte": 519,
-          "start_point": {
-            "row": 24,
-            "column": 0
-          },
-          "end_point": {
-            "row": 24,
-            "column": 13
           }
         },
         "linked_decl_guid": null,
@@ -835,6 +835,18 @@
           }
         },
         "declaration_range": {
+          "start_byte": 820,
+          "end_byte": 845,
+          "start_point": {
+            "row": 44,
+            "column": 0
+          },
+          "end_point": {
+            "row": 44,
+            "column": 25
+          }
+        },
+        "definition_range": {
           "start_byte": 846,
           "end_byte": 1003,
           "start_point": {
@@ -844,18 +856,6 @@
           "end_point": {
             "row": 52,
             "column": 1
-          }
-        },
-        "definition_range": {
-          "start_byte": 820,
-          "end_byte": 846,
-          "start_point": {
-            "row": 44,
-            "column": 0
-          },
-          "end_point": {
-            "row": 44,
-            "column": 26
           }
         },
         "linked_decl_guid": null,
@@ -916,14 +916,14 @@
         },
         "declaration_range": {
           "start_byte": 1006,
-          "end_byte": 1017,
+          "end_byte": 1016,
           "start_point": {
             "row": 54,
             "column": 0
           },
           "end_point": {
             "row": 54,
-            "column": 11
+            "column": 10
           }
         },
         "definition_range": {
@@ -1295,6 +1295,18 @@
           }
         },
         "declaration_range": {
+          "start_byte": 261,
+          "end_byte": 305,
+          "start_point": {
+            "row": 9,
+            "column": 18
+          },
+          "end_point": {
+            "row": 12,
+            "column": 1
+          }
+        },
+        "definition_range": {
           "start_byte": 268,
           "end_byte": 305,
           "start_point": {
@@ -1304,18 +1316,6 @@
           "end_point": {
             "row": 12,
             "column": 1
-          }
-        },
-        "definition_range": {
-          "start_byte": 261,
-          "end_byte": 268,
-          "start_point": {
-            "row": 9,
-            "column": 18
-          },
-          "end_point": {
-            "row": 9,
-            "column": 25
           }
         },
         "linked_decl_guid": null,
@@ -1506,14 +1506,14 @@
         },
         "declaration_range": {
           "start_byte": 552,
-          "end_byte": 579,
+          "end_byte": 578,
           "start_point": {
             "row": 27,
             "column": 4
           },
           "end_point": {
             "row": 27,
-            "column": 31
+            "column": 30
           }
         },
         "definition_range": {
@@ -1629,14 +1629,14 @@
         },
         "declaration_range": {
           "start_byte": 611,
-          "end_byte": 642,
+          "end_byte": 641,
           "start_point": {
             "row": 30,
             "column": 4
           },
           "end_point": {
             "row": 30,
-            "column": 35
+            "column": 34
           }
         },
         "definition_range": {
@@ -1745,14 +1745,14 @@
         },
         "declaration_range": {
           "start_byte": 722,
-          "end_byte": 745,
+          "end_byte": 744,
           "start_point": {
             "row": 35,
             "column": 4
           },
           "end_point": {
             "row": 35,
-            "column": 27
+            "column": 26
           }
         },
         "definition_range": {
@@ -1806,15 +1806,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 788,
+          "end_byte": 800,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 40,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 40,
+            "column": 16
           }
         },
         "definition_range": {
@@ -1867,14 +1867,14 @@
         },
         "declaration_range": {
           "start_byte": 860,
-          "end_byte": 886,
+          "end_byte": 885,
           "start_point": {
             "row": 46,
             "column": 4
           },
           "end_point": {
             "row": 46,
-            "column": 30
+            "column": 29
           }
         },
         "definition_range": {
@@ -1990,14 +1990,14 @@
         },
         "declaration_range": {
           "start_byte": 914,
-          "end_byte": 946,
+          "end_byte": 945,
           "start_point": {
             "row": 49,
             "column": 4
           },
           "end_point": {
             "row": 49,
-            "column": 36
+            "column": 35
           }
         },
         "definition_range": {
@@ -2865,15 +2865,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 274,
+          "end_byte": 285,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 10,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 10,
+            "column": 15
           }
         },
         "definition_range": {
@@ -2925,15 +2925,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 290,
+          "end_byte": 303,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 11,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 11,
+            "column": 17
           }
         },
         "definition_range": {

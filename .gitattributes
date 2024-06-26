@@ -1,8 +1,9 @@
-* text=false
-
+*.skeleton      text eol=lf
 *.rs            text eol=lf 
 *.cpp           text eol=lf 
 *.java          text eol=lf 
 *.js            text eol=lf 
 *.ts            text eol=lf 
 *.py            text eol=lf 
+tests/emergency_frog_situation/frog.py text eol=crlf
+

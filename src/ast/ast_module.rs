@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::ast_index_service::{AstEvent, AstEventType, AstIndexService};
 use crate::ast::structs::{AstCursorSearchResult, AstQuerySearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceRc};
+use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceRc;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
@@ -45,7 +45,8 @@ pub struct VecDbCaps {
 impl AstModule {
     pub async fn ast_indexer_init(
         ast_index_max_files: usize,
-        shutdown_flag: Arc<AtomicBool>
+        shutdown_flag: Arc<AtomicBool>,
+        ast_light_mode: bool
     ) -> Result<AstModule, String> {
         let status = Arc::new(AMutex::new(AstIndexStatus {
             files_unparsed: 0,
@@ -55,7 +56,7 @@ impl AstModule {
             state: "starting".to_string(),
         }));
         let ast_index = Arc::new(AMutex::new(AstIndex::init(
-            ast_index_max_files, shutdown_flag
+            ast_index_max_files, shutdown_flag, ast_light_mode
         )));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(
             ast_index.clone(),
@@ -163,7 +164,7 @@ impl AstModule {
                     .filter_map(|s| {
                         let info_struct = s.borrow().symbol_info_struct();
                         let name = info_struct.name.clone();
-                        let content = info_struct.get_content_blocked().ok()?;
+                        let content = info_struct.get_content_from_file_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
@@ -180,6 +181,54 @@ impl AstModule {
                     AstQuerySearchResult {
                         query_text: query,
                         search_results: symbol_structs,
+                        refs_n: results.len(),
+                    }
+                )
+            }
+            Err(e) => Err(e.to_string())
+        }
+    }
+
+    pub async fn search_by_fullpath(
+        &self,
+        query: String,
+        request_symbol_type: RequestSymbolType,
+        try_fuzzy_if_not_found: bool,
+        top_n: usize,
+    ) -> Result<AstQuerySearchResult, String> {
+        let t0 = std::time::Instant::now();
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        match ast_ref.search_by_fullpath(query.as_str(), request_symbol_type, None, None, try_fuzzy_if_not_found, true) {
+            Ok(results) => {
+                let symbol_structs = results
+                    .iter()
+                    .take(top_n)
+                    .filter_map(|s| {
+                        let info_struct = s.borrow().symbol_info_struct();
+                        let name = info_struct.name.clone();
+                        let content = info_struct.get_content_from_file_blocked().ok()?;
+                        Some(SymbolsSearchResultStruct {
+                            symbol_declaration: info_struct,
+                            content: content,
+                            usefulness: jaro_winkler(&query, &name) as f32 * 100.0,
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                for r in symbol_structs.iter() {
+                    let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
+                    info!("def-distance {:.3}, found {last_30_chars}", r.usefulness);
+                }
+                info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                Ok(
+                    AstQuerySearchResult {
+                        query_text: query,
+                        search_results: symbol_structs,
+                        refs_n: results.len(),
                     }
                 )
             }
@@ -207,7 +256,7 @@ impl AstModule {
                     .take(top_n)
                     .filter_map(|s| {
                         let info_struct = s.borrow().symbol_info_struct();
-                        let content = info_struct.get_content_blocked().ok()?;
+                        let content = info_struct.get_content_from_file_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
@@ -224,6 +273,7 @@ impl AstModule {
                     AstQuerySearchResult {
                         query_text: query,
                         search_results: symbol_structs,
+                        refs_n: results.len(),
                     }
                 )
             }
@@ -245,7 +295,7 @@ impl AstModule {
                     .iter()
                     .filter_map(|s| {
                         let info_struct = s.borrow().symbol_info_struct();
-                        let content = info_struct.get_content_blocked().ok()?;
+                        let content = info_struct.get_content_from_file_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
@@ -257,11 +307,12 @@ impl AstModule {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
                     info!("found {last_30_chars}");
                 }
-                info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                info!("ast search_related_declarations time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(
                     AstQuerySearchResult {
                         query_text: guid.to_string(),
                         search_results: symbol_structs,
+                        refs_n: results.len(),
                     }
                 )
             }
@@ -283,7 +334,7 @@ impl AstModule {
                     .iter()
                     .filter_map(|s| {
                         let info_struct = s.borrow().symbol_info_struct();
-                        let content = info_struct.get_content_blocked().ok()?;
+                        let content = info_struct.get_content_from_file_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
                             symbol_declaration: info_struct,
                             content: content,
@@ -295,11 +346,12 @@ impl AstModule {
                     let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
                     info!("found {last_30_chars}");
                 }
-                info!("ast search_by_name time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+                info!("ast search_usages_by_declarations time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
                 Ok(
                     AstQuerySearchResult {
                         query_text: declaration_guid.to_string(),
                         search_results: symbol_structs,
+                        refs_n: results.len(),
                     }
                 )
             }
@@ -335,7 +387,7 @@ impl AstModule {
             );
         let symbol_to_search_res = |x: &AstSymbolInstanceRc| {
             let symbol_declaration = x.borrow().symbol_info_struct();
-            let content = symbol_declaration.get_content_blocked().unwrap_or_default();
+            let content = symbol_declaration.get_content_from_file_blocked().unwrap_or_default();
             let usefulness = *guid_to_usefulness
                 .get(&symbol_declaration.guid)
                 .expect("Guid has not found in `guid_to_usefulness` dict, \
@@ -426,6 +478,16 @@ impl AstModule {
             }
         };
         Ok(ast_ref.get_symbols_names(request_symbol_type))
+    }
+
+    pub async fn get_symbols_paths(&self, request_symbol_type: RequestSymbolType) -> Result<Vec<String>, String> {
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        Ok(ast_ref.get_symbols_paths(request_symbol_type))
     }
 
     pub async fn ast_index_status(&self) -> AstIndexStatus {

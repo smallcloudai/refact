@@ -200,6 +200,8 @@ impl RustParser {
 
         decl.ast_fields.language = LanguageId::Rust;
         decl.ast_fields.full_range = parent.range();
+        decl.ast_fields.declaration_range = parent.range();
+        decl.ast_fields.definition_range = parent.range();
         decl.ast_fields.file_path = path.clone();
         decl.ast_fields.parent_guid = Some(parent_guid.clone());
         decl.ast_fields.guid = get_guid();
@@ -209,6 +211,12 @@ impl RustParser {
 
         if let Some(name_node) = parent.child_by_field_name("name") {
             decl.ast_fields.name = code.slice(name_node.byte_range()).to_string();
+            decl.ast_fields.declaration_range = Range {
+                start_byte: decl.ast_fields.full_range.start_byte,
+                end_byte: name_node.end_byte(),
+                start_point: decl.ast_fields.full_range.start_point,
+                end_point: name_node.end_position(),
+            }
         }
         if let Some(type_node) = parent.child_by_field_name("type") {
             symbols.extend(self.find_error_usages(&type_node, code, path, &decl.ast_fields.guid));
@@ -228,6 +236,12 @@ impl RustParser {
             } else {
                 decl.ast_fields.name = code.slice(type_node.byte_range()).to_string();
             }
+            decl.ast_fields.declaration_range = Range {
+                start_byte: decl.ast_fields.full_range.start_byte,
+                end_byte: type_node.end_byte(),
+                start_point: decl.ast_fields.full_range.start_point,
+                end_point: type_node.end_position(),
+            }
         }
 
         if let Some(body_node) = parent.child_by_field_name("body") {
@@ -243,6 +257,7 @@ impl RustParser {
                                 let type_node = field_declaration_node.child_by_field_name("type").unwrap();
                                 let mut decl_ = ClassFieldDeclaration::default();
                                 decl_.ast_fields.full_range = field_declaration_node.range();
+                                decl_.ast_fields.declaration_range = field_declaration_node.range();
                                 decl_.ast_fields.file_path = path.clone();
                                 decl_.ast_fields.parent_guid = Some(decl.ast_fields.guid.clone());
                                 decl_.ast_fields.guid = get_guid();
@@ -262,6 +277,7 @@ impl RustParser {
                 }
                 &_ => {}
             }
+            decl.ast_fields.definition_range = body_node.range();
         }
         decl.ast_fields.childs_guid = get_children_guids(&decl.ast_fields.guid, &symbols);
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));

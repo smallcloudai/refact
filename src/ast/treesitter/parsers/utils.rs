@@ -25,4 +25,4 @@ pub(crate) struct CandidateInfo<'a> {
     pub ast_fields: AstSymbolFields,
     pub node: Node<'a>,
     pub parent_guid: Uuid,
-} 
+}

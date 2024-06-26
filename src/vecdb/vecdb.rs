@@ -17,6 +17,7 @@ use crate::files_in_workspace::Document;
 use crate::vecdb::handler::VecDBHandler;
 use crate::vecdb::vectorizer_service::FileVectorizerService;
 use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants};
+use crate::vecdb::vecdb_cache::VecDBCache;
 
 
 fn vecdb_constants(
@@ -27,12 +28,12 @@ fn vecdb_constants(
     VecdbConstants {
         model_name: caps_locked.default_embeddings_model.clone(),
         embedding_size: caps_locked.size_embeddings.clone(),
+        vectorizer_n_ctx: caps_locked.embedding_n_ctx,
         tokenizer: tokenizer.clone(),
         endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
         endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
         cooldown_secs: 20,
-        splitter_window_size: 512,
-        splitter_soft_limit: 1024,
+        splitter_window_size: caps_locked.embedding_n_ctx / 2,
     }
 }
 
@@ -59,7 +60,7 @@ pub struct VecDbCaps {
 async fn vecdb_test_request(
     vecdb: &VecDb
 ) -> Result<(), String> {
-    let search_result = vecdb.vecdb_search("test query".to_string(), 3).await;
+    let search_result = vecdb.vecdb_search("test query".to_string(), 3, None).await;
     match search_result {
         Ok(_) => {
             Ok(())
@@ -198,8 +199,10 @@ pub async fn vecdb_background_reload(
                 consts.unwrap(),
             ).await {
                 Ok(_) => {
+                    gcx.write().await.vec_db_error = "".to_string();
                 }
                 Err(err) => {
+                    gcx.write().await.vec_db_error = err.clone();
                     error!("vecdb: init failed: {}", err);
                     // gcx.vec_db stays None, the rest of the system continues working
                 }
@@ -215,13 +218,19 @@ impl VecDb {
         cmdline: CommandLine,
         constants: VecdbConstants,
     ) -> Result<VecDb, String> {
-        let handler = match VecDBHandler::init(cache_dir, &constants.model_name, constants.embedding_size).await {
+        let handler = match VecDBHandler::init(constants.embedding_size).await {
+            Ok(res) => res,
+            Err(err) => { return Err(err) }
+        };
+        let cache = match VecDBCache::init(cache_dir, &constants.model_name, constants.embedding_size).await {
             Ok(res) => res,
             Err(err) => { return Err(err) }
         };
         let vecdb_handler = Arc::new(AMutex::new(handler));
+        let vecdb_cache = Arc::new(AMutex::new(cache));
         let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),
+            vecdb_cache.clone(),
             constants.clone(),
             cmdline.api_key.clone(),
         ).await));
@@ -258,7 +267,12 @@ impl VecDb {
 
 #[async_trait]
 impl VecdbSearch for VecDb {
-    async fn vecdb_search(&self, query: String, top_n: usize) -> Result<SearchResult, String> {
+    async fn vecdb_search(
+        &self,
+        query: String,
+        top_n: usize,
+        vecdb_scope_filter_mb: Option<String>,
+    ) -> Result<SearchResult, String> {
         let t0 = std::time::Instant::now();
         let embedding_mb = fetch_embedding::get_embedding_with_retry(
             self.vecdb_emb_client.clone(),
@@ -276,7 +290,7 @@ impl VecdbSearch for VecDb {
 
         let mut handler_locked = self.vecdb_handler.lock().await;
         let t1 = std::time::Instant::now();
-        let mut results = match handler_locked.search(&embedding_mb.unwrap()[0], top_n).await {
+        let mut results = match handler_locked.search(&embedding_mb.unwrap()[0], top_n, vecdb_scope_filter_mb).await {
             Ok(res) => res,
             Err(err) => { return Err(err.to_string()) }
         };
@@ -286,13 +300,10 @@ impl VecdbSearch for VecDb {
             if dist0 == 0.0 {
                 dist0 = rec.distance.abs();
             }
-            let last_30_chars = crate::nicer_logs::last_n_chars(&rec.file_path.display().to_string(), 30);
+            let last_35_chars = crate::nicer_logs::last_n_chars(&rec.file_path.display().to_string(), 35);
             rec.usefulness = 100.0 - 75.0 * ((rec.distance.abs() - dist0) / (dist0 + 0.01)).max(0.0).min(1.0);
-            info!("distance {:.3} -> useful {:.1}, found {}:{}-{}", rec.distance, rec.usefulness, last_30_chars, rec.start_line, rec.end_line);
+            info!("distance {:.3} -> useful {:.1}, found {}:{}-{}", rec.distance, rec.usefulness, last_35_chars, rec.start_line, rec.end_line);
         }
-        let t2 = std::time::Instant::now();
-        handler_locked.update_record_statistic(results.clone()).await;
-        info!("update_record_statistic {:.3}s", t2.elapsed().as_secs_f64());
         Ok(
             SearchResult {
                 query_text: query,

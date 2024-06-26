@@ -174,12 +174,6 @@ impl TSParser {
             symbols.extend(self.find_error_usages(&class_heritage, code, &info.ast_fields.file_path,
                                                   &decl.ast_fields.guid));
             if class_heritage.kind() == "class_heritage" {
-                decl.ast_fields.declaration_range = Range {
-                    start_byte: decl.ast_fields.full_range.start_byte,
-                    end_byte: class_heritage.end_byte(),
-                    start_point: decl.ast_fields.full_range.start_point,
-                    end_point: class_heritage.end_position(),
-                };
 
                 for i in 0..class_heritage.child_count() {
                     let extends_clause = class_heritage.child(i).unwrap();
@@ -224,19 +218,28 @@ impl TSParser {
         }
 
         if let Some(body) = body_mb {
-            decl.ast_fields.declaration_range = body.range();
-            decl.ast_fields.definition_range = Range {
-                start_byte: decl.ast_fields.full_range.start_byte,
-                end_byte: decl.ast_fields.declaration_range.start_byte,
-                start_point: decl.ast_fields.full_range.start_point,
-                end_point: decl.ast_fields.declaration_range.start_point,
-            };
+            decl.ast_fields.definition_range = body.range();
             candidates.push_back(CandidateInfo {
                 ast_fields: decl.ast_fields.clone(),
                 node: body,
                 parent_guid: decl.ast_fields.guid.clone(),
             })
         }
+        for i in 0..info.node.child_count() {
+            let child = info.node.child(i).unwrap();
+            if let Some(body) = info.node.field_name_for_child(i as u32) {
+                if body == "body" {
+                    break;
+                }
+            }
+            decl.ast_fields.declaration_range = Range {
+                start_byte: decl.ast_fields.full_range.start_byte,
+                end_byte: child.end_byte(),
+                start_point: decl.ast_fields.full_range.start_point,
+                end_point: child.end_position(),
+            };
+        }
+        
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
@@ -797,7 +800,6 @@ impl TSParser {
 
         #[cfg(test)]
         {
-            use itertools::Itertools;
             for symbol in symbols.iter_mut() {
                 let mut sym = symbol.write();
                 sym.fields_mut().childs_guid = sym.fields_mut().childs_guid.iter()

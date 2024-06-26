@@ -11,7 +11,7 @@ use serde_json::Value;
 pub trait ScratchpadAbstract: Send {
     async fn apply_model_adaptation_patch(
         &mut self,
-        patch: &serde_json::Value,
+        patch: &Value,
     ) -> Result<(), String>;
 
     async fn prompt(
@@ -24,14 +24,14 @@ pub trait ScratchpadAbstract: Send {
         &mut self,
         choices: Vec<String>,
         stopped: Vec<bool>,
-    ) -> Result<serde_json::Value, String>;
+    ) -> Result<Value, String>;
 
     fn response_streaming(   // Only 1 choice, but streaming. Returns delta the user should see, and finished flag
         &mut self,
         delta: String,       // if delta is empty, there is no more input, add final fields if needed
         stop_toks: bool,
         stop_length: bool,
-    ) -> Result<(serde_json::Value, bool), String>;
+    ) -> Result<(Value, bool), String>;
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>;
 }

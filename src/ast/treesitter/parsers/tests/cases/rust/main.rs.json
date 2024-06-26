@@ -784,15 +784,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 262,
+          "end_byte": 269,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 9,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 9,
+            "column": 11
           }
         },
         "definition_range": {
@@ -844,15 +844,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 275,
+          "end_byte": 282,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 10,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 10,
+            "column": 11
           }
         },
         "definition_range": {
@@ -907,27 +907,27 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 242,
+          "end_byte": 255,
           "start_point": {
-            "row": 0,
+            "row": 8,
             "column": 0
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 8,
+            "column": 13
           }
         },
         "definition_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 256,
+          "end_byte": 285,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 8,
+            "column": 14
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 11,
+            "column": 1
           }
         },
         "linked_decl_guid": null,
@@ -1757,15 +1757,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 881,
+          "end_byte": 887,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 40,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 40,
+            "column": 10
           }
         },
         "definition_range": {
@@ -1817,15 +1817,15 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 893,
+          "end_byte": 899,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 41,
+            "column": 4
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 41,
+            "column": 10
           }
         },
         "definition_range": {
@@ -1880,27 +1880,27 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 862,
+          "end_byte": 874,
           "start_point": {
-            "row": 0,
+            "row": 39,
             "column": 0
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 39,
+            "column": 12
           }
         },
         "definition_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 875,
+          "end_byte": 902,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 39,
+            "column": 13
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 42,
+            "column": 1
           }
         },
         "linked_decl_guid": null,
@@ -2765,27 +2765,27 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 904,
+          "end_byte": 914,
           "start_point": {
-            "row": 0,
+            "row": 44,
             "column": 0
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 44,
+            "column": 10
           }
         },
         "definition_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 915,
+          "end_byte": 1125,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 44,
+            "column": 11
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 51,
+            "column": 1
           }
         },
         "linked_decl_guid": null,
@@ -2876,27 +2876,27 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 1126,
+          "end_byte": 1144,
           "start_point": {
-            "row": 0,
+            "row": 52,
             "column": 0
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 52,
+            "column": 18
           }
         },
         "definition_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 1145,
+          "end_byte": 1164,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 52,
+            "column": 19
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 54,
+            "column": 1
           }
         },
         "linked_decl_guid": null,
@@ -2991,27 +2991,27 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 1183,
+          "end_byte": 1197,
           "start_point": {
-            "row": 0,
+            "row": 56,
             "column": 0
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 56,
+            "column": 14
           }
         },
         "definition_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 1198,
+          "end_byte": 1268,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 56,
+            "column": 15
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 61,
+            "column": 1
           }
         },
         "linked_decl_guid": null,
@@ -3154,27 +3154,27 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 1309,
+          "end_byte": 1320,
           "start_point": {
-            "row": 0,
+            "row": 64,
             "column": 0
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 64,
+            "column": 11
           }
         },
         "definition_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 1321,
+          "end_byte": 1345,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 64,
+            "column": 12
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 66,
+            "column": 1
           }
         },
         "linked_decl_guid": null,
@@ -3317,27 +3317,27 @@
           }
         },
         "declaration_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 1384,
+          "end_byte": 1408,
           "start_point": {
-            "row": 0,
+            "row": 69,
             "column": 0
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 69,
+            "column": 24
           }
         },
         "definition_range": {
-          "start_byte": 0,
-          "end_byte": 0,
+          "start_byte": 1409,
+          "end_byte": 1818,
           "start_point": {
-            "row": 0,
-            "column": 0
+            "row": 69,
+            "column": 25
           },
           "end_point": {
-            "row": 0,
-            "column": 0
+            "row": 78,
+            "column": 1
           }
         },
         "linked_decl_guid": null,

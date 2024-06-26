@@ -1,5 +1,6 @@
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::call_validation::ChatMessage;
+use std::collections::HashSet;
 
 
 pub fn limit_messages_history(
@@ -50,12 +51,33 @@ pub fn limit_messages_history(
             tracing::info!("not allowed to drop {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tokens_used, tokens_limit);
         }
     }
+
+    // additinally, drop tool results if we drop the calls
+    let mut tool_call_id_drop = HashSet::new();
+    for i in 0..messages.len() {
+        if message_take[i] {
+            continue;
+        }
+        if let Some(tool_calls) = &messages[i].tool_calls {
+            for call in tool_calls {
+                tool_call_id_drop.insert(call.id.clone());
+            }
+        }
+    }
+    for i in 0..messages.len() {
+        if !message_take[i] {
+            continue;
+        }
+        if tool_call_id_drop.contains(messages[i].tool_call_id.as_str()) {
+            message_take[i] = false;
+            tracing::info!("drop {:?} because of drop tool result rule", crate::nicer_logs::first_n_chars(&messages[i].content, 30));
+        }
+    }
+
     let mut messages_out: Vec<ChatMessage> = messages.iter().enumerate().filter(|(i, _)| message_take[*i]).map(|(_, x)| x.clone()).collect();
     if need_default_system_msg {
-        messages_out.insert(0, ChatMessage {
-            role: "system".to_string(),
-            content: default_system_message.clone(),
-        });
+        messages_out.insert(0, ChatMessage::new("system".to_string(), default_system_message.clone()));
     }
+    // info!("messages_out: {:?}", messages_out);
     Ok(messages_out)
 }

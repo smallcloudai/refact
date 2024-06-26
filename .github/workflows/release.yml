@@ -1,4 +1,4 @@
-name: CI build
+name: Release build
 
 on:
   push:
@@ -112,12 +112,12 @@ jobs:
         run: |
           cargo test --release || exit 1
           cargo build --release || exit 1
-            
+
       - name: Copy file
         if: endsWith(matrix.target, 'msvc')
         run: |
           cp ./target/release/refact-lsp.exe refact-lsp.exe
-          
+
       - name: Package artifact in ZIP (WIN)
         uses: vimtor/action-zip@v1.2
         if: endsWith(matrix.target, 'msvc')
@@ -125,12 +125,12 @@ jobs:
           files: refact-lsp.exe
           recursive: false
           dest: dist-${{ matrix.target }}.zip
-          
+
       - name: Copy file
         if: ${{ !endsWith(matrix.target, 'msvc') }}
         run: |
           cp ./target/release/refact-lsp refact-lsp
-          
+
       - name: Package artifact in ZIP (UNIX)
         uses: vimtor/action-zip@v1.2
         if: ${{ !endsWith(matrix.target, 'msvc') }}
@@ -138,7 +138,7 @@ jobs:
           files: refact-lsp
           recursive: false
           dest: dist-${{ matrix.target }}.zip
-          
+
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
@@ -148,4 +148,3 @@ jobs:
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
-       

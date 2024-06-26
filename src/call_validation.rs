@@ -1,5 +1,4 @@
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use axum::http::StatusCode;
 use ropey::Rope;
@@ -27,7 +26,8 @@ pub struct SamplingParameters {
     pub max_new_tokens: usize,
     pub temperature: Option<f32>,
     pub top_p: Option<f32>,
-    pub stop: Option<Vec<String>>,
+    #[serde(default)]
+    pub stop: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -91,7 +91,7 @@ mod tests {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
                 top_p: None,
-                stop: None,
+                stop: vec![],
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -120,7 +120,7 @@ mod tests {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
                 top_p: None,
-                stop: None,
+                stop: vec![],
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -149,7 +149,7 @@ mod tests {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
                 top_p: None,
-                stop: None,
+                stop: vec![],
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -178,7 +178,7 @@ mod tests {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
                 top_p: None,
-                stop: None,
+                stop: vec![],
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -198,12 +198,27 @@ pub struct ContextFile {
     pub file_content: String,
     pub line1: usize,   // starts from 1, zero means non-valid
     pub line2: usize,   // starts from 1
-    pub symbol: Uuid,   // TODO: disable serialization for this field
-    #[serde(default = "default_gradient_type_value")]
+    #[serde(default, skip_serializing)]
+    pub symbol: Uuid,
+    #[serde(default = "default_gradient_type_value", skip_serializing)]
     pub gradient_type: i32,
     #[serde(default)]
     pub usefulness: f32,  // higher is better
+    #[serde(default, skip_serializing)]
     pub is_body_important: bool
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ContextMemory {
+    pub memo_id: String,
+    pub memo_text: String,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum ContextEnum {
+    ContextFile(ContextFile),
+    ChatMessage(ChatMessage),
 }
 
 fn default_gradient_type_value() -> i32 {
@@ -211,12 +226,45 @@ fn default_gradient_type_value() -> i32 {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ChatMessage {
-    pub role: String,
-    pub content: String,
+pub struct ChatToolFunction {
+    pub arguments: String,
+    pub name: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChatToolCall {
+    pub id: String,
+    pub function: ChatToolFunction,
+    #[serde(rename = "type")]
+    pub tool_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChatMessage {
+    pub role: String,
+    #[serde(default, deserialize_with="deserialize_content")]
+    pub content: String,
+    #[serde(default)]
+    pub tool_calls: Option<Vec<ChatToolCall>>,
+    #[serde(default)]
+    pub tool_call_id: String,
+}
+
+// this converts null to empty string
+fn deserialize_content<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer).map(|opt| opt.unwrap_or_default())
+}
+
+impl ChatMessage {
+    pub fn new(role: String, content: String) -> Self {
+        ChatMessage { role, content, tool_calls: None, tool_call_id: "".to_string() }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatPost {
     pub messages: Vec<ChatMessage>,
     #[serde(default)]
@@ -226,4 +274,14 @@ pub struct ChatPost {
     #[serde(default)]
     pub scratchpad: String,
     pub stream: Option<bool>,
+    pub temperature: Option<f32>,
+    #[serde(default)]
+    pub max_tokens: usize,
+    #[serde(default)]
+    pub tools: Option<Vec<serde_json::Value>>,
+    // pub tool_choice: Option<String>,
+    #[serde(default)]
+    pub only_deterministic_messages: bool,  // means don't sample from the model
+    #[serde(default)]
+    pub chat_id: String,
 }

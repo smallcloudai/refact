@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use axum::http::Response;
 use hyper::Body;
@@ -7,8 +7,8 @@ use serde_json::json;
 use crate::custom_error::ScratchError;
 
 
-pub fn get_build_info() -> HashMap<&'static str, &'static str> {
-    HashMap::from([
+pub fn get_build_info() -> IndexMap<&'static str, &'static str> {
+    IndexMap::from([
         ("version", crate::version::build_info::PKG_VERSION),
         ("commit", crate::version::build_info::COMMIT_HASH),
         ("build_os", crate::version::build_info::BUILD_OS),

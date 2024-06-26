@@ -5,7 +5,7 @@ lto = true
 
 [package]
 name = "refact-lsp"
-version = "0.8.4"
+version = "0.9.5"
 edition = "2021"
 build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -17,7 +17,7 @@ shadow-rs = "0.25.0"
 shadow-rs = { version = "0.25.0", features = [], default-features = false }
 hyper = { version = "0.14", features = ["server", "stream"] }
 reqwest = { version = "0.11", features = ["json", "stream"] }
-tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal"] }
+tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal", "process"] }
 reqwest-eventsource = "0.4.0"
 url = "2.4.1"
 serde = { version = "1", features = ["rc", "derive"] }
@@ -45,6 +45,8 @@ similar = "2.3.0"
 axum = "0.6.20"
 uuid = { version = "1", features = ["v4"] }
 lazy_static = "1.4.0"
+indexmap = {version = "1.9.1", features = ["serde-1"]}
+
 
 regex-automata = { version = "0.1.10", features = ["transducer"] }
 sorted-vec = "0.8.3"

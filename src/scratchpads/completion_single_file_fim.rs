@@ -75,7 +75,13 @@ impl SingleFileFIM {
     }
 }
 
-fn add_context_to_prompt(context_format: &String, prompt: &String, fim_prefix: &String, postprocessed_messages: &Vec<ContextFile>, language_id: &LanguageId) -> String {
+fn add_context_to_prompt(
+    context_format: &String,
+    prompt: &String,
+    fim_prefix: &String,
+    postprocessed_messages: &Vec<ContextFile>,
+    language_id: &LanguageId
+) -> String {
     let mut context_files = vec![];
     if context_format == "starcoder" {
         for m in postprocessed_messages {
@@ -175,7 +181,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             if !self.post.inputs.multiline {
                 stop_list.push("\n".to_string());  // This doesn't stop hf inference, only whole tokens do
             }
-            sampling_parameters_to_patch.stop = Some(stop_list);
+            sampling_parameters_to_patch.stop = stop_list;
         }
         let mut source = self.post.inputs.sources.get(
                 &self.post.inputs.cursor.file
@@ -313,7 +319,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             let max_files_n = 10;
             let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
                 self.global_context.clone(),
-                ast_messages,
+                &ast_messages,
                 self.t.tokenizer.clone(),
                 rag_tokens_n,
                 false,

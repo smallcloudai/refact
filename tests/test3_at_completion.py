@@ -60,7 +60,7 @@ def main():
     tests = [test1, test2, test3, test4]
     for test in tests:
         test()
-    print("All tests passed!")
+    print("PASS")
 
 
 if __name__ == "__main__":

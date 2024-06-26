@@ -6,6 +6,7 @@ use serde_json::Value;
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use tracing::{info, error};
+use crate::at_commands::execute_at::run_at_commands;
 
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
@@ -14,7 +15,7 @@ use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_generic::default_system_message_from_patch;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
-use crate::scratchpads::chat_utils_rag::{run_at_commands, HasVecdbResults};
+use crate::scratchpads::chat_utils_rag::HasRagResults;
 
 const DEBUG: bool = true;
 
@@ -27,8 +28,9 @@ pub struct ChatLlama2 {
     pub keyword_s: String, // "SYSTEM:" keyword means it's not one token
     pub keyword_slash_s: String,
     pub default_system_message: String,
-    pub has_vecdb_results: HasVecdbResults,
+    pub has_rag_results: HasRagResults,
     pub global_context: Arc<ARwLock<GlobalContext>>,
+    pub allow_at: bool,
 }
 
 
@@ -37,6 +39,7 @@ impl ChatLlama2 {
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: ChatPost,
         global_context: Arc<ARwLock<GlobalContext>>,
+        allow_at: bool,
     ) -> Self {
         ChatLlama2 {
             t: HasTokenizerAndEot::new(tokenizer),
@@ -45,8 +48,9 @@ impl ChatLlama2 {
             keyword_s: "<s>".to_string(),
             keyword_slash_s: "</s>".to_string(),
             default_system_message: "".to_string(),
-            has_vecdb_results: HasVecdbResults::new(),
+            has_rag_results: HasRagResults::new(),
             global_context,
+            allow_at,
         }
     }
 }
@@ -74,10 +78,14 @@ impl ScratchpadAbstract for ChatLlama2 {
         context_size: usize,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let top_n = 10;
-        let last_user_msg_starts = run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &mut self.post, top_n, &mut self.has_vecdb_results).await;
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &self.post.messages, last_user_msg_starts, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message)?;
-        sampling_parameters_to_patch.stop = Some(self.dd.stop_list.clone());
+        let top_n: usize = 7;
+        let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
+            run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &self.post.messages, top_n, &mut self.has_rag_results).await
+        } else {
+            (self.post.messages.clone(), self.post.messages.len(), false)
+        };
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message)?;
+        sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // loosely adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();
         prompt.push_str(self.keyword_s.as_str());
@@ -141,7 +149,7 @@ impl ScratchpadAbstract for ChatLlama2 {
     }
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
-        return self.has_vecdb_results.response_streaming();
+        return self.has_rag_results.response_streaming();
     }
 }
 
