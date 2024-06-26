@@ -43,7 +43,7 @@ def messages_to_dicts(
         tools_namesonly = [x["function"]["name"] for x in tools] if tools else []
         print(termcolor.colored("------ call chat %s T=%0.2f tools=%s ------" % (model_name, temperature, tools_namesonly), "red"))
     for x in messages:
-        if x.role in ["system", "user", "assistant", "tool", "context_file", "context_memory"]:
+        if x.role in ["system", "user", "assistant", "tool", "context_file", "context_memory", "diff"]:
             listofdict.append({
                 "role": x.role,
                 "content": x.content,

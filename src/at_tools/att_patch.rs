@@ -13,45 +13,47 @@ pub struct ToolPatch {
 
 
 const PATCH_SYSTEM_PROMPT: &str = r#"
-You are a diff generator.
-Use this format:
+*SEARCH/REPLACE block* Rules:
 
-<<<<<<<< SEARCH
-original code
-========
-replacement code
->>>>>>>> END
+Every *SEARCH/REPLACE block* must use this format:
+1. The opening fence and code language, eg: ```python
+2. The start of search block: <<<<<<< SEARCH
+3. A contiguous chunk of lines to search for in the existing source code
+4. The dividing line: =======
+5. The lines to replace into the source code
+6. The end of the replace block: >>>>>>> REPLACE
+7. The closing fence: ```
 
-In addition to changing the existing code, you are also responsible for adding and removing entire files.
+Every *SEARCH* section must *EXACTLY MATCH* the existing source code, character for character, including all comments, docstrings, formatting, etc.
 
-To add a file write:
+*SEARCH/REPLACE* blocks will replace *all* matching occurrences.
+Include enough lines to make the SEARCH blocks unique.
 
-<<<<<<<< NEW
-new file code
->>>>>>>> END
+Include *ALL* the code being searched and replaced!
 
-To remove a file:
+To move code, use 2 *SEARCH/REPLACE* blocks: 1 to delete it from its current location, 1 to insert it in the new location.
 
-<<<<<<<< REMOVE
->>>>>>>> END
+If you've opened *SEARCH/REPLACE block* you must close it.
+
+ONLY EVER RETURN CODE IN A *SEARCH/REPLACE BLOCK*!
 "#;
 
 
 fn parse_diff_message(path: &String, content: &str) -> Result<serde_json::Value, String> {
-    let search_marker = "<<<<<<<< SEARCH";
-    let replace_marker = ">>>>>>>> END";
-    let equals_marker = "========";
+    let search_marker = "<<<<<<< SEARCH";
+    let delimiter_marker = "=======";
+    let replace_marker = ">>>>>>> REPLACE";
 
     let search_pos = content.find(search_marker).ok_or("SEARCH marker not found")?;
+    let delimiter_pos = content.find(delimiter_marker).ok_or("EQUALS marker not found")?;
     let replace_pos = content.find(replace_marker).ok_or("REPLACE marker not found")?;
-    let equals_pos = content.find(equals_marker).ok_or("EQUALS marker not found")?;
 
-    if search_pos >= equals_pos || equals_pos >= replace_pos {
+    if search_pos >= delimiter_pos || delimiter_pos >= replace_pos {
         return Err("Markers are in the wrong order".to_string());
     }
 
-    let original_code = &content[search_pos + search_marker.len()..equals_pos].trim();
-    let replacement_code = &content[equals_pos + equals_marker.len()..replace_pos].trim();
+    let original_code = &content[search_pos + search_marker.len()..delimiter_pos].trim();
+    let replacement_code = &content[delimiter_pos + delimiter_marker.len()..replace_pos].trim();
 
     let line1 = 1;
     let line2 = 1;
@@ -92,19 +94,21 @@ impl Tool for ToolPatch {
             None => { "".to_string() }
         };
 
+        let max_tokens = 1024;
+        let temperature = Some(0.2);
         let mut chat_post = ChatPost {
             messages: ccx.messages.clone(),
             parameters: SamplingParameters {
-                max_new_tokens: 300,
-                temperature: Some(0.0),
+                max_new_tokens: max_tokens,
+                temperature,
                 top_p: None,
                 stop: vec![],
             },
             model: "gpt-3.5-turbo".to_string(),
             scratchpad: "".to_string(),
             stream: Some(false),
-            temperature: Some(0.0),
-            max_tokens: 300,
+            temperature,
+            max_tokens,
             tools: None,
             only_deterministic_messages: false,
             chat_id: "".to_string(),
@@ -206,21 +210,27 @@ impl Tool for ToolPatch {
         let mut to_parse = choice0_message_content.clone();
         let mut chunks = vec![];
         loop {
-            let gt_end = to_parse.find(">>>>>>>> END");
+            let gt_end = to_parse.find(">>>>>>> REPLACE");
             if gt_end.is_none() {
                 break;
             }
-            let (eat_now, eat_later) = to_parse.split_at(gt_end.unwrap() + ">>>>>>>> END".len());
+            let (eat_now, eat_later) = to_parse.split_at(gt_end.unwrap() + ">>>>>>> REPLACE".len());
             let edit_jdict = parse_diff_message(path, eat_now)?;
             chunks.push(edit_jdict);
             to_parse = eat_later.into();
         }
         info!("chunks: {:?}", chunks);
+        let mut results = vec![];
         if chunks.is_empty() {
-            return Err(choice0_message_content.clone());
+            results.push(ContextEnum::ChatMessage(ChatMessage {
+                role: "diff".to_string(),
+                content: "Can't make any changes. Try another time but now follow *SEARCH/REPLACE block* Rules.".to_string(),
+                tool_calls: None,
+                tool_call_id: tool_call_id.clone(),
+            }));
+            return Ok(results);
         }
 
-        let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "diff".to_string(),
             content: serde_json::to_string_pretty(&chunks).unwrap(),
@@ -237,7 +247,7 @@ mod tests {
 
     #[test]
     fn test_parse_diff_message() {
-        let input = "<<<<<<<< SEARCH\nimport sys, impotlib, os\n========\nimport sys, importlib, os\n>>>>>>>> END";
+        let input = "<<<<<<< SEARCH\nimport sys, impotlib, os\n=======\nimport sys, importlib, os\n>>>>>>> REPLACE";
         let expected_output = serde_json::json!({
             "file_name": "file1.py",
             "file_action": "edit",
