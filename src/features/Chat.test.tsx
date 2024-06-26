@@ -18,6 +18,8 @@ import {
   ChatErrorStreaming,
   ChatReceiveCapsError,
   ResponseToChat,
+  ToolCall,
+  ToolResult,
 } from "../events";
 import {
   MARS_ROVER_CHAT,
@@ -74,6 +76,7 @@ describe("Chat", () => {
           model: "", // not added because it's default
           title: "",
           attach_file: false,
+          tools: null,
         },
       },
       "*",
@@ -228,6 +231,7 @@ describe("Chat", () => {
           model: "test-model",
           title: "",
           attach_file: false,
+          tools: null,
         },
       },
       "*",
@@ -240,6 +244,8 @@ describe("Chat", () => {
 
     const { user, ...app } = render(<Chat />);
 
+    setUpCapsForChat("foo");
+
     const restoreChatAction: RestoreChat = {
       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
       payload: {
@@ -247,7 +253,7 @@ describe("Chat", () => {
         chat: {
           id: "bar",
           messages: [
-            ["user", "hello"],
+            ["user", "hello 👋"],
             ["assistant", "hello there"],
             ["user", "how are you?"],
             ["assistant", "fine"],
@@ -260,13 +266,11 @@ describe("Chat", () => {
 
     postMessage(restoreChatAction);
 
-    await waitFor(() => expect(app.queryByText("hello")).not.toBeNull());
+    await waitFor(() => expect(app.queryByText("hello 👋")).not.toBeNull());
 
-    const retryButtons = app.queryAllByText("Retry");
+    const retryButton = app.getByText(/hello 👋/);
 
-    expect(retryButtons.length).toBe(2);
-
-    await user.click(retryButtons[0]);
+    await user.click(retryButton);
 
     const textarea: HTMLTextAreaElement | null =
       app.container.querySelector("textarea");
@@ -282,10 +286,11 @@ describe("Chat", () => {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
         payload: {
           id: "bar",
-          messages: [["user", "hello"]],
+          messages: [["user", "hello 👋"]],
           title: "hello",
           model: "gpt-3.5-turbo",
           attach_file: false,
+          tools: null,
         },
       },
       "*",
@@ -378,6 +383,7 @@ describe("Chat", () => {
           title: "",
           model: "",
           attach_file: false,
+          tools: null,
           messages: [
             ["system", SYSTEM_PROMPTS.insert_jokes.text],
             ["user", "hello\n"],
@@ -447,5 +453,125 @@ describe("Chat", () => {
     expect(messages.length).toBe(1);
 
     expect(() => app.queryByText("hello there")).not.toBeNull();
+  });
+
+  test("Chat with functions", async () => {
+    vi.mock("uuid", () => ({ v4: () => "foo" }));
+    const postMessageSpy = vi.spyOn(window, "postMessage");
+
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.hasPointerCapture = vi.fn();
+    window.HTMLElement.prototype.releasePointerCapture = vi.fn();
+
+    const { user, ...app } = render(<Chat />);
+
+    const toolCalls: ToolCall[] = [
+      {
+        id: "a",
+        function: {
+          name: "cat",
+          arguments: JSON.stringify({ file: "meow.txt" }),
+        },
+        type: "function",
+        index: 0,
+      },
+    ];
+
+    const toolResult: ToolResult = {
+      tool_call_id: "a",
+      finish_reason: "call_worked",
+      content: "meow\nmeow\n🐈\n",
+    };
+
+    const restoreChatAction: RestoreChat = {
+      type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
+      payload: {
+        id: "foo",
+        chat: {
+          id: "bar",
+          messages: [
+            ["user", "hello"],
+            ["assistant", "hello there", toolCalls],
+            ["tool", toolResult],
+          ],
+          title: "hello",
+          model: "gpt-3.5-turbo",
+        },
+      },
+    };
+
+    postMessage(restoreChatAction);
+
+    const textarea = app.getByTestId("chat-form-textarea");
+
+    expect(textarea).not.toBeNull();
+
+    await user.type(textarea, "hello");
+
+    await user.keyboard("{Enter}");
+
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      {
+        type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
+        payload: {
+          id: "bar",
+          title: "hello",
+          model: "gpt-3.5-turbo",
+          attach_file: false,
+          tools: null,
+          messages: [
+            ["user", "hello"],
+            ["assistant", "hello there", toolCalls],
+            ["tool", toolResult],
+            ["user", "hello\n"],
+          ],
+        },
+      },
+      "*",
+    );
+  });
+
+  test("Prevent send when restored with uncalled tool_calls", async () => {
+    vi.mock("uuid", () => ({ v4: () => "foo" }));
+
+    const app = render(<Chat />);
+
+    const restoreChatAction: RestoreChat = {
+      type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
+      payload: {
+        id: "foo",
+        chat: {
+          id: "bar",
+          messages: [
+            ["user", "hello 👋"],
+            [
+              "assistant",
+              "calling tools",
+              [
+                {
+                  function: {
+                    arguments: '{"file": "foo.txt"}',
+                    name: "cat",
+                  },
+                  index: 0,
+                  type: "function",
+                  id: "test",
+                },
+              ],
+            ],
+          ],
+          title: "hello",
+          model: "gpt-3.5-turbo",
+        },
+      },
+    };
+
+    postMessage(restoreChatAction);
+
+    await waitFor(() => expect(app.queryByText("hello 👋")).not.toBeNull());
+
+    const button = app.queryByText(/resume/i);
+
+    expect(button).not.toBeNull();
   });
 });

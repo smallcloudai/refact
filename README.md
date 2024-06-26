@@ -71,7 +71,7 @@ type definitions for events that chat component emits and receives from the host
 
 install dependencies: `npm ci`
 run [refact-lsp](https://github.com/smallcloudai/refact-lsp)
-run `REFACT_LSP_URL="http://localhost:8001 npm dev` and go to localhost:5173
+run `REFACT_LSP_URL="http://localhost:8001" npm run dev` and go to http://localhost:5173
 
 ### env vars
 
@@ -83,7 +83,7 @@ run `REFACT_LSP_URL="http://localhost:8001 npm dev` and go to localhost:5173
 
 ### env vars
 
-`VITE_REFACT_LSP_URL`: optional prefix for the `/v1/caps` and `/v1/chat` urls (use when building for docker)
+`VITE_REFACT_LSP_URL`: optional prefix for the `/v1/caps` and `/v1/chat` urls (used when building for docker)
 
 ## How to build for docker
 

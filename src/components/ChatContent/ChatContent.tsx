@@ -1,14 +1,20 @@
-import React, { useEffect, useImperativeHandle } from "react";
-import { ChatMessages, isChatContextFileMessage } from "../../services/refact";
-import { MarkdownProps } from "../Markdown";
+import React from "react";
+import {
+  ChatMessages,
+  ToolResult,
+  isChatContextFileMessage,
+  isToolMessage,
+} from "../../services/refact";
+import type { MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, Text, Container } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
-// import { SystemInput } from "./SystemInput";
+import { MemoryContent } from "./MemoryContent";
+import { useAutoScroll } from "./useAutoScroll";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
@@ -34,18 +40,30 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       isStreaming,
     } = props;
 
-    const innerRef = React.useRef<HTMLDivElement>(null);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    useImperativeHandle(ref, () => innerRef.current!, []);
+    const { innerRef, handleScroll } = useAutoScroll({
+      ref,
+      messages,
+      isStreaming,
+    });
 
-    useEffect(() => {
-      innerRef.current?.scrollIntoView &&
-        innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
+    const toolResultsMap = React.useMemo(() => {
+      return messages.reduce<Record<string, ToolResult>>((acc, message) => {
+        if (!isToolMessage(message)) return acc;
+        const result = message[1];
+        return {
+          ...acc,
+          [result.tool_call_id]: result,
+        };
+      }, {});
     }, [messages]);
 
     return (
-      <ScrollArea style={{ flexGrow: 1, height: "auto" }} scrollbars="vertical">
-        <Flex direction="column" className={styles.content} px="1">
+      <ScrollArea
+        style={{ flexGrow: 1, height: "auto" }}
+        scrollbars="vertical"
+        onScroll={handleScroll}
+      >
+        <Flex direction="column" className={styles.content} p="2" gap="2">
           {messages.length === 0 && <PlaceHolderText />}
           {messages.map((message, index) => {
             if (isChatContextFileMessage(message)) {
@@ -78,16 +96,25 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                   onPasteClick={onPasteClick}
                   canPaste={canPaste}
                   key={index}
-                >
-                  {text}
-                </AssistantInput>
+                  message={text}
+                  toolCalls={message[2]}
+                  toolResults={toolResultsMap}
+                />
               );
+            } else if (role === "tool") {
+              return null;
+            } else if (role === "context_memory") {
+              return <MemoryContent key={index} items={text} />;
             } else {
               return null;
-              // return <SystemInput key={index}>{text}</SystemInput>;
+              // return <Markdown key={index}>{text}</Markdown>;
             }
           })}
-          {isWaiting && <Spinner />}
+          {isWaiting && (
+            <Container py="4">
+              <Spinner />
+            </Container>
+          )}
           <div ref={innerRef} />
         </Flex>
       </ScrollArea>

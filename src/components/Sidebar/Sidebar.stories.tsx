@@ -6,6 +6,8 @@ const meta = {
   component: Sidebar,
   args: {
     history: [],
+    takingNotes: false,
+    currentChatId: "",
   },
 } satisfies Meta<typeof Sidebar>;
 

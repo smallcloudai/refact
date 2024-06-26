@@ -6,16 +6,19 @@ import { Item } from "./Item";
 import { Portal } from "../Portal";
 import { Popover } from "./Popover";
 import { TruncateLeft } from "../Text";
-import type { CommandCompletionResponse } from "../../events";
+import { ChatState } from "../../hooks";
+import { type DebouncedState } from "usehooks-ts";
 
 export type ComboBoxProps = {
-  commands: CommandCompletionResponse;
+  commands: ChatState["commands"];
   onChange: (value: string) => void;
   value: string;
   onSubmit: React.KeyboardEventHandler<HTMLTextAreaElement>;
   placeholder?: string;
   render: (props: TextAreaProps) => React.ReactElement;
-  requestCommandsCompletion: (query: string, cursor: number) => void;
+  requestCommandsCompletion: DebouncedState<
+    (query: string, cursor: number) => void
+  >;
 };
 
 export const ComboBox: React.FC<ComboBoxProps> = ({
@@ -70,6 +73,29 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     requestCommandsCompletion(value, cursor);
   }, [requestCommandsCompletion, value]);
 
+  const closeCombobox = useCallback(() => {
+    combobox.hide();
+    combobox.setState("items", []);
+    combobox.setState("activeId", null);
+    combobox.setState("activeValue", undefined);
+  }, [combobox]);
+
+  const handleReplace = useCallback(
+    (input: string) => {
+      if (!ref.current) return;
+      const nextValue = replaceRange(
+        ref.current.value,
+        commands.replace,
+        input,
+      );
+      closeCombobox();
+      requestCommandsCompletion.cancel();
+      onChange(nextValue);
+      setMoveCursorTo(commands.replace[0] + input.length);
+    },
+    [closeCombobox, commands.replace, onChange, requestCommandsCompletion],
+  );
+
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const state = combobox.getState();
@@ -99,11 +125,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       const wasArrowLeftOrRight =
         event.key === "ArrowLeft" || event.key === "ArrowRight";
       if (wasArrowLeftOrRight) {
-        combobox.hide();
+        closeCombobox();
       }
 
       if (wasArrowLeftOrRight && state.open) {
-        combobox.hide();
+        closeCombobox();
       }
 
       const tabOrEnterOrSpace =
@@ -114,21 +140,23 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       if (state.open && tabOrEnterOrSpace && command) {
         event.preventDefault();
         event.stopPropagation();
-        const nextValue = replaceRange(
-          ref.current.value,
-          commands.replace,
-          command,
-        );
-        combobox.hide();
-        onChange(nextValue);
-        setMoveCursorTo(commands.replace[0] + command.length);
+        handleReplace(command);
       }
 
       if (event.key === "Escape") {
-        combobox.hide();
+        closeCombobox();
       }
     },
-    [combobox, commands.replace, hasMatches, onChange, onSubmit, state],
+    [
+      closeCombobox,
+      combobox,
+      handleReplace,
+      hasMatches,
+      onSubmit,
+      state.activeId,
+      state.activeValue,
+      state.open,
+    ],
   );
 
   const handleChange = useCallback(
@@ -142,15 +170,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     (item: string, event: React.MouseEvent<HTMLDivElement>) => {
       event.stopPropagation();
       event.preventDefault();
-      const textarea = ref.current;
-      if (!textarea) return;
-
-      combobox.hide();
-      const nextValue = replaceRange(textarea.value, commands.replace, item);
-      onChange(nextValue);
-      setMoveCursorTo(commands.replace[0] + item.length);
+      handleReplace(item);
     },
-    [combobox, commands.replace, onChange],
+    [handleReplace],
   );
 
   const popoverWidth = ref.current
@@ -161,7 +183,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     const maybeItem = combobox.item(state.activeId);
     if (state.open && maybeItem === null) {
       const first = combobox.first();
-      combobox.setActiveId(first);
+      if (combobox.item(first)) {
+        combobox.setActiveId(first);
+      }
     }
   }, [combobox, state]);
 

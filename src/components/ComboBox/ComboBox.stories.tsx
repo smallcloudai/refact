@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ComboBox, type ComboBoxProps } from "./ComboBox";
 import { TextArea } from "../TextArea";
 import { Card } from "@radix-ui/themes";
+import { useDebounceCallback } from "usehooks-ts";
 
 async function getCommands(query: string, cursor: number) {
   return fetch("/v1/at-command-completion", {
@@ -25,10 +26,11 @@ const App: React.FC<ComboBoxProps> = (props) => {
     is_cmd_executable: false,
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleCommandCompletion = React.useCallback(
-    (query: string, cursor: number) => {
+    useDebounceCallback((query: string, cursor: number) => {
       void getCommands(query, cursor).then((res) => res && setCommands(res));
-    },
+    }, 0),
     [],
   );
   return (

@@ -59,6 +59,7 @@ export type ChatControlsProps = {
   selectProps: CapsSelectProps;
   promptsProps: PromptSelectProps;
   host: Config["host"];
+  showControls: boolean;
 };
 
 export const ChatControls: React.FC<ChatControlsProps> = ({
@@ -67,6 +68,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   selectProps,
   promptsProps,
   host,
+  showControls,
 }) => {
   return (
     <Flex
@@ -123,8 +125,8 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           </Flex>
         );
       })}
-      <CapsSelect {...selectProps} />
-      <PromptSelect {...promptsProps} />
+      {showControls && <CapsSelect {...selectProps} />}
+      {showControls && <PromptSelect {...promptsProps} />}
     </Flex>
   );
 };

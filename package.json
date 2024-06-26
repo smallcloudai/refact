@@ -1,6 +1,6 @@
 {
   "name": "refact-chat-js",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "license": "BSD-3-Clause",
   "files": [
@@ -58,9 +58,10 @@
     "@storybook/addon-onboarding": "^1.0.10",
     "@storybook/blocks": "^7.6.4",
     "@storybook/react": "^7.6.4",
-    "@storybook/react-vite": "^7.6.4",
+    "@storybook/react-vite": "^8.1.5",
     "@storybook/test": "^7.6.4",
-    "@testing-library/react": "^14.1.2",
+    "@testing-library/dom": "^10.1.0",
+    "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.1",
     "@types/js-cookie": "^3.0.6",
     "@types/react": "^18.2.43",
@@ -103,7 +104,7 @@
     "vite": "^5.0.8",
     "vite-plugin-dts": "^3.7.0",
     "vite-plugin-eslint": "^1.8.1",
-    "vitest": "^1.0.4",
+    "vitest": "^1.6.0",
     "vitest-matchmedia-mock": "^1.0.3"
   },
   "lint-staged": {

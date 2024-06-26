@@ -4,6 +4,15 @@ import {
   type ChatMessages,
   type ChatResponse,
   isChatContextFileMessage,
+  isChatContextFileDelta,
+  isAssistantMessage,
+  isAssistantDelta,
+  isToolCallDelta,
+  isToolResponse,
+  isChatResponseChoice,
+  ToolCommand,
+  CodeChatModel,
+  ChatMessage,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -31,7 +40,6 @@ import {
   type RequestAtCommandCompletion,
   isReceiveAtCommandCompletion,
   type SetSelectedAtCommand,
-  // isSetSelectedAtCommand,
   isReceiveAtCommandPreview,
   isChatUserMessageResponse,
   isChatSetLastModelUsed,
@@ -55,42 +63,116 @@ import {
   type SystemPrompts,
   RequestPreviewFiles,
   type CommandCompletionResponse,
+  type ToolResult,
+  isSetTakeNotes,
+  SetTakeNotes,
+  RequestTools,
+  isRecieveTools,
+  SetUseTools,
+  QuestionFromChat,
+  isSetUseTools,
+  SetEnableSend,
+  isSetEnableSend,
+  StopStreamingFromChat,
+  TakeNotesFromChat,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
+import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
 
-function formatChatResponse(
+export function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
 ): ChatMessages {
   if (isChatUserMessageResponse(response)) {
     if (response.role === "context_file") {
       return [...messages, [response.role, JSON.parse(response.content)]];
+    } else if (response.role === "context_memory") {
+      return [...messages, [response.role, JSON.parse(response.content)]];
     }
     return [...messages, [response.role, response.content]];
   }
 
+  if (isToolResponse(response)) {
+    const { tool_call_id, content, finish_reason } = response;
+    const toolResult: ToolResult = { tool_call_id, content, finish_reason };
+    return [...messages, [response.role, toolResult]];
+  }
+
+  if (!isChatResponseChoice(response)) {
+    // console.log("Not a good response");
+    // console.log(response);
+    return messages;
+  }
+
   return response.choices.reduce<ChatMessages>((acc, cur) => {
-    if (cur.delta.role === "context_file") {
+    if (isChatContextFileDelta(cur.delta)) {
       return acc.concat([[cur.delta.role, cur.delta.content]]);
     }
 
-    if (acc.length === 0 && cur.delta.role) {
-      return acc.concat([[cur.delta.role, cur.delta.content]]);
+    if (
+      acc.length === 0 &&
+      "content" in cur.delta &&
+      typeof cur.delta.content === "string" &&
+      cur.delta.role
+    ) {
+      if (cur.delta.role === "assistant") {
+        return acc.concat([
+          [cur.delta.role, cur.delta.content, cur.delta.tool_calls],
+        ]);
+      }
+      // TODO: narrow this
+      const message = [cur.delta.role, cur.delta.content] as ChatMessage;
+      return acc.concat([message]);
     }
 
     const lastMessage = acc[acc.length - 1];
-    if (lastMessage[0] === "assistant") {
+
+    if (isToolCallDelta(cur.delta)) {
+      if (!isAssistantMessage(lastMessage)) {
+        return acc.concat([
+          ["assistant", cur.delta.content ?? "", cur.delta.tool_calls],
+        ]);
+      }
+
       const last = acc.slice(0, -1);
-      const currentMessage = lastMessage[1];
-      return last.concat([["assistant", currentMessage + cur.delta.content]]);
+      const collectedCalls = lastMessage[2] ?? [];
+      const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
+      const content = cur.delta.content;
+      const message = content ? lastMessage[1] + content : lastMessage[1];
+
+      return last.concat([["assistant", message, calls]]);
     }
 
-    if (cur.delta.role === null) {
+    if (
+      isAssistantMessage(lastMessage) &&
+      isAssistantDelta(cur.delta) &&
+      typeof cur.delta.content === "string"
+    ) {
+      const last = acc.slice(0, -1);
+      const currentMessage = lastMessage[1] ?? "";
+      const toolCalls = lastMessage[2];
+      return last.concat([
+        ["assistant", currentMessage + cur.delta.content, toolCalls],
+      ]);
+    } else if (
+      isAssistantDelta(cur.delta) &&
+      typeof cur.delta.content === "string"
+    ) {
+      return acc.concat([["assistant", cur.delta.content]]);
+    } else if (cur.delta.role === "assistant") {
+      // empty message from JB
       return acc;
     }
 
-    return acc.concat([[cur.delta.role, cur.delta.content]]);
+    if (cur.delta.role === null || cur.finish_reason !== null) {
+      return acc;
+    }
+
+    // console.log("Fall though");
+    // console.log({ cur, lastMessage });
+
+    return acc;
   }, messages);
 }
 
@@ -98,6 +180,35 @@ export function reducer(postMessage: typeof window.postMessage) {
   return function (state: ChatState, action: ActionToChat): ChatState {
     const isThisChat =
       action.payload?.id && action.payload.id === state.chat.id ? true : false;
+
+    function saveAndStopStreaming() {
+      const stopStreaming: StopStreamingFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING,
+        payload: { id: state.chat.id },
+      };
+      postMessage(stopStreaming);
+
+      const save: SaveChatFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+        payload: state.chat,
+      };
+      postMessage(save);
+    }
+
+    function maybeTakeNotes() {
+      if (!state.take_notes || state.chat.messages.length === 0) return;
+      const messagesWithNote: ChatMessages = [
+        ...state.chat.messages,
+        ["user", TAKE_NOTE_MESSAGE],
+      ];
+
+      const notes: TakeNotesFromChat = {
+        type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
+        payload: { ...state.chat, messages: messagesWithNote },
+      };
+
+      postMessage(notes);
+    }
 
     // console.log(action.type, { isThisChat });
     // console.log(action.payload);
@@ -112,6 +223,7 @@ export function reducer(postMessage: typeof window.postMessage) {
 
     if (isThisChat && isResponseToChat(action)) {
       const hasUserMessage = isChatUserMessageResponse(action.payload);
+
       const current = hasUserMessage
         ? state.chat.messages.slice(0, state.previous_message_length)
         : state.chat.messages;
@@ -141,6 +253,12 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isRestoreChat(action)) {
+      if (state.streaming) {
+        saveAndStopStreaming();
+      } else {
+        maybeTakeNotes();
+      }
+
       const messages: ChatMessages = action.payload.chat.messages.map(
         (message) => {
           if (message[0] === "context_file" && typeof message[1] === "string") {
@@ -165,6 +283,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       return {
         ...state,
         waiting_for_response: false,
+        prevent_send: true,
         streaming: false,
         error: null,
         previous_message_length: lastAssistantMessage,
@@ -173,10 +292,17 @@ export function reducer(postMessage: typeof window.postMessage) {
           messages,
         },
         selected_snippet: action.payload.snippet ?? state.selected_snippet,
+        take_notes: false,
       };
     }
 
     if (isThisChat && isCreateNewChat(action)) {
+      if (state.streaming) {
+        saveAndStopStreaming();
+      } else {
+        maybeTakeNotes();
+      }
+
       const nextState = createInitialState();
 
       return {
@@ -200,16 +326,20 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isChatReceiveCaps(action)) {
+      // TODO: check caps that the model supports tools
       const default_cap = action.payload.caps.code_chat_default_model;
-      const available_caps = Object.keys(action.payload.caps.code_chat_models);
-      const error = available_caps.length === 0 ? "No available caps" : null;
+      const available_caps = action.payload.caps.code_chat_models;
+      const cap_names = Object.keys(available_caps);
+      const error = cap_names.length === 0 ? "No available caps" : null;
+      // const cap = state.chat.model || default_cap
+      // const tools = available_caps[cap].supports_tools
 
       return {
         ...state,
         error,
         caps: {
           fetching: false,
-          default_cap: default_cap || available_caps[0] || "",
+          default_cap: default_cap || cap_names[0] || "",
           available_caps,
           error: null,
         },
@@ -240,6 +370,7 @@ export function reducer(postMessage: typeof window.postMessage) {
 
       return {
         ...state,
+        prevent_send: false,
         waiting_for_response: false,
         streaming: false,
       };
@@ -249,6 +380,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       return {
         ...state,
         streaming: false,
+        prevent_send: true,
         waiting_for_response: false,
         error:
           typeof action.payload.message === "string"
@@ -294,16 +426,6 @@ export function reducer(postMessage: typeof window.postMessage) {
         },
       };
     }
-
-    // if (isThisChat && isSetSelectedAtCommand(action)) {
-    //   return {
-    //     ...state,
-    //     rag_commands: {
-    //       ...state.rag_commands,
-    //       selected_command: action.payload.command,
-    //     },
-    //   };
-    // }
 
     if (isThisChat && isReceiveAtCommandPreview(action)) {
       const filesInPreview = action.payload.preview.reduce<ChatContextFile[]>(
@@ -407,6 +529,43 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
+    if (isThisChat && isSetTakeNotes(action)) {
+      return {
+        ...state,
+        take_notes: action.payload.take_notes,
+      };
+    }
+
+    if (isThisChat && isRecieveTools(action)) {
+      const { tools } = action.payload;
+      if (tools.length === 0) {
+        return {
+          ...state,
+          tools: [],
+          use_tools: false,
+        };
+      }
+
+      return {
+        ...state,
+        tools,
+      };
+    }
+
+    if (isThisChat && isSetUseTools(action)) {
+      return {
+        ...state,
+        use_tools: action.payload.use_tools,
+      };
+    }
+
+    if (isThisChat && isSetEnableSend(action)) {
+      return {
+        ...state,
+        prevent_send: !action.payload.enable_send,
+      };
+    }
+
     return state;
   };
 }
@@ -414,12 +573,14 @@ export function reducer(postMessage: typeof window.postMessage) {
 export type ChatCapsState = {
   fetching: boolean;
   default_cap: string;
-  available_caps: string[];
+  // available_caps: string[];
+  available_caps: Record<string, CodeChatModel>;
   error: null | string;
 };
 
 export type ChatState = {
   chat: ChatThread;
+  prevent_send: boolean;
   waiting_for_response: boolean;
   streaming: boolean;
   previous_message_length: number;
@@ -436,11 +597,16 @@ export type ChatState = {
     fetching: boolean;
   };
   selected_system_prompt: null | string;
+  take_notes: boolean;
+  // Check caps if model has tools
+  tools: ToolCommand[] | null;
+  use_tools: boolean;
 };
 
 export function createInitialState(): ChatState {
   return {
     streaming: false,
+    prevent_send: false,
     waiting_for_response: false,
     error: null,
     previous_message_length: 0,
@@ -460,7 +626,7 @@ export function createInitialState(): ChatState {
     caps: {
       fetching: false,
       default_cap: "",
-      available_caps: [],
+      available_caps: {},
       error: null,
     },
     commands: {
@@ -484,6 +650,9 @@ export function createInitialState(): ChatState {
       fetching: false,
     },
     selected_system_prompt: null,
+    take_notes: true,
+    tools: null,
+    use_tools: true,
   };
 }
 
@@ -514,17 +683,42 @@ export const useEventBusForChat = () => {
     });
   }, [state.chat.id]);
 
+  const setTakeNotes = useCallback(
+    (take_notes: boolean) => {
+      const action: SetTakeNotes = {
+        type: EVENT_NAMES_TO_CHAT.SET_TAKE_NOTES,
+        payload: { id: state.chat.id, take_notes },
+      };
+
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
+
+  const maybeDefaultPrompt: string | null = useMemo(() => {
+    return "default" in state.system_prompts.prompts
+      ? state.system_prompts.prompts.default.text
+      : null;
+  }, [state.system_prompts.prompts]);
+
   const sendMessages = useCallback(
     (messages: ChatMessages, attach_file = state.active_file.attach) => {
       clearError();
+      // setTakeNotes(true);
       dispatch({
         type: EVENT_NAMES_TO_CHAT.SET_DISABLE_CHAT,
         payload: { id: state.chat.id, disable: true },
       });
 
-      const payload: ChatThread = {
+      const messagesWithSystemPrompt: ChatMessages =
+        state.selected_system_prompt &&
+        state.selected_system_prompt !== maybeDefaultPrompt
+          ? [["system", state.selected_system_prompt], ...messages]
+          : messages;
+
+      const thread: ChatThread = {
         id: state.chat.id,
-        messages: messages,
+        messages: messagesWithSystemPrompt,
         title: state.chat.title,
         model: state.chat.model,
         attach_file,
@@ -532,12 +726,20 @@ export const useEventBusForChat = () => {
 
       dispatch({
         type: EVENT_NAMES_TO_CHAT.BACKUP_MESSAGES,
-        payload,
+        payload: thread,
       });
-      postMessage({
+
+      const tools =
+        state.use_tools && state.tools && state.tools.length > 0
+          ? state.tools
+          : null;
+
+      const action: QuestionFromChat = {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-        payload,
-      });
+        payload: { ...thread, tools },
+      };
+
+      postMessage(action);
 
       const snippetMessage: ChatSetSelectedSnippet = {
         type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET,
@@ -549,42 +751,26 @@ export const useEventBusForChat = () => {
       dispatch(snippetMessage);
     },
     [
-      clearError,
-      postMessage,
       state.active_file.attach,
       state.chat.id,
-      state.chat.model,
       state.chat.title,
+      state.chat.model,
+      state.selected_system_prompt,
+      state.use_tools,
+      state.tools,
+      clearError,
+      maybeDefaultPrompt,
+      postMessage,
     ],
   );
 
-  const maybeDefaultPrompt: string | null = useMemo(() => {
-    return "default" in state.system_prompts.prompts
-      ? state.system_prompts.prompts.default.text
-      : null;
-  }, [state.system_prompts.prompts]);
-
   const askQuestion = useCallback(
     (question: string) => {
-      const maybeMessagesWithSystemPrompt: ChatMessages =
-        state.selected_system_prompt &&
-        state.selected_system_prompt !== maybeDefaultPrompt &&
-        state.chat.messages.length === 0
-          ? [["system", state.selected_system_prompt]]
-          : state.chat.messages;
-
-      const messages = maybeMessagesWithSystemPrompt.concat([
-        ["user", question],
-      ]);
+      const messages = state.chat.messages.concat([["user", question]]);
 
       sendMessages(messages);
     },
-    [
-      sendMessages,
-      state.chat.messages,
-      state.selected_system_prompt,
-      maybeDefaultPrompt,
-    ],
+    [sendMessages, state.chat.messages],
   );
 
   const requestCaps = useCallback(() => {
@@ -597,17 +783,15 @@ export const useEventBusForChat = () => {
   }, [postMessage, state.chat.id]);
 
   const maybeRequestCaps = useCallback(() => {
-    if (
-      state.chat.messages.length === 0 &&
-      state.caps.available_caps.length === 0 &&
-      !state.caps.fetching
-    ) {
+    const caps = Object.keys(state.caps.available_caps);
+    if (state.caps.fetching || state.error) return;
+    if (caps.length === 0) {
       requestCaps();
     }
   }, [
-    state.chat.messages.length,
-    state.caps.available_caps.length,
+    state.caps.available_caps,
     state.caps.fetching,
+    state.error,
     requestCaps,
   ]);
 
@@ -680,11 +864,13 @@ export const useEventBusForChat = () => {
   }, [clearError, postMessage, state.chat.id]);
 
   const openChatInNewTab = useCallback(() => {
+    setTakeNotes(true);
+
     postMessage({
       type: EVENT_NAMES_FROM_CHAT.OPEN_IN_CHAT_IN_TAB,
       payload: { id: state.chat.id },
     });
-  }, [postMessage, state.chat.id]);
+  }, [postMessage, state.chat.id, setTakeNotes]);
 
   const sendToSideBar = useCallback(() => {
     postMessage({
@@ -727,16 +913,16 @@ export const useEventBusForChat = () => {
     [postMessage, state.chat.id],
   );
 
-  // TODO: hoist this hook to context so useCallback isn't  needed
+  // TODO: hoist this hook to context so useCallback isn't needed
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestCommandsCompletion = useCallback(
     useDebounceCallback(
-      function (
+      (
         query: string,
         cursor: number,
         // eslint-disable-next-line @typescript-eslint/no-inferrable-types
         number: number = 5,
-      ) {
+      ) => {
         const action: RequestAtCommandCompletion = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
           payload: { id: state.chat.id, query, cursor, number },
@@ -744,19 +930,24 @@ export const useEventBusForChat = () => {
         postMessage(action);
       },
       500,
-      { leading: true },
+      { leading: true, maxWait: 250 },
     ),
-    [state.chat.id],
+    [state.chat.id, postMessage],
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestPreviewFiles = useCallback(
-    (input: string) => {
-      const message: RequestPreviewFiles = {
-        type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES,
-        payload: { id: state.chat.id, query: input },
-      };
-      postMessage(message);
-    },
+    useDebounceCallback(
+      function (input: string) {
+        const message: RequestPreviewFiles = {
+          type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES,
+          payload: { id: state.chat.id, query: input },
+        };
+        postMessage(message);
+      },
+      500,
+      { leading: true },
+    ),
     [postMessage, state.chat.id],
   );
 
@@ -832,7 +1023,76 @@ export const useEventBusForChat = () => {
     sendReadyMessage();
   }, [sendReadyMessage]);
 
-  // console.log({ state });
+  useEffect(() => {
+    if (
+      !state.streaming &&
+      state.chat.messages.length > 0 &&
+      !state.error &&
+      !state.prevent_send
+    ) {
+      const lastMessage = state.chat.messages[state.chat.messages.length - 1];
+      if (
+        isAssistantMessage(lastMessage) &&
+        lastMessage[2] &&
+        lastMessage[2].length > 0
+      ) {
+        sendMessages(state.chat.messages);
+      }
+    }
+  }, [
+    sendMessages,
+    state.chat.messages,
+    state.streaming,
+    state.error,
+    state.prevent_send,
+  ]);
+
+  const requestTools = useCallback(() => {
+    const action: RequestTools = {
+      type: EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS,
+      payload: { id: state.chat.id },
+    };
+    postMessage(action);
+  }, [postMessage, state.chat.id]);
+
+  useEffect(() => {
+    requestTools();
+  }, [requestTools]);
+
+  const setUseTools = useCallback(
+    (value: boolean) => {
+      const action: SetUseTools = {
+        type: EVENT_NAMES_TO_CHAT.SET_USE_TOOLS,
+        payload: { id: state.chat.id, use_tools: value },
+      };
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
+
+  const enableSend = useCallback(
+    (value: boolean) => {
+      const action: SetEnableSend = {
+        type: EVENT_NAMES_TO_CHAT.SET_ENABLE_SEND,
+        payload: { id: state.chat.id, enable_send: value },
+      };
+
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
+
+  // useEffect(() => {
+  //   window.debugChat =
+  //     window.debugChat ||
+  //     function () {
+  //       console.log(state.chat);
+  //     };
+
+  //   return () => {
+  //     window.debugChat = undefined;
+  //   };
+  // }, [state.chat]);
 
   return {
     state,
@@ -854,5 +1114,7 @@ export const useEventBusForChat = () => {
     startNewChat,
     setSelectedSystemPrompt,
     requestPreviewFiles,
+    setUseTools,
+    enableSend,
   };
 };

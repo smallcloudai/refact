@@ -21,12 +21,19 @@ import { useConfig } from "../../contexts/config-context";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { useEffectOnce } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
+import { usePreviewFileRequest } from "./usePreviewFileRequest";
 
 type useCheckboxStateProps = {
   activeFile: ChatState["active_file"];
   snippet: ChatState["selected_snippet"];
   vecdb: boolean;
   ast: boolean;
+  allBoxes: boolean;
+  chatId: string;
+  canUseTools: boolean;
+  setUseTools: (value: boolean) => void;
+  useTools: boolean;
+  host: string;
 };
 
 const useControlsState = ({
@@ -34,6 +41,12 @@ const useControlsState = ({
   snippet,
   vecdb,
   ast,
+  allBoxes,
+  chatId,
+  canUseTools,
+  setUseTools,
+  useTools,
+  host,
 }: useCheckboxStateProps) => {
   const [interacted, setInteracted] = React.useState(false);
 
@@ -68,14 +81,39 @@ const useControlsState = ({
 
   const defaultState = useMemo(() => {
     return {
+      use_memory: {
+        name: "use_memory",
+        checked: true,
+        label: "Use memory",
+        disabled: false,
+        hide: true, // !allBoxes,
+        info: {
+          text: "Uses notes previously written by assistant, to improve on mistakes. Setting this checkbox is equivalent to @local-notes-to-self command in the text.",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "documentation",
+        },
+      },
       search_workspace: {
         name: "search_workspace",
         checked: false,
         label: "Search workspace",
         disabled: false,
-        hide: !vecdb,
+        hide: !vecdb || !allBoxes || canUseTools,
         info: {
           text: "Searches all files in your workspace using vector database, uses the whole text in the input box as a search query. Setting this checkbox is equivalent to @workspace command in the text.",
+          link: "https://docs.refact.ai/features/ai-chat/",
+          linkText: "documentation",
+        },
+      },
+      use_tools: {
+        name: "use_tools",
+        // defaultChecked: true,  // TODO doesn't work
+        checked: useTools, // TODO doesn't work even if set to true
+        label: "Allow model to use tools",
+        disabled: false,
+        hide: !canUseTools,
+        info: {
+          text: "Allow the model to call various functions to help you, especially search to gather more information.",
           link: "https://docs.refact.ai/features/ai-chat/",
           linkText: "documentation",
         },
@@ -87,39 +125,51 @@ const useControlsState = ({
         value: filePathWithLines,
         disabled: !activeFile.name,
         fileName: activeFile.name,
+        hide: !allBoxes,
         info: {
           text: "Attaches the current file as context. If the file is large, it prefers the code near the current cursor position. Equivalent to @file name.ext:CURSOR_LINE in the text.",
           link: "https://docs.refact.ai/features/ai-chat/",
           linkText: "documentation",
         },
       },
-      lookup_symbols: {
-        name: "lookup_symbols",
-        checked: !!snippet.code && !!activeFile.name,
-        label: "Lookup symbols at cursor",
-        value: fullPathWithCursor,
-        disabled: !activeFile.name,
-        hide: !ast,
-        defaultChecked: !!snippet.code && !!activeFile.name,
-        info: {
-          text: "Extracts symbols around the cursor position and searches for them in the AST index. Equivalent to @symbols-at file_name.ext:CURSOR_LINE in the text",
-          link: "https://docs.refact.ai/features/ai-chat/",
-          linkText: "documentation",
-        },
-      },
+      // lookup_symbols: {
+      //   name: "lookup_symbols",
+      //   checked: !!snippet.code && !!activeFile.name,
+      //   label: "Lookup symbols at cursor",
+      //   value: fullPathWithCursor,
+      //   disabled: !activeFile.name,
+      //   hide: !ast || !allBoxes,
+      //   defaultChecked: !!snippet.code && !!activeFile.name,
+      //   info: {
+      //     text: "Extracts symbols around the cursor position and searches for them in the AST index. Equivalent to @symbols-at file_name.ext:CURSOR_LINE in the text",
+      //     link: "https://docs.refact.ai/features/ai-chat/",
+      //     linkText: "documentation",
+      //   },
+      // },
       selected_lines: {
         name: "selected_lines",
         checked: !!snippet.code,
         label: `Selected ${codeLineCount} lines`,
         value: markdown,
         disabled: !snippet.code,
+        hide: host === "web",
         info: {
           text: "Adds the currently selected lines as a snippet for analysis or modification. Equivalent to code in triple backticks ``` in the text.",
         },
       },
     } as const;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [
+    vecdb,
+    allBoxes,
+    canUseTools,
+    useTools,
+    snippet.code,
+    activeFile.name,
+    filePathWithLines,
+    codeLineCount,
+    markdown,
+    host,
+  ]);
 
   const [checkboxes, setCheckboxes] =
     React.useState<ChatControlsProps["checkboxes"]>(defaultState);
@@ -132,6 +182,9 @@ const useControlsState = ({
   const toggleCheckbox = useCallback(
     (name: string, value: boolean | string) => {
       setInteracted(true);
+      if (name === "use_tools") {
+        setUseTools(!!value);
+      }
       setCheckboxes((prev) => {
         const checkbox: Checkbox = { ...prev[name], checked: !!value };
         const maybeAddFile: Record<string, Checkbox> =
@@ -142,14 +195,14 @@ const useControlsState = ({
         return nextValue;
       });
     },
-    [setCheckboxes, setInteracted],
+    [setCheckboxes, setInteracted, setUseTools],
   );
 
   useEffect(() => {
     setCheckboxes((prev) => {
-      const lookupDisabled = prev.lookup_symbols.checked
-        ? false
-        : !activeFile.name;
+      // const lookupDisabled = prev.lookup_symbols.checked
+      //   ? false
+      //   : !activeFile.name;
 
       const selectedLineDisabled = prev.selected_lines.checked
         ? false
@@ -161,19 +214,28 @@ const useControlsState = ({
 
       const nextValue = {
         ...prev,
+        // use_memory: {
+        //   ...prev.use_memory,
+        //   hide: false,
+        // },
         search_workspace: {
           ...prev.search_workspace,
-          hide: !vecdb,
+          hide: !vecdb || !allBoxes || canUseTools,
         },
-        lookup_symbols: {
-          ...prev.lookup_symbols,
-          value: fullPathWithCursor,
-          disabled: lookupDisabled,
-          hide: !ast,
-          checked: interacted
-            ? prev.lookup_symbols.checked
-            : !!snippet.code && !!activeFile.name,
+        use_tools: {
+          ...prev.use_tools,
+          checked: useTools,
+          hide: !canUseTools,
         },
+        // lookup_symbols: {
+        //   ...prev.lookup_symbols,
+        //   value: fullPathWithCursor,
+        //   disabled: lookupDisabled,
+        //   hide: !ast || !allBoxes,
+        //   checked: interacted
+        //     ? prev.lookup_symbols.checked
+        //     : !!snippet.code && !!activeFile.name,
+        // },
         selected_lines: {
           ...prev.selected_lines,
           label: `Selected ${codeLineCount} lines`,
@@ -188,6 +250,7 @@ const useControlsState = ({
           value: filePathWithLines,
           fileName: activeFile.name,
           disabled: fileUploadDisabled,
+          hide: !allBoxes,
           checked: interacted
             ? prev.file_upload.checked
             : !!snippet.code && !!activeFile.name,
@@ -207,7 +270,14 @@ const useControlsState = ({
     markdown,
     snippet.code,
     vecdb,
+    allBoxes,
+    canUseTools,
+    useTools,
   ]);
+
+  useEffect(() => {
+    return () => setCheckboxes(defaultState);
+  }, [defaultState, chatId]);
 
   return {
     checkboxes,
@@ -244,6 +314,10 @@ export type ChatFormProps = {
   prompts: SystemPrompts;
   onSetSystemPrompt: (prompt: string) => void;
   selectedSystemPrompt: null | string;
+  chatId: string;
+  canUseTools: boolean;
+  setUseTools: (value: boolean) => void;
+  useTools: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -270,20 +344,39 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   prompts,
   onSetSystemPrompt,
   selectedSystemPrompt,
+  chatId,
+  canUseTools,
+  setUseTools,
+  useTools,
 }) => {
   const config = useConfig();
   const [value, setValue] = React.useState("");
+  // this should re-render when clicking new chat :/
   const { markdown, checkboxes, toggleCheckbox, reset, setInteracted } =
     useControlsState({
       activeFile: attachFile,
       snippet: selectedSnippet,
       vecdb: config.features?.vecdb ?? false,
       ast: config.features?.ast ?? false,
+      allBoxes: showControls,
+      chatId,
+      canUseTools,
+      setUseTools,
+      useTools,
+      host: config.host,
     });
+
+  usePreviewFileRequest({
+    isCommandExecutable: commands.is_cmd_executable,
+    requestPreviewFiles: requestPreviewFiles,
+    query: value,
+    vecdb: config.features?.vecdb ?? false,
+    checkboxes,
+  });
 
   useEffect(() => {
     if (
-      caps.available_caps.length === 0 &&
+      Object.keys(caps.available_caps).length === 0 &&
       !caps.default_cap &&
       !caps.fetching
     ) {
@@ -295,6 +388,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     caps.default_cap,
     caps.fetching,
     value,
+    caps.available_caps,
   ]);
 
   useEffectOnce(() => {
@@ -317,12 +411,19 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       const valueIncludingChecks = addCheckboxValuesToInput(
         trimmedValue,
         checkboxes,
-        showControls,
+        config.features?.vecdb ?? false,
       );
       onSubmit(valueIncludingChecks);
       setValue(() => "");
     }
-  }, [value, isStreaming, isOnline, checkboxes, showControls, onSubmit]);
+  }, [
+    value,
+    isStreaming,
+    isOnline,
+    checkboxes,
+    config.features?.vecdb,
+    onSubmit,
+  ]);
 
   const handleEnter = useOnPressedEnter(handleSubmit);
 
@@ -333,32 +434,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     },
     [setInteracted],
   );
-
-  useEffect(() => {
-    const input = addCheckboxValuesToInput(value, checkboxes, showControls);
-    requestPreviewFiles(input);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkboxes]);
-
-  const handleAtCommandsRequest: ComboBoxProps["requestCommandsCompletion"] =
-    useCallback(
-      (query: string, cursor: number) => {
-        const inputWithCheckboxes = addCheckboxValuesToInput(
-          query,
-          checkboxes,
-          showControls,
-        );
-        requestCommandsCompletion(query, cursor);
-
-        requestPreviewFiles(inputWithCheckboxes);
-      },
-      [
-        checkboxes,
-        requestCommandsCompletion,
-        requestPreviewFiles,
-        showControls,
-      ],
-    );
 
   if (error) {
     return (
@@ -395,7 +470,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
         <ComboBox
           commands={commands}
-          requestCommandsCompletion={handleAtCommandsRequest}
+          requestCommandsCompletion={requestCommandsCompletion}
           value={value}
           onChange={handleChange}
           onSubmit={(event) => {
@@ -433,23 +508,22 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         </Flex>
       </Form>
 
-      {showControls && (
-        <ChatControls
-          host={config.host}
-          checkboxes={checkboxes}
-          onCheckedChange={toggleCheckbox}
-          selectProps={{
-            value: model || caps.default_cap,
-            onChange: onSetChatModel,
-            options: caps.available_caps,
-          }}
-          promptsProps={{
-            value: selectedSystemPrompt ?? "",
-            prompts: prompts,
-            onChange: onSetSystemPrompt,
-          }}
-        />
-      )}
+      <ChatControls
+        host={config.host}
+        checkboxes={checkboxes}
+        showControls={showControls}
+        onCheckedChange={toggleCheckbox}
+        selectProps={{
+          value: model || caps.default_cap,
+          onChange: onSetChatModel,
+          options: Object.keys(caps.available_caps),
+        }}
+        promptsProps={{
+          value: selectedSystemPrompt ?? "",
+          prompts: prompts,
+          onChange: onSetSystemPrompt,
+        }}
+      />
     </Card>
   );
 };

@@ -8,12 +8,14 @@ type PageWrapperProps = {
   children: React.ReactNode;
   host: Config["host"];
   className?: string;
+  style?: React.CSSProperties;
 };
 
 export const PageWrapper: React.FC<PageWrapperProps> = ({
   children,
   className,
   host,
+  style,
 }) => {
   const xPadding = useMemo(() => {
     if (host === "web") return { initial: "8", xl: "9" };
@@ -39,6 +41,7 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
       py={yPadding}
       px={xPadding}
       className={classNames(styles.PageWrapper, className)}
+      style={style}
     >
       {children}
     </Flex>

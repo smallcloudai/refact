@@ -11,13 +11,18 @@ export const HistoryItem: React.FC<{
   onClick: (id: string) => void;
   onDelete: (id: string) => void;
   onOpenInTab?: (id: string) => void;
-}> = ({ chat, onClick, onDelete, onOpenInTab }) => {
+  disabled: boolean;
+}> = ({ chat, onClick, onDelete, onOpenInTab, disabled }) => {
   const dateCreated = new Date(chat.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
   return (
     <Box style={{ position: "relative", width: "100%" }}>
       <Card
-        style={{ width: "100%", marginBottom: "2px" }}
+        style={{
+          width: "100%",
+          marginBottom: "2px",
+          opacity: disabled ? 0.8 : 1,
+        }}
         variant="surface"
         className="rt-Button"
         asChild
@@ -25,6 +30,7 @@ export const HistoryItem: React.FC<{
         onClick={() => onClick(chat.id)}
       >
         <button
+          disabled={disabled}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();

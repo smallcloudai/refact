@@ -9,6 +9,7 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
       default_scratchpad: "",
       n_ctx: 4096,
       similar_models: [],
+      supports_tools: true,
       supports_scratchpads: {
         PASSTHROUGH: {
           default_system_message:
@@ -20,6 +21,7 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
       default_scratchpad: "",
       n_ctx: 4096,
       similar_models: [],
+      supports_tools: false,
       supports_scratchpads: {
         PASSTHROUGH: {
           default_system_message:

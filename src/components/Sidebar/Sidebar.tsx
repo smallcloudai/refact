@@ -6,17 +6,29 @@ import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Settings } from "./Settings";
 import { Statistic } from "../../features/Statistic";
 import { useConfig } from "../../contexts/config-context";
+import { Spinner } from "@radix-ui/themes";
 
 export const Sidebar: React.FC<
   {
     onCreateNewChat: () => void;
+    takingNotes: boolean;
+    currentChatId: string;
   } & ChatHistoryProps
-> = ({ history, onHistoryItemClick, onCreateNewChat, onDeleteHistoryItem }) => {
+> = ({
+  history,
+  onHistoryItemClick,
+  onCreateNewChat,
+  onDeleteHistoryItem,
+  currentChatId,
+  takingNotes,
+}) => {
   const [isOpenedStatistic, setIsOpenedStatistic] = useState(false);
   const handleCloseStatistic = () => {
     setIsOpenedStatistic(false);
   };
   const { features } = useConfig();
+
+  // const [currentItem, setItem] = useState("")
 
   return (
     <Box className={styles.sidebar}>
@@ -34,11 +46,15 @@ export const Sidebar: React.FC<
           }}
         >
           <Flex mt="4" mb="4">
+            <Box position="absolute" ml="5" mt="2">
+              <Spinner loading={takingNotes} title="taking notes" />
+            </Box>
             <Button
               variant="outline"
               ml="auto"
               mr="auto"
               onClick={onCreateNewChat}
+              // loading={takingNotes}
             >
               Start a new chat
             </Button>
@@ -47,6 +63,7 @@ export const Sidebar: React.FC<
             history={history}
             onHistoryItemClick={onHistoryItemClick}
             onDeleteHistoryItem={onDeleteHistoryItem}
+            currentChatId={currentChatId}
           />
           <Flex p="2" gap="1">
             <Settings />

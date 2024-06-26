@@ -34,6 +34,15 @@ export function getAnchorRect(
   };
 }
 
+function countMatchingLetters(str1: string, str2: string) {
+  if (!str1 || !str2) return 0;
+  let i = 0;
+  while (str1[i] && str2[i] && str1[i] === str2[i]) {
+    i++;
+  }
+  return i;
+}
+
 export function replaceRange(
   str: string,
   range: [number, number],
@@ -43,5 +52,11 @@ export function replaceRange(
     Math.min(range[0], range[1]),
     Math.max(range[0], range[1]),
   ];
-  return str.slice(0, sortedRange[0]) + replacement + str.slice(sortedRange[1]);
+
+  const tail = str.slice(sortedRange[0]);
+  const count = countMatchingLetters(tail, replacement);
+  const maybeLargerEnd = sortedRange[0] + count;
+  const endIndex = Math.max(sortedRange[1], maybeLargerEnd);
+
+  return str.slice(0, sortedRange[0]) + replacement + str.slice(endIndex);
 }

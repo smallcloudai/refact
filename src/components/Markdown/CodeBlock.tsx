@@ -1,5 +1,7 @@
 import React from "react";
-import SyntaxHighlighter from "react-syntax-highlighter";
+import SyntaxHighlighter, {
+  type SyntaxHighlighterProps,
+} from "react-syntax-highlighter";
 import { Code, Text } from "@radix-ui/themes";
 import classNames from "classnames";
 import { PreTag, type PreTagProps } from "./Pre";
@@ -7,6 +9,7 @@ import { PreTag, type PreTagProps } from "./Pre";
 import styles from "./Markdown.module.css";
 import type { Element } from "hast";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
+import { trimIndent } from "../../utils";
 
 export type MarkdownControls = {
   onCopyClick: (str: string) => void;
@@ -15,10 +18,13 @@ export type MarkdownControls = {
   canPaste: boolean;
 };
 
-export const MarkdownCodeBlock: React.FC<
-  React.JSX.IntrinsicElements["code"] &
-    Partial<MarkdownControls> & { node?: Element | undefined }
-> = ({
+type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] &
+  Partial<MarkdownControls> & { node?: Element | undefined } & Pick<
+    SyntaxHighlighterProps,
+    "showLineNumbers" | "startingLineNumber"
+  >;
+
+export const MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   children,
   className,
   color: _color,
@@ -33,6 +39,7 @@ export const MarkdownCodeBlock: React.FC<
   const codeRef = React.useRef<HTMLElement | null>(null);
   const match = /language-(\w+)/.exec(className ?? "");
   const textWithOutTrailingNewLine = String(children).replace(/\n$/, "");
+  const textWithOutIndent = trimIndent(textWithOutTrailingNewLine);
 
   const preTagProps: PreTagProps =
     onCopyClick && onNewFileClick && onPasteClick
@@ -61,6 +68,7 @@ export const MarkdownCodeBlock: React.FC<
     return (
       <Text size="2">
         <SyntaxHighlighter
+          {...rest}
           style={hljsStyle}
           className={className}
           PreTag={(props) => <PreTag {...props} {...preTagProps} />}
@@ -74,7 +82,7 @@ export const MarkdownCodeBlock: React.FC<
           language={language}
           // useInlineStyles={false}
         >
-          {textWithOutTrailingNewLine}
+          {textWithOutIndent}
         </SyntaxHighlighter>
       </Text>
     );

@@ -8,7 +8,9 @@ describe("HistorySideBar", () => {
   stubResizeObserver();
 
   it("start new chat", async () => {
-    const { user, ...app } = render(<HistorySideBar />);
+    const { user, ...app } = render(
+      <HistorySideBar takingNotes={false} currentChatId="" />,
+    );
 
     const postMessageSpy = vi.spyOn(window, "postMessage");
 
@@ -45,7 +47,9 @@ describe("HistorySideBar", () => {
 
     window.localStorage.setItem("chatHistory", JSON.stringify([historyItem]));
 
-    const { user, ...app } = render(<HistorySideBar />);
+    const { user, ...app } = render(
+      <HistorySideBar takingNotes={false} currentChatId="" />,
+    );
 
     const restoreButton = await app.findByText("Title for the item");
     // expect(restoreButton).toBeInTheDocument(); //TODO: setup matchers
@@ -91,7 +95,9 @@ describe("HistorySideBar", () => {
 
     window.localStorage.setItem("chatHistory", JSON.stringify(historyItems));
 
-    const { user, ...app } = render(<HistorySideBar />);
+    const { user, ...app } = render(
+      <HistorySideBar takingNotes={false} currentChatId="" />,
+    );
 
     const itemTitleToDelete = "Delete this item";
 
