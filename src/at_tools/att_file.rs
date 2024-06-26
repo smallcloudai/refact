@@ -13,15 +13,16 @@ use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 pub struct AttFile;
 
 async fn get_file_text(ccx: &mut AtCommandsContext, file_path: &String, candidates: &Vec<String>, project_paths: &Vec<PathBuf>) -> Result<(String, String), String> {
-    let mut f_path = PathBuf::from(file_path);
+    let f_path = PathBuf::from(file_path);
+    let mut corrected = PathBuf::new();
 
     if candidates.is_empty() {
-        let similar_files_str = at_file_repair_candidates(&file_path, ccx, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n");
         if f_path.is_absolute() {
             if !project_paths.iter().any(|x|x.starts_with(&f_path)) {
-                return Err(format!("The file {:?} will not be read as it lies beyond project directories:\n\n{:?}\n\nThere are files with similar names:\n{}", f_path, project_paths, similar_files_str));
+                return Err(format!("The absolute path {:?} points outside of any workspace directories", f_path));
             }
         }
+        let similar_files_str = at_file_repair_candidates(&file_path, ccx, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n");
         if f_path.is_relative() {
             let projpath_options = project_paths.iter().map(|x|x.join(&f_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
             if projpath_options.len() > 1 {
@@ -35,17 +36,18 @@ async fn get_file_text(ccx: &mut AtCommandsContext, file_path: &String, candidat
                     return Err(format!("The path {:?} does not exist.\n\nThere are files with similar names however:\n{}", f_path, similar_files_str));
                 }
             } else {
-                f_path = projpath_options[0].clone();
+                corrected = projpath_options[0].clone();
             }
         }
+    } else {
+        corrected = PathBuf::from(candidates[0].clone());
     }
 
     if candidates.len() > 1 {
         return Err(format!("The path {:?} is ambiguous.\n\nIt could be interpreted as:\n{}", file_path, candidates.join("\n")));
     }
 
-    let corrected = candidates[0].clone();
-    get_file_text_from_memory_or_disk(ccx.global_context.clone(), &PathBuf::from(corrected.clone())).await.map(|x|(corrected, x))
+    get_file_text_from_memory_or_disk(ccx.global_context.clone(), &corrected).await.map(|x|(corrected.to_string_lossy().to_string(), x))
 }
 
 #[async_trait]
