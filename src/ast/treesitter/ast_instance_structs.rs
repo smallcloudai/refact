@@ -154,7 +154,11 @@ impl SymbolInformation {
     pub fn get_content(&self, content: &String) -> io::Result<String> {
         let lines: Vec<&str> = content.split("\n").collect();
         let mut end_row = self.full_range.end_point.row + 1;
-        let raw_content = content.slice(self.full_range.start_byte..self.full_range.end_byte).to_string();
+        let raw_content = content.get(self.full_range.start_byte..self.full_range.end_byte);
+        if raw_content.is_none() {
+            return Err(io::Error::other("Incorrect content range"));
+        } 
+        let raw_content = raw_content.unwrap();
         if raw_content.ends_with("\n") {
             end_row -= 1;
         }
@@ -177,7 +181,11 @@ impl SymbolInformation {
     }
 
     pub fn get_declaration_content(&self, content: &String) -> io::Result<String> {
-        Ok(content.slice(self.declaration_range.start_byte..self.declaration_range.end_byte).to_string())
+        let content = content.get(self.declaration_range.start_byte..self.declaration_range.end_byte);
+        if content.is_none() {
+            return Err(io::Error::other("Incorrect declaration range"));
+        }
+        Ok(content.unwrap().to_string())
     }
 
     pub async fn get_declaration_content_from_file(&self) -> io::Result<String> {
