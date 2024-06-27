@@ -196,7 +196,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       postMessage(notes);
     }
 
-    console.log(action.type, { isThisChat, action });
+    // console.log(action.type, { isThisChat, action });
     // console.log(action.payload);
 
     if (isThisChat && isSetDisableChat(action)) {
