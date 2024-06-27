@@ -196,7 +196,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       postMessage(notes);
     }
 
-    // console.log(action.type, { isThisChat, action });
+    console.log(action.type, { isThisChat, action });
     // console.log(action.payload);
 
     if (isThisChat && isSetDisableChat(action)) {
@@ -230,6 +230,9 @@ export function reducer(postMessage: typeof window.postMessage) {
 
     if (!isThisChat && isResponseToChat(action)) {
       if (!(action.payload.id in state.chat_cache)) {
+        return state;
+      }
+      if (isChatUserMessageResponse(action.payload)) {
         return state;
       }
 
