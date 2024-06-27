@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { ChatForm } from "../components/ChatForm";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import { ChatContent } from "../components/ChatContent";
@@ -62,6 +62,17 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
     if (maybeTools && maybeTools.length > 0) return true;
     return false;
   }, [state.chat.messages]);
+
+  const onTextAreaHeightChange = useCallback(() => {
+    if (!chatContentRef.current) return;
+    // TODO: handle preventing scroll if the user is not on the bottom of the chat
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    chatContentRef.current.scrollIntoView &&
+      chatContentRef.current.scrollIntoView({
+        behavior: "instant",
+        block: "end",
+      });
+  }, [chatContentRef]);
 
   return (
     <PageWrapper host={host} style={style}>
@@ -136,16 +147,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         filesInPreview={state.files_in_preview}
         selectedSnippet={state.selected_snippet}
         removePreviewFileByName={removePreviewFileByName}
-        onTextAreaHeightChange={() => {
-          if (!chatContentRef.current) return;
-          // TODO: handle preventing scroll if the user is not on the bottom of the chat
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          chatContentRef.current.scrollIntoView &&
-            chatContentRef.current.scrollIntoView({
-              behavior: "instant",
-              block: "end",
-            });
-        }}
+        onTextAreaHeightChange={onTextAreaHeightChange}
         requestCaps={maybeRequestCaps}
         prompts={state.system_prompts.prompts}
         onSetSystemPrompt={setSelectedSystemPrompt}
