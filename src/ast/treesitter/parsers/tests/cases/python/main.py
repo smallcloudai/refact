@@ -61,9 +61,9 @@ def foo():
 
 def main():
 	zxc.b().xyi = 1 if asd == True else 2
-    for i in [1, 2, 3]:
-     	if i > 1:
-        	asd
+	for i in [1, 2, 3]:
+        if i > 1:
+            asd
 
 if __name__ == '__main__':
 	main()
