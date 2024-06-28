@@ -135,7 +135,7 @@ impl AstModule {
         Ok(())
     }
 
-    async fn read_ast(&self, duration: Duration) -> Result<MutexGuard<'_, AstIndex>, Elapsed> {
+    pub async fn read_ast(&self, duration: Duration) -> Result<MutexGuard<'_, AstIndex>, Elapsed> {
         timeout(duration, self.ast_index.lock()).await
     }
 

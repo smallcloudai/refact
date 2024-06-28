@@ -122,8 +122,7 @@ pub async fn handle_v1_command_preview(
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut ccx, &mut query).await;
     let chat_message_messages = filter_only_chat_messages_from_context_tool(&messages_for_postprocessing);
-    // TODO: postprocess chat_message_messages
-    
+
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
     let processed = postprocess_at_results2(
         global_context.clone(),
@@ -133,7 +132,6 @@ pub async fn handle_v1_command_preview(
         false,
         top_n,
     ).await;
-    
     let mut preview: Vec<ChatMessage> = vec![];
     if !processed.is_empty() {
         let message = ChatMessage {
@@ -144,7 +142,6 @@ pub async fn handle_v1_command_preview(
         };
         preview.push(message.clone());
     }
-    
     if !chat_message_messages.is_empty() {
         let message = ChatMessage {
             role: "context_text".to_string(),
@@ -154,7 +151,6 @@ pub async fn handle_v1_command_preview(
         };
         preview.push(message.clone());
     }
-    
     let mut highlights = vec![];
     for h in vec_highlights {
         highlights.push(Highlight {

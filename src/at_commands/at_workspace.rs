@@ -69,7 +69,10 @@ pub async fn execute_at_workspace(ccx: &mut AtCommandsContext, query: &String, v
 
 #[async_trait]
 impl AtCommand for AtWorkspace {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> { &self.params }
+    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>
+    {
+        &self.params
+    }
     async fn execute(&self, ccx: &mut AtCommandsContext, _cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         let args1 = args.iter().map(|x|x.clone()).collect::<Vec<_>>();
         info!("execute @workspace {:?}", args1);
