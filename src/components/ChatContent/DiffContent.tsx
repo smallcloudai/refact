@@ -12,7 +12,7 @@ function toDiff(str: string, type: "add" | "remove"): string {
   const sign = type === "add" ? "+" : "-";
 
   const replaceEscapedEOL = str
-    .split("\\n")
+    .split("\n")
     .filter((_) => _)
     .join("\n" + sign);
 
