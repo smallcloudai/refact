@@ -134,11 +134,11 @@ tools:
       - "todo"
 
   - name: "tree"
-    description: "Get a files tree for the project"
+    description: "Get a files tree with symbols for the project. Use it to get familiar with the project, file names and symbols"
     parameters:
       - name: "path"
         type: "string"
-        description: "An optional path to get files tree for a particular folder"
+        description: "An optional path to get files tree for a particular folder or file"
     parameters_required: []
 "####;
 
