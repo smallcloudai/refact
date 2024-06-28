@@ -387,7 +387,11 @@ impl AstModule {
             );
         let symbol_to_search_res = |x: &AstSymbolInstanceRc| {
             let symbol_declaration = x.borrow().symbol_info_struct();
-            let content = symbol_declaration.get_content(&code.to_string()).unwrap_or_default();
+            let content = if symbol_declaration.file_path == doc.path {
+                symbol_declaration.get_content(&code.to_string()).unwrap_or_default()
+            } else {
+                symbol_declaration.get_content_from_file_blocked().unwrap_or_default()
+            };
             let usefulness = *guid_to_usefulness
                 .get(&symbol_declaration.guid)
                 .expect("Guid has not found in `guid_to_usefulness` dict, \
