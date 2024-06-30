@@ -31,7 +31,10 @@ pub async fn forward_to_openai_style_endpoint(
     save_url.clone_from(&&url);
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
-    if !bearer.is_empty() {
+    if !bearer.is_empty() && url.contains("api.anthropic.com") {
+        headers.insert("x-api-key", HeaderValue::from_str(&bearer).unwrap());
+        headers.insert("anthropic-version", HeaderValue::from_str("2023-06-01").unwrap());
+    } else if !bearer.is_empty() {
         headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
     }
     let mut data = json!({
@@ -122,11 +125,16 @@ fn passthrough_messages_to_json(
     let messages_str = &prompt[12..];
     let big_json: serde_json::Value = serde_json::from_str(&messages_str).unwrap();
 
-    // TODO: remove, parsed only for debug log
     if false {
-        let messages: Vec<crate::call_validation::ChatMessage> = big_json["messages"].as_array().unwrap().iter().map(|x|
-            serde_json::from_value(x.clone()).unwrap()
-        ).collect();
+        let messages: Vec<crate::call_validation::ChatMessage> = big_json["messages"].as_array().unwrap().iter().map(|x| {
+            let mut t = serde_json::from_value::<crate::call_validation::ChatMessage>(x.clone()).unwrap();
+            if let Some(ref tool_calls) = t.tool_calls {
+                if tool_calls.len() == 0 {
+                    t.tool_calls = None;
+                }
+            }
+            t
+        }).collect();
         for msg in messages.iter() {
             info!("PASSTHROUGH MSG: {:?}", msg);
         }

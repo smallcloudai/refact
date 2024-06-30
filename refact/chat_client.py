@@ -88,6 +88,7 @@ def join_messages_and_choices(
     for i, msg in enumerate(choices):
         if msg is None:
             continue
+        msg: Message
         if verbose and isinstance(msg.content, str):
             print("result[%d]" % i,
                 termcolor.colored(msg.content, "yellow"),
@@ -97,6 +98,8 @@ def join_messages_and_choices(
                 print("result[%d]" % i,
                     termcolor.colored("%s(%s)" % (tcall.function.name, tcall.function.arguments), "red"),
                 )
+        if isinstance(msg.tool_calls, list) and len(msg.tool_calls) == 0:
+            msg.tool_calls = None
         output[i].append(msg)
     return output
 
@@ -164,6 +167,7 @@ async def ask_using_http(
     *,
     stop: List[str] = [],
     tools: Optional[List[Dict[str, Any]]] = None,
+    tool_choice: Optional[str] = None,
     temperature: float = 0.6,
     stream: bool = False,
     verbose: bool = True,
@@ -180,6 +184,7 @@ async def ask_using_http(
         "stop": stop,
         "stream": stream,
         "tools": tools,
+        "tool_choice": tool_choice,
         "max_tokens": max_tokens,
         "only_deterministic_messages": only_deterministic_messages,
     }

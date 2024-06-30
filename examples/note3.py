@@ -13,7 +13,8 @@ DEPTH = 2
 # MODEL = "gpt-4o"
 # MODEL = "gpt-3.5-turbo-1106"  # $1, multi call works
 # MODEL = "gpt-3.5-turbo-0125"    # $0.50
-MODEL = "gpt-3.5-turbo"
+# MODEL = "gpt-3.5-turbo"
+MODEL = "claude-3-5-sonnet"
 
 
 SYSTEM_PROMPT = """
@@ -91,7 +92,9 @@ async def do_all():
     for step_n in range(DEPTH):
         print("-"*40 + " step %d " % step_n + "-"*40)
         N = 1
-        tools_turn_on = {"remember_how_to_use_tools"} if args.note else {"definition", "references", "compile", "memorize", "file"}
+        # tools_turn_on = {"remember_how_to_use_tools"} if args.note else {"definition", "references", "compile", "memorize", "file"}
+        # claude requires non-empty tools each step
+        tools_turn_on = {"definition", "references", "compile", "memorize", "file"}
         tools = await chat_client.tools_fetch_and_filter(base_url="http://127.0.0.1:8001/v1", tools_turn_on=tools_turn_on)
         assistant_choices = await chat_client.ask_using_http(
             "http://127.0.0.1:8001/v1",

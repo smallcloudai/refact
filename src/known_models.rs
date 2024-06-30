@@ -102,6 +102,7 @@ pub const KNOWN_MODELS: &str = r####"
         },
         "gpt-3.5-turbo": {
             "n_ctx": 16384,
+            "supports_tools": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
@@ -115,6 +116,7 @@ pub const KNOWN_MODELS: &str = r####"
         },
         "gpt-4o": {
             "n_ctx": 128000,
+            "supports_tools": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                     "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
@@ -125,7 +127,7 @@ pub const KNOWN_MODELS: &str = r####"
             ]
         },
         "claude-instant-1.2": {
-            "n_ctx": 4096,
+            "n_ctx": 8096,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
@@ -133,28 +135,18 @@ pub const KNOWN_MODELS: &str = r####"
                 "claude-2.1",
                 "claude-3-haiku",
                 "claude-3-opus",
-                "claude-3-sonnet",
-                "claude-3-5-sonnet"
+                "claude-3-sonnet"
             ]
         },
-        "starchat/15b/beta": {
-            "n_ctx": 4096,
+        "claude-3-5-sonnet": {
+            "n_ctx": 16384,
+            "supports_tools": true,
             "supports_scratchpads": {
-                "CHAT-GENERIC": {
-                    "token_esc": "",
-                    "keyword_system": "<|system|>\n",
-                    "keyword_user": "<|end|>\n<|user|>\n",
-                    "keyword_assistant": "<|end|>\n<|assistant|>\n",
-                    "stop_list": [
-                        "<|system|>",
-                        "<|user|>",
-                        "<|assistant|>",
-                        "<|end|>",
-                        "<empty_output>"
-                    ],
-                    "default_system_message": "You are a programming assistant."
-                }
-            }
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
+                "claude-3-5-sonnet-20240620"
+            ]
         },
         "llama3/8b/instruct": {
             "n_ctx": 4096,
