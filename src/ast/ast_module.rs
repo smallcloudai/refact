@@ -162,7 +162,8 @@ impl AstModule {
                     .iter()
                     .take(top_n)
                     .filter_map(|s| {
-                        let info_struct = s.borrow().symbol_info_struct();
+                        let mut info_struct = s.borrow().symbol_info_struct();
+                        info_struct.symbol_path = ast_ref.get_symbol_full_path(s);
                         let name = info_struct.name.clone();
                         let content = info_struct.get_content_from_file_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {
@@ -209,7 +210,8 @@ impl AstModule {
                     .iter()
                     .take(top_n)
                     .filter_map(|s| {
-                        let info_struct = s.borrow().symbol_info_struct();
+                        let mut info_struct = s.borrow().symbol_info_struct();
+                        info_struct.symbol_path = ast_ref.get_symbol_full_path(s);
                         let name = info_struct.name.clone();
                         let content = info_struct.get_content_from_file_blocked().ok()?;
                         Some(SymbolsSearchResultStruct {

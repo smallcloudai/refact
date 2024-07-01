@@ -454,6 +454,34 @@ impl AstIndex {
             .collect::<Vec<_>>())
     }
 
+    pub(crate) fn get_symbol_full_path(
+        &self,
+        symbol: &AstSymbolInstanceRc,
+    ) -> String {
+        let mut current_symbol = symbol.clone();
+        let mut current_path = current_symbol.borrow().name().to_string();
+
+        loop {
+            let parent_guid = match current_symbol.borrow().parent_guid().clone() {
+                Some(g) => g,
+                None => {
+                    return current_path;
+                }
+            };
+            match self.symbols_by_guid.get(&parent_guid) {
+                Some(s) => {
+                    current_symbol = s.clone();
+                    if !s.borrow().name().is_empty() {
+                        current_path = format!("{}::{}", s.borrow().name(), current_path);
+                    }
+                }
+                None => {
+                    return current_path;
+                }
+            }
+        }
+    }
+
     fn get_declarations_by_parent(
         &self,
         symbol: &AstSymbolInstanceRc,
@@ -1369,7 +1397,7 @@ impl AstIndex {
             if self.shutdown_flag.load(Ordering::SeqCst) {
                 return;
             }
-            let full_path = get_symbol_full_path(&symbol, &self.symbols_by_guid);
+            let full_path = self.get_symbol_full_path(&symbol);
             if !full_path.is_empty() {
                 if symbol.borrow().is_declaration() {
                     self.declaration_symbols_by_fullpath.entry(full_path)
@@ -1448,30 +1476,4 @@ impl AstIndex {
 
 pub fn read_file_from_disk_block(path: &PathBuf) -> Result<String, String> {
     std::fs::read_to_string(path).map_err(|e| format!("Failed to read file from disk: {}", e))
-}
-
-fn get_symbol_full_path(
-    symbol: &AstSymbolInstanceRc,
-    guid_by_symbols: &HashMap<Uuid, AstSymbolInstanceRc>,
-) -> String {
-    let mut current_symbol = symbol.clone();
-    let mut current_path = current_symbol.borrow().name().to_string();
-
-    loop {
-        let parent_guid = match current_symbol.borrow().parent_guid().clone() {
-            Some(g) => g,
-            None => {
-                return current_path;
-            }
-        };
-        match guid_by_symbols.get(&parent_guid) {
-            Some(s) => {
-                current_symbol = s.clone();
-                current_path = format!("{}::{}", s.borrow().name(), current_path);
-            }
-            None => {
-                return current_path;
-            }
-        }
-    }
 }
