@@ -1,8 +1,16 @@
 import { Button, Card, Flex, RadioGroup, Text } from "@radix-ui/themes";
 import { useState } from "react";
 
-export const InitialSetup: React.FC = () => {
-  const [selected, setSelected] = useState<string | undefined>(undefined);
+type Host = "cloud" | "self-hosting" | "enterprise";
+
+export type InitialSetupProps = {
+  onPressNext: (host: Host) => void;
+};
+
+export const InitialSetup: React.FC<InitialSetupProps> = ({
+  onPressNext,
+}: InitialSetupProps) => {
+  const [selected, setSelected] = useState<Host | undefined>(undefined);
 
   return (
     <Flex direction="column" gap="2">
@@ -10,7 +18,9 @@ export const InitialSetup: React.FC = () => {
       <RadioGroup.Root
         style={{ gap: 10 }}
         value={selected}
-        onValueChange={setSelected}
+        onValueChange={(value) => {
+          setSelected(value as Host);
+        }}
       >
         <Card style={{ display: "flex", flexDirection: "column" }}>
           <RadioGroup.Item value="cloud">
@@ -41,7 +51,16 @@ export const InitialSetup: React.FC = () => {
           </Text>
         </Card>
       </RadioGroup.Root>
-      <Button variant="outline" ml="auto" disabled={selected === undefined}>
+      <Button
+        variant="outline"
+        ml="auto"
+        disabled={selected === undefined}
+        onClick={() => {
+          if (selected) {
+            onPressNext(selected);
+          }
+        }}
+      >
         Next
       </Button>
     </Flex>

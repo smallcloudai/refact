@@ -5,6 +5,12 @@ import { Flex } from "@radix-ui/themes";
 const meta: Meta<typeof InitialSetup> = {
   title: "InitialSetup",
   component: InitialSetup,
+  args: {
+    onPressNext: (str) => {
+      // eslint-disable-next-line no-console
+      console.log("onPressNext called with " + str);
+    },
+  },
   decorators: [
     (Children) => (
       <Flex p="4">
