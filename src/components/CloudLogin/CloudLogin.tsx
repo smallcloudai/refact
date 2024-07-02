@@ -21,10 +21,11 @@ export const CloudLogin: React.FC = () => {
       </Text>
       <Checkbox>Send corrected code snippets.</Checkbox>
       <Text size="2">
-        Help Refact collect a dataset of corrected code completions! This will
-        help to improve code suggestions more to your preferences, and it also
-        will improve code suggestions for everyone else. Hey, we&#39;re not an
-        evil corporation!
+        Basic telemetry is always on when using cloud inference, but it only
+        sends errors and counters.{" "}
+        <a href="https://github.com/smallcloudai/refact-lsp/blob/main/README.md#telemetry">
+          How telemetry works in open source refact-lsp
+        </a>
       </Text>
       <Flex gap="2">
         <Button variant="outline" mr="auto">
