@@ -1,37 +1,40 @@
 import React, { useState } from "react";
-import { Box, Flex, Button, IconButton } from "@radix-ui/themes";
-import { BarChartIcon } from "@radix-ui/react-icons";
+import { Box, Flex, Button } from "@radix-ui/themes";
 import styles from "./sidebar.module.css";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
-import { Settings } from "./Settings";
+import { Footer } from "./Footer";
 import { Statistic } from "../../features/Statistic";
-import { useConfig } from "../../contexts/config-context";
 import { Spinner } from "@radix-ui/themes";
+import classNames from "classnames";
 
-export const Sidebar: React.FC<
-  {
-    onCreateNewChat: () => void;
-    takingNotes: boolean;
-    currentChatId: string;
-  } & ChatHistoryProps
-> = ({
+export type SideBarProps = {
+  onCreateNewChat: () => void;
+  takingNotes: boolean;
+  currentChatId: string;
+  className?: string;
+  style?: React.CSSProperties;
+} & ChatHistoryProps;
+
+export const Sidebar: React.FC<SideBarProps> = ({
   history,
   onHistoryItemClick,
   onCreateNewChat,
   onDeleteHistoryItem,
   currentChatId,
   takingNotes,
+  className,
+  style,
 }) => {
   const [isOpenedStatistic, setIsOpenedStatistic] = useState(false);
   const handleCloseStatistic = () => {
     setIsOpenedStatistic(false);
   };
-  const { features } = useConfig();
+  // const { features } = useConfig();
 
   // const [currentItem, setItem] = useState("")
 
   return (
-    <Box className={styles.sidebar}>
+    <Box className={classNames(styles.sidebar, className)} style={style}>
       {isOpenedStatistic ? (
         <Statistic onCloseStatistic={handleCloseStatistic} />
       ) : (
@@ -66,16 +69,7 @@ export const Sidebar: React.FC<
             currentChatId={currentChatId}
           />
           <Flex p="2" gap="1">
-            <Settings />
-            {features?.statistics && (
-              <IconButton
-                variant="outline"
-                title="Bar Chart"
-                onClick={() => setIsOpenedStatistic(true)}
-              >
-                <BarChartIcon />
-              </IconButton>
-            )}
+            <Footer />
           </Flex>
         </Flex>
       )}

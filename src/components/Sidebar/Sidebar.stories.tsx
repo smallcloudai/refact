@@ -1,15 +1,33 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Sidebar } from "./Sidebar";
+import { Sidebar, SideBarProps } from "./Sidebar";
+import { HISTOY } from "../../__fixtures__/history";
+
+const App: React.FC<SideBarProps> = (props) => {
+  return <Sidebar {...props} style={{ width: "260px", flexShrink: 0 }} />;
+};
 
 const meta = {
   title: "Sidebar",
-  component: Sidebar,
+  component: App,
   args: {
-    history: [],
+    history: [
+      ...HISTOY,
+      ...HISTOY,
+      ...HISTOY,
+      ...HISTOY,
+      ...HISTOY,
+      ...HISTOY,
+      ...HISTOY,
+      ...HISTOY,
+      ...HISTOY,
+      ...HISTOY,
+      ...HISTOY,
+      ...HISTOY,
+    ],
     takingNotes: false,
     currentChatId: "",
   },
-} satisfies Meta<typeof Sidebar>;
+} satisfies Meta<typeof App>;
 
 export default meta;
 

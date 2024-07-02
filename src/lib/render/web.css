@@ -2,3 +2,8 @@ body {
   margin: 0;
   height: 100%;
 }
+
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+}

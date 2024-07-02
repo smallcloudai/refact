@@ -14,6 +14,7 @@ export const ChatWithSideBar: React.FC = () => {
         <HistorySideBar
           takingNotes={takeingNotes}
           currentChatId={currentChatId}
+          style={{ width: "260px", flexShrink: 0 }}
         />
         <Chat style={{ width: "calc(100vw - 260px)" }} />
       </Flex>
