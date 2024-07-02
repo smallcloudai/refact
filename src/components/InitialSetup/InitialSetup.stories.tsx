@@ -3,7 +3,7 @@ import { InitialSetup } from ".";
 import { Flex } from "@radix-ui/themes";
 
 const meta: Meta<typeof InitialSetup> = {
-  title: "InitialSetup",
+  title: "Initial setup",
   component: InitialSetup,
   args: {
     onPressNext: (str) => {
