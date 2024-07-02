@@ -2,20 +2,21 @@ import json
 import asyncio
 import shutil
 import subprocess
+import traceback
 
 from uuid import uuid4
 from datetime import datetime
-
+from async_timeout import timeout
 from datasets import load_dataset
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Dict, Any, List
 from refact import chat_client
 
-from lsp_runner import LSPServerRunner
+from refact.lsp_runner import LSPServerRunner
 
 
-REPOS_WORKDIR = Path("swe/repos")
+REPOS_WORKDIR = Path("swe-repos")
 DUMP_PREFIX = datetime.now().strftime("%Y%m%d-%H%M%S")
 
 MODEL = "gpt-3.5-turbo"
@@ -84,6 +85,19 @@ IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST! USE TOOLS 
 """
 
 
+def localhost_port_not_in_use(start: int, stop: int):
+    def _is_port_in_use(port: int) -> bool:
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('localhost', port)) == 0
+
+    for port in range(start, stop):
+        if not _is_port_in_use(port):
+            return port
+
+    raise RuntimeError(f"cannot find port in range [{start}, {stop})")
+
+
 def patch_generate(repo_name: Path, diffs: List[Dict[str, Any]]):
     for d in diffs:
         filename = repo_name / d["file_name"]
@@ -100,7 +114,7 @@ def patch_generate(repo_name: Path, diffs: List[Dict[str, Any]]):
             )
         patched_text = text[:text.find(p0)] + p1 + text[text.find(p0) + len(p0):]
         filename.write_text(patched_text)
-    result = subprocess.check_output(["git", "diff"], cwd=str(repo_name))
+    result = subprocess.check_output(["git", "--no-pager", "diff"], cwd=str(repo_name))
     return result.decode()
 
 
@@ -122,7 +136,7 @@ class RepoContext:
         subprocess.call(["cp", "-r", str(repo_path), str(self._context_repo_path)])
         subprocess.call(["git", "clean", "-fd"], cwd=str(self._context_repo_path))
         subprocess.call(["git", "reset", "--hard", self._base_commit], cwd=str(self._context_repo_path))
-        subprocess.call(["git", "log", "-1"], cwd=str(self._context_repo_path))
+        subprocess.call(["git", "--no-pager", "log", "-1"], cwd=str(self._context_repo_path))
         return self._context_repo_path
 
     async def __aexit__(self, exc_type, exc, tb):
@@ -193,13 +207,15 @@ async def step2(summarized_problem_statement: str, base_url: str, repo_path: Pat
 async def main():
     parser = ArgumentParser()
     parser.add_argument("instance_id", type=str, help="SWE instance id")
-    parser.add_argument("--port", type=int, default=8110, help="refact lsp port")
+    parser.add_argument("--timeout", type=float, default=None, help="processing timeout")
     parser.add_argument("--output-dir", type=Path, default="swe/predictions/test", help="output directory")
     args = parser.parse_args()
 
     args.output_dir.mkdir(exist_ok=True, parents=True)
     output_filename = args.output_dir / f"{args.instance_id}.json"
-    assert not output_filename.exists()
+    if output_filename.exists():
+        print(f"skip {args.instance_id} because it's already done")
+        exit(0)
 
     swebench = {
         row["instance_id"]: {
@@ -212,32 +228,36 @@ async def main():
     }
 
     assert args.instance_id in swebench
-
-    base_url = f"http://127.0.0.1:{args.port}/v1"
     instance = swebench[args.instance_id]
 
     results = {
-        "model_name_or_path": "refact-dev-0.1",
+        "model_name_or_path": "refact-dev-gpt35-gpt4",
         "instance_id": args.instance_id,
         "problem_statement": instance["problem_statement"],
     }
-    async with RepoContext(instance["repo"], instance["base_commit"], REPOS_WORKDIR) as repo_path:
-        async with LSPServerRunner(port=args.port, repo_path=str(repo_path)):
-            try:
-                summarized_problem_statement = await step1(instance["problem_statement"], base_url=base_url)
-                results["summarized_problem_statement"] = summarized_problem_statement
-            except Exception as e:
-                results["error"] = str(e)
-            if "error" not in results:
-                try:
-                    results["model_patch"] = await step2(
-                        summarized_problem_statement, base_url=base_url, repo_path=repo_path)
-                except Exception as e:
-                    results["error"] = str(e)
-                    results["model_patch"] = ""
+    try:
+        port = localhost_port_not_in_use(8100, 9000)
+        base_url = f"http://127.0.0.1:{port}/v1"
+        async with timeout(args.timeout):
+            async with RepoContext(instance["repo"], instance["base_commit"], REPOS_WORKDIR) as repo_path:
+                async with LSPServerRunner(port=port, repo_path=str(repo_path)):
+                    try:
+                        summarized_problem_statement = await step1(
+                            instance["problem_statement"], base_url=base_url, steps=10)
+                        results["summarized_problem_statement"] = summarized_problem_statement
+                    except Exception as e:
+                        raise RuntimeError(f"step1 {type(e)}: {str(e) or traceback.format_exc()}")
+                    try:
+                        results["model_patch"] = await step2(
+                            summarized_problem_statement, base_url=base_url, repo_path=repo_path, steps=8)
+                    except Exception as e:
+                        raise RuntimeError(f"step2 {type(e)}: {str(e) or traceback.format_exc()}")
+    except Exception as e:
+        results["error"] = str(e) or traceback.format_exc()
+        results["model_patch"] = ""
 
     with open(output_filename, "w") as f:
-        json.dump(results, f)
+        json.dump(results, f, indent=4)
 
     return results
 
