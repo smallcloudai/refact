@@ -3,7 +3,6 @@ import {
   Flex,
   IconButton,
   Text,
-  Box,
   Strong,
   Link,
   DropdownMenu,
@@ -20,27 +19,32 @@ import {
 import { Coin } from "../../images";
 import styles from "./sidebar.module.css";
 
-const LoginInfo: React.FC = () => {
+export type LoginInfoProps = {
+  email: string;
+  tokens: number;
+  plan: string;
+};
+const LoginInfo: React.FC<LoginInfoProps> = ({ email, tokens, plan }) => {
   return (
-    <Box>
+    <Flex direction="column" gap="1">
       <Flex justify="between">
-        <Text size="1">marc@smailcloud.tech</Text>
+        <Text size="1">{email}</Text>
         <Text size="1" align="center">
           <Flex align="center" gap="1">
-            <Coin className={styles.coin} /> 180
+            <Coin className={styles.coin} /> {tokens}
           </Flex>
         </Text>
       </Flex>
 
       <Flex align="center" gap="1">
         <Text size="1">
-          Active Plan: <Strong>Pro</Strong>{" "}
+          Active Plan: <Strong>{plan}</Strong>{" "}
         </Text>
         <IconButton size="1" variant="ghost" title="refresh">
           <ReloadIcon height="8px" width="8px" />
         </IconButton>
       </Flex>
-    </Box>
+    </Flex>
   );
 };
 
@@ -62,13 +66,15 @@ const LinkItem: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
-const Links: React.FC = () => {
+const Links: React.FC<{ hasAccount: boolean }> = ({ hasAccount }) => {
   return (
     <Text size="1">
-      <Flex gap="2">
-        <LinkItem>
-          <Link2Icon width="10px" height="10px" /> Your Account
-        </LinkItem>
+      <Flex gap="2" justify="between">
+        {hasAccount && (
+          <LinkItem>
+            <Link2Icon width="10px" height="10px" /> Your Account
+          </LinkItem>
+        )}
 
         <LinkItem>
           <GitHubLogoIcon width="10px" height="10px" /> Report Bug
@@ -102,16 +108,26 @@ const Settings: React.FC = () => {
   );
 };
 
-export const Footer: React.FC = () => {
+export type FooterProps = {
+  account?: LoginInfoProps;
+};
+
+export const Footer: React.FC<FooterProps> = ({ account }) => {
   return (
-    <Flex direction="column" gap="2">
-      <LoginInfo />
+    <Flex direction="column" gap="2" flexGrow="1">
+      {account && (
+        <LoginInfo
+          email={account.email}
+          tokens={account.tokens}
+          plan={account.plan}
+        />
+      )}
       <Flex justify="between">
         <Logout />
         <Settings />
       </Flex>
 
-      <Links />
+      <Links hasAccount={!!account} />
     </Flex>
   );
 };

@@ -33,4 +33,14 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Primary: Story = {};
+export const Primary: Story = {
+  args: {
+    account: {
+      email: "user@example.org",
+      tokens: 1800,
+      plan: "Pro",
+    },
+  },
+};
+
+export const Cloud: Story = {};

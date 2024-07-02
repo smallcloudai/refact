@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Box, Flex, Button } from "@radix-ui/themes";
 import styles from "./sidebar.module.css";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
-import { Footer } from "./Footer";
+import { Footer, FooterProps } from "./Footer";
 import { Statistic } from "../../features/Statistic";
 import { Spinner } from "@radix-ui/themes";
 import classNames from "classnames";
@@ -13,6 +13,7 @@ export type SideBarProps = {
   currentChatId: string;
   className?: string;
   style?: React.CSSProperties;
+  account?: FooterProps["account"];
 } & ChatHistoryProps;
 
 export const Sidebar: React.FC<SideBarProps> = ({
@@ -24,6 +25,7 @@ export const Sidebar: React.FC<SideBarProps> = ({
   takingNotes,
   className,
   style,
+  account,
 }) => {
   const [isOpenedStatistic, setIsOpenedStatistic] = useState(false);
   const handleCloseStatistic = () => {
@@ -68,8 +70,8 @@ export const Sidebar: React.FC<SideBarProps> = ({
             onDeleteHistoryItem={onDeleteHistoryItem}
             currentChatId={currentChatId}
           />
-          <Flex p="2" gap="1">
-            <Footer />
+          <Flex p="2" pb="4">
+            <Footer account={account} />
           </Flex>
         </Flex>
       )}
