@@ -1,10 +1,17 @@
 import { Button, Card, Flex, RadioGroup, Text } from "@radix-ui/themes";
+import { useState } from "react";
 
 export const InitialSetup: React.FC = () => {
+  const [selected, setSelected] = useState<string | undefined>(undefined);
+
   return (
     <Flex direction="column" gap="2">
       <Text size="4">Refact plugin initial setup:</Text>
-      <RadioGroup.Root style={{ gap: 10 }}>
+      <RadioGroup.Root
+        style={{ gap: 10 }}
+        value={selected}
+        onValueChange={setSelected}
+      >
         <Card style={{ display: "flex", flexDirection: "column" }}>
           <RadioGroup.Item value="cloud">
             <Text size="3">Cloud</Text>
@@ -34,7 +41,7 @@ export const InitialSetup: React.FC = () => {
           </Text>
         </Card>
       </RadioGroup.Root>
-      <Button variant="outline" ml="auto">
+      <Button variant="outline" ml="auto" disabled={selected === undefined}>
         Next
       </Button>
     </Flex>
