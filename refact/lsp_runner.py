@@ -5,9 +5,26 @@ import subprocess
 from typing import Optional
 
 
+__all__ = ["LSPServerRunner"]
+
+
+def localhost_port_not_in_use(start: int, stop: int):
+    def _is_port_in_use(port: int) -> bool:
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('localhost', port)) == 0
+
+    for port in range(start, stop):
+        if not _is_port_in_use(port):
+            return port
+
+    raise RuntimeError(f"cannot find port in range [{start}, {stop})")
+
+
 class LSPServerRunner:
-    def __init__(self, repo_path: str, port: int):
+    def __init__(self, repo_path: str):
         base_command = os.environ["REFACT_LSP_BASE_COMMAND"]
+        port = localhost_port_not_in_use(8100, 9000)
         self._command = [
             *base_command.split(" "),
             "--logs-stderr", f"--http-port={port}",
@@ -22,7 +39,11 @@ class LSPServerRunner:
     def _is_lsp_server_running(self) -> bool:
         return self._lsp_server is not None and self._lsp_server.returncode is None
 
-    async def start(self):
+    @property
+    def base_url(self):
+        return f"http://127.0.0.1:{self._port}/v1"
+
+    async def _start(self):
         self._lsp_server = await asyncio.create_subprocess_exec(
             *self._command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
@@ -35,15 +56,15 @@ class LSPServerRunner:
             await asyncio.sleep(0.01)
         assert self._is_lsp_server_running
 
-    async def stop(self):
+    async def _stop(self):
         if self._lsp_server is not None:
             self._lsp_server.terminate()
             await self._lsp_server.wait()
         assert not self._is_lsp_server_running
 
     async def __aenter__(self):
-        await self.start()
+        await self._start()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.stop()
+        await self._stop()
