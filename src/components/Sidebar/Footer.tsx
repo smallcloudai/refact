@@ -6,6 +6,7 @@ import {
   Strong,
   Link,
   DropdownMenu,
+  LinkProps,
 } from "@radix-ui/themes";
 import {
   GearIcon,
@@ -18,6 +19,7 @@ import {
 
 import { Coin } from "../../images";
 import styles from "./sidebar.module.css";
+import { Config, useConfig } from "../../contexts/config-context";
 
 export type LoginInfoProps = {
   email: string;
@@ -48,39 +50,79 @@ const LoginInfo: React.FC<LoginInfoProps> = ({ email, tokens, plan }) => {
   );
 };
 
-const Logout: React.FC = () => {
+const Logout: React.FC<{
+  onClick: React.MouseEventHandler<HTMLAnchorElement>;
+}> = ({ onClick }) => {
   return (
     <Flex asChild gap="1" align="center">
-      <Link size="1">
+      <Link
+        onClick={onClick}
+        size="1"
+        style={{ cursor: "var(--cursor-link)" }}
+        underline="hover"
+      >
         <ExitIcon /> Logout
       </Link>
     </Flex>
   );
 };
 
-const LinkItem: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const LinkItem: React.FC<LinkProps> = ({ children, href }) => {
   return (
     <Flex asChild gap="1" align="center">
-      <Link size="1">{children}</Link>
+      <Link
+        size="1"
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        underline="hover"
+      >
+        {children}
+      </Link>
     </Flex>
   );
 };
 
+function linkForBugReports(host: Config["host"]): string {
+  switch (host) {
+    case "vscode":
+      return "https://github.com/smallcloudai/refact-vscode/issues";
+    case "jetbrains":
+      return "https://github.com/smallcloudai/refact-intellij/issues";
+    default:
+      return "https://github.com/smallcloudai/refact-chat-js/issues";
+  }
+}
+
+function linkForAccount(host: Config["host"]): string {
+  switch (host) {
+    case "vscode":
+      return "https://refact.smallcloud.ai/account?utm_source=plugin&utm_medium=vscode&utm_campaign=account";
+    case "jetbrains":
+      return "https://refact.smallcloud.ai/account?utm_source=plugin&utm_medium=jetbrains&utm_campaign=account";
+    default:
+      return "https://refact.smallcloud.ai/account";
+  }
+}
+
 const Links: React.FC<{ hasAccount: boolean }> = ({ hasAccount }) => {
+  const { host } = useConfig();
+  const bugUrl = linkForBugReports(host);
+  const accountLink = linkForAccount(host);
   return (
     <Text size="1">
       <Flex gap="2" justify="between">
         {hasAccount && (
-          <LinkItem>
+          <LinkItem href={accountLink}>
             <Link2Icon width="10px" height="10px" /> Your Account
           </LinkItem>
         )}
 
-        <LinkItem>
+        <LinkItem href={bugUrl}>
           <GitHubLogoIcon width="10px" height="10px" /> Report Bug
         </LinkItem>
 
-        <LinkItem>
+        <LinkItem href="https://www.smallcloud.ai/discord">
           <DiscordLogoIcon width="10px" height="10px" /> Discord
         </LinkItem>
       </Flex>
@@ -88,6 +130,7 @@ const Links: React.FC<{ hasAccount: boolean }> = ({ hasAccount }) => {
   );
 };
 
+// TODO: handle interactions on this
 const Settings: React.FC = () => {
   return (
     <DropdownMenu.Root>
@@ -110,9 +153,10 @@ const Settings: React.FC = () => {
 
 export type FooterProps = {
   account?: LoginInfoProps;
+  handleLogout: () => void;
 };
 
-export const Footer: React.FC<FooterProps> = ({ account }) => {
+export const Footer: React.FC<FooterProps> = ({ account, handleLogout }) => {
   return (
     <Flex direction="column" gap="2" flexGrow="1">
       {account && (
@@ -123,7 +167,12 @@ export const Footer: React.FC<FooterProps> = ({ account }) => {
         />
       )}
       <Flex justify="between">
-        <Logout />
+        <Logout
+          onClick={(e) => {
+            e.preventDefault();
+            handleLogout();
+          }}
+        />
         <Settings />
       </Flex>
 

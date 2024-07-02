@@ -14,6 +14,7 @@ export type SideBarProps = {
   className?: string;
   style?: React.CSSProperties;
   account?: FooterProps["account"];
+  handleLogout: () => void;
 } & ChatHistoryProps;
 
 export const Sidebar: React.FC<SideBarProps> = ({
@@ -26,6 +27,7 @@ export const Sidebar: React.FC<SideBarProps> = ({
   className,
   style,
   account,
+  handleLogout,
 }) => {
   const [isOpenedStatistic, setIsOpenedStatistic] = useState(false);
   const handleCloseStatistic = () => {
@@ -71,7 +73,7 @@ export const Sidebar: React.FC<SideBarProps> = ({
             currentChatId={currentChatId}
           />
           <Flex p="2" pb="4">
-            <Footer account={account} />
+            <Footer handleLogout={handleLogout} account={account} />
           </Flex>
         </Flex>
       )}

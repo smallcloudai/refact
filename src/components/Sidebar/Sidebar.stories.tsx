@@ -26,6 +26,7 @@ const meta = {
     ],
     takingNotes: false,
     currentChatId: "",
+    handleLogout: () => ({}),
   },
 } satisfies Meta<typeof App>;
 
