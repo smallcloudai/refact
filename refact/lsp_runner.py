@@ -1,5 +1,6 @@
 import os
 import asyncio
+import random
 import subprocess
 
 from typing import Optional
@@ -14,7 +15,9 @@ def localhost_port_not_in_use(start: int, stop: int):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             return s.connect_ex(('localhost', port)) == 0
 
-    for port in range(start, stop):
+    ports_range = list(range(start, stop))
+    random.shuffle(ports_range)
+    for port in ports_range:
         if not _is_port_in_use(port):
             return port
 
