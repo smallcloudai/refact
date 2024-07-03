@@ -47,7 +47,7 @@ pub struct SingleFileFIM {
 impl SingleFileFIM {
     pub fn new(
         tokenizer: Arc<StdRwLock<Tokenizer>>,
-        post: CodeCompletionPost,
+        post: &CodeCompletionPost,
         order: String,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
         tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
@@ -56,7 +56,11 @@ impl SingleFileFIM {
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
         let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
-        SingleFileFIM { t: HasTokenizerAndEot::new(tokenizer), post, order, fim_prefix: String::new(),
+        SingleFileFIM {
+            t: HasTokenizerAndEot::new(tokenizer),
+            post: post.clone(),
+            order,
+            fim_prefix: String::new(),
             fim_suffix: String::new(), fim_middle: String::new(),
             context_used: json!({}),
             data4cache,
@@ -127,6 +131,7 @@ impl ScratchpadAbstract for SingleFileFIM {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
+        exploration_tools: bool,
     ) -> Result<(), String> {
         // That will work for some models (starcoder) without patching
         self.fim_prefix = patch.get("fim_prefix").and_then(|x| x.as_str()).unwrap_or("<fim_prefix>").to_string();

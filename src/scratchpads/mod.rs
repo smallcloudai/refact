@@ -29,7 +29,7 @@ pub async fn create_code_completion_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     model_name_for_tokenizer: String,
-    post: CodeCompletionPost,
+    post: &CodeCompletionPost,
     scratchpad_name: &str,
     scratchpad_patch: &serde_json::Value,
     cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
@@ -39,13 +39,13 @@ pub async fn create_code_completion_scratchpad(
     let mut result: Box<dyn ScratchpadAbstract>;
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
     if scratchpad_name == "FIM-PSM" {
-        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
+        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, &post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
     } else if scratchpad_name == "FIM-SPM" {
-        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, post, "SPM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
+        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, &post, "SPM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }
-    result.apply_model_adaptation_patch(scratchpad_patch).await?;
+    result.apply_model_adaptation_patch(scratchpad_patch, false).await?;
     verify_has_send(&result);
     Ok(result)
 }
@@ -54,7 +54,7 @@ pub async fn create_chat_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     model_name_for_tokenizer: String,
-    post: ChatPost,
+    post: &ChatPost,
     scratchpad_name: &str,
     scratchpad_patch: &serde_json::Value,
     allow_at: bool,
@@ -73,7 +73,20 @@ pub async fn create_chat_scratchpad(
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }
-    result.apply_model_adaptation_patch(scratchpad_patch).await?;
+    let mut exploration_tools: bool = false;
+    if post.tools.is_some() {
+        for t in post.tools.as_ref().unwrap() {
+            let tobj = t.as_object().unwrap();
+            if let Some(function) = tobj.get("function") {
+                if let Some(name) = function.get("name") {
+                    if name.as_str() == Some("definition") {
+                        exploration_tools = true;
+                    }
+                }
+            }
+        }
+    }
+    result.apply_model_adaptation_patch(scratchpad_patch, exploration_tools).await?;
     verify_has_send(&result);
     Ok(result)
 }

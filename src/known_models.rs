@@ -96,7 +96,6 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "CHAT-LLAMA2": {
-                    "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
                 }
             }
         },
@@ -119,7 +118,6 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_tools": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {
-                    "default_system_message": "You are a coding assistant that outputs short answers, gives links to documentation."
                 }
             },
             "similar_models": [
@@ -159,8 +157,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "eot": "<|eot_id|>",
                     "stop_list": [
                         "<|eot_id|>"
-                    ],
-                    "default_system_message": "You are a programming assistant."
+                    ]
                 }
             },
             "similar_models": [
@@ -171,7 +168,6 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "CHAT-LLAMA2": {
-                    "default_system_message": "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are socially unbiased and positive in nature. If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
                 }
             },
             "similar_models": [
@@ -187,8 +183,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "keyword_user": "\nUSER: ",
                     "keyword_assistant": "\nASSISTANT: ",
                     "eot": "",
-                    "stop_list": ["\n\n"],
-                    "default_system_message": "You are a helpful AI assistant.\n"
+                    "stop_list": ["\n\n"]
                 }
             },
             "similar_models": [
@@ -205,7 +200,6 @@ pub const KNOWN_MODELS: &str = r####"
                     "keyword_user": "\n@@ Instruction\n",
                     "keyword_assistant": "\n@@ Response\n",
                     "stop_list": [],
-                    "default_system_message": "You are an exceptionally intelligent coding assistant that consistently delivers accurate and reliable responses to user instructions.",
                     "eot": "<|EOT|>"
                 }
             }
@@ -219,7 +213,6 @@ pub const KNOWN_MODELS: &str = r####"
                     "keyword_user": "[INST] ",
                     "keyword_assistant": "[/INST]\n",
                     "stop_list": [],
-                    "default_system_message": "",
                     "eot": "</s>"
                 }
             },
@@ -236,7 +229,6 @@ pub const KNOWN_MODELS: &str = r####"
                     "keyword_user": "\n### User Message\n",
                     "keyword_assistant": "\n### Assistant\n",
                     "stop_list": [],
-                    "default_system_message": "You are an intelligent programming assistant.",
                     "eot": "</s>"
                 }
             }
@@ -250,7 +242,6 @@ pub const KNOWN_MODELS: &str = r####"
                     "keyword_user": "### Instruction:\n",
                     "keyword_assistant": "### Response:\n",
                     "stop_list": [],
-                    "default_system_message": "You are an AI programming assistant, utilizing the Deepseek Coder model, developed by Deepseek Company, and you only answer questions related to computer science. For politically sensitive questions, security and privacy issues, and other non-computer science questions, you will refuse to answer.",
                     "eot": "<|EOT|>"
                 }
             },

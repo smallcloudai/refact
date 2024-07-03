@@ -62,14 +62,14 @@ pub struct ChatPassthrough {
 impl ChatPassthrough {
     pub fn new(
         tokenizer: Arc<StdRwLock<Tokenizer>>,
-        post: ChatPost,
+        post: &ChatPost,
         global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
         supports_tools: bool,
     ) -> Self {
         ChatPassthrough {
             t: HasTokenizerAndEot::new(tokenizer),
-            post,
+            post: post.clone(),
             default_system_message: "".to_string(),
             has_rag_results: HasRagResults::new(),
             delta_sender: DeltaSender::new(),
@@ -85,8 +85,9 @@ impl ScratchpadAbstract for ChatPassthrough {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
+        exploration_tools: bool,
     ) -> Result<(), String> {
-        self.default_system_message = default_system_message_from_patch(&patch, self.global_context.clone()).await;
+        self.default_system_message = default_system_message_from_patch(&patch, self.global_context.clone(), exploration_tools).await;
         Ok(())
     }
 

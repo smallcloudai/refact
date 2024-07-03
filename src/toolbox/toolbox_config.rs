@@ -224,11 +224,18 @@ pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<Tool
     load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt).map_err(|e| e.to_string())
 }
 
-pub async fn get_default_system_prompt(global_context: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
+pub async fn get_default_system_prompt(global_context: Arc<ARwLock<GlobalContext>>, have_exploration_tools: bool) -> Result<String, String> {
     let tconfig = load_customization(global_context.clone()).await?;
-    match tconfig.system_prompts.get("default").and_then(|x|Some(x.text.clone())) {
-        Some(x) => Ok(x),
-        None => Err("no default system prompt found".to_string()),
+    if have_exploration_tools {
+        match tconfig.system_prompts.get("exploration_tools").and_then(|x|Some(x.text.clone())) {
+            Some(x) => Ok(x),
+            None => Err("no default system prompt found".to_string()),
+        }
+    } else {
+        match tconfig.system_prompts.get("default").and_then(|x|Some(x.text.clone())) {
+            Some(x) => Ok(x),
+            None => Err("no default system prompt found".to_string()),
+        }
     }
 }
 

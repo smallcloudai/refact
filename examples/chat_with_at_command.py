@@ -44,7 +44,8 @@ def ask_chat(messages):
             choice0 = j["choices"][0]
             if choice0["delta"]["role"] is not None:
                 accum_role = choice0["delta"]["role"]
-            accum_content += choice0["delta"]["content"]
+            if choice0["delta"]["content"] is not None:
+                accum_content += choice0["delta"]["content"]
         else:
             # content/role without streaming, replacing the last user message
             messages_back.append({"role": j["role"], "content": j["content"]})

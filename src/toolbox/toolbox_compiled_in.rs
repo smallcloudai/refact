@@ -9,11 +9,17 @@ pub const COMPILED_IN_CUSTOMIZATION_YAML : &str = r#"# Customization will merge 
 #       expanded to file.ext:42
 #       useful to form a "@file xxx" command that will insert the file text around the cursor
 #
-# You can also use top-level keys to reduce copy-paste, like you see there with DEFAULT_PROMPT.
+# You can also use top-level keys to reduce copy-paste, like you see there with PROMPT_DEFAULT.
 
 
-DEFAULT_PROMPT: |
-  You are Refact Chat, a coding assistant.
+PROMPT_DEFAULT: |
+  You are Refact Chat, a coding assistant. Use triple backquotes for code blocks. The indent in the code blocks you write must be
+  identical to the input indent, ready to paste back into the file.
+
+
+PROMPT_EXPLORATION_TOOLS: |
+  You are Refact Chat, a coding assistant. Use triple backquotes for code blocks. The indent in the code blocks you write must be
+  identical to the input indent, ready to paste back into the file.
 
   Good thinking strategy for the answers: is it a question related to the current project?
   Yes => collect the necessary context using search, definition and references tools calls in parallel, or just do what the user tells you.
@@ -24,9 +30,12 @@ DEFAULT_PROMPT: |
   IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST! USE TOOLS IN PARALLEL!
 
 
+
 system_prompts:
   default:
-    text: "%DEFAULT_PROMPT%"
+    text: "%PROMPT_DEFAULT%"
+  exploration_tools:
+    text: "%PROMPT_EXPLORATION_TOOLS%"
 
 toolbox_commands:
   shorter:
@@ -34,7 +43,7 @@ toolbox_commands:
     description: "Make code shorter"
     messages:
     - role: "system"
-      content: "%DEFAULT_PROMPT%"
+      content: "%PROMPT_DEFAULT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nMake the code block below shorter:\n\n```\n%CODE_SELECTION%```\n"
   bugs:
@@ -42,7 +51,7 @@ toolbox_commands:
     description: "Find and fix bugs"
     messages:
     - role: "system"
-      content: "%DEFAULT_PROMPT%"
+      content: "%PROMPT_DEFAULT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nFind and fix bugs in the code block below:\n\n```\n%CODE_SELECTION%```\n"
   improve:
@@ -50,7 +59,7 @@ toolbox_commands:
     description: "Rewrite code to improve it"
     messages:
     - role: "system"
-      content: "%DEFAULT_PROMPT%"
+      content: "%PROMPT_DEFAULT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRewrite the code block below to improve it:\n\n```\n%CODE_SELECTION%```\n"
   comment:
@@ -58,7 +67,7 @@ toolbox_commands:
     description: "Comment each line"
     messages:
     - role: "system"
-      content: "%DEFAULT_PROMPT%"
+      content: "%PROMPT_DEFAULT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nComment each line of the code block below:\n\n```\n%CODE_SELECTION%```\n"
   typehints:
@@ -66,7 +75,7 @@ toolbox_commands:
     description: "Add type hints"
     messages:
     - role: "system"
-      content: "%DEFAULT_PROMPT%"
+      content: "%PROMPT_DEFAULT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nAdd type hints to the code block below:\n\n```\n%CODE_SELECTION%```\n"
   naming:
@@ -74,7 +83,7 @@ toolbox_commands:
     description: "Improve variable names"
     messages:
     - role: "system"
-      content: "%DEFAULT_PROMPT%"
+      content: "%PROMPT_DEFAULT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nImprove variable names in the code block below:\n\n```\n%CODE_SELECTION%```\n"
   explain:
@@ -82,7 +91,7 @@ toolbox_commands:
     description: "Explain code"
     messages:
     - role: "system"
-      content: "%DEFAULT_PROMPT%"
+      content: "%PROMPT_DEFAULT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nExplain the code block below:\n\n```\n%CODE_SELECTION%```\n"
   summarize:
@@ -90,7 +99,7 @@ toolbox_commands:
     description: "Summarize code in 1 paragraph"
     messages:
     - role: "system"
-      content: "%DEFAULT_PROMPT%"
+      content: "%PROMPT_DEFAULT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nSummarize the code block below in 1 paragraph:\n\n```\n%CODE_SELECTION%```\n"
   typos:
@@ -98,7 +107,7 @@ toolbox_commands:
     description: "Fix typos"
     messages:
     - role: "system"
-      content: "%DEFAULT_PROMPT%"
+      content: "%PROMPT_DEFAULT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRewrite the code block below to fix typos, especially inside strings and comments:\n\n```\n%CODE_SELECTION%```\n"
   gen:
@@ -119,7 +128,7 @@ toolbox_commands:
     description: "Edit code, write instruction after the command"
     messages:
       - role: "system"
-        content: "%DEFAULT_PROMPT%"
+        content: "%PROMPT_DEFAULT%"
       - role: "user"
         content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRe-write the code block below, keep indent as in block below, don't add any code besides re-writing the code block below, make this edit: %ARGS%\n\n```\n%CODE_SELECTION%```\n"
   help:
@@ -162,7 +171,7 @@ toolbox_commands:
     selection_needed: [1, 50]
     messages:
     - role: "system"
-      content: "%DEFAULT_PROMPT%"
+      content: "%PROMPT_DEFAULT%"
     - role: "user"
       content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRewrite this specific code block into a very inefficient and cryptic one, but still correct. Rename variables to misleading gibberish. Add unnecessary complexity. Make O(N) worse. Don't forget about bad formatting and random spaces.\n\n```\n%CODE_SELECTION%```\n"
 

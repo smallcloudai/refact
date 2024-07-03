@@ -81,7 +81,7 @@ async fn chat(
         global_context.clone(),
         caps,
         model_name.clone(),
-        chat_post.clone(),
+        &chat_post,
         &scratchpad_name,
         &scratchpad_patch,
         allow_at,

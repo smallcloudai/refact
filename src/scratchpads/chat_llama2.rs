@@ -37,14 +37,14 @@ pub struct ChatLlama2 {
 impl ChatLlama2 {
     pub fn new(
         tokenizer: Arc<StdRwLock<Tokenizer>>,
-        post: ChatPost,
+        post: &ChatPost,
         global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
     ) -> Self {
         ChatLlama2 {
             t: HasTokenizerAndEot::new(tokenizer),
             dd: DeltaDeltaChatStreamer::new(),
-            post,
+            post: post.clone(),
             keyword_s: "<s>".to_string(),
             keyword_slash_s: "</s>".to_string(),
             default_system_message: "".to_string(),
@@ -60,10 +60,11 @@ impl ScratchpadAbstract for ChatLlama2 {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
+        exploration_tools: bool,
     ) -> Result<(), String> {
         self.keyword_s = patch.get("s").and_then(|x| x.as_str()).unwrap_or("<s>").to_string();
         self.keyword_slash_s = patch.get("slash_s").and_then(|x| x.as_str()).unwrap_or("</s>").to_string();
-        self.default_system_message = default_system_message_from_patch(&patch, self.global_context.clone()).await;
+        self.default_system_message = default_system_message_from_patch(&patch, self.global_context.clone(), exploration_tools).await;
         self.t.eot = self.keyword_s.clone();
         info!("llama2 chat model adaptation patch applied {:?}", self.keyword_s);
         self.t.assert_one_token(&self.t.eot.as_str())?;

@@ -39,14 +39,14 @@ pub struct GenericChatScratchpad {
 impl GenericChatScratchpad {
     pub fn new(
         tokenizer: Arc<RwLock<Tokenizer>>,
-        post: ChatPost,
+        post: &ChatPost,
         global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
     ) -> Self {
         GenericChatScratchpad {
             t: HasTokenizerAndEot::new(tokenizer),
             dd: DeltaDeltaChatStreamer::new(),
-            post,
+            post: post.clone(),
             token_esc: "".to_string(),
             keyword_syst: "".to_string(),
             keyword_user: "".to_string(),
@@ -64,12 +64,13 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
+        exploration_tools: bool,
     ) -> Result<(), String> {
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.keyword_syst = patch.get("keyword_system").and_then(|x| x.as_str()).unwrap_or("SYSTEM:").to_string();
         self.keyword_user = patch.get("keyword_user").and_then(|x| x.as_str()).unwrap_or("USER:").to_string();
         self.keyword_asst = patch.get("keyword_assistant").and_then(|x| x.as_str()).unwrap_or("ASSISTANT:").to_string();
-        self.default_system_message = default_system_message_from_patch(patch, self.global_context.clone()).await;
+        self.default_system_message = default_system_message_from_patch(patch, self.global_context.clone(), exploration_tools).await;
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
 
         self.dd.stop_list.clear();
@@ -168,7 +169,8 @@ impl ScratchpadAbstract for GenericChatScratchpad {
 
 pub async fn default_system_message_from_patch(
     patch: &Value,
-    global_context: Arc<ARwLock<GlobalContext>>
+    global_context: Arc<ARwLock<GlobalContext>>,
+    exploration_tools: bool,
 ) -> String {
     let default_system_message_mb = patch.get("default_system_message")
         .and_then(|x| x.as_str())
@@ -176,6 +178,6 @@ pub async fn default_system_message_from_patch(
     if let Some(msg) = default_system_message_mb {
         msg
     } else {
-        get_default_system_prompt(global_context).await.unwrap_or_else(|_| "".to_string())
+        get_default_system_prompt(global_context, exploration_tools).await.unwrap_or_else(|_| "".to_string())
     }
 }
