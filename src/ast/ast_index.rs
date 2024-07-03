@@ -967,7 +967,7 @@ impl AstIndex {
     }
 
     pub(crate) fn needs_update(&self) -> bool {
-        self.has_changes
+        self.has_changes || self.symbols_by_guid.is_empty()
     }
 
     pub(crate) fn set_updated(&mut self) {
@@ -1031,7 +1031,7 @@ impl AstIndex {
         self.set_updated();
         info!("Creating extra ast indexes finished, took {:.3}s", t2.elapsed().as_secs_f64());
         let _ = write!(std::io::stderr(), "AST COMPLETE\n");
-        info!("AST COMPLETE");  // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
+        info!("AST COMPLETE");  // you can see stderr "AST COMPLETE" sometimes faster vs logs
     }
 
     pub(crate) fn total_files(&self) -> usize {

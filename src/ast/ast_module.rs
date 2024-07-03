@@ -81,6 +81,12 @@ impl AstModule {
         while let Some(chunk) = documents_chunked.next() {
             self.ast_index_service.lock().await.ast_indexer_enqueue_files(AstEvent::add_docs(chunk.to_vec()), force).await;
         }
+        if documents.is_empty() {
+            self.ast_index_service.lock().await.ast_indexer_enqueue_files(
+                AstEvent { docs: vec![], typ: AstEventType::AddDummy, posted_ts: std::time::SystemTime::now() },
+                force,
+            ).await;
+        }
     }
 
     pub async fn ast_add_file_no_queue(&mut self, document: &Document, make_dirty: bool) -> Result<usize, String> {

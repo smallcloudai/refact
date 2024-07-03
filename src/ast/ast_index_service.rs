@@ -20,6 +20,7 @@ use crate::global_context::GlobalContext;
 pub enum AstEventType {
     Add,
     AstReset,
+    AddDummy,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -51,29 +52,37 @@ async fn cooldown_queue_thread(
 ) {
     let mut latest_events: HashMap<PathBuf, Arc<AstEvent>> = HashMap::new();
     loop {
-        let mut have_reset: bool = false;
+        let mut have_service_events: bool = false;
         {
             let mut queue_locked = ast_delayed_requests_q.lock().await;
             while let Some(e) = queue_locked.pop_front() {
-                if e.typ == AstEventType::AstReset {
-                    have_reset = true;
-                    latest_events.clear();
-                    break;
-                }
-                for doc in e.docs.iter() {
-                    latest_events.insert(doc.path.clone(), e.clone());
+                match e.typ {
+                    AstEventType::Add => {
+                        for doc in e.docs.iter() {
+                            latest_events.insert(doc.path.clone(), e.clone());
+                        }
+                    }
+                    AstEventType::AstReset => {
+                        have_service_events = true;
+                        latest_events = latest_events
+                            .into_iter()
+                            .filter(|(_, e)| e.typ != AstEventType::Add)
+                            .collect::<HashMap<_, _>>();
+                        let mut q = ast_immediate_q.lock().await;
+                        q.clear();
+                        q.push_back(e);
+                        break;
+                    }
+                    AstEventType::AddDummy => {
+                        ast_immediate_q.lock().await.push_back(e);
+                        have_service_events = true;
+                        break;
+                    }
                 }
             }
         }
 
         let now = SystemTime::now();
-        if have_reset {
-            let mut q = ast_immediate_q.lock().await;
-            q.clear();
-            q.push_back(Arc::new(AstEvent { docs: Vec::new(), typ: AstEventType::AstReset, posted_ts: now }));
-            continue;
-        }
-
         let mut paths_to_launch = HashSet::new();
         for (_path, original_event) in latest_events.iter() {
             if original_event.posted_ts + Duration::from_secs(cooldown_secs) < now {  // old enough
@@ -255,6 +264,10 @@ async fn ast_indexer_thread(
                 .iter()
                 .filter(|x| x.typ != AstEventType::Add) {
                 match event.typ {
+                    AstEventType::AddDummy => {
+                        info!("No files was added to AST Index");
+                        hold_on_after_reset = false;
+                    }
                     AstEventType::AstReset => {
                         info!("Reset AST Index");
                         ast_index.lock().await.clear_index();
