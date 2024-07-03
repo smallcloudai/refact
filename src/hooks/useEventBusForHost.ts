@@ -10,6 +10,7 @@ import {
   getAvailableTools,
   ToolCommand,
   // LspChatMessage,
+  checkDiff,
 } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
@@ -32,6 +33,9 @@ import {
   isRequestTools,
   RecieveTools,
   isReadyMessage,
+  isRequestDiffAppliedChunks,
+  RecieveDiffAppliedChunks,
+  RecieveDiffAppliedChunksError,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
@@ -252,6 +256,32 @@ export function useEventBusForHost() {
               payload: { id, tools: [] },
             };
 
+            window.postMessage(action, "*");
+          });
+      }
+
+      if (isRequestDiffAppliedChunks(event.data)) {
+        const { id, message_id } = event.data.payload;
+        checkDiff({
+          chat_id: id,
+          message_id,
+        })
+          .then((res) => {
+            const action: RecieveDiffAppliedChunks = {
+              type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_APPLIED_CHUNKS,
+              payload: {
+                id,
+                message_id,
+                applied_chunks: res.applied_chunks,
+              },
+            };
+            window.postMessage(action, "*");
+          })
+          .catch((err: Error) => {
+            const action: RecieveDiffAppliedChunksError = {
+              type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_APPLIED_CHUNKS_ERROR,
+              payload: { id, message_id, reason: err.message },
+            };
             window.postMessage(action, "*");
           });
       }

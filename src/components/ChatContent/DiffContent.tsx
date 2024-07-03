@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, Container, Box, Flex } from "@radix-ui/themes";
-import { DiffAction } from "../../events";
+import { DiffChunk } from "../../events";
 import { ScrollArea } from "../ScrollArea";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import classNames from "classnames";
@@ -39,7 +39,7 @@ const Highlight: React.FC<{
   );
 };
 
-export const Diff: React.FC<{ diff: DiffAction }> = ({ diff }) => {
+export const Diff: React.FC<{ diff: DiffChunk }> = ({ diff }) => {
   const removeString = diff.lines_remove && toDiff(diff.lines_remove, "remove");
   const addString = diff.lines_add && toDiff(diff.lines_add, "add");
 
@@ -72,7 +72,9 @@ export const Diff: React.FC<{ diff: DiffAction }> = ({ diff }) => {
   );
 };
 
-export const DiffContent: React.FC<{ diffs: DiffAction[] }> = ({ diffs }) => {
+export const DiffContent: React.FC<{
+  diffs: DiffChunk[];
+}> = ({ diffs }) => {
   return (
     <Container>
       <Flex direction="column" display="inline-flex" maxWidth="100%">

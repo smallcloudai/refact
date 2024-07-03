@@ -13,16 +13,16 @@ import {
   ToolCommand,
   CodeChatModel,
   ContextMemory,
-  DiffAction,
+  DiffChunk,
   isDiffResponse,
   ChatMessage,
+  isDiffMessage,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
   EVENT_NAMES_TO_CHAT,
   EVENT_NAMES_FROM_CHAT,
-  isActionToChat,
-  type ActionToChat,
+  type BaseAction,
   type ChatThread,
   isResponseToChat,
   isBackupMessages,
@@ -78,11 +78,15 @@ import {
   isSetEnableSend,
   StopStreamingFromChat,
   TakeNotesFromChat,
+  RequestDiffAppliedChunks,
+  isRequestDiffAppliedChunks,
+  isBaseAction,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
 import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
 import { parseOrElse } from "../../utils";
+import { DiffAppliedStateResponse } from "../../services/refact/diffs";
 
 export function formatChatResponse(
   messages: ChatMessages,
@@ -107,7 +111,7 @@ export function formatChatResponse(
   }
 
   if (isDiffResponse(response)) {
-    const content = parseOrElse<DiffAction[]>(response.content, []);
+    const content = parseOrElse<DiffChunk[]>(response.content, []);
     return [...messages, [response.role, content]];
   }
 
@@ -189,7 +193,7 @@ export function formatChatResponse(
 }
 
 export function reducer(postMessage: typeof window.postMessage) {
-  return function (state: ChatState, action: ActionToChat): ChatState {
+  return function (state: ChatState, action: BaseAction): ChatState {
     const isThisChat =
       action.payload?.id && action.payload.id === state.chat.id ? true : false;
 
@@ -300,6 +304,7 @@ export function reducer(postMessage: typeof window.postMessage) {
         error: null,
         previous_message_length: lastAssistantMessage,
         chat: {
+          ...state.chat,
           ...action.payload.chat,
           messages,
         },
@@ -578,6 +583,30 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
+    // if (isThisChat && isRequestDiffAppliedChunks(action)) {
+    //   console.log(action);
+    // }
+
+    if (isThisChat && isRequestDiffAppliedChunks(action)) {
+      const maybeDif =
+        action.payload.message_id in state.chat.applied_diffs
+          ? {
+              ...state.chat.applied_diffs[action.payload.message_id],
+              fetching: true,
+            }
+          : { fetching: true };
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          applied_diffs: {
+            ...state.chat.applied_diffs,
+            [action.payload.message_id]: maybeDif,
+          },
+        },
+      };
+    }
+
     return state;
   };
 }
@@ -591,7 +620,12 @@ export type ChatCapsState = {
 };
 
 export type ChatState = {
-  chat: ChatThread;
+  chat: ChatThread & {
+    applied_diffs: Record<
+      string,
+      Partial<DiffAppliedStateResponse> & { fetching: boolean }
+    >;
+  };
   prevent_send: boolean;
   waiting_for_response: boolean;
   streaming: boolean;
@@ -634,6 +668,7 @@ export function createInitialState(): ChatState {
       messages: [],
       title: "",
       model: "",
+      applied_diffs: {},
     },
     caps: {
       fetching: false,
@@ -676,7 +711,7 @@ export const useEventBusForChat = () => {
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
-      if (isActionToChat(event.data)) {
+      if (isBaseAction(event.data)) {
         dispatch(event.data);
       }
     };
@@ -1092,6 +1127,45 @@ export const useEventBusForChat = () => {
     },
     [state.chat.id],
   );
+
+  const requestDiffAppliedChunks = useCallback(
+    (message_id: string) => {
+      const actions: RequestDiffAppliedChunks = {
+        type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS,
+        payload: { id: state.chat.id, message_id },
+      };
+
+      postMessage(actions);
+    },
+    [postMessage, state.chat.id],
+  );
+
+  useEffect(() => {
+    const diffs = state.chat.messages.filter((messasge) =>
+      isDiffMessage(messasge),
+    );
+
+    diffs.forEach((_diff, index) => {
+      const key = "diff-" + index;
+      if (
+        key in state.chat.applied_diffs &&
+        state.chat.applied_diffs[key].fetching
+      ) {
+        return;
+      }
+      const action: RequestDiffAppliedChunks = {
+        type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS,
+        payload: { id: state.chat.id, message_id: key },
+      };
+      postMessage(action);
+    });
+  }, [
+    requestDiffAppliedChunks,
+    state.chat.applied_diffs,
+    state.chat.id,
+    postMessage,
+    state.chat.messages,
+  ]);
 
   // useEffect(() => {
   //   window.debugChat =

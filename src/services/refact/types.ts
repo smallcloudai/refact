@@ -54,7 +54,7 @@ interface BaseMessage
     | undefined
     | null
     | ContextMemory[]
-    | DiffAction[]
+    | DiffChunk[]
   > {
   0: ChatRole;
   1:
@@ -63,7 +63,7 @@ interface BaseMessage
     | ChatContextFile[]
     | ToolResult
     | ContextMemory[]
-    | DiffAction[];
+    | DiffChunk[];
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
@@ -102,17 +102,19 @@ export interface MemoryMessage extends BaseMessage {
 }
 
 // TODO: There maybe sub-types for this
-export type DiffAction = {
+export type DiffChunk = {
   file_name: string;
-  file_action: "new" | "edit";
-  line1?: number;
-  line2?: number;
-  lines_remove?: string;
-  lines_add?: string;
+  file_action: string;
+  line1: number;
+  line2: number;
+  lines_remove: string;
+  lines_add: string;
+  apply?: boolean;
+  chunk_id?: number;
 };
 export interface DiffMessage extends BaseMessage {
   0: "diff";
-  1: DiffAction[];
+  1: DiffChunk[];
 }
 
 export function isUserMessage(message: ChatMessage): message is UserMessage {
