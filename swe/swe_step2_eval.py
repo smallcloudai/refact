@@ -1,0 +1,85 @@
+import json
+import asyncio
+import traceback
+import whatthepatch
+
+from argparse import ArgumentParser
+
+from agent_runner import AgentRunner
+from agent_runner import get_swe_bench_lite_instance
+from step2 import SolveTaskStep
+
+from pathlib import Path
+from typing import Dict, Any
+
+
+MODEL = "gpt-3.5-turbo"
+# MODEL = "gpt-4o"
+
+
+class SWERunner(AgentRunner):
+
+    @staticmethod
+    def _patched_file(patch: str) -> str:
+        files = list(whatthepatch.parse_patch(patch))
+        assert len(files) == 1
+        header = files[0].header
+        assert header.old_path[len("a/"):] == header.new_path[len("b/"):]
+        return header.old_path[len("a/"):]
+
+    async def _steps(self, base_url: str, repo_path: Path, *args, **kwargs) -> Dict[str, Any]:
+        results: Dict[str, Any] = dict()
+        problem_statement = kwargs["problem_statement"]
+        filename: str = self._patched_file(kwargs["problem_patch"])
+        results["summarized_problem_statement"] = "\n\n".join([
+            problem_statement, f"List of files you should change to solve the problem:\n - {filename}"
+        ])
+        try:
+            step2 = SolveTaskStep(base_url=base_url, model_name=MODEL)
+            results["model_patch"] = \
+                await step2.process(task=results["summarized_problem_statement"], repo_path=repo_path)
+        except Exception as e:
+            raise RuntimeError(f"step2: {type(e)} {str(e) or traceback.format_exc()}")
+        return results
+
+
+async def main():
+    parser = ArgumentParser()
+    parser.add_argument("instance_id", type=str, help="SWE instance id")
+    parser.add_argument("--timeout", type=float, default=None, help="processing timeout")
+    parser.add_argument("--output-dir", type=Path, default="swe/predictions/test", help="output directory")
+    args = parser.parse_args()
+
+    args.output_dir.mkdir(exist_ok=True, parents=True)
+    output_filename = args.output_dir / f"{args.instance_id}.json"
+    if output_filename.exists():
+        print(f"skip {args.instance_id} because it's already done")
+        exit(0)
+
+    instance = get_swe_bench_lite_instance(args.instance_id)
+    results = {
+        "model_name_or_path": f"refact-dev-{MODEL}-{args.output_dir.name}",
+        "instance_id": args.instance_id,
+        "problem_statement": instance["problem_statement"],
+        "problem_patch": instance["patch"],
+    }
+
+    try:
+        runner = SWERunner(
+            timeout=args.timeout)
+        results.update(await runner.run(
+            repo_name=instance["repo"],
+            base_commit=instance["base_commit"],
+            **results,
+        ))
+    except Exception as e:
+        results["error"] = str(e) or traceback.format_exc()
+
+    with open(output_filename, "w") as f:
+        json.dump(results, f, indent=4)
+
+    return results
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

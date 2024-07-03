@@ -39,7 +39,6 @@ async def main():
         await asyncio.gather(*[process_instance(row["instance_id"], output) for row in row_batch])
 
     with jsonlines.open(output / "all_preds.jsonl", 'w') as f:
-        # prds.append({"model_patch": "", **d})
         f.write_all([
             json.loads(f.read_text())
             for f in output.glob("*.json")
