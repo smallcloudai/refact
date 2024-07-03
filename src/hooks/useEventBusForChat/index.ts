@@ -81,6 +81,8 @@ import {
   RequestDiffAppliedChunks,
   isRequestDiffAppliedChunks,
   isBaseAction,
+  isRecieveDiffAppliedChunks,
+  isRecieveDiffAppliedChunksError,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -593,8 +595,9 @@ export function reducer(postMessage: typeof window.postMessage) {
           ? {
               ...state.chat.applied_diffs[action.payload.message_id],
               fetching: true,
+              error: null,
             }
-          : { fetching: true };
+          : { fetching: true, error: null };
       return {
         ...state,
         chat: {
@@ -603,6 +606,49 @@ export function reducer(postMessage: typeof window.postMessage) {
             ...state.chat.applied_diffs,
             [action.payload.message_id]: maybeDif,
           },
+        },
+      };
+    }
+
+    if (isThisChat && isRecieveDiffAppliedChunks(action)) {
+      const diff = {
+        ...state.chat.applied_diffs[action.payload.message_id],
+        fetching: false,
+        error: null,
+        applied_chunk: action.payload.applied_chunks,
+      };
+
+      const applied_diffs = {
+        ...state.chat.applied_diffs,
+        [action.payload.message_id]: diff,
+      };
+
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          applied_diffs,
+        },
+      };
+    }
+
+    if (isThisChat && isRecieveDiffAppliedChunksError(action)) {
+      const diff = {
+        ...state.chat.applied_diffs[action.payload.message_id],
+        fetching: false,
+        error: action.payload.reason,
+      };
+
+      const applied_diffs = {
+        ...state.chat.applied_diffs,
+        [action.payload.message_id]: diff,
+      };
+
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          applied_diffs,
         },
       };
     }
@@ -623,7 +669,10 @@ export type ChatState = {
   chat: ChatThread & {
     applied_diffs: Record<
       string,
-      Partial<DiffAppliedStateResponse> & { fetching: boolean }
+      Partial<DiffAppliedStateResponse> & {
+        fetching: boolean;
+        error: null | string;
+      }
     >;
   };
   prevent_send: boolean;
