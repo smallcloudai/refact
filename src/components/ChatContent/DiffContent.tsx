@@ -19,7 +19,7 @@ function toDiff(str: string, type: "add" | "remove"): string {
   return sign + replaceEscapedEOL;
 }
 
-const Highlight: React.FC<{
+const _Highlight: React.FC<{
   children: string;
   showLineNumbers?: boolean;
   startingLineNumber?: number;
@@ -39,6 +39,8 @@ const Highlight: React.FC<{
   );
 };
 
+const Highlight = React.memo(_Highlight);
+
 export const Diff: React.FC<{ diff: DiffChunk }> = ({ diff }) => {
   const removeString = diff.lines_remove && toDiff(diff.lines_remove, "remove");
   const addString = diff.lines_add && toDiff(diff.lines_add, "add");
@@ -46,8 +48,8 @@ export const Diff: React.FC<{ diff: DiffChunk }> = ({ diff }) => {
   return (
     <Box>
       <Text size="1">{diff.file_name}</Text>
-      <ScrollArea scrollbars="horizontal">
-        <Box className={styles.diff} py="2">
+      <ScrollArea scrollbars="horizontal" asChild>
+        <Flex className={styles.diff} py="2" direction="column">
           {removeString && (
             <Highlight
               className={styles.diff_first}
@@ -66,7 +68,7 @@ export const Diff: React.FC<{ diff: DiffChunk }> = ({ diff }) => {
               {addString}
             </Highlight>
           )}
-        </Box>
+        </Flex>
       </ScrollArea>
     </Box>
   );

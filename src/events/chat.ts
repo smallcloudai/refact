@@ -679,7 +679,7 @@ export interface RecieveDiffAppliedChunksError extends ActionToChat {
 
 export function isRecieveDiffAppliedChunksError(
   action: unknown,
-): action is RecieveDiffAppliedChunks {
+): action is RecieveDiffAppliedChunksError {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_APPLIED_CHUNKS_ERROR;
 }
