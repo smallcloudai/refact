@@ -10,13 +10,13 @@ export const EnterpriseSetup: React.FC<EnterpriseSetupProps> = ({
   goBack,
   next,
 }: EnterpriseSetupProps) => {
-  const [apiEndpoint, setApiEndpoint] = useState("");
+  const [endpoint, setEndpoint] = useState("");
   const [apiKey, setApiKey] = useState("");
 
-  const canSubmit = Boolean(apiEndpoint && apiKey);
+  const canSubmit = Boolean(endpoint && apiKey);
   const onSubmit = () => {
     if (canSubmit) {
-      next(apiEndpoint, apiKey);
+      next(endpoint, apiKey);
     }
   };
 
@@ -29,8 +29,8 @@ export const EnterpriseSetup: React.FC<EnterpriseSetupProps> = ({
       <Text size="2">Endpoint Address</Text>
       <TextField.Root
         placeholder="http://x.x.x.x:8008/"
-        value={apiEndpoint}
-        onChange={(event) => setApiEndpoint(event.target.value)}
+        value={endpoint}
+        onChange={(event) => setEndpoint(event.target.value)}
       />
       <Text size="2">API Key</Text>
       <TextField.Root

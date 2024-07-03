@@ -5,7 +5,16 @@ import { Flex } from "@radix-ui/themes";
 const meta: Meta<typeof SelfHostingSetup> = {
   title: "Self hosting setup",
   component: SelfHostingSetup,
-  args: {},
+  args: {
+    goBack: () => {
+      // eslint-disable-next-line no-console
+      console.log("goBack called");
+    },
+    next: (endpointAddress) => {
+      // eslint-disable-next-line no-console
+      console.log("next called with " + endpointAddress);
+    },
+  },
   decorators: [
     (Children) => (
       <Flex p="4">

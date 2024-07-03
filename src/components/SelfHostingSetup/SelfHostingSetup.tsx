@@ -1,6 +1,24 @@
 import { Button, Flex, Text, TextField } from "@radix-ui/themes";
+import { useState } from "react";
 
-export const SelfHostingSetup: React.FC = () => {
+export interface SelfHostingSetupProps {
+  goBack: () => void;
+  next: (endpointAddress: string) => void;
+}
+
+export const SelfHostingSetup: React.FC<SelfHostingSetupProps> = ({
+  goBack,
+  next,
+}: SelfHostingSetupProps) => {
+  const [endpoint, setEndpoint] = useState("");
+
+  const canSubmit = Boolean(endpoint);
+  const onSubmit = () => {
+    if (canSubmit) {
+      next(endpoint);
+    }
+  };
+
   return (
     <Flex direction="column" gap="2">
       <Text size="2">
@@ -14,12 +32,20 @@ export const SelfHostingSetup: React.FC = () => {
         experience on discord!
       </Text>
       <Text size="2">Endpoint Address</Text>
-      <TextField.Root />
+      <TextField.Root
+        value={endpoint}
+        onChange={(event) => setEndpoint(event.target.value)}
+      />
       <Flex gap="2">
-        <Button variant="outline" mr="auto">
+        <Button variant="outline" mr="auto" onClick={goBack}>
           Back
         </Button>
-        <Button variant="outline" ml="auto">
+        <Button
+          variant="outline"
+          ml="auto"
+          disabled={!canSubmit}
+          onClick={onSubmit}
+        >
           Next
         </Button>
       </Flex>
