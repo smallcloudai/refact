@@ -358,10 +358,9 @@ describe("Chat", () => {
     setUpCapsForChat("foo");
     setUpSystemPromptsForChat("foo");
 
-    const btn = await waitFor(
-      () => app.getByTitle(SYSTEM_PROMPTS.default.text),
-      { timeout: 1000 },
-    );
+    const btn = await waitFor(() => app.getByTitle("default"), {
+      timeout: 1000,
+    });
 
     await user.click(btn);
 

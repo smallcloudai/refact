@@ -693,7 +693,7 @@ export function createInitialState(): ChatState {
       prompts: {},
       fetching: false,
     },
-    selected_system_prompt: null,
+    selected_system_prompt: "default",
     take_notes: true,
     tools: null,
     use_tools: true,
@@ -739,12 +739,6 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
-  const maybeDefaultPrompt: string | null = useMemo(() => {
-    return "default" in state.system_prompts.prompts
-      ? state.system_prompts.prompts.default.text
-      : null;
-  }, [state.system_prompts.prompts]);
-
   const sendMessages = useCallback(
     (messages: ChatMessages, attach_file = state.active_file.attach) => {
       clearError();
@@ -756,8 +750,15 @@ export const useEventBusForChat = () => {
 
       const messagesWithSystemPrompt: ChatMessages =
         state.selected_system_prompt &&
-        state.selected_system_prompt !== maybeDefaultPrompt
-          ? [["system", state.selected_system_prompt], ...messages]
+        state.selected_system_prompt !== "default" &&
+        state.selected_system_prompt in state.system_prompts.prompts
+          ? [
+              [
+                "system",
+                state.system_prompts.prompts[state.selected_system_prompt].text,
+              ],
+              ...messages,
+            ]
           : messages;
 
       const thread: ChatThread = {
@@ -800,10 +801,10 @@ export const useEventBusForChat = () => {
       state.chat.title,
       state.chat.model,
       state.selected_system_prompt,
+      state.system_prompts.prompts,
       state.use_tools,
       state.tools,
       clearError,
-      maybeDefaultPrompt,
       postMessage,
     ],
   );
