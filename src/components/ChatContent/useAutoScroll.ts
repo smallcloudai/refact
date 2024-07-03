@@ -16,33 +16,34 @@ export function useAutoScroll({
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   useImperativeHandle(ref, () => innerRef.current!, []);
 
-  const [autoScroll, setAutoScroll] = useState(false);
-  const [isVisable, setIsVisable] = useState(true);
+  const [autoScroll, setAutoScroll] = useState(true);
 
   useEffect(() => {
     setAutoScroll(isStreaming);
   }, [isStreaming]);
 
   useEffect(() => {
-    if (
-      isStreaming &&
-      !isVisable &&
-      autoScroll &&
-      innerRef.current?.scrollIntoView
-    ) {
+    if (isStreaming && autoScroll && innerRef.current?.scrollIntoView) {
       innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
     }
-  }, [messages, autoScroll, isVisable, isStreaming]);
+  }, [messages, autoScroll, isStreaming]);
+
+  useEffect(() => {
+    return () => {
+      setAutoScroll(true);
+    };
+  }, []);
 
   const handleScroll: React.UIEventHandler<HTMLDivElement> = (event) => {
     if (!innerRef.current) return;
     const parent = event.currentTarget.getBoundingClientRect();
     const { bottom, height, top } = innerRef.current.getBoundingClientRect();
-    const isVisable =
+    const nextIsVisable =
       top <= parent.top
-        ? parent.top - top <= height
-        : bottom - parent.bottom <= height;
-    setIsVisable(isVisable);
+        ? parent.top - top <= height + 20
+        : bottom - parent.bottom <= height + 20;
+
+    setAutoScroll(nextIsVisable);
   };
 
   return { handleScroll, innerRef };

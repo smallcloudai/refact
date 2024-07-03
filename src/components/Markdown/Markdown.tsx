@@ -1,5 +1,5 @@
-import React from "react";
-import ReactMarkdown from "react-markdown";
+import React, { useMemo } from "react";
+import ReactMarkdown, { Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import classNames from "classnames";
 // import "./highlightjs.css";
@@ -33,12 +33,74 @@ export type MarkdownProps = Pick<
     "startingLineNumber" | "showLineNumbers" | "useInlineStyles"
   >;
 
-export const Markdown: React.FC<MarkdownProps> = ({
+const _Markdown: React.FC<MarkdownProps> = ({
   children,
   allowedElements,
   unwrapDisallowed,
   ...rest
 }) => {
+  const components: Partial<Components> = useMemo(() => {
+    return {
+      ol(props) {
+        return (
+          <ol {...props} className={classNames(styles.list, props.className)} />
+        );
+      },
+      ul(props) {
+        return (
+          <ul {...props} className={classNames(styles.list, props.className)} />
+        );
+      },
+      code(props) {
+        return <MarkdownCodeBlock {...props} {...rest} />;
+      },
+      p({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Text as="p" {...props} />;
+      },
+      h1({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Heading as="h1" {...props} />;
+      },
+      h2({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Heading as="h2" {...props} />;
+      },
+      h3({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Heading as="h3" {...props} />;
+      },
+      h4({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Heading as="h4" {...props} />;
+      },
+      h5({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Heading as="h5" {...props} />;
+      },
+      h6({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Heading as="h6" {...props} />;
+      },
+      blockquote({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Blockquote {...props} />;
+      },
+      em({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Em {...props} />;
+      },
+      kbd({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Kbd {...props} />;
+      },
+      a({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Link {...props} />;
+      },
+      q({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Quote {...props} />;
+      },
+      strong({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Strong {...props} />;
+      },
+      b({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Text {...props} weight="bold" />;
+      },
+      i({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Em {...props} />;
+      },
+    };
+  }, [rest]);
   return (
     <ReactMarkdown
       className={styles.markdown}
@@ -46,74 +108,11 @@ export const Markdown: React.FC<MarkdownProps> = ({
       rehypePlugins={[rehypeKatex]}
       allowedElements={allowedElements}
       unwrapDisallowed={unwrapDisallowed}
-      components={{
-        ol(props) {
-          return (
-            <ol
-              {...props}
-              className={classNames(styles.list, props.className)}
-            />
-          );
-        },
-        ul(props) {
-          return (
-            <ul
-              {...props}
-              className={classNames(styles.list, props.className)}
-            />
-          );
-        },
-        code(props) {
-          return <MarkdownCodeBlock {...props} {...rest} />;
-        },
-        p({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Text as="p" {...props} />;
-        },
-        h1({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Heading as="h1" {...props} />;
-        },
-        h2({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Heading as="h2" {...props} />;
-        },
-        h3({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Heading as="h3" {...props} />;
-        },
-        h4({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Heading as="h4" {...props} />;
-        },
-        h5({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Heading as="h5" {...props} />;
-        },
-        h6({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Heading as="h6" {...props} />;
-        },
-        blockquote({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Blockquote {...props} />;
-        },
-        em({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Em {...props} />;
-        },
-        kbd({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Kbd {...props} />;
-        },
-        a({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Link {...props} />;
-        },
-        q({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Quote {...props} />;
-        },
-        strong({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Strong {...props} />;
-        },
-        b({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Text {...props} weight="bold" />;
-        },
-        i({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <Em {...props} />;
-        },
-      }}
+      components={components}
     >
       {children}
     </ReactMarkdown>
   );
 };
+
+export const Markdown = React.memo(_Markdown);

@@ -39,6 +39,7 @@ import {
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
+import { parseOrElse } from "../utils";
 
 export function useEventBusForHost() {
   const { lspUrl } = useConfig();
@@ -359,27 +360,29 @@ function handleSend(
           }
 
           if (maybeJsonString === "[ERROR]") {
-            // TODO safely parse json
-            const errorJson = JSON.parse(maybeJsonString) as Record<
-              string,
-              unknown
-            >;
-            const errorMessage =
-              typeof errorJson.detail === "string"
-                ? errorJson.detail
-                : "error from lsp";
+            // check for error details
+            const errorMessage = "error from lsp";
             const error = new Error(errorMessage);
 
             return Promise.reject(error); // handle error
           }
+
           // figure out how to safely parseJson
 
-          const json = JSON.parse(maybeJsonString) as Record<string, unknown>;
+          const json = parseOrElse<Record<string, unknown>>(
+            maybeJsonString,
+            {},
+          );
 
           if ("detail" in json) {
             const errorMessage: string =
-              typeof json.detail === "string" ? json.detail : "error from lsp";
+              typeof json.detail === "string"
+                ? json.detail
+                : JSON.stringify(json.detail);
             const error = new Error(errorMessage);
+
+            // eslint-disable-next-line no-console
+            console.error(error);
             return Promise.reject(error);
           }
           window.postMessage(

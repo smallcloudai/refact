@@ -76,7 +76,6 @@ import {
   isSetUseTools,
   SetEnableSend,
   isSetEnableSend,
-  StopStreamingFromChat,
   TakeNotesFromChat,
   RequestDiffAppliedChunks,
   isRequestDiffAppliedChunks,
@@ -196,22 +195,9 @@ export function formatChatResponse(
 
 export function reducer(postMessage: typeof window.postMessage) {
   return function (state: ChatState, action: BaseAction): ChatState {
-    const isThisChat =
-      action.payload?.id && action.payload.id === state.chat.id ? true : false;
-
-    function saveAndStopStreaming() {
-      const stopStreaming: StopStreamingFromChat = {
-        type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING,
-        payload: { id: state.chat.id },
-      };
-      postMessage(stopStreaming);
-
-      const save: SaveChatFromChat = {
-        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-        payload: state.chat,
-      };
-      postMessage(save);
-    }
+    const isThisChat = Boolean(
+      action.payload?.id && action.payload.id === state.chat.id,
+    );
 
     function maybeTakeNotes() {
       if (!state.take_notes || state.chat.messages.length === 0) return;
@@ -228,7 +214,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       postMessage(notes);
     }
 
-    // console.log(action.type, { isThisChat });
+    // console.log(action.type, { isThisChat, action });
     // console.log(action.payload);
 
     if (isThisChat && isSetDisableChat(action)) {
@@ -246,16 +232,38 @@ export function reducer(postMessage: typeof window.postMessage) {
         ? state.chat.messages.slice(0, state.previous_message_length)
         : state.chat.messages;
       const messages = formatChatResponse(current, action.payload);
+
       return {
         ...state,
+        files_in_preview: [],
         waiting_for_response: false,
         streaming: true,
         previous_message_length: messages.length,
-        files_in_preview: [],
         chat: {
           ...state.chat,
           messages,
         },
+      };
+    }
+
+    if (!isThisChat && isResponseToChat(action)) {
+      if (!(action.payload.id in state.chat_cache)) {
+        return state;
+      }
+      if (isChatUserMessageResponse(action.payload)) {
+        return state;
+      }
+
+      const chat_cache = { ...state.chat_cache };
+      const chat = chat_cache[action.payload.id];
+      const messages = formatChatResponse(chat.messages, action.payload);
+      chat_cache[action.payload.id] = {
+        ...chat,
+        messages,
+      };
+      return {
+        ...state,
+        chat_cache,
       };
     }
 
@@ -271,14 +279,21 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isRestoreChat(action)) {
-      if (state.streaming) {
-        saveAndStopStreaming();
-      } else {
+      if (!state.streaming) {
         maybeTakeNotes();
       }
 
-      const messages: ChatMessages = action.payload.chat.messages.map(
-        (message) => {
+      const new_chat_id = action.payload.chat.id;
+      const chat_cache = { ...state.chat_cache };
+
+      let messages: ChatMessages | undefined = undefined;
+
+      if (new_chat_id in chat_cache) {
+        messages = chat_cache[new_chat_id].messages;
+      }
+
+      if (messages === undefined) {
+        messages = action.payload.chat.messages.map((message) => {
           if (message[0] === "context_file" && typeof message[1] === "string") {
             let file: ChatContextFile[] = [];
             try {
@@ -290,8 +305,12 @@ export function reducer(postMessage: typeof window.postMessage) {
           }
 
           return message;
-        },
-      );
+        });
+      }
+
+      if (state.streaming) {
+        chat_cache[state.chat.id] = state.chat;
+      }
 
       const lastAssistantMessage = messages.reduce((count, message, index) => {
         if (message[0] === "assistant") return index + 1;
@@ -310,19 +329,21 @@ export function reducer(postMessage: typeof window.postMessage) {
           ...action.payload.chat,
           messages,
         },
+        chat_cache,
         selected_snippet: action.payload.snippet ?? state.selected_snippet,
         take_notes: false,
       };
     }
 
     if (isThisChat && isCreateNewChat(action)) {
+      const nextState = createInitialState();
+      const chat_cache = { ...state.chat_cache };
+
       if (state.streaming) {
-        saveAndStopStreaming();
+        chat_cache[state.chat.id] = state.chat;
       } else {
         maybeTakeNotes();
       }
-
-      const nextState = createInitialState();
 
       return {
         ...nextState,
@@ -330,6 +351,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           ...nextState.chat,
           model: state.chat.model,
         },
+        chat_cache,
         selected_snippet: action.payload?.snippet ?? state.selected_snippet,
       };
     }
@@ -392,6 +414,26 @@ export function reducer(postMessage: typeof window.postMessage) {
         prevent_send: false,
         waiting_for_response: false,
         streaming: false,
+      };
+    }
+
+    if (!isThisChat && isChatDoneStreaming(action)) {
+      if (!(action.payload.id in state.chat_cache)) {
+        return state;
+      }
+
+      const chat = state.chat_cache[action.payload.id];
+      const chat_cache = { ...state.chat_cache };
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete chat_cache[action.payload.id];
+      postMessage({
+        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+        payload: chat,
+      });
+
+      return {
+        ...state,
+        chat_cache,
       };
     }
 
@@ -675,6 +717,7 @@ export type ChatState = {
       }
     >;
   };
+  chat_cache: Record<string, ChatThread>;
   prevent_send: boolean;
   waiting_for_response: boolean;
   streaming: boolean;
@@ -719,6 +762,7 @@ export function createInitialState(): ChatState {
       model: "",
       applied_diffs: {},
     },
+    chat_cache: {},
     caps: {
       fetching: false,
       default_cap: "",
@@ -745,7 +789,7 @@ export function createInitialState(): ChatState {
       prompts: {},
       fetching: false,
     },
-    selected_system_prompt: null,
+    selected_system_prompt: "default",
     take_notes: true,
     tools: null,
     use_tools: true,
@@ -791,12 +835,6 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
-  const maybeDefaultPrompt: string | null = useMemo(() => {
-    return "default" in state.system_prompts.prompts
-      ? state.system_prompts.prompts.default.text
-      : null;
-  }, [state.system_prompts.prompts]);
-
   const sendMessages = useCallback(
     (messages: ChatMessages, attach_file = state.active_file.attach) => {
       clearError();
@@ -808,8 +846,15 @@ export const useEventBusForChat = () => {
 
       const messagesWithSystemPrompt: ChatMessages =
         state.selected_system_prompt &&
-        state.selected_system_prompt !== maybeDefaultPrompt
-          ? [["system", state.selected_system_prompt], ...messages]
+        state.selected_system_prompt !== "default" &&
+        state.selected_system_prompt in state.system_prompts.prompts
+          ? [
+              [
+                "system",
+                state.system_prompts.prompts[state.selected_system_prompt].text,
+              ],
+              ...messages,
+            ]
           : messages;
 
       const thread: ChatThread = {
@@ -852,10 +897,10 @@ export const useEventBusForChat = () => {
       state.chat.title,
       state.chat.model,
       state.selected_system_prompt,
+      state.system_prompts.prompts,
       state.use_tools,
       state.tools,
       clearError,
-      maybeDefaultPrompt,
       postMessage,
     ],
   );

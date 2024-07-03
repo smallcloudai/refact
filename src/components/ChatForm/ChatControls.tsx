@@ -60,6 +60,9 @@ export type ChatControlsProps = {
   promptsProps: PromptSelectProps;
   host: Config["host"];
   showControls: boolean;
+  useTools: boolean;
+  canUseTools: boolean;
+  setUseTools: (value: boolean) => void;
 };
 
 export const ChatControls: React.FC<ChatControlsProps> = ({
@@ -69,6 +72,9 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   promptsProps,
   host,
   showControls,
+  canUseTools,
+  useTools,
+  setUseTools,
 }) => {
   return (
     <Flex
@@ -78,6 +84,41 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
       direction="column"
       className={classNames(styles.controls)}
     >
+      {canUseTools && (
+        <Flex justify="between">
+          <Checkbox
+            name="use_tools"
+            checked={useTools}
+            size="1"
+            onCheckedChange={(value) => setUseTools(!!value)}
+          >
+            Allow model to use tools
+          </Checkbox>
+          <HoverCard.Root>
+            <HoverCard.Trigger>
+              <QuestionMarkCircledIcon />
+            </HoverCard.Trigger>
+            <HoverCard.Content maxWidth="240px" size="1">
+              <Flex direction="column" gap="4">
+                <Text as="div" size="1">
+                  Allow the model to call various functions to help you,
+                  especially search to gather more information.
+                </Text>
+                <Text size="1">
+                  Read more on our{" "}
+                  <Link
+                    size="1"
+                    href="https://docs.refact.ai/features/ai-chat/"
+                  >
+                    documentation
+                  </Link>
+                </Text>
+              </Flex>
+            </HoverCard.Content>
+          </HoverCard.Root>
+        </Flex>
+      )}
+
       {Object.entries(checkboxes).map(([key, checkbox]) => {
         if (host === "web" && checkbox.name === "file_upload") {
           return null;

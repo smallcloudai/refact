@@ -175,6 +175,9 @@ const meta: Meta<typeof ChatForm> = {
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
     selectedSystemPrompt: null,
+    useTools: true,
+    canUseTools: true,
+    setUseTools: noop,
   },
   decorators: [
     (Children) => {

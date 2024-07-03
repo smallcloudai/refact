@@ -31,8 +31,6 @@ type useCheckboxStateProps = {
   allBoxes: boolean;
   chatId: string;
   canUseTools: boolean;
-  setUseTools: (value: boolean) => void;
-  useTools: boolean;
   host: string;
 };
 
@@ -44,8 +42,6 @@ const useControlsState = ({
   allBoxes,
   chatId,
   canUseTools,
-  setUseTools,
-  useTools,
   host,
 }: useCheckboxStateProps) => {
   const [interacted, setInteracted] = React.useState(false);
@@ -105,19 +101,6 @@ const useControlsState = ({
           linkText: "documentation",
         },
       },
-      use_tools: {
-        name: "use_tools",
-        // defaultChecked: true,  // TODO doesn't work
-        checked: useTools, // TODO doesn't work even if set to true
-        label: "Allow model to use tools",
-        disabled: false,
-        hide: !canUseTools,
-        info: {
-          text: "Allow the model to call various functions to help you, especially search to gather more information.",
-          link: "https://docs.refact.ai/features/ai-chat/",
-          linkText: "documentation",
-        },
-      },
       file_upload: {
         name: "file_upload",
         checked: !!snippet.code && !!activeFile.name,
@@ -162,7 +145,6 @@ const useControlsState = ({
     vecdb,
     allBoxes,
     canUseTools,
-    useTools,
     snippet.code,
     activeFile.name,
     filePathWithLines,
@@ -182,9 +164,6 @@ const useControlsState = ({
   const toggleCheckbox = useCallback(
     (name: string, value: boolean | string) => {
       setInteracted(true);
-      if (name === "use_tools") {
-        setUseTools(!!value);
-      }
       setCheckboxes((prev) => {
         const checkbox: Checkbox = { ...prev[name], checked: !!value };
         const maybeAddFile: Record<string, Checkbox> =
@@ -195,7 +174,7 @@ const useControlsState = ({
         return nextValue;
       });
     },
-    [setCheckboxes, setInteracted, setUseTools],
+    [setCheckboxes, setInteracted],
   );
 
   useEffect(() => {
@@ -221,11 +200,6 @@ const useControlsState = ({
         search_workspace: {
           ...prev.search_workspace,
           hide: !vecdb || !allBoxes || canUseTools,
-        },
-        use_tools: {
-          ...prev.use_tools,
-          checked: useTools,
-          hide: !canUseTools,
         },
         // lookup_symbols: {
         //   ...prev.lookup_symbols,
@@ -272,7 +246,6 @@ const useControlsState = ({
     vecdb,
     allBoxes,
     canUseTools,
-    useTools,
   ]);
 
   useEffect(() => {
@@ -361,8 +334,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       allBoxes: showControls,
       chatId,
       canUseTools,
-      setUseTools,
-      useTools,
       host: config.host,
     });
 
@@ -523,6 +494,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           prompts: prompts,
           onChange: onSetSystemPrompt,
         }}
+        useTools={useTools}
+        canUseTools={canUseTools}
+        setUseTools={setUseTools}
       />
     </Card>
   );
