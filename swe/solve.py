@@ -40,7 +40,7 @@ async def main():
 
     with jsonlines.open(output / "all_preds.jsonl", 'w') as f:
         f.write_all([
-            json.loads(f.read_text())
+            {"model_patch": "", **json.loads(f.read_text())}
             for f in output.glob("*.json")
         ])
 

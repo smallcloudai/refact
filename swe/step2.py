@@ -64,7 +64,7 @@ class SolveTaskStep(Step):
         subprocess.check_output(["git", "stash"], cwd=str(repo_name))
         return result.decode()
 
-    async def process(self, task: str, repo_path: Path, **kwargs) -> Dict[str, Any]:
+    async def process(self, task: str, repo_path: Path, **kwargs) -> str:
         messages = [
             chat_client.Message(role="system", content=SYSTEM_MESSAGE),
             chat_client.Message(role="user", content=task),
@@ -87,9 +87,7 @@ class SolveTaskStep(Step):
             for m in [m for m in messages if m.role == "diff" and m.tool_call_id not in applied_diff_call_ids]:
                 applied_diff_call_ids.add(m.tool_call_id)
                 formatted_diff = json.loads(m.content)
-                return {
-                    "model_patch": self._patch_generate(repo_path.absolute(), formatted_diff),
-                }
+                return self._patch_generate(repo_path.absolute(), formatted_diff)
             if messages[-1].role == "assistant" \
                     and messages[-1].content \
                     and DONE_MESSAGE == messages[-1].content:

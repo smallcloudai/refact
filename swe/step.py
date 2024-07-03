@@ -20,5 +20,5 @@ class Step:
     def _tools(self) -> Set[str]:
         raise NotImplementedError()
 
-    async def process(self, base_url, **kwargs) -> Dict[str, Any]:
+    async def process(self, base_url, **kwargs) -> Any:
         raise NotImplementedError()
