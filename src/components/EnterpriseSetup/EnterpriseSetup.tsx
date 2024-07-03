@@ -1,6 +1,25 @@
 import { Button, Flex, Text, TextField } from "@radix-ui/themes";
+import { useState } from "react";
 
-export const EnterpriseSetup: React.FC = () => {
+export interface EnterpriseSetupProps {
+  goBack: () => void;
+  next: (endpointAddress: string, apiKey: string) => void;
+}
+
+export const EnterpriseSetup: React.FC<EnterpriseSetupProps> = ({
+  goBack,
+  next,
+}: EnterpriseSetupProps) => {
+  const [apiEndpoint, setApiEndpoint] = useState("");
+  const [apiKey, setApiKey] = useState("");
+
+  const canSubmit = Boolean(apiEndpoint && apiKey);
+  const onSubmit = () => {
+    if (canSubmit) {
+      next(apiEndpoint, apiKey);
+    }
+  };
+
   return (
     <Flex direction="column" gap="2">
       <Text size="2">
@@ -8,14 +27,27 @@ export const EnterpriseSetup: React.FC = () => {
         contact your system administrator.
       </Text>
       <Text size="2">Endpoint Address</Text>
-      <TextField.Root />
+      <TextField.Root
+        placeholder="http://x.x.x.x:8008/"
+        value={apiEndpoint}
+        onChange={(event) => setApiEndpoint(event.target.value)}
+      />
       <Text size="2">API Key</Text>
-      <TextField.Root />
+      <TextField.Root
+        value={apiKey}
+        onChange={(event) => setApiKey(event.target.value)}
+      />
       <Flex gap="2">
-        <Button variant="outline" mr="auto">
+        <Button variant="outline" mr="auto" onClick={goBack}>
           Back
         </Button>
-        <Button variant="outline" ml="auto">
+        <Button
+          variant="outline"
+          ml="auto"
+          type="submit"
+          disabled={!canSubmit}
+          onClick={onSubmit}
+        >
           Next
         </Button>
       </Flex>

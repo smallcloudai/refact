@@ -5,7 +5,18 @@ import { Flex } from "@radix-ui/themes";
 const meta: Meta<typeof EnterpriseSetup> = {
   title: "Enterprise setup",
   component: EnterpriseSetup,
-  args: {},
+  args: {
+    goBack: () => {
+      // eslint-disable-next-line no-console
+      console.log("goBack called");
+    },
+    next: (endpointAddress, apiKey) => {
+      // eslint-disable-next-line no-console
+      console.log(
+        "next called with " + JSON.stringify({ endpointAddress, apiKey }),
+      );
+    },
+  },
   decorators: [
     (Children) => (
       <Flex p="4">
