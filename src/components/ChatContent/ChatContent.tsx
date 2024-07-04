@@ -16,7 +16,8 @@ import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
-import { DiffContent } from "./DiffContent";
+import { DiffChunkWithTypeAndApply, DiffContent } from "./DiffContent";
+import { DiffChunkStatus } from "../../hooks";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
@@ -28,6 +29,12 @@ export type ChatContentProps = {
   isWaiting: boolean;
   canPaste: boolean;
   isStreaming: boolean;
+  getDiffByIndex: (index: number) => DiffChunkStatus | null;
+  addOrRemoveDiff: (
+    diff_id: string,
+    opperation: "add" | "remove",
+    chunks: DiffChunkWithTypeAndApply[],
+  ) => void;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
@@ -40,6 +47,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       onPasteClick,
       canPaste,
       isStreaming,
+      getDiffByIndex,
+      addOrRemoveDiff,
     } = props;
 
     const { innerRef, handleScroll } = useAutoScroll({
@@ -75,7 +84,16 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
 
             if (isDiffMessage(message)) {
               const [, diffs] = message;
-              return <DiffContent key={index} diffs={diffs} />;
+              const key = "diff-" + index;
+              const maybeDiffChunk = getDiffByIndex(index);
+              return (
+                <DiffContent
+                  onSubmit={(op, chunks) => addOrRemoveDiff(key, op, chunks)}
+                  appliedChunks={maybeDiffChunk}
+                  key={key}
+                  diffs={diffs}
+                />
+              );
             }
 
             const [role, text] = message;

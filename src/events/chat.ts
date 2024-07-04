@@ -1,3 +1,4 @@
+import { DiffChunkWithTypeAndApply } from "../components/ChatContent/DiffContent";
 import {
   ChatMessages,
   ChatResponse,
@@ -8,6 +9,7 @@ import {
   SystemPrompts,
   isSystemPrompts,
   ToolCommand,
+  DiffChunk,
   // DiffAppliedStateResponse,
 } from "../services/refact";
 
@@ -28,6 +30,7 @@ export enum EVENT_NAMES_FROM_CHAT {
   TAKE_NOTES = "chat_take_notes",
   REQUEST_TOOLS = "chat_request_has_tool_check",
   REQUEST_DIFF_APPLIED_CHUNKS = "request_diff_applied_chunks",
+  REQUEST_DIFF_OPPERATION = "request_diff_operation",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -61,6 +64,8 @@ export enum EVENT_NAMES_TO_CHAT {
   SET_ENABLE_SEND = "chat_set_enable_send",
   RECIEVE_DIFF_APPLIED_CHUNKS = "chat_recieve_diff_applied_chunks",
   RECIEVE_DIFF_APPLIED_CHUNKS_ERROR = "chat_recieve_diff_applied_chunks_error",
+  RECIEVE_DIFF_OPPERATION_RESULT = "chat-recieve_diff_operation_result",
+  RECIEVE_DIFF_OPPERATION_ERROR = "chat-recieve_diff_operation_error",
 }
 
 export type ChatThread = {
@@ -256,7 +261,7 @@ export function isRequestTools(action: unknown): action is RequestTools {
 
 export interface RequestDiffAppliedChunks extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS;
-  payload: { id: string; message_id: string };
+  payload: { id: string; diff_id: string; chunks: DiffChunk[] };
 }
 
 export function isRequestDiffAppliedChunks(
@@ -662,7 +667,7 @@ export function isSetEnableSend(action: unknown): action is SetEnableSend {
 
 export interface RecieveDiffAppliedChunks extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_APPLIED_CHUNKS;
-  payload: { id: string; message_id: string; applied_chunks: number[] };
+  payload: { id: string; diff_id: string; applied_chunks: number[] };
 }
 
 export function isRecieveDiffAppliedChunks(
@@ -674,7 +679,7 @@ export function isRecieveDiffAppliedChunks(
 
 export interface RecieveDiffAppliedChunksError extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_APPLIED_CHUNKS_ERROR;
-  payload: { id: string; message_id: string; reason: string };
+  payload: { id: string; diff_id: string; reason: string };
 }
 
 export function isRecieveDiffAppliedChunksError(
@@ -682,4 +687,54 @@ export function isRecieveDiffAppliedChunksError(
 ): action is RecieveDiffAppliedChunksError {
   if (!isActionToChat(action)) return false;
   return action.type === EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_APPLIED_CHUNKS_ERROR;
+}
+
+export interface RequestDiffOpperation extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_OPPERATION;
+  payload: {
+    id: string;
+    diff_id: string;
+    opperation: "add" | "remove";
+    chunks: DiffChunkWithTypeAndApply[];
+  };
+}
+
+// TODO: set fetching to true;
+export function isRequestDiffOpperation(
+  action: unknown,
+): action is RequestDiffOpperation {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_OPPERATION;
+}
+
+export interface RecieveDiffOpperationResult extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_OPPERATION_RESULT;
+  payload: {
+    id: string;
+    diff_id: string;
+    state: number[];
+    fuzzy_results: {
+      chunk_id: number;
+      fuzzy_n_used: number;
+    }[];
+  };
+}
+
+export function isRecieveDiffOpperationResult(
+  action: unknown,
+): action is RecieveDiffOpperationResult {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_OPPERATION_RESULT;
+}
+
+export interface RecieveDiffOpperationError extends ActionToChat {
+  type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_OPPERATION_ERROR;
+  payload: { id: string; diff_id: string; reason: string };
+}
+
+export function isRecieveDiffOpperationError(
+  action: unknown,
+): action is RecieveDiffOpperationError {
+  if (!isActionToChat(action)) return false;
+  return action.type === EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_OPPERATION_ERROR;
 }

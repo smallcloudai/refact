@@ -11,6 +11,7 @@ import {
   ToolCommand,
   // LspChatMessage,
   checkDiff,
+  doDiff,
 } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
@@ -36,6 +37,9 @@ import {
   isRequestDiffAppliedChunks,
   RecieveDiffAppliedChunks,
   RecieveDiffAppliedChunksError,
+  isRequestDiffOpperation,
+  RecieveDiffOpperationResult,
+  RecieveDiffOpperationError,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
@@ -262,18 +266,15 @@ export function useEventBusForHost() {
       }
 
       if (isRequestDiffAppliedChunks(event.data)) {
-        const { id, message_id } = event.data.payload;
-        checkDiff({
-          chat_id: id,
-          message_id,
-        })
+        const { id, diff_id, chunks } = event.data.payload;
+        checkDiff(chunks, lspUrl)
           .then((res) => {
             const action: RecieveDiffAppliedChunks = {
               type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_APPLIED_CHUNKS,
               payload: {
                 id,
-                message_id,
-                applied_chunks: res.applied_chunks,
+                diff_id,
+                applied_chunks: res.state,
               },
             };
             window.postMessage(action, "*");
@@ -281,9 +282,41 @@ export function useEventBusForHost() {
           .catch((err: Error) => {
             const action: RecieveDiffAppliedChunksError = {
               type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_APPLIED_CHUNKS_ERROR,
-              payload: { id, message_id, reason: err.message },
+              payload: { id, diff_id, reason: err.message },
             };
             window.postMessage(action, "*");
+          });
+      }
+
+      if (isRequestDiffOpperation(event.data)) {
+        const { id, diff_id, chunks, opperation } = event.data.payload;
+        doDiff(opperation, chunks, lspUrl)
+          .then((res) => {
+            const action: RecieveDiffOpperationResult = {
+              type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_OPPERATION_RESULT,
+              payload: {
+                id,
+                diff_id,
+                fuzzy_results: res.fuzzy_results,
+                state: res.state,
+              },
+            };
+            window.postMessage(action, "*");
+          })
+          .catch((err: Error) => {
+            const action: RecieveDiffOpperationError = {
+              type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_OPPERATION_ERROR,
+              payload: {
+                id,
+                diff_id,
+                reason: err.message,
+              },
+            };
+
+            window.postMessage(action, "*");
+
+            // eslint-disable-next-line no-console
+            console.error(err);
           });
       }
     };

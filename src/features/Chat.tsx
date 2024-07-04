@@ -35,6 +35,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
     setSelectedSystemPrompt,
     setUseTools,
     enableSend,
+    getDiffByIndex,
+    addOrRemoveDiff,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -106,6 +108,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         </Flex>
       )}
       <ChatContent
+        addOrRemoveDiff={addOrRemoveDiff}
         messages={state.chat.messages}
         onRetry={retryQuestion}
         isWaiting={state.waiting_for_response}
@@ -114,6 +117,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         onPasteClick={handlePasteDiffClick}
         canPaste={state.active_file.can_paste}
         ref={chatContentRef}
+        getDiffByIndex={getDiffByIndex}
       />
       {!state.streaming && state.prevent_send && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
