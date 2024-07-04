@@ -1300,7 +1300,7 @@ export const useEventBusForChat = () => {
       if (!(key in state.chat.applied_diffs)) {
         const action: RequestDiffAppliedChunks = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS,
-          payload: { id: state.chat.id, message_id: key, chunks: message[1] },
+          payload: { id: state.chat.id, diff_id: key, chunks: message[1] },
         };
         postMessage(action);
       }
