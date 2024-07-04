@@ -165,7 +165,7 @@ const DiffForm: React.FC<{
     setState((prev) => {
       const next = prev.slice(0);
       if (!next[index]) return next;
-      next[index].apply = checked;
+      next[index] = { ...next[index], apply: checked };
       return next;
     });
   };
