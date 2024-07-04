@@ -78,12 +78,17 @@ export const Theme: React.FC<ThemeProps> = (props) => {
   >("inherit");
 
   const handleChange = useCallback(() => {
-    const maybeDark = document.body.classList.contains("vscode-dark");
-    const maybeLight = document.body.classList.contains("vscode-light");
-    if (maybeDark) {
-      setAppearance("dark");
-    } else if (maybeLight) {
+    const maybeDark =
+      document.body.classList.contains("vscode-dark") ||
+      document.body.classList.contains("vscode-high-contrast");
+    const maybeLight =
+      document.body.classList.contains("vscode-light") ||
+      document.body.classList.contains("vscode-high-contrast-light");
+
+    if (maybeLight) {
       setAppearance("light");
+    } else if (maybeDark) {
+      setAppearance("dark");
     } else {
       setAppearance("inherit");
     }
