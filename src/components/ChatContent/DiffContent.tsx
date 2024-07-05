@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Text, Container, Box, Flex, Switch, Button } from "@radix-ui/themes";
 import { type DiffChunk } from "../../events";
 import { ScrollArea } from "../ScrollArea";
@@ -9,6 +9,7 @@ import styles from "./ChatContent.module.css";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 import { type DiffChunkStatus } from "../../hooks";
 import isEqual from "lodash.isequal";
+import { filename } from "../../utils";
 
 export type DiffSumbitFunction = (
   operation: "add" | "remove",
@@ -58,11 +59,11 @@ type DiffProps = {
 export const Diff: React.FC<DiffProps> = ({ diff, type, value, onChange }) => {
   const removeString = diff.lines_remove && toDiff(diff.lines_remove, "remove");
   const addString = diff.lines_add && toDiff(diff.lines_add, "add");
-
+  const title = filename(diff.file_name);
   return (
     <Box>
       <Flex justify="between" align="center" p="1">
-        <Text size="1">{diff.file_name}</Text>
+        <Text size="1">{title}</Text>
         {type && (
           <Text as="label" size="1">
             {type}{" "}
@@ -112,7 +113,7 @@ function diffFormState(
   appliedChunks: number[],
 ): DiffChunkWithTypeAndApply[] {
   return diffs.map((diff, index) => {
-    const type = appliedChunks.includes(index) ? "unapply" : "apply";
+    const type = appliedChunks[index] === 1 ? "unapply" : "apply";
     return {
       type: type,
       apply: false,
@@ -130,6 +131,7 @@ export const DiffContent: React.FC<DiffContentProps> = ({
     () => diffFormState(diffs, appliedChunks?.state ?? []),
     [appliedChunks?.state, diffs],
   );
+
   // TODO: handle loading
   // TODO: handle errors
   if (!appliedChunks?.state) {
@@ -143,11 +145,18 @@ export const DiffContent: React.FC<DiffContentProps> = ({
       </Container>
     );
   }
+
   return (
     <DiffForm
       onSubmit={onSubmit}
       diffs={status}
-      canRemove={appliedChunks.state.length > 0}
+      canRemove={
+        appliedChunks.state.length > 0 && appliedChunks.state.includes(1)
+      }
+      canAdd={
+        appliedChunks.state.length === 0 || appliedChunks.state.includes(0)
+      }
+      isLoading={appliedChunks.fetching}
     />
   );
 };
@@ -159,8 +168,15 @@ const DiffForm: React.FC<{
     chunks: DiffChunkWithTypeAndApply[],
   ) => void;
   canRemove: boolean;
-}> = ({ diffs, onSubmit, canRemove }) => {
+  canAdd: boolean;
+  isLoading: boolean;
+}> = ({ diffs, onSubmit, canRemove, canAdd, isLoading }) => {
   const [state, setState] = React.useState<DiffChunkWithTypeAndApply[]>(diffs);
+
+  useEffect(() => {
+    setState(diffs);
+  }, [diffs]);
+
   const handleToggle = (index: number, checked: boolean) => {
     setState((prev) => {
       const next = prev.slice(0);
@@ -184,6 +200,19 @@ const DiffForm: React.FC<{
     [onSubmit, state],
   );
 
+  const [disableAdd, setDisableAdd] = React.useState(false);
+  const [disableRemove, setDisableRemove] = React.useState(false);
+
+  useEffect(() => {
+    if (isLoading) {
+      setDisableAdd(true);
+      setDisableRemove(true);
+    } else {
+      setDisableAdd(!canAdd || hasNotChanged);
+      setDisableRemove(!canRemove || hasNotChanged);
+    }
+  }, [isLoading, canAdd, canRemove, hasNotChanged]);
+
   return (
     <Container>
       <Flex direction="column" display="inline-flex" maxWidth="100%">
@@ -196,13 +225,15 @@ const DiffForm: React.FC<{
             onChange={(checked: boolean) => handleToggle(i, checked)}
           />
         ))}
+        <Flex gap="2" py="2">
+          <Button disabled={disableAdd} onClick={addOp}>
+            Add Changes
+          </Button>
+          <Button disabled={disableRemove} onClick={removeOp}>
+            Remove Changes
+          </Button>
+        </Flex>
       </Flex>
-      <Button disabled={hasNotChanged} onClick={addOp}>
-        Add
-      </Button>
-      <Button disabled={hasNotChanged || !canRemove} onClick={removeOp}>
-        Remove
-      </Button>
     </Container>
   );
 };
