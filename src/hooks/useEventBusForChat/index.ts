@@ -257,6 +257,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           ...state.chat,
           messages: action.payload.messages,
         },
+        previous_message_length: action.payload.messages.length - 1,
       };
     }
 
