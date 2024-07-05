@@ -26,25 +26,8 @@
   white-space: pre;
 }
 
-.tool_content {
-  --radix-collapsible-content-height: 50px;
-}
 .tool_result {
   width: 100%;
-}
-
-.tool_result_hidden {
-  max-height: 9em;
-  mask-image: linear-gradient(
-    to bottom,
-    var(--color-background) 50%,
-    transparent 100%
-  );
-}
-
-.tool_result_button {
-  text-align: left;
-  justify-content: start;
 }
 
 .diff {

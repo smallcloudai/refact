@@ -12,6 +12,7 @@ import isEqual from "lodash.isequal";
 import { filename } from "../../utils";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
+import { Reveal } from "../Reveal";
 
 export type DiffSumbitFunction = (
   operation: "add" | "remove",
@@ -58,33 +59,6 @@ type DiffProps = {
   onChange?: (checked: boolean) => void;
 };
 
-const ClickToOpen: React.FC<{ children: React.ReactNode; open: boolean }> = ({
-  children,
-  open,
-}) => {
-  const [_open, setOpen] = React.useState(open);
-  if (_open) return <Box>{children}</Box>;
-  return (
-    <Button
-      variant="ghost"
-      onClick={() => setOpen((v) => !v)}
-      asChild
-      className={classNames(styles.tool_result_button)}
-    >
-      <Flex direction="column" position="relative" align="start">
-        <Box
-          className={classNames(styles.tool_result, styles.tool_result_hidden)}
-        >
-          {children}
-        </Box>
-        <Flex position="absolute" bottom="2" width="100%" justify="center">
-          Click for more
-        </Flex>
-      </Flex>
-    </Button>
-  );
-};
-
 const Diff: React.FC<DiffProps> = ({ diff, type, value, onChange }) => {
   const removeString = diff.lines_remove && toDiff(diff.lines_remove, "remove");
   const addString = diff.lines_add && toDiff(diff.lines_add, "add");
@@ -103,7 +77,7 @@ const Diff: React.FC<DiffProps> = ({ diff, type, value, onChange }) => {
           </Text>
         )}
       </Flex>
-      <ClickToOpen open={lineCount < 9}>
+      <Reveal defaultOpen={lineCount < 9}>
         <ScrollArea scrollbars="horizontal" asChild>
           <Flex className={styles.diff} py="2" direction="column">
             {removeString && (
@@ -126,7 +100,7 @@ const Diff: React.FC<DiffProps> = ({ diff, type, value, onChange }) => {
             )}
           </Flex>
         </ScrollArea>
-      </ClickToOpen>
+      </Reveal>
     </Box>
   );
 };

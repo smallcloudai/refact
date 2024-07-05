@@ -1,0 +1,13 @@
+.reveal_button {
+  text-align: left;
+  justify-content: start;
+}
+
+.reveal_hidden {
+  max-height: 9em;
+  mask-image: linear-gradient(
+    to bottom,
+    var(--color-background) 50%,
+    transparent 100%
+  );
+}
