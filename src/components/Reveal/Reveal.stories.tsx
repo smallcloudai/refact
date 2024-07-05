@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Reveal } from ".";
 import { Text, Container, Box } from "@radix-ui/themes";
 
-const meta = {
+const meta: Meta<typeof Reveal> = {
   title: "Reveal",
   component: Reveal,
   decorators: [
@@ -12,7 +12,7 @@ const meta = {
       </Container>
     ),
   ],
-} satisfies Meta<typeof Reveal>;
+};
 
 export default meta;
 
