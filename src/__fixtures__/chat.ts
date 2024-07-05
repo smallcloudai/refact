@@ -1,4 +1,5 @@
 import { ChatMessages, ChatThread } from "../events";
+import { ChatState } from "../hooks";
 
 export const MARS_ROVER_CHAT: ChatThread = {
   id: "9afd6fef-3e49-40df-8aca-688af3621514",
@@ -445,3 +446,122 @@ export const CHAT_WITH_DIFFS: ChatMessages = [
     ],
   ],
 ];
+
+export const CHAT_WITH_DIFF_ACTIONS: ChatState["chat"] = {
+  id: "eeda523e-9b74-4df6-8d60-a14ccdd907f0",
+  messages: [
+    ["user", "In the project add an edible property to the frog class\n"],
+    [
+      "assistant",
+      "",
+      [
+        {
+          function: {
+            arguments: '{"query":"class Frog"}',
+            name: "search_workspace",
+          },
+          id: "call_n5qeQaFZNAoaP3qJzRiGO6Js",
+          index: 0,
+          type: "function",
+        },
+      ],
+    ],
+    [
+      "tool",
+      {
+        tool_call_id: "call_n5qeQaFZNAoaP3qJzRiGO6Js",
+        content: "performed vecdb search, results below",
+      },
+    ],
+    [
+      "context_file",
+      [
+        {
+          file_content:
+            '# Picking up context, goal in this file:\n# - goto parent class, two times\n# - dump parent class\n\nimport frog\n\nX,Y = 50, 50\nW = 100\nH = 100\n\n\n# This this a comment for the Toad class, above the class\nclass Toad(frog.Frog):\n    def __init__(self, x, y, vx, vy):\n        super().__init__(x, y, vx, vy)\n        self.name = "Bob"\n\n\nclass EuropeanCommonToad(frog.Frog):\n    """\n    This is a comment for EuropeanCommonToad class, inside the class\n    """\n\n    def __init__(self, x, y, vx, vy):\n        super().__init__(x, y, vx, vy)\n        self.name = "EU Toad"\n\n\nif __name__ == "__main__":\n    toad = EuropeanCommonToad(100, 100, 200, -200)\n    toad.jump(W, H)\n    print(toad.name, toad.x, toad.y)\n\n',
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+          line1: 1,
+          line2: 32,
+          usefulness: 0,
+        },
+        {
+          file_content:
+            "import numpy as np\n\nDT = 0.01\n\nclass Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n\n    def bounce_off_banks(self, pond_width, pond_height):\n        if self.x < 0:\n            self.vx = np.abs(self.vx)\n        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n            self.vy = np.abs(self.vy)\n        elif self.y > pond_height:\n            self.vy = -np.abs(self.vy)\n\n    def jump(self, pond_width, pond_height):\n        self.x += self.vx * DT\n        self.y += self.vy * DT\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n\n",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+          line1: 1,
+          line2: 27,
+          usefulness: 0,
+        },
+        {
+          file_content:
+            '# Picking up context, goal in this file:\n# - pick up type of p\n# - prioritize type definition over all the noise\n\nimport pygame\nimport numpy as np\nimport frog\nfrom typing import Tuple\n\n\nW = 640\nH = 480\n\n\ndef draw_hello_frog(\n    screen: pygame.Surface,\n    message: str,\n    color: Tuple[int, int, int] = (0, 255, 255),\n    font_name: str = "Arial",\n) -> None:\n    font = pygame.font.SysFont(font_name, 32)\n    text = font.render(message, True, color)\n    text_rect = text.get_rect()\n    text_rect.center = (W / 2, H / 2)\n    screen.blit(text, text_rect)\n\n\ncreatures = [\n    frog.Frog(\n        np.random.uniform(0, W),\n        np.random.uniform(0, H),\n        np.random.uniform(-W/10, H/10),\n        np.random.uniform(-W/10, H/10),\n    ) for i in range(10)]\n\n\ndef main_loop():\n    screen = pygame.display.set_mode((W,H))   # without space because it\'s a test it needs to pick up right line below\n    quit_flag = False\n    while not quit_flag:\n        for event in pygame.event.get():\n            if event.type == pygame.QUIT:\n                quit_flag = True\n        screen.fill((0, 0, 0))\n        for p in creatures:\n            pygame.draw.circle(screen, (0, 255, 0), (p.x, p.y), 10)\n        draw_hello_frog(screen, "Jump To Conclusions!", (0, 200, 0))\n        pygame.display.flip()\n        pygame.time.Clock().tick(60)\n        p: frog.Frog\n        for p in creatures:\n            p.jump(W, H)\n\n\nif __name__ == \'__main__\':\n    pygame.init()\n    pygame.display.set_caption("Pond")\n    main_loop()\n    pygame.quit()\n',
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py",
+          line1: 1,
+          line2: 58,
+          usefulness: 0,
+        },
+        {
+          file_content:
+            "# Picking up context, goal in this file:\n# - without any other information, find method usage in another file by text similarity\n\nimport numpy as np\nimport frog\n\nX,Y = 50, 50\nW = 100\nH = 100\n\ndef bring_your_own_frog_to_work_day(f):\n    f.jump(W, H)\n",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/work_day.py",
+          line1: 1,
+          line2: 11,
+          usefulness: 0,
+        },
+      ],
+    ],
+    [
+      "assistant",
+      "",
+      [
+        {
+          function: {
+            arguments:
+              '{"path":"/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py","todo":"Add an \'edible\' property to the Frog class and initialize it in the constructor."}',
+            name: "patch",
+          },
+          id: "call_dIXVNlzugvrPJvTF5G7n1YgK",
+          index: 0,
+          type: "function",
+        },
+      ],
+    ],
+    [
+      "diff",
+      [
+        {
+          file_action: "edit",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+          line1: 1,
+          line2: 1,
+          lines_add:
+            "class Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n        self.edible = True",
+          lines_remove:
+            "class Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy",
+        },
+      ],
+    ],
+    [
+      "assistant",
+      "The `Frog` class has been updated to include an `edible` property.",
+      null,
+    ],
+  ],
+  title: "In the project add an edible property to the frog class\n",
+  model: "gpt-4o",
+  applied_diffs: {
+    "diff-5": {
+      fetching: false,
+      error: "Bad Request",
+      diff_id: "diff-5",
+      state: [0],
+    },
+  },
+  createdAt: "2024-07-05T09:10:29.523Z",
+  lastUpdated: "2024-07-05T09:10:37.322Z",
+};

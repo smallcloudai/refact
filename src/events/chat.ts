@@ -74,6 +74,8 @@ export type ChatThread = {
   title?: string;
   model: string;
   attach_file?: boolean;
+  createdAt?: string;
+  lastUpdated?: string;
 };
 
 export type Snippet = {

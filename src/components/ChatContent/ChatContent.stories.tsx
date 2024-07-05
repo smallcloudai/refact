@@ -5,6 +5,7 @@ import {
   CHAT_FUNCTIONS_MESSAGES,
   FROG_CHAT,
   CHAT_WITH_DIFFS,
+  CHAT_WITH_DIFF_ACTIONS,
 } from "../../__fixtures__";
 
 const noop = () => ({});
@@ -20,6 +21,8 @@ const meta = {
     canPaste: true,
     onNewFileClick: noop,
     onPasteClick: noop,
+    addOrRemoveDiff: noop,
+    getDiffByIndex: () => null,
   },
 } satisfies Meta<typeof ChatContent>;
 
@@ -45,5 +48,13 @@ export const Notes: Story = {
 export const WithDiffs: Story = {
   args: {
     messages: CHAT_WITH_DIFFS,
+  },
+};
+
+export const WithDiffActions = {
+  args: {
+    messages: CHAT_WITH_DIFF_ACTIONS.messages,
+    getDiffByIndex: (index: number) =>
+      CHAT_WITH_DIFF_ACTIONS.applied_diffs["diff-" + index],
   },
 };
