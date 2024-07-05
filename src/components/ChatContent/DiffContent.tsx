@@ -253,10 +253,10 @@ const DiffForm: React.FC<{
         />
       ))}
       <Flex gap="2" py="2">
-        <Button disabled={disableAdd} onClick={addOp}>
+        <Button color="grass" disabled={disableAdd} onClick={addOp}>
           Add Changes
         </Button>
-        <Button disabled={disableRemove} onClick={removeOp}>
+        <Button color="red" disabled={disableRemove} onClick={removeOp}>
           Remove Changes
         </Button>
       </Flex>
