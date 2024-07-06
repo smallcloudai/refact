@@ -244,7 +244,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn is_compiled_in_toolbox_valid_toml() {
+    fn is_compiled_in_toolbox_valid_yaml() {
         let _config = load_and_mix_with_users_config(crate::toolbox::toolbox_compiled_in::COMPILED_IN_INITIAL_USER_YAML, "", "");
     }
 }

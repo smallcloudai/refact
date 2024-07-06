@@ -1,4 +1,4 @@
-pub const COMPILED_IN_CUSTOMIZATION_YAML : &str = r#"# Customization will merge this compiled-in config and the user config.
+pub const COMPILED_IN_CUSTOMIZATION_YAML: &str = r#"# Customization will merge this compiled-in config and the user config.
 #
 # There are magic keys:
 #    %ARGS%
