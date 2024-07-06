@@ -94,8 +94,8 @@ fn validate_chunk(chunk: &DiffChunk) -> Result<(), String> {
 }
 
 async fn init_chunks(
-    chunks: &mut Vec<DiffChunk>, 
-    apply: &Vec<bool>, 
+    chunks: &mut Vec<DiffChunk>,
+    apply: &Vec<bool>,
     global_context: Arc<ARwLock<GlobalContext>>
 ) -> Result<(), ScratchError> {
     for ((c_idx, c), a) in chunks.iter_mut().enumerate().zip(apply.iter()) {
@@ -123,7 +123,7 @@ async fn init_chunks(
             }
             c.file_name = candidate.clone();
         }
-        
+
         validate_chunk(c).map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, format!("error validating chunk {}:\n{}", c_idx, e)))?;
     }
     Ok(())
@@ -143,19 +143,19 @@ pub async fn handle_v1_diff_apply(
     // undo all chunks that are already applied to file, then apply chunks marked in post.apply
     let applied_state = {
         let diff_state = global_context.read().await.documents_state.diffs_applied_state.clone();
-        diff_state.get(&post.id).map(|x| x.clone()).unwrap_or_default() 
+        diff_state.get(&post.id).map(|x| x.clone()).unwrap_or_default()
     };
     let mut chunks_undo = post.chunks.iter().filter(|x|applied_state.get(x.chunk_id) == Some(&1)).cloned().collect::<Vec<_>>();
     chunks_undo.iter_mut().for_each(|x|x.apply = true);
-    let (texts_after_patch, fuzzy_n_used) = read_files_from_disk_and_patch(&post.chunks, &chunks_undo, MAX_FUZZY_N).await;
-    
+    let (texts_after_patch, fuzzy_n_used) = read_files_from_disk_and_patch(&post.chunks, &chunks_undo, MAX_FUZZY_N);
+
     for (file_name, new_text) in texts_after_patch.iter() {
         write_to_file(file_name, new_text).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
     }
 
     let new_state = results_into_state_vector(&fuzzy_n_used, post.chunks.len());
     global_context.write().await.documents_state.diffs_applied_state.insert(post.id, new_state.clone());
-    
+
     let fuzzy_results: Vec<DiffResponseItem> = fuzzy_n_used.iter().filter(|x|x.1.is_some())
         .map(|(chunk_id, fuzzy_n_used)| DiffResponseItem {
             chunk_id: chunk_id.clone(),
@@ -206,16 +206,16 @@ pub async fn handle_v1_diff_state(
 
     let apply = vec![true; post.chunks.len()];
     init_chunks(&mut post.chunks, &apply, global_context.clone()).await?;
-    
+
     let applied_state = {
         let diff_state = global_context.read().await.documents_state.diffs_applied_state.clone();
         diff_state.get(&post.id).map(|x| x.clone()).unwrap_or_default()
     };
     let chunks_undo = post.chunks.iter().filter(|x|applied_state.get(x.chunk_id) == Some(&1)).cloned().collect::<Vec<_>>();
-    let (_, fuzzy_n_used) = read_files_from_disk_and_patch(&post.chunks, &chunks_undo, MAX_FUZZY_N).await;
+    let (_, fuzzy_n_used) = read_files_from_disk_and_patch(&post.chunks, &chunks_undo, MAX_FUZZY_N);
     let new_state = results_into_state_vector(&fuzzy_n_used, post.chunks.len());
     let can_apply = new_state.iter().map(|x| *x == 0 || *x == 1).collect();
-    
+
     let response = DiffStateResponse {
         id: post.id,
         state: applied_state,

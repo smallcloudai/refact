@@ -60,7 +60,7 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
                 Arc::new(AMutex::new(Box::new(crate::at_tools::att_execute_cmd::AttExecuteCommand {
                     command: cust.command,
                     timeout: cust.timeout,
-                    postprocess: cust.postprocess,
+                    output_postprocess: cust.output_postprocess,
                 }) as Box<dyn Tool + Send>)));
         }
     }

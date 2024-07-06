@@ -36,7 +36,7 @@ pub struct ToolCustDict {
     pub parameters_required: Vec<String>,
     pub command: String,
     pub timeout: usize,
-    pub postprocess: String,
+    pub output_postprocess: String,
 }
 
 impl ToolCustDict {
@@ -53,7 +53,7 @@ impl ToolCustDict {
             parameters_required: cmd.parameters_required.clone(),
             command: cmd.command.clone(),
             timeout: cmd.timeout,
-            postprocess: cmd.postprocess.clone(),
+            output_postprocess: cmd.output_postprocess.clone(),
         }
     }
 
@@ -68,14 +68,14 @@ impl ToolCustDict {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct AtToolCustDictDeserialize{
+pub struct AtToolCustDictDeserialize {
     pub name: String,
     pub description: String,
     pub parameters: Vec<String>,
     pub parameters_required: Vec<String>,
     pub command: String,
     pub timeout: usize,
-    pub postprocess: String,
+    pub output_postprocess: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

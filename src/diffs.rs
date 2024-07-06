@@ -2,7 +2,7 @@ use std::mem;
 use std::path::PathBuf;
 use hashbrown::HashMap;
 use crate::call_validation::DiffChunk;
-use crate::files_in_workspace::read_file_from_disk;
+
 
 #[derive(Clone, Debug, Default)]
 struct DiffLine {
@@ -167,7 +167,7 @@ pub fn patch(
     (file_text_copy, fuzzy_ns)
 }
 
-pub async fn read_files_from_disk_and_patch(
+pub fn read_files_from_disk_and_patch(
     chunks_apply: &Vec<DiffChunk>,
     chunks_undo: &Vec<DiffChunk>,
     max_fuzzy_n: usize,
@@ -186,7 +186,7 @@ pub async fn read_files_from_disk_and_patch(
     let mut texts_after_patch = HashMap::new();
 
     for file_name in file_names {
-        let file_text = match read_file_from_disk(&PathBuf::from(&file_name)).await {
+        let file_text = match crate::files_in_workspace::read_file_from_disk_sync(&PathBuf::from(&file_name)) {
             Ok(t) => t.to_string(),
             Err(_) => { continue; }
         };
@@ -255,11 +255,11 @@ print(x)
         let chunks_undo: Vec<DiffChunk> = vec![chunk1.clone()];
 
         delete_file_if_exists(FILE1_FN);
-        // let r1 = read_files_from_disk_and_patch(&vec![chunk1.clone()], &chunks_undo, TEST_MAX_FUZZY);
-        // println!("r1: {:?}", r1);
+        let r1 = read_files_from_disk_and_patch(&vec![chunk1.clone()], &chunks_undo, TEST_MAX_FUZZY);
+        println!("r1: {:?}", r1);
 
         write_file(FILE1_FN, FILE1);
-        // let r2 = read_files_from_disk_and_patch(&vec![chunk1.clone()], &chunks_undo, TEST_MAX_FUZZY);
-        // println!("r2: {:?}", r2);
+        let r2 = read_files_from_disk_and_patch(&vec![chunk1.clone()], &chunks_undo, TEST_MAX_FUZZY);
+        println!("r2: {:?}", r2);
     }
 }

@@ -8,7 +8,7 @@ use crate::telemetry::utils;
 
 #[derive(Debug)]
 pub struct Storage {
-    pub last_flushed_ts: i64,
+    // pub last_flushed_ts: i64,
     pub tele_net: Vec<TelemetryNetwork>,
     pub tele_robot_human: Vec<TeleRobotHumanAccum>,
     pub tele_snippets: Vec<SnippetTracker>,
@@ -20,7 +20,7 @@ pub struct Storage {
 impl Storage {
     pub fn new() -> Self {
         Self {
-            last_flushed_ts: chrono::Local::now().timestamp(),
+            // last_flushed_ts: chrono::Local::now().timestamp(),
             tele_net: Vec::new(),
             tele_robot_human: Vec::new(),
             tele_snippets: Vec::new(),

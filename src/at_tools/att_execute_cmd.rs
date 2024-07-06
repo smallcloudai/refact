@@ -10,7 +10,8 @@ use crate::call_validation::{ChatMessage, ContextEnum};
 pub struct AttExecuteCommand {
     pub command: String,
     pub timeout: usize,
-    pub postprocess: String,
+    #[allow(dead_code)]
+    pub output_postprocess: String,
 }
 
 #[async_trait]
