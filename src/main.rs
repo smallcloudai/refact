@@ -41,7 +41,7 @@ mod nicer_logs;
 mod toolbox;
 mod ast;
 mod diffs;
-
+mod knowledge;
 
 #[tokio::main]
 async fn main() {

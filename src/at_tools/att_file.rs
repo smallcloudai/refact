@@ -12,14 +12,19 @@ use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 
 pub struct AttFile;
 
-pub async fn real_file_path_candidate(ccx: &mut AtCommandsContext, file_path: &String, candidates: &Vec<String>, project_paths: &Vec<PathBuf>) -> Result<String, String>{
+pub async fn real_file_path_candidate(
+    ccx: &mut AtCommandsContext,
+    file_path: &String,
+    candidates: &Vec<String>,
+    project_paths: &Vec<PathBuf>,
+) -> Result<String, String>{
     let mut f_path = PathBuf::from(file_path);
 
     if candidates.is_empty() {
         let similar_files_str = at_file_repair_candidates(&file_path, ccx, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n");
         if f_path.is_absolute() {
             if !project_paths.iter().any(|x|x.starts_with(&f_path)) {
-                return Err(format!("The file {:?} will not be read as it lies beyond project directories:\n\n{:?}\n\nThere are files with similar names:\n{}", f_path, project_paths, similar_files_str));
+                return Err(format!("File {:?} is outside of project directories:\n\n{:?}\n\nThere are files with similar names:\n{}", f_path, project_paths, similar_files_str));
             }
         }
         if f_path.is_relative() {
@@ -49,7 +54,7 @@ pub async fn real_file_path_candidate(ccx: &mut AtCommandsContext, file_path: &S
 
 #[async_trait]
 impl Tool for AttFile {
-    async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let p = match args.get("path") {
             Some(Value::String(s)) => s,
             Some(v) => { return Err(format!("argument `path` is not a string: {:?}", v)) },

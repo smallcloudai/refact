@@ -50,26 +50,22 @@ pub async fn handle_v1_vecdb_search(
     }
 }
 
+
 pub async fn handle_v1_vecdb_status(
     Extension(global_context): Extension<SharedGlobalContext>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let cx_locked = global_context.read().await;
-    let status = match *cx_locked.vec_db.lock().await {
-        Some(ref db) => match db.get_status().await {
-            Ok(status) => status,
-            Err(err) => {
-                return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, err));
-            }
-        },
-        None => {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, NO_VECDB.to_string()
-            ));
+    let vec_db = global_context.read().await.vec_db.clone();
+    let status_str = match crate::vecdb::vdb_highlev::get_status(vec_db).await {
+        Ok(Some(status)) => serde_json::to_string_pretty(&status).unwrap(),
+        Ok(None) => "{\"success\": 0, \"detail\": \"turned_off\"}".to_string(),
+        Err(err) => {
+            return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, err));
         }
     };
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(serde_json::to_string_pretty(&status).unwrap()))
+        .body(Body::from(status_str))
         .unwrap())
 }
+

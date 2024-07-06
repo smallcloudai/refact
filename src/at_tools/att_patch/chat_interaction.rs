@@ -98,6 +98,7 @@ pub async fn execute_chat_model(
         temperature: Some(crate::at_tools::att_patch::tool::TEMPERATURE),
         max_tokens: crate::at_tools::att_patch::tool::MAX_TOKENS,
         tools: None,
+        tool_choice: None,
         only_deterministic_messages: false,
         chat_id: "".to_string(),
     };

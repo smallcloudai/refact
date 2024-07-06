@@ -1,10 +1,11 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use std::sync::RwLock as StdRwLock;
-use tokenizers::Tokenizer;
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
+use indexmap::IndexMap;
+use tokenizers::Tokenizer;
+use async_trait::async_trait;
 
 
 #[async_trait]
@@ -38,7 +39,8 @@ pub struct VecDbStatus {
     pub vectors_made_since_start: usize,
     pub db_size: usize,
     pub db_cache_size: usize,
-    pub state: String
+    pub state: String,   // "starting", "parsing", "done"
+    pub queue_additions: bool,
 }
 
 
@@ -64,8 +66,43 @@ pub struct SplitResult {
     pub symbol_path: String,
 }
 
+// #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Clone)]
+pub struct SimpleTextHashVector {
+    pub window_text: String,
+    pub window_text_hash: String,
+    pub vector: Option<Vec<f32>>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SearchResult {
     pub query_text: String,
     pub results: Vec<VecdbRecord>,
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct MemoRecord {
+    pub memid: String,
+    pub thevec: Option<Vec<f32>>,
+    pub distance: f32,
+    pub m_type: String,
+    pub m_goal: String,
+    pub m_project: String,
+    pub m_payload: String,
+    pub mstat_correct: f64,
+    pub mstat_relevant: f64,
+    pub mstat_times_used: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MemoSearchResult {
+    pub query_text: String,
+    pub results: Vec<MemoRecord>,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OngoingFlow {
+    pub goal: String,
+    pub ongoing_json: IndexMap<String, serde_json::Value>,
 }

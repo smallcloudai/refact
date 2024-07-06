@@ -51,7 +51,7 @@ POINT2 FOR_FUTURE_FEREFENCE: ...
 """
 
 
-USER_MESSAGE_BY_DEFAULT = "What is Frog?"
+USER_MESSAGE_BY_DEFAULT = "Summarize class Frog"
 
 
 async def do_all():
@@ -63,7 +63,7 @@ async def do_all():
     parser.add_argument('--stream', action='store_true', help='Stream messages')
     args = parser.parse_args()
     if args.start_with:
-        with open(f"note_logs/{args.start_with}", "r") as f:
+        with open(f"_logs/note_logs/{args.start_with}", "r") as f:
             j = json.loads(f.read())
         messages = [chat_client.Message.parse_obj(x) for x in j]
         if messages[-1].role == "assistant" and not messages[-1].tool_calls:
@@ -94,7 +94,7 @@ async def do_all():
         N = 1
         # tools_turn_on = {"remember_how_to_use_tools"} if args.note else {"definition", "references", "compile", "memorize", "file"}
         # claude requires non-empty tools each step
-        tools_turn_on = {"definition", "references", "compile", "memorize", "file"}
+        tools_turn_on = {"definition", "references", "search_workspace", "compile", "memorize", "file"}
         tools = await chat_client.tools_fetch_and_filter(base_url="http://127.0.0.1:8001/v1", tools_turn_on=tools_turn_on)
         assistant_choices = await chat_client.ask_using_http(
             "http://127.0.0.1:8001/v1",
@@ -110,7 +110,7 @@ async def do_all():
         )
         assert(len(assistant_choices)==N)
         messages = assistant_choices[0]
-        with open(f"note_logs/{DUMP_PREFIX}.json", "w") as f:
+        with open(f"_logs/note_logs/{DUMP_PREFIX}.json", "w") as f:
             json_data = [json.dumps(msg.dict(), indent=4) for msg in messages]
             f.write("[\n" + ",\n".join(json_data) + "\n]")
             f.write("\n")

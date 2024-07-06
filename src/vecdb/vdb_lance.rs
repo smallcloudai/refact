@@ -43,7 +43,7 @@ fn cosine_similarity(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
     dot_product / (magnitude_vec1 * magnitude_vec2)
 }
 
-fn cosine_distance(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
+pub fn cosine_distance(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
     1.0 - cosine_similarity(vec1, vec2)
 }
 
@@ -116,7 +116,8 @@ impl VecDBHandler {
             match ArrayData::builder(DataType::FixedSizeList(vec_trait.clone(), embedding_size))
                 .len(records.len())
                 .add_child_data(emb_data.clone())
-                .build() {
+                .build()
+            {
                 Ok(res) => Ok(res),
                 Err(err) => return Err(format!("{:?}", err))
             }
@@ -149,21 +150,6 @@ impl VecDBHandler {
             )],
             self.schema.clone(),
         );
-        RecordBatchIterator::new(
-            vec![RecordBatch::try_new(
-                self.schema.clone(),
-                vec![
-                    Arc::new(FixedSizeListArray::from(vectors)),
-                    Arc::new(StringArray::from(window_texts)),
-                    Arc::new(StringArray::from(window_text_hashes.clone())),
-                    Arc::new(StringArray::from(file_paths)),
-                    Arc::new(UInt64Array::from(start_lines)),
-                    Arc::new(UInt64Array::from(end_lines)),
-                ],
-            )],
-            self.schema.clone(),
-        );
-
         let data_res = self.data_table.add(
             data_batches_iter, Option::from(WriteParams {
                 mode: WriteMode::Append,

@@ -19,18 +19,20 @@ struct RagStatus {
 }
 
 pub async fn handle_v1_rag_status(
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(gcx): Extension<SharedGlobalContext>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let cx_locked = global_context.read().await;
-    let (maybe_vecdb_status, vecdb_message) = match *cx_locked.vec_db.lock().await {
-        Some(ref db) => match db.get_status().await {
-            Ok(status) => (Some(status), "working".to_string()),
-            Err(err) => (None, err)
-        },
-        None => (None, "turned_off".to_string())
+    let (vec_db_module, vec_db_error, ast_module) = {
+        let gcx_locked = gcx.write().await;
+        (gcx_locked.vec_db.clone(), gcx_locked.vec_db_error.clone(), gcx_locked.ast_module.clone())
     };
-    let ast_module = cx_locked.ast_module.clone();
+
+    let (maybe_vecdb_status, vecdb_message) = match crate::vecdb::vdb_highlev::get_status(vec_db_module).await {
+        Ok(Some(status)) => (Some(status), "working".to_string()),
+        Ok(None) => (None, "turned_off".to_string()),
+        Err(err) => (None, err.to_string()),
+    };
+
     let (maybe_ast_status, ast_message) = match &ast_module {
         Some(ast) => {
             let status = ast.read().await.ast_index_status().await;
@@ -44,7 +46,7 @@ pub async fn handle_v1_rag_status(
         ast_alive: ast_message,
         vecdb: maybe_vecdb_status,
         vecdb_alive: vecdb_message,
-        vec_db_error: cx_locked.vec_db_error.clone()
+        vec_db_error: vec_db_error,
     };
     let json_string = serde_json::to_string_pretty(&status).map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))

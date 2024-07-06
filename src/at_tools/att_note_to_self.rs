@@ -12,7 +12,7 @@ pub struct AtNoteToSelf {
 
 #[async_trait]
 impl Tool for AtNoteToSelf {
-    async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String>
+    async fn tool_execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String>
     {
         let cache_dir = {
             let gcx_locked = ccx.global_context.read().await;

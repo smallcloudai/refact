@@ -45,31 +45,29 @@ pub async fn telemetry_wrapper(func: impl Fn(Extension<SharedGlobalContext>, hyp
 #[macro_export]
 macro_rules! telemetry_post {
     (
-    $name:ident
-     ) => {
-           post(|path, method, ex, body_bytes| async {
-               let tmp = |ex: Extension<SharedGlobalContext>,
-                          body_bytes: hyper::body::Bytes|
-               -> Pin<Box<dyn Future<Output=Result<Response<Body>, ScratchError>> + Send>> {
-                    Box::pin($name(ex, body_bytes))
-                };
-               telemetry_wrapper(tmp, path, method, ex, body_bytes).await
-           })
-        };
-    }
+        $name:ident
+    ) => {
+        post(|path, method, ex, body_bytes| async {
+            let tmp = |ex: Extension<SharedGlobalContext>, body_bytes: hyper::body::Bytes|
+            -> Pin<Box<dyn Future<Output=Result<Response<Body>, ScratchError>> + Send>> {
+                Box::pin($name(ex, body_bytes))
+            };
+            telemetry_wrapper(tmp, path, method, ex, body_bytes).await
+        })
+    };
+}
 
 #[macro_export]
 macro_rules! telemetry_get {
     (
-    $name:ident
-     ) => {
-           get(|path, method, ex, body_bytes| async {
-               let tmp = |ex: Extension<SharedGlobalContext>,
-                          body_bytes: hyper::body::Bytes|
-               -> Pin<Box<dyn Future<Output=Result<Response<Body>, ScratchError>> + Send>> {
-                    Box::pin($name(ex, body_bytes))
-                };
-               telemetry_wrapper(tmp, path, method, ex, body_bytes).await
-           })
-        };
-    }
+        $name:ident
+    ) => {
+        get(|path, method, ex, body_bytes| async {
+            let tmp = |ex: Extension<SharedGlobalContext>, body_bytes: hyper::body::Bytes|
+            -> Pin<Box<dyn Future<Output=Result<Response<Body>, ScratchError>> + Send>> {
+                Box::pin($name(ex, body_bytes))
+            };
+            telemetry_wrapper(tmp, path, method, ex, body_bytes).await
+        })
+    };
+}

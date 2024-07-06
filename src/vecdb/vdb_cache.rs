@@ -9,7 +9,8 @@ use tokio::fs;
 use tokio_rusqlite::Connection;
 use tracing::info;
 
-use crate::vecdb::vdb_structs::{VecdbRecord, SplitResult};
+use crate::vecdb::vdb_structs::{VecdbRecord, SplitResult, SimpleTextHashVector};
+
 
 impl Debug for VecDBCache {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -137,6 +138,35 @@ impl VecDBCache {
         self.cached_window_text_hashes.contains(window_text_hash)
     }
 
+    pub async fn process_simple_hash_text_vector(&mut self, v: &mut Vec<SimpleTextHashVector>) -> Result<(), String> {
+        let placeholders: String = v.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
+        let query = format!("SELECT vector, window_text_hash FROM {EMB_TABLE_NAME} WHERE window_text_hash IN ({placeholders})");
+        let vclone = v.clone();
+        let found_vectors = match self.cache_database.call(move |connection| {
+            let mut statement = connection.prepare(&query)?;
+            let params = rusqlite::params_from_iter(vclone.iter().map(|x| &x.window_text_hash));
+            let result = statement.query_map(params, |row| {
+                let vector_blob: Vec<u8> = row.get(0)?;
+                let window_text_hash: String = row.get(1)?;
+                let vector: Vec<f32> = vector_blob
+                    .chunks_exact(4)
+                    .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
+                    .collect();
+                Ok((window_text_hash, vector))
+            })?;
+            Ok(result.filter_map(|r| r.ok()).collect::<HashMap<_, _>>())
+        }).await {
+            Ok(vectors) => vectors,
+            Err(err) => return Err(format!("Error querying database: {:?}", err))
+        };
+        for save in v.iter_mut() {
+            if let Some(vector) = found_vectors.get(&save.window_text_hash) {
+                save.vector = Some(vector.clone());
+            }
+        }
+        Ok(())
+    }
+
     pub async fn get_records_by_splits(&mut self, splits: &Vec<SplitResult>) -> Result<(Vec<VecdbRecord>, Vec<SplitResult>), String> {
         let placeholders: String = splits.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
         let query = format!("SELECT * FROM {EMB_TABLE_NAME} WHERE window_text_hash IN ({placeholders})");
@@ -187,27 +217,31 @@ impl VecDBCache {
         Ok((records, non_found_splits))
     }
 
-    pub async fn insert_records(&mut self, records: Vec<VecdbRecord>) -> Result<(), String> {
+    pub async fn cache_add_new_records(&mut self, records: Vec<SimpleTextHashVector>) -> Result<(), String> {
         match self.cache_database.call(|connection| {
             let transaction = connection.transaction()?;
             for record in records {
-                let vector_as_bytes: Vec<u8> = record.vector.expect(
-                    "An attempt to push vector-less embeddings to cache DB"
-                ).iter()
-                    .flat_map(|&num| num.to_ne_bytes())
-                    .collect();
+                let vector_as_bytes: Vec<u8> = match record.vector {
+                    Some(vector) => vector.iter()
+                        .flat_map(|&num| num.to_ne_bytes())
+                        .collect(),
+                    None => {
+                        tracing::error!("Skipping record with no vector: {:?}", record.window_text_hash);
+                        continue;
+                    }
+                };
 
                 match transaction.execute(&format!(
                     "INSERT INTO {EMB_TABLE_NAME} (vector, window_text, window_text_hash) VALUES (?1, ?2, ?3)"),
-                                          rusqlite::params![
-                    vector_as_bytes,
-                    record.window_text,
-                    record.window_text_hash,
-                ],
+                    rusqlite::params![
+                        vector_as_bytes,
+                        record.window_text,
+                        record.window_text_hash,
+                    ],
                 ) {
                     Ok(_) => {}
                     Err(err) => {
-                        info!("Error while inserting record to cache: {:?}", err);
+                        tracing::error!("Error while inserting record to cache: {:?}", err);
                         continue;
                     }
                 }

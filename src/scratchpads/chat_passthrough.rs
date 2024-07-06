@@ -173,6 +173,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                 None
             };
             big_json["tools"] = serde_json::json!(tools);
+            big_json["tool_choice"] = serde_json::json!(self.post.tool_choice);
             info!("PASSTHROUGH TOOLS {:?}", tools);
         } else {
             info!("PASSTHROUGH TOOLS NOT SUPPORTED");

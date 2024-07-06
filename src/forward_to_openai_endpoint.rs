@@ -31,10 +31,7 @@ pub async fn forward_to_openai_style_endpoint(
     save_url.clone_from(&&url);
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
-    if !bearer.is_empty() && url.contains("api.anthropic.com") {
-        headers.insert("x-api-key", HeaderValue::from_str(&bearer).unwrap());
-        headers.insert("anthropic-version", HeaderValue::from_str("2023-06-01").unwrap());
-    } else if !bearer.is_empty() {
+    if !bearer.is_empty() {
         headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
     }
     let mut data = json!({
@@ -148,7 +145,7 @@ fn passthrough_messages_to_json(
             }
         }
     }
-    // TODO: remove, dump to file
+    // TODO: remove (dump to file)
     if false {
         let mut messages_file = File::create("/tmp/aaa_messages.json").unwrap();
         let messages_json = serde_json::to_string_pretty(&big_json["messages"]).unwrap();

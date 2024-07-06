@@ -21,7 +21,7 @@ pub type DefaultToolPatch = UnifiedDiffFormat;
 pub struct ToolPatch {}
 #[async_trait]
 impl Tool for ToolPatch {
-    async fn execute(
+    async fn tool_execute(
         &self,
         ccx: &mut AtCommandsContext,
         tool_call_id: &String,

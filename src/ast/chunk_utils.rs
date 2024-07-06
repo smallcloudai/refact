@@ -10,7 +10,7 @@ use tokenizers::Tokenizer;
 use crate::ast::count_tokens;
 use crate::vecdb::vdb_structs::SplitResult;
 
-fn str_hash(s: &String) -> String {
+pub fn official_text_hashing_function(s: &String) -> String {
     let digest = md5::compute(s);
     format!("{:x}", digest)
 }
@@ -43,7 +43,7 @@ pub fn get_chunks(text: &String,
                 chunks.push(SplitResult {
                     file_path: file_path.clone(),
                     window_text: current_line.clone(),
-                    window_text_hash: str_hash(&current_line),
+                    window_text_hash: official_text_hashing_function(&current_line),
                     start_line: if use_symbol_range_always { top_row as u64 } else { current_line_number },
                     end_line: if use_symbol_range_always { bottom_row as u64 } else { max(top_row as i64, top_row as i64 + line_idx as i64 - 1) as u64 },
                     symbol_path: symbol_path.clone(),
@@ -73,7 +73,7 @@ pub fn get_chunks(text: &String,
                 chunks.push(SplitResult {
                     file_path: file_path.clone(),
                     window_text: current_line.clone(),
-                    window_text_hash: str_hash(&current_line),
+                    window_text_hash: official_text_hashing_function(&current_line),
                     start_line: if use_symbol_range_always { top_row as u64 } else { top_row as u64 + line_idx as u64 + 1 },
                     end_line: if use_symbol_range_always { bottom_row as u64 } else { bottom_row as u64 },
                     symbol_path: symbol_path.clone(),
@@ -93,7 +93,7 @@ pub fn get_chunks(text: &String,
         chunks.push(SplitResult {
             file_path: file_path.clone(),
             window_text: current_line.clone(),
-            window_text_hash: str_hash(&current_line),
+            window_text_hash: official_text_hashing_function(&current_line),
             start_line: top_row as u64,
             end_line: bottom_row as u64,
             symbol_path: symbol_path.clone(),

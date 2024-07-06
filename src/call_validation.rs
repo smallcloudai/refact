@@ -246,7 +246,7 @@ pub struct ChatMessage {
     pub role: String,
     #[serde(default, deserialize_with="deserialize_content")]
     pub content: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<ChatToolCall>>,
     #[serde(default)]
     pub tool_call_id: String,
@@ -281,7 +281,8 @@ pub struct ChatPost {
     pub max_tokens: usize,
     #[serde(default)]
     pub tools: Option<Vec<serde_json::Value>>,
-    // pub tool_choice: Option<String>,
+    #[serde(default)]
+    pub tool_choice: Option<String>,
     #[serde(default)]
     pub only_deterministic_messages: bool,  // means don't sample from the model
     #[serde(default)]

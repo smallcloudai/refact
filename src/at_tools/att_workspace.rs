@@ -11,7 +11,7 @@ pub struct AttWorkspace;
 
 #[async_trait]
 impl Tool for AttWorkspace {
-    async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let query = match args.get("query") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `query` is not a string: {:?}", v)),
@@ -29,7 +29,7 @@ impl Tool for AttWorkspace {
         }));
         Ok(results)
     }
-    fn depends_on(&self) -> Vec<String> {
+    fn tool_depends_on(&self) -> Vec<String> {
         vec!["vecdb".to_string()]
     }
 }

@@ -56,6 +56,8 @@ pub struct CommandLine {
     pub ast_light_mode: bool,
     #[structopt(long, help="Use vector database. Give it a jsonl files list or LSP workspace folders, and also caps need to have an embedding model.")]
     pub vecdb: bool,
+    #[structopt(long, help="Delete all memories, start fresh.")]
+    pub reset_memory: bool,
     #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to vecdb and ast")]
     pub files_jsonl_path: String,
     #[structopt(long, default_value="", help="Vecdb storage path")]
