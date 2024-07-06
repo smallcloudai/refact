@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use async_trait::async_trait;
 use regex::Regex;
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tracing::info;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -10,7 +10,7 @@ use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ContextFile, ContextEnum};
-
+use crate::global_context::GlobalContext;
 
 pub struct AtFile {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
@@ -102,19 +102,20 @@ fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
     }
 }
 
-pub async fn at_file_repair_candidates(
-    value: &String,
-    ccx: &AtCommandsContext,
-    fuzzy: bool,
+pub async fn file_repair_candidates(
+    value: &String, 
+    gcx: Arc<ARwLock<GlobalContext>>, 
+    top_n: usize, 
+    fuzzy: bool
 ) -> Vec<String> {
     let mut correction_candidate = value.clone();
     let colon_mb = colon_lines_range_from_arg(&mut correction_candidate);
 
     let result: Vec<String> = crate::files_correction::correct_to_nearest_filename(
-        ccx.global_context.clone(),
+        gcx.clone(),
         &correction_candidate,
         fuzzy,
-        ccx.top_n,
+        top_n,
     ).await;
 
     result.iter().map(|x| {
@@ -122,6 +123,14 @@ pub async fn at_file_repair_candidates(
         put_colon_back_to_arg(&mut x, &colon_mb);
         x
     }).collect()
+}
+
+pub async fn at_file_repair_candidates(
+    value: &String,
+    ccx: &AtCommandsContext,
+    fuzzy: bool,
+) -> Vec<String> {
+    file_repair_candidates(value, ccx.global_context.clone(), ccx.top_n, fuzzy).await
 }
 
 pub fn text_on_clip(result: &ContextFile, from_tool_call: bool) -> String {

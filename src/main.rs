@@ -39,6 +39,7 @@ mod at_tools;
 mod nicer_logs;
 mod toolbox;
 mod ast;
+mod diffs;
 
 
 #[tokio::main]

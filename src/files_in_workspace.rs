@@ -109,6 +109,7 @@ pub struct DocumentsState {
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
     pub total_reset: bool,
     pub total_reset_ts: std::time::SystemTime,
+    pub diffs_applied_state: HashMap<u64, Vec<usize>>,  // XXX: can this be simplified?
 }
 
 async fn overwrite_or_create_document(
@@ -144,6 +145,7 @@ impl DocumentsState {
             fs_watcher: Arc::new(ARwLock::new(watcher)),
             total_reset: false,
             total_reset_ts: std::time::SystemTime::now(),
+            diffs_applied_state: HashMap::new(),
         }
     }
 
@@ -212,6 +214,18 @@ pub async fn read_file_from_disk(path: &PathBuf) -> Result<Rope, String> {
         .map_err(|e|
             format!("failed to read file {}: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e)
         )
+}
+
+pub fn read_file_from_disk_sync(path: &PathBuf) -> Result<Rope, String> {
+    match std::fs::read_to_string(path) {
+        Ok(content) => {
+            let rope = Rope::from_str(&content);
+            Ok(rope)
+        },
+        Err(e) => {
+            Err(format!("failed to read file {}: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e))
+        }
+    }
 }
 
 async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<PathBuf>> {
