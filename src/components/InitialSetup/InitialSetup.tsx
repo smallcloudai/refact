@@ -1,7 +1,7 @@
 import { Button, Card, Flex, RadioGroup, Text } from "@radix-ui/themes";
 import { useState } from "react";
 
-type Host = "cloud" | "self-hosting" | "enterprise";
+export type Host = "cloud" | "self-hosting" | "enterprise";
 
 export type InitialSetupProps = {
   onPressNext: (host: Host) => void;
