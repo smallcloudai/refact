@@ -7,6 +7,7 @@ use crate::global_context::GlobalContext;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use notify::event::{CreateKind, DataChange, ModifyKind, RemoveKind};
 use ropey::Rope;
+use tokio::process::Command;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 
 use tracing::info;
@@ -98,6 +99,7 @@ impl Document {
 pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub workspace_files: Arc<StdMutex<Vec<PathBuf>>>,
+    pub last_accessed_file: Arc<StdMutex<Option<PathBuf>>>,
     pub jsonl_files: Arc<StdMutex<Vec<PathBuf>>>,
     // document_map on windows: c%3A/Users/user\Documents/file.ext
     // query on windows: C:/Users/user/Documents/file.ext
@@ -136,6 +138,7 @@ impl DocumentsState {
         Self {
             workspace_folders: Arc::new(StdMutex::new(workspace_dirs)),
             workspace_files: Arc::new(StdMutex::new(Vec::new())),
+            last_accessed_file: Arc::new(StdMutex::new(None)),
             jsonl_files: Arc::new(StdMutex::new(Vec::new())),
             memory_document_map: HashMap::new(),
             cache_dirty: Arc::new(AMutex::<bool>::new(false)),
@@ -259,6 +262,55 @@ async fn ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>> 
         None
     }
 }
+
+pub async fn detect_vcs_in_dir(file_path: &PathBuf) -> Option<&'static str> {
+    let mut directory = file_path.to_path_buf();
+    if directory.is_file() {
+        directory.pop(); // Get the parent directory if the path is a file
+    }
+
+    return if is_git_repo(&directory).await {
+        Some("git")
+    } else if is_svn_repo(&directory).await {
+        Some("svn")
+    } else if is_hg_repo(&directory).await {
+        Some("hg")
+    } else {
+        None
+    }
+}
+
+async fn is_git_repo(directory: &PathBuf) -> bool {
+    Command::new("git")
+        .arg("rev-parse")
+        .arg("--is-inside-work-tree")
+        .current_dir(directory)
+        .output()
+        .await
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+async fn is_svn_repo(directory: &PathBuf) -> bool {
+    Command::new("svn")
+        .arg("info")
+        .current_dir(directory)
+        .output()
+        .await
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+async fn is_hg_repo(directory: &PathBuf) -> bool {
+    Command::new("hg")
+        .arg("root")
+        .current_dir(directory)
+        .output()
+        .await
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
 
 async fn ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = vec![];
@@ -422,6 +474,7 @@ pub async fn on_did_open(
     if mark_dirty {
         (*dirty_arc.lock().await) = true;
     }
+    *gcx.read().await.documents_state.last_accessed_file.lock().unwrap() = Some(cpath.clone());
 }
 
 pub async fn on_did_change(

@@ -45,6 +45,8 @@ similar = "2.3.0"
 axum = "0.6.20"
 uuid = { version = "1", features = ["v4"] }
 lazy_static = "1.4.0"
+html2text = "0.12.5"
+select = "0.6.0"
 indexmap = {version = "1.9.1", features = ["serde-1"]}
 
 

@@ -33,6 +33,8 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
         // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttSaveKnowledge{}) as Box<dyn Tool + Send>))),
         ("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttGetKnowledge{}) as Box<dyn Tool + Send>))),
         ("workspace_map".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_workspace_map::AttAstWorkspaceMap{}) as Box<dyn Tool + Send>))),
+        ("diff".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_diff::AttDiff{}) as Box<dyn Tool + Send>))),
+        ("web".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_web::AttWeb{}) as Box<dyn Tool + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
@@ -146,6 +148,24 @@ tools:
         type: "string"
         description: "An optional absolute path to get files tree for a particular folder or file. Do not pass it if you need full project tree."
     parameters_required: []
+
+  - name: "diff"
+    description: "Perform a diff operation. Can be used to get git diff for a project (no arguments) or git diff for a specific file (file_path)"
+    parameters:
+      - name: "file_path"
+        type: "string"
+        description: "Path to the specific file to diff (optional)."
+    parameters_required:
+
+  - name: "web"
+    description: "Fetch and convert a web page to text. Can be used to get the text content of a web page."
+    parameters:
+      - name: "url"
+        type: "string"
+        description: "URL of the web page to fetch."
+    parameters_required:
+      - "url"
+
 "####;
 
 #[allow(dead_code)]

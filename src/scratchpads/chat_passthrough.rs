@@ -116,26 +116,21 @@ impl ScratchpadAbstract for ChatPassthrough {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" || msg.role == "tool" {
                 filtered_msgs.push(msg.clone());
 
-            } else if msg.role == "diff" {
-                filtered_msgs.push(ChatMessage {
-                    role: "tool".to_string(),
-                    content: msg.content.clone(),
-                    tool_calls: None,
-                    tool_call_id: msg.tool_call_id.clone(),
-                });
-
+            } else if msg.role == "diff" || msg.role == "plain_text" {
+                filtered_msgs.push(ChatMessage::new(
+                    "user".to_string(), msg.content.clone(),
+                ));
             } else if msg.role == "context_file" {
-                match serde_json::from_str(&msg.content) {
-                    Ok(res) => {
-                        let vector_of_context_files: Vec<ContextFile> = res;
-                        for context_file in &vector_of_context_files {
+                match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
+                    Ok(vector_of_context_files) => {
+                        for context_file in vector_of_context_files {
                             filtered_msgs.push(ChatMessage::new(
                                 "user".to_string(),
                                 format!("{}:{}-{}\n```\n{}```",
-                                    context_file.file_name,
-                                    context_file.line1,
-                                    context_file.line2,
-                                    context_file.file_content),
+                                        context_file.file_name,
+                                        context_file.line1,
+                                        context_file.line2,
+                                        context_file.file_content),
                             ));
                         }
                     },

@@ -16,7 +16,7 @@ use crate::at_commands::at_commands::{AtCommandsContext, filter_only_chat_messag
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
-use crate::call_validation::ChatMessage;
+use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::scratchpads::chat_utils_rag::{max_tokens_for_rag_chat, postprocess_at_results2};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
 
@@ -121,9 +121,17 @@ pub async fn handle_v1_command_preview(
     let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, true, &vec![]).await;
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(&mut ccx, &mut query).await;
-    let chat_message_messages = filter_only_chat_messages_from_context_tool(&messages_for_postprocessing);
 
     let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
+
+    let mut preview: Vec<ChatMessage> = vec![];
+    for exec_result in messages_for_postprocessing.iter() {
+        // at commands exec() can produce both role="user" and role="assistant" messages
+        if let ContextEnum::ChatMessage(raw_msg) = exec_result {
+            preview.push(raw_msg.clone());
+        }
+    }
+
     let processed = postprocess_at_results2(
         global_context.clone(),
         &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
@@ -132,7 +140,7 @@ pub async fn handle_v1_command_preview(
         false,
         top_n,
     ).await;
-    let mut preview: Vec<ChatMessage> = vec![];
+
     if !processed.is_empty() {
         let message = ChatMessage {
             role: "context_file".to_string(),
@@ -142,15 +150,7 @@ pub async fn handle_v1_command_preview(
         };
         preview.push(message.clone());
     }
-    if !chat_message_messages.is_empty() {
-        let message = ChatMessage {
-            role: "context_text".to_string(),
-            content: serde_json::to_string(&chat_message_messages).unwrap(),
-            tool_calls: None,
-            tool_call_id: "".to_string(),
-        };
-        preview.push(message.clone());
-    }
+
     let mut highlights = vec![];
     for h in vec_highlights {
         highlights.push(Highlight {

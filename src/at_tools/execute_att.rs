@@ -113,9 +113,7 @@ pub async fn run_tools(
     ).await;
 
     if !context_file.is_empty() {
-        let json_vec = context_file.iter().map(|p| {
-            json!(p)
-        }).collect::<Vec<Value>>();
+        let json_vec = context_file.iter().map(|p|json!(p)).collect::<Vec<Value>>();
 
         let message = ChatMessage::new(
             "context_file".to_string(),
