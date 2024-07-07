@@ -183,6 +183,7 @@ def test4():
     del payload["apply"]
 
     state = diff_state(payload)
+    print(state)
     assert state["can_apply"] == [True, True, True, False]
 
     print(colored("test4 PASSED", "green"))

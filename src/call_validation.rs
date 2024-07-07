@@ -288,7 +288,7 @@ pub struct ChatPost {
     pub chat_id: String,
 }
 
-#[derive(Deserialize, Clone, Hash)]
+#[derive(Deserialize, Clone, Hash, Debug)]
 pub struct DiffChunk {
     pub file_name: String,
     pub file_action: String,
@@ -296,9 +296,4 @@ pub struct DiffChunk {
     pub line2: usize,
     pub lines_remove: String,
     pub lines_add: String,
-    // for internal use
-    #[serde(skip_serializing, default)]
-    pub chunk_id: usize,
-    #[serde(skip_serializing, default)]
-    pub apply: bool,
 }

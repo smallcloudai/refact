@@ -109,7 +109,7 @@ pub struct DocumentsState {
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
     pub total_reset: bool,
     pub total_reset_ts: std::time::SystemTime,
-    pub diffs_applied_state: HashMap<u64, Vec<usize>>,  // XXX: can this be simplified?
+    pub diffs_applied_state: HashMap<u64, Vec<bool>>,
 }
 
 async fn overwrite_or_create_document(
