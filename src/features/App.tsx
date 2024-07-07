@@ -1,22 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { useConfig } from "../contexts/config-context";
-import { PageWrapper } from "../components/PageWrapper";
 import { Host, InitialSetup } from "../components/InitialSetup";
 import { usePages } from "../hooks/usePages";
 import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
 import { useLocalStorage } from "usehooks-ts";
+import { Flex } from "@radix-ui/themes";
+import { HistorySideBar } from "./HistorySideBar";
+import { Chat } from "./Chat";
+import { useEventBusForHost } from "../hooks";
 
 export interface AppProps {
   style?: React.CSSProperties;
 }
 
 export const App: React.FC<AppProps> = ({ style }: AppProps) => {
-  const { host } = useConfig();
   const { page, navigate } = usePages();
   const [apiKey, setApiKey] = useLocalStorage("api_key", "");
   const [loading, setLoading] = useState(false);
+  const { takeingNotes, currentChatId } = useEventBusForHost();
 
   const onPressNext = (host: Host) => {
     if (host === "cloud") {
@@ -26,6 +28,10 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
     } else {
       navigate({ type: "push", page: { name: "self hosting setup" } });
     }
+  };
+
+  const goToChat = () => {
+    navigate({ type: "push", page: { name: "chat" } });
   };
 
   const onLogin = () => {
@@ -41,7 +47,7 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   }, [apiKey]);
 
   return (
-    <PageWrapper host={host} style={{ alignItems: "center", ...style }}>
+    <Flex style={{ justifyContent: "center", ...style }}>
       {page.name === "initial setup" && (
         <InitialSetup onPressNext={onPressNext} />
       )}
@@ -52,15 +58,24 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
           apiKey={apiKey}
           setApiKey={setApiKey}
           login={onLogin}
-          next={() => 0}
+          next={goToChat}
         />
       )}
       {page.name === "enterprise setup" && (
-        <EnterpriseSetup goBack={goBack} next={() => 0} />
+        <EnterpriseSetup goBack={goBack} next={goToChat} />
       )}
       {page.name === "self hosting setup" && (
-        <SelfHostingSetup goBack={goBack} next={() => 0} />
+        <SelfHostingSetup goBack={goBack} next={goToChat} />
       )}
-    </PageWrapper>
+      {page.name === "chat" && (
+        <>
+          <HistorySideBar
+            takingNotes={takeingNotes}
+            currentChatId={currentChatId}
+          />
+          <Chat style={{ width: "calc(100vw - 260px)" }} />
+        </>
+      )}
+    </Flex>
   );
 };

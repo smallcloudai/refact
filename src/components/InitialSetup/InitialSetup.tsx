@@ -13,7 +13,7 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
   const [selected, setSelected] = useState<Host | undefined>(undefined);
 
   return (
-    <Flex direction="column" gap="2" maxWidth="540px">
+    <Flex direction="column" gap="2" maxWidth="540px" m="8px">
       <Text size="4">Refact plugin initial setup:</Text>
       <RadioGroup.Root
         style={{ gap: 10 }}

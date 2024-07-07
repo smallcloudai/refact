@@ -16,11 +16,16 @@ export interface SelfHostingSetup {
   name: "self hosting setup";
 }
 
+export interface ChatPage {
+  name: "chat";
+}
+
 export type Page =
   | InitialSetupPage
   | CloudLogin
   | EnterpriseSetup
-  | SelfHostingSetup;
+  | SelfHostingSetup
+  | ChatPage;
 
 export interface ChangePage {
   type: "change";

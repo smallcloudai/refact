@@ -20,7 +20,7 @@ export const SelfHostingSetup: React.FC<SelfHostingSetupProps> = ({
   };
 
   return (
-    <Flex direction="column" gap="2" maxWidth="540px">
+    <Flex direction="column" gap="2" maxWidth="540px" m="8px">
       <Text size="2">
         A great option for self-hosting is{" "}
         <a href="https://github.com/smallcloudai/refact/">Refact docker</a>. It
