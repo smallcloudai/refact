@@ -41,7 +41,7 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   }, [apiKey]);
 
   return (
-    <PageWrapper host={host} style={style}>
+    <PageWrapper host={host} style={{ alignItems: "center", ...style }}>
       {page.name === "initial setup" && (
         <InitialSetup onPressNext={onPressNext} />
       )}

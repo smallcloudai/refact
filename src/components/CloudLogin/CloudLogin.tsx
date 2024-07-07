@@ -55,7 +55,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
   };
 
   return (
-    <Flex direction="column" gap="2">
+    <Flex direction="column" gap="2" maxWidth="540px">
       <Text weight="bold" size="4">
         Cloud inference
       </Text>

@@ -21,7 +21,7 @@ export const EnterpriseSetup: React.FC<EnterpriseSetupProps> = ({
   };
 
   return (
-    <Flex direction="column" gap="2">
+    <Flex direction="column" gap="2" maxWidth="540px">
       <Text size="2">
         You should have corporate endpoint URL and personal API key. Please
         contact your system administrator.
