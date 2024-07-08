@@ -6,5 +6,4 @@ export const AT_COMMAND_PREVIEW = "/v1/at-command-preview";
 export const CUSTOM_PROMPTS_URL = "/v1/customization";
 export const AT_TOOLS_AVAILABLE_URL = "/v1/tools";
 export const DIFF_APPLY_URL = "/v1/diff-apply";
-export const DIFF_UNDO_URL = "/v1/diff-undo";
-export const DEFF_APPLIED_CHUNKS = "/v1/diff-applied-chunks";
+export const DEFF_STATE_URL = "/v1/diff-state";

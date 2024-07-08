@@ -1,4 +1,3 @@
-import { DiffChunkWithTypeAndApply } from "../components/ChatContent/DiffContent";
 import {
   ChatMessages,
   ChatResponse,
@@ -669,7 +668,12 @@ export function isSetEnableSend(action: unknown): action is SetEnableSend {
 
 export interface RecieveDiffAppliedChunks extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_APPLIED_CHUNKS;
-  payload: { id: string; diff_id: string; applied_chunks: number[] };
+  payload: {
+    id: string;
+    diff_id: string;
+    applied_chunks: number[];
+    can_apply: boolean[];
+  };
 }
 
 export function isRecieveDiffAppliedChunks(
@@ -696,8 +700,8 @@ export interface RequestDiffOpperation extends ActionFromChat {
   payload: {
     id: string;
     diff_id: string;
-    opperation: "add" | "remove";
-    chunks: DiffChunkWithTypeAndApply[];
+    chunks: DiffChunk[];
+    toApply: boolean[];
   };
 }
 

@@ -275,6 +275,7 @@ export function useEventBusForHost() {
                 id,
                 diff_id,
                 applied_chunks: res.state,
+                can_apply: res.can_apply,
               },
             };
             window.postMessage(action, "*");
@@ -289,8 +290,8 @@ export function useEventBusForHost() {
       }
 
       if (isRequestDiffOpperation(event.data)) {
-        const { id, diff_id, chunks, opperation } = event.data.payload;
-        doDiff(opperation, chunks, lspUrl)
+        const { id, diff_id, chunks, toApply } = event.data.payload;
+        doDiff(chunks, toApply, lspUrl)
           .then((res) => {
             const action: RecieveDiffOpperationResult = {
               type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_OPPERATION_RESULT,

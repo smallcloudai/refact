@@ -92,7 +92,6 @@ import { useDebounceCallback } from "usehooks-ts";
 import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
 import { parseOrElse } from "../../utils";
 import { DiffAppliedStateResponse } from "../../services/refact/diffs";
-import { DiffChunkWithTypeAndApply } from "../../components/ChatContent/DiffContent";
 
 export function formatChatResponse(
   messages: ChatMessages,
@@ -667,6 +666,7 @@ export function reducer(postMessage: typeof window.postMessage) {
         fetching: false,
         error: null,
         state: action.payload.applied_chunks,
+        can_apply: action.payload.can_apply,
       };
 
       const applied_diffs = {
@@ -1312,19 +1312,25 @@ export const useEventBusForChat = () => {
     state.chat.messages,
   ]);
 
+  const getDiffByIndex = useCallback(
+    (index: number): DiffChunkStatus | null => {
+      const key = "diff-" + index;
+      if (key in state.chat.applied_diffs) {
+        return state.chat.applied_diffs[key];
+      }
+      return null;
+    },
+    [state.chat.applied_diffs],
+  );
   const addOrRemoveDiff = useCallback(
-    (
-      diff_id: string,
-      opperation: "add" | "remove",
-      chunks: DiffChunkWithTypeAndApply[],
-    ) => {
+    (diff_id: string, chunks: DiffChunk[], toApply: boolean[]) => {
       const action: RequestDiffOpperation = {
         type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_OPPERATION,
         payload: {
           id: state.chat.id,
           diff_id,
           chunks,
-          opperation,
+          toApply,
         },
       };
       postMessage(action);
@@ -1343,17 +1349,6 @@ export const useEventBusForChat = () => {
   //     window.debugChat = undefined;
   //   };
   // }, [state.chat]);
-
-  const getDiffByIndex = useCallback(
-    (index: number): DiffChunkStatus | null => {
-      const key = "diff-" + index;
-      if (key in state.chat.applied_diffs) {
-        return state.chat.applied_diffs[key];
-      }
-      return null;
-    },
-    [state.chat.applied_diffs],
-  );
 
   return {
     state,

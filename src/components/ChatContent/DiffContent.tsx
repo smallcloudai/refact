@@ -14,10 +14,7 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
 
-export type DiffSumbitFunction = (
-  operation: "add" | "remove",
-  chunks: DiffChunkWithTypeAndApply[],
-) => void;
+type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
 function toDiff(str: string, type: "add" | "remove"): string {
   const sign = type === "add" ? "+" : "-";
@@ -54,7 +51,7 @@ const Highlight = React.memo(_Highlight);
 
 type DiffProps = {
   diff: DiffChunk;
-  type?: "apply" | "unapply";
+  type?: "apply" | "unapply" | "error" | "can not apply";
   value?: boolean;
   onChange?: (checked: boolean) => void;
 };
@@ -70,11 +67,15 @@ const Diff: React.FC<DiffProps> = ({ diff, type, value, onChange }) => {
     <Box>
       <Flex justify="between" align="center" p="1">
         <Text size="1">{title}</Text>
-        {type && (
+        {type && type !== "error" && (
           <Text as="label" size="1">
             {type}{" "}
             <Switch size="1" checked={value} onCheckedChange={onChange} />
           </Text>
+        )}{" "}
+        {type && type === "error" && <Text size="1">Failed to apply</Text>}
+        {type && type === "can not apply" && (
+          <Text size="1">Can not apply diff</Text>
         )}
       </Flex>
       <Reveal defaultOpen={lineCount < 9}>
@@ -108,20 +109,30 @@ const Diff: React.FC<DiffProps> = ({ diff, type, value, onChange }) => {
 export type DiffContentProps = {
   diffs: DiffChunk[];
   appliedChunks: DiffChunkStatus | null;
-  onSubmit: DiffSumbitFunction;
+  onSubmit: (toApply: boolean[]) => void;
 };
 
 export type DiffChunkWithTypeAndApply = DiffChunk & {
-  type: "apply" | "unapply";
+  type: DiffType;
   apply: boolean;
 };
 
 function diffFormState(
   diffs: DiffChunk[],
   appliedChunks: number[],
+  canApply: boolean[],
 ): DiffChunkWithTypeAndApply[] {
   return diffs.map((diff, index) => {
-    const type = appliedChunks[index] === 1 ? "unapply" : "apply";
+    const c = canApply[index];
+    const n = appliedChunks[index];
+
+    const type = !c
+      ? "can not apply"
+      : n === 2
+        ? "error"
+        : n === 1
+          ? "unapply"
+          : "apply";
     return {
       type: type,
       apply: false,
@@ -147,8 +158,13 @@ export const DiffContent: React.FC<DiffContentProps> = ({
 }) => {
   const [open, setOpen] = React.useState(false);
   const status = React.useMemo(
-    () => diffFormState(diffs, appliedChunks?.state ?? []),
-    [appliedChunks?.state, diffs],
+    () =>
+      diffFormState(
+        diffs,
+        appliedChunks?.state ?? [],
+        appliedChunks?.can_apply ?? [],
+      ),
+    [appliedChunks?.state, diffs, appliedChunks?.can_apply],
   );
 
   // TODO: handle loading
@@ -191,10 +207,7 @@ export const DiffContent: React.FC<DiffContentProps> = ({
 
 const DiffForm: React.FC<{
   diffs: DiffChunkWithTypeAndApply[];
-  onSubmit: (
-    operation: "add" | "remove",
-    chunks: DiffChunkWithTypeAndApply[],
-  ) => void;
+  onSubmit: (chunks: boolean[]) => void;
   canRemove: boolean;
   canAdd: boolean;
   isLoading: boolean;
@@ -218,26 +231,18 @@ const DiffForm: React.FC<{
     return isEqual(state, diffs);
   }, [state, diffs]);
 
-  const addOp = React.useCallback(
-    () => onSubmit("add", state),
-    [onSubmit, state],
-  );
-
-  const removeOp = React.useCallback(
-    () => onSubmit("remove", state),
-    [onSubmit, state],
-  );
+  const applyDiff = React.useCallback(() => {
+    const toApply = state.map((diff) => diff.apply);
+    onSubmit(toApply);
+  }, [onSubmit, state]);
 
   const [disableAdd, setDisableAdd] = React.useState(false);
-  const [disableRemove, setDisableRemove] = React.useState(false);
 
   useEffect(() => {
     if (isLoading) {
       setDisableAdd(true);
-      setDisableRemove(true);
     } else {
       setDisableAdd(!canAdd || hasNotChanged);
-      setDisableRemove(!canRemove || hasNotChanged);
     }
   }, [isLoading, canAdd, canRemove, hasNotChanged]);
 
@@ -253,11 +258,8 @@ const DiffForm: React.FC<{
         />
       ))}
       <Flex gap="2" py="2">
-        <Button color="grass" disabled={disableAdd} onClick={addOp}>
+        <Button disabled={disableAdd} onClick={applyDiff}>
           Add Changes
-        </Button>
-        <Button color="red" disabled={disableRemove} onClick={removeOp}>
-          Remove Changes
         </Button>
       </Flex>
     </Flex>

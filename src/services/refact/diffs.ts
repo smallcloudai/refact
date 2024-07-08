@@ -1,11 +1,11 @@
-import { DiffChunkWithTypeAndApply } from "../../components/ChatContent/DiffContent";
 import { getApiKey, parseOrElse } from "../../utils";
-import { DIFF_APPLY_URL, DIFF_UNDO_URL, DEFF_APPLIED_CHUNKS } from "./consts";
+import { DEFF_STATE_URL, DIFF_APPLY_URL } from "./consts";
 import { DiffChunk } from "./types";
 
 export interface DiffAppliedStateResponse {
   id: number;
   state: number[];
+  can_apply: boolean[];
 }
 
 export async function checkDiff(
@@ -13,8 +13,8 @@ export async function checkDiff(
   lspUrl?: string,
 ): Promise<DiffAppliedStateResponse> {
   const addr = lspUrl
-    ? `${lspUrl.replace(/\/*$/, "")}${DEFF_APPLIED_CHUNKS}`
-    : DEFF_APPLIED_CHUNKS;
+    ? `${lspUrl.replace(/\/*$/, "")}${DEFF_STATE_URL}`
+    : DEFF_STATE_URL;
 
   const apiKey = getApiKey();
 
@@ -40,6 +40,7 @@ export async function checkDiff(
   const json = parseOrElse<DiffAppliedStateResponse>(text, {
     id: 0,
     state: [],
+    can_apply: [],
   });
 
   return json;
@@ -55,21 +56,20 @@ interface DiffOperationResponse {
 }
 
 export async function doDiff(
-  opperation: "add" | "remove",
-  chunks: DiffChunkWithTypeAndApply[],
+  chunks: DiffChunk[],
+  toApply: boolean[],
   lspUrl?: string,
 ): Promise<DiffOperationResponse> {
-  const url = opperation === "remove" ? DIFF_UNDO_URL : DIFF_APPLY_URL;
-  const addr = lspUrl ? `${lspUrl.replace(/\/*$/, "")}${url}` : url;
+  const addr = lspUrl
+    ? `${lspUrl.replace(/\/*$/, "")}${DIFF_APPLY_URL}`
+    : DIFF_APPLY_URL;
 
   const apiKey = getApiKey();
-
-  const apply = chunks.map((d) => d.apply);
 
   const response = await fetch(addr, {
     method: "POST",
     body: JSON.stringify({
-      apply,
+      apply: toApply,
       chunks,
     }),
     credentials: "same-origin",

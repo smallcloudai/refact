@@ -1,6 +1,7 @@
 import React from "react";
 import {
   ChatMessages,
+  DiffChunk,
   ToolResult,
   isChatContextFileMessage,
   isDiffMessage,
@@ -16,7 +17,7 @@ import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
-import { DiffChunkWithTypeAndApply, DiffContent } from "./DiffContent";
+import { DiffContent } from "./DiffContent";
 import { DiffChunkStatus } from "../../hooks";
 
 const PlaceHolderText: React.FC = () => (
@@ -32,8 +33,8 @@ export type ChatContentProps = {
   getDiffByIndex: (index: number) => DiffChunkStatus | null;
   addOrRemoveDiff: (
     diff_id: string,
-    opperation: "add" | "remove",
-    chunks: DiffChunkWithTypeAndApply[],
+    chunks: DiffChunk[],
+    toApply: boolean[],
   ) => void;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
@@ -88,7 +89,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
               const maybeDiffChunk = getDiffByIndex(index);
               return (
                 <DiffContent
-                  onSubmit={(op, chunks) => addOrRemoveDiff(key, op, chunks)}
+                  onSubmit={(toApply) => addOrRemoveDiff(key, diffs, toApply)}
                   appliedChunks={maybeDiffChunk}
                   key={key}
                   diffs={diffs}
