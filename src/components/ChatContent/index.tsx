@@ -1,1 +1,1 @@
-export { ChatContent } from "./ChatContent";
+export { ChatContent, type ChatContentProps } from "./ChatContent";
