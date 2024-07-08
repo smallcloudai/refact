@@ -143,6 +143,7 @@ pub fn print_files_tree_with_budget_internal(
 
 
     // First stage: Collect paths within the budget
+    let mut budget_exceeded = false;
     let mut total_symbols = 0;
     while let Some((node, paths_holder)) = queue.pop_front() {
         let mut node_entries = node.0.read().unwrap().child_paths.clone();
@@ -174,6 +175,7 @@ pub fn print_files_tree_with_budget_internal(
             total_symbols += filename.len() + ast_symbols.len() + 5;  // 5 is a small budget for special symbols
             if total_symbols >= budget {
                 paths_holder.borrow_mut().is_complete = false;
+                budget_exceeded = true;
                 break;
             }
             let sub_path_holder = Arc::new(RefCell::new(
@@ -181,6 +183,9 @@ pub fn print_files_tree_with_budget_internal(
             ));
             paths_holder.borrow_mut().child_paths.push(sub_path_holder.clone());
             queue.push_back((entry.clone(), sub_path_holder));
+        }
+        if budget_exceeded {
+            break;
         }
     }
 
