@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-
+use arrow::ipc::Bool;
 use async_trait::async_trait;
 use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
 use parking_lot::RwLock;
@@ -142,6 +142,7 @@ pub struct SymbolInformation {
     pub language: LanguageId,
     pub file_path: PathBuf,
     pub namespace: String,
+    pub is_error: bool,
     #[serde(with = "RangeDef")]
     pub full_range: Range,
     #[serde(with = "RangeDef")]
@@ -258,6 +259,7 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
             language: self.language().clone(),
             file_path: self.file_path().clone(),
             namespace: self.namespace().to_string(),
+            is_error: self.is_error(),
             full_range: self.full_range().clone(),
             declaration_range: self.declaration_range().clone(),
             definition_range: self.definition_range().clone(),

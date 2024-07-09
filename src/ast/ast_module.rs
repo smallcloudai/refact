@@ -442,6 +442,45 @@ impl AstModule {
         Ok(result)
     }
 
+    pub async fn decl_symbols_from_imports_by_file_path(
+        &self,
+        doc: &Document,
+        imports_depth: usize,
+    ) -> Result<AstQuerySearchResult, String> {
+        let t0 = std::time::Instant::now();
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        let results = ast_ref.decl_symbols_from_imports_by_file_path(&doc, imports_depth);
+        let symbol_structs = results
+            .iter()
+            .filter_map(|s| {
+                let info_struct = s.borrow().symbol_info_struct();
+                let content = info_struct.get_content_from_file_blocked().ok()?;
+                Some(SymbolsSearchResultStruct {
+                    symbol_declaration: info_struct,
+                    content: content,
+                    usefulness: 100.0,
+                })
+            })
+            .collect::<Vec<_>>();
+        for r in symbol_structs.iter() {
+            let last_30_chars = crate::nicer_logs::last_n_chars(&r.symbol_declaration.name, 30);
+            info!("def-distance {:.3}, found {last_30_chars}", r.usefulness);
+        }
+        info!("ast decl_symbols_from_imports_by_file_path time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+        Ok(
+            AstQuerySearchResult {
+                query_text: "".to_string(),
+                search_results: symbol_structs,
+                refs_n: results.len(),
+            }
+        )
+    }
+
     pub async fn file_markup(
         &self,
         doc: &Document,

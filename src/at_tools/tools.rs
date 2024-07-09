@@ -121,16 +121,19 @@ tools:
       - "symbol"
 
   - name: "patch"
-    description: "Fix, edit, create or delete a single source file. Call patch() in parallel to generate changes to several files."
+    description: "A tool to fix, edit a bunch of source files or add new functionality to the project"
     parameters:
-      - name: "path"
+      - name: "paths"
         type: "string"
-        description: "Either absolute path or preceeding_dirs/file.ext"
+        description: "The string that contains all necessary to edit file names separated by commas"
       - name: "todo"
         type: "string"
-        description: "Describe in one paragraph what changes to the file are required."
+        description: "A complete and usefull description of required changes for the given files"
+      - name: "symbols"
+        type: "string"
+        description: "An optional arguments, symbol names that might be usefull to make necessary changes"
     parameters_required:
-      - "path"
+      - "paths"
       - "todo"
 
   - name: "tree"

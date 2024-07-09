@@ -97,7 +97,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
-        let top_n: usize = 7;
+        let top_n: usize = 15;
         let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
             run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &self.post.messages, top_n, &mut self.has_rag_results).await
         } else {
