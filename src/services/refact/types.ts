@@ -242,6 +242,8 @@ export function isToolResponse(json: unknown): json is ToolResponse {
 export interface PlainTextResponse {
   role: "plain_text";
   content: string;
+  tool_call_id: string;
+  tool_calls?: ToolCall[];
 }
 
 export function isPlainTextResponse(json: unknown): json is PlainTextResponse {
