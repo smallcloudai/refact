@@ -67,7 +67,7 @@ const Diff: React.FC<DiffProps> = ({ diff, type, value, onChange }) => {
     <Box>
       <Flex justify="between" align="center" p="1">
         <Text size="1">{title}</Text>
-        {type && type !== "error" && (
+        {type && (type === "apply" || type === "unapply") && (
           <Text as="label" size="1">
             {type}{" "}
             <Switch size="1" checked={value} onCheckedChange={onChange} />
