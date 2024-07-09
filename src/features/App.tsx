@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Host, InitialSetup } from "../components/InitialSetup";
 import { usePages } from "../hooks/usePages";
 import { CloudLogin } from "../components/CloudLogin";
@@ -8,7 +8,12 @@ import { useLocalStorage } from "usehooks-ts";
 import { Flex } from "@radix-ui/themes";
 import { HistorySideBar } from "./HistorySideBar";
 import { Chat } from "./Chat";
-import { useEventBusForHost } from "../hooks";
+import { useEventBusForHost, usePostMessage } from "../hooks";
+import {
+  EVENT_NAMES_FROM_SETUP,
+  HostSettings,
+  SetupHost,
+} from "../events/setup";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -19,6 +24,21 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   const [apiKey, setApiKey] = useLocalStorage("api_key", "");
   const [loading, setLoading] = useState(false);
   const { takeingNotes, currentChatId } = useEventBusForHost();
+  const postMessage = usePostMessage();
+
+  const setupHost = useCallback(
+    (host: HostSettings) => {
+      const setupHost: SetupHost = {
+        type: EVENT_NAMES_FROM_SETUP.SETUP_HOST,
+        payload: {
+          host,
+        },
+      };
+
+      postMessage(setupHost);
+    },
+    [postMessage],
+  );
 
   const onPressNext = (host: Host) => {
     if (host === "cloud") {
@@ -30,7 +50,18 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
     }
   };
 
-  const goToChat = () => {
+  const cloudLogin = (apiKey: string, sendCorrectedCodeSnippets: boolean) => {
+    setupHost({ type: "cloud", apiKey, sendCorrectedCodeSnippets });
+    navigate({ type: "push", page: { name: "chat" } });
+  };
+
+  const enterpriseSetup = (apiKey: string, endpointAddress: string) => {
+    setupHost({ type: "enterprise", apiKey, endpointAddress });
+    navigate({ type: "push", page: { name: "chat" } });
+  };
+
+  const selfHostingSetup = (endpointAddress: string) => {
+    setupHost({ type: "self", endpointAddress });
     navigate({ type: "push", page: { name: "chat" } });
   };
 
@@ -58,14 +89,14 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
           apiKey={apiKey}
           setApiKey={setApiKey}
           login={onLogin}
-          next={goToChat}
+          next={cloudLogin}
         />
       )}
       {page.name === "enterprise setup" && (
-        <EnterpriseSetup goBack={goBack} next={goToChat} />
+        <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
       )}
       {page.name === "self hosting setup" && (
-        <SelfHostingSetup goBack={goBack} next={goToChat} />
+        <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
       )}
       {page.name === "chat" && (
         <>
