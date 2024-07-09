@@ -12,17 +12,16 @@ use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 
 pub struct AttFile;
 
-async fn get_file_text(ccx: &mut AtCommandsContext, file_path: &String, candidates: &Vec<String>, project_paths: &Vec<PathBuf>) -> Result<(String, String), String> {
-    let f_path = PathBuf::from(file_path);
-    let mut corrected = PathBuf::new();
+pub async fn real_file_path_candidate(ccx: &mut AtCommandsContext, file_path: &String, candidates: &Vec<String>, project_paths: &Vec<PathBuf>) -> Result<String, String>{
+    let mut f_path = PathBuf::from(file_path);
 
     if candidates.is_empty() {
+        let similar_files_str = at_file_repair_candidates(&file_path, ccx, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n");
         if f_path.is_absolute() {
             if !project_paths.iter().any(|x|x.starts_with(&f_path)) {
-                return Err(format!("The absolute path {:?} points outside of any workspace directories", f_path));
+                return Err(format!("The file {:?} will not be read as it lies beyond project directories:\n\n{:?}\n\nThere are files with similar names:\n{}", f_path, project_paths, similar_files_str));
             }
         }
-        let similar_files_str = at_file_repair_candidates(&file_path, ccx, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n");
         if f_path.is_relative() {
             let projpath_options = project_paths.iter().map(|x|x.join(&f_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
             if projpath_options.len() > 1 {
@@ -36,18 +35,16 @@ async fn get_file_text(ccx: &mut AtCommandsContext, file_path: &String, candidat
                     return Err(format!("The path {:?} does not exist.\n\nThere are files with similar names however:\n{}", f_path, similar_files_str));
                 }
             } else {
-                corrected = projpath_options[0].clone();
+                f_path = projpath_options[0].clone();
+                return Ok(f_path.to_string_lossy().to_string());
             }
         }
-    } else {
-        corrected = PathBuf::from(candidates[0].clone());
     }
 
     if candidates.len() > 1 {
         return Err(format!("The path {:?} is ambiguous.\n\nIt could be interpreted as:\n{}", file_path, candidates.join("\n")));
     }
-
-    get_file_text_from_memory_or_disk(ccx.global_context.clone(), &corrected).await.map(|x|(corrected.to_string_lossy().to_string(), x))
+    Ok(candidates[0].clone())
 }
 
 #[async_trait]
@@ -59,12 +56,15 @@ impl Tool for AttFile {
             None => { return Err("argument `path` is missing".to_string()) }
         };
 
-        let mut results = vec![];
         let candidates = at_file_repair_candidates(p, ccx, false).await;
-        let content = match get_file_text(ccx, p, &candidates, &get_project_paths(ccx).await).await {
-            Ok((file_name, file_content)) => {
+        let candidate = real_file_path_candidate(ccx, p, &candidates, &get_project_paths(ccx).await).await?;
+        let file_text_mb = get_file_text_from_memory_or_disk(ccx.global_context.clone(), &PathBuf::from(candidate.clone())).await;
+
+        let mut results = vec![];
+        let content_on_clip = match file_text_mb {
+            Ok(file_content) => {
                 let res = ContextFile {
-                    file_name,
+                    file_name: candidate,
                     file_content: file_content.clone(),
                     line1: 0,
                     line2: file_content.lines().count(),
@@ -82,7 +82,7 @@ impl Tool for AttFile {
 
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content,
+            content: content_on_clip,
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
         }));

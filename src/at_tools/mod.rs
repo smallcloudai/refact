@@ -2,7 +2,7 @@ mod att_ast_definition;
 pub mod tools;
 pub mod execute_att;
 mod att_workspace;
-mod att_file;
+pub mod att_file;
 mod att_ast_reference;
 mod att_ast_file_symbols;
 mod att_ast_lookup_symbols;

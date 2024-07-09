@@ -2,24 +2,22 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use tokio::sync::Mutex as AMutex;
-use tracing::info;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
-use crate::at_commands::at_file::{AtParamFilePath, at_file_repair_candidates};
+use crate::at_commands::at_file::{AtParamFilePath, at_file_repair_candidates, get_project_paths};
 use crate::at_commands::at_workspace::execute_at_workspace;
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
+use crate::at_tools::att_file::real_file_path_candidate;
 use crate::call_validation::{ContextEnum, ContextFile};
 
 
 pub struct AtFileSearch {
-    pub name: String,
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
 }
 
 impl AtFileSearch {
     pub fn new() -> Self {
         AtFileSearch {
-            name: "@file-search".to_string(),
             params: vec![
                 Arc::new(AMutex::new(AtParamFilePath::new()))
             ],
@@ -43,11 +41,7 @@ pub async fn execute_at_file_search(
 ) -> Result<Vec<ContextFile>, String> {
     let fuzzy = !from_tool_call;
     let candidates = at_file_repair_candidates(file_path, ccx, fuzzy).await;
-    if candidates.is_empty() {
-        info!("parameter {:?} is uncorrectable :/", file_path);
-        return Err(format!("parameter {:?} is uncorrectable :/", file_path));
-    }
-    let file_path = candidates.get(0).unwrap().clone();
+    let file_path = real_file_path_candidate(ccx, file_path, &candidates, &get_project_paths(ccx).await).await?;
     let vecdb_scope_filter = format!("(file_path = \"{}\")", file_path);
     let vector_of_context_file = execute_at_workspace(ccx, query, Some(vecdb_scope_filter)).await?;
 
