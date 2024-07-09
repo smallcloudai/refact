@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use serde_json::Value;
+use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
 use tokio::sync::RwLock as ARwLock;
@@ -167,18 +167,18 @@ pub fn make_openai_tool_value(
     description: String,
     parameters_required: Vec<String>,
     parameters: Vec<AtParamDict>,
-) -> serde_json::Value {
+) -> Value {
     let params_properties = parameters.iter().map(|param| {
         (
             param.name.clone(),
-            serde_json::json!({
+            json!({
                 "type": param.param_type,
                 "description": param.description
             })
         )
     }).collect::<serde_json::Map<_, _>>();
 
-    let function_json = serde_json::json!({
+    let function_json = json!({
             "type": "function",
             "function": {
                 "name": name,
@@ -194,7 +194,7 @@ pub fn make_openai_tool_value(
 }
 
 impl AtToolDict {
-    pub fn into_openai_style(self) -> serde_json::Value {
+    pub fn into_openai_style(self) -> Value {
         make_openai_tool_value(
             self.name,
             self.description,
@@ -204,11 +204,18 @@ impl AtToolDict {
     }
 }
 
-pub fn at_tools_compiled_in_only() -> Result<Vec<AtToolDict>, String> {
+pub fn tools_compiled_in(turned_on: &Vec<String>) -> Result<Vec<AtToolDict>, String> {
     let at_dict: AtDictDeserialize = serde_yaml::from_str(AT_DICT)
-        .map_err(|e|format!("Failed to parse AT_DICT: {}", e))?;
+        .map_err(|e|format!("Failed to parse TOOLS: {}", e))?;
+    Ok(at_dict.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>())
+}
 
-    // TODO: filter out some tools that depend on vecdb or ast if those are disabled
-
-    Ok(at_dict.tools)
+pub async fn tools_from_customization(gcx: Arc<ARwLock<GlobalContext>>, turned_on: &Vec<String>) -> Vec<ToolCustDict> {
+    return match crate::toolbox::toolbox_config::load_customization(gcx.clone()).await {
+        Ok(tconfig) => tconfig.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>(),
+        Err(e) => {
+            tracing::error!("Error loading toolbox config: {:?}", e);
+            vec![]
+        }
+    }
 }
