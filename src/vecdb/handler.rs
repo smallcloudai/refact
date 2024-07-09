@@ -34,7 +34,6 @@ pub struct VecDBHandler {
     schema: SchemaRef,
     data_table_hashes: HashSet<String>,
     embedding_size: i32,
-    indexed_file_paths: Arc<AMutex<Vec<PathBuf>>>,
 }
 
 fn cosine_similarity(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
@@ -86,7 +85,6 @@ impl VecDBHandler {
             data_table,
             data_table_hashes: HashSet::new(),
             embedding_size,
-            indexed_file_paths: Arc::new(AMutex::new(vec![])),
         })
     }
 
@@ -95,28 +93,6 @@ impl VecDBHandler {
             Ok(size) => Ok(size),
             Err(err) => Err(format!("{:?}", err))
         }
-    }
-
-    pub async fn select_all_file_paths(&self) -> Vec<PathBuf> {
-        let mut file_paths: HashSet<PathBuf> = HashSet::new();
-        let records: Vec<RecordBatch> = self.data_table
-            .filter(format!("file_path in (select file_path from data)"))
-            .execute()
-            .await.unwrap()
-            .try_collect::<Vec<_>>()
-            .await.unwrap();
-
-        for rec_batch in records {
-            for record in VecDBHandler::parse_table_iter(rec_batch, false, None).unwrap() {
-                file_paths.insert(record.file_path.clone());
-            }
-        }
-        return file_paths.into_iter().collect();
-    }
-
-    pub async fn update_indexed_file_paths(&mut self) {
-        let res = self.select_all_file_paths().await;
-        self.indexed_file_paths = Arc::new(AMutex::new(res));
     }
 
     pub async fn add_or_update(&mut self, records: &Vec<Record>) -> Result<(), String> {
