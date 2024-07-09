@@ -13,6 +13,7 @@ import {
   ToolCommand,
   CodeChatModel,
   ChatMessage,
+  isPlainTextResponse,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -96,6 +97,10 @@ export function formatChatResponse(
     const { tool_call_id, content, finish_reason } = response;
     const toolResult: ToolResult = { tool_call_id, content, finish_reason };
     return [...messages, [response.role, toolResult]];
+  }
+
+  if (isPlainTextResponse(response)) {
+    return [...messages, [response.role, response.content]];
   }
 
   if (!isChatResponseChoice(response)) {

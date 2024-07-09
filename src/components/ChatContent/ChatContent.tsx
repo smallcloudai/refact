@@ -15,6 +15,7 @@ import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
+import { PlainText } from "./PlainText";
 
 const PlaceHolderText: React.FC = () => (
   <Text>Welcome to Refact chat! How can I assist you today?</Text>
@@ -105,6 +106,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
               return null;
             } else if (role === "context_memory") {
               return <MemoryContent key={index} items={text} />;
+            } else if (role === "plain_text") {
+              return <PlainText key={index}>{text}</PlainText>;
             } else {
               return null;
               // return <Markdown key={index}>{text}</Markdown>;
