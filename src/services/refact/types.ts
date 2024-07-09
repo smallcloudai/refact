@@ -5,7 +5,8 @@ export type ChatRole =
   | "system"
   | "tool"
   | "context_memory"
-  | "diff";
+  | "diff"
+  | "plain_text";
 
 export type ChatContextFile = {
   file_name: string;
@@ -121,6 +122,14 @@ export function isUserMessage(message: ChatMessage): message is UserMessage {
   return message[0] === "user";
 }
 
+export interface PlainTextMessage extends BaseMessage {
+  0: "plain_text";
+  1: string;
+}
+/**
+ * {"content":"[{\"memo_id\":\"about_frog_class.txt\",\"memo_text\":\"The Frog class is used to test the project, located in tests folder.\\n\"},{\"memo_id\":\"answer_in_spanish.txt\",\"memo_text\":\"User actually preferes answers in Spanish, so do that.\\n\"}]","role":"context_memory","tool_call_id":"","tool_calls":null}
+ */
+
 export type ChatMessage =
   | UserMessage
   | AssistantMessage
@@ -128,7 +137,8 @@ export type ChatMessage =
   | SystemMessage
   | ToolMessage
   | MemoryMessage
-  | DiffMessage;
+  | DiffMessage
+  | PlainTextMessage;
 
 export type ChatMessages = ChatMessage[];
 
@@ -160,6 +170,12 @@ export function isToolCallMessage(
   if (!tool_calls) return false;
   // TODO: check browser support of evey
   return tool_calls.every(isToolCall);
+}
+
+export function isPlainTextMessage(
+  message: ChatMessage,
+): message is PlainTextMessage {
+  return message[0] === "plain_text";
 }
 
 interface BaseDelta {
@@ -263,6 +279,17 @@ export function isDiffResponse(json: unknown): json is DiffResponse {
   if (!("content" in json)) return false;
   if (!("role" in json)) return false;
   return json.role === "diff";
+}
+export interface PlainTextResponse {
+  role: "plain_text";
+  content: string;
+}
+
+export function isPlainTextResponse(json: unknown): json is PlainTextResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("role" in json)) return false;
+  return json.role === "plain_text";
 }
 
 type ChatResponseChoice = {

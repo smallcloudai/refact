@@ -17,6 +17,7 @@ import {
   isDiffResponse,
   ChatMessage,
   isDiffMessage,
+  isPlainTextResponse,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -118,6 +119,10 @@ export function formatChatResponse(
   if (isDiffResponse(response)) {
     const content = parseOrElse<DiffChunk[]>(response.content, []);
     return [...messages, [response.role, content]];
+  }
+
+  if (isPlainTextResponse(response)) {
+    return [...messages, [response.role, response.content]];
   }
 
   if (!isChatResponseChoice(response)) {
@@ -279,6 +284,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           ...state.chat,
           messages: action.payload.messages,
         },
+        previous_message_length: action.payload.messages.length - 1,
       };
     }
 
