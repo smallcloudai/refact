@@ -135,19 +135,17 @@ toolbox_commands:
     description: "Show available commands"
     messages: []
 
+# CUSTOM TOOLS
+# tools:
+#  - name: "compile"
+#    description: "Compile the project"
+#    parameters:
+#    parameters_required:
+#    command: "cargo build"
+#    timeout: 120
+#    output_postprocess: "last_100_lines"
+
 "#;
-
-
-// # CUSTOM TOOLS
-
-// # tools:
-// #   - name: "compile"
-// #     description: "Compile the project"
-// #     parameters:
-// #     parameters_required:
-// #     command: "cargo build"
-// #     timeout: 120
-// #     postprocess: "last_100_lines"
 
 
 pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# Customization will override the default config you can see at the bottom of this file, in the comments.
