@@ -261,9 +261,6 @@ async fn vectorize_thread(
                             1024,
                         ).await;
 
-                        let t0 = std::time::Instant::now();
-                        vecdb_handler_ref.lock().await.update_indexed_file_paths().await;
-                        info!("update_indexed_file_paths: it took {:.3}s", t0.elapsed().as_secs_f64());
                         reported_vecdb_complete = true;
                         // For now, we do not create index 'cause it hurts quality of retrieval
                         // info!("VECDB Creating index");
