@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
-
+use std::sync::{Arc, RwLock};
 use async_trait::async_trait;
 use itertools::Itertools;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use ropey::Rope;
 use serde_json::Value;
+use tokenizers::Tokenizer;
 use tracing::{info, warn};
 
 use crate::ast::ast_index::RequestSymbolType;
@@ -403,6 +404,7 @@ def test_todo():
 
 const DEFAULT_MODEL_NAME: &str = "gpt-4o";
 const MAX_TOKENS: usize = 32000;
+const MAX_NEW_TOKENS: usize = 4096;
 const TEMPERATURE: f32 = 0.1;
 pub type DefaultToolPatch = UnifiedDiffFormat;
 
@@ -523,13 +525,73 @@ async fn make_prompt(
         None
     };
 
-    // let extra_context = if let Some(symbols) = maybe_symbols {
-    //     Some(symbols_to_signatures_context(&symbols).await)
-    // } else {
-    //     None
-    // };
-    Ok((DefaultToolPatch::prompt(), None))
+    let extra_context = if let Some(symbols) = maybe_symbols {
+        Some(symbols_to_signatures_context(&symbols).await)
+    } else {
+        None
+    };
+    Ok((DefaultToolPatch::prompt(), extra_context))
 }
+
+async fn make_chat_history(
+    args: &PatchArguments,
+    ccx: &mut AtCommandsContext,
+    system_prompt: &String,
+    maybe_extra_context: &Option<String>,
+    tokenizer: Arc<RwLock<Tokenizer>>
+) -> Result<Vec<ChatMessage>, String> {
+    let mut tokens: usize = 0;
+    let max_tokens: usize = MAX_TOKENS - MAX_NEW_TOKENS;
+    let tokenizer_ref = tokenizer.read().unwrap().clone();
+    let task_message = format!("The task is:\n{}", args.todo).to_string();
+    let mut chat_messages = vec![
+        ChatMessage::new(
+            "system".to_string(),
+            system_prompt.to_string(),
+        )
+    ];
+    tokens += 3 + count_tokens(&tokenizer_ref, &system_prompt);
+    tokens += 3 + count_tokens(&tokenizer_ref, &task_message);
+    if tokens > max_tokens {
+        return Err(format!("Too many tokens: {tokens} > {max_tokens}"));
+    }
+
+    let has_single_file = args.paths.len() == 1;
+    for (idx, file) in args.paths.iter().enumerate() {
+        match execute_at_file(ccx, file.clone()).await {
+            Ok(res) => {
+                let message = format!("{}\n```\n{}```\n\n", res.file_name, res.file_content).to_string();
+                tokens += 3 + count_tokens(&tokenizer_ref, &message);
+                if tokens > max_tokens {
+                    let err_message = if has_single_file || idx == 0 {
+                        format!("The provided file {file} is too large for the patch tool: {tokens} > {max_tokens}")
+                    } else {
+                        format!("There are too many files provided: {tokens} > {max_tokens}. Try to call the tool for each file separately")
+                    };
+                    return Err(err_message)
+                }
+                chat_messages.push(ChatMessage::new("user".to_string(), message));
+            }
+            Err(err) => {
+                warn!("Cannot find a `{file}`: {err}");
+            }
+        }
+    }
+    if let Some(extra_context) = maybe_extra_context {
+        let message = format!("Extra context for the files:\n{}", extra_context).to_string();
+        tokens += 3 + count_tokens(&tokenizer_ref, &message);
+        if tokens > max_tokens {
+            warn!("Too many tokens for the extra context, skipping it: {tokens} > {max_tokens}");
+        } else {
+            chat_messages.push(ChatMessage::new("user".to_string(), message));
+        }
+    }
+
+    chat_messages.push(ChatMessage::new("user".to_string(), task_message));
+    info!("tokens num: {tokens}");
+    Ok(chat_messages)
+}
+
 
 async fn run_chat(
     args: &PatchArguments,
@@ -538,40 +600,10 @@ async fn run_chat(
     maybe_extra_context: Option<String>,
 ) -> Result<String, String> {
     let gx = ccx.global_context.clone();
-    let mut chat_messages = vec![
-        ChatMessage::new(
-            "system".to_string(),
-            system_prompt.to_string(),
-        )
-    ];
-    for file in args.paths.iter() {
-        match execute_at_file(ccx, file.clone()).await {
-            Ok(res) => {
-                chat_messages.push(ChatMessage::new(
-                    "user".to_string(),
-                    format!("{}\n```\n{}```\n\n", res.file_name, res.file_content).to_string(),
-                ));
-            }
-            Err(err) => {
-                warn!("Cannot find a `{file}`: {err}");
-            }
-        }
-    }
-    if let Some(extra_context) = maybe_extra_context {
-        chat_messages.push(ChatMessage::new(
-            "user".to_string(),
-            format!("Extra context for the files:\n{}", extra_context).to_string(),
-        ));
-    }
-    chat_messages.push(ChatMessage::new(
-        "user".to_string(),
-        format!("The task:\n{}", args.todo).to_string(),
-    ));
-
     let mut chat_post = ChatPost {
-        messages: chat_messages,
+        messages: vec![],
         parameters: SamplingParameters {
-            max_new_tokens: 4096,
+            max_new_tokens: MAX_NEW_TOKENS,
             temperature: Some(TEMPERATURE),
             top_p: None,
             stop: vec![],
@@ -602,6 +634,15 @@ async fn run_chat(
         let cx_locked = gx.write().await;
         (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
     };
+
+    let tokenizer = cached_tokenizers::cached_tokenizer(
+        caps.clone(), gx.clone(), model_name.clone(),
+    ).await?;
+
+    chat_post.messages = make_chat_history(
+        args, ccx, &system_prompt, &maybe_extra_context, tokenizer
+    ).await?;
+
     let mut scratchpad = scratchpads::create_chat_scratchpad(
         gx.clone(),
         caps.clone(),
@@ -612,11 +653,6 @@ async fn run_chat(
         false,
         false,
     ).await?;
-    // let tokenizer = cached_tokenizers::cached_tokenizer(
-    //     caps, gx.clone(), model_name
-    // ).await?;
-    //
-    // count_tokens
     let prompt = scratchpad.prompt(
         n_ctx,
         &mut chat_post.parameters,
