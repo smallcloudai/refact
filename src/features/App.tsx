@@ -20,7 +20,7 @@ export interface AppProps {
 }
 
 export const App: React.FC<AppProps> = ({ style }: AppProps) => {
-  const { page, navigate } = usePages();
+  const { pages, navigate } = usePages();
   const [apiKey, setApiKey] = useLocalStorage("api_key", "");
   const [loading, setLoading] = useState(false);
   const { takeingNotes, currentChatId } = useEventBusForHost();
@@ -79,34 +79,40 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
 
   return (
     <Flex style={{ justifyContent: "center", ...style }}>
-      {page.name === "initial setup" && (
-        <InitialSetup onPressNext={onPressNext} />
-      )}
-      {page.name === "cloud login" && (
-        <CloudLogin
-          goBack={goBack}
-          loading={loading}
-          apiKey={apiKey}
-          setApiKey={setApiKey}
-          login={onLogin}
-          next={cloudLogin}
-        />
-      )}
-      {page.name === "enterprise setup" && (
-        <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
-      )}
-      {page.name === "self hosting setup" && (
-        <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
-      )}
-      {page.name === "chat" && (
-        <>
-          <HistorySideBar
-            takingNotes={takeingNotes}
-            currentChatId={currentChatId}
-          />
-          <Chat style={{ width: "calc(100vw - 260px)" }} />
-        </>
-      )}
+      {pages.map((page, i) => {
+        return (
+          <Flex key={i} display={i === pages.length - 1 ? "flex" : "none"}>
+            {page.name === "initial setup" && (
+              <InitialSetup onPressNext={onPressNext} />
+            )}
+            {page.name === "cloud login" && (
+              <CloudLogin
+                goBack={goBack}
+                loading={loading}
+                apiKey={apiKey}
+                setApiKey={setApiKey}
+                login={onLogin}
+                next={cloudLogin}
+              />
+            )}
+            {page.name === "enterprise setup" && (
+              <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
+            )}
+            {page.name === "self hosting setup" && (
+              <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
+            )}
+            {page.name === "chat" && (
+              <>
+                <HistorySideBar
+                  takingNotes={takeingNotes}
+                  currentChatId={currentChatId}
+                />
+                <Chat style={{ width: "calc(100vw - 260px)" }} />
+              </>
+            )}
+          </Flex>
+        );
+      })}
     </Flex>
   );
 };

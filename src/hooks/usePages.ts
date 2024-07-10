@@ -54,9 +54,9 @@ function pageReducer(state: Page[], action: PageAction): Page[] {
 }
 
 export function usePages() {
-  const [state, dispatch] = useReducer(pageReducer, [
+  const [pages, dispatch] = useReducer(pageReducer, [
     { name: "initial setup" },
   ]);
 
-  return { page: state[state.length - 1], navigate: dispatch };
+  return { pages, navigate: dispatch };
 }
