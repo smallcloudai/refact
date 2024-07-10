@@ -28,7 +28,7 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
       event.preventDefault();
       onClick();
     },
-    [],
+    [onClick],
   );
 
   if (config.host === "web") {
