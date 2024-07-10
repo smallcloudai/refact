@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use async_trait::async_trait;
+use itertools::Itertools;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use ropey::Rope;
@@ -295,8 +296,7 @@ def test_todo():
             let filename = match edit.path.clone() {
                 Some(p) => p,
                 None => {
-                    warn!("Cannot get a file name from the diff chunk, skipping it: {edit:?}");
-                    continue;
+                    return Err(format!("Cannot get a file name from the diff chunk, skipping it: {edit:?}"));
                 }
             };
             let file_lines = read_file_from_disk(&PathBuf::from(filename.clone()))
@@ -309,11 +309,15 @@ def test_todo():
             let mut hunk_line_idx: usize = 0;
             let mut has_active_chunk = false;
             let mut line_idx_start: usize = 0;
-            let mut line_idx_end: usize = 0;
             let mut lines_to_add: String = String::new();
             let mut lines_to_remove: String = String::new();
-            for (line_idx, line) in file_lines.clone().into_iter().enumerate() {
-                line_idx_end = line_idx;
+            let mut line_idx: usize = 0;
+            let mut line = String::new();
+            loop {
+                if line_idx >= file_lines.len() {
+                    break;
+                }
+                line = file_lines[line_idx].clone();
                 if hunk_line_idx >= edit.hunk.len() {
                     break;
                 }
@@ -332,6 +336,7 @@ def test_todo():
                     has_active_chunk = true;
                     lines_to_remove.push_str(&format!("{line}\n"));
                     hunk_line_idx += 1;
+                    line_idx += 1;
                     continue;
                 } else if is_add_sign && has_diff_sign {
                     if !has_active_chunk {
@@ -358,6 +363,7 @@ def test_todo():
                     if line == edit_hunk_line {
                         hunk_line_idx += 1;
                     }
+                    line_idx += 1;
                 }
             }
             if has_active_chunk {
@@ -375,10 +381,17 @@ def test_todo():
                     file_name: filename.clone(),
                     file_action: "edit".to_string(),
                     line1: line_idx_start + 1,
-                    line2: line_idx_end,
+                    line2: line_idx,
                     lines_remove: lines_to_remove.clone(),
                     lines_add: lines_to_add.clone(),
                 });
+            }
+
+            if hunk_line_idx < edit.hunk.len() {
+                return Err(format!(
+                    "Couldn't parse a diff hunk from the {hunk_line_idx} line:\n```\n{}\n```",
+                    &edit.hunk.iter().join("\n")
+                ));
             }
         }
 
@@ -766,7 +779,7 @@ impl Tool for ToolPatch {
                 return Err(err);
             }
         };
-        info!("Tool patch answer: {:?}", answer);
+        info!("Tool patch answer: {answer}");
         match parse_diff_from_message(ccx, &answer).await {
             Ok(res) => {
                 info!("Tool patch diff: {:?}", res);
@@ -778,7 +791,7 @@ impl Tool for ToolPatch {
                 }))])
             }
             Err(err) => {
-                warn!("Error parsing diff: {:?}", err);
+                warn!(err);
                 Ok(vec![ContextEnum::ChatMessage(ChatMessage {
                     role: "diff".to_string(),
                     content: format!("Can't make any changes: {err}"),
@@ -796,68 +809,70 @@ mod tests {
 
     #[tokio::test]
     async fn test_parse_diff_message() {
-        let input = r#"To implement the task of adding logit soft-capping functionality, we need to make the following changes to the provided file:
+        let input = r#"Let's break down the changes needed to implement the task:
 
-1. **Define a new function `LogitSoftCapping`**:
-   - This function will be a subclass of `torch.autograd.Function` and will implement the forward and backward methods for logit soft-capping.
+1. **Track the last bounding box position for each track:**
+   - Add a new dictionary `_last_bboxes` to store the last bounding box positions.
+   - Initialize this dictionary in the constructor.
 
-2. **Integrate `LogitSoftCapping` into the `FusedScaleMaskSoftmax` class**:
-   - Add a new parameter `cap_value` to the `__init__` method to store the cap value.
-   - Modify the `forward` method to apply logit soft-capping if `cap_value` is not `None`.
+2. **Check for duplicates before emitting an event:**
+   - Add a method `_is_significant_movement` to check if the current bounding box has moved significantly compared to the last recorded position.
 
-Here is the unified diff format for the required changes:
+3. **Emit unique events only if the bounding box has moved significantly:**
+   - Update the `_handle_abandoned_item` method to use `_is_significant_movement` before emitting an event.
+   - Update the last bounding box position after emitting an event.
+
+Here is the unified diff format for the changes:
 
 ```diff
---- /home/svakhreev/tmp/flash-attention/flash_attn/fused_softmax.py
-+++ /home/svakhreev/tmp/flash-attention/flash_attn/fused_softmax.py
+--- /home/svakhreev/projects/dssl/abandonment_prototype/abandonment/nodes/event_emitter_node.py
++++ /home/svakhreev/projects/dssl/abandonment_prototype/abandonment/nodes/event_emitter_node.py
 @@ ... @@
-+class LogitSoftCapping(torch.autograd.Function):
-+    @staticmethod
-+    def forward(ctx, inputs, cap_value):
-+        capped_inputs = torch.clamp(inputs, max=cap_value)
-+        ctx.save_for_backward(capped_inputs, torch.tensor([cap_value]))
-+        return capped_inputs
-+
-+    @staticmethod
-+    def backward(ctx, grad_output):
-+        capped_inputs, cap_value = ctx.saved_tensors
-+        grad_input = grad_output.clone()
-+        grad_input[capped_inputs >= cap_value] = 0
-+        return grad_input, None
-+
+    def __init__(self, circle_radius: float, abandonment_frames: int, max_age: int, moved_frames: int,  **kwargs):
+        ProcessConsumerProducer.__init__(self, **kwargs)
+        self._circle_radius = circle_radius
+        self._abandonment_frames = abandonment_frames
+        self._max_age = max_age
+        self._moved_frames = moved_frames
+        self._abandonment_items = {}
++        self._last_bboxes = {}  # Track last bounding box positions
+
 @@ ... @@
-    ):
--        super().__init__()
-+        super().__init__()
-+        self.input_in_fp16 = input_in_fp16
-+        self.input_in_bf16 = input_in_bf16
-@@ ... @@
-        self.scale = scale
-+        self.cap_value = cap_value  # Store cap_value
-@@ ... @@
-        assert input.dim() == 4
-+
-+        if self.cap_value is not None:
-+            input = LogitSoftCapping.apply(input, self.cap_value)
-+
-        if self.is_kernel_available(mask, *input.size()):
-            return self.forward_fused_softmax(input, mask)
+    def _handle_abandoned_item(self, item: Prediction, message: Message) -> None:
+        if item.track_idx not in self._abandonment_items:
+            self._abandonment_items[item.track_idx] = AbandonmentItem(prediction=item)
         else:
+            self._abandonment_items[item.track_idx].moved_count = 0
+            frames_diff = item.frame_idx - self._abandonment_items[item.track_idx].prediction.frame_idx
+            if frames_diff > self._abandonment_frames and not self._abandonment_items[item.track_idx].is_sent:
++                if self._is_significant_movement(item):
+                    event = Event(prediction=self._abandonment_items[item.track_idx].prediction, event_type=EventType.DIST_2)
+                    message.data.events.append(event)
+                    self._abandonment_items[item.track_idx].is_sent = True
++                    self._last_bboxes[item.track_idx] = item.bbox.center_xywh()[:2]  # Update last bbox position
+
++    def _is_significant_movement(self, item: Prediction) -> bool:
++        if item.track_idx not in self._last_bboxes:
++            return True
++        last_x, last_y = self._last_bboxes[item.track_idx]
++        current_x, current_y = item.bbox.center_xywh()[:2]
++        distance = math.sqrt((last_x - current_x) ** 2 + (last_y - current_y) ** 2)
++        return distance > self._circle_radius / 2  # Consider significant if moved more than half the radius
 ```
 
 Explanation of changes:
+1. **Constructor Update:**
+   - Added `self._last_bboxes = {}` to track the last bounding box positions. (`+`)
 
-1. **Define `LogitSoftCapping` class**:
-   - `+` Added the `LogitSoftCapping` class with `forward` and `backward` methods.
+2. **_handle_abandoned_item Method Update:**
+   - Added a check using `_is_significant_movement(item)` before emitting an event. (`+`)
+   - Updated the last bounding box position after emitting an event. (`+`)
 
-2. **Modify `FusedScaleMaskSoftmax` class**:
-   - `+` Added `cap_value` parameter to the `__init__` method.
-   - `+` Stored `cap_value` in the class instance.
-   - `+` Modified the `forward` method to apply logit soft-capping if `cap_value` is not `None`.
+3. **New Method _is_significant_movement:**
+   - Added a new method `_is_significant_movement` to check if the current bounding box has moved significantly compared to the last recorded position. (`+`)
 
-These changes ensure that the logit soft-capping functionality is integrated into the `FusedScaleMaskSoftmax` class as required."#;
+This diff should be applied to the file `/home/svakhreev/projects/dssl/abandonment_prototype/abandonment/nodes/event_emitter_node.py`. The changes ensure that duplicate events are filtered out based on their relative position using the last bounding box in the track."#;
         let result = DefaultToolPatch::parse_message(input).await.unwrap();
-        let res = patch(&result, &vec![], 1).await;
         info!("result: {:?}", result);
     }
 }

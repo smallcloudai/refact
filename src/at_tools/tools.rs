@@ -125,13 +125,13 @@ tools:
     parameters:
       - name: "paths"
         type: "string"
-        description: "The string that contains all necessary to edit file names separated by commas"
+        description: "The string that contains all necessary to edit file names separated by commas. Prefer absolute file paths"
       - name: "todo"
         type: "string"
         description: "A complete and usefull description of required changes for the given files"
       - name: "symbols"
         type: "string"
-        description: "An optional arguments, symbol names that might be usefull to make necessary changes"
+        description: "An optional argument, symbol names that might be usefull to make necessary changes"
     parameters_required:
       - "paths"
       - "todo"
@@ -141,7 +141,7 @@ tools:
     parameters:
       - name: "path"
         type: "string"
-        description: "An optional path to get files tree for a particular folder or file"
+        description: "An optional absolute path to get files tree for a particular folder or file"
     parameters_required: []
 "####;
 
