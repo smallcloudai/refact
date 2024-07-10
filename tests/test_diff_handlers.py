@@ -191,9 +191,9 @@ def test4():
 
 def main():
     test1()
-    # test2()
-    # test3()
-    # test4()
+    test2()
+    test3()
+    test4()
 
 
 if __name__ == "__main__":

@@ -160,6 +160,7 @@ pub async fn handle_v1_diff_apply(
 
     Ok(Response::builder()
         .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string_pretty(&response).unwrap()))
         .unwrap())
 }
@@ -214,6 +215,7 @@ pub async fn handle_v1_diff_state(
 
     Ok(Response::builder()
         .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string(&response).unwrap()))
         .unwrap())
 }
