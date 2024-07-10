@@ -100,7 +100,7 @@ fn apply_chunks(
     file_text: &String,
     max_fuzzy_n: usize,
 ) -> (HashMap<usize, Option<usize>>, Vec<DiffLine>) {
-    let mut lines_orig = file_text.lines().enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
+    let mut lines_orig = file_text.split("\n").enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
 
     let mut results_fuzzy_ns = HashMap::new();
     for (chunk_id, chunk) in chunks.iter().map(|(id, c)|(*id, *c)) {
@@ -118,7 +118,7 @@ fn undo_chunks(
     file_text: &String,
     max_fuzzy_n: usize,
 ) -> (HashMap<usize, Option<usize>>, Vec<DiffLine>) {
-    let mut lines_orig = file_text.lines().enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
+    let mut lines_orig = file_text.split("\n").enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
 
     let mut results_fuzzy_ns = HashMap::new();
     for (chunk_id, chunk) in chunks.iter().map(|(id, c)|(*id, *c)) {
