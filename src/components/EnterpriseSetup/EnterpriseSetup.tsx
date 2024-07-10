@@ -1,5 +1,5 @@
 import { Button, Flex, Text, TextField } from "@radix-ui/themes";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface EnterpriseSetupProps {
   goBack: () => void;
@@ -12,12 +12,45 @@ export const EnterpriseSetup: React.FC<EnterpriseSetupProps> = ({
 }: EnterpriseSetupProps) => {
   const [endpoint, setEndpoint] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [endpointError, setEndpointError] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState(false);
+  const endpointInput = useRef<HTMLInputElement>(null);
+  const apiKeyInput = useRef<HTMLInputElement>(null);
 
-  const canSubmit = Boolean(endpoint && apiKey);
-  const onSubmit = () => {
-    if (canSubmit) {
-      next(endpoint, apiKey);
+  useEffect(() => {
+    setApiKeyError(false);
+  }, [apiKey]);
+
+  useEffect(() => {
+    setEndpointError(false);
+  }, [endpoint]);
+
+  useEffect(() => {
+    const { current } = endpointInput;
+    if (current === null || !endpointError) {
+      return;
     }
+    current.focus();
+  }, [endpointError]);
+
+  useEffect(() => {
+    const { current } = apiKeyInput;
+    if (current === null || !apiKeyError) {
+      return;
+    }
+    current.focus();
+  }, [apiKeyError]);
+
+  const onSubmit = () => {
+    if (!endpoint) {
+      setEndpointError(true);
+      return;
+    }
+    if (!apiKey) {
+      setApiKeyError(true);
+      return;
+    }
+    next(endpoint, apiKey);
   };
 
   return (
@@ -28,25 +61,36 @@ export const EnterpriseSetup: React.FC<EnterpriseSetupProps> = ({
       </Text>
       <Text size="2">Endpoint Address</Text>
       <TextField.Root
+        ref={endpointInput}
         placeholder="http://x.x.x.x:8008/"
         value={endpoint}
         onChange={(event) => setEndpoint(event.target.value)}
+        color={endpointError ? "red" : undefined}
+        onBlur={() => setEndpointError(false)}
       />
+      {endpointError && (
+        <Text size="2" color="red">
+          Please enter endpoint
+        </Text>
+      )}
       <Text size="2">API Key</Text>
       <TextField.Root
+        ref={apiKeyInput}
         value={apiKey}
         onChange={(event) => setApiKey(event.target.value)}
+        color={apiKeyError ? "red" : undefined}
+        onBlur={() => setApiKeyError(false)}
       />
+      {apiKeyError && (
+        <Text size="2" color="red">
+          Please enter API key
+        </Text>
+      )}
       <Flex gap="2">
         <Button variant="outline" mr="auto" onClick={goBack}>
           {"< Back"}
         </Button>
-        <Button
-          ml="auto"
-          type="submit"
-          disabled={!canSubmit}
-          onClick={onSubmit}
-        >
+        <Button ml="auto" type="submit" onClick={onSubmit}>
           {"Save"}
         </Button>
       </Flex>
