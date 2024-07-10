@@ -35,6 +35,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
     setSelectedSystemPrompt,
     setUseTools,
     enableSend,
+    openSettings,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -114,6 +115,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         onPasteClick={handlePasteDiffClick}
         canPaste={state.active_file.can_paste}
         ref={chatContentRef}
+        openSettings={openSettings}
       />
       {!state.streaming && state.prevent_send && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>

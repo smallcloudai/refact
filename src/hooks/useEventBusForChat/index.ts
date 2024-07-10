@@ -75,6 +75,7 @@ import {
   SetEnableSend,
   isSetEnableSend,
   TakeNotesFromChat,
+  OpenSettings,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -1133,6 +1134,15 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
+  const openSettings = useCallback(() => {
+    const action: OpenSettings = {
+      type: EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS,
+      payload: { id: state.chat.id },
+    };
+
+    postMessage(action);
+  }, [postMessage, state.chat.id]);
+
   // useEffect(() => {
   //   window.debugChat =
   //     window.debugChat ||
@@ -1167,5 +1177,6 @@ export const useEventBusForChat = () => {
     requestPreviewFiles,
     setUseTools,
     enableSend,
+    openSettings,
   };
 };
