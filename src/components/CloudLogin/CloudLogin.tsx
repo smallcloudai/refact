@@ -21,7 +21,20 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
 }: CloudLoginProps) => {
   const [sendCorrectedCodeSnippets, setSendCorrectedCodeSnippets] =
     useState(false);
+  const [error, setError] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setError(false);
+  }, [apiKey]);
+
+  useEffect(() => {
+    const current = input.current;
+    if (current === null) {
+      return;
+    }
+    current.focus();
+  }, [error]);
 
   useEffect(() => {
     const current = input.current;
@@ -49,9 +62,11 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
 
   const canSubmit = Boolean(apiKey);
   const onSubmit = () => {
-    if (canSubmit) {
-      next(apiKey, sendCorrectedCodeSnippets);
+    if (!canSubmit) {
+      setError(true);
+      return;
     }
+    next(apiKey, sendCorrectedCodeSnippets);
   };
 
   return (
@@ -60,9 +75,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
         Cloud inference
       </Text>
       <Text size="2">Quick login via website:</Text>
-      <Button variant="outline" onClick={login}>
-        Login / Create Account
-      </Button>
+      <Button onClick={login}>Login / Create Account</Button>
       <Text size="2" mt="2">
         Alternatively, paste an existing Refact API key here:
       </Text>
@@ -70,7 +83,14 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
         ref={input}
         value={apiKey}
         onChange={(event) => setApiKey(event.target.value)}
+        color={error ? "red" : undefined}
+        onBlur={() => setError(false)}
       />
+      {error && (
+        <Text size="2" mt="4" color="red">
+          Please Login / Create Account or enter API key
+        </Text>
+      )}
       <Text size="2" mt="4">
         Help Refact collect a dataset of corrected code completions! This will
         help to improve code suggestions more to your preferences, and it also
@@ -96,13 +116,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
         <Button variant="outline" mr="auto" onClick={goBack}>
           Back
         </Button>
-        <Button
-          variant="outline"
-          ml="auto"
-          type="submit"
-          disabled={!canSubmit}
-          onClick={onSubmit}
-        >
+        <Button variant="outline" ml="auto" type="submit" onClick={onSubmit}>
           Next
         </Button>
       </Flex>
