@@ -114,10 +114,10 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
       </Text>
       <Flex gap="2">
         <Button variant="outline" mr="auto" onClick={goBack}>
-          Back
+          {"< Back"}
         </Button>
         <Button variant="outline" ml="auto" type="submit" onClick={onSubmit}>
-          Next
+          {"Next >"}
         </Button>
       </Flex>
     </Flex>

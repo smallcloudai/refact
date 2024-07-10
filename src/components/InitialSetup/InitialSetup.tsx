@@ -86,7 +86,7 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
           }
         }}
       >
-        Next
+        {"Next >"}
       </Button>
     </Flex>
   );

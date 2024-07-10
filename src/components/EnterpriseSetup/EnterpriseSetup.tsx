@@ -39,16 +39,15 @@ export const EnterpriseSetup: React.FC<EnterpriseSetupProps> = ({
       />
       <Flex gap="2">
         <Button variant="outline" mr="auto" onClick={goBack}>
-          Back
+          {"< Back"}
         </Button>
         <Button
-          variant="outline"
           ml="auto"
           type="submit"
           disabled={!canSubmit}
           onClick={onSubmit}
         >
-          Next
+          {"Save"}
         </Button>
       </Flex>
     </Flex>

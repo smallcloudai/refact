@@ -38,15 +38,10 @@ export const SelfHostingSetup: React.FC<SelfHostingSetupProps> = ({
       />
       <Flex gap="2">
         <Button variant="outline" mr="auto" onClick={goBack}>
-          Back
+          {"< Back"}
         </Button>
-        <Button
-          variant="outline"
-          ml="auto"
-          disabled={!canSubmit}
-          onClick={onSubmit}
-        >
-          Next
+        <Button ml="auto" disabled={!canSubmit} onClick={onSubmit}>
+          {"Save"}
         </Button>
       </Flex>
     </Flex>
