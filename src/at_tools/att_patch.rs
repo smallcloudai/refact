@@ -18,7 +18,8 @@ use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ChatPost, ContextEnum, DiffChunk, SamplingParameters};
 use crate::diffs::apply_diff_chunks_to_text;
 use crate::files_in_workspace::{Document, read_file_from_disk};
-use crate::scratchpads;
+use crate::{cached_tokenizers, scratchpads};
+use crate::scratchpads::chat_utils_rag::count_tokens;
 
 pub struct WholeFileDiffFormat {}
 
@@ -522,12 +523,12 @@ async fn make_prompt(
         None
     };
 
-    let extra_context = if let Some(symbols) = maybe_symbols {
-        Some(symbols_to_signatures_context(&symbols).await)
-    } else {
-        None
-    };
-    Ok((DefaultToolPatch::prompt(), extra_context))
+    // let extra_context = if let Some(symbols) = maybe_symbols {
+    //     Some(symbols_to_signatures_context(&symbols).await)
+    // } else {
+    //     None
+    // };
+    Ok((DefaultToolPatch::prompt(), None))
 }
 
 async fn run_chat(
@@ -603,7 +604,7 @@ async fn run_chat(
     };
     let mut scratchpad = scratchpads::create_chat_scratchpad(
         gx.clone(),
-        caps,
+        caps.clone(),
         model_name.clone(),
         &chat_post.clone(),
         &scratchpad_name,
@@ -611,6 +612,11 @@ async fn run_chat(
         false,
         false,
     ).await?;
+    // let tokenizer = cached_tokenizers::cached_tokenizer(
+    //     caps, gx.clone(), model_name
+    // ).await?;
+    //
+    // count_tokens
     let prompt = scratchpad.prompt(
         n_ctx,
         &mut chat_post.parameters,
