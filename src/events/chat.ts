@@ -429,7 +429,7 @@ export interface RestoreChat extends ActionToChat {
   payload: {
     id: string;
     chat: ChatThread & {
-      messages: ChatThread["messages"] | [string, string][];
+      messages: ChatThread["messages"] | ([string, string] | null)[];
     };
     snippet?: Snippet;
   };

@@ -282,19 +282,24 @@ export function reducer(postMessage: typeof window.postMessage) {
       }
 
       if (messages === undefined) {
-        messages = action.payload.chat.messages.map((message) => {
-          if (message[0] === "context_file" && typeof message[1] === "string") {
-            let file: ChatContextFile[] = [];
-            try {
-              file = JSON.parse(message[1]) as ChatContextFile[];
-            } catch {
-              file = [];
+        messages = action.payload.chat.messages
+          .filter((message) => message)
+          .map((message) => {
+            if (
+              message[0] === "context_file" &&
+              typeof message[1] === "string"
+            ) {
+              let file: ChatContextFile[] = [];
+              try {
+                file = JSON.parse(message[1]) as ChatContextFile[];
+              } catch {
+                file = [];
+              }
+              return [message[0], file];
             }
-            return [message[0], file];
-          }
 
-          return message;
-        });
+            return message;
+          });
       }
 
       if (state.streaming) {
@@ -1145,8 +1150,9 @@ export const useEventBusForChat = () => {
 
   // useEffect(() => {
   //   window.debugChat =
-  //     window.debugChat ||
+  //     window.debugChat ??
   //     function () {
+  //       // eslint-disable-next-line no-console
   //       console.log(state.chat);
   //     };
 
@@ -1180,3 +1186,9 @@ export const useEventBusForChat = () => {
     openSettings,
   };
 };
+
+// declare global {
+//   interface Window {
+//     debugChat?: () => void;
+//   }
+// }
