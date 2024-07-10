@@ -29,15 +29,15 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
   }, [apiKey]);
 
   useEffect(() => {
-    const current = input.current;
-    if (current === null) {
+    const { current } = input;
+    if (current === null || !error) {
       return;
     }
     current.focus();
   }, [error]);
 
   useEffect(() => {
-    const current = input.current;
+    const { current } = input;
     if (current === null) {
       return;
     }
@@ -87,7 +87,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
         onBlur={() => setError(false)}
       />
       {error && (
-        <Text size="2" mt="4" color="red">
+        <Text size="2" color="red">
           Please Login / Create Account or enter API key
         </Text>
       )}
