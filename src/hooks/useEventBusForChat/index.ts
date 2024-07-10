@@ -904,6 +904,12 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
       payload: { id: state.chat.id },
     });
+
+    const preventSendAction: SetEnableSend = {
+      type: EVENT_NAMES_TO_CHAT.SET_ENABLE_SEND,
+      payload: { id: state.chat.id, enable_send: false },
+    };
+    dispatch(preventSendAction);
   }, [postMessage, state.chat.id]);
 
   const hasContextFile = useMemo(() => {
