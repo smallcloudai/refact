@@ -10,12 +10,12 @@ use serde_json::Value;
 use tracing::{info, warn};
 
 use crate::ast::ast_index::RequestSymbolType;
-use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, SymbolInformation};
+use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::execute_at_file;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ChatPost, ContextEnum, DiffChunk, SamplingParameters};
-use crate::diffs::patch;
+use crate::diffs::apply_diff_chunks_to_text;
 use crate::files_in_workspace::{Document, read_file_from_disk};
 use crate::scratchpads;
 
@@ -60,7 +60,7 @@ Follow these steps in order to produce the unified diff:
     }
 
     pub async fn parse_message(
-        content: &str,
+        _: &str,
     ) -> Result<Vec<DiffChunk>, String> {
         todo!()
     }
@@ -102,7 +102,7 @@ Every *SEARCH/REPLACE block* must use this format:
 
 
     pub async fn parse_message(
-        content: &str,
+        _: &str,
     ) -> Result<Vec<DiffChunk>, String> {
         todo!()
     }
@@ -273,7 +273,7 @@ def test_todo():
             (line_num + 1, edits)
         }
 
-        let mut lines: Vec<&str> = content.lines().collect();
+        let lines: Vec<&str> = content.lines().collect();
         let mut line_num = 0;
         let mut edits: Vec<Edit> = vec![];
 
@@ -291,7 +291,6 @@ def test_todo():
         }
 
         let mut diff_chunks: Vec<DiffChunk> = vec![];
-        let mut chunk_id_iter: usize = 0;
         for edit in edits.iter() {
             let filename = match edit.path.clone() {
                 Some(p) => p,
@@ -351,12 +350,9 @@ def test_todo():
                             line2: line_idx,
                             lines_remove: lines_to_remove.clone(),
                             lines_add: lines_to_add.clone(),
-                            chunk_id: chunk_id_iter,
-                            apply: true,
                         });
                         lines_to_remove.clear();
                         lines_to_add.clear();
-                        chunk_id_iter += 1;
                         has_active_chunk = false;
                     }
                     if line == edit_hunk_line {
@@ -382,8 +378,6 @@ def test_todo():
                     line2: line_idx_end,
                     lines_remove: lines_to_remove.clone(),
                     lines_add: lines_to_add.clone(),
-                    chunk_id: chunk_id_iter,
-                    apply: true,
                 });
             }
         }
@@ -598,7 +592,7 @@ async fn run_chat(
         gx.clone(),
         caps,
         model_name.clone(),
-        chat_post.clone(),
+        &chat_post.clone(),
         &scratchpad_name,
         &scratchpad_patch,
         false,
@@ -666,33 +660,34 @@ async fn parse_diff_from_message(
         return Err("No diff chunks were found".to_string());
     }
 
-    let (texts_after_patch, _) = match patch(&chunks, &vec![], 1).await {
-        Ok(res) => res,
-        Err(err) => {
-            return Err(format!("Error applying diff: {:?}", err));
-        }
-    };
     let gx = ccx.global_context.clone();
     let maybe_ast_module = gx.read().await.ast_module.clone();
-    match maybe_ast_module {
-        Some(ast_module) => {
-            let dummy_filename = PathBuf::from(rand::thread_rng()
-                .sample_iter(&Alphanumeric)
-                .take(16)
-                .map(char::from)
-                .collect::<String>());
-            for (file_name, text_after) in texts_after_patch.iter() {
+    for chunk in chunks.iter() {
+        let path = PathBuf::from(&chunk.file_name);
+        let text_before = match read_file_from_disk(&path).await {
+            Ok(text) => text,
+            Err(err) => {
+                let message = format!("Error reading file: {:?}, skipping ast assessment", err);
+                return Err(message);
+            }
+        };
+        let (text_after, _) = apply_diff_chunks_to_text(
+            &text_before.to_string(),
+            chunks.iter().enumerate().collect::<Vec<_>>(),
+            vec![],
+            1,
+        );
+        match &maybe_ast_module {
+            Some(ast_module) => {
+                let dummy_filename = PathBuf::from(rand::thread_rng()
+                    .sample_iter(&Alphanumeric)
+                    .take(16)
+                    .map(char::from)
+                    .collect::<String>());
                 let new_filename = dummy_filename.with_extension(
-                    PathBuf::from(file_name).extension().unwrap_or_default()
+                    path.extension().unwrap_or_default()
                 );
-                let text_before = match read_file_from_disk(&PathBuf::from(file_name)).await {
-                    Ok(text) => text,
-                    Err(err) => {
-                        warn!("Error reading file: {:?}, skipping ast assessment", err);
-                        continue;
-                    }
-                };
-                let before_doc = Document { path: new_filename.clone(), text: Some(text_before) };
+                let before_doc = Document { path: new_filename.clone(), text: Some(text_before.clone()) };
                 let after_doc = Document { path: new_filename, text: Some(Rope::from_str(&text_after)) };
 
                 let before_error_symbols = match ast_module.read()
@@ -727,16 +722,17 @@ async fn parse_diff_from_message(
                     let message = format!(
                         "Error: the diff: {:?} introduced errors into the file: {:?}",
                         message,
-                        file_name
+                        path
                     );
                     return Err(message);
                 }
             }
-        }
-        None => {
-            warn!("AST module is disabled, the diff assessment is skipping");
+            None => {
+                warn!("AST module is disabled, the diff assessment is skipping");
+            }
         }
     }
+
     match serde_json::to_string_pretty(&chunks) {
         Ok(json_chunks) => Ok(json_chunks),
         Err(err) => Err(format!("Error diff chunks serializing: {:?}", err))
