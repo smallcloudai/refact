@@ -128,7 +128,7 @@ Follow these steps in order to produce the unified diff:
 2. **Generate Diff:**
 -- Don't forget to make changes to all given files
 -- Return edits similar to unified diffs that `diff -U0` would produce.
--- Make sure you include the first 2 lines with the file paths.
+-- Make sure you include the first 2 lines with the real file paths which were given before
 -- Don't include timestamps with the file paths.
 -- Start each hunk of changes with a `@@ ... @@` line.
 -- Don't include line numbers like `diff -U0` does. The user's patch tool doesn't need them.
@@ -149,8 +149,8 @@ Follow these steps in order to produce the unified diff:
 
 There is a unified diff format example for the task: "Replace is_prime with a call to sympy"
 ```diff
---- mathweb/flask/app.py
-+++ mathweb/flask/app.py
+--- /home/mathweb/flask/app.py
++++ /home/mathweb/flask/app.py
 @@ ... @@
 import some_module
 
@@ -792,12 +792,7 @@ impl Tool for ToolPatch {
             }
             Err(err) => {
                 warn!(err);
-                Ok(vec![ContextEnum::ChatMessage(ChatMessage {
-                    role: "diff".to_string(),
-                    content: format!("Can't make any changes: {err}"),
-                    tool_calls: None,
-                    tool_call_id: tool_call_id.clone(),
-                })])
+                Err(format!("Can't make any changes: {err}"))
             }
         }
     }
