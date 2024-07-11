@@ -274,7 +274,6 @@ async fn parse_diff_chunks(edit: &Edit) -> Result<Vec<DiffChunk>, String> {
         };
         hunk_line_cursor += hunk_line_cursor_offset;
         file_line_cursor += new_file_line_cursor_offset;
-
         let (hunk_line_cursor_offset, new_file_line_cursor_offset, mut diff_chunk) = match parse_single_diff_chunk(
             &edit.hunk[hunk_line_cursor..], &file_lines[file_line_cursor..]
         ) {
@@ -350,7 +349,8 @@ There is a unified diff format example for the task: "Replace is_prime with a ca
 -def is_prime(x):
 -    if x < 2:
 -        return False
--    for i in range(2, int(math.sqrt(x)) + 1):
+-    for i in range(2, 
+-                  int(math.sqrt(x)) + 1):
 -        if x % i == 0:
 -            return False
 -    return True
@@ -374,7 +374,12 @@ There is a unified diff format example for the task: "Replace is_prime with a ca
 +            count += 1
 +    return str(num)
 @@ ... @@
- def test_todo():
+ def test_todo(
+     arg1,
+     arg2,
+     arg3,
+     arg4
+ ):
      pass
 +
 +def nth_prime_test(n):
@@ -1022,5 +1027,84 @@ Another text"#;
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
+    }
+    
+    #[tokio::test]
+    async fn test_ambiguous_hunk_6() {
+        let input = r#"### Analysis and Plan
+
+1. **Analyze the Task and Files:**
+   - The task is to update the `Tokenizer` class to load the tokenizer from a `tokenizer.json` file in the stablelm model directories.
+   - The `Tokenizer` class is located in the provided file `/home/svakhreev/projects/smc/refact/refact_data_pipeline/pipeline_pieces.py`.
+
+2. **Identify Specific Changes Required:**
+   - We need to add functionality to the `Tokenizer` class to load the tokenizer from a `tokenizer.json` file.
+   - This involves reading the `tokenizer.json` file and initializing the tokenizer with its contents.
+
+3. **Chain of Thoughts:**
+   - We need to import the necessary modules to read JSON files.
+   - Modify the `__init__` method of the `Tokenizer` class to include logic for loading the tokenizer from `tokenizer.json`.
+   - Ensure that the tokenizer is correctly initialized with the loaded data.
+
+4. **Explain Every Change:**
+   - **Import JSON Module:**
+     - `+` Add `import json` to handle JSON file reading.
+   - **Modify `__init__` Method:**
+     - `+` Add logic to read `tokenizer.json` and initialize the tokenizer.
+     - `+` Ensure that the file path to `tokenizer.json` is correctly specified and handled.
+
+### Generate Diff
+
+```diff
+--- /home/svakhreev/projects/smc/refact/refact_data_pipeline/pipeline_pieces.py
++++ /home/svakhreev/projects/smc/refact/refact_data_pipeline/pipeline_pieces.py
+@@ ... @@
+ import blobfile as bf
+ import filelock
+ import ujson
+ import zstandard
++import json
+ from mpi4py import MPI
+@@ ... @@
+        self.enc = dataopts.encoding
++       tokenizer_path = os.path.join(dataopts.get("model_dir", ""), "tokenizer.json")
++       if os.path.exists(tokenizer_path):
++           with open(tokenizer_path, "r") as f:
++               self.enc = json.load(f)
++       else:
++           log(f"Tokenizer file not found at {tokenizer_path}, using default encoding.")
+        super().__init__(dataopts)
+```
+
+### Explanation of Changes
+
+1. **Import JSON Module:**
+   - `+` Added `import json` to handle JSON file reading.
+
+2. **Modify `__init__` Method:**
+   - `+` Added logic to read `tokenizer.json` and initialize the tokenizer.
+   - `+` Ensured that the file path to `tokenizer.json` is correctly specified and handled.
+
+### Assess After Diff is Generated
+
+- Ensure that the `+` and `-` symbols are in the right places.
+- Verify that the patch applies cleanly against the current contents of the file.
+- Confirm that the indentation and formatting are correct.
+
+This should complete the task of updating the `Tokenizer` class to load the tokenizer from the `tokenizer.json` file in the stablelm model directories."#;
+        let gt_result = vec![
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_action: "edit".to_string(),
+                line1: 10,
+                line2: 10,
+                lines_remove: "".to_string(),
+                lines_add: "    # Third extra jump\n".to_string(),
+            },
+        ];
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
     }
 }
