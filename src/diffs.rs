@@ -66,7 +66,7 @@ fn apply_chunk_to_text_fuzzy(
         );
         return (Some(0), new_lines);
     }
-    
+
     let mut fuzzy_n_used = 0;
     for fuzzy_n in 0..=max_fuzzy_n {
         let search_from = (chunk.line1 as i32 - fuzzy_n as i32).max(0) as usize;
@@ -135,7 +135,7 @@ fn undo_chunks(
     let mut results_fuzzy_ns = HashMap::new();
     for (chunk_id, chunk) in chunks.iter().map(|(id, c)|(*id, *c)) {
         let mut chunk_copy = chunk.clone();
-        
+
         mem::swap(&mut chunk_copy.lines_remove, &mut chunk_copy.lines_add);
         chunk_copy.line2 = chunk_copy.line1 + chunk_copy.lines_remove.lines().count();
 
@@ -188,7 +188,7 @@ pub fn read_files_n_apply_diff_chunks(
 
     let chunks_undo = chunks.iter().enumerate().filter(|(idx, _)|applied_state.get(*idx) == Some(&true)).collect::<Vec<_>>();
     let chunks_apply = chunks.iter().enumerate().filter(|(idx, _)|desired_state.get(*idx) == Some(&true)).collect::<Vec<_>>();
-    
+
     let mut chunk_apply_groups = HashMap::new();
     for c in chunks_apply.iter().cloned() {
         chunk_apply_groups.entry(c.1.file_name.clone()).or_insert(Vec::new()).push(c);
@@ -208,11 +208,11 @@ pub fn read_files_n_apply_diff_chunks(
 
         let file_text = match crate::files_in_workspace::read_file_from_disk_sync(&PathBuf::from(&file_name)) {
             Ok(t) => t.to_string(),
-            Err(_) => { 
+            Err(_) => {
                 for (c, _) in chunks_apply.iter() {
                     fuzzy_n_used.insert(*c, None);
                 }
-                continue; 
+                continue;
             }
         };
 
@@ -221,7 +221,7 @@ pub fn read_files_n_apply_diff_chunks(
         fuzzy_n_used.extend(fuzzy_ns);
         texts_after_patch.insert(file_name.clone(), new_text);
     }
-    
+
     (texts_after_patch, fuzzy_n_used)
 }
 
@@ -410,7 +410,7 @@ class AnotherFrog:
             lines_remove: "class Frog:\n".to_string(),
             lines_add: "class AnotherFrog:\n".to_string(),
         };
-        
+
         let c2 = DiffChunk {
             file_name: FILE3_FN.to_string(),
             file_action: "edit".to_string(),
