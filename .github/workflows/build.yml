@@ -96,13 +96,12 @@ jobs:
       - name: Install toolchain dependencies (Windows)
         if: startsWith(matrix.os, 'windows')
         run: choco install protoc
-
-      - name: Build and install protobuf library
+      
+      - name: protobuf
         if: matrix.target == 'arm-unknown-linux-gnueabihf' || matrix.target == 'x86_64-unknown-linux-gnu' || matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'x86_64-unknown-linux-musl'
-        run: |
-          git clone --depth=1 --recursive -b v25.1 https://github.com/protocolbuffers/protobuf
-          cd protobuf && cmake . && cmake --build . --parallel 10 && sudo cmake --install .
-
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "25.1"
       - name: Restore cached cargo
         uses: swatinem/rust-cache@v2
         with:
