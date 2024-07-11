@@ -1,0 +1,184 @@
+use std::sync::{Arc, RwLock};
+
+use serde_json::Value;
+use tokenizers::Tokenizer;
+use tracing::{info, warn};
+
+use crate::{cached_tokenizers, scratchpads};
+use crate::at_commands::at_commands::AtCommandsContext;
+use crate::at_commands::at_file::execute_at_file;
+use crate::at_tools::att_patch::args_parser::PatchArguments;
+use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal, get_signatures_by_symbol_names};
+use crate::at_tools::att_patch::tool::DefaultToolPatch;
+use crate::call_validation::{ChatMessage, ChatPost, SamplingParameters};
+use crate::scratchpads::chat_utils_rag::count_tokens;
+
+
+async fn make_chat_history(
+    args: &PatchArguments,
+    ccx: &mut AtCommandsContext,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+) -> Result<Vec<ChatMessage>, String> {
+    let system_prompt = DefaultToolPatch::prompt();
+    // TODO: use budget for extra context construction
+    let maybe_extra_context = if let Some(symbols_names) = args.symbol_names.clone() {
+        get_signatures_by_symbol_names(&symbols_names, ccx.global_context.clone()).await
+    } else {
+        get_signatures_by_imports_traversal(&args.paths, ccx.global_context.clone()).await
+
+    };
+    let mut tokens: usize = 0;
+    let max_tokens: usize = crate::at_tools::att_patch::tool::MAX_TOKENS - crate::at_tools::att_patch::tool::MAX_NEW_TOKENS;
+    let tokenizer_ref = tokenizer.read().unwrap().clone();
+    let task_message = format!("The task is:\n{}", args.todo).to_string();
+    let mut chat_messages = vec![
+        ChatMessage::new(
+            "system".to_string(),
+            system_prompt.to_string(),
+        )
+    ];
+    tokens += 3 + count_tokens(&tokenizer_ref, &system_prompt);
+    tokens += 3 + count_tokens(&tokenizer_ref, &task_message);
+    if tokens > max_tokens {
+        return Err(format!("Too many tokens: {tokens} > {max_tokens}"));
+    }
+
+    let has_single_file = args.paths.len() == 1;
+    for (idx, file) in args.paths.iter().enumerate() {
+        match execute_at_file(ccx, file.clone()).await {
+            Ok(res) => {
+                let message = format!("{}\n```\n{}```\n\n", res.file_name, res.file_content).to_string();
+                tokens += 3 + count_tokens(&tokenizer_ref, &message);
+                if tokens > max_tokens {
+                    let err_message = if has_single_file || idx == 0 {
+                        format!("The provided file {file} is too large for the patch tool: {tokens} > {max_tokens}")
+                    } else {
+                        format!("There are too many files provided: {tokens} > {max_tokens}. Try to call the tool for each file separately")
+                    };
+                    return Err(err_message);
+                }
+                chat_messages.push(ChatMessage::new("user".to_string(), message));
+            }
+            Err(err) => {
+                warn!("Cannot find a `{file}`: {err}");
+            }
+        }
+    }
+    if let Some(extra_context) = maybe_extra_context {
+        let message = format!("Extra context for the files:\n{}", extra_context).to_string();
+        tokens += 3 + count_tokens(&tokenizer_ref, &message);
+        if tokens > max_tokens {
+            warn!("Too many tokens for the extra context, skipping it: {tokens} > {max_tokens}");
+        } else {
+            chat_messages.push(ChatMessage::new("user".to_string(), message));
+        }
+    }
+
+    chat_messages.push(ChatMessage::new("user".to_string(), task_message));
+    info!("tokens num: {tokens}");
+    Ok(chat_messages)
+}
+
+pub async fn execute_chat_model(
+    args: &PatchArguments,
+    ccx: &mut AtCommandsContext,
+) -> Result<String, String> {
+    let gx = ccx.global_context.clone();
+    let mut chat_post = ChatPost {
+        messages: vec![],
+        parameters: SamplingParameters {
+            max_new_tokens: crate::at_tools::att_patch::tool::MAX_NEW_TOKENS,
+            temperature: Some(crate::at_tools::att_patch::tool::TEMPERATURE),
+            top_p: None,
+            stop: vec![],
+        },
+        model: crate::at_tools::att_patch::tool::DEFAULT_MODEL_NAME.to_string(),
+        scratchpad: "".to_string(),
+        stream: Some(false),
+        temperature: Some(crate::at_tools::att_patch::tool::TEMPERATURE),
+        max_tokens: crate::at_tools::att_patch::tool::MAX_TOKENS,
+        tools: None,
+        only_deterministic_messages: false,
+        chat_id: "".to_string(),
+    };
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(
+        gx.clone(), 0,
+    )
+        .await
+        .map_err(|e| {
+            warn!("No caps: {:?}", e);
+            "Network error communicating with the model (1)".to_string()
+        })?;
+
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, _) = crate::http::routers::v1::chat::lookup_chat_scratchpad(
+        caps.clone(),
+        &chat_post,
+    ).await?;
+    let (client, api_key) = {
+        let cx_locked = gx.write().await;
+        (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
+    };
+
+    let tokenizer = cached_tokenizers::cached_tokenizer(
+        caps.clone(), gx.clone(), model_name.clone(),
+    ).await?;
+
+    chat_post.messages = make_chat_history(
+        args, ccx, tokenizer,
+    ).await?;
+
+    let mut scratchpad = scratchpads::create_chat_scratchpad(
+        gx.clone(),
+        caps.clone(),
+        model_name.clone(),
+        &chat_post.clone(),
+        &scratchpad_name,
+        &scratchpad_patch,
+        false,
+        false,
+    ).await?;
+    let prompt = scratchpad.prompt(
+        n_ctx,
+        &mut chat_post.parameters,
+    ).await?;
+
+    let t1 = std::time::Instant::now();
+    let messages = crate::restream::scratchpad_interaction_not_stream_json(
+        gx.clone(),
+        scratchpad,
+        "chat".to_string(),
+        &prompt,
+        model_name,
+        client,
+        api_key,
+        &chat_post.parameters,
+        chat_post.only_deterministic_messages,
+    ).await.map_err(|e| {
+        warn!("Network error communicating with the (2): {:?}", e);
+        "Network error communicating with the model (2)".to_string()
+    })?;
+    info!("patch generation took {:?}ms", t1.elapsed().as_millis() as i32);
+
+    let choices_array = match messages["choices"].as_array() {
+        Some(array) => array,
+        None => return Err("Unable to get choices array from JSON".to_string()),
+    };
+
+    let choice0 = match choices_array.get(0) {
+        Some(Value::Object(o)) => o,
+        Some(v) => { return Err(format!("choice[0] is not a dict: {:?}", v)) }
+        None => { return Err("choice[0] doesn't exist".to_string()) }
+    };
+
+    let choice0_message = match choice0.get("message") {
+        Some(Value::Object(o)) => o,
+        Some(v) => { return Err(format!("choice[0].message is not a dict: {:?}", v)) }
+        None => { return Err("choice[0].message doesn't exist".to_string()) }
+    };
+
+    match choice0_message.get("content") {
+        Some(Value::String(s)) => Ok(s.clone()),
+        Some(v) => { return Err(format!("choice[0].message.content is not a string: {:?}", v)) }
+        None => { return Err("choice[0].message.content doesn't exist".to_string()) }
+    }
+}

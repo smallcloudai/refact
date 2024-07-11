@@ -29,7 +29,7 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
         // ("symbols_at".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_lookup_symbols::AttAstLookupSymbols{}) as Box<dyn AtTool + Send>))),
         // ("remember_how_to_use_tools".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
         // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
-        ("patch".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_patch::ToolPatch{}) as Box<dyn Tool + Send>))),
+        ("patch".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_patch::tool::ToolPatch{}) as Box<dyn Tool + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
