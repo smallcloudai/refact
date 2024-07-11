@@ -1,16 +1,15 @@
 use std::path::PathBuf;
 
 use itertools::Itertools;
-use rand::distributions::Alphanumeric;
-use rand::Rng;
 use ropey::Rope;
 use tracing::warn;
 
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::at_tools::att_patch::ast_interaction::parse_and_get_error_symbols;
 use crate::at_tools::att_patch::tool::DefaultToolPatch;
 use crate::call_validation::DiffChunk;
 use crate::diffs::apply_diff_chunks_to_text;
-use crate::files_in_workspace::{Document, read_file_from_disk};
+use crate::files_in_workspace::read_file_from_disk;
 
 pub struct WholeFileDiffFormat {}
 
@@ -425,40 +424,23 @@ pub async fn parse_diff_chunks_from_message(
         );
         match &maybe_ast_module {
             Some(ast_module) => {
-                let dummy_filename = PathBuf::from(rand::thread_rng()
-                    .sample_iter(&Alphanumeric)
-                    .take(16)
-                    .map(char::from)
-                    .collect::<String>());
-                let new_filename = dummy_filename.with_extension(
-                    path.extension().unwrap_or_default()
-                );
-                let before_doc = Document { path: new_filename.clone(), text: Some(text_before.clone()) };
-                let after_doc = Document { path: new_filename, text: Some(Rope::from_str(&text_after)) };
-
-                let before_error_symbols = match ast_module.read()
-                    .await
-                    .file_markup(&before_doc)
-                    .await {
-                    Ok(symbols) => symbols
-                        .symbols_sorted_by_path_len
-                        .into_iter()
-                        .filter(|x| x.is_error)
-                        .collect::<Vec<_>>(),
+                let before_error_symbols = match parse_and_get_error_symbols(
+                    ast_module.clone(),
+                    &path,
+                    &text_before,
+                ).await {
+                    Ok(symbols) => symbols,
                     Err(err) => {
                         warn!("Error getting symbols from file: {:?}, skipping ast assessment", err);
                         continue;
                     }
                 };
-                let after_error_symbols = match ast_module.read()
-                    .await
-                    .file_markup(&after_doc)
-                    .await {
-                    Ok(symbols) => symbols
-                        .symbols_sorted_by_path_len
-                        .into_iter()
-                        .filter(|x| x.is_error)
-                        .collect::<Vec<_>>(),
+                let after_error_symbols = match parse_and_get_error_symbols(
+                    ast_module.clone(),
+                    &path,
+                    &Rope::from_str(&text_after),
+                ).await {
+                    Ok(symbols) => symbols,
                     Err(err) => {
                         warn!("Error getting symbols from file: {:?}, skipping ast assessment", err);
                         continue;
