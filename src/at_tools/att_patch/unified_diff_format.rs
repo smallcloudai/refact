@@ -102,6 +102,90 @@ fn get_edit_hunks(content: &str) -> Vec<Edit> {
     edits
 }
 
+fn search_text_location(hunk: &[String], file_lines: &[String]) -> Option<(usize, usize)> {
+    let mut minus_blocks: usize = 0;
+    let initial_text_lines = hunk
+        .iter()
+        .take_while(|x| !x.starts_with("+"))
+        .map(|x| {
+            if x.starts_with("-") {
+                minus_blocks += 1;
+                x[1..].to_string()
+            } else {
+                x.clone()
+            }
+        })
+        .collect::<Vec<_>>();
+    if initial_text_lines.is_empty() {
+        return Some((0, 1))  // it's only left to put data before the first file row
+    }
+    for i in 0..=file_lines.len() - initial_text_lines.len() {
+        if file_lines[i..i + initial_text_lines.len()] == initial_text_lines[..] {
+            let hunk_offset = initial_text_lines.len() - minus_blocks;
+            return Some((hunk_offset, i + hunk_offset));
+        }
+    }
+    None
+}
+
+fn parse_diff_chunk(hunk: &[String], file_lines: &[String]) -> Result<(usize, usize, DiffChunk), String> {
+    let mut hunk_line_idx: usize = 0;
+    let mut file_line_idx: usize = 0;
+    let mut lines_to_add: String = String::new();
+    let mut lines_to_remove: String = String::new();
+    let mut has_started_with_minus = false;
+    loop {
+        if hunk_line_idx >= hunk.len() {
+            let chunk = DiffChunk {
+                file_name: "".to_string(),
+                file_action: "edit".to_string(),
+                line1: if has_started_with_minus { 1 } else { 0 },
+                line2: if has_started_with_minus { 1 + file_line_idx } else { file_line_idx },
+                lines_remove: lines_to_remove.clone(),
+                lines_add: lines_to_add.clone(),
+            };
+            return Ok((hunk_line_idx, file_line_idx, chunk));
+        }
+        if file_line_idx >= file_lines.len() {
+            return Err("File has no more lines to parse while the duff hunk still has unparsed data".to_string());
+        }
+
+        let file_line = &file_lines[file_line_idx];
+        let (hunk_line, has_diff_sign, is_add_sign) = if hunk[hunk_line_idx].starts_with("-") {
+            if hunk_line_idx == 0 {
+                has_started_with_minus = true;
+            }
+            (&hunk[hunk_line_idx][1..].to_string(), true, false)
+        } else if hunk[hunk_line_idx].starts_with("+") {
+            (&hunk[hunk_line_idx][1..].to_string(), true, true)
+        } else {
+            (&hunk[hunk_line_idx], false, false)
+        };
+
+        if has_diff_sign {
+            if !is_add_sign && file_line == hunk_line {
+                lines_to_remove.push_str(&format!("{file_line}\n"));
+                file_line_idx += 1;
+                hunk_line_idx += 1;
+                continue;
+            } else {
+                lines_to_add.push_str(&format!("{hunk_line}\n"));
+                hunk_line_idx += 1;
+                continue;
+            }
+        } else {
+            let chunk = DiffChunk {
+                file_name: "".to_string(),
+                file_action: "edit".to_string(),
+                line1: if has_started_with_minus { 1 } else { 0 },
+                line2: if has_started_with_minus { 1 + file_line_idx } else { file_line_idx },
+                lines_remove: lines_to_remove.clone(),
+                lines_add: lines_to_add.clone(),
+            };
+            return Ok((hunk_line_idx, file_line_idx, chunk));
+        }
+    }
+}
 
 pub struct UnifiedDiffFormat {}
 
@@ -207,93 +291,46 @@ def test_todo():
                 })
                 .map(|x| x.lines().into_iter().map(|x| x.to_string().trim_end().to_string()).collect::<Vec<_>>())?;
 
-            let mut hunk_line_idx: usize = 0;
-            let mut has_active_chunk = false;
-            let mut line_idx_start: usize = 0;
-            let mut lines_to_add: String = String::new();
-            let mut lines_to_remove: String = String::new();
-            let mut line_idx: usize = 0;
-            let mut line = String::new();
+
+            let mut hunk_line_cursor: usize = 0;
+            let mut file_line_cursor: usize = 0;
             loop {
-                if line_idx >= file_lines.len() {
+                if hunk_line_cursor >= edit.hunk.len() {
                     break;
-                }
-                line = file_lines[line_idx].clone();
-                if hunk_line_idx >= edit.hunk.len() {
-                    break;
-                }
-                let (edit_hunk_line, has_diff_sign, is_add_sign) = if edit.hunk[hunk_line_idx].starts_with("-") {
-                    (edit.hunk[hunk_line_idx][1..].to_string(), true, false)
-                } else if edit.hunk[hunk_line_idx].starts_with("+") {
-                    (edit.hunk[hunk_line_idx][1..].to_string(), true, true)
-                } else {
-                    (edit.hunk[hunk_line_idx].to_string(), false, false)
+                };
+                if file_line_cursor >= file_lines.len() {
+                    return Err("File has no more lines to parse while the duff hunk still has unparsed data".to_string());
                 };
 
-                if !is_add_sign && line == edit_hunk_line && has_diff_sign {
-                    if !has_active_chunk {
-                        line_idx_start = line_idx;
+                let (hunk_line_cursor_offset, new_file_line_cursor_offset) = match search_text_location(
+                    &edit.hunk[hunk_line_cursor..], &file_lines[file_line_cursor..]
+                ) {
+                    Some(res) => res,
+                    None => {
+                        return Err(format!("Couldn't find the text location in the file: {}", filename));
                     }
-                    has_active_chunk = true;
-                    lines_to_remove.push_str(&format!("{line}\n"));
-                    hunk_line_idx += 1;
-                    line_idx += 1;
-                    continue;
-                } else if is_add_sign && has_diff_sign {
-                    if !has_active_chunk {
-                        line_idx_start = line_idx;
-                    }
-                    has_active_chunk = true;
-                    lines_to_add.push_str(&format!("{edit_hunk_line}\n"));
-                    hunk_line_idx += 1;
-                    continue;
-                } else {
-                    if has_active_chunk {
-                        diff_chunks.push(DiffChunk {
-                            file_name: filename.clone(),
-                            file_action: "edit".to_string(),
-                            line1: line_idx_start + 1,
-                            line2: line_idx,
-                            lines_remove: lines_to_remove.clone(),
-                            lines_add: lines_to_add.clone(),
-                        });
-                        lines_to_remove.clear();
-                        lines_to_add.clear();
-                        has_active_chunk = false;
-                    }
-                    if line == edit_hunk_line {
-                        hunk_line_idx += 1;
-                    }
-                    line_idx += 1;
-                }
-            }
-            if has_active_chunk {
-                while hunk_line_idx < edit.hunk.len() {
-                    if edit.hunk[hunk_line_idx].starts_with("+") {
-                        let edit_hunk_line = edit.hunk[hunk_line_idx][1..].to_string();
-                        lines_to_add.push_str(&format!("{edit_hunk_line}\n"));
-                        hunk_line_idx += 1;
-                    } else {
-                        break;
-                    }
-                }
+                };
+                hunk_line_cursor += hunk_line_cursor_offset;
+                file_line_cursor += new_file_line_cursor_offset;
 
-                diff_chunks.push(DiffChunk {
-                    file_name: filename.clone(),
-                    file_action: "edit".to_string(),
-                    line1: line_idx_start + 1,
-                    line2: line_idx,
-                    lines_remove: lines_to_remove.clone(),
-                    lines_add: lines_to_add.clone(),
-                });
-            }
-
-            if hunk_line_idx < edit.hunk.len() {
-                return Err(format!(
-                    "Couldn't parse a diff hunk from the {hunk_line_idx} line:\n```\n{}\n```",
-                    &edit.hunk.iter().join("\n")
-                ));
-            }
+                let (hunk_line_cursor_offset, new_file_line_cursor_offset, mut diff_chunk) = match parse_diff_chunk(
+                    &edit.hunk[hunk_line_cursor..], &file_lines[file_line_cursor..]
+                ) {
+                    Ok(res) => res,
+                    Err(err) => {
+                        return Err(
+                            format!("Couldn't parse a diff hunk from the {hunk_line_cursor} line, {err}:\n```\n{}\n```",
+                                    &edit.hunk.iter().join("\n"))
+                        );
+                    }
+                };
+                diff_chunk.file_name = filename.clone();
+                diff_chunk.line1 += file_line_cursor;
+                diff_chunk.line2 += file_line_cursor;
+                hunk_line_cursor += hunk_line_cursor_offset;
+                file_line_cursor += new_file_line_cursor_offset;
+                diff_chunks.push(diff_chunk);
+            };
         }
 
         Ok(diff_chunks)
@@ -380,7 +417,7 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 5,
-                line2: 5,
+                line2: 6,
                 lines_remove: "class Frog:\n".to_string(),
                 lines_add: "class AnotherFrog:\n".to_string(),
             }
@@ -408,7 +445,7 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 5,
-                line2: 5,
+                line2: 6,
                 lines_remove: "class Frog:\n".to_string(),
                 lines_add: "".to_string(),
             }
@@ -436,8 +473,8 @@ Another text"#;
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
-                line1: 6,
-                line2: 6,
+                line1: 5,
+                line2: 5,
                 lines_remove: "".to_string(),
                 lines_add: "    # Frog class description\n".to_string(),
             }
@@ -489,7 +526,7 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 22,
-                line2: 22,
+                line2: 23,
                 lines_remove: "    def jump(self, pond_width, pond_height):\n".to_string(),
                 lines_add: "".to_string(),
             }
@@ -529,7 +566,7 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 15,
-                line2: 17,
+                line2: 18,
                 lines_remove: "        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n".to_string(),
                 lines_add: "        # test1:\n        elif self.x > pond:\n            # what is that?\n            pass\n        if self.y > 0:\n".to_string(),
             },
@@ -537,7 +574,7 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 20,
-                line2: 20,
+                line2: 21,
                 lines_remove: "            self.vy = -np.abs(self.vy)\n".to_string(),
                 lines_add: "            self.vx = -np.abs(self.vy)\n".to_string(),
             },
@@ -578,7 +615,7 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 15,
-                line2: 17,
+                line2: 18,
                 lines_remove: "        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n".to_string(),
                 lines_add: "        # test1:\n        elif self.x > pond:\n            # what is that?\n            pass\n        if self.y > 0:\n".to_string(),
             },
@@ -586,7 +623,7 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 20,
-                line2: 20,
+                line2: 21,
                 lines_remove: "            self.vy = -np.abs(self.vy)\n".to_string(),
                 lines_add: "            self.vx = -np.abs(self.vy)\n".to_string(),
             },
@@ -629,7 +666,7 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 15,
-                line2: 17,
+                line2: 18,
                 lines_remove: "        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n".to_string(),
                 lines_add: "        # test1:\n        elif self.x > pond:\n            # what is that?\n            pass\n        if self.y > 0:\n".to_string(),
             },
@@ -637,7 +674,7 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 20,
-                line2: 20,
+                line2: 21,
                 lines_remove: "            self.vy = -np.abs(self.vy)\n".to_string(),
                 lines_add: "            self.vx = -np.abs(self.vy)\n".to_string(),
             },
@@ -682,7 +719,7 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 1,
-                line2: 1,
+                line2: 2,
                 lines_remove: "import numpy as np\n".to_string(),
                 lines_add: "import numpy as np\n# extra row 1\n# extra row 2\n# extra row 3\n".to_string(),
             },
@@ -742,9 +779,73 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
                 file_action: "edit".to_string(),
                 line1: 16,
-                line2: 16,
+                line2: 17,
                 lines_remove: "    # Third jump\n".to_string(),
                 lines_add: "    # New Comment\n".to_string(),
+            },
+        ];
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        assert_eq!(result, gt_result);
+    }
+
+    #[tokio::test]
+    async fn test_ambiguous_hunk_3() {
+        let input = r#"Initial text
+```diff
+--- tests/emergency_frog_situation/holiday.py
++++ tests/emergency_frog_situation/holiday.py
+@@ ... @@
+    frog1.jump()
+    frog2.jump()
+
+    # Second jump
++    frog3 = Frog()
+    frog1.jump()
+    frog2.jump()
++    frog3.jump()
+
+-    # Third jump
++    # Third extra jump
+    frog1.jump()
+-    frog2.jump()
++    frog2.jump()
++    frog3.jump()
+```
+Another text"#;
+        let gt_result = vec![
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_action: "edit".to_string(),
+                line1: 12,
+                line2: 12,
+                lines_remove: "".to_string(),
+                lines_add: "    frog3 = Frog()\n".to_string(),
+            },
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_action: "edit".to_string(),
+                line1: 14,
+                line2: 14,
+                lines_remove: "".to_string(),
+                lines_add: "    frog3.jump()\n".to_string(),
+            },
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_action: "edit".to_string(),
+                line1: 16,
+                line2: 17,
+                lines_remove: "    # Third jump\n".to_string(),
+                lines_add: "    # Third extra jump\n".to_string(),
+            },
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_action: "edit".to_string(),
+                line1: 18,
+                line2: 19,
+                lines_remove: "    frog2.jump()\n".to_string(),
+                lines_add: "    frog2.jump()\n    frog3.jump()\n".to_string(),
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
