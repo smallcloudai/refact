@@ -51,12 +51,22 @@ fn apply_chunk_to_text_fuzzy(
     let mut new_lines = vec![];
 
     if chunk_lines_remove.is_empty() {
-        new_lines.extend(lines_orig[..chunk.line1 - 1].iter().cloned().collect::<Vec<_>>());
-        new_lines.extend(chunk_lines_add.iter().cloned().collect::<Vec<_>>());
-        new_lines.extend(lines_orig[chunk.line1 - 1..].iter().cloned().collect::<Vec<_>>());
+        new_lines.extend(
+            lines_orig
+                .iter()
+                .take_while(|l| l.line_n < chunk.line1 || l.overwritten_by_id.is_some())
+                .cloned()
+        );
+        new_lines.extend(chunk_lines_add.iter().cloned());
+        new_lines.extend(
+            lines_orig
+                .iter()
+                .skip_while(|l| l.line_n < chunk.line1 || l.overwritten_by_id.is_some())
+                .cloned()
+        );
         return (Some(0), new_lines);
     }
-
+    
     let mut fuzzy_n_used = 0;
     for fuzzy_n in 0..=max_fuzzy_n {
         let search_from = (chunk.line1 as i32 - fuzzy_n as i32).max(0) as usize;
@@ -240,11 +250,41 @@ class Point2d:
     def __str__(self):
         return "Point2d(x=%0.2f, y=%0.2f)" % (self.x, self.y)
 "#;
-    // const FILE2_FN: &str = "/tmp/file2.txt";
-    // const FILE2: &str = r#"import file1
-    // x = file1.Point2d(5, 6)
-    // print(x)
-    // "#;
+    const FILE2_FN: &str = "/tmp/file2.txt";
+    const FILE2: &str = r#"    # Third jump
+    frog1.jump()
+    frog2.jump()"#;
+
+    const FILE3_FN: &str = "/tmp/frog.py";
+    const FILE3: &str = r#"import numpy as np
+
+DT = 0.01
+
+class Frog:
+    def __init__(self, x, y, vx, vy):
+        self.x = x
+        self.y = y
+        self.vx = vx
+        self.vy = vy
+
+    def bounce_off_banks(self, pond_width, pond_height):
+        if self.x < 0:
+            self.vx = np.abs(self.vx)
+        elif self.x > pond_width:
+            self.vx = -np.abs(self.vx)
+        if self.y < 0:
+            self.vy = np.abs(self.vy)
+        elif self.y > pond_height:
+            self.vy = -np.abs(self.vy)
+
+    def jump(self, pond_width, pond_height):
+        self.x += self.vx * DT
+        self.y += self.vy * DT
+        self.bounce_off_banks(pond_width, pond_height)
+        self.x = np.clip(self.x, 0, pond_width)
+        self.y = np.clip(self.y, 0, pond_height)
+
+    "#;
 
     fn delete_file_if_exists(file_name: &str) {
         if fs::metadata(file_name).is_ok() {
@@ -257,10 +297,15 @@ class Point2d:
         file.write_all(content.as_bytes()).expect("Failed to write to file");
     }
 
+    fn read_file(file_name: &str) -> String {
+        fs::read_to_string(file_name).expect(&format!("Failed to read file: {}", file_name))
+    }
+
     #[test]
     fn test_chunks() {
         // Run this to see println:
         //     cargo test diffs::tests::test_chunks -- --nocapture
+
         let chunk1 = DiffChunk {
             file_name: "/tmp/file1.txt".to_string(),
             file_action: "edit".to_string(),
@@ -270,7 +315,7 @@ class Point2d:
             lines_add: "        self.x, self.y = x, y\n".to_string(),
         };
         let chunks = vec![chunk1];
-        
+
         let applied_state = vec![false];
         let desired_state = vec![true];
 
@@ -284,8 +329,105 @@ class Point2d:
         write_file(FILE1_FN, FILE1);
         let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         let r2_state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
-        
+
         println!("r2 state: {:?}", r2_state);
         assert_eq!(vec![1], r2_state);
+    }
+    #[test]
+    fn test_frogs() {
+        let c1 = DiffChunk {
+            file_name: FILE2_FN.to_string(),
+            file_action: "edit".to_string(),
+            line1: 1,
+            line2: 2,
+            lines_remove: "    # Third jump\n".to_string(),
+            lines_add: "    # Third extra jump\n".to_string(),
+        };
+
+        let c2 = DiffChunk {
+            file_name: FILE2_FN.to_string(),
+            file_action: "edit".to_string(),
+            line1: 3,
+            line2: 4,
+            lines_remove: "    frog2.jump()\n".to_string(),
+            lines_add: "    frog2.jump()\n    frog3.jump()\n".to_string(),
+        };
+        let chunks = vec![c1, c2];
+        let applied_state = vec![false, false];
+        let desired_state = vec![true, true];
+
+        write_file(FILE2_FN, FILE2);
+        let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
+        println!("results_fuzzy_n: {:?}", results_fuzzy_n);
+        let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
+
+        assert_eq!(vec![1, 1], state);
+    }
+
+    #[test]
+    fn test_frog() {
+        let file3_must_be: &str = r#"import numpy as np
+
+DT = 0.01
+
+class AnotherFrog:
+    def __init__(self, x, y, vx, vy):
+        self.x = x
+        self.y = y
+        self.vx = vx
+        self.vy = vy
+
+    def bounce_off_banks(self, pond_width, pond_height):
+        if self.x < 0:
+            self.vx = np.abs(self.vx)
+        elif self.x > pond_width:
+            self.vx = -np.abs(self.vx)
+        if self.y < 0:
+            self.vy = np.abs(self.vy)
+        elif self.y > pond_height:
+            self.vy = -np.abs(self.vy)
+
+    def jump(self, pond_width, pond_height):
+        self.x += self.vx * DT
+        self.y += self.vy * DT
+        self.bounce_off_banks(pond_width, pond_height)
+        self.x = np.clip(self.x, 0, pond_width)
+        self.y = np.clip(self.y, 0, pond_height)
+
+    "#;
+
+        let c1 = DiffChunk {
+            file_name: FILE3_FN.to_string(),
+            file_action: "edit".to_string(),
+            line1: 5,
+            line2: 6,
+            lines_remove: "class Frog:\n".to_string(),
+            lines_add: "class AnotherFrog:\n".to_string(),
+        };
+        let chunks = vec![c1];
+        let applied_state = vec![false];
+        let desired_state = vec![true];
+
+        write_file(FILE3_FN, FILE3);
+        let (file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
+        println!("results_fuzzy_n: {:?}", results_fuzzy_n);
+        let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
+        assert_eq!(vec![1], state);
+        let changed_text = file_texts.get(FILE3_FN).unwrap();
+        assert_eq!(changed_text, file3_must_be);
+        write_file(FILE3_FN, changed_text);
+
+        let applied_state = vec![true];
+        let desired_state = vec![false];
+        let (file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
+        println!("results_fuzzy_n: {:?}", results_fuzzy_n);
+        let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
+        assert_eq!(vec![0], state);
+        let new_text = file_texts.get(FILE3_FN).unwrap();
+        write_file(FILE3_FN, new_text);
+        assert_eq!(read_file(FILE3_FN), FILE3);
+
+        let (text, data) = apply_diff_chunks_to_text(&FILE3.to_string(), chunks.iter().enumerate().collect::<Vec<_>>(), vec![], 1);
+        assert_eq!(file3_must_be, &text);
     }
 }

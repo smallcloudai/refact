@@ -189,11 +189,63 @@ def test4():
     print(colored("test4 PASSED", "green"))
 
 
+file_text1 = """
+class Frog:
+    def __init__(self, x, y, vx, vy):
+        self.vx = vx
+"""
+
+file_text1_must_be = """
+class Frog:
+    def __init__(self, x, y, vx, vy):
+        self.x = x
+        self.y = y
+        self.vx = vx
+        self.vy = vy
+"""
+
+payload2 = {
+    "apply": [True, True],
+    "chunks": [
+        {
+            "file_name": str(test_file),
+            "file_action": "edit",
+            "line1": 4,
+            "line2": 4,
+            "lines_remove": "",
+            "lines_add": "        self.x = x\n        self.y = y\n"
+        },
+        {
+            "file_name": str(test_file),
+            "file_action": "edit",
+            "line1": 5,
+            "line2": 5,
+            "lines_remove": "",
+            "lines_add": "        self.vy = vy\n"
+        }
+    ]
+}
+
+
+def test5():
+    payload = copy(payload2)
+
+    with test_file.open("w") as f:
+        f.write(file_text1)
+
+    resp = diff_apply(payload)
+    print(resp)
+
+    assert test_file.read_text() == file_text1_must_be
+    print(colored("test5 PASSED", "green"))
+
+
 def main():
     test1()
     test2()
     test3()
     test4()
+    test5()
 
 
 if __name__ == "__main__":
