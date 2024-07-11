@@ -67,9 +67,8 @@ pub async fn parse_diff_chunks_from_message(
                 };
                 if before_error_symbols.len() < after_error_symbols.len() {
                     let message = format!(
-                        "Error: the diff: {:?} introduced errors into the file: {:?}",
-                        message,
-                        path
+                        "Ast assessment failed: the diff introduced errors into the file {:?}: {}errs > {}errs", 
+                        path, before_error_symbols.len(), after_error_symbols.len()
                     );
                     return Err(message);
                 }
