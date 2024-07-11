@@ -4,7 +4,8 @@ use reqwest::header::HeaderMap;
 use reqwest::header::HeaderValue;
 use serde_json::json;
 
-use crate::vecdb::structs::{SearchResult, VecdbSearch};
+use crate::vecdb::vdb_structs::{SearchResult, VecdbSearch};
+
 
 #[derive(Debug)]
 pub struct VecDbRemote {}

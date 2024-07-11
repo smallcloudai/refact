@@ -37,11 +37,6 @@ pub struct AstModule {
     status: Arc<AMutex<AstIndexStatus>>
 }
 
-#[derive(Debug, Serialize)]
-pub struct VecDbCaps {
-    functions: Vec<String>,
-}
-
 impl AstModule {
     pub async fn ast_indexer_init(
         ast_index_max_files: usize,

@@ -6,10 +6,8 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 
 use crate::ast::ast_module::AstModule;
-use crate::vecdb;
 use crate::global_context::GlobalContext;
-use crate::snippets_transmit;
-use crate::telemetry::basic_transmit;
+
 
 pub struct BackgroundTasksHolder {
     tasks: Vec<JoinHandle<()>>,
@@ -44,9 +42,9 @@ impl BackgroundTasksHolder {
 
 pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>) -> BackgroundTasksHolder {
     let mut bg = BackgroundTasksHolder::new(vec![
-        tokio::spawn(basic_transmit::telemetry_background_task(gcx.clone())),
-        tokio::spawn(snippets_transmit::tele_snip_background_task(gcx.clone())),
-        tokio::spawn(vecdb::vecdb::vecdb_background_reload(gcx.clone())),   // this in turn can create global_context::vec_db
+        tokio::spawn(crate::telemetry::basic_transmit::telemetry_background_task(gcx.clone())),
+        tokio::spawn(crate::snippets_transmit::tele_snip_background_task(gcx.clone())),
+        tokio::spawn(crate::vecdb::vdb_highlev::vecdb_background_reload(gcx.clone())),   // this in turn can create global_context::vec_db
     ]);
     let ast: Option<Arc<ARwLock<AstModule>>> = gcx.clone().read().await.ast_module.clone();
     if ast.is_some() {

@@ -16,10 +16,11 @@ use crate::ast::treesitter::skeletonizer::make_formatter;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
-use crate::vecdb::file_splitter::FileSplitter;
-use crate::vecdb::structs::SplitResult;
+use crate::vecdb::vdb_file_splitter::FileSplitter;
+use crate::vecdb::vdb_structs::SplitResult;
 
 pub(crate) const LINES_OVERLAP: usize = 3;
+
 
 pub struct AstBasedFileSplitter {
     fallback_file_splitter: FileSplitter,

@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::vecdb;
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ContextFile, ContextEnum};
-use crate::vecdb::structs::VecdbSearch;
+use crate::vecdb::vdb_structs::VecdbSearch;
 
 
 pub fn text_on_clip(query: &String, from_tool_call: bool) -> String {
@@ -31,7 +31,7 @@ impl AtWorkspace {
     }
 }
 
-fn results2message(results: &Vec<vecdb::structs::Record>) -> Vec<ContextFile> {
+fn results2message(results: &Vec<vecdb::vdb_structs::VecdbRecord>) -> Vec<ContextFile> {
     let mut vector_of_context_file: Vec<ContextFile> = vec![];
     for r in results {
         let file_name = r.file_path.to_str().unwrap().to_string();

@@ -32,6 +32,7 @@ mod dashboard;
 mod files_in_workspace;
 mod files_in_jsonl;
 mod files_correction;
+mod file_filter;
 mod vecdb;
 mod fetch_embedding;
 mod at_commands;

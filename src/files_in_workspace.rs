@@ -14,7 +14,7 @@ use walkdir::WalkDir;
 use which::which;
 
 use crate::telemetry;
-use crate::vecdb::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS};
+use crate::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS};
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]

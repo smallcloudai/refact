@@ -8,7 +8,7 @@ use itertools::Itertools;
 use tokenizers::Tokenizer;
 
 use crate::ast::count_tokens;
-use crate::vecdb::structs::SplitResult;
+use crate::vecdb::vdb_structs::SplitResult;
 
 fn str_hash(s: &String) -> String {
     let digest = md5::compute(s);
@@ -111,7 +111,7 @@ mod tests {
 
     use crate::ast::chunk_utils::get_chunks;
     use crate::ast::count_tokens;
-    use crate::vecdb::structs::SplitResult;
+    use crate::vecdb::vdb_structs::SplitResult;
 
     const DUMMY_TOKENIZER: &str = include_str!("dummy_tokenizer.json");
     const PYTHON_CODE: &str = r#"def square_number(x):

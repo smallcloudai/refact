@@ -7,7 +7,7 @@ use crate::ast::chunk_utils::get_chunks;
 use crate::ast::count_tokens;
 use crate::ast::file_splitter::LINES_OVERLAP;
 use crate::files_in_workspace::Document;
-use crate::vecdb::structs::SplitResult;
+use crate::vecdb::vdb_structs::SplitResult;
 
 pub struct FileSplitter {
     soft_window: usize,

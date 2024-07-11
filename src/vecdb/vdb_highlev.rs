@@ -7,17 +7,16 @@ use tokio::sync::Mutex as AMutex;
 use tracing::{info, error};
 
 use async_trait::async_trait;
-use serde::Serialize;
 use tokio::task::JoinHandle;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::background_tasks::BackgroundTasksHolder;
 
 use crate::fetch_embedding;
 use crate::files_in_workspace::Document;
-use crate::vecdb::handler::VecDBHandler;
-use crate::vecdb::vectorizer_service::FileVectorizerService;
-use crate::vecdb::structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants};
-use crate::vecdb::vecdb_cache::VecDBCache;
+use crate::vecdb::vdb_lance::VecDBHandler;
+use crate::vecdb::vdb_thread::FileVectorizerService;
+use crate::vecdb::vdb_structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants};
+use crate::vecdb::vdb_cache::VecDBCache;
 
 
 fn vecdb_constants(
@@ -46,17 +45,6 @@ pub struct VecDb {
     constants: VecdbConstants,
 }
 
-#[derive(Debug, Serialize, Clone)]
-pub struct FileSearchResult {
-    pub file_path: String,
-    pub file_text: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct VecDbCaps {
-    functions: Vec<String>,
-}
-
 async fn vecdb_test_request(
     vecdb: &VecDb
 ) -> Result<(), String> {
@@ -72,7 +60,7 @@ async fn vecdb_test_request(
     }
 }
 
-async fn create_vecdb(
+async fn _create_vecdb(
     gcx: Arc<ARwLock<GlobalContext>>,
     background_tasks: &mut BackgroundTasksHolder,
     constants: VecdbConstants,
@@ -193,7 +181,7 @@ pub async fn vecdb_background_reload(
         if need_reload && consts.is_some() {
             background_tasks.abort().await;
             background_tasks = BackgroundTasksHolder::new(vec![]);
-            match create_vecdb(
+            match _create_vecdb(
                 gcx.clone(),
                 &mut background_tasks,
                 consts.unwrap(),
@@ -273,6 +261,7 @@ impl VecdbSearch for VecDb {
         top_n: usize,
         vecdb_scope_filter_mb: Option<String>,
     ) -> Result<SearchResult, String> {
+        // TODO: move away from struct, replace self with Arc, make locks shorter
         let t0 = std::time::Instant::now();
         let embedding_mb = fetch_embedding::get_embedding_with_retry(
             self.vecdb_emb_client.clone(),

@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 use crate::ast::ast_module::AstIndexStatus;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::vecdb::structs::VecDbStatus;
+use crate::vecdb::vdb_structs::VecDbStatus;
+
 
 #[derive(Serialize, Deserialize, Clone)]
 struct RagStatus {

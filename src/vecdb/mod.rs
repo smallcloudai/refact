@@ -1,8 +1,7 @@
-pub mod file_splitter;
-mod handler;
-mod vectorizer_service;
-pub mod file_filter;
-pub mod structs;
-pub mod vecdb;
-pub mod vecdb_remote;
-mod vecdb_cache;
+pub mod vdb_highlev;
+pub mod vdb_file_splitter;
+pub mod vdb_structs;
+pub mod vdb_remote;
+pub mod vdb_cache;
+mod vdb_lance;
+mod vdb_thread;

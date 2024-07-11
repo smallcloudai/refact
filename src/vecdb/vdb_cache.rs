@@ -9,7 +9,7 @@ use tokio::fs;
 use tokio_rusqlite::Connection;
 use tracing::info;
 
-use crate::vecdb::structs::{Record, SplitResult};
+use crate::vecdb::vdb_structs::{VecdbRecord, SplitResult};
 
 impl Debug for VecDBCache {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -137,7 +137,7 @@ impl VecDBCache {
         self.cached_window_text_hashes.contains(window_text_hash)
     }
 
-    pub async fn get_records_by_splits(&mut self, splits: &Vec<SplitResult>) -> Result<(Vec<Record>, Vec<SplitResult>), String> {
+    pub async fn get_records_by_splits(&mut self, splits: &Vec<SplitResult>) -> Result<(Vec<VecdbRecord>, Vec<SplitResult>), String> {
         let placeholders: String = splits.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
         let query = format!("SELECT * FROM {EMB_TABLE_NAME} WHERE window_text_hash IN ({placeholders})");
         let splits_clone = splits.clone();
@@ -170,7 +170,7 @@ impl VecDBCache {
         let mut non_found_splits = vec![];
         for split in splits.iter() {
             if let Some(query_data) = found_hashes.get(&split.window_text_hash) {
-                records.push(Record {
+                records.push(VecdbRecord {
                     vector: Some(query_data.0.clone()),
                     window_text: split.window_text.clone(),
                     window_text_hash: split.window_text_hash.clone(),
@@ -187,7 +187,7 @@ impl VecDBCache {
         Ok((records, non_found_splits))
     }
 
-    pub async fn insert_records(&mut self, records: Vec<Record>) -> Result<(), String> {
+    pub async fn insert_records(&mut self, records: Vec<VecdbRecord>) -> Result<(), String> {
         match self.cache_database.call(|connection| {
             let transaction = connection.transaction()?;
             for record in records {

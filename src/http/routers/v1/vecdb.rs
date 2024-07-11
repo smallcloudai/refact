@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
-use crate::vecdb::structs::VecdbSearch;
+use crate::vecdb::vdb_structs::VecdbSearch;
 
 #[derive(Serialize, Deserialize, Clone)]
 struct VecDBPost {

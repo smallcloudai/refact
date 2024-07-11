@@ -43,7 +43,7 @@ pub struct VecDbStatus {
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Record {
+pub struct VecdbRecord {
     pub vector: Option<Vec<f32>>,
     pub window_text: String,
     pub window_text_hash: String,
@@ -67,5 +67,5 @@ pub struct SplitResult {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SearchResult {
     pub query_text: String,
-    pub results: Vec<Record>,
+    pub results: Vec<VecdbRecord>,
 }

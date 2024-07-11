@@ -15,9 +15,10 @@ use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::get_embedding_with_retry;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
-use crate::vecdb::handler::VecDBHandler;
-use crate::vecdb::structs::{Record, SplitResult, VecdbConstants, VecDbStatus};
-use crate::vecdb::vecdb_cache::VecDBCache;
+use crate::vecdb::vdb_lance::VecDBHandler;
+use crate::vecdb::vdb_structs::{VecdbRecord, SplitResult, VecdbConstants, VecDbStatus};
+use crate::vecdb::vdb_cache::VecDBCache;
+
 
 const DEBUG_WRITE_VECDB_FILES: bool = false;
 
@@ -120,7 +121,7 @@ async fn vectorize_batch_from_q(
             continue;
         }
         records.push(
-            Record {
+            VecdbRecord {
                 vector: Some(batch_result[i].clone()),
                 window_text: data_res.window_text.clone(),
                 window_text_hash: data_res.window_text_hash.clone(),

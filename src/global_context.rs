@@ -22,7 +22,7 @@ use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::DocumentsState;
 use crate::telemetry::telemetry_structs;
-use crate::vecdb::vecdb::VecDb;
+use crate::vecdb::vdb_highlev::VecDb;
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CommandLine {
