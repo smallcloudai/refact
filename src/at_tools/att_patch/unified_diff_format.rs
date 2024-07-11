@@ -1,11 +1,12 @@
 use std::path::PathBuf;
 
 use itertools::Itertools;
-
+use log::warn;
 use crate::call_validation::DiffChunk;
 use crate::files_in_workspace::read_file_from_disk;
 
 #[derive(Debug)]
+#[derive(Clone)]
 struct Edit {
     path: Option<String>,
     hunk: Vec<String>,
@@ -146,7 +147,7 @@ fn search_text_location(hunk: &[String], file_lines: &[String]) -> Option<(usize
     None
 }
 
-fn parse_diff_chunk(hunk: &[String], file_lines: &[String]) -> Result<(usize, usize, DiffChunk), String> {
+fn parse_single_diff_chunk(hunk: &[String], file_lines: &[String]) -> Result<(usize, usize, DiffChunk), String> {
     fn strip_hunk(s: &String) -> String {
         if s.is_empty() {
             s.to_string()
@@ -211,6 +212,91 @@ fn parse_diff_chunk(hunk: &[String], file_lines: &[String]) -> Result<(usize, us
             return Ok((hunk_line_idx, file_line_idx, chunk));
         }
     }
+}
+
+fn change_edit_spaces(edit: &Edit, extra_space: i32) -> Edit {
+    let mut edit_cloned = edit.clone();
+    if extra_space == 0 {
+        return edit_cloned;
+    }
+    
+    edit_cloned.hunk = edit.hunk
+        .iter()
+        .map(|x| {
+            if !x.starts_with("-") && !x.starts_with("+") {
+                if extra_space < 0 {
+                    x.chars().skip(extra_space.abs() as usize).join("")
+                } else {
+                    let spaces = " ".repeat(extra_space.abs() as usize);
+                    format!("{spaces}{x}")
+                }
+            } else {
+                x.clone()
+            }
+        })
+        .collect::<Vec<_>>();
+    
+    edit_cloned
+}
+
+async fn parse_diff_chunks(edit: &Edit) -> Result<Vec<DiffChunk>, String> {
+    let mut diff_chunks: Vec<DiffChunk> = vec![];
+    let filename = match edit.path.clone() {
+        Some(p) => p,
+        None => {
+            return Err(format!("Cannot get a file name from the diff chunk, skipping it: {edit:?}"));
+        }
+    };
+    let file_lines = read_file_from_disk(&PathBuf::from(filename.clone()))
+        .await
+        .map_err(|e| {
+            format!("couldn't read file: {:?}. Error: {}", filename, e)
+        })
+        .map(|x| x.lines().into_iter().map(|x| x.to_string().trim_end().to_string()).collect::<Vec<_>>())?;
+
+    let mut hunk_line_cursor: usize = 0;
+    let mut file_line_cursor: usize = 0;
+    loop {
+        if hunk_line_cursor >= edit.hunk.len() {
+            break;
+        };
+        if file_line_cursor >= file_lines.len() {
+            return Err("File has no more lines to parse while the duff hunk still has unparsed data".to_string());
+        };
+
+        let (hunk_line_cursor_offset, new_file_line_cursor_offset) = match search_text_location(
+            &edit.hunk[hunk_line_cursor..], &file_lines[file_line_cursor..]
+        ) {
+            Some(res) => res,
+            None => {
+                return Err(format!("Couldn't find the text location in the file: {}", filename));
+            }
+        };
+        hunk_line_cursor += hunk_line_cursor_offset;
+        file_line_cursor += new_file_line_cursor_offset;
+
+        let (hunk_line_cursor_offset, new_file_line_cursor_offset, mut diff_chunk) = match parse_single_diff_chunk(
+            &edit.hunk[hunk_line_cursor..], &file_lines[file_line_cursor..]
+        ) {
+            Ok(res) => res,
+            Err(err) => {
+                return Err(
+                    format!("Couldn't parse a diff hunk from the {hunk_line_cursor} line, {err}:\n```\n{}\n```",
+                            &edit.hunk.iter().join("\n"))
+                );
+            }
+        };
+        diff_chunk.file_name = filename.clone();
+        diff_chunk.line1 += file_line_cursor;
+        diff_chunk.line2 += file_line_cursor;
+        hunk_line_cursor += hunk_line_cursor_offset;
+        file_line_cursor += new_file_line_cursor_offset;
+        if diff_chunk.is_empty() {
+            continue
+        }
+        diff_chunks.push(diff_chunk);
+    };
+    Ok(diff_chunks)
 }
 
 pub struct UnifiedDiffFormat {}
@@ -300,73 +386,34 @@ There is a unified diff format example for the task: "Replace is_prime with a ca
         content: &str,
     ) -> Result<Vec<DiffChunk>, String> {
         let edits = get_edit_hunks(content);
-
         let mut diff_chunks: Vec<DiffChunk> = vec![];
         for edit in edits.iter() {
-            let filename = match edit.path.clone() {
-                Some(p) => p,
-                None => {
-                    return Err(format!("Cannot get a file name from the diff chunk, skipping it: {edit:?}"));
-                }
-            };
-            let file_lines = read_file_from_disk(&PathBuf::from(filename.clone()))
-                .await
-                .map_err(|e| {
-                    format!("couldn't read file: {:?}. Error: {}", filename, e)
-                })
-                .map(|x| x.lines().into_iter().map(|x| x.to_string().trim_end().to_string()).collect::<Vec<_>>())?;
-
-
-            let mut hunk_line_cursor: usize = 0;
-            let mut file_line_cursor: usize = 0;
-            loop {
-                if hunk_line_cursor >= edit.hunk.len() {
-                    break;
-                };
-                if file_line_cursor >= file_lines.len() {
-                    return Err("File has no more lines to parse while the duff hunk still has unparsed data".to_string());
-                };
-
-                let (hunk_line_cursor_offset, new_file_line_cursor_offset) = match search_text_location(
-                    &edit.hunk[hunk_line_cursor..], &file_lines[file_line_cursor..]
-                ) {
-                    Some(res) => res,
-                    None => {
-                        return Err(format!("Couldn't find the text location in the file: {}", filename));
+            let mut succeeded = false;
+            let mut last_error_message = "".to_string();
+            for extra_space in [0, -1, 1] {
+                let mutated_edit = change_edit_spaces(&edit, extra_space);
+                match parse_diff_chunks(&mutated_edit).await {
+                    Ok(res) => {
+                        succeeded = true;
+                        diff_chunks.extend(res);
+                        break;
                     }
-                };
-                hunk_line_cursor += hunk_line_cursor_offset;
-                file_line_cursor += new_file_line_cursor_offset;
-
-                let (hunk_line_cursor_offset, new_file_line_cursor_offset, mut diff_chunk) = match parse_diff_chunk(
-                    &edit.hunk[hunk_line_cursor..], &file_lines[file_line_cursor..]
-                ) {
-                    Ok(res) => res,
                     Err(err) => {
-                        return Err(
-                            format!("Couldn't parse a diff hunk from the {hunk_line_cursor} line, {err}:\n```\n{}\n```",
-                                    &edit.hunk.iter().join("\n"))
-                        );
+                        last_error_message = err;
                     }
-                };
-                diff_chunk.file_name = filename.clone();
-                diff_chunk.line1 += file_line_cursor;
-                diff_chunk.line2 += file_line_cursor;
-                hunk_line_cursor += hunk_line_cursor_offset;
-                file_line_cursor += new_file_line_cursor_offset;
-                if diff_chunk.is_empty() {
-                    continue
                 }
-                diff_chunks.push(diff_chunk);
-            };
+            }
+            if !succeeded {
+                return Err(last_error_message);
+            }
         }
-
         Ok(diff_chunks)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use log::warn;
     use log::info;
     use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
     use crate::call_validation::DiffChunk;
@@ -941,6 +988,34 @@ Another text"#;
                 line2: 19,
                 lines_remove: "    frog2.jump()\n".to_string(),
                 lines_add: "    frog2.jump()\n    frog3.jump()\n".to_string(),
+            },
+        ];
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        assert_eq!(result, gt_result);
+    }
+    
+    #[tokio::test]
+    async fn test_ambiguous_hunk_5() {
+        let input = r#"Initial text
+```diff
+--- tests/emergency_frog_situation/holiday.py
++++ tests/emergency_frog_situation/holiday.py
+@@ ... @@
+    frog1.jump()
+    frog2.jump()
++    # Third extra jump
+```
+Another text"#;
+        let gt_result = vec![
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_action: "edit".to_string(),
+                line1: 10,
+                line2: 10,
+                lines_remove: "".to_string(),
+                lines_add: "    # Third extra jump\n".to_string(),
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
