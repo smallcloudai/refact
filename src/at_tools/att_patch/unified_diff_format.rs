@@ -329,6 +329,9 @@ def test_todo():
                 diff_chunk.line2 += file_line_cursor;
                 hunk_line_cursor += hunk_line_cursor_offset;
                 file_line_cursor += new_file_line_cursor_offset;
+                if diff_chunk.is_empty() {
+                    continue
+                }
                 diff_chunks.push(diff_chunk);
             };
         }
