@@ -7,7 +7,8 @@ use tracing::{info, warn};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::att_patch::args_parser::parse_arguments;
 use crate::at_tools::att_patch::chat_interaction::execute_chat_model;
-use crate::at_tools::att_patch::diff_formats::{parse_diff_chunks_from_message, UnifiedDiffFormat};
+use crate::at_tools::att_patch::diff_formats::parse_diff_chunks_from_message;
+use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
