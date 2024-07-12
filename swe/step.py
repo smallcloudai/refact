@@ -1,4 +1,4 @@
-from typing import Dict, Set, Any
+from typing import Set, Any
 
 
 __all__ = ["Step"]
@@ -20,5 +20,5 @@ class Step:
     def _tools(self) -> Set[str]:
         raise NotImplementedError()
 
-    async def process(self, base_url, **kwargs) -> Any:
+    async def process(self, **kwargs) -> Any:
         raise NotImplementedError()

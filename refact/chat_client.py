@@ -275,3 +275,18 @@ async def ask_using_openai_client(
         choices[index] = msg
     choices_not_none: List[Message] = [msg for msg in choices if msg is not None]
     return join_messages_and_choices(messages, deterministic, choices_not_none, verbose)
+
+
+async def diff_apply(
+    base_url: str,
+    formatted_diff: List[Dict[str, Any]],
+) -> List[List[Message]]:
+    post_me = {
+        "apply": [True] * len(formatted_diff),
+        "chunks": formatted_diff,
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(base_url + "/diff-apply", json=post_me) as response:
+            if response.status != 200:
+                raise Exception(f"unexpected response status {response.status}, response: {await response.text()}")
+            return await response.json(content_type=None)

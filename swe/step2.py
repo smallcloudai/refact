@@ -23,8 +23,8 @@ A good strategy to solve the issue is:
 2. Speculate about the problem and solve it:
  - describe what changes you need to do
  - apply changes to files separately using patch tool
- - path argument should be always full path to given file within repo
- - do not generate the patch itself, use patch(path, todo) tool to make this changes
+ - paths argument should be always full paths to given files within repo
+ - do not generate the patch itself, use patch(paths, todo) tool to make this changes
 3. When you are done with the task, send the message including only one word: {DONE_MESSAGE}
 
 Changing tests is not allowed!
@@ -43,23 +43,8 @@ class SolveTaskStep(Step):
             "patch",
         }
 
-    @staticmethod
-    def _patch_generate(repo_name: Path, diffs: List[Dict[str, Any]]):
-        for d in diffs:
-            filename = repo_name / d["file_name"]
-            if not filename.exists():
-                raise RuntimeError(f"file {filename} doesn't exist\n\n{d}")
-            text = filename.read_text()
-            p0 = d["lines_remove"]
-            p1 = d["lines_add"]
-            if p0 not in text:
-                raise RuntimeError(
-                    f"can't apply diff, there is no 'lines_remove' in text\n\n"
-                    f"{filename}:\n\n{text}\n\n"
-                    f"lines_remove:\n\n{p0}\n\n"
-                )
-            patched_text = text[:text.find(p0)] + p1 + text[text.find(p0) + len(p0):]
-            filename.write_text(patched_text)
+    async def _patch_generate(self, repo_name: Path, formatted_diff: List[Dict[str, Any]]):
+        await chat_client.diff_apply(self._base_url, formatted_diff)
         result = subprocess.check_output(["git", "--no-pager", "diff"], cwd=str(repo_name))
         subprocess.check_output(["git", "stash"], cwd=str(repo_name))
         return result.decode()
@@ -86,8 +71,11 @@ class SolveTaskStep(Step):
             applied_diff_call_ids = set()
             for m in [m for m in messages if m.role == "diff" and m.tool_call_id not in applied_diff_call_ids]:
                 applied_diff_call_ids.add(m.tool_call_id)
-                formatted_diff = json.loads(m.content)
-                return self._patch_generate(repo_path.absolute(), formatted_diff)
+                try:
+                    formatted_diff = json.loads(m.content)
+                    return await self._patch_generate(repo_path.absolute(), formatted_diff)
+                except json.decoder.JSONDecodeError:
+                    continue
             if messages[-1].role == "assistant" \
                     and messages[-1].content \
                     and DONE_MESSAGE == messages[-1].content:
