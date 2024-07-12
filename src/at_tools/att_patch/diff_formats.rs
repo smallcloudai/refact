@@ -6,7 +6,7 @@ use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::att_patch::ast_interaction::parse_and_get_error_symbols;
 use crate::at_tools::att_patch::tool::DefaultToolPatch;
-use crate::diffs::apply_diff_chunks_to_text;
+use crate::diffs::{apply_diff_chunks_to_text, fuzzy_results_into_state_vector};
 use crate::files_in_workspace::read_file_from_disk;
 
 pub async fn parse_diff_chunks_from_message(
@@ -31,16 +31,21 @@ pub async fn parse_diff_chunks_from_message(
         let text_before = match read_file_from_disk(&path).await {
             Ok(text) => text,
             Err(err) => {
-                let message = format!("Error reading file: {:?}, skipping ast assessment", err);
+                let message = format!("Error reading file: {:?}", err);
                 return Err(message);
             }
         };
-        let (text_after, _) = apply_diff_chunks_to_text(
+        let (text_after, fuzzy_results) = apply_diff_chunks_to_text(
             &text_before.to_string(),
             chunks.iter().enumerate().collect::<Vec<_>>(),
             vec![],
             1,
         );
+        let state = fuzzy_results_into_state_vector(&fuzzy_results, chunks.len());
+        if state.iter().any(|x| *x != 1) {
+            return Err(format!("Couldn't apply the generated diff, probably it's broken:\n{}", message));
+        }
+
         match &maybe_ast_module {
             Some(ast_module) => {
                 let before_error_symbols = match parse_and_get_error_symbols(
