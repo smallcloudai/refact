@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use itertools::Itertools;
+use strsim::normalized_levenshtein;
 use crate::call_validation::DiffChunk;
 use crate::files_in_workspace::read_file_from_disk;
 
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Edit {
     path: Option<String>,
     hunk: Vec<String>,
@@ -111,17 +111,34 @@ fn search_text_location(hunk: &[String], file_lines: &[String]) -> Option<(usize
             if x.starts_with("-") {
                 minus_blocks += 1;
             };
-            if x.is_empty() { x.to_string() } else { x[1..].to_string() }
+            if x.is_empty() {
+                return x.to_string()
+            }
+            return if x.starts_with("-") || x.starts_with("+") || x.starts_with(" ") {
+                x[1..].to_string()
+            } else {
+                x.to_string()
+            }
         })
         .collect::<Vec<_>>();
     if initial_text_lines.is_empty() {
         return Some((0, 0))  // it's only left to put data before the first file row
     }
+    
+    let mut max_score = 0.0;
+    let mut max_score_idx = 0;
     for i in 0..=file_lines.len() - initial_text_lines.len() {
-        if file_lines[i..i + initial_text_lines.len()] == initial_text_lines[..] {
-            let hunk_offset = initial_text_lines.len() - minus_blocks;
-            return Some((hunk_offset, i + hunk_offset));
+        let file_lines_span = file_lines[i..i + initial_text_lines.len()].join("\n");
+        let initial_text_lines_span = initial_text_lines[..].join("\n");
+        let score = normalized_levenshtein(&file_lines_span, &initial_text_lines_span);
+        if score > max_score {
+            max_score = score;
+            max_score_idx = i;
         }
+    }
+    if max_score >= 0.95 {
+        let hunk_offset = initial_text_lines.len() - minus_blocks;
+        return Some((hunk_offset, max_score_idx + hunk_offset));
     }
 
     // make another attempt using only content from `-` blocks
@@ -140,6 +157,26 @@ fn search_text_location(hunk: &[String], file_lines: &[String]) -> Option<(usize
                 let hunk_offset = initial_text_lines.len() - minus_blocks;
                 return Some((hunk_offset, i + minus_text_lines.len() - minus_blocks));
             }
+        }
+    }
+    
+    // make another attempt without spaces before each row
+    for i in 0..=file_lines.len() - initial_text_lines.len() {
+        let file_lines_span = file_lines[i..i + initial_text_lines.len()]
+            .iter()
+            .map(|x| x.trim_start())
+            .join("\n");
+        let initial_text_lines_span = initial_text_lines[..]
+            .iter()
+            .map(|x| x.trim_start())
+            .join("\n");
+        if file_lines_span.is_empty() || file_lines_span.chars().all(|c| c == '\n') 
+            || initial_text_lines_span.is_empty() || initial_text_lines_span.chars().all(|c| c == '\n') {
+            continue
+        }
+        if file_lines_span == initial_text_lines_span {
+            let hunk_offset = initial_text_lines.len() - minus_blocks;
+            return Some((hunk_offset, i + initial_text_lines.len() - minus_blocks));
         }
     }
     
@@ -1386,66 +1423,79 @@ if __name__ == __main__:
     
     #[tokio::test]
     async fn test_ambiguous_hunk_6() {
-        let input = r#" ### Analysis and Explanation of Changes
+        let input = r#"Let's break down the changes required for the task:
 
-1. **Import the `TrainingArguments` class from the `trl` library:**
-   - **Explanation:** We need to replace the dictionary with a `TrainingArguments` setup, so we need to import the necessary class.
-   - **Change Type:** Addition (`+`)
+1. **Add error handling for file operations in the `dump` method:**
+   - We need to wrap the file operations in a try-except block to catch `OSError` and `IOError`.
+   - If an error occurs, we should call `update_status` with the status "failed" and the error message.
 
-2. **Replace the `finetune_train_defaults` dictionary with an instance of `TrainingArguments`:**
-   - **Explanation:** The dictionary `finetune_train_defaults` should be replaced with an instance of `TrainingArguments` with equivalent parameters.
-   - **Change Type:** Removal (`-`) and Addition (`+`)
+2. **Check if the distributed process group is initialized before calling `dist.get_rank()`:**
+   - We need to add a function `is_dist_initialized` to check if the distributed process group is available and initialized.
+   - Use this function in the `__init__` method to set `_rank`.
 
-### Unified Diff
+Here is the unified diff format for the changes:
 
 ```diff
---- /home/svakhreev/projects/smc/refact/refact_utils/finetune/train_defaults.py
-+++ /home/svakhreev/projects/smc/refact/refact_utils/finetune/train_defaults.py
+--- /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/auxiliary/finetune_filter_status_tracker.py
++++ /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/auxiliary/finetune_filter_status_tracker.py
 @@ ... @@
-+from trl import TrainingArguments
+__all__ = ['FinetuneFilterStatusTracker']
+ 
++def is_dist_initialized() -> bool:
++    return dist.is_available() and dist.is_initialized()
 +
--finetune_train_defaults = {
--    "autoselect_test_files_num": 3,
--    "model_ctx_size": 0,
--    "filter_loss_threshold": 3.0,
--    "trainable_embeddings": False,
--    "low_gpu_mem_mode": True,
--    "lr": 30e-5,
--    "batch_size": 128,
--    "warmup_num_steps": 20,
--    "weight_decay": 0.1,
--    "lora_r": 16,
--    "lora_alpha": 32,
--    "lora_dropout": 0.01,
--    # if train_steps==0 then set_train_steps() and  set_lr_decay_steps() is automatic
--    "train_steps": 0,
--    "lr_decay_steps": 0,
--}
-+
-+finetune_train_defaults = TrainingArguments(
-+    autoselect_test_files_num=3,
-+    model_ctx_size=0,
-+    filter_loss_threshold=3.0,
-+    trainable_embeddings=False,
-+    low_gpu_mem_mode=True,
-+    learning_rate=30e-5,
-+    per_device_train_batch_size=128,
-+    warmup_steps=20,
-+    weight_decay=0.1,
-+    lora_r=16,
-+    lora_alpha=32,
-+    lora_dropout=0.01,
-+    num_train_epochs=0,  # train_steps equivalent
-+    lr_scheduler_type='linear',  # lr_decay_steps equivalent
-+)
+ class FinetuneFilterStatusTracker:
+     class LoopStatusTracker:
+@@ ... @@
+    def __init__(self, pname: str):
+-        self.pname = pname
+-        self._rank = dist.get_rank()
+-        self._stats_dict = get_finetune_filter_stat(self.pname, default=True)
+-        self._tracker_extra_kwargs: Dict[str, Any] = dict()
++        self.pname = pname
++        self._rank = dist.get_rank() if is_dist_initialized() else 0
++        self._stats_dict = get_finetune_filter_stat(self.pname, default=True)
++        self._tracker_extra_kwargs: Dict[str, Any] = dict()
+ 
+    def dump(self):
+        if self._rank != 0:
+            return
+-        with open(env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname) + ".tmp", "w") as f:
+-            json.dump(self._stats_dict, f, indent=4)
+-        os.rename(env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname) + ".tmp",
+-                  env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname))
++        try:
++            with open(env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname) + ".tmp", "w") as f:
++                json.dump(self._stats_dict, f, indent=4)
++            os.rename(env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname) + ".tmp",
++                      env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname))
++        except (OSError, IOError) as e:
++            self.update_status("failed", error_message=str(e), dump=False)
+ 
+    def update_status(
+            self,
+            status: str,
+            error_message: Optional[str] = None,
+            dump: bool = True
+    ):
+        if self._rank == 0:
+            env.report_status("filter", status)
+ 
+        self._stats_dict["filtering_status"] = status
+        if error_message is not None:
+            assert status in {"failed", "interrupted"}
+            self._stats_dict["error"] = error_message
+        if dump:
+            self.dump()
 ```
 
-### Assessment
+Explanation of changes:
+- **Added `is_dist_initialized` function**: This function checks if the distributed process group is available and initialized. (`+`)
+- **Modified `__init__` method**: Used `is_dist_initialized` to set `_rank`. (`+` and `-`)
+- **Added error handling in `dump` method**: Wrapped file operations in a try-except block to handle `OSError` and `IOError`. If an error occurs, `update_status` is called with the status "failed" and the error message. (`+` and `-`)
 
-- **Import Statement:** Added the necessary import for `TrainingArguments`.
-- **Dictionary Replacement:** Replaced the dictionary with an instance of `TrainingArguments` with equivalent parameters.
-- **Format Validity:** Ensured that `+` and `-` symbols are correctly placed and all necessary lines are included.
-- **Hunks:** Created a single hunk for the entire change as it is a straightforward replacement.
+This unified diff should correctly apply the required changes to the file.
+
 "#;
         let gt_result = vec![
             DiffChunk {
