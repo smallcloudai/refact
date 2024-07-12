@@ -19,12 +19,7 @@ impl Tool for AttTree {
         let paths_from_anywhere = paths_from_anywhere(ccx.global_context.clone()).await;
         let tree = match args.get("path") {
             Some(Value::String(s)) => {
-                let candidates = at_file_repair_candidates(&s, ccx, false).await;
-                if candidates.is_empty() {
-                    info!("parameter {:?} is uncorrectable :/", &s);
-                    return Err(format!("parameter {:?} is uncorrectable :/", &s));
-                }
-                let base_path = canonical_path(&candidates.get(0).unwrap().clone());
+                let base_path = canonical_path(&s);
                 let filtered_paths_from_anywhere = paths_from_anywhere
                     .iter()
                     .filter(|file| file.starts_with(&base_path))

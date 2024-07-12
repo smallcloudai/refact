@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use itertools::Itertools;
-use log::warn;
 use crate::call_validation::DiffChunk;
 use crate::files_in_workspace::read_file_from_disk;
 
@@ -105,7 +104,7 @@ fn get_edit_hunks(content: &str) -> Vec<Edit> {
 
 fn search_text_location(hunk: &[String], file_lines: &[String]) -> Option<(usize, usize)> {
     let mut minus_blocks: usize = 0;
-    let mut initial_text_lines = hunk
+    let initial_text_lines = hunk
         .iter()
         .take_while(|x| !x.starts_with("+"))
         .map(|x| {
@@ -116,7 +115,7 @@ fn search_text_location(hunk: &[String], file_lines: &[String]) -> Option<(usize
         })
         .collect::<Vec<_>>();
     if initial_text_lines.is_empty() {
-        return Some((0, 1))  // it's only left to put data before the first file row
+        return Some((0, 0))  // it's only left to put data before the first file row
     }
     for i in 0..=file_lines.len() - initial_text_lines.len() {
         if file_lines[i..i + initial_text_lines.len()] == initial_text_lines[..] {
@@ -160,14 +159,13 @@ fn parse_single_diff_chunk(hunk: &[String], file_lines: &[String]) -> Result<(us
     let mut file_line_idx: usize = 0;
     let mut lines_to_add: String = String::new();
     let mut lines_to_remove: String = String::new();
-    let mut has_started_with_minus = false;
     loop {
         if hunk_line_idx >= hunk.len() {
             let chunk = DiffChunk {
                 file_name: "".to_string(),
                 file_action: "edit".to_string(),
-                line1: if has_started_with_minus { 1 } else { 0 },
-                line2: if has_started_with_minus { 1 + file_line_idx } else { file_line_idx },
+                line1: 1,
+                line2: 1 + file_line_idx,
                 lines_remove: lines_to_remove.clone(),
                 lines_add: lines_to_add.clone(),
             };
@@ -179,9 +177,6 @@ fn parse_single_diff_chunk(hunk: &[String], file_lines: &[String]) -> Result<(us
 
         let file_line = &file_lines[file_line_idx];
         let (hunk_line, has_diff_sign, is_add_sign) = if hunk[hunk_line_idx].starts_with("-") {
-            if hunk_line_idx == 0 {
-                has_started_with_minus = true;
-            }
             (strip_hunk(&hunk[hunk_line_idx]), true, false)
         } else if hunk[hunk_line_idx].starts_with("+") {
             (strip_hunk(&hunk[hunk_line_idx]), true, true)
@@ -195,17 +190,19 @@ fn parse_single_diff_chunk(hunk: &[String], file_lines: &[String]) -> Result<(us
                 file_line_idx += 1;
                 hunk_line_idx += 1;
                 continue;
-            } else {
+            } else if is_add_sign {
                 lines_to_add.push_str(&format!("{hunk_line}\n"));
                 hunk_line_idx += 1;
                 continue;
+            } else {
+                file_line_idx += 1;
             }
         } else {
             let chunk = DiffChunk {
                 file_name: "".to_string(),
                 file_action: "edit".to_string(),
-                line1: if has_started_with_minus { 1 } else { 0 },
-                line2: if has_started_with_minus { 1 + file_line_idx } else { file_line_idx },
+                line1: 1,
+                line2: 1 + file_line_idx,
                 lines_remove: lines_to_remove.clone(),
                 lines_add: lines_to_add.clone(),
             };
@@ -418,10 +415,24 @@ There is a unified diff format example for the task: "Replace is_prime with a ca
 
 #[cfg(test)]
 mod tests {
-    use log::warn;
-    use log::info;
+    use std::path::PathBuf;
+    use itertools::Itertools;
     use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
     use crate::call_validation::DiffChunk;
+    use crate::diffs::{apply_diff_chunks_to_text, fuzzy_results_into_state_vector};
+    
+    fn apply_diff(path: &String, chunks: &Vec<DiffChunk>) -> (String, String) {
+        let text = std::fs::read_to_string(PathBuf::from(path)).unwrap();
+        let (changed_text, fuzzy_results) = apply_diff_chunks_to_text(
+            &text,
+            chunks.iter().enumerate().collect::<Vec<_>>(),
+            vec![],
+            1
+        );
+        let state = fuzzy_results_into_state_vector(&fuzzy_results, chunks.len());
+        assert!(state.iter().all(|x| *x == 1));
+        (text, changed_text)
+    }
 
     #[tokio::test]
     async fn test_empty_1() {
@@ -493,6 +504,13 @@ some invalid text
 +class AnotherFrog:
 ```
 Another text"#;
+        let gt_changed_text = r#"import numpy as np
+
+DT = 0.01
+
+class AnotherFrog:
+    def __init__(self, x, y, vx, vy):"#;
+        
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -506,7 +524,14 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/frog.py".to_string(),
+            &result
+        );
+        let cropped_text = changed_text.lines().take(6).join("\n");
+        
         assert_eq!(result, gt_result);
+        assert_eq!(cropped_text, gt_changed_text);
     }
 
     #[tokio::test]
@@ -521,6 +546,12 @@ Another text"#;
 -class Frog:
 ```
 Another text"#;
+        let gt_changed_text = r#"import numpy as np
+
+DT = 0.01
+
+    def __init__(self, x, y, vx, vy):"#;
+
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -534,7 +565,14 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/frog.py".to_string(),
+            &result
+        );
+        let cropped_text = changed_text.lines().take(5).join("\n");
+
         assert_eq!(result, gt_result);
+        assert_eq!(cropped_text, gt_changed_text);
     }
 
     #[tokio::test]
@@ -550,12 +588,20 @@ Another text"#;
 +    # Frog class description
 ```
 Another text"#;
+        let gt_changed_text = r#"import numpy as np
+
+DT = 0.01
+
+class Frog:
+    # Frog class description
+    def __init__(self, x, y, vx, vy):"#;
+
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
-                line1: 5,
-                line2: 5,
+                line1: 6,
+                line2: 6,
                 lines_remove: "".to_string(),
                 lines_add: "    # Frog class description\n".to_string(),
             }
@@ -563,7 +609,14 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/frog.py".to_string(),
+            &result
+        );
+        let cropped_text = changed_text.lines().take(7).join("\n");
+        
         assert_eq!(result, gt_result);
+        assert_eq!(cropped_text, gt_changed_text);
     }
 
     #[tokio::test]
@@ -576,6 +629,11 @@ Another text"#;
 +    # Frog class description
 ```
 Another text"#;
+        let gt_changed_text = r#"    # Frog class description
+import numpy as np
+
+DT = 0.01"#;
+
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -589,7 +647,14 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/frog.py".to_string(),
+            &result
+        );
+        let cropped_text = changed_text.lines().take(4).join("\n");
+
         assert_eq!(result, gt_result);
+        assert_eq!(cropped_text, gt_changed_text);
     }
 
     #[tokio::test]
@@ -602,6 +667,30 @@ Another text"#;
 -    def jump(self, pond_width, pond_height):
 ```
 Another text"#;
+        let gt_changed_text = r#"import numpy as np
+
+DT = 0.01
+
+class Frog:
+    def __init__(self, x, y, vx, vy):
+        self.x = x
+        self.y = y
+        self.vx = vx
+        self.vy = vy
+
+    def bounce_off_banks(self, pond_width, pond_height):
+        if self.x < 0:
+            self.vx = np.abs(self.vx)
+        elif self.x > pond_width:
+            self.vx = -np.abs(self.vx)
+        if self.y < 0:
+            self.vy = np.abs(self.vy)
+        elif self.y > pond_height:
+            self.vy = -np.abs(self.vy)
+
+        self.x += self.vx * DT
+        self.y += self.vy * DT"#;
+
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -615,7 +704,14 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/frog.py".to_string(),
+            &result
+        );
+        let cropped_text = changed_text.lines().take(23).join("\n");
+
         assert_eq!(result, gt_result);
+        assert_eq!(cropped_text, gt_changed_text);
     }
 
     #[tokio::test]
@@ -629,6 +725,29 @@ Another text"#;
 -    def jump(self, pond_width, pond_height):
 ```
 Another text"#;
+        let gt_changed_text = r#"import numpy as np
+
+DT = 0.01
+
+class Frog:
+    def __init__(self, x, y, vx, vy):
+        self.x = x
+        self.y = y
+        self.vx = vx
+        self.vy = vy
+
+    def bounce_off_banks(self, pond_width, pond_height):
+        if self.x < 0:
+            self.vx = np.abs(self.vx)
+        elif self.x > pond_width:
+            self.vx = -np.abs(self.vx)
+        if self.y < 0:
+            self.vy = np.abs(self.vy)
+        elif self.y > pond_height:
+            self.vy = -np.abs(self.vy)
+
+        self.x += self.vx * DT
+        self.y += self.vy * DT"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -642,7 +761,14 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/frog.py".to_string(),
+            &result
+        );
+        let cropped_text = changed_text.lines().take(23).join("\n");
+
         assert_eq!(result, gt_result);
+        assert_eq!(cropped_text, gt_changed_text);
     }
     #[tokio::test]
     async fn test_complex_hunk_1() {
@@ -668,6 +794,29 @@ Another text"#;
 +            self.vx = -np.abs(self.vy)
 ```
 Another text"#;
+        let gt_changed_text = r#"import numpy as np
+
+DT = 0.01
+
+class Frog:
+    def __init__(self, x, y, vx, vy):
+        self.x = x
+        self.y = y
+        self.vx = vx
+        self.vy = vy
+
+    def bounce_off_banks(self, pond_width, pond_height):
+        if self.x < 0:
+            self.vx = np.abs(self.vx)
+        # test1:
+        elif self.x > pond:
+            # what is that?
+            pass
+        if self.y > 0:
+            self.vy = np.abs(self.vy)
+        elif self.y > pond_height:
+            self.vx = -np.abs(self.vy)"#;
+
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -689,7 +838,14 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/frog.py".to_string(),
+            &result
+        );
+        let cropped_text = changed_text.lines().take(22).join("\n");
+
         assert_eq!(result, gt_result);
+        assert_eq!(cropped_text, gt_changed_text);
     }
 
     #[tokio::test]
@@ -717,6 +873,7 @@ Another text"#;
 +            self.vx = -np.abs(self.vy)
 ```
 Another text"#;
+        
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -813,12 +970,46 @@ Another text"#;
 +# extra row 3
 ```
 Another text"#;
+        let gt_changed_text = r#"import numpy as np
+# extra row 1
+# extra row 2
+# extra row 3
+
+DT = 0.01
+
+class Frog:
+    def __init__(self, x, y, vx, vy):
+        self.x = x
+        self.y = y
+        self.vx = vx
+        self.vy = vy
+
+    def bounce_off_banks(self, pond_width, pond_height):
+        if self.x < 0:
+            self.vx = np.abs(self.vx)
+        elif self.x > pond_width:
+            self.vx = -np.abs(self.vx)
+        if self.y < 0:
+            self.vy = np.abs(self.vy)
+        elif self.y > pond_height:
+            self.vy = -np.abs(self.vy)
+
+    def jump(self, pond_width, pond_height):
+        self.x += self.vx * DT
+        self.y += self.vy * DT
+        self.bounce_off_banks(pond_width, pond_height)
+        self.x = np.clip(self.x, 0, pond_width)
+        self.y = np.clip(self.y, 0, pond_height)
+        # extra row 1
+        # extra row 2
+        # extra row 3
+"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
                 file_action: "edit".to_string(),
-                line1: 27,
-                line2: 27,
+                line1: 28,
+                line2: 28,
                 lines_remove: "".to_string(),
                 lines_add: "        # extra row 1\n        # extra row 2\n        # extra row 3\n".to_string(),
             },
@@ -834,7 +1025,13 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/frog.py".to_string(),
+            &result
+        );
+
         assert_eq!(result, gt_result);
+        assert_eq!(changed_text, gt_changed_text);
     }
 
     #[tokio::test]
@@ -852,12 +1049,42 @@ Another text"#;
 +        # extra row 3
 ```
 Another text"#;
+        let gt_changed_text = r#"# Picking up context, goal in this file:
+# - goto parent class, two times
+# - dump parent class
+
+import frog
+
+X,Y = 50, 50
+W = 100
+H = 100
+
+
+# This this a comment for the Toad class, above the class
+class Toad(frog.Frog):
+    def __init__(self, x, y, vx, vy):
+        super().__init__(x, y, vx, vy)
+        self.name = "Bob"
+
+
+class EuropeanCommonToad(frog.Frog):
+    """
+    This is a comment for EuropeanCommonToad class, inside the class
+    """
+
+    def __init__(self, x, y, vx, vy):
+        # extra row 1
+        # extra row 2
+        # extra row 3
+        super().__init__(x, y, vx, vy)
+        self.name = "EU Toad""#;
+
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/set_as_avatar.py".to_string(),
                 file_action: "edit".to_string(),
-                line1: 24,
-                line2: 24,
+                line1: 25,
+                line2: 25,
                 lines_remove: "".to_string(),
                 lines_add: "        # extra row 1\n        # extra row 2\n        # extra row 3\n".to_string(),
             },
@@ -865,7 +1092,14 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/set_as_avatar.py".to_string(),
+            &result
+        );
+        let cropped_text = changed_text.lines().take(29).join("\n");
+
         assert_eq!(result, gt_result);
+        assert_eq!(cropped_text, gt_changed_text);
     }
 
     #[tokio::test]
@@ -881,6 +1115,29 @@ Another text"#;
 +    # New Comment
 ```
 Another text"#;
+        let gt_changed_text = r#"import frog
+
+
+if __name__ == __main__:
+    frog1 = frog.Frog()
+    frog2 = frog.Frog()
+
+    # First jump
+    frog1.jump()
+    frog2.jump()
+
+    # Second jump
+    frog1.jump()
+    frog2.jump()
+
+    # New Comment
+    frog1.jump()
+    frog2.jump()
+
+    # Forth jump
+    frog1.jump()
+    frog2.jump()
+"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
@@ -894,7 +1151,13 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/holiday.py".to_string(),
+            &result
+        );
+
         assert_eq!(result, gt_result);
+        assert_eq!(changed_text, gt_changed_text);
     }
 
     #[tokio::test]
@@ -921,20 +1184,46 @@ Another text"#;
 +    frog3.jump()
 ```
 Another text"#;
+        let gt_changed_text = r#"import frog
+
+
+if __name__ == __main__:
+    frog1 = frog.Frog()
+    frog2 = frog.Frog()
+
+    # First jump
+    frog1.jump()
+    frog2.jump()
+
+    # Second jump
+    frog3 = Frog()
+    frog1.jump()
+    frog2.jump()
+    frog3.jump()
+
+    # Third extra jump
+    frog1.jump()
+    frog2.jump()
+    frog3.jump()
+
+    # Forth jump
+    frog1.jump()
+    frog2.jump()
+"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
                 file_action: "edit".to_string(),
-                line1: 12,
-                line2: 12,
+                line1: 13,
+                line2: 13,
                 lines_remove: "".to_string(),
                 lines_add: "    frog3 = Frog()\n".to_string(),
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
                 file_action: "edit".to_string(),
-                line1: 14,
-                line2: 14,
+                line1: 15,
+                line2: 15,
                 lines_remove: "".to_string(),
                 lines_add: "    frog3.jump()\n".to_string(),
             },
@@ -958,7 +1247,13 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/holiday.py".to_string(),
+            &result
+        );
+
         assert_eq!(result, gt_result);
+        assert_eq!(changed_text, gt_changed_text);
     }
     #[tokio::test]
     async fn test_ambiguous_hunk_4() {
@@ -977,6 +1272,30 @@ Another text"#;
 +    frog3.jump()
 ```
 Another text"#;
+        let gt_changed_text = r#"import frog
+
+
+if __name__ == __main__:
+    frog1 = frog.Frog()
+    frog2 = frog.Frog()
+
+    # First jump
+    frog1.jump()
+    frog2.jump()
+
+    # Second jump
+    frog1.jump()
+    frog2.jump()
+
+    # Third extra jump
+    frog1.jump()
+    frog2.jump()
+    frog3.jump()
+
+    # Forth jump
+    frog1.jump()
+    frog2.jump()
+"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
@@ -998,7 +1317,13 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/holiday.py".to_string(),
+            &result
+        );
+
         assert_eq!(result, gt_result);
+        assert_eq!(changed_text, gt_changed_text);
     }
     
     #[tokio::test]
@@ -1013,12 +1338,36 @@ Another text"#;
 +    # Third extra jump
 ```
 Another text"#;
+        let gt_changed_text = r#"import frog
+
+
+if __name__ == __main__:
+    frog1 = frog.Frog()
+    frog2 = frog.Frog()
+
+    # First jump
+    frog1.jump()
+    frog2.jump()
+    # Third extra jump
+
+    # Second jump
+    frog1.jump()
+    frog2.jump()
+
+    # Third jump
+    frog1.jump()
+    frog2.jump()
+
+    # Forth jump
+    frog1.jump()
+    frog2.jump()
+"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
                 file_action: "edit".to_string(),
-                line1: 10,
-                line2: 10,
+                line1: 11,
+                line2: 11,
                 lines_remove: "".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
             },
@@ -1026,72 +1375,78 @@ Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/holiday.py".to_string(),
+            &result
+        );
+
         assert_eq!(result, gt_result);
+        assert_eq!(changed_text, gt_changed_text);
     }
     
     #[tokio::test]
     async fn test_ambiguous_hunk_6() {
-        let input = r#"### Analysis and Plan
+        let input = r#" ### Analysis and Explanation of Changes
 
-1. **Analyze the Task and Files:**
-   - The task is to update the `Tokenizer` class to load the tokenizer from a `tokenizer.json` file in the stablelm model directories.
-   - The `Tokenizer` class is located in the provided file `/home/svakhreev/projects/smc/refact/refact_data_pipeline/pipeline_pieces.py`.
+1. **Import the `TrainingArguments` class from the `trl` library:**
+   - **Explanation:** We need to replace the dictionary with a `TrainingArguments` setup, so we need to import the necessary class.
+   - **Change Type:** Addition (`+`)
 
-2. **Identify Specific Changes Required:**
-   - We need to add functionality to the `Tokenizer` class to load the tokenizer from a `tokenizer.json` file.
-   - This involves reading the `tokenizer.json` file and initializing the tokenizer with its contents.
+2. **Replace the `finetune_train_defaults` dictionary with an instance of `TrainingArguments`:**
+   - **Explanation:** The dictionary `finetune_train_defaults` should be replaced with an instance of `TrainingArguments` with equivalent parameters.
+   - **Change Type:** Removal (`-`) and Addition (`+`)
 
-3. **Chain of Thoughts:**
-   - We need to import the necessary modules to read JSON files.
-   - Modify the `__init__` method of the `Tokenizer` class to include logic for loading the tokenizer from `tokenizer.json`.
-   - Ensure that the tokenizer is correctly initialized with the loaded data.
-
-4. **Explain Every Change:**
-   - **Import JSON Module:**
-     - `+` Add `import json` to handle JSON file reading.
-   - **Modify `__init__` Method:**
-     - `+` Add logic to read `tokenizer.json` and initialize the tokenizer.
-     - `+` Ensure that the file path to `tokenizer.json` is correctly specified and handled.
-
-### Generate Diff
+### Unified Diff
 
 ```diff
---- /home/svakhreev/projects/smc/refact/refact_data_pipeline/pipeline_pieces.py
-+++ /home/svakhreev/projects/smc/refact/refact_data_pipeline/pipeline_pieces.py
+--- /home/svakhreev/projects/smc/refact/refact_utils/finetune/train_defaults.py
++++ /home/svakhreev/projects/smc/refact/refact_utils/finetune/train_defaults.py
 @@ ... @@
- import blobfile as bf
- import filelock
- import ujson
- import zstandard
-+import json
- from mpi4py import MPI
-@@ ... @@
-        self.enc = dataopts.encoding
-+       tokenizer_path = os.path.join(dataopts.get("model_dir", ""), "tokenizer.json")
-+       if os.path.exists(tokenizer_path):
-+           with open(tokenizer_path, "r") as f:
-+               self.enc = json.load(f)
-+       else:
-+           log(f"Tokenizer file not found at {tokenizer_path}, using default encoding.")
-        super().__init__(dataopts)
++from trl import TrainingArguments
++
+-finetune_train_defaults = {
+-    "autoselect_test_files_num": 3,
+-    "model_ctx_size": 0,
+-    "filter_loss_threshold": 3.0,
+-    "trainable_embeddings": False,
+-    "low_gpu_mem_mode": True,
+-    "lr": 30e-5,
+-    "batch_size": 128,
+-    "warmup_num_steps": 20,
+-    "weight_decay": 0.1,
+-    "lora_r": 16,
+-    "lora_alpha": 32,
+-    "lora_dropout": 0.01,
+-    # if train_steps==0 then set_train_steps() and  set_lr_decay_steps() is automatic
+-    "train_steps": 0,
+-    "lr_decay_steps": 0,
+-}
++
++finetune_train_defaults = TrainingArguments(
++    autoselect_test_files_num=3,
++    model_ctx_size=0,
++    filter_loss_threshold=3.0,
++    trainable_embeddings=False,
++    low_gpu_mem_mode=True,
++    learning_rate=30e-5,
++    per_device_train_batch_size=128,
++    warmup_steps=20,
++    weight_decay=0.1,
++    lora_r=16,
++    lora_alpha=32,
++    lora_dropout=0.01,
++    num_train_epochs=0,  # train_steps equivalent
++    lr_scheduler_type='linear',  # lr_decay_steps equivalent
++)
 ```
 
-### Explanation of Changes
+### Assessment
 
-1. **Import JSON Module:**
-   - `+` Added `import json` to handle JSON file reading.
-
-2. **Modify `__init__` Method:**
-   - `+` Added logic to read `tokenizer.json` and initialize the tokenizer.
-   - `+` Ensured that the file path to `tokenizer.json` is correctly specified and handled.
-
-### Assess After Diff is Generated
-
-- Ensure that the `+` and `-` symbols are in the right places.
-- Verify that the patch applies cleanly against the current contents of the file.
-- Confirm that the indentation and formatting are correct.
-
-This should complete the task of updating the `Tokenizer` class to load the tokenizer from the `tokenizer.json` file in the stablelm model directories."#;
+- **Import Statement:** Added the necessary import for `TrainingArguments`.
+- **Dictionary Replacement:** Replaced the dictionary with an instance of `TrainingArguments` with equivalent parameters.
+- **Format Validity:** Ensured that `+` and `-` symbols are correctly placed and all necessary lines are included.
+- **Hunks:** Created a single hunk for the entire change as it is a straightforward replacement.
+"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
