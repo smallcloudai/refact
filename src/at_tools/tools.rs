@@ -141,7 +141,7 @@ tools:
     parameters:
       - name: "path"
         type: "string"
-        description: "An optional absolute path to get files tree for a particular folder or file"
+        description: "An optional path to get files tree for a particular folder or file. Do not pass it if you need full project tree."
     parameters_required: []
 "####;
 

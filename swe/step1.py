@@ -1,32 +1,38 @@
 from refact import chat_client
 from step import Step
 
+from pathlib import Path
 from typing import Set
 
 
-TASK_MESSAGE_MARKER = "=====TASK====="
+RESULT_MARKER = "=====FILENAMES====="
+
+
 SYSTEM_MESSAGE = f"""
 You are Refact Dev, an auto coding assistant.
 
 You'll receive a problem statement from user.
-Your aim is to rewrite it as a task for developer.
+Your aim is to find list of files that should be changed in the process of solving.
 
 Use the following strategy:
 1. Read the problem statement carefully.
-2. Use given tools to explore code related to the issue and discuss how to solve it: you must find the real cause of the problem.
-3. Set a task for developer that doesn't contain redundant information from the problem statement. Task should be started from {TASK_MESSAGE_MARKER}.
+2. Using definition tool try to explore as much symbols as you can.
+3. After symbols exploration add potential changed files to context.
+4. If it's needed repeat steps 2 and 3 before you move to step 5. 
+5. Finally provide list of files which required for problem solving.
 
-Your final answer should be in the following format:
-{TASK_MESSAGE_MARKER}
-todo explanation
-task-related filenames list
+Your final answer should follow the format:
+{RESULT_MARKER}
+filenames list
 
-Do not try to solve the issue yourself.
-Your task must contain list of files that should be changed in the process of solving.
-Each file name should contain full path to the file within the repo.
-
-Explain your plan briefly before calling the tools in parallel.
-IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST! USE TOOLS IN PARALLEL!
+Follow this list of rules:
+- Explain your exploration process before using tools.
+- Base your answer only on tools outputs, do not hallucinate.
+- If tool doesn't give you expected result, try another time with different argument.
+- First of all use definition tool because it's cheap. If you sure that it's required to list full file use file tool.
+- Do not list files that is not related to the problem. Your answer must contain files where we need to make changes!
+- For each filename add explanation why you've listed it.
+- Problem solving doesn't require test files, so do not try to list, modify pr mention them.
 """
 
 
@@ -36,10 +42,11 @@ class SetTaskStep(Step):
         return {
             "file",
             "definition",
-            "references",
+            # "tree",
+            # "references",
         }
 
-    async def process(self, problem_statement: str, **kwargs) -> str:
+    async def process(self, problem_statement: str, repo_path: Path, **kwargs) -> str:
         messages = [
             chat_client.Message(role="system", content=SYSTEM_MESSAGE),
             chat_client.Message(role="user", content=problem_statement),
@@ -61,7 +68,7 @@ class SetTaskStep(Step):
             last_message = messages[-1]
             if last_message.role == "assistant" \
                     and last_message.content \
-                    and TASK_MESSAGE_MARKER in last_message.content:
-                # probably we need to split by TASK_MESSAGE_MARKER and get second part
-                return messages[-1].content.replace(TASK_MESSAGE_MARKER, "")
+                    and RESULT_MARKER in last_message.content:
+                # probably we need to split by RESULT_MARKER and get second part
+                return messages[-1].content.replace(RESULT_MARKER, "")
         raise RuntimeError(f"can't produce task with {self._max_depth} steps")

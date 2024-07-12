@@ -11,7 +11,7 @@ from agent_runner import get_swe_bench_lite_instance
 from step1 import SetTaskStep
 
 from pathlib import Path
-from typing import Dict, Any, Set
+from typing import Dict, Any, Set, Optional
 
 
 # MODEL = "gpt-3.5-turbo"
@@ -51,7 +51,7 @@ class SWERunner(AgentRunner):
         try:
             step1 = SetTaskStep(base_url=base_url, model_name=MODEL)
             results["summarized_problem_statement"] = \
-                await step1.process(problem_statement=kwargs["problem_statement"])
+                await step1.process(problem_statement=kwargs["problem_statement"], repo_path=repo_path)
             results["mentioned_in_task"] = \
                 self._filename_mentioned(filename, results["summarized_problem_statement"])
         except Exception as e:
@@ -63,18 +63,20 @@ async def main():
     parser = ArgumentParser()
     parser.add_argument("instance_id", type=str, help="SWE instance id")
     parser.add_argument("--timeout", type=float, default=None, help="processing timeout")
-    parser.add_argument("--output-dir", type=Path, default="swe/predictions/test", help="output directory")
+    parser.add_argument("--output-dir", type=Optional[Path], default=None, help="output directory")
     args = parser.parse_args()
 
-    args.output_dir.mkdir(exist_ok=True, parents=True)
-    output_filename = args.output_dir / f"{args.instance_id}.json"
-    if output_filename.exists():
-        print(f"skip {args.instance_id} because it's already done")
-        exit(0)
+    if args.output_dir is not None:
+        args.output_dir.mkdir(exist_ok=True, parents=True)
+        output_filename = args.output_dir / f"{args.instance_id}.json"
+        if output_filename.exists():
+            print(f"skip {args.instance_id} because it's already done")
+            exit(0)
 
     instance = get_swe_bench_lite_instance(args.instance_id)
+    run_postfix = f"-{args.output_dir.name}" if args.output_dir is not None else ""
     results = {
-        "model_name_or_path": f"refact-dev-{MODEL}-{args.output_dir.name}",
+        "model_name_or_path": f"refact-dev-{MODEL}{run_postfix}",
         "instance_id": args.instance_id,
         "problem_statement": instance["problem_statement"],
         "problem_patch": instance["patch"],
@@ -91,8 +93,11 @@ async def main():
     except Exception as e:
         results["error"] = str(e) or traceback.format_exc()
 
-    with open(output_filename, "w") as f:
-        json.dump(results, f, indent=4)
+    if args.output_dir is not None:
+        with open(output_filename, "w") as f:
+            json.dump(results, f, indent=4)
+    else:
+        print(json.dumps(results, indent=4))
 
     return results
 

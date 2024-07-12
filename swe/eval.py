@@ -1,7 +1,6 @@
 import asyncio
 import jsonlines
 
-from collections import Counter
 from pathlib import Path
 
 
@@ -74,13 +73,13 @@ async def main():
     no_error_no_patch = total_instances - total_errors - patch_produced
 
     print(f"processed {instance_processed}/{total_instances} instances")
-    print(f"step1 error: {step1_error} ({step1_error / total_instances * 100:.2f}%) problems")
-    print(f"step2 error: {step2_error} ({step2_error / total_instances * 100:.2f}%) problems")
-    print(f"other error: {other_error} ({other_error / total_instances * 100:.2f}%) problems")
-    print(f"total errors: {total_errors} ({total_errors / total_instances * 100:.2f}%) problems")
+    print(f"step1 error: {step1_error} ({step1_error / instance_processed * 100:.2f}%) problems")
+    print(f"step2 error: {step2_error} ({step2_error / instance_processed * 100:.2f}%) problems")
+    print(f"other error: {other_error} ({other_error / instance_processed * 100:.2f}%) problems")
+    print(f"total errors: {total_errors} ({total_errors / instance_processed * 100:.2f}%) problems")
     print(f"no error no patch: {no_error_no_patch} ({no_error_no_patch / total_instances * 100:.2f}%) problems")
-    print(f"produced {patch_produced} ({patch_produced / total_instances * 100:.2f}%) patches")
-    print(f"solved {problem_solved} ({problem_solved / total_instances * 100:.2f}%) problems")
+    print(f"produced {patch_produced} ({patch_produced / instance_processed * 100:.2f}%) patches")
+    print(f"solved {problem_solved} ({problem_solved / instance_processed * 100:.2f}%) problems")
     print(f"solved {problem_solved / patch_produced * 100:.2f}% of patched problems")
 
 

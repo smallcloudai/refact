@@ -60,7 +60,7 @@ class RepoContext:
 class AgentRunner:
     def __init__(self, timeout):
         self._timeout = timeout
-        self._repos_workdir = Path(__file__).parent / "repos"
+        self._repos_workdir = Path().home() / "experiments/swe-repos"
 
     async def _steps(self, base_url: str, repo_path: Path, **kwargs) -> Dict[str, Any]:
         raise NotImplementedError()
