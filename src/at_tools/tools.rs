@@ -121,14 +121,14 @@ tools:
       - "symbol"
 
   - name: "patch"
-    description: "A tool to fix, edit a bunch of source files or add new functionality to the project"
+    description: "A tool to fix, edit a bunch of source files or add new functionality to the project. Use this tool for applying the fixes instead of copying the whole file"
     parameters:
       - name: "paths"
         type: "string"
         description: "The string that contains all necessary to edit file names separated by commas. Prefer absolute file paths"
       - name: "todo"
         type: "string"
-        description: "A complete and usefull description of required changes for the given files"
+        description: "An usefull description of required changes for the given files. Avoid pasting a code in the instruction"
       - name: "symbols"
         type: "string"
         description: "An optional argument, symbol names that might be usefull to make necessary changes"

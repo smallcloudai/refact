@@ -349,24 +349,27 @@ Follow these steps in order to produce the unified diff:
 
 2. **Generate Diff:**
 -- Don't forget to make changes to all given files
--- Return edits similar to unified diffs that `diff -U2` would produce.
+-- Return edits similar to unified diffs that `diff -U0` would produce.
 -- Make sure you include the first 2 lines with the real file paths which were given before
 -- Don't include timestamps with the file paths.
 -- Start each hunk of changes with a `@@ ... @@` line.
--- Don't include line numbers like `diff -U2` does. The user's patch tool doesn't need them.
+-- Don't include line numbers like `diff -U0` does. The user's patch tool doesn't need them.
 -- The user's patch tool needs CORRECT patches that apply cleanly against the current contents of the file!
 -- Think carefully and make sure you include and mark all lines that need to be removed or changed as `-` lines!
--- Copy some code before `+`-only hunks to be able to find the place where to add, add empty space character ` ` for copied text including empty lines.
+-- Copy 2 rows of the code before `+`-only hunks to be able to find the place where to add
 -- Make sure you mark all new or modified lines with `+`.
 -- Don't leave out any lines or the diff patch won't apply correctly.
 -- Indentation matters in the diffs!
 -- Start a new hunk for each section of the file that needs changes.
 -- Only output hunks that specify changes with `+` or `-` lines.
+-- Do not produce any hunks without changes (`+` or `-` lines)
 -- Output hunks in whatever order makes the most sense.
 -- Hunks don't need to be in any particular order.
 -- When editing a function, method, loop, etc. use a hunk to replace the *entire* code block.
 -- Delete the entire existing version with `-` lines and then add a new, updated version with `+` lines. This will help you generate correct code and correct diffs.
 -- To move code within a file, use 2 hunks: 1 to delete it from its current location, 1 to insert it in the new location
+
+YOU MUST FOLLOW ALL THE GIVEN RULES!!!
 
 There is a unified diff format example for the task: "Replace is_prime with a call to sympy"
 ```diff
@@ -408,11 +411,6 @@ There is a unified diff format example for the task: "Replace is_prime with a ca
 +            count += 1
 +    return str(num)
 @@ ... @@
- def test_todo(
-     arg1,
-     arg2,
-     arg3,
-     arg4
  ):
      pass
 +
@@ -446,7 +444,7 @@ There is a unified diff format example for the task: "Replace is_prime with a ca
                 return Err(last_error_message);
             }
         }
-        Ok(diff_chunks)
+        Ok(diff_chunks.into_iter().unique().collect::<Vec<_>>())
     }
 }
 
@@ -1423,79 +1421,111 @@ if __name__ == __main__:
     
     #[tokio::test]
     async fn test_ambiguous_hunk_6() {
-        let input = r#"Let's break down the changes required for the task:
+        let input = r#"Analysis and Explanation of Changes
 
-1. **Add error handling for file operations in the `dump` method:**
-   - We need to wrap the file operations in a try-except block to catch `OSError` and `IOError`.
-   - If an error occurs, we should call `update_status` with the status "failed" and the error message.
+1. **Ensure correct imports and remove unused imports:**
+   - **-** Remove unused imports: `traceback`, `textwrap`.
+   - **+** Add necessary imports for exception handling and logging: `Optional`.
 
-2. **Check if the distributed process group is initialized before calling `dist.get_rank()`:**
-   - We need to add a function `is_dist_initialized` to check if the distributed process group is available and initialized.
-   - Use this function in the `__init__` method to set `_rank`.
+2. **Improve exception handling by logging and handling exceptions gracefully:**
+   - **-** Remove direct `traceback` import and usage.
+   - **+** Use `_log_everywhere` to log exceptions and handle them gracefully.
 
-Here is the unified diff format for the changes:
+3. **Ensure consistent logging and tracing using the `_log_everywhere` function:**
+   - **+** Replace direct logging calls with `_log_everywhere`.
+
+4. **Ensure accurate and consistent type hints:**
+   - **+** Add missing type hints for function parameters and return types.
+
+5. **Improve code consistency and readability:**
+   - **-** Remove redundant or unclear code.
+   - **+** Refactor code for better readability and consistency.
+
+### Unified Diff
 
 ```diff
---- /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/auxiliary/finetune_filter_status_tracker.py
-+++ /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/auxiliary/finetune_filter_status_tracker.py
+--- /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py
++++ /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py
 @@ ... @@
-__all__ = ['FinetuneFilterStatusTracker']
- 
-+def is_dist_initialized() -> bool:
-+    return dist.is_available() and dist.is_initialized()
+ import json
+-import logging
+-import math
+-import os
+-import textwrap
+-import traceback
+-from typing import Dict, Any, Tuple
++import logging
++import math
++import os
++from typing import Dict, Any, Tuple, Optional
 +
- class FinetuneFilterStatusTracker:
-     class LoopStatusTracker:
+ import torch
+ import torch.distributed as dist
 @@ ... @@
-    def __init__(self, pname: str):
--        self.pname = pname
--        self._rank = dist.get_rank()
--        self._stats_dict = get_finetune_filter_stat(self.pname, default=True)
--        self._tracker_extra_kwargs: Dict[str, Any] = dict()
-+        self.pname = pname
-+        self._rank = dist.get_rank() if is_dist_initialized() else 0
-+        self._stats_dict = get_finetune_filter_stat(self.pname, default=True)
-+        self._tracker_extra_kwargs: Dict[str, Any] = dict()
- 
-    def dump(self):
-        if self._rank != 0:
-            return
--        with open(env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname) + ".tmp", "w") as f:
--            json.dump(self._stats_dict, f, indent=4)
--        os.rename(env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname) + ".tmp",
--                  env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname))
-+        try:
-+            with open(env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname) + ".tmp", "w") as f:
-+                json.dump(self._stats_dict, f, indent=4)
-+            os.rename(env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname) + ".tmp",
-+                      env.PP_CONFIG_FINETUNE_FILTER_STAT(self.pname))
-+        except (OSError, IOError) as e:
-+            self.update_status("failed", error_message=str(e), dump=False)
- 
-    def update_status(
-            self,
-            status: str,
-            error_message: Optional[str] = None,
-            dump: bool = True
-    ):
-        if self._rank == 0:
-            env.report_status("filter", status)
- 
-        self._stats_dict["filtering_status"] = status
-        if error_message is not None:
-            assert status in {"failed", "interrupted"}
-            self._stats_dict["error"] = error_message
-        if dump:
-            self.dump()
+        import traceback
+-        traces.log(traceback.format_exc())
++        _log_everywhere(traceback.format_exc())
+@@ ... @@
+        import traceback
+-        traces.log(traceback.format_exc())
++        _log_everywhere(traceback.format_exc())
+@@ ... @@
+        traces.log(traceback.format_exc())
+-        _log_everywhere(f"Finetune gpu filter is failed\nException: {e}")
++        _log_everywhere(f"Finetune GPU filter failed\nException: {e}")
+@@ ... @@
+def force_include_exclude_filter(
+    pname: str,
+    files_status: FilesStatusContext
+):
+@@ ... @@
+def loss_based_filter(
+        pname: str,
+        finetune_cfg: Dict[str, Any],
+        dataset_context: FileSetsContext,
+        files_status_context: FilesStatusContext,
+        status_tracker: FinetuneFilterStatusTracker,
+        model_config: Dict[str, Any],
+        *,
+        filter_loss_threshold: float
+) -> None:
+@@ ... @@
+def finetune_filter(
+        pname: str,
+        status_tracker: FinetuneFilterStatusTracker,
+        dataset_context: FileSetsContext,
+        finetune_cfg: Dict[str, Any],
+        model_config: Dict[str, Any],
+) -> None:
+@@ ... @@
+def finetune_gpu_filter(pname: str, finetune_cfg: Dict[str, Any], model_config: Dict[str, Any]) -> None:
+@@ ... @@
+        traces.log(traceback.format_exc())
 ```
 
-Explanation of changes:
-- **Added `is_dist_initialized` function**: This function checks if the distributed process group is available and initialized. (`+`)
-- **Modified `__init__` method**: Used `is_dist_initialized` to set `_rank`. (`+` and `-`)
-- **Added error handling in `dump` method**: Wrapped file operations in a try-except block to handle `OSError` and `IOError`. If an error occurs, `update_status` is called with the status "failed" and the error message. (`+` and `-`)
+### Explanation of Changes
 
-This unified diff should correctly apply the required changes to the file.
+1. **Imports:**
+   - Removed unused imports: `traceback`, `textwrap`.
+   - Added `Optional` from `typing` for type hints.
 
+2. **Exception Handling:**
+   - Replaced direct `traceback` usage with `_log_everywhere` to ensure consistent logging and tracing.
+
+3. **Logging and Tracing:**
+   - Replaced direct logging calls with `_log_everywhere` to ensure consistent logging and tracing.
+
+4. **Type Hints:**
+   - Added missing type hints for function parameters and return types.
+
+5. **Code Consistency and Readability:**
+   - Improved readability by refactoring code and ensuring consistent logging and exception handling.
+
+### Assessment
+
+- The diff format is valid with correct usage of `+` and `-` symbols.
+- All necessary changes are included and marked appropriately.
+- The changes ensure correct imports, improved exception handling, consistent logging, accurate type hints, and better code readability.
 "#;
         let gt_result = vec![
             DiffChunk {
@@ -1509,6 +1539,10 @@ This unified diff should correctly apply the required changes to the file.
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
+        );
+        let (_, changed_text) = apply_diff(
+            &"/home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py".to_string(),
+            &result
         );
         print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
     }
