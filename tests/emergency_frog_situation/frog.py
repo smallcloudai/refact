@@ -25,4 +25,3 @@ class Frog:
         self.bounce_off_banks(pond_width, pond_height)
         self.x = np.clip(self.x, 0, pond_width)
         self.y = np.clip(self.y, 0, pond_height)
-
