@@ -11,7 +11,7 @@ from agent_runner import get_swe_bench_lite_instance
 from step1 import SetTaskStep
 
 from pathlib import Path
-from typing import Dict, Any, Set, Optional
+from typing import Dict, Any
 
 
 # MODEL = "gpt-3.5-turbo"
@@ -27,11 +27,6 @@ class SWERunner(AgentRunner):
         header = files[0].header
         assert header.old_path[len("a/"):] == header.new_path[len("b/"):]
         return header.old_path[len("a/"):]
-
-    @staticmethod
-    def _extract_filenames(text: str) -> Set[str]:
-        py_pattern = r"(?:[^/ ]+/)*[^/ ]+\.py"
-        return set(re.findall(py_pattern, text))
 
     @staticmethod
     def _filename_mentioned(filename: str, text: str) -> str:
@@ -63,7 +58,7 @@ async def main():
     parser = ArgumentParser()
     parser.add_argument("instance_id", type=str, help="SWE instance id")
     parser.add_argument("--timeout", type=float, default=None, help="processing timeout")
-    parser.add_argument("--output-dir", type=Optional[Path], default=None, help="output directory")
+    parser.add_argument("--output-dir", type=Path, default=None, help="output directory")
     args = parser.parse_args()
 
     if args.output_dir is not None:
