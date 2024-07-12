@@ -109,8 +109,9 @@ fn apply_chunks(
     chunks: Vec<(usize, &DiffChunk)>,
     file_text: &String,
     max_fuzzy_n: usize,
+    line_ending: &str,
 ) -> (HashMap<usize, Option<usize>>, Vec<DiffLine>) {
-    let mut lines_orig = file_text.split("\n").enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
+    let mut lines_orig = file_text.split(line_ending).enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
 
     let mut results_fuzzy_ns = HashMap::new();
     for (chunk_id, chunk) in chunks.iter().map(|(id, c)|(*id, *c)) {
@@ -127,8 +128,9 @@ fn undo_chunks(
     chunks: Vec<(usize, &DiffChunk)>,
     file_text: &String,
     max_fuzzy_n: usize,
+    line_ending: &str,
 ) -> (HashMap<usize, Option<usize>>, Vec<DiffLine>) {
-    let mut lines_orig = file_text.split("\n").enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
+    let mut lines_orig = file_text.split(line_ending).enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
 
     let mut results_fuzzy_ns = HashMap::new();
     for (chunk_id, chunk) in chunks.iter().map(|(id, c)|(*id, *c)) {
@@ -156,22 +158,23 @@ pub fn apply_diff_chunks_to_text(
     chunks_undo: Vec<(usize, &DiffChunk)>,
     max_fuzzy_n: usize,
 ) -> (String, HashMap<usize, Option<usize>>) {
+    let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
     let mut file_text_copy = file_text.clone();
     let mut fuzzy_ns = HashMap::new();
 
     if !chunks_undo.is_empty() {
         let mut chunks_undo_copy = chunks_undo.clone();
         chunks_undo_copy.sort_by_key(|c| c.0);
-        let (_, new_lines) = undo_chunks(chunks_undo_copy, &file_text, max_fuzzy_n); // XXX: only undo what is necessary
-        file_text_copy = new_lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join("\n");
+        let (_, new_lines) = undo_chunks(chunks_undo_copy, &file_text, max_fuzzy_n, line_ending); // XXX: only undo what is necessary
+        file_text_copy = new_lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join(line_ending);
     }
 
     if !chunks_apply.is_empty() {
         let mut chunks_apply_copy = chunks_apply.clone();
         chunks_apply_copy.sort_by_key(|c| c.0);
-        let (new_fuzzy_ns, new_lines) = apply_chunks(chunks_apply_copy, &file_text, max_fuzzy_n);
+        let (new_fuzzy_ns, new_lines) = apply_chunks(chunks_apply_copy, &file_text, max_fuzzy_n, line_ending);
         fuzzy_ns.extend(new_fuzzy_ns);
-        file_text_copy = new_lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join("\n");
+        file_text_copy = new_lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join(line_ending);
     }
     (file_text_copy, fuzzy_ns)
 }
