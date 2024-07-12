@@ -15,7 +15,7 @@ use crate::call_validation::{ChatMessage, ContextEnum};
 pub const DEFAULT_MODEL_NAME: &str = "gpt-4o";
 pub const MAX_TOKENS: usize = 32000;
 pub const MAX_NEW_TOKENS: usize = 8192;
-pub const TEMPERATURE: f32 = 0.0;
+pub const TEMPERATURE: f32 = 0.2;
 pub type DefaultToolPatch = UnifiedDiffFormat;
 
 pub struct ToolPatch {}

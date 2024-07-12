@@ -1425,225 +1425,26 @@ if __name__ == __main__:
     
     #[tokio::test]
     async fn test_ambiguous_hunk_6() {
-        let input = r#"Let's break down the task and identify the necessary changes:
-
-1. **Verify and correct the `env` import:**
-   - The current import statement is `from refact_utils.scripts import env`. We need to verify if this is correct or if it should be something else.
-
-2. **Improve error handling in `_get_file_loss` function:**
-   - The `_get_file_loss` function currently catches `InvalidLossValueException` and a generic `Exception`. We should add more specific exception handling and ensure that all exceptions are logged and handled appropriately.
-
-3. **Ensure consistent logging and tracing across functions:**
-   - We need to ensure that all functions use `_log_everywhere` for logging and tracing.
-
-4. **Verify and correct the usage of `torch.distributed`:**
-   - We need to ensure that `torch.distributed` is initialized and used correctly.
-
-### Analysis and Changes
-
-#### 1. Verify and correct the `env` import
-- The import statement `from refact_utils.scripts import env` should be verified. If it is incorrect, we need to correct it.
-
-#### 2. Improve error handling in `_get_file_loss` function
-- Add specific exception handling for known exceptions.
-- Ensure all exceptions are logged using `_log_everywhere`.
-
-#### 3. Ensure consistent logging and tracing across functions
-- Ensure all functions use `_log_everywhere` for logging and tracing.
-
-#### 4. Verify and correct the usage of `torch.distributed`
-- Ensure `torch.distributed` is initialized correctly.
-- Use `dist.is_initialized()` to check if `torch.distributed` is initialized before calling `dist.get_rank()`.
-
-### Changes to be made
-
-#### 1. Verify and correct the `env` import
-- Assuming the correct import should be `from self_hosting_machinery.finetune.scripts import env`.
-
-#### 2. Improve error handling in `_get_file_loss` function
-- Add specific exception handling for `FileNotFoundError`, `json.JSONDecodeError`, and `OSError`.
-- Log all exceptions using `_log_everywhere`.
-
-#### 3. Ensure consistent logging and tracing across functions
-- Ensure all functions use `_log_everywhere` for logging and tracing.
-
-#### 4. Verify and correct the usage of `torch.distributed`
-- Check if `torch.distributed` is initialized before calling `dist.get_rank()`.
-
-### Unified Diff
-
+        let input = r#"
 ```diff
 --- /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py
 +++ /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py
 @@ ... @@
--from refact_utils.scripts import env
-+from self_hosting_machinery.finetune.scripts import env
+def force_include_exclude_filter(
+-    pname: str,
+-    files_status: FilesStatusContext
++def force_filter(
++    pname: str,
++    files_status: FilesStatusContext
 @@ ... @@
-    if dist.get_rank() != 0:
-+    if not dist.is_initialized() or dist.get_rank() != 0:
-@@ ... @@
-        for data in map(to_cuda, ds):
-            content = encoding.decode(data['input'][0])
-            maybe_loss = dataset_context.get_loss_by_content(
-                model_name=finetune_cfg["model_name"],
-                content=content
-            )
-            if maybe_loss is not None:
-                loss = maybe_loss
-            else:
-                if model_context is None:
-                    model_context = ModelContext(finetune_cfg=finetune_cfg, model_config=model_config)
-                    model_context.eval()
-
-                logits = model_context.forward(input=data['input'])
-                loss = model_context.loss(
-                    logits=logits.to(torch.float32),
-                    labels=data['labels'],
-                    mask=data['mask'],
-                ).item()
-                dataset_context.add_content_loss_pair(
-                    model_name=model_context.model_name,
-                    content=content,
-                    loss=loss
-                )
-            if not (math.isnan(loss) or math.isinf(loss)):
-                file_losses.append(loss)
-
-        if len(file_losses) == 0:
-            raise InvalidLossValueException("small file")
-
-        return model_context, sum(file_losses) / len(file_losses)
-+        try:
-+            for data in map(to_cuda, ds):
-+                content = encoding.decode(data['input'][0])
-+                maybe_loss = dataset_context.get_loss_by_content(
-+                    model_name=finetune_cfg["model_name"],
-+                    content=content
-+                )
-+                if maybe_loss is not None:
-+                    loss = maybe_loss
-+                else:
-+                    if model_context is None:
-+                        model_context = ModelContext(finetune_cfg=finetune_cfg, model_config=model_config)
-+                        model_context.eval()
-+
-+                    logits = model_context.forward(input=data['input'])
-+                    loss = model_context.loss(
-+                        logits=logits.to(torch.float32),
-+                        labels=data['labels'],
-+                        mask=data['mask'],
-+                    ).item()
-+                    dataset_context.add_content_loss_pair(
-+                        model_name=model_context.model_name,
-+                        content=content,
-+                        loss=loss
-+                    )
-+                if not (math.isnan(loss) or math.isinf(loss)):
-+                    file_losses.append(loss)
-+
-+            if len(file_losses) == 0:
-+                raise InvalidLossValueException("small file")
-+
-+            return model_context, sum(file_losses) / len(file_losses)
-+        except FileNotFoundError as e:
-+            _log_everywhere(f"File not found: {e}")
-+            raise e
-+        except json.JSONDecodeError as e:
-+            _log_everywhere(f"JSON decode error: {e}")
-+            raise e
-+        except OSError as e:
-+            _log_everywhere(f"OS error: {e}")
-+            raise e
-+        except Exception as e:
-+            _log_everywhere(f"Unexpected error: {e}")
-+            raise e
-@@ ... @@
-    _log_everywhere("Loading files statuses...")
-    file_status_context = FilesStatusContext(
-        pname=pname,
-        train_files=dataset_context.train_files,
-        test_files=dataset_context.test_files,
-        status_tracker=status_tracker
-    )
-
-    _log_everywhere("Loading model...")
-    finetune_cfg['model_info']['lora']['lora_dropout'] = 0.0
-    finetune_cfg['model_info']['loss_average_elements'] = 1
-
     _log_everywhere("Running force include/exclude filter...")
-    force_include_exclude_filter(
+-    force_include_exclude_filter(
++    force_filter(
         pname,
         files_status=file_status_context
     )
-    _log_everywhere("Running perplexity based filter...")
-    loss_based_filter(
-        pname,
-        finetune_cfg=finetune_cfg,
-        dataset_context=dataset_context,
-        files_status_context=file_status_context,
-        status_tracker=status_tracker,
-        filter_loss_threshold=finetune_cfg['filter_loss_threshold'],
-        model_config=model_config,
-    )
-
-    _log_everywhere("Dumping filtered results...")
-    dataset_context.dump_filtered(
-        files=file_status_context.accepted_train_files(),
-    )
-+    try:
-+        _log_everywhere("Loading files statuses...")
-+        file_status_context = FilesStatusContext(
-+            pname=pname,
-+            train_files=dataset_context.train_files,
-+            test_files=dataset_context.test_files,
-+            status_tracker=status_tracker
-+        )
-+
-+        _log_everywhere("Loading model...")
-+        finetune_cfg['model_info']['lora']['lora_dropout'] = 0.0
-+        finetune_cfg['model_info']['loss_average_elements'] = 1
-+
-+        _log_everywhere("Running force include/exclude filter...")
-+        force_include_exclude_filter(
-+            pname,
-+            files_status=file_status_context
-+        )
-+        _log_everywhere("Running perplexity based filter...")
-+        loss_based_filter(
-+            pname,
-+            finetune_cfg=finetune_cfg,
-+            dataset_context=dataset_context,
-+            files_status_context=file_status_context,
-+            status_tracker=status_tracker,
-+            filter_loss_threshold=finetune_cfg['filter_loss_threshold'],
-+            model_config=model_config,
-+        )
-+
-+        _log_everywhere("Dumping filtered results...")
-+        dataset_context.dump_filtered(
-+            files=file_status_context.accepted_train_files(),
-+        )
-+    except Exception as e:
-+        _log_everywhere(f"Error in finetune_filter: {e}")
-+        raise e
 ```
 
-### Explanation of Changes
-
-1. **Corrected the `env` import:**
-   - Changed `from refact_utils.scripts import env` to `from self_hosting_machinery.finetune.scripts import env`.
-
-2. **Improved error handling in `_get_file_loss` function:**
-   - Added specific exception handling for `FileNotFoundError`, `json.JSONDecodeError`, and `OSError`.
-   - Logged all exceptions using `_log_everywhere`.
-
-3. **Ensured consistent logging and tracing across functions:**
-   - Added `_log_everywhere` for logging and tracing in `finetune_filter`.
-
-4. **Verified and corrected the usage of `torch.distributed`:**
-   - Added a check to see if `torch.distributed` is initialized before calling `dist.get_rank()`.
-
-These changes ensure that the code is more robust, with improved error handling, consistent logging, and correct usage of `torch.distributed`.
 "#;
         let gt_result = vec![
             DiffChunk {
