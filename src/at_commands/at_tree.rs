@@ -39,9 +39,9 @@ impl AtTree {
 }
 
 #[derive(Debug, Clone)]
-pub struct PathsHolderNodeRef(Arc<RwLock<PathsHolderNode>>);
+pub struct PathsHolderNodeArc(Arc<RwLock<PathsHolderNode>>);
 
-impl PartialEq for PathsHolderNodeRef {
+impl PartialEq for PathsHolderNodeArc {
     fn eq(&self, other: &Self) -> bool {
         self.0.read().unwrap().path == other.0.read().unwrap().path
     }
@@ -50,7 +50,7 @@ impl PartialEq for PathsHolderNodeRef {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PathsHolderNode {
     path: PathBuf,
-    child_paths: Vec<PathsHolderNodeRef>,
+    child_paths: Vec<PathsHolderNodeArc>,
 }
 
 impl PathsHolderNode {
@@ -59,19 +59,20 @@ impl PathsHolderNode {
     }
 }
 
-pub fn make_files_tree_by_paths_from_anywhere(paths_from_anywhere: &Vec<PathBuf>) -> Vec<PathsHolderNodeRef> {
-    let mut root_nodes: Vec<PathsHolderNodeRef> = Vec::new();
-    let mut nodes_map: HashMap<PathBuf, PathsHolderNodeRef> = HashMap::new();
+pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBuf>) -> Vec<PathsHolderNodeArc> {
+    info!("files_tree_by_paths_from_anywhere: {:?}", paths_from_anywhere);
+    let mut root_nodes: Vec<PathsHolderNodeArc> = Vec::new();
+    let mut nodes_map: HashMap<PathBuf, PathsHolderNodeArc> = HashMap::new();
 
     for path in paths_from_anywhere {
         let mut current_path = PathBuf::new();
-        let mut parent_node: Option<PathsHolderNodeRef> = None;
+        let mut parent_node: Option<PathsHolderNodeArc> = None;
 
         for component in path.components() {
             current_path.push(component);
 
             let node = nodes_map.entry(current_path.clone()).or_insert_with(|| {
-                PathsHolderNodeRef(Arc::new(RwLock::new(
+                PathsHolderNodeArc(Arc::new(RwLock::new(
                     PathsHolderNode {
                         path: current_path.clone(),
                         child_paths: Vec::new(),
@@ -92,13 +93,12 @@ pub fn make_files_tree_by_paths_from_anywhere(paths_from_anywhere: &Vec<PathBuf>
             parent_node = Some(node.clone());
         }
     }
-
     root_nodes
 }
 
 
 pub fn print_files_tree_with_budget_internal(
-    tree: Vec<PathsHolderNodeRef>,
+    tree: Vec<PathsHolderNodeArc>,
     budget: usize,
     maybe_ast_module: Option<MutexGuard<AstIndex>>
 ) -> Result<String, String> {
@@ -131,7 +131,7 @@ pub fn print_files_tree_with_budget_internal(
         }
     }
 
-    let mut queue: VecDeque<(PathsHolderNodeRef, Arc<RefCell<PathInfoNode>>)> = VecDeque::new();
+    let mut queue: VecDeque<(PathsHolderNodeArc, Arc<RefCell<PathInfoNode>>)> = VecDeque::new();
     let mut collected_paths: Vec<Arc<RefCell<PathInfoNode>>> = Vec::new();
     for node in tree.iter() {
         let paths_holder = Arc::new(RefCell::new(
@@ -201,7 +201,7 @@ pub fn print_files_tree_with_budget_internal(
 
 pub async fn print_files_tree_with_budget(
     gcx: Arc<ARwLock<GlobalContext>>,
-    tree: Vec<PathsHolderNodeRef>,
+    tree: Vec<PathsHolderNodeArc>,
 ) -> Result<String, String> {
     let context_limit = CONTEXT_SIZE_LIMIT * SYMBOLS_PER_TOKEN as usize;
     return if RETRIEVE_SYMBOLS {
@@ -224,7 +224,7 @@ impl AtCommand for AtTree {
         let paths_from_anywhere = paths_from_anywhere(ccx.global_context.clone()).await;
         let all_args_are_empty = args.iter().all(|x| x.text.is_empty());
         let tree = if args.is_empty() || all_args_are_empty {
-            make_files_tree_by_paths_from_anywhere(&paths_from_anywhere)
+            construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere)
         } else {
             let mut file_path = match args.get(0) {
                 Some(x) => x.clone(),
@@ -248,7 +248,7 @@ impl AtCommand for AtTree {
                 .filter(|file| file.starts_with(&base_path))
                 .cloned()
                 .collect();
-            make_files_tree_by_paths_from_anywhere(&filtered_paths_from_anywhere)
+            construct_tree_out_of_flat_list_of_paths(&filtered_paths_from_anywhere)
         };
 
         let context = match print_files_tree_with_budget(

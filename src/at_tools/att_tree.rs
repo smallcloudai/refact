@@ -6,7 +6,7 @@ use tracing::info;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::at_file_repair_candidates;
-use crate::at_commands::at_tree::{make_files_tree_by_paths_from_anywhere, print_files_tree_with_budget};
+use crate::at_commands::at_tree::{construct_tree_out_of_flat_list_of_paths, print_files_tree_with_budget};
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::files_correction::{canonical_path, paths_from_anywhere};
@@ -25,15 +25,15 @@ impl Tool for AttTree {
                     .filter(|file| file.starts_with(&base_path))
                     .cloned()
                     .collect();
-                make_files_tree_by_paths_from_anywhere(&filtered_paths_from_anywhere)
+                construct_tree_out_of_flat_list_of_paths(&filtered_paths_from_anywhere)
             }
             Some(v) => { return Err(format!("argument `path` is not a string: {:?}", v)) }
             None => {
-                make_files_tree_by_paths_from_anywhere(&paths_from_anywhere)
+                construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere)
             }
         };
 
-        println!("{:#?}", tree);
+        tracing::info!("\n{:#?}", tree);
         let content = match print_files_tree_with_budget(
             ccx.global_context.clone(), tree
         ).await {
