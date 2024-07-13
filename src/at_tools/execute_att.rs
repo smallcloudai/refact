@@ -41,8 +41,9 @@ pub async fn run_tools(
     let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, false).await;
     let at_tools = ccx.at_tools.clone();
 
-    let mut context_messages: Vec<ChatMessage> = original_messages.iter().map(|m| m.clone()).collect();
     let mut for_postprocessing: Vec<ContextFile> = vec![];
+    let mut generated_tool: Vec<ChatMessage> = vec![];  // tool must go first
+    let mut generated_other: Vec<ChatMessage> = vec![];
 
     for t_call in ass_msg.tool_calls.as_ref().unwrap_or(&vec![]).iter() {
         if let Some(cmd) = at_tools.get(&t_call.function.name) {
@@ -56,8 +57,7 @@ pub async fn run_tools(
                     tool_calls: None,
                     tool_call_id: t_call.id.to_string(),
                 };
-                context_messages.push(tool_failed_message.clone());
-                stream_back_to_user.push_in_json(json!(tool_failed_message));
+                generated_tool.push(tool_failed_message.clone());
                 continue;
             }
             let args = args_maybe.unwrap();
@@ -70,18 +70,19 @@ pub async fn run_tools(
                     tool_calls: None,
                     tool_call_id: t_call.id.to_string(),
                 };
-                context_messages.push(tool_failed_message.clone());
-                stream_back_to_user.push_in_json(json!(tool_failed_message));
+                generated_tool.push(tool_failed_message.clone());
                 continue;
             }
             let tool_msg_and_maybe_more = tool_msg_and_maybe_more_mb.unwrap();
             let mut have_answer = false;
             for msg in tool_msg_and_maybe_more {
                 if let ContextEnum::ChatMessage(ref raw_msg) = msg {
-                    context_messages.push(raw_msg.clone());
-                    stream_back_to_user.push_in_json(json!(raw_msg.clone()));
-                    if raw_msg.role == "tool" && raw_msg.tool_call_id == t_call.id {
+                    if (raw_msg.role == "tool" || raw_msg.role == "diff") && raw_msg.tool_call_id == t_call.id {
+                        generated_tool.push(raw_msg.clone());
                         have_answer = true;
+                    } else {
+                        generated_other.push(raw_msg.clone());
+                        assert!(raw_msg.tool_call_id.is_empty());
                     }
                 }
                 if let ContextEnum::ContextFile(ref cf) = msg {
@@ -98,8 +99,7 @@ pub async fn run_tools(
                 tool_calls: None,
                 tool_call_id: t_call.id.to_string(),
             };
-            context_messages.push(tool_failed_message.clone());
-            stream_back_to_user.push_in_json(json!(tool_failed_message));
+            generated_tool.push(tool_failed_message.clone());
         }
     }
 
@@ -122,9 +122,18 @@ pub async fn run_tools(
             serde_json::to_string(&json_vec).unwrap_or("".to_string()),
         );
 
-        context_messages.push(message.clone());
-        stream_back_to_user.push_in_json(json!(message));
+        generated_other.push(message.clone());
     }
 
-    (context_messages, true)
+    let mut all_messages: Vec<ChatMessage> = original_messages.iter().map(|m| m.clone()).collect();
+    for msg in generated_tool.iter() {
+        all_messages.push(msg.clone());
+        stream_back_to_user.push_in_json(json!(msg));
+    }
+    for msg in generated_other.iter() {
+        all_messages.push(msg.clone());
+        stream_back_to_user.push_in_json(json!(msg));
+    }
+
+    (all_messages, true)
 }
