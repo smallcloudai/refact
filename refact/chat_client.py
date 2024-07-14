@@ -279,11 +279,12 @@ async def ask_using_openai_client(
 
 async def diff_apply(
     base_url: str,
-    formatted_diff: List[Dict[str, Any]],
+    chunks: List[Dict[str, Any]],
+    apply: List[bool],
 ) -> List[List[Message]]:
     post_me = {
-        "apply": [True] * len(formatted_diff),
-        "chunks": formatted_diff,
+        "apply": apply,
+        "chunks": chunks,
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(base_url + "/diff-apply", json=post_me) as response:

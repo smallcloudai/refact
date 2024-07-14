@@ -34,7 +34,11 @@ IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST! USE TOOLS 
 """
 
 
-class SolveTaskStep(Step):
+class ProducePatchStep(Step):
+    def __init__(self, attempts: int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._attempts = attempts
+
     @property
     def _tools(self) -> Set[str]:
         return {
@@ -44,15 +48,17 @@ class SolveTaskStep(Step):
         }
 
     async def _patch_generate(self, repo_name: Path, formatted_diff: List[Dict[str, Any]]):
-        await chat_client.diff_apply(self._base_url, formatted_diff)
+        await chat_client.diff_apply(self._base_url, chunks=formatted_diff, apply=[True] * len(formatted_diff))
         result = subprocess.check_output(["git", "--no-pager", "diff"], cwd=str(repo_name))
-        subprocess.check_output(["git", "stash"], cwd=str(repo_name))
+        await chat_client.diff_apply(self._base_url, chunks=formatted_diff, apply=[False] * len(formatted_diff))
+        # TODO: make sure that un-apply works well (possible freezes in refact-lsp and possible patches in repo after)
+        # subprocess.check_output(["git", "stash"], cwd=str(repo_name))
         return result.decode()
 
-    async def process(self, task: str, repo_path: Path, **kwargs) -> str:
+    async def _single_step(self, message: str, repo_path: Path) -> str:
         messages = [
             chat_client.Message(role="system", content=SYSTEM_MESSAGE),
-            chat_client.Message(role="user", content=task),
+            chat_client.Message(role="user", content=message),
         ]
 
         for step_n in range(self._max_depth):
@@ -81,3 +87,15 @@ class SolveTaskStep(Step):
                     and DONE_MESSAGE == messages[-1].content:
                 break
         raise RuntimeError(f"can't solve the problem with {self._max_depth} steps")
+
+    async def process(self, task: str, repo_path: Path, **kwargs) -> List[str]:
+        results = []
+        for attempt_n in range(self._attempts):
+            print(f"{'=' * 40} attempt {attempt_n} {'=' * 40}")
+            try:
+                results.append(await self._single_step(task, repo_path))
+            except:
+                continue
+        if not results:
+            raise RuntimeError(f"can't produce result with {self._attempts} attempts")
+        return results
