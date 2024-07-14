@@ -1,4 +1,5 @@
 import re
+import traceback
 
 from refact import chat_client
 from step import Step
@@ -48,9 +49,9 @@ Try to find another files!
 """
 
 
-class SetTaskStep(Step):
+class ExploreRepoStep(Step):
 
-    def __init__(self, attempts: int = 3, *args, **kwargs):
+    def __init__(self, attempts: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._attempts = attempts
 
@@ -124,7 +125,8 @@ class SetTaskStep(Step):
                 message = f"{message}\n\n{MEMORY_MESSAGE.format(filenames_list_text)}"
             try:
                 results.append(await self._single_step(message))
-            except:
+            except Exception as e:
+                print(f"exception in {self._single_step.__name__}: {str(e) or traceback.format_exc()}, continue")
                 continue
         result = _formatted_filenames()
         if result:

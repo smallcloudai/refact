@@ -1,5 +1,4 @@
 import json
-import re
 import asyncio
 import traceback
 import whatthepatch
@@ -8,7 +7,7 @@ from argparse import ArgumentParser
 
 from agent_runner import AgentRunner
 from agent_runner import get_swe_bench_lite_instance
-from step1 import SetTaskStep
+from step1 import ExploreRepoStep
 
 from pathlib import Path
 from typing import Dict, Any
@@ -44,9 +43,10 @@ class SWERunner(AgentRunner):
         results["mentioned_in_problem"] = \
             self._filename_mentioned(filename, problem_statement)
         try:
-            step1 = SetTaskStep(base_url=base_url, model_name=MODEL)
-            results["summarized_problem_statement"] = \
-                await step1.process(problem_statement=kwargs["problem_statement"], repo_path=repo_path)
+            step = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=3)
+            results["summarized_problem_statement"] = await step.process(
+                problem_statement=kwargs["problem_statement"],
+                repo_path=repo_path)
             results["mentioned_in_task"] = \
                 self._filename_mentioned(filename, results["summarized_problem_statement"])
         except Exception as e:
