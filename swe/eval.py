@@ -23,14 +23,20 @@ async def main():
     swe_bench_eval = "/home/mitya/projects/aider-swe-bench/SWE-bench-docker/run_evaluation.py"
     swe_bench_tasks = Path(__file__).parent / "princeton-nlp--SWE-bench_Lite.json"
     log_dir = Path(__file__).parent / "logs" / args.run
-    predictions_path = Path(__file__).parent / "predictions" / args.run / "all_preds.jsonl"
 
-    assert predictions_path.exists()
+    for predictions_root in [Path(__file__).parent, Path("/home/mitya/projects/aider-swe-bench")]:
+        predictions_path = predictions_root / "predictions" / args.run / "all_preds.jsonl"
+        if predictions_path.exists():
+            break
+    else:
+        print("can't find predictions file")
+        exit(1)
+
     log_dir.mkdir(exist_ok=True, parents=True)
     try:
         process = await asyncio.create_subprocess_exec(
             "python", swe_bench_eval,
-            "--skip_existing", "--num_processes", "8",
+            "--skip_existing", "--num_processes", str(args.workers),
             "--swe_bench_tasks", str(swe_bench_tasks),
             "--log_dir", str(log_dir),
             "--predictions_path", str(predictions_path),
