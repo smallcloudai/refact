@@ -100,7 +100,7 @@ async fn vectorize_batch_from_q(
         &constants.endpoint_embeddings_template.clone(),
         batch.iter().map(|x| x.window_text.clone()).collect(),
         api_key,
-        1,
+        10,
     ).await?;
 
     if batch_result.len() != batch.len() {

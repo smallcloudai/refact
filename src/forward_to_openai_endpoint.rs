@@ -202,7 +202,9 @@ pub async fn get_embedding_openai_style(
         .map_err(|e| format!("Failed to send a request: {:?}", e))?;
 
     if !response.status().is_success() {
-        info!("get_embedding_openai_style: {:?}", response);
+        if response.status().as_u16() != 503 {
+            info!("get_embedding_openai_style: {:?}", response);
+        }
         return Err(format!("get_embedding_openai_style: bad status: {:?}", response.status()));
     }
 

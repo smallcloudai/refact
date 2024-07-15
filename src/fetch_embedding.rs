@@ -24,6 +24,9 @@ pub async fn get_embedding(
     }
 }
 
+const SLEEP_ON_BIG_BATCH: u64 = 9000;
+const SLEEP_ON_BATCH_ONE: u64 = 100;
+
 
 // HF often returns 500 errors for no reason
 pub async fn get_embedding_with_retry(
@@ -35,10 +38,9 @@ pub async fn get_embedding_with_retry(
     api_key: &String,
     max_retries: usize,
 ) -> Result<Vec<Vec<f32>>, String> {
-    let sleep_on_failure_ms = 300;
-    let mut retries = 0;
+    let mut attempt_n = 0;
     loop {
-        retries += 1;
+        attempt_n += 1;
         match get_embedding(
             client.clone(),
             endpoint_embeddings_style,
@@ -49,9 +51,18 @@ pub async fn get_embedding_with_retry(
         ).await {
             Ok(embedding) => return Ok(embedding),
             Err(e) => {
-                tokio::time::sleep(tokio::time::Duration::from_millis(sleep_on_failure_ms)).await;
-                if retries > max_retries {
+                if attempt_n >= max_retries {
                     return Err(e);
+                }
+                if text.len() > 1 {
+                    if e.contains("503") {
+                        tracing::info!("normal sleep on 503");
+                    } else {
+                        tracing::warn!("will retry later, embedding model doesn't work: {}", e);
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_millis(SLEEP_ON_BIG_BATCH)).await;
+                } else {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(SLEEP_ON_BATCH_ONE)).await;
                 }
             }
         }
