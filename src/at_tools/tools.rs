@@ -9,7 +9,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ContextEnum;
 use crate::global_context::GlobalContext;
-
+use crate::toolbox::toolbox_config::AtToolCustDict;
 
 #[async_trait]
 pub trait AtTool: Send + Sync {
@@ -210,7 +210,7 @@ pub fn tools_compiled_in(turned_on: &Vec<String>) -> Result<Vec<AtToolDict>, Str
     Ok(at_dict.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>())
 }
 
-pub async fn tools_from_customization(gcx: Arc<ARwLock<GlobalContext>>, turned_on: &Vec<String>) -> Vec<ToolCustDict> {
+pub async fn tools_from_customization(gcx: Arc<ARwLock<GlobalContext>>, turned_on: &Vec<String>) -> Vec<AtToolCustDict> {
     return match crate::toolbox::toolbox_config::load_customization(gcx.clone()).await {
         Ok(tconfig) => tconfig.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>(),
         Err(e) => {
