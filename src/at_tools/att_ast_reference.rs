@@ -70,11 +70,11 @@ impl AtTool for AttAstReference {
                 .unique()
                 .collect::<Vec<String>>();
             let mut tool_message = format!(
-                "References to `{symbol}` haven't found by exact name, but found the close result`{found_path}`. \
+                "References to `{symbol}` haven't found by exact name, but found the close result `{found_path}`. \
                 You can call again with one of these other names:\n"
             ).to_string();
             for x in other_names.into_iter() {
-                tool_message.push_str(&format!("{}\n", x));
+                tool_message.push_str(&format!("`{}`\n", x));
             }
             (messages, tool_message)
         } else {
@@ -84,7 +84,7 @@ impl AtTool for AttAstReference {
                 .collect::<Vec<ContextEnum>>();
             let mut tool_message = format!("References to `{}` found at:\n", symbol).to_string();
             for r in res.search_results.iter() {
-                let file_path_str = r.symbol_declaration.symbol_path.to_string();
+                let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
                 let decl_range = &r.symbol_declaration.full_range;
                 tool_message.push_str(&format!("{}:{}-{}\n", file_path_str, decl_range.start_point.row + 1, decl_range.end_point.row + 1));
             }
