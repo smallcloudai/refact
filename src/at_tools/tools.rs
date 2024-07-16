@@ -20,8 +20,7 @@ pub trait Tool: Send + Sync {
 pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>
 {
     let tools_all =  HashMap::from([
-        ("search_workspace".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_workspace::AttWorkspace{}) as Box<dyn Tool + Send>))),
-        ("search_file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file_search::AttFileSearch{}) as Box<dyn Tool + Send>))),
+        ("search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_search::AttSearch{}) as Box<dyn Tool + Send>))),
         ("file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file::AttFile{}) as Box<dyn Tool + Send>))),
         ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_definition::AttAstDefinition{}) as Box<dyn Tool + Send>))),
         ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_reference::AttAstReference{}) as Box<dyn Tool + Send>))),
@@ -76,27 +75,18 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
 
 const TOOLS: &str = r####"
 tools:
-  - name: "search_workspace"
+  - name: "search"
     description: "Find similar pieces of code or text using vector database"
     parameters:
       - name: "query"
         type: "string"
-        description: "Single line, paragraph or code sample."
+        description: "Single line, paragraph or code sample to search for similar content."
+      - name: "scope"
+        type: "string"
+        description: "one of (`workspace`, file path, directory). `workspace` -- search within workspace, file path (real file name)-- search within file, directory (real directory)-- search within given directory."
     parameters_required:
       - "query"
-
-  - name: "search_file"
-    description: "Find similar pieces of code using vector database, search scope limited to a single source file."
-    parameters:
-      - name: "query"
-        type: "string"
-        description: "Single line, paragraph or code sample."
-      - name: "file_path"
-        type: "string"
-        description: "Path to the file to search."
-    parameters_required:
-      - "query"
-      - "file_path"
+      - "scope"
 
   - name: "file"
     description: "Read the file, the same as cat shell command, but skeletonizes files that are too large. Doesn't work on dirs."

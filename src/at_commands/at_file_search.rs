@@ -5,7 +5,7 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::at_file::{AtParamFilePath, at_file_repair_candidates, get_project_paths};
-use crate::at_commands::at_workspace::execute_at_workspace;
+use crate::at_commands::at_search::execute_at_search;
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::at_tools::att_file::real_file_path_candidate;
 use crate::call_validation::{ContextEnum, ContextFile};
@@ -43,7 +43,7 @@ pub async fn execute_at_file_search(
     let candidates = at_file_repair_candidates(file_path, ccx, fuzzy).await;
     let file_path = real_file_path_candidate(ccx, file_path, &candidates, &get_project_paths(ccx).await).await?;
     let vecdb_scope_filter = format!("(file_path = \"{}\")", file_path);
-    let vector_of_context_file = execute_at_workspace(ccx, query, Some(vecdb_scope_filter)).await?;
+    let vector_of_context_file = execute_at_search(ccx, query, Some(vecdb_scope_filter)).await?;
 
     Ok(vector_of_context_file)
 }

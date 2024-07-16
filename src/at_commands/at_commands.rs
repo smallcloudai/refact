@@ -9,7 +9,7 @@ use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextFile, ContextEnum};
 use crate::global_context::GlobalContext;
 
-use crate::at_commands::at_workspace::AtWorkspace;
+use crate::at_commands::at_search::AtSearch;
 use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_ast_definition::AtAstDefinition;
 use crate::at_commands::at_ast_reference::AtAstReference;
@@ -67,7 +67,7 @@ pub trait AtParam: Send + Sync {
 
 pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {
     let at_commands_dict = HashMap::from([
-        ("@workspace".to_string(), Arc::new(AMutex::new(Box::new(AtWorkspace::new()) as Box<dyn AtCommand + Send>))),
+        ("@search".to_string(), Arc::new(AMutex::new(Box::new(AtSearch::new()) as Box<dyn AtCommand + Send>))),
         ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
         ("@file-search".to_string(), Arc::new(AMutex::new(Box::new(AtFileSearch::new()) as Box<dyn AtCommand + Send>))),
         ("@definition".to_string(), Arc::new(AMutex::new(Box::new(AtAstDefinition::new()) as Box<dyn AtCommand + Send>))),

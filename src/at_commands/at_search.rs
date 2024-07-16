@@ -19,13 +19,13 @@ pub fn text_on_clip(query: &String, from_tool_call: bool) -> String {
 }
 
 
-pub struct AtWorkspace {
+pub struct AtSearch {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
 }
 
-impl AtWorkspace {
+impl AtSearch {
     pub fn new() -> Self {
-        AtWorkspace {
+        AtSearch {
             params: vec![],
         }
     }
@@ -55,7 +55,7 @@ fn results2message(results: &Vec<vecdb::vdb_structs::VecdbRecord>) -> Vec<Contex
     vector_of_context_file
 }
 
-pub async fn execute_at_workspace(ccx: &mut AtCommandsContext, query: &String, vecdb_scope_filter_mb: Option<String>) -> Result<Vec<ContextFile>, String> {
+pub async fn execute_at_search(ccx: &mut AtCommandsContext, query: &String, vecdb_scope_filter_mb: Option<String>) -> Result<Vec<ContextFile>, String> {
     match *ccx.global_context.read().await.vec_db.lock().await {
         Some(ref db) => {
             let top_n_twice_as_big = ccx.top_n * 2;  // top_n will be cut at postprocessing stage, and we really care about top_n files, not pieces
@@ -68,7 +68,7 @@ pub async fn execute_at_workspace(ccx: &mut AtCommandsContext, query: &String, v
 }
 
 #[async_trait]
-impl AtCommand for AtWorkspace {
+impl AtCommand for AtSearch {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>
     {
         &self.params
@@ -78,7 +78,7 @@ impl AtCommand for AtWorkspace {
         info!("execute @workspace {:?}", args1);
         let query = args.iter().map(|x|x.text.clone()).collect::<Vec<_>>().join(" ");
 
-        let vector_of_context_file = execute_at_workspace(ccx, &query, None).await?;
+        let vector_of_context_file = execute_at_search(ccx, &query, None).await?;
         let text = text_on_clip(&query, false);
         Ok((vec_context_file_to_context_tools(vector_of_context_file), text))
     }
