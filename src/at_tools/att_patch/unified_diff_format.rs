@@ -1,7 +1,10 @@
+use std::collections::VecDeque;
 use std::path::PathBuf;
+use std::sync::Arc;
 
+use hashbrown::HashMap;
 use itertools::Itertools;
-use strsim::normalized_levenshtein;
+
 use crate::call_validation::DiffChunk;
 use crate::files_in_workspace::read_file_from_disk;
 
@@ -10,6 +13,49 @@ struct Edit {
     path: Option<String>,
     hunk: Vec<String>,
 }
+
+#[derive(Clone, Eq, PartialEq)]
+enum LineType {
+    Plus,
+    Minus,
+    Space,
+}
+
+#[derive(Clone, Eq, PartialEq)]
+struct DiffLine {
+    line: String,
+    line_type: LineType,
+    file_line_num_idx: Option<usize>,
+    correct_spaces_offset: Option<i64>,
+}
+
+#[derive(Clone, Eq, PartialEq)]
+struct DiffBlock {
+    file_name: PathBuf,
+    diff_lines: Vec<DiffLine>,
+    hunk_idx: usize,
+    file_lines: Arc<Vec<String>>,
+}
+
+impl DiffBlock {
+    pub fn display(&self) -> String {
+        let mut output = format!(
+            "--- {:?}\n+++ {:?}\n@@ ... @@\n",
+            &self.file_name,
+            &self.file_name
+        );
+        for line in self.diff_lines.iter() {
+            let diff_s = match line.line_type {
+                LineType::Plus => "+",
+                LineType::Minus => "-",
+                LineType::Space => " "
+            };
+            output.push_str(&format!("{diff_s}{}", line.line));
+        }
+        output
+    }
+}
+
 
 fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Edit>) {
     let mut line_num = start_line_num;
@@ -102,253 +148,300 @@ fn get_edit_hunks(content: &str) -> Vec<Edit> {
     edits
 }
 
-fn search_text_location(hunk: &[String], file_lines: &[String]) -> Option<(usize, usize)> {
-    let mut minus_blocks: usize = 0;
-    let initial_text_lines = hunk
-        .iter()
-        .take_while(|x| !x.starts_with("+"))
-        .map(|x| {
-            if x.starts_with("-") {
-                minus_blocks += 1;
-            };
-            if x.is_empty() {
-                return x.to_string()
-            }
-            return if x.starts_with("-") || x.starts_with("+") || x.starts_with(" ") {
-                x[1..].to_string()
-            } else {
-                x.to_string()
-            }
-        })
-        .collect::<Vec<_>>();
-    if initial_text_lines.is_empty() {
-        return Some((0, 0))  // it's only left to put data before the first file row
-    }
-    
-    for initial_line_idx in 0..initial_text_lines.len() {
-        let mut max_score = 0.0;
-        let mut max_score_idx = 0;
-        let initial_text_lines_span = initial_text_lines[initial_line_idx..]
-            .iter()
-            .map(|x| x.trim_start())
-            .join("\n");
-        let initial_lines_len = initial_text_lines[initial_line_idx..].len();
-        for i in 0..=file_lines.len() - initial_lines_len {
-            let file_lines_span = file_lines[i..i + initial_lines_len]
-                .iter()
-                .map(|x| x.trim_start())
-                .join("\n");
-            if file_lines_span.is_empty() || file_lines_span.chars().all(|c| c == '\n')
-                || initial_text_lines_span.is_empty() || initial_text_lines_span.chars().all(|c| c == '\n') {
-                continue
-            }
-
-            let score = normalized_levenshtein(&file_lines_span, &initial_text_lines_span);
-            if score > max_score {
-                max_score = score;
-                max_score_idx = i;
-            }
-            if score >= 1.0 {
-                let hunk_offset = initial_lines_len - minus_blocks;
-                return Some((initial_text_lines.len() - minus_blocks, i + hunk_offset));
-            }
-        }
-        if max_score >= 0.95 {
-            let hunk_offset = initial_lines_len - minus_blocks;
-            return Some((initial_text_lines.len() - minus_blocks, max_score_idx + hunk_offset));
-        }
-    }
-    
-    None
-}
-
-fn parse_single_diff_chunk(hunk: &[String], file_lines: &[String]) -> Result<(usize, usize, DiffChunk), String> {
-    fn strip_hunk(s: &String) -> String {
-        if s.is_empty() {
-            s.to_string()
-        } else {
-            s[1..].to_string()
-        }
-    }
-    
-    let mut hunk_line_idx: usize = 0;
-    let mut file_line_idx: usize = 0;
-    let mut lines_to_add: String = String::new();
-    let mut lines_to_remove: String = String::new();
-    loop {
-        if hunk_line_idx >= hunk.len() {
-            let chunk = DiffChunk {
-                file_name: "".to_string(),
-                file_action: "edit".to_string(),
-                line1: 1,
-                line2: 1 + file_line_idx,
-                lines_remove: lines_to_remove.clone(),
-                lines_add: lines_to_add.clone(),
-            };
-            return Ok((hunk_line_idx, file_line_idx, chunk));
-        }
-        if file_line_idx >= file_lines.len() {
-            return Err("File has no more lines to parse while the duff hunk still has unparsed data".to_string());
-        }
-
-        let file_line = &file_lines[file_line_idx];
-        let (hunk_line, has_diff_sign, is_add_sign) = if hunk[hunk_line_idx].starts_with("-") {
-            (strip_hunk(&hunk[hunk_line_idx]), true, false)
-        } else if hunk[hunk_line_idx].starts_with("+") {
-            (strip_hunk(&hunk[hunk_line_idx]), true, true)
-        } else {
-            (strip_hunk(&hunk[hunk_line_idx]), false, false)
-        };
-
-        if has_diff_sign {
-            if !is_add_sign && *file_line == hunk_line {
-                lines_to_remove.push_str(&format!("{file_line}\n"));
-                file_line_idx += 1;
-                hunk_line_idx += 1;
-                continue;
-            } else if is_add_sign {
-                lines_to_add.push_str(&format!("{hunk_line}\n"));
-                hunk_line_idx += 1;
-                continue;
-            } else {
-                file_line_idx += 1;
-            }
-        } else {
-            let chunk = DiffChunk {
-                file_name: "".to_string(),
-                file_action: "edit".to_string(),
-                line1: 1,
-                line2: 1 + file_line_idx,
-                lines_remove: lines_to_remove.clone(),
-                lines_add: lines_to_add.clone(),
-            };
-            return Ok((hunk_line_idx, file_line_idx, chunk));
-        }
-    }
-}
-
-fn change_edit_spaces(edit: &Edit, extra_space: i32) -> Edit {
-    let mut edit_cloned = edit.clone();
-    if extra_space == 0 {
-        return edit_cloned;
-    }
-    
-    edit_cloned.hunk = edit.hunk
-        .iter()
-        .map(|x| {
-            if !x.starts_with("-") && !x.starts_with("+") {
-                if extra_space < 0 {
-                    x.chars().skip(extra_space.abs() as usize).join("")
-                } else {
-                    let spaces = " ".repeat(extra_space.abs() as usize);
-                    format!("{spaces}{x}")
-                }
-            } else {
-                x.clone()
-            }
-        })
-        .collect::<Vec<_>>();
-    
-    edit_cloned
-}
-
-async fn parse_diff_chunks(edit: &Edit) -> Result<Vec<DiffChunk>, String> {
-    let mut diff_chunks: Vec<DiffChunk> = vec![];
-    let filename = match edit.path.clone() {
-        Some(p) => p,
-        None => {
-            return Err(format!("Cannot get a file name from the diff chunk, skipping it: {edit:?}"));
-        }
-    };
-    let file_lines = read_file_from_disk(&PathBuf::from(filename.clone()))
-        .await
-        .map_err(|e| {
-            format!("couldn't read file: {:?}. Error: {}", filename, e)
-        })
-        .map(|x| x.lines().into_iter().map(|x| x.to_string().trim_end().to_string()).collect::<Vec<_>>())?;
-
-    let mut hunk_line_cursor: usize = 0;
-    let mut file_line_cursor: usize = 0;
-    loop {
-        if hunk_line_cursor >= edit.hunk.len() {
-            break;
-        };
-        if file_line_cursor >= file_lines.len() {
-            return Err("File has no more lines to parse while the duff hunk still has unparsed data".to_string());
-        };
-
-        let (hunk_line_cursor_offset, new_file_line_cursor_offset) = match search_text_location(
-            &edit.hunk[hunk_line_cursor..], &file_lines[file_line_cursor..]
-        ) {
-            Some(res) => res,
+async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, String> {
+    let mut diff_blocks = vec![];
+    let mut files_to_filelines = HashMap::new();
+    for (idx, edit) in edits.iter().enumerate() {
+        let path = match edit.path.clone() {
+            Some(p) => PathBuf::from(p.clone()),
             None => {
-                return Err(format!("Couldn't find the text location in the file: {}", filename));
+                return Err(format!("Cannot get a correct file name from the diff chunk:\n{edit:?}\n"));
             }
         };
-        hunk_line_cursor += hunk_line_cursor_offset;
-        file_line_cursor += new_file_line_cursor_offset;
-        let (hunk_line_cursor_offset, new_file_line_cursor_offset, mut diff_chunk) = match parse_single_diff_chunk(
-            &edit.hunk[hunk_line_cursor..], &file_lines[file_line_cursor..]
-        ) {
-            Ok(res) => res,
-            Err(err) => {
-                return Err(
-                    format!("Couldn't parse a diff hunk from the {hunk_line_cursor} line, {err}:\n```\n{}\n```",
-                            &edit.hunk.iter().join("\n"))
-                );
+        let file_lines = files_to_filelines
+            .entry(path.clone())
+            .or_insert(Arc::new(read_file_from_disk(&path)
+                .await
+                .map_err(|e| {
+                    format!("Couldn't read file from the diff chunk: {:?}. Error: {}", &path, e)
+                })
+                .map(
+                    |x| x
+                        .lines()
+                        .into_iter()
+                        .map(|x| x.to_string().trim_end().to_string())
+                        .collect::<Vec<_>>()
+                )?));
+
+        let mut block_has_minus_plus = false;
+        let mut current_lines = vec![];
+        for line in edit.hunk.iter() {
+            if line.starts_with("-") || line.starts_with("+") {
+                let is_plus = line.starts_with("+");
+                current_lines.push(DiffLine {
+                    line: line[1..].to_string(),
+                    line_type: if is_plus { LineType::Plus } else { LineType::Minus },
+                    file_line_num_idx: None,
+                    correct_spaces_offset: None,
+                });
+                block_has_minus_plus = true;
+            } else {
+                if block_has_minus_plus {
+                    diff_blocks.push(DiffBlock {
+                        file_name: path.clone(),
+                        file_lines: file_lines.clone(),
+                        hunk_idx: idx,
+                        diff_lines: current_lines.clone(),
+                    });
+                    block_has_minus_plus = false;
+                    current_lines.clear();
+                }
+                current_lines.push(DiffLine {
+                    line: if line.starts_with(" ") { line[1..].to_string() } else { line.clone() },
+                    line_type: LineType::Space,
+                    file_line_num_idx: None,
+                    correct_spaces_offset: None,
+                })
             }
-        };
-        diff_chunk.file_name = filename.clone();
-        diff_chunk.line1 += file_line_cursor;
-        diff_chunk.line2 += file_line_cursor;
-        hunk_line_cursor += hunk_line_cursor_offset;
-        file_line_cursor += new_file_line_cursor_offset;
-        if diff_chunk.is_empty() {
-            continue
         }
-        diff_chunks.push(diff_chunk);
-    };
-    Ok(diff_chunks)
+        if !current_lines.is_empty() {
+            diff_blocks.push(DiffBlock {
+                file_name: path.clone(),
+                file_lines: file_lines.clone(),
+                hunk_idx: idx,
+                diff_lines: current_lines.clone(),
+            });
+        }
+    }
+    Ok(diff_blocks)
 }
+
+fn search_diff_block_text_location(diff_blocks: &mut Vec<DiffBlock>) {
+    for i in 0..diff_blocks.len() {
+        let mut blocks_to_search = diff_blocks
+            .iter_mut()
+            .filter(|x| x.hunk_idx == i)
+            .collect::<VecDeque<_>>();
+        if blocks_to_search.is_empty() {
+            continue;
+        }
+
+        let mut file_line_start_offset: usize = 0;
+        while let Some(diff_block) = blocks_to_search.pop_front() {
+            let mut diff_line_start_offset: usize = 0;
+            while diff_line_start_offset <= diff_block.diff_lines.len() {
+                let mut found = false;
+                for diff_line_span_size in (1..diff_block.diff_lines.len() - diff_line_start_offset + 1).rev() {
+                    let span = &diff_block.diff_lines[diff_line_start_offset..diff_line_start_offset + diff_line_span_size];
+                    let diff_lines_span = span
+                        .iter()
+                        .map(|x| &x.line)
+                        .map(|x| x.trim_start().to_string())
+                        .collect::<Vec<_>>();
+                    if diff_lines_span.is_empty()
+                        || diff_lines_span.iter().all(|c| c == "")
+                        || span.iter().any(|x| x.line_type == LineType::Plus) {
+                        continue;
+                    }
+                    for file_line_idx in file_line_start_offset..=diff_block.file_lines.len() - diff_line_span_size {
+                        let file_lines_span = diff_block.file_lines[file_line_idx..file_line_idx + diff_line_span_size]
+                            .iter()
+                            .map(|x| x.trim_start().to_string())
+                            .collect::<Vec<_>>();
+                        if file_lines_span.is_empty() || diff_lines_span.iter().all(|c| c == "") {
+                            continue;
+                        }
+                        if file_lines_span == diff_lines_span {
+                            for (idx, line) in diff_block.diff_lines[diff_line_start_offset..diff_line_start_offset + diff_line_span_size]
+                                .iter_mut()
+                                .enumerate() {
+                                let file_lines_idents_count = diff_block.file_lines[file_line_idx + idx]
+                                    .chars()
+                                    .take_while(|x| x.eq(&' '))
+                                    .join("")
+                                    .len() as i64;
+                                let diff_lines_idents_count = line.line
+                                    .chars()
+                                    .take_while(|x| x.eq(&' '))
+                                    .join("")
+                                    .len() as i64;
+                                line.file_line_num_idx = Some(file_line_idx + idx);
+                                line.correct_spaces_offset = Some(file_lines_idents_count - diff_lines_idents_count);
+                            }
+                            diff_line_start_offset = diff_line_start_offset + diff_line_span_size;
+                            file_line_start_offset = file_line_idx + diff_line_span_size;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if found {
+                        break;
+                    }
+                }
+                if !found {
+                    diff_line_start_offset += 1;
+                }
+            }
+        }
+    }
+}
+
+// Step 1. Fix idents using correct_spaces_offset 
+// Step 2. If non-found is the first line, and it is a `+` type then set the 0 index
+// Step 3. Fix missing `+` lines. If line is without `+` symbol and is file line index is not found then consider it a `+` line (except the first line)
+// Step 4. Fix missing `-` lines. If line is without `-` symbol and file index is found and the nearest `+` line is quite similar then consider it as a `-` line
+// Step 5. Fill out all non-found file indexes using the last one found. 
+fn normalize_diff_block(diff_block: &mut DiffBlock) -> Result<(), String> {
+    if diff_block.diff_lines.is_empty() {
+        return Ok(());
+    }
+
+    // Step 1
+    for diff_line in diff_block.diff_lines.iter_mut() {
+        if let Some(correct_spaces_offset) = diff_line.correct_spaces_offset {
+            if correct_spaces_offset > 0 {
+                diff_line.line.insert_str(0, &" ".repeat(correct_spaces_offset as usize));
+            } else if correct_spaces_offset < 0 {
+                diff_line.line = diff_line.line.chars().skip(correct_spaces_offset.abs() as usize).join("");
+            }
+        }
+    }
+
+    // Step 2
+    match diff_block.diff_lines.get_mut(0) {
+        Some(line) => {
+            if line.line_type == LineType::Plus && line.file_line_num_idx.is_none() {
+                line.file_line_num_idx = Some(0);
+            }
+        }
+        None => {}
+    };
+    diff_block.diff_lines = diff_block
+        .diff_lines
+        .iter()
+        .skip_while(|x| x.line_type == LineType::Space && x.file_line_num_idx.is_none())
+        .cloned()
+        .collect::<Vec<_>>();
+
+    // Step 3
+    // for diff_line in diff_block.diff_lines.iter_mut() {
+    //     if diff_line.line_type == LineType::Space || diff_line.file_line_num_idx.is_none() {
+    //         diff_line.line_type = LineType::Plus;
+    //     }
+    // }
+
+    // Step 4
+    let diff_lines_copy = diff_block.diff_lines.clone();
+    for (idx, diff_line) in diff_block.diff_lines.iter_mut().enumerate() {
+        if diff_line.line_type == LineType::Space
+            && diff_line.file_line_num_idx.is_some()
+            && idx < diff_lines_copy.len() - 1 {
+            let nearest_plus_diff_line = match diff_lines_copy[idx + 1..]
+                .iter()
+                .find(|x| x.line_type == LineType::Plus) {
+                Some(item) => item,
+                None => {
+                    continue
+                }
+            };
+            if diff_line.line == nearest_plus_diff_line.line {
+                diff_line.line_type = LineType::Minus;
+            }
+        }
+    }
+
+    // Step 5
+    let mut last_file_line_num_idx = None;
+    for diff_line in diff_block.diff_lines.iter_mut() {
+        if diff_line.file_line_num_idx.is_some() {
+            last_file_line_num_idx = diff_line.file_line_num_idx.map(|x| x + 1);
+        } else {
+            diff_line.file_line_num_idx = last_file_line_num_idx;
+        }
+    }
+
+    return Ok(());
+}
+
+fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
+    diff_blocks
+        .iter()
+        .map(|block| {
+            let useful_block_lines = block
+                .diff_lines
+                .iter()
+                .filter(|x| x.line_type != LineType::Space)
+                .collect::<Vec<_>>();
+            DiffChunk {
+                file_name: block.file_name.to_string_lossy().to_string(),
+                file_action: "edit".to_string(),
+                line1: useful_block_lines
+                    .iter()
+                    .map(|x| x.file_line_num_idx.clone().expect("All file_line_num_idx must be filled to this moment in the `normalize_diff_block` func") + 1)
+                    .min()
+                    .expect("All empty diff blocks should be filtered before"),
+                line2: useful_block_lines
+                    .iter()
+                    .map(|x| {
+                        if x.line_type == LineType::Plus {
+                            x.file_line_num_idx.clone().expect("All file_line_num_idx must be filled to this moment in the `normalize_diff_block` func") + 1
+                        } else {
+                            x.file_line_num_idx.clone().expect("All file_line_num_idx must be filled to this moment in the `normalize_diff_block` func") + 2
+                        }
+                    })
+                    .max()
+                    .expect("All empty diff blocks should be filtered before"),
+                lines_remove: useful_block_lines
+                    .iter()
+                    .filter(|x| x.line_type == LineType::Minus)
+                    .map(|x| format!("{}\n", x.line.clone()))
+                    .join(""),
+                lines_add: useful_block_lines
+                    .iter()
+                    .filter(|x| x.line_type == LineType::Plus)
+                    .map(|x| format!("{}\n", x.line.clone()))
+                    .join(""),
+            }
+        })
+        .collect()
+}
+
 
 pub struct UnifiedDiffFormat {}
 
 impl UnifiedDiffFormat {
     pub fn prompt() -> String {
         r#"Act as an expert software developer.
-Your task is to create a unified diff format output based on the provided task and all files.
+Your task is to create a unified diff format output based on the provided task and files.
 
 Follow these steps in order to produce the unified diff:
 1. **Analyze Tasks and Files:**
--- Review the tasks and files provided
--- Identify the specific changes required
--- Use chain of thoughts to make sure nothing will be missed
--- Explain every change in all files before making the diff and for each explanation write if you should use `-` or `+`
--- Assess after diff is generated, including its format validity (`+` and `-` symbols are in the right places and nothing is missing)!
+    - Review the tasks and files provided
+    - Use extra context (list of related symbols signatures) if it's given to make correct changes
+    - Identify the specific changes required
+    - Use chain of thoughts to make sure nothing will be missed
+    - Explain every change in all files before making the diff
+    - For each explanation describe whether `-` or `+` should be used
+    - Pretend that you're applying the generated diff and try to asses it correctness
+    - Assess the generated diff, especially its format validity (`+` and `-` symbols are in the right places and nothing is missing)
 
 2. **Generate Diff:**
--- Don't forget to make changes to all given files
--- Return edits similar to unified diffs that `diff -U0` would produce.
--- Make sure you include the first 2 lines with the real file paths which were given before
--- Don't include timestamps with the file paths.
--- Start each hunk of changes with a `@@ ... @@` line.
--- Don't include line numbers like `diff -U0` does. The user's patch tool doesn't need them.
--- The user's patch tool needs CORRECT patches that apply cleanly against the current contents of the file!
--- Think carefully and make sure you include and mark all lines that need to be removed or changed as `-` lines!
--- Copy 2 rows of the code before `+`-only hunks to be able to find the place where to add
--- Make sure you mark all new or modified lines with `+`.
--- Don't leave out any lines or the diff patch won't apply correctly.
--- Indentation matters in the diffs!
--- Start a new hunk for each section of the file that needs changes.
--- Only output hunks that specify changes with `+` or `-` lines.
--- Do not produce any hunks without changes (`+` or `-` lines)
--- Output hunks in whatever order makes the most sense.
--- Hunks don't need to be in any particular order.
--- When editing a function, method, loop, etc. use a hunk to replace the *entire* code block.
--- Delete the entire existing version with `-` lines and then add a new, updated version with `+` lines. This will help you generate correct code and correct diffs.
--- To move code within a file, use 2 hunks: 1 to delete it from its current location, 1 to insert it in the new location
-
-YOU MUST FOLLOW ALL THE GIVEN RULES!!!
+    - Make changes to all given files
+    - Return edits similar to unified diffs that `diff -U0` would produce.
+    - Include the first 2 lines with the real file paths which were given before
+    - Don't include timestamps with the file paths.
+    - Start each hunk of changes with a `@@ ... @@` line.
+    - Don't include line numbers like `diff -U0` does. The user's patch tool doesn't need them.
+    - The user's patch tool needs CORRECT patches that apply cleanly against the current contents of the file.
+    - Make sure you mark all new or modified lines with `+`.
+    - Think carefully and make sure you include and mark all lines that need to be removed or changed as `-` lines.
+    - Do not forget to remove old lines of the code if you are fixing some code
+    - Don't leave out any lines or the diff patch won't apply correctly.
+    - Only output hunks that specify changes with `+` or `-` lines.
+    - Output hunks in whatever order makes the most sense.
+    - When editing a function, method, loop, etc. use a hunk to replace the *entire* code block.
+    - Delete the entire existing version with `-` lines and then add a new, updated version with `+` lines. This will help you generate correct code and correct diffs.
+    - To move code within a file, use 2 hunks: 1 to delete it from its current location, 1 to insert it in the new location
 
 There is a unified diff format example for the task: "Replace is_prime with a call to sympy"
 ```diff
@@ -356,7 +449,7 @@ There is a unified diff format example for the task: "Replace is_prime with a ca
 +++ /home/mathweb/flask/app.py
 @@ ... @@
  import some_module
-
+ 
 -class MathWeb:
 +import sympy
 +
@@ -402,36 +495,47 @@ There is a unified diff format example for the task: "Replace is_prime with a ca
         content: &str,
     ) -> Result<Vec<DiffChunk>, String> {
         let edits = get_edit_hunks(content);
-        let mut diff_chunks: Vec<DiffChunk> = vec![];
-        for edit in edits.iter() {
-            match parse_diff_chunks(&edit).await {
-                Ok(res) => {
-                    diff_chunks.extend(res);
-                }
+        let mut diff_blocks = edit_hunks_to_diff_blocks(&edits).await?;
+        search_diff_block_text_location(&mut diff_blocks);
+        for block in diff_blocks.iter_mut() {
+            match normalize_diff_block(block) {
+                Ok(_) => {}
                 Err(err) => {
                     return Err(err);
                 }
-            }
+            };
         }
-        Ok(diff_chunks.into_iter().unique().collect::<Vec<_>>())
+        let filtered_blocks = diff_blocks
+            .into_iter()
+            .filter(|x| x.diff_lines
+                .iter()
+                .any(|x| x.line_type == LineType::Plus || x.line_type == LineType::Minus))
+            .collect::<Vec<_>>();
+        let chunks = diff_blocks_to_diff_chunks(&filtered_blocks)
+            .into_iter()
+            .unique()
+            .collect::<Vec<_>>();
+        Ok(chunks)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
+
     use itertools::Itertools;
+
     use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
     use crate::call_validation::DiffChunk;
     use crate::diffs::{apply_diff_chunks_to_text, fuzzy_results_into_state_vector};
-    
+
     fn apply_diff(path: &String, chunks: &Vec<DiffChunk>) -> (String, String) {
         let text = std::fs::read_to_string(PathBuf::from(path)).unwrap();
         let (changed_text, fuzzy_results) = apply_diff_chunks_to_text(
             &text,
             chunks.iter().enumerate().collect::<Vec<_>>(),
             vec![],
-            1
+            1,
         );
         let state = fuzzy_results_into_state_vector(&fuzzy_results, chunks.len());
         assert!(state.iter().all(|x| *x == 1));
@@ -514,7 +618,7 @@ DT = 0.01
 
 class AnotherFrog:
     def __init__(self, x, y, vx, vy):"#;
-        
+
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -530,10 +634,10 @@ class AnotherFrog:
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/frog.py".to_string(),
-            &result
+            &result,
         );
         let cropped_text = changed_text.lines().take(6).join("\n");
-        
+
         assert_eq!(result, gt_result);
         assert_eq!(cropped_text, gt_changed_text);
     }
@@ -546,6 +650,7 @@ class AnotherFrog:
 +++ tests/emergency_frog_situation/frog.py
 @@ ... @@
  DT = 0.01
+ 
  
 -class Frog:
 ```
@@ -571,7 +676,7 @@ DT = 0.01
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/frog.py".to_string(),
-            &result
+            &result,
         );
         let cropped_text = changed_text.lines().take(5).join("\n");
 
@@ -615,10 +720,10 @@ class Frog:
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/frog.py".to_string(),
-            &result
+            &result,
         );
         let cropped_text = changed_text.lines().take(7).join("\n");
-        
+
         assert_eq!(result, gt_result);
         assert_eq!(cropped_text, gt_changed_text);
     }
@@ -653,7 +758,7 @@ DT = 0.01"#;
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/frog.py".to_string(),
-            &result
+            &result,
         );
         let cropped_text = changed_text.lines().take(4).join("\n");
 
@@ -710,7 +815,7 @@ class Frog:
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/frog.py".to_string(),
-            &result
+            &result,
         );
         let cropped_text = changed_text.lines().take(23).join("\n");
 
@@ -767,7 +872,7 @@ class Frog:
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/frog.py".to_string(),
-            &result
+            &result,
         );
         let cropped_text = changed_text.lines().take(23).join("\n");
 
@@ -844,7 +949,7 @@ class Frog:
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/frog.py".to_string(),
-            &result
+            &result,
         );
         let cropped_text = changed_text.lines().take(22).join("\n");
 
@@ -877,7 +982,7 @@ class Frog:
 +            self.vx = -np.abs(self.vy)
 ```
 Another text"#;
-        
+
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -1031,7 +1136,7 @@ class Frog:
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/frog.py".to_string(),
-            &result
+            &result,
         );
 
         assert_eq!(result, gt_result);
@@ -1098,7 +1203,7 @@ class EuropeanCommonToad(frog.Frog):
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/set_as_avatar.py".to_string(),
-            &result
+            &result,
         );
         let cropped_text = changed_text.lines().take(29).join("\n");
 
@@ -1157,7 +1262,7 @@ if __name__ == __main__:
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/holiday.py".to_string(),
-            &result
+            &result,
         );
 
         assert_eq!(result, gt_result);
@@ -1251,14 +1356,15 @@ if __name__ == __main__:
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        assert_eq!(result, gt_result);
+
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/holiday.py".to_string(),
-            &result
+            &result,
         );
-
-        assert_eq!(result, gt_result);
         assert_eq!(changed_text, gt_changed_text);
     }
+
     #[tokio::test]
     async fn test_ambiguous_hunk_4() {
         let input = r#"Initial text
@@ -1323,13 +1429,13 @@ if __name__ == __main__:
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/holiday.py".to_string(),
-            &result
+            &result,
         );
 
         assert_eq!(result, gt_result);
         assert_eq!(changed_text, gt_changed_text);
     }
-    
+
     #[tokio::test]
     async fn test_ambiguous_hunk_5() {
         let input = r#"Initial text
@@ -1381,13 +1487,13 @@ if __name__ == __main__:
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/holiday.py".to_string(),
-            &result
+            &result,
         );
 
         assert_eq!(result, gt_result);
         assert_eq!(changed_text, gt_changed_text);
     }
-    
+
     #[tokio::test]
     async fn test_ambiguous_hunk_6() {
         let input = r#"Initial text
@@ -1437,12 +1543,12 @@ if __name__ == __main__:
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        assert_eq!(result, gt_result);
+
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/holiday.py".to_string(),
-            &result
+            &result,
         );
-
-        assert_eq!(result, gt_result);
         assert_eq!(changed_text, gt_changed_text);
     }
 
@@ -1494,12 +1600,12 @@ if __name__ == __main__:
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        assert_eq!(result, gt_result);
+
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/holiday.py".to_string(),
-            &result
+            &result,
         );
-
-        assert_eq!(result, gt_result);
         assert_eq!(changed_text, gt_changed_text);
     }
 
@@ -1555,69 +1661,7 @@ if __name__ == __main__:
         );
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/holiday.py".to_string(),
-            &result
-        );
-
-        assert_eq!(result, gt_result);
-        assert_eq!(changed_text, gt_changed_text);
-    }
-    #[tokio::test]
-    async fn test_ambiguous_hunk_9() {
-        let input = r#"Initial text
-```diff
---- tests/emergency_frog_situation/holiday.py
-+++ tests/emergency_frog_situation/holiday.py
-@@ ... @@
-    frog1 = frog.Frog()
-    frog2 = frog.Frog()
-    frog2.jump()
-    # Third extra jump
-    
-    # Second jump
-    frog1.jump()
-    frog2.jump()
-```
-Another text"#;
-        let gt_changed_text = r#"import frog
-
-
-if __name__ == __main__:
-    frog1 = frog.Frog()
-    frog2 = frog.Frog()
-
-    # First jump
-    frog1.jump()
-    frog2.jump()
-    # Third extra jump
-
-    # Second jump
-    frog1.jump()
-    frog2.jump()
-
-    # Third jump
-    frog1.jump()
-    frog2.jump()
-
-    # Forth jump
-    frog1.jump()
-    frog2.jump()
-"#;
-        let gt_result = vec![
-            DiffChunk {
-                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_action: "edit".to_string(),
-                line1: 11,
-                line2: 11,
-                lines_remove: "".to_string(),
-                lines_add: "    # Third extra jump\n".to_string(),
-            },
-        ];
-        let result = UnifiedDiffFormat::parse_message(input).await.expect(
-            "Failed to parse diff message"
-        );
-        let (_, changed_text) = apply_diff(
-            &"./tests/emergency_frog_situation/holiday.py".to_string(),
-            &result
+            &result,
         );
 
         assert_eq!(result, gt_result);
@@ -1631,19 +1675,60 @@ if __name__ == __main__:
 --- /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py
 +++ /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py
 @@ ... @@
+from typing import Dict, Any, Tuple, Callable
+@@ ... @@
 def force_include_exclude_filter(
--    pname: str,
--    files_status: FilesStatusContext
-+def force_filter(
+    pname: str,
+    files_status: FilesStatusContext
+):
+    fcfg = {
+        "filetypes_finetune": {},
+        "filetypes_db": {}
+    }
+    if os.path.exists(env.PP_CONFIG_HOW_TO_FILETYPES(pname)):
+        _log_everywhere("Reading %s" % env.PP_CONFIG_HOW_TO_FILETYPES(pname))
+        with open(env.PP_CONFIG_HOW_TO_FILETYPES(pname), "r") as f:
+            fcfg.update(**json.load(f))
+
+    is_force_included, _ = make_matcher(fcfg.get('force_include', ''))
+    is_force_excluded, _ = make_matcher(fcfg.get('force_exclude', ''))
+
+    for file in files_status.no_status_train_files():
+        if is_force_included(file['path']):
+            files_status.accept_file(file, reason="FORCE_INCLUDED")
+        elif is_force_excluded(file['path']):
+            files_status.reject_file(file, reason="FORCE_REJECTED")
++def load_filter_config(pname: str) -> Dict[str, Any]:
++    """Load filter configuration from a file."""
++    fcfg = {
++        "filetypes_finetune": {},
++        "filetypes_db": {}
++    }
++    config_path = env.PP_CONFIG_HOW_TO_FILETYPES(pname)
++    if os.path.exists(config_path):
++        _log_everywhere(f"Reading {config_path}")
++        with open(config_path, "r") as f:
++            fcfg.update(**json.load(f))
++    return fcfg
++
++def create_matchers(fcfg: Dict[str, Any]) -> Tuple[Callable, Callable]:
++    """Create inclusion and exclusion matchers from the configuration."""
++    is_force_included, _ = make_matcher(fcfg.get('force_include', ''))
++    is_force_excluded, _ = make_matcher(fcfg.get('force_exclude', ''))
++    return is_force_included, is_force_excluded
++
++def force_include_exclude_filter(
 +    pname: str,
 +    files_status: FilesStatusContext
-@@ ... @@
-    _log_everywhere("Running force include/exclude filter...")
--    force_include_exclude_filter(
-+    force_filter(
-        pname,
-        files_status=file_status_context
-    )
++):
++    fcfg = load_filter_config(pname)
++    is_force_included, is_force_excluded = create_matchers(fcfg)
++
++    for file in files_status.no_status_train_files():
++        if is_force_included(file['path']):
++            files_status.accept_file(file, reason="FORCE_INCLUDED")
++        elif is_force_excluded(file['path']):
++            files_status.reject_file(file, reason="FORCE_REJECTED")
 ```
 
 "#;
@@ -1662,7 +1747,7 @@ def force_include_exclude_filter(
         );
         let (_, changed_text) = apply_diff(
             &"/home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py".to_string(),
-            &result
+            &result,
         );
         print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
     }
