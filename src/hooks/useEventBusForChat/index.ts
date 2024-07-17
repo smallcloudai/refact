@@ -397,10 +397,12 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isChatDoneStreaming(action)) {
-      postMessage({
-        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-        payload: state.chat,
-      });
+      if (state.chat.messages.length > 0) {
+        postMessage({
+          type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+          payload: state.chat,
+        });
+      }
 
       return {
         ...state,
@@ -419,10 +421,12 @@ export function reducer(postMessage: typeof window.postMessage) {
       const chat_cache = { ...state.chat_cache };
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete chat_cache[action.payload.id];
-      postMessage({
-        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-        payload: chat,
-      });
+      if (chat.messages.length > 0) {
+        postMessage({
+          type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+          payload: chat,
+        });
+      }
 
       return {
         ...state,
