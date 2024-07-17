@@ -125,62 +125,37 @@ fn search_text_location(hunk: &[String], file_lines: &[String]) -> Option<(usize
         return Some((0, 0))  // it's only left to put data before the first file row
     }
     
-    let mut max_score = 0.0;
-    let mut max_score_idx = 0;
-    let initial_text_lines_span = initial_text_lines[..].join("\n");
-    for i in 0..=file_lines.len() - initial_text_lines.len() {
-        let file_lines_span = file_lines[i..i + initial_text_lines.len()].join("\n");
-        let score = normalized_levenshtein(&file_lines_span, &initial_text_lines_span);
-        if score > max_score {
-            max_score = score;
-            max_score_idx = i;
-        }
-        if score >= 1.0 {
-            let hunk_offset = initial_text_lines.len() - minus_blocks;
-            return Some((hunk_offset, i + hunk_offset));
-        }
-    }
-    if max_score >= 0.95 {
-        let hunk_offset = initial_text_lines.len() - minus_blocks;
-        return Some((hunk_offset, max_score_idx + hunk_offset));
-    }
-
-    // make another attempt using only content from `-` blocks
-    if minus_blocks > 0 {
-        let minus_text_lines = initial_text_lines
-            .iter()
-            .cloned()
-            .rev()
-            .take(minus_blocks)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect::<Vec<_>>();
-        for i in 0..=file_lines.len() - minus_text_lines.len() {
-            if file_lines[i..i + minus_text_lines.len()] == minus_text_lines[..] {
-                let hunk_offset = initial_text_lines.len() - minus_blocks;
-                return Some((hunk_offset, i + minus_text_lines.len() - minus_blocks));
-            }
-        }
-    }
-    
-    // make another attempt without spaces before each row
-    let initial_text_lines_span = initial_text_lines[..]
-        .iter()
-        .map(|x| x.trim_start())
-        .join("\n");
-    for i in 0..=file_lines.len() - initial_text_lines.len() {
-        let file_lines_span = file_lines[i..i + initial_text_lines.len()]
+    for initial_line_idx in 0..initial_text_lines.len() {
+        let mut max_score = 0.0;
+        let mut max_score_idx = 0;
+        let initial_text_lines_span = initial_text_lines[initial_line_idx..]
             .iter()
             .map(|x| x.trim_start())
             .join("\n");
-        if file_lines_span.is_empty() || file_lines_span.chars().all(|c| c == '\n') 
-            || initial_text_lines_span.is_empty() || initial_text_lines_span.chars().all(|c| c == '\n') {
-            continue
+        let initial_lines_len = initial_text_lines[initial_line_idx..].len();
+        for i in 0..=file_lines.len() - initial_lines_len {
+            let file_lines_span = file_lines[i..i + initial_lines_len]
+                .iter()
+                .map(|x| x.trim_start())
+                .join("\n");
+            if file_lines_span.is_empty() || file_lines_span.chars().all(|c| c == '\n')
+                || initial_text_lines_span.is_empty() || initial_text_lines_span.chars().all(|c| c == '\n') {
+                continue
+            }
+
+            let score = normalized_levenshtein(&file_lines_span, &initial_text_lines_span);
+            if score > max_score {
+                max_score = score;
+                max_score_idx = i;
+            }
+            if score >= 1.0 {
+                let hunk_offset = initial_lines_len - minus_blocks;
+                return Some((initial_text_lines.len() - minus_blocks, i + hunk_offset));
+            }
         }
-        if file_lines_span == initial_text_lines_span {
-            let hunk_offset = initial_text_lines.len() - minus_blocks;
-            return Some((hunk_offset, i + initial_text_lines.len() - minus_blocks));
+        if max_score >= 0.95 {
+            let hunk_offset = initial_lines_len - minus_blocks;
+            return Some((initial_text_lines.len() - minus_blocks, max_score_idx + hunk_offset));
         }
     }
     
@@ -429,23 +404,13 @@ There is a unified diff format example for the task: "Replace is_prime with a ca
         let edits = get_edit_hunks(content);
         let mut diff_chunks: Vec<DiffChunk> = vec![];
         for edit in edits.iter() {
-            let mut succeeded = false;
-            let mut last_error_message = "".to_string();
-            for extra_space in [0, -1, 1] {
-                let mutated_edit = change_edit_spaces(&edit, extra_space);
-                match parse_diff_chunks(&mutated_edit).await {
-                    Ok(res) => {
-                        succeeded = true;
-                        diff_chunks.extend(res);
-                        break;
-                    }
-                    Err(err) => {
-                        last_error_message = err;
-                    }
+            match parse_diff_chunks(&edit).await {
+                Ok(res) => {
+                    diff_chunks.extend(res);
                 }
-            }
-            if !succeeded {
-                return Err(last_error_message);
+                Err(err) => {
+                    return Err(err);
+                }
             }
         }
         Ok(diff_chunks.into_iter().unique().collect::<Vec<_>>())
@@ -1425,6 +1390,242 @@ if __name__ == __main__:
     
     #[tokio::test]
     async fn test_ambiguous_hunk_6() {
+        let input = r#"Initial text
+```diff
+--- tests/emergency_frog_situation/holiday.py
++++ tests/emergency_frog_situation/holiday.py
+@@ ... @@
+    invalid row
+    frog2.jump()
++    # Third extra jump
+```
+Another text"#;
+        let gt_changed_text = r#"import frog
+
+
+if __name__ == __main__:
+    frog1 = frog.Frog()
+    frog2 = frog.Frog()
+
+    # First jump
+    frog1.jump()
+    frog2.jump()
+    # Third extra jump
+
+    # Second jump
+    frog1.jump()
+    frog2.jump()
+
+    # Third jump
+    frog1.jump()
+    frog2.jump()
+
+    # Forth jump
+    frog1.jump()
+    frog2.jump()
+"#;
+        let gt_result = vec![
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_action: "edit".to_string(),
+                line1: 11,
+                line2: 11,
+                lines_remove: "".to_string(),
+                lines_add: "    # Third extra jump\n".to_string(),
+            },
+        ];
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/holiday.py".to_string(),
+            &result
+        );
+
+        assert_eq!(result, gt_result);
+        assert_eq!(changed_text, gt_changed_text);
+    }
+
+    #[tokio::test]
+    async fn test_ambiguous_hunk_7() {
+        let input = r#"Initial text
+```diff
+--- tests/emergency_frog_situation/holiday.py
++++ tests/emergency_frog_situation/holiday.py
+@@ ... @@
+    invalid row
+-    frog2.jump()
++    # Third extra jump
+```
+Another text"#;
+        let gt_changed_text = r#"import frog
+
+
+if __name__ == __main__:
+    frog1 = frog.Frog()
+    frog2 = frog.Frog()
+
+    # First jump
+    frog1.jump()
+    # Third extra jump
+
+    # Second jump
+    frog1.jump()
+    frog2.jump()
+
+    # Third jump
+    frog1.jump()
+    frog2.jump()
+
+    # Forth jump
+    frog1.jump()
+    frog2.jump()
+"#;
+        let gt_result = vec![
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_action: "edit".to_string(),
+                line1: 10,
+                line2: 11,
+                lines_remove: "    frog2.jump()\n".to_string(),
+                lines_add: "    # Third extra jump\n".to_string(),
+            },
+        ];
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/holiday.py".to_string(),
+            &result
+        );
+
+        assert_eq!(result, gt_result);
+        assert_eq!(changed_text, gt_changed_text);
+    }
+
+    #[tokio::test]
+    async fn test_ambiguous_hunk_8() {
+        let input = r#"Initial text
+```diff
+--- tests/emergency_frog_situation/holiday.py
++++ tests/emergency_frog_situation/holiday.py
+@@ ... @@
+    frog1 = frog.Frog()
+    frog2 = frog.Frog()
+    frog2.jump()
++    # Third extra jump
+```
+Another text"#;
+        let gt_changed_text = r#"import frog
+
+
+if __name__ == __main__:
+    frog1 = frog.Frog()
+    frog2 = frog.Frog()
+
+    # First jump
+    frog1.jump()
+    frog2.jump()
+    # Third extra jump
+
+    # Second jump
+    frog1.jump()
+    frog2.jump()
+
+    # Third jump
+    frog1.jump()
+    frog2.jump()
+
+    # Forth jump
+    frog1.jump()
+    frog2.jump()
+"#;
+        let gt_result = vec![
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_action: "edit".to_string(),
+                line1: 11,
+                line2: 11,
+                lines_remove: "".to_string(),
+                lines_add: "    # Third extra jump\n".to_string(),
+            },
+        ];
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/holiday.py".to_string(),
+            &result
+        );
+
+        assert_eq!(result, gt_result);
+        assert_eq!(changed_text, gt_changed_text);
+    }
+    #[tokio::test]
+    async fn test_ambiguous_hunk_9() {
+        let input = r#"Initial text
+```diff
+--- tests/emergency_frog_situation/holiday.py
++++ tests/emergency_frog_situation/holiday.py
+@@ ... @@
+    frog1 = frog.Frog()
+    frog2 = frog.Frog()
+    frog2.jump()
+    # Third extra jump
+    
+    # Second jump
+    frog1.jump()
+    frog2.jump()
+```
+Another text"#;
+        let gt_changed_text = r#"import frog
+
+
+if __name__ == __main__:
+    frog1 = frog.Frog()
+    frog2 = frog.Frog()
+
+    # First jump
+    frog1.jump()
+    frog2.jump()
+    # Third extra jump
+
+    # Second jump
+    frog1.jump()
+    frog2.jump()
+
+    # Third jump
+    frog1.jump()
+    frog2.jump()
+
+    # Forth jump
+    frog1.jump()
+    frog2.jump()
+"#;
+        let gt_result = vec![
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_action: "edit".to_string(),
+                line1: 11,
+                line2: 11,
+                lines_remove: "".to_string(),
+                lines_add: "    # Third extra jump\n".to_string(),
+            },
+        ];
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        let (_, changed_text) = apply_diff(
+            &"./tests/emergency_frog_situation/holiday.py".to_string(),
+            &result
+        );
+
+        assert_eq!(result, gt_result);
+        assert_eq!(changed_text, gt_changed_text);
+    }
+
+    #[tokio::test]
+    async fn info_test() {
         let input = r#"
 ```diff
 --- /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py
