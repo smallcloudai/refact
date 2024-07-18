@@ -35,9 +35,6 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const postMessage = usePostMessage();
 
-  // temp here for testing
-  useEventBusForHost();
-
   const historyHook = useChatHistory();
   const chatHook = useEventBusForChat();
   // work around for now
