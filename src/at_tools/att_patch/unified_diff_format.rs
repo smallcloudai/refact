@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::fmt;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -20,6 +21,18 @@ enum LineType {
     Minus,
     Space,
 }
+
+impl fmt::Display for LineType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let printable = match self {
+            LineType::Plus => "+",
+            LineType::Minus => "-",
+            LineType::Space => " ",
+        };
+        write!(f, "{}", printable)
+    }
+}
+
 
 #[derive(Clone, Eq, PartialEq)]
 struct DiffLine {
@@ -45,12 +58,7 @@ impl DiffBlock {
             &self.file_name
         );
         for line in self.diff_lines.iter() {
-            let diff_s = match line.line_type {
-                LineType::Plus => "+",
-                LineType::Minus => "-",
-                LineType::Space => " "
-            };
-            output.push_str(&format!("{diff_s}{}", line.line));
+            output.push_str(&format!("{}{}", line.line_type, line.line));
         }
         output
     }
@@ -238,9 +246,7 @@ fn search_diff_block_text_location(diff_blocks: &mut Vec<DiffBlock>) {
                         .map(|x| &x.line)
                         .map(|x| x.trim_start().to_string())
                         .collect::<Vec<_>>();
-                    if diff_lines_span.is_empty()
-                        || diff_lines_span.iter().all(|c| c == "")
-                        || span.iter().any(|x| x.line_type == LineType::Plus) {
+                    if span.iter().any(|x| x.line_type == LineType::Plus) {
                         continue;
                     }
                     for file_line_idx in file_line_start_offset..=diff_block.file_lines.len() - diff_line_span_size {
@@ -248,7 +254,8 @@ fn search_diff_block_text_location(diff_blocks: &mut Vec<DiffBlock>) {
                             .iter()
                             .map(|x| x.trim_start().to_string())
                             .collect::<Vec<_>>();
-                        if file_lines_span.is_empty() || diff_lines_span.iter().all(|c| c == "") {
+                        if file_line_idx > file_line_start_offset &&
+                            (file_lines_span.is_empty() || diff_lines_span.iter().all(|c| c == "")) {
                             continue;
                         }
                         if file_lines_span == diff_lines_span {
@@ -323,7 +330,7 @@ fn normalize_diff_block(diff_block: &mut DiffBlock) -> Result<(), String> {
         .cloned()
         .collect::<Vec<_>>();
 
-    // Step 3
+    // Step 3 (doesn't work well enough)
     // for diff_line in diff_block.diff_lines.iter_mut() {
     //     if diff_line.line_type == LineType::Space || diff_line.file_line_num_idx.is_none() {
     //         diff_line.line_type = LineType::Plus;
@@ -358,6 +365,19 @@ fn normalize_diff_block(diff_block: &mut DiffBlock) -> Result<(), String> {
         } else {
             diff_line.file_line_num_idx = last_file_line_num_idx;
         }
+    }
+    
+    // Validation step
+    let non_found_lines = diff_block.diff_lines
+        .iter()
+        .filter(|x| x.line_type != LineType::Space && x.file_line_num_idx.is_none())
+        .map(|x| format!("{}{}", x.line_type, x.line))
+        .collect::<Vec<_>>();
+    if !non_found_lines.is_empty() {
+        return Err(format!(
+            "Some diff block lines are not found in the file: {:?}",
+            non_found_lines
+        ));
     }
 
     return Ok(());
@@ -674,13 +694,13 @@ DT = 0.01
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        assert_eq!(result, gt_result);
+        
         let (_, changed_text) = apply_diff(
             &"./tests/emergency_frog_situation/frog.py".to_string(),
             &result,
         );
         let cropped_text = changed_text.lines().take(5).join("\n");
-
-        assert_eq!(result, gt_result);
         assert_eq!(cropped_text, gt_changed_text);
     }
 
@@ -1670,67 +1690,200 @@ if __name__ == __main__:
 
     #[tokio::test]
     async fn info_test() {
-        let input = r#"
+        let input = r#" I'll extract helper functions, add docstrings, and ensure consistent formatting. Here's the refactored version:
+
 ```diff
---- /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py
-+++ /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py
-@@ ... @@
-from typing import Dict, Any, Tuple, Callable
-@@ ... @@
-def force_include_exclude_filter(
-    pname: str,
-    files_status: FilesStatusContext
-):
-    fcfg = {
-        "filetypes_finetune": {},
-        "filetypes_db": {}
-    }
-    if os.path.exists(env.PP_CONFIG_HOW_TO_FILETYPES(pname)):
-        _log_everywhere("Reading %s" % env.PP_CONFIG_HOW_TO_FILETYPES(pname))
-        with open(env.PP_CONFIG_HOW_TO_FILETYPES(pname), "r") as f:
-            fcfg.update(**json.load(f))
-
-    is_force_included, _ = make_matcher(fcfg.get('force_include', ''))
-    is_force_excluded, _ = make_matcher(fcfg.get('force_exclude', ''))
-
-    for file in files_status.no_status_train_files():
-        if is_force_included(file['path']):
-            files_status.accept_file(file, reason="FORCE_INCLUDED")
-        elif is_force_excluded(file['path']):
-            files_status.reject_file(file, reason="FORCE_REJECTED")
-+def load_filter_config(pname: str) -> Dict[str, Any]:
-+    """Load filter configuration from a file."""
-+    fcfg = {
-+        "filetypes_finetune": {},
-+        "filetypes_db": {}
-+    }
-+    config_path = env.PP_CONFIG_HOW_TO_FILETYPES(pname)
-+    if os.path.exists(config_path):
-+        _log_everywhere(f"Reading {config_path}")
-+        with open(config_path, "r") as f:
-+            fcfg.update(**json.load(f))
-+    return fcfg
+--- /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_train.py
++++ /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_train.py
+@@ -46,71 +46,114 @@ def _log_everywhere(message):
+     traces.log(message)
+ 
+ 
+-def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, model_config: Dict, **kwargs) -> Dict[str, Any]:
+-    user_cfg = copy.deepcopy(finetune_train_defaults)
+-    user_cfg_nondefault = {}
+-    for k, v in kwargs.items():
+-        # traces.log("Command line parameter: %s = %s" % (k, v))
+-        user_cfg[k] = v
+-        if finetune_train_defaults.get(k, 0) != v:
+-            user_cfg_nondefault[k] = v
++def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, model_config: Dict, **kwargs) -> Dict[str, Any]:
++    """
++    Build the finetune configuration based on heuristics and user-provided parameters.
++    
++    Args:
++        run_id (str): The run identifier.
++        finetune_cfg (Dict): The base finetune configuration.
++        model_config (Dict): The model configuration.
++        **kwargs: Additional keyword arguments for configuration.
++    
++    Returns:
++        Dict[str, Any]: The final finetune configuration.
++    """
++    user_cfg, user_cfg_nondefault = _process_user_config(kwargs)
+     cfg_builder = ConfigBuilder(finetune_cfg)
+-    # if user_cfg['use_heuristics']:
++    
+     if user_cfg['train_steps'] == 0:
+-        _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
+-        ds_len = get_ds_len_per_epoch(env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), model_config, cfg_builder)
+-        traces.log(f"Dataset length per epoch = {ds_len}")
+-        # set_lora_quality_by_heuristics sets inside:
+-        # lora_target_modules=[
+-        #             "qkv", "out", "mlp",
+-        #         ], lora_r=64, lora_alpha=128, lora_dropout=0.01,
+-        #             freeze_exceptions=[
+-        #                 "wte", "lm_head", "lora"
+-        #             ]
+-        (cfg_builder
+-         .set_batch_size(cfg_builder.cfg['train_batch_size'])
+-        #  .set_lora_quality_by_heuristics(ds_len=ds_len, initial_loss=initial_loss)
+-         .set_schedule_by_heuristics(ds_len=ds_len)    # analog of set_train_steps + set_lr_decay_steps
+-         .set_lora_r(user_cfg['lora_r'])
+-         .set_lora_alpha(user_cfg['lora_alpha'])
+-         .set_lora_dropout(user_cfg['lora_dropout'])
+-         .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
+-         .set_trainable_embeddings(user_cfg['trainable_embeddings']))
+-        #  .set_low_gpu_mem_mode_by_heuristics())
++        _configure_with_heuristics(cfg_builder, run_id, model_config, user_cfg)
+     else:
+-        _log_everywhere("Using finetune setup parameters")
+-        (cfg_builder
+-         .set_train_steps(user_cfg['train_steps'])
+-         .set_lr_decay_steps(max(user_cfg['lr_decay_steps'], user_cfg['train_steps']))
+-         .set_lora_r(user_cfg['lora_r'])
+-         .set_lora_alpha(user_cfg['lora_alpha'])
+-         .set_lora_dropout(user_cfg['lora_dropout'])
+-         .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
+-         .set_trainable_embeddings(user_cfg['trainable_embeddings']))
+-    (cfg_builder
+-        .set_lr(user_cfg['lr'])
+-        .set_batch_size(user_cfg['batch_size'])
+-        .set_warmup_steps(user_cfg['warmup_num_steps'])
+-        # .set_limit_time_seconds(user_cfg['limit_time_seconds'])
+-        .set_weight_decay(user_cfg['weight_decay']))
++        _configure_with_user_params(cfg_builder, user_cfg)
++    
++    _set_common_config(cfg_builder, user_cfg)
++    _log_file_types(run_id)
++    _log_config(user_cfg_nondefault, cfg_builder)
++    
++    assert cfg_builder.cfg['train_iters'] % cfg_builder.cfg['test_every'] == 0
++    assert cfg_builder.cfg['save_every'] % cfg_builder.cfg['test_every'] == 0
++    
++    return cfg_builder.cfg
+ 
++def _process_user_config(kwargs: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
++    """Process user-provided configuration and identify non-default values."""
++    user_cfg = copy.deepcopy(finetune_train_defaults)
++    user_cfg_nondefault = {}
++    for k, v in kwargs.items():
++        user_cfg[k] = v
++        if finetune_train_defaults.get(k, 0) != v:
++            user_cfg_nondefault[k] = v
++    return user_cfg, user_cfg_nondefault
 +
-+def create_matchers(fcfg: Dict[str, Any]) -> Tuple[Callable, Callable]:
-+    """Create inclusion and exclusion matchers from the configuration."""
-+    is_force_included, _ = make_matcher(fcfg.get('force_include', ''))
-+    is_force_excluded, _ = make_matcher(fcfg.get('force_exclude', ''))
-+    return is_force_included, is_force_excluded
++def _configure_with_heuristics(cfg_builder: ConfigBuilder, run_id: str, model_config: Dict, user_cfg: Dict[str, Any]):
++    """Configure the builder using heuristics based on dataset length."""
++    _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
++    ds_len = get_ds_len_per_epoch(env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), model_config, cfg_builder)
++    traces.log(f"Dataset length per epoch = {ds_len}")
++    
++    (cfg_builder
++     .set_batch_size(cfg_builder.cfg['train_batch_size'])
++     .set_schedule_by_heuristics(ds_len=ds_len)
++     .set_lora_r(user_cfg['lora_r'])
++     .set_lora_alpha(user_cfg['lora_alpha'])
++     .set_lora_dropout(user_cfg['lora_dropout'])
++     .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
++     .set_trainable_embeddings(user_cfg['trainable_embeddings']))
 +
-+def force_include_exclude_filter(
-+    pname: str,
-+    files_status: FilesStatusContext
-+):
-+    fcfg = load_filter_config(pname)
-+    is_force_included, is_force_excluded = create_matchers(fcfg)
++def _configure_with_user_params(cfg_builder: ConfigBuilder, user_cfg: Dict[str, Any]):
++    """Configure the builder using user-provided parameters."""
++    _log_everywhere("Using finetune setup parameters")
++    (cfg_builder
++     .set_train_steps(user_cfg['train_steps'])
++     .set_lr_decay_steps(max(user_cfg['lr_decay_steps'], user_cfg['train_steps']))
++     .set_lora_r(user_cfg['lora_r'])
++     .set_lora_alpha(user_cfg['lora_alpha'])
++     .set_lora_dropout(user_cfg['lora_dropout'])
++     .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
++     .set_trainable_embeddings(user_cfg['trainable_embeddings']))
 +
-+    for file in files_status.no_status_train_files():
-+        if is_force_included(file['path']):
-+            files_status.accept_file(file, reason="FORCE_INCLUDED")
-+        elif is_force_excluded(file['path']):
-+            files_status.reject_file(file, reason="FORCE_REJECTED")
++def _set_common_config(cfg_builder: ConfigBuilder, user_cfg: Dict[str, Any]):
++    """Set common configuration parameters."""
++    (cfg_builder
++     .set_lr(user_cfg['lr'])
++     .set_batch_size(user_cfg['batch_size'])
++     .set_warmup_steps(user_cfg['warmup_num_steps'])
++     .set_weight_decay(user_cfg['weight_decay']))
++
++def _log_file_types(run_id: str):
++    """Log the file types for train and test datasets."""
+     if dist.get_rank() == 0:
+         filetypes_train = count_file_types(env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id))
+         filetypes_test = count_file_types(env.PERRUN_TEST_FILTERED_FILEPATH(run_id))
+-        traces.log(f'Train file types:')
+-        for k, v in filetypes_train.items():
+-            traces.log(f'    {v} {k}')
+-        traces.log(f'')
+-        traces.log(f'Test file types:')
+-        for k, v in filetypes_test.items():
+-            traces.log(f'    {v} {k}')
+-        traces.log(f'')
++        _log_file_types_helper('Train', filetypes_train)
++        _log_file_types_helper('Test', filetypes_test)
+         with open(os.path.join(traces.context().path, "source_files.json"), "w") as f:
+             json.dump({
+                 "run_id": run_id,
+                 "train": filetypes_train,
+                 "test": filetypes_test,
+             }, f, indent=4)
+ 
++def _log_file_types_helper(dataset_type: str, filetypes: Dict[str, int]):
++    """Helper function to log file types for a specific dataset."""
++    traces.log(f'{dataset_type} file types:')
++    for k, v in filetypes.items():
++        traces.log(f'    {v} {k}')
++    traces.log('')
++
++def _log_config(user_cfg_nondefault: Dict[str, Any], cfg_builder: ConfigBuilder):
++    """Log the non-default configuration and LoRA settings."""
+     if dist.get_rank() == 0:
+         for k, v in user_cfg_nondefault.items():
+             traces.log(f'Non-default parameter: {k:>20} {v}')
+         with open(os.path.join(traces.context().path, "parameters_nondefault.json"), "w") as f:
+             json.dump(user_cfg_nondefault, f, indent=4)
++        
+         traces.log(f'Freeze exceptions: {cfg_builder.cfg["model_info"]["freeze_exceptions"]}')
+         for k, v in cfg_builder.cfg["model_info"]["lora"].items():
+             traces.log(f'Lora config: {k:>20} {v}')
+         with open(os.path.join(traces.context().path, "config.json"), "w") as f:
+             json.dump(cfg_builder.cfg, f, indent=4)
+-        traces.log(f'Low memory mode: {user_cfg["low_gpu_mem_mode"]}')
+-
+-    assert cfg_builder.cfg['train_iters'] % cfg_builder.cfg['test_every'] == 0
+-    assert cfg_builder.cfg['save_every'] % cfg_builder.cfg['test_every'] == 0
+-
+-    return cfg_builder.cfg
++        traces.log(f'Low memory mode: {cfg_builder.cfg["low_gpu_mem_mode"]}')
 ```
 
+This refactored version of the `_build_finetune_config_by_heuristics` function includes the following improvements:
+
+1. Added a docstring to explain the function's purpose and parameters.
+2. Extracted helper functions to improve readability and maintainability:
+   - `_process_user_config`
+   - `_configure_with_heuristics`
+   - `_configure_with_user_params`
+   - `_set_common_config`
+   - `_log_file_types`
+   - `_log_file_types_helper`
+   - `_log_config`
+3. Improved the overall structure of the function, making it easier to understand the flow.
+4. Ensured consistent formatting and naming conventions.
+5. Removed commented-out code to improve clarity.
+6. Added type hints to function parameters and return values.
 "#;
         let gt_result = vec![
             DiffChunk {
@@ -1744,10 +1897,6 @@ def force_include_exclude_filter(
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
-        );
-        let (_, changed_text) = apply_diff(
-            &"/home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_filter.py".to_string(),
-            &result,
         );
         print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
     }
