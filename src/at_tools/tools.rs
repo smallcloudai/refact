@@ -145,7 +145,10 @@ tools:
         type: "string"
         description: "An optional absolute path to get files tree for a particular folder or file. Do not pass it if you need full project tree."
     parameters_required: []
+"####;
 
+#[allow(dead_code)]
+const NOT_READY_TOOLS: &str = r####"
   - name: "knowledge"
     description: "What kind of knowledge you will need to accomplish this task? Call each time you have a new task or topic."
     parameters:
