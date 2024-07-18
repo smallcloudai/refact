@@ -52,7 +52,7 @@ pub async fn run_tools(
             if let Err(e) = args_maybe {
                 let tool_failed_message = ChatMessage {
                     role: "tool".to_string(),
-                    content: e.to_string(),
+                    content: format!("couldn't deserialize arguments: {}. Error:\n{}\nTry again following JSON format", t_call.function.arguments, e),
                     tool_calls: None,
                     tool_call_id: t_call.id.to_string(),
                 };
