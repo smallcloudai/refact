@@ -104,6 +104,11 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
     [historyHook, navigate],
   );
 
+  const handleCreateNewChat = useCallback(() => {
+    historyHook.createNewChat();
+    navigate({ type: "push", page: { name: "chat" } });
+  }, [historyHook, navigate]);
+
   return (
     <Flex style={{ justifyContent: "center", ...style }}>
       {pages.map((page, i) => {
@@ -132,11 +137,9 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
                 history={historyHook.history}
                 takingNotes={false}
                 currentChatId={currentChatId}
-                onCreateNewChat={() => {
-                  // console.log("create new chat");
-                }}
+                onCreateNewChat={handleCreateNewChat}
                 account={undefined}
-                onHistoryItemClick={(id) => handleHistoryItemClick(id)}
+                onHistoryItemClick={handleHistoryItemClick}
                 onDeleteHistoryItem={(_id: string) => {
                   // console.log("delet history item", id);
                 }}
