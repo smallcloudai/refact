@@ -4,4 +4,5 @@ export {
   renderHistoryList,
   renderStatistic,
   renderFIMDebug,
+  renderApp,
 } from "./render";

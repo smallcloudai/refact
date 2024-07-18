@@ -2,12 +2,12 @@
  * Only used by the dev server
  */
 
-import { render } from "./lib";
+import { renderApp } from "./lib";
 
 const element = document.getElementById("refact-chat");
 
 if (element) {
-  render(element, {
+  renderApp(element, {
     host: "web",
     features: { statistics: false, vecdb: true, ast: true },
   });
