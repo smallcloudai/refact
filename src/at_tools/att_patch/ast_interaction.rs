@@ -75,13 +75,9 @@ pub async fn get_signatures_by_imports_traversal(
                     .decl_symbols_from_imports_by_file_path(&doc, 1)
                     .await {
                     Ok(s) => {
-                        s.search_results
-                            .iter()
-                            .map(|x| {
-                                symbols.push(x.symbol_declaration.clone());
-                                s.clone()
-                            })
-                            .collect::<Vec<_>>()
+                        for x in s.search_results.iter() {
+                            symbols.push(x.symbol_declaration.clone());
+                        }
                     }
                     Err(err) => {
                         warn!("Cannot import symbols for path {:?}: {err}", path);
