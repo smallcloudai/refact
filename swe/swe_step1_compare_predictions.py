@@ -18,14 +18,14 @@ def extract_filenames(text: str, filter_tests: bool = True) -> Set[str]:
     pattern = r'\b(?:[a-zA-Z]:\\|/)?(?:[\w-]+[/\\])*[\w-]+\.\w+\b'
     filenames = set(re.findall(pattern, text))
     if filter_tests:
-        filenames = {f for f in filenames if not "test" not in f.lower()}
+        filenames = {f for f in filenames if "test" not in f.lower()}
     return filenames
 
 
 def count_refact(filename: Path, pfilename: str, counters: Dict):
     prediction = json.loads(filename.read_text())
-    summarized_problem_statement = prediction.get("summarized_problem_statement")
-    if summarized_problem_statement is None:
+    summarized_problem_statement = prediction.get("summarized_problem_statement", "")
+    if not summarized_problem_statement:
         return counters
     counters["summarized_instances"] += 1
     counters["num_filenames"].append(len(extract_filenames(summarized_problem_statement)))

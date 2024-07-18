@@ -38,7 +38,7 @@ class SWERunner(AgentRunner):
         ])
         try:
             step = ProducePatchStep(base_url=base_url, model_name=MODEL, attempts=3)
-            results["model_patch"] = \
+            results["model_patches"] = \
                 await step.process(task=results["summarized_problem_statement"], repo_path=repo_path)
         except Exception as e:
             raise RuntimeError(f"step2: {type(e)} {str(e) or traceback.format_exc()}")
