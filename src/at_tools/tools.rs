@@ -32,6 +32,7 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
         ("patch".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_patch::tool::ToolPatch{}) as Box<dyn Tool + Send>))),
         // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttSaveKnowledge{}) as Box<dyn Tool + Send>))),
         ("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttGetKnowledge{}) as Box<dyn Tool + Send>))),
+        ("workspace_map".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_workspace_map::AttAstWorkspaceMap{}) as Box<dyn Tool + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
@@ -145,6 +146,18 @@ tools:
         type: "string"
         description: "An optional absolute path to get files tree for a particular folder or file. Do not pass it if you need full project tree."
     parameters_required: []
+
+  - name: "workspace_map"
+    description: "Collects relevant context using AST"
+    parameters:
+      - name: "symbols"
+        type: "string"
+        description: "The string that contains list of symbols. No spaces allowed. Symbols separated by commas if more than one."
+      - name: "paths"
+        type: "string"
+        description: "Additional string that contains list of file names separated by commas. Use absolute file paths."
+    parameters_required:
+      - "symbols"
 "####;
 
 #[allow(dead_code)]
