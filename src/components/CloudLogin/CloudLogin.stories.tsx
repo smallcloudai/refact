@@ -9,7 +9,7 @@ const meta: Meta<typeof CloudLogin> = {
   args: {
     goBack: fn(),
     next: fn(),
-    login: fn(),
+    openExternal: fn(),
     setApiKey: fn(),
   },
   decorators: [

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback } from "react";
 import { Host, InitialSetup } from "../components/InitialSetup";
 import { usePages } from "../hooks/usePages";
 import { CloudLogin } from "../components/CloudLogin";
@@ -22,7 +22,6 @@ export interface AppProps {
 export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   const { pages, navigate } = usePages();
   const [apiKey, setApiKey] = useLocalStorage("api_key", "");
-  const [loading, setLoading] = useState(false);
   const { takeingNotes, currentChatId } = useEventBusForHost();
   const postMessage = usePostMessage();
 
@@ -65,17 +64,13 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
     navigate({ type: "push", page: { name: "chat" } });
   };
 
-  const onLogin = () => {
-    setLoading(true);
+  const openExternal = (url: string) => {
+    window.open(url, "_blank")?.focus();
   };
 
   const goBack = () => {
     navigate({ type: "pop" });
   };
-
-  useEffect(() => {
-    setLoading(false);
-  }, [apiKey]);
 
   return (
     <Flex style={{ justifyContent: "center", ...style }}>
@@ -88,10 +83,9 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
             {page.name === "cloud login" && (
               <CloudLogin
                 goBack={goBack}
-                loading={loading}
                 apiKey={apiKey}
                 setApiKey={setApiKey}
-                login={onLogin}
+                openExternal={openExternal}
                 next={cloudLogin}
               />
             )}

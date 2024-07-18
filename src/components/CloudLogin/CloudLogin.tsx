@@ -1,31 +1,108 @@
 import { Button, Flex, Text, TextField } from "@radix-ui/themes";
 import { Checkbox } from "../Checkbox";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface CloudLoginProps {
-  loading: boolean;
   apiKey: string;
   setApiKey: (value: string) => void;
   goBack: () => void;
   next: (apiKey: string, sendCorrectedCodeSnippets: boolean) => void;
-  login: () => void;
+  openExternal: (url: string) => void;
+}
+
+interface OkResponse {
+  retcode: "OK";
+  secret_key: string;
+}
+
+function isOkResponse(json: unknown): json is OkResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("retcode" in json)) return false;
+  if (json.retcode !== "OK") return false;
+  if (!("secret_key" in json)) return false;
+  if (typeof json.secret_key !== "string") return false;
+  return true;
 }
 
 export const CloudLogin: React.FC<CloudLoginProps> = ({
-  loading,
   apiKey,
   setApiKey,
   goBack,
   next,
-  login,
+  openExternal,
 }: CloudLoginProps) => {
   const [sendCorrectedCodeSnippets, setSendCorrectedCodeSnippets] =
     useState(false);
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const loginTicket = useRef("");
+  const interval = useRef<NodeJS.Timeout | undefined>(undefined);
   const input = useRef<HTMLInputElement>(null);
+
+  const login = useCallback(() => {
+    setLoading(true);
+
+    const newLoginTicket =
+      Math.random().toString(36).substring(2, 15) +
+      "-" +
+      Math.random().toString(36).substring(2, 15);
+    loginTicket.current = newLoginTicket;
+    openExternal(
+      `https://refact.smallcloud.ai/authentication?token=${newLoginTicket}&utm_source=plugin&utm_medium=vscode&utm_campaign=login`,
+    );
+
+    if (interval.current !== undefined) {
+      clearInterval(interval.current);
+    }
+
+    interval.current = setInterval(() => {
+      if (loginTicket.current !== newLoginTicket) {
+        return;
+      }
+      if (apiKey === "") {
+        const fetchApiKey = async () => {
+          const url =
+            "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket";
+          const headers = {
+            "Content-Type": "application/json",
+            Authorization: `codify-${newLoginTicket}`,
+          };
+          const init: RequestInit = {
+            method: "GET",
+            redirect: "follow",
+            cache: "no-cache",
+            referrer: "no-referrer",
+            headers,
+          };
+          const response = await fetch(url, init);
+          if (!response.ok) {
+            // eslint-disable-next-line no-console
+            console.error(`Unable to recall login ticket: ${response.status}`);
+            return;
+          }
+
+          const json: unknown = await response.json();
+          if (isOkResponse(json)) {
+            if (interval.current) {
+              setApiKey(json.secret_key);
+              setLoading(false);
+              clearInterval(interval.current);
+              interval.current = undefined;
+            }
+          }
+        };
+        void fetchApiKey();
+      }
+    }, 5000);
+  }, [loginTicket, apiKey, openExternal, setApiKey]);
 
   useEffect(() => {
     setError(false);
+    setLoading(false);
+    if (interval.current) {
+      interval.current = undefined;
+    }
   }, [apiKey]);
 
   useEffect(() => {
