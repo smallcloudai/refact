@@ -39,7 +39,7 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
     return (
       <Text>
         Welcome to Refact chat, tip: more tools can be enabled with the VecDB
-        amd AST <Link onClick={openSettings}>settings</Link>{" "}
+        and AST <Link onClick={openSettings}>settings</Link>{" "}
       </Text>
     );
   } else if (!hasVecDB) {
