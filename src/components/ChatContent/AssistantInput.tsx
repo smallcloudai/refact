@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { Markdown, MarkdownProps } from "../Markdown";
 
 import { Container, Box } from "@radix-ui/themes";
@@ -31,22 +31,24 @@ function fallbackCopying(text: string) {
 }
 
 export const AssistantInput: React.FC<ChatInputProps> = (props) => {
+  const handleCopy = useCallback((text: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (window.navigator?.clipboard?.writeText) {
+      window.navigator.clipboard.writeText(text).catch(() => {
+        // eslint-disable-next-line no-console
+        console.log("failed to copy to clipboard");
+      });
+    } else {
+      fallbackCopying(text);
+    }
+  }, []);
+
   return (
     <Container position="relative">
       {props.message && (
         <Box py="4">
           <Markdown
-            onCopyClick={(text: string) => {
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-              if (window.navigator?.clipboard?.writeText) {
-                window.navigator.clipboard.writeText(text).catch(() => {
-                  // eslint-disable-next-line no-console
-                  console.log("failed to copy to clipboard");
-                });
-              } else {
-                fallbackCopying(text);
-              }
-            }}
+            onCopyClick={handleCopy}
             onNewFileClick={props.onNewFileClick}
             onPasteClick={props.onPasteClick}
             canPaste={props.canPaste}

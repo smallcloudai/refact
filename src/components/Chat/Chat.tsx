@@ -29,6 +29,7 @@ export type ChatProps = {
   onNewFileClick: ChatContentProps["onNewFileClick"];
   onPasteClick: ChatContentProps["onPasteClick"];
   canPaste: ChatContentProps["canPaste"];
+  openSettings: ChatContentProps["openSettings"];
 
   hasContextFile: ChatFormProps["hasContextFile"];
   requestCommandsCompletion: ChatFormProps["requestCommandsCompletion"];
@@ -92,6 +93,7 @@ export const Chat: React.FC<ChatProps> = ({
   canUseTools,
   setUseTools,
   useTools,
+  openSettings,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
 
@@ -147,6 +149,7 @@ export const Chat: React.FC<ChatProps> = ({
         onPasteClick={onPasteClick}
         canPaste={canPaste}
         ref={chatContentRef}
+        openSettings={openSettings}
       />
       {!isStreaming && preventSend && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>

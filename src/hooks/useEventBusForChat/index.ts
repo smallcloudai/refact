@@ -13,6 +13,7 @@ import {
   ToolCommand,
   CodeChatModel,
   ChatMessage,
+  isPlainTextResponse,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -74,6 +75,7 @@ import {
   SetEnableSend,
   isSetEnableSend,
   TakeNotesFromChat,
+  OpenSettings,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -96,6 +98,10 @@ export function formatChatResponse(
     const { tool_call_id, content, finish_reason } = response;
     const toolResult: ToolResult = { tool_call_id, content, finish_reason };
     return [...messages, [response.role, toolResult]];
+  }
+
+  if (isPlainTextResponse(response)) {
+    return [...messages, [response.role, response.content]];
   }
 
   if (!isChatResponseChoice(response)) {
@@ -197,7 +203,6 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     // console.log(action.type, { isThisChat, action });
-    // console.log(action.payload);
 
     if (isThisChat && isSetDisableChat(action)) {
       return {
@@ -257,6 +262,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           ...state.chat,
           messages: action.payload.messages,
         },
+        previous_message_length: action.payload.messages.length - 1,
       };
     }
 
@@ -275,19 +281,24 @@ export function reducer(postMessage: typeof window.postMessage) {
       }
 
       if (messages === undefined) {
-        messages = action.payload.chat.messages.map((message) => {
-          if (message[0] === "context_file" && typeof message[1] === "string") {
-            let file: ChatContextFile[] = [];
-            try {
-              file = JSON.parse(message[1]) as ChatContextFile[];
-            } catch {
-              file = [];
+        messages = action.payload.chat.messages
+          .filter((message) => message)
+          .map((message) => {
+            if (
+              message[0] === "context_file" &&
+              typeof message[1] === "string"
+            ) {
+              let file: ChatContextFile[] = [];
+              try {
+                file = JSON.parse(message[1]) as ChatContextFile[];
+              } catch {
+                file = [];
+              }
+              return [message[0], file];
             }
-            return [message[0], file];
-          }
 
-          return message;
-        });
+            return message;
+          });
       }
 
       if (state.streaming) {
@@ -301,6 +312,10 @@ export function reducer(postMessage: typeof window.postMessage) {
 
       return {
         ...state,
+        caps: {
+          ...state.caps,
+          error: null,
+        },
         waiting_for_response: false,
         prevent_send: true,
         streaming: false,
@@ -373,6 +388,7 @@ export function reducer(postMessage: typeof window.postMessage) {
         state.error === null && state.caps.error === null
           ? action.payload.message
           : state.error;
+
       return {
         ...state,
         error: error,
@@ -385,10 +401,12 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isChatDoneStreaming(action)) {
-      postMessage({
-        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-        payload: state.chat,
-      });
+      if (state.chat.messages.length > 0) {
+        postMessage({
+          type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+          payload: state.chat,
+        });
+      }
 
       return {
         ...state,
@@ -407,10 +425,12 @@ export function reducer(postMessage: typeof window.postMessage) {
       const chat_cache = { ...state.chat_cache };
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete chat_cache[action.payload.id];
-      postMessage({
-        type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-        payload: chat,
-      });
+      if (chat.messages.length > 0) {
+        postMessage({
+          type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+          payload: chat,
+        });
+      }
 
       return {
         ...state,
@@ -484,7 +504,6 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    // TODO: this may need to be set by the editor
     if (isThisChat && isChatSetLastModelUsed(action)) {
       return {
         ...state,
@@ -553,9 +572,10 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isReceivePromptsError(action)) {
+      const message = state.error ?? action.payload.error;
       return {
         ...state,
-        error: state.system_prompts.error ? null : action.payload.error,
+        error: message,
         system_prompts: {
           ...state.system_prompts,
           error: action.payload.error,
@@ -693,7 +713,7 @@ export function createInitialState(): ChatState {
       prompts: {},
       fetching: false,
     },
-    selected_system_prompt: null,
+    selected_system_prompt: "default",
     take_notes: true,
     tools: null,
     use_tools: true,
@@ -701,7 +721,7 @@ export function createInitialState(): ChatState {
 }
 
 const initialState = createInitialState();
-// Maybe use context to avoid prop drilling?
+
 export const useEventBusForChat = () => {
   const postMessage = usePostMessage();
   const [state, dispatch] = useReducer(reducer(postMessage), initialState);
@@ -719,6 +739,10 @@ export const useEventBusForChat = () => {
       window.removeEventListener("message", listener);
     };
   }, [dispatch]);
+
+  const hasCapsAndNoError = useMemo(() => {
+    return Object.keys(state.caps.available_caps).length > 0 && !state.error;
+  }, [state.caps.available_caps, state.error]);
 
   const clearError = useCallback(() => {
     dispatch({
@@ -739,12 +763,6 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
-  const maybeDefaultPrompt: string | null = useMemo(() => {
-    return "default" in state.system_prompts.prompts
-      ? state.system_prompts.prompts.default.text
-      : null;
-  }, [state.system_prompts.prompts]);
-
   const sendMessages = useCallback(
     (messages: ChatMessages, attach_file = state.active_file.attach) => {
       clearError();
@@ -756,8 +774,15 @@ export const useEventBusForChat = () => {
 
       const messagesWithSystemPrompt: ChatMessages =
         state.selected_system_prompt &&
-        state.selected_system_prompt !== maybeDefaultPrompt
-          ? [["system", state.selected_system_prompt], ...messages]
+        state.selected_system_prompt !== "default" &&
+        state.selected_system_prompt in state.system_prompts.prompts
+          ? [
+              [
+                "system",
+                state.system_prompts.prompts[state.selected_system_prompt].text,
+              ],
+              ...messages,
+            ]
           : messages;
 
       const thread: ChatThread = {
@@ -800,10 +825,10 @@ export const useEventBusForChat = () => {
       state.chat.title,
       state.chat.model,
       state.selected_system_prompt,
+      state.system_prompts.prompts,
       state.use_tools,
       state.tools,
       clearError,
-      maybeDefaultPrompt,
       postMessage,
     ],
   );
@@ -891,6 +916,12 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
       payload: { id: state.chat.id },
     });
+
+    const preventSendAction: SetEnableSend = {
+      type: EVENT_NAMES_TO_CHAT.SET_ENABLE_SEND,
+      payload: { id: state.chat.id, enable_send: false },
+    };
+    dispatch(preventSendAction);
   }, [postMessage, state.chat.id]);
 
   const hasContextFile = useMemo(() => {
@@ -967,6 +998,7 @@ export const useEventBusForChat = () => {
         // eslint-disable-next-line @typescript-eslint/no-inferrable-types
         number: number = 5,
       ) => {
+        if (!hasCapsAndNoError) return;
         const action: RequestAtCommandCompletion = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
           payload: { id: state.chat.id, query, cursor, number },
@@ -976,13 +1008,14 @@ export const useEventBusForChat = () => {
       500,
       { leading: true, maxWait: 250 },
     ),
-    [state.chat.id, postMessage],
+    [state.chat.id, postMessage, hasCapsAndNoError],
   );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestPreviewFiles = useCallback(
     useDebounceCallback(
       function (input: string) {
+        if (!hasCapsAndNoError) return;
         const message: RequestPreviewFiles = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES,
           payload: { id: state.chat.id, query: input },
@@ -992,7 +1025,7 @@ export const useEventBusForChat = () => {
       500,
       { leading: true },
     ),
-    [postMessage, state.chat.id],
+    [postMessage, state.chat.id, hasCapsAndNoError],
   );
 
   const setSelectedCommand = useCallback(
@@ -1092,12 +1125,13 @@ export const useEventBusForChat = () => {
   ]);
 
   const requestTools = useCallback(() => {
+    if (!hasCapsAndNoError) return;
     const action: RequestTools = {
       type: EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS,
       payload: { id: state.chat.id },
     };
     postMessage(action);
-  }, [postMessage, state.chat.id]);
+  }, [postMessage, state.chat.id, hasCapsAndNoError]);
 
   useEffect(() => {
     requestTools();
@@ -1126,10 +1160,20 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
+  const openSettings = useCallback(() => {
+    const action: OpenSettings = {
+      type: EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS,
+      payload: { id: state.chat.id },
+    };
+
+    postMessage(action);
+  }, [postMessage, state.chat.id]);
+
   // useEffect(() => {
   //   window.debugChat =
-  //     window.debugChat ||
+  //     window.debugChat ??
   //     function () {
+  //       // eslint-disable-next-line no-console
   //       console.log(state.chat);
   //     };
 
@@ -1160,5 +1204,12 @@ export const useEventBusForChat = () => {
     requestPreviewFiles,
     setUseTools,
     enableSend,
+    openSettings,
   };
 };
+
+// declare global {
+//   interface Window {
+//     debugChat?: () => void;
+//   }
+// }
