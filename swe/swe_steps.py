@@ -30,8 +30,8 @@ class SWERunner(AgentRunner):
         problem_statement = kwargs["problem_statement"]
 
         # step1: explore repo, find files that can be useful for the problem
+        step1 = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=3)
         try:
-            step1 = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=3)
             results["filenames_list_all"] = await step1.process(
                 problem_statement=problem_statement,
                 repo_path=repo_path)
@@ -44,6 +44,7 @@ class SWERunner(AgentRunner):
             return results
 
         # step2: produce patches for the problem with given files from step1
+        step2 = ProducePatchStep(base_url=base_url, model_name=MODEL, temperature=0.3, attempts=3)
         try:
             results["task"] = problem_statement
             if results["filenames_list"]:
@@ -52,7 +53,6 @@ class SWERunner(AgentRunner):
                     f"Use these files to solve the problem:",
                     results["filenames_list"],
                 ])
-            step2 = ProducePatchStep(base_url=base_url, model_name=MODEL, temperature=0.3, attempts=3)
             results["model_patches"] = await step2.process(
                 task=results["task"],
                 repo_path=repo_path)
@@ -61,8 +61,8 @@ class SWERunner(AgentRunner):
             return results
 
         # step3: choose the best solution from the list of patches
+        step3 = ChooseSolutionStep(base_url=base_url, model_name=MODEL)
         try:
-            step3 = ChooseSolutionStep(base_url=base_url, model_name=MODEL)
             results["model_patch"] = await step3.process(
                 problem_statement=problem_statement,
                 model_patches=results["model_patches"],

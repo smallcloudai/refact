@@ -1,4 +1,8 @@
-from typing import Set, Any
+from refact.chat_client import Message
+from refact.chat_client import tools_fetch_and_filter
+from refact.chat_client import ask_using_http
+
+from typing import Set, Any, List
 
 
 __all__ = ["Step"]
@@ -19,6 +23,18 @@ class Step:
     @property
     def _tools(self) -> Set[str]:
         raise NotImplementedError()
+
+    async def _query(self, messages: List[Message]) -> List[Message]:
+        tools = await tools_fetch_and_filter(
+            base_url=self._base_url,
+            tools_turn_on=self._tools)
+        assistant_choices = await ask_using_http(
+            self._base_url, messages, 1, self._model_name,
+            tools=tools, verbose=True, temperature=self._temperature,
+            stream=False, max_tokens=2048,
+            only_deterministic_messages=False,
+        )
+        return assistant_choices[0]
 
     async def process(self, **kwargs) -> Any:
         raise NotImplementedError()

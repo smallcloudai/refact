@@ -63,17 +63,7 @@ class ProducePatchStep(Step):
 
         for step_n in range(self._max_depth):
             print(f"{'-' * 40} step {step_n} {'-' * 40}")
-            tools = await chat_client.tools_fetch_and_filter(
-                base_url=self._base_url,
-                tools_turn_on=self._tools)
-            assistant_choices = await chat_client.ask_using_http(
-                self._base_url, messages, 1, self._model_name,
-                tools=tools, verbose=True, temperature=self._temperature,
-                stream=False, max_tokens=2048,
-                only_deterministic_messages=False,
-            )
-
-            messages = assistant_choices[0]
+            messages = await self._query(messages)
             applied_diff_call_ids = set()
             for m in [m for m in messages if m.role == "diff" and m.tool_call_id not in applied_diff_call_ids]:
                 applied_diff_call_ids.add(m.tool_call_id)
