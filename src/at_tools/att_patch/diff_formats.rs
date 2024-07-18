@@ -16,7 +16,7 @@ pub async fn parse_diff_chunks_from_message(
     let chunks = match DefaultToolPatch::parse_message(message).await {
         Ok(chunks) => chunks,
         Err(err) => {
-            return Err(format!("Error parsing diff: {:?}", err));
+            return Err(format!("Error while diff parsing: {:?}", err));
         }
     };
 
@@ -43,7 +43,7 @@ pub async fn parse_diff_chunks_from_message(
         );
         let state = fuzzy_results_into_state_vector(&fuzzy_results, 1);
         if state.iter().any(|x| *x != 1) {
-            return Err(format!("Couldn't apply the generated diff, probably it's broken:\n{}", message));
+            return Err("Couldn't apply the generated diff, probably it's broken".to_string());
         }
 
         match &maybe_ast_module {
@@ -72,7 +72,7 @@ pub async fn parse_diff_chunks_from_message(
                 };
                 if before_error_symbols.len() < after_error_symbols.len() {
                     let message = format!(
-                        "AST assessment has failed: the diff had introduced errors into the file {:?}: {} errs < {} errs", 
+                        "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs", 
                         path, before_error_symbols.len(), after_error_symbols.len()
                     );
                     return Err(message);

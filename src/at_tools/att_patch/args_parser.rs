@@ -16,7 +16,7 @@ pub async fn parse_arguments(
 ) -> Result<PatchArguments, String> {
     let paths = match args.get("paths") {
         Some(Value::String(s)) => s.split(",").map(|x| x.to_string()).collect::<Vec<String>>(),
-        Some(v) => { return Err(format!("argument `path` is not a string: {:?}", v)) }
+        Some(v) => { return Err(format!("argument `paths` is not a string: {:?}", v)) }
         None => { return Err("argument `path` is not a string".to_string()) }
     };
     let mut corrected_paths = vec![];
@@ -34,7 +34,7 @@ pub async fn parse_arguments(
     }
     let symbol_names = match args.get("symbols") {
         Some(Value::String(s)) => Some(s.split(",").map(|x| x.to_string()).collect::<Vec<String>>()),
-        Some(v) => { return Err(format!("argument `path` is not a string: {:?}", v)) }
+        Some(v) => { return Err(format!("argument `symbols` is not a string: {:?}", v)) }
         None => None
     };
     let todo = match args.get("todo") {

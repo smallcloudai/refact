@@ -40,7 +40,7 @@ async fn make_chat_history(
     tokens += 3 + count_tokens(&tokenizer_ref, &system_prompt);
     tokens += 3 + count_tokens(&tokenizer_ref, &task_message);
     if tokens > max_tokens {
-        return Err(format!("Too many tokens: {tokens} > {max_tokens}"));
+        return Err(format!("too many tokens: {tokens} > {max_tokens}"));
     }
 
     let has_single_file = args.paths.len() == 1;
@@ -51,16 +51,16 @@ async fn make_chat_history(
                 tokens += 3 + count_tokens(&tokenizer_ref, &message);
                 if tokens > max_tokens {
                     let err_message = if has_single_file || idx == 0 {
-                        format!("The provided file {file} is too large for the patch tool: {tokens} > {max_tokens}")
+                        format!("the provided file {file} is too large for the patch tool: {tokens} > {max_tokens}")
                     } else {
-                        format!("There are too many files provided: {tokens} > {max_tokens}. Try to call the tool for each file separately")
+                        format!("too many files are provided: {tokens} ctx > {max_tokens} max available ctx, use the tool for each file separately")
                     };
                     return Err(err_message);
                 }
                 chat_messages.push(ChatMessage::new("user".to_string(), message));
             }
             Err(err) => {
-                warn!("Cannot find a `{file}`: {err}");
+                warn!("cannot find a `{file}`: {err}, be sure that the input file exists");
             }
         }
     }
@@ -107,8 +107,8 @@ pub async fn execute_chat_model(
     )
         .await
         .map_err(|e| {
-            warn!("No caps: {:?}", e);
-            "Network error communicating with the model (1)".to_string()
+            warn!("no caps: {:?}", e);
+            "network error communicating with the model (1)".to_string()
         })?;
 
     let (model_name, scratchpad_name, scratchpad_patch, n_ctx, _) = crate::http::routers::v1::chat::lookup_chat_scratchpad(
@@ -155,31 +155,31 @@ pub async fn execute_chat_model(
         &chat_post.parameters,
         chat_post.only_deterministic_messages,
     ).await.map_err(|e| {
-        warn!("Network error communicating with the (2): {:?}", e);
-        "Network error communicating with the model (2)".to_string()
+        warn!("network error communicating with the (2): {:?}", e);
+        "network error communicating with the model (2)".to_string()
     })?;
     info!("patch generation took {:?}ms", t1.elapsed().as_millis() as i32);
 
     let choices_array = match messages["choices"].as_array() {
         Some(array) => array,
-        None => return Err("Unable to get choices array from JSON".to_string()),
+        None => return Err("unable to get choices array from JSON".to_string()),
     };
 
     let choice0 = match choices_array.get(0) {
         Some(Value::Object(o)) => o,
         Some(v) => { return Err(format!("choice[0] is not a dict: {:?}", v)) }
-        None => { return Err("choice[0] doesn't exist".to_string()) }
+        None => { return Err("error while parsing patch model's output: choice[0] doesn't exist".to_string()) }
     };
 
     let choice0_message = match choice0.get("message") {
         Some(Value::Object(o)) => o,
         Some(v) => { return Err(format!("choice[0].message is not a dict: {:?}", v)) }
-        None => { return Err("choice[0].message doesn't exist".to_string()) }
+        None => { return Err("error while parsing patch model's output: choice[0].message doesn't exist".to_string()) }
     };
 
     match choice0_message.get("content") {
         Some(Value::String(s)) => Ok(s.clone()),
         Some(v) => { return Err(format!("choice[0].message.content is not a string: {:?}", v)) }
-        None => { return Err("choice[0].message.content doesn't exist".to_string()) }
+        None => { return Err("error while parsing patch model's output: choice[0].message.content doesn't exist".to_string()) }
     }
 }

@@ -30,19 +30,19 @@ impl Tool for ToolPatch {
         let args = match parse_arguments(args, ccx).await {
             Ok(res) => res,
             Err(err) => {
-                return Err(err);
+                return Err(format!("Cannot parse input arguments: {err}. Try to call `patch` one more time with valid arguments"));
             }
         };
         let answer = match execute_chat_model(&args, ccx).await {
             Ok(res) => res,
             Err(err) => {
-                return Err(err);
+                return Err(format!("Patch model execution problem: {err}. Try to call `patch` one more time"));
             }
         };
-        info!("Tool patch answer: {answer}");
+        info!("Tool patch answer:\n{answer}");
         match parse_diff_chunks_from_message(ccx, &answer).await {
             Ok(res) => {
-                info!("Tool patch diff: {:?}", res);
+                info!("Tool patch diff:\n{:?}", res);
                 Ok(vec![(ContextEnum::ChatMessage(ChatMessage {
                     role: "diff".to_string(),
                     content: res,
@@ -52,7 +52,7 @@ impl Tool for ToolPatch {
             }
             Err(err) => {
                 warn!(err);
-                Err(format!("Can't make any changes: {err}"))
+                Err(format!("{err}. Try to call `patch` one more time to generate a correct diff"))
             }
         }
     }

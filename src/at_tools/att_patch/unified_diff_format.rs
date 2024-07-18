@@ -163,7 +163,7 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
         let path = match edit.path.clone() {
             Some(p) => PathBuf::from(p.clone()),
             None => {
-                return Err(format!("Cannot get a correct file name from the diff chunk:\n{edit:?}\n"));
+                return Err(format!("cannot get a correct file name from the diff chunk:\n{edit:?}\n"));
             }
         };
         let file_lines = files_to_filelines
@@ -171,7 +171,7 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
             .or_insert(Arc::new(read_file_from_disk(&path)
                 .await
                 .map_err(|e| {
-                    format!("Couldn't read file from the diff chunk: {:?}. Error: {}", &path, e)
+                    format!("couldn't read file from the diff chunk: {:?}. Error: {}", &path, e)
                 })
                 .map(
                     |x| x
@@ -375,7 +375,7 @@ fn normalize_diff_block(diff_block: &mut DiffBlock) -> Result<(), String> {
         .collect::<Vec<_>>();
     if !non_found_lines.is_empty() {
         return Err(format!(
-            "Some diff block lines are not found in the file: {:?}",
+            "some diff block lines weren't found in the file:\n{:?}",
             non_found_lines
         ));
     }
