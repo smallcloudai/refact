@@ -240,6 +240,7 @@ mod tests {
     use super::*;
     use std::fs;
     use std::io::Write;
+    use tracing::info;
 
     const TEST_MAX_FUZZY: usize = 10;
 
@@ -373,6 +374,8 @@ class Frog:
 
 DT = 0.01
 
+
+
 class AnotherFrog:
     def __init__(self, x, y, vx, vy):
         self.x = x
@@ -407,25 +410,34 @@ class AnotherFrog:
             lines_remove: "class Frog:\n".to_string(),
             lines_add: "class AnotherFrog:\n".to_string(),
         };
-        let chunks = vec![c1];
-        let applied_state = vec![false];
-        let desired_state = vec![true];
+        
+        let c2 = DiffChunk {
+            file_name: FILE3_FN.to_string(),
+            file_action: "edit".to_string(),
+            line1: 4,
+            line2: 4,
+            lines_remove: "".to_string(),
+            lines_add: "\n\n".to_string(),
+        };
+        let chunks = vec![c1, c2];
+        let applied_state = vec![false, false];
+        let desired_state = vec![true, true];
 
         write_file(FILE3_FN, FILE3);
         let (file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         println!("results_fuzzy_n: {:?}", results_fuzzy_n);
         let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
-        assert_eq!(vec![1], state);
+        assert_eq!(vec![1, 1], state);
         let changed_text = file_texts.get(FILE3_FN).unwrap();
         assert_eq!(changed_text, file3_must_be);
         write_file(FILE3_FN, changed_text);
 
-        let applied_state = vec![true];
-        let desired_state = vec![false];
+        let applied_state = vec![true, true];
+        let desired_state = vec![false, false];
         let (file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         println!("results_fuzzy_n: {:?}", results_fuzzy_n);
         let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
-        assert_eq!(vec![0], state);
+        assert_eq!(vec![0, 0], state);
         let new_text = file_texts.get(FILE3_FN).unwrap();
         write_file(FILE3_FN, new_text);
         assert_eq!(read_file(FILE3_FN), FILE3);
