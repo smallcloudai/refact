@@ -6,7 +6,7 @@ export const HistorySideBar: React.FC<{
   takingNotes: boolean;
   currentChatId: string;
   className?: string;
-  style: React.CSSProperties;
+  style?: React.CSSProperties;
 }> = ({ takingNotes, currentChatId, className, style }) => {
   const { history, restoreChatFromHistory, createNewChat, deleteChat } =
     useChatHistory();
@@ -20,6 +20,9 @@ export const HistorySideBar: React.FC<{
       currentChatId={currentChatId}
       className={className}
       style={style}
+      handleLogout={() => {
+        // TODO: handle logout
+      }}
     />
   );
 };
