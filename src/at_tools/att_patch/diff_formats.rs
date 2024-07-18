@@ -37,11 +37,11 @@ pub async fn parse_diff_chunks_from_message(
         };
         let (text_after, fuzzy_results) = apply_diff_chunks_to_text(
             &text_before.to_string(),
-            chunks.iter().enumerate().collect::<Vec<_>>(),
+            vec![(0, chunk)],
             vec![],
             1,
         );
-        let state = fuzzy_results_into_state_vector(&fuzzy_results, chunks.len());
+        let state = fuzzy_results_into_state_vector(&fuzzy_results, 1);
         if state.iter().any(|x| *x != 1) {
             return Err(format!("Couldn't apply the generated diff, probably it's broken:\n{}", message));
         }
