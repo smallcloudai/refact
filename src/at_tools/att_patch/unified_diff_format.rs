@@ -446,6 +446,7 @@ Follow these steps in order to produce the unified diff:
     - Assess the generated diff, especially its format validity (`+` and `-` symbols are in the right places and nothing is missing)
 
 2. **Generate Diff:**
+    - Fence the diff with "```diff" and "```"
     - Make changes to all given files
     - Return edits similar to unified diffs that `diff -U0` would produce.
     - Include the first 2 lines with the real file paths which were given before
@@ -1690,200 +1691,143 @@ if __name__ == __main__:
 
     #[tokio::test]
     async fn info_test() {
-        let input = r#" I'll extract helper functions, add docstrings, and ensure consistent formatting. Here's the refactored version:
+        let input = r#"Certainly! I'll analyze the task and create a unified diff for each file. Let's go through the changes step by step.
 
-```diff
---- /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_train.py
-+++ /home/svakhreev/projects/smc/refact/self_hosting_machinery/finetune/scripts/finetune_train.py
-@@ -46,71 +46,114 @@ def _log_everywhere(message):
-     traces.log(message)
- 
- 
--def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, model_config: Dict, **kwargs) -> Dict[str, Any]:
--    user_cfg = copy.deepcopy(finetune_train_defaults)
--    user_cfg_nondefault = {}
--    for k, v in kwargs.items():
--        # traces.log("Command line parameter: %s = %s" % (k, v))
--        user_cfg[k] = v
--        if finetune_train_defaults.get(k, 0) != v:
--            user_cfg_nondefault[k] = v
-+def _build_finetune_config_by_heuristics(run_id: str, finetune_cfg: Dict, model_config: Dict, **kwargs) -> Dict[str, Any]:
-+    """
-+    Build the finetune configuration based on heuristics and user-provided parameters.
-+    
-+    Args:
-+        run_id (str): The run identifier.
-+        finetune_cfg (Dict): The base finetune configuration.
-+        model_config (Dict): The model configuration.
-+        **kwargs: Additional keyword arguments for configuration.
-+    
-+    Returns:
-+        Dict[str, Any]: The final finetune configuration.
-+    """
-+    user_cfg, user_cfg_nondefault = _process_user_config(kwargs)
-     cfg_builder = ConfigBuilder(finetune_cfg)
--    # if user_cfg['use_heuristics']:
-+    
-     if user_cfg['train_steps'] == 0:
--        _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
--        ds_len = get_ds_len_per_epoch(env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), model_config, cfg_builder)
--        traces.log(f"Dataset length per epoch = {ds_len}")
--        # set_lora_quality_by_heuristics sets inside:
--        # lora_target_modules=[
--        #             "qkv", "out", "mlp",
--        #         ], lora_r=64, lora_alpha=128, lora_dropout=0.01,
--        #             freeze_exceptions=[
--        #                 "wte", "lm_head", "lora"
--        #             ]
--        (cfg_builder
--         .set_batch_size(cfg_builder.cfg['train_batch_size'])
--        #  .set_lora_quality_by_heuristics(ds_len=ds_len, initial_loss=initial_loss)
--         .set_schedule_by_heuristics(ds_len=ds_len)    # analog of set_train_steps + set_lr_decay_steps
--         .set_lora_r(user_cfg['lora_r'])
--         .set_lora_alpha(user_cfg['lora_alpha'])
--         .set_lora_dropout(user_cfg['lora_dropout'])
--         .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
--         .set_trainable_embeddings(user_cfg['trainable_embeddings']))
--        #  .set_low_gpu_mem_mode_by_heuristics())
-+        _configure_with_heuristics(cfg_builder, run_id, model_config, user_cfg)
-     else:
--        _log_everywhere("Using finetune setup parameters")
--        (cfg_builder
--         .set_train_steps(user_cfg['train_steps'])
--         .set_lr_decay_steps(max(user_cfg['lr_decay_steps'], user_cfg['train_steps']))
--         .set_lora_r(user_cfg['lora_r'])
--         .set_lora_alpha(user_cfg['lora_alpha'])
--         .set_lora_dropout(user_cfg['lora_dropout'])
--         .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
--         .set_trainable_embeddings(user_cfg['trainable_embeddings']))
--    (cfg_builder
--        .set_lr(user_cfg['lr'])
--        .set_batch_size(user_cfg['batch_size'])
--        .set_warmup_steps(user_cfg['warmup_num_steps'])
--        # .set_limit_time_seconds(user_cfg['limit_time_seconds'])
--        .set_weight_decay(user_cfg['weight_decay']))
-+        _configure_with_user_params(cfg_builder, user_cfg)
-+    
-+    _set_common_config(cfg_builder, user_cfg)
-+    _log_file_types(run_id)
-+    _log_config(user_cfg_nondefault, cfg_builder)
-+    
-+    assert cfg_builder.cfg['train_iters'] % cfg_builder.cfg['test_every'] == 0
-+    assert cfg_builder.cfg['save_every'] % cfg_builder.cfg['test_every'] == 0
-+    
-+    return cfg_builder.cfg
- 
-+def _process_user_config(kwargs: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-+    """Process user-provided configuration and identify non-default values."""
-+    user_cfg = copy.deepcopy(finetune_train_defaults)
-+    user_cfg_nondefault = {}
-+    for k, v in kwargs.items():
-+        user_cfg[k] = v
-+        if finetune_train_defaults.get(k, 0) != v:
-+            user_cfg_nondefault[k] = v
-+    return user_cfg, user_cfg_nondefault
-+
-+def _configure_with_heuristics(cfg_builder: ConfigBuilder, run_id: str, model_config: Dict, user_cfg: Dict[str, Any]):
-+    """Configure the builder using heuristics based on dataset length."""
-+    _log_everywhere("Retrieving dataset length per epoch, it may take a while...")
-+    ds_len = get_ds_len_per_epoch(env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), model_config, cfg_builder)
-+    traces.log(f"Dataset length per epoch = {ds_len}")
-+    
-+    (cfg_builder
-+     .set_batch_size(cfg_builder.cfg['train_batch_size'])
-+     .set_schedule_by_heuristics(ds_len=ds_len)
-+     .set_lora_r(user_cfg['lora_r'])
-+     .set_lora_alpha(user_cfg['lora_alpha'])
-+     .set_lora_dropout(user_cfg['lora_dropout'])
-+     .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
-+     .set_trainable_embeddings(user_cfg['trainable_embeddings']))
-+
-+def _configure_with_user_params(cfg_builder: ConfigBuilder, user_cfg: Dict[str, Any]):
-+    """Configure the builder using user-provided parameters."""
-+    _log_everywhere("Using finetune setup parameters")
-+    (cfg_builder
-+     .set_train_steps(user_cfg['train_steps'])
-+     .set_lr_decay_steps(max(user_cfg['lr_decay_steps'], user_cfg['train_steps']))
-+     .set_lora_r(user_cfg['lora_r'])
-+     .set_lora_alpha(user_cfg['lora_alpha'])
-+     .set_lora_dropout(user_cfg['lora_dropout'])
-+     .set_low_gpu_mem_mode(user_cfg['low_gpu_mem_mode'])
-+     .set_trainable_embeddings(user_cfg['trainable_embeddings']))
-+
-+def _set_common_config(cfg_builder: ConfigBuilder, user_cfg: Dict[str, Any]):
-+    """Set common configuration parameters."""
-+    (cfg_builder
-+     .set_lr(user_cfg['lr'])
-+     .set_batch_size(user_cfg['batch_size'])
-+     .set_warmup_steps(user_cfg['warmup_num_steps'])
-+     .set_weight_decay(user_cfg['weight_decay']))
-+
-+def _log_file_types(run_id: str):
-+    """Log the file types for train and test datasets."""
-     if dist.get_rank() == 0:
-         filetypes_train = count_file_types(env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id))
-         filetypes_test = count_file_types(env.PERRUN_TEST_FILTERED_FILEPATH(run_id))
--        traces.log(f'Train file types:')
--        for k, v in filetypes_train.items():
--            traces.log(f'    {v} {k}')
--        traces.log(f'')
--        traces.log(f'Test file types:')
--        for k, v in filetypes_test.items():
--            traces.log(f'    {v} {k}')
--        traces.log(f'')
-+        _log_file_types_helper('Train', filetypes_train)
-+        _log_file_types_helper('Test', filetypes_test)
-         with open(os.path.join(traces.context().path, "source_files.json"), "w") as f:
-             json.dump({
-                 "run_id": run_id,
-                 "train": filetypes_train,
-                 "test": filetypes_test,
-             }, f, indent=4)
- 
-+def _log_file_types_helper(dataset_type: str, filetypes: Dict[str, int]):
-+    """Helper function to log file types for a specific dataset."""
-+    traces.log(f'{dataset_type} file types:')
-+    for k, v in filetypes.items():
-+        traces.log(f'    {v} {k}')
-+    traces.log('')
-+
-+def _log_config(user_cfg_nondefault: Dict[str, Any], cfg_builder: ConfigBuilder):
-+    """Log the non-default configuration and LoRA settings."""
-     if dist.get_rank() == 0:
-         for k, v in user_cfg_nondefault.items():
-             traces.log(f'Non-default parameter: {k:>20} {v}')
-         with open(os.path.join(traces.context().path, "parameters_nondefault.json"), "w") as f:
-             json.dump(user_cfg_nondefault, f, indent=4)
-+        
-         traces.log(f'Freeze exceptions: {cfg_builder.cfg["model_info"]["freeze_exceptions"]}')
-         for k, v in cfg_builder.cfg["model_info"]["lora"].items():
-             traces.log(f'Lora config: {k:>20} {v}')
-         with open(os.path.join(traces.context().path, "config.json"), "w") as f:
-             json.dump(cfg_builder.cfg, f, indent=4)
--        traces.log(f'Low memory mode: {user_cfg["low_gpu_mem_mode"]}')
--
--    assert cfg_builder.cfg['train_iters'] % cfg_builder.cfg['test_every'] == 0
--    assert cfg_builder.cfg['save_every'] % cfg_builder.cfg['test_every'] == 0
--
--    return cfg_builder.cfg
-+        traces.log(f'Low memory mode: {cfg_builder.cfg["low_gpu_mem_mode"]}')
-```
+1. Changes in frog.py:
+   - Replace the `Frog` class with the `Bird` class
+   - Change `pond_width` and `pond_height` to `sky_width` and `sky_height`
+   - Rename the `jump` method to `fly`
 
-This refactored version of the `_build_finetune_config_by_heuristics` function includes the following improvements:
+2. Changes in holiday.py:
+   - Replace `frog.Frog()` with `frog.Bird()`
+   - Change `jump()` calls to `fly()`
 
-1. Added a docstring to explain the function's purpose and parameters.
-2. Extracted helper functions to improve readability and maintainability:
-   - `_process_user_config`
-   - `_configure_with_heuristics`
-   - `_configure_with_user_params`
-   - `_set_common_config`
-   - `_log_file_types`
-   - `_log_file_types_helper`
-   - `_log_config`
-3. Improved the overall structure of the function, making it easier to understand the flow.
-4. Ensured consistent formatting and naming conventions.
-5. Removed commented-out code to improve clarity.
-6. Added type hints to function parameters and return values.
+3. Changes in jump_to_conclusions.py:
+   - Replace `frog.Frog` with `frog.Bird`
+   - Change `p.jump(W, H)` to `p.fly(W, H)`
+   - Update the message "Jump To Conclusions!" to "Fly To Conclusions!"
+
+Now, let's create the unified diff for each file:
+
+--- /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/frog.py
++++ /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/frog.py
+@@ ... @@
+ 
+ DT = 0.01
+ 
+-class Frog:
++class Bird:
+     def __init__(self, x, y, vx, vy):
+         self.x = x
+         self.y = y
+         self.vx = vx
+         self.vy = vy
+ 
+-    def bounce_off_banks(self, pond_width, pond_height):
++    def bounce_off_banks(self, sky_width, sky_height):
+         if self.x < 0:
+             self.vx = np.abs(self.vx)
+-        elif self.x > pond_width:
++        elif self.x > sky_width:
+             self.vx = -np.abs(self.vx)
+         if self.y < 0:
+             self.vy = np.abs(self.vy)
+-        elif self.y > pond_height:
++        elif self.y > sky_height:
+             self.vy = -np.abs(self.vy)
+ 
+-    def jump(self, pond_width, pond_height):
++    def fly(self, sky_width, sky_height):
+         self.x += self.vx * DT
+         self.y += self.vy * DT
+-        self.bounce_off_banks(pond_width, pond_height)
+-        self.x = np.clip(self.x, 0, pond_width)
+-        self.y = np.clip(self.y, 0, pond_height)
++        self.bounce_off_banks(sky_width, sky_height)
++        self.x = np.clip(self.x, 0, sky_width)
++        self.y = np.clip(self.y, 0, sky_height)
+
+--- /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/holiday.py
++++ /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/holiday.py
+@@ ... @@
+ 
+ 
+ if __name__ == __main__:
+-    frog1 = frog.Frog()
+-    frog2 = frog.Frog()
++    bird1 = frog.Bird()
++    bird2 = frog.Bird()
+ 
+-    # First jump
+-    frog1.jump()
+-    frog2.jump()
++    # First fly
++    bird1.fly()
++    bird2.fly()
+ 
+-    # Second jump
+-    frog1.jump()
+-    frog2.jump()
++    # Second fly
++    bird1.fly()
++    bird2.fly()
+ 
+-    # Third jump
+-    frog1.jump()
+-    frog2.jump()
++    # Third fly
++    bird1.fly()
++    bird2.fly()
+ 
+-    # Forth jump
+-    frog1.jump()
+-    frog2.jump()
++    # Fourth fly
++    bird1.fly()
++    bird2.fly()
+
+--- /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py
++++ /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py
+@@ ... @@
+ H = 480
+ 
+ 
+-def draw_hello_frog(
++def draw_hello_bird(
+     screen: pygame.Surface,
+     message: str,
+     color: Tuple[int, int, int] = (0, 255, 255),
+@@ -17,7 +17,7 @@ def draw_hello_frog(
+ 
+ 
+ creatures = [
+-    frog.Frog(
++    frog.Bird(
+         np.random.uniform(0, W),
+         np.random.uniform(0, H),
+         np.random.uniform(-W/10, H/10),
+@@ -34,11 +34,11 @@ def main_loop():
+         screen.fill((0, 0, 0))
+         for p in creatures:
+             pygame.draw.circle(screen, (0, 255, 0), (p.x, p.y), 10)
+-        draw_hello_frog(screen, "Jump To Conclusions!", (0, 200, 0))
++        draw_hello_bird(screen, "Fly To Conclusions!", (0, 200, 0))
+         pygame.display.flip()
+         pygame.time.Clock().tick(60)
+-        p: frog.Frog
++        p: frog.Bird
+         for p in creatures:
+-            p.jump(W, H)
++            p.fly(W, H)
+ 
+ 
+@@ ... @@
+-    pygame.display.set_caption("Pond")
++    pygame.display.set_caption("Sky")
+     main_loop()
+     pygame.quit()
+
+These unified diffs should correctly apply the required changes to replace the Frog class with a Bird class and update all references accordingly. The changes include renaming methods, updating parameter names, and modifying related text to reflect the switch from frogs to birds.
 "#;
         let gt_result = vec![
             DiffChunk {
