@@ -491,12 +491,28 @@ class BaseCompletionsRouter(APIRouter):
         }
 
     async def _chat_completions(self, post: ChatContext, authorization: str = Header(None)):
+        def compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n) -> Dict[str, Any]:
+            usage_dict = dict()
+            usage_dict["pp1000t_prompt"] = model_dict.get("pp1000t_prompt", 0)
+            usage_dict["pp1000t_generated"] = model_dict.get("pp1000t_generated", 0)
+            usage_dict["metering_prompt_tokens_n"] = prompt_tokens_n
+            usage_dict["metering_generated_tokens_n"] = generated_tokens_n
+            return usage_dict
+
         _account = await self._account_from_bearer(authorization)
-        messages = [m.dict() for m in post.messages]
+        messages = []
+        for m in (i.dict() for i in post.messages):
+            # drop tool_calls if empty, otherwise litellm tokenizing won't work
+            if "tool_calls" in m and not m["tool_calls"]:
+                del m["tool_calls"]
+            messages.append(m)
+
         prefix, postfix = "data: ", "\n\n"
         model_dict = self._model_assigner.models_db_with_passthrough.get(post.model, {})
 
         async def litellm_streamer():
+            final_msg = {}
+            generated_tokens_n = 0
             try:
                 self._integrations_env_setup()
                 response = await litellm.acompletion(
@@ -511,10 +527,25 @@ class BaseCompletionsRouter(APIRouter):
                 async for model_response in response:
                     try:
                         data = model_response.dict()
-                        finish_reason = data["choices"][0]["finish_reason"]
+                        choice0 = data["choices"][0]
+                        finish_reason = choice0["finish_reason"]
+                        if delta := choice0.get("delta"):
+                            if text := delta.get("content"):
+                                generated_tokens_n += litellm.token_counter(model_name, text=text)
+
+                        if finish_reason:
+                            final_msg = data
+                            break
+
                     except json.JSONDecodeError:
                         data = {"choices": [{"finish_reason": finish_reason}]}
                     yield prefix + json.dumps(data) + postfix
+
+                if final_msg:
+                    usage_dict = compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n)
+                    final_msg.update(usage_dict)
+                    yield prefix + json.dumps(final_msg) + postfix
+
                 # NOTE: DONE needed by refact-lsp server
                 yield prefix + "[DONE]" + postfix
             except BaseException as e:
@@ -523,6 +554,7 @@ class BaseCompletionsRouter(APIRouter):
                 yield prefix + json.dumps({"error": err_msg}) + postfix
 
         async def litellm_non_streamer():
+            generated_tokens_n = 0
             try:
                 self._integrations_env_setup()
                 model_response = await litellm.acompletion(
@@ -536,9 +568,15 @@ class BaseCompletionsRouter(APIRouter):
                 finish_reason = None
                 try:
                     data = model_response.dict()
-                    finish_reason = data["choices"][0]["finish_reason"]
+                    choice0 = data["choices"][0]
+                    if text := choice0.get("message", {}).get("content"):
+                        generated_tokens_n = litellm.token_counter(model_name, text=text)
+                    finish_reason = choice0["finish_reason"]
+                    usage_dict = compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n)
+                    data.update(usage_dict)
                 except json.JSONDecodeError:
                     data = {"choices": [{"finish_reason": finish_reason}]}
+                print("data: ", data)
                 yield json.dumps(data)
             except BaseException as e:
                 err_msg = f"litellm error: {e}"
@@ -576,6 +614,9 @@ class BaseCompletionsRouter(APIRouter):
 
         if model_dict.get('backend') == 'litellm' and (model_name := model_dict.get('resolve_as', post.model)) in litellm.model_list:
             log(f"chat/completions: model resolve {post.model} -> {model_name}")
+            prompt_tokens_n = litellm.token_counter(model_name, messages=messages)
+            if post.tools:
+                prompt_tokens_n += litellm.token_counter(model_name, text=json.dumps(post.tools))
             response_streamer = litellm_streamer() if post.stream else litellm_non_streamer()
         else:
             response_streamer = chat_completion_streamer()

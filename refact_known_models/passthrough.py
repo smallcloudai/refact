@@ -8,6 +8,8 @@ passthrough_mini_db = {
         "resolve_as": "gpt-4o",
         "T": 128_000,
         "T_out": 4096,
+        "pp1000t_prompt": 5_000,
+        "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2024 may)
         "filter_caps": ["chat", "tools"],
     },
     "gpt-4-turbo": {
@@ -17,6 +19,8 @@ passthrough_mini_db = {
         "resolve_as": "gpt-4-turbo",
         "T": 128_000,
         "T_out": 4096,
+        "pp1000t_prompt": 10_000,
+        "pp1000t_generated": 30_000,  # $30.00 / 1M tokens (2024 may)
         "filter_caps": ["chat", "tools"],
     },
     "gpt-4": {
@@ -26,6 +30,8 @@ passthrough_mini_db = {
         "resolve_as": "gpt-4-0125-preview",
         "T": 128_000,
         "T_out": 4096,
+        "pp1000t_prompt": 10_000,
+        "pp1000t_generated": 30_000,
         "filter_caps": ["chat", "tools"],
     },
     "gpt-3.5-turbo": {
@@ -35,6 +41,8 @@ passthrough_mini_db = {
         "resolve_as": "gpt-3.5-turbo-1106",
         "T": 16_000,
         "T_out": 4096,
+        "pp1000t_prompt": 1000,
+        "pp1000t_generated": 2000,
         "filter_caps": ["chat", "tools"],
     },
     "claude-3-5-sonnet": {
@@ -44,6 +52,8 @@ passthrough_mini_db = {
         "resolve_as": "claude-3-5-sonnet-20240620",
         "T": 200_000,
         "T_out": 4096,
+        "pp1000t_prompt": 3_000,  # $3.00 / 1M tokens (2024 jun)
+        "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2024 jun)
         "filter_caps": ["chat", "tools"],
     },
     "claude-3-haiku": {
@@ -53,6 +63,8 @@ passthrough_mini_db = {
         "resolve_as": "claude-3-haiku-20240307",
         "T": 200_000,
         "T_out": 4096,
+        "pp1000t_prompt": 250,
+        "pp1000t_generated": 1_250,
         "filter_caps": ["chat", "tools"],
     },
     "claude-3-opus": {
@@ -62,6 +74,8 @@ passthrough_mini_db = {
         "resolve_as": "claude-3-opus-20240229",
         "T": 200_000,
         "T_out": 4096,
+        "pp1000t_prompt": 15_000,
+        "pp1000t_generated": 75_000,
         "filter_caps": ["chat", "tools"],
     },
     "claude-3-sonnet": {
@@ -71,24 +85,8 @@ passthrough_mini_db = {
         "resolve_as": "claude-3-sonnet-20240229",
         "T": 200_000,
         "T_out": 4096,
+        "pp1000t_prompt": 3_000,
+        "pp1000t_generated": 15_000,
         "filter_caps": ["chat", "tools"],
-    },
-    "claude-2.1": {
-        "backend": "litellm",
-        "provider": "anthropic",
-        "tokenizer_path": "Xenova/claude-tokenizer",
-        "resolve_as": "claude-2.1",
-        "T": 100_000,
-        "T_out": 4096,
-        "filter_caps": ["chat"],
-    },
-    "claude-instant-1.2": {
-        "backend": "litellm",
-        "provider": "anthropic",
-        "tokenizer_path": "Xenova/claude-tokenizer",
-        "resolve_as": "claude-instant-1.2",
-        "T": 100_000,
-        "T_out": 4096,
-        "filter_caps": ["chat"],
     },
 }
