@@ -576,7 +576,6 @@ class BaseCompletionsRouter(APIRouter):
                     data.update(usage_dict)
                 except json.JSONDecodeError:
                     data = {"choices": [{"finish_reason": finish_reason}]}
-                print("data: ", data)
                 yield json.dumps(data)
             except BaseException as e:
                 err_msg = f"litellm error: {e}"
