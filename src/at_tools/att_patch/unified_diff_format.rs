@@ -170,9 +170,6 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
             .entry(path.clone())
             .or_insert(Arc::new(read_file_from_disk(&path)
                 .await
-                .map_err(|e| {
-                    format!("couldn't read file from the diff chunk: {:?}. Error: {}", &path, e)
-                })
                 .map(
                     |x| x
                         .lines()
@@ -448,6 +445,7 @@ Follow these steps in order to produce the unified diff:
 2. **Generate Diff:**
     - Fence the diff with "```diff" and "```"
     - Make changes to all given files
+    - You cannot create new files or delete them. Use only those file names that are given
     - Return edits similar to unified diffs that `diff -U0` would produce.
     - Include the first 2 lines with the real file paths which were given before
     - Don't include timestamps with the file paths.

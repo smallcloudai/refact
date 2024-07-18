@@ -123,7 +123,7 @@ tools:
       - "symbol"
 
   - name: "patch"
-    description: "A tool to fix, edit a bunch of source files or add new functionality to the project"
+    description: "A tool to fix, edit a bunch of existing source files. This tool cannot create or delete files"
     parameters:
       - name: "paths"
         type: "string"
