@@ -20,12 +20,27 @@ export interface ChatPage {
   name: "chat";
 }
 
+export interface HistoryList {
+  name: "history";
+}
+
+export interface FIMDebugPage {
+  name: "fill in the middle debug page";
+}
+
+export interface StatisticsPage {
+  name: "statistics page";
+}
+
 export type Page =
   | InitialSetupPage
   | CloudLogin
   | EnterpriseSetup
   | SelfHostingSetup
-  | ChatPage;
+  | ChatPage
+  | HistoryList
+  | FIMDebugPage
+  | StatisticsPage;
 
 export interface ChangePage {
   type: "change";

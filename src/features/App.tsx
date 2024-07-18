@@ -6,14 +6,22 @@ import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
 import { useLocalStorage } from "usehooks-ts";
 import { Flex } from "@radix-ui/themes";
-import { HistorySideBar } from "./HistorySideBar";
+// import { HistorySideBar } from "./HistorySideBar";
 import { Chat } from "./Chat";
-import { useEventBusForHost, usePostMessage } from "../hooks";
+// import { Chat } from "../components/Chat";
+import { Sidebar } from "../components/Sidebar/Sidebar";
+import {
+  useEventBusForHost,
+  usePostMessage,
+  useChatHistory,
+  useEventBusForChat,
+} from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
   HostSettings,
   SetupHost,
 } from "../events/setup";
+import { useConfig } from "../contexts/config-context";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -22,8 +30,19 @@ export interface AppProps {
 export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   const { pages, navigate } = usePages();
   const [apiKey, setApiKey] = useLocalStorage("api_key", "");
-  const { takeingNotes, currentChatId } = useEventBusForHost();
+  const { currentChatId } = useEventBusForHost();
+  const config = useConfig();
+
   const postMessage = usePostMessage();
+
+  // temp here for testing
+  useEventBusForHost();
+
+  const historyHook = useChatHistory();
+  const chatHook = useEventBusForChat();
+  // work around for now
+  // useEventBusForChat();
+  // const conifg = useConfig();
 
   const setupHost = useCallback(
     (host: HostSettings) => {
@@ -61,7 +80,7 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const selfHostingSetup = (endpointAddress: string) => {
     setupHost({ type: "self", endpointAddress });
-    navigate({ type: "push", page: { name: "chat" } });
+    navigate({ type: "push", page: { name: "history" } });
   };
 
   const openExternal = (url: string) => {
@@ -71,6 +90,19 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   const goBack = () => {
     navigate({ type: "pop" });
   };
+
+  const handleHistoryItemClick = useCallback(
+    (id: string) => {
+      const currentChat = historyHook.history.find((item) => item.id === id);
+      if (currentChat) {
+        historyHook.setCurrentChatId(id);
+        historyHook.restoreChatFromHistory(id);
+        // chatHook.restoreChat(currentChat);
+        navigate({ type: "push", page: { name: "chat" } });
+      }
+    },
+    [historyHook, navigate],
+  );
 
   return (
     <Flex style={{ justifyContent: "center", ...style }}>
@@ -95,15 +127,32 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
             {page.name === "self hosting setup" && (
               <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
             )}
-            {page.name === "chat" && (
-              <>
-                <HistorySideBar
-                  takingNotes={takeingNotes}
-                  currentChatId={currentChatId}
-                />
-                <Chat style={{ width: "calc(100vw - 260px)" }} />
-              </>
+            {page.name === "history" && (
+              <Sidebar
+                history={historyHook.history}
+                takingNotes={false}
+                currentChatId={currentChatId}
+                onCreateNewChat={() => {
+                  // console.log("create new chat");
+                }}
+                account={undefined}
+                onHistoryItemClick={(id) => handleHistoryItemClick(id)}
+                onDeleteHistoryItem={(_id: string) => {
+                  // console.log("delet history item", id);
+                }}
+                onOpenChatInTab={undefined}
+                handleLogout={() => {
+                  // console.log("log out the user");
+                }}
+              />
             )}
+            {page.name === "chat" && (
+              <Chat host={config.host} tabbed={config.tabbed} {...chatHook} />
+            )}
+            {page.name === "fill in the middle debug page" && (
+              <div>FIM debug</div>
+            )}
+            {page.name === "statistics page" && <div>Statistics page</div>}
           </Flex>
         );
       })}

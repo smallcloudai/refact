@@ -1,37 +1,42 @@
 import React, { useMemo } from "react";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
-import { useConfig } from "../contexts/config-context";
+import type { Config } from "../contexts/config-context";
 import { CodeChatModel } from "../events";
 import { Chat as ChatComponent } from "../components/Chat";
 
-export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
-  const { host, tabbed } = useConfig();
+type ChatProps = {
+  host: Config["host"];
+  tabbed: Config["tabbed"];
+  style?: React.CSSProperties;
+} & ReturnType<typeof useEventBusForChat>;
 
-  const {
-    state,
-    askQuestion,
-    clearError,
-    setChatModel,
-    stopStreaming,
-    backFromChat,
-    openChatInNewTab,
-    sendToSideBar,
-    handleNewFileClick,
-    handlePasteDiffClick,
-    hasContextFile,
-    requestCommandsCompletion,
-    requestPreviewFiles,
-    setSelectedCommand,
-    removePreviewFileByName,
-    retryQuestion,
-    maybeRequestCaps,
-    startNewChat,
-    setSelectedSystemPrompt,
-    setUseTools,
-    enableSend,
-    openSettings,
-  } = useEventBusForChat();
-
+export const Chat: React.FC<ChatProps> = ({
+  style,
+  askQuestion,
+  clearError,
+  setChatModel,
+  stopStreaming,
+  backFromChat,
+  openChatInNewTab,
+  sendToSideBar,
+  handleNewFileClick,
+  handlePasteDiffClick,
+  hasContextFile,
+  requestCommandsCompletion,
+  requestPreviewFiles,
+  setSelectedCommand,
+  removePreviewFileByName,
+  retryQuestion,
+  maybeRequestCaps,
+  startNewChat,
+  setSelectedSystemPrompt,
+  setUseTools,
+  enableSend,
+  openSettings,
+  host,
+  tabbed,
+  state,
+}) => {
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
 

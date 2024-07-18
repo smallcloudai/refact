@@ -125,5 +125,6 @@ export function useChatHistory() {
     restoreChatFromHistory,
     createNewChat,
     deleteChat,
+    setCurrentChatId,
   };
 }

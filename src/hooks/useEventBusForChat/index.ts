@@ -76,6 +76,7 @@ import {
   isSetEnableSend,
   TakeNotesFromChat,
   OpenSettings,
+  RestoreChat,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -1169,6 +1170,20 @@ export const useEventBusForChat = () => {
     postMessage(action);
   }, [postMessage, state.chat.id]);
 
+  const restoreChat = useCallback(
+    (chat: ChatThread) => {
+      const action: RestoreChat = {
+        type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
+        payload: {
+          id: state.chat.id,
+          chat,
+        },
+      };
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
+
   // useEffect(() => {
   //   window.debugChat =
   //     window.debugChat ??
@@ -1205,6 +1220,7 @@ export const useEventBusForChat = () => {
     setUseTools,
     enableSend,
     openSettings,
+    restoreChat,
   };
 };
 
