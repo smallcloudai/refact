@@ -42,7 +42,7 @@ pub struct AstIndex {
     type_guid_to_dependent_guids: HashMap<Uuid, HashSet<Uuid>>,
     declaration_guid_to_usage_names: StdHashMap<Uuid, HashSet<String>>,
     import_components_succ_solution_index: HashMap<String, ImportDeclaration>,
-    ast_index_max_files: usize,
+    ast_max_files: usize,
     has_changes: bool,
     ast_light_mode: bool,
 }
@@ -67,7 +67,7 @@ pub(crate) struct IndexingStats {
 
 impl AstIndex {
     pub fn init(
-        ast_index_max_files: usize,
+        ast_max_files: usize,
         shutdown_flag: Arc<AtomicBool>,
         ast_light_mode: bool,
     ) -> AstIndex {
@@ -82,7 +82,7 @@ impl AstIndex {
             type_guid_to_dependent_guids: HashMap::new(),
             declaration_guid_to_usage_names: StdHashMap::new(),
             import_components_succ_solution_index: HashMap::new(),
-            ast_index_max_files,
+            ast_max_files,
             has_changes: false,
             ast_light_mode,
         }
@@ -128,7 +128,7 @@ impl AstIndex {
             info!(
                 "Too many files in the ast index ({} >= {}), skipping the {}",
                 self.path_by_symbols.len(),
-                self.ast_index_max_files,
+                self.ast_max_files,
                 crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30)
             );
             return Err("ast index too many files".to_string());
@@ -1043,7 +1043,7 @@ impl AstIndex {
     }
 
     pub(crate) fn is_overflowed(&self) -> bool {
-        self.path_by_symbols.len() >= self.ast_index_max_files
+        self.path_by_symbols.len() >= self.ast_max_files
     }
 
     fn resolve_declaration_symbols(&self, symbols: &mut Vec<AstSymbolInstanceRc>) -> IndexingStats {

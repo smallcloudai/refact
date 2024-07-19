@@ -23,6 +23,7 @@ use crate::vecdb::vecdb_cache::VecDBCache;
 fn vecdb_constants(
     caps: Arc<StdRwLock<crate::caps::CodeAssistantCaps>>,
     tokenizer: Arc<StdRwLock<Tokenizer>>,
+    vecdb_max_files: usize,
 ) -> VecdbConstants {
     let caps_locked = caps.read().unwrap();
     VecdbConstants {
@@ -34,6 +35,7 @@ fn vecdb_constants(
         endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
         cooldown_secs: 20,
         splitter_window_size: caps_locked.embedding_n_ctx / 2,
+        vecdb_max_files: vecdb_max_files,
     }
 }
 
@@ -50,11 +52,6 @@ pub struct VecDb {
 pub struct FileSearchResult {
     pub file_path: String,
     pub file_text: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct VecDbCaps {
-    functions: Vec<String>,
 }
 
 async fn vecdb_test_request(
@@ -158,7 +155,8 @@ async fn do_i_need_to_reload_vecdb(
         return (false, None);
     }
 
-    let consts = vecdb_constants(caps.clone(), tokenizer_maybe.unwrap());
+    let vecdb_max_files = gcx.read().await.cmdline.vecdb_max_files;
+    let consts = vecdb_constants(caps.clone(), tokenizer_maybe.unwrap(), vecdb_max_files);
 
     if consts.model_name.is_empty() || consts.endpoint_embeddings_template.is_empty() {
         error!("vecdb launch failed: default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty()");

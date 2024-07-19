@@ -359,6 +359,7 @@ impl FileVectorizerService {
                 db_size: 0,
                 db_cache_size: 0,
                 state: "starting".to_string(),
+                vecdb_max_files_hit: false,
             }
         ));
         FileVectorizerService {
@@ -406,10 +407,16 @@ impl FileVectorizerService {
 
     pub async fn vectorizer_enqueue_files(&self, documents: &Vec<Document>, force: bool) {
         info!("adding {} files", documents.len());
+        let mut documents_my_copy = documents.clone();
+        if documents_my_copy.len() > self.constants.vecdb_max_files {
+            info!("that's more than {} allowed in the command line, reduce the number", self.constants.vecdb_max_files);
+            documents_my_copy.truncate(self.constants.vecdb_max_files);
+            self.status.lock().await.vecdb_max_files_hit |= true;
+        }
         if !force {
-            self.update_request_queue.lock().await.extend(documents.clone());
+            self.update_request_queue.lock().await.extend(documents_my_copy);
         } else {
-            self.output_queue.lock().await.extend(documents.clone());
+            self.output_queue.lock().await.extend(documents_my_copy);
         }
     }
 
