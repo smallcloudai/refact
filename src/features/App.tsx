@@ -5,15 +5,14 @@ import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
 import { Flex } from "@radix-ui/themes";
-import { HistorySideBar } from "./HistorySideBar";
-import { Chat } from "./Chat";
-import { useEventBusForHost, usePostMessage } from "../hooks";
+import { usePostMessage } from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
   HostSettings,
   OpenExternalUrl,
   SetupHost,
 } from "../events/setup";
+import { Chat } from "./Chat";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -21,7 +20,6 @@ export interface AppProps {
 
 export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   const { pages, navigate } = usePages();
-  const { takeingNotes, currentChatId } = useEventBusForHost();
   const postMessage = usePostMessage();
 
   const setupHost = useCallback(
@@ -50,17 +48,14 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const cloudLogin = (apiKey: string, sendCorrectedCodeSnippets: boolean) => {
     setupHost({ type: "cloud", apiKey, sendCorrectedCodeSnippets });
-    navigate({ type: "push", page: { name: "chat" } });
   };
 
   const enterpriseSetup = (apiKey: string, endpointAddress: string) => {
     setupHost({ type: "enterprise", apiKey, endpointAddress });
-    navigate({ type: "push", page: { name: "chat" } });
   };
 
   const selfHostingSetup = (endpointAddress: string) => {
     setupHost({ type: "self", endpointAddress });
-    navigate({ type: "push", page: { name: "chat" } });
   };
 
   const openExternal = (url: string) => {
@@ -96,15 +91,7 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
             {page.name === "self hosting setup" && (
               <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
             )}
-            {page.name === "chat" && (
-              <>
-                <HistorySideBar
-                  takingNotes={takeingNotes}
-                  currentChatId={currentChatId}
-                />
-                <Chat style={{ width: "calc(100vw - 260px)" }} />
-              </>
-            )}
+            {page.name === "chat" && <Chat />}
           </Flex>
         );
       })}

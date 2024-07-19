@@ -1,4 +1,5 @@
 import { useReducer } from "react";
+import { useConfig } from "../contexts/config-context";
 
 export interface InitialSetupPage {
   name: "initial setup";
@@ -54,9 +55,12 @@ function pageReducer(state: Page[], action: PageAction): Page[] {
 }
 
 export function usePages() {
-  const [pages, dispatch] = useReducer(pageReducer, [
-    { name: "initial setup" },
-  ]);
+  const config = useConfig();
+  let firstPage: Page = { name: "initial setup" };
+  if (config.addressURL && config.apiKey) {
+    firstPage = { name: "chat" }; // todo: change this to chat history
+  }
+  const [pages, dispatch] = useReducer(pageReducer, [firstPage]);
 
   return { pages, navigate: dispatch };
 }

@@ -17,7 +17,6 @@ export type Config = {
   };
   apiKey?: string;
   addressURL?: string;
-  telemetryCodeSnippets?: boolean;
 };
 
 export interface UpdateConfigMessage {
