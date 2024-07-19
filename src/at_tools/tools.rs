@@ -128,7 +128,7 @@ tools:
     parameters:
       - name: "paths"
         type: "string"
-        description: "The string that contains all necessary to edit file names separated by commas. Use absolute file paths"
+        description: "A single string that contains all necessary to edit file names separated by commas. Use absolute file paths. Do not pass list of strings!"
       - name: "todo"
         type: "string"
         description: "A complete and usefull description of required changes for the given files"
