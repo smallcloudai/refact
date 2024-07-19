@@ -15,7 +15,7 @@ import {
   FIMDebugBack,
 } from "../events";
 
-type FIMDebugState = {
+export type FIMDebugState = {
   data: FimDebugData | null;
   error: string | null;
   fetching: boolean;

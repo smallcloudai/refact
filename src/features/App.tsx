@@ -15,6 +15,8 @@ import {
   usePostMessage,
   useChatHistory,
   useEventBusForChat,
+  useEventBysForFIMDebug,
+  useEventBusForStatistic,
 } from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
@@ -22,6 +24,8 @@ import {
   SetupHost,
 } from "../events/setup";
 import { useConfig } from "../contexts/config-context";
+import { FIMDebug } from "./FIMDebug";
+import { Statistic } from "./Statistic";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -37,9 +41,8 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const historyHook = useChatHistory();
   const chatHook = useEventBusForChat();
-  // work around for now
-  // useEventBusForChat();
-  // const conifg = useConfig();
+  const fimHook = useEventBysForFIMDebug();
+  const statisticsHook = useEventBusForStatistic();
 
   const setupHost = useCallback(
     (host: HostSettings) => {
@@ -106,6 +109,33 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
     navigate({ type: "push", page: { name: "chat" } });
   }, [historyHook, navigate]);
 
+  const handleDelete = useCallback(
+    (id: string) => {
+      historyHook.deleteChat(id);
+    },
+    [historyHook],
+  );
+
+  const handleNavigation = useCallback(
+    (to: "fim" | "stats" | "hot keys" | "settings" | "") => {
+      if (to === "settings") {
+        chatHook.openSettings();
+      } else if (to === "hot keys") {
+        chatHook.openHotKeys();
+      } else if (to === "fim") {
+        navigate({
+          type: "push",
+          page: { name: "fill in the middle debug page" },
+        });
+      } else if (to === "stats") {
+        navigate({ type: "push", page: { name: "statistics page" } });
+      }
+    },
+    [chatHook, navigate],
+  );
+
+  // goTo settings, fim, stats, hot keys
+
   return (
     <Flex style={{ justifyContent: "center", ...style }}>
       {pages.map((page, i) => {
@@ -137,22 +167,35 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
                 onCreateNewChat={handleCreateNewChat}
                 account={undefined}
                 onHistoryItemClick={handleHistoryItemClick}
-                onDeleteHistoryItem={(_id: string) => {
-                  // console.log("delet history item", id);
-                }}
+                onDeleteHistoryItem={handleDelete}
                 onOpenChatInTab={undefined}
                 handleLogout={() => {
-                  // console.log("log out the user");
+                  // TODO: handle logout
                 }}
+                handleNavigation={handleNavigation}
               />
             )}
             {page.name === "chat" && (
               <Chat host={config.host} tabbed={config.tabbed} {...chatHook} />
             )}
             {page.name === "fill in the middle debug page" && (
-              <div>FIM debug</div>
+              <FIMDebug
+                state={fimHook.state}
+                host={config.host}
+                tabbed={config.tabbed}
+                clearErrorMessage={fimHook.clearErrorMessage}
+                backFromFim={goBack}
+              />
             )}
-            {page.name === "statistics page" && <div>Statistics page</div>}
+            {page.name === "statistics page" && (
+              <Statistic
+                state={statisticsHook.state}
+                backFromStatistic={goBack}
+                tabbed={config.tabbed}
+                host={config.host}
+                onCloseStatistic={goBack}
+              />
+            )}
           </Flex>
         );
       })}

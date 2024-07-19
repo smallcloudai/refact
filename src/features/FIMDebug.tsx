@@ -1,16 +1,27 @@
 import React from "react";
 import { FIMDebug as FIMDebugView } from "../components/FIMDebug";
-import { useEventBysForFIMDebug } from "../hooks";
+import { type FIMDebugState } from "../hooks";
 import { Callout } from "../components/Callout";
 import { Spinner, Flex, Button } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { useConfig } from "../contexts/config-context";
+import { type Config } from "../contexts/config-context";
 import { PageWrapper } from "../components/PageWrapper";
 
-export const FIMDebug: React.FC = () => {
-  const { host, tabbed } = useConfig();
-  const { state, clearErrorMessage, backFromFim } = useEventBysForFIMDebug();
+type FIMDebugProps = {
+  host: Config["host"];
+  tabbed: Config["tabbed"];
+  state: FIMDebugState;
+  clearErrorMessage: () => void;
+  backFromFim: () => void;
+};
 
+export const FIMDebug: React.FC<FIMDebugProps> = ({
+  host,
+  tabbed,
+  state,
+  clearErrorMessage,
+  backFromFim,
+}) => {
   return (
     <PageWrapper host={host}>
       {host === "vscode" && !tabbed && (

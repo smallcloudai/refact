@@ -130,8 +130,12 @@ const Links: React.FC<{ hasAccount: boolean }> = ({ hasAccount }) => {
   );
 };
 
-// TODO: handle interactions on this
-const Settings: React.FC = () => {
+type SettingsProps = {
+  handleNavigation: (
+    to: "fim" | "stats" | "settings" | "hot keys" | "",
+  ) => void;
+};
+const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
@@ -141,11 +145,19 @@ const Settings: React.FC = () => {
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Content>
-        <DropdownMenu.Item>FIM debug</DropdownMenu.Item>
-        <DropdownMenu.Item>Statistics</DropdownMenu.Item>
-        <DropdownMenu.Item>Hot Keys</DropdownMenu.Item>
+        <DropdownMenu.Item onSelect={() => handleNavigation("fim")}>
+          FIM debug
+        </DropdownMenu.Item>
+        <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
+          Statistics
+        </DropdownMenu.Item>
+        <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
+          Hot Keys
+        </DropdownMenu.Item>
         <DropdownMenu.Separator />
-        <DropdownMenu.Item>Settings</DropdownMenu.Item>
+        <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
+          Settings
+        </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );
@@ -154,9 +166,16 @@ const Settings: React.FC = () => {
 export type FooterProps = {
   account?: LoginInfoProps;
   handleLogout: () => void;
+  handleNavigation: (
+    to: "fim" | "stats" | "settings" | "hot keys" | "",
+  ) => void;
 };
 
-export const Footer: React.FC<FooterProps> = ({ account, handleLogout }) => {
+export const Footer: React.FC<FooterProps> = ({
+  account,
+  handleLogout,
+  handleNavigation,
+}) => {
   return (
     <Flex direction="column" gap="2" flexGrow="1">
       {account && (
@@ -173,7 +192,7 @@ export const Footer: React.FC<FooterProps> = ({ account, handleLogout }) => {
             handleLogout();
           }}
         />
-        <Settings />
+        <Settings handleNavigation={handleNavigation} />
       </Flex>
 
       <Links hasAccount={!!account} />

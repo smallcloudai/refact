@@ -14,6 +14,9 @@ export type SidebarProps = {
   style?: React.CSSProperties;
   account?: FooterProps["account"];
   handleLogout: () => void;
+  handleNavigation: (
+    to: "fim" | "stats" | "settings" | "hot keys" | "",
+  ) => void;
 } & ChatHistoryProps;
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -27,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   style,
   account,
   handleLogout,
+  handleNavigation,
 }) => {
   return (
     <Box className={classNames(styles.sidebar, className)} style={style}>
@@ -61,7 +65,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           currentChatId={currentChatId}
         />
         <Flex p="2" pb="4">
-          <Footer handleLogout={handleLogout} account={account} />
+          <Footer
+            handleLogout={handleLogout}
+            account={account}
+            handleNavigation={handleNavigation}
+          />
         </Flex>
       </Flex>
     </Box>

@@ -27,6 +27,7 @@ export enum EVENT_NAMES_FROM_CHAT {
   TAKE_NOTES = "chat_take_notes",
   REQUEST_TOOLS = "chat_request_has_tool_check",
   OPEN_SETTINGS = "chat_open_settings",
+  OPEN_HOT_KEYS = "chat_open_hot_keys",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -247,6 +248,16 @@ export interface OpenSettings extends ActionFromChat {
 export function isOpenSettings(action: unknown): action is OpenSettings {
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
+}
+
+export interface OpenHotKeys extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.OPEN_HOT_KEYS;
+  payload: { id: string };
+}
+
+export function isOpenHotKeys(action: unknown): action is OpenHotKeys {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.OPEN_HOT_KEYS;
 }
 
 export interface ActionToChat extends BaseAction {

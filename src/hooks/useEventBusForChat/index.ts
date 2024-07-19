@@ -77,6 +77,7 @@ import {
   TakeNotesFromChat,
   OpenSettings,
   RestoreChat,
+  OpenHotKeys,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -1184,6 +1185,14 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
+  const openHotKeys = useCallback(() => {
+    const action: OpenHotKeys = {
+      type: EVENT_NAMES_FROM_CHAT.OPEN_HOT_KEYS,
+      payload: { id: state.chat.id },
+    };
+    postMessage(action);
+  }, [postMessage, state.chat.id]);
+
   // useEffect(() => {
   //   window.debugChat =
   //     window.debugChat ??
@@ -1221,6 +1230,7 @@ export const useEventBusForChat = () => {
     enableSend,
     openSettings,
     restoreChat,
+    openHotKeys,
   };
 };
 

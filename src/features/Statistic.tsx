@@ -1,17 +1,26 @@
 import React from "react";
 import { Flex, Button } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { useConfig } from "../contexts/config-context";
+import { Config } from "../contexts/config-context";
 import { ScrollArea } from "../components/ScrollArea";
-import { useEventBusForStatistic } from "../hooks";
+import type { StatisticState } from "../hooks";
 import { StatisticView } from "../components/StatisticView/StatisticView";
 import { PageWrapper } from "../components/PageWrapper";
 
-export const Statistic: React.FC<{
+export type StatisticsProps = {
   onCloseStatistic?: () => void;
-}> = ({ onCloseStatistic }) => {
-  const { host, tabbed } = useConfig();
-  const { backFromStatistic, state } = useEventBusForStatistic();
+  backFromStatistic: () => void;
+  host: Config["host"];
+  tabbed: Config["tabbed"];
+  state: StatisticState;
+};
+export const Statistic: React.FC<StatisticsProps> = ({
+  onCloseStatistic,
+  backFromStatistic,
+  host,
+  tabbed,
+  state,
+}) => {
   const LeftRightPadding =
     host === "web"
       ? { initial: "2", xl: "9" }
