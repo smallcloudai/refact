@@ -63,6 +63,12 @@ export const ToolContent: React.FC<{
   if (toolCalls.length === 0) return null;
 
   const toolNames = toolCalls.reduce<string[]>((acc, toolCall) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (toolCall === null) {
+      // eslint-disable-next-line no-console
+      console.error("toolCall is null");
+      return acc;
+    }
     if (!toolCall.function.name) return acc;
     if (acc.includes(toolCall.function.name)) return acc;
     return [...acc, toolCall.function.name];
@@ -81,6 +87,12 @@ export const ToolContent: React.FC<{
         </Collapsible.Trigger>
         <Collapsible.Content>
           {toolCalls.map((toolCall) => {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (toolCall === null) {
+              // eslint-disable-next-line no-console
+              console.error("toolCall is null");
+              return;
+            }
             if (toolCall.id === undefined) return;
             const result = results[toolCall.id];
             const key = `${toolCall.id}-${toolCall.index}`;

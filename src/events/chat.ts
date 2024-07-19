@@ -30,6 +30,7 @@ export enum EVENT_NAMES_FROM_CHAT {
   REQUEST_TOOLS = "chat_request_has_tool_check",
   REQUEST_DIFF_APPLIED_CHUNKS = "request_diff_applied_chunks",
   REQUEST_DIFF_OPPERATION = "request_diff_operation",
+  OPEN_SETTINGS = "chat_open_settings",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -271,6 +272,15 @@ export function isRequestDiffAppliedChunks(
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS;
 }
+export interface OpenSettings extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
+  payload: { id: string };
+}
+
+export function isOpenSettings(action: unknown): action is OpenSettings {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
+}
 
 export interface ActionToChat extends BaseAction {
   type: EVENT_NAMES_TO_CHAT;
@@ -452,7 +462,7 @@ export interface RestoreChat extends ActionToChat {
   payload: {
     id: string;
     chat: ChatThread & {
-      messages: ChatThread["messages"] | [string, string][];
+      messages: ChatThread["messages"] | ([string, string] | null)[];
     };
     snippet?: Snippet;
   };

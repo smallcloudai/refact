@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   ChatMessages,
   DiffChunk,
@@ -11,7 +11,7 @@ import type { MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
-import { Flex, Text, Container } from "@radix-ui/themes";
+import { Flex, Text, Container, Link } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
@@ -20,10 +20,49 @@ import { useAutoScroll } from "./useAutoScroll";
 import { DiffContent } from "./DiffContent";
 import { DiffChunkStatus } from "../../hooks";
 import { PlainText } from "./PlainText";
+import { useConfig } from "../../contexts/config-context";
 
-const PlaceHolderText: React.FC = () => (
-  <Text>Welcome to Refact chat! How can I assist you today?</Text>
-);
+const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const config = useConfig();
+  const hasVecDB = config.features?.vecdb ?? false;
+  const hasAst = config.features?.ast ?? false;
+
+  const openSettings = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      onClick();
+    },
+    [onClick],
+  );
+
+  if (config.host === "web") {
+    return <Text>Welcome to Refact chat! How can I assist you today?</Text>;
+  }
+
+  if (!hasVecDB && !hasAst) {
+    return (
+      <Text>
+        Welcome to Refact chat, tip: more tools can be enabled with the VecDB
+        and AST <Link onClick={openSettings}>settings</Link>{" "}
+      </Text>
+    );
+  } else if (!hasVecDB) {
+    return (
+      <Text>
+        Welcome to Refact chat, tip: more tools can be enabled with the VecDB{" "}
+        <Link onClick={openSettings}>setting</Link>{" "}
+      </Text>
+    );
+  } else if (!hasAst) {
+    return (
+      <Text>
+        Welcome to Refact chat, tip: more tools can be enabled with the AST{" "}
+        <Link onClick={openSettings}>setting</Link>{" "}
+      </Text>
+    );
+  }
+  return <Text>Welcome to Refact chat! How can I assist you today?</Text>;
+};
 
 export type ChatContentProps = {
   messages: ChatMessages;
@@ -37,6 +76,7 @@ export type ChatContentProps = {
     chunks: DiffChunk[],
     toApply: boolean[],
   ) => void;
+  openSettings: () => void;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
@@ -51,6 +91,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       isStreaming,
       getDiffByIndex,
       addOrRemoveDiff,
+      openSettings,
     } = props;
 
     const { innerRef, handleScroll } = useAutoScroll({
@@ -77,7 +118,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
         onScroll={handleScroll}
       >
         <Flex direction="column" className={styles.content} p="2" gap="2">
-          {messages.length === 0 && <PlaceHolderText />}
+          {messages.length === 0 && <PlaceHolderText onClick={openSettings} />}
           {messages.map((message, index) => {
             if (isChatContextFileMessage(message)) {
               const [, files] = message;

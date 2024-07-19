@@ -283,6 +283,8 @@ export function isDiffResponse(json: unknown): json is DiffResponse {
 export interface PlainTextResponse {
   role: "plain_text";
   content: string;
+  tool_call_id: string;
+  tool_calls?: ToolCall[];
 }
 
 export function isPlainTextResponse(json: unknown): json is PlainTextResponse {

@@ -37,6 +37,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
     enableSend,
     getDiffByIndex,
     addOrRemoveDiff,
+    openSettings,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -118,6 +119,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         canPaste={state.active_file.can_paste}
         ref={chatContentRef}
         getDiffByIndex={getDiffByIndex}
+        openSettings={openSettings}
       />
       {!state.streaming && state.prevent_send && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>

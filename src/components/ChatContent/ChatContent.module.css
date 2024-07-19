@@ -7,6 +7,12 @@
   overflow: hidden;
 }
 
+.file_with_icon {
+  gap: 2px;
+  align-items: center;
+  justify-items: center;
+}
+
 .footer {
   min-height: var(--space-5);
 }
