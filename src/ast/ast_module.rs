@@ -28,6 +28,7 @@ pub struct AstIndexStatus {
     pub ast_index_files_total: usize,
     pub ast_index_symbols_total: usize,
     pub state: String,
+    pub ast_max_files_hit: bool,  // ast_index_files_total >= limit
 }
 
 
@@ -39,7 +40,7 @@ pub struct AstModule {
 
 impl AstModule {
     pub async fn ast_indexer_init(
-        ast_index_max_files: usize,
+        ast_max_files: usize,
         shutdown_flag: Arc<AtomicBool>,
         ast_light_mode: bool
     ) -> Result<AstModule, String> {
@@ -49,9 +50,10 @@ impl AstModule {
             ast_index_files_total: 0,
             ast_index_symbols_total: 0,
             state: "starting".to_string(),
+            ast_max_files_hit: false,
         }));
         let ast_index = Arc::new(AMutex::new(AstIndex::init(
-            ast_index_max_files, shutdown_flag, ast_light_mode
+            ast_max_files, shutdown_flag, ast_light_mode
         )));
         let ast_index_service = Arc::new(AMutex::new(AstIndexService::init(
             ast_index.clone(),
@@ -91,6 +93,10 @@ impl AstModule {
                 return Err("ast timeout".to_string());
             }
         };
+        if ast_ref.is_overflowed() {
+            let mut locked_status = self.status.lock().await;
+            locked_status.ast_max_files_hit = true;
+        }
         ast_ref.add_or_update(&document, make_dirty)
     }
 

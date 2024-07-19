@@ -54,18 +54,20 @@ pub struct CommandLine {
     pub ast: bool,
     #[structopt(long, help="Use AST light mode. Could be useful for large projects and weak systems. In this mode we don't parse variables")]
     pub ast_light_mode: bool,
+    #[structopt(long, default_value="15000", help="Maximum files for AST index, to avoid OOM on large projects.")]
+    pub ast_max_files: usize,
     #[structopt(long, help="Use vector database. Give it a jsonl files list or LSP workspace folders, and also caps need to have an embedding model.")]
     pub vecdb: bool,
     #[structopt(long, help="Delete all memories, start fresh.")]
     pub reset_memory: bool,
+    #[structopt(long, default_value="15000", help="Maximum files count for VecDB index, to avoid OOM.")]
+    pub vecdb_max_files: usize,
     #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to vecdb and ast")]
     pub files_jsonl_path: String,
     #[structopt(long, default_value="", help="Vecdb storage path")]
     pub vecdb_forced_path: String,
     #[structopt(long, short="w", default_value="", help="Workspace folder to find files for vecdb and AST. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
-    #[structopt(long, default_value="15000", help="Maximum files count for AST index")]
-    pub ast_index_max_files: usize,
 }
 impl CommandLine {
     fn create_hash(msg: String) -> String {
@@ -268,7 +270,8 @@ pub async fn create_global_context(
     if cmdline.ast {
         let ast_module = Arc::new(ARwLock::new(
             AstModule::ast_indexer_init(
-                cmdline.ast_index_max_files, shutdown_flag.clone(),
+                cmdline.ast_max_files,
+                shutdown_flag.clone(),
                 cmdline.ast_light_mode
             ).await.expect("Failed to initialize ast module")
         ));

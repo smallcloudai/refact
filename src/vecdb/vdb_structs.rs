@@ -29,6 +29,7 @@ pub struct VecdbConstants {
     pub endpoint_embeddings_style: String,
     pub cooldown_secs: u64,
     pub splitter_window_size: usize,
+    pub vecdb_max_files: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -41,6 +42,7 @@ pub struct VecDbStatus {
     pub db_cache_size: usize,
     pub state: String,   // "starting", "parsing", "done"
     pub queue_additions: bool,
+    pub vecdb_max_files_hit: bool,
 }
 
 

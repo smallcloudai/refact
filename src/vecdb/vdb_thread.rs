@@ -421,6 +421,7 @@ impl FileVectorizerService {
                 db_cache_size: 0,
                 state: "starting".to_string(),
                 queue_additions: true,
+                vecdb_max_files_hit: false,
             }
         ));
         FileVectorizerService {
@@ -498,15 +499,22 @@ pub async fn vectorizer_enqueue_files(
     process_immediately: bool
 ) {
     info!("adding {} files", documents.len());
-    let (delayed_q, immediate_q, vstatus, vstatus_notify) = {
+    let (delayed_q, immediate_q, vstatus, vstatus_notify, vecdb_max_files) = {
         let service = vservice.lock().await;
         (
             service.vecdb_delayed_q.clone(),
             service.vecdb_immediate_q.clone(),
             service.vstatus.clone(),
             service.vstatus_notify.clone(),
+            service.constants.vecdb_max_files
         )
     };
+    let mut documents_my_copy = documents.clone();
+    if documents_my_copy.len() > vecdb_max_files {
+        info!("that's more than {} allowed in the command line, reduce the number", vecdb_max_files);
+        documents_my_copy.truncate(vecdb_max_files);
+        vstatus.lock().await.vecdb_max_files_hit = true;
+    }
     if !process_immediately {
         delayed_q.lock().await.extend(documents.clone());
     } else {
