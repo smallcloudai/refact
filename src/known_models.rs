@@ -124,6 +124,17 @@ pub const KNOWN_MODELS: &str = r####"
                 "gpt-4o-2024-05-13"
             ]
         },
+        "gpt-4o-mini": {
+            "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            },
+            "similar_models": [
+                "gpt-4o-mini-2024-07-18"
+            ]
+        },
         "claude-instant-1.2": {
             "n_ctx": 8096,
             "supports_scratchpads": {
@@ -264,6 +275,8 @@ pub const KNOWN_MODELS: &str = r####"
         "gpt-4-turbo-2024-04-09": "Xenova/gpt-4",
         "gpt-4o":                 "Xenova/gpt-4o",
         "gpt-4o-2024-05-13":      "Xenova/gpt-4o",
+        "gpt-4o-mini":            "Xenova/gpt-4o",
+        "gpt-4o-mini-2024-07-18": "Xenova/gpt-4o",
         "claude-3-5-sonnet":          "Xenova/claude-tokenizer",
         "claude-3-5-sonnet-20240620": "Xenova/claude-tokenizer"
     }
