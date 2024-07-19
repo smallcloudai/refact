@@ -4,7 +4,6 @@ import { usePages } from "../hooks/usePages";
 import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
-import { useLocalStorage } from "usehooks-ts";
 import { Flex } from "@radix-ui/themes";
 import { HistorySideBar } from "./HistorySideBar";
 import { Chat } from "./Chat";
@@ -22,7 +21,6 @@ export interface AppProps {
 
 export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   const { pages, navigate } = usePages();
-  const [apiKey, setApiKey] = useLocalStorage("api_key", "");
   const { takeingNotes, currentChatId } = useEventBusForHost();
   const postMessage = usePostMessage();
 
@@ -88,8 +86,6 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
             {page.name === "cloud login" && (
               <CloudLogin
                 goBack={goBack}
-                apiKey={apiKey}
-                setApiKey={setApiKey}
                 openExternal={openExternal}
                 next={cloudLogin}
               />

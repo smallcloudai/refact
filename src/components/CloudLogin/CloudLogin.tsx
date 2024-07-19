@@ -3,8 +3,6 @@ import { Checkbox } from "../Checkbox";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface CloudLoginProps {
-  apiKey: string;
-  setApiKey: (value: string) => void;
   goBack: () => void;
   next: (apiKey: string, sendCorrectedCodeSnippets: boolean) => void;
   openExternal: (url: string) => void;
@@ -26,14 +24,13 @@ function isOkResponse(json: unknown): json is OkResponse {
 }
 
 export const CloudLogin: React.FC<CloudLoginProps> = ({
-  apiKey,
-  setApiKey,
   goBack,
   next,
   openExternal,
 }: CloudLoginProps) => {
   const [sendCorrectedCodeSnippets, setSendCorrectedCodeSnippets] =
     useState(false);
+  const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
   const loginTicket = useRef("");

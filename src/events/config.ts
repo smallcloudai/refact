@@ -15,6 +15,9 @@ export type Config = {
     vecdb?: boolean;
     ast?: boolean;
   };
+  apiKey?: string;
+  addressURL?: string;
+  telemetryCodeSnippets?: boolean;
 };
 
 export interface UpdateConfigMessage {
