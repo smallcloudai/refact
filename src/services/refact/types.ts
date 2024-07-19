@@ -116,6 +116,7 @@ export type DiffChunk = {
 export interface DiffMessage extends BaseMessage {
   0: "diff";
   1: DiffChunk[];
+  2: string; // tool_call_id
 }
 
 export function isUserMessage(message: ChatMessage): message is UserMessage {
@@ -271,6 +272,7 @@ export function isToolResponse(json: unknown): json is ToolResponse {
 export type DiffResponse = {
   role: "diff";
   content: string;
+  tool_call_id: string;
 };
 
 export function isDiffResponse(json: unknown): json is DiffResponse {

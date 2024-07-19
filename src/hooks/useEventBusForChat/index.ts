@@ -119,7 +119,7 @@ export function formatChatResponse(
 
   if (isDiffResponse(response)) {
     const content = parseOrElse<DiffChunk[]>(response.content, []);
-    return [...messages, [response.role, content]];
+    return [...messages, [response.role, content, response.tool_call_id]];
   }
 
   if (isPlainTextResponse(response)) {
