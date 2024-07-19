@@ -37,23 +37,33 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 
   if (!hasVecDB && !hasAst) {
     return (
-      <Text>
-        💡 You can turn on VecDB and AST in{" "}
-        <Link onClick={openSettings}>settings</Link>.
-      </Text>
+      <Flex direction="column" gap="4">
+        <Text>Welcome to Refact chat!</Text>
+        <Text>
+          💡 You can turn on VecDB and AST in{" "}
+          <Link onClick={openSettings}>settings</Link>.
+        </Text>
+      </Flex>
     );
   } else if (!hasVecDB) {
     return (
-      <Text>
-        💡 You can turn on VecDB in <Link onClick={openSettings}>settings</Link>
-        .
-      </Text>
+      <Flex direction="column" gap="4">
+        <Text>Welcome to Refact chat!</Text>
+        <Text>
+          💡 You can turn on VecDB in{" "}
+          <Link onClick={openSettings}>settings</Link>.
+        </Text>
+      </Flex>
     );
   } else if (!hasAst) {
     return (
-      <Text>
-        💡 You can turn on AST in <Link onClick={openSettings}>settings</Link>.
-      </Text>
+      <Flex direction="column" gap="4">
+        <Text>Welcome to Refact chat!</Text>
+        <Text>
+          💡 You can turn on AST in <Link onClick={openSettings}>settings</Link>
+          .
+        </Text>
+      </Flex>
     );
   }
   return <Text>Welcome to Refact chat! How can I assist you today?</Text>;
