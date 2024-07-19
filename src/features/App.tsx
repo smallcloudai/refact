@@ -12,6 +12,7 @@ import { useEventBusForHost, usePostMessage } from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
   HostSettings,
+  OpenExternalUrl,
   SetupHost,
 } from "../events/setup";
 
@@ -65,7 +66,11 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   };
 
   const openExternal = (url: string) => {
-    window.open(url, "_blank")?.focus();
+    const openUrlMessage: OpenExternalUrl = {
+      type: EVENT_NAMES_FROM_SETUP.OPEN_EXTERNAL_URL,
+      payload: { url },
+    };
+    postMessage(openUrlMessage);
   };
 
   const goBack = () => {
