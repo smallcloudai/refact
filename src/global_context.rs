@@ -268,7 +268,8 @@ pub async fn create_global_context(
     if cmdline.ast {
         let ast_module = Arc::new(ARwLock::new(
             AstModule::ast_indexer_init(
-                cmdline.ast_max_files, shutdown_flag.clone(),
+                cmdline.ast_max_files,
+                shutdown_flag.clone(),
                 cmdline.ast_light_mode
             ).await.expect("Failed to initialize ast module")
         ));

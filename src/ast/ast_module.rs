@@ -93,6 +93,10 @@ impl AstModule {
                 return Err("ast timeout".to_string());
             }
         };
+        if ast_ref.is_overflowed() {
+            let mut locked_status = self.status.lock().await;
+            locked_status.ast_max_files_hit = true;
+        }
         ast_ref.add_or_update(&document, make_dirty)
     }
 
