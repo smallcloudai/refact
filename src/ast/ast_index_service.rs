@@ -244,6 +244,11 @@ async fn ast_indexer_thread(
                     .collect();
 
                 for (doc, res) in zip(docs_with_text, symbols) {
+                    let is_ast_full2 = ast_index.lock().await.is_overflowed();
+                    if is_ast_full2 {
+                        let mut locked_status = status.lock().await;
+                        locked_status.ast_max_files_hit = true;
+                    }
                     match res {
                         Ok(symbols) => {
                             stats_symbols_cnt += symbols.len();
