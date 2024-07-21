@@ -19,7 +19,7 @@ use crate::files_correction::{canonical_path, paths_from_anywhere};
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
-pub static CONTEXT_SIZE_LIMIT: usize = 4096;
+pub static CONTEXT_SIZE_LIMIT: usize = 32000;
 pub static SYMBOLS_PER_TOKEN: f32 = 3.5;
 pub static RETRIEVE_SYMBOLS: bool = true;
 
@@ -116,9 +116,11 @@ pub fn print_files_tree_with_budget_internal(
         paths_holder: Arc<RefCell<PathInfoNode>>,
         is_last: bool
     ) {
-        let more = if is_last { "└─ " } else { "├─ " };
+        // let more = if is_last { "└─ " } else { "├─ " };
+        let more = "  ";
         tree_str.push_str(&format!("{}{}{}{}\n", prefix, more, paths_holder.borrow().filename, paths_holder.borrow().symbols));
-        let new_prefix = if is_last { prefix.to_owned() + "  " } else { prefix.to_owned() + "│ " };
+        // let new_prefix = if is_last { prefix.to_owned() + "  " } else { prefix.to_owned() + "│ " };
+        let new_prefix = prefix.to_owned() + "  ";
         for (idx, sub_path) in paths_holder.borrow().child_paths.iter().enumerate() {
             let is_last = idx == paths_holder.borrow().child_paths.len() - 1 && paths_holder.borrow().is_complete;
             recursive_print_path_holders(tree_str, &new_prefix, sub_path.clone(), is_last);
@@ -150,27 +152,28 @@ pub fn print_files_tree_with_budget_internal(
         node_entries.sort_by_key(|dir| dir.0.read().unwrap().path.clone());
 
         for entry in node_entries.iter() {
-            let ast_symbols = match &maybe_ast_module {
-                Some(ast) => {
-                    let doc = Document { path: entry.0.read().unwrap().path.clone(), text: None };
-                    match ast.get_by_file_path(RequestSymbolType::Declaration, &doc) {
-                        Ok(symbols) => {
-                            let symbols_list = symbols
-                                .iter()
-                                .filter(|x| x.symbol_type == SymbolType::StructDeclaration
-                                    || x.symbol_type == SymbolType::FunctionDeclaration)
-                                .filter(|x| !x.name.is_empty())
-                                .map(|x| x.name.clone())
-                                .collect::<Vec<String>>()
-                                .join(", ");
-                            if !symbols_list.is_empty() { format!(" ({symbols_list})") } else { "".to_string() }
-                        }
-
-                        Err(_) => "".to_string()
-                    }
-                }
-                None => "".to_string()
-            };
+            // let ast_symbols = match &maybe_ast_module {
+            //     Some(ast) => {
+            //         let doc = Document { path: entry.0.read().unwrap().path.clone(), text: None };
+            //         match ast.get_by_file_path(RequestSymbolType::Declaration, &doc) {
+            //             Ok(symbols) => {
+            //                 let symbols_list = symbols
+            //                     .iter()
+            //                     .filter(|x| x.symbol_type == SymbolType::StructDeclaration
+            //                         || x.symbol_type == SymbolType::FunctionDeclaration)
+            //                     .filter(|x| !x.name.is_empty())
+            //                     .map(|x| x.name.clone())
+            //                     .collect::<Vec<String>>()
+            //                     .join(", ");
+            //                 if !symbols_list.is_empty() { format!(" ({symbols_list})") } else { "".to_string() }
+            //             }
+            //
+            //             Err(_) => "".to_string()
+            //         }
+            //     }
+            //     None => "".to_string()
+            // };
+            let ast_symbols = String::new();
             let filename = entry.0.read().unwrap().file_name();
             total_symbols += filename.len() + ast_symbols.len() + 5;  // 5 is a small budget for special symbols
             if total_symbols >= budget {
