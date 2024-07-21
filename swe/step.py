@@ -2,7 +2,7 @@ from refact.chat_client import Message
 from refact.chat_client import tools_fetch_and_filter
 from refact.chat_client import ask_using_http
 
-from typing import Set, Any, List
+from typing import Set, Any, List, Iterable
 
 
 __all__ = ["Step"]
@@ -35,6 +35,18 @@ class Step:
             only_deterministic_messages=False,
         )
         return assistant_choices[0]
+
+    async def _query_generator(self, messages: List[Message], n: int) -> Iterable[List[Message]]:
+        tools = await tools_fetch_and_filter(
+            base_url=self._base_url,
+            tools_turn_on=self._tools)
+        assistant_choices = await ask_using_http(
+            self._base_url, messages, n, self._model_name,
+            tools=tools, verbose=True, temperature=self._temperature,
+            stream=False, max_tokens=2048,
+            only_deterministic_messages=False,
+        )
+        return assistant_choices
 
     async def process(self, **kwargs) -> Any:
         raise NotImplementedError()
