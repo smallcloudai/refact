@@ -24,20 +24,20 @@ pub async fn real_file_path_candidate(
         let similar_files_str = at_file_repair_candidates(&file_path, ccx, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n");
         if f_path.is_absolute() {
             if !project_paths.iter().any(|x|x.starts_with(&f_path)) {
-                return Err(format!("File {:?} is outside of project directories:\n\n{:?}\n\nThere are files with similar names:\n{}", f_path, project_paths, similar_files_str));
+                return Err(format!("Path {:?} is outside of project directories:\n\n{:?}\n\nThere are paths with similar names:\n{}", f_path, project_paths, similar_files_str));
             }
         }
         if f_path.is_relative() {
             let projpath_options = project_paths.iter().map(|x|x.join(&f_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
             if projpath_options.len() > 1 {
                 let projpath_options_str = projpath_options.iter().map(|x|x.to_string_lossy().to_string()).collect::<Vec<_>>().join("\n");
-                return Err(format!("The path {:?} is ambiguous.\n\nAdding project path, it might be:\n{:?}\n\nAlso, there are similar file names:\n{}", f_path, projpath_options_str, similar_files_str));
+                return Err(format!("The path {:?} is ambiguous.\n\nAdding project path, it might be:\n{:?}\n\nAlso, there are similar filepaths:\n{}", f_path, projpath_options_str, similar_files_str));
             }
             if projpath_options.is_empty() {
                 if similar_files_str.is_empty() {
                     return Err(format!("The path {:?} does not exist. There are no similar names either.", f_path));
                 } else {
-                    return Err(format!("The path {:?} does not exist.\n\nThere are files with similar names however:\n{}", f_path, similar_files_str));
+                    return Err(format!("The path {:?} does not exist.\n\nThere are paths with similar names however:\n{}", f_path, similar_files_str));
                 }
             } else {
                 f_path = projpath_options[0].clone();

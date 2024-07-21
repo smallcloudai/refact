@@ -122,6 +122,31 @@ pub async fn correct_to_nearest_filename(
     return vec![];
 }
 
+pub async fn correct_to_nearest_dir_path(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    correction_candidate: &String,
+) -> Vec<String> {
+    fn get_parent(p: &String) -> Option<String> {
+        PathBuf::from(p).parent().map(PathBuf::from).map(|x|x.to_string_lossy().to_string())
+    }
+    
+    let (cache_correction_arc, _) = files_cache_rebuild_as_needed(global_context.clone()).await;
+    let mut paths_correction_map = HashMap::new();
+    for (k, v) in cache_correction_arc.iter() {
+        match get_parent(k) {
+            Some(k_parent) => {
+                let v_parents = v.iter().filter_map(|x| get_parent(x)).collect::<Vec<_>>();
+                if v_parents.is_empty() {
+                    continue;
+                }
+                paths_correction_map.entry(k_parent.clone()).or_insert_with(HashSet::new).extend(v_parents);
+            },
+            None => {}
+        }
+    }
+    paths_correction_map.get(correction_candidate).map(|x|x.iter().cloned().collect::<Vec<_>>()).unwrap_or(vec![])
+}
+
 fn absolute(path: &std::path::Path) -> std::io::Result<PathBuf> {
     let mut components = path.strip_prefix(".").unwrap_or(path).components();
     let path_os = path.as_os_str().as_encoded_bytes();
