@@ -20,6 +20,7 @@ export const statisticsApi = createApi({
       },
     }),
   }),
+  refetchOnMountOrArgChange: true,
 });
 
 export type RefactTableImpactDateObj = {
