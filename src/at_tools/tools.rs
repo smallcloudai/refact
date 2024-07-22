@@ -146,18 +146,6 @@ tools:
         type: "string"
         description: "An optional absolute path to get files tree for a particular folder or file. Do not pass it if you need full project tree."
     parameters_required: []
-
-  - name: "workspace_map"
-    description: "Collects relevant context using AST"
-    parameters:
-      - name: "symbols"
-        type: "string"
-        description: "The string that contains list of symbols. No spaces allowed. Symbols separated by commas if more than one."
-      - name: "paths"
-        type: "string"
-        description: "Additional string that contains list of file names separated by commas. Use absolute file paths."
-    parameters_required:
-      - "symbols"
 "####;
 
 #[allow(dead_code)]
@@ -170,6 +158,17 @@ const NOT_READY_TOOLS: &str = r####"
         description: "Put your intent there: 'debug file1.cpp', 'install project1', 'gather info about MyClass'"
     parameters_required:
       - "im_going_to_do"
+  - name: "workspace_map"
+    description: "Collects relevant context using AST"
+    parameters:
+      - name: "symbols"
+        type: "string"
+        description: "The string that contains list of symbols. No spaces allowed. Symbols separated by commas if more than one."
+      - name: "paths"
+        type: "string"
+        description: "Additional string that contains list of file names separated by commas. Use absolute file paths."
+    parameters_required:
+      - "symbols"
 "####;
 
 
