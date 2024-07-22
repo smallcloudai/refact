@@ -1,8 +1,10 @@
+import uuid
+
 from refact import chat_client
 from step import Step
 
 from pathlib import Path
-from typing import Set, List
+from typing import Set
 
 
 SYSTEM_MESSAGE = """
@@ -36,12 +38,16 @@ class ExploreRepoStep(Step):
         }
 
     async def process(self, problem_statement: str, repo_path: Path, **kwargs) -> str:
+        tree_tool_call_dict = chat_client.ToolCallDict(
+            id=chat_client.gen_function_call_id(),
+            function=chat_client.FunctionDict(arguments='{}', name='tree'),
+            type='function')
         messages = [
             chat_client.Message(role="system", content=SYSTEM_MESSAGE),
             chat_client.Message(role="user", content=f"Problem statement:\n\n{problem_statement}"),
+            chat_client.Message(role="assistant", finish_reason="tool_calls", tool_calls=[tree_tool_call_dict]),
         ]
-        for _ in range(2):
-            messages = await self._query(messages)
+        messages = await self._query(messages)
         res_message = messages[-1]
         if res_message.role != "assistant":
             raise RuntimeError(f"unexpected message role '{res_message.role}' for answer")

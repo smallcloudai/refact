@@ -1,3 +1,4 @@
+import uuid
 import aiohttp, os, termcolor, copy, json, time
 from typing import Optional, List, Any, Tuple, Dict, Literal, Set
 from pydantic import BaseModel
@@ -356,3 +357,7 @@ async def ongoing_update(base_url: str, goal: str, ongoing_json: str):
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data) as response:
             return await response.json()
+
+
+def gen_function_call_id():
+    return f"call_{uuid.uuid4()}".replace("-", "")
