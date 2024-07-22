@@ -70,27 +70,3 @@ export function isStatisticDataResponse(
   if (!("data" in json)) return false;
   return typeof json.data === "string";
 }
-
-export async function getStatisticData(
-  lspUrl?: string,
-): Promise<{ data: string }> {
-  const statisticDataEndpoint = lspUrl
-    ? `${lspUrl.replace(/\/*$/, "")}${STATISTIC_URL}`
-    : STATISTIC_URL;
-  const response = await fetch(statisticDataEndpoint, {
-    method: "GET",
-    credentials: "same-origin",
-    headers: {
-      accept: "application/json",
-    },
-  });
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
-
-  const json: unknown = await response.json();
-  if (!isStatisticDataResponse(json)) {
-    throw new Error("Invalid response for statistic data");
-  }
-  return json;
-}

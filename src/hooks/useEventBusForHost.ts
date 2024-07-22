@@ -14,13 +14,11 @@ import {
 import { useChatHistory } from "./useChatHistory";
 import {
   EVENT_NAMES_TO_CHAT,
-  EVENT_NAMES_TO_STATISTIC,
   ChatThread,
   isQuestionFromChat,
   isSaveChatFromChat,
   isRequestCapsFromChat,
   isStopStreamingFromChat,
-  isRequestDataForStatistic,
   isRequestAtCommandCompletion,
   ReceiveAtCommandCompletion,
   ReceiveAtCommandPreview,
@@ -34,7 +32,6 @@ import {
   isReadyMessage,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
-import { getStatisticData } from "../services/refact";
 import { parseOrElse } from "../utils";
 
 export function useEventBusForHost() {
@@ -189,30 +186,6 @@ export function useEventBusForHost() {
           .catch((error) => {
             // eslint-disable-next-line no-console
             console.error(error);
-          });
-      }
-
-      if (isRequestDataForStatistic(event.data)) {
-        getStatisticData(lspUrl)
-          .then((data) => {
-            window.postMessage(
-              {
-                type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA,
-                payload: data,
-              },
-              "*",
-            );
-          })
-          .catch((error: Error) => {
-            window.postMessage(
-              {
-                type: EVENT_NAMES_TO_STATISTIC.RECEIVE_STATISTIC_DATA_ERROR,
-                payload: {
-                  message: error.message,
-                },
-              },
-              "*",
-            );
           });
       }
 
