@@ -12,6 +12,7 @@ export const HistorySideBar: React.FC<{
     useChatHistory();
   return (
     <Sidebar
+      handleNavigation={() => ({})}
       takingNotes={takingNotes}
       history={history}
       onHistoryItemClick={restoreChatFromHistory}

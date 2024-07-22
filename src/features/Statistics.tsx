@@ -3,23 +3,23 @@ import { Flex, Button } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { Config } from "../contexts/config-context";
 import { ScrollArea } from "../components/ScrollArea";
-import type { StatisticState } from "../hooks";
+// import type { StatisticState } from "../../hooks";
 import { StatisticView } from "../components/StatisticView/StatisticView";
 import { PageWrapper } from "../components/PageWrapper";
+import { useGetStatisticDataQuery } from "../app/hooks";
 
 export type StatisticsProps = {
   onCloseStatistic?: () => void;
   backFromStatistic: () => void;
   host: Config["host"];
   tabbed: Config["tabbed"];
-  state: StatisticState;
+  // state: StatisticState;
 };
-export const Statistic: React.FC<StatisticsProps> = ({
+export const Statistics: React.FC<StatisticsProps> = ({
   onCloseStatistic,
   backFromStatistic,
   host,
   tabbed,
-  state,
 }) => {
   const LeftRightPadding =
     host === "web"
@@ -32,6 +32,8 @@ export const Statistic: React.FC<StatisticsProps> = ({
           lg: "8",
           xl: "9",
         };
+
+  const state = useGetStatisticDataQuery(undefined);
 
   return (
     <PageWrapper host={host}>
@@ -58,9 +60,9 @@ export const Statistic: React.FC<StatisticsProps> = ({
           }}
         >
           <StatisticView
-            statisticData={state.statisticData}
+            statisticData={state.data}
             isLoading={state.isLoading}
-            error={state.error}
+            error={state.error ? "Error fetching statiscs" : ""}
           />
         </Flex>
       </ScrollArea>

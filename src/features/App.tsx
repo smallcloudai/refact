@@ -6,9 +6,7 @@ import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
 import { useLocalStorage } from "usehooks-ts";
 import { Flex } from "@radix-ui/themes";
-// import { HistorySideBar } from "./HistorySideBar";
 import { Chat } from "./Chat";
-// import { Chat } from "../components/Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import {
   useEventBusForHost,
@@ -16,7 +14,6 @@ import {
   useChatHistory,
   useEventBusForChat,
   useEventBysForFIMDebug,
-  useEventBusForStatistic,
 } from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
@@ -25,7 +22,9 @@ import {
 } from "../events/setup";
 import { useConfig } from "../contexts/config-context";
 import { FIMDebug } from "./FIMDebug";
-import { Statistic } from "./Statistic";
+import { Statistics } from "./Statistics";
+import { store } from "../app/store";
+import { Provider } from "react-redux";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -42,7 +41,7 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   const historyHook = useChatHistory();
   const chatHook = useEventBusForChat();
   const fimHook = useEventBysForFIMDebug();
-  const statisticsHook = useEventBusForStatistic();
+  // const statisticsHook = useEventBusForStatistic();
 
   const setupHost = useCallback(
     (host: HostSettings) => {
@@ -137,68 +136,69 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   // goTo settings, fim, stats, hot keys
 
   return (
-    <Flex style={{ justifyContent: "center", ...style }}>
-      {pages.map((page, i) => {
-        return (
-          <Flex key={i} display={i === pages.length - 1 ? "flex" : "none"}>
-            {page.name === "initial setup" && (
-              <InitialSetup onPressNext={onPressNext} />
-            )}
-            {page.name === "cloud login" && (
-              <CloudLogin
-                goBack={goBack}
-                apiKey={apiKey}
-                setApiKey={setApiKey}
-                openExternal={openExternal}
-                next={cloudLogin}
-              />
-            )}
-            {page.name === "enterprise setup" && (
-              <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
-            )}
-            {page.name === "self hosting setup" && (
-              <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
-            )}
-            {page.name === "history" && (
-              <Sidebar
-                history={historyHook.history}
-                takingNotes={false}
-                currentChatId={currentChatId}
-                onCreateNewChat={handleCreateNewChat}
-                account={undefined}
-                onHistoryItemClick={handleHistoryItemClick}
-                onDeleteHistoryItem={handleDelete}
-                onOpenChatInTab={undefined}
-                handleLogout={() => {
-                  // TODO: handle logout
-                }}
-                handleNavigation={handleNavigation}
-              />
-            )}
-            {page.name === "chat" && (
-              <Chat host={config.host} tabbed={config.tabbed} {...chatHook} />
-            )}
-            {page.name === "fill in the middle debug page" && (
-              <FIMDebug
-                state={fimHook.state}
-                host={config.host}
-                tabbed={config.tabbed}
-                clearErrorMessage={fimHook.clearErrorMessage}
-                backFromFim={goBack}
-              />
-            )}
-            {page.name === "statistics page" && (
-              <Statistic
-                state={statisticsHook.state}
-                backFromStatistic={goBack}
-                tabbed={config.tabbed}
-                host={config.host}
-                onCloseStatistic={goBack}
-              />
-            )}
-          </Flex>
-        );
-      })}
-    </Flex>
+    <Provider store={store}>
+      <Flex style={{ justifyContent: "center", ...style }}>
+        {pages.map((page, i) => {
+          return (
+            <Flex key={i} display={i === pages.length - 1 ? "flex" : "none"}>
+              {page.name === "initial setup" && (
+                <InitialSetup onPressNext={onPressNext} />
+              )}
+              {page.name === "cloud login" && (
+                <CloudLogin
+                  goBack={goBack}
+                  apiKey={apiKey}
+                  setApiKey={setApiKey}
+                  openExternal={openExternal}
+                  next={cloudLogin}
+                />
+              )}
+              {page.name === "enterprise setup" && (
+                <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
+              )}
+              {page.name === "self hosting setup" && (
+                <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
+              )}
+              {page.name === "history" && (
+                <Sidebar
+                  history={historyHook.history}
+                  takingNotes={false}
+                  currentChatId={currentChatId}
+                  onCreateNewChat={handleCreateNewChat}
+                  account={undefined}
+                  onHistoryItemClick={handleHistoryItemClick}
+                  onDeleteHistoryItem={handleDelete}
+                  onOpenChatInTab={undefined}
+                  handleLogout={() => {
+                    // TODO: handle logout
+                  }}
+                  handleNavigation={handleNavigation}
+                />
+              )}
+              {page.name === "chat" && (
+                <Chat host={config.host} tabbed={config.tabbed} {...chatHook} />
+              )}
+              {page.name === "fill in the middle debug page" && (
+                <FIMDebug
+                  state={fimHook.state}
+                  host={config.host}
+                  tabbed={config.tabbed}
+                  clearErrorMessage={fimHook.clearErrorMessage}
+                  backFromFim={goBack}
+                />
+              )}
+              {page.name === "statistics page" && (
+                <Statistics
+                  backFromStatistic={goBack}
+                  tabbed={config.tabbed}
+                  host={config.host}
+                  onCloseStatistic={goBack}
+                />
+              )}
+            </Flex>
+          );
+        })}
+      </Flex>
+    </Provider>
   );
 };

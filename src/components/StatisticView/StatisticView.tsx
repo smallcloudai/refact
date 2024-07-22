@@ -7,15 +7,15 @@ import { Spinner } from "../Spinner";
 import { ErrorCallout } from "../Callout";
 
 export const StatisticView: React.FC<{
-  statisticData: StatisticData | null;
+  statisticData?: StatisticData;
   isLoading: boolean;
-  error: string;
+  error?: string;
 }> = ({ statisticData, isLoading, error }) => {
   if (isLoading) {
     return <Spinner />;
   }
 
-  if (error || !statisticData) {
+  if (error ?? !statisticData) {
     return <ErrorCallout>{error}</ErrorCallout>;
   }
 

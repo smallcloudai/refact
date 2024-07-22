@@ -26,6 +26,12 @@ import {
   STUB_CAPS_RESPONSE,
   SYSTEM_PROMPTS,
 } from "../__fixtures__";
+import { useEventBusForChat } from "../hooks";
+
+const App = () => {
+  const chat = useEventBusForChat();
+  return <Chat host="web" tabbed={false} {...chat} />;
+};
 
 describe("Chat", () => {
   beforeEach(() => {
@@ -45,7 +51,7 @@ describe("Chat", () => {
     const windowSpy = vi.fn();
     window.addEventListener("message", windowSpy);
 
-    const { user, ...app } = render(<Chat />);
+    const { user, ...app } = render(<App />);
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       { type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS, payload: { id: "foo" } },
@@ -131,7 +137,7 @@ describe("Chat", () => {
   });
 
   it("can restore a chat", async () => {
-    const app = render(<Chat />);
+    const app = render(<App />);
     vi.mock("uuid", () => ({ v4: () => "foo" }));
 
     const restoreChatAction: RestoreChat = {
@@ -164,7 +170,7 @@ describe("Chat", () => {
 
     const postMessageSpy = vi.spyOn(window, "postMessage");
 
-    const { user, ...app } = render(<Chat />);
+    const { user, ...app } = render(<App />);
 
     const restoreChatAction: RestoreChat = {
       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
@@ -242,7 +248,7 @@ describe("Chat", () => {
     vi.mock("uuid", () => ({ v4: () => "foo" }));
     const postMessageSpy = vi.spyOn(window, "postMessage");
 
-    const { user, ...app } = render(<Chat />);
+    const { user, ...app } = render(<App />);
 
     setUpCapsForChat("foo");
 
@@ -301,7 +307,7 @@ describe("Chat", () => {
     const chatId = "foo";
     vi.mock("uuid", () => ({ v4: () => "foo" }));
 
-    const app = render(<Chat />);
+    const app = render(<App />);
 
     const chatError: ChatErrorStreaming = {
       type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
@@ -320,7 +326,7 @@ describe("Chat", () => {
     const chatId = "foo";
     vi.mock("uuid", () => ({ v4: () => "foo" }));
 
-    const app = render(<Chat />);
+    const app = render(<App />);
 
     const chatError: ChatReceiveCapsError = {
       type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR,
@@ -348,7 +354,7 @@ describe("Chat", () => {
     const windowSpy = vi.fn();
     window.addEventListener("message", windowSpy);
 
-    const { user, ...app } = render(<Chat />);
+    const { user, ...app } = render(<App />);
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       { type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS, payload: { id: "foo" } },
@@ -395,7 +401,7 @@ describe("Chat", () => {
 
   test("restore and receive response with use question", async () => {
     vi.mock("uuid", () => ({ v4: () => "foo" }));
-    const { user: _user, ...app } = render(<Chat />);
+    const { user: _user, ...app } = render(<App />);
 
     const restoreChatAction: RestoreChat = {
       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
@@ -462,7 +468,7 @@ describe("Chat", () => {
     window.HTMLElement.prototype.hasPointerCapture = vi.fn();
     window.HTMLElement.prototype.releasePointerCapture = vi.fn();
 
-    const { user, ...app } = render(<Chat />);
+    const { user, ...app } = render(<App />);
 
     const toolCalls: ToolCall[] = [
       {
@@ -533,7 +539,7 @@ describe("Chat", () => {
   test("Prevent send when restored with uncalled tool_calls", async () => {
     vi.mock("uuid", () => ({ v4: () => "foo" }));
 
-    const app = render(<Chat />);
+    const app = render(<App />);
 
     const restoreChatAction: RestoreChat = {
       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,

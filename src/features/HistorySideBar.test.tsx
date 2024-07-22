@@ -4,6 +4,7 @@ import { HistorySideBar } from "./HistorySideBar";
 import { EVENT_NAMES_TO_CHAT } from "../events";
 import { ChatHistoryItem } from "../hooks/useChatHistory";
 
+// TODO: update this for side bar interactions
 describe("HistorySideBar", () => {
   stubResizeObserver();
 

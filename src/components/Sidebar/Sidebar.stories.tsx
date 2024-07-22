@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Sidebar, SideBarProps } from "./Sidebar";
+import { Sidebar, SidebarProps } from "./Sidebar";
 import { HISTOY } from "../../__fixtures__/history";
 
-const App: React.FC<SideBarProps> = (props) => {
+const App: React.FC<SidebarProps> = (props) => {
   return <Sidebar {...props} style={{ width: "260px", flexShrink: 0 }} />;
 };
 
