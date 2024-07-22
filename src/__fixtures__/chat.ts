@@ -429,6 +429,7 @@ export const CHAT_WITH_DIFFS: ChatMessages = [
         lines_remove: "",
       },
     ],
+    "test_tool_call_id",
   ],
   ["user", "A longer diff"],
   ["assistant", "here you go"],
@@ -444,6 +445,7 @@ export const CHAT_WITH_DIFFS: ChatMessages = [
         line2: 2,
       },
     ],
+    "test_tool_call_id",
   ],
 ];
 
@@ -545,6 +547,7 @@ export const CHAT_WITH_DIFF_ACTIONS: ChatState["chat"] = {
             "class Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy",
         },
       ],
+      "test_tool_call_id",
     ],
     [
       "assistant",
