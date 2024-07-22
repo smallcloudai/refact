@@ -37,6 +37,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
 
   return (
     <PageWrapper host={host}>
+      {/** TODO: can be jetbrains */}
       {host === "vscode" && !tabbed ? (
         <Flex gap="2" pb="3">
           <Button variant="surface" onClick={backFromStatistic}>
