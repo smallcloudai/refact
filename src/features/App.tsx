@@ -13,7 +13,6 @@ import {
   usePostMessage,
   useChatHistory,
   useEventBusForChat,
-  useEventBysForFIMDebug,
 } from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
@@ -21,7 +20,7 @@ import {
   SetupHost,
 } from "../events/setup";
 import { useConfig } from "../contexts/config-context";
-import { FIMDebug } from "./FIMDebug";
+import { FIMDebug } from "./FIM";
 import { Statistics } from "./Statistics";
 import { store } from "../app/store";
 import { Provider } from "react-redux";
@@ -40,7 +39,7 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const historyHook = useChatHistory();
   const chatHook = useEventBusForChat();
-  const fimHook = useEventBysForFIMDebug();
+  // const fimHook = useEventBysForFIMDebug();
   // const statisticsHook = useEventBusForStatistic();
 
   const setupHost = useCallback(
@@ -179,13 +178,7 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
                 <Chat host={config.host} tabbed={config.tabbed} {...chatHook} />
               )}
               {page.name === "fill in the middle debug page" && (
-                <FIMDebug
-                  state={fimHook.state}
-                  host={config.host}
-                  tabbed={config.tabbed}
-                  clearErrorMessage={fimHook.clearErrorMessage}
-                  backFromFim={goBack}
-                />
+                <FIMDebug host={config.host} tabbed={config.tabbed} />
               )}
               {page.name === "statistics page" && (
                 <Statistics

@@ -16,7 +16,11 @@ export const statisticsApi = createApi({
         if (!isStatisticDataResponse(response)) {
           throw new Error("Invalid response for statistic data");
         }
-        return JSON.parse(response.data) as StatisticData;
+        try {
+          return JSON.parse(response.data) as StatisticData;
+        } catch {
+          throw new Error("Invalid response for statistic data");
+        }
       },
     }),
   }),

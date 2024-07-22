@@ -5,16 +5,18 @@ import {
   postMessage,
   stubResizeObserver,
   cleanup,
-  // screen,
-} from "../utils/test-utils";
-import { FIMDebug } from "./FIMDebug";
-import { ReceiveFIMDebugData, FIM_EVENT_NAMES } from "../events";
-import { STUB } from "../__fixtures__/fim";
-import { useEventBysForFIMDebug } from "../hooks";
+} from "../../utils/test-utils";
+import { FIMDebug, receive } from ".";
+import { STUB } from "../../__fixtures__/fim";
+import { Provider } from "react-redux";
+import { store } from "../../app/store";
 
 const App = () => {
-  const fim = useEventBysForFIMDebug();
-  return <FIMDebug host="web" tabbed={false} {...fim} />;
+  return (
+    <Provider store={store}>
+      <FIMDebug host="web" tabbed={false} />
+    </Provider>
+  );
 };
 
 describe("FIM debug page", () => {
@@ -30,12 +32,7 @@ describe("FIM debug page", () => {
 
   test("render stub data", async () => {
     const app = render(<App />);
-
-    const dataMessage: ReceiveFIMDebugData = {
-      type: FIM_EVENT_NAMES.DATA_RECEIVE,
-      payload: STUB,
-    };
-    postMessage(dataMessage);
+    postMessage(receive(STUB));
 
     await waitFor(() =>
       expect(app.queryByText(/Code Completion Context/i)).not.toBeNull(),

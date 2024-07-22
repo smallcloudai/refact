@@ -45,3 +45,5 @@ export type FimDebugData = {
   elapsed?: number;
   cached?: boolean;
 };
+
+// TODO: how does FIM work?

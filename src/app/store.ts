@@ -1,19 +1,25 @@
 import {
+  combineSlices,
   configureStore,
+  // createSlice,
   // combineSlices,
 } from "@reduxjs/toolkit";
 import { statisticsApi } from "../events";
+import { reducer as fimReducer } from "../features/FIM/reducer";
+// import { fimSlice } from "../features/FIM/fimSlice";
 
+// https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
 // their `reducerPath`s, therefore we no longer need to call `combineReducers`.
-// const rootReducer = combineSlices(statisticsSlice);
+const rootReducer = combineSlices({
+  fim: fimReducer,
+  [statisticsApi.reducerPath]: statisticsApi.reducer,
+});
+
 // Infer the `RootState` type from the root reducer
-// export type RootState = ReturnType<typeof rootReducer>;
 
 export const store = configureStore({
-  reducer: {
-    [statisticsApi.reducerPath]: statisticsApi.reducer,
-  },
+  reducer: rootReducer,
   middleware: (getDefaultMiddleware) => {
     return getDefaultMiddleware().concat(statisticsApi.middleware);
   },
