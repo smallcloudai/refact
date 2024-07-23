@@ -151,6 +151,36 @@ const DiffsWithoutForm: React.FC<{ diffs: DiffChunk[] }> = ({ diffs }) => {
   );
 };
 
+const DiffTitle: React.FC<{ diffs: DiffChunk[] }> = ({
+  diffs,
+}): React.ReactNode[] => {
+  function process(
+    diffs: DiffChunk[],
+    memo: React.ReactNode[] = [],
+  ): React.ReactNode[] {
+    if (diffs.length === 0) return memo;
+    const [head, ...tail] = diffs;
+    const name = filename(head.file_name);
+    const addLength = head.lines_add ? head.lines_add.split("\n").length : 0;
+    const removeLength = head.lines_remove
+      ? head.lines_remove.split("\n").length
+      : 0;
+    const adds = "+".repeat(addLength);
+    const removes = "-".repeat(removeLength);
+    const element = (
+      <Text key={head.file_name + "-" + memo.length}>
+        {name} <Text color="green">{adds}</Text>
+        <Text color="red">{removes}</Text>
+      </Text>
+    );
+
+    const nextMemo = memo.length > 0 ? [...memo, ", ", element] : [element];
+    return process(tail, nextMemo);
+  }
+
+  return process(diffs);
+};
+
 export const DiffContent: React.FC<DiffContentProps> = ({
   diffs,
   appliedChunks,
@@ -176,7 +206,7 @@ export const DiffContent: React.FC<DiffContentProps> = ({
         <Collapsible.Trigger asChild>
           <Flex gap="2" align="center">
             <Text weight="light" size="1">
-              🪚 diff
+              <DiffTitle diffs={diffs} />
             </Text>
             <Chevron open={open} />
           </Flex>

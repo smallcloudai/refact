@@ -421,6 +421,14 @@ export const CHAT_WITH_DIFFS: ChatMessages = [
         lines_add: "def f(x: float):\n    return x*3\n",
       },
       {
+        file_name: "file1.py",
+        file_action: "edit",
+        line1: 8,
+        line2: 9,
+        lines_remove: "def g(x: int):\n    return x*4\n",
+        lines_add: "def g(x: float):\n    return x*5\n",
+      },
+      {
         file_name: "file2.py",
         file_action: "new",
         lines_add: "def main():\n    file1.f(6)\n",
