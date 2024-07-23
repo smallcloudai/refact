@@ -26,6 +26,7 @@ export enum EVENT_NAMES_FROM_CHAT {
   REQUEST_PROMPTS = "chat_request_prompts",
   TAKE_NOTES = "chat_take_notes",
   REQUEST_TOOLS = "chat_request_has_tool_check",
+  OPEN_SETTINGS = "chat_open_settings",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -238,6 +239,16 @@ export function isRequestTools(action: unknown): action is RequestTools {
   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS;
 }
 
+export interface OpenSettings extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
+  payload: { id: string };
+}
+
+export function isOpenSettings(action: unknown): action is OpenSettings {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
+}
+
 export interface ActionToChat extends BaseAction {
   type: EVENT_NAMES_TO_CHAT;
 }
@@ -418,7 +429,7 @@ export interface RestoreChat extends ActionToChat {
   payload: {
     id: string;
     chat: ChatThread & {
-      messages: ChatThread["messages"] | [string, string][];
+      messages: ChatThread["messages"] | ([string, string] | null)[];
     };
     snippet?: Snippet;
   };

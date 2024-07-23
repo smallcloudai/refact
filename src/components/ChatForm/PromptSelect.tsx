@@ -32,7 +32,11 @@ export const PromptSelect: React.FC<PromptSelectProps> = ({
         <Content>
           {Object.entries(prompts).map(([key, value]) => {
             return (
-              <Item key={key} value={value.text} title={value.text}>
+              <Item
+                key={key}
+                value={key}
+                title={value.description || value.text}
+              >
                 {key}
               </Item>
             );

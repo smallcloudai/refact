@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { trimIndentFromMarkdown, trimIndent, filename } from ".";
+import { trimIndentFromMarkdown, trimIndent, filename, parseOrElse } from ".";
 
 const spaces = "    ";
 describe("trim indent from markdown", () => {
@@ -46,5 +46,37 @@ describe("filename", () => {
 
   test.each(tests)("when given %s is should return %s", (input, expected) =>
     expect(filename(input)).toEqual(expected),
+  );
+});
+
+describe("parseOrElse", () => {
+  const tests: {
+    args: Parameters<typeof parseOrElse>;
+    expected: unknown;
+  }[] = [
+    {
+      args: ['{"foo": "bar"}', {}, undefined],
+      expected: { foo: "bar" },
+    },
+    {
+      args: ["error", [], undefined],
+      expected: [],
+    },
+    {
+      args: ['["foo"]', [], Array.isArray],
+      expected: ["foo"],
+    },
+    {
+      args: ["error", [], Array.isArray],
+      expected: [],
+    },
+  ];
+
+  test.each(tests)(
+    "when given %s it should return %s",
+    ({ args, expected }) => {
+      const result = parseOrElse(...args);
+      expect(result).toEqual(expected);
+    },
   );
 });

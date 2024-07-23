@@ -5,6 +5,7 @@ import {
   CHAT_FUNCTIONS_MESSAGES,
   FROG_CHAT,
 } from "../../__fixtures__";
+import { ConfigProvider } from "../../contexts/config-context";
 
 const noop = () => ({});
 
@@ -39,4 +40,18 @@ export const Notes: Story = {
   args: {
     messages: FROG_CHAT.messages,
   },
+};
+
+export const Empty: Story = {
+  args: {
+    ...meta.args,
+    messages: [],
+  },
+  decorators: [
+    (Story) => (
+      <ConfigProvider config={{ host: "ide" }}>
+        <Story />
+      </ConfigProvider>
+    ),
+  ],
 };

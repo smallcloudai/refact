@@ -13,10 +13,10 @@ import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import { Chevron } from "../Collapsible";
 import { filename } from "../../utils";
 
-const Markdown: React.FC<{ children: string; startingLineNumber?: number }> = ({
-  startingLineNumber,
-  ...props
-}) => {
+export const Markdown: React.FC<{
+  children: string;
+  startingLineNumber?: number;
+}> = ({ startingLineNumber, ...props }) => {
   return (
     <ReactMarkDown
       components={{

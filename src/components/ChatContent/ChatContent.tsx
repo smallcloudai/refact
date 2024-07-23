@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   ChatMessages,
   ToolResult,
@@ -9,16 +9,65 @@ import type { MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
-import { Flex, Text, Container } from "@radix-ui/themes";
+import { Flex, Text, Container, Link } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
+import { PlainText } from "./PlainText";
+import { useConfig } from "../../contexts/config-context";
 
-const PlaceHolderText: React.FC = () => (
-  <Text>Welcome to Refact chat! How can I assist you today?</Text>
-);
+const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const config = useConfig();
+  const hasVecDB = config.features?.vecdb ?? false;
+  const hasAst = config.features?.ast ?? false;
+
+  const openSettings = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      onClick();
+    },
+    [onClick],
+  );
+
+  if (config.host === "web") {
+    return <Text>Welcome to Refact chat! How can I assist you today?</Text>;
+  }
+
+  if (!hasVecDB && !hasAst) {
+    return (
+      <Flex direction="column" gap="4">
+        <Text>Welcome to Refact chat!</Text>
+        <Text>
+          💡 You can turn on VecDB and AST in{" "}
+          <Link onClick={openSettings}>settings</Link>.
+        </Text>
+      </Flex>
+    );
+  } else if (!hasVecDB) {
+    return (
+      <Flex direction="column" gap="4">
+        <Text>Welcome to Refact chat!</Text>
+        <Text>
+          💡 You can turn on VecDB in{" "}
+          <Link onClick={openSettings}>settings</Link>.
+        </Text>
+      </Flex>
+    );
+  } else if (!hasAst) {
+    return (
+      <Flex direction="column" gap="4">
+        <Text>Welcome to Refact chat!</Text>
+        <Text>
+          💡 You can turn on AST in <Link onClick={openSettings}>settings</Link>
+          .
+        </Text>
+      </Flex>
+    );
+  }
+  return <Text>Welcome to Refact chat! How can I assist you today?</Text>;
+};
 
 export type ChatContentProps = {
   messages: ChatMessages;
@@ -26,6 +75,7 @@ export type ChatContentProps = {
   isWaiting: boolean;
   canPaste: boolean;
   isStreaming: boolean;
+  openSettings: () => void;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
@@ -38,6 +88,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       onPasteClick,
       canPaste,
       isStreaming,
+      openSettings,
     } = props;
 
     const { innerRef, handleScroll } = useAutoScroll({
@@ -64,7 +115,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
         onScroll={handleScroll}
       >
         <Flex direction="column" className={styles.content} p="2" gap="2">
-          {messages.length === 0 && <PlaceHolderText />}
+          {messages.length === 0 && <PlaceHolderText onClick={openSettings} />}
           {messages.map((message, index) => {
             if (isChatContextFileMessage(message)) {
               const [, files] = message;
@@ -105,6 +156,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
               return null;
             } else if (role === "context_memory") {
               return <MemoryContent key={index} items={text} />;
+            } else if (role === "plain_text") {
+              return <PlainText key={index}>{text}</PlainText>;
             } else {
               return null;
               // return <Markdown key={index}>{text}</Markdown>;
