@@ -21,12 +21,17 @@ export interface ChatPage {
   name: "chat";
 }
 
+export interface DocumentationSettingsPage {
+  name: "documentation settings";
+}
+
 export type Page =
   | InitialSetupPage
   | CloudLogin
   | EnterpriseSetup
   | SelfHostingSetup
-  | ChatPage;
+  | ChatPage
+  | DocumentationSettingsPage;
 
 export interface ChangePage {
   type: "change";

@@ -39,33 +39,39 @@ export const DocumentationSettings: React.FC<DocumentationSettingsProps> = ({
   return (
     <Flex direction="column" gap="2" maxWidth="540px" m="8px">
       <Text size="4">Documentation sources</Text>
-      <Table.Root>
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeaderCell>Url</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>Pages</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
-          </Table.Row>
-        </Table.Header>
-
-        <Table.Body>
-          {sources.map((source) => {
-            return (
-              <Table.Row key={source.url}>
-                <Table.RowHeaderCell>{source.url}</Table.RowHeaderCell>
-                <Table.Cell>{source.pages}</Table.Cell>
-                <Table.Cell>
-                  <DocumentationActions
-                    source={source}
-                    deleteDocumentation={deleteDocumentation}
-                    editDocumentation={editDocumentation}
-                  />
-                </Table.Cell>
-              </Table.Row>
-            );
-          })}
-        </Table.Body>
-      </Table.Root>
+      {sources.length > 0 ? (
+        <Table.Root>
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeaderCell>Url</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Pages</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell></Table.ColumnHeaderCell>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {sources.map((source) => {
+              return (
+                <Table.Row key={source.url}>
+                  <Table.RowHeaderCell>{source.url}</Table.RowHeaderCell>
+                  <Table.Cell>{source.pages}</Table.Cell>
+                  <Table.Cell>
+                    <DocumentationActions
+                      source={source}
+                      deleteDocumentation={deleteDocumentation}
+                      editDocumentation={editDocumentation}
+                    />
+                  </Table.Cell>
+                </Table.Row>
+              );
+            })}
+          </Table.Body>
+        </Table.Root>
+      ) : (
+        <Text>
+          No documentation has been added yet. Press the + button to add
+          documentation that the chat assistent can use.
+        </Text>
+      )}
       <Flex direction="row">
         <Button variant="outline" mr="auto">
           {"< Back"}

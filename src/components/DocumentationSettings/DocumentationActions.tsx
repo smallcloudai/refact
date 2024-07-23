@@ -58,24 +58,28 @@ export const DocumentationActions: React.FC<DocumentationActionsProps> = ({
         <Dialog.Content maxWidth="450px">
           <Dialog.Title>{`Edit ${source.url}`}</Dialog.Title>
           <Flex direction="column" gap="3">
-            <Text as="div" size="2" mb="1" weight="bold">
-              Max depth
-            </Text>
-            <TextField.Root
-              defaultValue={maxDepth}
-              onChange={(change) => setMaxDepth(Number(change.target.value))}
-              type="number"
-              placeholder="Enter the max depth"
-            />
-            <Text as="div" size="2" mb="1" weight="bold">
-              Max pages
-            </Text>
-            <TextField.Root
-              defaultValue={maxPages}
-              onChange={(change) => setMaxPages(Number(change.target.value))}
-              type="number"
-              placeholder="Enter the max pages"
-            />
+            <label>
+              <Text as="div" size="2" mb="1" weight="bold">
+                Max depth
+              </Text>
+              <TextField.Root
+                defaultValue={maxDepth}
+                onChange={(change) => setMaxDepth(Number(change.target.value))}
+                type="number"
+                placeholder="Enter the max depth"
+              />
+            </label>
+            <label>
+              <Text as="div" size="2" mb="1" weight="bold">
+                Max pages
+              </Text>
+              <TextField.Root
+                defaultValue={maxPages}
+                onChange={(change) => setMaxPages(Number(change.target.value))}
+                type="number"
+                placeholder="Enter the max pages"
+              />
+            </label>
           </Flex>
 
           <Flex gap="3" mt="4" justify="end">

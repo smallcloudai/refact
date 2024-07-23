@@ -12,7 +12,8 @@ import {
   OpenExternalUrl,
   SetupHost,
 } from "../events/setup";
-import { Chat } from "./Chat";
+import { ChatWithSideBar } from "../lib/render/ChatWithSideBar";
+import { Documentation } from "./Documentation";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -52,10 +53,12 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const enterpriseSetup = (apiKey: string, endpointAddress: string) => {
     setupHost({ type: "enterprise", apiKey, endpointAddress });
+    navigate({ type: "push", page: { name: "chat" } });
   };
 
   const selfHostingSetup = (endpointAddress: string) => {
     setupHost({ type: "self", endpointAddress });
+    navigate({ type: "push", page: { name: "documentation settings" } });
   };
 
   const openExternal = (url: string) => {
@@ -91,7 +94,8 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
             {page.name === "self hosting setup" && (
               <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
             )}
-            {page.name === "chat" && <Chat />}
+            {page.name === "documentation settings" && <Documentation />}
+            {page.name === "chat" && <ChatWithSideBar />}
           </Flex>
         );
       })}
