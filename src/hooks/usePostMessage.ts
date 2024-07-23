@@ -1,25 +1,27 @@
-import { useRef } from "react";
-
 declare global {
   interface Window {
-    postIntellijMessage?(message: Record<string, unknown>): void;
+    postIntellijMessage?: (message: Record<string, unknown>) => void;
     acquireVsCodeApi?(): {
       postMessage: (message: Record<string, unknown>) => void;
     };
   }
 }
 
-export const usePostMessage = () => {
-  const ref = useRef<typeof window.postMessage | undefined>(undefined);
-  if (ref.current) return ref.current;
+let postMessage: Window["postMessage"] | undefined;
+
+function setUpPostMessage() {
+  if (postMessage) return postMessage;
   if (window.acquireVsCodeApi) {
-    ref.current = window.acquireVsCodeApi().postMessage;
+    postMessage = window.acquireVsCodeApi().postMessage;
   } else if (window.postIntellijMessage) {
-    ref.current = window.postIntellijMessage.bind(this);
+    postMessage = window.postIntellijMessage;
   } else {
-    ref.current = (message: Record<string, unknown>) =>
+    postMessage = (message: Record<string, unknown>) =>
       window.postMessage(message, "*");
   }
+  return postMessage;
+}
 
-  return ref.current;
+export const usePostMessage = () => {
+  return setUpPostMessage();
 };

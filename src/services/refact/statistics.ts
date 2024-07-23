@@ -2,12 +2,13 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 import { STATISTIC_URL } from "./consts";
 
+// TODO: this could be for the whole lsp?
 export const statisticsApi = createApi({
   reducerPath: "statisticsApi",
 
   baseQuery: fetchBaseQuery({
     // TODO: set this to the configured lsp url
-    baseUrl: "",
+    baseUrl: "http://127.0.0.1:8001",
   }),
   endpoints: (builder) => ({
     getStatisticData: builder.query<StatisticData, undefined>({
