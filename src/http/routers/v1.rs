@@ -7,6 +7,8 @@ use axum::routing::post;
 use futures::Future;
 use hyper::Body;
 use hyper::Response;
+use tower_http::cors::CorsLayer;
+
 
 use crate::{telemetry_get, telemetry_post};
 use crate::custom_error::ScratchError;
@@ -105,4 +107,5 @@ pub fn make_v1_router() -> Router {
         .route("/mem-list", telemetry_get!(handle_mem_list))
         .route("/ongoing-update", telemetry_post!(handle_ongoing_update_or_create))
         .route("/ongoing-dump", telemetry_get!(handle_ongoing_dump))
+        .layer(CorsLayer::very_permissive())
 }
