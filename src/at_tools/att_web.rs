@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use serde_json::Value;
 use crate::at_commands::at_commands::{AtCommandsContext};
-use crate::at_commands::at_web::{execute_at_web, text_on_clip};
+use crate::at_commands::at_web::execute_at_web;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
@@ -10,7 +10,7 @@ pub struct AttWeb;
 
 #[async_trait]
 impl Tool for AttWeb {
-    async fn execute(&self, _ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&self, _ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let url = match args.get("url") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `url` is not a string: {:?}", v)),
@@ -22,18 +22,15 @@ impl Tool for AttWeb {
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: text_on_clip(&url),
+            content: text,
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
         }));
-
-        let message = ChatMessage::new("plain_text".to_string(), text);
-        results.push(ContextEnum::ChatMessage(message));
-
+        
         Ok(results)
     }
 
-    fn depends_on(&self) -> Vec<String> {
+    fn tool_depends_on(&self) -> Vec<String> {
         vec![]
     }
 }

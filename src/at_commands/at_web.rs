@@ -5,6 +5,7 @@ use tracing::info;
 use reqwest::Client;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
+use select::predicate::{Attr, Name};
 use html2text::render::text_renderer::{TaggedLine, TextDecorator};
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
@@ -90,6 +91,28 @@ impl TextDecorator for CustomTextConversion {
     }
 }
 
+fn find_content(html: String) -> String {
+    let document = select::document::Document::from(html.as_str());
+    let content_ids = vec![
+        "content",
+        "I_content",
+        "main-content",
+        "main_content",
+        "CONTENT",
+    ];
+    for id in content_ids {
+        if let Some(node) = document.find(Attr("id", id)).next() {
+            return node.html();
+        }
+    }
+    if let Some(node) = document.find(Name("article")).next() {
+        return node.html();
+    }
+    if let Some(node) = document.find(Name("main")).next() {
+        return node.html();
+    }
+    html
+}
 
 async fn fetch_html(url: &str, timeout: Duration) -> Result<String, String> {
     let client = Client::builder()
@@ -117,6 +140,7 @@ async fn fetch_html(url: &str, timeout: Duration) -> Result<String, String> {
 
 pub async fn execute_at_web(url: &str) -> Result<String, String>{
     let html = fetch_html(url, Duration::from_secs(5)).await?;
+    let html = find_content(html);
     
     let text = html2text::config::with_decorator(CustomTextConversion)
         .string_from_read(&html.as_bytes()[..], 200)
