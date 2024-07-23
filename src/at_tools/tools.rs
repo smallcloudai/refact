@@ -149,14 +149,6 @@ tools:
         description: "An optional absolute path to get files tree for a particular folder or file. Do not pass it if you need full project tree."
     parameters_required: []
 
-  - name: "diff"
-    description: "Perform a diff operation. Can be used to get git diff for a project (no arguments) or git diff for a specific file (file_path)"
-    parameters:
-      - name: "file_path"
-        type: "string"
-        description: "Path to the specific file to diff (optional)."
-    parameters_required:
-
   - name: "web"
     description: "Fetch and convert a web page to text. Can be used to get the text content of a web page."
     parameters:
@@ -189,6 +181,14 @@ const NOT_READY_TOOLS: &str = r####"
         description: "Additional string that contains list of file names separated by commas. Use absolute file paths."
     parameters_required:
       - "symbols"
+      
+  - name: "diff"
+    description: "Perform a diff operation. Can be used to get git diff for a project (no arguments) or git diff for a specific file (file_path)"
+    parameters:
+      - name: "file_path"
+        type: "string"
+        description: "Path to the specific file to diff (optional)."
+    parameters_required:
 "####;
 
 
