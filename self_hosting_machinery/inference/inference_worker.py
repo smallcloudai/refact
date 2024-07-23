@@ -1,3 +1,4 @@
+import os
 import sys
 import logging
 import time
@@ -80,8 +81,9 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], supported_models: Di
 
     log("STATUS serving %s" % model_name)
     req_session = infserver_session()
+    cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "").replace(",", "")
     description_dict = validate_description_dict(
-        model_name + "_" + socket.getfqdn(),
+        f'{model_name}_{socket.getfqdn()}_{cuda_visible_devices}',
         "account_name",
         model=model_name, B=1, max_thinking_time=10,
     )
@@ -121,7 +123,7 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], supported_models: Di
             time.sleep(10)
 
     upload_proxy.stop()
-    log("clean shutdown")
+    log("inference_worker.py clean shutdown")
 
 
 def catch_sigkill(signum, frame):

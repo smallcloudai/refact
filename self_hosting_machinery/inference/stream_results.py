@@ -171,9 +171,12 @@ class UploadProxy:
         self.proc.start()
         return self.proc
 
-    def stop(self):
+    def stop(self, timeout=10):
         if self.proc:
             self.upload_q.put(dict(exit=1))
+            self.proc.join(timeout)
+            if self.proc.is_alive():
+                self.proc.terminate()
             self.proc = None
 
     def __del__(self):
