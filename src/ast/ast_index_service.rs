@@ -40,7 +40,7 @@ impl AstEvent {
 pub struct AstIndexService {
     ast_delayed_requests_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
-    ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
+    pub ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
     ast_index: Arc<AMutex<AstIndex>>,
     status: Arc<AMutex<AstIndexStatus>>
 }

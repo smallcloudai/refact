@@ -10,11 +10,15 @@ use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
 use tokio::sync::RwLock as ARwLock;
+use tracing::warn;
 use crate::at_commands::at_file::file_repair_candidates;
 use crate::call_validation::DiffChunk;
 use crate::custom_error::ScratchError;
 use crate::diffs::{read_files_n_apply_diff_chunks, fuzzy_results_into_state_vector};
+use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
+use crate::vecdb::vdb_highlev::memories_block_until_vectorized;
+use crate::vecdb::vdb_thread::vectorizer_enqueue_files;
 
 
 const MAX_FUZZY_N: usize = 10;
@@ -120,6 +124,39 @@ async fn correct_and_validate_chunks(
     Ok(())
 }
 
+async fn sync_documents_ast_vecdb(global_context: Arc<ARwLock<GlobalContext>>, docs: Vec<Document>) -> Result<(), ScratchError> {
+    if let Some(ast) = global_context.write().await.ast_module.clone() {
+        let mut ast_write = ast.write().await;
+        for doc in docs.iter() {
+            ast_write.ast_add_file_no_queue(doc, true).await.map_err(|e| {
+                let e_text = format!("Failed to sync doc {:?} with AST. Error:\n{}", doc.path, e);
+                warn!(e_text);
+                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e_text)
+            })?;
+        }
+    }
+    
+    let vecdb_enqueued = if let Some(vservice) = {
+        let cx = global_context.write().await;
+        let vec_db_guard = cx.vec_db.lock().await;
+        vec_db_guard.as_ref().map(|v| v.vectorizer_service.clone())
+    } {
+        vectorizer_enqueue_files(vservice, &docs, true).await;
+        true
+    } else {
+        false
+    };
+    
+    if vecdb_enqueued {
+        let vecdb = global_context.write().await.vec_db.clone();
+        memories_block_until_vectorized(vecdb).await.map_err(|e| 
+            ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
+        )?;
+    }
+    
+    Ok(())
+}
+
 pub async fn handle_v1_diff_apply(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
@@ -143,6 +180,14 @@ pub async fn handle_v1_diff_apply(
         write_to_file(file_name, new_text).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
     }
 
+    let docs: Vec<Document> = texts_after_patch.iter().map(|(k, v)| {
+        let mut doc = Document::new(&PathBuf::from(k));
+        doc.update_text(v);
+        doc
+    }).collect();
+
+    sync_documents_ast_vecdb(global_context.clone(), docs).await?;
+    
     let new_state = fuzzy_results_into_state_vector(&fuzzy_n_used, post.chunks.len());
     global_context.write().await.documents_state.diffs_applied_state.insert(post.id, new_state.iter().map(|x|x==&1).collect::<Vec<_>>().clone());
 

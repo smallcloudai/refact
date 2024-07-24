@@ -4,4 +4,4 @@ pub mod vdb_structs;
 pub mod vdb_remote;
 pub mod vdb_cache;
 pub mod vdb_lance;
-mod vdb_thread;
+pub mod vdb_thread;

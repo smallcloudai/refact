@@ -43,7 +43,7 @@ pub struct VecDb {
     pub memdb: Arc<AMutex<MemoriesDatabase>>,
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
-    vectorizer_service: Arc<AMutex<FileVectorizerService>>,
+    pub vectorizer_service: Arc<AMutex<FileVectorizerService>>,
     cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
     constants: VecdbConstants,
     pub mem_ongoing: Arc<StdMutex<HashMap<String, OngoingFlow>>>,

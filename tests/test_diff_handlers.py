@@ -9,7 +9,7 @@ from pathlib import Path
 from termcolor import colored
 
 current_dir = Path(__file__).parent.absolute()
-test_file = current_dir / "test_file.rs.temp"
+test_file = current_dir / "test_file.py"
 
 
 file_text = """
