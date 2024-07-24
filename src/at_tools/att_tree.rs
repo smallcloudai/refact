@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use async_trait::async_trait;
 use serde_json::Value;
-use tracing::{warn, info};
+use tracing::warn;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::get_project_paths;
@@ -19,10 +19,16 @@ pub struct AttTree;
 impl Tool for AttTree {
     async fn tool_execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let paths_from_anywhere = paths_from_anywhere(ccx.global_context.clone()).await;
+        
         let path_mb = match args.get("path") {
             Some(Value::String(s)) => Some(s),
             Some(v) => return Err(format!("argument `path` is not a string: {:?}", v)),
             None => None,
+        };
+        let use_ast = match args.get("use_ast") {
+            Some(Value::Bool(b)) => *b,
+            Some(v) => return Err(format!("argument `use_ast` is not a boolean: {:?}", v)),
+            None => false,
         };
         
         let tree = match path_mb {
@@ -36,7 +42,7 @@ impl Tool for AttTree {
             None => construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere)
         };
 
-        let content = print_files_tree_with_budget(ccx.global_context.clone(), tree).await.map_err(|err| {
+        let content = print_files_tree_with_budget(ccx.global_context.clone(), tree, use_ast).await.map_err(|err| {
             warn!("print_files_tree_with_budget err: {}", err);
             err
         })?;

@@ -7,21 +7,21 @@ use std::time::Duration;
 use async_trait::async_trait;
 use tokio::sync::{Mutex as AMutex, MutexGuard};
 use tokio::sync::RwLock as ARwLock;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::treesitter::structs::SymbolType;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::at_file::{at_file_repair_candidates, AtParamFilePath};
-use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
+use crate::at_commands::at_file::get_project_paths;
+use crate::at_commands::execute_at::AtCommandMember;
+use crate::at_tools::att_file::real_file_path_candidate;
 use crate::call_validation::{ChatMessage, ContextEnum};
-use crate::files_correction::{canonical_path, paths_from_anywhere};
+use crate::files_correction::{correct_to_nearest_dir_path, paths_from_anywhere};
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
 pub static CONTEXT_SIZE_LIMIT: usize = 32000;
 pub static SYMBOLS_PER_TOKEN: f32 = 3.5;
-pub static RETRIEVE_SYMBOLS: bool = true;
 
 
 pub struct AtTree {
@@ -31,9 +31,7 @@ pub struct AtTree {
 impl AtTree {
     pub fn new() -> Self {
         AtTree {
-            params: vec![
-                Arc::new(AMutex::new(AtParamFilePath::new()))
-            ],
+            params: vec![],
         }
     }
 }
@@ -60,7 +58,6 @@ impl PathsHolderNode {
 }
 
 pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBuf>) -> Vec<PathsHolderNodeArc> {
-    info!("files_tree_by_paths_from_anywhere: {:?}", paths_from_anywhere);
     let mut root_nodes: Vec<PathsHolderNodeArc> = Vec::new();
     let mut nodes_map: HashMap<PathBuf, PathsHolderNodeArc> = HashMap::new();
 
@@ -114,7 +111,6 @@ pub fn print_files_tree_with_budget_internal(
         tree_str: &mut String,
         prefix: &String,
         paths_holder: Arc<RefCell<PathInfoNode>>,
-        is_last: bool
     ) {
         // let more = if is_last { "└─ " } else { "├─ " };
         let more = "  ";
@@ -123,13 +119,13 @@ pub fn print_files_tree_with_budget_internal(
         let new_prefix = prefix.to_owned() + "  ";
         for (idx, sub_path) in paths_holder.borrow().child_paths.iter().enumerate() {
             let is_last = idx == paths_holder.borrow().child_paths.len() - 1 && paths_holder.borrow().is_complete;
-            recursive_print_path_holders(tree_str, &new_prefix, sub_path.clone(), is_last);
+            recursive_print_path_holders(tree_str, &new_prefix, sub_path.clone());
         }
         if !paths_holder.borrow().is_complete {
             recursive_print_path_holders(
                 tree_str, &new_prefix, Arc::new(RefCell::new(
                     PathInfoNode { filename: "...".to_string(), symbols: "".to_string(), child_paths: vec![], is_complete: true }
-                )), true);
+                )));
         }
     }
 
@@ -152,28 +148,27 @@ pub fn print_files_tree_with_budget_internal(
         node_entries.sort_by_key(|dir| dir.0.read().unwrap().path.clone());
 
         for entry in node_entries.iter() {
-            // let ast_symbols = match &maybe_ast_module {
-            //     Some(ast) => {
-            //         let doc = Document { path: entry.0.read().unwrap().path.clone(), text: None };
-            //         match ast.get_by_file_path(RequestSymbolType::Declaration, &doc) {
-            //             Ok(symbols) => {
-            //                 let symbols_list = symbols
-            //                     .iter()
-            //                     .filter(|x| x.symbol_type == SymbolType::StructDeclaration
-            //                         || x.symbol_type == SymbolType::FunctionDeclaration)
-            //                     .filter(|x| !x.name.is_empty())
-            //                     .map(|x| x.name.clone())
-            //                     .collect::<Vec<String>>()
-            //                     .join(", ");
-            //                 if !symbols_list.is_empty() { format!(" ({symbols_list})") } else { "".to_string() }
-            //             }
-            //
-            //             Err(_) => "".to_string()
-            //         }
-            //     }
-            //     None => "".to_string()
-            // };
-            let ast_symbols = String::new();
+            let ast_symbols = match &maybe_ast_module {
+                Some(ast) => {
+                    let doc = Document { path: entry.0.read().unwrap().path.clone(), text: None };
+                    match ast.get_by_file_path(RequestSymbolType::Declaration, &doc) {
+                        Ok(symbols) => {
+                            let symbols_list = symbols
+                                .iter()
+                                .filter(|x| x.symbol_type == SymbolType::StructDeclaration
+                                    || x.symbol_type == SymbolType::FunctionDeclaration)
+                                .filter(|x| !x.name.is_empty())
+                                .map(|x| x.name.clone())
+                                .collect::<Vec<String>>()
+                                .join(", ");
+                            if !symbols_list.is_empty() { format!(" ({symbols_list})") } else { "".to_string() }
+                        }
+            
+                        Err(_) => "".to_string()
+                    }
+                }
+                None => "".to_string()
+            };
             let filename = entry.0.read().unwrap().file_name();
             total_symbols += filename.len() + ast_symbols.len() + 5;  // 5 is a small budget for special symbols
             if total_symbols >= budget {
@@ -194,9 +189,8 @@ pub fn print_files_tree_with_budget_internal(
 
     // Second stage: Format the collected paths into the final output string
     let mut tree_str = String::new();
-    for (idx, paths_holder) in collected_paths.iter().enumerate() {
-        let is_last = idx == collected_paths.len() - 1 && paths_holder.borrow().is_complete;
-        recursive_print_path_holders(&mut tree_str, &"".to_string(), paths_holder.clone(), is_last);
+    for paths_holder in collected_paths {
+        recursive_print_path_holders(&mut tree_str, &"".to_string(), paths_holder.clone());
     }
 
     Ok(tree_str)
@@ -205,18 +199,19 @@ pub fn print_files_tree_with_budget_internal(
 pub async fn print_files_tree_with_budget(
     gcx: Arc<ARwLock<GlobalContext>>,
     tree: Vec<PathsHolderNodeArc>,
+    use_ast: bool,
 ) -> Result<String, String> {
     let context_limit = CONTEXT_SIZE_LIMIT * SYMBOLS_PER_TOKEN as usize;
-    return if RETRIEVE_SYMBOLS {
-        let maybe_ast_module = gcx.read().await.ast_module.clone();
-        if let Some(ast_module) = maybe_ast_module {
-            let ast_module = ast_module.read().await;
-            let maybe_ast_index = ast_module.read_ast(Duration::from_millis(25)).await;
-            if let Ok(ast_index) = maybe_ast_index {
-                print_files_tree_with_budget_internal(tree, context_limit, Some(ast_index))
-            } else { print_files_tree_with_budget_internal(tree, context_limit, None) }
-        } else { print_files_tree_with_budget_internal(tree, context_limit, None) }
-    } else { print_files_tree_with_budget_internal(tree, context_limit, None) };
+
+    // retrieve symbols using AST
+    if use_ast {
+        if let Some(ast_module) = gcx.read().await.ast_module.clone() {
+            if let Ok(ast_index) = ast_module.read().await.read_ast(Duration::from_millis(25)).await {
+                return print_files_tree_with_budget_internal(tree, context_limit, Some(ast_index));
+            }
+        }
+    }
+    print_files_tree_with_budget_internal(tree, context_limit, None)
 }
 
 
@@ -225,49 +220,34 @@ impl AtCommand for AtTree {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> { &self.params }
     async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         let paths_from_anywhere = paths_from_anywhere(ccx.global_context.clone()).await;
-        let all_args_are_empty = args.iter().all(|x| x.text.is_empty());
-        let tree = if args.is_empty() || all_args_are_empty {
-            construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere)
-        } else {
-            let mut file_path = match args.get(0) {
-                Some(x) => x.clone(),
-                None => {
-                    cmd.ok = false;
-                    cmd.reason = Some("missing file path".to_string());
-                    args.clear();
-                    return Err("missing file path".to_string());
-                }
-            };
-            correct_at_arg(ccx, self.params[0].clone(), &mut file_path).await;
-            args.clear();
-            let candidates = at_file_repair_candidates(&file_path.text, ccx, false).await;
-            if candidates.is_empty() {
-                info!("parameter {:?} is uncorrectable :/", &file_path);
-                return Err(format!("parameter {:?} is uncorrectable :/", &file_path));
+        *args = args.iter().take_while(|arg| arg.text != "\n" || arg.text == "--ast").take(2).cloned().collect();
+        
+        let tree = match args.iter().find(|x| x.text != "--ast") {
+            None => construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere),
+            Some(arg) => {
+                let path = arg.text.clone();
+                let candidates = correct_to_nearest_dir_path(ccx.global_context.clone(), &path).await;
+                let candidate = real_file_path_candidate(ccx, &path, &candidates, &get_project_paths(ccx).await).await.map_err(|e| {
+                    cmd.ok = false; cmd.reason = Some(e.clone()); args.clear();
+                    e
+                })?;
+                let true_path = PathBuf::from(candidate);
+                let filtered_paths_from_anywhere = paths_from_anywhere.iter().filter(|f|f.starts_with(&true_path)).cloned().collect::<Vec<_>>();
+                construct_tree_out_of_flat_list_of_paths(&filtered_paths_from_anywhere)
             }
-            let base_path = canonical_path(&candidates.get(0).unwrap().clone());
-            let filtered_paths_from_anywhere = paths_from_anywhere
-                .iter()
-                .filter(|file| file.starts_with(&base_path))
-                .cloned()
-                .collect();
-            construct_tree_out_of_flat_list_of_paths(&filtered_paths_from_anywhere)
         };
 
-        let context = match print_files_tree_with_budget(
-            ccx.global_context.clone(), tree
-        ).await {
-            Ok(tree) => {
-                ContextEnum::ChatMessage(ChatMessage::new(
-                    "context_text".to_string(),
-                    tree,
-                ))
-            }
-            Err(err) => {
-                info!("{}", err);
-                return Err(err);
-            }
-        };
+        let use_ast = args.iter().any(|x| x.text == "--ast");
+        
+        let tree = print_files_tree_with_budget(ccx.global_context.clone(), tree, use_ast).await.map_err(|err| {
+            warn!("{}", err);
+            err
+        })?;
+
+        let context = ContextEnum::ChatMessage(ChatMessage::new(
+            "plain_text".to_string(),
+            tree,
+        ));
         Ok((vec![context], "".to_string()))
     }
 }

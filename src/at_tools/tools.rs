@@ -137,6 +137,9 @@ tools:
       - name: "path"
         type: "string"
         description: "An optional absolute path to get files tree for a particular folder or file. Do not pass it if you need full project tree."
+      - name: "use_ast"
+        type: "boolean"
+        description: "if true, for each file an array of AST symbols will appear as well as its filename"
     parameters_required: []
 
   - name: "web"
