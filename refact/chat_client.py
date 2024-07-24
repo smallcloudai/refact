@@ -109,7 +109,7 @@ async def tools_fetch_and_filter(base_url: str, tools_turn_on: Optional[Set[str]
     async def get_tools():
         async with aiohttp.ClientSession() as session:
             async with session.get(base_url + "/tools", timeout=1) as response:
-                assert response.status == 200
+                assert response.status == 200, f"unexpected response status {response.status}"
                 return await response.json()
     tools = None
     tools = await get_tools()
@@ -192,7 +192,7 @@ async def ask_using_http(
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:
         async with session.post(base_url + "/chat", json=post_me) as response:
-            assert response.status == 200
+            assert response.status == 200, f"unexpected response status {response.status}"
             if not stream:
                 j = await response.json()
                 deterministic = [Message(**x) for x in j.get("deterministic_messages", [])]
@@ -209,8 +209,13 @@ async def ask_using_http(
                     choices[index] = msg
             else:
                 choice_collector = ChoiceDeltaCollector(n_answers)
-                async for line in response.content:
-                    line_str = line.decode('utf-8').strip()
+                buffer = b""
+                async for data, end_of_http_chunk in response.content.iter_chunks():
+                    buffer += data
+                    if not end_of_http_chunk:
+                        continue
+                    line_str = buffer.decode('utf-8').strip()
+                    buffer = b""
                     if not line_str:
                         continue
                     if not line_str.startswith("data: "):
@@ -227,7 +232,10 @@ async def ask_using_http(
                         deterministic.append(Message(**j))
                     else:
                         print("unrecognized streaming data (2):", j)
-                choices = [(None if not x.content else x) for x in choice_collector.choices]
+                for x in choice_collector.choices:
+                    if x.content is not None and len(x.content) == 0:
+                        x.content = None
+                choices = choice_collector.choices
     return join_messages_and_choices(messages, deterministic, choices, verbose)
 
 
