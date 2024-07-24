@@ -23,6 +23,7 @@ export type DocumentationSettingsProps = {
   sources: DocumentationSource[];
   addDocumentation: (url: string, maxDepth: number, maxPages: number) => void;
   deleteDocumentation: (url: string) => void;
+  refetchDocumentation: (url: string) => void;
   editDocumentation: (url: string, maxDepth: number, maxPages: number) => void;
 };
 
@@ -31,6 +32,7 @@ export const DocumentationSettings: React.FC<DocumentationSettingsProps> = ({
   addDocumentation,
   deleteDocumentation,
   editDocumentation,
+  refetchDocumentation,
 }: DocumentationSettingsProps) => {
   const [url, setUrl] = useState("");
   const [maxDepth, setMaxDepth] = useState(2);
@@ -59,6 +61,7 @@ export const DocumentationSettings: React.FC<DocumentationSettingsProps> = ({
                       source={source}
                       deleteDocumentation={deleteDocumentation}
                       editDocumentation={editDocumentation}
+                      refetchDocumentation={refetchDocumentation}
                     />
                   </Table.Cell>
                 </Table.Row>

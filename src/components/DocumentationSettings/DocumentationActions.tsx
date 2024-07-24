@@ -13,12 +13,14 @@ type DocumentationActionsProps = {
   source: DocumentationSource;
   deleteDocumentation: (url: string) => void;
   editDocumentation: (url: string, maxDepth: number, maxPages: number) => void;
+  refetchDocumentation: (url: string) => void;
 };
 
 export const DocumentationActions: React.FC<DocumentationActionsProps> = ({
   source,
   deleteDocumentation,
   editDocumentation,
+  refetchDocumentation,
 }: DocumentationActionsProps) => {
   const [maxDepth, setMaxDepth] = useState(source.maxDepth);
   const [maxPages, setMaxPages] = useState(source.maxPages);
@@ -41,6 +43,9 @@ export const DocumentationActions: React.FC<DocumentationActionsProps> = ({
             }}
           >
             Edit
+          </DropdownMenu.Item>
+          <DropdownMenu.Item onSelect={() => refetchDocumentation(source.url)}>
+            Refetch
           </DropdownMenu.Item>
           <DropdownMenu.Separator />
           <DropdownMenu.Item

@@ -113,6 +113,14 @@ export const Documentation: React.FC<{ goBack?: () => void }> = () => {
     };
     void f();
   };
+
+  const refetchDocumentation = (url: string) => {
+    const document = documentationSources.find((value) => value.url === url);
+    if (document !== undefined) {
+      addDocumentation(url, document.maxDepth, document.maxPages);
+    }
+  };
+
   const deleteDocumentation = (url: string) => {
     const f = async () => {
       const docsEndpoint = lspUrl
@@ -132,20 +140,14 @@ export const Documentation: React.FC<{ goBack?: () => void }> = () => {
     };
     void f();
   };
-  const editDocumentation = (
-    _url: string,
-    _maxDepth: number,
-    _maxPages: number,
-  ) => {
-    return 0;
-  };
 
   return (
     <DocumentationSettings
       sources={documentationSources}
       addDocumentation={addDocumentation}
       deleteDocumentation={deleteDocumentation}
-      editDocumentation={editDocumentation}
+      editDocumentation={addDocumentation}
+      refetchDocumentation={refetchDocumentation}
     />
   );
 };
