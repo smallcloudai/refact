@@ -31,7 +31,7 @@ async fn execute_att_search(ccx: &mut AtCommandsContext, query: &String, scope: 
         },
         _ if is_scope_a_file(scope) => {
             let candidates = at_file_repair_candidates(scope, ccx, false).await;
-            let file_path = real_file_path_candidate(ccx, scope, &candidates, &get_project_paths(ccx).await).await?;
+            let file_path = real_file_path_candidate(ccx, scope, &candidates, &get_project_paths(ccx).await, false).await?;
             let filter = Some(format!("(file_path = \"{}\")", file_path));
             Ok(execute_at_search(ccx, &query, filter).await?)
         },

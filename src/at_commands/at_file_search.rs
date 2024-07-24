@@ -41,7 +41,7 @@ pub async fn execute_at_file_search(
 ) -> Result<Vec<ContextFile>, String> {
     let fuzzy = !from_tool_call;
     let candidates = at_file_repair_candidates(file_path, ccx, fuzzy).await;
-    let file_path = real_file_path_candidate(ccx, file_path, &candidates, &get_project_paths(ccx).await).await?;
+    let file_path = real_file_path_candidate(ccx, file_path, &candidates, &get_project_paths(ccx).await, false).await?;
     let vecdb_scope_filter = format!("(file_path = \"{}\")", file_path);
     let vector_of_context_file = execute_at_search(ccx, query, Some(vecdb_scope_filter)).await?;
 

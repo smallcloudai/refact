@@ -28,7 +28,7 @@ impl Tool for AttDiff {
                 // 1 argument: git diff for a specific file
                 let file_path_arg = args.get("file_path").and_then(|v| v.as_str()).ok_or("Missing argument `file_path` for att_diff")?.to_string();
                 let candidates = at_file_repair_candidates(&file_path_arg, ccx, false).await;
-                let file_path = real_file_path_candidate(ccx, &file_path_arg, &candidates, &get_project_paths(ccx).await).await?;
+                let file_path = real_file_path_candidate(ccx, &file_path_arg, &candidates, &get_project_paths(ccx).await, false).await?;
                 let parent_dir = PathBuf::from(&file_path).parent().ok_or(format!("Couldn't get parent directory of file: {:?}", file_path))?.to_string_lossy().to_string();
                 execute_diff_for_vcs(&parent_dir, &[&file_path]).await.map_err(|e| format!("Couldn't execute git diff {}.\nError: {}", file_path, e))
             },

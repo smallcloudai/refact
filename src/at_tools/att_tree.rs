@@ -21,7 +21,13 @@ impl Tool for AttTree {
         let paths_from_anywhere = paths_from_anywhere(ccx.global_context.clone()).await;
         
         let path_mb = match args.get("path") {
-            Some(Value::String(s)) => Some(s),
+            Some(Value::String(s)) => { 
+                let p = PathBuf::from(s);
+                if p.extension().is_some() {
+                    return Err(format!("`path` is a file, not a directory: {:?}", s));
+                }
+                Some(s) 
+            },
             Some(v) => return Err(format!("argument `path` is not a string: {:?}", v)),
             None => None,
         };
@@ -33,8 +39,8 @@ impl Tool for AttTree {
         
         let tree = match path_mb {
             Some(path) => {
-                let candidates = correct_to_nearest_dir_path(ccx.global_context.clone(), path).await;
-                let candidate = real_file_path_candidate(ccx, path, &candidates, &get_project_paths(ccx).await).await?;
+                let candidates = correct_to_nearest_dir_path(ccx.global_context.clone(), path, false, 10).await;
+                let candidate = real_file_path_candidate(ccx, path, &candidates, &get_project_paths(ccx).await, true).await?;
                 let true_path = PathBuf::from(candidate);
                 let filtered_paths_from_anywhere = paths_from_anywhere.iter().filter(|f|f.starts_with(&true_path)).cloned().collect();
                 construct_tree_out_of_flat_list_of_paths(&filtered_paths_from_anywhere)

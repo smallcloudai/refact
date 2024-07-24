@@ -79,6 +79,33 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
     return (cache_correction_arc, cache_fuzzy_arc);
 }
 
+fn fuzzy_search<I>(
+    cache_correction_arc: Arc<HashMap<String, HashSet<String>>>,
+    correction_candidate: &String,
+    candidates: I,
+    top_n: usize,
+) -> Vec<String>
+where I: Iterator<Item = String> {
+    let mut top_n_records = Vec::with_capacity(top_n);
+    for p in candidates {
+        let dist = normalized_damerau_levenshtein(&correction_candidate, &p);
+        top_n_records.push((p.clone(), dist));
+        if top_n_records.len() >= top_n {
+            top_n_records.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+            top_n_records.pop();
+        }
+    }
+    let mut sorted_paths  = vec![];
+    for path in top_n_records.iter().sorted_by(|a, b|a.1.partial_cmp(&b.1).unwrap()).rev().map(|(path, _)| path) {
+        if let Some(fixed) = (*cache_correction_arc).get(path) {
+            sorted_paths.extend(fixed.into_iter().cloned());
+        } else {
+            sorted_paths.push(path.clone());
+        }
+    }
+    sorted_paths
+}
+
 pub async fn correct_to_nearest_filename(
     global_context: Arc<ARwLock<GlobalContext>>,
     correction_candidate: &String,
@@ -98,25 +125,7 @@ pub async fn correct_to_nearest_filename(
 
     if fuzzy {
         info!("fuzzy search {:?}, cache_fuzzy_arc.len={}", correction_candidate, cache_fuzzy_arc.len());
-        let mut top_n_records: Vec<(String, f64)> = Vec::with_capacity(top_n);
-        for p in cache_fuzzy_arc.iter() {
-            let dist = normalized_damerau_levenshtein(&correction_candidate, p);
-            top_n_records.push((p.clone(), dist));
-            if top_n_records.len() >= top_n {
-                top_n_records.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-                top_n_records.pop();
-            }
-        }
-        info!("the top{} nearest matches {:?}", top_n, top_n_records);
-        let mut sorted_paths: Vec<String> = vec![];
-        for path in top_n_records.iter().sorted_by(|a, b|a.1.partial_cmp(&b.1).unwrap()).rev().map(|(path, _)| path) {
-            if let Some(fixed) = (*cache_correction_arc).get(path) {
-                sorted_paths.extend(fixed.into_iter().cloned());
-            } else {
-                sorted_paths.push(path.clone());
-            }
-        }
-        return sorted_paths;
+        return fuzzy_search(cache_correction_arc.clone(), correction_candidate, cache_fuzzy_arc.iter().cloned(), top_n);
     }
 
     return vec![];
@@ -125,11 +134,16 @@ pub async fn correct_to_nearest_filename(
 pub async fn correct_to_nearest_dir_path(
     global_context: Arc<ARwLock<GlobalContext>>,
     correction_candidate: &String,
+    fuzzy: bool,
+    top_n: usize,
 ) -> Vec<String> {
     fn get_parent(p: &String) -> Option<String> {
         PathBuf::from(p).parent().map(PathBuf::from).map(|x|x.to_string_lossy().to_string())
     }
-    
+    fn get_last_component(p: &String) -> Option<String> {
+        PathBuf::from(p).components().last().map(|comp| comp.as_os_str().to_string_lossy().to_string())
+    }
+
     let (cache_correction_arc, _) = files_cache_rebuild_as_needed(global_context.clone()).await;
     let mut paths_correction_map = HashMap::new();
     for (k, v) in cache_correction_arc.iter() {
@@ -144,7 +158,16 @@ pub async fn correct_to_nearest_dir_path(
             None => {}
         }
     }
-    paths_correction_map.get(correction_candidate).map(|x|x.iter().cloned().collect::<Vec<_>>()).unwrap_or(vec![])
+    if let Some(res) = paths_correction_map.get(correction_candidate).map(|x|x.iter().cloned().collect::<Vec<_>>()) {
+        return res;
+    }
+    
+    if fuzzy {
+        let paths_fuzzy = paths_correction_map.values().flat_map(|v| v).filter_map(get_last_component).collect::<HashSet<_>>();
+        println!("{:#?}", paths_fuzzy);
+        return fuzzy_search(Arc::new(paths_correction_map), correction_candidate, paths_fuzzy.into_iter(), top_n);
+    }
+    vec![]
 }
 
 fn absolute(path: &std::path::Path) -> std::io::Result<PathBuf> {

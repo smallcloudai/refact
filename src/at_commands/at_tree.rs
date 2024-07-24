@@ -226,8 +226,8 @@ impl AtCommand for AtTree {
             None => construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere),
             Some(arg) => {
                 let path = arg.text.clone();
-                let candidates = correct_to_nearest_dir_path(ccx.global_context.clone(), &path).await;
-                let candidate = real_file_path_candidate(ccx, &path, &candidates, &get_project_paths(ccx).await).await.map_err(|e| {
+                let candidates = correct_to_nearest_dir_path(ccx.global_context.clone(), &path, false, 10).await;
+                let candidate = real_file_path_candidate(ccx, &path, &candidates, &get_project_paths(ccx).await, true).await.map_err(|e| {
                     cmd.ok = false; cmd.reason = Some(e.clone()); args.clear();
                     e
                 })?;
