@@ -5,9 +5,9 @@ import whatthepatch
 
 from argparse import ArgumentParser
 
-from agent_runner import AgentRunner
-from agent_runner import get_swe_bench_lite_instance
-from step2_oracle import ProducePatchStep
+from swe.utils import AgentRunner
+from swe.utils import get_swe_bench_lite_instance
+from swe.steps import ExploreRepoStep
 
 from pathlib import Path
 from typing import Dict, Any
@@ -16,24 +16,40 @@ from typing import Dict, Any
 MODEL = "gpt-4o"
 
 
-def patched_file(patch: str) -> str:
-    files = list(whatthepatch.parse_patch(patch))
-    assert len(files) == 1
-    header = files[0].header
-    assert header.old_path[len("a/"):] == header.new_path[len("b/"):]
-    return header.old_path[len("a/"):]
-
-
 class SWERunner(AgentRunner):
+
+    @staticmethod
+    def _patched_file(patch: str) -> str:
+        files = list(whatthepatch.parse_patch(patch))
+        assert len(files) == 1
+        header = files[0].header
+        assert header.old_path[len("a/"):] == header.new_path[len("b/"):]
+        return header.old_path[len("a/"):]
+
+    @staticmethod
+    def _filename_mentioned(filename: str, text: str) -> str:
+        if filename in text:
+            return "fully"
+        elif Path(filename).name in text:
+            return "partially"
+        return "no"
 
     async def _steps(self, base_url: str, repo_path: Path, *args, **kwargs) -> Dict[str, Any]:
         results: Dict[str, Any] = dict()
+        problem_statement = kwargs["problem_statement"]
+        filename: str = self._patched_file(kwargs["problem_patch"])
+        results["patched_filename"] = filename
+        results["mentioned_in_problem"] = \
+            self._filename_mentioned(filename, problem_statement)
         try:
-            step = ProducePatchStep(base_url=base_url, model_name=MODEL, attempts=3)
-            results["model_patch"] = \
-                await step.process(task=kwargs["summarized_problem_statement"], repo_path=repo_path)
+            step = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=3)
+            results["summarized_problem_statement"] = await step.process(
+                problem_statement=kwargs["problem_statement"],
+                repo_path=repo_path)
+            results["mentioned_in_task"] = \
+                self._filename_mentioned(filename, results["summarized_problem_statement"])
         except Exception as e:
-            raise RuntimeError(f"step2: {type(e)} {str(e) or traceback.format_exc()}")
+            raise RuntimeError(f"step1: {type(e)} {str(e) or traceback.format_exc()}")
         return results
 
 
@@ -61,12 +77,6 @@ async def main():
     }
 
     try:
-        results["summarized_problem_statement"] = "\n\n".join([
-            "Problem statement:",
-            results["problem_statement"],
-            "File to patch:",
-            patched_file(results["problem_patch"]),
-        ])
         runner = SWERunner(
             timeout=args.timeout)
         results.update(await runner.run(

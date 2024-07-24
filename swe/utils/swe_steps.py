@@ -4,17 +4,16 @@ import traceback
 
 from argparse import ArgumentParser
 
-from agent_runner import AgentRunner
-from agent_runner import get_swe_bench_lite_instance
-from step1 import ExploreRepoStep
-from step2 import ProducePatchStep
-from step3 import ChooseSolutionStep
+from swe.utils import AgentRunner
+from swe.utils import get_swe_bench_lite_instance
+from swe.steps import ExploreRepoStep
+from swe.steps import ProducePatchStep
+from swe.steps import ChooseSolutionStep
 
 from pathlib import Path
 from typing import Dict, Any
 
 
-# MODEL = "gpt-3.5-turbo"
 MODEL = "gpt-4o"
 
 

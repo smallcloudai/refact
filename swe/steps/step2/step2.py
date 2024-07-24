@@ -1,7 +1,7 @@
 import json
 import subprocess
 
-from step import Step
+from swe.steps import Step
 from refact import chat_client
 
 from pathlib import Path

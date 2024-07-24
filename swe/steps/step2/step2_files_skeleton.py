@@ -3,7 +3,7 @@ import json
 import subprocess
 
 from refact import chat_client
-from step import Step
+from swe.steps import Step
 
 from pathlib import Path
 from typing import List, Set

@@ -1,13 +1,15 @@
 import json
 import asyncio
 import traceback
+
+import termcolor
 import whatthepatch
 
 from argparse import ArgumentParser
 
-from agent_runner import AgentRunner
-from agent_runner import get_swe_bench_lite_instance
-from step1_tree import ExploreRepoStep
+from swe.utils import AgentRunner
+from swe.utils import get_swe_bench_lite_instance
+from swe.steps import ProducePatchStep
 
 from pathlib import Path
 from typing import Dict, Any
@@ -16,40 +18,29 @@ from typing import Dict, Any
 MODEL = "gpt-4o"
 
 
+def patched_file(patch: str) -> str:
+    files = list(whatthepatch.parse_patch(patch))
+    assert len(files) == 1
+    header = files[0].header
+    assert header.old_path[len("a/"):] == header.new_path[len("b/"):]
+    return header.old_path[len("a/"):]
+
+
 class SWERunner(AgentRunner):
-
-    @staticmethod
-    def _patched_file(patch: str) -> str:
-        files = list(whatthepatch.parse_patch(patch))
-        assert len(files) == 1
-        header = files[0].header
-        assert header.old_path[len("a/"):] == header.new_path[len("b/"):]
-        return header.old_path[len("a/"):]
-
-    @staticmethod
-    def _filename_mentioned(filename: str, text: str) -> str:
-        if filename in text:
-            return "fully"
-        elif Path(filename).name in text:
-            return "partially"
-        return "no"
 
     async def _steps(self, base_url: str, repo_path: Path, *args, **kwargs) -> Dict[str, Any]:
         results: Dict[str, Any] = dict()
         problem_statement = kwargs["problem_statement"]
-        filename: str = self._patched_file(kwargs["problem_patch"])
-        results["patched_filename"] = filename
-        results["mentioned_in_problem"] = \
-            self._filename_mentioned(filename, problem_statement)
+        results["summarized_problem_statement"] = "\n\n".join([
+            problem_statement,
+            kwargs["step1_data"],
+        ])
         try:
-            step = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=3)
-            results["summarized_problem_statement"] = await step.process(
-                problem_statement=kwargs["problem_statement"],
-                repo_path=repo_path)
-            results["mentioned_in_task"] = \
-                self._filename_mentioned(filename, results["summarized_problem_statement"])
+            step = ProducePatchStep(base_url=base_url, model_name=MODEL, attempts=3)
+            results["model_patches"] = \
+                await step.process(task=results["summarized_problem_statement"], repo_path=repo_path)
         except Exception as e:
-            raise RuntimeError(f"step1: {type(e)} {str(e) or traceback.format_exc()}")
+            raise RuntimeError(f"step2: {type(e)} {str(e) or traceback.format_exc()}")
         return results
 
 
@@ -58,6 +49,7 @@ async def main():
     parser.add_argument("instance_id", type=str, help="SWE instance id")
     parser.add_argument("--timeout", type=float, default=None, help="processing timeout")
     parser.add_argument("--output-dir", type=Path, default=None, help="output directory")
+    parser.add_argument("--step1-output", type=str, default=None, help="step1 output filename")
     args = parser.parse_args()
 
     if args.output_dir is not None:
@@ -77,6 +69,22 @@ async def main():
     }
 
     try:
+        if isinstance(args.step1_output, str):
+            data = json.loads(Path(args.step1_output).read_text())
+            filenames_list = "\n".join(filter(
+                lambda x: "test" not in x,
+                data.get("summarized_problem_statement", "").split("\n")
+            ))
+            if filenames_list:
+                results["step1_data"] = f"Use these files to solve the problem:\n{filenames_list}"
+            else:
+                results["step1_data"] = ""
+        else:
+            filename: str = patched_file(results["problem_patch"])
+            results["step1_data"] = f"List of files you should change to solve the problem:\n - {filename}"
+
+        print(termcolor.colored(f"using additional step1 data:\n\n{results['step1_data']}", "green"))
+
         runner = SWERunner(
             timeout=args.timeout)
         results.update(await runner.run(
