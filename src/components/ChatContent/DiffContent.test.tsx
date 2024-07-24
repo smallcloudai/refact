@@ -127,4 +127,46 @@ describe("diff content", () => {
     await user.click(btn);
     expect(onSumbitSpy).not.toHaveBeenCalled();
   });
+
+  describe("apply each", () => {
+    test("foo", async () => {
+      const appliedChunks = {
+        fetching: false,
+        error: null,
+        diff_id: "call_3odUG8bPn1gER3DSOOcVizZS",
+        state: [],
+        applied_chunks: [],
+        can_apply: [true, true],
+      };
+
+      const onSumbitSpy = vi.fn();
+      const { user, ...app } = render(
+        <DiffContent
+          diffs={STUB_DIFFS_1}
+          appliedChunks={appliedChunks}
+          onSubmit={onSumbitSpy}
+        />,
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      await user.click(app.container.querySelector('[type="button"]')!);
+      const btns = app.getAllByText(/apply/i);
+      await user.click(btns[0]);
+      expect(onSumbitSpy).toHaveBeenCalledWith([true, false]);
+
+      app.rerender(
+        <DiffContent
+          diffs={STUB_DIFFS_1}
+          onSubmit={onSumbitSpy}
+          appliedChunks={{
+            ...appliedChunks,
+            state: [1, 0],
+            applied_chunks: [true, false],
+          }}
+        />,
+      );
+
+      expect(() => app.queryByText(/applied/i)).not.toBeNull();
+    });
+  });
 });

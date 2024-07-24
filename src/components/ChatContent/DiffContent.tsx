@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  Text,
-  Container,
-  Box,
-  Flex,
-  // Switch,
-  Button,
-} from "@radix-ui/themes";
+import { Text, Container, Box, Flex, Switch, Button } from "@radix-ui/themes";
 import { type DiffChunk } from "../../events";
 import { ScrollArea } from "../ScrollArea";
 import SyntaxHighlighter from "react-syntax-highlighter";
@@ -57,45 +50,45 @@ const Highlight = React.memo(_Highlight);
 
 type DiffProps = {
   diff: DiffChunk;
-  canApply?: boolean;
   status?: number;
   value?: boolean;
+  loading?: boolean;
   onChange?: (checked: boolean) => void;
 };
 
 const Diff: React.FC<DiffProps> = ({
   diff,
   status,
-  canApply,
-  // value,
-  // onChange,
+  value,
+  onChange,
+  loading,
 }) => {
   const removeString = diff.lines_remove && toDiff(diff.lines_remove, "remove");
   const addString = diff.lines_add && toDiff(diff.lines_add, "add");
   const title = filename(diff.file_name);
   const type =
-    status === 2
-      ? "error applying"
-      : status === 1
-        ? "applied"
-        : canApply
-          ? "apply"
-          : "unapply";
+    status === 2 ? "error applying" : status === 1 ? "applied" : "apply";
 
   const lineCount =
     removeString.split("\n").length + addString.split("\n").length;
   return (
     <Box>
-      <Flex justify="between" align="center" p="1">
+      <Flex justify="between" align="center" p="1" gap="8">
         <Text size="1">{title}</Text>
-        <Text size="1">{type}</Text>
-        {/* {canApply && (
+        {/* <Text size="1">{type}</Text> */}
+        {value !== undefined && (
           <Text as="label" size="1">
             {type}{" "}
-            {status !== 2 && (
-              <Switch size="1" checked={value} onCheckedChange={onChange} />
-            )}
-          </Text> */}
+            {
+              <Switch
+                disabled={loading}
+                size="1"
+                checked={value}
+                onCheckedChange={onChange}
+              />
+            }
+          </Text>
+        )}
       </Flex>
       <Reveal defaultOpen={lineCount < 9}>
         <ScrollArea scrollbars="horizontal" asChild>
@@ -247,17 +240,17 @@ const DiffForm: React.FC<{
   }, [appliedChunks.can_apply, onSubmit]);
 
   return (
-    <Flex direction="column" display="inline-flex" maxWidth="100%">
+    <Flex direction="column" maxWidth="100%">
       {diffs.map((diff, i) => {
-        const canApply = appliedChunks.can_apply[i];
+        // const canApply = appliedChunks.can_apply[i];
         const status = appliedChunks.state[i];
-        const applied = status === 1 || appliedChunks.applied_chunks[i];
+        const applied = appliedChunks.applied_chunks[i] || false;
         return (
           <Diff
             key={i}
             diff={diff}
             status={status}
-            canApply={canApply}
+            loading={appliedChunks.fetching}
             value={applied}
             onChange={(checked: boolean) => handleToggle(i, checked)}
           />
