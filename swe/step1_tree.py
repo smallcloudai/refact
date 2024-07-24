@@ -1,5 +1,3 @@
-import uuid
-
 from refact import chat_client
 from step import Step
 
