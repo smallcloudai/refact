@@ -115,10 +115,17 @@ impl ScratchpadAbstract for ChatPassthrough {
         for msg in &limited_msgs {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" || msg.role == "tool" {
                 filtered_msgs.push(msg.clone());
-
-            } else if msg.role == "diff" || msg.role == "plain_text" {
+            } else if msg.role == "diff" {
+                filtered_msgs.push(ChatMessage {
+                    role: "tool".to_string(),
+                    content: msg.content.clone(),
+                    tool_calls: None,
+                    tool_call_id: msg.tool_call_id.clone(),
+                });
+            } else if msg.role == "plain_text" {
                 filtered_msgs.push(ChatMessage::new(
-                    "user".to_string(), msg.content.clone(),
+                    "user".to_string(), 
+                    msg.content.clone(),
                 ));
             } else if msg.role == "context_file" {
                 match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
