@@ -47,23 +47,23 @@ class ProducePatchStep(Step):
             filenames = {f for f in filenames if "test" not in f.lower()}
         return filenames
 
-    @staticmethod
-    def _patch_tool_call_patch(message: chat_client.Message, problem_statement: str) -> chat_client.Message:
-        if message.role != "assistant":
-            raise RuntimeError("not an assistant message")
-        if len(message.tool_calls) != 1 or message.tool_calls[0].function.name != "patch":
-            raise RuntimeError("assistant must call exact one patch tool call")
-        args = json.loads(message.tool_calls[0].function.arguments)
-        if not args.get("todo", ""):
-            raise RuntimeError("patch tool call must have todo argument")
-        args["todo"] = "\n\n".join([
-            "Problem statement:",
-            problem_statement,
-            "How you should solve the problem:",
-            args["todo"],
-        ])
-        message.tool_calls[0].function.arguments = json.dumps(args)
-        return message
+    # @staticmethod
+    # def _patch_tool_call_patch(message: chat_client.Message, problem_statement: str) -> chat_client.Message:
+    #     if message.role != "assistant":
+    #         raise RuntimeError("not an assistant message")
+    #     if len(message.tool_calls) != 1 or message.tool_calls[0].function.name != "patch":
+    #         raise RuntimeError("assistant must call exact one patch tool call")
+    #     args = json.loads(message.tool_calls[0].function.arguments)
+    #     if not args.get("todo", ""):
+    #         raise RuntimeError("patch tool call must have todo argument")
+    #     args["todo"] = "\n\n".join([
+    #         "Problem statement:",
+    #         problem_statement,
+    #         "How you should solve the problem:",
+    #         args["todo"],
+    #     ])
+    #     message.tool_calls[0].function.arguments = json.dumps(args)
+    #     return message
 
     async def _patch_generate(self, message: chat_client.Message, repo_name: Path):
         if message.role != "diff":
@@ -78,10 +78,10 @@ class ProducePatchStep(Step):
         for _ in range(self._max_depth):
             new_messages = await self._query(messages)
             for idx in range(len(messages), len(new_messages)):
-                try:
-                    new_messages[idx] = self._patch_tool_call_patch(new_messages[idx], problem_statement)
-                except:
-                    pass
+                # try:
+                #     new_messages[idx] = self._patch_tool_call_patch(new_messages[idx], problem_statement)
+                # except:
+                #     pass
                 try:
                     return await self._patch_generate(new_messages[idx], repo_name)
                 except:
@@ -89,11 +89,8 @@ class ProducePatchStep(Step):
             messages = new_messages
         raise RuntimeError(f"can't solve the problem with {self._max_depth} steps")
 
-    async def process(self, problem_statement: str, related_files: str, repo_path: Path, **kwargs) -> List[str]:
-        paths = ",".join([
-            str(repo_path / filename)
-            for filename in self._extract_filenames(related_files)
-        ])
+    async def process(self, problem_statement: str, related_files: List[str], repo_path: Path, **kwargs) -> List[str]:
+        paths = ",".join([str(repo_path / filename) for filename in related_files])
         files_tool_call_dict = chat_client.ToolCallDict(
             id=chat_client.gen_function_call_id(),
             function=chat_client.FunctionDict(arguments='{"paths":"' + paths + '"}', name='files_skeleton'),

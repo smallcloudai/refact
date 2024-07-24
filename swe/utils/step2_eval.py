@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Dict, Any
 
 
-MODEL = "gpt-4o"
-
+# MODEL = "gpt-4o"
+MODEL = "gpt-4o-mini"
 
 def patched_file(patch: str) -> str:
     files = list(whatthepatch.parse_patch(patch))
@@ -31,15 +31,16 @@ class SWERunner(AgentRunner):
     async def _steps(self, base_url: str, repo_path: Path, *args, **kwargs) -> Dict[str, Any]:
         results: Dict[str, Any] = dict()
         problem_statement = kwargs["problem_statement"]
-        results["summarized_problem_statement"] = kwargs["step1_data"]
+        found_files = kwargs["found_files"]
         step = ProducePatchStep(base_url=base_url, model_name=MODEL, attempts=3)
         try:
             results["model_patches"] = await step.process(
                 problem_statement=problem_statement,
-                related_files=results["summarized_problem_statement"],
+                related_files=found_files,
                 repo_path=repo_path)
         except Exception as e:
             results["error"] = f"step2: {type(e)} {str(e) or traceback.format_exc()}"
+        results["model_name"] = step.model_name
         results["usage"] = step.usage
         return results
 
@@ -49,7 +50,7 @@ async def main():
     parser.add_argument("instance_id", type=str, help="SWE instance id")
     parser.add_argument("--timeout", type=float, default=None, help="processing timeout")
     parser.add_argument("--output-dir", type=Path, default=None, help="output directory")
-    parser.add_argument("--step1-output", type=str, default=None, help="step1 output filename")
+    parser.add_argument("--step1-output", type=Path, default=None, help="step1 output filename")
     args = parser.parse_args()
 
     if args.output_dir is not None:
@@ -69,21 +70,14 @@ async def main():
     }
 
     try:
-        if isinstance(args.step1_output, str):
-            data = json.loads(Path(args.step1_output).read_text())
-            filenames_list = "\n".join(filter(
-                lambda x: "test" not in x,
-                data.get("summarized_problem_statement", "").split("\n")
-            ))
-            if filenames_list:
-                results["step1_data"] = f"Use these files to solve the problem:\n{filenames_list}"
-            else:
-                results["step1_data"] = ""
+        if args.step1_output is not None:
+            data = json.loads(args.step1_output.read_text())
+            results["found_files"] = data["found_files"]
         else:
-            filename: str = patched_file(results["problem_patch"])
-            results["step1_data"] = f"List of files you should change to solve the problem:\n - {filename}"
+            results["found_files"] = [patched_file(results["problem_patch"])]
 
-        print(termcolor.colored(f"using additional step1 data:\n\n{results['step1_data']}", "green"))
+        found_files_info = "\n".join([f"using additional step1 data:", *results["found_files"]])
+        print(termcolor.colored(found_files_info, "green"))
 
         runner = SWERunner(
             timeout=args.timeout)
