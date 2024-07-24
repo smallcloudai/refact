@@ -83,7 +83,7 @@ tools:
         description: "Single line, paragraph or code sample to search for similar content."
       - name: "scope"
         type: "string"
-        description: "one of (`workspace`, file path, directory). `workspace` -- search within workspace, file path (real file name)-- search within file, directory (real directory)-- search within given directory."
+        description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
     parameters_required:
       - "query"
       - "scope"
@@ -171,7 +171,7 @@ const NOT_READY_TOOLS: &str = r####"
         description: "Additional string that contains list of file names separated by commas. Use absolute file paths."
     parameters_required:
       - "symbols"
-      
+
   - name: "diff"
     description: "Perform a diff operation. Can be used to get git diff for a project (no arguments) or git diff for a specific file (file_path)"
     parameters:
