@@ -1,6 +1,7 @@
 import re
 
 from refact import chat_client
+from refact.chat_client import print_messages
 from swe.steps import Step
 
 from pathlib import Path
@@ -56,8 +57,12 @@ class ExploreRepoStep(Step):
             chat_client.Message(role="user", content=f"Problem statement:\n\n{problem_statement}"),
             chat_client.Message(role="assistant", finish_reason="tool_calls", tool_calls=[tree_tool_call_dict]),
         ]
-        messages = await self._query(messages)
-        res_message = messages[-1]
+        self._trajectory.extend(print_messages(messages))
+
+        new_messages = await self._query(messages)
+        self._trajectory.extend(print_messages(new_messages))
+
+        res_message = new_messages[-1]
         if res_message.role != "assistant":
             raise RuntimeError(f"unexpected message role '{res_message.role}' for answer")
         if not isinstance(res_message.content, str):

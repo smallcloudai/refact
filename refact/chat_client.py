@@ -1,6 +1,8 @@
 import uuid
+import tabulate
 import aiohttp, os, termcolor, copy, json, time
 from typing import Optional, List, Any, Tuple, Dict, Literal, Set
+
 from pydantic import BaseModel
 from rich.console import Console
 from rich.markdown import Markdown
@@ -375,55 +377,90 @@ def gen_function_call_id():
     return f"call_{uuid.uuid4()}".replace("-", "")
 
 
-def print_step(step_n: int):
+def print_block(name: str, n: int, width: int = 90) -> str:
+    block_text = f"{name.upper()} {n}"
+    left_padding = " " * ((width - len(block_text)) // 2)
+    right_padding = " " * (width - len(block_text) - len(left_padding))
+    block_text = left_padding + block_text + right_padding
+
+    tabulate.PRESERVE_WHITESPACE = True
+    message = f"\n\n{tabulate.tabulate([[block_text]], tablefmt='double_grid')}\n\n"
+    tabulate.PRESERVE_WHITESPACE = False
+
     console = Console()
-    console.print(f"\n\n\n[bold]{'-' * 90}[/bold ]")
-    console.print(f"[bold]{'-' * 90}[/bold ]")
-    console.print(f"[bold]{'-' * 40}  STEP {step_n}  {'-' * 40}[/bold ]")
-    console.print(f"[bold]{'-' * 90}[/bold ]")
-    console.print(f"[bold]{'-' * 90}[/bold ]")
+    console.print(message)
+
+    return message
 
 
-def print_messages(messages: List[Message]):
+def print_messages(messages: List[Message]) -> List[str]:
     def _is_tool_call(m: Message) -> bool:
         return m.tool_calls is not None and len(m.tool_calls) > 0
 
+    def _wrap_color(s: str, color: str = "red") -> str:
+        return f"[bold {color}]{s}[/bold {color}]"
+
+    results = []
     console = Console()
-    role_to_string = {
-        "system": "[bold red]SYSTEM:[/bold red]",
-        "assistant": "[bold red]ASSISTANT:[/bold red]",
-        "user": "[bold red]USER:[/bold red]",
-        "tool": "[bold red]TOOL ANSWER id={uid}:[/bold red]",
+    role_to_header = {
+        "system": "SYSTEM:",
+        "assistant": "ASSISTANT:",
+        "user": "USER:",
+        "tool": "TOOL ANSWER id={uid}:",
+        "context_file": "CONTEXT FILE:",
+        "diff": "DIFF:",
     }
     for m in messages:
-        if m.role in role_to_string and m.content is not None:
-            content = Markdown(m.content)
-            header = role_to_string[m.role]
-            if m.role == "tool":
-                header = header.format(uid=m.tool_call_id[:20])
-            console.print(header)
-            console.print(content)
-            console.print("")
-        elif m.role == "context_file":
-            message = "[bold red]CONTEXT FILE:[/bold red]\n"
-            for file in json.loads(m.content):
-                message += f"{file['file_name']}:{file['line1']}-{file['line2']}, len={len(file['file_content'])}\n"
+        message_str = []
+
+        header = role_to_header.get(m.role, m.role.upper())
+        if m.role == "tool":
+            header = header.format(uid=m.tool_call_id[:20])
+        message_str.append(header)
+        console.print(_wrap_color(header))
+
+        if m.role == "context_file":
+            message = "\n".join([
+                f"{file['file_name']}:{file['line1']}-{file['line2']}, len={len(file['file_content'])}"
+                for file in json.loads(m.content)
+            ])
+            message_str.append(message)
             console.print(message)
         elif m.role == "diff":
-            message = "[bold red]DIFF:[/bold red]\n"
             for chunk in json.loads(m.content):
-                message += f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}\n"
+                message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
+                message_str.append(message)
+                console.print(message)
                 if len(chunk["lines_add"]) > 0:
-                    lines = [f"+{line}" for line in chunk['lines_add'].splitlines()]
-                    lines = "\n".join(lines)
-                    message += f"[bold green]{lines}[/bold green]\n"
+                    message = "\n".join([f"+{line}" for line in chunk['lines_add'].splitlines()])
+                    message_str.append(message)
+                    console.print(_wrap_color(message, "green"))
                 if len(chunk["lines_remove"]) > 0:
-                    lines = [f"-{line}" for line in chunk['lines_remove'].splitlines()]
-                    lines = "\n".join(lines)
-                    message += f"[bold red]{lines}[/bold red]\n"
-            console.print(message)
-        if _is_tool_call(m):
-            message = "[bold red]TOOL CALLS:[/bold red]\n"
-            for tool_call in m.tool_calls:
-                message += f"[bold]{tool_call.function.name}[/bold]({tool_call.function.arguments}) [id={tool_call.id[:20]}]\n"
-            console.print(message)
+                    message = "\n".join([f"-{line}" for line in chunk['lines_remove'].splitlines()])
+                    message_str.append(message)
+                    console.print(_wrap_color(message, "red"))
+        elif m.role in role_to_header and m.content:
+            message_str.append(m.content)
+            console.print(Markdown(m.content))
+
+        message_str.append("")
+        console.print("")
+
+        if not _is_tool_call(m):
+            results.append("\n".join(message_str))
+            continue
+
+        header = "TOOL CALLS:"
+        message_str.append(header)
+        console.print(_wrap_color(header))
+
+        message = "\n".join([
+            f"{tool_call.function.name}({tool_call.function.arguments}) [id={tool_call.id[:20]}]"
+            for tool_call in m.tool_calls
+        ])
+        message_str.append(message)
+        console.print(message)
+
+        results.append("\n".join(message_str))
+
+    return results

@@ -11,7 +11,7 @@ from datasets import load_dataset
 async def process_instance(instance_id: str, output: Path, timeout: int = 120):
     try:
         process = await asyncio.create_subprocess_exec(
-            "python", "swe/swe_steps.py", instance_id,
+            "python", "swe/utils/swe_steps.py", instance_id,
             "--timeout", str(timeout),
             "--output", str(output),
         )
@@ -30,8 +30,8 @@ async def main():
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
+    parser.add_argument("--run", type=str, required=True)
     parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--run", type=str, default="gpt35-gpt4")
     args = parser.parse_args()
 
     output = Path(__file__).parent / "predictions" / args.run

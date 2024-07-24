@@ -12,7 +12,7 @@ from swe.steps import ProducePatchStep
 from swe.utils.common import patched_file
 
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 
 # MODEL = "gpt-4o"
@@ -21,7 +21,7 @@ MODEL = "gpt-4o-mini"
 
 class SWERunner(AgentRunner):
 
-    async def _steps(self, base_url: str, repo_path: Path, *args, **kwargs) -> Dict[str, Any]:
+    async def _steps(self, base_url: str, repo_path: Path, *args, **kwargs) -> Tuple[Dict[str, Any], str]:
         results: Dict[str, Any] = dict()
         problem_statement = kwargs["problem_statement"]
         found_files = kwargs["found_files"]
@@ -35,7 +35,7 @@ class SWERunner(AgentRunner):
             results["error"] = f"step2: {type(e)} {str(e) or traceback.format_exc()}"
         results["model_name"] = step.model_name
         results["usage"] = step.usage
-        return results
+        return results, step.trajectory
 
 
 async def main():
@@ -48,8 +48,9 @@ async def main():
 
     if args.output_dir is not None:
         args.output_dir.mkdir(exist_ok=True, parents=True)
-        output_filename = args.output_dir / f"{args.instance_id}.json"
-        if output_filename.exists():
+        result_filename = args.output_dir / f"{args.instance_id}.json"
+        traj_filename = args.output_dir / f"{args.instance_id}.md"
+        if result_filename.exists():
             print(f"skip {args.instance_id} because it's already done")
             exit(0)
 
@@ -61,6 +62,7 @@ async def main():
         "problem_statement": instance["problem_statement"],
         "problem_patch": instance["patch"],
     }
+    traj = ""
 
     try:
         if args.step1_output is not None:
@@ -74,17 +76,20 @@ async def main():
 
         runner = SWERunner(
             timeout=args.timeout)
-        results.update(await runner.run(
+        r, traj = await runner.run(
             repo_name=instance["repo"],
             base_commit=instance["base_commit"],
             **results,
-        ))
+        )
+        results.update(**r, **results)
     except Exception as e:
         results["error"] = str(e) or traceback.format_exc()
 
     if args.output_dir is not None:
-        with open(output_filename, "w") as f:
+        with open(result_filename, "w") as f:
             json.dump(results, f, indent=4)
+        with open(traj_filename, "w") as f:
+            f.write(traj)
     else:
         print(json.dumps(results, indent=4))
 

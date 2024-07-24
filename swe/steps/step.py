@@ -1,7 +1,6 @@
 from refact.chat_client import Message
 from refact.chat_client import tools_fetch_and_filter
 from refact.chat_client import ask_using_http
-from refact.chat_client import print_messages
 
 from typing import Set, Any, List, Iterable, Dict
 
@@ -21,6 +20,7 @@ class Step:
         self._temperature = temperature
         self._max_depth = max_depth
         self._usages = []
+        self._trajectory = []
 
     @property
     def _tools(self) -> Set[str]:
@@ -38,8 +38,7 @@ class Step:
         )
         new_messages = assistant_choices[0][len(messages):]
         self._usages.extend([m.usage for m in new_messages])
-        print_messages(new_messages)
-        return messages + new_messages
+        return new_messages
 
     async def _query_generator(self, messages: List[Message], n: int) -> Iterable[List[Message]]:
         # tools = await tools_fetch_and_filter(
@@ -70,6 +69,10 @@ class Step:
             result["prompt_tokens"] += usage.get("prompt_tokens", 0)
             result["total_tokens"] += usage.get("total_tokens", 0)
         return result
+
+    @property
+    def trajectory(self) -> str:
+        return "\n\n".join(self._trajectory)
 
     async def process(self, **kwargs) -> Any:
         raise NotImplementedError()

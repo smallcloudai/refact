@@ -2,6 +2,8 @@ import random
 
 from swe.steps import Step
 from refact import chat_client
+from refact.chat_client import print_block
+from refact.chat_client import print_messages
 
 from pathlib import Path
 from typing import List, Set
@@ -62,10 +64,15 @@ class ChooseSolutionStep(Step):
             chat_client.Message(role="user", content="\n\n".join(user_message_parts)),
             chat_client.Message(role="assistant", finish_reason="tool_calls", tool_calls=[files_tool_call_dict]),
         ]
+        self._trajectory.extend(print_messages(messages))
 
-        # 1 step should be enough to solve the problem
-        for step_n in range(self._max_depth):
-            messages = await self._query(messages)
+        # NOTE: 1 step should be enough to solve the problem
+        for idx in range(self._max_depth):
+            self._trajectory.append(print_block("iteration", idx + 1))
+
+            new_messages = await self._query(messages)
+            self._trajectory.extend(print_messages(new_messages))
+
             last_message = messages[-1]
             if last_message.role == "assistant" \
                     and last_message.content \
@@ -75,5 +82,6 @@ class ChooseSolutionStep(Step):
                     if str(idx) in result:
                         return model_patch
                 raise RuntimeError("can't choose a solution")
+            messages.extend(new_messages)
 
-        raise RuntimeError(f"can't solve the problem with {self._max_depth} steps")
+        raise RuntimeError(f"can't solve the problem with {self._max_depth} iterations")
