@@ -227,7 +227,9 @@ const DiffForm: React.FC<{
 
   const disableApplyAll = React.useMemo(() => {
     if (appliedChunks.fetching) return true;
-    return !appliedChunks.can_apply.every((_) => _);
+    const allFalse = appliedChunks.can_apply.every((chunk) => !chunk);
+    const allTrue = appliedChunks.can_apply.every((chunk) => chunk);
+    return !(allTrue || allFalse);
   }, [appliedChunks.can_apply, appliedChunks.fetching]);
 
   const action = React.useMemo(() => {
