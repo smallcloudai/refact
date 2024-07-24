@@ -226,10 +226,15 @@ const DiffForm: React.FC<{
   );
 
   const disableApplyAll = React.useMemo(() => {
-    return false;
     if (appliedChunks.fetching) return true;
     return !appliedChunks.can_apply.every((_) => _);
   }, [appliedChunks.can_apply, appliedChunks.fetching]);
+
+  const action = React.useMemo(() => {
+    if (appliedChunks.applied_chunks.every((diff) => diff))
+      return "Unapply All";
+    return "Apply All";
+  }, [appliedChunks.applied_chunks]);
 
   const applyAll = React.useCallback(() => {
     // const chunks = appliedChunks.applied_chunks.map((_) => true);
@@ -257,7 +262,7 @@ const DiffForm: React.FC<{
       })}
       <Flex gap="2" py="2">
         <Button disabled={disableApplyAll} onClick={applyAll}>
-          Apply All
+          {action}
         </Button>
       </Flex>
     </Flex>
