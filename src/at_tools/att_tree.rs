@@ -17,7 +17,7 @@ pub struct AttTree;
 
 #[async_trait]
 impl Tool for AttTree {
-    async fn tool_execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let paths_from_anywhere = paths_from_anywhere(ccx.global_context.clone()).await;
         
         let path_mb = match args.get("path") {
@@ -59,6 +59,7 @@ impl Tool for AttTree {
                 content,
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
+                ..Default::default()
             })
         ])
     }

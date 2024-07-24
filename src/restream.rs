@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_stream::stream;
@@ -6,7 +7,7 @@ use hyper::{Body, Response, StatusCode};
 use reqwest_eventsource::Event;
 use serde_json::json;
 use tokio::sync::RwLock as ARwLock;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::call_validation::SamplingParameters;
 use crate::custom_error::ScratchError;
@@ -160,7 +161,7 @@ pub async fn scratchpad_interaction_not_stream(
 ) -> Result<Response<Body>, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let mut scratchpad_response_json = scratchpad_interaction_not_stream_json(
-        global_context,
+        global_context.clone(),
         scratchpad,
         scope,
         prompt,
@@ -171,6 +172,9 @@ pub async fn scratchpad_interaction_not_stream(
         only_deterministic_messages,
     ).await?;
     scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
+    
+    insert_usage(&mut scratchpad_response_json);
+
     let txt = serde_json::to_string_pretty(&scratchpad_response_json).unwrap();
     // info!("handle_v1_code_completion return {}", txt);
     let response = Response::builder()
@@ -280,6 +284,9 @@ pub async fn scratchpad_interaction_stream(
                             &mut was_correct_output_even_if_error,
                         );
                         if let Ok(mut value) = value_maybe {
+                            if finished {
+                                insert_usage(&mut value);
+                            }
                             value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
                             let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
                             let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);
@@ -348,6 +355,41 @@ pub async fn scratchpad_interaction_stream(
         .body(Body::wrap_stream(evstream))
         .unwrap();
     return Ok(response);
+}
+
+pub fn insert_usage(msg_value: &mut serde_json::Value) {
+    let map = match msg_value.as_object() { 
+        Some(map) => map,
+        None => {
+            warn!("couldn't parse finished msg: {:?}; metering is lost", msg_value);
+            return;
+        }
+    };
+    let hashmap: HashMap<_, _> = map.clone().into_iter().collect();
+
+    let model = hashmap.get("model").and_then(|v| v.as_str()).unwrap_or_else(|| { error!("Missing or invalid 'model' field"); "" }).to_string();
+    let _pp1000t_prompt = hashmap.get("pp1000t_prompt").and_then(|v| v.as_u64()).unwrap_or_else(|| { error!("Missing or invalid 'pp1000t_prompt' field"); 0 }) as usize;
+    let _pp1000t_generated = hashmap.get("pp1000t_generated").and_then(|v| v.as_u64()).unwrap_or_else(|| { error!("Missing or invalid 'pp1000t_generated' field"); 0 }) as usize;
+    let metering_prompt_tokens_n = hashmap.get("metering_prompt_tokens_n").and_then(|v| v.as_u64()).unwrap_or_else(|| { error!("Missing or invalid 'metering_prompt_tokens_n' field"); 0 }) as usize;
+    let metering_generated_tokens_n = hashmap.get("metering_generated_tokens_n").and_then(|v| v.as_u64()).unwrap_or_else(|| { error!("Missing or invalid 'metering_generated_tokens_n' field"); 0 }) as usize;
+
+    if let Some(map) = msg_value.as_object_mut() {
+        map.remove("model");
+        map.remove("pp1000t_prompt");
+        map.remove("pp1000t_generated");
+        map.remove("metering_prompt_tokens_n");
+        map.remove("metering_generated_tokens_n");
+
+        let usage = json!({
+            "prompt_tokens": metering_prompt_tokens_n,
+            "completion_tokens": metering_generated_tokens_n,
+            "total_tokens": metering_prompt_tokens_n + metering_generated_tokens_n
+        });
+
+        map.insert("usage".to_string(), usage);
+    }
+    
+    info!("metering {}: prompt_tokens: +{}, generated_tokens: +{}", model, metering_prompt_tokens_n, metering_generated_tokens_n);
 }
 
 fn _push_streaming_json_into_scratchpad(

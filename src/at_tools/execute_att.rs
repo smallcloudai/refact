@@ -56,6 +56,7 @@ pub async fn run_tools(
                     content: format!("couldn't deserialize arguments: {}. Error:\n{}\nTry again following JSON format", t_call.function.arguments, e),
                     tool_calls: None,
                     tool_call_id: t_call.id.to_string(),
+                    ..Default::default()
                 };
                 generated_tool.push(tool_failed_message.clone());
                 continue;
@@ -64,12 +65,20 @@ pub async fn run_tools(
             info!("tool use: args={:?}", args);
             let tool_msg_and_maybe_more_mb = cmd.lock().await.tool_execute(&mut ccx, &t_call.id.to_string(), &args).await;
             if let Err(e) = tool_msg_and_maybe_more_mb {
-                let tool_failed_message = ChatMessage {
+                let mut tool_failed_message = ChatMessage {
                     role: "tool".to_string(),
                     content: e.to_string(),
                     tool_calls: None,
                     tool_call_id: t_call.id.to_string(),
+                    ..Default::default()
                 };
+                {
+                    let mut cmd_lock = cmd.lock().await;
+                    if let Some(usage) = cmd_lock.usage() {
+                        tool_failed_message.usage = Some(usage.clone());
+                    }
+                    *cmd_lock.usage() = None;
+                }
                 generated_tool.push(tool_failed_message.clone());
                 continue;
             }
@@ -98,6 +107,7 @@ pub async fn run_tools(
                 content: e.to_string(),
                 tool_calls: None,
                 tool_call_id: t_call.id.to_string(),
+                ..Default::default()
             };
             generated_tool.push(tool_failed_message.clone());
         }

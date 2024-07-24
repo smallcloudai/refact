@@ -10,7 +10,7 @@ pub struct AttWeb;
 
 #[async_trait]
 impl Tool for AttWeb {
-    async fn tool_execute(&self, _ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&mut self, _ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let url = match args.get("url") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `url` is not a string: {:?}", v)),
@@ -25,6 +25,7 @@ impl Tool for AttWeb {
             content: text,
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            ..Default::default()
         }));
         
         Ok(results)

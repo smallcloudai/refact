@@ -15,7 +15,7 @@ pub struct AttGetKnowledge;
 
 #[async_trait]
 impl Tool for AttGetKnowledge {
-    async fn tool_execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         info!("run @get-knowledge {:?}", args);
         let im_going_to_do = match args.get("im_going_to_do") {
             Some(Value::String(s)) => s.clone(),
@@ -40,6 +40,7 @@ impl Tool for AttGetKnowledge {
             content: memories_str,
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            ..Default::default()
         }));
 
         let ongoing_maybe: Option<crate::vecdb::vdb_structs::OngoingFlow> = ongoing_find(vec_db.clone(), im_going_to_do.clone()).await?;
@@ -49,6 +50,7 @@ impl Tool for AttGetKnowledge {
                 content: format!("💿 An ongoing session with this goal is found. This is your own summary of your progress. Continue with your previous plan:\n\n{}", serde_json::to_string_pretty(&ongoing.ongoing_json).unwrap()),
                 tool_calls: None,
                 tool_call_id: String::new(),
+                ..Default::default()
             }));
         } else {
             results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -56,6 +58,7 @@ impl Tool for AttGetKnowledge {
                 content: format!("💿 There is no ongoing session with this goal. A new empty ongoing session is created, formulate your plan now."),
                 tool_calls: None,
                 tool_call_id: String::new(),
+                ..Default::default()
             }));
         }
 

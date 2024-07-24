@@ -10,7 +10,7 @@ use crate::at_commands::at_file::execute_at_file;
 use crate::at_tools::att_patch::args_parser::PatchArguments;
 use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal, get_signatures_by_symbol_names};
 use crate::at_tools::att_patch::tool::DefaultToolPatch;
-use crate::call_validation::{ChatMessage, ChatPost, SamplingParameters};
+use crate::call_validation::{ChatMessage, ChatPost, ChatUsage, SamplingParameters};
 use crate::scratchpads::chat_utils_rag::count_tokens;
 
 
@@ -82,7 +82,7 @@ async fn make_chat_history(
 pub async fn execute_chat_model(
     args: &PatchArguments,
     ccx: &mut AtCommandsContext,
-) -> Result<String, String> {
+) -> Result<(String, Option<ChatUsage>), String> {
     let gx = ccx.global_context.clone();
     let mut chat_post = ChatPost {
         messages: vec![],
@@ -160,6 +160,26 @@ pub async fn execute_chat_model(
     })?;
     info!("patch generation took {:?}ms", t1.elapsed().as_millis() as i32);
 
+    let usage_mb = match messages.get("usage") {
+        Some(Value::Object(o)) => {
+            match serde_json::from_value::<ChatUsage>(Value::Object(o.clone())) {
+                Ok(usage) => Some(usage),
+                Err(e) => {
+                    warn!("Failed to parse usage object: {:?}; Metering is lost", e);
+                    None
+                }
+            }
+        },
+        Some(v) => {
+            warn!("usage is not a dict: {:?}; Metering is lost", v);
+            None
+        },
+        None => {
+            warn!("no usage object in the JSON output. Metering is lost");
+            None
+        }
+    };
+    
     let choices_array = match messages["choices"].as_array() {
         Some(array) => array,
         None => return Err("unable to get choices array from JSON".to_string()),
@@ -178,7 +198,7 @@ pub async fn execute_chat_model(
     };
 
     match choice0_message.get("content") {
-        Some(Value::String(s)) => Ok(s.clone()),
+        Some(Value::String(s)) => Ok((s.clone(), usage_mb)),
         Some(v) => { return Err(format!("choice[0].message.content is not a string: {:?}", v)) }
         None => { return Err("error while parsing patch model's output: choice[0].message.content doesn't exist".to_string()) }
     }

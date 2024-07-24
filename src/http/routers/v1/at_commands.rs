@@ -147,6 +147,7 @@ pub async fn handle_v1_command_preview(
             content: serde_json::to_string(&processed).unwrap(),
             tool_calls: None,
             tool_call_id: "".to_string(),
+            ..Default::default()
         };
         preview.push(message.clone());
     }

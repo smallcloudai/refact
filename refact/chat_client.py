@@ -31,6 +31,7 @@ class Message(BaseModel):
     tool_calls: Optional[List[ToolCallDict]] = None
     finish_reason: str = ""
     tool_call_id: str = ""
+    usage: Optional[Dict[str, int]] = None
 
 
 def messages_to_dicts(
@@ -207,6 +208,7 @@ async def ask_using_http(
                         content=ch["message"]["content"],
                         tool_calls=[ToolCallDict(**x) for x in tool_calls] if tool_calls is not None else None,
                         finish_reason=ch["finish_reason"],
+                        usage=j.get("usage") if i == 0 else None,  # NOTE: backend should send usage for each choice
                     )
                     choices[index] = msg
             else:

@@ -242,6 +242,13 @@ pub struct ChatToolCall {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChatUsage {
+    pub prompt_tokens: usize,
+    pub completion_tokens: usize,
+    pub total_tokens: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ChatMessage {
     pub role: String,
     #[serde(default, deserialize_with="deserialize_content")]
@@ -250,6 +257,33 @@ pub struct ChatMessage {
     pub tool_calls: Option<Vec<ChatToolCall>>,
     #[serde(default)]
     pub tool_call_id: String,
+    #[serde(default)]
+    pub usage: Option<ChatUsage>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct RealChatMessage {
+    pub role: String,
+    #[serde(default, deserialize_with="deserialize_content")]
+    pub content: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<ChatToolCall>>,
+    #[serde(default)]
+    pub tool_call_id: String,
+}
+
+impl ChatMessage {
+    pub fn new(role: String, content: String) -> Self {
+        ChatMessage { role, content, ..Default::default()}
+    }
+    pub fn into_real(&self) -> RealChatMessage {
+        RealChatMessage {
+            role: self.role.clone(),
+            content: self.content.clone(),
+            tool_calls: self.tool_calls.clone(),
+            tool_call_id: self.tool_call_id.clone(),
+        }
+    }
 }
 
 // this converts null to empty string
@@ -260,11 +294,6 @@ where
     Option::<String>::deserialize(deserializer).map(|opt| opt.unwrap_or_default())
 }
 
-impl ChatMessage {
-    pub fn new(role: String, content: String) -> Self {
-        ChatMessage { role, content, tool_calls: None, tool_call_id: "".to_string() }
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatPost {

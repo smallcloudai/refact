@@ -111,23 +111,26 @@ impl ScratchpadAbstract for ChatPassthrough {
             vec![]
         });
         info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", messages.len(), limited_msgs.len());
-        let mut filtered_msgs: Vec<ChatMessage> = Vec::<ChatMessage>::new();
+        let mut filtered_msgs = vec![];
         for msg in &limited_msgs {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" || msg.role == "tool" {
-                filtered_msgs.push(msg.clone());
+                filtered_msgs.push(msg.into_real());
+
             } else if msg.role == "diff" {
-                filtered_msgs.push(ChatMessage {
+                let tool_msg = ChatMessage {
                     role: "tool".to_string(),
                     content: msg.content.clone(),
                     tool_calls: None,
                     tool_call_id: msg.tool_call_id.clone(),
-                });
+                    ..Default::default()
+                };
+                filtered_msgs.push(tool_msg.into_real());
             } else if msg.role == "plain_text" {
                 filtered_msgs.push(ChatMessage::new(
-                    "user".to_string(), 
+                    "user".to_string(),
                     msg.content.clone(),
-                ));
-            } else if msg.role == "context_file" {
+                ).into_real());
+            }else if msg.role == "context_file" {
                 match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
                     Ok(vector_of_context_files) => {
                         for context_file in vector_of_context_files {
@@ -138,7 +141,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                                         context_file.line1,
                                         context_file.line2,
                                         context_file.file_content),
-                            ));
+                            ).into_real());
                         }
                     },
                     Err(e) => { error!("error parsing context file: {}", e); }
@@ -151,7 +154,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                             filtered_msgs.push(ChatMessage::new(
                                 "assistant".to_string(),
                                 format!("Note to self: {}", mem.memo_text.clone())
-                            ));
+                            ).into_real());
                         }
                     }
                     Err(e) => { error!("error parsing context memory: {}", e); }
