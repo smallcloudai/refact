@@ -31,9 +31,9 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
         ("patch".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_patch::tool::ToolPatch{}) as Box<dyn Tool + Send>))),
         // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttSaveKnowledge{}) as Box<dyn Tool + Send>))),
         ("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttGetKnowledge{}) as Box<dyn Tool + Send>))),
-        ("workspace_map".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_workspace_map::AttAstWorkspaceMap{}) as Box<dyn Tool + Send>))),
         ("diff".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_diff::AttDiff{}) as Box<dyn Tool + Send>))),
         ("web".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_web::AttWeb{}) as Box<dyn Tool + Send>))),
+        ("files_skeleton".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_files_skeleton::AttFilesSkeleton{}) as Box<dyn Tool + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
@@ -148,6 +148,14 @@ tools:
     parameters_required:
       - "url"
 
+  - name: "files_skeleton"
+    description: "Collects limited files context with AST"
+    parameters:
+      - name: "paths"
+        type: "string"
+        description: "String that contains list of file names separated by commas. Use absolute file paths."
+    parameters_required:
+      - "paths"
 "####;
 
 #[allow(dead_code)]
@@ -160,17 +168,6 @@ const NOT_READY_TOOLS: &str = r####"
         description: "Put your intent there: 'debug file1.cpp', 'install project1', 'gather info about MyClass'"
     parameters_required:
       - "im_going_to_do"
-  - name: "workspace_map"
-    description: "Collects relevant context using AST"
-    parameters:
-      - name: "symbols"
-        type: "string"
-        description: "The string that contains list of symbols. No spaces allowed. Symbols separated by commas if more than one."
-      - name: "paths"
-        type: "string"
-        description: "Additional string that contains list of file names separated by commas. Use absolute file paths."
-    parameters_required:
-      - "symbols"
 
   - name: "diff"
     description: "Perform a diff operation. Can be used to get git diff for a project (no arguments) or git diff for a specific file (file_path)"

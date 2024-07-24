@@ -13,4 +13,4 @@ mod att_diff;
 mod att_web;
 mod att_tree;
 pub mod att_knowledge;
-mod att_ast_workspace_map;
+mod att_files_skeleton;
