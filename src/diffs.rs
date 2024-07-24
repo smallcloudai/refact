@@ -172,7 +172,7 @@ pub fn apply_diff_chunks_to_text(
     if !chunks_apply.is_empty() {
         let mut chunks_apply_copy = chunks_apply.clone();
         chunks_apply_copy.sort_by_key(|c| c.0);
-        let (new_fuzzy_ns, new_lines) = apply_chunks(chunks_apply_copy, &file_text, max_fuzzy_n, line_ending);
+        let (new_fuzzy_ns, new_lines) = apply_chunks(chunks_apply_copy, &file_text_copy, max_fuzzy_n, line_ending);
         fuzzy_ns.extend(new_fuzzy_ns);
         file_text_copy = new_lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join(line_ending);
     }
