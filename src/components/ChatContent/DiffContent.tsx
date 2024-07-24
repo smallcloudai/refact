@@ -231,6 +231,7 @@ const DiffForm: React.FC<{
   }, [appliedChunks.can_apply, appliedChunks.fetching]);
 
   const action = React.useMemo(() => {
+    if (appliedChunks.applied_chunks.length === 0) return "Apply All";
     if (appliedChunks.applied_chunks.every((diff) => diff))
       return "Unapply All";
     return "Apply All";

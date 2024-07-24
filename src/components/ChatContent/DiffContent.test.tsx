@@ -24,6 +24,31 @@ const STUB_DIFFS_1 = [
 ];
 
 describe("diff content", () => {
+  test("apply all, none applied", async () => {
+    const appliedChunks = {
+      fetching: false,
+      error: null,
+      diff_id: "call_3odUG8bPn1gER3DSOOcVizZS",
+      state: [],
+      applied_chunks: [],
+      can_apply: [true, true],
+    };
+
+    const onSumbitSpy = vi.fn();
+    const { user, ...app } = render(
+      <DiffContent
+        diffs={STUB_DIFFS_1}
+        appliedChunks={appliedChunks}
+        onSubmit={onSumbitSpy}
+      />,
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    await user.click(app.container.querySelector('[type="button"]')!);
+    const btn = app.getByText(/Apply all/i);
+    await user.click(btn);
+    expect(onSumbitSpy).toHaveBeenCalledWith([true, true]);
+  });
   test("apply all", async () => {
     const appliedChunks = {
       fetching: false,
