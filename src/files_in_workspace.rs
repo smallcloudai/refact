@@ -99,7 +99,7 @@ impl Document {
 pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub workspace_files: Arc<StdMutex<Vec<PathBuf>>>,
-    pub last_accessed_file: Arc<StdMutex<Option<PathBuf>>>,
+    pub last_accessed_file: Arc<StdMutex<Option<PathBuf>>>,  // XXX: not the right way to do it, maybe track open file
     pub jsonl_files: Arc<StdMutex<Vec<PathBuf>>>,
     // document_map on windows: c%3A/Users/user\Documents/file.ext
     // query on windows: C:/Users/user/Documents/file.ext
