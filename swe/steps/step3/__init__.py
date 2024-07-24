@@ -1,1 +1,1 @@
-from step3 import ChooseSolutionStep
+from .step3 import ChooseSolutionStep
