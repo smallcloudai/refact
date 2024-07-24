@@ -1,13 +1,14 @@
 import json
 import asyncio
 import traceback
-import whatthepatch
 
 from argparse import ArgumentParser
 
 from swe.utils import AgentRunner
 from swe.utils import get_swe_bench_lite_instance
 from swe.steps import ExploreRepoStep
+from swe.utils.common import patched_file
+from swe.utils.common import filename_mentioned
 
 from pathlib import Path
 from typing import Dict, Any
@@ -19,36 +20,18 @@ MODEL = "gpt-4o-mini"
 
 class SWERunner(AgentRunner):
 
-    @staticmethod
-    def _patched_file(patch: str) -> str:
-        files = list(whatthepatch.parse_patch(patch))
-        assert len(files) == 1
-        header = files[0].header
-        assert header.old_path[len("a/"):] == header.new_path[len("b/"):]
-        return header.old_path[len("a/"):]
-
-    @staticmethod
-    def _filename_mentioned(filename: str, text: str) -> str:
-        if filename in text:
-            return "fully"
-        elif Path(filename).name in text:
-            return "partially"
-        return "no"
-
     async def _steps(self, base_url: str, repo_path: Path, *args, **kwargs) -> Dict[str, Any]:
         results: Dict[str, Any] = dict()
         problem_statement = kwargs["problem_statement"]
-        filename: str = self._patched_file(kwargs["problem_patch"])
+        filename: str = patched_file(kwargs["problem_patch"])
         results["patched_file"] = filename
-        results["patched_file_mentioned_in_problem"] = \
-            self._filename_mentioned(filename, problem_statement)
-        step = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=3)
+        results["patched_file_mentioned_in_problem"] = filename_mentioned(filename, problem_statement)
+        step = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=1)
         try:
             results["found_files"] = await step.process(
-                problem_statement=kwargs["problem_statement"],
+                problem_statement=problem_statement,
                 repo_path=repo_path)
-            results["patched_file_is_found"] = \
-                self._filename_mentioned(filename, "\n".join(results["found_files"]))
+            results["patched_file_is_found"] = filename_mentioned(filename, "\n".join(results["found_files"]))
         except Exception as e:
             results["error"] = f"step1: {type(e)} {str(e) or traceback.format_exc()}"
         results["model_name"] = step.model_name

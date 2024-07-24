@@ -62,7 +62,10 @@ class ExploreRepoStep(Step):
             raise RuntimeError(f"unexpected message role '{res_message.role}' for answer")
         if not isinstance(res_message.content, str):
             raise RuntimeError(f"unexpected content type '{type(res_message.content)}' for answer")
-        return self._extract_filenames(res_message.content, str(repo_path))
+        found_files = self._extract_filenames(res_message.content, str(repo_path))
+        if len(found_files) == 0:
+            raise RuntimeError(f"no files found")
+        return found_files
 
     # TODO: fix choices first
     # async def process(self, problem_statement: str, repo_path: Path, **kwargs) -> str:

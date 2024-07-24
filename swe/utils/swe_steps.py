@@ -9,6 +9,8 @@ from swe.utils import get_swe_bench_lite_instance
 from swe.steps import ExploreRepoStep
 from swe.steps import ProducePatchStep
 from swe.steps import ChooseSolutionStep
+from swe.utils.common import patched_file
+from swe.utils.common import filename_mentioned
 
 from pathlib import Path
 from typing import Dict, Any
@@ -19,44 +21,41 @@ MODEL = "gpt-4o"
 
 # TODO: more logging for each step:
 #  messages
-#  compute cost
-#  number of steps
-#  step1 additional info about patched file
-#  ...
 class SWERunner(AgentRunner):
     async def _steps(self, base_url: str, repo_path: Path, *args, **kwargs) -> Dict[str, Any]:
-        results: Dict[str, Any] = dict()
+        results: Dict[str, Any] = {
+            "model_name": MODEL,
+            "usages": dict(),
+        }
         problem_statement = kwargs["problem_statement"]
+        filename = patched_file(kwargs["problem_patch"])
 
         # step1: explore repo, find files that can be useful for the problem
+        results["patched_file"] = filename
+        results["patched_file_mentioned_in_problem"] = filename_mentioned(filename, problem_statement)
         step1 = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=3)
         try:
-            results["filenames_list_all"] = await step1.process(
+            results["found_files"] = await step1.process(
                 problem_statement=problem_statement,
                 repo_path=repo_path)
-            results["filenames_list"] = "\n".join(filter(
-                lambda x: "test" not in x,
-                results["filenames_list_all"].split("\n")
-            ))
+            results["patched_file_is_found"] = filename_mentioned(filename, "\n".join(results["found_files"]))
+            results["usages"]["step1"] = step1.usage
         except Exception as e:
             results["error"] = f"step1: {type(e)} {str(e) or traceback.format_exc()}"
+            results["usages"]["step1"] = step1.usage
             return results
 
         # step2: produce patches for the problem with given files from step1
-        step2 = ProducePatchStep(base_url=base_url, model_name=MODEL, temperature=0.3, attempts=3)
+        step2 = ProducePatchStep(base_url=base_url, model_name=MODEL, attempts=1)
         try:
-            results["task"] = problem_statement
-            if results["filenames_list"]:
-                results["task"] = "\n\n".join([
-                    results["task"],
-                    f"Use these files to solve the problem:",
-                    results["filenames_list"],
-                ])
             results["model_patches"] = await step2.process(
-                task=results["task"],
+                problem_statement=problem_statement,
+                related_files=results["found_files"],
                 repo_path=repo_path)
+            results["usages"]["step2"] = step2.usage
         except Exception as e:
             results["error"] = f"step2: {type(e)} {str(e) or traceback.format_exc()}"
+            results["usages"]["step2"] = step2.usage
             return results
 
         # step3: choose the best solution from the list of patches
@@ -64,10 +63,13 @@ class SWERunner(AgentRunner):
         try:
             results["model_patch"] = await step3.process(
                 problem_statement=problem_statement,
+                related_files=results["found_files"],
                 model_patches=results["model_patches"],
                 repo_path=repo_path)
+            results["usages"]["step3"] = step3.usage
         except Exception as e:
             results["error"] = f"step3: {type(e)} {str(e) or traceback.format_exc()}"
+            results["usages"]["step3"] = step3.usage
             return results
 
         return results

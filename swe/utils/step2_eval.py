@@ -3,13 +3,13 @@ import asyncio
 import traceback
 
 import termcolor
-import whatthepatch
 
 from argparse import ArgumentParser
 
 from swe.utils import AgentRunner
 from swe.utils import get_swe_bench_lite_instance
 from swe.steps import ProducePatchStep
+from swe.utils.common import patched_file
 
 from pathlib import Path
 from typing import Dict, Any
@@ -17,13 +17,6 @@ from typing import Dict, Any
 
 # MODEL = "gpt-4o"
 MODEL = "gpt-4o-mini"
-
-def patched_file(patch: str) -> str:
-    files = list(whatthepatch.parse_patch(patch))
-    assert len(files) == 1
-    header = files[0].header
-    assert header.old_path[len("a/"):] == header.new_path[len("b/"):]
-    return header.old_path[len("a/"):]
 
 
 class SWERunner(AgentRunner):

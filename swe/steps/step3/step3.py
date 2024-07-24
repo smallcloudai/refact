@@ -27,36 +27,44 @@ IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST! USE TOOLS 
 class ChooseSolutionStep(Step):
     @property
     def _tools(self) -> Set[str]:
-        return {
-            "file",
-            "definition",
-        }
+        return set()
 
-    async def process(self, problem_statement: str, model_patches: List[str], repo_path: Path, **kwargs) -> str:
+    async def process(
+            self,
+            problem_statement: str,
+            related_files: List[str],
+            model_patches: List[str],
+            repo_path: Path,
+            **kwargs) -> str:
         if not model_patches:
             raise RuntimeError("no patches for problem")
         if len(model_patches) < 2:
             return model_patches[0]
 
-        message_parts = [
+        user_message_parts = [
             "Problem statement:",
             problem_statement,
         ]
-
         random.shuffle(model_patches)
         for idx, model_patch in enumerate(model_patches, start=1):
-            message_parts.extend([
+            user_message_parts.extend([
                 f"Solution {idx}:",
                 model_patch,
             ])
 
+        paths = ",".join([str(repo_path / filename) for filename in related_files])
+        files_tool_call_dict = chat_client.ToolCallDict(
+            id=chat_client.gen_function_call_id(),
+            function=chat_client.FunctionDict(arguments='{"paths":"' + paths + '"}', name='files_skeleton'),
+            type='function')
         messages = [
             chat_client.Message(role="system", content=SYSTEM_MESSAGE),
-            chat_client.Message(role="user", content="\n\n".join(message_parts)),
+            chat_client.Message(role="user", content="\n\n".join(user_message_parts)),
+            chat_client.Message(role="assistant", finish_reason="tool_calls", tool_calls=[files_tool_call_dict]),
         ]
 
+        # 1 step should be enough to solve the problem
         for step_n in range(self._max_depth):
-            print(f"{'-' * 40} step {step_n} {'-' * 40}")
             messages = await self._query(messages)
             last_message = messages[-1]
             if last_message.role == "assistant" \
