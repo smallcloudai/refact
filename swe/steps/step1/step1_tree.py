@@ -1,8 +1,10 @@
+import re
+
 from refact import chat_client
 from swe.steps import Step
 
 from pathlib import Path
-from typing import Set
+from typing import Set, List
 
 
 SYSTEM_MESSAGE = """
@@ -29,13 +31,22 @@ class ExploreRepoStep(Step):
         super().__init__(*args, **kwargs)
         self._attempts = attempts
 
+    @staticmethod
+    def _extract_filenames(text: str, repo_root, filter_tests: bool = False) -> List[str]:
+        pattern = r'\b(?:[a-zA-Z]:\\|/)?(?:[\w-]+[/\\])*[\w-]+\.\w+\b'
+        filenames = set([
+            filename.replace(repo_root.lstrip("/"), "").lstrip("/")
+            for filename in re.findall(pattern, text)
+        ])
+        if filter_tests:
+            filenames = {f for f in filenames if "test" not in f.lower()}
+        return list(filenames)
+
     @property
     def _tools(self) -> Set[str]:
-        return {
-            "tree",
-        }
+        return set()
 
-    async def process(self, problem_statement: str, repo_path: Path, **kwargs) -> str:
+    async def process(self, problem_statement: str, repo_path: Path, **kwargs) -> List[str]:
         tree_tool_call_dict = chat_client.ToolCallDict(
             id=chat_client.gen_function_call_id(),
             function=chat_client.FunctionDict(arguments='{}', name='tree'),
@@ -51,8 +62,7 @@ class ExploreRepoStep(Step):
             raise RuntimeError(f"unexpected message role '{res_message.role}' for answer")
         if not isinstance(res_message.content, str):
             raise RuntimeError(f"unexpected content type '{type(res_message.content)}' for answer")
-        # NOTE: for now we return raw content without postprocessing
-        return res_message.content
+        return self._extract_filenames(res_message.content, str(repo_path))
 
     # TODO: fix choices first
     # async def process(self, problem_statement: str, repo_path: Path, **kwargs) -> str:

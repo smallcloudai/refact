@@ -55,6 +55,10 @@ class Step:
         raise NotImplementedError()
 
     @property
+    def model_name(self) -> str:
+        return self._model_name
+
+    @property
     def usage(self) -> Dict[str, int]:
         result = {
             'completion_tokens': 0,

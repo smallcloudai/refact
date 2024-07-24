@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import Dict, Any
 
 
-MODEL = "gpt-4o"
+# MODEL = "gpt-4o"
+MODEL = "gpt-4o-mini"
 
 
 class SWERunner(AgentRunner):
@@ -38,18 +39,19 @@ class SWERunner(AgentRunner):
         results: Dict[str, Any] = dict()
         problem_statement = kwargs["problem_statement"]
         filename: str = self._patched_file(kwargs["problem_patch"])
-        results["patched_filename"] = filename
-        results["mentioned_in_problem"] = \
+        results["patched_file"] = filename
+        results["patched_file_mentioned_in_problem"] = \
             self._filename_mentioned(filename, problem_statement)
         step = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=3)
         try:
-            results["summarized_problem_statement"] = await step.process(
+            results["found_files"] = await step.process(
                 problem_statement=kwargs["problem_statement"],
                 repo_path=repo_path)
-            results["mentioned_in_task"] = \
-                self._filename_mentioned(filename, results["summarized_problem_statement"])
+            results["patched_file_is_found"] = \
+                self._filename_mentioned(filename, "\n".join(results["found_files"]))
         except Exception as e:
             results["error"] = f"step1: {type(e)} {str(e) or traceback.format_exc()}"
+        results["model_name"] = step.model_name
         results["usage"] = step.usage
         return results
 
