@@ -8,6 +8,7 @@ from datasets import load_dataset
 from pathlib import Path
 from typing import Dict, Any
 
+from swe import SWE_WORKDIR
 from refact.lsp_runner import LSPServerRunner
 
 
@@ -60,7 +61,7 @@ class RepoContext:
 class AgentRunner:
     def __init__(self, timeout):
         self._timeout = timeout
-        self._repos_workdir = Path().home() / "experiments/swe-repos"
+        self._repos_workdir = SWE_WORKDIR / "repos"
 
     async def _steps(self, base_url: str, repo_path: Path, **kwargs) -> Dict[str, Any]:
         raise NotImplementedError()

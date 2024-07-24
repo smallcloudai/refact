@@ -3,6 +3,8 @@ import jsonlines
 
 from pathlib import Path
 
+from swe import SWE_WORKDIR
+
 
 def all_tests_passed(instance_id: str, log_dir: Path):
     instance_logs = list(log_dir.glob(f"{instance_id}*.log"))
@@ -22,9 +24,9 @@ async def main():
 
     swe_bench_eval = "/home/mitya/projects/aider-swe-bench/SWE-bench-docker/run_evaluation.py"
     swe_bench_tasks = Path(__file__).parent / "princeton-nlp--SWE-bench_Lite.json"
-    log_dir = Path(__file__).parent / "logs" / args.run
+    log_dir = SWE_WORKDIR / "logs" / args.run
 
-    for predictions_root in [Path(__file__).parent, Path("/home/mitya/projects/aider-swe-bench")]:
+    for predictions_root in [SWE_WORKDIR, Path("/home/mitya/projects/aider-swe-bench")]:
         predictions_path = predictions_root / "predictions" / args.run / "all_preds.jsonl"
         if predictions_path.exists():
             break
