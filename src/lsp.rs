@@ -139,6 +139,7 @@ impl Backend {
                 temperature: Option::from(params.parameters.temperature),
                 top_p: None,
                 stop: vec![],
+                n: None,
             },
             model: "".to_string(),
             scratchpad: "".to_string(),

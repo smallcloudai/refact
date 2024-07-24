@@ -87,10 +87,7 @@ pub async fn scratchpad_interaction_not_stream_json(
         }
         scratchpad_result = Ok(model_says.clone());
     } else if let Some(hf_arr) = model_says.as_array() {
-        let choices = hf_arr.iter()
-            .map(|x| {
-                x.get("generated_text").unwrap().as_str().unwrap().to_string()
-            }).collect::<Vec<_>>();
+        let choices = hf_arr.iter().map(|x| x.get("generated_text").unwrap().as_str().unwrap().to_string()).collect::<Vec<_>>();
         let stopped = vec![false; choices.len()];
         scratchpad_result = scratchpad.response_n_choices(choices, stopped);
 
@@ -108,15 +105,9 @@ pub async fn scratchpad_interaction_not_stream_json(
             // for oai_choice in oai_choices.as_array().unwrap() {
             //     let index = oai_choice.get("index").unwrap().as_u64().unwrap() as usize;
             // }
-            let choices = oai_choices.as_array().unwrap().iter()
-                .map(|x| {
-                    x.get("text").unwrap().as_str().unwrap().to_string()
-                }).collect::<Vec<_>>();
-            let stopped = oai_choices.as_array().unwrap().iter()
-                .map(|x| {
-                    x.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap().to_string().starts_with("stop")
-                }).collect::<Vec<_>>();
-                scratchpad_result = scratchpad.response_n_choices(choices, stopped);
+            let choices = oai_choices.as_array().unwrap().iter().map(|x| x.get("text").unwrap().as_str().unwrap().to_string()).collect::<Vec<_>>();
+            let stopped = oai_choices.as_array().unwrap().iter().map(|x| x.get("finish_reason").unwrap_or(&json!("")).as_str().unwrap().to_string().starts_with("stop")).collect::<Vec<_>>();
+            scratchpad_result = scratchpad.response_n_choices(choices, stopped);
         }
 
     } else if let Some(err) = model_says.get("error") {
@@ -172,8 +163,8 @@ pub async fn scratchpad_interaction_not_stream(
         only_deterministic_messages,
     ).await?;
     scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
-    
-    insert_usage(&mut scratchpad_response_json);
+
+    try_insert_usage(&mut scratchpad_response_json);
 
     let txt = serde_json::to_string_pretty(&scratchpad_response_json).unwrap();
     // info!("handle_v1_code_completion return {}", txt);
@@ -284,9 +275,7 @@ pub async fn scratchpad_interaction_stream(
                             &mut was_correct_output_even_if_error,
                         );
                         if let Ok(mut value) = value_maybe {
-                            if finished {
-                                insert_usage(&mut value);
-                            }
+                            finished = try_insert_usage(&mut value);
                             value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
                             let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
                             let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);
@@ -299,9 +288,6 @@ pub async fn scratchpad_interaction_stream(
                             yield Result::<_, String>::Ok(value_str);
                             // TODO: send telemetry
                             problem_reported = true;
-                            break;
-                        }
-                        if finished {
                             break;
                         }
                     },
@@ -357,41 +343,41 @@ pub async fn scratchpad_interaction_stream(
     return Ok(response);
 }
 
-pub fn insert_usage(msg_value: &mut serde_json::Value) {
+pub fn try_insert_usage(msg_value: &mut serde_json::Value) -> bool {
     let map = match msg_value.as_object() { 
         Some(map) => map,
         None => {
-            warn!("couldn't parse finished msg: {:?}; metering is lost", msg_value);
-            return;
+            return false;
         }
     };
-    let hashmap: HashMap<_, _> = map.clone().into_iter().collect();
-
-    let model = hashmap.get("model").and_then(|v| v.as_str()).unwrap_or_else(|| { error!("Missing or invalid 'model' field"); "" }).to_string();
-    let _pp1000t_prompt = hashmap.get("pp1000t_prompt").and_then(|v| v.as_u64()).unwrap_or_else(|| { error!("Missing or invalid 'pp1000t_prompt' field"); 0 }) as usize;
-    let _pp1000t_generated = hashmap.get("pp1000t_generated").and_then(|v| v.as_u64()).unwrap_or_else(|| { error!("Missing or invalid 'pp1000t_generated' field"); 0 }) as usize;
-    let metering_prompt_tokens_n = hashmap.get("metering_prompt_tokens_n").and_then(|v| v.as_u64()).unwrap_or_else(|| { error!("Missing or invalid 'metering_prompt_tokens_n' field"); 0 }) as usize;
-    let metering_generated_tokens_n = hashmap.get("metering_generated_tokens_n").and_then(|v| v.as_u64()).unwrap_or_else(|| { error!("Missing or invalid 'metering_generated_tokens_n' field"); 0 }) as usize;
+    let get_field_as_usize = |field: &str| -> Option<usize> {
+        map.get(field).and_then(|v| v.as_u64()).map(|v| v as usize)
+    };
+    
+    let metering_prompt_tokens_n = match get_field_as_usize("metering_prompt_tokens_n") {
+        Some(value) => value,
+        None => return false,
+    };
+    let metering_generated_tokens_n = match get_field_as_usize("metering_generated_tokens_n") {
+        Some(value) => value,
+        None => return false,
+    };
 
     if let Some(map) = msg_value.as_object_mut() {
-        map.remove("model");
-        map.remove("pp1000t_prompt");
-        map.remove("pp1000t_generated");
-        map.remove("metering_prompt_tokens_n");
-        map.remove("metering_generated_tokens_n");
+        ["pp1000t_prompt", "pp1000t_generated", "metering_prompt_tokens_n", "metering_generated_tokens_n"]
+            .iter()
+            .for_each(|&field| { map.remove(field); });
 
         let usage = json!({
             "prompt_tokens": metering_prompt_tokens_n,
             "completion_tokens": metering_generated_tokens_n,
             "total_tokens": metering_prompt_tokens_n + metering_generated_tokens_n
         });
-
         map.insert("usage".to_string(), usage);
+        return true;
     }
-    
-    info!("metering {}: prompt_tokens: +{}, generated_tokens: +{}", model, metering_prompt_tokens_n, metering_generated_tokens_n);
+    return false;
 }
-
 fn _push_streaming_json_into_scratchpad(
     scratch: &mut Box<dyn ScratchpadAbstract>,
     json: &serde_json::Value,
@@ -415,6 +401,9 @@ fn _push_streaming_json_into_scratchpad(
             // let _role = delta.get("role").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
             // let content = delta.get("content").unwrap_or(&json!("")).as_str().unwrap_or("").to_string();
             // (value, *finished) = scratch.response_streaming(content, stop_toks, stop_length)?;
+            value = json.clone();
+            *finished = !finish_reason.is_empty();
+        } else if choices.as_array().map_or(true, |arr|arr.is_empty())  {
             value = json.clone();
             *finished = !finish_reason.is_empty();
         } else {

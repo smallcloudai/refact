@@ -29,6 +29,7 @@ pub struct SamplingParameters {
     pub top_p: Option<f32>,
     #[serde(default)]
     pub stop: Vec<String>,
+    pub n: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -94,6 +95,7 @@ mod tests {
                 temperature: Some(0.1),
                 top_p: None,
                 stop: vec![],
+                n: None
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -123,6 +125,7 @@ mod tests {
                 temperature: Some(0.1),
                 top_p: None,
                 stop: vec![],
+                n: None,
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -152,6 +155,7 @@ mod tests {
                 temperature: Some(0.1),
                 top_p: None,
                 stop: vec![],
+                n: None,
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -181,6 +185,7 @@ mod tests {
                 temperature: Some(0.1),
                 top_p: None,
                 stop: vec![],
+                n: None,
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -308,6 +313,8 @@ pub struct ChatPost {
     pub temperature: Option<f32>,
     #[serde(default)]
     pub max_tokens: usize,
+    #[serde(default)]
+    pub n: Option<usize>,
     #[serde(default)]
     pub tools: Option<Vec<serde_json::Value>>,
     #[serde(default)]

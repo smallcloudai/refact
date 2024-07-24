@@ -70,6 +70,7 @@ async fn chat(
     if chat_post.parameters.max_new_tokens == 0 {
         chat_post.parameters.max_new_tokens = 1024;
     }
+    chat_post.parameters.n = chat_post.n;
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.2)));
     chat_post.model = model_name.clone();
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)

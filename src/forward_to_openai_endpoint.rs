@@ -41,6 +41,9 @@ pub async fn forward_to_openai_style_endpoint(
         "max_tokens": sampling_parameters.max_new_tokens,
         "stop": sampling_parameters.stop,
     });
+    if let Some(n) = sampling_parameters.n{
+        data["n"] = serde_json::Value::from(n);
+    }
     info!("NOT STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt);
@@ -99,6 +102,9 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "max_tokens": sampling_parameters.max_new_tokens,
         "stop": sampling_parameters.stop,
     });
+    if let Some(n) = sampling_parameters.n{
+        data["n"] = serde_json::Value::from(n);
+    }
     info!("STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt);
