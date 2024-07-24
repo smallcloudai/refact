@@ -2,6 +2,8 @@ import uuid
 import aiohttp, os, termcolor, copy, json, time
 from typing import Optional, List, Any, Tuple, Dict, Literal, Set
 from pydantic import BaseModel
+from rich.console import Console
+from rich.markdown import Markdown
 
 
 # Our version of chat protocol is very similar to OpenAI API, with these changes:
@@ -369,3 +371,57 @@ async def ongoing_update(base_url: str, goal: str, ongoing_json: str):
 
 def gen_function_call_id():
     return f"call_{uuid.uuid4()}".replace("-", "")
+
+
+def print_step(step_n: int):
+    console = Console()
+    console.print(f"\n\n\n[bold]{'-' * 90}[/bold ]")
+    console.print(f"[bold]{'-' * 90}[/bold ]")
+    console.print(f"[bold]{'-' * 40}  STEP {step_n}  {'-' * 40}[/bold ]")
+    console.print(f"[bold]{'-' * 90}[/bold ]")
+    console.print(f"[bold]{'-' * 90}[/bold ]")
+
+
+def print_messages(messages: List[Message]):
+    def _is_tool_call(m: Message) -> bool:
+        return m.tool_calls is not None and len(m.tool_calls) > 0
+
+    console = Console()
+    role_to_string = {
+        "system": "[bold red]SYSTEM:[/bold red]",
+        "assistant": "[bold red]ASSISTANT:[/bold red]",
+        "user": "[bold red]USER:[/bold red]",
+        "tool": "[bold red]TOOL ANSWER id={uid}:[/bold red]",
+    }
+    for m in messages:
+        if m.role in role_to_string and m.content is not None:
+            content = Markdown(m.content)
+            header = role_to_string[m.role]
+            if m.role == "tool":
+                header = header.format(uid=m.tool_call_id[:20])
+            console.print(header)
+            console.print(content)
+            console.print("")
+        elif m.role == "context_file":
+            message = "[bold red]CONTEXT FILE:[/bold red]\n"
+            for file in json.loads(m.content):
+                message += f"{file['file_name']}:{file['line1']}-{file['line2']}, len={len(file['file_content'])}\n"
+            console.print(message)
+        elif m.role == "diff":
+            message = "[bold red]DIFF:[/bold red]\n"
+            for chunk in json.loads(m.content):
+                message += f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}\n"
+                if len(chunk["lines_add"]) > 0:
+                    lines = [f"+{line}" for line in chunk['lines_add'].splitlines()]
+                    lines = "\n".join(lines)
+                    message += f"[bold green]{lines}[/bold green]\n"
+                if len(chunk["lines_remove"]) > 0:
+                    lines = [f"-{line}" for line in chunk['lines_remove'].splitlines()]
+                    lines = "\n".join(lines)
+                    message += f"[bold red]{lines}[/bold red]\n"
+            console.print(message)
+        if _is_tool_call(m):
+            message = "[bold red]TOOL CALLS:[/bold red]\n"
+            for tool_call in m.tool_calls:
+                message += f"[bold]{tool_call.function.name}[/bold]({tool_call.function.arguments}) [id={tool_call.id[:20]}]\n"
+            console.print(message)
