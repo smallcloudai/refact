@@ -110,8 +110,8 @@ export type DiffChunk = {
   line2: number;
   lines_remove: string;
   lines_add: string;
-  apply?: boolean;
-  chunk_id?: number;
+  // apply?: boolean;
+  // chunk_id?: number;
 };
 export interface DiffMessage extends BaseMessage {
   0: "diff";

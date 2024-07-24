@@ -93,7 +93,6 @@ import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
 import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
 import { parseOrElse } from "../../utils";
-import { DiffAppliedStateResponse } from "../../services/refact/diffs";
 
 export function formatChatResponse(
   messages: ChatMessages,
@@ -251,6 +250,7 @@ export function reducer(postMessage: typeof window.postMessage) {
         chat: {
           ...state.chat,
           messages,
+          applied_diffs: {},
         },
       };
     }
@@ -347,6 +347,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           ...state.chat,
           ...action.payload.chat,
           messages,
+          applied_diffs: {},
         },
         chat_cache,
         selected_snippet: action.payload.snippet ?? state.selected_snippet,
@@ -667,6 +668,9 @@ export function reducer(postMessage: typeof window.postMessage) {
               fetching: true,
               error: null,
               diff_id: action.payload.diff_id,
+              state: [],
+              applied_chunks: [],
+              can_apply: [],
             };
       return {
         ...state,
@@ -685,7 +689,7 @@ export function reducer(postMessage: typeof window.postMessage) {
         ...state.chat.applied_diffs[action.payload.diff_id],
         fetching: false,
         error: null,
-        state: action.payload.applied_chunks,
+        applied_chunks: action.payload.applied_chunks,
         can_apply: action.payload.can_apply,
       };
 
@@ -750,6 +754,7 @@ export function reducer(postMessage: typeof window.postMessage) {
         ...state.chat.applied_diffs[action.payload.diff_id],
         state: action.payload.state,
         fetching: false,
+        applied_chunks: [],
       };
       const applied_diffs = {
         ...state.chat.applied_diffs,
@@ -798,7 +803,10 @@ export type ChatCapsState = {
   error: null | string;
 };
 
-export type DiffChunkStatus = Partial<DiffAppliedStateResponse> & {
+export type DiffChunkStatus = {
+  applied_chunks: boolean[];
+  can_apply: boolean[];
+  state: number[];
   fetching: boolean;
   error: null | string;
   diff_id: string;
@@ -1327,10 +1335,22 @@ export const useEventBusForChat = () => {
   );
 
   useEffect(() => {
-    state.chat.messages.forEach((message, index) => {
+    if (state.streaming) return;
+    state.chat.messages.forEach((message) => {
       if (!isDiffMessage(message)) return;
-      const key = `diff-${index}`;
+      const key = message[2];
       if (!(key in state.chat.applied_diffs)) {
+        const action: RequestDiffAppliedChunks = {
+          type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS,
+          payload: { id: state.chat.id, diff_id: key, chunks: message[1] },
+        };
+        postMessage(action);
+      } else if (
+        !state.chat.applied_diffs[key].fetching &&
+        state.chat.applied_diffs[key].state.length !== 0 &&
+        state.chat.applied_diffs[key].applied_chunks.length !==
+          state.chat.applied_diffs[key].state.length
+      ) {
         const action: RequestDiffAppliedChunks = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS,
           payload: { id: state.chat.id, diff_id: key, chunks: message[1] },
@@ -1343,11 +1363,11 @@ export const useEventBusForChat = () => {
     state.chat.id,
     postMessage,
     state.chat.messages,
+    state.streaming,
   ]);
 
   const getDiffByIndex = useCallback(
-    (index: number): DiffChunkStatus | null => {
-      const key = "diff-" + index;
+    (key: string): DiffChunkStatus | null => {
       if (key in state.chat.applied_diffs) {
         return state.chat.applied_diffs[key];
       }
@@ -1355,6 +1375,7 @@ export const useEventBusForChat = () => {
     },
     [state.chat.applied_diffs],
   );
+
   const addOrRemoveDiff = useCallback(
     (diff_id: string, chunks: DiffChunk[], toApply: boolean[]) => {
       const action: RequestDiffOpperation = {

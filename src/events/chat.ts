@@ -681,7 +681,7 @@ export interface RecieveDiffAppliedChunks extends ActionToChat {
   payload: {
     id: string;
     diff_id: string;
-    applied_chunks: number[];
+    applied_chunks: boolean[];
     can_apply: boolean[];
   };
 }

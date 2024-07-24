@@ -6,6 +6,7 @@ import {
   FROG_CHAT,
   CHAT_WITH_DIFFS,
   CHAT_WITH_DIFF_ACTIONS,
+  LARGE_DIFF,
 } from "../../__fixtures__";
 
 const noop = () => ({});
@@ -56,5 +57,13 @@ export const WithDiffActions = {
     messages: CHAT_WITH_DIFF_ACTIONS.messages,
     getDiffByIndex: (index: number) =>
       CHAT_WITH_DIFF_ACTIONS.applied_diffs["diff-" + index],
+  },
+};
+
+export const LargeDiff = {
+  args: {
+    messages: LARGE_DIFF.messages,
+    getDiffByIndex: (index: number) =>
+      LARGE_DIFF.applied_diffs["diff-" + index],
   },
 };

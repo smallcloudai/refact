@@ -21,6 +21,7 @@ import { DiffContent } from "./DiffContent";
 import { DiffChunkStatus } from "../../hooks";
 import { PlainText } from "./PlainText";
 import { useConfig } from "../../contexts/config-context";
+// import { AccumulatedChanges } from "./AccumulatedChanges";
 
 const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const config = useConfig();
@@ -70,7 +71,7 @@ export type ChatContentProps = {
   isWaiting: boolean;
   canPaste: boolean;
   isStreaming: boolean;
-  getDiffByIndex: (index: number) => DiffChunkStatus | null;
+  getDiffByIndex: (index: string) => DiffChunkStatus | null;
   addOrRemoveDiff: (
     diff_id: string,
     chunks: DiffChunk[],
@@ -127,8 +128,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
 
             if (isDiffMessage(message)) {
               const [, diffs] = message;
-              const key = "diff-" + index;
-              const maybeDiffChunk = getDiffByIndex(index);
+              const key = message[2];
+              const maybeDiffChunk = getDiffByIndex(key);
               return (
                 <DiffContent
                   onSubmit={(toApply) => addOrRemoveDiff(key, diffs, toApply)}

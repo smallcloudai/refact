@@ -4,7 +4,7 @@ import { DiffChunk } from "./types";
 
 export interface DiffAppliedStateResponse {
   id: number;
-  state: number[];
+  state: boolean[];
   can_apply: boolean[];
 }
 

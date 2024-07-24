@@ -1,5 +1,12 @@
-import React, { useEffect } from "react";
-import { Text, Container, Box, Flex, Switch, Button } from "@radix-ui/themes";
+import React from "react";
+import {
+  Text,
+  Container,
+  Box,
+  Flex,
+  // Switch,
+  Button,
+} from "@radix-ui/themes";
 import { type DiffChunk } from "../../events";
 import { ScrollArea } from "../ScrollArea";
 import SyntaxHighlighter from "react-syntax-highlighter";
@@ -8,7 +15,6 @@ import classNames from "classnames";
 import styles from "./ChatContent.module.css";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 import { type DiffChunkStatus } from "../../hooks";
-import isEqual from "lodash.isequal";
 import { filename } from "../../utils";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
@@ -51,15 +57,30 @@ const Highlight = React.memo(_Highlight);
 
 type DiffProps = {
   diff: DiffChunk;
-  type?: "apply" | "unapply" | "error" | "can not apply";
+  canApply?: boolean;
+  status?: number;
   value?: boolean;
   onChange?: (checked: boolean) => void;
 };
 
-const Diff: React.FC<DiffProps> = ({ diff, type, value, onChange }) => {
+const Diff: React.FC<DiffProps> = ({
+  diff,
+  status,
+  canApply,
+  // value,
+  // onChange,
+}) => {
   const removeString = diff.lines_remove && toDiff(diff.lines_remove, "remove");
   const addString = diff.lines_add && toDiff(diff.lines_add, "add");
   const title = filename(diff.file_name);
+  const type =
+    status === 2
+      ? "error applying"
+      : status === 1
+        ? "applied"
+        : canApply
+          ? "apply"
+          : "unapply";
 
   const lineCount =
     removeString.split("\n").length + addString.split("\n").length;
@@ -67,16 +88,14 @@ const Diff: React.FC<DiffProps> = ({ diff, type, value, onChange }) => {
     <Box>
       <Flex justify="between" align="center" p="1">
         <Text size="1">{title}</Text>
-        {type && (type === "apply" || type === "unapply") && (
+        <Text size="1">{type}</Text>
+        {/* {canApply && (
           <Text as="label" size="1">
             {type}{" "}
-            <Switch size="1" checked={value} onCheckedChange={onChange} />
-          </Text>
-        )}{" "}
-        {type && type === "error" && <Text size="1">Failed to apply</Text>}
-        {type && type === "can not apply" && (
-          <Text size="1">Can not apply diff</Text>
-        )}
+            {status !== 2 && (
+              <Switch size="1" checked={value} onCheckedChange={onChange} />
+            )}
+          </Text> */}
       </Flex>
       <Reveal defaultOpen={lineCount < 9}>
         <ScrollArea scrollbars="horizontal" asChild>
@@ -116,30 +135,6 @@ export type DiffChunkWithTypeAndApply = DiffChunk & {
   type: DiffType;
   apply: boolean;
 };
-
-function diffFormState(
-  diffs: DiffChunk[],
-  appliedChunks: number[],
-  canApply: boolean[],
-): DiffChunkWithTypeAndApply[] {
-  return diffs.map((diff, index) => {
-    const c = canApply[index];
-    const n = appliedChunks[index];
-
-    const type = !c
-      ? "can not apply"
-      : n === 2
-        ? "error"
-        : n === 1
-          ? "unapply"
-          : "apply";
-    return {
-      type: type,
-      apply: false,
-      ...diff,
-    };
-  });
-}
 
 const DiffsWithoutForm: React.FC<{ diffs: DiffChunk[] }> = ({ diffs }) => {
   return (
@@ -187,19 +182,6 @@ export const DiffContent: React.FC<DiffContentProps> = ({
   onSubmit,
 }) => {
   const [open, setOpen] = React.useState(false);
-  const status = React.useMemo(
-    () =>
-      diffFormState(
-        diffs,
-        appliedChunks?.state ?? [],
-        appliedChunks?.can_apply ?? [],
-      ),
-    [appliedChunks?.state, diffs, appliedChunks?.can_apply],
-  );
-
-  // TODO: handle loading
-  // TODO: handle errors
-
   return (
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
@@ -217,16 +199,8 @@ export const DiffContent: React.FC<DiffContentProps> = ({
           ) : (
             <DiffForm
               onSubmit={onSubmit}
-              diffs={status}
-              canRemove={
-                appliedChunks.state.length > 0 &&
-                appliedChunks.state.includes(1)
-              }
-              canAdd={
-                appliedChunks.state.length === 0 ||
-                appliedChunks.state.includes(0)
-              }
-              isLoading={appliedChunks.fetching}
+              diffs={diffs}
+              appliedChunks={appliedChunks}
             />
           )}
         </Collapsible.Content>
@@ -236,60 +210,54 @@ export const DiffContent: React.FC<DiffContentProps> = ({
 };
 
 const DiffForm: React.FC<{
-  diffs: DiffChunkWithTypeAndApply[];
+  diffs: DiffChunk[];
+  appliedChunks: DiffChunkStatus;
   onSubmit: (chunks: boolean[]) => void;
-  canRemove: boolean;
-  canAdd: boolean;
-  isLoading: boolean;
-}> = ({ diffs, onSubmit, canRemove, canAdd, isLoading }) => {
-  const [state, setState] = React.useState<DiffChunkWithTypeAndApply[]>(diffs);
+}> = ({ diffs, onSubmit, appliedChunks }) => {
+  const handleToggle = React.useCallback(
+    (index: number, checked: boolean) => {
+      const chunks = diffs.map((_, i) => {
+        if (i === index) return checked;
+        return appliedChunks.applied_chunks[i] || false;
+      });
+      onSubmit(chunks);
+    },
+    [appliedChunks.applied_chunks, diffs, onSubmit],
+  );
 
-  useEffect(() => {
-    setState(diffs);
-  }, [diffs]);
+  const disableApplyAll = React.useMemo(() => {
+    return false;
+    if (appliedChunks.fetching) return true;
+    return !appliedChunks.can_apply.every((_) => _);
+  }, [appliedChunks.can_apply, appliedChunks.fetching]);
 
-  const handleToggle = (index: number, checked: boolean) => {
-    setState((prev) => {
-      const next = prev.slice(0);
-      if (!next[index]) return next;
-      next[index] = { ...next[index], apply: checked };
-      return next;
-    });
-  };
-
-  const hasNotChanged = React.useMemo(() => {
-    return isEqual(state, diffs);
-  }, [state, diffs]);
-
-  const applyDiff = React.useCallback(() => {
-    const toApply = state.map((diff) => diff.apply);
+  const applyAll = React.useCallback(() => {
+    // const chunks = appliedChunks.applied_chunks.map((_) => true);
+    // const toApply = appliedChunks.applied_chunks.map((_) => !_);
+    const toApply = appliedChunks.can_apply;
     onSubmit(toApply);
-  }, [onSubmit, state]);
-
-  const [disableAdd, setDisableAdd] = React.useState(false);
-
-  useEffect(() => {
-    if (isLoading) {
-      setDisableAdd(true);
-    } else {
-      setDisableAdd(!canAdd || hasNotChanged);
-    }
-  }, [isLoading, canAdd, canRemove, hasNotChanged]);
+  }, [appliedChunks.can_apply, onSubmit]);
 
   return (
     <Flex direction="column" display="inline-flex" maxWidth="100%">
-      {state.map((diff, i) => (
-        <Diff
-          key={i}
-          diff={diff}
-          type={diff.type}
-          value={diff.apply}
-          onChange={(checked: boolean) => handleToggle(i, checked)}
-        />
-      ))}
+      {diffs.map((diff, i) => {
+        const canApply = appliedChunks.can_apply[i];
+        const status = appliedChunks.state[i];
+        const applied = status === 1 || appliedChunks.applied_chunks[i];
+        return (
+          <Diff
+            key={i}
+            diff={diff}
+            status={status}
+            canApply={canApply}
+            value={applied}
+            onChange={(checked: boolean) => handleToggle(i, checked)}
+          />
+        );
+      })}
       <Flex gap="2" py="2">
-        <Button disabled={disableAdd} onClick={applyDiff}>
-          Add Changes
+        <Button disabled={disableApplyAll} onClick={applyAll}>
+          Apply All
         </Button>
       </Flex>
     </Flex>
