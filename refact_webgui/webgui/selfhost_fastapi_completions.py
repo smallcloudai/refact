@@ -511,7 +511,6 @@ class BaseCompletionsRouter(APIRouter):
         model_dict = self._model_assigner.models_db_with_passthrough.get(post.model, {})
 
         async def litellm_streamer():
-            final_msg = {}
             generated_tokens_n = 0
             try:
                 self._integrations_env_setup()
@@ -521,7 +520,8 @@ class BaseCompletionsRouter(APIRouter):
                     max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
                     tools=post.tools,
                     tool_choice=post.tool_choice,
-                    stop=post.stop
+                    stop=post.stop,
+                    n=post.n,
                 )
                 finish_reason = None
                 async for model_response in response:
@@ -533,18 +533,14 @@ class BaseCompletionsRouter(APIRouter):
                             if text := delta.get("content"):
                                 generated_tokens_n += litellm.token_counter(model_name, text=text)
 
-                        if finish_reason:
-                            final_msg = data
-                            break
-
                     except json.JSONDecodeError:
                         data = {"choices": [{"finish_reason": finish_reason}]}
                     yield prefix + json.dumps(data) + postfix
 
-                if final_msg:
-                    usage_dict = compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n)
-                    final_msg.update(usage_dict)
-                    yield prefix + json.dumps(final_msg) + postfix
+                final_msg = {"choices": []}
+                usage_dict = compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n)
+                final_msg.update(usage_dict)
+                yield prefix + json.dumps(final_msg) + postfix
 
                 # NOTE: DONE needed by refact-lsp server
                 yield prefix + "[DONE]" + postfix
@@ -563,15 +559,16 @@ class BaseCompletionsRouter(APIRouter):
                     max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
                     tools=post.tools,
                     tool_choice=post.tool_choice,
-                    stop=post.stop
+                    stop=post.stop,
+                    n=post.n,
                 )
                 finish_reason = None
                 try:
                     data = model_response.dict()
-                    choice0 = data["choices"][0]
-                    if text := choice0.get("message", {}).get("content"):
-                        generated_tokens_n = litellm.token_counter(model_name, text=text)
-                    finish_reason = choice0["finish_reason"]
+                    for choice in data.get("choices", []):
+                        if text := choice.get("message", {}).get("content"):
+                            generated_tokens_n += litellm.token_counter(model_name, text=text)
+                        finish_reason = choice.get("finish_reason")
                     usage_dict = compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n)
                     data.update(usage_dict)
                 except json.JSONDecodeError:
