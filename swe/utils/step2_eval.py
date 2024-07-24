@@ -32,14 +32,15 @@ class SWERunner(AgentRunner):
         results: Dict[str, Any] = dict()
         problem_statement = kwargs["problem_statement"]
         results["summarized_problem_statement"] = kwargs["step1_data"]
+        step = ProducePatchStep(base_url=base_url, model_name=MODEL, attempts=3)
         try:
-            step = ProducePatchStep(base_url=base_url, model_name=MODEL, attempts=3)
             results["model_patches"] = await step.process(
                 problem_statement=problem_statement,
                 related_files=results["summarized_problem_statement"],
                 repo_path=repo_path)
         except Exception as e:
-            raise RuntimeError(f"step2: {type(e)} {str(e) or traceback.format_exc()}")
+            results["error"] = f"step2: {type(e)} {str(e) or traceback.format_exc()}"
+        results["usage"] = step.usage
         return results
 
 

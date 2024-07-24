@@ -41,15 +41,16 @@ class SWERunner(AgentRunner):
         results["patched_filename"] = filename
         results["mentioned_in_problem"] = \
             self._filename_mentioned(filename, problem_statement)
+        step = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=3)
         try:
-            step = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=3)
             results["summarized_problem_statement"] = await step.process(
                 problem_statement=kwargs["problem_statement"],
                 repo_path=repo_path)
             results["mentioned_in_task"] = \
                 self._filename_mentioned(filename, results["summarized_problem_statement"])
         except Exception as e:
-            raise RuntimeError(f"step1: {type(e)} {str(e) or traceback.format_exc()}")
+            results["error"] = f"step1: {type(e)} {str(e) or traceback.format_exc()}"
+        results["usage"] = step.usage
         return results
 
 

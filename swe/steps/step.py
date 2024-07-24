@@ -3,7 +3,7 @@ from refact.chat_client import tools_fetch_and_filter
 from refact.chat_client import ask_using_http
 from refact.chat_client import print_messages
 
-from typing import Set, Any, List, Iterable
+from typing import Set, Any, List, Iterable, Dict
 
 
 __all__ = ["Step"]
@@ -20,6 +20,7 @@ class Step:
         self._model_name = model_name
         self._temperature = temperature
         self._max_depth = max_depth
+        self._usages = []
 
     @property
     def _tools(self) -> Set[str]:
@@ -35,9 +36,10 @@ class Step:
             stream=stream, max_tokens=2048,
             only_deterministic_messages=False,
         )
-        new_messages = assistant_choices[0]
-        print_messages(new_messages[len(messages):])
-        return new_messages
+        new_messages = assistant_choices[0][len(messages):]
+        self._usages.extend([m.usage for m in new_messages])
+        print_messages(new_messages)
+        return messages + new_messages
 
     async def _query_generator(self, messages: List[Message], n: int) -> Iterable[List[Message]]:
         # tools = await tools_fetch_and_filter(
@@ -51,6 +53,19 @@ class Step:
         # )
         # return assistant_choices
         raise NotImplementedError()
+
+    @property
+    def usage(self) -> Dict[str, int]:
+        result = {
+            'completion_tokens': 0,
+            'prompt_tokens': 0,
+            'total_tokens': 0,
+        }
+        for usage in filter(lambda x: isinstance(x, dict), self._usages):
+            result["completion_tokens"] += usage.get("completion_tokens", 0)
+            result["prompt_tokens"] += usage.get("prompt_tokens", 0)
+            result["total_tokens"] += usage.get("total_tokens", 0)
+        return result
 
     async def process(self, **kwargs) -> Any:
         raise NotImplementedError()
