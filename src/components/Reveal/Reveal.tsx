@@ -9,7 +9,7 @@ export type RevealProps = {
 
 export const Reveal: React.FC<RevealProps> = ({ children, defaultOpen }) => {
   const [open, setOpen] = React.useState(defaultOpen);
-  if (open) return <Box>{children}</Box>;
+  if (open) return <Box width="100%">{children}</Box>;
   return (
     <Button
       variant="ghost"
@@ -18,7 +18,9 @@ export const Reveal: React.FC<RevealProps> = ({ children, defaultOpen }) => {
       className={styles.reveal_button}
     >
       <Flex direction="column" position="relative" align="start">
-        <Box className={styles.reveal_hidden}>{children}</Box>
+        <Box className={styles.reveal_hidden} width="100%">
+          {children}
+        </Box>
         <Flex position="absolute" bottom="2" width="100%" justify="center">
           Click for more
         </Flex>

@@ -1,9 +1,11 @@
 .reveal_button {
   text-align: left;
   justify-content: start;
+  width: 100%;
 }
 
 .reveal_hidden {
+  width: 100%;
   max-height: 9em;
   mask-image: linear-gradient(
     to bottom,

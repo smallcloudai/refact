@@ -52,7 +52,7 @@ interface DiffOperationResponse {
     fuzzy_n_used: number;
   }[];
 
-  state: number[];
+  state: (0 | 1 | 2)[];
 }
 
 export async function doDiff(

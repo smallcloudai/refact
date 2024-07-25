@@ -806,7 +806,7 @@ export type ChatCapsState = {
 export type DiffChunkStatus = {
   applied_chunks: boolean[];
   can_apply: boolean[];
-  state: number[];
+  state: (0 | 1 | 2)[];
   fetching: boolean;
   error: null | string;
   diff_id: string;
