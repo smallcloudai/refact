@@ -109,6 +109,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         </Flex>
       )}
       <ChatContent
+        key={state.chat.id}
         addOrRemoveDiff={addOrRemoveDiff}
         messages={state.chat.messages}
         onRetry={retryQuestion}
@@ -120,6 +121,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         ref={chatContentRef}
         getDiffByIndex={getDiffByIndex}
         openSettings={openSettings}
+        chatKey={state.chat.id}
       />
       {!state.streaming && state.prevent_send && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>

@@ -151,7 +151,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           checked={useTools}
           onCheckChange={(value) => setUseTools(!!value)}
           label="Allow model to use tools"
-          infoText="Allow the model to call various functions to help you, especially search to gather more information."
+          infoText="Turn on when asking about your codebase. When tuned on the model can autonomously call functions to gather the best context."
           href="https://docs.refact.ai/features/ai-chat/"
           linkText="documentation"
         />

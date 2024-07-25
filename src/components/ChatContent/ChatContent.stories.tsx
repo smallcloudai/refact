@@ -8,6 +8,7 @@ import {
   CHAT_WITH_DIFF_ACTIONS,
   LARGE_DIFF,
 } from "../../__fixtures__";
+import { ConfigProvider } from "../../contexts/config-context";
 
 const noop = () => ({});
 
@@ -24,6 +25,7 @@ const meta = {
     onPasteClick: noop,
     addOrRemoveDiff: noop,
     getDiffByIndex: () => null,
+    chatKey: "test",
   },
 } satisfies Meta<typeof ChatContent>;
 
@@ -55,15 +57,27 @@ export const WithDiffs: Story = {
 export const WithDiffActions = {
   args: {
     messages: CHAT_WITH_DIFF_ACTIONS.messages,
-    getDiffByIndex: (index: number) =>
-      CHAT_WITH_DIFF_ACTIONS.applied_diffs["diff-" + index],
+    getDiffByIndex: (key: string) => CHAT_WITH_DIFF_ACTIONS.applied_diffs[key],
   },
 };
 
 export const LargeDiff = {
   args: {
     messages: LARGE_DIFF.messages,
-    getDiffByIndex: (index: number) =>
-      LARGE_DIFF.applied_diffs["diff-" + index],
+    getDiffByIndex: (key: string) => LARGE_DIFF.applied_diffs[key],
   },
+};
+
+export const Empty: Story = {
+  args: {
+    ...meta.args,
+    messages: [],
+  },
+  decorators: [
+    (Story) => (
+      <ConfigProvider config={{ host: "ide" }}>
+        <Story />
+      </ConfigProvider>
+    ),
+  ],
 };
