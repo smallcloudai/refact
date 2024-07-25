@@ -242,7 +242,7 @@ const DiffForm: React.FC<{
 
   const applyAll = React.useCallback(() => {
     const ops = Object.values(diffs).reduce<boolean[]>((acc, diffs) => {
-      const canApply = diffs.map((diff) => diff.can_apply);
+      const canApply = diffs.map((diff) => !diff.applied);
       return acc.concat(canApply);
     }, []);
     onSubmit(ops);

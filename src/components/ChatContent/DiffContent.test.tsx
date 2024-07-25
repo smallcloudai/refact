@@ -94,7 +94,6 @@ describe("diff content", () => {
     await user.click(app.container.querySelector('[type="button"]')!);
     const btn = app.getByText(/Apply all/i);
     await user.click(btn);
-    app.debug(app.container, 1000000000);
     expect(onSumbitSpy).toHaveBeenCalledWith([
       true,
       true,
@@ -165,14 +164,14 @@ describe("diff content", () => {
     const btn = app.getByText(/unapply all/i);
     await user.click(btn);
     expect(onSumbitSpy).toHaveBeenCalledWith([
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
     ]);
   });
 
