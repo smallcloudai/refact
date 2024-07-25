@@ -248,7 +248,6 @@ impl AtCommand for AtFile {
         }
 
         let context_file = execute_at_file(ccx, file_path.text.clone()).await?;
-        info!("{:?}", context_file);
         let text = text_on_clip(&context_file, false);
         Ok((vec_context_file_to_context_tools(vec![context_file]), text))
     }

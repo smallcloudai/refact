@@ -8,7 +8,7 @@ use tokio::sync::RwLock as ARwLock;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 use crate::global_context::GlobalContext;
-use crate::scratchpads::chat_utils_rag::{HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2};
+use crate::scratchpads::chat_utils_rag::{HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2, postprocess_plain_text_messages};
 
 
 pub async fn run_tools(
@@ -22,7 +22,7 @@ pub async fn run_tools(
 ) -> (Vec<ChatMessage>, bool)
 {
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
-    let context_limit = reserve_for_context;
+    let mut context_limit = reserve_for_context;
 
     info!("run_tools: reserve_for_context {} tokens", reserve_for_context);
     if original_messages.len() == 0 {
@@ -41,6 +41,7 @@ pub async fn run_tools(
     let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, false, original_messages).await;
     let at_tools = ccx.at_tools.clone();
 
+    let mut plain_text_pp = vec![];
     let mut for_postprocessing: Vec<ContextFile> = vec![];
     let mut generated_tool: Vec<ChatMessage> = vec![];  // tool must go first
     let mut generated_other: Vec<ChatMessage> = vec![];
@@ -89,6 +90,8 @@ pub async fn run_tools(
                     if (raw_msg.role == "tool" || raw_msg.role == "diff") && raw_msg.tool_call_id == t_call.id {
                         generated_tool.push(raw_msg.clone());
                         have_answer = true;
+                    } else if raw_msg.role == "plain_text" {
+                        plain_text_pp.push(raw_msg.clone());
                     } else {
                         generated_other.push(raw_msg.clone());
                         assert!(raw_msg.tool_call_id.is_empty());
@@ -112,6 +115,17 @@ pub async fn run_tools(
             generated_tool.push(tool_failed_message.clone());
         }
     }
+    
+    context_limit /= 2;
+    
+    let (pp_plain_text, non_used_context_limit) = postprocess_plain_text_messages(
+        plain_text_pp.iter().collect(),
+        tokenizer.clone(),
+        context_limit,
+    ).await;
+    generated_other.extend(pp_plain_text);
+    
+    context_limit += non_used_context_limit;
 
     let context_file: Vec<ContextFile> = postprocess_at_results2(
         global_context.clone(),

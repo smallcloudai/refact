@@ -7,9 +7,12 @@ use tracing::{info, warn};
 use tokio::sync::RwLock as ARwLock;
 
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam, filter_only_context_file_from_context_tool};
-use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
+use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
-use crate::scratchpads::chat_utils_rag::{count_tokens, HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2};
+use crate::scratchpads::chat_utils_rag::{count_tokens, HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2, postprocess_plain_text_messages};
+
+
+const MIN_RAG_CONTEXT_LIMIT: usize = 256;
 
 
 pub async fn run_at_commands(
@@ -53,11 +56,8 @@ pub async fn run_at_commands(
         let content_n_tokens = count_tokens(&tokenizer.read().unwrap(), &content);
 
         let mut context_limit = reserve_for_context / messages_with_at.max(1);
-        if context_limit <= content_n_tokens {
-            context_limit = 0;
-        } else {
-            context_limit -= content_n_tokens;
-        }
+        context_limit = context_limit.saturating_sub(content_n_tokens);
+        
         info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", msg_idx, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens,context_limit);
 
         let mut messages_exec_output = vec![];
@@ -66,37 +66,57 @@ pub async fn run_at_commands(
             messages_exec_output.extend(res);
         }
 
+        let mut plain_text_messages = vec![];
         for exec_result in messages_exec_output.iter() {
             // at commands exec() can produce role "user" "assistant" "diff" "plain_text"
             if let ContextEnum::ChatMessage(raw_msg) = exec_result {  // means not context_file
-                rebuilt_messages.push(raw_msg.clone());
-                stream_back_to_user.push_in_json(json!(raw_msg));
+                if raw_msg.role != "plain_text" {
+                    rebuilt_messages.push(raw_msg.clone());
+                    stream_back_to_user.push_in_json(json!(raw_msg));
+                } else {
+                    plain_text_messages.push(raw_msg);
+                }
             }
         }
 
         // TODO: reduce context_limit by tokens(messages_exec_output)
-        let t0 = std::time::Instant::now();
-        let post_processed: Vec<ContextFile> = postprocess_at_results2(
-            global_context.clone(),
-            &filter_only_context_file_from_context_tool(&messages_exec_output),
-            tokenizer.clone(),
-            context_limit,
-            false,
-            top_n,
-        ).await;
-        if !post_processed.is_empty() {
-            // post-processed files after all custom messages
-            let json_vec = post_processed.iter().map(|p| { json!(p)}).collect::<Vec<Value>>();
-            if !json_vec.is_empty() {
-                let message = ChatMessage::new(
-                    "context_file".to_string(),
-                    serde_json::to_string(&json_vec).unwrap_or("".to_string()),
-                );
-                rebuilt_messages.push(message.clone());
-                stream_back_to_user.push_in_json(json!(message));
+        if context_limit > MIN_RAG_CONTEXT_LIMIT {
+            let t0 = std::time::Instant::now();
+            context_limit /= 2;
+            
+            let (pp_plain_text, non_used_context_limit) = postprocess_plain_text_messages(
+                plain_text_messages,
+                tokenizer.clone(),
+                context_limit,
+            ).await;
+            for m in pp_plain_text {
+                rebuilt_messages.push(m.clone());
+                stream_back_to_user.push_in_json(json!(m));
             }
+            context_limit += non_used_context_limit;
+
+            let post_processed = postprocess_at_results2(
+                global_context.clone(),
+                &filter_only_context_file_from_context_tool(&messages_exec_output),
+                tokenizer.clone(),
+                context_limit,
+                false,
+                top_n,
+            ).await;
+            if !post_processed.is_empty() {
+                // post-processed files after all custom messages
+                let json_vec = post_processed.iter().map(|p| { json!(p)}).collect::<Vec<Value>>();
+                if !json_vec.is_empty() {
+                    let message = ChatMessage::new(
+                        "context_file".to_string(),
+                        serde_json::to_string(&json_vec).unwrap_or("".to_string()),
+                    );
+                    rebuilt_messages.push(message.clone());
+                    stream_back_to_user.push_in_json(json!(message));
+                }
+            }
+            info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
         }
-        info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
 
         if content.trim().len() > 0 {
             // stream back to the user, with at-commands replaced

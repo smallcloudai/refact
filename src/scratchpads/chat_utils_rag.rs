@@ -12,7 +12,7 @@ use crate::ast::structs::SymbolsSearchResultStruct;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
 
-use crate::call_validation::ContextFile;
+use crate::call_validation::{ChatMessage, ContextFile};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
@@ -514,6 +514,48 @@ pub async fn postprocess_at_results2(
         &settings,
     ).await;
     postprocess_rag_stage_7_9(&mut lines_in_files, &mut lines_by_useful, tokenizer, tokens_limit, single_file_mode, &settings).await
+}
+
+pub async fn postprocess_plain_text_messages(
+    messages: Vec<&ChatMessage>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokens_limit: usize,
+) -> (Vec<ChatMessage>, usize) {
+    if messages.is_empty() {
+        return (vec![], tokens_limit);
+    }
+    let mut messages_sorted = messages.clone();
+    // ascending sorting
+    messages_sorted.sort_by(|a, b| a.content.len().cmp(&b.content.len()));
+
+    let mut tok_used_global = 0;
+    let mut tok_per_m = tokens_limit / messages_sorted.len();
+    let mut results = vec![];
+
+    let tokenizer_guard = tokenizer.read().unwrap();
+    for (idx, msg) in messages_sorted.iter().cloned().enumerate() {
+        let mut out = vec![];
+        let mut tok_used: usize = 0;
+        for line in msg.content.lines() {
+            let line_tokens = count_tokens(&tokenizer_guard, &line);
+            if tok_used + line_tokens > tok_per_m {
+                break;
+            }
+            tok_used += line_tokens;
+            out.push(line);
+        }
+        if idx != messages_sorted.len() - 1 {
+            // distributing non-used rest of tokens among the others
+            tok_per_m += (tok_per_m - tok_used) / (messages_sorted.len() - idx - 1);
+        }
+        tok_used_global += tok_used;
+        let mut m_cloned = msg.clone();
+        m_cloned.content = out.join("\n");
+        results.push(m_cloned);
+    }
+
+    let tok_unused = tokens_limit.saturating_sub(tok_used_global);
+    (results, tok_unused)
 }
 
 pub async fn postprocess_rag_stage_7_9(
