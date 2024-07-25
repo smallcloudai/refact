@@ -55,7 +55,7 @@ pub async fn real_file_path_candidate(
     if candidates.len() > 1 {
         return Err(format!("The path {:?} is ambiguous.\n\nIt could be interpreted as:\n{}", file_path, candidates.join("\n")));
     }
-    Ok(candidates[0].clone())
+    Ok(candidates.get(0).unwrap_or(&"".to_string()).clone())
 }
 
 #[async_trait]

@@ -15,6 +15,10 @@ use crate::files_correction::{correct_to_nearest_dir_path, paths_from_anywhere};
 
 pub struct AttTree;
 
+fn preformat_path(path: &String) -> String {
+    path.trim_end_matches(&['/', '\\'][..]).to_string()
+}
+
 #[async_trait]
 impl Tool for AttTree {
     async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
@@ -22,7 +26,8 @@ impl Tool for AttTree {
         
         let path_mb = match args.get("path") {
             Some(Value::String(s)) => { 
-                let p = PathBuf::from(s);
+                let s = preformat_path(s);
+                let p = PathBuf::from(&s);
                 if p.extension().is_some() {
                     return Err(format!("`path` is a file, not a directory: {:?}", s));
                 }
@@ -39,8 +44,8 @@ impl Tool for AttTree {
         
         let tree = match path_mb {
             Some(path) => {
-                let candidates = correct_to_nearest_dir_path(ccx.global_context.clone(), path, false, 10).await;
-                let candidate = real_file_path_candidate(ccx, path, &candidates, &get_project_paths(ccx).await, true).await?;
+                let candidates = correct_to_nearest_dir_path(ccx.global_context.clone(), &path, false, 10).await;
+                let candidate = real_file_path_candidate(ccx, &path, &candidates, &get_project_paths(ccx).await, true).await?;
                 let true_path = PathBuf::from(candidate);
                 let filtered_paths_from_anywhere = paths_from_anywhere.iter().filter(|f|f.starts_with(&true_path)).cloned().collect();
                 construct_tree_out_of_flat_list_of_paths(&filtered_paths_from_anywhere)
