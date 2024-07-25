@@ -25,7 +25,7 @@ PROMPT_EXPLORATION_TOOLS: |
   Yes => collect the necessary context using search, definition and references tools calls in parallel, or just do what the user tells you.
   No => answer the question without calling any tools.
 
-  Explain your plan briefly before calling the tools in parallel.
+  Explain your plan briefly before calling the tools in parallel. But don't call web() in parallel, you can call one web() each turn.
 
   IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST! USE TOOLS IN PARALLEL!
 

@@ -147,7 +147,7 @@ tools:
     parameters_required: []
 
   - name: "web"
-    description: "Fetch a web page and convert to readable plain text. Don't call this tool in parallel, only 1 call per turn."
+    description: "Fetch a web page and convert to readable plain text."
     parameters:
       - name: "url"
         type: "string"
