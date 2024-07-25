@@ -228,9 +228,10 @@ const DiffForm: React.FC<{
 
   const disableApplyAll = React.useMemo(() => {
     if (loading) return true;
-    const allFalse = values.every((diff) => !diff.can_apply);
-    const allTrue = values.every((diff) => diff.can_apply);
-    return !(allTrue || allFalse);
+    const start = values[0]?.applied ?? false;
+    const allTheSame = values.every((diff) => diff.applied === start);
+    const allCanApply = values.every((diff) => diff.can_apply);
+    return !(allTheSame && allCanApply);
   }, [loading, values]);
 
   const action = React.useMemo(() => {
@@ -276,7 +277,7 @@ const DiffForm: React.FC<{
                 <Flex align="center" gap="2">
                   {errored ? "error" : applied ? "unapply" : "apply"}{" "}
                   <Switch
-                    disabled={loading || errored}
+                    // disabled={loading || errored}
                     size="1"
                     checked={applied}
                     onCheckedChange={(value) => handleToggle(value, indeices)}
