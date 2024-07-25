@@ -147,7 +147,7 @@ tools:
     parameters_required: []
 
   - name: "web"
-    description: "Fetch and convert a web page to text. Can be used to get the text content of a web page."
+    description: "Fetch a web page and convert to readable plain text. Don't call this tool in parallel, only 1 call per turn."
     parameters:
       - name: "url"
         type: "string"
