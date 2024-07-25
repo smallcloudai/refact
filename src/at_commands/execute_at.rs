@@ -12,7 +12,7 @@ use crate::global_context::GlobalContext;
 use crate::scratchpads::chat_utils_rag::{count_tokens, HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2, postprocess_plain_text_messages};
 
 
-const MIN_RAG_CONTEXT_LIMIT: usize = 256;
+pub const MIN_RAG_CONTEXT_LIMIT: usize = 256;
 
 
 pub async fn run_at_commands(

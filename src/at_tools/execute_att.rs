@@ -6,6 +6,7 @@ use tracing::{info, warn};
 use tokio::sync::RwLock as ARwLock;
 
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 use crate::global_context::GlobalContext;
 use crate::scratchpads::chat_utils_rag::{HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2, postprocess_plain_text_messages};
@@ -116,33 +117,35 @@ pub async fn run_tools(
         }
     }
     
-    context_limit /= 2;
-    
-    let (pp_plain_text, non_used_context_limit) = postprocess_plain_text_messages(
-        plain_text_pp.iter().collect(),
-        tokenizer.clone(),
-        context_limit,
-    ).await;
-    generated_other.extend(pp_plain_text);
-    
-    context_limit += non_used_context_limit;
+    if context_limit > MIN_RAG_CONTEXT_LIMIT {
+        context_limit /= 2;
 
-    let context_file: Vec<ContextFile> = postprocess_at_results2(
-        global_context.clone(),
-        &for_postprocessing,
-        tokenizer.clone(),
-        context_limit,
-        false,
-        top_n,
-    ).await;
+        let (pp_plain_text, non_used_context_limit) = postprocess_plain_text_messages(
+            plain_text_pp.iter().collect(),
+            tokenizer.clone(),
+            context_limit,
+        ).await;
+        generated_other.extend(pp_plain_text);
 
-    if !context_file.is_empty() {
-        let json_vec = context_file.iter().map(|p|json!(p)).collect::<Vec<Value>>();
-        let message = ChatMessage::new(
-            "context_file".to_string(),
-            serde_json::to_string(&json_vec).unwrap_or("".to_string()),
-        );
-        generated_other.push(message.clone());
+        context_limit += non_used_context_limit;
+
+        let context_file: Vec<ContextFile> = postprocess_at_results2(
+            global_context.clone(),
+            &for_postprocessing,
+            tokenizer.clone(),
+            context_limit,
+            false,
+            top_n,
+        ).await;
+
+        if !context_file.is_empty() {
+            let json_vec = context_file.iter().map(|p| json!(p)).collect::<Vec<Value>>();
+            let message = ChatMessage::new(
+                "context_file".to_string(),
+                serde_json::to_string(&json_vec).unwrap_or("".to_string()),
+            );
+            generated_other.push(message.clone());
+        }
     }
 
     let mut all_messages: Vec<ChatMessage> = original_messages.iter().map(|m| m.clone()).collect();
