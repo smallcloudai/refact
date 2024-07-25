@@ -49,9 +49,9 @@ pub async fn run_at_commands(
     for msg_idx in user_msg_starts..original_messages.len() {
         let msg = original_messages[msg_idx].clone();
         let role = msg.role.clone();
-
         let mut content = msg.content.clone();
         let content_n_tokens = count_tokens(&tokenizer.read().unwrap(), &content);
+
         let mut context_limit = reserve_for_context / messages_with_at.max(1);
         if context_limit <= content_n_tokens {
             context_limit = 0;
@@ -66,18 +66,9 @@ pub async fn run_at_commands(
             messages_exec_output.extend(res);
         }
 
-        if content.trim().len() > 0 {
-            // stream back to the user, with at-commands replaced
-            let msg = ChatMessage::new(role.clone(), content);
-            rebuilt_messages.push(msg.clone());
-            if role == "user" {
-                stream_back_to_user.push_in_json(json!(msg));
-            }
-        }
-
         for exec_result in messages_exec_output.iter() {
-            // at commands exec() can produce both role="user" and role="assistant" and role="diff" messages and role = "plain_text"
-            if let ContextEnum::ChatMessage(raw_msg) = exec_result {
+            // at commands exec() can produce role "user" "assistant" "diff" "plain_text"
+            if let ContextEnum::ChatMessage(raw_msg) = exec_result {  // means not context_file
                 rebuilt_messages.push(raw_msg.clone());
                 stream_back_to_user.push_in_json(json!(raw_msg));
             }
@@ -106,6 +97,13 @@ pub async fn run_at_commands(
             }
         }
         info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
+
+        if content.trim().len() > 0 {
+            // stream back to the user, with at-commands replaced
+            let msg = ChatMessage::new(role.clone(), content);
+            rebuilt_messages.push(msg.clone());
+            stream_back_to_user.push_in_json(json!(msg));
+        }
     }
     return (rebuilt_messages.clone(), user_msg_starts, any_context_produced)
 }

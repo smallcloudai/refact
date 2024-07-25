@@ -130,7 +130,7 @@ async fn fetch_html(url: &str, timeout: Duration) -> Result<String, String> {
         .header("DNT", "1")
         .header("Referer", "https://www.google.com/")
         .send().await.map_err(|e| e.to_string())?;
-    
+
     if !response.status().is_success() {
         return Err(format!("unable to fetch url: {}; status ", url));
     }
@@ -141,11 +141,11 @@ async fn fetch_html(url: &str, timeout: Duration) -> Result<String, String> {
 pub async fn execute_at_web(url: &str) -> Result<String, String>{
     let html = fetch_html(url, Duration::from_secs(5)).await?;
     let html = find_content(html);
-    
+
     let text = html2text::config::with_decorator(CustomTextConversion)
         .string_from_read(&html.as_bytes()[..], 200)
         .map_err(|_| "Unable to convert html to text".to_string())?;
-    
+
     Ok(text)
 }
 
@@ -162,7 +162,7 @@ impl AtWeb {
 }
 
 pub fn text_on_clip(url_text: &str) -> String {
-    format!("{url_text}")
+    format!("[see text downloaded from {url_text} above]")
 }
 
 #[async_trait]
@@ -181,7 +181,7 @@ impl AtCommand for AtWeb {
             }
         };
         args.truncate(1);
-        
+
         let text = execute_at_web(&url.text).await.map_err(|e|
             format!("Failed to execute @web {}.\nError: {e}", url.text)
         )?;

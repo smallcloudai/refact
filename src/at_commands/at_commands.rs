@@ -17,7 +17,7 @@ use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
 use crate::at_commands::at_file_search::AtFileSearch;
 // use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
 use crate::at_commands::at_tree::AtTree;
-use crate::at_commands::at_diff::{AtDiff, AtDiffRev};
+// use crate::at_commands::at_diff::{AtDiff, AtDiffRev};
 use crate::at_commands::at_web::AtWeb;
 use crate::at_commands::execute_at::AtCommandMember;
 
@@ -75,8 +75,8 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         ("@symbols-at".to_string(), Arc::new(AMutex::new(Box::new(AtAstLookupSymbols::new()) as Box<dyn AtCommand + Send>))),
         // ("@local-notes-to-self".to_string(), Arc::new(AMutex::new(Box::new(AtLocalNotesToSelf::new()) as Box<dyn AtCommand + Send>))),
         ("@tree".to_string(), Arc::new(AMutex::new(Box::new(AtTree::new()) as Box<dyn AtCommand + Send>))),
-        ("@diff".to_string(), Arc::new(AMutex::new(Box::new(AtDiff::new()) as Box<dyn AtCommand + Send>))),
-        ("@diff-rev".to_string(), Arc::new(AMutex::new(Box::new(AtDiffRev::new()) as Box<dyn AtCommand + Send>))),
+        // ("@diff".to_string(), Arc::new(AMutex::new(Box::new(AtDiff::new()) as Box<dyn AtCommand + Send>))),
+        // ("@diff-rev".to_string(), Arc::new(AMutex::new(Box::new(AtDiffRev::new()) as Box<dyn AtCommand + Send>))),
         ("@web".to_string(), Arc::new(AMutex::new(Box::new(AtWeb::new()) as Box<dyn AtCommand + Send>))),
     ]);
 

@@ -124,12 +124,10 @@ pub async fn run_tools(
 
     if !context_file.is_empty() {
         let json_vec = context_file.iter().map(|p|json!(p)).collect::<Vec<Value>>();
-
         let message = ChatMessage::new(
             "context_file".to_string(),
             serde_json::to_string(&json_vec).unwrap_or("".to_string()),
         );
-
         generated_other.push(message.clone());
     }
 
