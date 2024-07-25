@@ -76,6 +76,7 @@ export type ChatContentProps = {
   canPaste: boolean;
   isStreaming: boolean;
   openSettings: () => void;
+  chatKey: string;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
@@ -89,6 +90,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       canPaste,
       isStreaming,
       openSettings,
+      chatKey,
     } = props;
 
     const { innerRef, handleScroll } = useAutoScroll({
@@ -118,13 +120,15 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
           {messages.length === 0 && <PlaceHolderText onClick={openSettings} />}
           {messages.map((message, index) => {
             if (isChatContextFileMessage(message)) {
+              const key = chatKey + "context-file-" + index;
               const [, files] = message;
-              return <ContextFiles key={index} files={files} />;
+              return <ContextFiles key={key} files={files} />;
             }
 
             const [role, text] = message;
 
             if (role === "user") {
+              const key = chatKey + "user-input-" + index;
               const handleRetry = (question: string) => {
                 const toSend = messages
                   .slice(0, index)
@@ -134,19 +138,20 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
               return (
                 <UserInput
                   onRetry={handleRetry}
-                  key={index}
+                  key={key}
                   disableRetry={isStreaming || isWaiting}
                 >
                   {text}
                 </UserInput>
               );
             } else if (role === "assistant") {
+              const key = chatKey + "assistant-input-" + index;
               return (
                 <AssistantInput
                   onNewFileClick={onNewFileClick}
                   onPasteClick={onPasteClick}
                   canPaste={canPaste}
-                  key={index}
+                  key={key}
                   message={text}
                   toolCalls={message[2]}
                   toolResults={toolResultsMap}
@@ -155,9 +160,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
             } else if (role === "tool") {
               return null;
             } else if (role === "context_memory") {
-              return <MemoryContent key={index} items={text} />;
+              const key = chatKey + "context-memory-" + index;
+              return <MemoryContent key={key} items={text} />;
             } else if (role === "plain_text") {
-              return <PlainText key={index}>{text}</PlainText>;
+              const key = chatKey + "plain-text-" + index;
+              return <PlainText key={key}>{text}</PlainText>;
             } else {
               return null;
               // return <Markdown key={index}>{text}</Markdown>;

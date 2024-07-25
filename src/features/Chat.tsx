@@ -107,6 +107,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         </Flex>
       )}
       <ChatContent
+        key={state.chat.id}
         messages={state.chat.messages}
         onRetry={retryQuestion}
         isWaiting={state.waiting_for_response}
@@ -116,6 +117,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         canPaste={state.active_file.can_paste}
         ref={chatContentRef}
         openSettings={openSettings}
+        chatKey={state.chat.id}
       />
       {!state.streaming && state.prevent_send && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>

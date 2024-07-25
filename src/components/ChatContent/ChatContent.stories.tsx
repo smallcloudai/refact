@@ -20,6 +20,7 @@ const meta = {
     canPaste: true,
     onNewFileClick: noop,
     onPasteClick: noop,
+    chatKey: "test",
   },
 } satisfies Meta<typeof ChatContent>;
 
