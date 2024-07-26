@@ -1,14 +1,4 @@
-import { PlusIcon } from "@radix-ui/react-icons";
-import {
-  Button,
-  Dialog,
-  Flex,
-  IconButton,
-  Table,
-  Text,
-  TextField,
-  Tooltip,
-} from "@radix-ui/themes";
+import { Button, Dialog, Flex, Table, Text, TextField } from "@radix-ui/themes";
 import { DocumentationActions } from "./DocumentationActions";
 import { useState } from "react";
 
@@ -70,8 +60,8 @@ export const DocumentationSettings: React.FC<DocumentationSettingsProps> = ({
           </Table.Body>
         </Table.Root>
       ) : (
-        <Text>
-          No documentation has been added yet. Press the + button to add
+        <Text min-height="200px">
+          No documentation has been added yet. Press the add button to add
           documentation that the chat assistent can use.
         </Text>
       )}
@@ -80,13 +70,11 @@ export const DocumentationSettings: React.FC<DocumentationSettingsProps> = ({
           {"< Back"}
         </Button>
         <Dialog.Root>
-          <Tooltip content="Add new documentation source">
-            <Dialog.Trigger>
-              <IconButton radius="full">
-                <PlusIcon />
-              </IconButton>
-            </Dialog.Trigger>
-          </Tooltip>
+          <Dialog.Trigger>
+            <Button ml="auto" type="submit">
+              {"add"}
+            </Button>
+          </Dialog.Trigger>
           <Dialog.Content maxWidth="450px">
             <Dialog.Title>Add documentation</Dialog.Title>
             <Dialog.Description size="2" mb="4">
