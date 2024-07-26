@@ -5,6 +5,7 @@ export type ChatRole =
   | "system"
   | "tool"
   | "context_memory"
+  | "diff"
   | "plain_text";
 
 export type ChatContextFile = {
@@ -54,9 +55,16 @@ interface BaseMessage
     | undefined
     | null
     | ContextMemory[]
+    | DiffChunk[]
   > {
   0: ChatRole;
-  1: null | string | ChatContextFile[] | ToolResult | ContextMemory[];
+  1:
+    | null
+    | string
+    | ChatContextFile[]
+    | ToolResult
+    | ContextMemory[]
+    | DiffChunk[];
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
@@ -94,6 +102,23 @@ export interface MemoryMessage extends BaseMessage {
   1: ContextMemory[];
 }
 
+// TODO: There maybe sub-types for this
+export type DiffChunk = {
+  file_name: string;
+  file_action: string;
+  line1: number;
+  line2: number;
+  lines_remove: string;
+  lines_add: string;
+  // apply?: boolean;
+  // chunk_id?: number;
+};
+export interface DiffMessage extends BaseMessage {
+  0: "diff";
+  1: DiffChunk[];
+  2: string; // tool_call_id
+}
+
 export function isUserMessage(message: ChatMessage): message is UserMessage {
   return message[0] === "user";
 }
@@ -113,6 +138,7 @@ export type ChatMessage =
   | SystemMessage
   | ToolMessage
   | MemoryMessage
+  | DiffMessage
   | PlainTextMessage;
 
 export type ChatMessages = ChatMessage[];
@@ -131,6 +157,10 @@ export function isAssistantMessage(
 
 export function isToolMessage(message: ChatMessage): message is ToolMessage {
   return message[0] === "tool";
+}
+
+export function isDiffMessage(message: ChatMessage): message is DiffMessage {
+  return message[0] === "diff";
 }
 
 export function isToolCallMessage(
@@ -239,6 +269,19 @@ export function isToolResponse(json: unknown): json is ToolResponse {
   return json.role === "tool";
 }
 
+export type DiffResponse = {
+  role: "diff";
+  content: string;
+  tool_call_id: string;
+};
+
+export function isDiffResponse(json: unknown): json is DiffResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("content" in json)) return false;
+  if (!("role" in json)) return false;
+  return json.role === "diff";
+}
 export interface PlainTextResponse {
   role: "plain_text";
   content: string;

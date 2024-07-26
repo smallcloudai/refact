@@ -3,19 +3,28 @@ import ReactMarkdown from "react-markdown";
 
 import styles from "./Command.module.css";
 
-import SyntaxHighlighter from "react-syntax-highlighter";
+import SyntaxHighlighter, {
+  type SyntaxHighlighterProps,
+} from "react-syntax-highlighter";
 import { Code } from "@radix-ui/themes";
 import classNames from "classnames";
 import type { Element } from "hast";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
 
-const CodeBlock: React.FC<
-  React.JSX.IntrinsicElements["code"] & {
-    node?: Element | undefined;
-    style: Record<string, React.CSSProperties>;
-  }
-> = ({ children, className, color: _color, ref: _ref, node: _node, style }) => {
+type CodeBlockProps = React.JSX.IntrinsicElements["code"] & {
+  node?: Element | undefined;
+  style: Record<string, React.CSSProperties>;
+} & Pick<SyntaxHighlighterProps, "showLineNumbers" | "startingLineNumber">;
+
+const CodeBlock: React.FC<CodeBlockProps> = ({
+  children,
+  className,
+  color: _color,
+  ref: _ref,
+  node: _node,
+  style,
+}) => {
   const match = /language-(\w+)/.exec(className ?? "");
   const textWithOutTrailingNewLine = String(children).replace(/\n$/, "");
 
@@ -40,7 +49,8 @@ export type MarkdownProps = {
   children: string;
   className?: string;
   style?: Record<string, React.CSSProperties>;
-};
+} & Pick<CodeBlockProps, "showLineNumbers" | "startingLineNumber">;
+
 export const Markdown: React.FC<MarkdownProps> = ({
   children,
   className,
@@ -50,10 +60,10 @@ export const Markdown: React.FC<MarkdownProps> = ({
     <ReactMarkdown
       className={classNames(styles.markdown, className)}
       components={{
-        code(props) {
+        code({ color: _color, ref: _ref, node: _node, ...props }) {
           return <CodeBlock {...props} style={style} />;
         },
-        p(props) {
+        p({ color: _color, ref: _ref, node: _node, ...props }) {
           return <CodeBlock {...props} style={style} />;
         },
       }}

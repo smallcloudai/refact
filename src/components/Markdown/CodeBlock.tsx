@@ -18,10 +18,10 @@ export type MarkdownControls = {
   canPaste: boolean;
 };
 
-type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] &
+export type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] &
   Partial<MarkdownControls> & { node?: Element | undefined } & Pick<
     SyntaxHighlighterProps,
-    "showLineNumbers" | "startingLineNumber"
+    "showLineNumbers" | "startingLineNumber" | "useInlineStyles"
   >;
 
 const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({

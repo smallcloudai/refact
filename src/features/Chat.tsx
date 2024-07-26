@@ -35,6 +35,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
     setSelectedSystemPrompt,
     setUseTools,
     enableSend,
+    getDiffByIndex,
+    addOrRemoveDiff,
     openSettings,
   } = useEventBusForChat();
 
@@ -107,7 +109,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         </Flex>
       )}
       <ChatContent
-        key={state.chat.id}
+        key={`chat-content-${state.chat.id}`}
+        addOrRemoveDiff={addOrRemoveDiff}
         messages={state.chat.messages}
         onRetry={retryQuestion}
         isWaiting={state.waiting_for_response}
@@ -116,6 +119,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         onPasteClick={handlePasteDiffClick}
         canPaste={state.active_file.can_paste}
         ref={chatContentRef}
+        getDiffByIndex={getDiffByIndex}
         openSettings={openSettings}
         chatKey={state.chat.id}
       />
@@ -130,6 +134,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         </Container>
       )}
       <ChatForm
+        key={`chat-form-${state.chat.id}`}
         chatId={state.chat.id}
         isStreaming={state.streaming}
         showControls={state.chat.messages.length === 0 && !state.streaming}
