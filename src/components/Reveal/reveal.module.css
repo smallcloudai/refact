@@ -2,6 +2,8 @@
   text-align: left;
   justify-content: start;
   width: 100%;
+  --button-ghost-padding-x: 0;
+  --button-ghost-padding-x: 0;
 }
 
 .reveal_hidden {
