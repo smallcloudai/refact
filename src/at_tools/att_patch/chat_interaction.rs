@@ -11,6 +11,7 @@ use crate::at_tools::att_patch::args_parser::PatchArguments;
 use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal, get_signatures_by_symbol_names};
 use crate::at_tools::att_patch::tool::DefaultToolPatch;
 use crate::call_validation::{ChatMessage, ChatPost, ChatUsage, SamplingParameters};
+use crate::caps::ModelRecord;
 use crate::scratchpads::chat_utils_rag::count_tokens;
 
 
@@ -18,6 +19,7 @@ async fn make_chat_history(
     args: &PatchArguments,
     ccx: &mut AtCommandsContext,
     tokenizer: Arc<RwLock<Tokenizer>>,
+    max_tokens: usize
 ) -> Result<Vec<ChatMessage>, String> {
     let system_prompt = DefaultToolPatch::prompt();
     // TODO: use budget for extra context construction
@@ -28,7 +30,7 @@ async fn make_chat_history(
 
     };
     let mut tokens: usize = 0;
-    let max_tokens: usize = crate::at_tools::att_patch::tool::MAX_TOKENS - crate::at_tools::att_patch::tool::MAX_NEW_TOKENS;
+    let max_tokens: usize = max_tokens - crate::at_tools::att_patch::tool::MAX_NEW_TOKENS;
     let tokenizer_ref = tokenizer.read().unwrap().clone();
     let task_message = format!("The task is:\n{}", args.todo).to_string();
     let mut chat_messages = vec![
@@ -81,9 +83,27 @@ async fn make_chat_history(
 
 pub async fn execute_chat_model(
     args: &PatchArguments,
-    ccx: &mut AtCommandsContext,
+    ccx: &mut AtCommandsContext
 ) -> Result<(String, Option<ChatUsage>), String> {
     let gx = ccx.global_context.clone();
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(
+        gx.clone(), 0,
+    )
+        .await
+        .map_err(|e| {
+            warn!("no caps: {:?}", e);
+            "network error communicating with the model (1)".to_string()
+        })?;
+    let max_tokens = match caps.read().unwrap().code_chat_models.get(
+        crate::at_tools::att_patch::tool::DEFAULT_MODEL_NAME
+    ) {
+        Some(res) => res.n_ctx,
+        None => return Err(format!(
+            "the default patch model {} is not available in the caps",
+            &crate::at_tools::att_patch::tool::DEFAULT_MODEL_NAME
+        ))
+    };
+
     let mut chat_post = ChatPost {
         messages: vec![],
         parameters: SamplingParameters {
@@ -96,20 +116,12 @@ pub async fn execute_chat_model(
         scratchpad: "".to_string(),
         stream: Some(false),
         temperature: Some(crate::at_tools::att_patch::tool::TEMPERATURE),
-        max_tokens: crate::at_tools::att_patch::tool::MAX_TOKENS,
+        max_tokens,
         tools: None,
         tool_choice: None,
         only_deterministic_messages: false,
         chat_id: "".to_string(),
     };
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(
-        gx.clone(), 0,
-    )
-        .await
-        .map_err(|e| {
-            warn!("no caps: {:?}", e);
-            "network error communicating with the model (1)".to_string()
-        })?;
 
     let (model_name, scratchpad_name, scratchpad_patch, n_ctx, _) = crate::http::routers::v1::chat::lookup_chat_scratchpad(
         caps.clone(),
@@ -125,7 +137,7 @@ pub async fn execute_chat_model(
     ).await?;
 
     chat_post.messages = make_chat_history(
-        args, ccx, tokenizer,
+        args, ccx, tokenizer, max_tokens
     ).await?;
 
     let mut scratchpad = scratchpads::create_chat_scratchpad(

@@ -13,7 +13,6 @@ use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum};
 
 pub const DEFAULT_MODEL_NAME: &str = "claude-3-5-sonnet";
-pub const MAX_TOKENS: usize = 64000;
 pub const MAX_NEW_TOKENS: usize = 8192;
 pub const TEMPERATURE: f32 = 0.2;
 pub type DefaultToolPatch = UnifiedDiffFormat;
