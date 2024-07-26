@@ -53,7 +53,7 @@ type DiffProps = {
   diff: DiffChunk;
 };
 
-const Diff: React.FC<DiffProps> = ({ diff }) => {
+export const Diff: React.FC<DiffProps> = ({ diff }) => {
   const removeString = diff.lines_remove && toDiff(diff.lines_remove, "remove");
   const addString = diff.lines_add && toDiff(diff.lines_add, "add");
   return (
@@ -123,7 +123,7 @@ const DiffsWithoutForm: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
   );
 };
 
-const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
+export const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
   diffs,
 }): React.ReactNode[] => {
   const entries = Object.entries(diffs);
@@ -216,14 +216,14 @@ export const DiffContent: React.FC<DiffContentProps> = ({
   );
 };
 
-type DiffWithStatus = DiffChunk & {
+export type DiffWithStatus = DiffChunk & {
   state: 0 | 1 | 2;
   can_apply: boolean;
   applied: boolean;
   index: number;
 };
 
-const DiffForm: React.FC<{
+export const DiffForm: React.FC<{
   diffs: Record<string, DiffWithStatus[]>;
   loading: boolean;
   onSubmit: (toApply: boolean[]) => void;

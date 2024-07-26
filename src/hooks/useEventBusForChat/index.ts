@@ -749,7 +749,19 @@ export function reducer(postMessage: typeof window.postMessage) {
     }
 
     if (isThisChat && isRecieveDiffOpperationResult(action)) {
-      if (!(action.payload.diff_id in state.chat.applied_diffs)) return state;
+      // TODO: how to handle sending all the diffs?
+      if (!action.payload.diff_id) {
+        return {
+          ...state,
+          chat: {
+            ...state.chat,
+            applied_diffs: {},
+          },
+        };
+      }
+      if (!(action.payload.diff_id in state.chat.applied_diffs)) {
+        return state;
+      }
       const diff: DiffChunkStatus = {
         ...state.chat.applied_diffs[action.payload.diff_id],
         state: action.payload.state,
@@ -1377,14 +1389,14 @@ export const useEventBusForChat = () => {
   );
 
   const addOrRemoveDiff = useCallback(
-    (diff_id: string, chunks: DiffChunk[], toApply: boolean[]) => {
+    (args: { diff_id: string; chunks: DiffChunk[]; toApply: boolean[] }) => {
       const action: RequestDiffOpperation = {
         type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_OPPERATION,
         payload: {
           id: state.chat.id,
-          diff_id,
-          chunks,
-          toApply,
+          diff_id: args.diff_id,
+          chunks: args.chunks,
+          toApply: args.toApply,
         },
       };
       postMessage(action);

@@ -21,7 +21,7 @@ import { DiffContent } from "./DiffContent";
 import { DiffChunkStatus } from "../../hooks";
 import { PlainText } from "./PlainText";
 import { useConfig } from "../../contexts/config-context";
-// import { AccumulatedChanges } from "./AccumulatedChanges";
+import { AccumulatedChanges } from "./AccumulatedChanges";
 
 const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const config = useConfig();
@@ -81,11 +81,11 @@ export type ChatContentProps = {
   canPaste: boolean;
   isStreaming: boolean;
   getDiffByIndex: (index: string) => DiffChunkStatus | null;
-  addOrRemoveDiff: (
-    diff_id: string,
-    chunks: DiffChunk[],
-    toApply: boolean[],
-  ) => void;
+  addOrRemoveDiff: (args: {
+    diff_id: string;
+    chunks: DiffChunk[];
+    toApply: boolean[];
+  }) => void;
   openSettings: () => void;
   chatKey: string;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
@@ -144,7 +144,9 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
               const maybeDiffChunk = getDiffByIndex(key);
               return (
                 <DiffContent
-                  onSubmit={(toApply) => addOrRemoveDiff(key, diffs, toApply)}
+                  onSubmit={(toApply) =>
+                    addOrRemoveDiff({ diff_id: key, chunks: diffs, toApply })
+                  }
                   appliedChunks={maybeDiffChunk}
                   key={key}
                   diffs={diffs}
@@ -197,6 +199,13 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
               // return <Markdown key={index}>{text}</Markdown>;
             }
           })}
+          {!isWaiting && messages.length > 0 && (
+            <AccumulatedChanges
+              messages={messages}
+              getDiffByIndex={getDiffByIndex}
+              onSumbit={addOrRemoveDiff}
+            />
+          )}
           {isWaiting && (
             <Container py="4">
               <Spinner />

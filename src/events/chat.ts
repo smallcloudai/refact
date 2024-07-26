@@ -727,7 +727,7 @@ export interface RecieveDiffOpperationResult extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RECIEVE_DIFF_OPPERATION_RESULT;
   payload: {
     id: string;
-    diff_id: string;
+    diff_id?: string;
     state: (0 | 1 | 2)[];
     fuzzy_results: {
       chunk_id: number;
