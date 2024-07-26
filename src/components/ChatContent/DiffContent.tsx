@@ -102,7 +102,12 @@ const DiffsWithoutForm: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
               {fullFilePath}
             </Text>
             <ScrollArea scrollbars="horizontal" asChild>
-              <Box style={{ background: "rgb(51, 51, 51)" }}>
+              <Box
+                style={{
+                  background: "rgb(51, 51, 51)",
+                  // backgroundOverflow: "visible",
+                }}
+              >
                 {diffsForfile.map((diff, index) => {
                   return (
                     <Diff diff={diff} key={diff.file_name + "-" + index} />
@@ -285,9 +290,13 @@ const DiffForm: React.FC<{
                 </Flex>
               </Text>
             </Flex>
-            {diffsForFile.map((diff, i) => (
-              <Diff key={`${fullFileName}-${index}-${i}`} diff={diff} />
-            ))}
+            <ScrollArea scrollbars="horizontal" asChild>
+              <Box style={{ background: "rgb(51, 51, 51)" }}>
+                {diffsForFile.map((diff, i) => (
+                  <Diff key={`${fullFileName}-${index}-${i}`} diff={diff} />
+                ))}
+              </Box>
+            </ScrollArea>
           </Box>
         );
       })}
