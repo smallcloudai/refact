@@ -60,10 +60,10 @@ export const Markdown: React.FC<MarkdownProps> = ({
     <ReactMarkdown
       className={classNames(styles.markdown, className)}
       components={{
-        code(props) {
+        code({ color: _color, ref: _ref, node: _node, ...props }) {
           return <CodeBlock {...props} style={style} />;
         },
-        p(props) {
+        p({ color: _color, ref: _ref, node: _node, ...props }) {
           return <CodeBlock {...props} style={style} />;
         },
       }}
