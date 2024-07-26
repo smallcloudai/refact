@@ -109,7 +109,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         </Flex>
       )}
       <ChatContent
-        key={state.chat.id}
+        key={`chat-content-${state.chat.id}`}
         addOrRemoveDiff={addOrRemoveDiff}
         messages={state.chat.messages}
         onRetry={retryQuestion}
@@ -134,6 +134,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         </Container>
       )}
       <ChatForm
+        key={`chat-form-${state.chat.id}`}
         chatId={state.chat.id}
         isStreaming={state.streaming}
         showControls={state.chat.messages.length === 0 && !state.streaming}
