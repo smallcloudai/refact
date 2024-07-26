@@ -12,6 +12,7 @@ import { filename } from "../../utils";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
+import { TruncateLeft } from "../Text";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -150,8 +151,8 @@ const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
         style={{ display: "inline-block" }}
         key={fullPath + "-" + diffForFile.length}
       >
-        {name} <Text color="green">{adds}</Text>
-        <Text color="red">{removes}</Text>
+        {name} <Text color="red">{removes}</Text>
+        <Text color="green">{adds}</Text>
       </Text>
     );
     const nextMemo = memo.length > 0 ? [...memo, ", ", element] : [element];
@@ -273,13 +274,12 @@ const DiffForm: React.FC<{
         const applied = diffsForFile.every((diff) => diff.applied);
         const indeices = diffsForFile.map((diff) => diff.index);
         return (
-          <Box key={key}>
-            <Flex justify="between" align="center" p="1" gap="8">
-              <Text size="1" wrap="wrap">
-                {fullFileName}
-              </Text>
+          <Box key={key} my="2">
+            <Flex justify="between" align="center" p="1">
+              <TruncateLeft size="1">{fullFileName}</TruncateLeft>
+              {/* <Text size="1" wrap="wrap"></Text> */}
               <Text size="1" as="label">
-                <Flex align="center" gap="2">
+                <Flex align="center" gap="2" pl="2">
                   {errored ? "error" : applied ? "unapply" : "apply"}{" "}
                   <Switch
                     // disabled={loading || errored}
