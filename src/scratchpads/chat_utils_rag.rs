@@ -538,6 +538,9 @@ pub async fn postprocess_plain_text_messages(
         for line in msg.content.lines() {
             let line_tokens = count_tokens(&tokenizer_guard, &line);
             if tok_used + line_tokens > tok_per_m {
+                if out.is_empty() {
+                    out.push("No content: tokens limit reached");
+                }
                 break;
             }
             tok_used += line_tokens;

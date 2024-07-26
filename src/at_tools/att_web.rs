@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use serde_json::Value;
 use crate::at_commands::at_commands::{AtCommandsContext};
-use crate::at_commands::at_web::{execute_at_web, text_on_clip};
+use crate::at_commands::at_web::execute_at_web;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
@@ -22,15 +22,11 @@ impl Tool for AttWeb {
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: text_on_clip(&url),
+            content: text,
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
         }));
-        results.push(ContextEnum::ChatMessage(ChatMessage::new(
-            "plain_text".to_string(),
-            text,
-        )));
         
         Ok(results)
     }

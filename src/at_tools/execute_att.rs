@@ -42,10 +42,9 @@ pub async fn run_tools(
     let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, false, original_messages).await;
     let at_tools = ccx.at_tools.clone();
 
-    let mut plain_text_pp = vec![];
-    let mut for_postprocessing: Vec<ContextFile> = vec![];
-    let mut generated_tool: Vec<ChatMessage> = vec![];  // tool must go first
-    let mut generated_other: Vec<ChatMessage> = vec![];
+    let mut for_postprocessing = vec![];
+    let mut generated_tool = vec![];  // tool must go first
+    let mut generated_other = vec![];
 
     for t_call in ass_msg.tool_calls.as_ref().unwrap_or(&vec![]).iter() {
         if let Some(cmd) = at_tools.get(&t_call.function.name) {
@@ -91,8 +90,6 @@ pub async fn run_tools(
                     if (raw_msg.role == "tool" || raw_msg.role == "diff") && raw_msg.tool_call_id == t_call.id {
                         generated_tool.push(raw_msg.clone());
                         have_answer = true;
-                    } else if raw_msg.role == "plain_text" {
-                        plain_text_pp.push(raw_msg.clone());
                     } else {
                         generated_other.push(raw_msg.clone());
                         assert!(raw_msg.tool_call_id.is_empty());
@@ -118,22 +115,40 @@ pub async fn run_tools(
     }
     
     if context_limit > MIN_RAG_CONTEXT_LIMIT {
-        context_limit /= 2;
+        let (tokens_limit_chat_msg, mut tokens_limit_files) = {
+            if for_postprocessing.is_empty() {
+                (context_limit, 0)
+            } else {
+                (context_limit / 2, context_limit / 2)
+            }
+        };
+        info!("run_tools: context_limit={} tokens_limit_chat_msg={} tokens_limit_files={}", context_limit, tokens_limit_chat_msg, tokens_limit_files);
 
-        let (pp_plain_text, non_used_context_limit) = postprocess_plain_text_messages(
-            plain_text_pp.iter().collect(),
+        let (pp_chat_msg, non_used_context_limit) = postprocess_plain_text_messages(
+            generated_tool.iter().chain(generated_other.iter()).collect(),
             tokenizer.clone(),
-            context_limit,
+            tokens_limit_chat_msg,
         ).await;
-        generated_other.extend(pp_plain_text);
+        
+        generated_tool.clear();
+        generated_other.clear();
+        
+        for m in pp_chat_msg {
+            if !m.tool_call_id.is_empty() {
+                generated_tool.push(m.clone());
+            } else {
+                generated_other.push(m.clone());
+            }
+        }
 
-        context_limit += non_used_context_limit;
+        tokens_limit_files += non_used_context_limit;
+        info!("run_tools: tokens_limit_files={} after postprocessing", tokens_limit_files);
 
         let context_file: Vec<ContextFile> = postprocess_at_results2(
             global_context.clone(),
             &for_postprocessing,
             tokenizer.clone(),
-            context_limit,
+            tokens_limit_files,
             false,
             top_n,
         ).await;

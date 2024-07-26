@@ -82,9 +82,17 @@ pub async fn run_at_commands(
         // TODO: reduce context_limit by tokens(messages_exec_output)
 
         if context_limit > MIN_RAG_CONTEXT_LIMIT {
+            let context_file_pp = filter_only_context_file_from_context_tool(&messages_exec_output);
+            let (tokens_limit_plain, mut tokens_limit_files) = {
+                if context_file_pp.is_empty() {
+                    (context_limit, 0)
+                } else {
+                    (context_limit / 2, context_limit / 2)
+                }
+            };
+            info!("context_limit {} tokens_limit_plain {} tokens_limit_files: {}", context_limit, tokens_limit_plain, tokens_limit_files);
+
             let t0 = std::time::Instant::now();
-            let tokens_limit_plain = context_limit / 2;
-            let mut tokens_limit_files = context_limit / 2;
 
             let (pp_plain_text, non_used_plain) = postprocess_plain_text_messages(
                 plain_text_messages,
@@ -97,10 +105,11 @@ pub async fn run_at_commands(
                 stream_back_to_user.push_in_json(json!(m));
             }
             tokens_limit_files += non_used_plain;
+            info!("tokens_limit_files {}", tokens_limit_files);
 
             let post_processed = postprocess_at_results2(
                 global_context.clone(),
-                &filter_only_context_file_from_context_tool(&messages_exec_output),
+                &context_file_pp,
                 tokenizer.clone(),
                 tokens_limit_files,
                 false,
