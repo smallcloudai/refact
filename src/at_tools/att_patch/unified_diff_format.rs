@@ -93,7 +93,9 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
             continue;
         }
 
-        if line.starts_with("+++ ") && hunk[hunk.len() - 2].starts_with("--- ") {
+        if line.starts_with("+++ ") 
+            && hunk.len() >= 3
+            && hunk[hunk.len() - 2].starts_with("--- ") {
             if hunk[hunk.len() - 3] == "\n" {
                 hunk.truncate(hunk.len() - 3);
             } else {
@@ -618,6 +620,49 @@ some invalid text
             "Failed to parse diff message"
         );
         assert!(result.is_empty());
+    }
+
+
+    #[tokio::test]
+    async fn test_empty_6() {
+        let input =  r#"Initial text
+```diff
++++ 
+```
+Another text"#;
+        let result = UnifiedDiffFormat::parse_message(input).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().starts_with("cannot get a correct file name from the diff chunk"));
+    }
+
+
+
+    #[tokio::test]
+    async fn test_empty_7() {
+        let input =  r#"Initial text
+```diff
+--- 
++++ 
+@@ ... @@
+```
+Another text"#;
+        let result = UnifiedDiffFormat::parse_message(input).await;
+        assert!(result.is_ok());
+    }
+
+
+
+    #[tokio::test]
+    async fn test_empty_8() {
+        let input =  r#"Initial text
+```diff
+---  
++++ asd
+@@ ... @@
+```
+Another text"#;
+        let result = UnifiedDiffFormat::parse_message(input).await;
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
