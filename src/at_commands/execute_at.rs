@@ -57,7 +57,7 @@ pub async fn run_at_commands(
 
         let mut context_limit = reserve_for_context / messages_with_at.max(1);
         context_limit = context_limit.saturating_sub(content_n_tokens);
-        
+
         info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", msg_idx, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens,context_limit);
 
         let mut messages_exec_output = vec![];
@@ -80,31 +80,34 @@ pub async fn run_at_commands(
         }
 
         // TODO: reduce context_limit by tokens(messages_exec_output)
+
         if context_limit > MIN_RAG_CONTEXT_LIMIT {
             let t0 = std::time::Instant::now();
-            context_limit /= 2;
-            
-            let (pp_plain_text, non_used_context_limit) = postprocess_plain_text_messages(
+            let tokens_limit_plain = context_limit / 2;
+            let mut tokens_limit_files = context_limit / 2;
+
+            let (pp_plain_text, non_used_plain) = postprocess_plain_text_messages(
                 plain_text_messages,
                 tokenizer.clone(),
-                context_limit,
+                tokens_limit_plain,
             ).await;
             for m in pp_plain_text {
+                // OUTPUT: plain text after all custom messages
                 rebuilt_messages.push(m.clone());
                 stream_back_to_user.push_in_json(json!(m));
             }
-            context_limit += non_used_context_limit;
+            tokens_limit_files += non_used_plain;
 
             let post_processed = postprocess_at_results2(
                 global_context.clone(),
                 &filter_only_context_file_from_context_tool(&messages_exec_output),
                 tokenizer.clone(),
-                context_limit,
+                tokens_limit_files,
                 false,
                 top_n,
             ).await;
             if !post_processed.is_empty() {
-                // post-processed files after all custom messages
+                // OUTPUT: files after all custom messages and plain text
                 let json_vec = post_processed.iter().map(|p| { json!(p)}).collect::<Vec<Value>>();
                 if !json_vec.is_empty() {
                     let message = ChatMessage::new(
@@ -115,7 +118,7 @@ pub async fn run_at_commands(
                     stream_back_to_user.push_in_json(json!(message));
                 }
             }
-            info!("postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
+            info!("postprocess_plain_text_messages+postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
         }
 
         if content.trim().len() > 0 {

@@ -525,7 +525,6 @@ pub async fn postprocess_plain_text_messages(
         return (vec![], tokens_limit);
     }
     let mut messages_sorted = messages.clone();
-    // ascending sorting
     messages_sorted.sort_by(|a, b| a.content.len().cmp(&b.content.len()));
 
     let mut tok_used_global = 0;
@@ -551,6 +550,9 @@ pub async fn postprocess_plain_text_messages(
         tok_used_global += tok_used;
         let mut m_cloned = msg.clone();
         m_cloned.content = out.join("\n");
+
+        // TODO: find a good way to tell the model how much lines were omitted
+
         results.push(m_cloned);
     }
 
