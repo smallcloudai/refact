@@ -113,7 +113,7 @@ pub async fn run_tools(
             generated_tool.push(tool_failed_message.clone());
         }
     }
-    
+
     if context_limit > MIN_RAG_CONTEXT_LIMIT {
         let (tokens_limit_chat_msg, mut tokens_limit_files) = {
             if for_postprocessing.is_empty() {
@@ -129,10 +129,10 @@ pub async fn run_tools(
             tokenizer.clone(),
             tokens_limit_chat_msg,
         ).await;
-        
+
+        // re-add potentially truncated messages, role="tool" will still go first
         generated_tool.clear();
         generated_other.clear();
-        
         for m in pp_chat_msg {
             if !m.tool_call_id.is_empty() {
                 generated_tool.push(m.clone());
