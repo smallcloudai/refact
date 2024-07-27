@@ -48,6 +48,7 @@ impl PartialEq for PathsHolderNodeArc {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PathsHolderNode {
     path: PathBuf,
+    is_dir: bool,
     child_paths: Vec<PathsHolderNodeArc>,
 }
 
@@ -62,16 +63,21 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
     let mut nodes_map: HashMap<PathBuf, PathsHolderNodeArc> = HashMap::new();
 
     for path in paths_from_anywhere {
+        let components: Vec<_> = path.components().collect();
+        let components_count = components.len();
+
         let mut current_path = PathBuf::new();
         let mut parent_node: Option<PathsHolderNodeArc> = None;
 
-        for component in path.components() {
+        for (index, component) in components.into_iter().enumerate() {
             current_path.push(component);
 
+            let is_last = index == components_count - 1;
             let node = nodes_map.entry(current_path.clone()).or_insert_with(|| {
                 PathsHolderNodeArc(Arc::new(RwLock::new(
                     PathsHolderNode {
                         path: current_path.clone(),
+                        is_dir: !is_last,
                         child_paths: Vec::new(),
                     }
                 )))
@@ -105,6 +111,7 @@ pub fn print_files_tree_with_budget_internal(
         symbols: String,
         child_paths: Vec<Arc<RefCell<PathInfoNode>>>,
         is_complete: bool,
+        is_directory: bool,
     }
 
     fn recursive_print_path_holders(
@@ -113,9 +120,14 @@ pub fn print_files_tree_with_budget_internal(
         paths_holder: Arc<RefCell<PathInfoNode>>,
     ) {
         // let more = if is_last { "└─ " } else { "├─ " };
-        let more = "  ";
-        tree_str.push_str(&format!("{}{}{}{}\n", prefix, more, paths_holder.borrow().filename, paths_holder.borrow().symbols));
         // let new_prefix = if is_last { prefix.to_owned() + "  " } else { prefix.to_owned() + "│ " };
+        let more = "  ";
+        let filename = if paths_holder.borrow().is_directory {
+            format!("{}/", paths_holder.borrow().filename)  // Add "/" for directories
+        } else {
+            paths_holder.borrow().filename.clone()
+        };
+        tree_str.push_str(&format!("{}{}{}{}\n", prefix, more, filename, paths_holder.borrow().symbols));
         let new_prefix = prefix.to_owned() + "  ";
         for (idx, sub_path) in paths_holder.borrow().child_paths.iter().enumerate() {
             let is_last = idx == paths_holder.borrow().child_paths.len() - 1 && paths_holder.borrow().is_complete;
@@ -124,7 +136,7 @@ pub fn print_files_tree_with_budget_internal(
         if !paths_holder.borrow().is_complete {
             recursive_print_path_holders(
                 tree_str, &new_prefix, Arc::new(RefCell::new(
-                    PathInfoNode { filename: "...".to_string(), symbols: "".to_string(), child_paths: vec![], is_complete: true }
+                    PathInfoNode { filename: "...".to_string(), symbols: "".to_string(), child_paths: vec![], is_complete: true, is_directory: false }
                 )));
         }
     }
@@ -133,7 +145,7 @@ pub fn print_files_tree_with_budget_internal(
     let mut collected_paths: Vec<Arc<RefCell<PathInfoNode>>> = Vec::new();
     for node in tree.iter() {
         let paths_holder = Arc::new(RefCell::new(
-            PathInfoNode { filename: node.0.read().unwrap().file_name(), symbols: "".to_string(), child_paths: vec![], is_complete: true }
+            PathInfoNode { filename: node.0.read().unwrap().file_name(), symbols: "".to_string(), child_paths: vec![], is_complete: true, is_directory: node.0.read().unwrap().is_dir }
         ));
         queue.push_back((node.clone(), paths_holder.clone()));
         collected_paths.push(paths_holder);
@@ -163,7 +175,7 @@ pub fn print_files_tree_with_budget_internal(
                                 .join(", ");
                             if !symbols_list.is_empty() { format!(" ({symbols_list})") } else { "".to_string() }
                         }
-            
+
                         Err(_) => "".to_string()
                     }
                 }
@@ -177,7 +189,7 @@ pub fn print_files_tree_with_budget_internal(
                 break;
             }
             let sub_path_holder = Arc::new(RefCell::new(
-                PathInfoNode { filename, symbols: ast_symbols, child_paths: vec![], is_complete: true }
+                PathInfoNode { filename, symbols: ast_symbols, child_paths: vec![], is_complete: true, is_directory: entry.0.read().unwrap().is_dir }
             ));
             paths_holder.borrow_mut().child_paths.push(sub_path_holder.clone());
             queue.push_back((entry.clone(), sub_path_holder));
@@ -221,7 +233,7 @@ impl AtCommand for AtTree {
     async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         let paths_from_anywhere = paths_from_anywhere(ccx.global_context.clone()).await;
         *args = args.iter().take_while(|arg| arg.text != "\n" || arg.text == "--ast").take(2).cloned().collect();
-        
+
         let tree = match args.iter().find(|x| x.text != "--ast") {
             None => construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere),
             Some(arg) => {
@@ -238,7 +250,7 @@ impl AtCommand for AtTree {
         };
 
         let use_ast = args.iter().any(|x| x.text == "--ast");
-        
+
         let tree = print_files_tree_with_budget(ccx.global_context.clone(), tree, use_ast).await.map_err(|err| {
             warn!("{}", err);
             err
