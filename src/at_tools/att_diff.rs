@@ -26,7 +26,7 @@ impl Tool for AttDiff {
             },
             1 => {
                 // 1 argument: git diff for a specific file
-                let file_path_arg = args.get("file_path").and_then(|v| v.as_str()).ok_or("Missing argument `file_path` for att_diff")?.to_string();
+                let file_path_arg = args.get("file_path").and_then(|v| v.as_str()).ok_or("Missing argument `file_path` in the diff() call.")?.to_string();
                 let candidates = at_file_repair_candidates(&file_path_arg, ccx, false).await;
                 let file_path = real_file_path_candidate(ccx, &file_path_arg, &candidates, &get_project_paths(ccx).await, false).await?;
                 let parent_dir = PathBuf::from(&file_path).parent().ok_or(format!("Couldn't get parent directory of file: {:?}", file_path))?.to_string_lossy().to_string();
@@ -36,7 +36,7 @@ impl Tool for AttDiff {
                 return Err("Invalid number of arguments".to_string());
             }
         }?;
-        
+
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),

@@ -68,8 +68,8 @@ impl Tool for AttAstDefinition {
                 .unique()
                 .collect::<Vec<String>>();
             let mut tool_message = format!(
-                "Definition of `{symbol}` haven't found by exact name, but found the close result `{found_path}`. \
-                You can call again with one of these other names:\n"
+                "When trying to find definition of `{symbol}`, a problem occurred: there's no symbol spelled exactly like that, but here's the closest fuzzy match: `{found_path}`. \
+                You can call again with that name or with one of these:\n\n"
             ).to_string();
             for x in other_names.into_iter() {
                 tool_message.push_str(&format!("`{}`\n", x));

@@ -24,7 +24,7 @@ async fn execute_att_search(ccx: &mut AtCommandsContext, query: &String, scope: 
             Err(_) => false,
         }
     }
-    
+
     return match scope.as_str() {
         "workspace" => {
             Ok(execute_at_search(ccx, &query, None).await?)
@@ -49,12 +49,12 @@ impl Tool for AttSearch {
         let query = match args.get("query") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `query` is not a string: {:?}", v)),
-            None => return Err("Missing argument `query` for att_search".to_string())
+            None => return Err("Missing argument `query` in the search() call.".to_string())
         };
         let scope = match args.get("scope") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `scope` is not a string: {:?}", v)),
-            None => return Err("Missing argument `scope` for att_search".to_string())
+            None => return Err("Missing argument `scope` in the search() call.".to_string())
         };
         let vector_of_context_file = execute_att_search(ccx, &query, &scope).await?;
         println!("att-search: vector_of_context_file={:?}", vector_of_context_file);

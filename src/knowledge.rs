@@ -369,7 +369,7 @@ async fn recall_dirty_memories_and_mark_them_not_dirty(
 pub async fn vectorize_dirty_memories(
     memdb: Arc<AMutex<MemoriesDatabase>>,
     vecdb_cache: Arc<AMutex<VecDBCache>>,
-    status: Arc<AMutex<VecDbStatus>>,
+    _status: Arc<AMutex<VecDbStatus>>,
     client: Arc<AMutex<Client>>,
     api_key: &String,
     #[allow(non_snake_case)]
