@@ -18,7 +18,7 @@ use crate::files_in_workspace::Document;
 use crate::knowledge::{lance_search, MemoriesDatabase};
 use crate::vecdb::vdb_lance::VecDBHandler;
 use crate::vecdb::vdb_thread::{FileVectorizerService, vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files};
-use crate::vecdb::vdb_structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants, MemoRecord, MemoSearchResult, OngoingFlow};
+use crate::vecdb::vdb_structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants, MemoRecord, MemoSearchResult, OngoingWork};
 use crate::vecdb::vdb_cache::VecDBCache;
 
 
@@ -46,7 +46,7 @@ pub struct VecDb {
     pub vectorizer_service: Arc<AMutex<FileVectorizerService>>,
     cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
     constants: VecdbConstants,
-    pub mem_ongoing: Arc<StdMutex<HashMap<String, OngoingFlow>>>,
+    pub mem_ongoing: Arc<StdMutex<HashMap<String, OngoingWork>>>,
 }
 
 async fn vecdb_test_request(
@@ -229,7 +229,7 @@ impl VecDb {
             vectorizer_service,
             cmdline: cmdline.clone(),
             constants: constants.clone(),
-            mem_ongoing: Arc::new(StdMutex::new(HashMap::<String, OngoingFlow>::new())),
+            mem_ongoing: Arc::new(StdMutex::new(HashMap::<String, OngoingWork>::new())),
         })
     }
 
@@ -437,7 +437,7 @@ pub async fn ongoing_update_or_create(
     if let Some(ongoing) = ongoing_map.get_mut(&goal) {
         ongoing.ongoing_json = ongoing_json;
     } else {
-        let new_ongoing = OngoingFlow {
+        let new_ongoing = OngoingWork {
             goal: goal.clone(),
             ongoing_json,
         };
@@ -449,7 +449,7 @@ pub async fn ongoing_update_or_create(
 pub async fn ongoing_find(
     vec_db: Arc<AMutex<Option<VecDb>>>,
     goal: String,
-) -> Result<Option<OngoingFlow>, String> {
+) -> Result<Option<OngoingWork>, String> {
     let ongoing_map_arc = {
         let vec_db_guard = vec_db.lock().await;
         let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;

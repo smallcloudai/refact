@@ -154,6 +154,15 @@ tools:
         description: "URL of the web page to fetch."
     parameters_required:
       - "url"
+
+  - name: "knowledge"
+    description: "What kind of knowledge you will need to accomplish this task? Call each time you have a new task or topic."
+    parameters:
+      - name: "im_going_to_do"
+        type: "string"
+        description: "Put your intent there: 'debug file1.cpp', 'install project1', 'gather info about MyClass'"
+    parameters_required:
+      - "im_going_to_do"
 "####;
 
 #[allow(dead_code)]
@@ -166,15 +175,6 @@ const NOT_READY_TOOLS: &str = r####"
         description: "String that contains list of file names separated by commas. Use absolute file paths."
     parameters_required:
       - "paths"
-
-  - name: "knowledge"
-    description: "What kind of knowledge you will need to accomplish this task? Call each time you have a new task or topic."
-    parameters:
-      - name: "im_going_to_do"
-        type: "string"
-        description: "Put your intent there: 'debug file1.cpp', 'install project1', 'gather info about MyClass'"
-    parameters_required:
-      - "im_going_to_do"
 
   - name: "diff"
     description: "Perform a diff operation. Can be used to get git diff for a project (no arguments) or git diff for a specific file (file_path)"

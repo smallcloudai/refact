@@ -102,7 +102,7 @@ pub struct MemoSearchResult {
 
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct OngoingFlow {
+pub struct OngoingWork {
     pub goal: String,
     pub ongoing_json: IndexMap<String, serde_json::Value>,
 }

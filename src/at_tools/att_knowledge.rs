@@ -43,7 +43,7 @@ impl Tool for AttGetKnowledge {
             ..Default::default()
         }));
 
-        let ongoing_maybe: Option<crate::vecdb::vdb_structs::OngoingFlow> = ongoing_find(vec_db.clone(), im_going_to_do.clone()).await?;
+        let ongoing_maybe: Option<crate::vecdb::vdb_structs::OngoingWork> = ongoing_find(vec_db.clone(), im_going_to_do.clone()).await?;
         if let Some(ongoing) = ongoing_maybe {
             results.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "user".to_string(),
