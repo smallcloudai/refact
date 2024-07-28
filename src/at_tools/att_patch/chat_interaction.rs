@@ -11,7 +11,6 @@ use crate::at_tools::att_patch::args_parser::PatchArguments;
 use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal, get_signatures_by_symbol_names};
 use crate::at_tools::att_patch::tool::DefaultToolPatch;
 use crate::call_validation::{ChatMessage, ChatPost, ChatUsage, SamplingParameters};
-use crate::caps::ModelRecord;
 use crate::scratchpads::chat_utils_rag::count_tokens;
 
 
@@ -191,7 +190,7 @@ pub async fn execute_chat_model(
             None
         }
     };
-    
+
     let choices_array = match messages["choices"].as_array() {
         Some(array) => array,
         None => return Err("unable to get choices array from JSON".to_string()),

@@ -29,7 +29,7 @@ pub struct AtCommandsContext {
     pub top_n: usize,
     #[allow(dead_code)]
     pub is_preview: bool,
-    pub messages: Vec<ChatMessage>,
+    // pub messages: Vec<ChatMessage>,
 }
 
 impl AtCommandsContext {
@@ -37,7 +37,7 @@ impl AtCommandsContext {
         global_context: Arc<ARwLock<GlobalContext>>,
         top_n: usize,
         is_preview: bool,
-        messages: &Vec<ChatMessage>,
+        _messages: &Vec<ChatMessage>,
     ) -> Self {
         AtCommandsContext {
             global_context: global_context.clone(),
@@ -45,7 +45,7 @@ impl AtCommandsContext {
             at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
             top_n,
             is_preview,
-            messages: messages.clone(),
+            // messages: messages.clone(),
         }
     }
 }

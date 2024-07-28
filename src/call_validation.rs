@@ -328,8 +328,8 @@ pub struct DiffChunk {
     pub lines_add: String,
 }
 
-impl DiffChunk {
-    pub fn is_empty(&self) -> bool {
-        self.lines_add.is_empty() && self.lines_remove.is_empty()
-    }
-}
+// impl DiffChunk {
+//     pub fn is_empty(&self) -> bool {
+//         self.lines_add.is_empty() && self.lines_remove.is_empty()
+//     }
+// }

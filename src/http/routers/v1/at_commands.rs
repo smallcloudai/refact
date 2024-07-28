@@ -12,7 +12,7 @@ use tokenizers::Tokenizer;
 use tracing::info;
 
 use crate::cached_tokenizers;
-use crate::at_commands::at_commands::{AtCommandsContext, filter_only_chat_messages_from_context_tool};
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;

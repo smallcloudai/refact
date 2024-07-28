@@ -23,7 +23,7 @@ pub async fn run_tools(
 ) -> (Vec<ChatMessage>, bool)
 {
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
-    let mut context_limit = reserve_for_context;
+    let context_limit = reserve_for_context;
 
     info!("run_tools: reserve_for_context {} tokens", reserve_for_context);
     if original_messages.len() == 0 {

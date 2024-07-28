@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use serde_json::Value;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::att_patch::args_parser::parse_arguments;
@@ -49,9 +49,9 @@ impl Tool for ToolPatch {
                 return Err(format!("Patch model execution problem: {err}. Try to call `patch` one more time"));
             }
         };
-        
+
         let mut results = vec![];
-        
+
         let parsed_chunks = parse_diff_chunks_from_message(ccx, &answer).await.map_err(|err| {
             self.usage = usage_mb.clone();
             warn!(err);
@@ -65,7 +65,7 @@ impl Tool for ToolPatch {
             tool_call_id: tool_call_id.clone(),
             usage: usage_mb,
         }));
-        
+
         Ok(results)
     }
 

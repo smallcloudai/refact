@@ -7,7 +7,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use tokio::sync::{Mutex as AMutex, MutexGuard};
 use tokio::sync::RwLock as ARwLock;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::treesitter::structs::SymbolType;
@@ -130,7 +130,7 @@ pub fn print_files_tree_with_budget_internal(
         tree_str.push_str(&format!("{}{}{}{}\n", prefix, more, filename, paths_holder.borrow().symbols));
         let new_prefix = prefix.to_owned() + "  ";
         for (idx, sub_path) in paths_holder.borrow().child_paths.iter().enumerate() {
-            let is_last = idx == paths_holder.borrow().child_paths.len() - 1 && paths_holder.borrow().is_complete;
+            // let is_last = idx == paths_holder.borrow().child_paths.len() - 1 && paths_holder.borrow().is_complete;
             recursive_print_path_holders(tree_str, &new_prefix, sub_path.clone());
         }
         if !paths_holder.borrow().is_complete {

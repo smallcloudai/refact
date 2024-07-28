@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
 
+#[cfg(test)]
 use itertools::Itertools;
 use parking_lot::RwLock;
 use similar::DiffableStr;

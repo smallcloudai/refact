@@ -52,7 +52,7 @@ async fn cooldown_queue_thread(
 ) {
     let mut latest_events: HashMap<PathBuf, Arc<AstEvent>> = HashMap::new();
     loop {
-        let mut have_service_events: bool = false;
+        // let mut have_service_events: bool = false;
         {
             let mut queue_locked = ast_delayed_requests_q.lock().await;
             while let Some(e) = queue_locked.pop_front() {
@@ -63,7 +63,7 @@ async fn cooldown_queue_thread(
                         }
                     }
                     AstEventType::AstReset => {
-                        have_service_events = true;
+                        // have_service_events = true;
                         latest_events = latest_events
                             .into_iter()
                             .filter(|(_, e)| e.typ != AstEventType::Add)
@@ -75,7 +75,7 @@ async fn cooldown_queue_thread(
                     }
                     AstEventType::AddDummy => {
                         ast_immediate_q.lock().await.push_back(e);
-                        have_service_events = true;
+                        // have_service_events = true;
                         break;
                     }
                 }

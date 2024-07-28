@@ -7,12 +7,10 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use arrow::ipc::Bool;
 use async_trait::async_trait;
 use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use similar::DiffableStr;
 use tokio::fs::read_to_string;
 use tree_sitter::{Point, Range};
 use uuid::Uuid;
@@ -158,7 +156,7 @@ impl SymbolInformation {
         let raw_content = content.get(self.full_range.start_byte..self.full_range.end_byte);
         if raw_content.is_none() {
             return Err(io::Error::other("Incorrect content range"));
-        } 
+        }
         let raw_content = raw_content.unwrap();
         if raw_content.ends_with("\n") {
             end_row -= 1;

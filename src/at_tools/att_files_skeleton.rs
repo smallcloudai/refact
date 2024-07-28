@@ -78,7 +78,7 @@ impl Tool for AttFilesSkeleton {
 
         // collect context
         let ast_mb = gx.read().await.ast_module.clone();
-        let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
+        let _ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
 
         let mut context_files: Vec<ContextFile> = Vec::new();
         if let Some(file_names) = file_names.clone() {
