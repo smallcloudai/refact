@@ -1,4 +1,25 @@
 import { CAPS_URL } from "./consts";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+export const capsApi = createApi({
+  reducerPath: "caps",
+  baseQuery: fetchBaseQuery({
+    // TODO: set this to the configured lsp url
+    baseUrl: "http://127.0.0.1:8001",
+  }),
+  endpoints: (builder) => ({
+    getCaps: builder.query<CapsResponse, undefined>({
+      query: () => CAPS_URL,
+      transformResponse: (response) => {
+        if (!isCapsResponse(response)) {
+          throw new Error("Invalid response from caps");
+        }
+        return response;
+      },
+    }),
+  }),
+  refetchOnMountOrArgChange: true,
+});
 
 export type CodeChatModel = {
   default_scratchpad: string;
@@ -47,28 +68,28 @@ export function isCapsResponse(json: unknown): json is CapsResponse {
   return true;
 }
 
-export async function getCaps(lspUrl?: string): Promise<CapsResponse> {
-  const capsEndpoint = lspUrl
-    ? `${lspUrl.replace(/\/*$/, "")}${CAPS_URL}`
-    : CAPS_URL;
+// export async function getCaps(lspUrl?: string): Promise<CapsResponse> {
+//   const capsEndpoint = lspUrl
+//     ? `${lspUrl.replace(/\/*$/, "")}${CAPS_URL}`
+//     : CAPS_URL;
 
-  const response = await fetch(capsEndpoint, {
-    method: "GET",
-    credentials: "same-origin",
-    headers: {
-      accept: "application/json",
-    },
-  });
+//   const response = await fetch(capsEndpoint, {
+//     method: "GET",
+//     credentials: "same-origin",
+//     headers: {
+//       accept: "application/json",
+//     },
+//   });
 
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
+//   if (!response.ok) {
+//     throw new Error(response.statusText);
+//   }
 
-  const json: unknown = await response.json();
+//   const json: unknown = await response.json();
 
-  if (!isCapsResponse(json)) {
-    throw new Error("Invalid response from caps");
-  }
+//   if (!isCapsResponse(json)) {
+//     throw new Error("Invalid response from caps");
+//   }
 
-  return json;
-}
+//   return json;
+// }

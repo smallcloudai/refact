@@ -28,10 +28,10 @@ import {
   isChatDoneStreaming,
   isChatErrorStreaming,
   isChatClearError,
-  isChatReceiveCaps,
-  isRequestCapsFromChat,
+  // isChatReceiveCaps,
+  // isRequestCapsFromChat,
   isCreateNewChat,
-  isChatReceiveCapsError,
+  //  isChatReceiveCapsError,
   isSetChatModel,
   isSetDisableChat,
   isActiveFileInfo,
@@ -314,10 +314,10 @@ export function reducer(postMessage: typeof window.postMessage) {
 
       return {
         ...state,
-        caps: {
-          ...state.caps,
-          error: null,
-        },
+        // caps: {
+        //   ...state.caps,
+        //   error: null,
+        // },
         waiting_for_response: false,
         prevent_send: true,
         streaming: false,
@@ -354,53 +354,53 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isRequestCapsFromChat(action)) {
-      return {
-        ...state,
-        caps: {
-          ...state.caps,
-          fetching: true,
-        },
-      };
-    }
+    // if (isRequestCapsFromChat(action)) {
+    //   return {
+    //     ...state,
+    //     caps: {
+    //       ...state.caps,
+    //       fetching: true,
+    //     },
+    //   };
+    // }
 
-    if (isThisChat && isChatReceiveCaps(action)) {
-      // TODO: check caps that the model supports tools
-      const default_cap = action.payload.caps.code_chat_default_model;
-      const available_caps = action.payload.caps.code_chat_models;
-      const cap_names = Object.keys(available_caps);
-      const error = cap_names.length === 0 ? "No available caps" : null;
-      // const cap = state.chat.model || default_cap
-      // const tools = available_caps[cap].supports_tools
+    // if (isThisChat && isChatReceiveCaps(action)) {
+    //   // TODO: check caps that the model supports tools
+    //   const default_cap = action.payload.caps.code_chat_default_model;
+    //   const available_caps = action.payload.caps.code_chat_models;
+    //   const cap_names = Object.keys(available_caps);
+    //   const error = cap_names.length === 0 ? "No available caps" : null;
+    //   // const cap = state.chat.model || default_cap
+    //   // const tools = available_caps[cap].supports_tools
 
-      return {
-        ...state,
-        error,
-        caps: {
-          fetching: false,
-          default_cap: default_cap || cap_names[0] || "",
-          available_caps,
-          error: null,
-        },
-      };
-    }
+    //   return {
+    //     ...state,
+    //     error,
+    //     caps: {
+    //       fetching: false,
+    //       default_cap: default_cap || cap_names[0] || "",
+    //       available_caps,
+    //       error: null,
+    //     },
+    //   };
+    // }
 
-    if (isThisChat && isChatReceiveCapsError(action)) {
-      const error =
-        state.error === null && state.caps.error === null
-          ? action.payload.message
-          : state.error;
+    // if (isThisChat && isChatReceiveCapsError(action)) {
+    //   const error =
+    //     state.error === null && state.caps.error === null
+    //       ? action.payload.message
+    //       : state.error;
 
-      return {
-        ...state,
-        error: error,
-        caps: {
-          ...state.caps,
-          fetching: false,
-          error: action.payload.message,
-        },
-      };
-    }
+    //   return {
+    //     ...state,
+    //     error: error,
+    //     caps: {
+    //       ...state.caps,
+    //       fetching: false,
+    //       error: action.payload.message,
+    //     },
+    //   };
+    // }
 
     if (isThisChat && isChatDoneStreaming(action)) {
       if (state.chat.messages.length > 0) {
@@ -650,7 +650,7 @@ export type ChatState = {
   streaming: boolean;
   previous_message_length: number;
   error: string | null;
-  caps: ChatCapsState;
+  // caps: ChatCapsState;
   commands: CommandCompletionResponse;
   files_in_preview: ChatContextFile[];
   active_file: FileInfo;
@@ -689,12 +689,12 @@ export function createInitialState(): ChatState {
       model: "",
     },
     chat_cache: {},
-    caps: {
-      fetching: false,
-      default_cap: "",
-      available_caps: {},
-      error: null,
-    },
+    // caps: {
+    //   fetching: false,
+    //   default_cap: "",
+    //   available_caps: {},
+    //   error: null,
+    // },
     commands: {
       completions: [],
       replace: [-1, -1],
@@ -722,11 +722,14 @@ export function createInitialState(): ChatState {
   };
 }
 
-const initialState = createInitialState();
+// const initialState = createInitialState();
 
 export const useEventBusForChat = () => {
   const postMessage = usePostMessage();
-  const [state, dispatch] = useReducer(reducer(postMessage), initialState);
+  const [state, dispatch] = useReducer(
+    reducer(postMessage),
+    createInitialState(),
+  );
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -742,9 +745,10 @@ export const useEventBusForChat = () => {
     };
   }, [dispatch]);
 
-  const hasCapsAndNoError = useMemo(() => {
-    return Object.keys(state.caps.available_caps).length > 0 && !state.error;
-  }, [state.caps.available_caps, state.error]);
+  // TODO: this is for other requests :/
+  // const hasCapsAndNoError = useMemo(() => {
+  //   return Object.keys(state.caps.available_caps).length > 0 && !state.error;
+  // }, [state.caps.available_caps, state.error]);
 
   const clearError = useCallback(() => {
     dispatch({
@@ -844,27 +848,27 @@ export const useEventBusForChat = () => {
     [sendMessages, state.chat.messages],
   );
 
-  const requestCaps = useCallback(() => {
-    postMessage({
-      type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS,
-      payload: {
-        id: state.chat.id,
-      },
-    });
-  }, [postMessage, state.chat.id]);
+  // const requestCaps = useCallback(() => {
+  //   postMessage({
+  //     type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS,
+  //     payload: {
+  //       id: state.chat.id,
+  //     },
+  //   });
+  // }, [postMessage, state.chat.id]);
 
-  const maybeRequestCaps = useCallback(() => {
-    const caps = Object.keys(state.caps.available_caps);
-    if (state.caps.fetching || state.error) return;
-    if (caps.length === 0) {
-      requestCaps();
-    }
-  }, [
-    state.caps.available_caps,
-    state.caps.fetching,
-    state.error,
-    requestCaps,
-  ]);
+  // const maybeRequestCaps = useCallback(() => {
+  //   const caps = Object.keys(state.caps.available_caps);
+  //   if (state.caps.fetching || state.error) return;
+  //   if (caps.length === 0) {
+  //     requestCaps();
+  //   }
+  // }, [
+  //   state.caps.available_caps,
+  //   state.caps.fetching,
+  //   state.error,
+  //   requestCaps,
+  // ]);
 
   const requestPrompts = useCallback(() => {
     const message: RequestPrompts = {
@@ -890,24 +894,25 @@ export const useEventBusForChat = () => {
 
   useEffect(() => {
     if (!state.error) {
-      maybeRequestCaps();
+      // maybeRequestCaps();
       maybeRequestPrompts();
     }
-  }, [state.error, maybeRequestCaps, maybeRequestPrompts]);
+  }, [state.error, maybeRequestPrompts]);
 
-  const setChatModel = useCallback(
-    (model: string) => {
-      const action = {
-        type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL,
-        payload: {
-          id: state.chat.id,
-          model: model === state.caps.default_cap ? "" : model,
-        },
-      };
-      dispatch(action);
-    },
-    [state.chat.id, state.caps.default_cap],
-  );
+  // TODO: seting the model
+  // const setChatModel = useCallback(
+  //   (model: string) => {
+  //     const action = {
+  //       type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL,
+  //       payload: {
+  //         id: state.chat.id,
+  //         model: model === state.caps.default_cap ? "" : model,
+  //       },
+  //     };
+  //     dispatch(action);
+  //   },
+  //   [state.chat.id, state.caps.default_cap],
+  // );
 
   const stopStreaming = useCallback(() => {
     postMessage({
@@ -1000,7 +1005,8 @@ export const useEventBusForChat = () => {
         // eslint-disable-next-line @typescript-eslint/no-inferrable-types
         number: number = 5,
       ) => {
-        if (!hasCapsAndNoError) return;
+        // TODO: don't call if no caps
+        // if (!hasCapsAndNoError) return;
         const action: RequestAtCommandCompletion = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
           payload: { id: state.chat.id, query, cursor, number },
@@ -1010,14 +1016,19 @@ export const useEventBusForChat = () => {
       500,
       { leading: true, maxWait: 250 },
     ),
-    [state.chat.id, postMessage, hasCapsAndNoError],
+    [
+      state.chat.id,
+      postMessage,
+      // hasCapsAndNoError
+    ],
   );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestPreviewFiles = useCallback(
     useDebounceCallback(
       function (input: string) {
-        if (!hasCapsAndNoError) return;
+        // TODO: don't call if no caps
+        // if (!hasCapsAndNoError) return;
         const message: RequestPreviewFiles = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES,
           payload: { id: state.chat.id, query: input },
@@ -1027,7 +1038,11 @@ export const useEventBusForChat = () => {
       500,
       { leading: true },
     ),
-    [postMessage, state.chat.id, hasCapsAndNoError],
+    [
+      postMessage,
+      state.chat.id,
+      // hasCapsAndNoError
+    ],
   );
 
   const setSelectedCommand = useCallback(
@@ -1127,13 +1142,18 @@ export const useEventBusForChat = () => {
   ]);
 
   const requestTools = useCallback(() => {
-    if (!hasCapsAndNoError) return;
+    // TODO: don't call if no caps
+    // if (!hasCapsAndNoError) return;
     const action: RequestTools = {
       type: EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS,
       payload: { id: state.chat.id },
     };
     postMessage(action);
-  }, [postMessage, state.chat.id, hasCapsAndNoError]);
+  }, [
+    postMessage,
+    state.chat.id,
+    // hasCapsAndNoError
+  ]);
 
   useEffect(() => {
     requestTools();
@@ -1210,7 +1230,7 @@ export const useEventBusForChat = () => {
     state,
     askQuestion,
     clearError,
-    setChatModel,
+    setChatModel: () => ({}),
     stopStreaming,
     hasContextFile,
     backFromChat,
@@ -1222,7 +1242,7 @@ export const useEventBusForChat = () => {
     setSelectedCommand,
     removePreviewFileByName,
     retryQuestion,
-    maybeRequestCaps,
+    maybeRequestCaps: () => ({}),
     startNewChat,
     setSelectedSystemPrompt,
     requestPreviewFiles,

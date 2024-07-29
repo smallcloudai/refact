@@ -3,6 +3,7 @@ import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import type { Config } from "../contexts/config-context";
 import { CodeChatModel } from "../events";
 import { Chat as ChatComponent } from "../components/Chat";
+import { useGetCapsQuery } from "../app/hooks";
 
 type ChatProps = {
   host: Config["host"];
@@ -37,22 +38,23 @@ export const Chat: React.FC<ChatProps> = ({
   tabbed,
   state,
 }) => {
+  // console.log({ state });
+  const capsRequest = useGetCapsQuery(undefined);
+
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
 
   const canUseTools = useMemo(() => {
+    if (!capsRequest.data) return false;
     if (state.tools === null || state.tools.length === 0) return false;
-    const modelName = state.chat.model || state.caps.default_cap;
-    if (!(modelName in state.caps.available_caps)) return false;
-    const model: CodeChatModel = state.caps.available_caps[modelName];
+    const modelName =
+      state.chat.model || capsRequest.data.code_chat_default_model;
+
+    if (!(modelName in capsRequest.data.code_chat_models)) return false;
+    const model: CodeChatModel = capsRequest.data.code_chat_models[modelName];
     if ("supports_tools" in model && model.supports_tools) return true;
     return false;
-  }, [
-    state.tools,
-    state.chat.model,
-    state.caps.default_cap,
-    state.caps.available_caps,
-  ]);
+  }, [capsRequest.data, state.tools, state.chat.model]);
 
   const unCalledTools = React.useMemo(() => {
     if (state.chat.messages.length === 0) return false;
@@ -85,7 +87,13 @@ export const Chat: React.FC<ChatProps> = ({
       enableSend={enableSend}
       onAskQuestion={askQuestion}
       onSetChatModel={setChatModel}
-      caps={state.caps}
+      // TODO: This could be moved lower in the component tree
+      caps={{
+        error: capsRequest.error ? "error fetching caps" : null,
+        fetching: capsRequest.isFetching,
+        default_cap: capsRequest.data?.code_chat_default_model ?? "",
+        available_caps: capsRequest.data?.code_chat_models ?? {},
+      }}
       commands={state.commands}
       hasContextFile={hasContextFile}
       requestCommandsCompletion={requestCommandsCompletion}

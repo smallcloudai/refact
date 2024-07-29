@@ -5,7 +5,7 @@ import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
 import { type Config } from "../../events";
-import { ChatState } from "../../hooks";
+import { ChatState, ChatCapsState } from "../../hooks";
 
 export type ChatProps = {
   host: Config["host"];
@@ -20,7 +20,8 @@ export type ChatProps = {
 
   chat: ChatState["chat"];
   error: ChatState["error"];
-  caps: ChatState["caps"];
+  // TODO: update this
+  caps: ChatCapsState;
   commands: ChatState["commands"];
 
   retryQuestion: ChatContentProps["onRetry"];

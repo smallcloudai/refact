@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   sendChat,
-  getCaps,
+  // getCaps,
   getAtCommandCompletion,
   getAtCommandPreview,
   isDetailMessage,
@@ -17,7 +17,7 @@ import {
   ChatThread,
   isQuestionFromChat,
   isSaveChatFromChat,
-  isRequestCapsFromChat,
+  // isRequestCapsFromChat,
   isStopStreamingFromChat,
   isRequestAtCommandCompletion,
   ReceiveAtCommandCompletion,
@@ -129,28 +129,28 @@ export function useEventBusForHost() {
         saveChat(chat);
       }
 
-      if (isRequestCapsFromChat(event.data)) {
-        const chat_id = event.data.payload.id;
-        getCaps(lspUrl)
-          .then((caps) => {
-            window.postMessage({
-              type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS,
-              payload: {
-                id: chat_id,
-                caps,
-              },
-            });
-          })
-          .catch((error: Error) => {
-            window.postMessage({
-              type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR,
-              payload: {
-                id: chat_id,
-                message: error.message,
-              },
-            });
-          });
-      }
+      // if (isRequestCapsFromChat(event.data)) {
+      //   const chat_id = event.data.payload.id;
+      //   getCaps(lspUrl)
+      //     .then((caps) => {
+      //       window.postMessage({
+      //         type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS,
+      //         payload: {
+      //           id: chat_id,
+      //           caps,
+      //         },
+      //       });
+      //     })
+      //     .catch((error: Error) => {
+      //       window.postMessage({
+      //         type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR,
+      //         payload: {
+      //           id: chat_id,
+      //           message: error.message,
+      //         },
+      //       });
+      //     });
+      // }
 
       if (isRequestAtCommandCompletion(event.data)) {
         const { id, query, cursor, number } = event.data.payload;
