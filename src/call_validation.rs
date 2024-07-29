@@ -241,11 +241,11 @@ pub struct ChatToolCall {
     pub tool_type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ChatUsage {
     pub prompt_tokens: usize,
     pub completion_tokens: usize,
-    pub total_tokens: usize,
+    pub total_tokens: usize,   // TODO: remove (can produce self-contradictory data when prompt+completion != total)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

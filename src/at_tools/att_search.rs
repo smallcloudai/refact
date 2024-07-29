@@ -57,7 +57,7 @@ impl Tool for AttSearch {
             None => return Err("Missing argument `scope` in the search() call.".to_string())
         };
         let vector_of_context_file = execute_att_search(ccx, &query, &scope).await?;
-        println!("att-search: vector_of_context_file={:?}", vector_of_context_file);
+        tracing::info!("att-search: vector_of_context_file={:?}", vector_of_context_file);
         let text = text_on_clip(&query, true);
 
         let mut results = vec_context_file_to_context_tools(vector_of_context_file);

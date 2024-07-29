@@ -161,10 +161,10 @@ pub async fn correct_to_nearest_dir_path(
     if let Some(res) = paths_correction_map.get(correction_candidate).map(|x|x.iter().cloned().collect::<Vec<_>>()) {
         return res;
     }
-    
+
     if fuzzy {
         let paths_fuzzy = paths_correction_map.values().flat_map(|v| v).filter_map(get_last_component).collect::<HashSet<_>>();
-        println!("{:#?}", paths_fuzzy);
+        info!("{:#?}", paths_fuzzy);
         return fuzzy_search(Arc::new(paths_correction_map), correction_candidate, paths_fuzzy.into_iter(), top_n);
     }
     vec![]
