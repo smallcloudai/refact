@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use serde_json::Value;
 use tracing::info;
+use indexmap::IndexMap;
 
 use async_trait::async_trait;
 
@@ -26,13 +27,15 @@ impl Tool for AttGetKnowledge {
         let vec_db = ccx.global_context.read().await.vec_db.clone();
         let memories: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(vec_db.clone(), &im_going_to_do, ccx.top_n).await?;
 
+        // TODO: verify it's valid json in payload when accepting the mem into db
         let memories_json = memories.results.iter().map(|m| {
+            let payload: serde_json::Value = serde_json::from_str(&m.m_payload).unwrap_or(Value::Null);
             serde_json::json!({
                 "memid": m.memid.clone(),
-                "content": m.m_payload.clone()
+                "content": payload,
             })
         }).collect::<Vec<Value>>();
-        let memories_str = serde_json::to_string(&memories_json).unwrap();
+        let memories_str = serde_json::to_string_pretty(&memories_json).unwrap();
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -45,9 +48,26 @@ impl Tool for AttGetKnowledge {
 
         let ongoing_maybe: Option<crate::vecdb::vdb_structs::OngoingWork> = ongoing_find(vec_db.clone(), im_going_to_do.clone()).await?;
         if let Some(ongoing) = ongoing_maybe {
+            let mut toplevel = IndexMap::new();
+            toplevel.insert("PROGRESS".to_string(), serde_json::Value::Object(ongoing.ongoing_progress.into_iter().collect()));
+            let action_sequences: Vec<Value> = ongoing.ongoing_action_sequences
+                .into_iter()
+                .map(|map| serde_json::Value::Object(map.into_iter().collect()))
+                .collect();
+            toplevel.insert("TRIED_ACTION_SEQUENCES".to_string(), serde_json::Value::Array(action_sequences));
+            let output_value: serde_json::Value = indexmap_to_json_value(
+                ongoing.ongoing_output
+                    .into_iter()
+                    .map(|(k, v)| (k, indexmap_to_json_value(v)))
+                    .collect()
+            );
+            toplevel.insert("OUTPUT".to_string(), output_value);
             results.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "user".to_string(),
-                content: format!("💿 An ongoing session with this goal is found. This is your own summary of your progress. Continue with your previous plan:\n\n{}", serde_json::to_string_pretty(&ongoing.ongoing_json).unwrap()),
+                content: format!("💿 An ongoing session with this goal is found, it's your attempt {}. Here is the summary of your progress. Read it and follow the system prompt:\n\n{}",
+                    ongoing.ongoing_attempt_n + 1,
+                    serde_json::to_string_pretty(&toplevel).unwrap()
+                ),
                 tool_calls: None,
                 tool_call_id: String::new(),
                 ..Default::default()
@@ -55,7 +75,7 @@ impl Tool for AttGetKnowledge {
         } else {
             results.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "user".to_string(),
-                content: format!("💿 There is no ongoing session with this goal. A new empty ongoing session is created, formulate your plan now."),
+                content: format!("💿 There is no ongoing session with this goal. A new empty ongoing session is created, this is your attempt 1."),
                 tool_calls: None,
                 tool_call_id: String::new(),
                 ..Default::default()
@@ -69,6 +89,18 @@ impl Tool for AttGetKnowledge {
         vec!["vecdb".to_string()]
     }
 }
+
+fn indexmap_to_json_value(map: IndexMap<String, serde_json::Value>) -> Value {
+    Value::Object(serde_json::Map::from_iter(
+        map.into_iter().map(|(k, v)| {
+            (k, match v {
+                Value::Object(o) => indexmap_to_json_value(IndexMap::from_iter(o)),
+                _ => v,
+            })
+        })
+    ))
+}
+
 
 // pub struct AttSaveKnowledge;
 // #[async_trait]

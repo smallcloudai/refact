@@ -256,7 +256,7 @@ pub async fn memories_add(
     m_type: &str,
     m_goal: &str,
     m_project: &str,
-    m_payload: &str
+    m_payload: &str,    // TODO: upgrade to serde_json::Value
 ) -> Result<String, String> {
     let (memdb, vectorizer_service) = {
         let vec_db_guard = vec_db.lock().await;
@@ -426,7 +426,9 @@ pub async fn memories_search(
 pub async fn ongoing_update_or_create(
     vec_db: Arc<AMutex<Option<VecDb>>>,
     goal: String,
-    ongoing_json: IndexMap<String, serde_json::Value>,
+    ongoing_progress: IndexMap<String, serde_json::Value>,
+    ongoing_action_new_sequence: IndexMap<String, serde_json::Value>,
+    ongoing_output: IndexMap<String, IndexMap<String, serde_json::Value>>,
 ) -> Result<(), String> {
     let ongoing_map_arc = {
         let vec_db_guard = vec_db.lock().await;
@@ -435,11 +437,17 @@ pub async fn ongoing_update_or_create(
     };
     let mut ongoing_map = ongoing_map_arc.lock().unwrap();
     if let Some(ongoing) = ongoing_map.get_mut(&goal) {
-        ongoing.ongoing_json = ongoing_json;
+        ongoing.ongoing_progress = ongoing_progress;
+        ongoing.ongoing_action_sequences.push(ongoing_action_new_sequence);
+        ongoing.ongoing_output.extend(ongoing_output);
+        ongoing.ongoing_attempt_n += 1;
     } else {
         let new_ongoing = OngoingWork {
-            goal: goal.clone(),
-            ongoing_json,
+            ongoing_goal: goal.clone(),
+            ongoing_attempt_n: 1,
+            ongoing_progress,
+            ongoing_action_sequences: vec![ongoing_action_new_sequence],
+            ongoing_output,
         };
         ongoing_map.insert(goal, new_ongoing);
     }
@@ -456,9 +464,53 @@ pub async fn ongoing_find(
         vec_db.mem_ongoing.clone()
     };
     let ongoing_map = ongoing_map_arc.lock().unwrap();
-    Ok(ongoing_map.get(&goal).cloned())
+    if let Some(ongoing_work) = ongoing_map.get(&goal) {
+        Ok(Some(ongoing_work.clone()))
+    } else {
+        Ok(None)
+    }
 }
 
+pub async fn ongoing_dump(
+    vec_db: Arc<AMutex<Option<VecDb>>>,
+) -> Result<String, String> {
+    let ongoing_map_arc = {
+        let vec_db_guard = vec_db.lock().await;
+        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
+        vec_db.mem_ongoing.clone()
+    };
+    let ongoing_map = ongoing_map_arc.lock().unwrap();
+
+    let mut output = String::new();
+    for (_, ongoing) in ongoing_map.iter() {
+        let mut ordered_map = IndexMap::new();
+        ordered_map.insert("PROGRESS".to_string(), serde_json::Value::Object(ongoing.ongoing_progress.clone().into_iter().collect()));
+        let action_sequences: Vec<serde_json::Value> = ongoing.ongoing_action_sequences
+            .iter()
+            .map(|map| serde_json::Value::Object(map.clone().into_iter().collect()))
+            .collect();
+        ordered_map.insert("TRIED_ACTION_SEQUENCES".to_string(), serde_json::Value::Array(action_sequences));
+        let output_value: serde_json::Value = serde_json::Value::Object(
+            ongoing.ongoing_output
+                .clone()
+                .into_iter()
+                .map(|(k, v)| (k, serde_json::Value::Object(v.into_iter().collect())))
+                .collect()
+        );
+        ordered_map.insert("OUTPUT".to_string(), output_value);
+        output.push_str(&format!(
+            "💿 Ongoing session with goal: {}\nAttempt number: {}\nSummary of progress:\n\n{}\n\n",
+            ongoing.ongoing_goal,
+            ongoing.ongoing_attempt_n,
+            serde_json::to_string_pretty(&ordered_map).unwrap()
+        ));
+    }
+    if output.is_empty() {
+        output = "No ongoing work found.\n".to_string();
+    }
+
+    Ok(output)
+}
 
 #[async_trait]
 impl VecdbSearch for VecDb {

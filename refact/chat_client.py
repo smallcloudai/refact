@@ -48,11 +48,11 @@ def messages_to_dicts(
     tools: Optional[List[Dict[str, Any]]],
     temperature: float,
     model_name: str,
-):
+) -> Tuple[List[Dict[str, Any]], str]:
     listofdict = []
-    if verbose:
-        tools_namesonly = [x["function"]["name"] for x in tools] if tools else []
-        print(termcolor.colored("------ call chat %s T=%0.2f tools=%s ------" % (model_name, temperature, tools_namesonly), "red"))
+    log = ""
+    tools_namesonly = [x["function"]["name"] for x in tools] if tools else []
+    log += termcolor.colored("------ call chat %s T=%0.2f tools=%s ------\n" % (model_name, temperature, tools_namesonly), "red")
     for x in messages:
         if x.role in ["system", "user", "assistant", "tool", "context_file", "context_memory", "diff"]:
             listofdict.append({
@@ -63,20 +63,21 @@ def messages_to_dicts(
             })
         else:
             assert 0, x.role
-        if not verbose:
-            continue
         if x.role == "system":
             continue
         if x.role == "tool" and x.content is not None:
-            print(termcolor.colored(x.role, "yellow"), "\n%s" % x.content.strip())
+            log += termcolor.colored(x.role, "yellow") + " " + "\n%s" % termcolor.colored(x.content.strip(), "magenta") + "\n"
             continue
         tool_calls = ""
         if x.tool_calls is not None:
             tool_calls += "call"
             for tcall in x.tool_calls:
                 tool_calls += " %s(%s)" % (tcall.function.name, tcall.function.arguments)
-        print(termcolor.colored(x.role, "yellow"), str(x.content).replace("\n", "\\n"), termcolor.colored(tool_calls, "red"))
-    return listofdict
+        # log += termcolor.colored(x.role, "yellow") + " " + str(x.content).replace("\n", "\\n") + " " + termcolor.colored(tool_calls, "red")
+        log += termcolor.colored(x.role, "yellow") + " " + str(x.content) + " " + termcolor.colored(tool_calls, "red") + "\n"
+    if verbose:
+        print(log)
+    return listofdict, log
 
 
 def join_messages_and_choices(
@@ -189,7 +190,7 @@ async def ask_using_http(
     post_me = {
         "model": model_name,
         "n": n_answers,
-        "messages": messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name),
+        "messages": messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name)[0],
         "temperature": temperature,
         "top_p": 0.95,
         "stop": stop,
@@ -272,7 +273,7 @@ async def ask_using_openai_client(
     chat_completion = await aclient.chat.completions.create(
         model=model_name,
         n=n_answers,
-        messages=messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name),
+        messages=messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name)[0],
         temperature=temperature,
         top_p=0.95,
         stop=stop,

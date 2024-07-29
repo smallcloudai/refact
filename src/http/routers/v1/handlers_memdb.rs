@@ -16,7 +16,7 @@ struct MemAddRequest {
     mem_type: String,
     goal: String,
     project: String,
-    payload: String,
+    payload: String,   // TODO: upgrade to serde_json::Value
 }
 
 #[derive(Deserialize)]
@@ -187,7 +187,9 @@ pub async fn handle_mem_list(
 #[derive(Deserialize)]
 struct OngoingUpdateRequest {
     goal: String,
-    ongoing_json: String,
+    ongoing_progress: IndexMap<String, serde_json::Value>,
+    ongoing_action_new_sequence: IndexMap<String, serde_json::Value>,
+    ongoing_output: IndexMap<String, IndexMap<String, serde_json::Value>>,
 }
 
 pub async fn handle_ongoing_update_or_create(
@@ -200,22 +202,33 @@ pub async fn handle_ongoing_update_or_create(
     })?;
     let vec_db = gcx.read().await.vec_db.clone();
 
-
-    let ongoing_json: IndexMap<String, serde_json::Value> = serde_json::from_str(&post.ongoing_json).map_err(|e| {
-        tracing::info!("cannot parse input:\n{:?}", body_bytes);
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-
     crate::vecdb::vdb_highlev::ongoing_update_or_create(
         vec_db,
         post.goal,
-        ongoing_json,
+        post.ongoing_progress,
+        post.ongoing_action_new_sequence,
+        post.ongoing_output,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
     let response = Response::builder()
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string(&json!({"success": true})).unwrap()))
+        .unwrap();
+    Ok(response)
+}
+
+pub async fn handle_ongoing_dump(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    _body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let vec_db = gcx.read().await.vec_db.clone();
+    let output = crate::vecdb::vdb_highlev::ongoing_dump(vec_db).await.map_err(|e| {
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
+    })?;
+    let response = Response::builder()
+        .header("Content-Type", "text/plain")
+        .body(Body::from(output))
         .unwrap();
     Ok(response)
 }
