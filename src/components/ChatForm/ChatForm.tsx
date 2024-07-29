@@ -313,6 +313,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   removePreviewFileByName,
   onTextAreaHeightChange,
   showControls,
+  // TODO: handle re-requesting caps after error
   requestCaps,
   prompts,
   onSetSystemPrompt,

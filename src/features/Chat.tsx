@@ -86,7 +86,13 @@ export const Chat: React.FC<ChatProps> = ({
       unCalledTools={unCalledTools}
       enableSend={enableSend}
       onAskQuestion={askQuestion}
-      onSetChatModel={setChatModel}
+      onSetChatModel={(value) => {
+        const model =
+          capsRequest.data?.code_completion_default_model === value
+            ? ""
+            : value;
+        setChatModel(model);
+      }}
       // TODO: This could be moved lower in the component tree
       caps={{
         error: capsRequest.error ? "error fetching caps" : null,

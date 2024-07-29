@@ -211,7 +211,7 @@ describe("Chat", () => {
     await waitFor(() => expect(app.queryByText(/Certainly!/)).not.toBeNull());
   });
 
-  it.skip("when creating a new chat I can select which model to use", async () => {
+  it("when creating a new chat I can select which model to use", async () => {
     // Missing props in jsdom
     // window.PointerEvent = class PointerEvent extends Event {};
     window.HTMLElement.prototype.scrollIntoView = vi.fn();

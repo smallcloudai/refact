@@ -900,19 +900,19 @@ export const useEventBusForChat = () => {
   }, [state.error, maybeRequestPrompts]);
 
   // TODO: seting the model
-  // const setChatModel = useCallback(
-  //   (model: string) => {
-  //     const action = {
-  //       type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL,
-  //       payload: {
-  //         id: state.chat.id,
-  //         model: model === state.caps.default_cap ? "" : model,
-  //       },
-  //     };
-  //     dispatch(action);
-  //   },
-  //   [state.chat.id, state.caps.default_cap],
-  // );
+  const setChatModel = useCallback(
+    (model: string) => {
+      const action = {
+        type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL,
+        payload: {
+          id: state.chat.id,
+          model: model,
+        },
+      };
+      dispatch(action);
+    },
+    [state.chat.id],
+  );
 
   const stopStreaming = useCallback(() => {
     postMessage({
@@ -1230,7 +1230,7 @@ export const useEventBusForChat = () => {
     state,
     askQuestion,
     clearError,
-    setChatModel: () => ({}),
+    setChatModel,
     stopStreaming,
     hasContextFile,
     backFromChat,
