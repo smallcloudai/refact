@@ -64,7 +64,7 @@ impl Tool for AttGetKnowledge {
             toplevel.insert("OUTPUT".to_string(), output_value);
             results.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "user".to_string(),
-                content: format!("💿 An ongoing session with this goal is found, it's your attempt {}. Here is the summary of your progress. Read it and follow the system prompt:\n\n{}",
+                content: format!("💿 An ongoing session with this goal is found, it's your attempt {}. Here is the summary of your progress. Read it and follow the system prompt, especially pay attention to strategy choice:\n\n{}",
                     ongoing.ongoing_attempt_n + 1,
                     serde_json::to_string_pretty(&toplevel).unwrap()
                 ),
