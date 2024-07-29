@@ -6,6 +6,7 @@ import {
 } from "@reduxjs/toolkit";
 import { statisticsApi } from "../services/refact/statistics";
 import { capsApi } from "../services/refact/caps";
+import { promptsApi } from "../events";
 import { reducer as fimReducer } from "../features/FIM/reducer";
 // import { fimSlice } from "../features/FIM/fimSlice";
 
@@ -16,6 +17,7 @@ const rootReducer = combineSlices({
   fim: fimReducer,
   [statisticsApi.reducerPath]: statisticsApi.reducer,
   [capsApi.reducerPath]: capsApi.reducer,
+  [promptsApi.reducerPath]: promptsApi.reducer,
 });
 
 // Infer the `RootState` type from the root reducer
@@ -26,6 +28,7 @@ export const store = configureStore({
     return getDefaultMiddleware().concat(
       statisticsApi.middleware,
       capsApi.middleware,
+      promptsApi.middleware,
     );
   },
 });

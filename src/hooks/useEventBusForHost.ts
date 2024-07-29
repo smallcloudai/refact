@@ -5,7 +5,7 @@ import {
   getAtCommandCompletion,
   getAtCommandPreview,
   isDetailMessage,
-  getPrompts,
+  // getPrompts,
   formatMessagesForLsp,
   getAvailableTools,
   ToolCommand,
@@ -22,9 +22,9 @@ import {
   isRequestAtCommandCompletion,
   ReceiveAtCommandCompletion,
   ReceiveAtCommandPreview,
-  isRequestPrompts,
-  ReceivePrompts,
-  ReceivePromptsError,
+  // isRequestPrompts,
+  // ReceivePrompts,
+  // ReceivePromptsError,
   isRequestPreviewFiles,
   isTakeNotesFromChat,
   isRequestTools,
@@ -189,26 +189,26 @@ export function useEventBusForHost() {
           });
       }
 
-      if (isRequestPrompts(event.data)) {
-        const id = event.data.payload.id;
-        getPrompts(lspUrl)
-          .then((prompts) => {
-            const message: ReceivePrompts = {
-              type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS,
-              payload: { id, prompts },
-            };
+      // if (isRequestPrompts(event.data)) {
+      //   const id = event.data.payload.id;
+      //   getPrompts(lspUrl)
+      //     .then((prompts) => {
+      //       const message: ReceivePrompts = {
+      //         type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS,
+      //         payload: { id, prompts },
+      //       };
 
-            window.postMessage(message, "*");
-          })
-          .catch((error: Error) => {
-            const message: ReceivePromptsError = {
-              type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS_ERROR,
-              payload: { id, error: `Prompts: ${error.message}` },
-            };
+      //       window.postMessage(message, "*");
+      //     })
+      //     .catch((error: Error) => {
+      //       const message: ReceivePromptsError = {
+      //         type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS_ERROR,
+      //         payload: { id, error: `Prompts: ${error.message}` },
+      //       };
 
-            window.postMessage(message, "*");
-          });
-      }
+      //       window.postMessage(message, "*");
+      //     });
+      // }
 
       if (isRequestTools(event.data)) {
         const id = event.data.payload.id;

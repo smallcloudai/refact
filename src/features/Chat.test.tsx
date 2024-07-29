@@ -44,9 +44,7 @@ import { setupServer } from "msw/node";
 import { store } from "../app/store";
 
 const handlers = [
-  // Intercept "GET https://example.com/user" requests...
   http.get("http://127.0.0.1:8001/v1/caps", () => {
-    // ...and respond to them using this JSON response.
     return HttpResponse.json(STUB_CAPS_RESPONSE);
   }),
 ];

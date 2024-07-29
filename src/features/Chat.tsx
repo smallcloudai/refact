@@ -1,9 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import type { Config } from "../contexts/config-context";
 import { CodeChatModel } from "../events";
 import { Chat as ChatComponent } from "../components/Chat";
-import { useGetCapsQuery } from "../app/hooks";
+import { useGetCapsQuery, useGetPromptsQuery } from "../app/hooks";
 
 type ChatProps = {
   host: Config["host"];
@@ -40,6 +40,21 @@ export const Chat: React.FC<ChatProps> = ({
 }) => {
   // console.log({ state });
   const capsRequest = useGetCapsQuery(undefined);
+  const promptsRequest = useGetPromptsQuery(undefined);
+
+  const onSetSelectedSystemPrompt = useCallback(
+    (key: string) => {
+      console.log("onSetSelectedSystemPrompt", key);
+      if (!promptsRequest.data) return;
+      if (!(key in promptsRequest.data)) return;
+      if (key === "default") {
+        setSelectedSystemPrompt("");
+      } else {
+        setSelectedSystemPrompt(key);
+      }
+    },
+    [promptsRequest.data, setSelectedSystemPrompt],
+  );
 
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
@@ -85,7 +100,9 @@ export const Chat: React.FC<ChatProps> = ({
       preventSend={state.prevent_send}
       unCalledTools={unCalledTools}
       enableSend={enableSend}
-      onAskQuestion={askQuestion}
+      onAskQuestion={(question: string) =>
+        askQuestion(question, promptsRequest.data)
+      }
       onSetChatModel={(value) => {
         const model =
           capsRequest.data?.code_completion_default_model === value
@@ -110,9 +127,10 @@ export const Chat: React.FC<ChatProps> = ({
       selectedSnippet={state.selected_snippet}
       removePreviewFileByName={removePreviewFileByName}
       requestCaps={maybeRequestCaps}
-      prompts={state.system_prompts.prompts}
+      // prompts={state.system_prompts.prompts}
+      prompts={promptsRequest.data ?? {}}
       onStartNewChat={startNewChat}
-      onSetSystemPrompt={setSelectedSystemPrompt}
+      onSetSystemPrompt={onSetSelectedSystemPrompt}
       selectedSystemPrompt={state.selected_system_prompt}
       requestPreviewFiles={requestPreviewFiles}
       canUseTools={canUseTools}

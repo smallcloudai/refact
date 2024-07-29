@@ -14,6 +14,7 @@ import {
   CodeChatModel,
   ChatMessage,
   isPlainTextResponse,
+  SystemPrompts,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -55,13 +56,13 @@ import {
   type ChatSetSelectedSnippet,
   type CreateNewChatThread,
   type SaveChatFromChat,
-  isReceivePrompts,
-  isRequestPrompts,
-  isReceivePromptsError,
-  type RequestPrompts,
+  // isReceivePrompts,
+  // isRequestPrompts,
+  // isReceivePromptsError,
+  // type RequestPrompts,
   isSetSelectedSystemPrompt,
   type SetSelectedSystemPrompt,
-  type SystemPrompts,
+  // type SystemPrompts,
   RequestPreviewFiles,
   type CommandCompletionResponse,
   type ToolResult,
@@ -547,46 +548,48 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isThisChat && isRequestPrompts(action)) {
-      return {
-        ...state,
-        system_prompts: {
-          ...state.system_prompts,
-          fetching: true,
-        },
-      };
-    }
+    // if (isThisChat && isRequestPrompts(action)) {
+    //   return {
+    //     ...state,
+    //     system_prompts: {
+    //       ...state.system_prompts,
+    //       fetching: true,
+    //     },
+    //   };
+    // }
 
-    if (isThisChat && isReceivePrompts(action)) {
-      const maybeDefault: string | null =
-        "default" in action.payload.prompts
-          ? action.payload.prompts.default.text
-          : null;
-      return {
-        ...state,
-        selected_system_prompt: state.selected_system_prompt ?? maybeDefault,
-        system_prompts: {
-          error: null,
-          fetching: false,
-          prompts: action.payload.prompts,
-        },
-      };
-    }
+    // if (isThisChat && isReceivePrompts(action)) {
+    //   const maybeDefault: string | null =
+    //     "default" in action.payload.prompts
+    //       ? action.payload.prompts.default.text
+    //       : null;
+    //   return {
+    //     ...state,
+    //     selected_system_prompt: state.selected_system_prompt ?? maybeDefault,
+    //     system_prompts: {
+    //       error: null,
+    //       fetching: false,
+    //       prompts: action.payload.prompts,
+    //     },
+    //   };
+    // }
 
-    if (isThisChat && isReceivePromptsError(action)) {
-      const message = state.error ?? action.payload.error;
-      return {
-        ...state,
-        error: message,
-        system_prompts: {
-          ...state.system_prompts,
-          error: action.payload.error,
-          fetching: false,
-        },
-      };
-    }
+    // if (isThisChat && isReceivePromptsError(action)) {
+    //   const message = state.error ?? action.payload.error;
+    //   return {
+    //     ...state,
+    //     error: message,
+    //     system_prompts: {
+    //       ...state.system_prompts,
+    //       error: action.payload.error,
+    //       fetching: false,
+    //     },
+    //   };
+    // }
 
     if (isThisChat && isSetSelectedSystemPrompt(action)) {
+      console.log("set system prompt");
+      console.log({ action });
       return {
         ...state,
         selected_system_prompt: action.payload.prompt,
@@ -656,11 +659,11 @@ export type ChatState = {
   active_file: FileInfo;
   selected_snippet: Snippet;
   tokens: number | null;
-  system_prompts: {
-    error: null | string;
-    prompts: SystemPrompts;
-    fetching: boolean;
-  };
+  // system_prompts: {
+  //   error: null | string;
+  //   prompts: SystemPrompts;
+  //   fetching: boolean;
+  // };
   selected_system_prompt: null | string;
   take_notes: boolean;
   // Check caps if model has tools
@@ -710,11 +713,11 @@ export function createInitialState(): ChatState {
       cursor: null,
     },
     tokens: null,
-    system_prompts: {
-      error: null,
-      prompts: {},
-      fetching: false,
-    },
+    // system_prompts: {
+    //   error: null,
+    //   prompts: {},
+    //   fetching: false,
+    // },
     selected_system_prompt: "default",
     take_notes: true,
     tools: null,
@@ -770,7 +773,11 @@ export const useEventBusForChat = () => {
   );
 
   const sendMessages = useCallback(
-    (messages: ChatMessages, attach_file = state.active_file.attach) => {
+    (
+      messages: ChatMessages,
+      attach_file = state.active_file.attach,
+      prompts: SystemPrompts = {},
+    ) => {
       clearError();
       // setTakeNotes(true);
       dispatch({
@@ -778,15 +785,14 @@ export const useEventBusForChat = () => {
         payload: { id: state.chat.id, disable: true },
       });
 
+      // TODO: get the system prompt for this
+
       const messagesWithSystemPrompt: ChatMessages =
         state.selected_system_prompt &&
         state.selected_system_prompt !== "default" &&
-        state.selected_system_prompt in state.system_prompts.prompts
+        state.selected_system_prompt in prompts
           ? [
-              [
-                "system",
-                state.system_prompts.prompts[state.selected_system_prompt].text,
-              ],
+              ["system", prompts[state.selected_system_prompt].text],
               ...messages,
             ]
           : messages;
@@ -831,7 +837,6 @@ export const useEventBusForChat = () => {
       state.chat.title,
       state.chat.model,
       state.selected_system_prompt,
-      state.system_prompts.prompts,
       state.use_tools,
       state.tools,
       clearError,
@@ -840,12 +845,13 @@ export const useEventBusForChat = () => {
   );
 
   const askQuestion = useCallback(
-    (question: string) => {
+    (question: string, prompts: SystemPrompts = {}) => {
       const messages = state.chat.messages.concat([["user", question]]);
 
-      sendMessages(messages);
+      // We can remove attach file
+      sendMessages(messages, state.chat.attach_file, prompts);
     },
-    [sendMessages, state.chat.messages],
+    [sendMessages, state.chat.attach_file, state.chat.messages],
   );
 
   // const requestCaps = useCallback(() => {
@@ -870,34 +876,34 @@ export const useEventBusForChat = () => {
   //   requestCaps,
   // ]);
 
-  const requestPrompts = useCallback(() => {
-    const message: RequestPrompts = {
-      type: EVENT_NAMES_FROM_CHAT.REQUEST_PROMPTS,
-      payload: { id: state.chat.id },
-    };
-    postMessage(message);
-  }, [postMessage, state.chat.id]);
+  // const requestPrompts = useCallback(() => {
+  //   const message: RequestPrompts = {
+  //     type: EVENT_NAMES_FROM_CHAT.REQUEST_PROMPTS,
+  //     payload: { id: state.chat.id },
+  //   };
+  //   postMessage(message);
+  // }, [postMessage, state.chat.id]);
 
-  const maybeRequestPrompts = useCallback(() => {
-    const hasPrompts = Object.keys(state.system_prompts.prompts).length > 0;
-    const hasChat = state.chat.messages.length > 0;
-    const isFetching = state.system_prompts.fetching;
-    if (!hasPrompts && !hasChat && !isFetching) {
-      requestPrompts();
-    }
-  }, [
-    requestPrompts,
-    state.chat.messages.length,
-    state.system_prompts.fetching,
-    state.system_prompts.prompts,
-  ]);
+  // const maybeRequestPrompts = useCallback(() => {
+  //   const hasPrompts = Object.keys(state.system_prompts.prompts).length > 0;
+  //   const hasChat = state.chat.messages.length > 0;
+  //   const isFetching = state.system_prompts.fetching;
+  //   if (!hasPrompts && !hasChat && !isFetching) {
+  //     requestPrompts();
+  //   }
+  // }, [
+  //   requestPrompts,
+  //   state.chat.messages.length,
+  //   state.system_prompts.fetching,
+  //   state.system_prompts.prompts,
+  // ]);
 
-  useEffect(() => {
-    if (!state.error) {
-      // maybeRequestCaps();
-      maybeRequestPrompts();
-    }
-  }, [state.error, maybeRequestPrompts]);
+  // useEffect(() => {
+  //   if (!state.error) {
+  //     // maybeRequestCaps();
+  //     maybeRequestPrompts();
+  //   }
+  // }, [state.error, maybeRequestPrompts]);
 
   // TODO: seting the model
   const setChatModel = useCallback(
