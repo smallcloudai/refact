@@ -5,7 +5,7 @@ import { render, RenderOptions } from "@testing-library/react";
 import userEvent, { UserEvent } from "@testing-library/user-event";
 import { Theme } from "@radix-ui/themes";
 import { EVENT_NAMES_TO_CHAT, ReceivePrompts } from "../events";
-import { STUB_CAPS_RESPONSE, SYSTEM_PROMPTS } from "../__fixtures__";
+import { SYSTEM_PROMPTS } from "../__fixtures__";
 
 const customRender = (
   ui: ReactElement,
@@ -33,15 +33,15 @@ export function postMessage(data: unknown) {
   );
 }
 
-export function setUpCapsForChat(chatId = "") {
-  postMessage({
-    type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS,
-    payload: {
-      id: chatId,
-      caps: STUB_CAPS_RESPONSE,
-    },
-  });
-}
+// export function setUpCapsForChat(chatId = "") {
+//   postMessage({
+//     type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS,
+//     payload: {
+//       id: chatId,
+//       caps: STUB_CAPS_RESPONSE,
+//     },
+//   });
+// }
 
 export function setUpSystemPromptsForChat(chatId = "") {
   const systemPromptsMessage: ReceivePrompts = {

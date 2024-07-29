@@ -1,8 +1,8 @@
 import {
   ChatMessages,
   ChatResponse,
-  CapsResponse,
-  isCapsResponse,
+  // CapsResponse,
+  // isCapsResponse,
   CommandCompletionResponse,
   ChatContextFileMessage,
   SystemPrompts,
@@ -13,7 +13,7 @@ import {
 export enum EVENT_NAMES_FROM_CHAT {
   SAVE_CHAT = "save_chat_to_history",
   ASK_QUESTION = "chat_question",
-  REQUEST_CAPS = "chat_request_caps",
+  // REQUEST_CAPS = "chat_request_caps",
   STOP_STREAMING = "chat_stop_streaming",
   BACK_FROM_CHAT = "chat_back_from_chat",
   OPEN_IN_CHAT_IN_TAB = "open_chat_in_new_tab",
@@ -38,8 +38,8 @@ export enum EVENT_NAMES_TO_CHAT {
   DONE_STREAMING = "chat_done_streaming",
   ERROR_STREAMING = "chat_error_streaming",
   NEW_CHAT = "create_new_chat",
-  RECEIVE_CAPS = "receive_caps",
-  RECEIVE_CAPS_ERROR = "receive_caps_error",
+  // RECEIVE_CAPS = "receive_caps",
+  // RECEIVE_CAPS_ERROR = "receive_caps_error",
   SET_CHAT_MODEL = "chat_set_chat_model",
   SET_DISABLE_CHAT = "set_disable_chat",
   ACTIVE_FILE_INFO = "chat_active_file_info",
@@ -194,17 +194,17 @@ export function isSaveChatFromChat(
   return action.type === EVENT_NAMES_FROM_CHAT.SAVE_CHAT;
 }
 
-export interface RequestCapsFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS;
-  payload: { id: string };
-}
+// export interface RequestCapsFromChat extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS;
+//   payload: { id: string };
+// }
 
-export function isRequestCapsFromChat(
-  action: unknown,
-): action is RequestCapsFromChat {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_CAPS;
-}
+// export function isRequestCapsFromChat(
+//   action: unknown,
+// ): action is RequestCapsFromChat {
+//   if (!isActionFromChat(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_CAPS;
+// }
 
 export interface StopStreamingFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING;
@@ -506,37 +506,37 @@ export function isChatClearError(action: unknown): action is ChatClearError {
   return action.type === EVENT_NAMES_TO_CHAT.CLEAR_ERROR;
 }
 
-export interface ChatReceiveCaps extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS;
-  payload: {
-    id: string;
-    caps: CapsResponse;
-  };
-}
+// export interface ChatReceiveCaps extends ActionToChat {
+//   type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS;
+//   payload: {
+//     id: string;
+//     caps: CapsResponse;
+//   };
+// }
 
-export function isChatReceiveCaps(action: unknown): action is ChatReceiveCaps {
-  if (!isActionToChat(action)) return false;
-  if (!("payload" in action)) return false;
-  if (typeof action.payload !== "object") return false;
-  if (!("caps" in action.payload)) return false;
-  if (!isCapsResponse(action.payload.caps)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_CAPS;
-}
+// export function isChatReceiveCaps(action: unknown): action is ChatReceiveCaps {
+//   if (!isActionToChat(action)) return false;
+//   if (!("payload" in action)) return false;
+//   if (typeof action.payload !== "object") return false;
+//   if (!("caps" in action.payload)) return false;
+//   if (!isCapsResponse(action.payload.caps)) return false;
+//   return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_CAPS;
+// }
 
-export interface ChatReceiveCapsError extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR;
-  payload: {
-    id: string;
-    message: string;
-  };
-}
+// export interface ChatReceiveCapsError extends ActionToChat {
+//   type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR;
+//   payload: {
+//     id: string;
+//     message: string;
+//   };
+// }
 
-export function isChatReceiveCapsError(
-  action: unknown,
-): action is ChatReceiveCapsError {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR;
-}
+// export function isChatReceiveCapsError(
+//   action: unknown,
+// ): action is ChatReceiveCapsError {
+//   if (!isActionToChat(action)) return false;
+//   return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR;
+// }
 
 export type Actions = ActionToChat | ActionFromChat;
 

@@ -26,7 +26,7 @@ import {
   RestoreChat,
   CreateNewChatThread,
   ChatErrorStreaming,
-  ChatReceiveCapsError,
+  // ChatReceiveCapsError,
   ResponseToChat,
   ToolCall,
   ToolResult,
@@ -389,23 +389,20 @@ describe("Chat", () => {
   });
 
   it.skip("char error getting caps", async () => {
-    let id = "";
-    const app = render(
-      <App
-        setId={(v) => {
-          id = v;
-        }}
-      />,
-    );
-    const chatError: ChatReceiveCapsError = {
-      type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR,
-      payload: {
-        id: id,
-        message: "whoops error getting caps",
-      },
-    };
+    // let id = "";
+    const app = render(<App setId={() => ({})} />);
 
-    postMessage(chatError);
+    // TODO: set msw to send an error
+
+    // const chatError: ChatReceiveCapsError = {
+    //   type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR,
+    //   payload: {
+    //     id: id,
+    //     message: "whoops error getting caps",
+    //   },
+    // };
+
+    // postMessage(chatError);
 
     await waitFor(() => expect(app.queryByText(/whoops/)).not.toBeNull());
   });
