@@ -27,13 +27,18 @@ class ToolCallDict(BaseModel):
     type: str
 
 
+class Usage(BaseModel):
+    prompt_tokens: int
+    completion_tokens: int
+
+
 class Message(BaseModel):
     role: Literal["system", "assistant", "user", "tool", "diff", "context_file", "context_memory"]
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCallDict]] = None
     finish_reason: str = ""
     tool_call_id: str = ""
-    usage: Optional[Dict[str, int]] = None
+    usage: Optional[Usage] = None
 
 
 def messages_to_dicts(
@@ -362,11 +367,14 @@ async def mem_query(base_url: str, goal: str, project: str, top_n: Optional[int]
         async with session.post(url, json=data) as response:
             return response.status, await response.json()
 
-async def ongoing_update(base_url: str, goal: str, ongoing_json: str):
+
+async def ongoing_update(base_url: str, goal: str, progress: Dict[str, Any], actseq: Dict[str, Any], output: Dict[str, Any]):
     url = f"{base_url}/ongoing-update"
     data = {
         "goal": goal,
-        "ongoing_json": ongoing_json,
+        "ongoing_progress": progress,
+        "ongoing_action_new_sequence": actseq,
+        "ongoing_output": output,
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data) as response:
