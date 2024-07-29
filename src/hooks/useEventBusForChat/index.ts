@@ -15,6 +15,7 @@ import {
   ChatMessage,
   isPlainTextResponse,
   SystemPrompts,
+  // ToolMessage,
 } from "../../services/refact";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -68,8 +69,8 @@ import {
   type ToolResult,
   isSetTakeNotes,
   SetTakeNotes,
-  RequestTools,
-  isRecieveTools,
+  // RequestTools,
+  // isRecieveTools,
   SetUseTools,
   QuestionFromChat,
   isSetUseTools,
@@ -588,8 +589,6 @@ export function reducer(postMessage: typeof window.postMessage) {
     // }
 
     if (isThisChat && isSetSelectedSystemPrompt(action)) {
-      console.log("set system prompt");
-      console.log({ action });
       return {
         ...state,
         selected_system_prompt: action.payload.prompt,
@@ -603,21 +602,21 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isThisChat && isRecieveTools(action)) {
-      const { tools } = action.payload;
-      if (tools.length === 0) {
-        return {
-          ...state,
-          tools: [],
-          use_tools: false,
-        };
-      }
+    // if (isThisChat && isRecieveTools(action)) {
+    //   const { tools } = action.payload;
+    //   if (tools.length === 0) {
+    //     return {
+    //       ...state,
+    //       tools: [],
+    //       use_tools: false,
+    //     };
+    //   }
 
-      return {
-        ...state,
-        tools,
-      };
-    }
+    //   return {
+    //     ...state,
+    //     tools,
+    //   };
+    // }
 
     if (isThisChat && isSetUseTools(action)) {
       return {
@@ -667,7 +666,7 @@ export type ChatState = {
   selected_system_prompt: null | string;
   take_notes: boolean;
   // Check caps if model has tools
-  tools: ToolCommand[] | null;
+  // tools: ToolCommand[] | null;
   use_tools: boolean;
 };
 
@@ -720,7 +719,7 @@ export function createInitialState(): ChatState {
     // },
     selected_system_prompt: "default",
     take_notes: true,
-    tools: null,
+    // tools: null,
     use_tools: true,
   };
 }
@@ -777,6 +776,7 @@ export const useEventBusForChat = () => {
       messages: ChatMessages,
       attach_file = state.active_file.attach,
       prompts: SystemPrompts = {},
+      tools: ToolCommand[] | null = null,
     ) => {
       clearError();
       // setTakeNotes(true);
@@ -810,14 +810,12 @@ export const useEventBusForChat = () => {
         payload: thread,
       });
 
-      const tools =
-        state.use_tools && state.tools && state.tools.length > 0
-          ? state.tools
-          : null;
-
       const action: QuestionFromChat = {
         type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-        payload: { ...thread, tools },
+        payload: {
+          ...thread,
+          tools: state.use_tools && tools && tools.length > 0 ? tools : null,
+        },
       };
 
       postMessage(action);
@@ -838,18 +836,21 @@ export const useEventBusForChat = () => {
       state.chat.model,
       state.selected_system_prompt,
       state.use_tools,
-      state.tools,
       clearError,
       postMessage,
     ],
   );
 
   const askQuestion = useCallback(
-    (question: string, prompts: SystemPrompts = {}) => {
+    (
+      question: string,
+      prompts: SystemPrompts = {},
+      tools: ToolCommand[] | null = null,
+    ) => {
       const messages = state.chat.messages.concat([["user", question]]);
 
       // We can remove attach file
-      sendMessages(messages, state.chat.attach_file, prompts);
+      sendMessages(messages, state.chat.attach_file, prompts, tools);
     },
     [sendMessages, state.chat.attach_file, state.chat.messages],
   );
@@ -1147,23 +1148,23 @@ export const useEventBusForChat = () => {
     state.prevent_send,
   ]);
 
-  const requestTools = useCallback(() => {
-    // TODO: don't call if no caps
-    // if (!hasCapsAndNoError) return;
-    const action: RequestTools = {
-      type: EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS,
-      payload: { id: state.chat.id },
-    };
-    postMessage(action);
-  }, [
-    postMessage,
-    state.chat.id,
-    // hasCapsAndNoError
-  ]);
+  // const requestTools = useCallback(() => {
+  //   // TODO: don't call if no caps
+  //   // if (!hasCapsAndNoError) return;
+  //   const action: RequestTools = {
+  //     type: EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS,
+  //     payload: { id: state.chat.id },
+  //   };
+  //   postMessage(action);
+  // }, [
+  //   postMessage,
+  //   state.chat.id,
+  //   // hasCapsAndNoError
+  // ]);
 
-  useEffect(() => {
-    requestTools();
-  }, [requestTools]);
+  // useEffect(() => {
+  //   requestTools();
+  // }, [requestTools]);
 
   const setUseTools = useCallback(
     (value: boolean) => {

@@ -7,7 +7,7 @@ import {
   isDetailMessage,
   // getPrompts,
   formatMessagesForLsp,
-  getAvailableTools,
+  // getAvailableTools,
   ToolCommand,
   // LspChatMessage,
 } from "../services/refact";
@@ -27,8 +27,8 @@ import {
   // ReceivePromptsError,
   isRequestPreviewFiles,
   isTakeNotesFromChat,
-  isRequestTools,
-  RecieveTools,
+  // isRequestTools,
+  // RecieveTools,
   isReadyMessage,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
@@ -210,25 +210,25 @@ export function useEventBusForHost() {
       //     });
       // }
 
-      if (isRequestTools(event.data)) {
-        const id = event.data.payload.id;
-        getAvailableTools(lspUrl)
-          .then((tools) => {
-            const action: RecieveTools = {
-              type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS,
-              payload: { id, tools },
-            };
-            window.postMessage(action, "*");
-          })
-          .catch(() => {
-            const action: RecieveTools = {
-              type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS,
-              payload: { id, tools: [] },
-            };
+      // if (isRequestTools(event.data)) {
+      //   const id = event.data.payload.id;
+      //   getAvailableTools(lspUrl)
+      //     .then((tools) => {
+      //       const action: RecieveTools = {
+      //         type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS,
+      //         payload: { id, tools },
+      //       };
+      //       window.postMessage(action, "*");
+      //     })
+      //     .catch(() => {
+      //       const action: RecieveTools = {
+      //         type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS,
+      //         payload: { id, tools: [] },
+      //       };
 
-            window.postMessage(action, "*");
-          });
-      }
+      //       window.postMessage(action, "*");
+      //     });
+      // }
     };
 
     window.addEventListener("message", listener);

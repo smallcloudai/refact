@@ -5,8 +5,8 @@ import {
   // isCapsResponse,
   CommandCompletionResponse,
   ChatContextFileMessage,
-  SystemPrompts,
-  isSystemPrompts,
+  // SystemPrompts,
+  // isSystemPrompts,
   ToolCommand,
 } from "../services/refact";
 
@@ -23,9 +23,9 @@ export enum EVENT_NAMES_FROM_CHAT {
   PASTE_DIFF = "chat_paste_diff",
   REQUEST_AT_COMMAND_COMPLETION = "chat_request_at_command_completion",
   REQUEST_PREVIEW_FILES = "chat_request_preview_files",
-  REQUEST_PROMPTS = "chat_request_prompts",
+  // REQUEST_PROMPTS = "chat_request_prompts",
   TAKE_NOTES = "chat_take_notes",
-  REQUEST_TOOLS = "chat_request_has_tool_check",
+  // REQUEST_TOOLS = "chat_request_has_tool_check",
   OPEN_SETTINGS = "chat_open_settings",
   OPEN_HOT_KEYS = "chat_open_hot_keys",
 }
@@ -52,11 +52,11 @@ export enum EVENT_NAMES_TO_CHAT {
   REMOVE_PREVIEW_FILE_BY_NAME = "chat_remove_file_from_preview",
   SET_PREVIOUS_MESSAGES_LENGTH = "chat_set_previous_messages_length",
   RECEIVE_TOKEN_COUNT = "chat_set_tokens",
-  RECEIVE_PROMPTS = "chat_receive_prompts",
-  RECEIVE_PROMPTS_ERROR = "chat_receive_prompts_error",
+  // RECEIVE_PROMPTS = "chat_receive_prompts",
+  // RECEIVE_PROMPTS_ERROR = "chat_receive_prompts_error",
   SET_SELECTED_SYSTEM_PROMPT = "chat_set_selected_system_prompt",
   SET_TAKE_NOTES = "chat_set_take_notes",
-  RECEIVE_TOOLS = "chat_receive_tools_chat",
+  // RECEIVE_TOOLS = "chat_receive_tools_chat",
   SET_USE_TOOLS = "chat_set_use_tools",
   SET_ENABLE_SEND = "chat_set_enable_send",
 }
@@ -103,15 +103,15 @@ export function isActionFromChat(action: unknown): action is ActionFromChat {
   return Object.values(ALL_EVENT_NAMES).includes(action.type);
 }
 
-export interface RequestPrompts extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_PROMPTS;
-  payload: { id: string };
-}
+// export interface RequestPrompts extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.REQUEST_PROMPTS;
+//   payload: { id: string };
+// }
 
-export function isRequestPrompts(action: unknown): action is RequestPrompts {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_PROMPTS;
-}
+// export function isRequestPrompts(action: unknown): action is RequestPrompts {
+//   if (!isActionFromChat(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_PROMPTS;
+// }
 
 export interface RequestAtCommandCompletion extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
@@ -230,15 +230,15 @@ export function isTakeNotesFromChat(
   return action.type === EVENT_NAMES_FROM_CHAT.TAKE_NOTES;
 }
 
-export interface RequestTools extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS;
-  payload: { id: string };
-}
+// export interface RequestTools extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS;
+//   payload: { id: string };
+// }
 
-export function isRequestTools(action: unknown): action is RequestTools {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS;
-}
+// export function isRequestTools(action: unknown): action is RequestTools {
+//   if (!isActionFromChat(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_TOOLS;
+// }
 
 export interface OpenSettings extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
@@ -285,38 +285,38 @@ export function isSetSelectedSystemPrompt(
   return action.type === EVENT_NAMES_TO_CHAT.SET_SELECTED_SYSTEM_PROMPT;
 }
 
-export interface ReceivePrompts extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS;
-  payload: { id: string; prompts: SystemPrompts };
-}
+// export interface ReceivePrompts extends ActionToChat {
+//   type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS;
+//   payload: { id: string; prompts: SystemPrompts };
+// }
 
-export function isReceivePrompts(action: unknown): action is ReceivePrompts {
-  if (!isActionToChat(action)) return false;
-  if (action.type !== EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS) return false;
-  if (!("payload" in action)) return false;
-  if (typeof action.payload !== "object") return false;
-  if (!("prompts" in action.payload)) return false;
-  return isSystemPrompts(action.payload.prompts);
-}
+// export function isReceivePrompts(action: unknown): action is ReceivePrompts {
+//   if (!isActionToChat(action)) return false;
+//   if (action.type !== EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS) return false;
+//   if (!("payload" in action)) return false;
+//   if (typeof action.payload !== "object") return false;
+//   if (!("prompts" in action.payload)) return false;
+//   return isSystemPrompts(action.payload.prompts);
+// }
 
-export interface ReceivePromptsError extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS_ERROR;
-  payload: { id: string; error: string };
-}
+// export interface ReceivePromptsError extends ActionToChat {
+//   type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS_ERROR;
+//   payload: { id: string; error: string };
+// }
 
-export function isReceivePromptsError(
-  action: unknown,
-): action is ReceivePromptsError {
-  if (!isActionToChat(action)) return false;
-  if (action.type !== EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS_ERROR) return false;
-  if (!("payload" in action)) return false;
-  if (typeof action.payload !== "object") return false;
-  if (!("id" in action.payload)) return false;
-  if (typeof action.payload.id !== "string") return false;
-  if (!("error" in action.payload)) return false;
-  if (typeof action.payload.error !== "string") return false;
-  return true;
-}
+// export function isReceivePromptsError(
+//   action: unknown,
+// ): action is ReceivePromptsError {
+//   if (!isActionToChat(action)) return false;
+//   if (action.type !== EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS_ERROR) return false;
+//   if (!("payload" in action)) return false;
+//   if (typeof action.payload !== "object") return false;
+//   if (!("id" in action.payload)) return false;
+//   if (typeof action.payload.id !== "string") return false;
+//   if (!("error" in action.payload)) return false;
+//   if (typeof action.payload.error !== "string") return false;
+//   return true;
+// }
 
 export interface ReceiveAtCommandCompletion extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
@@ -619,15 +619,15 @@ export function isSetTakeNotes(action: unknown): action is SetTakeNotes {
   return action.type === EVENT_NAMES_TO_CHAT.SET_TAKE_NOTES;
 }
 
-export interface RecieveTools extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS;
-  payload: { id: string; tools: ToolCommand[] };
-}
+// export interface RecieveTools extends ActionToChat {
+//   type: EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS;
+//   payload: { id: string; tools: ToolCommand[] };
+// }
 
-export function isRecieveTools(action: unknown): action is RecieveTools {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS;
-}
+// export function isRecieveTools(action: unknown): action is RecieveTools {
+//   if (!isActionToChat(action)) return false;
+//   return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_TOOLS;
+// }
 
 export interface SetUseTools extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.SET_USE_TOOLS;

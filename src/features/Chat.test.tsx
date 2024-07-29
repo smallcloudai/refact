@@ -14,9 +14,8 @@ import {
   waitFor,
   postMessage,
   stubResizeObserver,
-  setUpSystemPromptsForChat,
+  // setUpSystemPromptsForChat,
   cleanup,
-
   // screen,
 } from "../utils/test-utils";
 import { Chat } from "./Chat";
@@ -46,6 +45,12 @@ import { store } from "../app/store";
 const handlers = [
   http.get("http://127.0.0.1:8001/v1/caps", () => {
     return HttpResponse.json(STUB_CAPS_RESPONSE);
+  }),
+  http.get("http://127.0.0.1:8001/v1/tools", () => {
+    return HttpResponse.json([]);
+  }),
+  http.get("http://127.0.0.1:8001/v1/customization", () => {
+    return HttpResponse.json({ system_prompts: SYSTEM_PROMPTS });
   }),
 ];
 
@@ -103,7 +108,7 @@ describe("Chat", () => {
     // );
 
     // setUpCapsForChat("foo");
-    setUpSystemPromptsForChat("foo");
+    // setUpSystemPromptsForChat("foo");
 
     const select = await app.findByTitle("chat model");
 
@@ -425,7 +430,7 @@ describe("Chat", () => {
       />,
     );
 
-    setUpSystemPromptsForChat(id);
+    // setUpSystemPromptsForChat(id);
 
     const btn = await waitFor(() => app.getByTitle("default"), {
       timeout: 1000,

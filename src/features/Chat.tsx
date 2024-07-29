@@ -3,7 +3,11 @@ import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import type { Config } from "../contexts/config-context";
 import { CodeChatModel } from "../events";
 import { Chat as ChatComponent } from "../components/Chat";
-import { useGetCapsQuery, useGetPromptsQuery } from "../app/hooks";
+import {
+  useGetCapsQuery,
+  useGetPromptsQuery,
+  useGetToolsQuery,
+} from "../app/hooks";
 
 type ChatProps = {
   host: Config["host"];
@@ -38,13 +42,13 @@ export const Chat: React.FC<ChatProps> = ({
   tabbed,
   state,
 }) => {
-  // console.log({ state });
   const capsRequest = useGetCapsQuery(undefined);
   const promptsRequest = useGetPromptsQuery(undefined);
+  // TODO: don't make this request if there are no caps
+  const toolsRequest = useGetToolsQuery(undefined);
 
   const onSetSelectedSystemPrompt = useCallback(
     (key: string) => {
-      console.log("onSetSelectedSystemPrompt", key);
       if (!promptsRequest.data) return;
       if (!(key in promptsRequest.data)) return;
       if (key === "default") {
@@ -61,7 +65,8 @@ export const Chat: React.FC<ChatProps> = ({
 
   const canUseTools = useMemo(() => {
     if (!capsRequest.data) return false;
-    if (state.tools === null || state.tools.length === 0) return false;
+    if (!toolsRequest.data) return false;
+    if (toolsRequest.data.length === 0) return false;
     const modelName =
       state.chat.model || capsRequest.data.code_chat_default_model;
 
@@ -69,7 +74,7 @@ export const Chat: React.FC<ChatProps> = ({
     const model: CodeChatModel = capsRequest.data.code_chat_models[modelName];
     if ("supports_tools" in model && model.supports_tools) return true;
     return false;
-  }, [capsRequest.data, state.tools, state.chat.model]);
+  }, [capsRequest.data, toolsRequest.data, state.chat.model]);
 
   const unCalledTools = React.useMemo(() => {
     if (state.chat.messages.length === 0) return false;
@@ -101,7 +106,7 @@ export const Chat: React.FC<ChatProps> = ({
       unCalledTools={unCalledTools}
       enableSend={enableSend}
       onAskQuestion={(question: string) =>
-        askQuestion(question, promptsRequest.data)
+        askQuestion(question, promptsRequest.data, toolsRequest.data)
       }
       onSetChatModel={(value) => {
         const model =
