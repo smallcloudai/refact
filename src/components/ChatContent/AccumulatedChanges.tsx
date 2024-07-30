@@ -47,15 +47,17 @@ export const AccumulatedChanges: React.FC<{
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
-          <Flex direction="row" align="center">
-            <Text size="1">Accumulated changes</Text>
-            <Chevron open={open} />
-          </Flex>
+          <Box>
+            <Flex direction="row" align="center" gap="2" pl="2">
+              <Text size="1">Accumulated changes</Text>
+              <Chevron open={open} />
+            </Flex>
+            <Text size="1" wrap="wrap">
+              <DiffTitle diffs={groupedDiffs} />
+            </Text>
+          </Box>
         </Collapsible.Trigger>
         <Collapsible.Content>
-          <Text size="1" wrap="wrap">
-            <DiffTitle diffs={groupedDiffs} />
-          </Text>
           <DiffForm diffs={groupedDiffs} loading={false} onSubmit={onSumbit} />
         </Collapsible.Content>
       </Collapsible.Root>
