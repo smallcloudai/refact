@@ -22,7 +22,8 @@ export type ChatProps = {
   error: ChatState["error"];
   // TODO: update this
   caps: ChatCapsState;
-  commands: ChatState["commands"];
+  // commands: ChatState["commands"];
+  commands: ChatFormProps["commands"];
 
   retryQuestion: ChatContentProps["onRetry"];
   isWaiting: ChatContentProps["isWaiting"];
@@ -34,7 +35,7 @@ export type ChatProps = {
 
   hasContextFile: ChatFormProps["hasContextFile"];
   requestCommandsCompletion: ChatFormProps["requestCommandsCompletion"];
-  setSelectedCommand: ChatFormProps["setSelectedCommand"];
+  // setSelectedCommand: ChatFormProps["setSelectedCommand"];
   maybeSendToSidebar: ChatFormProps["onClose"];
   activeFile: ChatFormProps["attachFile"];
   filesInPreview: ChatFormProps["filesInPreview"];
@@ -79,7 +80,7 @@ export const Chat: React.FC<ChatProps> = ({
   commands,
   hasContextFile,
   requestCommandsCompletion,
-  setSelectedCommand,
+  // setSelectedCommand,
   maybeSendToSidebar,
   activeFile,
   filesInPreview,
@@ -176,7 +177,7 @@ export const Chat: React.FC<ChatProps> = ({
         commands={commands}
         hasContextFile={hasContextFile}
         requestCommandsCompletion={requestCommandsCompletion}
-        setSelectedCommand={setSelectedCommand}
+        // setSelectedCommand={setSelectedCommand}
         onClose={maybeSendToSidebar}
         attachFile={activeFile}
         filesInPreview={filesInPreview}

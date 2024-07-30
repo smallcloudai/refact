@@ -3,7 +3,7 @@ import {
   ChatResponse,
   // CapsResponse,
   // isCapsResponse,
-  CommandCompletionResponse,
+  // CommandCompletionResponse,
   ChatContextFileMessage,
   // SystemPrompts,
   // isSystemPrompts,
@@ -21,8 +21,8 @@ export enum EVENT_NAMES_FROM_CHAT {
   READY = "chat_ready",
   NEW_FILE = "chat_create_new_file",
   PASTE_DIFF = "chat_paste_diff",
-  REQUEST_AT_COMMAND_COMPLETION = "chat_request_at_command_completion",
-  REQUEST_PREVIEW_FILES = "chat_request_preview_files",
+  // REQUEST_AT_COMMAND_COMPLETION = "chat_request_at_command_completion",
+  // REQUEST_PREVIEW_FILES = "chat_request_preview_files",
   // REQUEST_PROMPTS = "chat_request_prompts",
   TAKE_NOTES = "chat_take_notes",
   // REQUEST_TOOLS = "chat_request_has_tool_check",
@@ -113,37 +113,37 @@ export function isActionFromChat(action: unknown): action is ActionFromChat {
 //   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_PROMPTS;
 // }
 
-export interface RequestAtCommandCompletion extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
-  payload: {
-    id: string;
-    query: string;
-    cursor: number;
-    number: number;
-  };
-}
+// export interface RequestAtCommandCompletion extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
+//   payload: {
+//     id: string;
+//     query: string;
+//     cursor: number;
+//     number: number;
+//   };
+// }
 
-export function isRequestAtCommandCompletion(
-  action: unknown,
-): action is RequestAtCommandCompletion {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
-}
+// export function isRequestAtCommandCompletion(
+//   action: unknown,
+// ): action is RequestAtCommandCompletion {
+//   if (!isActionFromChat(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION;
+// }
 
-export interface RequestPreviewFiles extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES;
-  payload: {
-    id: string;
-    query: string;
-  };
-}
+// export interface RequestPreviewFiles extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES;
+//   payload: {
+//     id: string;
+//     query: string;
+//   };
+// }
 
-export function isRequestPreviewFiles(
-  action: unknown,
-): action is RequestPreviewFiles {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES;
-}
+// export function isRequestPreviewFiles(
+//   action: unknown,
+// ): action is RequestPreviewFiles {
+//   if (!isActionFromChat(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES;
+// }
 
 export interface NewFileFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.NEW_FILE;
@@ -318,17 +318,17 @@ export function isSetSelectedSystemPrompt(
 //   return true;
 // }
 
-export interface ReceiveAtCommandCompletion extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
-  payload: { id: string } & CommandCompletionResponse;
-}
+// export interface ReceiveAtCommandCompletion extends ActionToChat {
+//   type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
+//   payload: { id: string } & CommandCompletionResponse;
+// }
 
-export function isReceiveAtCommandCompletion(
-  action: unknown,
-): action is ReceiveAtCommandCompletion {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
-}
+// export function isReceiveAtCommandCompletion(
+//   action: unknown,
+// ): action is ReceiveAtCommandCompletion {
+//   if (!isActionToChat(action)) return false;
+//   return action.type === EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION;
+// }
 
 export interface ReceiveAtCommandPreview extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW;

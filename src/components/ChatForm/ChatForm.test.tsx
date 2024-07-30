@@ -47,7 +47,7 @@ const App: React.FC<Partial<ChatFormProps & { host?: Config["host"] }>> = ({
       path: "",
       cursor: null,
     },
-    setSelectedCommand: noop,
+    // setSelectedCommand: noop,
     filesInPreview: [],
     onTextAreaHeightChange: noop,
     requestCaps: noop,

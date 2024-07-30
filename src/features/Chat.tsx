@@ -7,7 +7,10 @@ import {
   useGetCapsQuery,
   useGetPromptsQuery,
   useGetToolsQuery,
+  useGetCommandCompletionQuery,
+  useGetCommandPreviewQuery,
 } from "../app/hooks";
+import { useDebounceCallback } from "usehooks-ts";
 
 type ChatProps = {
   host: Config["host"];
@@ -27,9 +30,9 @@ export const Chat: React.FC<ChatProps> = ({
   handleNewFileClick,
   handlePasteDiffClick,
   hasContextFile,
-  requestCommandsCompletion,
-  requestPreviewFiles,
-  setSelectedCommand,
+  // requestCommandsCompletion,
+  // requestPreviewFiles,
+  // setSelectedCommand,
   removePreviewFileByName,
   retryQuestion,
   maybeRequestCaps,
@@ -44,8 +47,35 @@ export const Chat: React.FC<ChatProps> = ({
 }) => {
   const capsRequest = useGetCapsQuery(undefined);
   const promptsRequest = useGetPromptsQuery(undefined);
+
   // TODO: don't make this request if there are no caps
-  const toolsRequest = useGetToolsQuery(undefined);
+  const toolsRequest = useGetToolsQuery(!!capsRequest.data);
+
+  // commands should be a selector, and calling the hook ?
+  const [command, setCommand] = React.useState<{
+    query: string;
+    cursor: number;
+  }>({ query: "", cursor: 0 });
+
+  // TODO: These could be one hooks
+  const requestCommandsCompletion = useDebounceCallback(
+    (query: string, cursor: number) => {
+      setCommand({ query, cursor });
+    },
+    500,
+    { leading: true, maxWait: 250 },
+  );
+
+  const commandResult = useGetCommandCompletionQuery(
+    command.query,
+    command.cursor,
+    !!capsRequest.data,
+  );
+
+  const commandPreview = useGetCommandPreviewQuery(
+    command.query,
+    !!capsRequest.data,
+  );
 
   const onSetSelectedSystemPrompt = useCallback(
     (key: string) => {
@@ -122,22 +152,20 @@ export const Chat: React.FC<ChatProps> = ({
         default_cap: capsRequest.data?.code_chat_default_model ?? "",
         available_caps: capsRequest.data?.code_chat_models ?? {},
       }}
-      commands={state.commands}
+      commands={commandResult}
       hasContextFile={hasContextFile}
       requestCommandsCompletion={requestCommandsCompletion}
-      setSelectedCommand={setSelectedCommand}
       maybeSendToSidebar={maybeSendToSideBar}
       activeFile={state.active_file}
-      filesInPreview={state.files_in_preview}
+      filesInPreview={commandPreview}
       selectedSnippet={state.selected_snippet}
       removePreviewFileByName={removePreviewFileByName}
       requestCaps={maybeRequestCaps}
-      // prompts={state.system_prompts.prompts}
       prompts={promptsRequest.data ?? {}}
       onStartNewChat={startNewChat}
       onSetSystemPrompt={onSetSelectedSystemPrompt}
       selectedSystemPrompt={state.selected_system_prompt}
-      requestPreviewFiles={requestPreviewFiles}
+      requestPreviewFiles={() => ({})}
       canUseTools={canUseTools}
       setUseTools={setUseTools}
       useTools={state.use_tools}

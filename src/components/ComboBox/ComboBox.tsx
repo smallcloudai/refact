@@ -6,11 +6,11 @@ import { Item } from "./Item";
 import { Portal } from "../Portal";
 import { Popover } from "./Popover";
 import { TruncateLeft } from "../Text";
-import { ChatState } from "../../hooks";
 import { type DebouncedState } from "usehooks-ts";
+import { CommandCompletionResponse } from "../../services/refact";
 
 export type ComboBoxProps = {
-  commands: ChatState["commands"];
+  commands: CommandCompletionResponse;
   onChange: (value: string) => void;
   value: string;
   onSubmit: React.KeyboardEventHandler<HTMLTextAreaElement>;

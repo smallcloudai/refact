@@ -40,10 +40,10 @@ import {
   type NewFileFromChat,
   type PasteDiffFromChat,
   type ReadyMessage,
-  type RequestAtCommandCompletion,
-  isReceiveAtCommandCompletion,
-  type SetSelectedAtCommand,
-  isReceiveAtCommandPreview,
+  //  type RequestAtCommandCompletion,
+  //  isReceiveAtCommandCompletion,
+  //  type SetSelectedAtCommand,
+  //  isReceiveAtCommandPreview,
   isChatUserMessageResponse,
   isChatSetLastModelUsed,
   isSetSelectedSnippet,
@@ -64,8 +64,8 @@ import {
   isSetSelectedSystemPrompt,
   type SetSelectedSystemPrompt,
   // type SystemPrompts,
-  RequestPreviewFiles,
-  type CommandCompletionResponse,
+  // RequestPreviewFiles,
+  // type CommandCompletionResponse,
   type ToolResult,
   isSetTakeNotes,
   SetTakeNotes,
@@ -82,7 +82,7 @@ import {
   OpenHotKeys,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
-import { useDebounceCallback } from "usehooks-ts";
+// import { useDebounceCallback } from "usehooks-ts";
 import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
 
 export function formatChatResponse(
@@ -482,31 +482,31 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isThisChat && isReceiveAtCommandCompletion(action)) {
-      return {
-        ...state,
-        commands: {
-          completions: action.payload.completions,
-          replace: action.payload.replace,
-          is_cmd_executable: action.payload.is_cmd_executable,
-        },
-      };
-    }
+    // if (isThisChat && isReceiveAtCommandCompletion(action)) {
+    //   return {
+    //     ...state,
+    //     commands: {
+    //       completions: action.payload.completions,
+    //       replace: action.payload.replace,
+    //       is_cmd_executable: action.payload.is_cmd_executable,
+    //     },
+    //   };
+    // }
 
-    if (isThisChat && isReceiveAtCommandPreview(action)) {
-      const filesInPreview = action.payload.preview.reduce<ChatContextFile[]>(
-        (acc, curr) => {
-          const files = curr[1];
-          return [...acc, ...files];
-        },
-        [],
-      );
+    // if (isThisChat && isReceiveAtCommandPreview(action)) {
+    //   const filesInPreview = action.payload.preview.reduce<ChatContextFile[]>(
+    //     (acc, curr) => {
+    //       const files = curr[1];
+    //       return [...acc, ...files];
+    //     },
+    //     [],
+    //   );
 
-      return {
-        ...state,
-        files_in_preview: filesInPreview,
-      };
-    }
+    //   return {
+    //     ...state,
+    //     files_in_preview: filesInPreview,
+    //   };
+    // }
 
     if (isThisChat && isChatSetLastModelUsed(action)) {
       return {
@@ -653,7 +653,7 @@ export type ChatState = {
   previous_message_length: number;
   error: string | null;
   // caps: ChatCapsState;
-  commands: CommandCompletionResponse;
+  // commands: CommandCompletionResponse;
   files_in_preview: ChatContextFile[];
   active_file: FileInfo;
   selected_snippet: Snippet;
@@ -697,11 +697,11 @@ export function createInitialState(): ChatState {
     //   available_caps: {},
     //   error: null,
     // },
-    commands: {
-      completions: [],
-      replace: [-1, -1],
-      is_cmd_executable: false,
-    },
+    // commands: {
+    //   completions: [],
+    //   replace: [-1, -1],
+    //   is_cmd_executable: false,
+    // },
     active_file: {
       name: "",
       line1: null,
@@ -1003,65 +1003,63 @@ export const useEventBusForChat = () => {
   );
 
   // TODO: hoist this hook to context so useCallback isn't needed
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const requestCommandsCompletion = useCallback(
-    useDebounceCallback(
-      (
-        query: string,
-        cursor: number,
-        // eslint-disable-next-line @typescript-eslint/no-inferrable-types
-        number: number = 5,
-      ) => {
-        // TODO: don't call if no caps
-        // if (!hasCapsAndNoError) return;
-        const action: RequestAtCommandCompletion = {
-          type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
-          payload: { id: state.chat.id, query, cursor, number },
-        };
-        postMessage(action);
-      },
-      500,
-      { leading: true, maxWait: 250 },
-    ),
-    [
-      state.chat.id,
-      postMessage,
-      // hasCapsAndNoError
-    ],
-  );
+  // const requestCommandsCompletion = useCallback(
+  //   useDebounceCallback(
+  //     (
+  //       query: string,
+  //       cursor: number,
+  //       // eslint-disable-next-line @typescript-eslint/no-inferrable-types
+  //       number: number = 5,
+  //     ) => {
+  //       // TODO: don't call if no caps
+  //       // if (!hasCapsAndNoError) return;
+  //       const action: RequestAtCommandCompletion = {
+  //         type: EVENT_NAMES_FROM_CHAT.REQUEST_AT_COMMAND_COMPLETION,
+  //         payload: { id: state.chat.id, query, cursor, number },
+  //       };
+  //       postMessage(action);
+  //     },
+  //     500,
+  //     { leading: true, maxWait: 250 },
+  //   ),
+  //   [
+  //     state.chat.id,
+  //     postMessage,
+  //     // hasCapsAndNoError
+  //   ],
+  // );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const requestPreviewFiles = useCallback(
-    useDebounceCallback(
-      function (input: string) {
-        // TODO: don't call if no caps
-        // if (!hasCapsAndNoError) return;
-        const message: RequestPreviewFiles = {
-          type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES,
-          payload: { id: state.chat.id, query: input },
-        };
-        postMessage(message);
-      },
-      500,
-      { leading: true },
-    ),
-    [
-      postMessage,
-      state.chat.id,
-      // hasCapsAndNoError
-    ],
-  );
+  // const requestPreviewFiles = useCallback(
+  //   useDebounceCallback(
+  //     function (input: string) {
+  //       // TODO: don't call if no caps
+  //       // if (!hasCapsAndNoError) return;
+  //       const message: RequestPreviewFiles = {
+  //         type: EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES,
+  //         payload: { id: state.chat.id, query: input },
+  //       };
+  //       postMessage(message);
+  //     },
+  //     500,
+  //     { leading: true },
+  //   ),
+  //   [
+  //     postMessage,
+  //     state.chat.id,
+  //     // hasCapsAndNoError
+  //   ],
+  // );
 
-  const setSelectedCommand = useCallback(
-    (command: string) => {
-      const action: SetSelectedAtCommand = {
-        type: EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND,
-        payload: { id: state.chat.id, command },
-      };
-      dispatch(action);
-    },
-    [state.chat.id],
-  );
+  // const setSelectedCommand = useCallback(
+  //   (command: string) => {
+  //     const action: SetSelectedAtCommand = {
+  //       type: EVENT_NAMES_TO_CHAT.SET_SELECTED_AT_COMMAND,
+  //       payload: { id: state.chat.id, command },
+  //     };
+  //     dispatch(action);
+  //   },
+  //   [state.chat.id],
+  // );
 
   const removePreviewFileByName = useCallback(
     (name: string) => {
@@ -1245,14 +1243,15 @@ export const useEventBusForChat = () => {
     sendToSideBar,
     handleNewFileClick,
     handlePasteDiffClick,
-    requestCommandsCompletion,
-    setSelectedCommand,
+    // requestCommandsCompletion,
+    // setSelectedCommand,
     removePreviewFileByName,
     retryQuestion,
+    // TODO: remove this
     maybeRequestCaps: () => ({}),
     startNewChat,
     setSelectedSystemPrompt,
-    requestPreviewFiles,
+    // requestPreviewFiles,
     setUseTools,
     enableSend,
     openSettings,

@@ -277,7 +277,7 @@ export type ChatFormProps = {
   hasContextFile: boolean;
   requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
   requestPreviewFiles: (input: string) => void;
-  setSelectedCommand: (command: string) => void;
+  // setSelectedCommand: (command: string) => void;
   filesInPreview: ChatContextFile[];
   selectedSnippet: ChatState["selected_snippet"];
   removePreviewFileByName: (name: string) => void;

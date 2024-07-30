@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import {
   sendChat,
   // getCaps,
-  getAtCommandCompletion,
-  getAtCommandPreview,
-  isDetailMessage,
+  // getAtCommandCompletion,
+  // getAtCommandPreview,
+  // isDetailMessage,
   // getPrompts,
   formatMessagesForLsp,
   // getAvailableTools,
@@ -19,13 +19,13 @@ import {
   isSaveChatFromChat,
   // isRequestCapsFromChat,
   isStopStreamingFromChat,
-  isRequestAtCommandCompletion,
-  ReceiveAtCommandCompletion,
-  ReceiveAtCommandPreview,
+  // isRequestAtCommandCompletion,
+  // ReceiveAtCommandCompletion,
+  // ReceiveAtCommandPreview,
   // isRequestPrompts,
   // ReceivePrompts,
   // ReceivePromptsError,
-  isRequestPreviewFiles,
+  // isRequestPreviewFiles,
   isTakeNotesFromChat,
   // isRequestTools,
   // RecieveTools,
@@ -152,42 +152,42 @@ export function useEventBusForHost() {
       //     });
       // }
 
-      if (isRequestAtCommandCompletion(event.data)) {
-        const { id, query, cursor, number } = event.data.payload;
+      // if (isRequestAtCommandCompletion(event.data)) {
+      //   const { id, query, cursor, number } = event.data.payload;
 
-        getAtCommandCompletion(query, cursor, number, lspUrl)
-          .then((res) => {
-            if (isDetailMessage(res)) return;
-            const message: ReceiveAtCommandCompletion = {
-              type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION,
-              payload: { ...res, id },
-            };
+      //   getAtCommandCompletion(query, cursor, number, lspUrl)
+      //     .then((res) => {
+      //       if (isDetailMessage(res)) return;
+      //       const message: ReceiveAtCommandCompletion = {
+      //         type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_COMPLETION,
+      //         payload: { ...res, id },
+      //       };
 
-            window.postMessage(message, "*");
-          })
-          .catch((error) => {
-            // eslint-disable-next-line no-console
-            console.error(error);
-          });
-      }
+      //       window.postMessage(message, "*");
+      //     })
+      //     .catch((error) => {
+      //       // eslint-disable-next-line no-console
+      //       console.error(error);
+      //     });
+      // }
 
-      if (isRequestPreviewFiles(event.data)) {
-        const { query, id } = event.data.payload;
+      // if (isRequestPreviewFiles(event.data)) {
+      //   const { query, id } = event.data.payload;
 
-        getAtCommandPreview(query, lspUrl)
-          .then((res) => {
-            if (isDetailMessage(res)) return;
-            const message: ReceiveAtCommandPreview = {
-              type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW,
-              payload: { id, preview: res },
-            };
-            window.postMessage(message, "*");
-          })
-          .catch((error) => {
-            // eslint-disable-next-line no-console
-            console.error(error);
-          });
-      }
+      //   getAtCommandPreview(query, lspUrl)
+      //     .then((res) => {
+      //       if (isDetailMessage(res)) return;
+      //       const message: ReceiveAtCommandPreview = {
+      //         type: EVENT_NAMES_TO_CHAT.RECEIVE_AT_COMMAND_PREVIEW,
+      //         payload: { id, preview: res },
+      //       };
+      //       window.postMessage(message, "*");
+      //     })
+      //     .catch((error) => {
+      //       // eslint-disable-next-line no-console
+      //       console.error(error);
+      //     });
+      // }
 
       // if (isRequestPrompts(event.data)) {
       //   const id = event.data.payload.id;

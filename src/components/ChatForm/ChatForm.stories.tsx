@@ -170,7 +170,7 @@ const meta: Meta<typeof ChatForm> = {
     removePreviewFileByName: () => ({}),
     requestPreviewFiles: () => ({}),
     // requestCommandsCompletion: () => ({}),
-    setSelectedCommand: () => ({}),
+    // setSelectedCommand: () => ({}),
     onTextAreaHeightChange: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
