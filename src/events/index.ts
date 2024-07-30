@@ -6,4 +6,5 @@ export * from "./statistic";
 export * from "./config";
 export type * from "./config";
 export * from "./FIMDebug";
+export * from "./setup";
 export type * from "./setup";

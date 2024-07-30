@@ -5,4 +5,5 @@ export {
   renderStatistic,
   renderFIMDebug,
   renderApp,
+  renderAppHost,
 } from "./render";
