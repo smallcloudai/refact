@@ -61,7 +61,7 @@ function pageReducer(state: Page[], action: PageAction): Page[] {
 
 export function usePages() {
   const config = useConfig();
-  let firstPage: Page = { name: "documentation settings" };
+  let firstPage: Page = { name: "initial setup" };
   if (config.addressURL && config.apiKey) {
     firstPage = { name: "chat" }; // todo: change this to chat history
   }
