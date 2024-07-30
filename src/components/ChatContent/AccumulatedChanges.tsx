@@ -1,5 +1,5 @@
 import React from "react";
-import { Container, Text, Flex, Box, Switch, Button } from "@radix-ui/themes";
+import { Container, Text, Flex, Box, Button } from "@radix-ui/themes";
 import { ChatMessages, DiffChunk, isDiffMessage } from "../../events";
 import { type DiffWithStatus, DiffTitle, Diff } from "./DiffContent";
 import { DiffChunkStatus } from "../../hooks";
@@ -138,14 +138,15 @@ const DiffForm: React.FC<{
               <TruncateLeft size="1">{fullFileName}</TruncateLeft>
               <Text size="1" as="label">
                 <Flex align="center" gap="2" pl="2">
-                  {errored ? "error" : applied ? "unapply" : "apply"}{" "}
-                  <Switch
+                  {errored && "error"}
+                  <Button
                     size="1"
-                    checked={applied}
-                    onCheckedChange={(value) =>
-                      handleToggle(value, diffsForFile)
-                    }
-                  />
+                    onClick={() => {
+                      handleToggle(!applied, diffsForFile);
+                    }}
+                  >
+                    {applied ? "Unapply" : "Apply"}
+                  </Button>
                 </Flex>
               </Text>
             </Flex>

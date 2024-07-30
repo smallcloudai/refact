@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, Container, Box, Flex, Switch, Button } from "@radix-ui/themes";
+import { Text, Container, Box, Flex, Button } from "@radix-ui/themes";
 import { type DiffChunk } from "../../events";
 import { ScrollArea } from "../ScrollArea";
 import SyntaxHighlighter from "react-syntax-highlighter";
@@ -136,10 +136,10 @@ export const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
     const [head, ...tail] = items;
     const [fullPath, diffForFile] = head;
     const name = filename(fullPath);
-    const addLength = diffForFile.reduce((acc, diff) => {
+    const addLength = diffForFile.reduce<number>((acc, diff) => {
       return acc + (diff.lines_add ? diff.lines_add.split("\n").length : 0);
     }, 0);
-    const removeLength = diffForFile.reduce((acc, diff) => {
+    const removeLength = diffForFile.reduce<number>((acc, diff) => {
       return (
         acc + (diff.lines_remove ? diff.lines_remove.split("\n").length : 0)
       );
@@ -277,16 +277,15 @@ export const DiffForm: React.FC<{
           <Box key={key} my="2">
             <Flex justify="between" align="center" p="1">
               <TruncateLeft size="1">{fullFileName}</TruncateLeft>
-              {/* <Text size="1" wrap="wrap"></Text> */}
               <Text size="1" as="label">
                 <Flex align="center" gap="2" pl="2">
-                  {errored ? "error" : applied ? "unapply" : "apply"}{" "}
-                  <Switch
-                    // disabled={loading || errored}
+                  {errored && "error"}
+                  <Button
                     size="1"
-                    checked={applied}
-                    onCheckedChange={(value) => handleToggle(value, indeices)}
-                  />
+                    onClick={() => handleToggle(!applied, indeices)}
+                  >
+                    {applied ? "Unapply" : "Apply"}
+                  </Button>
                 </Flex>
               </Text>
             </Flex>
