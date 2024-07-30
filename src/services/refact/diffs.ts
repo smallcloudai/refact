@@ -46,7 +46,7 @@ export async function checkDiff(
   return json;
 }
 
-interface DiffOperationResponse {
+export interface DiffOperationResponse {
   fuzzy_results: {
     chunk_id: number;
     fuzzy_n_used: number;
