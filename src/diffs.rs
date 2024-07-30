@@ -1,14 +1,65 @@
-use std::mem;
+use std::{fs, mem};
 use std::path::PathBuf;
+use std::sync::Arc;
+use tokio::sync::RwLock as ARwLock;
 use hashbrown::{HashMap, HashSet};
+use crate::at_commands::at_file::file_repair_candidates;
 use crate::call_validation::DiffChunk;
-
+use crate::global_context::GlobalContext;
 
 #[derive(Clone, Debug, Default)]
 struct DiffLine {
     line_n: usize,
     text: String,
     overwritten_by_id: Option<usize>,
+}
+
+fn validate_chunk(chunk: &DiffChunk) -> Result<(), String> {
+    if chunk.line1 < 1 {
+        return Err("Invalid line range: line1 cannot be < 1".to_string());
+    }
+    if chunk.line2 < chunk.line1 {
+        return Err("Invalid line range: line2 cannot be < line1".to_string());
+    }
+    if !vec!["edit", "add", "rename", "delete"].contains(&chunk.file_action.as_str()) {
+        return Err("Invalid file action: file_action must be one of `edit, add, rename, delete`".to_string());
+    }
+    if chunk.file_name_rename.is_some() && chunk.file_action != "rename" {
+        return Err(format!("file_name_rename is not allowed for file_action `{}`. file_action must've been `rename`.", chunk.file_action));
+    }
+    Ok(())
+}
+
+pub async fn correct_and_validate_chunks(
+    chunks: &mut Vec<DiffChunk>,
+    global_context: Arc<ARwLock<GlobalContext>>
+) -> Result<(), String> {
+    for c in chunks.iter_mut() {
+        let file_path = PathBuf::from(&c.file_name);
+        if !file_path.is_file() {
+            let candidates = file_repair_candidates(&c.file_name, global_context.clone(), 5, false).await;
+            let fuzzy_candidates = file_repair_candidates(&c.file_name, global_context.clone(), 5, true).await;
+
+            if candidates.len() > 1 {
+                return Err(format!("file_name `{}` is ambiguous.\nIt could be interpreted as:\n{}", &c.file_name, candidates.join("\n")));
+            }
+            if candidates.is_empty() {
+                return if !fuzzy_candidates.is_empty() {
+                    Err(format!("file_name `{}` is not found.\nHowever, there are similar paths:\n{}", &c.file_name, fuzzy_candidates.join("\n")))
+                } else {
+                    Err(format!("file_name `{}` is not found", &c.file_name))
+                }
+            }
+            let candidate = candidates.get(0).unwrap();
+            if !PathBuf::from(&candidate).is_file() {
+                return Err(format!("file_name `{}` is not found.\nHowever, there are similar paths:\n{}", &c.file_name, fuzzy_candidates.join("\n")));
+            }
+            c.file_name = candidate.clone();
+        }
+
+        validate_chunk(c).map_err(|e| format!("error validating chunk {:?}:\n{}", c, e))?;
+    }
+    Ok(())
 }
 
 fn find_chunk_matches(chunk_lines_remove: &Vec<DiffLine>, orig_lines: &Vec<&DiffLine>) -> Result<Vec<Vec<usize>>, String> {
@@ -179,15 +230,15 @@ pub fn apply_diff_chunks_to_text(
     (file_text_copy, fuzzy_ns)
 }
 
-pub fn read_files_n_apply_diff_chunks(
+pub fn read_files_n_apply_diff_chunks_edit(
     chunks: &Vec<DiffChunk>,
     applied_state: &Vec<bool>,
     desired_state: &Vec<bool>,
     max_fuzzy_n: usize,
 ) -> (HashMap<String, String>, HashMap<usize, Option<usize>>) {
 
-    let chunks_undo = chunks.iter().enumerate().filter(|(idx, _)|applied_state.get(*idx) == Some(&true)).collect::<Vec<_>>();
-    let chunks_apply = chunks.iter().enumerate().filter(|(idx, _)|desired_state.get(*idx) == Some(&true)).collect::<Vec<_>>();
+    let chunks_undo = chunks.iter().enumerate().filter(|(idx, c)|applied_state.get(*idx) == Some(&true) && c.file_action == "edit").collect::<Vec<_>>();
+    let chunks_apply = chunks.iter().enumerate().filter(|(idx, c)|desired_state.get(*idx) == Some(&true) && c.file_action == "edit").collect::<Vec<_>>();
 
     let mut chunk_apply_groups = HashMap::new();
     for c in chunks_apply.iter().cloned() {
@@ -225,6 +276,119 @@ pub fn read_files_n_apply_diff_chunks(
     (texts_after_patch, fuzzy_n_used)
 }
 
+pub fn can_apply_diff_chunks_other(
+    chunks: &Vec<DiffChunk>,
+    desired_state: &Vec<bool>,
+) -> HashMap<usize, Option<usize>> {
+    let mut results: HashMap<usize, Option<usize>> = HashMap::new();
+
+    let check_add = |c: &DiffChunk| {
+        let file_path = PathBuf::from(&c.file_name);
+        if let Some(parent) = file_path.parent() {
+            if parent.is_dir() && !file_path.exists() {
+                return Some(0);
+            }
+        }
+        None
+    };
+    let check_remove = |c: &DiffChunk| {
+        let file_path = PathBuf::from(&c.file_name);
+        if file_path.is_file() {
+            return Some(0);
+        }
+        None
+    };
+    let check_rename = |c: &DiffChunk| {
+        let file_path = PathBuf::from(&c.file_name);
+        let file_path_rename = PathBuf::from(c.file_name_rename.clone().unwrap_or_default());
+        if let Some(parent) = file_path_rename.parent() {
+            if parent.is_dir() && !file_path_rename.exists() && file_path.exists() {
+                return Some(0);
+            }
+        }
+        None
+    };
+
+    for (c_idx, c) in chunks.iter().enumerate() {
+        if desired_state.get(c_idx) == Some(&true) {
+            let result = match c.file_action.as_str() {
+                "add" => check_add(c),
+                "remove" => check_remove(c),
+                "rename" => check_rename(c),
+                _ => continue
+            };
+            results.insert(c_idx, result);
+        }
+    }
+
+    results
+}
+
+pub fn apply_diff_chunks_other_to_files(
+    chunks: &Vec<DiffChunk>,
+    can_apply_state: &Vec<bool>,
+) -> HashMap<usize, Option<usize>> {
+    let mut results: HashMap<usize, Option<usize>> = HashMap::new();
+
+    let apply_add_action = |c: &DiffChunk| {
+        let file_path = PathBuf::from(&c.file_name);
+        match fs::write(&file_path, &c.lines_add) {
+            Ok(_) => Some(0),
+            Err(e) => {
+                eprintln!("Failed to write file: {}", e);
+                None
+            }
+        }
+    };
+    let apply_remove_action = |c: &DiffChunk| {
+        let file_path = PathBuf::from(&c.file_name);
+        if file_path.exists() {
+            match fs::remove_file(&file_path) {
+                Ok(_) => Some(0),
+                Err(e) => {
+                    eprintln!("Failed to remove file: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    };
+    let apply_rename_action = |c: &DiffChunk| {
+        let file_path = PathBuf::from(&c.file_name);
+        let file_path_rename = PathBuf::from(c.file_name_rename.clone().unwrap_or_default());
+        if file_path.exists() {
+            match fs::rename(&file_path, &file_path_rename) {
+                Ok(_) => Some(0),
+                Err(e) => {
+                    eprintln!("Failed to rename file: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    };
+
+    for (c_idx, chunk) in chunks.iter().enumerate() {
+        if can_apply_state.get(c_idx) != Some(&true) {
+            results.insert(c_idx, None);
+            continue;
+        }
+
+        let result = match chunk.file_action.as_str() {
+            "add" => apply_add_action(chunk),
+            "remove" => apply_remove_action(chunk),
+            "rename" => apply_rename_action(chunk),
+            _ => continue
+        };
+
+        results.insert(c_idx, result);
+    }
+
+    results
+}
+
 pub fn fuzzy_results_into_state_vector(results: &HashMap<usize, Option<usize>>, total: usize) -> Vec<usize> {
     let mut state_vector = vec![0; total];
     for (k, v) in results {
@@ -240,7 +404,6 @@ mod tests {
     use super::*;
     use std::fs;
     use std::io::Write;
-    use tracing::info;
 
     const TEST_MAX_FUZZY: usize = 10;
 
@@ -319,6 +482,7 @@ class Frog:
             line2: 5,
             lines_remove: "        self.x = x\n        self.y = y\n".to_string(),
             lines_add: "        self.x, self.y = x, y\n".to_string(),
+            ..Default::default()
         };
         let chunks = vec![chunk1];
 
@@ -326,14 +490,14 @@ class Frog:
         let desired_state = vec![true];
 
         delete_file_if_exists(FILE1_FN);
-        let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
+        let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks_edit(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         let r1_state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
 
         println!("r1 state: {:?}", r1_state);
         assert_eq!(vec![2], r1_state);
 
         write_file(FILE1_FN, FILE1);
-        let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
+        let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks_edit(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         let r2_state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
 
         println!("r2 state: {:?}", r2_state);
@@ -351,6 +515,7 @@ class Frog:
             line2: 2,
             lines_remove: "    # Third jump\n".to_string(),
             lines_add: "    # Third extra jump\n".to_string(),
+            ..Default::default()
         };
 
         let c2 = DiffChunk {
@@ -361,13 +526,14 @@ class Frog:
             line2: 4,
             lines_remove: "    frog2.jump()\n".to_string(),
             lines_add: "    frog2.jump()\n    frog3.jump()\n".to_string(),
+            ..Default::default()
         };
         let chunks = vec![c1, c2];
         let applied_state = vec![false, false];
         let desired_state = vec![true, true];
 
         write_file(FILE2_FN, FILE2);
-        let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
+        let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks_edit(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         println!("results_fuzzy_n: {:?}", results_fuzzy_n);
         let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
 
@@ -417,6 +583,7 @@ class AnotherFrog:
             line2: 6,
             lines_remove: "class Frog:\n".to_string(),
             lines_add: "class AnotherFrog:\n".to_string(),
+            ..Default::default()
         };
 
         let c2 = DiffChunk {
@@ -427,13 +594,14 @@ class AnotherFrog:
             line2: 4,
             lines_remove: "".to_string(),
             lines_add: "\n\n".to_string(),
+            ..Default::default()
         };
         let chunks = vec![c1, c2];
         let applied_state = vec![false, false];
         let desired_state = vec![true, true];
 
         write_file(FILE3_FN, FILE3);
-        let (file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
+        let (file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks_edit(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         println!("results_fuzzy_n: {:?}", results_fuzzy_n);
         let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
         assert_eq!(vec![1, 1], state);
@@ -443,7 +611,7 @@ class AnotherFrog:
 
         let applied_state = vec![true, true];
         let desired_state = vec![false, false];
-        let (file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
+        let (file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks_edit(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         println!("results_fuzzy_n: {:?}", results_fuzzy_n);
         let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
         assert_eq!(vec![0, 0], state);
