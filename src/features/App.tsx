@@ -53,12 +53,10 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const enterpriseSetup = (apiKey: string, endpointAddress: string) => {
     setupHost({ type: "enterprise", apiKey, endpointAddress });
-    navigate({ type: "push", page: { name: "chat" } });
   };
 
   const selfHostingSetup = (endpointAddress: string) => {
     setupHost({ type: "self", endpointAddress });
-    navigate({ type: "push", page: { name: "documentation settings" } });
   };
 
   const openExternal = (url: string) => {
