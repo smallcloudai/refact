@@ -1356,6 +1356,8 @@ export const useEventBusForChat = () => {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS,
           payload: { id: state.chat.id, diff_id: key, chunks: message[1] },
         };
+        // FIX: when using the webhost, postMEssage also triggers dispatch, in vscode it won't
+        dispatch(action);
         postMessage(action);
       } else if (
         !state.chat.applied_diffs[key].fetching &&
