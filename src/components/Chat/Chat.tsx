@@ -32,6 +32,8 @@ export type ChatProps = {
   onPasteClick: ChatContentProps["onPasteClick"];
   canPaste: ChatContentProps["canPaste"];
   openSettings: ChatContentProps["openSettings"];
+  getDiffByIndex: ChatContentProps["getDiffByIndex"];
+  addOrRemoveDiff: ChatContentProps["addOrRemoveDiff"];
 
   hasContextFile: ChatFormProps["hasContextFile"];
   requestCommandsCompletion: ChatFormProps["requestCommandsCompletion"];
@@ -96,6 +98,9 @@ export const Chat: React.FC<ChatProps> = ({
   setUseTools,
   useTools,
   openSettings,
+
+  getDiffByIndex,
+  addOrRemoveDiff,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
 
@@ -143,6 +148,8 @@ export const Chat: React.FC<ChatProps> = ({
         </Flex>
       )}
       <ChatContent
+        key={`chat-content-${chat.id}`}
+        chatKey={chat.id}
         messages={chat.messages}
         onRetry={retryQuestion}
         isWaiting={isWaiting}
@@ -152,6 +159,8 @@ export const Chat: React.FC<ChatProps> = ({
         canPaste={canPaste}
         ref={chatContentRef}
         openSettings={openSettings}
+        addOrRemoveDiff={addOrRemoveDiff}
+        getDiffByIndex={getDiffByIndex}
       />
       {!isStreaming && preventSend && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
@@ -164,6 +173,7 @@ export const Chat: React.FC<ChatProps> = ({
         </Container>
       )}
       <ChatForm
+        key={`chat-form-${chat.id}`}
         chatId={chat.id}
         isStreaming={isStreaming}
         showControls={chat.messages.length === 0 && !isStreaming}

@@ -44,6 +44,8 @@ export const Chat: React.FC<ChatProps> = ({
   host,
   tabbed,
   state,
+  addOrRemoveDiff,
+  getDiffByIndex,
 }) => {
   const capsRequest = useGetCapsQuery(undefined);
   const promptsRequest = useGetPromptsQuery(undefined);
@@ -57,13 +59,17 @@ export const Chat: React.FC<ChatProps> = ({
     cursor: number;
   }>({ query: "", cursor: 0 });
 
-  // TODO: These could be one hooks
-  const requestCommandsCompletion = useDebounceCallback(
-    (query: string, cursor: number) => {
-      setCommand({ query, cursor });
-    },
-    500,
-    { leading: true, maxWait: 250 },
+  // TODO: this could be put lower in the componet tree to prevent re-renders.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const requestCommandsCompletion = React.useCallback(
+    useDebounceCallback(
+      (query: string, cursor: number) => {
+        setCommand({ query, cursor });
+      },
+      500,
+      { leading: true, maxWait: 250 },
+    ),
+    [setCommand],
   );
 
   const commandResult = useGetCommandCompletionQuery(
@@ -170,6 +176,8 @@ export const Chat: React.FC<ChatProps> = ({
       setUseTools={setUseTools}
       useTools={state.use_tools}
       openSettings={openSettings}
+      addOrRemoveDiff={addOrRemoveDiff}
+      getDiffByIndex={getDiffByIndex}
     />
   );
 };

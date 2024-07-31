@@ -52,6 +52,19 @@ const handlers = [
   http.get("http://127.0.0.1:8001/v1/customization", () => {
     return HttpResponse.json({ system_prompts: SYSTEM_PROMPTS });
   }),
+  http.post("http://127.0.0.1:8001/v1/at-command-completion", () => {
+    return HttpResponse.json({
+      completions: [],
+      replace: [0, 0],
+      is_cmd_executable: false,
+    });
+  }),
+
+  http.post("http://127.0.0.1:8001/v1/at-command-preview", () => {
+    return HttpResponse.json({
+      messages: [],
+    });
+  }),
 ];
 
 const worker = setupServer(...handlers);
