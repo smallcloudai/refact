@@ -490,6 +490,7 @@ fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
                     .filter(|x| x.line_type == LineType::Plus)
                     .map(|x| format!("{}\n", x.line.clone()))
                     .join(""),
+                ..Default::default()
             }
         })
         .collect()
@@ -810,6 +811,7 @@ class AnotherFrog:
                 line2: 6,
                 lines_remove: "class Frog:\n".to_string(),
                 lines_add: "class AnotherFrog:\n".to_string(),
+                ..Default::default()
             }
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -853,6 +855,7 @@ DT = 0.01
                 line2: 6,
                 lines_remove: "class Frog:\n".to_string(),
                 lines_add: "".to_string(),
+                ..Default::default()
             }
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -898,6 +901,7 @@ class Frog:
                 line2: 6,
                 lines_remove: "".to_string(),
                 lines_add: "    # Frog class description\n".to_string(),
+                ..Default::default()
             }
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -937,6 +941,7 @@ DT = 0.01"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "    # Frog class description\n".to_string(),
+                ..Default::default()
             }
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -995,6 +1000,7 @@ class Frog:
                 line2: 23,
                 lines_remove: "    def jump(self, pond_width, pond_height):\n".to_string(),
                 lines_add: "".to_string(),
+                ..Default::default()
             }
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1053,6 +1059,7 @@ class Frog:
                 line2: 23,
                 lines_remove: "    def jump(self, pond_width, pond_height):\n".to_string(),
                 lines_add: "".to_string(),
+                ..Default::default()
             }
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1123,6 +1130,7 @@ class Frog:
                 line2: 18,
                 lines_remove: "        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n".to_string(),
                 lines_add: "        # test1:\n        elif self.x > pond:\n            # what is that?\n            pass\n        if self.y > 0:\n".to_string(),
+                ..Default::default()
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -1132,6 +1140,7 @@ class Frog:
                 line2: 21,
                 lines_remove: "            self.vy = -np.abs(self.vy)\n".to_string(),
                 lines_add: "            self.vx = -np.abs(self.vy)\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1182,6 +1191,7 @@ Another text"#;
                 line2: 18,
                 lines_remove: "        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n".to_string(),
                 lines_add: "        # test1:\n        elif self.x > pond:\n            # what is that?\n            pass\n        if self.y > 0:\n".to_string(),
+                ..Default::default()
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -1191,6 +1201,7 @@ Another text"#;
                 line2: 21,
                 lines_remove: "            self.vy = -np.abs(self.vy)\n".to_string(),
                 lines_add: "            self.vx = -np.abs(self.vy)\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1235,6 +1246,7 @@ Another text"#;
                 line2: 18,
                 lines_remove: "        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n".to_string(),
                 lines_add: "        # test1:\n        elif self.x > pond:\n            # what is that?\n            pass\n        if self.y > 0:\n".to_string(),
+                ..Default::default()
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -1244,6 +1256,7 @@ Another text"#;
                 line2: 21,
                 lines_remove: "            self.vy = -np.abs(self.vy)\n".to_string(),
                 lines_add: "            self.vx = -np.abs(self.vy)\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1316,6 +1329,7 @@ class Frog:
                 line2: 28,
                 lines_remove: "".to_string(),
                 lines_add: "        # extra row 1\n        # extra row 2\n        # extra row 3\n".to_string(),
+                ..Default::default()
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -1325,6 +1339,7 @@ class Frog:
                 line2: 2,
                 lines_remove: "import numpy as np\n".to_string(),
                 lines_add: "import numpy as np\n# extra row 1\n# extra row 2\n# extra row 3\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1393,6 +1408,7 @@ class EuropeanCommonToad(frog.Frog):
                 line2: 25,
                 lines_remove: "".to_string(),
                 lines_add: "        # extra row 1\n        # extra row 2\n        # extra row 3\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1453,6 +1469,7 @@ if __name__ == __main__:
                 line2: 17,
                 lines_remove: "    # Third jump\n".to_string(),
                 lines_add: "    # New Comment\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1526,6 +1543,7 @@ if __name__ == __main__:
                 line2: 13,
                 lines_remove: "".to_string(),
                 lines_add: "    frog3 = Frog()\n".to_string(),
+                ..Default::default()
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
@@ -1535,6 +1553,7 @@ if __name__ == __main__:
                 line2: 15,
                 lines_remove: "".to_string(),
                 lines_add: "    frog3.jump()\n".to_string(),
+                ..Default::default()
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
@@ -1544,6 +1563,7 @@ if __name__ == __main__:
                 line2: 17,
                 lines_remove: "    # Third jump\n".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
+                ..Default::default()
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
@@ -1553,6 +1573,7 @@ if __name__ == __main__:
                 line2: 19,
                 lines_remove: "    frog2.jump()\n".to_string(),
                 lines_add: "    frog2.jump()\n    frog3.jump()\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1617,6 +1638,7 @@ if __name__ == __main__:
                 line2: 17,
                 lines_remove: "    # Third jump\n".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
+                ..Default::default()
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
@@ -1626,6 +1648,7 @@ if __name__ == __main__:
                 line2: 19,
                 lines_remove: "    frog2.jump()\n".to_string(),
                 lines_add: "    frog2.jump()\n    frog3.jump()\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1685,6 +1708,7 @@ if __name__ == __main__:
                 line2: 11,
                 lines_remove: "".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1744,6 +1768,7 @@ if __name__ == __main__:
                 line2: 11,
                 lines_remove: "".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1802,6 +1827,7 @@ if __name__ == __main__:
                 line2: 11,
                 lines_remove: "    frog2.jump()\n".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1862,6 +1888,7 @@ if __name__ == __main__:
                 line2: 11,
                 lines_remove: "".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2140,6 +2167,7 @@ These unified diffs should correctly apply the required changes to replace the F
                 line2: 10,
                 lines_remove: "".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
+                ..Default::default()
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
