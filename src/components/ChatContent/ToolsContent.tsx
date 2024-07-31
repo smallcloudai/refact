@@ -80,7 +80,8 @@ export const ToolContent: React.FC<{
         <Collapsible.Trigger asChild>
           <Flex gap="2" align="center">
             <Text weight="light" size="1">
-              🔨 {toolNames.join(", ")} ({toolCalls.length})
+              🔨 {toolNames.join(", ")}{" "}
+              {toolCalls.length > 1 && "(" + toolCalls.length + ")"}
             </Text>
             <Chevron open={open} />
           </Flex>
