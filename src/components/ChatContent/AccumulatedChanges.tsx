@@ -48,7 +48,7 @@ export const AccumulatedChanges: React.FC<{
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
           <Box>
-            <Flex direction="row" align="center" gap="2" pl="2">
+            <Flex direction="row" align="center" gap="2">
               <Text size="1">Accumulated changes</Text>
               <Chevron open={open} />
             </Flex>
