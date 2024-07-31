@@ -12,7 +12,11 @@ import {
   isChatResponseChoice,
   ToolCommand,
   CodeChatModel,
+  ContextMemory,
+  DiffChunk,
+  isDiffResponse,
   ChatMessage,
+  isDiffMessage,
   isPlainTextResponse,
   SystemPrompts,
   // ToolMessage,
@@ -21,8 +25,7 @@ import { v4 as uuidv4 } from "uuid";
 import {
   EVENT_NAMES_TO_CHAT,
   EVENT_NAMES_FROM_CHAT,
-  isActionToChat,
-  type ActionToChat,
+  type BaseAction,
   type ChatThread,
   isResponseToChat,
   isBackupMessages,
@@ -77,6 +80,15 @@ import {
   SetEnableSend,
   isSetEnableSend,
   TakeNotesFromChat,
+  RequestDiffAppliedChunks,
+  isRequestDiffAppliedChunks,
+  isBaseAction,
+  isRecieveDiffAppliedChunks,
+  isRecieveDiffAppliedChunksError,
+  RequestDiffOpperation,
+  isRequestDiffOpperation,
+  isRecieveDiffOpperationResult,
+  isRecieveDiffOpperationError,
   OpenSettings,
   RestoreChat,
   OpenHotKeys,
@@ -84,6 +96,7 @@ import {
 import { usePostMessage } from "../usePostMessage";
 // import { useDebounceCallback } from "usehooks-ts";
 import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
+import { parseOrElse } from "../../utils";
 
 export function formatChatResponse(
   messages: ChatMessages,
@@ -91,10 +104,13 @@ export function formatChatResponse(
 ): ChatMessages {
   if (isChatUserMessageResponse(response)) {
     if (response.role === "context_file") {
-      return [...messages, [response.role, JSON.parse(response.content)]];
+      const content = parseOrElse<ChatContextFile[]>(response.content, []);
+      return [...messages, [response.role, content]];
     } else if (response.role === "context_memory") {
-      return [...messages, [response.role, JSON.parse(response.content)]];
+      const content = parseOrElse<ContextMemory[]>(response.content, []);
+      return [...messages, [response.role, content]];
     }
+
     return [...messages, [response.role, response.content]];
   }
 
@@ -102,6 +118,11 @@ export function formatChatResponse(
     const { tool_call_id, content, finish_reason } = response;
     const toolResult: ToolResult = { tool_call_id, content, finish_reason };
     return [...messages, [response.role, toolResult]];
+  }
+
+  if (isDiffResponse(response)) {
+    const content = parseOrElse<DiffChunk[]>(response.content, []);
+    return [...messages, [response.role, content, response.tool_call_id]];
   }
 
   if (isPlainTextResponse(response)) {
@@ -186,7 +207,7 @@ export function formatChatResponse(
 }
 
 export function reducer(postMessage: typeof window.postMessage) {
-  return function (state: ChatState, action: ActionToChat): ChatState {
+  return function (state: ChatState, action: BaseAction): ChatState {
     const isThisChat = Boolean(
       action.payload?.id && action.payload.id === state.chat.id,
     );
@@ -233,6 +254,7 @@ export function reducer(postMessage: typeof window.postMessage) {
         chat: {
           ...state.chat,
           messages,
+          applied_diffs: {},
         },
       };
     }
@@ -326,8 +348,10 @@ export function reducer(postMessage: typeof window.postMessage) {
         error: null,
         previous_message_length: lastAssistantMessage,
         chat: {
+          ...state.chat,
           ...action.payload.chat,
           messages,
+          applied_diffs: {},
         },
         chat_cache,
         selected_snippet: action.payload.snippet ?? state.selected_snippet,
@@ -632,6 +656,157 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
+    // if (isThisChat && isRequestDiffAppliedChunks(action)) {
+    //   console.log(action);
+    // }
+
+    if (isThisChat && isRequestDiffAppliedChunks(action)) {
+      const maybeDif =
+        action.payload.diff_id in state.chat.applied_diffs
+          ? {
+              ...state.chat.applied_diffs[action.payload.diff_id],
+              fetching: true,
+              error: null,
+            }
+          : {
+              fetching: true,
+              error: null,
+              diff_id: action.payload.diff_id,
+              state: [],
+              applied_chunks: [],
+              can_apply: [],
+            };
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          applied_diffs: {
+            ...state.chat.applied_diffs,
+            [action.payload.diff_id]: maybeDif,
+          },
+        },
+      };
+    }
+
+    if (isThisChat && isRecieveDiffAppliedChunks(action)) {
+      const diff: DiffChunkStatus = {
+        ...state.chat.applied_diffs[action.payload.diff_id],
+        fetching: false,
+        error: null,
+        applied_chunks: action.payload.applied_chunks,
+        can_apply: action.payload.can_apply,
+      };
+
+      const applied_diffs = {
+        ...state.chat.applied_diffs,
+        [action.payload.diff_id]: diff,
+      };
+
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          applied_diffs,
+        },
+      };
+    }
+
+    if (isThisChat && isRecieveDiffAppliedChunksError(action)) {
+      const diff = {
+        ...state.chat.applied_diffs[action.payload.diff_id],
+        fetching: false,
+        error: action.payload.reason,
+      };
+
+      const applied_diffs = {
+        ...state.chat.applied_diffs,
+        [action.payload.diff_id]: diff,
+      };
+
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          applied_diffs,
+        },
+      };
+    }
+
+    if (isThisChat && isRequestDiffOpperation(action)) {
+      if (!(action.payload.diff_id in state.chat.applied_diffs)) return state;
+      const diff: DiffChunkStatus = {
+        ...state.chat.applied_diffs[action.payload.diff_id],
+        fetching: true,
+      };
+      const applied_diffs = {
+        ...state.chat.applied_diffs,
+        [action.payload.diff_id]: diff,
+      };
+
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          applied_diffs,
+        },
+      };
+    }
+
+    if (isThisChat && isRecieveDiffOpperationResult(action)) {
+      // TODO: how to handle sending all the diffs?
+      if (!action.payload.diff_id) {
+        return {
+          ...state,
+          chat: {
+            ...state.chat,
+            applied_diffs: {},
+          },
+        };
+      }
+      if (!(action.payload.diff_id in state.chat.applied_diffs)) {
+        return state;
+      }
+      const diff: DiffChunkStatus = {
+        ...state.chat.applied_diffs[action.payload.diff_id],
+        state: action.payload.state,
+        fetching: false,
+        applied_chunks: [],
+      };
+      const applied_diffs = {
+        ...state.chat.applied_diffs,
+        [action.payload.diff_id]: diff,
+      };
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          applied_diffs,
+        },
+      };
+    }
+
+    if (isThisChat && isRecieveDiffOpperationError(action)) {
+      if (!(action.payload.diff_id in state.chat.applied_diffs)) return state;
+      const diff: DiffChunkStatus = {
+        ...state.chat.applied_diffs[action.payload.diff_id],
+        fetching: false,
+        error: action.payload.reason,
+      };
+
+      const applied_diffs = {
+        ...state.chat.applied_diffs,
+        [action.payload.diff_id]: diff,
+      };
+
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          applied_diffs,
+        },
+      };
+    }
+
     return state;
   };
 }
@@ -644,8 +819,19 @@ export type ChatCapsState = {
   error: null | string;
 };
 
+export type DiffChunkStatus = {
+  applied_chunks: boolean[];
+  can_apply: boolean[];
+  state: (0 | 1 | 2)[];
+  fetching: boolean;
+  error: null | string;
+  diff_id: string;
+};
+
 export type ChatState = {
-  chat: ChatThread;
+  chat: ChatThread & {
+    applied_diffs: Record<string, DiffChunkStatus>;
+  };
   chat_cache: Record<string, ChatThread>;
   prevent_send: boolean;
   waiting_for_response: boolean;
@@ -689,6 +875,7 @@ export function createInitialState(): ChatState {
       messages: [],
       title: "",
       model: "",
+      applied_diffs: {},
     },
     chat_cache: {},
     // caps: {
@@ -735,7 +922,7 @@ export const useEventBusForChat = () => {
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
-      if (isActionToChat(event.data)) {
+      if (isBaseAction(event.data)) {
         dispatch(event.data);
       }
     };
@@ -1187,6 +1374,65 @@ export const useEventBusForChat = () => {
     [state.chat.id],
   );
 
+  useEffect(() => {
+    if (state.streaming) return;
+    state.chat.messages.forEach((message) => {
+      if (!isDiffMessage(message)) return;
+      const key = message[2];
+      if (!(key in state.chat.applied_diffs)) {
+        const action: RequestDiffAppliedChunks = {
+          type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS,
+          payload: { id: state.chat.id, diff_id: key, chunks: message[1] },
+        };
+        // FIX: when using the webhost, postMEssage also triggers dispatch, in vscode it won't
+        dispatch(action);
+        postMessage(action);
+      } else if (
+        !state.chat.applied_diffs[key].fetching &&
+        state.chat.applied_diffs[key].state.length !== 0 &&
+        state.chat.applied_diffs[key].applied_chunks.length !==
+          state.chat.applied_diffs[key].state.length
+      ) {
+        const action: RequestDiffAppliedChunks = {
+          type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS,
+          payload: { id: state.chat.id, diff_id: key, chunks: message[1] },
+        };
+        postMessage(action);
+      }
+    });
+  }, [
+    state.chat.applied_diffs,
+    state.chat.id,
+    postMessage,
+    state.chat.messages,
+    state.streaming,
+  ]);
+
+  const getDiffByIndex = useCallback(
+    (key: string): DiffChunkStatus | null => {
+      if (key in state.chat.applied_diffs) {
+        return state.chat.applied_diffs[key];
+      }
+      return null;
+    },
+    [state.chat.applied_diffs],
+  );
+
+  const addOrRemoveDiff = useCallback(
+    (args: { diff_id: string; chunks: DiffChunk[]; toApply: boolean[] }) => {
+      const action: RequestDiffOpperation = {
+        type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_OPPERATION,
+        payload: {
+          id: state.chat.id,
+          diff_id: args.diff_id,
+          chunks: args.chunks,
+          toApply: args.toApply,
+        },
+      };
+      postMessage(action);
+    },
+    [postMessage, state.chat.id],
+  );
   const openSettings = useCallback(() => {
     const action: OpenSettings = {
       type: EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS,
@@ -1254,6 +1500,8 @@ export const useEventBusForChat = () => {
     // requestPreviewFiles,
     setUseTools,
     enableSend,
+    getDiffByIndex,
+    addOrRemoveDiff,
     openSettings,
     restoreChat,
     openHotKeys,

@@ -6,3 +6,4 @@ export * from "./prompts";
 export * from "./statistics";
 export * from "./tools";
 export * from "./types";
+export * from "./diffs";

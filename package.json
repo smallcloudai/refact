@@ -1,6 +1,6 @@
 {
   "name": "refact-chat-js",
-  "version": "1.1.1-alpha.8",
+  "version": "1.1.2-alpha.2",
   "type": "module",
   "license": "BSD-3-Clause",
   "files": [
@@ -65,6 +65,8 @@
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.1",
     "@types/js-cookie": "^3.0.6",
+    "@types/lodash.groupby": "^4.6.9",
+    "@types/lodash.isequal": "^4.5.8",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@types/react-redux": "^7.1.33",
@@ -90,6 +92,8 @@
     "jsdom": "^23.0.1",
     "lint-staged": ">=10",
     "msw": "^2.3.4",
+    "lodash.groupby": "^4.6.0",
+    "lodash.isequal": "^4.5.0",
     "prettier": "3.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
