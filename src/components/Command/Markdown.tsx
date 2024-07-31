@@ -6,18 +6,20 @@ import classNames from "classnames";
 import type { Element } from "hast";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
-import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
+import {
+  MarkdownCodeBlock,
+  type MarkdownCodeBlockProps,
+} from "../Markdown/CodeBlock";
 
 type CodeBlockProps = React.JSX.IntrinsicElements["code"] & {
   node?: Element | undefined;
-  style: Record<string, React.CSSProperties>;
+  style?: MarkdownCodeBlockProps["style"];
 } & Pick<SyntaxHighlighterProps, "showLineNumbers" | "startingLineNumber">;
 
 export type MarkdownProps = {
   children: string;
   className?: string;
-  style?: Record<string, React.CSSProperties>;
-} & Pick<CodeBlockProps, "showLineNumbers" | "startingLineNumber">;
+} & Pick<CodeBlockProps, "showLineNumbers" | "startingLineNumber" | "style">;
 
 export const Markdown: React.FC<MarkdownProps> = ({
   children,

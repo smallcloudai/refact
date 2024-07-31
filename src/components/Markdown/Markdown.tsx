@@ -30,13 +30,14 @@ export type MarkdownProps = Pick<
   Partial<MarkdownControls> &
   Pick<
     MarkdownCodeBlockProps,
-    "startingLineNumber" | "showLineNumbers" | "useInlineStyles"
+    "startingLineNumber" | "showLineNumbers" | "useInlineStyles" | "style"
   >;
 
 const _Markdown: React.FC<MarkdownProps> = ({
   children,
   allowedElements,
   unwrapDisallowed,
+
   ...rest
 }) => {
   const components: Partial<Components> = useMemo(() => {
@@ -51,7 +52,7 @@ const _Markdown: React.FC<MarkdownProps> = ({
           <ul {...props} className={classNames(styles.list, props.className)} />
         );
       },
-      code(props) {
+      code({ style: _style, ...props }) {
         return <MarkdownCodeBlock {...props} {...rest} />;
       },
       p({ color: _color, ref: _ref, node: _node, ...props }) {
