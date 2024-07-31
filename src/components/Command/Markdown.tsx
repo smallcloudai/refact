@@ -34,7 +34,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
       style={style}
       className={className}
       CodeTag={(props) => (
-        <Code {...props} size="2" className={classNames(styles.code)} />
+        <Code {...props} className={classNames(styles.code)} />
       )}
       PreTag={(props) => <pre {...props} className={classNames(styles.pre)} />}
       language={language}
