@@ -1,6 +1,58 @@
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { getApiKey, parseOrElse } from "../../utils";
 import { DEFF_STATE_URL, DIFF_APPLY_URL } from "./consts";
 import { DiffChunk } from "./types";
+
+type DiffAppliedStateArgs = {
+  chunks: DiffChunk[];
+  toolCallId: string;
+};
+
+type DiffOperationArgs = {
+  chunks: DiffChunk[];
+  toApply: boolean[];
+  toolCallId: string;
+};
+export const diffApi = createApi({
+  reducerPath: "diffs",
+  baseQuery: fetchBaseQuery({
+    baseUrl: "http://localhost:8001",
+  }),
+  tagTypes: ["diffs"],
+  endpoints: (builder) => ({
+    diffState: builder.query<DiffAppliedStateResponse, DiffAppliedStateArgs>({
+      query: ({ chunks }) => ({
+        url: DEFF_STATE_URL,
+        method: "POST",
+        credentials: "same-origin",
+        redirect: "follow",
+        body: { chunks },
+      }),
+
+      providesTags: (_result, _error, args) => {
+        return [{ type: "diffs", id: args.toolCallId }];
+      },
+      transformResponse: (response: unknown) => {
+        // TODO: type check
+        return response as DiffAppliedStateResponse;
+      },
+    }),
+    diffApply: builder.mutation<DiffOperationResponse, DiffOperationArgs>({
+      query: ({ chunks, toApply }) => ({
+        url: DIFF_APPLY_URL,
+        method: "POST",
+        body: { chunks, apply: toApply },
+      }),
+      transformResponse: (response: unknown) => {
+        // TODO: type check
+        return response as DiffOperationResponse;
+      },
+      invalidatesTags: (_result, _error, args) => {
+        return [{ type: "diffs", id: args.toolCallId }];
+      },
+    }),
+  }),
+});
 
 export interface DiffAppliedStateResponse {
   id: number;
@@ -54,7 +106,7 @@ export interface DiffOperationResponse {
 
   state: (0 | 1 | 2)[];
 }
-
+// TODO: delete this
 export async function doDiff(
   chunks: DiffChunk[],
   toApply: boolean[],

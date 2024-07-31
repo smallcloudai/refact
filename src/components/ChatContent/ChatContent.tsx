@@ -139,18 +139,10 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
             }
 
             if (isDiffMessage(message)) {
-              const [, diffs] = message;
-              const key = message[2];
-              const maybeDiffChunk = getDiffByIndex(key);
+              const [, diffs, toolCallId] = message;
+              const key = `diff-${toolCallId}-${index}`;
               return (
-                <DiffContent
-                  onSubmit={(toApply) =>
-                    addOrRemoveDiff({ diff_id: key, chunks: diffs, toApply })
-                  }
-                  appliedChunks={maybeDiffChunk}
-                  key={key}
-                  diffs={diffs}
-                />
+                <DiffContent key={key} chunks={diffs} toolCallId={toolCallId} />
               );
             }
 

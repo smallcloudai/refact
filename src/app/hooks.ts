@@ -7,6 +7,7 @@ import {
   toolsApi,
   commandsApi,
   CommandCompletionResponse,
+  diffApi,
 } from "../services/refact";
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
@@ -49,3 +50,5 @@ export const useGetCommandPreviewQuery = (query: string, hasCaps: boolean) => {
   if (!data) return [];
   return data;
 };
+
+export const { useDiffApplyMutation, useDiffStateQuery } = diffApi;
