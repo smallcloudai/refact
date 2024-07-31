@@ -1,49 +1,17 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
-
 import styles from "./Command.module.css";
-
-import SyntaxHighlighter, {
-  type SyntaxHighlighterProps,
-} from "react-syntax-highlighter";
-import { Code } from "@radix-ui/themes";
+import { type SyntaxHighlighterProps } from "react-syntax-highlighter";
 import classNames from "classnames";
 import type { Element } from "hast";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
+import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 
 type CodeBlockProps = React.JSX.IntrinsicElements["code"] & {
   node?: Element | undefined;
   style: Record<string, React.CSSProperties>;
 } & Pick<SyntaxHighlighterProps, "showLineNumbers" | "startingLineNumber">;
-
-const CodeBlock: React.FC<CodeBlockProps> = ({
-  children,
-  className,
-  color: _color,
-  ref: _ref,
-  node: _node,
-  style,
-}) => {
-  const match = /language-(\w+)/.exec(className ?? "");
-  const textWithOutTrailingNewLine = String(children).replace(/\n$/, "");
-
-  const language: string = match && match.length > 0 ? match[1] : "text";
-  return (
-    <SyntaxHighlighter
-      style={style}
-      className={className}
-      CodeTag={(props) => (
-        <Code {...props} className={classNames(styles.code)} />
-      )}
-      PreTag={(props) => <pre {...props} className={classNames(styles.pre)} />}
-      language={language}
-      // useInlineStyles={false}
-    >
-      {textWithOutTrailingNewLine.trim()}
-    </SyntaxHighlighter>
-  );
-};
 
 export type MarkdownProps = {
   children: string;
@@ -61,10 +29,10 @@ export const Markdown: React.FC<MarkdownProps> = ({
       className={classNames(styles.markdown, className)}
       components={{
         code({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <CodeBlock {...props} style={style} />;
+          return <MarkdownCodeBlock {...props} style={style} />;
         },
         p({ color: _color, ref: _ref, node: _node, ...props }) {
-          return <CodeBlock {...props} style={style} />;
+          return <MarkdownCodeBlock {...props} style={style} />;
         },
       }}
     >

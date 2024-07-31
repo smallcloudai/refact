@@ -1,4 +1,4 @@
-import React from "react";
+import React, { CSSProperties } from "react";
 import SyntaxHighlighter, {
   type SyntaxHighlighterProps,
 } from "react-syntax-highlighter";
@@ -19,7 +19,10 @@ export type MarkdownControls = {
 };
 
 export type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] &
-  Partial<MarkdownControls> & { node?: Element | undefined } & Pick<
+  Partial<MarkdownControls> & {
+    node?: Element | undefined;
+    style?: Record<string, CSSProperties>;
+  } & Pick<
     SyntaxHighlighterProps,
     "showLineNumbers" | "startingLineNumber" | "useInlineStyles"
   >;
@@ -31,6 +34,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   onNewFileClick,
   onPasteClick,
   canPaste,
+  style = hljsStyle,
 }) => {
   const codeRef = React.useRef<HTMLElement | null>(null);
   const match = /language-(\w+)/.exec(className ?? "");
@@ -64,7 +68,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
     return (
       <Text size="2">
         <SyntaxHighlighter
-          style={hljsStyle}
+          style={style}
           className={className}
           PreTag={(props) => <PreTag {...props} {...preTagProps} />}
           CodeTag={(props) => (
