@@ -21,8 +21,8 @@ fn validate_chunk(chunk: &DiffChunk) -> Result<(), String> {
     if chunk.line2 < chunk.line1 {
         return Err("Invalid line range: line2 cannot be < line1".to_string());
     }
-    if !vec!["edit", "add", "rename", "delete"].contains(&chunk.file_action.as_str()) {
-        return Err("Invalid file action: file_action must be one of `edit, add, rename, delete`".to_string());
+    if !vec!["edit", "add", "rename", "remove"].contains(&chunk.file_action.as_str()) {
+        return Err("Invalid file action: file_action must be one of `edit, add, rename, remove`".to_string());
     }
     if chunk.file_name_rename.is_some() && chunk.file_action != "rename" {
         return Err(format!("file_name_rename is not allowed for file_action `{}`. file_action must've been `rename`.", chunk.file_action));
@@ -36,7 +36,7 @@ pub async fn correct_and_validate_chunks(
 ) -> Result<(), String> {
     for c in chunks.iter_mut() {
         let file_path = PathBuf::from(&c.file_name);
-        if !file_path.is_file() {
+        if !file_path.is_file() && c.file_action == "edit" {
             let candidates = file_repair_candidates(&c.file_name, global_context.clone(), 5, false).await;
             let fuzzy_candidates = file_repair_candidates(&c.file_name, global_context.clone(), 5, true).await;
 
@@ -278,6 +278,7 @@ pub fn read_files_n_apply_diff_chunks_edit(
 
 pub fn can_apply_diff_chunks_other(
     chunks: &Vec<DiffChunk>,
+    applied_state: &Vec<bool>,
     desired_state: &Vec<bool>,
 ) -> HashMap<usize, Option<usize>> {
     let mut results: HashMap<usize, Option<usize>> = HashMap::new();
@@ -310,6 +311,9 @@ pub fn can_apply_diff_chunks_other(
     };
 
     for (c_idx, c) in chunks.iter().enumerate() {
+        if applied_state.get(c_idx) == Some(&true) {
+            continue;
+        }
         if desired_state.get(c_idx) == Some(&true) {
             let result = match c.file_action.as_str() {
                 "add" => check_add(c),

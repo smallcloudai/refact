@@ -4,7 +4,9 @@ use std::sync::Arc;
 
 use axum::Extension;
 use axum::http::{Response, StatusCode};
+use hashbrown::HashMap;
 use hyper::Body;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
@@ -13,7 +15,7 @@ use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
 use crate::call_validation::DiffChunk;
 use crate::custom_error::ScratchError;
-use crate::diffs::{read_files_n_apply_diff_chunks_edit, fuzzy_results_into_state_vector, correct_and_validate_chunks};
+use crate::diffs::{read_files_n_apply_diff_chunks_edit, fuzzy_results_into_state_vector, correct_and_validate_chunks, can_apply_diff_chunks_other, apply_diff_chunks_other_to_files};
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 use crate::vecdb::vdb_highlev::memories_block_until_vectorized;
@@ -129,9 +131,13 @@ pub async fn handle_v1_diff_apply(
     };
     let desired_state = post.apply.clone();
     let (texts_after_patch_edit, fuzzy_n_used) = read_files_n_apply_diff_chunks_edit(&post.chunks, &applied_state, &desired_state, MAX_FUZZY_N);
+    
+    // println!("applied_state: {:?}", applied_state);
+    let can_apply_other_raw = can_apply_diff_chunks_other(&post.chunks, &applied_state, &desired_state);
+    let can_apply_other = fuzzy_results_into_state_vector(&can_apply_other_raw, post.chunks.len()).iter().map(|x| *x == 0 || *x == 1).collect();
+    // println!("can_apply_other: {:?}", can_apply_other);
+    let results_other = apply_diff_chunks_other_to_files(&post.chunks, &can_apply_other);
 
-    
-    
     for (file_name, new_text) in texts_after_patch_edit.iter() {
         write_to_file(file_name, new_text).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
     }
@@ -144,10 +150,14 @@ pub async fn handle_v1_diff_apply(
 
     sync_documents_ast_vecdb(global_context.clone(), docs).await?;
     
-    let new_state = fuzzy_results_into_state_vector(&fuzzy_n_used, post.chunks.len());
+    let mut fuzzy_results_map = HashMap::new();
+    fuzzy_results_map.extend(results_other);
+    fuzzy_results_map.extend(fuzzy_n_used);
+        
+    let new_state = fuzzy_results_into_state_vector(&fuzzy_results_map, post.chunks.len());
     global_context.write().await.documents_state.diffs_applied_state.insert(post.id, new_state.iter().map(|x|x==&1).collect::<Vec<_>>().clone());
 
-    let fuzzy_results: Vec<DiffResponseItem> = fuzzy_n_used.iter().filter(|x|x.1.is_some())
+    let fuzzy_results: Vec<DiffResponseItem> = fuzzy_results_map.iter().filter(|x|x.1.is_some())
         .map(|(chunk_id, fuzzy_n_used)| DiffResponseItem {
             chunk_id: chunk_id.clone(),
             fuzzy_n_used: fuzzy_n_used.unwrap()
@@ -205,7 +215,13 @@ pub async fn handle_v1_diff_state(
     let desired_state = vec![true; post.chunks.len()];
 
     let (_, fuzzy_n_used) = read_files_n_apply_diff_chunks_edit(&post.chunks, &applied_state, &desired_state, MAX_FUZZY_N);
-    let new_state = fuzzy_results_into_state_vector(&fuzzy_n_used, post.chunks.len());
+    let can_apply_other = can_apply_diff_chunks_other(&post.chunks, &applied_state, &desired_state);
+    
+    let mut can_apply_raw = HashMap::new();
+    can_apply_raw.extend(fuzzy_n_used);
+    can_apply_raw.extend(can_apply_other);
+    
+    let new_state = fuzzy_results_into_state_vector(&can_apply_raw, post.chunks.len());
     let can_apply = new_state.iter().map(|x| *x == 0 || *x == 1).collect();
 
     let response = DiffStateResponse {

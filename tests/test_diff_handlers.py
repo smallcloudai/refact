@@ -1,4 +1,5 @@
 import json
+import os
 import random
 from copy import copy
 
@@ -240,12 +241,183 @@ def test5():
     print(colored("test5 PASSED", "green"))
 
 
+payload_test_other = {
+    "apply": [True, True, True, True, True, True],
+    "chunks": [
+        # TP
+        {
+            "file_name": str(test_file) + ".txt",
+            "file_action": "add",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST"
+        },
+        {
+            "file_name": str(test_file),
+            "file_action": "remove",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST"
+        },
+        {
+            "file_name": str(test_file),
+            "file_action": "rename",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST",
+            "file_name_rename": str(test_file) + '.txt'
+        },
+        # TN
+        {
+            "file_name": str(test_file),
+            "file_action": "add",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST"
+        },
+        {
+            "file_name": str(test_file) + ".abc",
+            "file_action": "remove",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST"
+        },
+        {
+            "file_name": str(test_file) + ".abc",
+            "file_action": "rename",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST",
+            "file_name_rename": str(test_file)
+        },
+
+    ]
+}
+
+def safe_remove(file_path):
+    try:
+        os.remove(file_path)
+    except FileNotFoundError:
+        pass
+
+
+def test6():
+    payload = copy(payload_test_other)
+    safe_remove(str(test_file) + ".abc")
+    safe_remove(str(test_file) + ".txt")
+
+    del payload["apply"]
+
+    with test_file.open("w") as f:
+        f.write(file_text1)
+
+    resp = diff_state(payload)
+
+    assert resp['can_apply'] == [True, True, True, False, False, False], resp
+
+    print(colored("test6 PASSED", "green"))
+
+
+payload_test_other1 = {
+    "apply": [True, True, True, True, True, True],
+    "chunks": [
+        # TP
+        {
+            "file_name": str(test_file) + ".1.test",
+            "file_action": "add",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST"
+        },
+        {
+            "file_name": str(test_file) + ".2.test",
+            "file_action": "remove",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST"
+        },
+        {
+            "file_name": str(test_file) + ".3.test",
+            "file_action": "rename",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST",
+            "file_name_rename": str(test_file) + '.3.test_rename'
+        },
+        # TN
+        {
+            "file_name": str(test_file),
+            "file_action": "add",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST"
+        },
+        {
+            "file_name": str(test_file) + ".abc",
+            "file_action": "remove",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST"
+        },
+        {
+            "file_name": str(test_file) + ".abc",
+            "file_action": "rename",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST",
+            "file_name_rename": str(test_file)
+        },
+
+    ]
+}
+
+
+def test7():
+    safe_remove(str(test_file) + ".1.test")
+    safe_remove(str(test_file) + ".2.test")
+    safe_remove(str(test_file) + ".3.test")
+    safe_remove(str(test_file) + '.3.test_rename')
+
+    # create files
+    with open(str(test_file) + ".2.test", "w") as f:
+        f.write("TEST")
+    with open(str(test_file) + ".3.test", "w") as f:
+        f.write("TEST")
+
+    payload = copy(payload_test_other1)
+
+    res = diff_apply(payload)
+
+    assert res['state'] == [1, 1, 1, 2, 2, 2]
+
+    safe_remove(str(test_file) + ".1.test")
+    safe_remove(str(test_file) + ".2.test")
+    safe_remove(str(test_file) + ".3.test")
+    safe_remove(str(test_file) + '.3.test_rename')
+
+    print(colored("test7 PASSED", "green"))
+
+
 def main():
     test1()
     test2()
     test3()
     test4()
     test5()
+    test6()
+    test7()
 
 
 if __name__ == "__main__":
