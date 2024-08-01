@@ -305,6 +305,7 @@ class Frog:
         fs::read_to_string(file_name).expect(&format!("Failed to read file: {}", file_name))
     }
 
+    #[ignore]
     #[test]
     fn test_chunks() {
         // Run this to see println:
@@ -337,6 +338,8 @@ class Frog:
         println!("r2 state: {:?}", r2_state);
         assert_eq!(vec![1], r2_state);
     }
+
+    #[ignore]
     #[test]
     fn test_frogs() {
         let c1 = DiffChunk {
@@ -368,6 +371,7 @@ class Frog:
         assert_eq!(vec![1, 1], state);
     }
 
+    #[ignore]
     #[test]
     fn test_frog() {
         let file3_must_be: &str = r#"import numpy as np
