@@ -1362,13 +1362,14 @@ export const useEventBusForChat = () => {
       } else if (
         !state.chat.applied_diffs[key].fetching &&
         state.chat.applied_diffs[key].state.length !== 0 &&
-        state.chat.applied_diffs[key].applied_chunks.length !==
-          state.chat.applied_diffs[key].state.length
+        state.chat.applied_diffs[key].applied_chunks.length === 0
       ) {
         const action: RequestDiffAppliedChunks = {
           type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS,
           payload: { id: state.chat.id, diff_id: key, chunks: message[1] },
         };
+        // TODO: this get's called alot when applying via acumilated changes
+        dispatch(action);
         postMessage(action);
       }
     });
@@ -1401,6 +1402,7 @@ export const useEventBusForChat = () => {
           toApply: args.toApply,
         },
       };
+      dispatch(action);
       postMessage(action);
     },
     [postMessage, state.chat.id],
