@@ -282,6 +282,7 @@ export const DiffForm: React.FC<{
                   {errored && "error"}
                   <Button
                     size="1"
+                    disabled={loading}
                     onClick={() => handleToggle(!applied, indeices)}
                   >
                     {applied ? "Unapply" : "Apply"}
@@ -301,7 +302,7 @@ export const DiffForm: React.FC<{
       })}
 
       <Flex gap="2" py="2">
-        <Button disabled={disableApplyAll} onClick={applyAll}>
+        <Button disabled={disableApplyAll || loading} onClick={applyAll}>
           {action}
         </Button>
       </Flex>

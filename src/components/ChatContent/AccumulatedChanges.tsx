@@ -18,26 +18,36 @@ export const AccumulatedChanges: React.FC<{
     toApply: boolean[];
   }) => void;
 }> = ({ messages, onSumbit, getDiffByIndex }) => {
+  // TODO: bug where it keeps loading state.
   const [open, setOpen] = React.useState(false);
 
-  const diffs = messages.reduce<(DiffWithStatus & { tool_call_id: string })[]>(
-    (acc, cur) => {
-      if (!isDiffMessage(cur)) return acc;
-      const stats = getDiffByIndex(cur[2]);
-      const diffs = cur[1].map((diff, index) => {
-        return {
-          ...diff,
-          tool_call_id: cur[2],
-          applied: stats?.applied_chunks[index] ?? false,
-          can_apply: stats?.can_apply[index] ?? false,
-          state: stats?.state[index] ?? 0,
-          index,
-        };
-      });
-      return acc.concat(diffs);
-    },
-    [],
-  );
+  const diffs = React.useMemo(() => {
+    return messages.reduce<(DiffWithStatus & { tool_call_id: string })[]>(
+      (acc, cur) => {
+        if (!isDiffMessage(cur)) return acc;
+        const stats = getDiffByIndex(cur[2]);
+        const diffs = cur[1].map((diff, index) => {
+          return {
+            ...diff,
+            tool_call_id: cur[2],
+            applied: stats?.applied_chunks[index] ?? false,
+            can_apply: stats?.can_apply[index] ?? false,
+            state: stats?.state[index] ?? 0,
+            index,
+          };
+        });
+        return acc.concat(diffs);
+      },
+      [],
+    );
+  }, [getDiffByIndex, messages]);
+
+  const loading = React.useMemo(() => {
+    return diffs.some((diff) => {
+      const status = getDiffByIndex(diff.tool_call_id);
+      return status?.fetching === true;
+    }, []);
+  }, [getDiffByIndex, diffs]);
 
   const groupedDiffs = groupBy(diffs, (diff) => diff.file_name);
 
@@ -58,7 +68,11 @@ export const AccumulatedChanges: React.FC<{
           </Box>
         </Collapsible.Trigger>
         <Collapsible.Content>
-          <DiffForm diffs={groupedDiffs} loading={false} onSubmit={onSumbit} />
+          <DiffForm
+            diffs={groupedDiffs}
+            loading={loading}
+            onSubmit={onSumbit}
+          />
         </Collapsible.Content>
       </Collapsible.Root>
     </Container>
@@ -143,6 +157,7 @@ const DiffForm: React.FC<{
                   {errored && "error"}
                   <Button
                     size="1"
+                    disabled={loading}
                     onClick={() => {
                       handleToggle(!applied, diffsForFile);
                     }}
@@ -164,7 +179,7 @@ const DiffForm: React.FC<{
       })}
 
       <Flex gap="2" py="2">
-        <Button disabled={disableApplyAll} onClick={applyAll}>
+        <Button disabled={disableApplyAll || loading} onClick={applyAll}>
           {action}
         </Button>
       </Flex>
