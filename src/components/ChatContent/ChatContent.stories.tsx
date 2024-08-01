@@ -23,8 +23,8 @@ const meta = {
     canPaste: true,
     onNewFileClick: noop,
     onPasteClick: noop,
-    addOrRemoveDiff: noop,
-    getDiffByIndex: () => null,
+    // addOrRemoveDiff: noop,
+    // getDiffByIndex: () => null,
     chatKey: "test",
   },
 } satisfies Meta<typeof ChatContent>;

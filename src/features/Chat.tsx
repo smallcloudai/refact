@@ -44,8 +44,6 @@ export const Chat: React.FC<ChatProps> = ({
   host,
   tabbed,
   state,
-  addOrRemoveDiff,
-  getDiffByIndex,
 }) => {
   const capsRequest = useGetCapsQuery(undefined);
   const promptsRequest = useGetPromptsQuery(undefined);
@@ -176,8 +174,6 @@ export const Chat: React.FC<ChatProps> = ({
       setUseTools={setUseTools}
       useTools={state.use_tools}
       openSettings={openSettings}
-      addOrRemoveDiff={addOrRemoveDiff}
-      getDiffByIndex={getDiffByIndex}
     />
   );
 };

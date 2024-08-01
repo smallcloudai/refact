@@ -3,12 +3,12 @@ import { getApiKey, parseOrElse } from "../../utils";
 import { DEFF_STATE_URL, DIFF_APPLY_URL } from "./consts";
 import { DiffChunk } from "./types";
 
-type DiffAppliedStateArgs = {
+export type DiffAppliedStateArgs = {
   chunks: DiffChunk[];
   toolCallId: string;
 };
 
-type DiffOperationArgs = {
+export type DiffOperationArgs = {
   chunks: DiffChunk[];
   toApply: boolean[];
   toolCallId: string;

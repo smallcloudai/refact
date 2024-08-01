@@ -1,7 +1,6 @@
 import React, { useCallback } from "react";
 import {
   ChatMessages,
-  DiffChunk,
   ToolResult,
   isChatContextFileMessage,
   isDiffMessage,
@@ -18,7 +17,6 @@ import { AssistantInput } from "./AssistantInput";
 import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
 import { DiffContent } from "./DiffContent";
-import { DiffChunkStatus } from "../../hooks";
 import { PlainText } from "./PlainText";
 import { useConfig } from "../../contexts/config-context";
 import { AccumulatedChanges } from "./AccumulatedChanges";
@@ -80,12 +78,6 @@ export type ChatContentProps = {
   isWaiting: boolean;
   canPaste: boolean;
   isStreaming: boolean;
-  getDiffByIndex: (index: string) => DiffChunkStatus | null;
-  addOrRemoveDiff: (args: {
-    diff_id: string;
-    chunks: DiffChunk[];
-    toApply: boolean[];
-  }) => void;
   openSettings: () => void;
   chatKey: string;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
@@ -100,8 +92,6 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       onPasteClick,
       canPaste,
       isStreaming,
-      getDiffByIndex,
-      addOrRemoveDiff,
       openSettings,
       chatKey,
     } = props;
@@ -194,8 +184,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
           {!isWaiting && messages.length > 0 && (
             <AccumulatedChanges
               messages={messages}
-              getDiffByIndex={getDiffByIndex}
-              onSumbit={addOrRemoveDiff}
+              // getDiffByIndex={getDiffByIndex}
+              // onSumbit={addOrRemoveDiff}
             />
           )}
           {isWaiting && (

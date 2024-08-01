@@ -8,7 +8,9 @@ import {
   commandsApi,
   CommandCompletionResponse,
   diffApi,
+  DiffAppliedStateArgs,
 } from "../services/refact";
+import { useCallback, useEffect } from "react";
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
@@ -52,3 +54,41 @@ export const useGetCommandPreviewQuery = (query: string, hasCaps: boolean) => {
 };
 
 export const { useDiffApplyMutation, useDiffStateQuery } = diffApi;
+
+export const useGetManyDiffState = (args: DiffAppliedStateArgs[]) => {
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    const results = args.map((arg) =>
+      dispatch(diffApi.endpoints.diffState.initiate(arg)),
+    );
+    return () => {
+      results.forEach((result) => result.unsubscribe());
+    };
+  }, [args, dispatch]);
+
+  args.map((d) => {
+    const result = diffApi.endpoints.diffState.select(d);
+
+    return result;
+  });
+
+  const all = useAppSelector((state) => {
+    return args.map((arg) => {
+      return diffApi.endpoints.diffState.select(arg)(state);
+    });
+  });
+
+  const getByToolCallId = useCallback(
+    (toolCallId: string) => {
+      const item = all.find((d) => d.originalArgs?.toolCallId === toolCallId);
+      return item;
+    },
+    [all],
+  );
+
+  return {
+    allDiffRequest: all,
+    getByToolCallId,
+  };
+};

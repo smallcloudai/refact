@@ -32,8 +32,6 @@ export type ChatProps = {
   onPasteClick: ChatContentProps["onPasteClick"];
   canPaste: ChatContentProps["canPaste"];
   openSettings: ChatContentProps["openSettings"];
-  getDiffByIndex: ChatContentProps["getDiffByIndex"];
-  addOrRemoveDiff: ChatContentProps["addOrRemoveDiff"];
 
   hasContextFile: ChatFormProps["hasContextFile"];
   requestCommandsCompletion: ChatFormProps["requestCommandsCompletion"];
@@ -98,9 +96,6 @@ export const Chat: React.FC<ChatProps> = ({
   setUseTools,
   useTools,
   openSettings,
-
-  getDiffByIndex,
-  addOrRemoveDiff,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
 
@@ -159,8 +154,6 @@ export const Chat: React.FC<ChatProps> = ({
         canPaste={canPaste}
         ref={chatContentRef}
         openSettings={openSettings}
-        addOrRemoveDiff={addOrRemoveDiff}
-        getDiffByIndex={getDiffByIndex}
       />
       {!isStreaming && preventSend && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>

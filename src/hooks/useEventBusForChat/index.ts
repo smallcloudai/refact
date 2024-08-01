@@ -85,7 +85,7 @@ import {
   isBaseAction,
   isRecieveDiffAppliedChunks,
   isRecieveDiffAppliedChunksError,
-  RequestDiffOpperation,
+  // RequestDiffOpperation,
   isRequestDiffOpperation,
   isRecieveDiffOpperationResult,
   isRecieveDiffOpperationError,
@@ -1408,31 +1408,31 @@ export const useEventBusForChat = () => {
     state.streaming,
   ]);
 
-  const getDiffByIndex = useCallback(
-    (key: string): DiffChunkStatus | null => {
-      if (key in state.chat.applied_diffs) {
-        return state.chat.applied_diffs[key];
-      }
-      return null;
-    },
-    [state.chat.applied_diffs],
-  );
+  // const getDiffByIndex = useCallback(
+  //   (key: string): DiffChunkStatus | null => {
+  //     if (key in state.chat.applied_diffs) {
+  //       return state.chat.applied_diffs[key];
+  //     }
+  //     return null;
+  //   },
+  //   [state.chat.applied_diffs],
+  // );
 
-  const addOrRemoveDiff = useCallback(
-    (args: { diff_id: string; chunks: DiffChunk[]; toApply: boolean[] }) => {
-      const action: RequestDiffOpperation = {
-        type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_OPPERATION,
-        payload: {
-          id: state.chat.id,
-          diff_id: args.diff_id,
-          chunks: args.chunks,
-          toApply: args.toApply,
-        },
-      };
-      postMessage(action);
-    },
-    [postMessage, state.chat.id],
-  );
+  // const addOrRemoveDiff = useCallback(
+  //   (args: { diff_id: string; chunks: DiffChunk[]; toApply: boolean[] }) => {
+  //     const action: RequestDiffOpperation = {
+  //       type: EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_OPPERATION,
+  //       payload: {
+  //         id: state.chat.id,
+  //         diff_id: args.diff_id,
+  //         chunks: args.chunks,
+  //         toApply: args.toApply,
+  //       },
+  //     };
+  //     postMessage(action);
+  //   },
+  //   [postMessage, state.chat.id],
+  // );
   const openSettings = useCallback(() => {
     const action: OpenSettings = {
       type: EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS,
@@ -1500,8 +1500,8 @@ export const useEventBusForChat = () => {
     // requestPreviewFiles,
     setUseTools,
     enableSend,
-    getDiffByIndex,
-    addOrRemoveDiff,
+    // getDiffByIndex,
+    // addOrRemoveDiff,
     openSettings,
     restoreChat,
     openHotKeys,
