@@ -53,6 +53,8 @@ export const MARS_ROVER_CHAT: ChatThread = {
       // "The quadratic formula is given by:\n\n\\[ x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{{2a}} \\]\n\nYou can find more information about the quadratic formula in the following link: [Quadratic Formula - Wikipedia](https://en.wikipedia.org/wiki/Quadratic_formula)",
       "block\n\n```math\nC_L\n```\n\ninline: $C_L$\n\n",
     ],
+
+    ["user", "long message\n" + "a".repeat(10000)],
   ],
   title: "mars rover kata",
   model: "gpt-3.5-turbo",

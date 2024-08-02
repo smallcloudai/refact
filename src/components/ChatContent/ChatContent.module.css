@@ -32,6 +32,10 @@
   white-space: pre;
 }
 
+.break_word {
+  word-break: break-word;
+}
+
 .tool_result {
   width: 100%;
 }
