@@ -10,7 +10,7 @@ import {
   diffApi,
   DiffAppliedStateArgs,
 } from "../services/refact";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
@@ -67,17 +67,14 @@ export const useGetManyDiffState = (args: DiffAppliedStateArgs[]) => {
     };
   }, [args, dispatch]);
 
-  args.map((d) => {
-    const result = diffApi.endpoints.diffState.select(d);
+  const selectAll = useMemo(() => {
+    return (state: RootState) =>
+      args.map((arg) => diffApi.endpoints.diffState.select(arg)(state));
+  }, [args]);
 
-    return result;
-  });
-
-  const all = useAppSelector((state) => {
-    return args.map((arg) => {
-      return diffApi.endpoints.diffState.select(arg)(state);
-    });
-  });
+  // Causes a wraning
+  // TODO: use createSelector when messages are move into the state
+  const all = useAppSelector(selectAll);
 
   const getByToolCallId = useCallback(
     (toolCallId: string) => {
@@ -87,8 +84,12 @@ export const useGetManyDiffState = (args: DiffAppliedStateArgs[]) => {
     [all],
   );
 
+  const getByArg = (arg: DiffAppliedStateArgs) =>
+    diffApi.endpoints.diffState.select(arg);
+
   return {
     allDiffRequest: all,
     getByToolCallId,
+    getByArg,
   };
 };

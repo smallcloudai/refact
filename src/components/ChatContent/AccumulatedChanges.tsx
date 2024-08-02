@@ -36,6 +36,7 @@ export const AccumulatedChanges: React.FC<{ messages: ChatMessages }> = ({
     }, []);
   }, [messages]);
 
+  // TODO: warning here
   const { allDiffRequest } = useGetManyDiffState(args);
 
   const loading = React.useMemo(() => {
