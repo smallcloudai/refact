@@ -1,5 +1,6 @@
 import { Button, Flex, RadioCards, RadioGroup, Text } from "@radix-ui/themes";
 import { useState } from "react";
+import { TourBubble } from "../TourBubble";
 
 export type Host = "cloud" | "self-hosting" | "enterprise";
 
@@ -21,16 +22,21 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
       <Text size="4">Refact plugin initial setup:</Text>
       <RadioCards.Root value={selected} onValueChange={onValueChange}>
         <RadioGroup.Root
-          style={{ gap: 10 }}
+          style={{ gap: 0 }}
           value={selected}
           onValueChange={onValueChange}
         >
+          <TourBubble
+            text="When you write code, Refact already knows what comes next."
+            step={1}
+          />
           <RadioCards.Item
             value="cloud"
             style={{
               flexDirection: "column",
               alignItems: "flex-start",
               gap: 0,
+              margin: "3px",
             }}
           >
             <RadioGroup.Item value="cloud">
@@ -43,12 +49,17 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
               source project, off by default
             </Text>
           </RadioCards.Item>
+          <TourBubble
+            text="Ask questions in the Chat, it already knows your codebase."
+            step={2}
+          />
           <RadioCards.Item
             value="self-hosting"
             style={{
               flexDirection: "column",
               alignItems: "flex-start",
               gap: 0,
+              margin: "3px",
             }}
           >
             <RadioGroup.Item value="self-hosting">
@@ -63,6 +74,7 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
               flexDirection: "column",
               alignItems: "flex-start",
               gap: 0,
+              margin: "3px",
             }}
           >
             <RadioGroup.Item value="enterprise">
