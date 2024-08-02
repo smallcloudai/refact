@@ -88,6 +88,7 @@ import {
   isRecieveDiffOpperationResult,
   isRecieveDiffOpperationError,
   OpenSettings,
+  type OpenFile,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 import { useDebounceCallback } from "usehooks-ts";
@@ -1416,6 +1417,21 @@ export const useEventBusForChat = () => {
     postMessage(action);
   }, [postMessage, state.chat.id]);
 
+  const openFile = useCallback(
+    (file: ChatContextFile) => {
+      const action: OpenFile = {
+        type: EVENT_NAMES_FROM_CHAT.OPEN_FILE,
+        payload: {
+          id: state.chat.id,
+          file,
+        },
+      };
+
+      postMessage(action);
+    },
+    [postMessage, state.chat.id],
+  );
+
   // useEffect(() => {
   //   window.debugChat =
   //     window.debugChat ??
@@ -1454,6 +1470,7 @@ export const useEventBusForChat = () => {
     getDiffByIndex,
     addOrRemoveDiff,
     openSettings,
+    openFile,
   };
 };
 

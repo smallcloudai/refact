@@ -9,6 +9,7 @@ import {
   isSystemPrompts,
   ToolCommand,
   DiffChunk,
+  ChatContextFile,
   // DiffAppliedStateResponse,
 } from "../services/refact";
 
@@ -31,6 +32,7 @@ export enum EVENT_NAMES_FROM_CHAT {
   REQUEST_DIFF_APPLIED_CHUNKS = "request_diff_applied_chunks",
   REQUEST_DIFF_OPPERATION = "request_diff_operation",
   OPEN_SETTINGS = "chat_open_settings",
+  OPEN_FILE = "chat_open_file",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -280,6 +282,20 @@ export interface OpenSettings extends ActionFromChat {
 export function isOpenSettings(action: unknown): action is OpenSettings {
   if (!isActionFromChat(action)) return false;
   return action.type === EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
+}
+
+export interface OpenFile extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.OPEN_FILE;
+  payload: {
+    id: string;
+    // TODO: this might need to be changed for diffs,
+    file: ChatContextFile;
+  };
+}
+
+export function isOpenFile(action: unknown): action is OpenFile {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.OPEN_FILE;
 }
 
 export interface ActionToChat extends BaseAction {

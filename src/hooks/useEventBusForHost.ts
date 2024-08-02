@@ -40,6 +40,7 @@ import {
   isRequestDiffOpperation,
   RecieveDiffOpperationResult,
   RecieveDiffOpperationError,
+  isOpenFile,
 } from "../events";
 import { useConfig } from "../contexts/config-context";
 import { getStatisticData } from "../services/refact";
@@ -319,6 +320,14 @@ export function useEventBusForHost() {
             // eslint-disable-next-line no-console
             console.error(err);
           });
+      }
+
+      if (isOpenFile(event.data)) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "Can't open a file form the broswer: " +
+            event.data.payload.file.file_name,
+        );
       }
     };
 

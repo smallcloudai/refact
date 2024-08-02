@@ -1,5 +1,5 @@
 import React from "react";
-import { Flex, Container, Box, HoverCard, Text } from "@radix-ui/themes";
+import { Flex, Container, Box, HoverCard, Text, Link } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ChatContextFile } from "../../services/refact";
 import classnames from "classnames";
@@ -65,7 +65,8 @@ export const ContextFile: React.FC<{
   name: string;
   children: string;
   className?: string;
-}> = ({ name, ...props }) => {
+  onClick?: React.MouseEventHandler<HTMLAnchorElement> | undefined;
+}> = ({ name, onClick, ...props }) => {
   const [open, setOpen] = React.useState(false);
   const { extension, start } = getFileInfoFromName(name);
   const text = "```" + extension + "\n" + props.children + "\n```";
@@ -75,7 +76,10 @@ export const ContextFile: React.FC<{
         <HoverCard.Trigger>
           <Box>
             <Small className={classnames(styles.file, props.className)}>
-              &nbsp;&nbsp;&nbsp;&nbsp;<TruncateLeft>{name}</TruncateLeft>
+              &nbsp;&nbsp;&nbsp;&nbsp;
+              <Link href="#" onClick={onClick}>
+                <TruncateLeft>{name}</TruncateLeft>
+              </Link>
             </Small>
           </Box>
         </HoverCard.Trigger>
@@ -94,9 +98,10 @@ export const ContextFile: React.FC<{
   );
 };
 
-const ContextFilesContent: React.FC<{ files: ChatContextFile[] }> = ({
-  files,
-}) => {
+const ContextFilesContent: React.FC<{
+  files: ChatContextFile[];
+  onOpenFile: (file: ChatContextFile) => void;
+}> = ({ files, onOpenFile }) => {
   if (files.length === 0) return null;
   return (
     <Container>
@@ -107,7 +112,14 @@ const ContextFilesContent: React.FC<{ files: ChatContextFile[] }> = ({
               file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
             const key = file.file_name + lineText + index;
             return (
-              <ContextFile key={key} name={file.file_name + lineText}>
+              <ContextFile
+                onClick={(event) => {
+                  event.preventDefault();
+                  onOpenFile(file);
+                }}
+                key={key}
+                name={file.file_name + lineText}
+              >
                 {file.file_content}
               </ContextFile>
             );
@@ -118,9 +130,10 @@ const ContextFilesContent: React.FC<{ files: ChatContextFile[] }> = ({
   );
 };
 
-export const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({
-  files,
-}) => {
+export const ContextFiles: React.FC<{
+  files: ChatContextFile[];
+  onOpenFile: (file: ChatContextFile) => void;
+}> = ({ files, onOpenFile }) => {
   const [open, setOpen] = React.useState(false);
 
   if (files.length === 0) return null;
@@ -139,7 +152,7 @@ export const ContextFiles: React.FC<{ files: ChatContextFile[] }> = ({
           </Flex>
         </Collapsible.Trigger>
         <Collapsible.Content>
-          <ContextFilesContent files={files} />
+          <ContextFilesContent files={files} onOpenFile={onOpenFile} />
         </Collapsible.Content>
       </Collapsible.Root>
     </Container>

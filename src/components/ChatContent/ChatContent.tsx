@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import {
+  ChatContextFile,
   ChatMessages,
   DiffChunk,
   ToolResult,
@@ -88,6 +89,7 @@ export type ChatContentProps = {
   }) => void;
   openSettings: () => void;
   chatKey: string;
+  onOpenFile: (file: ChatContextFile) => void;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
@@ -104,6 +106,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       addOrRemoveDiff,
       openSettings,
       chatKey,
+      onOpenFile,
     } = props;
 
     const { innerRef, handleScroll } = useAutoScroll({
@@ -135,7 +138,9 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
             if (isChatContextFileMessage(message)) {
               const key = chatKey + "context-file-" + index;
               const [, files] = message;
-              return <ContextFiles key={key} files={files} />;
+              return (
+                <ContextFiles key={key} files={files} onOpenFile={onOpenFile} />
+              );
             }
 
             if (isDiffMessage(message)) {

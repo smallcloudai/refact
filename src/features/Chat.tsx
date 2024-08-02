@@ -38,6 +38,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
     getDiffByIndex,
     addOrRemoveDiff,
     openSettings,
+    openFile,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -122,6 +123,10 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         getDiffByIndex={getDiffByIndex}
         openSettings={openSettings}
         chatKey={state.chat.id}
+        onOpenFile={(file) => {
+          // if(host !== "web") { openFile(file) }
+          openFile(file);
+        }}
       />
       {!state.streaming && state.prevent_send && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
