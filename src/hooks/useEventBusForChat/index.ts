@@ -224,6 +224,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       postMessage(notes);
     }
 
+    // // eslint-disable-next-line no-console
     // console.log(action.type, { isThisChat, action });
 
     if (isThisChat && isSetDisableChat(action)) {
@@ -1418,7 +1419,7 @@ export const useEventBusForChat = () => {
   }, [postMessage, state.chat.id]);
 
   const openFile = useCallback(
-    (file: ChatContextFile) => {
+    (file: { file_name: string; line?: number }) => {
       const action: OpenFile = {
         type: EVENT_NAMES_FROM_CHAT.OPEN_FILE,
         payload: {

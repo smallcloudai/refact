@@ -9,7 +9,6 @@ import {
   isSystemPrompts,
   ToolCommand,
   DiffChunk,
-  ChatContextFile,
   // DiffAppliedStateResponse,
 } from "../services/refact";
 
@@ -289,7 +288,10 @@ export interface OpenFile extends ActionFromChat {
   payload: {
     id: string;
     // TODO: this might need to be changed for diffs,
-    file: ChatContextFile;
+    file: {
+      file_name: string;
+      line?: number;
+    };
   };
 }
 

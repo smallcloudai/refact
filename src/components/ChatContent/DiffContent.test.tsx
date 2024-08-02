@@ -87,6 +87,7 @@ describe("diff content", () => {
         diffs={STUB_DIFFS_1}
         appliedChunks={appliedChunks}
         onSubmit={onSumbitSpy}
+        openFile={() => ({})}
       />,
     );
 
@@ -121,6 +122,7 @@ describe("diff content", () => {
         diffs={STUB_DIFFS_1}
         appliedChunks={appliedChunks}
         onSubmit={onSumbitSpy}
+        openFile={() => ({})}
       />,
     );
 
@@ -156,6 +158,7 @@ describe("diff content", () => {
         diffs={STUB_DIFFS_1}
         appliedChunks={appliedChunks}
         onSubmit={onSumbitSpy}
+        openFile={() => ({})}
       />,
     );
 
@@ -191,6 +194,7 @@ describe("diff content", () => {
         diffs={STUB_DIFFS_1}
         appliedChunks={appliedChunks}
         onSubmit={onSumbitSpy}
+        openFile={() => ({})}
       />,
     );
 
@@ -218,6 +222,7 @@ describe("diff content", () => {
         diffs={STUB_DIFFS_1}
         appliedChunks={appliedChunks}
         onSubmit={onSumbitSpy}
+        openFile={() => ({})}
       />,
     );
 
@@ -243,6 +248,7 @@ describe("diff content", () => {
         appliedChunks={{
           ...appliedChunks,
         }}
+        openFile={() => ({})}
       />,
     );
 

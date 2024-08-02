@@ -1,6 +1,5 @@
 import React, { useCallback } from "react";
 import {
-  ChatContextFile,
   ChatMessages,
   DiffChunk,
   ToolResult,
@@ -89,7 +88,7 @@ export type ChatContentProps = {
   }) => void;
   openSettings: () => void;
   chatKey: string;
-  onOpenFile: (file: ChatContextFile) => void;
+  onOpenFile: (file: { file_name: string; line?: number }) => void;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
@@ -155,6 +154,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                   appliedChunks={maybeDiffChunk}
                   key={key}
                   diffs={diffs}
+                  openFile={onOpenFile}
                 />
               );
             }

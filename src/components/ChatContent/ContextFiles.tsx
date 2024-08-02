@@ -77,9 +77,11 @@ export const ContextFile: React.FC<{
           <Box>
             <Small className={classnames(styles.file, props.className)}>
               &nbsp;&nbsp;&nbsp;&nbsp;
-              <Link href="#" onClick={onClick}>
-                <TruncateLeft>{name}</TruncateLeft>
-              </Link>
+              <TruncateLeft>
+                <Link href="#" onClick={onClick}>
+                  {name}
+                </Link>
+              </TruncateLeft>
             </Small>
           </Box>
         </HoverCard.Trigger>
@@ -100,7 +102,7 @@ export const ContextFile: React.FC<{
 
 const ContextFilesContent: React.FC<{
   files: ChatContextFile[];
-  onOpenFile: (file: ChatContextFile) => void;
+  onOpenFile: (file: { file_name: string; line?: number }) => void;
 }> = ({ files, onOpenFile }) => {
   if (files.length === 0) return null;
   return (
@@ -115,7 +117,7 @@ const ContextFilesContent: React.FC<{
               <ContextFile
                 onClick={(event) => {
                   event.preventDefault();
-                  onOpenFile(file);
+                  onOpenFile({ file_name: file.file_name, line: file.line1 });
                 }}
                 key={key}
                 name={file.file_name + lineText}
@@ -132,7 +134,7 @@ const ContextFilesContent: React.FC<{
 
 export const ContextFiles: React.FC<{
   files: ChatContextFile[];
-  onOpenFile: (file: ChatContextFile) => void;
+  onOpenFile: (file: { file_name: string; line?: number }) => void;
 }> = ({ files, onOpenFile }) => {
   const [open, setOpen] = React.useState(false);
 
