@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 
 from swe.utils import AgentRunner
 from swe.utils import get_swe_bench_lite_instance
-from swe.steps import ExploreRepoStep
+from swe.steps import ExploreRepoStep, RelevantFiles
 from swe.utils.common import patched_file
 from swe.utils.common import filename_mentioned
 
@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Dict, Any, Tuple
 
 
-# MODEL = "gpt-4o"
-MODEL = "gpt-4o-mini"
+MODEL = "gpt-4o"
+# MODEL = "gpt-4o-mini"
 
 
 class SWERunner(AgentRunner):
@@ -26,13 +26,14 @@ class SWERunner(AgentRunner):
         filename: str = patched_file(kwargs["problem_patch"])
         results["patched_file"] = filename
         results["patched_file_mentioned_in_problem"] = filename_mentioned(filename, problem_statement)
-        step = ExploreRepoStep(base_url=base_url, model_name=MODEL, attempts=1)
+        step = RelevantFiles(base_url=base_url, model_name=MODEL, attempts=1)
         try:
             results["found_files"] = await step.process(
                 problem_statement=problem_statement,
                 repo_path=repo_path)
             results["patched_file_is_found"] = filename_mentioned(filename, "\n".join(results["found_files"]))
         except Exception as e:
+            raise e
             results["error"] = f"step1: {type(e)} {str(e) or traceback.format_exc()}"
         results["model_name"] = step.model_name
         results["usage"] = step.usage
@@ -66,7 +67,10 @@ async def main():
 
     try:
         runner = SWERunner(
-            timeout=args.timeout)
+            timeout=args.timeout,
+            use_ast=True,
+            use_vecdb=False,
+        )
         r, traj = await runner.run(
             repo_name=instance["repo"],
             base_commit=instance["base_commit"],
@@ -74,6 +78,7 @@ async def main():
         )
         results.update(**r, **results)
     except Exception as e:
+        raise e
         results["error"] = str(e) or traceback.format_exc()
 
     if args.output_dir is not None:

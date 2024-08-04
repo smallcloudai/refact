@@ -120,8 +120,9 @@ async def tools_fetch_and_filter(base_url: str, tools_turn_on: Optional[Set[str]
     async def get_tools():
         async with aiohttp.ClientSession() as session:
             async with session.get(base_url + "/tools", timeout=1) as response:
-                assert response.status == 200, f"unexpected response status {response.status}"
-                return await response.json()
+                text = await response.text()
+                assert response.status == 200, f"unable to fetch tools: {response.status}, Text:\n{text}"
+                return json.loads(text)
     tools = None
     tools = await get_tools()
     if tools_turn_on is not None:
@@ -203,9 +204,10 @@ async def ask_using_http(
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:
         async with session.post(base_url + "/chat", json=post_me) as response:
-            assert response.status == 200, f"unexpected response status {response.status}"
+            text = await response.text()
+            assert response.status == 200, f"/chat call failed: {response.status}\ntext: {text}"
             if not stream:
-                j = await response.json()
+                j = json.loads(text)
                 deterministic = [Message(**x) for x in j.get("deterministic_messages", [])]
                 j_choices = j["choices"]
                 for i, ch in enumerate(j_choices):

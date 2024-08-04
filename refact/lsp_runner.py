@@ -25,16 +25,23 @@ def localhost_port_not_in_use(start: int, stop: int):
 
 
 class LSPServerRunner:
-    def __init__(self, repo_path: str):
+    def __init__(self, repo_path: str, use_ast: bool, use_vecdb: bool):
         base_command = os.environ["REFACT_LSP_BASE_COMMAND"]
+        # /Users/valaises/RustroverProjects/refact-lsp/target/debug/refact-lsp --address-url http://localhost:8008 -k MYKEY
+        assert base_command, "env REFACT_LSP_BASE_COMMAND must be specified"
         port = localhost_port_not_in_use(8100, 9000)
         self._command = [
             *base_command.split(" "),
             "--logs-stderr", f"--http-port={port}",
             f"--workspace-folder={repo_path}",
-            "--ast",
         ]
+        if use_ast:
+            self._command.append("--ast")
+        if use_vecdb:
+            self._command.append("--vecdb")
 
+        self._use_ast = use_ast
+        self._use_vecdb = use_vecdb
         self._port: int = port
         self._lsp_server: Optional[asyncio.subprocess.Process] = None
 
@@ -47,22 +54,34 @@ class LSPServerRunner:
         return f"http://127.0.0.1:{self._port}/v1"
 
     async def _start(self):
+        print("launching REFACT LSP")
         self._lsp_server = await asyncio.create_subprocess_exec(
             *self._command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-
+        ast_ok, vecdb_ok = False, False
         while True:
             stderr = await self._lsp_server.stderr.readline()
             if "AST COMPLETE" in stderr.decode():
+                print("AST initialized")
+                ast_ok = True
+            if "VECDB COMPLETE" in stderr.decode():
+                print("VECDB initialized")
+                vecdb_ok = False
+            if (self._use_ast == ast_ok) and (self._use_vecdb == vecdb_ok):
                 break
             if not self._is_lsp_server_running:
                 raise RuntimeError(f"LSP server unexpectedly exited, bb")
             await asyncio.sleep(0.01)
+        print("REFACT LSP started")
         assert self._is_lsp_server_running
 
     async def _stop(self):
         if self._lsp_server is not None:
             self._lsp_server.terminate()
-            await self._lsp_server.wait()
+            try:
+                await asyncio.wait_for(self._lsp_server.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                self._lsp_server.kill()
+                await self._lsp_server.wait()
         assert not self._is_lsp_server_running
 
     async def __aenter__(self):

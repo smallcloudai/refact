@@ -59,8 +59,10 @@ class RepoContext:
 
 
 class AgentRunner:
-    def __init__(self, timeout):
+    def __init__(self, timeout, use_ast: bool, use_vecdb: bool):
         self._timeout = timeout
+        self._use_ast = use_ast
+        self._use_vecdb = use_vecdb
         self._repos_workdir = SWE_WORKDIR / "repos"
 
     async def _steps(self, base_url: str, repo_path: Path, **kwargs) -> Dict[str, Any]:
@@ -68,11 +70,12 @@ class AgentRunner:
 
     async def run(self, repo_name: str, base_commit: str, **kwargs):
         try:
-            async with timeout(self._timeout):
-                async with RepoContext(repo_name, base_commit, self._repos_workdir) as repo_path:
-                    async with LSPServerRunner(repo_path=str(repo_path)) as runner:
+            async with RepoContext(repo_name, base_commit, self._repos_workdir) as repo_path:
+                async with LSPServerRunner(repo_path=str(repo_path), use_ast=self._use_ast, use_vecdb=self._use_vecdb) as runner:
+                    async with timeout(self._timeout):
                         return await self._steps(base_url=runner.base_url, repo_path=repo_path, **kwargs)
         except Exception as e:
+            raise e
             return {
                 "error": f"run: {str(e) or traceback.format_exc()}",
             }

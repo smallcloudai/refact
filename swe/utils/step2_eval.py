@@ -75,7 +75,10 @@ async def main():
         print(termcolor.colored(found_files_info, "green"))
 
         runner = SWERunner(
-            timeout=args.timeout)
+            timeout=args.timeout,
+            use_ast=True,
+            use_vecdb=False,
+        )
         r, traj = await runner.run(
             repo_name=instance["repo"],
             base_commit=instance["base_commit"],

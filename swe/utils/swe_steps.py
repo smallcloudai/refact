@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 from refact.chat_client import print_block
 from swe.utils import AgentRunner
 from swe.utils import get_swe_bench_lite_instance
-from swe.steps import ExploreRepoStep
+from swe.steps import ExploreRepoStep, RelevantFiles
 from swe.steps import ProducePatchStep
 from swe.steps import ChooseSolutionStep
 from swe.utils.common import patched_file
@@ -110,7 +110,10 @@ async def main():
 
     try:
         runner = SWERunner(
-            timeout=args.timeout)
+            timeout=args.timeout,
+            use_ast=True,
+            use_vecdb=False,
+        )
         r, traj = await runner.run(
             repo_name=instance["repo"],
             base_commit=instance["base_commit"],

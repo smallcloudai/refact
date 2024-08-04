@@ -13,7 +13,7 @@ use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
 
 
-const RF_MODEL_NAME: &str = "gpt-4o-mini";
+const RF_MODEL_NAME: &str = "gpt-4o";
 const RF_OUTPUT_FILES: usize = 6;
 const RF_ATTEMPTS: usize = 1;
 const RF_WRAP_UP_DEPTH: usize = 5;
@@ -179,7 +179,7 @@ impl Tool for AttRelevantFiles {
         Ok(results)
     }
     fn tool_depends_on(&self) -> Vec<String> {
-        vec!["ast".to_string(), "vecdb".to_string()]
+        vec!["ast".to_string()]
     }
 }
 
@@ -189,6 +189,12 @@ async fn find_relevant_files(
     gcx: Arc<ARwLock<GlobalContext>>,
     user_query: &str,
 ) -> Result<Value, String> {
+    let vecdb_on = {
+        let gcx = gcx.read().await;
+        let vecdb = gcx.vec_db.lock().await;
+        vecdb.is_some()
+    };
+
     let sys = RF_SYSTEM_PROMPT
         .replace("{ATTEMPTS}", &format!("{}", RF_ATTEMPTS))
         .replace("{OUTPUT_FILES}", &format!("{}", RF_OUTPUT_FILES));
@@ -198,9 +204,13 @@ async fn find_relevant_files(
     messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
 
-    let tools_subset = vec!["definition", "references", "tree", "knowledge", "file", "search"].iter().map(|x|x.to_string()).collect::<Vec<_>>();
-
-    let strategies = vec!["CATFILES", "GOTODEF", "GOTOREF", "VECDBSEARCH", "CUSTOM"];
+    let mut tools_subset = vec!["definition", "references", "tree", "knowledge", "file"].iter().map(|x|x.to_string()).collect::<Vec<_>>();
+    let mut strategies = vec!["CATFILES", "GOTODEF", "GOTOREF", "CUSTOM"];
+    
+    if vecdb_on {
+        tools_subset.push("search".to_string());
+        strategies.push("VECDBSEARCH");
+    }
     let mut futures = vec![];
     for strategy in strategies {
         let mut messages_copy = messages.clone();

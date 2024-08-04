@@ -14,7 +14,9 @@ class Step:
             base_url: str,
             model_name: str,
             temperature: float = 0.2,
-            max_depth: int = 8):
+            max_depth: int = 8,
+            *args, **kwargs
+    ):
         self._base_url = base_url
         self._model_name = model_name
         self._temperature = temperature
