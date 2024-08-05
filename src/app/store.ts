@@ -12,7 +12,7 @@ import {
   diffApi,
 } from "../services/refact";
 import { reducer as fimReducer } from "../features/FIM/reducer";
-import { tourReducer } from "../features/Tour";
+import { saveTourToLocalStorage, tourReducer } from "../features/Tour";
 // import { fimSlice } from "../features/FIM/fimSlice";
 
 // https://redux-toolkit.js.org/api/combineSlices
@@ -43,6 +43,10 @@ export const store = configureStore({
       diffApi.middleware,
     );
   },
+});
+
+store.subscribe(() => {
+  saveTourToLocalStorage(store.getState());
 });
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
