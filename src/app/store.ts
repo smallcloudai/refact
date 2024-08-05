@@ -13,6 +13,10 @@ import {
 } from "../services/refact";
 import { reducer as fimReducer } from "../features/FIM/reducer";
 import { saveTourToLocalStorage, tourReducer } from "../features/Tour";
+import {
+  saveTipOfTheDayToLocalStorage,
+  tipOfTheDayReducer,
+} from "../features/TipOfTheDay";
 // import { fimSlice } from "../features/FIM/fimSlice";
 
 // https://redux-toolkit.js.org/api/combineSlices
@@ -21,6 +25,7 @@ import { saveTourToLocalStorage, tourReducer } from "../features/Tour";
 const rootReducer = combineSlices({
   fim: fimReducer,
   tour: tourReducer,
+  tipOfTheDay: tipOfTheDayReducer,
   [statisticsApi.reducerPath]: statisticsApi.reducer,
   [capsApi.reducerPath]: capsApi.reducer,
   [promptsApi.reducerPath]: promptsApi.reducer,
@@ -47,6 +52,7 @@ export const store = configureStore({
 
 store.subscribe(() => {
   saveTourToLocalStorage(store.getState());
+  saveTipOfTheDayToLocalStorage(store.getState());
 });
 
 // Infer the `RootState` and `AppDispatch` types from the store itself

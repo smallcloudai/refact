@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import {
   ChatMessages,
   ToolResult,
@@ -20,6 +20,20 @@ import { DiffContent } from "./DiffContent";
 import { PlainText } from "./PlainText";
 import { useConfig } from "../../contexts/config-context";
 import { AccumulatedChanges } from "./AccumulatedChanges";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { RootState } from "../../app/store";
+import { next } from "../../features/TipOfTheDay";
+
+export const TipOfTheDay: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const state = useAppSelector((state: RootState) => state.tipOfTheDay);
+
+  useEffect(() => {
+    dispatch(next());
+  }, [dispatch]);
+
+  return <Text>💡 {state.tip}</Text>;
+};
 
 const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const config = useConfig();
@@ -35,7 +49,10 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   );
 
   if (config.host === "web") {
-    return <Text>Welcome to Refact chat! How can I assist you today?</Text>;
+    <Flex direction="column" gap="4">
+      <Text>Welcome to Refact chat! How can I assist you today?</Text>;
+      <TipOfTheDay />
+    </Flex>;
   }
 
   if (!hasVecDB && !hasAst) {
@@ -46,6 +63,7 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
           💡 You can turn on VecDB and AST in{" "}
           <Link onClick={openSettings}>settings</Link>.
         </Text>
+        <TipOfTheDay />
       </Flex>
     );
   } else if (!hasVecDB) {
@@ -56,6 +74,7 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
           💡 You can turn on VecDB in{" "}
           <Link onClick={openSettings}>settings</Link>.
         </Text>
+        <TipOfTheDay />
       </Flex>
     );
   } else if (!hasAst) {
@@ -66,10 +85,17 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
           💡 You can turn on AST in <Link onClick={openSettings}>settings</Link>
           .
         </Text>
+        <TipOfTheDay />
       </Flex>
     );
   }
-  return <Text>Welcome to Refact chat! How can I assist you today?</Text>;
+
+  return (
+    <Flex direction="column" gap="4">
+      <Text>Welcome to Refact chat! How can I assist you today?</Text>;
+      <TipOfTheDay />
+    </Flex>
+  );
 };
 
 export type ChatContentProps = {
