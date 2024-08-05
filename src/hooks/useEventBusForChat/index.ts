@@ -39,7 +39,7 @@ import {
   //  isChatReceiveCapsError,
   isSetChatModel,
   isSetDisableChat,
-  isActiveFileInfo,
+  // isActiveFileInfo,
   type NewFileFromChat,
   type PasteDiffFromChat,
   type ReadyMessage,
@@ -49,15 +49,15 @@ import {
   //  isReceiveAtCommandPreview,
   isChatUserMessageResponse,
   isChatSetLastModelUsed,
-  isSetSelectedSnippet,
-  isRemovePreviewFileByName,
+  // isSetSelectedSnippet,
+  // isRemovePreviewFileByName,
   type RemovePreviewFileByName,
   isSetPreviousMessagesLength,
   setPreviousMessagesLength,
-  type Snippet,
+  // type Snippet,
   isReceiveTokenCount,
-  type FileInfo,
-  type ChatSetSelectedSnippet,
+  // type FileInfo,
+  // type ChatSetSelectedSnippet,
   type CreateNewChatThread,
   type SaveChatFromChat,
   // isReceivePrompts,
@@ -247,14 +247,14 @@ export function reducer(postMessage: typeof window.postMessage) {
 
       return {
         ...state,
-        files_in_preview: [],
+        // files_in_preview: [],
         waiting_for_response: false,
         streaming: true,
         previous_message_length: messages.length,
         chat: {
           ...state.chat,
           messages,
-          applied_diffs: {},
+          // applied_diffs: {},
         },
       };
     }
@@ -351,10 +351,10 @@ export function reducer(postMessage: typeof window.postMessage) {
           ...state.chat,
           ...action.payload.chat,
           messages,
-          applied_diffs: {},
+          // applied_diffs: {},
         },
         chat_cache,
-        selected_snippet: action.payload.snippet ?? state.selected_snippet,
+        // selected_snippet: action.payload.snippet ?? state.selected_snippet,
         take_notes: false,
       };
     }
@@ -376,7 +376,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           model: state.chat.model,
         },
         chat_cache,
-        selected_snippet: action.payload?.snippet ?? state.selected_snippet,
+        // selected_snippet: action.payload?.snippet ?? state.selected_snippet,
       };
     }
 
@@ -496,15 +496,15 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isThisChat && isActiveFileInfo(action)) {
-      return {
-        ...state,
-        active_file: {
-          ...state.active_file,
-          ...action.payload.file,
-        },
-      };
-    }
+    // if (isThisChat && isActiveFileInfo(action)) {
+    //   return {
+    //     ...state,
+    //     active_file: {
+    //       ...state.active_file,
+    //       ...action.payload.file,
+    //     },
+    //   };
+    // }
 
     // if (isThisChat && isReceiveAtCommandCompletion(action)) {
     //   return {
@@ -542,22 +542,22 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isThisChat && isSetSelectedSnippet(action)) {
-      return {
-        ...state,
-        selected_snippet: action.payload.snippet,
-      };
-    }
+    // if (isThisChat && isSetSelectedSnippet(action)) {
+    //   return {
+    //     ...state,
+    //     selected_snippet: action.payload.snippet,
+    //   };
+    // }
 
-    if (isThisChat && isRemovePreviewFileByName(action)) {
-      const previewFiles = state.files_in_preview.filter(
-        (file) => file.file_name !== action.payload.name,
-      );
-      return {
-        ...state,
-        files_in_preview: previewFiles,
-      };
-    }
+    // if (isThisChat && isRemovePreviewFileByName(action)) {
+    //   const previewFiles = state.files_in_preview.filter(
+    //     (file) => file.file_name !== action.payload.name,
+    //   );
+    //   return {
+    //     ...state,
+    //     files_in_preview: previewFiles,
+    //   };
+    // }
 
     if (isThisChat && isSetPreviousMessagesLength(action)) {
       return {
@@ -811,6 +811,7 @@ export function reducer(postMessage: typeof window.postMessage) {
   };
 }
 
+// TODO: move this
 export type ChatCapsState = {
   fetching: boolean;
   default_cap: string;
@@ -819,19 +820,20 @@ export type ChatCapsState = {
   error: null | string;
 };
 
-export type DiffChunkStatus = {
-  applied_chunks: boolean[];
-  can_apply: boolean[];
-  state: (0 | 1 | 2)[];
-  fetching: boolean;
-  error: null | string;
-  diff_id: string;
-};
+// export type DiffChunkStatus = {
+//   applied_chunks: boolean[];
+//   can_apply: boolean[];
+//   state: (0 | 1 | 2)[];
+//   fetching: boolean;
+//   error: null | string;
+//   diff_id: string;
+// };
 
 export type ChatState = {
-  chat: ChatThread & {
-    applied_diffs: Record<string, DiffChunkStatus>;
-  };
+  // chat: ChatThread & {
+  //   applied_diffs: Record<string, DiffChunkStatus>;
+  // };
+  chat: ChatThread;
   chat_cache: Record<string, ChatThread>;
   prevent_send: boolean;
   waiting_for_response: boolean;
@@ -840,9 +842,9 @@ export type ChatState = {
   error: string | null;
   // caps: ChatCapsState;
   // commands: CommandCompletionResponse;
-  files_in_preview: ChatContextFile[];
-  active_file: FileInfo;
-  selected_snippet: Snippet;
+  // files_in_preview: ChatContextFile[];
+  // active_file: FileInfo;
+  // selected_snippet: Snippet;
   tokens: number | null;
   // system_prompts: {
   //   error: null | string;
@@ -863,19 +865,21 @@ export function createInitialState(): ChatState {
     waiting_for_response: false,
     error: null,
     previous_message_length: 0,
-    selected_snippet: {
-      language: "",
-      code: "",
-      path: "",
-      basename: "",
-    },
-    files_in_preview: [],
+    // move this
+    // selected_snippet: {
+    //   language: "",
+    //   code: "",
+    //   path: "",
+    //   basename: "",
+    // },
+
+    // files_in_preview: [],
     chat: {
       id: uuidv4(),
       messages: [],
       title: "",
       model: "",
-      applied_diffs: {},
+      // applied_diffs: {},
     },
     chat_cache: {},
     // caps: {
@@ -889,15 +893,17 @@ export function createInitialState(): ChatState {
     //   replace: [-1, -1],
     //   is_cmd_executable: false,
     // },
-    active_file: {
-      name: "",
-      line1: null,
-      line2: null,
-      attach: false,
-      can_paste: false,
-      path: "",
-      cursor: null,
-    },
+    // TODO: this will need to be available to the ide
+    // active_file: {
+    //   name: "",
+    //   line1: null,
+    //   line2: null,
+    //   attach: false,
+    //   can_paste: false,
+    //   path: "",
+    //   cursor: null,
+    // },
+    // TODO: get tokens?
     tokens: null,
     // system_prompts: {
     //   error: null,
@@ -961,7 +967,7 @@ export const useEventBusForChat = () => {
   const sendMessages = useCallback(
     (
       messages: ChatMessages,
-      attach_file = state.active_file.attach,
+      // attach_file = state.active_file.attach,
       prompts: SystemPrompts = {},
       tools: ToolCommand[] | null = null,
     ) => {
@@ -989,7 +995,7 @@ export const useEventBusForChat = () => {
         messages: messagesWithSystemPrompt,
         title: state.chat.title,
         model: state.chat.model,
-        attach_file,
+        // attach_file,
       };
 
       dispatch({
@@ -1007,17 +1013,17 @@ export const useEventBusForChat = () => {
 
       postMessage(action);
 
-      const snippetMessage: ChatSetSelectedSnippet = {
-        type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET,
-        payload: {
-          id: state.chat.id,
-          snippet: { language: "", code: "", path: "", basename: "" },
-        },
-      };
-      dispatch(snippetMessage);
+      // const snippetMessage: ChatSetSelectedSnippet = {
+      //   type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET,
+      //   payload: {
+      //     id: state.chat.id,
+      //     snippet: { language: "", code: "", path: "", basename: "" },
+      //   },
+      // };
+      // dispatch(snippetMessage);
     },
     [
-      state.active_file.attach,
+      // state.active_file.attach,
       state.chat.id,
       state.chat.title,
       state.chat.model,
@@ -1037,9 +1043,9 @@ export const useEventBusForChat = () => {
       const messages = state.chat.messages.concat([["user", question]]);
 
       // We can remove attach file
-      sendMessages(messages, state.chat.attach_file, prompts, tools);
+      sendMessages(messages, prompts, tools);
     },
-    [sendMessages, state.chat.attach_file, state.chat.messages],
+    [sendMessages, state.chat.messages],
   );
 
   // const requestCaps = useCallback(() => {
@@ -1272,7 +1278,7 @@ export const useEventBusForChat = () => {
       };
 
       dispatch(setMessageLengthAction);
-      sendMessages(messages, false);
+      sendMessages(messages);
     },
     [sendMessages, state.chat.id],
   );

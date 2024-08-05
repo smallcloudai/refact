@@ -24,12 +24,14 @@ import { FIMDebug } from "./FIM";
 import { Statistics } from "./Statistics";
 import { store } from "../app/store";
 import { Provider } from "react-redux";
+import { Theme } from "../components/Theme";
 
 export interface AppProps {
   style?: React.CSSProperties;
 }
 
-export const App: React.FC<AppProps> = ({ style }: AppProps) => {
+// TODO: wrap this in the Prvider and theme components
+const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const { pages, navigate } = usePages();
   const [apiKey, setApiKey] = useLocalStorage("api_key", "");
   const { currentChatId } = useEventBusForHost();
@@ -135,63 +137,71 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   // goTo settings, fim, stats, hot keys
 
   return (
+    <Flex style={{ justifyContent: "center", ...style }}>
+      {pages.map((page, i) => {
+        return (
+          <Flex key={i} display={i === pages.length - 1 ? "flex" : "none"}>
+            {page.name === "initial setup" && (
+              <InitialSetup onPressNext={onPressNext} />
+            )}
+            {page.name === "cloud login" && (
+              <CloudLogin
+                goBack={goBack}
+                apiKey={apiKey}
+                setApiKey={setApiKey}
+                openExternal={openExternal}
+                next={cloudLogin}
+              />
+            )}
+            {page.name === "enterprise setup" && (
+              <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
+            )}
+            {page.name === "self hosting setup" && (
+              <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
+            )}
+            {page.name === "history" && (
+              <Sidebar
+                history={historyHook.history}
+                takingNotes={false}
+                currentChatId={currentChatId}
+                onCreateNewChat={handleCreateNewChat}
+                account={undefined}
+                onHistoryItemClick={handleHistoryItemClick}
+                onDeleteHistoryItem={handleDelete}
+                onOpenChatInTab={undefined}
+                handleLogout={() => {
+                  // TODO: handle logout
+                }}
+                handleNavigation={handleNavigation}
+              />
+            )}
+            {page.name === "chat" && (
+              <Chat host={config.host} tabbed={config.tabbed} {...chatHook} />
+            )}
+            {page.name === "fill in the middle debug page" && (
+              <FIMDebug host={config.host} tabbed={config.tabbed} />
+            )}
+            {page.name === "statistics page" && (
+              <Statistics
+                backFromStatistic={goBack}
+                tabbed={config.tabbed}
+                host={config.host}
+                onCloseStatistic={goBack}
+              />
+            )}
+          </Flex>
+        );
+      })}
+    </Flex>
+  );
+};
+
+export const App = () => {
+  return (
     <Provider store={store}>
-      <Flex style={{ justifyContent: "center", ...style }}>
-        {pages.map((page, i) => {
-          return (
-            <Flex key={i} display={i === pages.length - 1 ? "flex" : "none"}>
-              {page.name === "initial setup" && (
-                <InitialSetup onPressNext={onPressNext} />
-              )}
-              {page.name === "cloud login" && (
-                <CloudLogin
-                  goBack={goBack}
-                  apiKey={apiKey}
-                  setApiKey={setApiKey}
-                  openExternal={openExternal}
-                  next={cloudLogin}
-                />
-              )}
-              {page.name === "enterprise setup" && (
-                <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
-              )}
-              {page.name === "self hosting setup" && (
-                <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
-              )}
-              {page.name === "history" && (
-                <Sidebar
-                  history={historyHook.history}
-                  takingNotes={false}
-                  currentChatId={currentChatId}
-                  onCreateNewChat={handleCreateNewChat}
-                  account={undefined}
-                  onHistoryItemClick={handleHistoryItemClick}
-                  onDeleteHistoryItem={handleDelete}
-                  onOpenChatInTab={undefined}
-                  handleLogout={() => {
-                    // TODO: handle logout
-                  }}
-                  handleNavigation={handleNavigation}
-                />
-              )}
-              {page.name === "chat" && (
-                <Chat host={config.host} tabbed={config.tabbed} {...chatHook} />
-              )}
-              {page.name === "fill in the middle debug page" && (
-                <FIMDebug host={config.host} tabbed={config.tabbed} />
-              )}
-              {page.name === "statistics page" && (
-                <Statistics
-                  backFromStatistic={goBack}
-                  tabbed={config.tabbed}
-                  host={config.host}
-                  onCloseStatistic={goBack}
-                />
-              )}
-            </Flex>
-          );
-        })}
-      </Flex>
+      <Theme>
+        <InnerApp />
+      </Theme>
     </Provider>
   );
 };

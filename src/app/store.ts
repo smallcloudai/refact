@@ -13,6 +13,8 @@ import {
 } from "../services/refact";
 import { reducer as fimReducer } from "../features/FIM/reducer";
 import { reducer as configReducer } from "../features/Config/reducer";
+import { activeFileReducer } from "../features/Chat2/activeFile";
+import { selectedSnippetReducer } from "../features/Chat2/selectedSnippet";
 
 // import { fimSlice } from "../features/FIM/fimSlice";
 
@@ -22,6 +24,8 @@ import { reducer as configReducer } from "../features/Config/reducer";
 const rootReducer = combineSlices({
   fim: fimReducer,
   config: configReducer,
+  active_file: activeFileReducer,
+  selected_snippet: selectedSnippetReducer,
   [statisticsApi.reducerPath]: statisticsApi.reducer,
   [capsApi.reducerPath]: capsApi.reducer,
   [promptsApi.reducerPath]: promptsApi.reducer,

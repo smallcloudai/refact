@@ -4,7 +4,7 @@ import { ChatContent, ChatContentProps } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
-import { type Config } from "../../app/hooks";
+import { useAppSelector, type Config } from "../../app/hooks";
 import { ChatState, ChatCapsState } from "../../hooks";
 
 export type ChatProps = {
@@ -30,16 +30,16 @@ export type ChatProps = {
   isStreaming: ChatContentProps["isStreaming"];
   onNewFileClick: ChatContentProps["onNewFileClick"];
   onPasteClick: ChatContentProps["onPasteClick"];
-  canPaste: ChatContentProps["canPaste"];
+  // canPaste: ChatContentProps["canPaste"];
   openSettings: ChatContentProps["openSettings"];
 
   hasContextFile: ChatFormProps["hasContextFile"];
   requestCommandsCompletion: ChatFormProps["requestCommandsCompletion"];
   // setSelectedCommand: ChatFormProps["setSelectedCommand"];
   maybeSendToSidebar: ChatFormProps["onClose"];
-  activeFile: ChatFormProps["attachFile"];
+  // activeFile: ChatFormProps["attachFile"];
   filesInPreview: ChatFormProps["filesInPreview"];
-  selectedSnippet: ChatFormProps["selectedSnippet"];
+  // selectedSnippet: ChatFormProps["selectedSnippet"];
   removePreviewFileByName: ChatFormProps["removePreviewFileByName"];
   requestCaps: ChatFormProps["requestCaps"];
   prompts: ChatFormProps["prompts"];
@@ -70,7 +70,7 @@ export const Chat: React.FC<ChatProps> = ({
   isStreaming,
   onNewFileClick,
   onPasteClick,
-  canPaste,
+  // canPaste,
   preventSend,
   unCalledTools,
   enableSend,
@@ -82,9 +82,9 @@ export const Chat: React.FC<ChatProps> = ({
   requestCommandsCompletion,
   // setSelectedCommand,
   maybeSendToSidebar,
-  activeFile,
+  // activeFile,
   filesInPreview,
-  selectedSnippet,
+  // selectedSnippet,
   removePreviewFileByName,
   requestCaps,
   prompts,
@@ -98,6 +98,9 @@ export const Chat: React.FC<ChatProps> = ({
   openSettings,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
+  const activeFile = useAppSelector((state) => state.active_file);
+  const selectedSnippet = useAppSelector((state) => state.selected_snippet);
+  const canPaste = activeFile.can_paste;
 
   const onTextAreaHeightChange = useCallback(() => {
     if (!chatContentRef.current) return;

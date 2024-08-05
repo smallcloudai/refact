@@ -80,12 +80,12 @@ export type ChatThread = {
   lastUpdated?: string;
 };
 
-export type Snippet = {
-  language: string;
-  code: string;
-  path: string;
-  basename: string;
-};
+// export type Snippet = {
+//   language: string;
+//   code: string;
+//   path: string;
+//   basename: string;
+// };
 export interface BaseAction {
   type: EVENT_NAMES_FROM_CHAT | EVENT_NAMES_TO_CHAT;
   payload?: { id: string; [key: string]: unknown };
@@ -590,17 +590,17 @@ export function isChatSetLastModelUsed(
   return action.type === EVENT_NAMES_TO_CHAT.SET_LAST_MODEL_USED;
 }
 
-export interface ChatSetSelectedSnippet extends ActionToChat {
-  type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
-  payload: { id: string; snippet: Snippet };
-}
+// export interface ChatSetSelectedSnippet extends ActionToChat {
+//   type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
+//   payload: { id: string; snippet: Snippet };
+// }
 
-export function isSetSelectedSnippet(
-  action: unknown,
-): action is ChatSetSelectedSnippet {
-  if (!isActionToChat(action)) return false;
-  return action.type === EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
-}
+// export function isSetSelectedSnippet(
+//   action: unknown,
+// ): action is ChatSetSelectedSnippet {
+//   if (!isActionToChat(action)) return false;
+//   return action.type === EVENT_NAMES_TO_CHAT.SET_SELECTED_SNIPPET;
+// }
 
 export interface RemovePreviewFileByName extends ActionToChat {
   type: EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME;
