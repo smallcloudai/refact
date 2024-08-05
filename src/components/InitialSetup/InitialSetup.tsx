@@ -100,11 +100,19 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
         text="When you write code, Refact already knows what comes next."
         step={1}
         target={cloudRef.current}
+        down={true}
       />
       <TourBubble
         text="Ask questions in the Chat, it already knows your codebase."
         step={2}
         target={nextRef.current}
+        down={false}
+      />
+      <TourBubble
+        text="Ask questions in the Chat, it already knows your codebase."
+        step={3}
+        target={nextRef.current}
+        down={true}
       />
     </Flex>
   );
