@@ -11,8 +11,10 @@ import {
   DiffAppliedStateArgs,
 } from "../services/refact";
 import { useCallback, useEffect, useMemo } from "react";
+import { setThemeMode } from "../features/Config/reducer";
+import { useMutationObserver } from "../hooks";
 
-export type { Config } from "../features/Config/reducer";
+export type { Config, setThemeMode } from "../features/Config/reducer";
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
@@ -97,3 +99,41 @@ export const useGetManyDiffState = (args: DiffAppliedStateArgs[]) => {
 };
 
 export const useConfig = () => useAppSelector((state) => state.config);
+
+export const useApperance = () => {
+  const config = useConfig();
+
+  const appearance = config.themeProps.appearance;
+
+  const handleChange = useCallback(() => {
+    const maybeDark =
+      document.body.classList.contains("vscode-dark") ||
+      document.body.classList.contains("vscode-high-contrast");
+    const maybeLight =
+      document.body.classList.contains("vscode-light") ||
+      document.body.classList.contains("vscode-high-contrast-light");
+
+    if (maybeLight) {
+      setThemeMode("light");
+    } else if (maybeDark) {
+      setThemeMode("dark");
+    } else {
+      setThemeMode("inherit");
+    }
+  }, []);
+
+  useEffect(handleChange, [handleChange]);
+
+  // TODO: remove this
+  useMutationObserver(document.body, handleChange, {
+    attributes: true,
+    characterData: false,
+    childList: false,
+    subtree: false,
+  });
+
+  return {
+    appearance,
+    setApperance: setThemeMode,
+  };
+};
