@@ -1,16 +1,22 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 use std::sync::Arc;
-use async_trait::async_trait;
-use tokio::sync::RwLock as ARwLock;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use regex::Regex;
+
+use async_trait::async_trait;
+use futures_util::future::join_all;
+use tokio::sync::RwLock as ARwLock;
+
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::subchat::{subchat, subchat_single};
 use crate::at_tools::tools::Tool;
-use crate::call_validation::{ChatMessage, ContextEnum};
+use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ContextEnum, ContextFile};
 use crate::global_context::GlobalContext;
+
+
+const MODEL_NAME: &str = "gpt-4o-mini";
 
 
 pub struct AttRelevantFiles;
@@ -22,7 +28,7 @@ impl Tool for AttRelevantFiles {
             "relevant_files: unable to find user problem description".to_string()
         )?;
 
-        let res = find_relevant_files(ccx.global_context.clone(), problem.as_str()).await?;
+        let res = find_relevant_files_det(ccx.global_context.clone(), problem.as_str()).await?;
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -41,7 +47,163 @@ impl Tool for AttRelevantFiles {
 }
 
 
+async fn strategy_tree(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    user_query: &str,
+) -> Result<Vec<String>, String> {
+    // results = problem + tool_tree + pick 5 files * n_choices_times -> reduce(counters: 5)
+    
+    let mut messages = vec![];
+    messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
+    
+    let tree_tool_call = ChatToolCall {
+        id: "tree_123".to_string(),
+        function: ChatToolFunction {
+            arguments: "{}".to_string(),
+            name: "tree".to_string()
+        },
+        tool_type: "function".to_string(),
+    };
+    let assistant_tree_call = ChatMessage {
+        role: "assistant".to_string(),
+        content: "".to_string(),
+        tool_calls: Some(vec![tree_tool_call]),
+        tool_call_id: "".to_string(),
+       ..Default::default()
+    };
+    messages.push(assistant_tree_call);
+    
+    let mut messages = subchat_single(
+        gcx.clone(),
+        MODEL_NAME,
+        messages,
+        vec!["tree".to_string()],
+        None,
+        true,
+        None,
+        None,
+        Some("strategy-tree.log".to_string()),
+    ).await?.get(0).ok_or("relevant_files: tree deterministic message was empty. Try again later".to_string())?.clone();
+    
+    messages.push(ChatMessage::new("user".to_string(), STRATEGY_TREE_PROMPT.to_string()));
+    
+    let n_choices = subchat_single(
+        gcx.clone(),
+        MODEL_NAME,
+        messages,
+        vec![],
+        Some("none".to_string()),
+        false,
+        Some(0.8),
+        Some(5usize),
+        Some("strategy-tree-choices.log".to_string()),
+    ).await?;
 
+    let file_names_pattern = r"\b(?:[a-zA-Z]:\\|/)?(?:[\w-]+[/\\])*[\w-]+\.\w+\b";
+    let re = Regex::new(file_names_pattern).unwrap();
+
+    let filenames = n_choices.into_iter()
+        .filter_map(|mut x| x.pop())
+        .filter(|x| x.role == "assistant")
+        .map(|x| {
+            re.find_iter(&x.content)
+                .map(|mat| mat.as_str().to_string())
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<Vec<_>>>();    
+    
+    let mut counter: HashMap<String, usize> = HashMap::new();
+    for file_name in filenames.into_iter().flatten() {
+        *counter.entry(file_name).or_insert(0) += 1;
+    }
+    let mut counts_vec: Vec<(String, usize)> = counter.into_iter().collect();
+    counts_vec.sort_by(|a, b| b.1.cmp(&a.1));
+    let top_5: Vec<(String, usize)> = counts_vec.into_iter().take(5).collect();
+    let results = top_5.into_iter().map(|x| x.0).collect::<Vec<_>>();
+
+    Ok(results)
+    
+}
+
+async fn strategy_definitions_references(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    user_query: &str,
+) -> Result<Vec<String>, String>{
+    // results = problem -> (collect definitions + references) * n_choices + map(into_filenames) -> reduce(counters: 5)
+    let mut messages = vec![];
+    messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
+    messages.push(ChatMessage::new("user".to_string(), STRATEGY_DEF_REF_PROMPT.to_string()));
+    
+    let n_choices = subchat_single(
+        gcx.clone(),
+        MODEL_NAME,
+        messages,
+        vec!["definition".to_string(), "references".to_string()],
+        Some("required".to_string()),
+        false,
+        Some(0.8),
+        Some(5usize),
+        Some("strategy-definitions-references.log".to_string()),
+    ).await?;
+    
+    let mut filenames = vec![];
+    for ch_messages in n_choices.into_iter() {
+        if ch_messages.last().unwrap().tool_calls.is_none() {
+            continue;
+        }
+        let ch_messages = subchat_single(
+            gcx.clone(),
+            MODEL_NAME,
+            ch_messages,
+            vec![],
+            None,
+            true,
+            None,
+            None,
+            None
+        ).await?.get(0).ok_or("relevant_files: no context files found (strategy_definitions_references). Try again later".to_string())?.clone();
+        
+        let only_context_files = ch_messages.into_iter().filter(|x| x.role == "context_file").collect::<Vec<_>>();
+        let mut context_files = vec![];
+        for m in only_context_files {
+            let m_context_files: Vec<ContextFile> = serde_json::from_str(&m.content).map_err(|e| e.to_string())?;
+            context_files.extend(m_context_files);
+        }
+        let ch_filenames = context_files.into_iter().map(|x|x.file_name).collect::<Vec<_>>();
+        filenames.push(ch_filenames);
+        // TODO: include symbols that were asked in function_call
+    }
+
+    let mut counter: HashMap<String, usize> = HashMap::new();
+    for file_name in filenames.into_iter().flatten() {
+        *counter.entry(file_name).or_insert(0) += 1;
+    }
+    let mut counts_vec: Vec<(String, usize)> = counter.into_iter().collect();
+    counts_vec.sort_by(|a, b| b.1.cmp(&a.1));
+    let top_5: Vec<(String, usize)> = counts_vec.into_iter().take(5).collect();
+    let results = top_5.into_iter().map(|x| x.0).collect::<Vec<_>>();
+
+    Ok(results)
+}
+
+#[allow(dead_code)]
+async fn find_relevant_files_det(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    user_query: &str
+) -> Result<Value, String> {
+    // all_results = [*strategy_1, *strategy_2, .. *strategy_n] -> call supercat(files or files + symbols) -> let model decide
+    
+    let mut results = vec![];
+    let tree_files = strategy_tree(gcx.clone(), user_query).await?;
+    let def_ref_files = strategy_definitions_references(gcx.clone(), user_query).await?;
+    results.extend(tree_files);
+    results.extend(def_ref_files);
+    
+    Ok(json!(results.into_iter().collect::<HashSet<_>>()))
+}
+
+
+#[allow(dead_code)]
 async fn find_relevant_files(
     gcx: Arc<ARwLock<GlobalContext>>,
     user_query: &str,
@@ -74,7 +236,7 @@ async fn find_relevant_files(
         messages_copy.push(ChatMessage::new("user".to_string(), USE_STRATEGY_PROMPT.replace("{USE_STRATEGY}", &strategy)));
         let f = subchat(
             gcx.clone(),
-            RF_MODEL_NAME,
+            MODEL_NAME,
             messages_copy,
             tools_subset.clone(),
             RF_WRAP_UP_DEPTH,
@@ -86,7 +248,7 @@ async fn find_relevant_files(
         futures.push(f);
     }
 
-    let results = futures_util::future::join_all(futures).await.into_iter().filter_map(|x|x.ok()).collect::<Vec<_>>();
+    let results = join_all(futures).await.into_iter().filter_map(|x|x.ok()).collect::<Vec<_>>();
     let only_last_messages = results.into_iter()
         .filter_map(|mut x| x.pop())
         .filter(|x| x.role == "assistant").collect::<Vec<_>>();
@@ -101,7 +263,7 @@ async fn find_relevant_files(
 
     let result = subchat_single(
         gcx.clone(),
-        RF_MODEL_NAME,
+        MODEL_NAME,
         messages,
         vec![],
         None,
@@ -115,12 +277,32 @@ async fn find_relevant_files(
     Ok(answer)
 }
 
-const RF_MODEL_NAME: &str = "gpt-4o";
 const RF_OUTPUT_FILES: usize = 6;
 const RF_ATTEMPTS: usize = 1;
 const RF_WRAP_UP_DEPTH: usize = 5;
 const RF_WRAP_UP_TOKENS_CNT: usize = 8000;
 
+
+const STRATEGY_TREE_PROMPT: &str = r###"
+TODO:
+1. analyse thoroughly the problem statement;
+2. look thoroughly at the project tree given;
+3. pick at least 5 files that will help thee solving the problem (ones that give you the context and ones that shall be changed);
+4. return chosen files in a json format, explain nothing.
+
+Output must be like this:
+[
+    "file1.py",
+    "file2.py"
+]
+"###;
+
+const STRATEGY_DEF_REF_PROMPT: &str = r###"
+TODO:
+1. analyse thoroughly the problem statement;
+2. from the problem statement pick up AST Symbols (classes, functions, types, variables etc) that are relevant to the problem;
+3. call functions (definition, referencies) to ask for a relevant context that will give you ability to solve the problem.
+"###;
 
 const USE_STRATEGY_PROMPT: &str = r###"
 💿 The strategy you must follow is {USE_STRATEGY}

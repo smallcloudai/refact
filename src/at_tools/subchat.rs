@@ -173,6 +173,9 @@ async fn chat_interaction_non_stream(
         ch_results.push(msg);
         results.push(ch_results)
     }
+    if results.is_empty() && !det_messages.is_empty() {
+        results.push(det_messages);
+    }
     
     Ok(results)
 }

@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Dict, Any, Tuple
 
 
-MODEL = "gpt-4o"
-# MODEL = "gpt-4o-mini"
+# MODEL = "gpt-4o"
+MODEL = "gpt-4o-mini"
 
 
 class SWERunner(AgentRunner):

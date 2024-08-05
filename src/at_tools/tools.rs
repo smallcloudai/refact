@@ -17,6 +17,7 @@ pub trait Tool: Send + Sync {
     fn tool_depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
     fn usage(&mut self) -> &mut Option<ChatUsage> {
         static mut DEFAULT_USAGE: Option<ChatUsage> = None;
+        #[allow(static_mut_refs)]
         unsafe { &mut DEFAULT_USAGE }
     }
 }

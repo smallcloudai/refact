@@ -32,13 +32,11 @@ class RelevantFiles(Step):
 
         res_message = [m for m in new_messages if m.role == "tool"][-1]
         try:
-            files_list: Dict[Dict[str, Any]] = json.loads(res_message.content)
+            files_list: List[str] = json.loads(res_message.content)
         except Exception as e:
             raise RuntimeError(f"content is not decodable as json:\n{res_message.content}\nError: {e}")
 
-        found_files: List[str] = list(files_list.keys())
-
-        if not found_files:
+        if not files_list:
             raise RuntimeError(f"no files found")
 
-        return found_files
+        return files_list
