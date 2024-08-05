@@ -90,7 +90,7 @@ plan anything until you see your achievements in previous attempts.
 5. There's a hard limit of {ATTEMPTS} attempts. Your memory will tell you which attempt you are on. Make sure on attempt number {ATTEMPTS} to put together your best final answer.
 
 Potential strategies:
-CATFILES = call tree(), spot up to {OUTPUT_FILES} suspicious files just by looking at file names, look into them by calling file() in parallel, write down relevant function/class names, summarize what they do. Stop this after checking {OUTPUT_FILES} files, switch to a different strategy.
+CATFILES = call tree(), spot up to {OUTPUT_FILES} suspicious files just by looking at file names, look into them by calling file() in parallel, write down relevant function/class names.
 GOTODEF = call definition() for symbols involved, get more files this way. Don't call for symbols from standard libraries, only symbols within the project are indexed.
 GOTOREF = call references() to find usages of the code to be changed to identify what exactly calls or uses the thing in question.
 VECDBSEARCH = search() can find semantically similar code, text in comments, and sometimes documentation.
