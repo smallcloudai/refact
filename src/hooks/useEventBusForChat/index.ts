@@ -280,6 +280,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
+    // TODO: Migrate this
     if (isThisChat && isBackupMessages(action)) {
       return {
         ...state,

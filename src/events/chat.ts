@@ -107,6 +107,7 @@ export interface ActionFromChat extends BaseAction {
   type: EVENT_NAMES_FROM_CHAT;
 }
 
+// Will this be needed ?
 export interface ReadyMessage extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.READY;
   payload: { id: string };

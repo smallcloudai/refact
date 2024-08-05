@@ -6,6 +6,7 @@ import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
 import { useAppSelector, type Config } from "../../app/hooks";
 import { ChatState, ChatCapsState } from "../../hooks";
+import { useSendChatRequest } from "../../features/Chat2/chatThread";
 
 export type ChatProps = {
   host: Config["host"];
@@ -101,6 +102,16 @@ export const Chat: React.FC<ChatProps> = ({
   const activeFile = useAppSelector((state) => state.active_file);
   const selectedSnippet = useAppSelector((state) => state.selected_snippet);
   const canPaste = activeFile.can_paste;
+  const { submit } = useSendChatRequest();
+
+  // TODO: handle stop
+  const handleSummit = useCallback(
+    (value: string) => {
+      onAskQuestion(value);
+      void submit(value);
+    },
+    [onAskQuestion, submit],
+  );
 
   const onTextAreaHeightChange = useCallback(() => {
     if (!chatContentRef.current) return;
@@ -175,7 +186,8 @@ export const Chat: React.FC<ChatProps> = ({
         showControls={chat.messages.length === 0 && !isStreaming}
         error={error}
         clearError={onClearError}
-        onSubmit={onAskQuestion}
+        // onSubmit={onAskQuestion}
+        onSubmit={handleSummit}
         model={chat.model}
         onSetChatModel={onSetChatModel}
         caps={caps}

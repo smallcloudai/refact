@@ -355,6 +355,7 @@ function handleSend(
           }
 
           const maybeJsonString = delta.substring(6);
+          // postMessage should be dispatch
           if (maybeJsonString === "[DONE]") {
             window.postMessage(
               {

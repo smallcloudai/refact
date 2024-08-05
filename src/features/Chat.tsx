@@ -11,6 +11,7 @@ import {
   useGetCommandPreviewQuery,
 } from "../app/hooks";
 import { useDebounceCallback } from "usehooks-ts";
+import {} from "../features/Chat2/chatThread";
 
 type ChatProps = {
   host: Config["host"];
@@ -50,6 +51,7 @@ export const Chat: React.FC<ChatProps> = ({
 
   // TODO: don't make this request if there are no caps
   const toolsRequest = useGetToolsQuery(!!capsRequest.data);
+  // const chatRequest = useSendChatRequest();
 
   // commands should be a selector, and calling the hook ?
   const [command, setCommand] = React.useState<{

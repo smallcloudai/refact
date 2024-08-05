@@ -15,6 +15,7 @@ import { reducer as fimReducer } from "../features/FIM/reducer";
 import { reducer as configReducer } from "../features/Config/reducer";
 import { activeFileReducer } from "../features/Chat2/activeFile";
 import { selectedSnippetReducer } from "../features/Chat2/selectedSnippet";
+import { chatReducer } from "../features/Chat2/chatThread";
 
 // import { fimSlice } from "../features/FIM/fimSlice";
 
@@ -26,6 +27,7 @@ const rootReducer = combineSlices({
   config: configReducer,
   active_file: activeFileReducer,
   selected_snippet: selectedSnippetReducer,
+  chat: chatReducer,
   [statisticsApi.reducerPath]: statisticsApi.reducer,
   [capsApi.reducerPath]: capsApi.reducer,
   [promptsApi.reducerPath]: promptsApi.reducer,

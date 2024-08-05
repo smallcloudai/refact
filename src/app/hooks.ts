@@ -13,12 +13,17 @@ import {
 import { useCallback, useEffect, useMemo } from "react";
 import { setThemeMode } from "../features/Config/reducer";
 import { useMutationObserver } from "../hooks";
+import { createAsyncThunk } from "@reduxjs/toolkit";
 
 export type { Config, setThemeMode } from "../features/Config/reducer";
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
+export const createAppAsyncThunk = createAsyncThunk.withTypes<{
+  state: RootState;
+  dispatch: AppDispatch;
+}>();
 
 export const { useGetStatisticDataQuery } = statisticsApi;
 export const { useGetCapsQuery } = capsApi;
