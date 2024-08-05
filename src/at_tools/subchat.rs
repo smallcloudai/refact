@@ -92,7 +92,7 @@ async fn chat_interaction_non_stream(
     chat_post: &ChatPost,
     client: Client,
     api_key: &String,
-) -> Result<Vec<ChatMessage>, String> {
+) -> Result<Vec<Vec<ChatMessage>>, String> {
     let t1 = std::time::Instant::now();
     let j = crate::restream::scratchpad_interaction_not_stream_json(
         global_context.clone(),
@@ -126,52 +126,52 @@ async fn chat_interaction_non_stream(
             }
         });
 
-    let choice0_msg = j["choices"].as_array()
-        .and_then(|array| array.get(0))
-        .and_then(|choice0| choice0.get("message"))
-        .ok_or(
-        "error parsing model's output: choice0.message doesn't exist".to_string()
-    )?;
-
     let det_messages = j.get("deterministic_messages")
         .and_then(|value| value.as_array())
         .and_then(|arr| {
             serde_json::from_value::<Vec<ChatMessage>>(Value::Array(arr.clone())).ok()
         }).unwrap_or_else(Vec::new);
 
-    // convert choice[0] to a ChatMessage (we don't have code like this in any other place in rust, only in python and typescript)
-    let (role, content, tool_calls, tool_call_id) = {
-        (
-            choice0_msg.get("role")
-                .and_then(|v| v.as_str())
-                .ok_or("error parsing model's output: choice0.message.role doesn't exist or is not a string".to_string())?.to_string(),
-            choice0_msg.get("content")
-                .and_then(|v| v.as_str())
-                .unwrap_or("").to_string(),
-            choice0_msg.get("tool_calls")
-                .and_then(|v| v.as_array())
-                .and_then(|arr| {
-                    serde_json::from_value::<Vec<ChatToolCall>>(Value::Array(arr.clone()))
-                        .map_err(|_| "error parsing model's output: choice0.message.tool_calls is not a valid ChatToolCall array".to_string())
-                        .ok()
-                }),
-            choice0_msg.get("tool_call_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("").to_string()
-        )
-    };
-    let msg = ChatMessage {
-        role,
-        content,
-        tool_calls,
-        tool_call_id,
-        usage: usage_mb,
-    };
-
     let mut results = vec![];
-    results.extend(det_messages);
-    results.push(msg);
+    
+    let choices = j.get("choices").and_then(|value| value.as_array()).ok_or("error parsing model's output: choices doesn't exist".to_string())?;
+    for choice in choices {
+        let message = choice.get("message").ok_or("error parsing model's output: choice.message doesn't exist".to_string())?;
 
+        // convert choice to a ChatMessage (we don't have code like this in any other place in rust, only in python and typescript)
+        let (role, content, tool_calls, tool_call_id) = {
+            (
+                message.get("role")
+                    .and_then(|v| v.as_str())
+                    .ok_or("error parsing model's output: choice0.message.role doesn't exist or is not a string".to_string())?.to_string(),
+                message.get("content")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("").to_string(),
+                message.get("tool_calls")
+                    .and_then(|v| v.as_array())
+                    .and_then(|arr| {
+                        serde_json::from_value::<Vec<ChatToolCall>>(Value::Array(arr.clone()))
+                            .map_err(|_| "error parsing model's output: choice0.message.tool_calls is not a valid ChatToolCall array".to_string())
+                            .ok()
+                    }),
+                message.get("tool_call_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("").to_string()
+            )
+        };
+        let mut ch_results = vec![];
+        let msg = ChatMessage {
+            role,
+            content,
+            tool_calls,
+            tool_call_id,
+            usage: usage_mb.clone(),
+        };
+        ch_results.extend(det_messages.clone());
+        ch_results.push(msg);
+        results.push(ch_results)
+    }
+    
     Ok(results)
 }
 
@@ -179,7 +179,7 @@ async fn chat_interaction(
     global_context: Arc<ARwLock<GlobalContext>>,
     mut spad: Box<dyn ScratchpadAbstract>,
     chat_post: &mut ChatPost,
-) -> Result<Vec<ChatMessage>, String> {
+) -> Result<Vec<Vec<ChatMessage>>, String> {
     let (client, api_key) = {
         let cx_locked = global_context.write().await;
         (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
@@ -224,7 +224,7 @@ pub async fn execute_subchat_single_iteration(
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
     logfn: String,
-) -> Result<Vec<ChatMessage>, String> {
+) -> Result<Vec<Vec<ChatMessage>>, String> {
     // this ignores customized tools
     let tools_turned_on_by_cmdline = at_tools_merged_and_filtered(gcx.clone()).await.keys().cloned().collect::<Vec<_>>();
     let tools_turn_on_set: HashSet<String> = tools_subset.iter().cloned().collect();
