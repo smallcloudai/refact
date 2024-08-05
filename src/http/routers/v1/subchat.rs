@@ -4,7 +4,7 @@ use axum::http::{Response, StatusCode};
 use hyper::Body;
 use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
-use crate::at_tools::subchat::execute_subchat;
+use crate::at_tools::subchat::{subchat, subchat_single};
 use crate::call_validation::ChatMessage;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
@@ -27,7 +27,7 @@ pub async fn handle_v1_subchat(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let logfn = chrono::Local::now().format("subchat-handler-%Y%m%d-%H%M%S.log").to_string();
 
-    let new_messages = execute_subchat(
+    let new_messages = subchat(
         global_context.clone(),
         post.model_name.as_str(),
         post.messages,
@@ -35,7 +35,49 @@ pub async fn handle_v1_subchat(
         post.wrap_up_depth,
         post.wrap_up_tokens_cnt,
         post.wrap_up_prompt.as_str(),
-        logfn,
+        None,
+        Some(logfn),
+    ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
+
+    let resp_serialised = serde_json::to_string_pretty(&new_messages).unwrap();
+    Ok(
+        Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/json")
+            .body(Body::from(resp_serialised))
+            .unwrap()
+    )
+}
+
+#[derive(Deserialize)]
+struct SubChatSinglePost {
+    model_name: String,
+    messages: Vec<ChatMessage>,
+    tools_turn_on: Vec<String>,
+    tool_choice: Option<String>,
+    only_deterministic_messages: bool,
+    temperature: Option<f32>,
+    n: Option<usize>,
+}
+
+pub async fn handle_v1_subchat_single(
+    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> axum::response::Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<SubChatSinglePost>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+    let logfn = chrono::Local::now().format("subchat-single-handler-%Y%m%d-%H%M%S.log").to_string();
+
+    let new_messages = subchat_single(
+        global_context.clone(),
+        post.model_name.as_str(),
+        post.messages,
+        post.tools_turn_on,
+        post.tool_choice,
+        post.only_deterministic_messages,
+        post.temperature,
+        post.n,
+        Some(logfn),
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
 
     let resp_serialised = serde_json::to_string_pretty(&new_messages).unwrap();

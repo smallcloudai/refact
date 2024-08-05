@@ -7,11 +7,113 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use regex::Regex;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::subchat::{execute_subchat, execute_subchat_single_iteration};
+use crate::at_tools::subchat::{subchat, subchat_single};
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
 
+
+pub struct AttRelevantFiles;
+
+#[async_trait]
+impl Tool for AttRelevantFiles {
+    async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, _args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+        let problem = ccx.messages.iter().filter(|m| m.role == "user").last().map(|x|x.content.clone()).ok_or(
+            "relevant_files: unable to find user problem description".to_string()
+        )?;
+
+        let res = find_relevant_files(ccx.global_context.clone(), problem.as_str()).await?;
+
+        let mut results = vec![];
+        results.push(ContextEnum::ChatMessage(ChatMessage {
+            role: "tool".to_string(),
+            content: format!("{}", serde_json::to_string_pretty(&res).unwrap()),
+            tool_calls: None,
+            tool_call_id: tool_call_id.clone(),
+            ..Default::default()
+        }));
+
+        Ok(results)
+    }
+    fn tool_depends_on(&self) -> Vec<String> {
+        vec!["ast".to_string()]
+    }
+}
+
+
+
+async fn find_relevant_files(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    user_query: &str,
+) -> Result<Value, String> {
+    let vecdb_on = {
+        let gcx = gcx.read().await;
+        let vecdb = gcx.vec_db.lock().await;
+        vecdb.is_some()
+    };
+
+    let sys = RF_SYSTEM_PROMPT
+        .replace("{ATTEMPTS}", &format!("{RF_ATTEMPTS}"))
+        .replace("{OUTPUT_FILES}", &format!("{RF_OUTPUT_FILES}"));
+
+    let mut messages = vec![];
+    messages.push(ChatMessage::new("system".to_string(), sys.to_string()));
+    messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
+    let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
+
+    let mut tools_subset = vec!["definition", "references", "tree", "knowledge", "file"].iter().map(|x|x.to_string()).collect::<Vec<_>>();
+    let mut strategies = vec!["CATFILES", "GOTODEF", "GOTOREF", "CUSTOM"];
+    
+    if vecdb_on {
+        tools_subset.push("search".to_string());
+        strategies.push("VECDBSEARCH");
+    }
+    let mut futures = vec![];
+    for strategy in strategies {
+        let mut messages_copy = messages.clone();
+        messages_copy.push(ChatMessage::new("user".to_string(), USE_STRATEGY_PROMPT.replace("{USE_STRATEGY}", &strategy)));
+        let f = subchat(
+            gcx.clone(),
+            RF_MODEL_NAME,
+            messages_copy,
+            tools_subset.clone(),
+            RF_WRAP_UP_DEPTH,
+            RF_WRAP_UP_TOKENS_CNT,
+            RF_PLEASE_WRITE_MEM,
+            None,
+            Some(format!("{log_prefix}-rf-step1-{strategy}.log")),
+        );
+        futures.push(f);
+    }
+
+    let results = futures_util::future::join_all(futures).await.into_iter().filter_map(|x|x.ok()).collect::<Vec<_>>();
+    let only_last_messages = results.into_iter()
+        .filter_map(|mut x| x.pop())
+        .filter(|x| x.role == "assistant").collect::<Vec<_>>();
+
+    let mut messages = vec![];
+    messages.push(ChatMessage::new("system".to_string(), RF_REDUCE_SYSTEM_PROMPT.to_string()));
+    messages.push(ChatMessage::new("user".to_string(), format!("User provided task:\n\n{}", user_query)));
+    for (i, expert_message) in only_last_messages.into_iter().enumerate() {
+        messages.push(ChatMessage::new("user".to_string(), format!("Expert {} says:\n\n{}", i + 1, expert_message.content)));
+    }
+    messages.push(ChatMessage::new("user".to_string(), format!("{}", RF_REDUCE_USER_MSG)));
+
+    let result = subchat_single(
+        gcx.clone(),
+        RF_MODEL_NAME,
+        messages,
+        vec![],
+        None,
+        false,
+        None,
+        None,
+        Some(format!("{log_prefix}-rf-step2-reduce.log")),
+    ).await?[0].clone();
+
+    let answer = parse_reduce_output(&result.last().unwrap().content)?;
+    Ok(answer)
+}
 
 const RF_MODEL_NAME: &str = "gpt-4o";
 const RF_OUTPUT_FILES: usize = 6;
@@ -154,104 +256,3 @@ struct ReduceFileItem {
     #[serde(rename = "RELEVANCY")]
     relevancy: u8,
 }
-
-
-pub struct AttRelevantFiles;
-
-#[async_trait]
-impl Tool for AttRelevantFiles {
-    async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, _args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
-        let problem = ccx.messages.iter().filter(|m| m.role == "user").last().map(|x|x.content.clone()).ok_or(
-            "relevant_files: unable to find user problem description".to_string()
-        )?;
-
-        let res = find_relevant_files(ccx.global_context.clone(), problem.as_str()).await?;
-
-        let mut results = vec![];
-        results.push(ContextEnum::ChatMessage(ChatMessage {
-            role: "tool".to_string(),
-            content: format!("{}", serde_json::to_string_pretty(&res).unwrap()),
-            tool_calls: None,
-            tool_call_id: tool_call_id.clone(),
-            ..Default::default()
-        }));
-
-        Ok(results)
-    }
-    fn tool_depends_on(&self) -> Vec<String> {
-        vec!["ast".to_string()]
-    }
-}
-
-
-
-async fn find_relevant_files(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    user_query: &str,
-) -> Result<Value, String> {
-    let vecdb_on = {
-        let gcx = gcx.read().await;
-        let vecdb = gcx.vec_db.lock().await;
-        vecdb.is_some()
-    };
-
-    let sys = RF_SYSTEM_PROMPT
-        .replace("{ATTEMPTS}", &format!("{}", RF_ATTEMPTS))
-        .replace("{OUTPUT_FILES}", &format!("{}", RF_OUTPUT_FILES));
-
-    let mut messages = vec![];
-    messages.push(ChatMessage::new("system".to_string(), sys.to_string()));
-    messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
-    let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
-
-    let mut tools_subset = vec!["definition", "references", "tree", "knowledge", "file"].iter().map(|x|x.to_string()).collect::<Vec<_>>();
-    let mut strategies = vec!["CATFILES", "GOTODEF", "GOTOREF", "CUSTOM"];
-    
-    if vecdb_on {
-        tools_subset.push("search".to_string());
-        strategies.push("VECDBSEARCH");
-    }
-    let mut futures = vec![];
-    for strategy in strategies {
-        let mut messages_copy = messages.clone();
-        messages_copy.push(ChatMessage::new("user".to_string(), USE_STRATEGY_PROMPT.replace("{USE_STRATEGY}", &strategy)));
-        let f = execute_subchat(
-            gcx.clone(),
-            RF_MODEL_NAME,
-            messages_copy,
-            tools_subset.clone(),
-            RF_WRAP_UP_DEPTH,
-            RF_WRAP_UP_TOKENS_CNT,
-            RF_PLEASE_WRITE_MEM,
-            format!("{log_prefix}-rf-step1-{strategy}.log"),
-        );
-        futures.push(f);
-    }
-
-    let results = futures_util::future::join_all(futures).await.into_iter().filter_map(|x|x.ok()).collect::<Vec<_>>();
-    let only_last_messages = results.into_iter()
-        .filter_map(|mut x| x.pop())
-        .filter(|x| x.role == "assistant").collect::<Vec<_>>();
-
-    let mut messages = vec![];
-    messages.push(ChatMessage::new("system".to_string(), RF_REDUCE_SYSTEM_PROMPT.to_string()));
-    messages.push(ChatMessage::new("user".to_string(), format!("User provided task:\n\n{}", user_query)));
-    for (i, expert_message) in only_last_messages.into_iter().enumerate() {
-        messages.push(ChatMessage::new("user".to_string(), format!("Expert {} says:\n\n{}", i + 1, expert_message.content)));
-    }
-    messages.push(ChatMessage::new("user".to_string(), format!("{}", RF_REDUCE_USER_MSG)));
-
-    let result = execute_subchat_single_iteration(
-        gcx.clone(),
-        RF_MODEL_NAME,
-        messages,
-        vec![],
-        None,
-        false,
-        format!("{log_prefix}-rf-step2-reduce.log"),
-    ).await?;
-
-    let answer = parse_reduce_output(&result.last().unwrap().content)?;
-    Ok(answer)
-}
-

@@ -31,7 +31,7 @@ use crate::http::routers::v1::toolbox::handle_v1_rewrite_assistant_says_to_at_co
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
 use crate::http::routers::v1::diffs::{handle_v1_diff_state, handle_v1_diff_apply};
 use crate::http::routers::v1::handlers_memdb::{handle_mem_query, handle_mem_add, handle_mem_erase, handle_mem_update_used, handle_mem_block_until_vectorized, handle_mem_list, handle_ongoing_update_or_create, handle_ongoing_dump};
-use crate::http::routers::v1::subchat::handle_v1_subchat;
+use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_single};
 use crate::http::utils::telemetry_wrapper;
 
 pub mod code_completion;
@@ -111,5 +111,7 @@ pub fn make_v1_router() -> Router {
         .route("/ongoing-dump", telemetry_get!(handle_ongoing_dump))
 
         .route("/subchat", telemetry_post!(handle_v1_subchat))
+        .route("/subchat-single", telemetry_post!(handle_v1_subchat_single))
+        
         .layer(CorsLayer::very_permissive())
 }

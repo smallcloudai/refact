@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::collections::HashSet;
-use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::fs::{self};
 use reqwest::Client;
 use tokio::sync::RwLock as ARwLock;
 use serde_json::Value;
@@ -24,6 +23,7 @@ async fn create_chat_post_and_scratchpad(
     messages: Vec<&ChatMessage>,
     temperature: Option<f32>,
     max_new_tokens: usize,
+    n: Option<usize>,
     tools: Option<Vec<Value>>,
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
@@ -42,12 +42,14 @@ async fn create_chat_post_and_scratchpad(
             temperature,
             top_p: None,
             stop: vec![],
+            n,
         },
         model: model_name.to_string(),
         scratchpad: "".to_string(),
         stream: Some(false),
         temperature,
         max_tokens: 0,
+        n,
         tools,
         tool_choice,
         only_deterministic_messages,
@@ -216,14 +218,16 @@ async fn write_dumps(
     let _ = fs::write(&pathbuf, content);
 }
 
-pub async fn execute_subchat_single_iteration(
+pub async fn subchat_single(
     gcx: Arc<ARwLock<GlobalContext>>,
     model_name: &str,
     messages: Vec<ChatMessage>,
     tools_subset: Vec<String>,
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
-    logfn: String,
+    temperature: Option<f32>,
+    n: Option<usize>,
+    logfn_mb: Option<String>,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
     // this ignores customized tools
     let tools_turned_on_by_cmdline = at_tools_merged_and_filtered(gcx.clone()).await.keys().cloned().collect::<Vec<_>>();
@@ -238,33 +242,47 @@ pub async fn execute_subchat_single_iteration(
     info!("tools_subset {:?}", tools_subset);
     info!("tools_turned_on_by_cmdline_set {:?}", tools_turned_on_by_cmdline_set);
     info!("tools_on_intersection {:?}", tools_on_intersection);
+    
+    let temperature = Some(temperature.unwrap_or(TEMPERATURE));
 
     let (mut chat_post, spad) = create_chat_post_and_scratchpad(
         gcx.clone(),
         model_name,
         messages.iter().collect::<Vec<_>>(),
-        Some(TEMPERATURE),
+        temperature,
         MAX_NEW_TOKENS,
+        n,
         Some(tools),
         tool_choice.clone(),
         only_deterministic_messages,
     ).await?;
+    
     let chat_response_msgs = chat_interaction(gcx.clone(), spad, &mut chat_post).await?;
-    let mut result = messages.clone();
+    
+    let mut old_messages = messages.clone();
     if ALLOW_AT {
-        while let Some(message) = result.last() {
+        while let Some(message) = old_messages.last() {
             if message.role != "user" {
                 break;
             }
-            result.pop();
+            old_messages.pop();
         }
     }
-    result.extend(chat_response_msgs);
-    write_dumps(gcx.clone(), logfn, serde_json::to_string_pretty(&result).unwrap().as_str()).await;
-    Ok(result)
+    
+    let results = chat_response_msgs.into_iter().map(|new_msgs| {
+        let mut extended_msgs = old_messages.clone();
+        extended_msgs.extend(new_msgs);
+        extended_msgs
+    }).collect::<Vec<Vec<ChatMessage>>>();
+    
+    if let Some(logfn) = logfn_mb {
+        write_dumps(gcx.clone(), logfn, serde_json::to_string_pretty(&results).unwrap().as_str()).await;
+    }
+    
+    Ok(results)
 }
 
-pub async fn execute_subchat(
+pub async fn subchat(
     gcx: Arc<ARwLock<GlobalContext>>,
     model_name: &str,
     messages: Vec<ChatMessage>,
@@ -272,7 +290,8 @@ pub async fn execute_subchat(
     wrap_up_depth: usize,
     wrap_up_tokens_cnt: usize,
     wrap_up_prompt: &str,
-    logfn: String,
+    temperature: Option<f32>,
+    logfn_mb: Option<String>,
 ) -> Result<Vec<ChatMessage>, String> {
     let mut messages = messages.clone();
     // let mut chat_usage = ChatUsage { ..Default::default() };
@@ -297,15 +316,17 @@ pub async fn execute_subchat(
                     }
                 }
             }
-            messages = execute_subchat_single_iteration(
+            messages = subchat_single(
                 gcx.clone(),
                 model_name,
                 messages.clone(),
                 tools_subset.clone(),
                 Some("auto".to_string()),
                 false,
-                logfn.clone(),
-            ).await?;
+                temperature,
+                None,
+                logfn_mb.clone(),
+            ).await?[0].clone();
             step_n += 1;
         }
         // result => session
@@ -313,26 +334,30 @@ pub async fn execute_subchat(
     let last_message = messages.last().unwrap();
     if let Some(tool_calls) = &last_message.tool_calls {
         if !tool_calls.is_empty() {
-            messages = execute_subchat_single_iteration(
+            messages = subchat_single(
                 gcx.clone(),
                 model_name,
                 messages,
                 vec![],
                 Some("none".to_string()),
                 true,   // <-- only runs tool calls
-                logfn.clone(),
-            ).await?;
+                temperature,
+                None,
+                logfn_mb.clone(),
+            ).await?[0].clone();
         }
     }
     messages.push(ChatMessage::new("user".to_string(), wrap_up_prompt.to_string()));
-    messages = execute_subchat_single_iteration(
+    messages = subchat_single(
         gcx.clone(),
         model_name,
         messages,
         vec![],
         Some("none".to_string()),
         false,
-        logfn.clone(),
-    ).await?;
+        temperature,
+        None,
+        logfn_mb.clone(),
+    ).await?[0].clone();
     Ok(messages)
 }
