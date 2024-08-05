@@ -19,7 +19,7 @@ import {
   HostSettings,
   SetupHost,
 } from "../events/setup";
-import { useConfig } from "../contexts/config-context";
+import { useConfig } from "../app/hooks";
 import { FIMDebug } from "./FIM";
 import { Statistics } from "./Statistics";
 import { store } from "../app/store";

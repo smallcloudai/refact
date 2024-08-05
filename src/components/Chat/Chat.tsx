@@ -4,7 +4,7 @@ import { ChatContent, ChatContentProps } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
-import { type Config } from "../../events";
+import { type Config } from "../../app/hooks";
 import { ChatState, ChatCapsState } from "../../hooks";
 
 export type ChatProps = {

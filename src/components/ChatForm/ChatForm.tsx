@@ -17,11 +17,11 @@ import { ComboBox, type ComboBoxProps } from "../ComboBox";
 import type { ChatState } from "../../hooks";
 import { ChatContextFile, SystemPrompts } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
-import { useConfig } from "../../contexts/config-context";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { useEffectOnce } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
+import { useConfig } from "../../app/hooks";
 
 type useCheckboxStateProps = {
   activeFile: ChatState["active_file"];

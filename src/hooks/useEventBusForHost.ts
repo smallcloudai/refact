@@ -39,7 +39,7 @@ import {
   // RecieveDiffOpperationResult,
   // RecieveDiffOpperationError,
 } from "../events";
-import { useConfig } from "../contexts/config-context";
+import { useConfig } from "../app/hooks";
 import { parseOrElse } from "../utils";
 
 export function useEventBusForHost() {

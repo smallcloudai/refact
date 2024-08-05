@@ -8,7 +8,7 @@ import {
   CHAT_WITH_DIFF_ACTIONS,
   LARGE_DIFF,
 } from "../../__fixtures__";
-import { ConfigProvider } from "../../contexts/config-context";
+// import { ConfigProvider } from "../../contexts/config-context";
 
 const noop = () => ({});
 
@@ -74,10 +74,11 @@ export const Empty: Story = {
     messages: [],
   },
   decorators: [
+    // TODO: use redux store
     (Story) => (
-      <ConfigProvider config={{ host: "ide" }}>
-        <Story />
-      </ConfigProvider>
+      // <ConfigProvider config={{ host: "ide" }}>
+      <Story />
+      // </ConfigProvider>
     ),
   ],
 };

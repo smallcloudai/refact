@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 
 import { ChatForm } from "./ChatForm";
 import { SYSTEM_PROMPTS } from "../../__fixtures__";
-import { ConfigProvider } from "../../contexts/config-context";
 import { useDebounceCallback } from "usehooks-ts";
 
 const testCommands = [
@@ -182,13 +181,15 @@ const meta: Meta<typeof ChatForm> = {
   decorators: [
     (Children) => {
       const requestCommandsCompletion = useDebounceCallback(() => ({}), 0);
-      return (
-        <ConfigProvider
-          config={{ host: "vscode", features: { vecdb: true, ast: true } }}
-        >
-          <Children requestCommandsCompletion={requestCommandsCompletion} />
-        </ConfigProvider>
-      );
+      // TODO: use redux store
+      // return (
+      //   <ConfigProvider
+      //     config={{ host: "vscode", features: { vecdb: true, ast: true } }}
+      //   >
+      //     <Children requestCommandsCompletion={requestCommandsCompletion} />
+      //   </ConfigProvider>
+      // );
+      return <Children requestCommandsCompletion={requestCommandsCompletion} />;
     },
   ],
 } satisfies Meta<typeof ChatForm>;

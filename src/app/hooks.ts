@@ -12,6 +12,8 @@ import {
 } from "../services/refact";
 import { useCallback, useEffect, useMemo } from "react";
 
+export type { Config } from "../features/Config/reducer";
+
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
@@ -93,3 +95,5 @@ export const useGetManyDiffState = (args: DiffAppliedStateArgs[]) => {
     getByArg,
   };
 };
+
+export const useConfig = () => useAppSelector((state) => state.config);

@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
-import type { Config } from "../contexts/config-context";
+import type { Config } from "../app/hooks";
 import { CodeChatModel } from "../events";
 import { Chat as ChatComponent } from "../components/Chat";
 import {

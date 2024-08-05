@@ -12,6 +12,8 @@ import {
   diffApi,
 } from "../services/refact";
 import { reducer as fimReducer } from "../features/FIM/reducer";
+import { reducer as configReducer } from "../features/Config/reducer";
+
 // import { fimSlice } from "../features/FIM/fimSlice";
 
 // https://redux-toolkit.js.org/api/combineSlices
@@ -19,6 +21,7 @@ import { reducer as fimReducer } from "../features/FIM/reducer";
 // their `reducerPath`s, therefore we no longer need to call `combineReducers`.
 const rootReducer = combineSlices({
   fim: fimReducer,
+  config: configReducer,
   [statisticsApi.reducerPath]: statisticsApi.reducer,
   [capsApi.reducerPath]: capsApi.reducer,
   [promptsApi.reducerPath]: promptsApi.reducer,

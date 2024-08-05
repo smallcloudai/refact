@@ -18,7 +18,7 @@ import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
 import { DiffContent } from "./DiffContent";
 import { PlainText } from "./PlainText";
-import { useConfig } from "../../contexts/config-context";
+import { useConfig } from "../../app/hooks";
 import { AccumulatedChanges } from "./AccumulatedChanges";
 
 const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {

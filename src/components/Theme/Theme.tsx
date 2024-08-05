@@ -8,7 +8,8 @@ import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
-import { useConfig } from "../../contexts/config-context";
+// import { useConfig } from "../../contexts/config-context";
+import { useConfig } from "../../app/hooks";
 import { useMutationObserver } from "../../hooks";
 
 export type ThemeProps = {
@@ -50,6 +51,7 @@ export type ThemeProps = {
 };
 
 const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
+  // TODO: use redux here
   const { isDarkMode, toggle } = useDarkMode();
   const Icon = isDarkMode ? MoonIcon : SunIcon;
   return (
@@ -72,7 +74,9 @@ const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
 };
 
 export const Theme: React.FC<ThemeProps> = (props) => {
+  // TODO: use redux here
   const { host, themeProps } = useConfig();
+  // change this
   const [appearance, setAppearance] = React.useState<
     "dark" | "light" | "inherit"
   >("inherit");
