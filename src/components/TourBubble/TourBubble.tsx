@@ -2,7 +2,7 @@ import { Flex, Link, Text } from "@radix-ui/themes";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RootState } from "../../app/store";
 import { close, next } from "../../features/Tour";
-import { useEffect, useState } from "react";
+import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 
 export type TourBubbleProps = {
   text: string;
@@ -10,31 +10,6 @@ export type TourBubbleProps = {
   down: boolean;
   target: HTMLElement | null;
 };
-
-function getWindowDimensions() {
-  const { innerWidth: width, innerHeight: height } = window;
-  return {
-    width,
-    height,
-  };
-}
-
-function useWindowDimensions() {
-  const [windowDimensions, setWindowDimensions] = useState(
-    getWindowDimensions(),
-  );
-
-  useEffect(() => {
-    function handleResize() {
-      setWindowDimensions(getWindowDimensions());
-    }
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  return windowDimensions;
-}
 
 export function TourBubble({ text, step, target, down }: TourBubbleProps) {
   const dispatch = useAppDispatch();
