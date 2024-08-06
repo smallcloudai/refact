@@ -176,7 +176,12 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
               />
             )}
             {page.name === "chat" && (
-              <Chat host={config.host} tabbed={config.tabbed} {...chatHook} />
+              <Chat
+                host={config.host}
+                tabbed={config.tabbed}
+                {...chatHook}
+                backFromChat={goBack}
+              />
             )}
             {page.name === "fill in the middle debug page" && (
               <FIMDebug host={config.host} tabbed={config.tabbed} />

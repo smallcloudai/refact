@@ -1,23 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  sendChat,
-  // getCaps,
-  // getAtCommandCompletion,
-  // getAtCommandPreview,
-  // isDetailMessage,
-  // getPrompts,
-  formatMessagesForLsp,
-  // getAvailableTools,
-  ToolCommand,
-  // LspChatMessage,
-  // checkDiff,
-  // doDiff,
-} from "../services/refact";
+// import {
+//   sendChat,
+//   // getCaps,
+//   // getAtCommandCompletion,
+//   // getAtCommandPreview,
+//   // isDetailMessage,
+//   // getPrompts,
+//   formatMessagesForLsp,
+//   // getAvailableTools,
+//   ToolCommand,
+//   // LspChatMessage,
+//   // checkDiff,
+//   // doDiff,
+// } from "../services/refact";
 import { useChatHistory } from "./useChatHistory";
 import {
-  EVENT_NAMES_TO_CHAT,
-  ChatThread,
-  isQuestionFromChat,
+  // EVENT_NAMES_TO_CHAT,
+  // ChatThread,
+  // isQuestionFromChat,
   isSaveChatFromChat,
   // isRequestCapsFromChat,
   isStopStreamingFromChat,
@@ -40,7 +40,7 @@ import {
   // RecieveDiffOpperationError,
 } from "../events";
 import { useConfig } from "../app/hooks";
-import { parseOrElse } from "../utils";
+// import { parseOrElse } from "../utils";
 
 export function useEventBusForHost() {
   const { lspUrl } = useConfig();
@@ -68,24 +68,24 @@ export function useEventBusForHost() {
         return;
       }
 
-      if (isQuestionFromChat(event.data)) {
-        const payload = event.data.payload;
+      // if (isQuestionFromChat(event.data)) {
+      //   const payload = event.data.payload;
 
-        saveChat({
-          id: payload.id,
-          title: payload.title ?? "",
-          messages: payload.messages,
-          model: payload.model,
-        });
+      //   saveChat({
+      //     id: payload.id,
+      //     title: payload.title ?? "",
+      //     messages: payload.messages,
+      //     model: payload.model,
+      //   });
 
-        handleSend(
-          event.data.payload,
-          controller.current,
-          event.data.payload.tools,
-          lspUrl,
-        );
-        return;
-      }
+      //   handleSend(
+      //     event.data.payload,
+      //     controller.current,
+      //     event.data.payload.tools,
+      //     lspUrl,
+      //   );
+      //   return;
+      // }
 
       if (isTakeNotesFromChat(event.data)) {
         // TAKE_NOTES
@@ -308,126 +308,126 @@ export function useEventBusForHost() {
   };
 }
 
-function handleSend(
-  chat: ChatThread,
-  controller: AbortController,
-  tools: ToolCommand[] | null,
-  lspUrl?: string,
-) {
-  const messages = formatMessagesForLsp(chat.messages);
-  sendChat({
-    messages,
-    model: chat.model,
-    abortController: controller,
-    stream: true,
-    tools,
-    lspUrl,
-  })
-    .then((response) => {
-      if (!response.ok) {
-        return Promise.reject(new Error(response.statusText));
-      }
-      const decoder = new TextDecoder();
-      const reader = response.body?.getReader();
-      if (!reader) return;
+// function handleSend(
+//   chat: ChatThread,
+//   controller: AbortController,
+//   tools: ToolCommand[] | null,
+//   lspUrl?: string,
+// ) {
+//   const messages = formatMessagesForLsp(chat.messages);
+//   sendChat({
+//     messages,
+//     model: chat.model,
+//     abortController: controller,
+//     stream: true,
+//     tools,
+//     lspUrl,
+//   })
+//     .then((response) => {
+//       if (!response.ok) {
+//         return Promise.reject(new Error(response.statusText));
+//       }
+//       const decoder = new TextDecoder();
+//       const reader = response.body?.getReader();
+//       if (!reader) return;
 
-      return reader.read().then(function pump({ done, value }): Promise<void> {
-        if (done) {
-          // Do something with last chunk of data then exit reader
-          return Promise.resolve();
-        }
-        if (controller.signal.aborted) {
-          return Promise.resolve();
-        }
+//       return reader.read().then(function pump({ done, value }): Promise<void> {
+//         if (done) {
+//           // Do something with last chunk of data then exit reader
+//           return Promise.resolve();
+//         }
+//         if (controller.signal.aborted) {
+//           return Promise.resolve();
+//         }
 
-        const streamAsString = decoder.decode(value);
+//         const streamAsString = decoder.decode(value);
 
-        const deltas = streamAsString
-          .split("\n\n")
-          .filter((str) => str.length > 0);
-        if (deltas.length === 0) return Promise.resolve();
+//         const deltas = streamAsString
+//           .split("\n\n")
+//           .filter((str) => str.length > 0);
+//         if (deltas.length === 0) return Promise.resolve();
 
-        for (const delta of deltas) {
-          if (!delta.startsWith("data: ")) {
-            // eslint-disable-next-line no-console
-            console.log("Unexpected data in streaming buf: " + delta);
-            continue;
-          }
+//         for (const delta of deltas) {
+//           if (!delta.startsWith("data: ")) {
+//             // eslint-disable-next-line no-console
+//             console.log("Unexpected data in streaming buf: " + delta);
+//             continue;
+//           }
 
-          const maybeJsonString = delta.substring(6);
-          // postMessage should be dispatch
-          if (maybeJsonString === "[DONE]") {
-            window.postMessage(
-              {
-                type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
-                payload: { id: chat.id },
-              },
-              "*",
-            );
-            return Promise.resolve(); // handle finish
-          }
+//           const maybeJsonString = delta.substring(6);
+//           // postMessage should be dispatch
+//           if (maybeJsonString === "[DONE]") {
+//             window.postMessage(
+//               {
+//                 type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
+//                 payload: { id: chat.id },
+//               },
+//               "*",
+//             );
+//             return Promise.resolve(); // handle finish
+//           }
 
-          if (maybeJsonString === "[ERROR]") {
-            // check for error details
-            const errorMessage = "error from lsp";
-            const error = new Error(errorMessage);
+//           if (maybeJsonString === "[ERROR]") {
+//             // check for error details
+//             const errorMessage = "error from lsp";
+//             const error = new Error(errorMessage);
 
-            return Promise.reject(error); // handle error
-          }
+//             return Promise.reject(error); // handle error
+//           }
 
-          // figure out how to safely parseJson
+//           // figure out how to safely parseJson
 
-          const json = parseOrElse<Record<string, unknown>>(
-            maybeJsonString,
-            {},
-          );
+//           const json = parseOrElse<Record<string, unknown>>(
+//             maybeJsonString,
+//             {},
+//           );
 
-          if ("detail" in json) {
-            const errorMessage: string =
-              typeof json.detail === "string"
-                ? json.detail
-                : JSON.stringify(json.detail);
-            const error = new Error(errorMessage);
+//           if ("detail" in json) {
+//             const errorMessage: string =
+//               typeof json.detail === "string"
+//                 ? json.detail
+//                 : JSON.stringify(json.detail);
+//             const error = new Error(errorMessage);
 
-            // eslint-disable-next-line no-console
-            console.error(error);
-            return Promise.reject(error);
-          }
-          window.postMessage(
-            {
-              type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
-              payload: {
-                ...json,
-                id: chat.id,
-              },
-            },
-            "*",
-          );
-        }
+//             // eslint-disable-next-line no-console
+//             console.error(error);
+//             return Promise.reject(error);
+//           }
+//           window.postMessage(
+//             {
+//               type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
+//               payload: {
+//                 ...json,
+//                 id: chat.id,
+//               },
+//             },
+//             "*",
+//           );
+//         }
 
-        return reader.read().then(pump);
-      });
-    })
-    .catch((error: Error) => {
-      if (!controller.signal.aborted) {
-        // eslint-disable-next-line no-console
-        console.error(error);
-        window.postMessage(
-          {
-            type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
-            payload: {
-              id: chat.id,
-              message: error.message,
-            },
-          },
-          "*",
-        );
-      }
-    })
-    .finally(() => {
-      window.postMessage(
-        { type: EVENT_NAMES_TO_CHAT.DONE_STREAMING, payload: { id: chat.id } },
-        "*",
-      );
-    });
-}
+//         return reader.read().then(pump);
+//       });
+//     })
+//     .catch((error: Error) => {
+//       if (!controller.signal.aborted) {
+//         // eslint-disable-next-line no-console
+//         console.error(error);
+//         window.postMessage(
+//           {
+//             type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
+//             payload: {
+//               id: chat.id,
+//               message: error.message,
+//             },
+//           },
+//           "*",
+//         );
+//       }
+//     })
+//     .finally(() => {
+//       window.postMessage(
+//         { type: EVENT_NAMES_TO_CHAT.DONE_STREAMING, payload: { id: chat.id } },
+//         "*",
+//       );
+//     });
+// }

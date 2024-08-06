@@ -21,10 +21,10 @@ type ChatProps = {
 
 export const Chat: React.FC<ChatProps> = ({
   style,
-  askQuestion,
+  // askQuestion,
   clearError,
   setChatModel,
-  stopStreaming,
+  // stopStreaming,
   backFromChat,
   openChatInNewTab,
   sendToSideBar,
@@ -115,8 +115,8 @@ export const Chat: React.FC<ChatProps> = ({
   const unCalledTools = React.useMemo(() => {
     if (state.chat.messages.length === 0) return false;
     const last = state.chat.messages[state.chat.messages.length - 1];
-    if (last[0] !== "assistant") return false;
-    const maybeTools = last[2];
+    if (last.role !== "assistant") return false;
+    const maybeTools = last.tool_calls;
     if (maybeTools && maybeTools.length > 0) return true;
     return false;
   }, [state.chat.messages]);
@@ -128,22 +128,22 @@ export const Chat: React.FC<ChatProps> = ({
       tabbed={tabbed}
       backFromChat={backFromChat}
       openChatInNewTab={openChatInNewTab}
-      onStopStreaming={stopStreaming}
+      // onStopStreaming={stopStreaming}
       chat={state.chat}
       error={state.error}
       onClearError={clearError}
       retryQuestion={retryQuestion}
-      isWaiting={state.waiting_for_response}
-      isStreaming={state.streaming}
+      // isWaiting={state.waiting_for_response}
+      // isStreaming={state.streaming}
       onNewFileClick={handleNewFileClick}
       onPasteClick={handlePasteDiffClick}
       // canPaste={state.active_file.can_paste}
       preventSend={state.prevent_send}
       unCalledTools={unCalledTools}
       enableSend={enableSend}
-      onAskQuestion={(question: string) =>
-        askQuestion(question, promptsRequest.data, toolsRequest.data)
-      }
+      // onAskQuestion={(question: string) =>
+      //   askQuestion(question, promptsRequest.data, toolsRequest.data)
+      // }
       onSetChatModel={(value) => {
         const model =
           capsRequest.data?.code_completion_default_model === value

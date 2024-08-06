@@ -1,8 +1,30 @@
+import { useEffect, useCallback, useRef } from "react";
 import { createReducer, createAction } from "@reduxjs/toolkit";
 import { v4 as uuidv4 } from "uuid";
 import {
-  LspChatMessage,
+  AssistantMessage,
+  ChatContextFile,
+  // ChatContextFileMessage,
+  ChatMessage,
+  ChatMessages,
+  ChatRole,
+  ContextMemory,
+  DiffChunk,
+  // LspChatMessage,
+  ToolCall,
   ToolCommand,
+  ToolResult,
+  isAssistantDelta,
+  isAssistantMessage,
+  isChatContextFileDelta,
+  isChatResponseChoice,
+  isChatUserMessageResponse,
+  isDiffMessage,
+  isDiffResponse,
+  isPlainTextResponse,
+  isToolCallDelta,
+  isToolMessage,
+  isToolResponse,
   // isChatUserMessageResponse,
 } from "../../events";
 // TODO: update this type
@@ -14,12 +36,13 @@ import {
   useGetCapsQuery,
   useGetToolsQuery,
 } from "../../app/hooks";
+import { type RootState } from "../../app/store";
 import { parseOrElse } from "../../utils";
-import { useCallback } from "react";
+import { mergeToolCalls } from "../../hooks/useEventBusForChat/utils";
 
 export type ChatThread = {
   id: string;
-  messages: LspChatMessage[];
+  messages: ChatMessages;
   model: string;
   title?: string;
   attach_file?: boolean;
@@ -62,7 +85,7 @@ const createInitialState = (): Chat => {
 const initialState = createInitialState();
 
 type PayloadWIthId = { id: string };
-const newChatAction = createAction<PayloadWIthId>("chatThread/new");
+export const newChatAction = createAction<PayloadWIthId>("chatThread/new");
 
 // const doneStreaming = createAction<PayloadWIthId>("chatThread/doneStreaming");
 
@@ -87,34 +110,30 @@ const doneStreaming = createAction<PayloadWIthId>("chatThread/doneStreaming");
 export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(newChatAction, (state, action) => {
     if (state.thread.id === action.payload.id) {
-      state = createInitialState();
+      const next = createInitialState();
+      next.thread.model = state.thread.messages.length
+        ? state.thread.model
+        : "";
+      state = next;
     }
   });
 
   builder.addCase(chatResponse, (state, action) => {
     // TODO: handle chache
     if (state.thread.id !== action.payload.id) return state;
-    // const hasUserMessage = isChatUserMessageResponse(action.payload);
+    const hasUserMessage = isChatUserMessageResponse(action.payload);
 
-    // const current = hasUserMessage
-    //   ? state.thread.messages.slice(0, state.previous_message_length)
-    //   : state.thread.messages;
-    // const messages = formatChatResponse(current, action.payload);
+    const current = hasUserMessage
+      ? state.thread.messages.slice(0, state.previous_message_length)
+      : state.thread.messages;
 
-    // return {
-    //   ...state,
-    //   // files_in_preview: [],
-    //   waiting_for_response: false,
-    //   streaming: true,
-    //   previous_message_length: messages.length,
-    //   chat: {
-    //     ...state.chat,
-    //     messages,
-    //     // applied_diffs: {},
-    //   },
-    // };
+    // TODO: this might not be needed any more, because we can mutate the last message.
+    const messages = formatChatResponse(current, action.payload);
 
+    state.streaming = true;
     state.waiting_for_response = false;
+    state.previous_message_length = messages.length;
+    state.thread.messages = messages;
   });
 
   builder.addCase(backUpMessages, (state, action) => {
@@ -146,130 +165,193 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
 // this will need the chat id and tools
 
-// export function formatChatResponse(
-//     messages: ChatMessages,
-//     response: ChatResponse,
-//   ): LspChatMessage[] {
-//     if (isChatUserMessageResponse(response)) {
-//       if (response.role === "context_file") {
-//         const content = parseOrElse<ChatContextFile[]>(response.content, []);
-//         return [...messages, {...response, content}];
-//       } else if (response.role === "context_memory") {
-//         const content = parseOrElse<ContextMemory[]>(response.content, []);
-//         return [...messages, [response.role, content]];
-//       }
+export function formatChatResponse(
+  messages: ChatMessages,
+  response: ChatResponse,
+): ChatMessages {
+  if (isChatUserMessageResponse(response)) {
+    if (response.role === "context_file") {
+      const content = parseOrElse<ChatContextFile[]>(response.content, []);
+      // const msg: ChatContextFileMessage = { role: response.role, content };
+      return [...messages, { role: response.role, content }];
+    } else if (response.role === "context_memory") {
+      const content = parseOrElse<ContextMemory[]>(response.content, []);
+      return [...messages, { role: response.role, content }];
+    }
 
-//       return [...messages, [response.role, response.content]];
-//     }
+    return [...messages, { role: response.role, content: response.content }];
+  }
 
-//     if (isToolResponse(response)) {
-//       const { tool_call_id, content, finish_reason } = response;
-//       const toolResult: ToolResult = { tool_call_id, content, finish_reason };
-//       return [...messages, [response.role, toolResult]];
-//     }
+  if (isToolResponse(response)) {
+    const { tool_call_id, content, finish_reason } = response;
+    const toolResult: ToolResult = { tool_call_id, content, finish_reason };
+    return [...messages, { role: response.role, content: toolResult }];
+  }
 
-//     if (isDiffResponse(response)) {
-//       const content = parseOrElse<DiffChunk[]>(response.content, []);
-//       return [...messages, [response.role, content, response.tool_call_id]];
-//     }
+  if (isDiffResponse(response)) {
+    const content = parseOrElse<DiffChunk[]>(response.content, []);
+    return [
+      ...messages,
+      { role: response.role, content, tool_call_id: response.tool_call_id },
+    ];
+  }
 
-//     if (isPlainTextResponse(response)) {
-//       return [...messages, [response.role, response.content]];
-//     }
+  if (isPlainTextResponse(response)) {
+    return [...messages, response];
+  }
 
-//     if (!isChatResponseChoice(response)) {
-//       // console.log("Not a good response");
-//       // console.log(response);
-//       return messages;
-//     }
+  if (!isChatResponseChoice(response)) {
+    // console.log("Not a good response");
+    // console.log(response);
+    return messages;
+  }
 
-//     return response.choices.reduce<ChatMessages>((acc, cur) => {
-//       if (isChatContextFileDelta(cur.delta)) {
-//         return acc.concat([[cur.delta.role, cur.delta.content]]);
-//       }
+  return response.choices.reduce<ChatMessages>((acc, cur) => {
+    if (isChatContextFileDelta(cur.delta)) {
+      const msg = { role: cur.delta.role, content: cur.delta.content };
+      return acc.concat([msg]);
+    }
 
-//       if (
-//         acc.length === 0 &&
-//         "content" in cur.delta &&
-//         typeof cur.delta.content === "string" &&
-//         cur.delta.role
-//       ) {
-//         if (cur.delta.role === "assistant") {
-//           return acc.concat([
-//             [cur.delta.role, cur.delta.content, cur.delta.tool_calls],
-//           ]);
-//         }
-//         // TODO: narrow this
-//         const message = [cur.delta.role, cur.delta.content] as ChatMessage;
-//         return acc.concat([message]);
-//       }
+    if (
+      acc.length === 0 &&
+      "content" in cur.delta &&
+      typeof cur.delta.content === "string" &&
+      cur.delta.role
+    ) {
+      if (cur.delta.role === "assistant") {
+        const msg: AssistantMessage = {
+          role: cur.delta.role,
+          content: cur.delta.content,
+          tool_calls: cur.delta.tool_calls,
+        };
+        return acc.concat([msg]);
+      }
+      // TODO: narrow this
+      const message = {
+        role: cur.delta.role,
+        content: cur.delta.content,
+      } as ChatMessage;
+      return acc.concat([message]);
+    }
 
-//       const lastMessage = acc[acc.length - 1];
+    const lastMessage = acc[acc.length - 1];
 
-//       if (isToolCallDelta(cur.delta)) {
-//         if (!isAssistantMessage(lastMessage)) {
-//           return acc.concat([
-//             ["assistant", cur.delta.content ?? "", cur.delta.tool_calls],
-//           ]);
-//         }
+    if (isToolCallDelta(cur.delta)) {
+      if (!isAssistantMessage(lastMessage)) {
+        return acc.concat([
+          {
+            role: "assistant",
+            content: cur.delta.content ?? "",
+            tool_calls: cur.delta.tool_calls,
+          },
+        ]);
+      }
 
-//         const last = acc.slice(0, -1);
-//         const collectedCalls = lastMessage[2] ?? [];
-//         const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
-//         const content = cur.delta.content;
-//         const message = content ? lastMessage[1] + content : lastMessage[1];
+      const last = acc.slice(0, -1);
+      const collectedCalls = lastMessage.tool_calls ?? [];
+      const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
+      const content = cur.delta.content;
+      const message = content
+        ? lastMessage.content + content
+        : lastMessage.content;
 
-//         return last.concat([["assistant", message, calls]]);
-//       }
+      return last.concat([
+        { role: "assistant", content: message, tool_calls: calls },
+      ]);
+    }
 
-//       if (
-//         isAssistantMessage(lastMessage) &&
-//         isAssistantDelta(cur.delta) &&
-//         typeof cur.delta.content === "string"
-//       ) {
-//         const last = acc.slice(0, -1);
-//         const currentMessage = lastMessage[1] ?? "";
-//         const toolCalls = lastMessage[2];
-//         return last.concat([
-//           ["assistant", currentMessage + cur.delta.content, toolCalls],
-//         ]);
-//       } else if (
-//         isAssistantDelta(cur.delta) &&
-//         typeof cur.delta.content === "string"
-//       ) {
-//         return acc.concat([["assistant", cur.delta.content]]);
-//       } else if (cur.delta.role === "assistant") {
-//         // empty message from JB
-//         return acc;
-//       }
+    if (
+      isAssistantMessage(lastMessage) &&
+      isAssistantDelta(cur.delta) &&
+      typeof cur.delta.content === "string"
+    ) {
+      const last = acc.slice(0, -1);
+      const currentMessage = lastMessage.content ?? "";
+      const toolCalls = lastMessage.tool_calls;
+      return last.concat([
+        {
+          role: "assistant",
+          content: currentMessage + cur.delta.content,
+          tool_calls: toolCalls,
+        },
+      ]);
+    } else if (
+      isAssistantDelta(cur.delta) &&
+      typeof cur.delta.content === "string"
+    ) {
+      return acc.concat([{ role: "assistant", content: cur.delta.content }]);
+    } else if (cur.delta.role === "assistant") {
+      // empty message from JB
+      return acc;
+    }
 
-//       if (cur.delta.role === null || cur.finish_reason !== null) {
-//         return acc;
-//       }
+    if (cur.delta.role === null || cur.finish_reason !== null) {
+      return acc;
+    }
 
-//       // console.log("Fall though");
-//       // console.log({ cur, lastMessage });
+    // console.log("Fall though");
+    // console.log({ cur, lastMessage });
 
-//       return acc;
-//     }, messages);
-//   }
+    return acc;
+  }, messages);
+}
 
+export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
+  return messages.reduce<LspChatMessage[]>((acc, message) => {
+    if (isAssistantMessage(message)) {
+      return acc.concat([
+        {
+          role: message.role,
+          content: message.content,
+          tool_calls: message.tool_calls ?? undefined,
+        },
+      ]);
+    }
+
+    if (isToolMessage(message)) {
+      return acc.concat([
+        {
+          role: "tool",
+          content: message.content.content,
+          tool_call_id: message.content.tool_call_id,
+        },
+      ]);
+    }
+
+    if (isDiffMessage(message)) {
+      const diff = {
+        role: message.role,
+        content: JSON.stringify(message.content),
+        tool_call_id: message.tool_call_id,
+      };
+      return acc.concat([diff]);
+    }
+
+    const content =
+      typeof message.content === "string"
+        ? message.content
+        : JSON.stringify(message.content);
+    return [...acc, { role: message.role, content }];
+  }, []);
+}
+
+// TODO: make cancelable
 const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
-    messages: LspChatMessage[];
+    messages: ChatMessages;
     chatId: string;
     tools: ToolCommand[] | null;
   }
 >("chatThread/sendChat", ({ messages, chatId, tools }, thunkAPI) => {
   const state = thunkAPI.getState();
+  const messagesForLsp = formatMessagesForLsp(messages);
   sendChat({
-    messages,
+    messages: messagesForLsp,
     model: state.chat.thread.model,
     tools,
     stream: true,
     abortSignal: thunkAPI.signal,
-    // should be passes as well
     chatId,
   })
     .then((response) => {
@@ -348,38 +430,93 @@ const chatAskQuestionThunk = createAppAsyncThunk<
 });
 
 export const useSendChatRequest = () => {
-  const chatId = useAppSelector((state) => state.chat.thread.id);
   const dispatch = useAppDispatch();
+  const abortRef = useRef<null | ((reason?: string | undefined) => void)>(null);
   const capsRequest = useGetCapsQuery(undefined);
   const toolsRequest = useGetToolsQuery(!!capsRequest.data);
 
-  const currentMesssages = useAppSelector(
-    (state) => state.chat.thread.messages,
-  );
+  const thread = useAppSelector((state) => state.chat.thread);
+  const chatId = thread.id;
+  const streaming = useAppSelector((state) => state.chat.streaming);
+  const chatError = useAppSelector((state) => state.chat.error);
+  const preventSend = useAppSelector((state) => state.chat.prevent_send);
+
+  const currentMessages = useAppSelector((state) => state.chat.thread.messages);
   const submit = useCallback(
     (question: string) => {
       const tools = toolsRequest.data ?? null;
-      const message: LspChatMessage = { role: "user", content: question };
+      const message: ChatMessage = { role: "user", content: question };
 
-      const messages = currentMesssages.concat(message);
+      const messages = currentMessages.concat(message);
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
+      // move this up ?
       const action = chatAskQuestionThunk({
         messages,
         tools,
         chatId,
       });
 
-      return dispatch(action);
+      const dispatchedAction = dispatch(action);
+      abortRef.current = dispatchedAction.abort;
     },
-    [chatId, currentMesssages, dispatch, toolsRequest.data],
+    [chatId, currentMessages, dispatch, toolsRequest.data],
   );
 
-  // TODO: ask imidiantly for rconsole and context menu questions.
+  // Automatically calls tool calls, should be cancelable too :/
+  useEffect(() => {
+    if (
+      !streaming &&
+      currentMessages.length > 0 &&
+      !chatError &&
+      !preventSend
+    ) {
+      // const lastMessage = state.chat.messages[state.chat.messages.length - 1];
+      const lastMessage = currentMessages.slice(-1)[0];
+      if (
+        isAssistantMessage(lastMessage) &&
+        lastMessage.tool_calls &&
+        lastMessage.tool_calls.length > 0
+      ) {
+        const tools = toolsRequest.data ?? null;
+
+        // this function is duplicated
+        const action = chatAskQuestionThunk({
+          messages: currentMessages,
+          tools,
+          chatId,
+        });
+
+        const dispatchedAction = dispatch(action);
+        abortRef.current = dispatchedAction.abort;
+      }
+    }
+  }, [
+    chatError,
+    chatId,
+    currentMessages,
+    dispatch,
+    preventSend,
+    streaming,
+    toolsRequest.data,
+  ]);
+
+  const abort = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current();
+    }
+  }, [abortRef]);
+
+  useEffect(() => {
+    if (!streaming && abortRef.current) {
+      abortRef.current = null;
+    }
+  }, [streaming]);
 
   return {
     submit,
+    abort,
   };
 };
 
@@ -401,6 +538,13 @@ type SendChatArgs = {
   chatId?: string;
   tools: ToolCommand[] | null;
 } & StreamArgs;
+
+export type LspChatMessage = {
+  role: ChatRole;
+  content: string | null;
+  tool_calls?: Omit<ToolCall, "index">[];
+  tool_call_id?: string;
+};
 
 async function sendChat({
   messages,
@@ -456,3 +600,5 @@ async function sendChat({
     credentials: "same-origin",
   });
 }
+
+export const selectMessages = (state: RootState) => state.chat.thread.messages;

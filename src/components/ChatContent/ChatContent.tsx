@@ -19,7 +19,10 @@ import { useAutoScroll } from "./useAutoScroll";
 import { DiffContent } from "./DiffContent";
 import { PlainText } from "./PlainText";
 import { useConfig } from "../../app/hooks";
-import { AccumulatedChanges } from "./AccumulatedChanges";
+// import { AccumulatedChanges } from "./AccumulatedChanges";
+
+import { selectMessages } from "../../features/Chat2/chatThread";
+import { useAppSelector } from "../../app/hooks";
 
 const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const config = useConfig();
@@ -73,7 +76,7 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 };
 
 export type ChatContentProps = {
-  messages: ChatMessages;
+  // messages: ChatMessages;
   onRetry: (question: ChatMessages) => void;
   isWaiting: boolean;
   canPaste: boolean;
@@ -85,8 +88,8 @@ export type ChatContentProps = {
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
   (props, ref) => {
     const {
-      messages,
-      onRetry,
+      // messages,
+      // onRetry,
       isWaiting,
       onNewFileClick,
       onPasteClick,
@@ -95,6 +98,8 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       openSettings,
       chatKey,
     } = props;
+
+    const messages = useAppSelector(selectMessages);
 
     const { innerRef, handleScroll } = useAutoScroll({
       ref,
@@ -105,7 +110,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
     const toolResultsMap = React.useMemo(() => {
       return messages.reduce<Record<string, ToolResult>>((acc, message) => {
         if (!isToolMessage(message)) return acc;
-        const result = message[1];
+        const result = message.content;
         return {
           ...acc,
           [result.tool_call_id]: result,
@@ -124,27 +129,30 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
           {messages.map((message, index) => {
             if (isChatContextFileMessage(message)) {
               const key = chatKey + "context-file-" + index;
-              const [, files] = message;
-              return <ContextFiles key={key} files={files} />;
+              return <ContextFiles key={key} files={message.content} />;
             }
 
             if (isDiffMessage(message)) {
-              const [, diffs, toolCallId] = message;
-              const key = `diff-${toolCallId}-${index}`;
+              const key = `diff-${message.tool_call_id}-${index}`;
               return (
-                <DiffContent key={key} chunks={diffs} toolCallId={toolCallId} />
+                <DiffContent
+                  key={key}
+                  chunks={message.content}
+                  toolCallId={message.tool_call_id}
+                />
               );
             }
 
-            const [role, text] = message;
+            // const [role, text] = message;
 
-            if (role === "user") {
+            if (message.role === "user") {
               const key = chatKey + "user-input-" + index;
-              const handleRetry = (question: string) => {
-                const toSend = messages
-                  .slice(0, index)
-                  .concat([["user", question]]);
-                onRetry(toSend);
+              const handleRetry = (_question: string) => {
+                // TODO: retry action
+                // const toSend = messages
+                //   .slice(0, index)
+                //   .concat([["user", question]]);
+                // onRetry(toSend);
               };
               return (
                 <UserInput
@@ -152,10 +160,10 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                   key={key}
                   disableRetry={isStreaming || isWaiting}
                 >
-                  {text}
+                  {message.content}
                 </UserInput>
               );
-            } else if (role === "assistant") {
+            } else if (message.role === "assistant") {
               const key = chatKey + "assistant-input-" + index;
               return (
                 <AssistantInput
@@ -163,31 +171,31 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
                   onPasteClick={onPasteClick}
                   canPaste={canPaste}
                   key={key}
-                  message={text}
-                  toolCalls={message[2]}
+                  message={message.content}
+                  toolCalls={message.tool_calls}
                   toolResults={toolResultsMap}
                 />
               );
-            } else if (role === "tool") {
+            } else if (message.role === "tool") {
               return null;
-            } else if (role === "context_memory") {
+            } else if (message.role === "context_memory") {
               const key = chatKey + "context-memory-" + index;
-              return <MemoryContent key={key} items={text} />;
-            } else if (role === "plain_text") {
+              return <MemoryContent key={key} items={message.content} />;
+            } else if (message.role === "plain_text") {
               const key = chatKey + "plain-text-" + index;
-              return <PlainText key={key}>{text}</PlainText>;
+              return <PlainText key={key}>{message.content}</PlainText>;
             } else {
               return null;
               // return <Markdown key={index}>{text}</Markdown>;
             }
           })}
-          {!isWaiting && messages.length > 0 && (
+          {/* {!isWaiting && messages.length > 0 && (
             <AccumulatedChanges
               messages={messages}
               // getDiffByIndex={getDiffByIndex}
               // onSumbit={addOrRemoveDiff}
             />
-          )}
+          )} */}
           {isWaiting && (
             <Container py="4">
               <Spinner />

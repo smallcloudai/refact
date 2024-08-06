@@ -14,7 +14,6 @@ import {
 import { ErrorCallout, Callout } from "../Callout";
 import { Button } from "@radix-ui/themes";
 import { ComboBox, type ComboBoxProps } from "../ComboBox";
-import type { ChatState } from "../../hooks";
 import { ChatContextFile, SystemPrompts } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
@@ -22,10 +21,12 @@ import { useEffectOnce } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
 import { useConfig } from "../../app/hooks";
+import { FileInfo } from "../../events";
+import { Snippet } from "../../features/Chat2/selectedSnippet";
 
 type useCheckboxStateProps = {
-  activeFile: ChatState["active_file"];
-  snippet: ChatState["selected_snippet"];
+  activeFile: FileInfo;
+  snippet: Snippet;
   vecdb: boolean;
   ast: boolean;
   allBoxes: boolean;
@@ -273,13 +274,13 @@ export type ChatFormProps = {
   isStreaming: boolean;
   onStopStreaming: () => void;
   commands: ComboBoxProps["commands"];
-  attachFile: ChatState["active_file"];
+  attachFile: FileInfo;
   hasContextFile: boolean;
   requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
   requestPreviewFiles: (input: string) => void;
   // setSelectedCommand: (command: string) => void;
   filesInPreview: ChatContextFile[];
-  selectedSnippet: ChatState["selected_snippet"];
+  selectedSnippet: Snippet;
   removePreviewFileByName: (name: string) => void;
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;

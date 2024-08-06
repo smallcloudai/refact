@@ -4,9 +4,12 @@ import { ChatContent, ChatContentProps } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
-import { useAppSelector, type Config } from "../../app/hooks";
+import { useAppDispatch, useAppSelector, type Config } from "../../app/hooks";
 import { ChatState, ChatCapsState } from "../../hooks";
-import { useSendChatRequest } from "../../features/Chat2/chatThread";
+import {
+  newChatAction,
+  useSendChatRequest,
+} from "../../features/Chat2/chatThread";
 
 export type ChatProps = {
   host: Config["host"];
@@ -27,8 +30,8 @@ export type ChatProps = {
   commands: ChatFormProps["commands"];
 
   retryQuestion: ChatContentProps["onRetry"];
-  isWaiting: ChatContentProps["isWaiting"];
-  isStreaming: ChatContentProps["isStreaming"];
+  // isWaiting: ChatContentProps["isWaiting"];
+  // isStreaming: ChatContentProps["isStreaming"];
   onNewFileClick: ChatContentProps["onNewFileClick"];
   onPasteClick: ChatContentProps["onPasteClick"];
   // canPaste: ChatContentProps["canPaste"];
@@ -51,31 +54,31 @@ export type ChatProps = {
   setUseTools: ChatFormProps["setUseTools"];
   useTools: ChatFormProps["useTools"];
   onSetChatModel: ChatFormProps["onSetChatModel"];
-  onAskQuestion: ChatFormProps["onSubmit"];
+  // onAskQuestion: ChatFormProps["onSubmit"];
   onClearError: ChatFormProps["clearError"];
-  onStopStreaming: ChatFormProps["onStopStreaming"];
+  // onStopStreaming: ChatFormProps["onStopStreaming"];
 };
 
 export const Chat: React.FC<ChatProps> = ({
   style,
   host,
-  tabbed,
+  // tabbed,
   backFromChat,
   openChatInNewTab,
-  onStopStreaming,
+  // onStopStreaming,
   chat,
   error,
   onClearError,
   retryQuestion,
-  isWaiting,
-  isStreaming,
+  // isWaiting,
+  // isStreaming,
   onNewFileClick,
   onPasteClick,
   // canPaste,
   preventSend,
   unCalledTools,
   enableSend,
-  onAskQuestion,
+  // onAskQuestion,
   onSetChatModel,
   caps,
   commands,
@@ -89,7 +92,7 @@ export const Chat: React.FC<ChatProps> = ({
   removePreviewFileByName,
   requestCaps,
   prompts,
-  onStartNewChat,
+  // onStartNewChat,
   onSetSystemPrompt,
   selectedSystemPrompt,
   requestPreviewFiles,
@@ -101,16 +104,19 @@ export const Chat: React.FC<ChatProps> = ({
   const chatContentRef = useRef<HTMLDivElement>(null);
   const activeFile = useAppSelector((state) => state.active_file);
   const selectedSnippet = useAppSelector((state) => state.selected_snippet);
+  const isStreaming = useAppSelector((state) => state.chat.streaming);
+  const isWaiting = useAppSelector((state) => state.chat.waiting_for_response);
   const canPaste = activeFile.can_paste;
-  const { submit } = useSendChatRequest();
+  const chatId = useAppSelector((state) => state.chat.thread.id);
+  const { submit, abort } = useSendChatRequest();
+  const dispatch = useAppDispatch();
 
   // TODO: handle stop
   const handleSummit = useCallback(
     (value: string) => {
-      onAskQuestion(value);
-      void submit(value);
+      submit(value);
     },
-    [onAskQuestion, submit],
+    [submit],
   );
 
   const onTextAreaHeightChange = useCallback(() => {
@@ -127,8 +133,9 @@ export const Chat: React.FC<ChatProps> = ({
   const handleNewChat = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.currentTarget.blur();
-      onStopStreaming();
-      onStartNewChat();
+      // TODO: could be improved
+      const action = newChatAction({ id: chatId });
+      dispatch(action);
       // TODO: improve this
       const textarea = document.querySelector<HTMLTextAreaElement>(
         '[data-testid="chat-form-textarea"]',
@@ -137,29 +144,29 @@ export const Chat: React.FC<ChatProps> = ({
         textarea.focus();
       }
     },
-    [onStartNewChat, onStopStreaming],
+    [chatId, dispatch],
   );
 
   return (
     <PageWrapper host={host} style={style}>
-      {host === "vscode" && !tabbed && (
-        <Flex gap="2" pb="3" wrap="wrap">
-          <Button size="1" variant="surface" onClick={backFromChat}>
-            <ArrowLeftIcon width="16" height="16" />
-            Back
-          </Button>
-          <Button size="1" variant="surface" onClick={openChatInNewTab}>
-            Open In Tab
-          </Button>
-          <Button size="1" variant="surface" onClick={handleNewChat}>
-            New Chat
-          </Button>
-        </Flex>
-      )}
+      {/* {host === "vscode" && !tabbed && ( */}
+      <Flex gap="2" pb="3" wrap="wrap">
+        <Button size="1" variant="surface" onClick={backFromChat}>
+          <ArrowLeftIcon width="16" height="16" />
+          Back
+        </Button>
+        <Button size="1" variant="surface" onClick={openChatInNewTab}>
+          Open In Tab
+        </Button>
+        <Button size="1" variant="surface" onClick={handleNewChat}>
+          New Chat
+        </Button>
+      </Flex>
+      {/* )} */}
       <ChatContent
         key={`chat-content-${chat.id}`}
         chatKey={chat.id}
-        messages={chat.messages}
+        // messages={chat.messages}
         onRetry={retryQuestion}
         isWaiting={isWaiting}
         isStreaming={isStreaming}
@@ -191,7 +198,8 @@ export const Chat: React.FC<ChatProps> = ({
         model={chat.model}
         onSetChatModel={onSetChatModel}
         caps={caps}
-        onStopStreaming={onStopStreaming}
+        // onStopStreaming={onStopStreaming}
+        onStopStreaming={abort}
         commands={commands}
         hasContextFile={hasContextFile}
         requestCommandsCompletion={requestCommandsCompletion}

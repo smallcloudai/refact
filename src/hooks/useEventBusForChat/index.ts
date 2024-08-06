@@ -1,23 +1,23 @@
 import { useEffect, useReducer, useCallback, useMemo } from "react";
 import {
-  type ChatContextFile,
+  // type ChatContextFile,
   type ChatMessages,
-  type ChatResponse,
+  // type ChatResponse,
   isChatContextFileMessage,
-  isChatContextFileDelta,
-  isAssistantMessage,
-  isAssistantDelta,
-  isToolCallDelta,
-  isToolResponse,
-  isChatResponseChoice,
+  // isChatContextFileDelta,
+  // isAssistantMessage,
+  // isAssistantDelta,
+  // isToolCallDelta,
+  // isToolResponse,
+  // isChatResponseChoice,
   ToolCommand,
   CodeChatModel,
-  ContextMemory,
-  DiffChunk,
-  isDiffResponse,
-  ChatMessage,
+  // ContextMemory,
+  // DiffChunk,
+  // isDiffResponse,
+  // ChatMessage,
   // isDiffMessage,
-  isPlainTextResponse,
+  // isPlainTextResponse,
   SystemPrompts,
   // ToolMessage,
 } from "../../services/refact";
@@ -29,7 +29,7 @@ import {
   type ChatThread,
   isResponseToChat,
   isBackupMessages,
-  isRestoreChat,
+  // isRestoreChat,
   isChatDoneStreaming,
   isChatErrorStreaming,
   isChatClearError,
@@ -69,7 +69,7 @@ import {
   // type SystemPrompts,
   // RequestPreviewFiles,
   // type CommandCompletionResponse,
-  type ToolResult,
+  // type ToolResult,
   isSetTakeNotes,
   SetTakeNotes,
   // RequestTools,
@@ -79,7 +79,7 @@ import {
   isSetUseTools,
   SetEnableSend,
   isSetEnableSend,
-  TakeNotesFromChat,
+  // TakeNotesFromChat,
   // RequestDiffAppliedChunks,
   // isRequestDiffAppliedChunks,
   isBaseAction,
@@ -95,116 +95,116 @@ import {
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
 // import { useDebounceCallback } from "usehooks-ts";
-import { TAKE_NOTE_MESSAGE, mergeToolCalls } from "./utils";
-import { parseOrElse } from "../../utils";
+// import { TAKE_NOTE_MESSAGE } from "./utils";
+// import { parseOrElse } from "../../utils";
 
-export function formatChatResponse(
-  messages: ChatMessages,
-  response: ChatResponse,
-): ChatMessages {
-  if (isChatUserMessageResponse(response)) {
-    if (response.role === "context_file") {
-      const content = parseOrElse<ChatContextFile[]>(response.content, []);
-      return [...messages, [response.role, content]];
-    } else if (response.role === "context_memory") {
-      const content = parseOrElse<ContextMemory[]>(response.content, []);
-      return [...messages, [response.role, content]];
-    }
+// function formatChatResponse(
+//   messages: ChatMessages,
+//   response: ChatResponse,
+// ): ChatMessages {
+//   if (isChatUserMessageResponse(response)) {
+//     if (response.role === "context_file") {
+//       const content = parseOrElse<ChatContextFile[]>(response.content, []);
+//       return [...messages, [response.role, content]];
+//     } else if (response.role === "context_memory") {
+//       const content = parseOrElse<ContextMemory[]>(response.content, []);
+//       return [...messages, [response.role, content]];
+//     }
 
-    return [...messages, [response.role, response.content]];
-  }
+//     return [...messages, [response.role, response.content]];
+//   }
 
-  if (isToolResponse(response)) {
-    const { tool_call_id, content, finish_reason } = response;
-    const toolResult: ToolResult = { tool_call_id, content, finish_reason };
-    return [...messages, [response.role, toolResult]];
-  }
+//   if (isToolResponse(response)) {
+//     const { tool_call_id, content, finish_reason } = response;
+//     const toolResult: ToolResult = { tool_call_id, content, finish_reason };
+//     return [...messages, [response.role, toolResult]];
+//   }
 
-  if (isDiffResponse(response)) {
-    const content = parseOrElse<DiffChunk[]>(response.content, []);
-    return [...messages, [response.role, content, response.tool_call_id]];
-  }
+//   if (isDiffResponse(response)) {
+//     const content = parseOrElse<DiffChunk[]>(response.content, []);
+//     return [...messages, [response.role, content, response.tool_call_id]];
+//   }
 
-  if (isPlainTextResponse(response)) {
-    return [...messages, [response.role, response.content]];
-  }
+//   if (isPlainTextResponse(response)) {
+//     return [...messages, [response.role, response.content]];
+//   }
 
-  if (!isChatResponseChoice(response)) {
-    // console.log("Not a good response");
-    // console.log(response);
-    return messages;
-  }
+//   if (!isChatResponseChoice(response)) {
+//     // console.log("Not a good response");
+//     // console.log(response);
+//     return messages;
+//   }
 
-  return response.choices.reduce<ChatMessages>((acc, cur) => {
-    if (isChatContextFileDelta(cur.delta)) {
-      return acc.concat([[cur.delta.role, cur.delta.content]]);
-    }
+//   return response.choices.reduce<ChatMessages>((acc, cur) => {
+//     if (isChatContextFileDelta(cur.delta)) {
+//       return acc.concat([[cur.delta.role, cur.delta.content]]);
+//     }
 
-    if (
-      acc.length === 0 &&
-      "content" in cur.delta &&
-      typeof cur.delta.content === "string" &&
-      cur.delta.role
-    ) {
-      if (cur.delta.role === "assistant") {
-        return acc.concat([
-          [cur.delta.role, cur.delta.content, cur.delta.tool_calls],
-        ]);
-      }
-      // TODO: narrow this
-      const message = [cur.delta.role, cur.delta.content] as ChatMessage;
-      return acc.concat([message]);
-    }
+//     if (
+//       acc.length === 0 &&
+//       "content" in cur.delta &&
+//       typeof cur.delta.content === "string" &&
+//       cur.delta.role
+//     ) {
+//       if (cur.delta.role === "assistant") {
+//         return acc.concat([
+//           [cur.delta.role, cur.delta.content, cur.delta.tool_calls],
+//         ]);
+//       }
+//       // TODO: narrow this
+//       const message = [cur.delta.role, cur.delta.content] as ChatMessage;
+//       return acc.concat([message]);
+//     }
 
-    const lastMessage = acc[acc.length - 1];
+//     const lastMessage = acc[acc.length - 1];
 
-    if (isToolCallDelta(cur.delta)) {
-      if (!isAssistantMessage(lastMessage)) {
-        return acc.concat([
-          ["assistant", cur.delta.content ?? "", cur.delta.tool_calls],
-        ]);
-      }
+//     if (isToolCallDelta(cur.delta)) {
+//       if (!isAssistantMessage(lastMessage)) {
+//         return acc.concat([
+//           ["assistant", cur.delta.content ?? "", cur.delta.tool_calls],
+//         ]);
+//       }
 
-      const last = acc.slice(0, -1);
-      const collectedCalls = lastMessage[2] ?? [];
-      const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
-      const content = cur.delta.content;
-      const message = content ? lastMessage[1] + content : lastMessage[1];
+//       const last = acc.slice(0, -1);
+//       const collectedCalls = lastMessage[2] ?? [];
+//       const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
+//       const content = cur.delta.content;
+//       const message = content ? lastMessage[1] + content : lastMessage[1];
 
-      return last.concat([["assistant", message, calls]]);
-    }
+//       return last.concat([["assistant", message, calls]]);
+//     }
 
-    if (
-      isAssistantMessage(lastMessage) &&
-      isAssistantDelta(cur.delta) &&
-      typeof cur.delta.content === "string"
-    ) {
-      const last = acc.slice(0, -1);
-      const currentMessage = lastMessage[1] ?? "";
-      const toolCalls = lastMessage[2];
-      return last.concat([
-        ["assistant", currentMessage + cur.delta.content, toolCalls],
-      ]);
-    } else if (
-      isAssistantDelta(cur.delta) &&
-      typeof cur.delta.content === "string"
-    ) {
-      return acc.concat([["assistant", cur.delta.content]]);
-    } else if (cur.delta.role === "assistant") {
-      // empty message from JB
-      return acc;
-    }
+//     if (
+//       isAssistantMessage(lastMessage) &&
+//       isAssistantDelta(cur.delta) &&
+//       typeof cur.delta.content === "string"
+//     ) {
+//       const last = acc.slice(0, -1);
+//       const currentMessage = lastMessage[1] ?? "";
+//       const toolCalls = lastMessage[2];
+//       return last.concat([
+//         ["assistant", currentMessage + cur.delta.content, toolCalls],
+//       ]);
+//     } else if (
+//       isAssistantDelta(cur.delta) &&
+//       typeof cur.delta.content === "string"
+//     ) {
+//       return acc.concat([["assistant", cur.delta.content]]);
+//     } else if (cur.delta.role === "assistant") {
+//       // empty message from JB
+//       return acc;
+//     }
 
-    if (cur.delta.role === null || cur.finish_reason !== null) {
-      return acc;
-    }
+//     if (cur.delta.role === null || cur.finish_reason !== null) {
+//       return acc;
+//     }
 
-    // console.log("Fall though");
-    // console.log({ cur, lastMessage });
+//     // console.log("Fall though");
+//     // console.log({ cur, lastMessage });
 
-    return acc;
-  }, messages);
-}
+//     return acc;
+//   }, messages);
+// }
 
 export function reducer(postMessage: typeof window.postMessage) {
   return function (state: ChatState, action: BaseAction): ChatState {
@@ -212,20 +212,21 @@ export function reducer(postMessage: typeof window.postMessage) {
       action.payload?.id && action.payload.id === state.chat.id,
     );
 
-    function maybeTakeNotes() {
-      if (!state.take_notes || state.chat.messages.length === 0) return;
-      const messagesWithNote: ChatMessages = [
-        ...state.chat.messages,
-        ["user", TAKE_NOTE_MESSAGE],
-      ];
+    // TODO: maybe take notes ?
+    // function maybeTakeNotes() {
+    //   if (!state.take_notes || state.chat.messages.length === 0) return;
+    //   const messagesWithNote: ChatMessages = [
+    //     ...state.chat.messages,
+    //     ["user", TAKE_NOTE_MESSAGE],
+    //   ];
 
-      const notes: TakeNotesFromChat = {
-        type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
-        payload: { ...state.chat, messages: messagesWithNote },
-      };
+    //   const notes: TakeNotesFromChat = {
+    //     type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES,
+    //     payload: { ...state.chat, messages: messagesWithNote },
+    //   };
 
-      postMessage(notes);
-    }
+    //   postMessage(notes);
+    // }
 
     // console.log(action.type, { isThisChat, action });
 
@@ -237,28 +238,29 @@ export function reducer(postMessage: typeof window.postMessage) {
       };
     }
 
-    if (isThisChat && isResponseToChat(action)) {
-      const hasUserMessage = isChatUserMessageResponse(action.payload);
+    // if (isThisChat && isResponseToChat(action)) {
+    //   const hasUserMessage = isChatUserMessageResponse(action.payload);
 
-      const current = hasUserMessage
-        ? state.chat.messages.slice(0, state.previous_message_length)
-        : state.chat.messages;
-      const messages = formatChatResponse(current, action.payload);
+    //   const current = hasUserMessage
+    //     ? state.chat.messages.slice(0, state.previous_message_length)
+    //     : state.chat.messages;
+    //   const messages = formatChatResponse(current, action.payload);
 
-      return {
-        ...state,
-        // files_in_preview: [],
-        waiting_for_response: false,
-        streaming: true,
-        previous_message_length: messages.length,
-        chat: {
-          ...state.chat,
-          messages,
-          // applied_diffs: {},
-        },
-      };
-    }
+    //   return {
+    //     ...state,
+    //     // files_in_preview: [],
+    //     waiting_for_response: false,
+    //     streaming: true,
+    //     previous_message_length: messages.length,
+    //     chat: {
+    //       ...state.chat,
+    //       messages,
+    //       // applied_diffs: {},
+    //     },
+    //   };
+    // }
 
+    // TODO: here for cache
     if (!isThisChat && isResponseToChat(action)) {
       if (!(action.payload.id in state.chat_cache)) {
         return state;
@@ -269,10 +271,10 @@ export function reducer(postMessage: typeof window.postMessage) {
 
       const chat_cache = { ...state.chat_cache };
       const chat = chat_cache[action.payload.id];
-      const messages = formatChatResponse(chat.messages, action.payload);
+      // const messages = formatChatResponse(chat.messages, action.payload);
       chat_cache[action.payload.id] = {
         ...chat,
-        messages,
+        // messages,
       };
       return {
         ...state,
@@ -292,74 +294,75 @@ export function reducer(postMessage: typeof window.postMessage) {
         previous_message_length: action.payload.messages.length - 1,
       };
     }
+    // TODO: restore
+    // if (isThisChat && isRestoreChat(action)) {
+    //   // if (!state.streaming) {
+    //   //   maybeTakeNotes();
+    //   // }
 
-    if (isThisChat && isRestoreChat(action)) {
-      if (!state.streaming) {
-        maybeTakeNotes();
-      }
+    //   const new_chat_id = action.payload.chat.id;
+    //   const chat_cache = { ...state.chat_cache };
 
-      const new_chat_id = action.payload.chat.id;
-      const chat_cache = { ...state.chat_cache };
+    //   let messages: ChatMessages | undefined = undefined;
 
-      let messages: ChatMessages | undefined = undefined;
+    //   if (new_chat_id in chat_cache) {
+    //     messages = chat_cache[new_chat_id].messages;
+    //   }
 
-      if (new_chat_id in chat_cache) {
-        messages = chat_cache[new_chat_id].messages;
-      }
+    //   if (messages === undefined) {
+    //     messages = action.payload.chat.messages
+    //       .filter((message) => message)
+    //       .map((message) => {
+    //         if (
+    //           message[0] === "context_file" &&
+    //           typeof message[1] === "string"
+    //         ) {
+    //           let file: ChatContextFile[] = [];
+    //           try {
+    //             file = JSON.parse(message[1]) as ChatContextFile[];
+    //           } catch {
+    //             file = [];
+    //           }
+    //           return [message[0], file];
+    //         }
 
-      if (messages === undefined) {
-        messages = action.payload.chat.messages
-          .filter((message) => message)
-          .map((message) => {
-            if (
-              message[0] === "context_file" &&
-              typeof message[1] === "string"
-            ) {
-              let file: ChatContextFile[] = [];
-              try {
-                file = JSON.parse(message[1]) as ChatContextFile[];
-              } catch {
-                file = [];
-              }
-              return [message[0], file];
-            }
+    //         return message;
+    //       });
+    //   }
 
-            return message;
-          });
-      }
+    //   if (state.streaming) {
+    //     chat_cache[state.chat.id] = state.chat;
+    //   }
 
-      if (state.streaming) {
-        chat_cache[state.chat.id] = state.chat;
-      }
+    //   const lastAssistantMessage = messages.reduce((count, message, index) => {
+    //     if (message[0] === "assistant") return index + 1;
+    //     return count;
+    //   }, 0);
 
-      const lastAssistantMessage = messages.reduce((count, message, index) => {
-        if (message[0] === "assistant") return index + 1;
-        return count;
-      }, 0);
+    //   return {
+    //     ...state,
+    //     // caps: {
+    //     //   ...state.caps,
+    //     //   error: null,
+    //     // },
+    //     waiting_for_response: false,
+    //     prevent_send: true,
+    //     streaming: false,
+    //     error: null,
+    //     previous_message_length: lastAssistantMessage,
+    //     chat: {
+    //       ...state.chat,
+    //       ...action.payload.chat,
+    //       messages,
+    //       // applied_diffs: {},
+    //     },
+    //     chat_cache,
+    //     // selected_snippet: action.payload.snippet ?? state.selected_snippet,
+    //     take_notes: false,
+    //   };
+    // }
 
-      return {
-        ...state,
-        // caps: {
-        //   ...state.caps,
-        //   error: null,
-        // },
-        waiting_for_response: false,
-        prevent_send: true,
-        streaming: false,
-        error: null,
-        previous_message_length: lastAssistantMessage,
-        chat: {
-          ...state.chat,
-          ...action.payload.chat,
-          messages,
-          // applied_diffs: {},
-        },
-        chat_cache,
-        // selected_snippet: action.payload.snippet ?? state.selected_snippet,
-        take_notes: false,
-      };
-    }
-
+    // TODO: add chat to cache
     if (isThisChat && isCreateNewChat(action)) {
       const nextState = createInitialState();
       const chat_cache = { ...state.chat_cache };
@@ -367,7 +370,7 @@ export function reducer(postMessage: typeof window.postMessage) {
       if (state.streaming) {
         chat_cache[state.chat.id] = state.chat;
       } else {
-        maybeTakeNotes();
+        // maybeTakeNotes();
       }
 
       return {
@@ -969,7 +972,7 @@ export const useEventBusForChat = () => {
     (
       messages: ChatMessages,
       // attach_file = state.active_file.attach,
-      prompts: SystemPrompts = {},
+      _prompts: SystemPrompts = {},
       tools: ToolCommand[] | null = null,
     ) => {
       clearError();
@@ -980,20 +983,20 @@ export const useEventBusForChat = () => {
       });
 
       // TODO: get the system prompt for this
-
-      const messagesWithSystemPrompt: ChatMessages =
-        state.selected_system_prompt &&
-        state.selected_system_prompt !== "default" &&
-        state.selected_system_prompt in prompts
-          ? [
-              ["system", prompts[state.selected_system_prompt].text],
-              ...messages,
-            ]
-          : messages;
+      // TODO: add system prompt to the other send mesasges
+      // const messagesWithSystemPrompt: ChatMessages =
+      //   state.selected_system_prompt &&
+      //   state.selected_system_prompt !== "default" &&
+      //   state.selected_system_prompt in prompts
+      //     ? [
+      //         ["system", prompts[state.selected_system_prompt].text],
+      //         ...messages,
+      //       ]
+      //     : messages;
 
       const thread: ChatThread = {
         id: state.chat.id,
-        messages: messagesWithSystemPrompt,
+        messages: messages,
         title: state.chat.title,
         model: state.chat.model,
         // attach_file,
@@ -1028,26 +1031,26 @@ export const useEventBusForChat = () => {
       state.chat.id,
       state.chat.title,
       state.chat.model,
-      state.selected_system_prompt,
+      // state.selected_system_prompt,
       state.use_tools,
       clearError,
       postMessage,
     ],
   );
 
-  const askQuestion = useCallback(
-    (
-      question: string,
-      prompts: SystemPrompts = {},
-      tools: ToolCommand[] | null = null,
-    ) => {
-      const messages = state.chat.messages.concat([["user", question]]);
+  // const askQuestion = useCallback(
+  //   (
+  //     question: string,
+  //     prompts: SystemPrompts = {},
+  //     tools: ToolCommand[] | null = null,
+  //   ) => {
+  //     const messages = state.chat.messages.concat([["user", question]]);
 
-      // We can remove attach file
-      sendMessages(messages, prompts, tools);
-    },
-    [sendMessages, state.chat.messages],
-  );
+  //     // We can remove attach file
+  //     sendMessages(messages, prompts, tools);
+  //   },
+  //   [sendMessages, state.chat.messages],
+  // );
 
   // const requestCaps = useCallback(() => {
   //   postMessage({
@@ -1316,29 +1319,30 @@ export const useEventBusForChat = () => {
     sendReadyMessage();
   }, [sendReadyMessage]);
 
-  useEffect(() => {
-    if (
-      !state.streaming &&
-      state.chat.messages.length > 0 &&
-      !state.error &&
-      !state.prevent_send
-    ) {
-      const lastMessage = state.chat.messages[state.chat.messages.length - 1];
-      if (
-        isAssistantMessage(lastMessage) &&
-        lastMessage[2] &&
-        lastMessage[2].length > 0
-      ) {
-        sendMessages(state.chat.messages);
-      }
-    }
-  }, [
-    sendMessages,
-    state.chat.messages,
-    state.streaming,
-    state.error,
-    state.prevent_send,
-  ]);
+  // TODO: This is for resolving tool calls
+  // useEffect(() => {
+  //   if (
+  //     !state.streaming &&
+  //     state.chat.messages.length > 0 &&
+  //     !state.error &&
+  //     !state.prevent_send
+  //   ) {
+  //     const lastMessage = state.chat.messages[state.chat.messages.length - 1];
+  //     if (
+  //       isAssistantMessage(lastMessage) &&
+  //       lastMessage[2] &&
+  //       lastMessage[2].length > 0
+  //     ) {
+  //       sendMessages(state.chat.messages);
+  //     }
+  //   }
+  // }, [
+  //   sendMessages,
+  //   state.chat.messages,
+  //   state.streaming,
+  //   state.error,
+  //   state.prevent_send,
+  // ]);
 
   // const requestTools = useCallback(() => {
   //   // TODO: don't call if no caps
@@ -1486,7 +1490,7 @@ export const useEventBusForChat = () => {
 
   return {
     state,
-    askQuestion,
+    // askQuestion,
     clearError,
     setChatModel,
     stopStreaming,
