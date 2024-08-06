@@ -27,7 +27,7 @@ class RelevantFiles(Step):
         ]
         self._trajectory.extend(print_messages(messages))
 
-        new_messages = await self._query(messages)
+        new_messages = await self._query(messages, only_deterministic_messages=True)
         self._trajectory.extend(print_messages(new_messages))
 
         res_message = [m for m in new_messages if m.role == "tool"][-1]

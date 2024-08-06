@@ -54,7 +54,7 @@ class LSPServerRunner:
         return f"http://127.0.0.1:{self._port}/v1"
 
     async def _start(self):
-        print("launching REFACT LSP")
+        print("REFACT LSP start", " ".join(self._command))
         self._lsp_server = await asyncio.create_subprocess_exec(
             *self._command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         ast_ok, vecdb_ok = False, False
@@ -71,7 +71,7 @@ class LSPServerRunner:
             if not self._is_lsp_server_running:
                 raise RuntimeError(f"LSP server unexpectedly exited, bb")
             await asyncio.sleep(0.01)
-        print("REFACT LSP started")
+        print("REFACT LSP /start")
         assert self._is_lsp_server_running
 
     async def _stop(self):

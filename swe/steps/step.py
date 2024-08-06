@@ -28,7 +28,7 @@ class Step:
     def _tools(self) -> Set[str]:
         raise NotImplementedError()
 
-    async def _query(self, messages: List[Message], stream: bool = False) -> List[Message]:
+    async def _query(self, messages: List[Message], stream: bool = False, only_deterministic_messages: bool = False) -> List[Message]:
         tools = await tools_fetch_and_filter(
             base_url=self._base_url,
             tools_turn_on=self._tools)
@@ -36,7 +36,7 @@ class Step:
             self._base_url, messages, 1, self._model_name,
             tools=tools, verbose=False, temperature=self._temperature,
             stream=stream, max_tokens=2048,
-            only_deterministic_messages=False,
+            only_deterministic_messages=only_deterministic_messages,
         )
         new_messages = assistant_choices[0][len(messages):]
         self._usages.extend([m.usage for m in new_messages])
