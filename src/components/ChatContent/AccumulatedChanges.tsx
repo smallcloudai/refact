@@ -126,7 +126,7 @@ const DiffForm: React.FC<{
           return diff.applied;
         });
 
-        const chunks: DiffChunk[] = diffsForFile.map((diff) => {
+        const chunks: DiffChunk[] = diffsForToolCall.map((diff) => {
           const {
             state: _state,
             tool_call_id: _tool_call_id,
