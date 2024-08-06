@@ -28,7 +28,7 @@ impl Tool for AttRelevantFiles {
             "relevant_files: unable to find user problem description".to_string()
         )?;
 
-        let res = find_relevant_files_det(ccx.global_context.clone(), problem.as_str()).await?;
+        let res = find_relevant_files(ccx.global_context.clone(), problem.as_str()).await?;
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -52,10 +52,10 @@ async fn strategy_tree(
     user_query: &str,
 ) -> Result<Vec<String>, String> {
     // results = problem + tool_tree + pick 5 files * n_choices_times -> reduce(counters: 5)
-    
+
     let mut messages = vec![];
     messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
-    
+
     let tree_tool_call = ChatToolCall {
         id: "tree_123".to_string(),
         function: ChatToolFunction {
@@ -72,7 +72,7 @@ async fn strategy_tree(
        ..Default::default()
     };
     messages.push(assistant_tree_call);
-    
+
     let mut messages = subchat_single(
         gcx.clone(),
         MODEL_NAME,
@@ -84,9 +84,9 @@ async fn strategy_tree(
         None,
         Some("strategy-tree.log".to_string()),
     ).await?.get(0).ok_or("relevant_files: tree deterministic message was empty. Try again later".to_string())?.clone();
-    
+
     messages.push(ChatMessage::new("user".to_string(), STRATEGY_TREE_PROMPT.to_string()));
-    
+
     let n_choices = subchat_single(
         gcx.clone(),
         MODEL_NAME,
@@ -110,8 +110,8 @@ async fn strategy_tree(
                 .map(|mat| mat.as_str().to_string())
                 .collect::<Vec<_>>()
         })
-        .collect::<Vec<Vec<_>>>();    
-    
+        .collect::<Vec<Vec<_>>>();
+
     let mut counter: HashMap<String, usize> = HashMap::new();
     for file_name in filenames.into_iter().flatten() {
         *counter.entry(file_name).or_insert(0) += 1;
@@ -122,7 +122,7 @@ async fn strategy_tree(
     let results = top_5.into_iter().map(|x| x.0).collect::<Vec<_>>();
 
     Ok(results)
-    
+
 }
 
 async fn strategy_definitions_references(
@@ -133,7 +133,7 @@ async fn strategy_definitions_references(
     let mut messages = vec![];
     messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
     messages.push(ChatMessage::new("user".to_string(), STRATEGY_DEF_REF_PROMPT.to_string()));
-    
+
     let n_choices = subchat_single(
         gcx.clone(),
         MODEL_NAME,
@@ -145,7 +145,7 @@ async fn strategy_definitions_references(
         Some(5usize),
         Some("strategy-definitions-references.log".to_string()),
     ).await?;
-    
+
     let mut filenames = vec![];
     for ch_messages in n_choices.into_iter() {
         if ch_messages.last().unwrap().tool_calls.is_none() {
@@ -162,7 +162,7 @@ async fn strategy_definitions_references(
             None,
             None
         ).await?.get(0).ok_or("relevant_files: no context files found (strategy_definitions_references). Try again later".to_string())?.clone();
-        
+
         let only_context_files = ch_messages.into_iter().filter(|x| x.role == "context_file").collect::<Vec<_>>();
         let mut context_files = vec![];
         for m in only_context_files {
@@ -192,13 +192,13 @@ async fn find_relevant_files_det(
     user_query: &str
 ) -> Result<Value, String> {
     // all_results = [*strategy_1, *strategy_2, .. *strategy_n] -> call supercat(files or files + symbols) -> let model decide
-    
+
     let mut results = vec![];
     let tree_files = strategy_tree(gcx.clone(), user_query).await?;
     let def_ref_files = strategy_definitions_references(gcx.clone(), user_query).await?;
     results.extend(tree_files);
     results.extend(def_ref_files);
-    
+
     Ok(json!(results.into_iter().collect::<HashSet<_>>()))
 }
 
@@ -225,7 +225,7 @@ async fn find_relevant_files(
 
     let mut tools_subset = vec!["definition", "references", "tree", "knowledge", "file"].iter().map(|x|x.to_string()).collect::<Vec<_>>();
     let mut strategies = vec!["CATFILES", "GOTODEF", "GOTOREF", "CUSTOM"];
-    
+
     if vecdb_on {
         tools_subset.push("search".to_string());
         strategies.push("VECDBSEARCH");
@@ -243,7 +243,7 @@ async fn find_relevant_files(
             RF_WRAP_UP_TOKENS_CNT,
             RF_PLEASE_WRITE_MEM,
             None,
-            Some(format!("{log_prefix}-rf-step1-{strategy}.log")),
+            Some(format!("{log_prefix}-rf-step1-{strategy}")),
         );
         futures.push(f);
     }
@@ -270,7 +270,7 @@ async fn find_relevant_files(
         false,
         None,
         None,
-        Some(format!("{log_prefix}-rf-step2-reduce.log")),
+        Some(format!("{log_prefix}-rf-step2-reduce")),
     ).await?[0].clone();
 
     let answer = parse_reduce_output(&result.last().unwrap().content)?;

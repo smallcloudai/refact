@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::collections::HashSet;
 use std::fs::{self};
+use textwrap::wrap;
 use reqwest::Client;
 use tokio::sync::RwLock as ARwLock;
 use serde_json::Value;
@@ -135,7 +136,7 @@ async fn chat_interaction_non_stream(
         }).unwrap_or_else(Vec::new);
 
     let mut results = vec![];
-    
+
     let choices = j.get("choices").and_then(|value| value.as_array()).ok_or("error parsing model's output: choices doesn't exist".to_string())?;
     for choice in choices {
         let message = choice.get("message").ok_or("error parsing model's output: choice.message doesn't exist".to_string())?;
@@ -176,7 +177,7 @@ async fn chat_interaction_non_stream(
     if results.is_empty() && !det_messages.is_empty() {
         results.push(det_messages);
     }
-    
+
     Ok(results)
 }
 
@@ -221,6 +222,34 @@ async fn write_dumps(
     let _ = fs::write(&pathbuf, content);
 }
 
+fn format_messages_as_markdown(messages: &[ChatMessage]) -> String {
+    const MAX_WIDTH: usize = 100;
+    let mut formatted = String::new();
+
+    for message in messages {
+        formatted.push_str(&format!("\n\n --------- {} ---------\n\n", message.role.to_uppercase()));
+        if message.content.len() > 10*MAX_WIDTH && message.content.matches('\n').count() < 2 {
+            formatted.push_str(&message.content.chars().take(100).collect::<String>());
+            formatted.push_str(&"...\n".to_string());
+        } else {
+            let content = message.content.clone();
+            let wrapped_content = wrap(&content, MAX_WIDTH);
+            for line in wrapped_content {
+                formatted.push_str(&line);
+                formatted.push('\n');
+            }
+        }
+
+        if let Some(tool_calls) = &message.tool_calls {
+            for tool_call in tool_calls {
+                formatted.push_str(&format!("\n $ {}({})", tool_call.function.name, tool_call.function.arguments));
+            }
+        }
+    }
+
+    formatted
+}
+
 pub async fn subchat_single(
     gcx: Arc<ARwLock<GlobalContext>>,
     model_name: &str,
@@ -245,7 +274,7 @@ pub async fn subchat_single(
     info!("tools_subset {:?}", tools_subset);
     info!("tools_turned_on_by_cmdline_set {:?}", tools_turned_on_by_cmdline_set);
     info!("tools_on_intersection {:?}", tools_on_intersection);
-    
+
     let temperature = Some(temperature.unwrap_or(TEMPERATURE));
 
     let (mut chat_post, spad) = create_chat_post_and_scratchpad(
@@ -259,9 +288,9 @@ pub async fn subchat_single(
         tool_choice.clone(),
         only_deterministic_messages,
     ).await?;
-    
+
     let chat_response_msgs = chat_interaction(gcx.clone(), spad, &mut chat_post).await?;
-    
+
     let mut old_messages = messages.clone();
     if ALLOW_AT {
         while let Some(message) = old_messages.last() {
@@ -271,17 +300,31 @@ pub async fn subchat_single(
             old_messages.pop();
         }
     }
-    
+
     let results = chat_response_msgs.into_iter().map(|new_msgs| {
         let mut extended_msgs = old_messages.clone();
         extended_msgs.extend(new_msgs);
         extended_msgs
     }).collect::<Vec<Vec<ChatMessage>>>();
-    
+
     if let Some(logfn) = logfn_mb {
-        write_dumps(gcx.clone(), logfn, serde_json::to_string_pretty(&results).unwrap().as_str()).await;
+        if results.len() > 1 {
+            for (i, choice) in results.iter().enumerate() {
+                let choice_logfn_json = format!("{}_choice{}.json", logfn, i);
+                write_dumps(gcx.clone(), choice_logfn_json, serde_json::to_string_pretty(&choice).unwrap().as_str()).await;
+                let choice_logfn_md = format!("{}_choice{}.log", logfn, i);
+                let formatted_md = format_messages_as_markdown(&choice);
+                write_dumps(gcx.clone(), choice_logfn_md, &formatted_md).await;
+            }
+        } else if results.len() == 1 {
+            let choice0_logfn_json = format!("{}.json", logfn);
+            write_dumps(gcx.clone(), choice0_logfn_json, serde_json::to_string_pretty(&results[0]).unwrap().as_str()).await;
+            let choice0_logfn_md = format!("{}.log", logfn);
+            let formatted_md = format_messages_as_markdown(&results[0]);
+            write_dumps(gcx.clone(), choice0_logfn_md, &formatted_md).await;
+        }
     }
-    
+
     Ok(results)
 }
 

@@ -66,7 +66,7 @@ pub async fn handle_v1_subchat_single(
 ) -> axum::response::Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<SubChatSinglePost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-    let logfn = chrono::Local::now().format("subchat-single-handler-%Y%m%d-%H%M%S.log").to_string();
+    let logfn = chrono::Local::now().format("subchat-single-handler-%Y%m%d-%H%M%S").to_string();
 
     let new_messages = subchat_single(
         global_context.clone(),
