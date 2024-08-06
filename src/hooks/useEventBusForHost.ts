@@ -460,9 +460,14 @@ function handleSend(
       }
     })
     .finally(() => {
-      window.postMessage(
-        { type: EVENT_NAMES_TO_CHAT.DONE_STREAMING, payload: { id: chat.id } },
-        "*",
-      );
+      if (!controller.signal.aborted) {
+        window.postMessage(
+          {
+            type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
+            payload: { id: chat.id },
+          },
+          "*",
+        );
+      }
     });
 }
