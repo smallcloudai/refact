@@ -1101,7 +1101,7 @@ export const useEventBusForChat = () => {
       type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING,
       payload: { id: state.chat.id },
     });
-    postMessage({
+    dispatch({
       type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
       payload: { id: state.chat.id },
     });
