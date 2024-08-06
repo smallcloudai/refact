@@ -87,7 +87,7 @@ pub async fn run_tools(
             let mut have_answer = false;
             for msg in tool_msg_and_maybe_more {
                 if let ContextEnum::ChatMessage(ref raw_msg) = msg {
-                    if (raw_msg.role == "tool" || raw_msg.role == "diff") && raw_msg.tool_call_id == t_call.id {
+                    if (raw_msg.role == "tool" || raw_msg.role == "diff" || raw_msg.role == "supercat") && raw_msg.tool_call_id == t_call.id {
                         generated_tool.push(raw_msg.clone());
                         have_answer = true;
                     } else {
@@ -145,7 +145,7 @@ pub async fn run_tools(
         info!("run_tools: tokens_limit_files={} after postprocessing", tokens_limit_files);
 
         let gcx = ccx.lock().await.global_context.clone();
-        let context_file: Vec<ContextFile> = postprocess_at_results2(
+        let (context_file, _) = postprocess_at_results2(
             gcx.clone(),
             &for_postprocessing,
             tokenizer.clone(),
@@ -155,7 +155,7 @@ pub async fn run_tools(
         ).await;
 
         if !context_file.is_empty() {
-            let json_vec = context_file.iter().map(|p| json!(p)).collect::<Vec<Value>>();
+            let json_vec = context_file.iter().map(|p| json!(p)).collect::<Vec<_>>();
             let message = ChatMessage::new(
                 "context_file".to_string(),
                 serde_json::to_string(&json_vec).unwrap_or("".to_string()),

@@ -119,7 +119,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" || msg.role == "tool" {
                 filtered_msgs.push(msg.into_real());
 
-            } else if msg.role == "diff" {
+            } else if msg.role == "diff" || msg.role == "supercat" {
                 let tool_msg = ChatMessage {
                     role: "tool".to_string(),
                     content: msg.content.clone(),

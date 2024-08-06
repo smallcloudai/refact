@@ -26,6 +26,9 @@ pub fn limit_messages_history(
             tokens_used += tcnt;
             have_system = true;
         }
+        if msg.role == "supercat" {
+            message_take[i] = true;
+        }
         if i >= last_user_msg_starts {
             message_take[i] = true;
             tokens_used += tcnt;

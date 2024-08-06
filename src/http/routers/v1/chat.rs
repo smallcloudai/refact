@@ -8,10 +8,11 @@ use hyper::{Body, Response, StatusCode};
 use tracing::info;
 
 use crate::call_validation::ChatPost;
-use crate::caps;
+use crate::{cached_tokenizers, caps};
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::cached_tokenizers::cached_tokenizer;
 use crate::global_context::SharedGlobalContext;
 use crate::scratchpads;
 
@@ -83,7 +84,7 @@ async fn chat(
         let cx_locked = global_context.write().await;
         (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
     };
-    let mut scratchpad = scratchpads::create_chat_scratchpad(
+    let (mut scratchpad, tokenizer) = scratchpads::create_chat_scratchpad(
         global_context.clone(),
         caps,
         model_name.clone(),
@@ -114,6 +115,7 @@ async fn chat(
         CHAT_TOP_N,
         false,
         &chat_post.messages,
+        Some(tokenizer.clone()),
     ).await));
 
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {

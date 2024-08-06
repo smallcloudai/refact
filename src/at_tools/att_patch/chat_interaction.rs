@@ -145,7 +145,7 @@ pub async fn execute_chat_model(
         ccx.clone(), args, tokenizer, max_tokens
     ).await?;
 
-    let mut scratchpad = scratchpads::create_chat_scratchpad(
+    let (mut scratchpad, _) = scratchpads::create_chat_scratchpad(
         gcx.clone(),
         caps.clone(),
         model_name.clone(),

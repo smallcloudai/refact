@@ -16,7 +16,7 @@ pub struct AttWeb;
 impl Tool for AttWeb {
     async fn tool_execute(
         &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<Vec<ContextEnum>, String> {

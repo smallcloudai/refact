@@ -9,7 +9,6 @@ use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 use crate::ast::structs::SymbolsSearchResultStruct;
-use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
 
 use crate::call_validation::{ChatMessage, ContextFile};
@@ -243,7 +242,7 @@ pub async fn context_msgs_from_paths(
             file_content: text.clone(),
             line1: 0,
             line2: text.lines().count(),
-            symbol: Uuid::default(),
+            symbol: vec![Uuid::default()],
             gradient_type: -1,
             usefulness: 0.,
             is_body_important: false
@@ -404,20 +403,28 @@ pub async fn postprocess_rag_stage_3_6(
             colorize_minus_one(linevec, omsg.line1-1, omsg.line2);
             continue;
         }
-        let mut maybe_symbol: Option<&SymbolInformation> = None;
-        if !omsg.symbol.is_nil() {
-            for x in fref.markup.symbols_sorted_by_path_len.iter() {
-                if x.guid == omsg.symbol {
-                    maybe_symbol = Some(x);
-                    break;
+        
+        let mut symbols_color = vec![];
+        if !omsg.symbol.is_empty() && !(omsg.symbol.len() == 1 && omsg.symbol.get(0).unwrap_or(&Uuid::default()).is_nil()) {
+            for sym in omsg.symbol.iter() {
+                if sym.is_nil() {
+                    continue;
+                }
+                let init_len = symbols_color.len();
+                for x in fref.markup.symbols_sorted_by_path_len.iter() {
+                    if x.guid == *sym {
+                        symbols_color.push(x);
+                        break;
+                    }
+                }
+                if init_len == symbols_color.len() {
+                    warn!("- cannot find symbol {} in file {}:{}-{}", sym, omsg.file_name, omsg.line1, omsg.line2);
                 }
             }
-            if maybe_symbol.is_none() {
-                warn!("- cannot find symbol {} in file {}:{}-{}", omsg.symbol, omsg.file_name, omsg.line1, omsg.line2);
-            }
         }
-        if !omsg.is_body_important && maybe_symbol.is_some() {
-            if let Some(s) = maybe_symbol {
+        
+        if !omsg.is_body_important && !symbols_color.is_empty() {
+            for s in symbols_color {
                 if DEBUG >= 1 {
                     info!("+ search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, omsg.usefulness);
                 }
@@ -502,7 +509,7 @@ pub async fn postprocess_at_results2(
     tokens_limit: usize,
     single_file_mode: bool,
     max_files_n: usize,
-) -> Vec<ContextFile> {
+) -> (Vec<ContextFile>, usize) {
     let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), &messages).await;
 
     let mut settings = PostprocessSettings::new();
@@ -533,6 +540,12 @@ pub async fn postprocess_plain_text_messages(
 
     let tokenizer_guard = tokenizer.read().unwrap();
     for (idx, msg) in messages_sorted.iter().cloned().enumerate() {
+        // do not postprocess supercat
+        if msg.role == "supercat" {
+            results.push(msg.clone());
+            continue;
+        }
+        
         let mut out = vec![];
         let mut tok_used: usize = 0;
         for line in msg.content.lines() {
@@ -570,7 +583,7 @@ pub async fn postprocess_rag_stage_7_9(
     tokens_limit: usize,
     single_file_mode: bool,
     settings: &PostprocessSettings,
-) -> Vec<ContextFile> {
+) -> (Vec<ContextFile>, usize) {
     // 7. Sort
     lines_by_useful.sort_by(|a, b| {
         let av = a.useful + a.fref.cpath_symmetry_breaker;
@@ -673,13 +686,13 @@ pub async fn postprocess_rag_stage_7_9(
             file_content: out.clone(),
             line1: first_line,
             line2: last_line,
-            symbol: Uuid::default(),
+            symbol: vec![Uuid::default()],
             gradient_type: -1,
             usefulness: 0.0,
             is_body_important: false
         });
     }
-    merged
+    (merged, tokens_count)
 }
 
 pub fn count_tokens(

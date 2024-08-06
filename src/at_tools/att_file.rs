@@ -88,7 +88,7 @@ impl Tool for AttFile {
                     file_content: file_content.clone(),
                     line1: 0,
                     line2: file_content.lines().count(),
-                    symbol: Uuid::default(),
+                    symbol: vec![Uuid::default()],
                     gradient_type: 0,
                     usefulness: 100.0,
                     is_body_important: false

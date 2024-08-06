@@ -224,7 +224,7 @@ pub async fn context_file_from_file_path(
         file_content,
         line1,
         line2,
-        symbol: Uuid::default(),
+        symbol: vec![Uuid::default()],
         gradient_type,
         usefulness: 100.0,
         is_body_important: false

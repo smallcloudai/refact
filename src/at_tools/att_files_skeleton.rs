@@ -30,7 +30,7 @@ pub async fn context_msg_from_file_name(
         file_content: file_content.clone(),
         line1: 0,
         line2: file_content.lines().count(),
-        symbol: Uuid::default(),
+        symbol: vec![Uuid::default()],
         gradient_type: 0,
         usefulness: 1.0,
         is_body_important: false
@@ -91,7 +91,7 @@ impl Tool for AttFilesSkeleton {
             }
         }
 
-        let context_files_postprocessed: Vec<ContextFile> = postprocess_at_results2(
+        let (context_files_postprocessed, _)= postprocess_at_results2(
             gcx.clone(),
             &context_files,
             tokenizer.clone(),

@@ -107,7 +107,7 @@ pub async fn run_at_commands(
             info!("tokens_limit_files {}", tokens_limit_files);
 
             let gcx = ccx.lock().await.global_context.clone();
-            let post_processed = postprocess_at_results2(
+            let (post_processed, _) = postprocess_at_results2(
                 gcx.clone(),
                 &context_file_pp,
                 tokenizer.clone(),

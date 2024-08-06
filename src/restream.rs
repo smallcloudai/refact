@@ -93,7 +93,7 @@ pub async fn scratchpad_interaction_not_stream_json(
         scratchpad_result = scratchpad.response_n_choices(choices, stopped);
 
     } else if let Some(oai_choices) = model_says.get("choices") {
-        info!("oai_choices: {:?}", oai_choices);
+        // info!("oai_choices: {:?}", oai_choices);
         let choice0 = oai_choices.as_array().unwrap().get(0).unwrap();
         if let Some(_msg) = choice0.get("message") {
             if let Ok(det_msgs) = scratchpad.response_spontaneous() {

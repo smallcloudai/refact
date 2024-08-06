@@ -59,17 +59,15 @@ pub async fn create_chat_scratchpad(
     scratchpad_patch: &serde_json::Value,
     allow_at: bool,
     supports_tools: bool,
-) -> Result<Box<dyn ScratchpadAbstract>, String> {
+) -> Result<(Box<dyn ScratchpadAbstract>, Arc<StdRwLock<Tokenizer>>), String> {
     let mut result: Box<dyn ScratchpadAbstract>;
+    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
     if scratchpad_name == "CHAT-GENERIC" {
-        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
-        result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc, post, global_context.clone(), allow_at));
+        result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc.clone(), post, global_context.clone(), allow_at));
     } else if scratchpad_name == "CHAT-LLAMA2" {
-        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
-        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc, post, global_context.clone(), allow_at));
+        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc.clone(), post, global_context.clone(), allow_at));
     } else if scratchpad_name == "PASSTHROUGH" {
-        let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
-        result = Box::new(chat_passthrough::ChatPassthrough::new(tokenizer_arc, post, global_context.clone(), allow_at, supports_tools));
+        result = Box::new(chat_passthrough::ChatPassthrough::new(tokenizer_arc.clone(), post, global_context.clone(), allow_at, supports_tools));
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }
@@ -88,5 +86,5 @@ pub async fn create_chat_scratchpad(
     }
     result.apply_model_adaptation_patch(scratchpad_patch, exploration_tools).await?;
     verify_has_send(&result);
-    Ok(result)
+    Ok((result, tokenizer_arc))
 }

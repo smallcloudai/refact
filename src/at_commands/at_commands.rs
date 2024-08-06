@@ -1,8 +1,9 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::sync::mpsc;
+use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
+use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
@@ -15,10 +16,7 @@ use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_ast_definition::AtAstDefinition;
 use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
-// use crate::at_commands::at_file_search::AtFileSearch;
-// use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
 use crate::at_commands::at_tree::AtTree;
-// use crate::at_commands::at_diff::{AtDiff, AtDiffRev};
 use crate::at_commands::at_web::AtWeb;
 use crate::at_commands::execute_at::AtCommandMember;
 
@@ -28,6 +26,7 @@ pub struct AtCommandsContext {
     pub n_ctx: usize,
     pub top_n: usize,
     pub messages: Vec<ChatMessage>,
+    pub tokenizer: Option<Arc<RwLock<Tokenizer>>>,
     #[allow(dead_code)]
     pub is_preview: bool,
 
@@ -45,6 +44,7 @@ impl AtCommandsContext {
         top_n: usize,
         is_preview: bool,
         messages: &Vec<ChatMessage>,
+        tokenizer: Option<Arc<RwLock<Tokenizer>>>,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel::<serde_json::Value>();
         AtCommandsContext {
@@ -53,6 +53,7 @@ impl AtCommandsContext {
             top_n,
             is_preview,
             messages: messages.clone(),
+            tokenizer,
             at_commands: at_commands_dict(global_context.clone()).await,
             at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
             subchat_tx: Arc::new(AMutex::new(tx)),
@@ -140,3 +141,9 @@ pub fn filter_only_context_file_from_context_tool(tools: &Vec<ContextEnum>) -> V
         }).collect::<Vec<ContextFile>>()
 }
 
+pub fn filter_only_chat_messages_from_context_tool(tools: &Vec<ContextEnum>) -> Vec<ChatMessage> {
+    tools.iter()
+        .filter_map(|x| {
+            if let ContextEnum::ChatMessage(data) = x { Some(data.clone()) } else { None }
+        }).collect::<Vec<ChatMessage>>()
+}

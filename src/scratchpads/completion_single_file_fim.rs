@@ -312,7 +312,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                     file_content: "".to_string(),
                     line1: (fim_line1 + 1) as usize,
                     line2: (fim_line2 + 1) as usize,
-                    symbol: Uuid::default(),
+                    symbol: vec![Uuid::default()],
                     gradient_type: -1,
                     usefulness: -1.0,
                     is_body_important: false
@@ -323,7 +323,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             info!(" -- post processing starts --");
             let post_t0 = Instant::now();
             let max_files_n = 10;
-            let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
+            let (postprocessed_messages, _) = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
                 self.global_context.clone(),
                 &ast_messages,
                 self.t.tokenizer.clone(),

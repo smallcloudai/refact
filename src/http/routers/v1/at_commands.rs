@@ -65,7 +65,8 @@ pub async fn handle_v1_command_completion(
         fake_n_ctx,
         top_n,
         true,
-        &vec![]
+        &vec![],
+        None,
     ).await));
 
     let at_commands = {
@@ -134,7 +135,8 @@ pub async fn handle_v1_command_preview(
         recommended_model_record.n_ctx,
         crate::http::routers::v1::chat::CHAT_TOP_N,
         true,
-        &vec![]
+        &vec![],
+        Some(tokenizer_arc.clone()),
     ).await));
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(
@@ -152,7 +154,7 @@ pub async fn handle_v1_command_preview(
         }
     }
 
-    let processed = postprocess_at_results2(
+    let (processed, _) = postprocess_at_results2(
         global_context.clone(),
         &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
         tokenizer_arc.clone(),

@@ -16,3 +16,4 @@ pub mod att_knowledge;
 mod att_files_skeleton;
 pub mod subchat;
 mod att_relevant_files;
+mod att_supercat;
