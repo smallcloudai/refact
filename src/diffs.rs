@@ -313,6 +313,7 @@ class Frog:
 
         let chunk1 = DiffChunk {
             file_name: "/tmp/file1.txt".to_string(),
+            file_name_renamed: None,
             file_action: "edit".to_string(),
             line1: 4,
             line2: 5,
@@ -344,6 +345,7 @@ class Frog:
     fn test_frogs() {
         let c1 = DiffChunk {
             file_name: FILE2_FN.to_string(),
+            file_name_renamed: None,
             file_action: "edit".to_string(),
             line1: 1,
             line2: 2,
@@ -353,6 +355,7 @@ class Frog:
 
         let c2 = DiffChunk {
             file_name: FILE2_FN.to_string(),
+            file_name_renamed: None,
             file_action: "edit".to_string(),
             line1: 3,
             line2: 4,
@@ -408,6 +411,7 @@ class AnotherFrog:
 
         let c1 = DiffChunk {
             file_name: FILE3_FN.to_string(),
+            file_name_renamed: None,
             file_action: "edit".to_string(),
             line1: 5,
             line2: 6,
@@ -417,6 +421,7 @@ class AnotherFrog:
 
         let c2 = DiffChunk {
             file_name: FILE3_FN.to_string(),
+            file_name_renamed: None,
             file_action: "edit".to_string(),
             line1: 4,
             line2: 4,
