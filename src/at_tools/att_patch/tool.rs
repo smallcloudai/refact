@@ -13,7 +13,7 @@ use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum};
 
-pub const DEFAULT_MODEL_NAME: &str = "claude-3-5-sonnet";
+pub const DEFAULT_MODEL_NAME: &str = "gpt-4o-mini";
 pub const MAX_NEW_TOKENS: usize = 8192;
 pub const TEMPERATURE: f32 = 0.2;
 pub type DefaultToolPatch = UnifiedDiffFormat;
@@ -39,7 +39,7 @@ impl Tool for ToolPatch {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<Vec<ContextEnum>, String> {
-        let args = match parse_arguments(ccx.clone(), args).await {
+        let args = match parse_arguments(args).await {
             Ok(res) => res,
             Err(err) => {
                 return Err(format!("Cannot parse input arguments: {err}. Try to call `patch` one more time with valid arguments"));

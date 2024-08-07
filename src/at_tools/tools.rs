@@ -124,7 +124,7 @@ tools:
       - "symbol"
 
   - name: "patch"
-    description: "A tool to fix, edit a bunch of existing source files. This tool cannot rename, create or delete files"
+    description: "A tool to fix, edit a bunch of existing source files. This tool can edit, rename, create or delete files"
     parameters:
       - name: "paths"
         type: "string"

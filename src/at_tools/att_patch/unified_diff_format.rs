@@ -121,7 +121,7 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
         }
 
         let op = line.chars().next().unwrap();
-        if op == '-' || op == '+' || line.starts_with("deleted file mode 100644")  {
+        if op == '-' || op == '+' || line.starts_with("<deleted_file_content>")  {
             keeper = true;
             continue;
         }
@@ -457,12 +457,20 @@ fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
                 .iter()
                 .filter(|x| x.line_type != LineType::Space)
                 .collect::<Vec<_>>();
-            let filename_renamed =
-                if block.file_name_before == block.file_name_after { None }
-                else { Some(block.file_name_after.to_string_lossy().to_string()) };
+            let (filename, filename_rename) = if block.action == "add" {
+                (block.file_name_after.to_string_lossy().to_string(), None)
+            } else if block.action == "remove" {
+                (block.file_name_before.to_string_lossy().to_string(), None)
+            } else if block.action == "rename" {
+                (block.file_name_before.to_string_lossy().to_string(),
+                 Some(block.file_name_after.to_string_lossy().to_string()))
+            } else {  // edit
+                assert_eq!(block.file_name_before, block.file_name_after);
+                (block.file_name_before.to_string_lossy().to_string(), None)
+            };
             DiffChunk {
-                file_name: block.file_name_before.to_string_lossy().to_string(),
-                file_name_renamed: filename_renamed,
+                file_name: filename,
+                file_name_rename: filename_rename,
                 file_action: block.action.clone(),
                 line1: useful_block_lines
                     .iter()
@@ -805,7 +813,7 @@ class AnotherFrog:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 5,
                 line2: 6,
@@ -849,7 +857,7 @@ DT = 0.01
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 5,
                 line2: 6,
@@ -895,7 +903,7 @@ class Frog:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 6,
                 line2: 6,
@@ -935,7 +943,7 @@ DT = 0.01"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 1,
                 line2: 1,
@@ -994,7 +1002,7 @@ class Frog:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 22,
                 line2: 23,
@@ -1053,7 +1061,7 @@ class Frog:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 22,
                 line2: 23,
@@ -1124,7 +1132,7 @@ class Frog:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 15,
                 line2: 18,
@@ -1134,7 +1142,7 @@ class Frog:
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 20,
                 line2: 21,
@@ -1185,7 +1193,7 @@ Another text"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 15,
                 line2: 18,
@@ -1195,7 +1203,7 @@ Another text"#;
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 20,
                 line2: 21,
@@ -1240,7 +1248,7 @@ Another text"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 15,
                 line2: 18,
@@ -1250,7 +1258,7 @@ Another text"#;
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 20,
                 line2: 21,
@@ -1323,7 +1331,7 @@ class Frog:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 28,
                 line2: 28,
@@ -1333,7 +1341,7 @@ class Frog:
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 1,
                 line2: 2,
@@ -1402,7 +1410,7 @@ class EuropeanCommonToad(frog.Frog):
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/set_as_avatar.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 25,
                 line2: 25,
@@ -1463,7 +1471,7 @@ if __name__ == __main__:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 16,
                 line2: 17,
@@ -1537,7 +1545,7 @@ if __name__ == __main__:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 13,
                 line2: 13,
@@ -1547,7 +1555,7 @@ if __name__ == __main__:
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 15,
                 line2: 15,
@@ -1557,7 +1565,7 @@ if __name__ == __main__:
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 16,
                 line2: 17,
@@ -1567,7 +1575,7 @@ if __name__ == __main__:
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 18,
                 line2: 19,
@@ -1632,7 +1640,7 @@ if __name__ == __main__:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 16,
                 line2: 17,
@@ -1642,7 +1650,7 @@ if __name__ == __main__:
             },
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 18,
                 line2: 19,
@@ -1702,7 +1710,7 @@ if __name__ == __main__:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 11,
                 line2: 11,
@@ -1762,7 +1770,7 @@ if __name__ == __main__:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 11,
                 line2: 11,
@@ -1821,7 +1829,7 @@ if __name__ == __main__:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 10,
                 line2: 11,
@@ -1882,7 +1890,7 @@ if __name__ == __main__:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 11,
                 line2: 11,
@@ -1917,7 +1925,7 @@ Another text"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/new_file.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "add".to_string(),
                 line1: 1,
                 line2: 1,
@@ -1944,7 +1952,7 @@ Another text"#;
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "remove".to_string(),
                 line1: 1,
                 line2: 1,
@@ -1998,7 +2006,7 @@ if __name__ == __main__:
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: Some("tests/emergency_frog_situation/new_holiday.py".to_string()),
+                file_name_rename: Some("tests/emergency_frog_situation/new_holiday.py".to_string()),
                 file_action: "rename".to_string(),
                 line1: 11,
                 line2: 11,
@@ -2161,7 +2169,7 @@ These unified diffs should correctly apply the required changes to replace the F
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_renamed: None,
+                file_name_rename: None,
                 file_action: "edit".to_string(),
                 line1: 10,
                 line2: 10,

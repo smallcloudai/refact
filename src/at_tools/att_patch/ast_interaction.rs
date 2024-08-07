@@ -68,6 +68,9 @@ pub async fn get_signatures_by_imports_traversal(
         let mut symbols = vec![];
         for filename in paths.iter() {
             if let Ok(path) = PathBuf::from_str(filename) {
+                if !path.exists() {
+                    continue;
+                }
                 let doc = Document::new(&path);
                 match ast_module
                     .read()

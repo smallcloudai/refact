@@ -49,7 +49,7 @@ async fn make_chat_history(
     for (idx, file) in args.paths.iter().enumerate() {
         match execute_at_file(ccx.clone(), file.clone()).await {
             Ok(res) => {
-                let message = format!("{}\n```\n{}```\n\n", res.file_name, res.file_content).to_string();
+                let message = format!("{}\n```\n{}\n```", res.file_name, res.file_content).to_string();
                 tokens += 3 + count_tokens(&tokenizer_ref, &message);
                 if tokens > max_tokens {
                     let err_message = if has_single_file || idx == 0 {
@@ -61,8 +61,14 @@ async fn make_chat_history(
                 }
                 chat_messages.push(ChatMessage::new("user".to_string(), message));
             }
-            Err(err) => {
-                warn!("cannot find a `{file}`: {err}, be sure that the input file exists");
+            Err(_) => {
+                let message = format!(
+                    "{}\n<{}>",
+                    file,
+                    "Cannot find given file on the disk, probably it's intended to be added"
+                ).to_string();
+                tokens += 3 + count_tokens(&tokenizer_ref, &message);
+                chat_messages.push(ChatMessage::new("user".to_string(), message));
             }
         }
     }
