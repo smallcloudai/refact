@@ -204,9 +204,9 @@ async def ask_using_http(
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:
         async with session.post(base_url + "/chat", json=post_me) as response:
-            text = await response.text()
-            assert response.status == 200, f"/chat call failed: {response.status}\ntext: {text}"
             if not stream:
+                text = await response.text()
+                assert response.status == 200, f"/chat call failed: {response.status}\ntext: {text}"
                 j = json.loads(text)
                 deterministic = [Message(**x) for x in j.get("deterministic_messages", [])]
                 j_choices = j["choices"]
@@ -236,10 +236,10 @@ async def ask_using_http(
                         print("unrecognized streaming data (1):", line_str)
                         continue
                     line_str = line_str[6:]
-                    # print(">>>", line_str)
                     if line_str == "[DONE]":
                         break
                     j = json.loads(line_str)
+                    # print(">>>", line_str)
                     if "choices" in j:
                         choice_collector.add_deltas(j["choices"])
                     elif "role" in j:

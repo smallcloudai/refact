@@ -171,7 +171,12 @@ impl AtCommand for AtWeb {
         &self.params
     }
 
-    async fn execute(&self, _ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         let url = match args.get(0) {
             Some(x) => x.clone(),
             None => {

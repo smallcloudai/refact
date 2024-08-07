@@ -1,5 +1,7 @@
+use std::sync::Arc;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 use serde_json::Value;
 use uuid::Uuid;
@@ -14,19 +16,20 @@ use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 pub struct AttFile;
 
 pub async fn real_file_path_candidate(
-    ccx: &mut AtCommandsContext,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     file_path: &String,
     candidates: &Vec<String>,
     project_paths: &Vec<PathBuf>,
     dirs: bool,
 ) -> Result<String, String>{
+    let gcx = ccx.lock().await.global_context.clone();
     let mut f_path = PathBuf::from(file_path);
 
     if candidates.is_empty() {
         let similar_paths_str = if dirs {
-            correct_to_nearest_dir_path(ccx.global_context.clone(), file_path, true, 10).await.join("\n")
+            correct_to_nearest_dir_path(gcx.clone(), file_path, true, 10).await.join("\n")
         } else {
-            at_file_repair_candidates(file_path, ccx, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n")
+            at_file_repair_candidates(ccx.clone(), file_path, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n")
         };
         if f_path.is_absolute() {
             if !project_paths.iter().any(|x|x.starts_with(&f_path)) {
@@ -60,16 +63,22 @@ pub async fn real_file_path_candidate(
 
 #[async_trait]
 impl Tool for AttFile {
-    async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<Vec<ContextEnum>, String> {
+        let gcx = ccx.lock().await.global_context.clone();
         let p = match args.get("path") {
             Some(Value::String(s)) => s,
             Some(v) => { return Err(format!("argument `path` is not a string: {:?}", v)) },
             None => { return Err("argument `path` is missing".to_string()) }
         };
 
-        let candidates = at_file_repair_candidates(p, ccx, false).await;
-        let candidate = real_file_path_candidate(ccx, p, &candidates, &get_project_paths(ccx).await, false).await?;
-        let file_text_mb = get_file_text_from_memory_or_disk(ccx.global_context.clone(), &PathBuf::from(candidate.clone())).await;
+        let candidates = at_file_repair_candidates(ccx.clone(), p, false).await;
+        let candidate = real_file_path_candidate(ccx.clone(), p, &candidates, &get_project_paths(ccx.clone()).await, false).await?;
+        let file_text_mb = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(candidate.clone())).await;
 
         let mut results = vec![];
         let content_on_clip = match file_text_mb {

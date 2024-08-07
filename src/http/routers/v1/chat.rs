@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use tokio::sync::Mutex as AMutex;
 
 use axum::Extension;
 use axum::response::Result;
@@ -10,8 +11,12 @@ use crate::call_validation::ChatPost;
 use crate::caps;
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::global_context::SharedGlobalContext;
 use crate::scratchpads;
+
+
+pub const CHAT_TOP_N: usize = 7;
 
 pub async fn lookup_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
@@ -90,45 +95,43 @@ async fn chat(
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
-    let t1 = std::time::Instant::now();
-    let prompt = scratchpad.prompt(
+    // if !chat_post.chat_id.is_empty() {
+    //     let cache_dir = {
+    //         let gcx_locked = global_context.read().await;
+    //         gcx_locked.cache_dir.clone()
+    //     };
+    //     let notes_dir_path = cache_dir.join("chats");
+    //     let _ = std::fs::create_dir_all(&notes_dir_path);
+    //     let notes_path = notes_dir_path.join(format!("chat{}_{}.json",
+    //         chrono::Local::now().format("%Y%m%d"),
+    //         chat_post.chat_id,
+    //     ));
+    //     let _ = std::fs::write(&notes_path, serde_json::to_string_pretty(&chat_post.messages).unwrap());
+    // }
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+        global_context.clone(),
         n_ctx,
-        &mut chat_post.parameters,
-    ).await.map_err(|e|
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
-    )?;
-    info!("chat prompt {:?}", t1.elapsed());
-    if !chat_post.chat_id.is_empty() {
-        let cache_dir = {
-            let gcx_locked = global_context.read().await;
-            gcx_locked.cache_dir.clone()
-        };
-        let notes_dir_path = cache_dir.join("chats");
-        let _ = std::fs::create_dir_all(&notes_dir_path);
-        let notes_path = notes_dir_path.join(format!("chat{}_{}.json",
-            chrono::Local::now().format("%Y%m%d"),
-            chat_post.chat_id,
-        ));
-        let _ = std::fs::write(&notes_path, serde_json::to_string_pretty(&chat_post.messages).unwrap());
-    }
+        CHAT_TOP_N,
+        false,
+        &chat_post.messages,
+    ).await));
+
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {
         crate::restream::scratchpad_interaction_not_stream(
-            global_context.clone(),
-            scratchpad,
+            ccx.clone(),
+            &mut scratchpad,
             "chat".to_string(),
-            &prompt,
             model_name,
             client1,
             api_key,
-            &chat_post.parameters,
+            &mut chat_post.parameters,
             chat_post.only_deterministic_messages,
         ).await
     } else {
         crate::restream::scratchpad_interaction_stream(
-            global_context.clone(),
+            ccx.clone(),
             scratchpad,
             "chat-stream".to_string(),
-            prompt,
             model_name,
             client1,
             api_key,

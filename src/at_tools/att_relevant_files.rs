@@ -6,8 +6,9 @@ use serde_json::{json, Value};
 use regex::Regex;
 
 use async_trait::async_trait;
-use futures_util::future::join_all;
+use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
+use futures_util::future::join_all;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::subchat::{subchat, subchat_single};
@@ -23,12 +24,20 @@ pub struct AttRelevantFiles;
 
 #[async_trait]
 impl Tool for AttRelevantFiles {
-    async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, _args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
-        let problem = ccx.messages.iter().filter(|m| m.role == "user").last().map(|x|x.content.clone()).ok_or(
-            "relevant_files: unable to find user problem description".to_string()
-        )?;
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<Vec<ContextEnum>, String> {
+        let problem = {
+            let ccx_locked = ccx.lock().await;
+            ccx_locked.messages.iter().filter(|m| m.role == "user").last().map(|x|x.content.clone()).ok_or(
+                "relevant_files: unable to find user problem description".to_string()
+            )?
+        };
 
-        let res = find_relevant_files(ccx.global_context.clone(), problem.as_str()).await?;
+        let res = find_relevant_files(ccx, problem.as_str()).await?;
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -48,7 +57,7 @@ impl Tool for AttRelevantFiles {
 
 
 async fn strategy_tree(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     user_query: &str,
 ) -> Result<Vec<String>, String> {
     // results = problem + tool_tree + pick 5 files * n_choices_times -> reduce(counters: 5)
@@ -74,7 +83,7 @@ async fn strategy_tree(
     messages.push(assistant_tree_call);
 
     let mut messages = subchat_single(
-        gcx.clone(),
+        ccx.clone(),
         MODEL_NAME,
         messages,
         vec!["tree".to_string()],
@@ -88,7 +97,7 @@ async fn strategy_tree(
     messages.push(ChatMessage::new("user".to_string(), STRATEGY_TREE_PROMPT.to_string()));
 
     let n_choices = subchat_single(
-        gcx.clone(),
+        ccx.clone(),
         MODEL_NAME,
         messages,
         vec![],
@@ -126,7 +135,7 @@ async fn strategy_tree(
 }
 
 async fn strategy_definitions_references(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     user_query: &str,
 ) -> Result<Vec<String>, String>{
     // results = problem -> (collect definitions + references) * n_choices + map(into_filenames) -> reduce(counters: 5)
@@ -135,7 +144,7 @@ async fn strategy_definitions_references(
     messages.push(ChatMessage::new("user".to_string(), STRATEGY_DEF_REF_PROMPT.to_string()));
 
     let n_choices = subchat_single(
-        gcx.clone(),
+        ccx.clone(),
         MODEL_NAME,
         messages,
         vec!["definition".to_string(), "references".to_string()],
@@ -152,7 +161,7 @@ async fn strategy_definitions_references(
             continue;
         }
         let ch_messages = subchat_single(
-            gcx.clone(),
+            ccx.clone(),
             MODEL_NAME,
             ch_messages,
             vec![],
@@ -188,14 +197,14 @@ async fn strategy_definitions_references(
 
 #[allow(dead_code)]
 async fn find_relevant_files_det(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     user_query: &str
 ) -> Result<Value, String> {
     // all_results = [*strategy_1, *strategy_2, .. *strategy_n] -> call supercat(files or files + symbols) -> let model decide
 
     let mut results = vec![];
-    let tree_files = strategy_tree(gcx.clone(), user_query).await?;
-    let def_ref_files = strategy_definitions_references(gcx.clone(), user_query).await?;
+    let tree_files = strategy_tree(ccx.clone(), user_query).await?;
+    let def_ref_files = strategy_definitions_references(ccx.clone(), user_query).await?;
     results.extend(tree_files);
     results.extend(def_ref_files);
 
@@ -205,9 +214,10 @@ async fn find_relevant_files_det(
 
 #[allow(dead_code)]
 async fn find_relevant_files(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     user_query: &str,
 ) -> Result<Value, String> {
+    let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
     let vecdb_on = {
         let gcx = gcx.read().await;
         let vecdb = gcx.vec_db.lock().await;
@@ -235,7 +245,7 @@ async fn find_relevant_files(
         let mut messages_copy = messages.clone();
         messages_copy.push(ChatMessage::new("user".to_string(), USE_STRATEGY_PROMPT.replace("{USE_STRATEGY}", &strategy)));
         let f = subchat(
-            gcx.clone(),
+            ccx.clone(),
             MODEL_NAME,
             messages_copy,
             tools_subset.clone(),
@@ -262,7 +272,7 @@ async fn find_relevant_files(
     messages.push(ChatMessage::new("user".to_string(), format!("{}", RF_REDUCE_USER_MSG)));
 
     let result = subchat_single(
-        gcx.clone(),
+        ccx.clone(),
         MODEL_NAME,
         messages,
         vec![],

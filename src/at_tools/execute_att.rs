@@ -1,27 +1,28 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tracing::{info, warn};
-use tokio::sync::RwLock as ARwLock;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
-use crate::global_context::GlobalContext;
 use crate::scratchpads::chat_utils_rag::{HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2, postprocess_plain_text_messages};
 
 
 pub async fn run_tools(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
-    n_ctx: usize,
     original_messages: &Vec<ChatMessage>,
-    top_n: usize,
     stream_back_to_user: &mut HasRagResults,
 ) -> (Vec<ChatMessage>, bool)
 {
+    let (n_ctx, top_n) = {
+        let ccx_locked = ccx.lock().await;
+        (ccx_locked.n_ctx, ccx_locked.top_n)
+    };
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     let context_limit = reserve_for_context;
 
@@ -39,8 +40,7 @@ pub async fn run_tools(
         return (original_messages.clone(), false);
     }
 
-    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, false, original_messages).await;
-    let at_tools = ccx.at_tools.clone();
+    let at_tools = ccx.lock().await.at_tools.clone();
 
     let mut for_postprocessing = vec![];
     let mut generated_tool = vec![];  // tool must go first
@@ -64,7 +64,7 @@ pub async fn run_tools(
             }
             let args = args_maybe.unwrap();
             info!("tool use: args={:?}", args);
-            let tool_msg_and_maybe_more_mb = cmd.lock().await.tool_execute(&mut ccx, &t_call.id.to_string(), &args).await;
+            let tool_msg_and_maybe_more_mb = cmd.lock().await.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await;
             if let Err(e) = tool_msg_and_maybe_more_mb {
                 let mut tool_failed_message = ChatMessage {
                     role: "tool".to_string(),
@@ -144,8 +144,9 @@ pub async fn run_tools(
         tokens_limit_files += non_used_context_limit;
         info!("run_tools: tokens_limit_files={} after postprocessing", tokens_limit_files);
 
+        let gcx = ccx.lock().await.global_context.clone();
         let context_file: Vec<ContextFile> = postprocess_at_results2(
-            global_context.clone(),
+            gcx.clone(),
             &for_postprocessing,
             tokenizer.clone(),
             tokens_limit_files,

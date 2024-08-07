@@ -1,8 +1,10 @@
+use std::sync::Arc;
 use std::collections::HashMap;
-
 use serde_json::Value;
+use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
+
 
 pub struct PatchArguments {
     pub paths: Vec<String>,
@@ -11,9 +13,10 @@ pub struct PatchArguments {
 }
 
 pub async fn parse_arguments(
+    ccx: Arc<AMutex<AtCommandsContext>>,
     args: &HashMap<String, Value>,
-    ccx: &mut AtCommandsContext,
 ) -> Result<PatchArguments, String> {
+    let gcx = ccx.lock().await.global_context.clone();
     let paths = match args.get("paths") {
         Some(Value::String(s)) => s.split(",").map(|x| x.to_string()).collect::<Vec<String>>(),
         Some(v) => { return Err(format!("argument `paths` is not a string: {:?}", v)) }
@@ -22,7 +25,7 @@ pub async fn parse_arguments(
     let mut corrected_paths = vec![];
     for p in paths.into_iter() {
         let corrected = crate::files_correction::correct_to_nearest_filename(
-            ccx.global_context.clone(),
+            gcx.clone(),
             &p,
             false,
             1,

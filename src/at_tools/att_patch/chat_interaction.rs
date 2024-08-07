@@ -1,8 +1,8 @@
 use std::sync::{Arc, RwLock};
-
 use serde_json::Value;
 use tokenizers::Tokenizer;
 use tracing::{info, warn};
+use tokio::sync::Mutex as AMutex;
 
 use crate::{cached_tokenizers, scratchpads};
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -15,17 +15,18 @@ use crate::scratchpads::chat_utils_rag::count_tokens;
 
 
 async fn make_chat_history(
+    ccx: Arc<AMutex<AtCommandsContext>>,
     args: &PatchArguments,
-    ccx: &mut AtCommandsContext,
     tokenizer: Arc<RwLock<Tokenizer>>,
     max_tokens: usize
 ) -> Result<Vec<ChatMessage>, String> {
+    let gcx = ccx.lock().await.global_context.clone();
     let system_prompt = DefaultToolPatch::prompt();
     // TODO: use budget for extra context construction
     let maybe_extra_context = if let Some(symbols_names) = args.symbol_names.clone() {
-        get_signatures_by_symbol_names(&symbols_names, ccx.global_context.clone()).await
+        get_signatures_by_symbol_names(&symbols_names, gcx.clone()).await
     } else {
-        get_signatures_by_imports_traversal(&args.paths, ccx.global_context.clone()).await
+        get_signatures_by_imports_traversal(&args.paths, gcx.clone()).await
 
     };
     let mut tokens: usize = 0;
@@ -46,7 +47,7 @@ async fn make_chat_history(
 
     let has_single_file = args.paths.len() == 1;
     for (idx, file) in args.paths.iter().enumerate() {
-        match execute_at_file(ccx, file.clone()).await {
+        match execute_at_file(ccx.clone(), file.clone()).await {
             Ok(res) => {
                 let message = format!("{}\n```\n{}```\n\n", res.file_name, res.file_content).to_string();
                 tokens += 3 + count_tokens(&tokenizer_ref, &message);
@@ -81,12 +82,12 @@ async fn make_chat_history(
 }
 
 pub async fn execute_chat_model(
+    ccx: Arc<AMutex<AtCommandsContext>>,
     args: &PatchArguments,
-    ccx: &mut AtCommandsContext
 ) -> Result<(String, Option<ChatUsage>), String> {
-    let gx = ccx.global_context.clone();
+    let gcx = ccx.lock().await.global_context.clone();
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(
-        gx.clone(), 0,
+        gcx.clone(), 0,
     )
         .await
         .map_err(|e| {
@@ -124,25 +125,28 @@ pub async fn execute_chat_model(
         chat_id: "".to_string(),
     };
 
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, _) = crate::http::routers::v1::chat::lookup_chat_scratchpad(
+    let (model_name, scratchpad_name, scratchpad_patch, _n_ctx, _) = crate::http::routers::v1::chat::lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
     ).await?;
     let (client, api_key) = {
-        let cx_locked = gx.write().await;
-        (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
+        let gcx_locked = gcx.write().await;
+        (gcx_locked.http_client.clone(), gcx_locked.cmdline.api_key.clone())
     };
 
+    // TODO: ccx is the context this tool is called.
+    // for subchat tool calls, create a new one with n_ctx, messages, etc
+
     let tokenizer = cached_tokenizers::cached_tokenizer(
-        caps.clone(), gx.clone(), model_name.clone(),
+        caps.clone(), gcx.clone(), model_name.clone(),
     ).await?;
 
     chat_post.messages = make_chat_history(
-        args, ccx, tokenizer, max_tokens
+        ccx.clone(), args, tokenizer, max_tokens
     ).await?;
 
     let mut scratchpad = scratchpads::create_chat_scratchpad(
-        gx.clone(),
+        gcx.clone(),
         caps.clone(),
         model_name.clone(),
         &chat_post.clone(),
@@ -152,14 +156,14 @@ pub async fn execute_chat_model(
         false,
     ).await?;
     let prompt = scratchpad.prompt(
-        n_ctx,
+        ccx.clone(),
         &mut chat_post.parameters,
     ).await?;
 
     let t1 = std::time::Instant::now();
     let messages = crate::restream::scratchpad_interaction_not_stream_json(
-        gx.clone(),
-        scratchpad,
+        ccx.clone(),
+        &mut scratchpad,
         "chat".to_string(),
         &prompt,
         model_name,

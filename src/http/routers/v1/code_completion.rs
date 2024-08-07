@@ -1,11 +1,11 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use tracing::info;
 
 use crate::call_validation::{CodeCompletionPost, validate_post};
 use crate::caps;
@@ -14,6 +14,10 @@ use crate::completion_cache;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::scratchpads;
+use crate::at_commands::at_commands::AtCommandsContext;
+
+
+const CODE_COMPLETION_TOP_N: usize = 5;
 
 async fn _lookup_code_completion_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
@@ -41,18 +45,18 @@ async fn _lookup_code_completion_scratchpad(
 }
 
 pub async fn handle_v1_code_completion(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     code_completion_post: &mut CodeCompletionPost,
 ) -> Result<Response<Body>, ScratchError> {
     validate_post(code_completion_post.clone())?;
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
     let maybe = _lookup_code_completion_scratchpad(
         caps.clone(),
         &code_completion_post,
     ).await;
     if maybe.is_err() {
         // On error, this will also invalidate caps each 10 seconds, allows to overcome empty caps situation
-        let _ = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 10).await;
+        let _ = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 10).await;
         return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", maybe.unwrap_err())))
     }
     let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = maybe.unwrap();
@@ -67,7 +71,7 @@ pub async fn handle_v1_code_completion(
     }
     code_completion_post.parameters.temperature = Some(code_completion_post.parameters.temperature.unwrap_or(0.2));
     let (client1, api_key, cache_arc, tele_storage) = {
-        let cx_locked = global_context.write().await;
+        let cx_locked = gcx.write().await;
         (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone(), cx_locked.completions_cache.clone(), cx_locked.telemetry.clone())
     };
     if !code_completion_post.no_cache {
@@ -83,9 +87,9 @@ pub async fn handle_v1_code_completion(
         }
     }
 
-    let ast_module = global_context.read().await.ast_module.clone();
+    let ast_module = gcx.read().await.ast_module.clone();
     let mut scratchpad = scratchpads::create_code_completion_scratchpad(
-        global_context.clone(),
+        gcx.clone(),
         caps,
         model_name.clone(),
         &code_completion_post.clone(),
@@ -97,34 +101,32 @@ pub async fn handle_v1_code_completion(
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
-    let t1 = std::time::Instant::now();
-    let prompt = scratchpad.prompt(
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+        gcx.clone(),
         n_ctx,
-        &mut code_completion_post.parameters,
-    ).await.map_err(|e|
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
-    )?;
-    // info!("prompt {:?}\n{}", t1.elapsed(), prompt);
-    info!("prompt {:?}", t1.elapsed());
+        CODE_COMPLETION_TOP_N,
+        true,
+        &vec![]
+    ).await));
     if !code_completion_post.stream {
-        crate::restream::scratchpad_interaction_not_stream(global_context.clone(), scratchpad, "completion".to_string(), &prompt, model_name, client1, api_key, &code_completion_post.parameters, false).await
+        crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, "completion".to_string(), model_name, client1, api_key, &mut code_completion_post.parameters, false).await
     } else {
-        crate::restream::scratchpad_interaction_stream(global_context.clone(), scratchpad, "completion-stream".to_string(), prompt, model_name, client1, api_key, code_completion_post.parameters.clone(), false).await
+        crate::restream::scratchpad_interaction_stream(ccx.clone(), scratchpad, "completion-stream".to_string(), model_name, client1, api_key, code_completion_post.parameters.clone(), false).await
     }
 }
 
 pub async fn handle_v1_code_completion_web(
-    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let mut code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     )?;
-    handle_v1_code_completion(global_context.clone(), &mut code_completion_post).await
+    handle_v1_code_completion(gcx.clone(), &mut code_completion_post).await
 }
 
 pub async fn handle_v1_code_completion_prompt(
-    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     // Almost the same function, but only returns the prompt (good for generating data)
@@ -132,7 +134,7 @@ pub async fn handle_v1_code_completion_prompt(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     )?;
     validate_post(post.clone())?;
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
     let maybe = _lookup_code_completion_scratchpad(caps.clone(), &post).await;
     if maybe.is_err() {
         return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", maybe.unwrap_err())))
@@ -141,13 +143,13 @@ pub async fn handle_v1_code_completion_prompt(
 
     // don't need cache, but go along
     let (cache_arc, tele_storage) = {
-        let cx_locked = global_context.write().await;
+        let cx_locked = gcx.write().await;
         (cx_locked.completions_cache.clone(), cx_locked.telemetry.clone())
     };
 
-    let ast_module = global_context.read().await.ast_module.clone();
+    let ast_module = gcx.read().await.ast_module.clone();
     let mut scratchpad = scratchpads::create_code_completion_scratchpad(
-        global_context.clone(),
+        gcx.clone(),
         caps,
         model_name.clone(),
         &post,
@@ -160,7 +162,14 @@ pub async fn handle_v1_code_completion_prompt(
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
 
-    let prompt = scratchpad.prompt(n_ctx, &mut post.parameters).await.map_err(|e|
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+        gcx.clone(),
+        n_ctx,
+        CODE_COMPLETION_TOP_N,
+        true,
+        &vec![]
+    ).await));
+    let prompt = scratchpad.prompt(ccx.clone(), &mut post.parameters).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;
 

@@ -11,9 +11,10 @@ use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::toolbox::toolbox_config::ToolCustDict;
 
+
 #[async_trait]
 pub trait Tool: Send + Sync {
-    async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String>;
+    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String>;
     fn tool_depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
     fn usage(&mut self) -> &mut Option<ChatUsage> {
         static mut DEFAULT_USAGE: Option<ChatUsage> = None;
@@ -165,7 +166,7 @@ tools:
         description: "Put your intent there: 'debug file1.cpp', 'install project1', 'gather info about MyClass'"
     parameters_required:
       - "im_going_to_do"
-      
+
   - name: "relevant_files"
     description: "Get a list of files that are relevant to solve a particular task."
     parameters:

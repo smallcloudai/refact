@@ -24,28 +24,31 @@ use crate::at_commands::execute_at::AtCommandMember;
 
 pub struct AtCommandsContext {
     pub global_context: Arc<ARwLock<GlobalContext>>,
-    pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,
-    pub at_tools: HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
+    pub n_ctx: usize,
     pub top_n: usize,
+    pub messages: Vec<ChatMessage>,
     #[allow(dead_code)]
     pub is_preview: bool,
-    pub messages: Vec<ChatMessage>,
+    pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,
+    pub at_tools: HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
 }
 
 impl AtCommandsContext {
     pub async fn new(
         global_context: Arc<ARwLock<GlobalContext>>,
+        n_ctx: usize,
         top_n: usize,
         is_preview: bool,
         messages: &Vec<ChatMessage>,
     ) -> Self {
         AtCommandsContext {
             global_context: global_context.clone(),
-            at_commands: at_commands_dict(global_context.clone()).await,
-            at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
+            n_ctx,
             top_n,
             is_preview,
             messages: messages.clone(),
+            at_commands: at_commands_dict(global_context.clone()).await,
+            at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
         }
     }
 }
@@ -54,14 +57,14 @@ impl AtCommandsContext {
 pub trait AtCommand: Send + Sync {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>;
     // returns (messages_for_postprocessing, text_on_clip)
-    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String>;
+    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String>;
     fn depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
 }
 
 #[async_trait]
 pub trait AtParam: Send + Sync {
-    async fn is_value_valid(&self, value: &String, ccx: &AtCommandsContext) -> bool;
-    async fn param_completion(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String>;
+    async fn is_value_valid(&self, ccx: Arc<AMutex<AtCommandsContext>>, value: &String) -> bool;
+    async fn param_completion(&self, ccx: Arc<AMutex<AtCommandsContext>>, value: &String) -> Vec<String>;
     fn param_completion_valid(&self) -> bool {false}
 }
 

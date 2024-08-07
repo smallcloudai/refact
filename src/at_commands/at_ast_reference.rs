@@ -46,8 +46,12 @@ impl AtAstReference {
     }
 }
 
-pub async fn execute_at_ast_reference(ccx: &mut AtCommandsContext, symbol_path: &String) -> Result<(Vec<ContextFile>, usize), String> {
-    let ast = ccx.global_context.read().await.ast_module.clone();
+pub async fn execute_at_ast_reference(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    symbol_path: &String,
+) -> Result<(Vec<ContextFile>, usize), String> {
+    let gcx = ccx.lock().await.global_context.clone();
+    let ast = gcx.read().await.ast_module.clone();
     let x = match &ast {
         Some(ast) => {
             match ast.read().await.search_by_fullpath(
@@ -70,7 +74,13 @@ impl AtCommand for AtAstReference {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @references {:?}", args);
         let mut symbol = match args.get(0) {
             Some(x) => x.clone(),
@@ -81,16 +91,17 @@ impl AtCommand for AtAstReference {
             },
         };
 
-        correct_at_arg(ccx, self.params[0].clone(), &mut symbol).await;
+        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut symbol).await;
         args.clear();
         args.push(symbol.clone());
 
-        let (query_result, refs_n) = execute_at_ast_reference(ccx, &symbol.text).await?;
+        let (query_result, refs_n) = execute_at_ast_reference(ccx.clone(), &symbol.text).await?;
         let results = vec_context_file_to_context_tools(query_result);
         let text = format!("`{}` (found {} usages)", symbol.text, refs_n);
 
         Ok((results, text))
     }
+
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }

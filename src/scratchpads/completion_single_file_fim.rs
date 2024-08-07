@@ -2,9 +2,8 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::time::Instant;
 use std::vec;
-
+use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
-use log::warn;
 use ropey::Rope;
 use serde_json::{Value, json};
 use tokenizers::Tokenizer;
@@ -17,6 +16,7 @@ use crate::ast::ast_module::AstModule;
 use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::at_commands::at_ast_lookup_symbols::results2message;
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{CodeCompletionPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::completion_cache;
@@ -121,7 +121,7 @@ fn add_context_to_prompt(
         }
         return prompt.clone();
     } else {
-        warn!("context_format \"{}\" not recognized", context_format);
+        tracing::warn!("context_format \"{}\" not recognized", context_format);
         return prompt.clone();
     }
 }
@@ -153,28 +153,29 @@ impl ScratchpadAbstract for SingleFileFIM {
 
     async fn prompt(
         &mut self,
-        context_size: usize,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
+        let n_ctx = ccx.lock().await.n_ctx;
         let fim_t0 = Instant::now();
         let use_rag = !self.t.context_format.is_empty() && self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_module.is_some();
         let mut rag_tokens_n = if self.post.rag_tokens_n > 0 {
             self.post.rag_tokens_n.min(4096).max(50)
         } else {
-            ((context_size as f64 * self.t.rag_ratio) as usize).min(4096).max(50)
+            ((n_ctx as f64 * self.t.rag_ratio) as usize).min(4096).max(50)
         };
         if !use_rag {
             rag_tokens_n = 0;
         }
         if !use_rag && self.post.use_ast {
-            warn!("will not use ast because {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_module.is_some() as i32);
+            tracing::warn!("will not use ast because {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_module.is_some() as i32);
         }
 
-        let limit: i32 = (context_size as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32);
+        let limit: i32 = (n_ctx as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32);
         if limit < 512 {
-            let msg = format!("context_size={} - max_new_tokens={} - rag_tokens_n={} leaves too little {} space for completion to work",
-                context_size, self.post.parameters.max_new_tokens, rag_tokens_n, limit);
-            warn!("{}", msg);
+            let msg = format!("n_ctx={} - max_new_tokens={} - rag_tokens_n={} leaves too little {} space for completion to work",
+            n_ctx, self.post.parameters.max_new_tokens, rag_tokens_n, limit);
+            tracing::warn!("{}", msg);
             return Err(msg);
         }
 
@@ -346,7 +347,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                 );
                 self.context_used["fim_ms"] = Value::from(fim_ms);
                 self.context_used["rag_ms"] = Value::from(rag_ms);
-                self.context_used["n_ctx".to_string()] = Value::from(context_size as i64);
+                self.context_used["n_ctx".to_string()] = Value::from(n_ctx as i64);
                 self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
             }
         }

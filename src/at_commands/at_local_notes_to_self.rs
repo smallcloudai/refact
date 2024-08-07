@@ -33,9 +33,15 @@ impl AtCommand for AtLocalNotesToSelf {
         &self.params
     }
 
-    async fn execute(&self, ccx: &mut AtCommandsContext, _cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
+        let gcx = ccx.lock().await.global_context.clone();
         let cache_dir = {
-            let gcx_locked = ccx.global_context.read().await;
+            let gcx_locked = gcx.read().await;
             gcx_locked.cache_dir.clone()
         };
         let notes_dir_path = cache_dir.join("notes");

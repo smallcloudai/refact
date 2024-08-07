@@ -1,7 +1,9 @@
 use std::cmp::max;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use async_trait::async_trait;
+use tokio::sync::Mutex as AMutex;
 use itertools::Itertools;
 use serde_json::Value;
 use tracing::info;
@@ -17,8 +19,18 @@ pub struct AttAstReference;
 
 #[async_trait]
 impl Tool for AttAstReference {
-    async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<Vec<ContextEnum>, String> {
         info!("execute @references {:?}", args);
+        let (gcx, top_n) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.global_context.clone(), ccx_locked.top_n)
+        };
+
         let mut symbol = match args.get("symbol") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => { return Err(format!("argument `symbol` is not a string: {:?}", v)) }
@@ -29,7 +41,7 @@ impl Tool for AttAstReference {
             symbol = symbol[dot_index + 1..].to_string();
         }
 
-        let ast_mb = ccx.global_context.read().await.ast_module.clone();
+        let ast_mb = gcx.read().await.ast_module.clone();
         let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
 
         let mut found_by_fuzzy_search: bool = false;
@@ -37,7 +49,7 @@ impl Tool for AttAstReference {
             symbol.clone(),
             RequestSymbolType::Usage,
             false,
-            ccx.top_n,
+            top_n,
         ).await?;
         res = if res.search_results.is_empty() {
             found_by_fuzzy_search = true;
@@ -45,7 +57,7 @@ impl Tool for AttAstReference {
                 symbol.clone(),
                 RequestSymbolType::Usage,
                 true,
-                max(ccx.top_n, 6),
+                max(top_n, 6),
             ).await?
         } else {
             res

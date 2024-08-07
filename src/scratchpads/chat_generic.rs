@@ -5,9 +5,11 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 use tracing::{info, error};
 
 use crate::at_commands::execute_at::run_at_commands;
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
@@ -92,16 +94,16 @@ impl ScratchpadAbstract for GenericChatScratchpad {
 
     async fn prompt(
         &mut self,
-        context_size: usize,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let top_n = 7;
+        let n_ctx = ccx.lock().await.n_ctx;
         let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
-            run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &self.post.messages, top_n, &mut self.has_rag_results).await
+            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.post.messages, &mut self.has_rag_results).await
         } else {
             (self.post.messages.clone(), self.post.messages.len(), false)
         };
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, context_size, &self.default_system_message)?;
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, n_ctx, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();

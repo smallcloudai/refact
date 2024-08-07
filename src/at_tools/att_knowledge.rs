@@ -1,8 +1,9 @@
+use std::sync::Arc;
 use std::collections::HashMap;
 use serde_json::Value;
 use tracing::info;
 use indexmap::IndexMap;
-
+use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -16,16 +17,27 @@ pub struct AttGetKnowledge;
 
 #[async_trait]
 impl Tool for AttGetKnowledge {
-    async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<Vec<ContextEnum>, String> {
         info!("run @get-knowledge {:?}", args);
+
+        let (gcx, top_n) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.global_context.clone(), ccx_locked.top_n)
+        };
+
         let im_going_to_do = match args.get("im_going_to_do") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => { return Err(format!("argument `im_going_to_do` is not a string: {:?}", v)) },
             None => { return Err("argument `im_going_to_do` is missing".to_string()) }
         };
 
-        let vec_db = ccx.global_context.read().await.vec_db.clone();
-        let memories: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(vec_db.clone(), &im_going_to_do, ccx.top_n).await?;
+        let vec_db = gcx.read().await.vec_db.clone();
+        let memories: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(vec_db.clone(), &im_going_to_do, top_n).await?;
 
         // TODO: verify it's valid json in payload when accepting the mem into db
         let memories_json = memories.results.iter().map(|m| {

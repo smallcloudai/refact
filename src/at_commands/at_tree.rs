@@ -129,7 +129,7 @@ pub fn print_files_tree_with_budget_internal(
         };
         tree_str.push_str(&format!("{}{}{}{}\n", prefix, more, filename, paths_holder.borrow().symbols));
         let new_prefix = prefix.to_owned() + "  ";
-        for (idx, sub_path) in paths_holder.borrow().child_paths.iter().enumerate() {
+        for (_idx, sub_path) in paths_holder.borrow().child_paths.iter().enumerate() {
             // let is_last = idx == paths_holder.borrow().child_paths.len() - 1 && paths_holder.borrow().is_complete;
             recursive_print_path_holders(tree_str, &new_prefix, sub_path.clone());
         }
@@ -230,16 +230,23 @@ pub async fn print_files_tree_with_budget(
 #[async_trait]
 impl AtCommand for AtTree {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> { &self.params }
-    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
-        let paths_from_anywhere = paths_from_anywhere(ccx.global_context.clone()).await;
+
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
+        let gcx = ccx.lock().await.global_context.clone();
+        let paths_from_anywhere = paths_from_anywhere(gcx.clone()).await;
         *args = args.iter().take_while(|arg| arg.text != "\n" || arg.text == "--ast").take(2).cloned().collect();
 
         let tree = match args.iter().find(|x| x.text != "--ast") {
             None => construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere),
             Some(arg) => {
                 let path = arg.text.clone();
-                let candidates = correct_to_nearest_dir_path(ccx.global_context.clone(), &path, false, 10).await;
-                let candidate = real_file_path_candidate(ccx, &path, &candidates, &get_project_paths(ccx).await, true).await.map_err(|e| {
+                let candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
+                let candidate = real_file_path_candidate(ccx.clone(), &path, &candidates, &get_project_paths(ccx.clone()).await, true).await.map_err(|e| {
                     cmd.ok = false; cmd.reason = Some(e.clone()); args.clear();
                     e
                 })?;
@@ -251,7 +258,7 @@ impl AtCommand for AtTree {
 
         let use_ast = args.iter().any(|x| x.text == "--ast");
 
-        let tree = print_files_tree_with_budget(ccx.global_context.clone(), tree, use_ast).await.map_err(|err| {
+        let tree = print_files_tree_with_budget(gcx.clone(), tree, use_ast).await.map_err(|err| {
             warn!("{}", err);
             err
         })?;

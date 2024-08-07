@@ -54,21 +54,28 @@ impl AtCommand for AtAstFileSymbols {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         let mut cpath = match args.get(0) {
             Some(x) => x.clone(),
             None => {
                 cmd.ok = false; cmd.reason = Some("no file path".to_string());
                 args.clear();
-                return Err("no file path".to_string()); 
+                return Err("no file path".to_string());
             },
         };
         cpath.text = canonical_path(&cpath.text).to_string_lossy().to_string();
-        correct_at_arg(ccx, self.params[0].clone(), &mut cpath).await;
+        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut cpath).await;
         args.clear();
         args.push(cpath.clone());
 
-        let ast = ccx.global_context.read().await.ast_module.clone();
+        let ccx_lock = ccx.lock().await;
+        let ast = ccx_lock.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
                 let doc = crate::files_in_workspace::Document { path: PathBuf::from(cpath.text), text: None };
@@ -83,6 +90,7 @@ impl AtCommand for AtAstFileSymbols {
         let context_tools_mb = x.map(|j|vec_context_file_to_context_tools(j));
         context_tools_mb.map(|i|(i, text))
     }
+
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }

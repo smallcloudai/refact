@@ -4,11 +4,9 @@ use regex::Regex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tracing::{info, warn};
-use tokio::sync::RwLock as ARwLock;
 
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam, filter_only_context_file_from_context_tool};
 use crate::call_validation::{ChatMessage, ContextEnum};
-use crate::global_context::GlobalContext;
 use crate::scratchpads::chat_utils_rag::{count_tokens, HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2, postprocess_plain_text_messages};
 
 
@@ -16,19 +14,20 @@ pub const MIN_RAG_CONTEXT_LIMIT: usize = 256;
 
 
 pub async fn run_at_commands(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
-    n_ctx: usize,
     original_messages: &Vec<ChatMessage>,
-    top_n: usize,
     stream_back_to_user: &mut HasRagResults,
 ) -> (Vec<ChatMessage>, usize, bool) {
+    let (n_ctx, top_n) = {
+        let ccx_locked = ccx.lock().await;
+        (ccx_locked.n_ctx, ccx_locked.top_n)
+    };
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     info!("reserve_for_context {} tokens", reserve_for_context);
 
-    let mut ccx = AtCommandsContext::new(global_context.clone(), top_n, false, &vec![]).await;
-    let mut any_context_produced = false;
+    let any_context_produced = false;
 
     let mut user_msg_starts = original_messages.len();
     let mut messages_with_at: usize = 0;
@@ -62,7 +61,7 @@ pub async fn run_at_commands(
 
         let mut messages_exec_output = vec![];
         if content.contains("@") {
-            let (res, _) = execute_at_commands_in_query(&mut ccx, &mut content).await;
+            let (res, _) = execute_at_commands_in_query(ccx.clone(), &mut content).await;
             messages_exec_output.extend(res);
         }
 
@@ -107,8 +106,9 @@ pub async fn run_at_commands(
             tokens_limit_files += non_used_plain;
             info!("tokens_limit_files {}", tokens_limit_files);
 
+            let gcx = ccx.lock().await.global_context.clone();
             let post_processed = postprocess_at_results2(
-                global_context.clone(),
+                gcx.clone(),
                 &context_file_pp,
                 tokenizer.clone(),
                 tokens_limit_files,
@@ -141,15 +141,15 @@ pub async fn run_at_commands(
 }
 
 pub async fn correct_at_arg(
-    ccx: &AtCommandsContext,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     param: Arc<AMutex<dyn AtParam>>,
     arg: &mut AtCommandMember,
 ) {
     let param_lock = param.lock().await;
-    if param_lock.is_value_valid(&arg.text, ccx).await {
+    if param_lock.is_value_valid(ccx.clone(), &arg.text).await {
         return;
     }
-    let completion = match param_lock.param_completion(&arg.text, ccx).await.get(0) {
+    let completion = match param_lock.param_completion(ccx.clone(), &arg.text).await.get(0) {
         Some(x) => x.clone(),
         None => {
             arg.ok = false;
@@ -157,7 +157,7 @@ pub async fn correct_at_arg(
             return;
         }
     };
-    if !param_lock.is_value_valid(&completion, ccx).await {
+    if !param_lock.is_value_valid(ccx.clone(), &completion).await {
         arg.ok = false; arg.reason = Some("incorrect argument; completion did not help".to_string());
         return;
     }
@@ -165,17 +165,20 @@ pub async fn correct_at_arg(
 }
 
 pub async fn execute_at_commands_in_query(
-    ccx: &mut AtCommandsContext,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     query: &mut String,
 ) -> (Vec<ContextEnum>, Vec<AtCommandMember>) {
-    let at_command_names = ccx.at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
+    let at_commands = {
+        ccx.lock().await.at_commands.clone()
+    };
+    let at_command_names = at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
     let mut context_enums = vec![];
     let mut highlight_members = vec![];
     let mut clips = vec![];
 
     let words = parse_words_from_line(query);
     for (w_idx, (word, pos1, pos2)) in words.iter().enumerate() {
-        let cmd = match ccx.at_commands.get(word) {
+        let cmd = match at_commands.get(word) {
             Some(c) => c.clone(),
             None => { continue; }
         };
@@ -190,7 +193,7 @@ pub async fn execute_at_commands_in_query(
             arg_members.push(AtCommandMember::new("arg".to_string(), text.clone(), pos1, pos2));
         }
 
-        match cmd_lock.execute(ccx, &mut cmd_member, &mut arg_members).await {
+        match cmd_lock.at_execute(ccx.clone(), &mut cmd_member, &mut arg_members).await {
             Ok((res, text_on_clip)) => {
                 context_enums.extend(res);
                 clips.push((text_on_clip, cmd_member.pos1, arg_members.last().map(|x|x.pos2).unwrap_or(cmd_member.pos2)));
@@ -258,7 +261,7 @@ mod tests {
 
         let link = parsed_words.iter().find(|(word, _, _)| word == "https://doc.rust-lang.org/book/ch03-04-comments.html");
         assert!(link.is_some(), "The link should be parsed as a single word");
-        if let Some((word, start, end)) = link {
+        if let Some((word, _start, _end)) = link {
             assert_eq!(word, "https://doc.rust-lang.org/book/ch03-04-comments.html");
         }
     }

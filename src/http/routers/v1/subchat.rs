@@ -1,13 +1,16 @@
 use std::sync::Arc;
+use tokio::sync::Mutex as AMutex;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
 use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
 use crate::at_tools::subchat::{subchat, subchat_single};
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ChatMessage;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
+
 
 #[derive(Deserialize)]
 struct SubChatPost {
@@ -27,8 +30,12 @@ pub async fn handle_v1_subchat(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let logfn = chrono::Local::now().format("subchat-handler-%Y%m%d-%H%M%S.log").to_string();
 
+    let top_n = 7;
+    let fake_n_ctx = 4096;
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(global_context.clone(), fake_n_ctx, top_n, false, &post.messages).await));
+
     let new_messages = subchat(
-        global_context.clone(),
+        ccx.clone(),
         post.model_name.as_str(),
         post.messages,
         post.tools_turn_on,
@@ -68,8 +75,12 @@ pub async fn handle_v1_subchat_single(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let logfn = chrono::Local::now().format("subchat-single-handler-%Y%m%d-%H%M%S").to_string();
 
+    let top_n = 7;
+    let fake_n_ctx = 4096;
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(global_context.clone(), fake_n_ctx, top_n, false, &post.messages).await));
+
     let new_messages = subchat_single(
-        global_context.clone(),
+        ccx.clone(),
         post.model_name.as_str(),
         post.messages,
         post.tools_turn_on,

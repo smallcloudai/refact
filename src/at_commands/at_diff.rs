@@ -130,7 +130,7 @@ pub async fn execute_diff_for_vcs(parent_dir: &str, args: &[&str]) -> Result<Vec
 }
 
 pub fn text_on_clip(args: &Vec<AtCommandMember>) -> String {
-    let text = match args.len() { 
+    let text = match args.len() {
         0 => "executed: git diff".to_string(),
         1 => format!("executed: git diff {}", args[0].text),
         _ => "".to_string(),
@@ -138,17 +138,25 @@ pub fn text_on_clip(args: &Vec<AtCommandMember>) -> String {
     text
 }
 
-pub async fn get_last_accessed_file(ccx: &mut AtCommandsContext) -> Result<PathBuf, String> {
-    return match ccx.global_context.read().await.documents_state.last_accessed_file.lock().unwrap().clone() {
+pub async fn get_last_accessed_file(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+) -> Result<PathBuf, String> {
+    let gcx = ccx.lock().await.global_context.clone();
+    let last_accessed_file: Arc<std::sync::Mutex<Option<PathBuf>>> = gcx.read().await.documents_state.last_accessed_file.clone();
+    let r = last_accessed_file.lock().unwrap().clone();
+    match r {
         Some(file) => Ok(file),
         // TODO: improve error text?
         None => Err("Couldn't find last used file. Try again later".to_string())
     }
 }
 
-async fn validate_and_complete_file_path(ccx: &mut AtCommandsContext, file_path: &PathBuf) -> Result<PathBuf, String>{
+async fn validate_and_complete_file_path(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    file_path: &PathBuf,
+) -> Result<PathBuf, String> {
     if !file_path.is_file() {
-        return match AtParamFilePath::new().param_completion(&file_path.to_string_lossy().to_string(), ccx).await.get(0) {
+        return match AtParamFilePath::new().param_completion(ccx.clone(), &file_path.to_string_lossy().to_string()).await.get(0) {
             Some(candidate) => Ok(PathBuf::from(candidate)),
             None => return Err(format!("File {:?} doesn't exist and wasn't found in index", file_path)),
         }
@@ -156,17 +164,23 @@ async fn validate_and_complete_file_path(ccx: &mut AtCommandsContext, file_path:
     Ok(file_path.clone())
 }
 
+
 #[async_trait]
 impl AtCommand for AtDiff {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
 
-    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         let diff_chunks = match args.iter().take_while(|arg| arg.text != "\n").take(2).count() {
             0 => {
                 // No arguments: git diff for all tracked files
-                let last_accessed_file = get_last_accessed_file(ccx).await?;
+                let last_accessed_file = get_last_accessed_file(ccx.clone()).await?;
                 let parent_dir = last_accessed_file.parent().unwrap().to_string_lossy().to_string();
                 args.clear();
                 execute_diff_for_vcs(&parent_dir, &[]).await.map_err(|e|format!("Couldn't execute git diff.\nError: {}", e))
@@ -175,8 +189,8 @@ impl AtCommand for AtDiff {
                 // TODO: if file_path is rel, complete it
                 // 1 argument: git diff for a specific file
                 args.truncate(1);
-                
-                let file_path = match validate_and_complete_file_path(ccx, &PathBuf::from(cmd.text.as_str())).await {
+
+                let file_path = match validate_and_complete_file_path(ccx.clone(), &PathBuf::from(cmd.text.as_str())).await {
                     Ok(file_path) => file_path,
                     Err(e) => {
                         cmd.ok = false; cmd.reason = Some(e.clone());
@@ -184,19 +198,19 @@ impl AtCommand for AtDiff {
                         return Err(e);
                     }
                 };
-                
+
                 let parent_dir = file_path.parent().unwrap().to_string_lossy().to_string();
                 execute_diff_for_vcs(&parent_dir, &[&file_path.to_string_lossy().to_string()]).await.map_err(|e|format!("Couldn't execute git diff {:?}.\nError: {}", file_path, e))
             },
             _ => {
                 cmd.ok = false; cmd.reason = Some("Invalid number of arguments".to_string());
                 args.clear();
-                return Err("Invalid number of arguments".to_string()); 
+                return Err("Invalid number of arguments".to_string());
             },
         }?;
 
         info!("executed @diff {:?}", args.iter().map(|x|x.text.clone()).collect::<Vec<_>>().join(" "));
-        
+
         let message = ChatMessage::new(
             "diff".to_string(),
             json!(diff_chunks).to_string(),
@@ -262,13 +276,18 @@ impl AtCommand for AtDiffRev {
         &self.params
     }
 
-    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         if args.len() < 3 {
             cmd.ok = false; cmd.reason = Some("Invalid number of arguments".to_string());
             args.clear();
             return Err("Invalid number of arguments".to_string());
         }
-        
+
         let rev1 = args[0].clone();
         let rev2 = args[1].clone();
 
@@ -283,9 +302,9 @@ impl AtCommand for AtDiffRev {
         let parent_path = PathBuf::from(file_path.parent().unwrap());
 
         args.truncate(3);
-        
+
         let diff_chunks = execute_diff_with_revs(&parent_path, &rev1.text, &rev2.text, &file_path).await?;
-        
+
         let message = ChatMessage::new(
             "diff".to_string(),
             json!(diff_chunks).to_string(),

@@ -1,8 +1,10 @@
+use std::sync::Arc;
 use async_trait::async_trait;
 use itertools::Itertools;
 use strsim::jaro_winkler;
 use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
+use tokio::sync::Mutex as AMutex;
 
 
 #[derive(Debug)]
@@ -37,15 +39,27 @@ fn full_path_score(path: &str, query: &str) -> f32 {
 // TODO: move to at_lookup_symbols
 #[async_trait]
 impl AtParam for AtParamSymbolPathQuery {
-    async fn is_value_valid(&self, value: &String, _: &AtCommandsContext) -> bool {
+    async fn is_value_valid(
+        &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
+        value: &String,
+    ) -> bool {
         !value.is_empty()
     }
 
-    async fn param_completion(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
+    async fn param_completion(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        value: &String,
+    ) -> Vec<String> {
         if value.is_empty() {
             return vec![];
         }
-        let ast = ccx.global_context.read().await.ast_module.clone();
+        let (gcx, top_n) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.global_context.clone(), ccx_locked.top_n)
+        };
+        let ast = gcx.read().await.ast_module.clone();
         let names = match &ast {
             Some(ast) => ast.read().await.get_symbols_paths(RequestSymbolType::Declaration).await.unwrap_or_default(),
             None => vec![]
@@ -60,7 +74,7 @@ impl AtParam for AtParamSymbolPathQuery {
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
             .rev()
             .map(|(s, _)| s.clone())
-            .take(ccx.top_n)
+            .take(top_n)
             .collect::<Vec<String>>();
         return sorted_paths;
     }
@@ -82,12 +96,24 @@ impl AtParamSymbolReferencePathQuery {
 
 #[async_trait]
 impl AtParam for AtParamSymbolReferencePathQuery {
-    async fn is_value_valid(&self, _: &String, _: &AtCommandsContext) -> bool {
+    async fn is_value_valid(
+        &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
+        _value: &String,
+    ) -> bool {
         return true;
     }
 
-    async fn param_completion(&self, value: &String, ccx: &AtCommandsContext) -> Vec<String> {
-        let ast = ccx.global_context.read().await.ast_module.clone();
+    async fn param_completion(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        value: &String,
+    ) -> Vec<String> {
+        let (gcx, top_n) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.global_context.clone(), ccx_locked.top_n)
+        };
+        let ast = gcx.read().await.ast_module.clone();
         let index_paths = match &ast {
             Some(ast) => ast.read().await.get_symbols_names(RequestSymbolType::Usage).await.unwrap_or_default(),
             None => vec![]
@@ -101,7 +127,7 @@ impl AtParam for AtParamSymbolReferencePathQuery {
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
             .rev()
             .map(|(s, _)| s.clone())
-            .take(ccx.top_n)
+            .take(top_n)
             .collect::<Vec<String>>();
         return sorted_paths;
     }

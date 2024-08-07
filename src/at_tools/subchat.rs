@@ -4,9 +4,11 @@ use std::fs::{self};
 use textwrap::wrap;
 use reqwest::Client;
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 use serde_json::Value;
 use tracing::{error, info, warn};
 use crate::at_tools::tools::{at_tools_merged_and_filtered, tools_compiled_in};
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ChatToolCall, ChatUsage, SamplingParameters};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
 use crate::http::routers::v1::chat::lookup_chat_scratchpad;
@@ -89,8 +91,8 @@ async fn chat_interaction_stream() {
 }
 
 async fn chat_interaction_non_stream(
-    global_context: Arc<ARwLock<GlobalContext>>,
-    spad: Box<dyn ScratchpadAbstract>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    mut spad: Box<dyn ScratchpadAbstract>,
     prompt: &String,
     chat_post: &ChatPost,
     client: Client,
@@ -98,8 +100,8 @@ async fn chat_interaction_non_stream(
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
     let t1 = std::time::Instant::now();
     let j = crate::restream::scratchpad_interaction_not_stream_json(
-        global_context.clone(),
-        spad,
+        ccx.clone(),
+        &mut spad,
         "chat".to_string(),
         prompt,
         chat_post.model.clone(),
@@ -182,22 +184,26 @@ async fn chat_interaction_non_stream(
 }
 
 async fn chat_interaction(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     mut spad: Box<dyn ScratchpadAbstract>,
     chat_post: &mut ChatPost,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
+    let (gcx, _n_ctx) = {
+        let ccx_locked= ccx.lock().await;
+        (ccx_locked.global_context.clone(), ccx_locked.n_ctx)
+    };
     let (client, api_key) = {
-        let cx_locked = global_context.write().await;
+        let cx_locked = gcx.write().await;
         (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
     };
-    let prompt = spad.prompt(chat_post.max_tokens, &mut chat_post.parameters).await?;
+    let prompt = spad.prompt(ccx.clone(), &mut chat_post.parameters).await?;
 
     let stream = chat_post.stream.unwrap_or(false);
     return if stream {
         todo!();
     } else {
         Ok(chat_interaction_non_stream(
-            global_context.clone(),
+            ccx.clone(),
             spad,
             &prompt,
             chat_post,
@@ -251,7 +257,7 @@ fn format_messages_as_markdown(messages: &[ChatMessage]) -> String {
 }
 
 pub async fn subchat_single(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
     messages: Vec<ChatMessage>,
     tools_subset: Vec<String>,
@@ -261,6 +267,8 @@ pub async fn subchat_single(
     n: Option<usize>,
     logfn_mb: Option<String>,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
+    let gcx = ccx.lock().await.global_context.clone();
+
     // this ignores customized tools
     let tools_turned_on_by_cmdline = at_tools_merged_and_filtered(gcx.clone()).await.keys().cloned().collect::<Vec<_>>();
     let tools_turn_on_set: HashSet<String> = tools_subset.iter().cloned().collect();
@@ -289,7 +297,7 @@ pub async fn subchat_single(
         only_deterministic_messages,
     ).await?;
 
-    let chat_response_msgs = chat_interaction(gcx.clone(), spad, &mut chat_post).await?;
+    let chat_response_msgs = chat_interaction(ccx.clone(), spad, &mut chat_post).await?;
 
     let mut old_messages = messages.clone();
     if ALLOW_AT {
@@ -329,7 +337,7 @@ pub async fn subchat_single(
 }
 
 pub async fn subchat(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
     messages: Vec<ChatMessage>,
     tools_subset: Vec<String>,
@@ -338,6 +346,7 @@ pub async fn subchat(
     wrap_up_prompt: &str,
     temperature: Option<f32>,
     logfn_mb: Option<String>,
+    // something streamable
 ) -> Result<Vec<ChatMessage>, String> {
     let mut messages = messages.clone();
     // let mut chat_usage = ChatUsage { ..Default::default() };
@@ -363,7 +372,7 @@ pub async fn subchat(
                 }
             }
             messages = subchat_single(
-                gcx.clone(),
+                ccx.clone(),
                 model_name,
                 messages.clone(),
                 tools_subset.clone(),
@@ -381,7 +390,7 @@ pub async fn subchat(
     if let Some(tool_calls) = &last_message.tool_calls {
         if !tool_calls.is_empty() {
             messages = subchat_single(
-                gcx.clone(),
+                ccx.clone(),
                 model_name,
                 messages,
                 vec![],
@@ -395,7 +404,7 @@ pub async fn subchat(
     }
     messages.push(ChatMessage::new("user".to_string(), wrap_up_prompt.to_string()));
     messages = subchat_single(
-        gcx.clone(),
+        ccx.clone(),
         model_name,
         messages,
         vec![],

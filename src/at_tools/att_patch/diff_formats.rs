@@ -1,5 +1,6 @@
+use std::sync::Arc;
 use std::path::PathBuf;
-
+use tokio::sync::Mutex as AMutex;
 use ropey::Rope;
 use tracing::warn;
 
@@ -9,8 +10,9 @@ use crate::at_tools::att_patch::tool::DefaultToolPatch;
 use crate::diffs::{apply_diff_chunks_to_text, fuzzy_results_into_state_vector};
 use crate::files_in_workspace::read_file_from_disk;
 
+
 pub async fn parse_diff_chunks_from_message(
-    ccx: &mut AtCommandsContext,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     message: &String,
 ) -> Result<String, String> {
     let chunks = match DefaultToolPatch::parse_message(message).await {
@@ -24,8 +26,8 @@ pub async fn parse_diff_chunks_from_message(
         return Err("No diff chunks were found".to_string());
     }
 
-    let gx = ccx.global_context.clone();
-    let maybe_ast_module = gx.read().await.ast_module.clone();
+    let gcx = ccx.lock().await.global_context.clone();
+    let maybe_ast_module = gcx.read().await.ast_module.clone();
     for chunk in chunks.iter() {
         let path = PathBuf::from(&chunk.file_name);
         let text_before = match read_file_from_disk(&path).await {
@@ -72,7 +74,7 @@ pub async fn parse_diff_chunks_from_message(
                 };
                 if before_error_symbols.len() < after_error_symbols.len() {
                     let message = format!(
-                        "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs", 
+                        "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs",
                         path, before_error_symbols.len(), after_error_symbols.len()
                     );
                     return Err(message);

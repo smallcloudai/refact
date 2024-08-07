@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use uuid::Uuid;
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::tools::Tool;
@@ -53,12 +54,15 @@ pub struct AttFilesSkeleton;
 
 #[async_trait]
 impl Tool for AttFilesSkeleton {
-    async fn tool_execute(&mut self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
-        // global context copy, tokenizer etc.
-        let gx = ccx.global_context.clone();
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<Vec<ContextEnum>, String> {
+        let gcx = ccx.lock().await.global_context.clone();
 
-        let caps = crate::global_context::try_load_caps_quickly_if_not_present(
-            gx.clone(), 0)
+        let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0)
             .await
             .map_err(|e| {
                 format!("No caps: {:?}", e);
@@ -66,7 +70,7 @@ impl Tool for AttFilesSkeleton {
             })?;
 
         let tokenizer = cached_tokenizers::cached_tokenizer(
-            caps.clone(), gx.clone(), "gpt-4o".to_string(),
+            caps.clone(), gcx.clone(), "gpt-4o".to_string(),
         ).await?;
 
         // parse args
@@ -77,18 +81,18 @@ impl Tool for AttFilesSkeleton {
         };
 
         // collect context
-        let ast_mb = gx.read().await.ast_module.clone();
+        let ast_mb = gcx.read().await.ast_module.clone();
         let _ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
 
         let mut context_files: Vec<ContextFile> = Vec::new();
         if let Some(file_names) = file_names.clone() {
             for file_name in file_names.iter() {
-                context_files.push(context_msg_from_file_name(gx.clone(), file_name.clone()).await);
+                context_files.push(context_msg_from_file_name(gcx.clone(), file_name.clone()).await);
             }
         }
 
         let context_files_postprocessed: Vec<ContextFile> = postprocess_at_results2(
-            ccx.global_context.clone(),
+            gcx.clone(),
             &context_files,
             tokenizer.clone(),
             MAX_TOKENS,

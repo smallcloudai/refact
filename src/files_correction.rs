@@ -132,7 +132,7 @@ pub async fn correct_to_nearest_filename(
 }
 
 pub async fn correct_to_nearest_dir_path(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     correction_candidate: &String,
     fuzzy: bool,
     top_n: usize,
@@ -144,7 +144,7 @@ pub async fn correct_to_nearest_dir_path(
         PathBuf::from(p).components().last().map(|comp| comp.as_os_str().to_string_lossy().to_string())
     }
 
-    let (cache_correction_arc, _) = files_cache_rebuild_as_needed(global_context.clone()).await;
+    let (cache_correction_arc, _) = files_cache_rebuild_as_needed(gcx.clone()).await;
     let mut paths_correction_map = HashMap::new();
     for (k, v) in cache_correction_arc.iter() {
         match get_parent(k) {

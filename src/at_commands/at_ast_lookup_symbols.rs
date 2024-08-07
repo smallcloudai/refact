@@ -99,13 +99,14 @@ impl AtAstLookupSymbols {
     }
 }
 
-pub async fn execute_at_ast_lookup_symbols(ccx: &mut AtCommandsContext, file_path: &String, row_idx: usize) -> Result<Vec<ContextFile>, String> {
+pub async fn execute_at_ast_lookup_symbols(ccx: Arc<AMutex<AtCommandsContext>>, file_path: &String, row_idx: usize) -> Result<Vec<ContextFile>, String> {
     let cpath = crate::files_correction::canonical_path(&file_path);
-    let ast = ccx.global_context.read().await.ast_module.clone();
+    let gcx = ccx.lock().await.global_context.clone();
+    let ast = gcx.read().await.ast_module.clone();
     let x = match &ast {
         Some(ast) => {
             let mut doc = crate::files_in_workspace::Document { path: cpath.clone(), text: None };
-            let file_text = crate::files_in_workspace::get_file_text_from_memory_or_disk(ccx.global_context.clone(), &cpath).await?; // FIXME
+            let file_text = crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &cpath).await?; // FIXME
             doc.update_text(&file_text);
             match ast.read().await.symbols_near_cursor_to_buckets(
                 &doc, &file_text, Point { row: row_idx, column: 0 }, 15,  3
@@ -124,7 +125,13 @@ impl AtCommand for AtAstLookupSymbols {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
-    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @lookup_symbols_at {:?}", args);
 
         let mut file_path = match args.get(0) {
@@ -132,10 +139,10 @@ impl AtCommand for AtAstLookupSymbols {
             None => {
                 cmd.ok = false; cmd.reason = Some("file path is missing".to_string());
                 args.clear();
-                return Err("no file path".to_string()); 
+                return Err("no file path".to_string());
             }
         };
-        correct_at_arg(ccx, self.params[0].clone(), &mut file_path).await;
+        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut file_path).await;
         args.clear();
         args.push(file_path.clone());
 
@@ -149,10 +156,11 @@ impl AtCommand for AtAstLookupSymbols {
             },
             None => return Err("line number is not a valid".to_string()),
         };
-        let results = execute_at_ast_lookup_symbols(ccx, &file_path.text, row_idx).await?;
+        let results = execute_at_ast_lookup_symbols(ccx.clone(), &file_path.text, row_idx).await?;
         let text = text_on_clip(&results, false);
         Ok((vec_context_file_to_context_tools(results), text))
     }
+
     fn depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }

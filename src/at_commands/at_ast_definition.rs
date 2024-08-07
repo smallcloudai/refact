@@ -81,21 +81,30 @@ impl AtCommand for AtAstDefinition {
         &self.params
     }
 
-    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @definition {:?}", args);
         let mut symbol = match args.get(0) {
             Some(x) => x.clone(),
             None => {
-                cmd.ok = false; cmd.reason = Some("symbol is missing".to_string());
+                cmd.ok = false;
+                cmd.reason = Some("parameter is missing".to_string());
                 args.clear();
-                return Err("symbol is missing".to_string());
+                return Err("parameter `symbol` is missing".to_string());
             },
         };
-        correct_at_arg(ccx, self.params[0].clone(), &mut symbol).await;
+
+        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut symbol).await;
         args.clear();
         args.push(symbol.clone());
 
-        let ast = ccx.global_context.read().await.ast_module.clone();
+        let gcx = ccx.lock().await.global_context.clone();
+        let ast = gcx.read().await.ast_module.clone();
+
         // TODO: don't produce files from fuzzy search, it's silly.
         let results = run_at_definition(&ast, &symbol.text).await?;
         let file_paths = results.iter().map(|x| x.file_name.clone()).collect::<Vec<_>>();
@@ -117,4 +126,3 @@ impl AtCommand for AtAstDefinition {
         vec!["ast".to_string()]
     }
 }
-
