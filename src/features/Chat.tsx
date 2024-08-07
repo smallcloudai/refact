@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import type { Config } from "../app/hooks";
-import { CodeChatModel } from "../events";
+import { CodeChatModel, SystemPrompts } from "../events";
 import { Chat as ChatComponent } from "../components/Chat";
 import {
   useGetCapsQuery,
@@ -11,7 +11,11 @@ import {
   useGetCommandPreviewQuery,
 } from "../app/hooks";
 import { useDebounceCallback } from "usehooks-ts";
-import {} from "../features/Chat2/chatThread";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
+import {
+  getSelectedSystemPrompt,
+  setSystemPrompt,
+} from "../features/Chat2/chatThread";
 
 type ChatProps = {
   host: Config["host"];
@@ -35,10 +39,10 @@ export const Chat: React.FC<ChatProps> = ({
   // requestPreviewFiles,
   // setSelectedCommand,
   removePreviewFileByName,
-  retryQuestion,
-  maybeRequestCaps,
+  // retryQuestion,
+  // maybeRequestCaps,
   startNewChat,
-  setSelectedSystemPrompt,
+  // setSelectedSystemPrompt,
   setUseTools,
   enableSend,
   openSettings,
@@ -47,7 +51,13 @@ export const Chat: React.FC<ChatProps> = ({
   state,
 }) => {
   const capsRequest = useGetCapsQuery(undefined);
+
+  // TODO: these could be lower in the component tree
   const promptsRequest = useGetPromptsQuery(undefined);
+  const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
+  const dispatch = useAppDispatch();
+  const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
+    dispatch(setSystemPrompt(prompt));
 
   // TODO: don't make this request if there are no caps
   const toolsRequest = useGetToolsQuery(!!capsRequest.data);
@@ -83,18 +93,18 @@ export const Chat: React.FC<ChatProps> = ({
     !!capsRequest.data,
   );
 
-  const onSetSelectedSystemPrompt = useCallback(
-    (key: string) => {
-      if (!promptsRequest.data) return;
-      if (!(key in promptsRequest.data)) return;
-      if (key === "default") {
-        setSelectedSystemPrompt("");
-      } else {
-        setSelectedSystemPrompt(key);
-      }
-    },
-    [promptsRequest.data, setSelectedSystemPrompt],
-  );
+  // const onSetSelectedSystemPrompt = useCallback(
+  //   (key: string) => {
+  //     if (!promptsRequest.data) return;
+  //     if (!(key in promptsRequest.data)) return;
+  //     if (key === "default") {
+  //       setSelectedSystemPrompt("");
+  //     } else {
+  //       setSelectedSystemPrompt(key);
+  //     }
+  //   },
+  //   [promptsRequest.data, setSelectedSystemPrompt],
+  // );
 
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
@@ -112,6 +122,7 @@ export const Chat: React.FC<ChatProps> = ({
     return false;
   }, [capsRequest.data, toolsRequest.data, state.chat.model]);
 
+  // can be a selector
   const unCalledTools = React.useMemo(() => {
     if (state.chat.messages.length === 0) return false;
     const last = state.chat.messages[state.chat.messages.length - 1];
@@ -129,10 +140,10 @@ export const Chat: React.FC<ChatProps> = ({
       backFromChat={backFromChat}
       openChatInNewTab={openChatInNewTab}
       // onStopStreaming={stopStreaming}
-      chat={state.chat}
+      // chat={state.chat}
       error={state.error}
       onClearError={clearError}
-      retryQuestion={retryQuestion}
+      // retryQuestion={retryQuestion}
       // isWaiting={state.waiting_for_response}
       // isStreaming={state.streaming}
       onNewFileClick={handleNewFileClick}
@@ -166,11 +177,14 @@ export const Chat: React.FC<ChatProps> = ({
       filesInPreview={commandPreview}
       // selectedSnippet={state.selected_snippet}
       removePreviewFileByName={removePreviewFileByName}
-      requestCaps={maybeRequestCaps}
+      requestCaps={() => {
+        void capsRequest.refetch();
+      }}
       prompts={promptsRequest.data ?? {}}
       onStartNewChat={startNewChat}
+      // Could be lowered
       onSetSystemPrompt={onSetSelectedSystemPrompt}
-      selectedSystemPrompt={state.selected_system_prompt}
+      selectedSystemPrompt={selectedSystemPrompt}
       requestPreviewFiles={() => ({})}
       canUseTools={canUseTools}
       setUseTools={setUseTools}

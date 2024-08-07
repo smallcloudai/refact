@@ -1,3 +1,4 @@
+import { Snippet } from "../features/Chat2/selectedSnippet";
 import {
   ChatMessages,
   ChatResponse,

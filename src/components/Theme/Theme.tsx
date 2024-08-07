@@ -9,7 +9,7 @@ import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
 // import { useConfig } from "../../contexts/config-context";
-import { useApperance, useConfig } from "../../app/hooks";
+import { useAppearance, useConfig } from "../../app/hooks";
 
 export type ThemeProps = {
   children: JSX.Element;
@@ -76,7 +76,7 @@ export const Theme: React.FC<ThemeProps> = (props) => {
   // TODO: use redux here
   const { host, themeProps } = useConfig();
   // TODO: change this to use redux
-  const { appearance } = useApperance();
+  const { appearance } = useAppearance();
 
   if (host === "web") {
     return (

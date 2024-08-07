@@ -7,6 +7,7 @@ import { PageWrapper } from "../PageWrapper";
 import { useAppDispatch, useAppSelector, type Config } from "../../app/hooks";
 import { ChatState, ChatCapsState } from "../../hooks";
 import {
+  getSelectedChatModel,
   newChatAction,
   useSendChatRequest,
 } from "../../features/Chat2/chatThread";
@@ -22,14 +23,14 @@ export type ChatProps = {
   unCalledTools: boolean;
   enableSend: (value: boolean) => void;
 
-  chat: ChatState["chat"];
+  // chat: ChatState["chat"];
   error: ChatState["error"];
   // TODO: update this
   caps: ChatCapsState;
   // commands: ChatState["commands"];
   commands: ChatFormProps["commands"];
 
-  retryQuestion: ChatContentProps["onRetry"];
+  // retryQuestion: ChatContentProps["onRetry"];
   // isWaiting: ChatContentProps["isWaiting"];
   // isStreaming: ChatContentProps["isStreaming"];
   onNewFileClick: ChatContentProps["onNewFileClick"];
@@ -47,6 +48,7 @@ export type ChatProps = {
   removePreviewFileByName: ChatFormProps["removePreviewFileByName"];
   requestCaps: ChatFormProps["requestCaps"];
   prompts: ChatFormProps["prompts"];
+
   onSetSystemPrompt: ChatFormProps["onSetSystemPrompt"];
   selectedSystemPrompt: ChatFormProps["selectedSystemPrompt"];
   requestPreviewFiles: ChatFormProps["requestPreviewFiles"];
@@ -66,10 +68,10 @@ export const Chat: React.FC<ChatProps> = ({
   backFromChat,
   openChatInNewTab,
   // onStopStreaming,
-  chat,
+  // chat,
   error,
   onClearError,
-  retryQuestion,
+  // retryQuestion,
   // isWaiting,
   // isStreaming,
   onNewFileClick,
@@ -108,8 +110,10 @@ export const Chat: React.FC<ChatProps> = ({
   const isWaiting = useAppSelector((state) => state.chat.waiting_for_response);
   const canPaste = activeFile.can_paste;
   const chatId = useAppSelector((state) => state.chat.thread.id);
-  const { submit, abort } = useSendChatRequest();
+  const { submit, abort, retry } = useSendChatRequest();
+  const chatModel = useAppSelector(getSelectedChatModel);
   const dispatch = useAppDispatch();
+  const messages = useAppSelector((state) => state.chat.thread.messages);
 
   // TODO: handle stop
   const handleSummit = useCallback(
@@ -164,10 +168,11 @@ export const Chat: React.FC<ChatProps> = ({
       </Flex>
       {/* )} */}
       <ChatContent
-        key={`chat-content-${chat.id}`}
-        chatKey={chat.id}
+        key={`chat-content-${chatId}`}
+        chatKey={chatId}
         // messages={chat.messages}
-        onRetry={retryQuestion}
+        // could be moved down
+        onRetry={retry}
         isWaiting={isWaiting}
         isStreaming={isStreaming}
         onNewFileClick={onNewFileClick}
@@ -187,15 +192,15 @@ export const Chat: React.FC<ChatProps> = ({
         </Container>
       )}
       <ChatForm
-        key={`chat-form-${chat.id}`}
-        chatId={chat.id}
+        key={`chat-form-${chatId}`}
+        chatId={chatId}
         isStreaming={isStreaming}
-        showControls={chat.messages.length === 0 && !isStreaming}
+        showControls={messages.length === 0 && !isStreaming}
         error={error}
         clearError={onClearError}
         // onSubmit={onAskQuestion}
         onSubmit={handleSummit}
-        model={chat.model}
+        model={chatModel}
         onSetChatModel={onSetChatModel}
         caps={caps}
         // onStopStreaming={onStopStreaming}
@@ -220,8 +225,8 @@ export const Chat: React.FC<ChatProps> = ({
         useTools={useTools}
       />
       <Flex justify="between" pl="1" pr="1" pt="1">
-        {chat.messages.length > 0 && (
-          <Text size="1">model: {chat.model || caps.default_cap} </Text>
+        {messages.length > 0 && (
+          <Text size="1">model: {chatModel || caps.default_cap} </Text>
         )}
       </Flex>
     </PageWrapper>

@@ -18,7 +18,7 @@ const initialState: Snippet = {
 export const setSelectedSnippet = createAction<Snippet>("selected_snippet/set");
 
 export const selectedSnippetReducer = createReducer(initialState, (builder) => {
-  builder.addCase(setSelectedSnippet, (state, action) => {
-    state = action.payload;
+  builder.addCase(setSelectedSnippet, (_state, action) => {
+    return action.payload;
   });
 });

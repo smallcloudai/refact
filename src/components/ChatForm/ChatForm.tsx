@@ -286,8 +286,8 @@ export type ChatFormProps = {
   showControls: boolean;
   requestCaps: () => void;
   prompts: SystemPrompts;
-  onSetSystemPrompt: (prompt: string) => void;
-  selectedSystemPrompt: null | string;
+  onSetSystemPrompt: (prompt: SystemPrompts) => void;
+  selectedSystemPrompt: SystemPrompts;
   chatId: string;
   canUseTools: boolean;
   setUseTools: (value: boolean) => void;
@@ -492,7 +492,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           options: Object.keys(caps.available_caps),
         }}
         promptsProps={{
-          value: selectedSystemPrompt ?? "",
+          value: selectedSystemPrompt,
           prompts: prompts,
           onChange: onSetSystemPrompt,
         }}

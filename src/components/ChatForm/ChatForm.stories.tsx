@@ -173,7 +173,7 @@ const meta: Meta<typeof ChatForm> = {
     onTextAreaHeightChange: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
-    selectedSystemPrompt: null,
+    // selectedSystemPrompt: null,
     useTools: true,
     canUseTools: true,
     setUseTools: noop,

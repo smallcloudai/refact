@@ -105,7 +105,7 @@ export const useGetManyDiffState = (args: DiffAppliedStateArgs[]) => {
 
 export const useConfig = () => useAppSelector((state) => state.config);
 
-export const useApperance = () => {
+export const useAppearance = () => {
   const config = useConfig();
 
   const appearance = config.themeProps.appearance;

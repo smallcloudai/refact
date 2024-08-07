@@ -12,7 +12,7 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
     removePreviewFileByName: noop,
     chatId: "chatId",
     selectedSnippet: { code: "", language: "", path: "", basename: "" },
-    onSubmit: noop,
+    onSubmit: (_str: string) => ({}),
     isStreaming: false,
     onStopStreaming: noop,
     onSetChatModel: noop,
@@ -49,7 +49,7 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
     requestCaps: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
-    selectedSystemPrompt: null,
+    selectedSystemPrompt: {},
     canUseTools: false,
     setUseTools: noop,
     useTools: false,
@@ -160,10 +160,19 @@ describe("ChatForm", () => {
       path: "/Users/refact/projects/print1.py",
       basename: "print1.py",
     };
-    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} host="ide" />);
+    const { user, ...app } = render(
+      <App
+        onSubmit={fakeOnSubmit}
+        // host="ide"
+      />,
+    );
 
     app.rerender(
-      <App onSubmit={fakeOnSubmit} selectedSnippet={snippet} host="ide" />,
+      <App
+        onSubmit={fakeOnSubmit}
+        selectedSnippet={snippet}
+        // host="ide"
+      />,
     );
 
     const label = app.queryByText(/Selected \d* lines/);

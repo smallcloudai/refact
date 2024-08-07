@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useMemo } from "react";
 import { createReducer, createAction } from "@reduxjs/toolkit";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -10,6 +10,7 @@ import {
   ChatRole,
   ContextMemory,
   DiffChunk,
+  SystemPrompts,
   // LspChatMessage,
   ToolCall,
   ToolCommand,
@@ -58,6 +59,7 @@ export type Chat = {
   previous_message_length: number;
   waiting_for_response: boolean;
   cache: Record<string, ChatThread>;
+  system_prompt: SystemPrompts;
 };
 
 const createChatThread = (): ChatThread => {
@@ -79,6 +81,7 @@ const createInitialState = (): Chat => {
     previous_message_length: 0,
     waiting_for_response: false,
     cache: {},
+    system_prompt: {},
   };
 };
 
@@ -86,8 +89,6 @@ const initialState = createInitialState();
 
 type PayloadWIthId = { id: string };
 export const newChatAction = createAction<PayloadWIthId>("chatThread/new");
-
-// const doneStreaming = createAction<PayloadWIthId>("chatThread/doneStreaming");
 
 const chatResponse = createAction<PayloadWIthId & ChatResponse>(
   "chatThread/response",
@@ -105,10 +106,33 @@ const chatError = createAction<PayloadWIthId & { message: string }>(
 
 const doneStreaming = createAction<PayloadWIthId>("chatThread/doneStreaming");
 
+export const setChatModel = createAction<PayloadWIthId & { model: string }>(
+  "chatThread/setChatModel",
+);
+export const getSelectedChatModel = (state: RootState) =>
+  state.chat.thread.model;
+
+export const setSystemPrompt = createAction<SystemPrompts>(
+  "chatThread/setSystemPrompt",
+);
+
+export const getSelectedSystemPrompt = (state: RootState) =>
+  state.chat.system_prompt;
+
 // ask question
 
 export const chatReducer = createReducer(initialState, (builder) => {
+  builder.addCase(setChatModel, (state, action) => {
+    if (state.thread.id !== action.payload.id) return state;
+    state.thread.model = action.payload.model;
+  });
+
+  builder.addCase(setSystemPrompt, (state, action) => {
+    state.system_prompt = action.payload;
+  });
+
   builder.addCase(newChatAction, (state, action) => {
+    // TODO: save chat, or add to cache
     if (state.thread.id === action.payload.id) {
       const next = createInitialState();
       next.thread.model = state.thread.messages.length
@@ -119,7 +143,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(chatResponse, (state, action) => {
-    // TODO: handle chache
+    // TODO: handle cache
     if (state.thread.id !== action.payload.id) return state;
     const hasUserMessage = isChatUserMessageResponse(action.payload);
 
@@ -345,6 +369,7 @@ const chatAskQuestionThunk = createAppAsyncThunk<
   }
 >("chatThread/sendChat", ({ messages, chatId, tools }, thunkAPI) => {
   const state = thunkAPI.getState();
+  // const messagesWithPrompt =
   const messagesForLsp = formatMessagesForLsp(messages);
   sendChat({
     messages: messagesForLsp,
@@ -394,7 +419,7 @@ const chatAskQuestionThunk = createAppAsyncThunk<
             return Promise.reject(error);
           }
 
-          // TODO: add better type chekcing
+          // TODO: add better type checking
           const json = parseOrElse<Record<string, unknown>>(
             maybeJsonString,
             {},
@@ -442,16 +467,26 @@ export const useSendChatRequest = () => {
   const preventSend = useAppSelector((state) => state.chat.prevent_send);
 
   const currentMessages = useAppSelector((state) => state.chat.thread.messages);
-  const submit = useCallback(
-    (question: string) => {
-      const tools = toolsRequest.data ?? null;
-      const message: ChatMessage = { role: "user", content: question };
+  const systemPrompt = useAppSelector(getSelectedSystemPrompt);
 
-      const messages = currentMessages.concat(message);
+  const messagesWithSystemPrompt = useMemo(() => {
+    const prompts = Object.entries(systemPrompt);
+    if (prompts.length === 0) return currentMessages;
+    const [key, prompt] = prompts[0];
+    if (key === "default") return currentMessages;
+    if (currentMessages.length === 0) {
+      const message: ChatMessage = { role: "system", content: prompt.text };
+      return [message];
+    }
+    return currentMessages;
+  }, [currentMessages, systemPrompt]);
+
+  const sendMessages = useCallback(
+    (messages: ChatMessages) => {
+      const tools = toolsRequest.data ?? null;
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
-      // move this up ?
       const action = chatAskQuestionThunk({
         messages,
         tools,
@@ -461,10 +496,29 @@ export const useSendChatRequest = () => {
       const dispatchedAction = dispatch(action);
       abortRef.current = dispatchedAction.abort;
     },
-    [chatId, currentMessages, dispatch, toolsRequest.data],
+    [chatId, dispatch, toolsRequest.data],
   );
 
-  // Automatically calls tool calls, should be cancelable too :/
+  const submit = useCallback(
+    (question: string) => {
+      // const tools = toolsRequest.data ?? null;
+      const message: ChatMessage = { role: "user", content: question };
+      // This may cause duplicated messages
+      const messages = messagesWithSystemPrompt.concat(message);
+      sendMessages(messages);
+    },
+    [messagesWithSystemPrompt, sendMessages],
+  );
+
+  // TODO: retry
+  const retry = useCallback(
+    (messages: ChatMessages) => {
+      sendMessages(messages);
+    },
+    [sendMessages],
+  );
+
+  // Automatically calls tool calls.
   useEffect(() => {
     if (
       !streaming &&
@@ -472,35 +526,16 @@ export const useSendChatRequest = () => {
       !chatError &&
       !preventSend
     ) {
-      // const lastMessage = state.chat.messages[state.chat.messages.length - 1];
       const lastMessage = currentMessages.slice(-1)[0];
       if (
         isAssistantMessage(lastMessage) &&
         lastMessage.tool_calls &&
         lastMessage.tool_calls.length > 0
       ) {
-        const tools = toolsRequest.data ?? null;
-
-        // this function is duplicated
-        const action = chatAskQuestionThunk({
-          messages: currentMessages,
-          tools,
-          chatId,
-        });
-
-        const dispatchedAction = dispatch(action);
-        abortRef.current = dispatchedAction.abort;
+        sendMessages(currentMessages);
       }
     }
-  }, [
-    chatError,
-    chatId,
-    currentMessages,
-    dispatch,
-    preventSend,
-    streaming,
-    toolsRequest.data,
-  ]);
+  }, [chatError, currentMessages, preventSend, sendMessages, streaming]);
 
   const abort = useCallback(() => {
     if (abortRef.current) {
@@ -517,6 +552,7 @@ export const useSendChatRequest = () => {
   return {
     submit,
     abort,
+    retry,
   };
 };
 
