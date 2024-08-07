@@ -1,11 +1,11 @@
 import React, { useCallback, useRef } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
-import { ChatContent, ChatContentProps } from "../ChatContent";
+import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
 import { useAppDispatch, useAppSelector, type Config } from "../../app/hooks";
-import { ChatState, ChatCapsState } from "../../hooks";
+import { ChatState, ChatCapsState, useEventsBusForIDE } from "../../hooks";
 import {
   getSelectedChatModel,
   newChatAction,
@@ -33,10 +33,10 @@ export type ChatProps = {
   // retryQuestion: ChatContentProps["onRetry"];
   // isWaiting: ChatContentProps["isWaiting"];
   // isStreaming: ChatContentProps["isStreaming"];
-  onNewFileClick: ChatContentProps["onNewFileClick"];
-  onPasteClick: ChatContentProps["onPasteClick"];
+  // onNewFileClick: ChatContentProps["onNewFileClick"];
+  // onPasteClick: ChatContentProps["onPasteClick"];
   // canPaste: ChatContentProps["canPaste"];
-  openSettings: ChatContentProps["openSettings"];
+  // openSettings: ChatContentProps["openSettings"];
 
   hasContextFile: ChatFormProps["hasContextFile"];
   requestCommandsCompletion: ChatFormProps["requestCommandsCompletion"];
@@ -74,8 +74,8 @@ export const Chat: React.FC<ChatProps> = ({
   // retryQuestion,
   // isWaiting,
   // isStreaming,
-  onNewFileClick,
-  onPasteClick,
+  // onNewFileClick,
+  // onPasteClick,
   // canPaste,
   preventSend,
   unCalledTools,
@@ -101,7 +101,7 @@ export const Chat: React.FC<ChatProps> = ({
   canUseTools,
   setUseTools,
   useTools,
-  openSettings,
+  // openSettings,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
   const activeFile = useAppSelector((state) => state.active_file);
@@ -114,6 +114,8 @@ export const Chat: React.FC<ChatProps> = ({
   const chatModel = useAppSelector(getSelectedChatModel);
   const dispatch = useAppDispatch();
   const messages = useAppSelector((state) => state.chat.thread.messages);
+
+  const { diffPasteBack, newFile, openSettings } = useEventsBusForIDE();
 
   // TODO: handle stop
   const handleSummit = useCallback(
@@ -175,8 +177,8 @@ export const Chat: React.FC<ChatProps> = ({
         onRetry={retry}
         isWaiting={isWaiting}
         isStreaming={isStreaming}
-        onNewFileClick={onNewFileClick}
-        onPasteClick={onPasteClick}
+        onNewFileClick={newFile}
+        onPasteClick={diffPasteBack}
         canPaste={canPaste}
         ref={chatContentRef}
         openSettings={openSettings}

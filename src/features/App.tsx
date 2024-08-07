@@ -13,6 +13,7 @@ import {
   usePostMessage,
   useChatHistory,
   useEventBusForChat,
+  useEventsBusForIDE,
 } from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
@@ -33,7 +34,9 @@ export interface AppProps {
 // TODO: wrap this in the Prvider and theme components
 const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const { pages, navigate } = usePages();
+  const { openHotKeys, openSettings } = useEventsBusForIDE();
   const [apiKey, setApiKey] = useLocalStorage("api_key", "");
+  // TODO: can replace this with a selector for state.chat.thread.id
   const { currentChatId } = useEventBusForHost();
   const config = useConfig();
 
@@ -119,9 +122,9 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const handleNavigation = useCallback(
     (to: "fim" | "stats" | "hot keys" | "settings" | "") => {
       if (to === "settings") {
-        chatHook.openSettings();
+        openSettings();
       } else if (to === "hot keys") {
-        chatHook.openHotKeys();
+        openHotKeys();
       } else if (to === "fim") {
         navigate({
           type: "push",
@@ -131,7 +134,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         navigate({ type: "push", page: { name: "statistics page" } });
       }
     },
-    [chatHook, navigate],
+    [navigate, openHotKeys, openSettings],
   );
 
   // goTo settings, fim, stats, hot keys

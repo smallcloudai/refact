@@ -8,22 +8,22 @@ import {
   ChatContextFileMessage,
   // SystemPrompts,
   // isSystemPrompts,
-  ToolCommand,
+  // ToolCommand,
   // DiffChunk,
   // DiffAppliedStateResponse,
 } from "../services/refact";
 
 export enum EVENT_NAMES_FROM_CHAT {
   SAVE_CHAT = "save_chat_to_history",
-  ASK_QUESTION = "chat_question",
+  // ASK_QUESTION = "chat_question",
   // REQUEST_CAPS = "chat_request_caps",
-  STOP_STREAMING = "chat_stop_streaming",
+  // STOP_STREAMING = "chat_stop_streaming",
   BACK_FROM_CHAT = "chat_back_from_chat",
   OPEN_IN_CHAT_IN_TAB = "open_chat_in_new_tab",
   SEND_TO_SIDE_BAR = "chat_send_to_sidebar",
   READY = "chat_ready",
-  NEW_FILE = "chat_create_new_file",
-  PASTE_DIFF = "chat_paste_diff",
+  // NEW_FILE = "chat_create_new_file",
+  // PASTE_DIFF = "chat_paste_diff",
   // REQUEST_AT_COMMAND_COMPLETION = "chat_request_at_command_completion",
   // REQUEST_PREVIEW_FILES = "chat_request_preview_files",
   // REQUEST_PROMPTS = "chat_request_prompts",
@@ -32,8 +32,8 @@ export enum EVENT_NAMES_FROM_CHAT {
   // REQUEST_TOOLS = "chat_request_has_tool_check",
   // REQUEST_DIFF_APPLIED_CHUNKS = "request_diff_applied_chunks",
   // REQUEST_DIFF_OPPERATION = "request_diff_operation",
-  OPEN_SETTINGS = "chat_open_settings",
-  OPEN_HOT_KEYS = "chat_open_hot_keys",
+  // OPEN_SETTINGS = "chat_open_settings",
+  // OPEN_HOT_KEYS = "chat_open_hot_keys",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -170,42 +170,42 @@ export function isActionFromChat(action: unknown): action is ActionFromChat {
 //   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_PREVIEW_FILES;
 // }
 
-export interface NewFileFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.NEW_FILE;
-  payload: {
-    id: string;
-    content: string;
-  };
-}
+// export interface NewFileFromChat extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.NEW_FILE;
+//   payload: {
+//     id: string;
+//     content: string;
+//   };
+// }
 
-export function isNewFileFromChat(action: unknown): action is NewFileFromChat {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.NEW_FILE;
-}
+// export function isNewFileFromChat(action: unknown): action is NewFileFromChat {
+//   if (!isActionFromChat(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.NEW_FILE;
+// }
 
-export interface PasteDiffFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.PASTE_DIFF;
-  payload: { id: string; content: string };
-}
+// export interface PasteDiffFromChat extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.PASTE_DIFF;
+//   payload: { id: string; content: string };
+// }
 
-export function isPasteDiffFromChat(
-  action: unknown,
-): action is PasteDiffFromChat {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.PASTE_DIFF;
-}
+// export function isPasteDiffFromChat(
+//   action: unknown,
+// ): action is PasteDiffFromChat {
+//   if (!isActionFromChat(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.PASTE_DIFF;
+// }
 
-export interface QuestionFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION;
-  payload: ChatThread & { tools: ToolCommand[] | null };
-}
+// export interface QuestionFromChat extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION;
+//   payload: ChatThread & { tools: ToolCommand[] | null };
+// }
 
-export function isQuestionFromChat(
-  action: unknown,
-): action is QuestionFromChat {
-  if (!isAction(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.ASK_QUESTION;
-}
+// export function isQuestionFromChat(
+//   action: unknown,
+// ): action is QuestionFromChat {
+//   if (!isAction(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.ASK_QUESTION;
+// }
 
 export interface SaveChatFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT;
@@ -231,17 +231,17 @@ export function isSaveChatFromChat(
 //   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_CAPS;
 // }
 
-export interface StopStreamingFromChat extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING;
-  payload: { id: string };
-}
+// export interface StopStreamingFromChat extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.STOP_STREAMING;
+//   payload: { id: string };
+// }
 
-export function isStopStreamingFromChat(
-  action: unknown,
-): action is StopStreamingFromChat {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.STOP_STREAMING;
-}
+// export function isStopStreamingFromChat(
+//   action: unknown,
+// ): action is StopStreamingFromChat {
+//   if (!isActionFromChat(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.STOP_STREAMING;
+// }
 
 export interface TakeNotesFromChat extends ActionFromChat {
   type: EVENT_NAMES_FROM_CHAT.TAKE_NOTES;
@@ -276,25 +276,25 @@ export function isTakeNotesFromChat(
 //   if (!isActionFromChat(action)) return false;
 //   return action.type === EVENT_NAMES_FROM_CHAT.REQUEST_DIFF_APPLIED_CHUNKS;
 // }
-export interface OpenSettings extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
-  payload: { id: string };
-}
+// export interface OpenSettings extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
+//   payload: { id: string };
+// }
 
-export function isOpenSettings(action: unknown): action is OpenSettings {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
-}
+// export function isOpenSettings(action: unknown): action is OpenSettings {
+//   if (!isActionFromChat(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.OPEN_SETTINGS;
+// }
 
-export interface OpenHotKeys extends ActionFromChat {
-  type: EVENT_NAMES_FROM_CHAT.OPEN_HOT_KEYS;
-  payload: { id: string };
-}
+// export interface OpenHotKeys extends ActionFromChat {
+//   type: EVENT_NAMES_FROM_CHAT.OPEN_HOT_KEYS;
+//   payload: { id: string };
+// }
 
-export function isOpenHotKeys(action: unknown): action is OpenHotKeys {
-  if (!isActionFromChat(action)) return false;
-  return action.type === EVENT_NAMES_FROM_CHAT.OPEN_HOT_KEYS;
-}
+// export function isOpenHotKeys(action: unknown): action is OpenHotKeys {
+//   if (!isActionFromChat(action)) return false;
+//   return action.type === EVENT_NAMES_FROM_CHAT.OPEN_HOT_KEYS;
+// }
 
 export interface ActionToChat extends BaseAction {
   type: EVENT_NAMES_TO_CHAT;

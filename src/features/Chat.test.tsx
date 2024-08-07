@@ -21,7 +21,7 @@ import {
 import { Chat } from "./Chat";
 import {
   EVENT_NAMES_TO_CHAT,
-  EVENT_NAMES_FROM_CHAT,
+  // EVENT_NAMES_FROM_CHAT,
   RestoreChat,
   // CreateNewChatThread,
   ChatErrorStreaming,
@@ -102,9 +102,9 @@ describe.skip("Chat", () => {
   });
 
   it("should send and receive messages from the window", async () => {
-    const postMessageSpy = vi.spyOn(window, "postMessage");
-    const windowSpy = vi.fn();
-    window.addEventListener("message", windowSpy);
+    // const postMessageSpy = vi.spyOn(window, "postMessage");
+    // const windowSpy = vi.fn();
+    // window.addEventListener("message", windowSpy);
 
     let id = "";
     const { user, ...app } = render(
@@ -135,20 +135,20 @@ describe.skip("Chat", () => {
 
     await user.keyboard("{Enter}");
 
-    expect(postMessageSpy).toHaveBeenCalledWith(
-      {
-        type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-        payload: {
-          id: id,
-          messages: [["user", "hello\n"]],
-          model: "", // not added because it's default
-          title: "",
-          attach_file: false,
-          tools: null,
-        },
-      },
-      "*",
-    );
+    // expect(postMessageSpy).toHaveBeenCalledWith(
+    //   {
+    //     type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
+    //     payload: {
+    //       id: id,
+    //       messages: [["user", "hello\n"]],
+    //       model: "", // not added because it's default
+    //       title: "",
+    //       attach_file: false,
+    //       tools: null,
+    //     },
+    //   },
+    //   "*",
+    // );
 
     postMessage({
       type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
@@ -432,18 +432,11 @@ describe.skip("Chat", () => {
     window.HTMLElement.prototype.hasPointerCapture = vi.fn();
     window.HTMLElement.prototype.releasePointerCapture = vi.fn();
 
-    const postMessageSpy = vi.spyOn(window, "postMessage");
-    const windowSpy = vi.fn();
-    window.addEventListener("message", windowSpy);
+    // const postMessageSpy = vi.spyOn(window, "postMessage");
+    // const windowSpy = vi.fn();
+    // window.addEventListener("message", windowSpy);
 
-    let id = "";
-    const { user, ...app } = render(
-      <App
-        setId={(v) => {
-          id = v;
-        }}
-      />,
-    );
+    const { user, ...app } = render(<App setId={() => ({})} />);
 
     // setUpSystemPromptsForChat(id);
 
@@ -463,23 +456,23 @@ describe.skip("Chat", () => {
 
     await user.keyboard("{Enter}");
 
-    expect(postMessageSpy).toHaveBeenCalledWith(
-      {
-        type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-        payload: {
-          id,
-          title: "",
-          model: "",
-          attach_file: false,
-          tools: null,
-          messages: [
-            ["system", SYSTEM_PROMPTS.insert_jokes.text],
-            ["user", "hello\n"],
-          ],
-        },
-      },
-      "*",
-    );
+    // expect(postMessageSpy).toHaveBeenCalledWith(
+    //   {
+    //     type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
+    //     payload: {
+    //       id,
+    //       title: "",
+    //       model: "",
+    //       attach_file: false,
+    //       tools: null,
+    //       messages: [
+    //         ["system", SYSTEM_PROMPTS.insert_jokes.text],
+    //         ["user", "hello\n"],
+    //       ],
+    //     },
+    //   },
+    //   "*",
+    // );
   });
 
   // test("restore and receive response with use question", async () => {

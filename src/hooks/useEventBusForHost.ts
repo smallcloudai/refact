@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 // import {
 //   sendChat,
 //   // getCaps,
@@ -20,7 +20,7 @@ import {
   // isQuestionFromChat,
   isSaveChatFromChat,
   // isRequestCapsFromChat,
-  isStopStreamingFromChat,
+  // isStopStreamingFromChat,
   // isRequestAtCommandCompletion,
   // ReceiveAtCommandCompletion,
   // ReceiveAtCommandPreview,
@@ -47,7 +47,7 @@ export function useEventBusForHost() {
   const { saveChat } = useChatHistory();
   const [currentChatId, setCuttentChat] = useState("");
   // this needs to be a ref because it is mutated in a useEffect
-  const controller = useRef(new AbortController());
+  // const controller = useRef(new AbortController());
 
   const [takeingNotes] = useState<boolean>(false);
   // const [takeingNotes, setTakingNotes] = useState<boolean>(false);
@@ -62,11 +62,11 @@ export function useEventBusForHost() {
         setCuttentChat(event.data.payload.id);
       }
 
-      if (isStopStreamingFromChat(event.data)) {
-        controller.current.abort();
-        controller.current = new AbortController();
-        return;
-      }
+      // if (isStopStreamingFromChat(event.data)) {
+      //   controller.current.abort();
+      //   controller.current = new AbortController();
+      //   return;
+      // }
 
       // if (isQuestionFromChat(event.data)) {
       //   const payload = event.data.payload;

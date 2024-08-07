@@ -88,6 +88,7 @@ const createInitialState = (): Chat => {
 const initialState = createInitialState();
 
 type PayloadWIthId = { id: string };
+// TODO: add history actions to this
 export const newChatAction = createAction<PayloadWIthId>("chatThread/new");
 
 const chatResponse = createAction<PayloadWIthId & ChatResponse>(
@@ -96,14 +97,17 @@ const chatResponse = createAction<PayloadWIthId & ChatResponse>(
 
 const chatAskedQuestion = createAction<PayloadWIthId>("chatThread/askQuestion");
 
+// TODO: does this need history actions?
 const backUpMessages = createAction<
   PayloadWIthId & { messages: ChatThread["messages"] }
 >("chatThread/backUpMessages");
 
+// TODO: add history actions to this
 const chatError = createAction<PayloadWIthId & { message: string }>(
   "chatThread/error",
 );
 
+// TODO: include history actions with this one
 const doneStreaming = createAction<PayloadWIthId>("chatThread/doneStreaming");
 
 export const setChatModel = createAction<PayloadWIthId & { model: string }>(
@@ -132,19 +136,31 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(newChatAction, (state, action) => {
-    // TODO: save chat, or add to cache
-    if (state.thread.id === action.payload.id) {
-      const next = createInitialState();
-      next.thread.model = state.thread.messages.length
-        ? state.thread.model
-        : "";
-      state = next;
+    if (state.thread.id !== action.payload.id) return state;
+    if (state.streaming) {
+      state.cache[state.thread.id] = state.thread;
     }
+    const next = createInitialState();
+    next.thread.model = state.thread.messages.length ? state.thread.model : "";
+    state = next;
   });
 
   builder.addCase(chatResponse, (state, action) => {
-    // TODO: handle cache
-    if (state.thread.id !== action.payload.id) return state;
+    if (
+      state.thread.id !== action.payload.id ||
+      !(action.payload.id in state.cache)
+    ) {
+      return state;
+    }
+
+    if (action.payload.id in state.cache) {
+      const thread = state.cache[action.payload.id];
+      // TODO: this might not be needed any more, because we can mutate the last message.
+      const messages = formatChatResponse(thread.messages, action.payload);
+      state.thread.messages = messages;
+      return state;
+    }
+
     const hasUserMessage = isChatUserMessageResponse(action.payload);
 
     const current = hasUserMessage
@@ -177,6 +193,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(doneStreaming, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
+    // TODO: this will need to save to history, so history should manage clearing the cache.
     state.streaming = false;
   });
 

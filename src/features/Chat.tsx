@@ -32,8 +32,8 @@ export const Chat: React.FC<ChatProps> = ({
   backFromChat,
   openChatInNewTab,
   sendToSideBar,
-  handleNewFileClick,
-  handlePasteDiffClick,
+  // handleNewFileClick,
+  // handlePasteDiffClick,
   hasContextFile,
   // requestCommandsCompletion,
   // requestPreviewFiles,
@@ -45,7 +45,7 @@ export const Chat: React.FC<ChatProps> = ({
   // setSelectedSystemPrompt,
   setUseTools,
   enableSend,
-  openSettings,
+  // openSettings,
   host,
   tabbed,
   state,
@@ -146,8 +146,8 @@ export const Chat: React.FC<ChatProps> = ({
       // retryQuestion={retryQuestion}
       // isWaiting={state.waiting_for_response}
       // isStreaming={state.streaming}
-      onNewFileClick={handleNewFileClick}
-      onPasteClick={handlePasteDiffClick}
+      // onNewFileClick={handleNewFileClick}
+      // onPasteClick={handlePasteDiffClick}
       // canPaste={state.active_file.can_paste}
       preventSend={state.prevent_send}
       unCalledTools={unCalledTools}
@@ -189,7 +189,7 @@ export const Chat: React.FC<ChatProps> = ({
       canUseTools={canUseTools}
       setUseTools={setUseTools}
       useTools={state.use_tools}
-      openSettings={openSettings}
+      // openSettings={openSettings}
     />
   );
 };
