@@ -23,8 +23,9 @@ import {
 import { useConfig } from "../app/hooks";
 import { FIMDebug } from "./FIM";
 import { Statistics } from "./Statistics";
-import { store } from "../app/store";
+import { store, persistor } from "../app/store";
 import { Provider } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
 
 export interface AppProps {
@@ -207,9 +208,11 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 export const App = () => {
   return (
     <Provider store={store}>
-      <Theme>
-        <InnerApp />
-      </Theme>
+      <PersistGate persistor={persistor}>
+        <Theme>
+          <InnerApp />
+        </Theme>
+      </PersistGate>
     </Provider>
   );
 };

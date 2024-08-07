@@ -46,9 +46,9 @@ export type ChatThread = {
   messages: ChatMessages;
   model: string;
   title?: string;
-  attach_file?: boolean;
+  // attach_file?: boolean;
   createdAt?: string;
-  lastUpdated?: string;
+  updatedAt?: string;
 };
 
 export type Chat = {
