@@ -214,20 +214,15 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
             }
         };
         let mut action = "edit".to_string();
-        // consider this `add` action
-        if !before_path.exists() {
+        if edit.before_path.clone().map_or(false, |x| x == "/dev/null") {
             diff_blocks.push(make_add_type_diff_block(idx, &before_path, &after_path, edit));
             continue;
         }
-        // consider this `remove` action
-        let has_remove_tag = edit.hunk
-            .iter()
-            .find(|x| x.starts_with("deleted file mode 100644"))
-            .is_some();
-        if has_remove_tag {
+        if edit.after_path.clone().map_or(false, |x| x == "/dev/null") {
             diff_blocks.push(make_remove_type_diff_block(idx, &before_path, &after_path));
             continue;
         }
+
         // more checks for `rename` action
         if before_path != after_path {
             action = "rename".to_string();
@@ -505,10 +500,9 @@ pub struct UnifiedDiffFormat {}
 
 impl UnifiedDiffFormat {
     pub fn prompt() -> String {
-        r#"YOU THE WORLD'S LEADING AUTO CODING ASSISTANT. 
+        r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT. 
 You will be given a problem statement and a list of files. 
 Your objective is to create a unified diff with a specific format output based on the provided task and files. 
-STRICTLY FOLLOW THE PLAN BELOW!
 
 ### STEPS TO FOLLOW for generating the correct diff
 1. Review the provided tasks and files
@@ -583,12 +577,12 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 +    pass
 ```
 ## Rules for `add` action to generate correct diffs:
-- To add a new file make sure that you output a correct filename (an absolute path is preferable). 
+- To add a new file, make sure that you output a correct filename (an absolute path is preferable). 
 - The filename needs to be taken from the given task.
 - Include all lines to the hunk which must be appeared in the file.
 - Do not skip any lines.
 - Mark all lines with `+` sign.
-- Format example for the task: "Add a new file `/home/mathweb/my_app/quicksort.py` with a quicksort func in it".
+- Format example for the task: "Add a new file `/home/mathweb/my_app/quicksort.py` with a quick sort function in it".
 ```diff
 --- /dev/null
 +++ /home/mathweb/my_app/quicksort.py
@@ -608,7 +602,7 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 +print(sorted_arr)
 ```
 ## Rules for `rename` action to generate correct diffs:
-- To rename a file 2 filenames need to be used: an old filename and a new filename (an absolute paths is preferable).
+- To rename a file 2 filenames need to be used: an old filename and a new filename (the absolute path is preferable).
 - Both filenames need to be taken from the given task description.
 - The file can be edited at the same time, the same `edit` rules must be used 
 - Format example for the task: "Rename the file `/home/mathweb/my_app/quicksort.py` to `/home/mathweb/my_app/quicksort_old.py` with the function inside it".
@@ -628,7 +622,7 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 +sorted_arr = quicksort_old(arr)
 ```
 ## Rules for `delete` action to generate correct diffs:
-- To remove a file make sure that you output a correct filename (an absolute path is preferable)
+- To remove a file, make sure that you output a correct filename (the absolute path is preferable)
 - Instead of copying the whole file, just print `<deleted_file_content>` after the `@@ ... @@` line
 - Format example for the task: "Remove the file `/home/mathweb/my_app/quicksort.py`".
 ```diff
@@ -636,10 +630,7 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 +++ /dev/null
 @@ ... @@
 <deleted_file_content>
-```
-
-###What Not To Do!###
-- DECIDE NOT TO FOLLOW THE PLAN OR FORMATTTING RULES ABOVE"#.to_string()
+```"#.to_string()
     }
 
     pub async fn parse_message(
