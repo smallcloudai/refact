@@ -28,7 +28,7 @@ import {
   type BaseAction,
   type ChatThread,
   // isResponseToChat,
-  isBackupMessages,
+  // isBackupMessages,
   // isRestoreChat,
   // isChatDoneStreaming,
   isChatErrorStreaming,
@@ -283,17 +283,17 @@ export function reducer(_postMessage: typeof window.postMessage) {
     // }
 
     // TODO: Migrate this
-    if (isThisChat && isBackupMessages(action)) {
-      return {
-        ...state,
-        error: null,
-        chat: {
-          ...state.chat,
-          messages: action.payload.messages,
-        },
-        previous_message_length: action.payload.messages.length - 1,
-      };
-    }
+    // if (isThisChat && isBackupMessages(action)) {
+    //   return {
+    //     ...state,
+    //     error: null,
+    //     chat: {
+    //       ...state.chat,
+    //       messages: action.payload.messages,
+    //     },
+    //     previous_message_length: action.payload.messages.length - 1,
+    //   };
+    // }
     // TODO: restore
     // if (isThisChat && isRestoreChat(action)) {
     //   // if (!state.streaming) {

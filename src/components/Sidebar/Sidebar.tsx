@@ -5,26 +5,40 @@ import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Footer, FooterProps } from "./Footer";
 import { Spinner } from "@radix-ui/themes";
 import classNames from "classnames";
+import { useAppSelector, useAppDispatch } from "../../app/hooks";
+import {
+  getHistory,
+  deleteChatById,
+} from "../../features/History/historySlice";
+import { newChatAction, restoreChat } from "../../features/Chat2/chatThread";
+import { ChatThread } from "../../events";
 
 export type SidebarProps = {
-  onCreateNewChat: () => void;
+  // onCreateNewChat: () => void;
   takingNotes: boolean;
-  currentChatId: string;
+  // currentChatId: string;
   className?: string;
   style?: React.CSSProperties;
   account?: FooterProps["account"];
   handleLogout: () => void;
   handleNavigation: (
-    to: "fim" | "stats" | "settings" | "hot keys" | "",
+    to: "fim" | "stats" | "settings" | "hot keys" | "chat" | "",
   ) => void;
-} & ChatHistoryProps;
+} & Omit<
+  ChatHistoryProps,
+  | "history"
+  | "onDeleteHistoryItem"
+  | "onCreateNewChat"
+  | "onHistoryItemClick"
+  | "currentChatId"
+>;
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  history,
-  onHistoryItemClick,
-  onCreateNewChat,
-  onDeleteHistoryItem,
-  currentChatId,
+  // history,
+  // onHistoryItemClick,
+  // onCreateNewChat,
+  // onDeleteHistoryItem,
+  // currentChatId,
   takingNotes,
   className,
   style,
@@ -32,6 +46,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   handleLogout,
   handleNavigation,
 }) => {
+  // TODO: these can be lowered.
+  const dispatch = useAppDispatch();
+  const history = useAppSelector(getHistory);
+  const currentChatId = useAppSelector((state) => state.chat.thread.id);
+  const onDeleteHistoryItem = (id: string) => dispatch(deleteChatById(id));
+  const onCreateNewChat = () => {
+    dispatch(newChatAction({ id: currentChatId }));
+    handleNavigation("chat");
+  };
+  const onHistoryItemClick = (thread: ChatThread) =>
+    dispatch(restoreChat({ id: currentChatId, thread }));
+
   return (
     <Box className={classNames(styles.sidebar, className)} style={style}>
       <Flex

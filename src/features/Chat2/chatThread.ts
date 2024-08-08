@@ -40,6 +40,7 @@ import {
 import { type RootState } from "../../app/store";
 import { parseOrElse } from "../../utils";
 import { mergeToolCalls } from "../../hooks/useEventBusForChat/utils";
+// import { saveChat as saveChatToHistory } from "../History/historySlice";
 
 export type ChatThread = {
   id: string;
@@ -107,8 +108,10 @@ const chatError = createAction<PayloadWIthId & { message: string }>(
   "chatThread/error",
 );
 
-// TODO: include history actions with this one
-const doneStreaming = createAction<PayloadWIthId>("chatThread/doneStreaming");
+// TODO: include history actions with this one, this could be done by making it a thunk, or use reduce-reducers.
+export const doneStreaming = createAction<PayloadWIthId>(
+  "chatThread/doneStreaming",
+);
 
 export const setChatModel = createAction<PayloadWIthId & { model: string }>(
   "chatThread/setChatModel",
@@ -122,6 +125,14 @@ export const setSystemPrompt = createAction<SystemPrompts>(
 
 export const getSelectedSystemPrompt = (state: RootState) =>
   state.chat.system_prompt;
+
+export const removeChatFromCache = createAction<PayloadWIthId>(
+  "chatThread/removeChatFromCache",
+);
+
+export const restoreChat = createAction<PayloadWIthId & { thread: ChatThread }>(
+  "chatThread/restoreChat",
+);
 
 // ask question
 
@@ -147,7 +158,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(chatResponse, (state, action) => {
     if (
-      state.thread.id !== action.payload.id ||
+      action.payload.id !== state.thread.id &&
       !(action.payload.id in state.cache)
     ) {
       return state;
@@ -193,7 +204,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(doneStreaming, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
-    // TODO: this will need to save to history, so history should manage clearing the cache.
     state.streaming = false;
   });
 
@@ -201,6 +211,30 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (state.thread.id !== action.payload.id) return state;
     state.waiting_for_response = true;
     state.streaming = true;
+  });
+
+  builder.addCase(removeChatFromCache, (state, action) => {
+    if (!(action.payload.id in state.cache)) return state;
+
+    const cache = Object.entries(state.cache).reduce<
+      Record<string, ChatThread>
+    >((acc, cur) => {
+      if (cur[0] === action.payload.id) return acc;
+      return { ...acc, [cur[0]]: cur[1] };
+    }, {});
+    state.cache = cache;
+  });
+
+  builder.addCase(restoreChat, (state, action) => {
+    if (action.payload.id !== state.thread.id) return state;
+    if (state.streaming) {
+      state.cache[state.thread.id] = state.thread;
+      state.streaming = false;
+    }
+    state.error = null;
+    state.waiting_for_response = false;
+    state.previous_message_length = action.payload.thread.messages.length;
+    state.thread = action.payload.thread;
   });
 });
 
@@ -376,7 +410,6 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
   }, []);
 }
 
-// TODO: make cancelable
 const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
