@@ -27,15 +27,16 @@ import { store, persistor } from "../app/store";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
+import { useEventBusForApp } from "../hooks/useEventBusForApp";
 
 export interface AppProps {
   style?: React.CSSProperties;
 }
 
-// TODO: wrap this in the Prvider and theme components
 const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
-  const { pages, navigate } = usePages();
+  const { pages, navigate, isPageInHistory } = usePages();
   const { openHotKeys, openSettings } = useEventsBusForIDE();
+  useEventBusForApp();
   // TODO: can replace this with a selector for state.chat.thread.id
 
   const postMessage = usePostMessage();
@@ -46,6 +47,10 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const { currentChatId } = useEventBusForHost();
   // const fimHook = useEventBysForFIMDebug();
   // const statisticsHook = useEventBusForStatistic();
+
+  if (config.apiKey && config.addressURL && !isPageInHistory("history")) {
+    navigate({ type: "push", page: { name: "history" } });
+  }
 
   const setupHost = useCallback(
     (host: HostSettings) => {

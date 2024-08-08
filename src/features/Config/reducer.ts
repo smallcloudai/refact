@@ -15,6 +15,8 @@ export type Config = {
     vecdb?: boolean;
     ast?: boolean;
   };
+  apiKey?: string;
+  addressURL?: string;
 };
 
 // this could be taken from window.__INITAL_STATE
@@ -44,6 +46,8 @@ export const reducer = createReducer<Config>(initialState, (builder) => {
     state.lspUrl = action.payload.lspUrl ?? state.lspUrl;
     state.tabbed = action.payload.tabbed ?? state.tabbed;
     state.themeProps = action.payload.themeProps ?? state.themeProps;
+    state.apiKey = action.payload.apiKey ?? state.apiKey;
+    state.addressURL = action.payload.addressURL ?? state.addressURL;
   });
 
   builder.addCase(setThemeMode, (state, action) => {

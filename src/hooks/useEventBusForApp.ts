@@ -1,13 +1,20 @@
 import { useEffect } from "react";
-import { Config } from "../contexts/config-context";
 import { useLocalStorage } from "usehooks-ts";
 import { isOpenExternalUrl, isSetupHost } from "../events";
+import { useAppDispatch, useConfig } from "../app/hooks";
+import { update as updateConfig } from "../features/Config/reducer";
 
-export function useEventBusForApp(config: Config): { config: Config } {
+export function useEventBusForApp() {
+  const config = useConfig();
   const [addressURL, setAddressURL] = useLocalStorage("lspUrl", "");
   const [apiKey, setApiKey] = useLocalStorage("apiKey", "");
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
+    if (config.host !== "web") {
+      console.log("not web");
+      return;
+    }
     const listener = (event: MessageEvent) => {
       if (event.source !== window) {
         return;
@@ -30,6 +37,7 @@ export function useEventBusForApp(config: Config): { config: Config } {
           setAddressURL(host.endpointAddress);
           setApiKey(host.apiKey);
         }
+        dispatch(updateConfig({ addressURL, apiKey }));
       }
     };
 
@@ -40,5 +48,7 @@ export function useEventBusForApp(config: Config): { config: Config } {
     };
   }, [setApiKey, setAddressURL]);
 
-  return { config: { addressURL, apiKey, ...config } };
+  useEffect(() => {
+    dispatch(updateConfig({ addressURL, apiKey }));
+  }, [apiKey, addressURL, dispatch]);
 }

@@ -1,2 +1,2 @@
 export * from "../events";
-export { render, renderAppHost } from "./render";
+export { render } from "./render";
