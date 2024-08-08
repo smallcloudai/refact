@@ -5,7 +5,8 @@ import { ScrollArea } from "../../components/ScrollArea";
 // import type { StatisticState } from "../../hooks";
 import { StatisticView } from "../../components/StatisticView/StatisticView";
 import { PageWrapper } from "../../components/PageWrapper";
-import { useGetStatisticDataQuery, type Config } from "../../app/hooks";
+import { useGetStatisticDataQuery } from "../../app/hooks";
+import type { Config } from "../Config/reducer";
 
 export type StatisticsProps = {
   onCloseStatistic?: () => void;
@@ -14,7 +15,7 @@ export type StatisticsProps = {
   tabbed: Config["tabbed"];
   // state: StatisticState;
 };
-export const Statistic: React.FC<StatisticsProps> = ({
+export const Statistics: React.FC<StatisticsProps> = ({
   onCloseStatistic,
   backFromStatistic,
   host,
