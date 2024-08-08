@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::collections::HashMap;
 use serde_json::Value;
 use tracing::warn;
@@ -13,7 +12,7 @@ use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum};
 
-pub const DEFAULT_MODEL_NAME: &str = "gpt-4o-mini";
+pub const DEFAULT_MODEL_NAME: &str = "gpt-4o";
 pub const MAX_NEW_TOKENS: usize = 8192;
 pub const TEMPERATURE: f32 = 0.2;
 pub type DefaultToolPatch = UnifiedDiffFormat;
@@ -45,15 +44,17 @@ impl Tool for ToolPatch {
                 return Err(format!("Cannot parse input arguments: {err}. Try to call `patch` one more time with valid arguments"));
             }
         };
-        let (answer, usage_mb) = match execute_chat_model(ccx.clone(), &args).await {
-            Ok(res) => res,
+        let (answer, usage_mb) = match execute_chat_model(&args, ccx).await {
+            Ok(res) => {
+                warn!("Patch model reply:\n{}", &res.0);
+                res
+            },
             Err(err) => {
                 return Err(format!("Patch model execution problem: {err}. Try to call `patch` one more time"));
             }
         };
 
         let mut results = vec![];
-
         let parsed_chunks = parse_diff_chunks_from_message(ccx.clone(), &answer).await.map_err(|err| {
             self.usage = usage_mb.clone();
             warn!(err);

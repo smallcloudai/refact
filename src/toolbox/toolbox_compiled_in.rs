@@ -65,7 +65,7 @@ PROMPT_ISSUE_FIXER: |
     2.3. **ANALYZE** if the message is clear, easy to understand, cannot lead to misunderstandings.
   
   3. **Diff application:**. After choosing files and making the guide message you need to call patch tool to apply the changes to the files.
-    3.1. **APPLY** changes to the selected files and generated todo message using the `patch` tool.
+    3.1. **APPLY** changes to the selected files  using the `patch` tool. Use generated guided message as the todo message.
     3.2. **REPEAT** patch tool call if you see any error or you think that the generated patch does not fix the problem.
   
   4. **Completion:**. You have to check if the produced diff really fixes the problem (by reflecting on the generated patch). If not, you have to repeat the process with slightly different guide message.

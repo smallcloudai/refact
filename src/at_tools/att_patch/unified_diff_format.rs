@@ -121,7 +121,7 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
         }
 
         let op = line.chars().next().unwrap();
-        if op == '-' || op == '+' || line.starts_with("<deleted_file_content>")  {
+        if op == '-' || op == '+' || line.starts_with("<file_content>")  {
             keeper = true;
             continue;
         }
@@ -514,9 +514,10 @@ You will be given a problem statement and a list of files.
 Your objective is to create a unified diff with a specific format output based on the provided task and files. 
 
 ### STEPS TO FOLLOW for generating the correct diff
-1. Review the provided tasks and files
-2. Use extra context (list of related symbols signatures) if it's given to make changes correct
-3. Generate the diff in the specified format (which is given below)
+1. Review the provided tasks and files.
+2. Use extra context (list of related symbols signatures) if it's given to make changes correct.
+3. Generate the code snippets, which are soliving the task. They are will be the guide to generate the diff.
+4. After generating the code snippets, generate the diff in the specified format (which is given below).
 
 ### UNIFIED DIFF FORMATTING RULES
 There are 4 possible actions can be expressed as the unified diff: editing, adding, renaming and removing files. 
@@ -544,12 +545,8 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 --- /home/mathweb/flask/app.py
 +++ /home/mathweb/flask/app.py
 @@ ... @@
- import some_module
- 
--class MathWeb:
 +import sympy
 +
-+class MathWeb:
 @@ ... @@
 -def is_prime(x):
 -    if x < 2:
@@ -579,8 +576,6 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 +            count += 1
 +    return str(num)
 @@ ... @@
- ):
-     pass
 +
 +def nth_prime_test(n):
 +    pass
@@ -630,15 +625,22 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 -sorted_arr = quicksort(arr)
 +sorted_arr = quicksort_old(arr)
 ```
+- If you need just to rename a file, follow this format:
+```diff
+--- /home/mathweb/my_app/quicksort.py
++++ /home/mathweb/my_app/quicksort_old.py
+@@ ... @@
+<file_content>
+```
 ## Rules for `delete` action to generate correct diffs:
 - To remove a file, make sure that you output a correct filename (the absolute path is preferable)
-- Instead of copying the whole file, just print `<deleted_file_content>` after the `@@ ... @@` line
+- Instead of copying the whole file, just print `<file_content>` after the `@@ ... @@` line
 - Format example for the task: "Remove the file `/home/mathweb/my_app/quicksort.py`".
 ```diff
 --- /home/mathweb/my_app/quicksort.py
 +++ /dev/null
 @@ ... @@
-<deleted_file_content>
+<file_content>
 ```"#.to_string()
     }
 
@@ -1946,7 +1948,7 @@ Another text"#;
 --- tests/emergency_frog_situation/holiday.py
 +++ /dev/null
 @@ ... @@
-<deleted_file_content>
+<file_content>
 ```
 Another text"#;
         let gt_result = vec![
@@ -1954,6 +1956,33 @@ Another text"#;
                 file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
                 file_name_rename: None,
                 file_action: "remove".to_string(),
+                line1: 1,
+                line2: 1,
+                lines_remove: "".to_string(),
+                lines_add: "".to_string(),
+            },
+        ];
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        assert_eq!(result, gt_result);
+    }
+    
+    #[tokio::test]
+    async fn test_rename_file() {
+        let input = r#"Initial text
+```diff
+--- tests/emergency_frog_situation/holiday.py
++++ tests/emergency_frog_situation/new_holiday.py
+@@ ... @@
+<file_content>
+```
+Another text"#;
+        let gt_result = vec![
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_name_rename: Some("tests/emergency_frog_situation/new_holiday.py".to_string()),
+                file_action: "rename".to_string(),
                 line1: 1,
                 line2: 1,
                 lines_remove: "".to_string(),
@@ -2028,156 +2057,88 @@ if __name__ == __main__:
 
     #[tokio::test]
     async fn info_test() {
-        let input = r#"Certainly! I'll analyze the task and create a unified diff for each file. Let's go through the changes step by step.
-
-1. Changes in frog.py:
-   - Replace the `Frog` class with the `Bird` class
-   - Change `pond_width` and `pond_height` to `sky_width` and `sky_height`
-   - Rename the `jump` method to `fly`
-
-2. Changes in holiday.py:
-   - Replace `frog.Frog()` with `frog.Bird()`
-   - Change `jump()` calls to `fly()`
-
-3. Changes in jump_to_conclusions.py:
-   - Replace `frog.Frog` with `frog.Bird`
-   - Change `p.jump(W, H)` to `p.fly(W, H)`
-   - Update the message "Jump To Conclusions!" to "Fly To Conclusions!"
-
-Now, let's create the unified diff for each file:
-
---- /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/frog.py
-+++ /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/frog.py
+        let input = r#"```diff
+--- /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/bird.py
++++ /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/bird.py
 @@ ... @@
- 
- DT = 0.01
- 
--class Frog:
-+class Bird:
+ class Bird:
++    """
++    A class representing a bird.
++    
++    Attributes:
++        x (float): The x-coordinate of the bird's position.
++        y (float): The y-coordinate of the bird's position.
++        vx (float): The velocity of the bird in the x direction.
++        vy (float): The velocity of the bird in the y direction.
++        name (str): The name of the bird.
++        size (int): The size of the bird.
++    """
+     
      def __init__(self, x, y, vx, vy):
          self.x = x
          self.y = y
          self.vx = vx
          self.vy = vy
- 
--    def bounce_off_banks(self, pond_width, pond_height):
-+    def bounce_off_banks(self, sky_width, sky_height):
-         if self.x < 0:
-             self.vx = np.abs(self.vx)
--        elif self.x > pond_width:
-+        elif self.x > sky_width:
-             self.vx = -np.abs(self.vx)
-         if self.y < 0:
-             self.vy = np.abs(self.vy)
--        elif self.y > pond_height:
-+        elif self.y > sky_height:
-             self.vy = -np.abs(self.vy)
- 
--    def jump(self, pond_width, pond_height):
-+    def fly(self, sky_width, sky_height):
-         self.x += self.vx * DT
-         self.y += self.vy * DT
--        self.bounce_off_banks(pond_width, pond_height)
--        self.x = np.clip(self.x, 0, pond_width)
--        self.y = np.clip(self.y, 0, pond_height)
-+        self.bounce_off_banks(sky_width, sky_height)
-+        self.x = np.clip(self.x, 0, sky_width)
-+        self.y = np.clip(self.y, 0, sky_height)
+         self.name = "Unnamed Bird"
+         self.size = 1
 
---- /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/holiday.py
-+++ /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/holiday.py
-@@ ... @@
- 
- 
- if __name__ == __main__:
--    frog1 = frog.Frog()
--    frog2 = frog.Frog()
-+    bird1 = frog.Bird()
-+    bird2 = frog.Bird()
- 
--    # First jump
--    frog1.jump()
--    frog2.jump()
-+    # First fly
-+    bird1.fly()
-+    bird2.fly()
- 
--    # Second jump
--    frog1.jump()
--    frog2.jump()
-+    # Second fly
-+    bird1.fly()
-+    bird2.fly()
- 
--    # Third jump
--    frog1.jump()
--    frog2.jump()
-+    # Third fly
-+    bird1.fly()
-+    bird2.fly()
- 
--    # Forth jump
--    frog1.jump()
--    frog2.jump()
-+    # Fourth fly
-+    bird1.fly()
-+    bird2.fly()
+     def fly(self):
+         """Move the bird's position based on its velocity."""
+         self.x += self.vx
+         self.y += self.vy
 
---- /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py
-+++ /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py
-@@ ... @@
- H = 480
- 
- 
--def draw_hello_frog(
-+def draw_hello_bird(
-     screen: pygame.Surface,
-     message: str,
-     color: Tuple[int, int, int] = (0, 255, 255),
-@@ -17,7 +17,7 @@ def draw_hello_frog(
- 
- 
- creatures = [
--    frog.Frog(
-+    frog.Bird(
-         np.random.uniform(0, W),
-         np.random.uniform(0, H),
-         np.random.uniform(-W/10, H/10),
-@@ -34,11 +34,11 @@ def main_loop():
-         screen.fill((0, 0, 0))
-         for p in creatures:
-             pygame.draw.circle(screen, (0, 255, 0), (p.x, p.y), 10)
--        draw_hello_frog(screen, "Jump To Conclusions!", (0, 200, 0))
-+        draw_hello_bird(screen, "Fly To Conclusions!", (0, 200, 0))
-         pygame.display.flip()
-         pygame.time.Clock().tick(60)
--        p: frog.Frog
-+        p: frog.Bird
-         for p in creatures:
--            p.jump(W, H)
-+            p.fly(W, H)
- 
- 
-@@ ... @@
--    pygame.display.set_caption("Pond")
-+    pygame.display.set_caption("Sky")
-     main_loop()
-     pygame.quit()
+     def change_name(self, new_name):
+         """Change the bird's name to a new name."""
+         self.name = new_name
 
-These unified diffs should correctly apply the required changes to replace the Frog class with a Bird class and update all references accordingly. The changes include renaming methods, updating parameter names, and modifying related text to reflect the switch from frogs to birds.
+     def grow(self, amount):
+         """Increase the bird's size by a specified amount."""
+         self.size += amount
++
+```
+
+```diff
+--- /dev/null
++++ /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/test_bird.py
+@@ ... @@
++import unittest
++from bird import Bird
++
++class TestBird(unittest.TestCase):
++
++    def setUp(self):
++        """Create a Bird instance for testing."""
++        self.bird = Bird(0, 0, 1, 1)
++
++    def test_initial_attributes(self):
++        """Test the initial attributes of the Bird."""
++        self.assertEqual(self.bird.x, 0)
++        self.assertEqual(self.bird.y, 0)
++        self.assertEqual(self.bird.vx, 1)
++        self.assertEqual(self.bird.vy, 1)
++        self.assertEqual(self.bird.name, "Unnamed Bird")
++        self.assertEqual(self.bird.size, 1)
++
++    def test_fly(self):
++        """Test the fly method."""
++        self.bird.fly()
++        self.assertEqual(self.bird.x, 1)
++        self.assertEqual(self.bird.y, 1)
++
++    def test_change_name(self):
++        """Test changing the bird's name."""
++        self.bird.change_name("Tweety")
++        self.assertEqual(self.bird.name, "Tweety")
++
++    def test_grow(self):
++        """Test the grow method."""
++        self.bird.grow(2)
++        self.assertEqual(self.bird.size, 3)
++
++if __name__ == "__main__":
++    unittest.main()
+```
 "#;
-        let gt_result = vec![
-            DiffChunk {
-                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
-                file_name_rename: None,
-                file_action: "edit".to_string(),
-                line1: 10,
-                line2: 10,
-                lines_remove: "".to_string(),
-                lines_add: "    # Third extra jump\n".to_string(),
-                ..Default::default()
-            },
-        ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
