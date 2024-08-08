@@ -92,7 +92,7 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 
   return (
     <Flex direction="column" gap="4">
-      <Text>Welcome to Refact chat! How can I assist you today?</Text>;
+      <Text>Welcome to Refact chat! How can I assist you today?</Text>
       <TipOfTheDay />
     </Flex>
   );

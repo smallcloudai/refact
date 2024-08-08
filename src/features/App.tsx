@@ -4,19 +4,19 @@ import { usePages } from "../hooks/usePages";
 import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
-import { useLocalStorage } from "usehooks-ts";
 import { Flex } from "@radix-ui/themes";
 import { Chat } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import {
-  useEventBusForHost,
   usePostMessage,
   useChatHistory,
   useEventBusForChat,
+  useEventBusForHost,
 } from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
   HostSettings,
+  OpenExternalUrl,
   SetupHost,
 } from "../events/setup";
 import { useConfig } from "../contexts/config-context";
@@ -31,14 +31,12 @@ export interface AppProps {
 
 export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   const { pages, navigate } = usePages();
-  const [apiKey, setApiKey] = useLocalStorage("api_key", "");
-  const { currentChatId } = useEventBusForHost();
-  const config = useConfig();
-
   const postMessage = usePostMessage();
+  const config = useConfig();
 
   const historyHook = useChatHistory();
   const chatHook = useEventBusForChat();
+  const { currentChatId } = useEventBusForHost();
   // const fimHook = useEventBysForFIMDebug();
   // const statisticsHook = useEventBusForStatistic();
 
@@ -68,21 +66,22 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const cloudLogin = (apiKey: string, sendCorrectedCodeSnippets: boolean) => {
     setupHost({ type: "cloud", apiKey, sendCorrectedCodeSnippets });
-    navigate({ type: "push", page: { name: "chat" } });
   };
 
   const enterpriseSetup = (apiKey: string, endpointAddress: string) => {
     setupHost({ type: "enterprise", apiKey, endpointAddress });
-    navigate({ type: "push", page: { name: "chat" } });
   };
 
   const selfHostingSetup = (endpointAddress: string) => {
     setupHost({ type: "self", endpointAddress });
-    navigate({ type: "push", page: { name: "history" } });
   };
 
   const openExternal = (url: string) => {
-    window.open(url, "_blank")?.focus();
+    const openUrlMessage: OpenExternalUrl = {
+      type: EVENT_NAMES_FROM_SETUP.OPEN_EXTERNAL_URL,
+      payload: { url },
+    };
+    postMessage(openUrlMessage);
   };
 
   const goBack = () => {
@@ -146,8 +145,6 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
               {page.name === "cloud login" && (
                 <CloudLogin
                   goBack={goBack}
-                  apiKey={apiKey}
-                  setApiKey={setApiKey}
                   openExternal={openExternal}
                   next={cloudLogin}
                 />

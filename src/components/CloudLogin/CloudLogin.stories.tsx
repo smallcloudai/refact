@@ -10,7 +10,6 @@ const meta: Meta<typeof CloudLogin> = {
     goBack: fn(),
     next: fn(),
     openExternal: fn(),
-    setApiKey: fn(),
   },
   decorators: [
     (Children) => {
