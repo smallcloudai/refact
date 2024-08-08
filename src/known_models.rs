@@ -28,6 +28,9 @@ pub const KNOWN_MODELS: &str = r####"
                 "starcoder2/3b/vllm",
                 "starcoder2/7b/vllm",
                 "starcoder2/15b/vllm",
+                "starcoder2/3b/neuron",
+                "starcoder2/7b/neuron",
+                "starcoder2/15b/neuron",
                 "starcoder2/3b",
                 "starcoder2/7b",
                 "starcoder2/15b",
@@ -177,7 +180,8 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "similar_models": [
-                "llama3/8b/instruct/vllm"
+                "llama3/8b/instruct/vllm",
+                "llama3/8b/instruct/neuron"
             ]
         },
         "llama2/7b": {
