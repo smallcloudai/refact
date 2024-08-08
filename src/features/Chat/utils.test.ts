@@ -3,10 +3,10 @@ import { describe, expect, test } from "vitest";
 // import { reducer, createInitialState } from ".";
 import {
   // EVENT_NAMES_TO_CHAT,
-  ToolCall,
+  type ToolCall,
   // ResponseToChat,
   // ActionToChat,
-} from "../../events";
+} from "../../services/refact";
 import { mergeToolCalls } from "./utils";
 
 describe("mergeToolCalls", () => {

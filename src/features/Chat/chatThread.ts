@@ -8,9 +8,9 @@ import {
   ToolCommand,
   isAssistantMessage,
   isChatUserMessageResponse,
-} from "../../events";
+} from "../../services/refact";
 // TODO: update this type
-import { type ChatResponse } from "../../events";
+import { type ChatResponse } from "../../services/refact";
 import {
   useAppDispatch,
   createAppAsyncThunk,

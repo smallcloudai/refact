@@ -19,7 +19,7 @@ import {
   isToolCallDelta,
   isToolMessage,
   isToolResponse,
-} from "../../events";
+} from "../../services/refact";
 import { parseOrElse } from "../../utils";
 import { type LspChatMessage } from "../../services/refact";
 

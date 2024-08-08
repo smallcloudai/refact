@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 // import { useEventBusForChat } from "../hooks/useEventBusForChat";
 import type { Config } from "../../features/Config/reducer";
-import { CodeChatModel, SystemPrompts } from "../../events";
+import { CodeChatModel, SystemPrompts } from "../../services/refact";
 import { Chat as ChatComponent } from "../../components/Chat";
 import {
   useGetCapsQuery,

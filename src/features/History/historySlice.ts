@@ -4,7 +4,7 @@ import {
   createListenerMiddleware,
 } from "@reduxjs/toolkit";
 import { ChatThread, doneStreaming, removeChatFromCache } from "../Chat";
-import { isUserMessage, UserMessage } from "../../events";
+import { isUserMessage, UserMessage } from "../../services/refact";
 import { AppDispatch, RootState } from "../../app/store";
 
 export type ChatHistoryItem = ChatThread & {

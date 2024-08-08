@@ -1,4 +1,4 @@
-import { ChatContextFile } from "../../events";
+import { ChatContextFile } from "../../services/refact";
 import { FileInfo } from "../../features/Chat/activeFile";
 import { Checkbox } from "./ChatControls";
 

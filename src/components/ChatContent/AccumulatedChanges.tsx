@@ -5,7 +5,7 @@ import {
   DiffAppliedStateArgs,
   DiffChunk,
   isDiffMessage,
-} from "../../events";
+} from "../../services/refact";
 import { DiffTitle, Diff } from "./DiffContent";
 import groupBy from "lodash.groupby";
 import * as Collapsible from "@radix-ui/react-collapsible";

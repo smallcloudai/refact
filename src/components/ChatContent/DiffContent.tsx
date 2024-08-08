@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
-import type { DiffChunk } from "../../events";
+import type { DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import classNames from "classnames";

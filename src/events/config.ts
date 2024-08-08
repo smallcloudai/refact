@@ -1,4 +1,4 @@
-import { ThemeProps } from "../components/Theme";
+import type { ThemeProps } from "../components/Theme";
 
 export enum EVENT_NAMES_TO_CONFIG {
   UPDATE = "receive_config_update",

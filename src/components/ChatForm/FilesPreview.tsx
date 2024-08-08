@@ -1,7 +1,7 @@
 import React from "react";
 import { Box } from "@radix-ui/themes";
 import { Text, TruncateLeft } from "../Text";
-import { ChatContextFile } from "../../events";
+import { ChatContextFile } from "../../services/refact";
 import styles from "./ChatForm.module.css";
 
 export const FilesPreview: React.FC<{
