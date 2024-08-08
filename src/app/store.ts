@@ -23,6 +23,11 @@ import {
   diffApi,
 } from "../services/refact";
 import { reducer as fimReducer } from "../features/FIM/reducer";
+import { saveTourToLocalStorage, tourReducer } from "../features/Tour";
+import {
+  saveTipOfTheDayToLocalStorage,
+  tipOfTheDayReducer,
+} from "../features/TipOfTheDay";
 import { reducer as configReducer } from "../features/Config/reducer";
 import { activeFileReducer } from "../features/Chat2/activeFile";
 import { selectedSnippetReducer } from "../features/Chat2/selectedSnippet";
@@ -35,22 +40,21 @@ import {
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
 // their `reducerPath`s, therefore we no longer need to call `combineReducers`.
-const rootReducer = combineSlices(
-  {
-    fim: fimReducer,
-    config: configReducer,
-    active_file: activeFileReducer,
-    selected_snippet: selectedSnippetReducer,
-    chat: chatReducer,
-    [statisticsApi.reducerPath]: statisticsApi.reducer,
-    [capsApi.reducerPath]: capsApi.reducer,
-    [promptsApi.reducerPath]: promptsApi.reducer,
-    [toolsApi.reducerPath]: toolsApi.reducer,
-    [commandsApi.reducerPath]: commandsApi.reducer,
-    [diffApi.reducerPath]: diffApi.reducer,
-  },
-  historySlice,
-);
+const rootReducer = combineSlices({
+  fim: fimReducer,
+  tour: tourReducer,
+  tipOfTheDay: tipOfTheDayReducer,
+  config: configReducer,
+  active_file: activeFileReducer,
+  selected_snippet: selectedSnippetReducer,
+  chat: chatReducer,
+  [statisticsApi.reducerPath]: statisticsApi.reducer,
+  [capsApi.reducerPath]: capsApi.reducer,
+  [promptsApi.reducerPath]: promptsApi.reducer,
+  [toolsApi.reducerPath]: toolsApi.reducer,
+  [commandsApi.reducerPath]: commandsApi.reducer,
+  [diffApi.reducerPath]: diffApi.reducer,
+});
 
 const persistConfig = {
   key: "root",
@@ -78,6 +82,11 @@ export const store = configureStore({
       )
       .prepend(historyMiddleware.middleware);
   },
+});
+
+store.subscribe(() => {
+  saveTourToLocalStorage(store.getState());
+  saveTipOfTheDayToLocalStorage(store.getState());
 });
 
 export const persistor = persistStore(store);

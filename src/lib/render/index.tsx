@@ -5,6 +5,8 @@ import { renderApp } from "./RenderApp";
 import { type Config } from "../../app/hooks";
 import "./web.css";
 
+export { renderApp } from "./RenderApp";
+
 export function render(element: HTMLElement, config: Config) {
   renderApp(element, config);
 }

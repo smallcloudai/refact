@@ -32,6 +32,10 @@ export interface StatisticsPage {
   name: "statistics page";
 }
 
+export interface DocumentationSettingsPage {
+  name: "documentation settings";
+}
+
 export type Page =
   | InitialSetupPage
   | CloudLogin
@@ -40,7 +44,8 @@ export type Page =
   | ChatPage
   | HistoryList
   | FIMDebugPage
-  | StatisticsPage;
+  | StatisticsPage
+  | DocumentationSettingsPage;
 
 export interface ChangePage {
   type: "change";
@@ -69,9 +74,12 @@ function pageReducer(state: Page[], action: PageAction): Page[] {
 }
 
 export function usePages() {
-  const [pages, dispatch] = useReducer(pageReducer, [
-    { name: "initial setup" },
-  ]);
+  const firstPage: Page = { name: "initial setup" };
+  const [pages, dispatch] = useReducer(pageReducer, [firstPage]);
 
-  return { pages, navigate: dispatch };
+  const isPageInHistory = (name: string) => {
+    return pages.some((page) => page.name === name);
+  };
+
+  return { pages, navigate: dispatch, isPageInHistory };
 }

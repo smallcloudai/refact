@@ -15,6 +15,8 @@ export type Config = {
     vecdb?: boolean;
     ast?: boolean;
   };
+  apiKey?: string;
+  addressURL?: string;
 };
 
 // this could be taken from window.__INITAL_STATE
@@ -35,21 +37,32 @@ export const setThemeMode = createAction<"light" | "dark" | "inherit">(
   "config/setThemeMode",
 );
 
-export const reducer = createReducer<Config>(initialState, (builder) => {
-  // TODO: toggle darkmode for web host?
-  builder.addCase(update, (state, action) => {
-    state.dev = action.payload.dev ?? state.dev;
-    state.features = action.payload.features ?? state.features;
-    state.host = action.payload.host ?? state.host;
-    state.lspUrl = action.payload.lspUrl ?? state.lspUrl;
-    state.tabbed = action.payload.tabbed ?? state.tabbed;
-    state.themeProps = action.payload.themeProps ?? state.themeProps;
-  });
+declare global {
+  interface Window {
+    __INITIAL_STATE?: Config;
+  }
+}
 
-  builder.addCase(setThemeMode, (state, action) => {
-    state.themeProps.appearance = action.payload;
-  });
-});
+export const reducer = createReducer<Config>(
+  () => window.__INITIAL_STATE ?? initialState,
+  (builder) => {
+    // TODO: toggle darkmode for web host?
+    builder.addCase(update, (state, action) => {
+      state.dev = action.payload.dev ?? state.dev;
+      state.features = action.payload.features ?? state.features;
+      state.host = action.payload.host ?? state.host;
+      state.lspUrl = action.payload.lspUrl ?? state.lspUrl;
+      state.tabbed = action.payload.tabbed ?? state.tabbed;
+      state.themeProps = action.payload.themeProps ?? state.themeProps;
+      state.apiKey = action.payload.apiKey ?? state.apiKey;
+      state.addressURL = action.payload.addressURL ?? state.addressURL;
+    });
+
+    builder.addCase(setThemeMode, (state, action) => {
+      state.themeProps.appearance = action.payload;
+    });
+  },
+);
 
 export const selectThemeMode = (state: RootState) =>
   state.config.themeProps.appearance;

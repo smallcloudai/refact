@@ -4,7 +4,6 @@ import { usePages } from "../hooks/usePages";
 import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
-import { useLocalStorage } from "usehooks-ts";
 import { Flex } from "@radix-ui/themes";
 import { Chat } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
@@ -18,6 +17,7 @@ import {
 import {
   EVENT_NAMES_FROM_SETUP,
   HostSettings,
+  OpenExternalUrl,
   SetupHost,
 } from "../events/setup";
 import { useConfig } from "../app/hooks";
@@ -27,26 +27,29 @@ import { store, persistor } from "../app/store";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
+import { useEventBusForApp } from "../hooks/useEventBusForApp";
 
 export interface AppProps {
   style?: React.CSSProperties;
 }
 
-// TODO: wrap this in the Prvider and theme components
 const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
-  const { pages, navigate } = usePages();
+  const { pages, navigate, isPageInHistory } = usePages();
   const { openHotKeys, openSettings } = useEventsBusForIDE();
-  const [apiKey, setApiKey] = useLocalStorage("api_key", "");
+  useEventBusForApp();
   // TODO: can replace this with a selector for state.chat.thread.id
-  // const { currentChatId } = useEventBusForHost();
-  const config = useConfig();
 
   const postMessage = usePostMessage();
+  const config = useConfig();
 
   // const historyHook = useChatHistory();
   // const chatHook = useEventBusForChat();
   // const fimHook = useEventBysForFIMDebug();
   // const statisticsHook = useEventBusForStatistic();
+
+  if (config.apiKey && config.addressURL && !isPageInHistory("history")) {
+    navigate({ type: "push", page: { name: "history" } });
+  }
 
   const setupHost = useCallback(
     (host: HostSettings) => {
@@ -74,21 +77,22 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const cloudLogin = (apiKey: string, sendCorrectedCodeSnippets: boolean) => {
     setupHost({ type: "cloud", apiKey, sendCorrectedCodeSnippets });
-    navigate({ type: "push", page: { name: "chat" } });
   };
 
   const enterpriseSetup = (apiKey: string, endpointAddress: string) => {
     setupHost({ type: "enterprise", apiKey, endpointAddress });
-    navigate({ type: "push", page: { name: "chat" } });
   };
 
   const selfHostingSetup = (endpointAddress: string) => {
     setupHost({ type: "self", endpointAddress });
-    navigate({ type: "push", page: { name: "history" } });
   };
 
   const openExternal = (url: string) => {
-    window.open(url, "_blank")?.focus();
+    const openUrlMessage: OpenExternalUrl = {
+      type: EVENT_NAMES_FROM_SETUP.OPEN_EXTERNAL_URL,
+      payload: { url },
+    };
+    postMessage(openUrlMessage);
   };
 
   const goBack = () => {
@@ -133,8 +137,6 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             {page.name === "cloud login" && (
               <CloudLogin
                 goBack={goBack}
-                apiKey={apiKey}
-                setApiKey={setApiKey}
                 openExternal={openExternal}
                 next={cloudLogin}
               />
