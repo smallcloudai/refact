@@ -1,127 +1,81 @@
-// import { getApiKey } from "../../utils/ApiKey";
-// import { CHAT_URL } from "./consts";
-// import {
-//   type ChatRole,
-//   type ChatMessages,
-//   type ToolCall,
-//   isAssistantMessage,
-//   isToolMessage,
-//   isDiffMessage,
-// } from "./types";
-// import { ToolCommand } from "./tools";
+import { ToolCommand } from "./tools";
+import { ChatRole, ToolCall } from "./types";
 
-// type StreamArgs =
-//   | {
-//       stream: true;
-//       abortController: AbortController;
-//     }
-//   | { stream: false; abortController?: undefined | AbortController };
+export type LspChatMessage = {
+  role: ChatRole;
+  content: string | null;
+  tool_calls?: Omit<ToolCall, "index">[];
+  tool_call_id?: string;
+};
 
-// type SendChatArgs = {
-//   messages: LspChatMessage[];
-//   model: string;
-//   lspUrl?: string;
-//   takeNote?: boolean;
-//   onlyDeterministicMessages?: boolean;
-//   chatId?: string;
-//   tools: ToolCommand[] | null;
-// } & StreamArgs;
+type StreamArgs =
+  | {
+      stream: true;
+      abortSignal: AbortSignal;
+    }
+  | { stream: false; abortSignal?: undefined | AbortSignal };
 
-// export type LspChatMessage = {
-//   role: ChatRole;
-//   content: string | null;
-//   tool_calls?: Omit<ToolCall, "index">[];
-//   tool_call_id?: string;
-// };
+type SendChatArgs = {
+  messages: LspChatMessage[];
+  model: string;
+  lspUrl?: string;
+  takeNote?: boolean;
+  onlyDeterministicMessages?: boolean;
+  chatId?: string;
+  tools: ToolCommand[] | null;
+} & StreamArgs;
 
-// export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
-//   return messages.reduce<LspChatMessage[]>((acc, message) => {
-//     if (isAssistantMessage(message)) {
-//       return acc.concat([
-//         {
-//           role: message[0],
-//           content: message[1],
-//           tool_calls: message[2] ?? undefined,
-//         },
-//       ]);
-//     }
+export async function sendChat({
+  messages,
+  model,
+  abortSignal,
+  stream,
+  // lspUrl,
+  // takeNote = false,
+  onlyDeterministicMessages: only_deterministic_messages,
+  chatId: chat_id,
+  tools,
+}: SendChatArgs): Promise<Response> {
+  // const toolsResponse = await getAvailableTools();
 
-//     if (isToolMessage(message)) {
-//       return acc.concat([
-//         {
-//           role: "tool",
-//           content: message[1].content,
-//           tool_call_id: message[1].tool_call_id,
-//         },
-//       ]);
-//     }
+  // const tools = takeNote
+  //   ? toolsResponse.filter(
+  //       (tool) => tool.function.name === "remember_how_to_use_tools",
+  //     )
+  //   : toolsResponse.filter(
+  //       (tool) => tool.function.name !== "remember_how_to_use_tools",
+  //     );
 
-//     if (isDiffMessage(message)) {
-//       const diff = {
-//         role: message[0],
-//         content: JSON.stringify(message[1]),
-//         tool_call_id: message[2],
-//       };
-//       return acc.concat([diff]);
-//     }
+  const body = JSON.stringify({
+    messages,
+    model: model,
+    parameters: {
+      max_new_tokens: 2048,
+    },
+    stream,
+    tools,
+    max_tokens: 2048,
+    only_deterministic_messages,
+    chat_id,
+  });
 
-//     const content =
-//       typeof message[1] === "string" ? message[1] : JSON.stringify(message[1]);
-//     return [...acc, { role: message[0], content }];
-//   }, []);
-// }
+  //   const apiKey = getApiKey();
+  //   const headers = {
+  //     "Content-Type": "application/json",
+  //     ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
+  //   };
+  //   const chatEndpoint = lspUrl
+  //     ? `${lspUrl.replace(/\/*$/, "")}${CHAT_URL}`
+  //     : CHAT_URL;
 
-// export async function sendChat({
-//   messages,
-//   model,
-//   abortController,
-//   stream,
-//   lspUrl,
-//   // takeNote = false,
-//   onlyDeterministicMessages: only_deterministic_messages,
-//   chatId: chat_id,
-//   tools,
-// }: SendChatArgs): Promise<Response> {
-//   // const toolsResponse = await getAvailableTools();
-
-//   // const tools = takeNote
-//   //   ? toolsResponse.filter(
-//   //       (tool) => tool.function.name === "remember_how_to_use_tools",
-//   //     )
-//   //   : toolsResponse.filter(
-//   //       (tool) => tool.function.name !== "remember_how_to_use_tools",
-//   //     );
-
-//   const body = JSON.stringify({
-//     messages,
-//     model: model,
-//     parameters: {
-//       max_new_tokens: 2048,
-//     },
-//     stream,
-//     tools,
-//     max_tokens: 2048,
-//     only_deterministic_messages,
-//     chat_id,
-//   });
-
-//   const apiKey = getApiKey();
-//   const headers = {
-//     "Content-Type": "application/json",
-//     ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-//   };
-//   const chatEndpoint = lspUrl
-//     ? `${lspUrl.replace(/\/*$/, "")}${CHAT_URL}`
-//     : CHAT_URL;
-
-//   return fetch(chatEndpoint, {
-//     method: "POST",
-//     headers,
-//     body,
-//     redirect: "follow",
-//     cache: "no-cache",
-//     referrer: "no-referrer",
-//     signal: abortController?.signal,
-//     credentials: "same-origin",
-//   });
-// }
+  return fetch("http://localhost:8001/v1/chat", {
+    method: "POST",
+    // headers,
+    body,
+    redirect: "follow",
+    cache: "no-cache",
+    referrer: "no-referrer",
+    signal: abortSignal,
+    credentials: "same-origin",
+  });
+}

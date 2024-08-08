@@ -1,5 +1,5 @@
 export * from "./caps";
-// export * from "./chat";
+export * from "./chat";
 export * from "./commands";
 export * from "./fim";
 export * from "./prompts";

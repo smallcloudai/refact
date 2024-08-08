@@ -2,31 +2,12 @@ import { useEffect, useCallback, useRef, useMemo } from "react";
 import { createReducer, createAction } from "@reduxjs/toolkit";
 import { v4 as uuidv4 } from "uuid";
 import {
-  AssistantMessage,
-  ChatContextFile,
-  // ChatContextFileMessage,
   ChatMessage,
   ChatMessages,
-  ChatRole,
-  ContextMemory,
-  DiffChunk,
   SystemPrompts,
-  // LspChatMessage,
-  ToolCall,
   ToolCommand,
-  ToolResult,
-  isAssistantDelta,
   isAssistantMessage,
-  isChatContextFileDelta,
-  isChatResponseChoice,
   isChatUserMessageResponse,
-  isDiffMessage,
-  isDiffResponse,
-  isPlainTextResponse,
-  isToolCallDelta,
-  isToolMessage,
-  isToolResponse,
-  // isChatUserMessageResponse,
 } from "../../events";
 // TODO: update this type
 import { type ChatResponse } from "../../events";
@@ -39,8 +20,8 @@ import {
 } from "../../app/hooks";
 import { type RootState } from "../../app/store";
 import { parseOrElse } from "../../utils";
-import { mergeToolCalls } from "../../hooks/useEventBusForChat/utils";
-// import { saveChat as saveChatToHistory } from "../History/historySlice";
+import { formatChatResponse, formatMessagesForLsp } from "./utils";
+import { sendChat } from "../../services/refact";
 
 export type ChatThread = {
   id: string;
@@ -260,178 +241,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 });
 
-// this will need the chat id and tools
-
-export function formatChatResponse(
-  messages: ChatMessages,
-  response: ChatResponse,
-): ChatMessages {
-  if (isChatUserMessageResponse(response)) {
-    if (response.role === "context_file") {
-      const content = parseOrElse<ChatContextFile[]>(response.content, []);
-      // const msg: ChatContextFileMessage = { role: response.role, content };
-      return [...messages, { role: response.role, content }];
-    } else if (response.role === "context_memory") {
-      const content = parseOrElse<ContextMemory[]>(response.content, []);
-      return [...messages, { role: response.role, content }];
-    }
-
-    return [...messages, { role: response.role, content: response.content }];
-  }
-
-  if (isToolResponse(response)) {
-    const { tool_call_id, content, finish_reason } = response;
-    const toolResult: ToolResult = { tool_call_id, content, finish_reason };
-    return [...messages, { role: response.role, content: toolResult }];
-  }
-
-  if (isDiffResponse(response)) {
-    const content = parseOrElse<DiffChunk[]>(response.content, []);
-    return [
-      ...messages,
-      { role: response.role, content, tool_call_id: response.tool_call_id },
-    ];
-  }
-
-  if (isPlainTextResponse(response)) {
-    return [...messages, response];
-  }
-
-  if (!isChatResponseChoice(response)) {
-    // console.log("Not a good response");
-    // console.log(response);
-    return messages;
-  }
-
-  return response.choices.reduce<ChatMessages>((acc, cur) => {
-    if (isChatContextFileDelta(cur.delta)) {
-      const msg = { role: cur.delta.role, content: cur.delta.content };
-      return acc.concat([msg]);
-    }
-
-    if (
-      acc.length === 0 &&
-      "content" in cur.delta &&
-      typeof cur.delta.content === "string" &&
-      cur.delta.role
-    ) {
-      if (cur.delta.role === "assistant") {
-        const msg: AssistantMessage = {
-          role: cur.delta.role,
-          content: cur.delta.content,
-          tool_calls: cur.delta.tool_calls,
-        };
-        return acc.concat([msg]);
-      }
-      // TODO: narrow this
-      const message = {
-        role: cur.delta.role,
-        content: cur.delta.content,
-      } as ChatMessage;
-      return acc.concat([message]);
-    }
-
-    const lastMessage = acc[acc.length - 1];
-
-    if (isToolCallDelta(cur.delta)) {
-      if (!isAssistantMessage(lastMessage)) {
-        return acc.concat([
-          {
-            role: "assistant",
-            content: cur.delta.content ?? "",
-            tool_calls: cur.delta.tool_calls,
-          },
-        ]);
-      }
-
-      const last = acc.slice(0, -1);
-      const collectedCalls = lastMessage.tool_calls ?? [];
-      const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
-      const content = cur.delta.content;
-      const message = content
-        ? lastMessage.content + content
-        : lastMessage.content;
-
-      return last.concat([
-        { role: "assistant", content: message, tool_calls: calls },
-      ]);
-    }
-
-    if (
-      isAssistantMessage(lastMessage) &&
-      isAssistantDelta(cur.delta) &&
-      typeof cur.delta.content === "string"
-    ) {
-      const last = acc.slice(0, -1);
-      const currentMessage = lastMessage.content ?? "";
-      const toolCalls = lastMessage.tool_calls;
-      return last.concat([
-        {
-          role: "assistant",
-          content: currentMessage + cur.delta.content,
-          tool_calls: toolCalls,
-        },
-      ]);
-    } else if (
-      isAssistantDelta(cur.delta) &&
-      typeof cur.delta.content === "string"
-    ) {
-      return acc.concat([{ role: "assistant", content: cur.delta.content }]);
-    } else if (cur.delta.role === "assistant") {
-      // empty message from JB
-      return acc;
-    }
-
-    if (cur.delta.role === null || cur.finish_reason !== null) {
-      return acc;
-    }
-
-    // console.log("Fall though");
-    // console.log({ cur, lastMessage });
-
-    return acc;
-  }, messages);
-}
-
-export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
-  return messages.reduce<LspChatMessage[]>((acc, message) => {
-    if (isAssistantMessage(message)) {
-      return acc.concat([
-        {
-          role: message.role,
-          content: message.content,
-          tool_calls: message.tool_calls ?? undefined,
-        },
-      ]);
-    }
-
-    if (isToolMessage(message)) {
-      return acc.concat([
-        {
-          role: "tool",
-          content: message.content.content,
-          tool_call_id: message.content.tool_call_id,
-        },
-      ]);
-    }
-
-    if (isDiffMessage(message)) {
-      const diff = {
-        role: message.role,
-        content: JSON.stringify(message.content),
-        tool_call_id: message.tool_call_id,
-      };
-      return acc.concat([diff]);
-    }
-
-    const content =
-      typeof message.content === "string"
-        ? message.content
-        : JSON.stringify(message.content);
-    return [...acc, { role: message.role, content }];
-  }, []);
-}
-
 const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
@@ -627,86 +436,5 @@ export const useSendChatRequest = () => {
     retry,
   };
 };
-
-// Streaming should be handled elsewhere
-
-type StreamArgs =
-  | {
-      stream: true;
-      abortSignal: AbortSignal;
-    }
-  | { stream: false; abortSignal?: undefined | AbortSignal };
-
-type SendChatArgs = {
-  messages: LspChatMessage[];
-  model: string;
-  lspUrl?: string;
-  takeNote?: boolean;
-  onlyDeterministicMessages?: boolean;
-  chatId?: string;
-  tools: ToolCommand[] | null;
-} & StreamArgs;
-
-export type LspChatMessage = {
-  role: ChatRole;
-  content: string | null;
-  tool_calls?: Omit<ToolCall, "index">[];
-  tool_call_id?: string;
-};
-
-async function sendChat({
-  messages,
-  model,
-  abortSignal,
-  stream,
-  // lspUrl,
-  // takeNote = false,
-  onlyDeterministicMessages: only_deterministic_messages,
-  chatId: chat_id,
-  tools,
-}: SendChatArgs): Promise<Response> {
-  // const toolsResponse = await getAvailableTools();
-
-  // const tools = takeNote
-  //   ? toolsResponse.filter(
-  //       (tool) => tool.function.name === "remember_how_to_use_tools",
-  //     )
-  //   : toolsResponse.filter(
-  //       (tool) => tool.function.name !== "remember_how_to_use_tools",
-  //     );
-
-  const body = JSON.stringify({
-    messages,
-    model: model,
-    parameters: {
-      max_new_tokens: 2048,
-    },
-    stream,
-    tools,
-    max_tokens: 2048,
-    only_deterministic_messages,
-    chat_id,
-  });
-
-  //   const apiKey = getApiKey();
-  //   const headers = {
-  //     "Content-Type": "application/json",
-  //     ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-  //   };
-  //   const chatEndpoint = lspUrl
-  //     ? `${lspUrl.replace(/\/*$/, "")}${CHAT_URL}`
-  //     : CHAT_URL;
-
-  return fetch("http://localhost:8001/v1/chat", {
-    method: "POST",
-    // headers,
-    body,
-    redirect: "follow",
-    cache: "no-cache",
-    referrer: "no-referrer",
-    signal: abortSignal,
-    credentials: "same-origin",
-  });
-}
 
 export const selectMessages = (state: RootState) => state.chat.thread.messages;
