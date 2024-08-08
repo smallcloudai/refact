@@ -12,7 +12,7 @@ use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum};
 
-pub const DEFAULT_MODEL_NAME: &str = "gpt-4o";
+pub const DEFAULT_MODEL_NAME: &str = "gpt-4o-mini";
 pub const MAX_NEW_TOKENS: usize = 8192;
 pub const TEMPERATURE: f32 = 0.2;
 pub type DefaultToolPatch = UnifiedDiffFormat;
