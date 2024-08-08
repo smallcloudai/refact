@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
@@ -31,6 +32,8 @@ pub struct AtCommandsContext {
     pub is_preview: bool,
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,
     pub at_tools: HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
+    pub subchat_tx: Arc<AMutex<mpsc::UnboundedSender<serde_json::Value>>>,
+    pub subchat_rx: Arc<AMutex<mpsc::UnboundedReceiver<serde_json::Value>>>,
 }
 
 impl AtCommandsContext {
@@ -41,6 +44,7 @@ impl AtCommandsContext {
         is_preview: bool,
         messages: &Vec<ChatMessage>,
     ) -> Self {
+        let (tx, rx) = mpsc::unbounded_channel::<serde_json::Value>();
         AtCommandsContext {
             global_context: global_context.clone(),
             n_ctx,
@@ -49,6 +53,8 @@ impl AtCommandsContext {
             messages: messages.clone(),
             at_commands: at_commands_dict(global_context.clone()).await,
             at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
+            subchat_tx: Arc::new(AMutex::new(tx)),
+            subchat_rx: Arc::new(AMutex::new(rx)),
         }
     }
 }
@@ -132,9 +138,3 @@ pub fn filter_only_context_file_from_context_tool(tools: &Vec<ContextEnum>) -> V
         }).collect::<Vec<ContextFile>>()
 }
 
-pub fn filter_only_chat_messages_from_context_tool(tools: &Vec<ContextEnum>) -> Vec<ChatMessage> {
-    tools.iter()
-        .filter_map(|x| {
-            if let ContextEnum::ChatMessage(data) = x { Some(data.clone()) } else { None }
-        }).collect::<Vec<ChatMessage>>()
-}

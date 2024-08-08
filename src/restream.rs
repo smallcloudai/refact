@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
-
+use tokio::sync::mpsc;
 use async_stream::stream;
 use futures::StreamExt;
 use hyper::{Body, Response, StatusCode};
@@ -209,19 +209,55 @@ pub async fn scratchpad_interaction_stream(
         };
 
         let t0 = std::time::Instant::now();
-        let prompt = match my_scratchpad.prompt(
-            my_ccx.clone(),
-            &mut my_parameters,
-        ).await {
-            Ok(prompt) => prompt,
-            Err(e) => {
-                // XXX: tool errors go here, check again and again
-                tracing::warn!("prompt or tool use inside prompt: {}", e);
-                let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": e})).unwrap());
-                yield Result::<_, String>::Ok(value_str);
-                return;
+        let mut prompt = String::new();
+        {
+            let subchat_tx: Arc<AMutex<mpsc::UnboundedSender<serde_json::Value>>> = my_ccx.lock().await.subchat_tx.clone();
+            let subchat_rx: Arc<AMutex<mpsc::UnboundedReceiver<serde_json::Value>>> = my_ccx.lock().await.subchat_rx.clone();
+            let mut prompt_future = Some(my_scratchpad.prompt(
+                my_ccx.clone(),
+                &mut my_parameters,
+            ));
+            // horrible loop that waits for prompt() future, and at the same time retranslates any streaming via my_ccx.subchat_rx/tx to the user
+            // (without streaming the rx/tx is never processed, disposed with the ccx)
+            loop {
+                tokio::select! {
+                    value = async {
+                        subchat_rx.lock().await.recv().await
+                    } => {
+                        if let Some(value) = value {
+                            let tmp = serde_json::to_string(&value).unwrap();
+                            info!("{:?}", tmp);
+                            if tmp == "1337" {
+                                break;  // the only way out of this loop
+                            }
+                            let value_str = format!("data: {}\n\n", tmp);
+                            yield Result::<_, String>::Ok(value_str);
+                        }
+                    },
+                    prompt_maybe = async {
+                        if let Some(fut) = prompt_future.as_mut() {
+                            fut.await
+                        } else {
+                            std::future::pending().await
+                        }
+                    } => {
+                        if let Some(_fut) = prompt_future.take() {
+                            prompt = match prompt_maybe {
+                                Ok(x) => x,
+                                Err(e) => {
+                                    // XXX: tool errors go here, check again if this what we want
+                                    tracing::warn!("prompt or tool use problem inside prompt: {}", e);
+                                    let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": e})).unwrap());
+                                    yield Result::<_, String>::Ok(value_str);
+                                    return;
+                                }
+                            };
+                            let _ = subchat_tx.lock().await.send(serde_json::json!(1337));
+                        }
+                    }
+                }
             }
-        };
+        }
         info!("scratchpad_interaction_stream prompt {:?}", t0.elapsed());
 
         let mut save_url: String = String::new();

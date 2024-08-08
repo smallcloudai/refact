@@ -99,6 +99,10 @@ impl ScratchpadAbstract for ChatPassthrough {
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         info!("chat passthrough {} messages at start", &self.post.messages.len());
+
+        // let subchat_tx = ccx.lock().await.subchat_tx.clone();
+        // let _ = subchat_tx.lock().await.send(serde_json::json!({"hello": "world"}));
+
         let n_ctx = ccx.lock().await.n_ctx;
         let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
             run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.post.messages, &mut self.has_rag_results).await
