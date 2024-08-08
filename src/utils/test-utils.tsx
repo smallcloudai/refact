@@ -4,6 +4,8 @@ import "@testing-library/jest-dom/vitest";
 import { render, RenderOptions } from "@testing-library/react";
 import userEvent, { UserEvent } from "@testing-library/user-event";
 import { Theme } from "@radix-ui/themes";
+import { Provider } from "react-redux";
+import { store } from "../app/store";
 
 const customRender = (
   ui: ReactElement,
@@ -11,7 +13,14 @@ const customRender = (
 ): ReturnType<typeof render> & { user: UserEvent } => {
   const user = userEvent.setup();
   return {
-    ...render(ui, { wrapper: Theme, ...options }),
+    ...render(ui, {
+      wrapper: ({ children }) => (
+        <Provider store={store}>
+          <Theme>{children}</Theme>
+        </Provider>
+      ),
+      ...options,
+    }),
     user,
   };
 };

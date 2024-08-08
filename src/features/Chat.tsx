@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useEventBusForChat } from "../hooks/useEventBusForChat";
-import type { Config } from "../contexts/config-context";
-import { CodeChatModel } from "../events";
+import type { Config } from "../app/hooks";
+import { CodeChatModel, SystemPrompts } from "../events";
 import { Chat as ChatComponent } from "../components/Chat";
 import {
   useGetCapsQuery,
@@ -11,6 +11,11 @@ import {
   useGetCommandPreviewQuery,
 } from "../app/hooks";
 import { useDebounceCallback } from "usehooks-ts";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
+import {
+  getSelectedSystemPrompt,
+  setSystemPrompt,
+} from "../features/Chat2/chatThread";
 
 type ChatProps = {
   host: Config["host"];
@@ -20,36 +25,43 @@ type ChatProps = {
 
 export const Chat: React.FC<ChatProps> = ({
   style,
-  askQuestion,
+  // askQuestion,
   clearError,
   setChatModel,
-  stopStreaming,
+  // stopStreaming,
   backFromChat,
   openChatInNewTab,
   sendToSideBar,
-  handleNewFileClick,
-  handlePasteDiffClick,
+  // handleNewFileClick,
+  // handlePasteDiffClick,
   hasContextFile,
   // requestCommandsCompletion,
   // requestPreviewFiles,
   // setSelectedCommand,
   removePreviewFileByName,
-  retryQuestion,
-  maybeRequestCaps,
+  // retryQuestion,
+  // maybeRequestCaps,
   startNewChat,
-  setSelectedSystemPrompt,
+  // setSelectedSystemPrompt,
   setUseTools,
   enableSend,
-  openSettings,
+  // openSettings,
   host,
   tabbed,
   state,
 }) => {
   const capsRequest = useGetCapsQuery(undefined);
+
+  // TODO: these could be lower in the component tree
   const promptsRequest = useGetPromptsQuery(undefined);
+  const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
+  const dispatch = useAppDispatch();
+  const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
+    dispatch(setSystemPrompt(prompt));
 
   // TODO: don't make this request if there are no caps
   const toolsRequest = useGetToolsQuery(!!capsRequest.data);
+  // const chatRequest = useSendChatRequest();
 
   // commands should be a selector, and calling the hook ?
   const [command, setCommand] = React.useState<{
@@ -81,18 +93,18 @@ export const Chat: React.FC<ChatProps> = ({
     !!capsRequest.data,
   );
 
-  const onSetSelectedSystemPrompt = useCallback(
-    (key: string) => {
-      if (!promptsRequest.data) return;
-      if (!(key in promptsRequest.data)) return;
-      if (key === "default") {
-        setSelectedSystemPrompt("");
-      } else {
-        setSelectedSystemPrompt(key);
-      }
-    },
-    [promptsRequest.data, setSelectedSystemPrompt],
-  );
+  // const onSetSelectedSystemPrompt = useCallback(
+  //   (key: string) => {
+  //     if (!promptsRequest.data) return;
+  //     if (!(key in promptsRequest.data)) return;
+  //     if (key === "default") {
+  //       setSelectedSystemPrompt("");
+  //     } else {
+  //       setSelectedSystemPrompt(key);
+  //     }
+  //   },
+  //   [promptsRequest.data, setSelectedSystemPrompt],
+  // );
 
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
@@ -110,11 +122,12 @@ export const Chat: React.FC<ChatProps> = ({
     return false;
   }, [capsRequest.data, toolsRequest.data, state.chat.model]);
 
+  // can be a selector
   const unCalledTools = React.useMemo(() => {
     if (state.chat.messages.length === 0) return false;
     const last = state.chat.messages[state.chat.messages.length - 1];
-    if (last[0] !== "assistant") return false;
-    const maybeTools = last[2];
+    if (last.role !== "assistant") return false;
+    const maybeTools = last.tool_calls;
     if (maybeTools && maybeTools.length > 0) return true;
     return false;
   }, [state.chat.messages]);
@@ -126,22 +139,22 @@ export const Chat: React.FC<ChatProps> = ({
       tabbed={tabbed}
       backFromChat={backFromChat}
       openChatInNewTab={openChatInNewTab}
-      onStopStreaming={stopStreaming}
-      chat={state.chat}
+      // onStopStreaming={stopStreaming}
+      // chat={state.chat}
       error={state.error}
       onClearError={clearError}
-      retryQuestion={retryQuestion}
-      isWaiting={state.waiting_for_response}
-      isStreaming={state.streaming}
-      onNewFileClick={handleNewFileClick}
-      onPasteClick={handlePasteDiffClick}
-      canPaste={state.active_file.can_paste}
+      // retryQuestion={retryQuestion}
+      // isWaiting={state.waiting_for_response}
+      // isStreaming={state.streaming}
+      // onNewFileClick={handleNewFileClick}
+      // onPasteClick={handlePasteDiffClick}
+      // canPaste={state.active_file.can_paste}
       preventSend={state.prevent_send}
       unCalledTools={unCalledTools}
       enableSend={enableSend}
-      onAskQuestion={(question: string) =>
-        askQuestion(question, promptsRequest.data, toolsRequest.data)
-      }
+      // onAskQuestion={(question: string) =>
+      //   askQuestion(question, promptsRequest.data, toolsRequest.data)
+      // }
       onSetChatModel={(value) => {
         const model =
           capsRequest.data?.code_completion_default_model === value
@@ -160,20 +173,23 @@ export const Chat: React.FC<ChatProps> = ({
       hasContextFile={hasContextFile}
       requestCommandsCompletion={requestCommandsCompletion}
       maybeSendToSidebar={maybeSendToSideBar}
-      activeFile={state.active_file}
+      // activeFile={state.active_file}
       filesInPreview={commandPreview}
-      selectedSnippet={state.selected_snippet}
+      // selectedSnippet={state.selected_snippet}
       removePreviewFileByName={removePreviewFileByName}
-      requestCaps={maybeRequestCaps}
+      requestCaps={() => {
+        void capsRequest.refetch();
+      }}
       prompts={promptsRequest.data ?? {}}
       onStartNewChat={startNewChat}
+      // Could be lowered
       onSetSystemPrompt={onSetSelectedSystemPrompt}
-      selectedSystemPrompt={state.selected_system_prompt}
+      selectedSystemPrompt={selectedSystemPrompt}
       requestPreviewFiles={() => ({})}
       canUseTools={canUseTools}
       setUseTools={setUseTools}
       useTools={state.use_tools}
-      openSettings={openSettings}
+      // openSettings={openSettings}
     />
   );
 };

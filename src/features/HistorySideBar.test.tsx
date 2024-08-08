@@ -39,8 +39,8 @@ describe("HistorySideBar", () => {
       createdAt: "",
       lastUpdated: "",
       messages: [
-        ["user", "hello"],
-        ["assistant", "hello there"],
+        { role: "user", content: "hello" },
+        { role: "assistant", content: "hello there" },
       ],
       title: "Title for the item",
       model: "chat-gpt-3.5-turbo",
@@ -75,8 +75,8 @@ describe("HistorySideBar", () => {
         createdAt: "",
         lastUpdated: "",
         messages: [
-          ["user", "hello"],
-          ["assistant", "hello there"],
+          { role: "user", content: "hello" },
+          { role: "assistant", content: "hello there" },
         ],
         title: "Title for the item",
         model: "chat-gpt-3.5-turbo",
@@ -86,8 +86,8 @@ describe("HistorySideBar", () => {
         createdAt: "",
         lastUpdated: "",
         messages: [
-          ["user", "hello"],
-          ["assistant", "hello there"],
+          { role: "user", content: "hello" },
+          { role: "assistant", content: "hello there" },
         ],
         title: "Delete this item",
         model: "chat-gpt-3.5-turbo",

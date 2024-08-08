@@ -3,6 +3,8 @@ import {
   configureStore,
   // createSlice,
 } from "@reduxjs/toolkit";
+import storage from "redux-persist/lib/storage";
+import { persistReducer, persistStore } from "redux-persist";
 import { statisticsApi } from "../services/refact/statistics";
 import {
   capsApi,
@@ -17,6 +19,12 @@ import {
   saveTipOfTheDayToLocalStorage,
   tipOfTheDayReducer,
 } from "../features/TipOfTheDay";
+import { reducer as configReducer } from "../features/Config/reducer";
+import { activeFileReducer } from "../features/Chat2/activeFile";
+import { selectedSnippetReducer } from "../features/Chat2/selectedSnippet";
+import { chatReducer } from "../features/Chat2/chatThread";
+import { historySlice } from "../features/History/historySlice";
+
 // import { fimSlice } from "../features/FIM/fimSlice";
 
 // https://redux-toolkit.js.org/api/combineSlices
@@ -26,6 +34,10 @@ const rootReducer = combineSlices({
   fim: fimReducer,
   tour: tourReducer,
   tipOfTheDay: tipOfTheDayReducer,
+  config: configReducer,
+  active_file: activeFileReducer,
+  selected_snippet: selectedSnippetReducer,
+  chat: chatReducer,
   [statisticsApi.reducerPath]: statisticsApi.reducer,
   [capsApi.reducerPath]: capsApi.reducer,
   [promptsApi.reducerPath]: promptsApi.reducer,
@@ -34,10 +46,16 @@ const rootReducer = combineSlices({
   [diffApi.reducerPath]: diffApi.reducer,
 });
 
-// Infer the `RootState` type from the root reducer
+const persistConfig = {
+  key: "root",
+  storage,
+  whitelist: [historySlice.reducerPath],
+};
+
+const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 export const store = configureStore({
-  reducer: rootReducer,
+  reducer: persistedReducer,
   middleware: (getDefaultMiddleware) => {
     return getDefaultMiddleware().concat(
       statisticsApi.middleware,
@@ -54,6 +72,8 @@ store.subscribe(() => {
   saveTourToLocalStorage(store.getState());
   saveTipOfTheDayToLocalStorage(store.getState());
 });
+
+export const persistor = persistStore(store);
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
 export type RootState = ReturnType<typeof store.getState>;

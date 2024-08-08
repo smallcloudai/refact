@@ -12,6 +12,7 @@ import {
   useChatHistory,
   useEventBusForChat,
   useEventBusForHost,
+  useEventsBusForIDE,
 } from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
@@ -19,18 +20,24 @@ import {
   OpenExternalUrl,
   SetupHost,
 } from "../events/setup";
-import { useConfig } from "../contexts/config-context";
+import { useConfig } from "../app/hooks";
 import { FIMDebug } from "./FIM";
 import { Statistics } from "./Statistics";
-import { store } from "../app/store";
+import { store, persistor } from "../app/store";
 import { Provider } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
+import { Theme } from "../components/Theme";
 
 export interface AppProps {
   style?: React.CSSProperties;
 }
 
-export const App: React.FC<AppProps> = ({ style }: AppProps) => {
+// TODO: wrap this in the Prvider and theme components
+const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const { pages, navigate } = usePages();
+  const { openHotKeys, openSettings } = useEventsBusForIDE();
+  // TODO: can replace this with a selector for state.chat.thread.id
+
   const postMessage = usePostMessage();
   const config = useConfig();
 
@@ -116,9 +123,9 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
   const handleNavigation = useCallback(
     (to: "fim" | "stats" | "hot keys" | "settings" | "") => {
       if (to === "settings") {
-        chatHook.openSettings();
+        openSettings();
       } else if (to === "hot keys") {
-        chatHook.openHotKeys();
+        openHotKeys();
       } else if (to === "fim") {
         navigate({
           type: "push",
@@ -128,67 +135,82 @@ export const App: React.FC<AppProps> = ({ style }: AppProps) => {
         navigate({ type: "push", page: { name: "statistics page" } });
       }
     },
-    [chatHook, navigate],
+    [navigate, openHotKeys, openSettings],
   );
 
   // goTo settings, fim, stats, hot keys
 
   return (
+    <Flex style={{ justifyContent: "center", ...style }}>
+      {pages.map((page, i) => {
+        return (
+          <Flex key={i} display={i === pages.length - 1 ? "flex" : "none"}>
+            {page.name === "initial setup" && (
+              <InitialSetup onPressNext={onPressNext} />
+            )}
+            {page.name === "cloud login" && (
+              <CloudLogin
+                goBack={goBack}
+                openExternal={openExternal}
+                next={cloudLogin}
+              />
+            )}
+            {page.name === "enterprise setup" && (
+              <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
+            )}
+            {page.name === "self hosting setup" && (
+              <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
+            )}
+            {page.name === "history" && (
+              <Sidebar
+                history={historyHook.history}
+                takingNotes={false}
+                currentChatId={currentChatId}
+                onCreateNewChat={handleCreateNewChat}
+                account={undefined}
+                onHistoryItemClick={handleHistoryItemClick}
+                onDeleteHistoryItem={handleDelete}
+                onOpenChatInTab={undefined}
+                handleLogout={() => {
+                  // TODO: handle logout
+                }}
+                handleNavigation={handleNavigation}
+              />
+            )}
+            {page.name === "chat" && (
+              <Chat
+                host={config.host}
+                tabbed={config.tabbed}
+                {...chatHook}
+                backFromChat={goBack}
+              />
+            )}
+            {page.name === "fill in the middle debug page" && (
+              <FIMDebug host={config.host} tabbed={config.tabbed} />
+            )}
+            {page.name === "statistics page" && (
+              <Statistics
+                backFromStatistic={goBack}
+                tabbed={config.tabbed}
+                host={config.host}
+                onCloseStatistic={goBack}
+              />
+            )}
+          </Flex>
+        );
+      })}
+    </Flex>
+  );
+};
+
+export const App = () => {
+  return (
     <Provider store={store}>
-      <Flex style={{ justifyContent: "center", ...style }}>
-        {pages.map((page, i) => {
-          return (
-            <Flex key={i} display={i === pages.length - 1 ? "flex" : "none"}>
-              {page.name === "initial setup" && (
-                <InitialSetup onPressNext={onPressNext} />
-              )}
-              {page.name === "cloud login" && (
-                <CloudLogin
-                  goBack={goBack}
-                  openExternal={openExternal}
-                  next={cloudLogin}
-                />
-              )}
-              {page.name === "enterprise setup" && (
-                <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
-              )}
-              {page.name === "self hosting setup" && (
-                <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
-              )}
-              {page.name === "history" && (
-                <Sidebar
-                  history={historyHook.history}
-                  takingNotes={false}
-                  currentChatId={currentChatId}
-                  onCreateNewChat={handleCreateNewChat}
-                  account={undefined}
-                  onHistoryItemClick={handleHistoryItemClick}
-                  onDeleteHistoryItem={handleDelete}
-                  onOpenChatInTab={undefined}
-                  handleLogout={() => {
-                    // TODO: handle logout
-                  }}
-                  handleNavigation={handleNavigation}
-                />
-              )}
-              {page.name === "chat" && (
-                <Chat host={config.host} tabbed={config.tabbed} {...chatHook} />
-              )}
-              {page.name === "fill in the middle debug page" && (
-                <FIMDebug host={config.host} tabbed={config.tabbed} />
-              )}
-              {page.name === "statistics page" && (
-                <Statistics
-                  backFromStatistic={goBack}
-                  tabbed={config.tabbed}
-                  host={config.host}
-                  onCloseStatistic={goBack}
-                />
-              )}
-            </Flex>
-          );
-        })}
-      </Flex>
+      <PersistGate persistor={persistor}>
+        <Theme>
+          <InnerApp />
+        </Theme>
+      </PersistGate>
     </Provider>
   );
 };

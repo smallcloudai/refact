@@ -1,11 +1,11 @@
 import React from "react";
 import { Flex, Button } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { ScrollArea } from "../components/ScrollArea";
+import { ScrollArea } from "../../components/ScrollArea";
 // import type { StatisticState } from "../../hooks";
-import { StatisticView } from "../components/StatisticView/StatisticView";
-import { PageWrapper } from "../components/PageWrapper";
-import { useGetStatisticDataQuery, type Config } from "../app/hooks";
+import { StatisticView } from "../../components/StatisticView/StatisticView";
+import { PageWrapper } from "../../components/PageWrapper";
+import { useGetStatisticDataQuery, type Config } from "../../app/hooks";
 
 export type StatisticsProps = {
   onCloseStatistic?: () => void;
@@ -14,7 +14,7 @@ export type StatisticsProps = {
   tabbed: Config["tabbed"];
   // state: StatisticState;
 };
-export const Statistics: React.FC<StatisticsProps> = ({
+export const Statistic: React.FC<StatisticsProps> = ({
   onCloseStatistic,
   backFromStatistic,
   host,
@@ -36,7 +36,6 @@ export const Statistics: React.FC<StatisticsProps> = ({
 
   return (
     <PageWrapper host={host}>
-      {/** TODO: can be jetbrains */}
       {host === "vscode" && !tabbed ? (
         <Flex gap="2" pb="3">
           <Button variant="surface" onClick={backFromStatistic}>

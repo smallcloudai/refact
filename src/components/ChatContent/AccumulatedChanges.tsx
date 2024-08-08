@@ -30,8 +30,10 @@ export const AccumulatedChanges: React.FC<{ messages: ChatMessages }> = ({
   const args = React.useMemo(() => {
     return messages.reduce<DiffAppliedStateArgs[]>((acc, diff) => {
       if (!isDiffMessage(diff)) return acc;
-      const [, chunks, toolCallId] = diff;
-      const arg: DiffAppliedStateArgs = { chunks, toolCallId };
+      const arg: DiffAppliedStateArgs = {
+        chunks: diff.content,
+        toolCallId: diff.tool_call_id,
+      };
       return [...acc, arg];
     }, []);
   }, [messages]);

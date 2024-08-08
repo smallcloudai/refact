@@ -1,23 +1,26 @@
 import { ChatHistoryItem } from "../hooks";
-export const HISTOY: ChatHistoryItem[] = [
+export const HISTORY: ChatHistoryItem[] = [
   {
     id: "be20f605-824c-4e77-9dab-a45688f676fa",
     messages: [
-      [
-        "user",
-        "Write a program that solves word-chain puzzles.\n\nThere’s a type of puzzle where the challenge is to build a chain of words, starting with one particular word and ending with another. Successive entries in the chain must all be real words, and each can differ from the previous word by just one letter. For example, you can get from “cat” to “dog” using the following chain.\n\nThe objective of this kata is to write a program that accepts start and end words and, using words from the dictionary, builds a word chain between them. For added programming fun, return the shortest word chain that solves each puzzle. For example, you can turn “lead” into “gold” in four steps (lead, load, goad, gold), and “ruby” into “code” in six steps (ruby, rubs, robs, rods, rode, code).\n\nOnce your code works, try timing it. Does it take less than a second for the above examples given a decent-sized word list? And is the timing the same forwards and backwards (so “lead” into “gold” takes the same time as “gold” into “lead”)?",
-      ],
-      [
-        "assistant",
-        "To solve word-chain puzzles, we can use a breadth-first search algorithm to find the shortest path between the start and end words, where each word in the path differs by only one letter from the previous word.\n\nHere is a high-level plan to implement the program:\n1. Load a dictionary of words.\n2. Implement a function to find all valid words that differ by one letter from a given word.\n3. Implement a function to find the shortest word chain between the start and end words using breadth-first search.\n4. Test the program with the provided examples and measure the execution time.\n\nLet's start by searching for relevant resources and definitions to help us implement the necessary functions for the word-chain puzzle program. I will search for algorithms for finding word chains and data structures for efficient word manipulation. Let's proceed with the search.",
-        null,
-      ],
-      ["user", "solve in scala\n"],
-      [
-        "assistant",
-        'To solve the word-chain puzzle in Scala, we can follow the plan mentioned earlier. We will implement functions to load a dictionary of words, find valid words that differ by one letter, and find the shortest word chain using breadth-first search.\n\nHere is a basic outline of how the Scala code might look:\n\n```scala\nimport scala.io.Source\n\nobject WordChainSolver {\n  def loadDictionary(filename: String): Set[String] = {\n    Source.fromFile(filename).getLines().toSet\n  }\n\n  def findValidWords(word: String, dictionary: Set[String]): Set[String] = {\n    dictionary.filter(w => w.length == word.length && (w zip word).count(p => p._1 != p._2) == 1)\n  }\n\n  def findShortestWordChain(start: String, end: String, dictionary: Set[String]): List[String] = {\n    // Implement breadth-first search to find the shortest word chain\n    // Return the list of words in the shortest chain\n  }\n\n  def main(args: Array[String]): Unit = {\n    val dictionary = loadDictionary("dictionary.txt")\n    val start = "lead"\n    val end = "gold"\n    val shortestChain = findShortestWordChain(start, end, dictionary)\n    println(shortestChain)\n  }\n}\n```\n\nYou can fill in the `findShortestWordChain` function with the breadth-first search algorithm to find the shortest word chain between the start and end words.\n\nRemember to replace `"dictionary.txt"` with the actual path to your dictionary file.\n\nFeel free to ask if you need further assistance with the implementation or have any specific questions related to the Scala code.',
-        null,
-      ],
+      {
+        role: "user",
+        content:
+          "Write a program that solves word-chain puzzles.\n\nThere’s a type of puzzle where the challenge is to build a chain of words, starting with one particular word and ending with another. Successive entries in the chain must all be real words, and each can differ from the previous word by just one letter. For example, you can get from “cat” to “dog” using the following chain.\n\nThe objective of this kata is to write a program that accepts start and end words and, using words from the dictionary, builds a word chain between them. For added programming fun, return the shortest word chain that solves each puzzle. For example, you can turn “lead” into “gold” in four steps (lead, load, goad, gold), and “ruby” into “code” in six steps (ruby, rubs, robs, rods, rode, code).\n\nOnce your code works, try timing it. Does it take less than a second for the above examples given a decent-sized word list? And is the timing the same forwards and backwards (so “lead” into “gold” takes the same time as “gold” into “lead”)?",
+      },
+      {
+        role: "assistant",
+        content:
+          "To solve word-chain puzzles, we can use a breadth-first search algorithm to find the shortest path between the start and end words, where each word in the path differs by only one letter from the previous word.\n\nHere is a high-level plan to implement the program:\n1. Load a dictionary of words.\n2. Implement a function to find all valid words that differ by one letter from a given word.\n3. Implement a function to find the shortest word chain between the start and end words using breadth-first search.\n4. Test the program with the provided examples and measure the execution time.\n\nLet's start by searching for relevant resources and definitions to help us implement the necessary functions for the word-chain puzzle program. I will search for algorithms for finding word chains and data structures for efficient word manipulation. Let's proceed with the search.",
+        tool_calls: null,
+      },
+      { role: "user", content: "solve in scala\n" },
+      {
+        role: "assistant",
+        content:
+          'To solve the word-chain puzzle in Scala, we can follow the plan mentioned earlier. We will implement functions to load a dictionary of words, find valid words that differ by one letter, and find the shortest word chain using breadth-first search.\n\nHere is a basic outline of how the Scala code might look:\n\n```scala\nimport scala.io.Source\n\nobject WordChainSolver {\n  def loadDictionary(filename: String): Set[String] = {\n    Source.fromFile(filename).getLines().toSet\n  }\n\n  def findValidWords(word: String, dictionary: Set[String]): Set[String] = {\n    dictionary.filter(w => w.length == word.length && (w zip word).count(p => p._1 != p._2) == 1)\n  }\n\n  def findShortestWordChain(start: String, end: String, dictionary: Set[String]): List[String] = {\n    // Implement breadth-first search to find the shortest word chain\n    // Return the list of words in the shortest chain\n  }\n\n  def main(args: Array[String]): Unit = {\n    val dictionary = loadDictionary("dictionary.txt")\n    val start = "lead"\n    val end = "gold"\n    val shortestChain = findShortestWordChain(start, end, dictionary)\n    println(shortestChain)\n  }\n}\n```\n\nYou can fill in the `findShortestWordChain` function with the breadth-first search algorithm to find the shortest word chain between the start and end words.\n\nRemember to replace `"dictionary.txt"` with the actual path to your dictionary file.\n\nFeel free to ask if you need further assistance with the implementation or have any specific questions related to the Scala code.',
+        tool_calls: null,
+      },
     ],
     title:
       "Write a program that solves word-chain puzzles.\n\nThere’s a type of puzzle where the challenge is to build a chain of words, starting with one particular word and ending with another. Successive entries in the chain must all be real words, and each can differ from the previous word by just one letter. For example, you can get from “cat” to “dog” using the following chain.\n",
@@ -28,14 +31,16 @@ export const HISTOY: ChatHistoryItem[] = [
   {
     id: "31f3bb3d-df6e-4f0f-b701-6b1e6e4a352b",
     messages: [
-      [
-        "user",
-        "In this project, what is the difference between a toad and a frog?\n",
-      ],
-      [
-        "assistant",
-        "I will search for information on the differences between a toad and a frog in the context of your project. Let me do that.",
-        [
+      {
+        role: "user",
+        content:
+          "In this project, what is the difference between a toad and a frog?\n",
+      },
+      {
+        role: "assistant",
+        content:
+          "I will search for information on the differences between a toad and a frog in the context of your project. Let me do that.",
+        tool_calls: [
           {
             function: {
               arguments: '{"query":"difference between a toad and a frog"}',
@@ -46,17 +51,17 @@ export const HISTOY: ChatHistoryItem[] = [
             type: "function",
           },
         ],
-      ],
-      [
-        "tool",
-        {
+      },
+      {
+        role: "tool",
+        content: {
           tool_call_id: "call_D0rhujadTb1nvKlMbZ8ZYLEt",
           content: "performed vecdb search, results below",
         },
-      ],
-      [
-        "context_file",
-        [
+      },
+      {
+        role: "context_file",
+        content: [
           {
             file_content:
               '# Picking up context, goal in this file:\n# - goto parent class, two times\n# - dump parent class\n\nimport frog\n\nX,Y = 50, 50\nW = 100\nH = 100\n\n\n# This this a comment for the Toad class, above the class\nclass Toad(frog.Frog):\n    def __init__(self, x, y, vx, vy):\n        super().__init__(x, y, vx, vy)\n        self.name = "Bob"\n\n\nclass EuropeanCommonToad(frog.Frog):\n    """\n    This is a comment for EuropeanCommonToad class, inside the class\n    """\n\n    def __init__(self, x, y, vx, vy):\n        super().__init__(x, y, vx, vy)\n        self.name = "EU Toad"\n\n\nif __name__ == "__main__":\n    toad = EuropeanCommonToad(100, 100, 200, -200)\n    toad.jump(W, H)\n    print(toad.name, toad.x, toad.y)\n\n',
@@ -94,12 +99,13 @@ export const HISTOY: ChatHistoryItem[] = [
             usefulness: 0,
           },
         ],
-      ],
-      [
-        "assistant",
-        "In the context of your project, the difference between a toad and a frog is that the `Toad` and `EuropeanCommonToad` classes are subclasses of the `Frog` class in the codebase. The `Frog` class defines methods like `bounce_off_banks` and `jump` which are utilized by instances of both `Toad` and `EuropeanCommonToad` classes. The `Frog` class initializes with parameters for position and velocity, and has methods for movement and interaction with the environment. The `Toad` classes have specific attributes like `name` assigned to them.\n\nIf you need more specific details or comparisons between toads and frogs in the codebase, feel free to ask!",
-        null,
-      ],
+      },
+      {
+        role: "assistant",
+        content:
+          "In the context of your project, the difference between a toad and a frog is that the `Toad` and `EuropeanCommonToad` classes are subclasses of the `Frog` class in the codebase. The `Frog` class defines methods like `bounce_off_banks` and `jump` which are utilized by instances of both `Toad` and `EuropeanCommonToad` classes. The `Frog` class initializes with parameters for position and velocity, and has methods for movement and interaction with the environment. The `Toad` classes have specific attributes like `name` assigned to them.\n\nIf you need more specific details or comparisons between toads and frogs in the codebase, feel free to ask!",
+        tool_calls: null,
+      },
     ],
     title:
       "In this project, what is the difference between a toad and a frog?\n",

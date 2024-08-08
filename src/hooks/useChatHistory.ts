@@ -61,7 +61,7 @@ export function useChatHistory() {
         let title = "New Chat";
 
         if (firstUserMessage && isUserMessage(firstUserMessage)) {
-          title = firstUserMessage[1].replace(/^\W*/, "");
+          title = firstUserMessage.content.replace(/^\W*/, "");
         }
 
         const newChat: ChatHistoryItem = {

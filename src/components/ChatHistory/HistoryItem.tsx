@@ -56,7 +56,10 @@ export const HistoryItem: React.FC<{
               style={{ display: "flex", gap: "4px", alignItems: "center" }}
             >
               <ChatBubbleIcon />{" "}
-              {chat.messages.filter((message) => message[0] === "user").length}
+              {
+                chat.messages.filter((message) => message.role === "user")
+                  .length
+              }
             </Text>
 
             <Text size="1">{dateTimeString}</Text>
