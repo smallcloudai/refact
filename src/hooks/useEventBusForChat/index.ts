@@ -961,22 +961,9 @@ export const useEventBusForChat = () => {
         payload: { id: state.chat.id, disable: true },
       });
 
-      const messagesWithSystemPrompt: ChatMessages =
-        state.selected_system_prompt &&
-        state.selected_system_prompt !== "default" &&
-        state.selected_system_prompt in state.system_prompts.prompts
-          ? [
-              [
-                "system",
-                state.system_prompts.prompts[state.selected_system_prompt].text,
-              ],
-              ...messages,
-            ]
-          : messages;
-
       const thread: ChatThread = {
         id: state.chat.id,
-        messages: messagesWithSystemPrompt,
+        messages: messages,
         title: state.chat.title,
         model: state.chat.model,
         attach_file,
@@ -1024,11 +1011,29 @@ export const useEventBusForChat = () => {
 
   const askQuestion = useCallback(
     (question: string) => {
-      const messages = state.chat.messages.concat([["user", question]]);
+      const messagesWithSystemPrompt: ChatMessages =
+        state.chat.messages.length === 0 &&
+        state.selected_system_prompt &&
+        state.selected_system_prompt !== "default" &&
+        state.selected_system_prompt in state.system_prompts.prompts
+          ? [
+              [
+                "system",
+                state.system_prompts.prompts[state.selected_system_prompt].text,
+              ],
+              ...state.chat.messages,
+            ]
+          : state.chat.messages;
+      const messages = messagesWithSystemPrompt.concat([["user", question]]);
 
       sendMessages(messages);
     },
-    [sendMessages, state.chat.messages],
+    [
+      sendMessages,
+      state.chat.messages,
+      state.selected_system_prompt,
+      state.system_prompts.prompts,
+    ],
   );
 
   const requestCaps = useCallback(() => {
