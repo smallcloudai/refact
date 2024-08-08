@@ -83,6 +83,7 @@ export type ChatContentProps = {
   isStreaming: boolean;
   openSettings: () => void;
   chatKey: string;
+  onOpenFile: (file: { file_name: string; line?: number }) => void;
 } & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
 
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
@@ -97,6 +98,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       isStreaming,
       openSettings,
       chatKey,
+      onOpenFile,
     } = props;
 
     const messages = useAppSelector(selectMessages);
@@ -129,7 +131,13 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
           {messages.map((message, index) => {
             if (isChatContextFileMessage(message)) {
               const key = chatKey + "context-file-" + index;
-              return <ContextFiles key={key} files={message.content} />;
+              return (
+                <ContextFiles
+                  key={key}
+                  files={message.content}
+                  onOpenFile={onOpenFile}
+                />
+              );
             }
 
             if (isDiffMessage(message)) {

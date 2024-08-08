@@ -18,13 +18,13 @@ export const AccumulatedChanges: React.FC<{ messages: ChatMessages }> = ({
   messages,
 }) => {
   const [open, setOpen] = React.useState(false);
-  const [onSumbit, result] = useDiffApplyMutation();
+  const [onSubmit, result] = useDiffApplyMutation();
 
   const handleSubmit = React.useCallback(
     (chunks: DiffChunk[], toApply: boolean[], toolCallId: string) => {
-      void onSumbit({ chunks, toApply, toolCallId });
+      void onSubmit({ chunks, toApply, toolCallId });
     },
-    [onSumbit],
+    [onSubmit],
   );
 
   const args = React.useMemo(() => {
@@ -195,6 +195,7 @@ const DiffForm: React.FC<{
                   {/* {errored && "error"} */}
                   <Button
                     size="1"
+                    disabled={loading}
                     onClick={() => {
                       handleToggle(!applied, diffsForFile);
                     }}

@@ -17,7 +17,6 @@ import { ComboBox, type ComboBoxProps } from "../ComboBox";
 import { ChatContextFile, SystemPrompts } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
-import { useEffectOnce } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
 import { useConfig } from "../../app/hooks";
@@ -256,7 +255,6 @@ const useControlsState = ({
   return {
     checkboxes,
     toggleCheckbox,
-    markdown,
     reset,
     setInteracted,
   };
@@ -327,8 +325,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const config = useConfig();
   const [value, setValue] = React.useState("");
   // this should re-render when clicking new chat :/
-  const { markdown, checkboxes, toggleCheckbox, reset, setInteracted } =
-    useControlsState({
+  const { checkboxes, toggleCheckbox, reset, setInteracted } = useControlsState(
+    {
       activeFile: attachFile,
       snippet: selectedSnippet,
       vecdb: config.features?.vecdb ?? false,
@@ -337,7 +335,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       chatId,
       canUseTools,
       host: config.host,
-    });
+    },
+  );
 
   usePreviewFileRequest({
     isCommandExecutable: commands.is_cmd_executable,
@@ -363,12 +362,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     value,
     caps.available_caps,
   ]);
-
-  useEffectOnce(() => {
-    if (selectedSnippet.code) {
-      setValue(markdown + value);
-    }
-  });
 
   useEffect(() => {
     if (!showControls) {

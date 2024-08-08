@@ -49,7 +49,7 @@ const ToolMessage: React.FC<{
   return (
     <Flex direction="column">
       <CommandMarkdown>{functionCalled}</CommandMarkdown>
-      <Result>{"```\n" + escapedBackticks + "\b```"}</Result>
+      <Result>{"```\n" + escapedBackticks + "\n```"}</Result>
     </Flex>
   );
 };

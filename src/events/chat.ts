@@ -34,6 +34,7 @@ export enum EVENT_NAMES_FROM_CHAT {
   // REQUEST_DIFF_OPPERATION = "request_diff_operation",
   // OPEN_SETTINGS = "chat_open_settings",
   // OPEN_HOT_KEYS = "chat_open_hot_keys",
+  OPEN_FILE = "chat_open_file",
 }
 
 export enum EVENT_NAMES_TO_CHAT {
@@ -295,6 +296,23 @@ export function isTakeNotesFromChat(
 //   if (!isActionFromChat(action)) return false;
 //   return action.type === EVENT_NAMES_FROM_CHAT.OPEN_HOT_KEYS;
 // }
+
+export interface OpenFile extends ActionFromChat {
+  type: EVENT_NAMES_FROM_CHAT.OPEN_FILE;
+  payload: {
+    id: string;
+    // TODO: this might need to be changed for diffs,
+    file: {
+      file_name: string;
+      line?: number;
+    };
+  };
+}
+
+export function isOpenFile(action: unknown): action is OpenFile {
+  if (!isActionFromChat(action)) return false;
+  return action.type === EVENT_NAMES_FROM_CHAT.OPEN_FILE;
+}
 
 export interface ActionToChat extends BaseAction {
   type: EVENT_NAMES_TO_CHAT;

@@ -83,6 +83,7 @@ import {
   // RequestDiffAppliedChunks,
   // isRequestDiffAppliedChunks,
   isBaseAction,
+  // OpenFile,
   // isRecieveDiffAppliedChunks,
   // isRecieveDiffAppliedChunksError,
   // RequestDiffOpperation,
@@ -228,6 +229,7 @@ export function reducer(_postMessage: typeof window.postMessage) {
     //   postMessage(notes);
     // }
 
+    // // eslint-disable-next-line no-console
     // console.log(action.type, { isThisChat, action });
 
     // if (isThisChat && isSetDisableChat(action)) {
@@ -1477,6 +1479,25 @@ export const useEventBusForChat = () => {
   //   postMessage(action);
   // }, [postMessage, state.chat.id]);
 
+  // const openFile = useCallback(
+  //   (file: { file_name: string; line?: number }) => {
+  //     const action: OpenFile = {
+  //       type: EVENT_NAMES_FROM_CHAT.OPEN_FILE,
+  //       payload: {
+  //         id: state.chat.id,
+  //         file,
+  //       },
+  //     };
+
+  //     postMessage(action);
+  //   },
+  //   [postMessage, state.chat.id],
+  // );
+
+  const openFile = (_file: { file_name: string; line?: number }) => {
+    // TODO;
+  };
+
   // useEffect(() => {
   //   window.debugChat =
   //     window.debugChat ??
@@ -1492,6 +1513,7 @@ export const useEventBusForChat = () => {
 
   return {
     state,
+    openFile,
     // askQuestion,
     // clearError,
     // setChatModel,
