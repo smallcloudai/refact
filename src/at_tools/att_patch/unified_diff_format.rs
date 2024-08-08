@@ -516,8 +516,7 @@ Your objective is to create a unified diff with a specific format output based o
 ### STEPS TO FOLLOW for generating the correct diff
 1. Review the provided tasks and files.
 2. Use extra context (list of related symbols signatures) if it's given to make changes correct.
-3. Generate the code snippets, which are soliving the task. They are will be the guide to generate the diff.
-4. After generating the code snippets, generate the diff in the specified format (which is given below).
+3. Generate the diff in the specified format (which is given below).
 
 ### UNIFIED DIFF FORMATTING RULES
 There are 4 possible actions can be expressed as the unified diff: editing, adding, renaming and removing files. 
@@ -643,7 +642,7 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 <file_content>
 ```
 
-DO NOT FORGET TO FOLLOW STEPS AND UNIFIED DIFF FORMAT!"#.to_string()
+DO NOT FORGET TO FOLLOW STEPS AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string()
     }
 
     pub async fn parse_message(
