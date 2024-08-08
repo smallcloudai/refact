@@ -1,5 +1,4 @@
 export * from "./useChatHistory";
-export * from "./useEventBusForChat";
 export * from "./useIsOnline";
 export * from "./useOnPressedEnter";
 export * from "./useEventBusForSidebar";

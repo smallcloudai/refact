@@ -6,15 +6,15 @@ import styles from "./ChatForm.module.css";
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
 import { TextArea, TextAreaProps } from "../TextArea";
 import { Form } from "./Form";
-import {
-  useOnPressedEnter,
-  type ChatCapsState,
-  useIsOnline,
-} from "../../hooks";
+import { useOnPressedEnter, useIsOnline } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { Button } from "@radix-ui/themes";
 import { ComboBox, type ComboBoxProps } from "../ComboBox";
-import { ChatContextFile, SystemPrompts } from "../../services/refact";
+import {
+  ChatContextFile,
+  CodeChatModel,
+  SystemPrompts,
+} from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
@@ -266,7 +266,12 @@ export type ChatFormProps = {
   className?: string;
   clearError: () => void;
   error: string | null;
-  caps: ChatCapsState;
+  caps: {
+    error: string | null;
+    fetching: boolean;
+    default_cap: string;
+    available_caps: Record<string, CodeChatModel>;
+  };
   model: string;
   onSetChatModel: (model: string) => void;
   isStreaming: boolean;

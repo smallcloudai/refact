@@ -5,7 +5,7 @@ import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
 import { useAppDispatch, useAppSelector, type Config } from "../../app/hooks";
-import { ChatCapsState, useEventsBusForIDE } from "../../hooks";
+import { useEventsBusForIDE } from "../../hooks";
 import {
   clearChatError,
   enableSend,
@@ -30,7 +30,7 @@ export type ChatProps = {
   // chat: ChatState["chat"];
   // error: ChatState["error"];
   // TODO: update this
-  caps: ChatCapsState;
+  caps: ChatFormProps["caps"];
   // commands: ChatState["commands"];
   commands: ChatFormProps["commands"];
 
