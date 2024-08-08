@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::collections::HashMap;
 use serde_json::Value;
 use tracing::warn;
@@ -44,7 +45,7 @@ impl Tool for ToolPatch {
                 return Err(format!("Cannot parse input arguments: {err}. Try to call `patch` one more time with valid arguments"));
             }
         };
-        let (answer, usage_mb) = match execute_chat_model(&args, ccx).await {
+        let (answer, usage_mb) = match execute_chat_model(ccx.clone(), &args).await {
             Ok(res) => {
                 warn!("Patch model reply:\n{}", &res.0);
                 res
