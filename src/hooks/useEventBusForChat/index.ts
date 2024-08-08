@@ -374,6 +374,7 @@ export function reducer(postMessage: typeof window.postMessage) {
           model: state.chat.model,
         },
         chat_cache,
+        selected_system_prompt: state.selected_system_prompt,
         selected_snippet: action.payload?.snippet ?? state.selected_snippet,
       };
     }
