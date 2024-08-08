@@ -131,7 +131,8 @@ export const Chat: React.FC<ChatProps> = ({
   const preventSend = useAppSelector((state) => state.chat.prevent_send);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
-  const { diffPasteBack, newFile, openSettings } = useEventsBusForIDE();
+  const { diffPasteBack, newFile, openSettings, openFile } =
+    useEventsBusForIDE();
 
   // TODO: add other posable errors
   const onClearError = () => dispatch(clearChatError({ id: chatId }));
@@ -209,6 +210,7 @@ export const Chat: React.FC<ChatProps> = ({
         canPaste={canPaste}
         ref={chatContentRef}
         openSettings={openSettings}
+        onOpenFile={openFile}
       />
       {!isStreaming && preventSend && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
