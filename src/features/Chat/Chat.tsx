@@ -1,24 +1,24 @@
 import React, { useMemo } from "react";
 // import { useEventBusForChat } from "../hooks/useEventBusForChat";
-import type { Config } from "../app/hooks";
-import { CodeChatModel, SystemPrompts } from "../events";
-import { Chat as ChatComponent } from "../components/Chat";
+import type { Config } from "../../app/hooks";
+import { CodeChatModel, SystemPrompts } from "../../events";
+import { Chat as ChatComponent } from "../../components/Chat";
 import {
   useGetCapsQuery,
   useGetPromptsQuery,
   useGetToolsQuery,
   useGetCommandCompletionQuery,
   useGetCommandPreviewQuery,
-} from "../app/hooks";
+} from "../../app/hooks";
 import { useDebounceCallback } from "usehooks-ts";
-import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import {
   getSelectedSystemPrompt,
   setSystemPrompt,
   setUseTools,
-} from "../features/Chat2/chatThread";
+} from "./chatThread";
 
-type ChatProps = {
+export type ChatProps = {
   host: Config["host"];
   tabbed: Config["tabbed"];
   style?: React.CSSProperties;

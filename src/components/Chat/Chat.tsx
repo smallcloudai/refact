@@ -13,7 +13,7 @@ import {
   newChatAction,
   setChatModel,
   useSendChatRequest,
-} from "../../features/Chat2/chatThread";
+} from "../../features/Chat/chatThread";
 
 export type ChatProps = {
   host: Config["host"];

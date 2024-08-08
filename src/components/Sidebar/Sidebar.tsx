@@ -10,7 +10,7 @@ import {
   getHistory,
   deleteChatById,
 } from "../../features/History/historySlice";
-import { newChatAction, restoreChat } from "../../features/Chat2/chatThread";
+import { newChatAction, restoreChat } from "../../features/Chat/chatThread";
 import { ChatThread } from "../../events";
 
 export type SidebarProps = {

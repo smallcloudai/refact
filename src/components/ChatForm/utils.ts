@@ -1,5 +1,5 @@
 import { ChatContextFile } from "../../events";
-import { FileInfo } from "../../features/Chat2/activeFile";
+import { FileInfo } from "../../features/Chat/activeFile";
 import { Checkbox } from "./ChatControls";
 
 export function addCheckboxValuesToInput(

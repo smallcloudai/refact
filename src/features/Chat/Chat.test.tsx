@@ -17,7 +17,7 @@ import {
   // setUpSystemPromptsForChat,
   cleanup,
   // screen,
-} from "../utils/test-utils";
+} from "../../utils/test-utils";
 import { Chat } from "./Chat";
 // import {
 //   EVENT_NAMES_TO_CHAT,
@@ -34,13 +34,13 @@ import {
   MARS_ROVER_CHAT,
   STUB_CAPS_RESPONSE,
   SYSTEM_PROMPTS,
-} from "../__fixtures__";
+} from "../../__fixtures__";
 // import { useEventBusForChat } from "../hooks";
 import { Provider } from "react-redux";
 
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import { store } from "../app/store";
+import { store } from "../../app/store";
 
 const handlers = [
   http.get("http://127.0.0.1:8001/v1/caps", () => {

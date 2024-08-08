@@ -29,9 +29,9 @@ import {
   tipOfTheDayReducer,
 } from "../features/TipOfTheDay";
 import { reducer as configReducer } from "../features/Config/reducer";
-import { activeFileReducer } from "../features/Chat2/activeFile";
-import { selectedSnippetReducer } from "../features/Chat2/selectedSnippet";
-import { chatReducer } from "../features/Chat2/chatThread";
+import { activeFileReducer } from "../features/Chat/activeFile";
+import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
+import { chatReducer } from "../features/Chat/chatThread";
 import {
   historySlice,
   historyMiddleware,
@@ -40,21 +40,24 @@ import {
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
 // their `reducerPath`s, therefore we no longer need to call `combineReducers`.
-const rootReducer = combineSlices({
-  fim: fimReducer,
-  tour: tourReducer,
-  tipOfTheDay: tipOfTheDayReducer,
-  config: configReducer,
-  active_file: activeFileReducer,
-  selected_snippet: selectedSnippetReducer,
-  chat: chatReducer,
-  [statisticsApi.reducerPath]: statisticsApi.reducer,
-  [capsApi.reducerPath]: capsApi.reducer,
-  [promptsApi.reducerPath]: promptsApi.reducer,
-  [toolsApi.reducerPath]: toolsApi.reducer,
-  [commandsApi.reducerPath]: commandsApi.reducer,
-  [diffApi.reducerPath]: diffApi.reducer,
-});
+const rootReducer = combineSlices(
+  {
+    fim: fimReducer,
+    tour: tourReducer,
+    tipOfTheDay: tipOfTheDayReducer,
+    config: configReducer,
+    active_file: activeFileReducer,
+    selected_snippet: selectedSnippetReducer,
+    chat: chatReducer,
+    [statisticsApi.reducerPath]: statisticsApi.reducer,
+    [capsApi.reducerPath]: capsApi.reducer,
+    [promptsApi.reducerPath]: promptsApi.reducer,
+    [toolsApi.reducerPath]: toolsApi.reducer,
+    [commandsApi.reducerPath]: commandsApi.reducer,
+    [diffApi.reducerPath]: diffApi.reducer,
+  },
+  historySlice,
+);
 
 const persistConfig = {
   key: "root",

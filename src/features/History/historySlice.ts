@@ -3,11 +3,7 @@ import {
   PayloadAction,
   createListenerMiddleware,
 } from "@reduxjs/toolkit";
-import {
-  ChatThread,
-  doneStreaming,
-  removeChatFromCache,
-} from "../Chat2/chatThread";
+import { ChatThread, doneStreaming, removeChatFromCache } from "../Chat";
 import { isUserMessage, UserMessage } from "../../events";
 import { AppDispatch, RootState } from "../../app/store";
 

@@ -22,7 +22,7 @@ import { useConfig } from "../../app/hooks";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RootState } from "../../app/store";
 import { next } from "../../features/TipOfTheDay";
-import { selectMessages } from "../../features/Chat2/chatThread";
+import { selectMessages } from "../../features/Chat/chatThread";
 
 export const TipOfTheDay: React.FC = () => {
   const dispatch = useAppDispatch();

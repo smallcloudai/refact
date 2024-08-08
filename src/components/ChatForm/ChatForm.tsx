@@ -21,7 +21,7 @@ import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
 import { useConfig } from "../../app/hooks";
 import { FileInfo } from "../../events";
-import { Snippet } from "../../features/Chat2/selectedSnippet";
+import { Snippet } from "../../features/Chat/selectedSnippet";
 
 type useCheckboxStateProps = {
   activeFile: FileInfo;
