@@ -1,9 +1,9 @@
-import { useEffect, useReducer, useCallback, useMemo } from "react";
+import { useEffect, useReducer } from "react";
 import {
   // type ChatContextFile,
   // type ChatMessages,
   // type ChatResponse,
-  isChatContextFileMessage,
+  // isChatContextFileMessage,
   // isChatContextFileDelta,
   // isAssistantMessage,
   // isAssistantDelta,
@@ -21,64 +21,64 @@ import {
   // SystemPrompts,
   // ToolMessage,
 } from "../../services/refact";
-import { v4 as uuidv4 } from "uuid";
+// import { v4 as uuidv4 } from "uuid";
 import {
-  EVENT_NAMES_TO_CHAT,
-  EVENT_NAMES_FROM_CHAT,
+  // EVENT_NAMES_TO_CHAT,
+  // EVENT_NAMES_FROM_CHAT,
   type BaseAction,
-  type ChatThread,
+  // type ChatThread,
   // isResponseToChat,
   // isBackupMessages,
   // isRestoreChat,
   // isChatDoneStreaming,
-  isChatErrorStreaming,
-  isChatClearError,
+  // isChatErrorStreaming,
+  // isChatClearError,
   // isChatReceiveCaps,
   // isRequestCapsFromChat,
   // isCreateNewChat,
   //  isChatReceiveCapsError,
-  isSetChatModel,
+  // isSetChatModel,
   // isSetDisableChat,
   // isActiveFileInfo,
   // type NewFileFromChat,
   // type PasteDiffFromChat,
-  type ReadyMessage,
+  // type ReadyMessage,
   //  type RequestAtCommandCompletion,
   //  isReceiveAtCommandCompletion,
   //  type SetSelectedAtCommand,
   //  isReceiveAtCommandPreview,
   // isChatUserMessageResponse,
-  isChatSetLastModelUsed,
+  // isChatSetLastModelUsed,
   // isSetSelectedSnippet,
   // isRemovePreviewFileByName,
-  type RemovePreviewFileByName,
-  isSetPreviousMessagesLength,
+  // type RemovePreviewFileByName,
+  // isSetPreviousMessagesLength,
   // setPreviousMessagesLength,
   // type Snippet,
-  isReceiveTokenCount,
+  // isReceiveTokenCount,
   // type FileInfo,
   // type ChatSetSelectedSnippet,
-  type CreateNewChatThread,
-  type SaveChatFromChat,
+  // type CreateNewChatThread,
+  // type SaveChatFromChat,
   // isReceivePrompts,
   // isRequestPrompts,
   // isReceivePromptsError,
   // type RequestPrompts,
-  isSetSelectedSystemPrompt,
-  type SetSelectedSystemPrompt,
+  // isSetSelectedSystemPrompt,
+  // type SetSelectedSystemPrompt,
   // type SystemPrompts,
   // RequestPreviewFiles,
   // type CommandCompletionResponse,
   // type ToolResult,
-  isSetTakeNotes,
-  SetTakeNotes,
+  // isSetTakeNotes,
+  // SetTakeNotes,
   // RequestTools,
   // isRecieveTools,
-  SetUseTools,
+  // SetUseTools,
   // QuestionFromChat,
-  isSetUseTools,
-  SetEnableSend,
-  isSetEnableSend,
+  // isSetUseTools,
+  // SetEnableSend,
+  // isSetEnableSend,
   // TakeNotesFromChat,
   // RequestDiffAppliedChunks,
   // isRequestDiffAppliedChunks,
@@ -90,7 +90,7 @@ import {
   // isRecieveDiffOpperationResult,
   // isRecieveDiffOpperationError,
   // OpenSettings,
-  RestoreChat,
+  // RestoreChat,
   // OpenHotKeys,
 } from "../../events";
 import { usePostMessage } from "../usePostMessage";
@@ -207,10 +207,10 @@ import { usePostMessage } from "../usePostMessage";
 // }
 
 export function reducer(_postMessage: typeof window.postMessage) {
-  return function (state: ChatState, action: BaseAction): ChatState {
-    const isThisChat = Boolean(
-      action.payload?.id && action.payload.id === state.chat.id,
-    );
+  return function (state: ChatState, _action: BaseAction): ChatState {
+    // const isThisChat = Boolean(
+    //   action.payload?.id && action.payload.id === state.chat.id,
+    // );
 
     // TODO: maybe take notes ?
     // function maybeTakeNotes() {
@@ -471,35 +471,35 @@ export function reducer(_postMessage: typeof window.postMessage) {
     //   };
     // }
 
-    if (isThisChat && isChatErrorStreaming(action)) {
-      return {
-        ...state,
-        streaming: false,
-        prevent_send: true,
-        waiting_for_response: false,
-        error:
-          typeof action.payload.message === "string"
-            ? action.payload.message
-            : "Error streaming",
-      };
-    }
+    // if (isThisChat && isChatErrorStreaming(action)) {
+    //   return {
+    //     ...state,
+    //     streaming: false,
+    //     prevent_send: true,
+    //     waiting_for_response: false,
+    //     error:
+    //       typeof action.payload.message === "string"
+    //         ? action.payload.message
+    //         : "Error streaming",
+    //   };
+    // }
 
-    if (isThisChat && isChatClearError(action)) {
-      return {
-        ...state,
-        error: null,
-      };
-    }
+    // if (isThisChat && isChatClearError(action)) {
+    //   return {
+    //     ...state,
+    //     error: null,
+    //   };
+    // }
 
-    if (isThisChat && isSetChatModel(action)) {
-      return {
-        ...state,
-        chat: {
-          ...state.chat,
-          model: action.payload.model,
-        },
-      };
-    }
+    // if (isThisChat && isSetChatModel(action)) {
+    //   return {
+    //     ...state,
+    //     chat: {
+    //       ...state.chat,
+    //       model: action.payload.model,
+    //     },
+    //   };
+    // }
 
     // if (isThisChat && isActiveFileInfo(action)) {
     //   return {
@@ -537,15 +537,15 @@ export function reducer(_postMessage: typeof window.postMessage) {
     //   };
     // }
 
-    if (isThisChat && isChatSetLastModelUsed(action)) {
-      return {
-        ...state,
-        chat: {
-          ...state.chat,
-          model: action.payload.model,
-        },
-      };
-    }
+    // if (isThisChat && isChatSetLastModelUsed(action)) {
+    //   return {
+    //     ...state,
+    //     chat: {
+    //       ...state.chat,
+    //       model: action.payload.model,
+    //     },
+    //   };
+    // }
 
     // if (isThisChat && isSetSelectedSnippet(action)) {
     //   return {
@@ -564,19 +564,20 @@ export function reducer(_postMessage: typeof window.postMessage) {
     //   };
     // }
 
-    if (isThisChat && isSetPreviousMessagesLength(action)) {
-      return {
-        ...state,
-        previous_message_length: action.payload.message_length,
-      };
-    }
+    // if (isThisChat && isSetPreviousMessagesLength(action)) {
+    //   return {
+    //     ...state,
+    //     previous_message_length: action.payload.message_length,
+    //   };
+    // }
 
-    if (isThisChat && isReceiveTokenCount(action)) {
-      return {
-        ...state,
-        tokens: action.payload.tokens,
-      };
-    }
+    // TODO: token count
+    // if (isThisChat && isReceiveTokenCount(action)) {
+    //   return {
+    //     ...state,
+    //     tokens: action.payload.tokens,
+    //   };
+    // }
 
     // if (isThisChat && isRequestPrompts(action)) {
     //   return {
@@ -617,19 +618,19 @@ export function reducer(_postMessage: typeof window.postMessage) {
     //   };
     // }
 
-    if (isThisChat && isSetSelectedSystemPrompt(action)) {
-      return {
-        ...state,
-        selected_system_prompt: action.payload.prompt,
-      };
-    }
+    // if (isThisChat && isSetSelectedSystemPrompt(action)) {
+    //   return {
+    //     ...state,
+    //     selected_system_prompt: action.payload.prompt,
+    //   };
+    // }
 
-    if (isThisChat && isSetTakeNotes(action)) {
-      return {
-        ...state,
-        take_notes: action.payload.take_notes,
-      };
-    }
+    // if (isThisChat && isSetTakeNotes(action)) {
+    //   return {
+    //     ...state,
+    //     take_notes: action.payload.take_notes,
+    //   };
+    // }
 
     // if (isThisChat && isRecieveTools(action)) {
     //   const { tools } = action.payload;
@@ -647,19 +648,19 @@ export function reducer(_postMessage: typeof window.postMessage) {
     //   };
     // }
 
-    if (isThisChat && isSetUseTools(action)) {
-      return {
-        ...state,
-        use_tools: action.payload.use_tools,
-      };
-    }
+    // if (isThisChat && isSetUseTools(action)) {
+    //   return {
+    //     ...state,
+    //     use_tools: action.payload.use_tools,
+    //   };
+    // }
 
-    if (isThisChat && isSetEnableSend(action)) {
-      return {
-        ...state,
-        prevent_send: !action.payload.enable_send,
-      };
-    }
+    // if (isThisChat && isSetEnableSend(action)) {
+    //   return {
+    //     ...state,
+    //     prevent_send: !action.payload.enable_send,
+    //   };
+    // }
 
     // if (isThisChat && isRequestDiffAppliedChunks(action)) {
     //   console.log(action);
@@ -838,13 +839,13 @@ export type ChatState = {
   // chat: ChatThread & {
   //   applied_diffs: Record<string, DiffChunkStatus>;
   // };
-  chat: ChatThread;
-  chat_cache: Record<string, ChatThread>;
-  prevent_send: boolean;
-  waiting_for_response: boolean;
-  streaming: boolean;
-  previous_message_length: number;
-  error: string | null;
+  // chat: ChatThread;
+  // chat_cache: Record<string, ChatThread>;
+  // prevent_send: boolean;
+  // waiting_for_response: boolean;
+  // streaming: boolean;
+  // previous_message_length: number;
+  // error: string | null;
   // caps: ChatCapsState;
   // commands: CommandCompletionResponse;
   // files_in_preview: ChatContextFile[];
@@ -856,20 +857,20 @@ export type ChatState = {
   //   prompts: SystemPrompts;
   //   fetching: boolean;
   // };
-  selected_system_prompt: null | string;
+  // selected_system_prompt: null | string;
   take_notes: boolean;
   // Check caps if model has tools
   // tools: ToolCommand[] | null;
-  use_tools: boolean;
+  // use_tools: boolean;
 };
 
 export function createInitialState(): ChatState {
   return {
-    streaming: false,
-    prevent_send: false,
-    waiting_for_response: false,
-    error: null,
-    previous_message_length: 0,
+    // streaming: false,
+    // prevent_send: false,
+    // waiting_for_response: false,
+    // error: null,
+    // previous_message_length: 0,
     // move this
     // selected_snippet: {
     //   language: "",
@@ -879,14 +880,14 @@ export function createInitialState(): ChatState {
     // },
 
     // files_in_preview: [],
-    chat: {
-      id: uuidv4(),
-      messages: [],
-      title: "",
-      model: "",
-      // applied_diffs: {},
-    },
-    chat_cache: {},
+    // chat: {
+    //   id: uuidv4(),
+    //   messages: [],
+    //   title: "",
+    //   model: "",
+    //   applied_diffs: {},
+    // },
+    // chat_cache: {},
     // caps: {
     //   fetching: false,
     //   default_cap: "",
@@ -915,10 +916,10 @@ export function createInitialState(): ChatState {
     //   prompts: {},
     //   fetching: false,
     // },
-    selected_system_prompt: "default",
+    // selected_system_prompt: "default",
     take_notes: true,
     // tools: null,
-    use_tools: true,
+    // use_tools: true,
   };
 }
 
@@ -950,24 +951,24 @@ export const useEventBusForChat = () => {
   //   return Object.keys(state.caps.available_caps).length > 0 && !state.error;
   // }, [state.caps.available_caps, state.error]);
 
-  const clearError = useCallback(() => {
-    dispatch({
-      type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
-      payload: { id: state.chat.id },
-    });
-  }, [state.chat.id]);
+  // const clearError = useCallback(() => {
+  //   dispatch({
+  //     type: EVENT_NAMES_TO_CHAT.CLEAR_ERROR,
+  //     payload: { id: state.chat.id },
+  //   });
+  // }, [state.chat.id]);
 
-  const setTakeNotes = useCallback(
-    (take_notes: boolean) => {
-      const action: SetTakeNotes = {
-        type: EVENT_NAMES_TO_CHAT.SET_TAKE_NOTES,
-        payload: { id: state.chat.id, take_notes },
-      };
+  // const setTakeNotes = useCallback(
+  //   (take_notes: boolean) => {
+  //     const action: SetTakeNotes = {
+  //       type: EVENT_NAMES_TO_CHAT.SET_TAKE_NOTES,
+  //       payload: { id: state.chat.id, take_notes },
+  //     };
 
-      dispatch(action);
-    },
-    [state.chat.id],
-  );
+  //     dispatch(action);
+  //   },
+  //   [state.chat.id],
+  // );
 
   // const sendMessages = useCallback(
   //   (
@@ -1104,19 +1105,19 @@ export const useEventBusForChat = () => {
   // }, [state.error, maybeRequestPrompts]);
 
   // TODO: setting the model
-  const setChatModel = useCallback(
-    (model: string) => {
-      const action = {
-        type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL,
-        payload: {
-          id: state.chat.id,
-          model: model,
-        },
-      };
-      dispatch(action);
-    },
-    [state.chat.id],
-  );
+  // const setChatModel = useCallback(
+  //   (model: string) => {
+  //     const action = {
+  //       type: EVENT_NAMES_TO_CHAT.SET_CHAT_MODEL,
+  //       payload: {
+  //         id: state.chat.id,
+  //         model: model,
+  //       },
+  //     };
+  //     dispatch(action);
+  //   },
+  //   [state.chat.id],
+  // );
 
   // const stopStreaming = useCallback(() => {
   //   postMessage({
@@ -1135,43 +1136,43 @@ export const useEventBusForChat = () => {
   //   dispatch(preventSendAction);
   // }, [postMessage, state.chat.id]);
 
-  const hasContextFile = useMemo(() => {
-    return state.chat.messages.some((message) =>
-      isChatContextFileMessage(message),
-    );
-  }, [state.chat.messages]);
+  // const hasContextFile = useMemo(() => {
+  //   return state.chat.messages.some((message) =>
+  //     isChatContextFileMessage(message),
+  //   );
+  // }, [state.chat.messages]);
 
-  const backFromChat = useCallback(() => {
-    clearError();
-    postMessage({
-      type: EVENT_NAMES_FROM_CHAT.BACK_FROM_CHAT,
-      payload: { id: state.chat.id },
-    });
-  }, [clearError, postMessage, state.chat.id]);
+  // const backFromChat = useCallback(() => {
+  //   clearError();
+  //   postMessage({
+  //     type: EVENT_NAMES_FROM_CHAT.BACK_FROM_CHAT,
+  //     payload: { id: state.chat.id },
+  //   });
+  // }, [clearError, postMessage, state.chat.id]);
 
-  const openChatInNewTab = useCallback(() => {
-    setTakeNotes(true);
+  // const openChatInNewTab = useCallback(() => {
+  //   setTakeNotes(true);
 
-    postMessage({
-      type: EVENT_NAMES_FROM_CHAT.OPEN_IN_CHAT_IN_TAB,
-      payload: { id: state.chat.id },
-    });
-  }, [postMessage, state.chat.id, setTakeNotes]);
+  //   postMessage({
+  //     type: EVENT_NAMES_FROM_CHAT.OPEN_IN_CHAT_IN_TAB,
+  //     payload: { id: state.chat.id },
+  //   });
+  // }, [postMessage, state.chat.id, setTakeNotes]);
 
-  const sendToSideBar = useCallback(() => {
-    postMessage({
-      type: EVENT_NAMES_FROM_CHAT.SEND_TO_SIDE_BAR,
-      payload: { id: state.chat.id },
-    });
-  }, [postMessage, state.chat.id]);
+  // const sendToSideBar = useCallback(() => {
+  //   postMessage({
+  //     type: EVENT_NAMES_FROM_CHAT.SEND_TO_SIDE_BAR,
+  //     payload: { id: state.chat.id },
+  //   });
+  // }, [postMessage, state.chat.id]);
 
-  const sendReadyMessage = useCallback(() => {
-    const action: ReadyMessage = {
-      type: EVENT_NAMES_FROM_CHAT.READY,
-      payload: { id: state.chat.id },
-    };
-    postMessage(action);
-  }, [postMessage, state.chat.id]);
+  // const sendReadyMessage = useCallback(() => {
+  //   const action: ReadyMessage = {
+  //     type: EVENT_NAMES_FROM_CHAT.READY,
+  //     payload: { id: state.chat.id },
+  //   };
+  //   postMessage(action);
+  // }, [postMessage, state.chat.id]);
 
   // const handleNewFileClick = useCallback(
   //   (value: string) => {
@@ -1258,17 +1259,17 @@ export const useEventBusForChat = () => {
   //   [state.chat.id],
   // );
 
-  const removePreviewFileByName = useCallback(
-    (name: string) => {
-      const action: RemovePreviewFileByName = {
-        type: EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME,
-        payload: { id: state.chat.id, name },
-      };
+  // const removePreviewFileByName = useCallback(
+  //   (name: string) => {
+  //     const action: RemovePreviewFileByName = {
+  //       type: EVENT_NAMES_TO_CHAT.REMOVE_PREVIEW_FILE_BY_NAME,
+  //       payload: { id: state.chat.id, name },
+  //     };
 
-      dispatch(action);
-    },
-    [state.chat.id],
-  );
+  //     dispatch(action);
+  //   },
+  //   [state.chat.id],
+  // );
 
   // TODO: retry question
   // const retryQuestion = useCallback(
@@ -1288,37 +1289,37 @@ export const useEventBusForChat = () => {
   //   [sendMessages, state.chat.id],
   // );
 
-  const startNewChat = useCallback(() => {
-    const saveMessage: SaveChatFromChat = {
-      type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
-      payload: state.chat,
-    };
+  // const startNewChat = useCallback(() => {
+  //   const saveMessage: SaveChatFromChat = {
+  //     type: EVENT_NAMES_FROM_CHAT.SAVE_CHAT,
+  //     payload: state.chat,
+  //   };
 
-    if (state.chat.messages.length > 0) {
-      postMessage(saveMessage);
-    }
+  //   if (state.chat.messages.length > 0) {
+  //     postMessage(saveMessage);
+  //   }
 
-    const message: CreateNewChatThread = {
-      type: EVENT_NAMES_TO_CHAT.NEW_CHAT,
-      payload: { id: state.chat.id },
-    };
-    dispatch(message);
-  }, [postMessage, state.chat]);
+  //   const message: CreateNewChatThread = {
+  //     type: EVENT_NAMES_TO_CHAT.NEW_CHAT,
+  //     payload: { id: state.chat.id },
+  //   };
+  //   dispatch(message);
+  // }, [postMessage, state.chat]);
 
-  const setSelectedSystemPrompt = useCallback(
-    (prompt: string) => {
-      const action: SetSelectedSystemPrompt = {
-        type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SYSTEM_PROMPT,
-        payload: { id: state.chat.id, prompt },
-      };
-      dispatch(action);
-    },
-    [dispatch, state.chat.id],
-  );
+  // const setSelectedSystemPrompt = useCallback(
+  //   (prompt: string) => {
+  //     const action: SetSelectedSystemPrompt = {
+  //       type: EVENT_NAMES_TO_CHAT.SET_SELECTED_SYSTEM_PROMPT,
+  //       payload: { id: state.chat.id, prompt },
+  //     };
+  //     dispatch(action);
+  //   },
+  //   [dispatch, state.chat.id],
+  // );
 
-  useEffect(() => {
-    sendReadyMessage();
-  }, [sendReadyMessage]);
+  // useEffect(() => {
+  //   sendReadyMessage();
+  // }, [sendReadyMessage]);
 
   // TODO: This is for resolving tool calls
   // useEffect(() => {
@@ -1363,28 +1364,28 @@ export const useEventBusForChat = () => {
   //   requestTools();
   // }, [requestTools]);
 
-  const setUseTools = useCallback(
-    (value: boolean) => {
-      const action: SetUseTools = {
-        type: EVENT_NAMES_TO_CHAT.SET_USE_TOOLS,
-        payload: { id: state.chat.id, use_tools: value },
-      };
-      dispatch(action);
-    },
-    [state.chat.id],
-  );
+  // const setUseTools = useCallback(
+  //   (value: boolean) => {
+  //     const action: SetUseTools = {
+  //       type: EVENT_NAMES_TO_CHAT.SET_USE_TOOLS,
+  //       payload: { id: state.chat.id, use_tools: value },
+  //     };
+  //     dispatch(action);
+  //   },
+  //   [state.chat.id],
+  // );
 
-  const enableSend = useCallback(
-    (value: boolean) => {
-      const action: SetEnableSend = {
-        type: EVENT_NAMES_TO_CHAT.SET_ENABLE_SEND,
-        payload: { id: state.chat.id, enable_send: value },
-      };
+  // const enableSend = useCallback(
+  //   (value: boolean) => {
+  //     const action: SetEnableSend = {
+  //       type: EVENT_NAMES_TO_CHAT.SET_ENABLE_SEND,
+  //       payload: { id: state.chat.id, enable_send: value },
+  //     };
 
-      dispatch(action);
-    },
-    [state.chat.id],
-  );
+  //     dispatch(action);
+  //   },
+  //   [state.chat.id],
+  // );
 
   // useEffect(() => {
   //   if (state.streaming) return;
@@ -1454,19 +1455,19 @@ export const useEventBusForChat = () => {
   //   postMessage(action);
   // }, [postMessage, state.chat.id]);
 
-  const restoreChat = useCallback(
-    (chat: ChatThread) => {
-      const action: RestoreChat = {
-        type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
-        payload: {
-          id: state.chat.id,
-          chat,
-        },
-      };
-      dispatch(action);
-    },
-    [state.chat.id],
-  );
+  // const restoreChat = useCallback(
+  //   (chat: ChatThread) => {
+  //     const action: RestoreChat = {
+  //       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
+  //       payload: {
+  //         id: state.chat.id,
+  //         chat,
+  //       },
+  //     };
+  //     dispatch(action);
+  //   },
+  //   [state.chat.id],
+  // );
 
   // const openHotKeys = useCallback(() => {
   //   const action: OpenHotKeys = {
@@ -1492,29 +1493,29 @@ export const useEventBusForChat = () => {
   return {
     state,
     // askQuestion,
-    clearError,
-    setChatModel,
+    // clearError,
+    // setChatModel,
     // stopStreaming,
-    hasContextFile,
-    backFromChat,
-    openChatInNewTab,
-    sendToSideBar,
+    // hasContextFile,
+    // backFromChat,
+    // openChatInNewTab,
+    // sendToSideBar,
     // handleNewFileClick,
     // handlePasteDiffClick,
     // requestCommandsCompletion,
     // setSelectedCommand,
-    removePreviewFileByName,
+    // removePreviewFileByName,
     // retryQuestion,
     // maybeRequestCaps: () => ({}),
-    startNewChat,
-    setSelectedSystemPrompt,
+    // startNewChat,
+    // setSelectedSystemPrompt,
     // requestPreviewFiles,
-    setUseTools,
-    enableSend,
+    // setUseTools,
+    // enableSend,
     // getDiffByIndex,
     // addOrRemoveDiff,
     // openSettings,
-    restoreChat,
+    // restoreChat,
     // openHotKeys,
   };
 };

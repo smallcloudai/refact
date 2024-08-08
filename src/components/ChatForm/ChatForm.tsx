@@ -275,13 +275,13 @@ export type ChatFormProps = {
   onStopStreaming: () => void;
   commands: ComboBoxProps["commands"];
   attachFile: FileInfo;
-  hasContextFile: boolean;
+  // hasContextFile: boolean;
   requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
   requestPreviewFiles: (input: string) => void;
   // setSelectedCommand: (command: string) => void;
   filesInPreview: ChatContextFile[];
   selectedSnippet: Snippet;
-  removePreviewFileByName: (name: string) => void;
+  // removePreviewFileByName: (name: string) => void;
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
   requestCaps: () => void;
@@ -311,7 +311,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   requestPreviewFiles,
   filesInPreview,
   selectedSnippet,
-  removePreviewFileByName,
+  // removePreviewFileByName,
   onTextAreaHeightChange,
   showControls,
   // TODO: handle re-requesting caps after error
@@ -438,7 +438,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       >
         <FilesPreview
           files={filesInPreview}
-          onRemovePreviewFile={removePreviewFileByName}
+          // onRemovePreviewFile={removePreviewFileByName}
         />
 
         <ComboBox

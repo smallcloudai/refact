@@ -9,7 +9,7 @@ const noop = () => ({});
 
 const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
-    removePreviewFileByName: noop,
+    // removePreviewFileByName: noop,
     chatId: "chatId",
     selectedSnippet: { code: "", language: "", path: "", basename: "" },
     onSubmit: (_str: string) => ({}),
@@ -26,7 +26,7 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
     error: "",
     clearError: noop,
     showControls: true,
-    hasContextFile: false,
+    // hasContextFile: false,
     commands: {
       completions: [],
       replace: [-1, -1],

@@ -1,6 +1,5 @@
 import React from "react";
 import { Sidebar } from "../components/Sidebar/Sidebar";
-import { useChatHistory } from "../hooks/useChatHistory";
 
 // not used anywhere :/
 export const HistorySideBar: React.FC<{
@@ -9,18 +8,13 @@ export const HistorySideBar: React.FC<{
   className?: string;
   style?: React.CSSProperties;
 }> = ({ takingNotes, className, style }) => {
-  const {
-    // history, restoreChatFromHistory,
-    createNewChat,
-    // deleteChat
-  } = useChatHistory();
   return (
     <Sidebar
       handleNavigation={() => ({})}
       takingNotes={takingNotes}
       // history={history}
       // onHistoryItemClick={restoreChatFromHistory}
-      onCreateNewChat={createNewChat}
+      // onCreateNewChat={createNewChat}
       // onDeleteHistoryItem={deleteChat}
       // currentChatId={currentChatId}
       className={className}

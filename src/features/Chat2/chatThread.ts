@@ -61,6 +61,7 @@ export type Chat = {
   waiting_for_response: boolean;
   cache: Record<string, ChatThread>;
   system_prompt: SystemPrompts;
+  use_tools: boolean;
 };
 
 const createChatThread = (): ChatThread => {
@@ -83,6 +84,7 @@ const createInitialState = (): Chat => {
     waiting_for_response: false,
     cache: {},
     system_prompt: {},
+    use_tools: true,
   };
 };
 
@@ -134,9 +136,29 @@ export const restoreChat = createAction<PayloadWIthId & { thread: ChatThread }>(
   "chatThread/restoreChat",
 );
 
-// ask question
+export const clearChatError = createAction<PayloadWIthId>(
+  "chatThread/clearError",
+);
+
+export const enableSend = createAction<PayloadWIthId>("chatThread/enableSend");
+
+export const setUseTools = createAction<boolean>("chatThread/setUseTools");
 
 export const chatReducer = createReducer(initialState, (builder) => {
+  builder.addCase(setUseTools, (state, action) => {
+    state.use_tools = action.payload;
+  });
+
+  builder.addCase(enableSend, (state, action) => {
+    if (state.thread.id !== action.payload.id) return state;
+    state.prevent_send = false;
+  });
+
+  builder.addCase(clearChatError, (state, action) => {
+    if (state.thread.id !== action.payload.id) return state;
+    state.error = null;
+  });
+
   builder.addCase(setChatModel, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
     state.thread.model = action.payload.model;

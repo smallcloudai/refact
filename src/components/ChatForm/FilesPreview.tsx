@@ -1,13 +1,13 @@
 import React from "react";
-import { Box, Button } from "@radix-ui/themes";
+import { Box } from "@radix-ui/themes";
 import { Text, TruncateLeft } from "../Text";
 import { ChatContextFile } from "../../events";
 import styles from "./ChatForm.module.css";
 
 export const FilesPreview: React.FC<{
   files: ChatContextFile[];
-  onRemovePreviewFile: (name: string) => void;
-}> = ({ files, onRemovePreviewFile }) => {
+  // onRemovePreviewFile: (name: string) => void;
+}> = ({ files }) => {
   if (files.length === 0) return null;
   return (
     <Box p="2" pb="0">
@@ -21,16 +21,7 @@ export const FilesPreview: React.FC<{
               title={file.file_content}
               className={styles.file_name}
             >
-              <Button
-                onClick={(event) => {
-                  event.preventDefault();
-                  onRemovePreviewFile(file.file_name);
-                }}
-                variant="ghost"
-                className={styles.removeFileButton}
-              >
-                📎
-              </Button>
+              📎{" "}
               <TruncateLeft>
                 {file.file_name}
                 {lineText}

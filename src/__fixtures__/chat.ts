@@ -1,5 +1,5 @@
 import { ChatMessages, ChatThread } from "../events";
-import { ChatState } from "../hooks";
+// import { ChatState } from "../hooks";
 
 export const MARS_ROVER_CHAT: ChatThread = {
   id: "9afd6fef-3e49-40df-8aca-688af3621514",
@@ -477,7 +477,7 @@ export const CHAT_WITH_DIFFS: ChatMessages = [
   },
 ];
 
-export const CHAT_WITH_DIFF_ACTIONS: ChatState["chat"] = {
+export const CHAT_WITH_DIFF_ACTIONS: ChatThread = {
   id: "eeda523e-9b74-4df6-8d60-a14ccdd907f0",
   messages: [
     {

@@ -92,7 +92,7 @@ const meta: Meta<typeof ChatForm> = {
     error: null,
     clearError: noop,
     showControls: true,
-    hasContextFile: false,
+    // hasContextFile: false,
     commands: {
       completions: testCommands,
       replace: [-1, -1],
@@ -166,7 +166,7 @@ const meta: Meta<typeof ChatForm> = {
       },
     ],
     selectedSnippet: { code: "", language: "", basename: "", path: "" },
-    removePreviewFileByName: () => ({}),
+    // removePreviewFileByName: () => ({}),
     requestPreviewFiles: () => ({}),
     // requestCommandsCompletion: () => ({}),
     // setSelectedCommand: () => ({}),

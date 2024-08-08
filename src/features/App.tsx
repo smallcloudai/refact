@@ -12,7 +12,7 @@ import {
   // useEventBusForHost,
   usePostMessage,
   // useChatHistory,
-  useEventBusForChat,
+  // useEventBusForChat,
   useEventsBusForIDE,
 } from "../hooks";
 import {
@@ -44,7 +44,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const postMessage = usePostMessage();
 
   // const historyHook = useChatHistory();
-  const chatHook = useEventBusForChat();
+  // const chatHook = useEventBusForChat();
   // const fimHook = useEventBysForFIMDebug();
   // const statisticsHook = useEventBusForStatistic();
 
@@ -165,7 +165,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
               <Chat
                 host={config.host}
                 tabbed={config.tabbed}
-                {...chatHook}
+                // {...chatHook}
                 backFromChat={goBack}
               />
             )}
