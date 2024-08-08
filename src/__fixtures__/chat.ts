@@ -1,5 +1,7 @@
-import { ChatMessages, ChatThread } from "../events";
-// import { ChatState } from "../hooks";
+import type { RootState } from "../app/store";
+
+type ChatThread = RootState["chat"]["thread"];
+type ChatMessages = ChatThread["messages"];
 
 export const MARS_ROVER_CHAT: ChatThread = {
   id: "9afd6fef-3e49-40df-8aca-688af3621514",
@@ -591,7 +593,7 @@ export const CHAT_WITH_DIFF_ACTIONS: ChatThread = {
   title: "In the project add an edible property to the frog class\n",
   model: "gpt-4o",
   createdAt: "2024-07-05T09:10:29.523Z",
-  lastUpdated: "2024-07-05T09:10:37.322Z",
+  updatedAt: "2024-07-05T09:10:37.322Z",
 };
 
 export const LARGE_DIFF: ChatThread = {
@@ -815,5 +817,5 @@ export const LARGE_DIFF: ChatThread = {
   title: "rename the frog class to bird.\n",
   model: "gpt-4o",
   createdAt: "2024-07-23T15:08:51.480Z",
-  lastUpdated: "2024-07-23T15:36:26.738Z",
+  updatedAt: "2024-07-23T15:36:26.738Z",
 };

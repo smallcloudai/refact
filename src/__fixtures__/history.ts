@@ -1,4 +1,6 @@
-import { ChatHistoryItem } from "../hooks";
+import type { RootState } from "../app/store";
+
+type ChatHistoryItem = RootState["history"]["messages"];
 export const HISTORY: ChatHistoryItem[] = [
   {
     id: "be20f605-824c-4e77-9dab-a45688f676fa",
@@ -26,7 +28,7 @@ export const HISTORY: ChatHistoryItem[] = [
       "Write a program that solves word-chain puzzles.\n\nThere’s a type of puzzle where the challenge is to build a chain of words, starting with one particular word and ending with another. Successive entries in the chain must all be real words, and each can differ from the previous word by just one letter. For example, you can get from “cat” to “dog” using the following chain.\n",
     model: "",
     createdAt: "2024-07-02T10:43:13.401Z",
-    lastUpdated: "2024-07-02T10:44:38.325Z",
+    updatedAt: "2024-07-02T10:44:38.325Z",
   },
   {
     id: "31f3bb3d-df6e-4f0f-b701-6b1e6e4a352b",
@@ -111,6 +113,6 @@ export const HISTORY: ChatHistoryItem[] = [
       "In this project, what is the difference between a toad and a frog?\n",
     model: "",
     createdAt: "2024-07-02T10:40:27.354Z",
-    lastUpdated: "2024-07-02T10:40:32.341Z",
+    updatedAt: "2024-07-02T10:40:32.341Z",
   },
 ];

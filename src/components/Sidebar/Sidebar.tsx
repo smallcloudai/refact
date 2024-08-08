@@ -11,7 +11,7 @@ import {
   deleteChatById,
 } from "../../features/History/historySlice";
 import { newChatAction, restoreChat } from "../../features/Chat/chatThread";
-import { ChatThread } from "../../events";
+import type { ChatThread } from "../../features/Chat/chatThread";
 
 export type SidebarProps = {
   // onCreateNewChat: () => void;

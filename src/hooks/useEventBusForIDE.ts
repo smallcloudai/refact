@@ -6,7 +6,7 @@ export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
 export const ideOpenSettingsAction = createAction("ide/openSettings");
 export const ideNewFileAction = createAction("ide/newFile");
 export const ideOpenHotKeys = createAction("ide/openHotKeys");
-type OpenFilePayload = {
+export type OpenFilePayload = {
   file_name: string;
   line?: number;
 };

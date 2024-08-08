@@ -1,8 +1,8 @@
 import { expect, vi, describe, it } from "vitest";
 import { render, stubResizeObserver } from "../utils/test-utils";
 // import { HistorySideBar } from "./HistorySideBar";
-import { EVENT_NAMES_TO_CHAT } from "../events";
-import { ChatHistoryItem } from "../hooks/useChatHistory";
+// import { EVENT_NAMES_TO_CHAT } from "../events";
+import type { ChatHistoryItem } from "../features/History/historySlice";
 
 const HistorySideBar: React.FC<{ takingNotes?: boolean }> = ({
   // eslint-disable-next-line react/prop-types
@@ -20,31 +20,31 @@ describe.skip("HistorySideBar", () => {
   it("start new chat", async () => {
     const { user, ...app } = render(<HistorySideBar takingNotes={false} />);
 
-    const postMessageSpy = vi.spyOn(window, "postMessage");
+    // const postMessageSpy = vi.spyOn(window, "postMessage");
 
     const startNewChatButton = app.getByText("Start a new chat");
 
     await user.click(startNewChatButton);
 
-    expect(postMessageSpy).toHaveBeenLastCalledWith(
-      {
-        type: EVENT_NAMES_TO_CHAT.NEW_CHAT,
-        payload: {
-          id: "",
-        },
-      },
-      "*",
-    );
+    //   expect(postMessageSpy).toHaveBeenLastCalledWith(
+    //     {
+    //       type: EVENT_NAMES_TO_CHAT.NEW_CHAT,
+    //       payload: {
+    //         id: "",
+    //       },
+    //     },
+    //     "*",
+    //   );
   });
 
   it("restore chat", async () => {
     vi.mock("uuid", () => ({ v4: () => "bar" }));
-    const postMessageSpy = vi.spyOn(window, "postMessage");
+    // const postMessageSpy = vi.spyOn(window, "postMessage");
 
     const historyItem: ChatHistoryItem = {
       id: "foo",
       createdAt: "",
-      lastUpdated: "",
+      updatedAt: "",
       messages: [
         { role: "user", content: "hello" },
         { role: "assistant", content: "hello there" },
@@ -61,16 +61,16 @@ describe.skip("HistorySideBar", () => {
     // expect(restoreButton).toBeInTheDocument(); //TODO: setup matchers
     await user.click(restoreButton);
 
-    expect(postMessageSpy).toHaveBeenLastCalledWith(
-      {
-        type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
-        payload: {
-          id: "",
-          chat: historyItem,
-        },
-      },
-      "*",
-    );
+    // expect(postMessageSpy).toHaveBeenLastCalledWith(
+    //   {
+    //     type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
+    //     payload: {
+    //       id: "",
+    //       chat: historyItem,
+    //     },
+    //   },
+    //   "*",
+    // );
   });
 
   it("can remove an item", async () => {
@@ -78,7 +78,7 @@ describe.skip("HistorySideBar", () => {
       {
         id: "foo",
         createdAt: "",
-        lastUpdated: "",
+        updatedAt: "",
         messages: [
           { role: "user", content: "hello" },
           { role: "assistant", content: "hello there" },
@@ -89,7 +89,7 @@ describe.skip("HistorySideBar", () => {
       {
         id: "bar",
         createdAt: "",
-        lastUpdated: "",
+        updatedAt: "",
         messages: [
           { role: "user", content: "hello" },
           { role: "assistant", content: "hello there" },
