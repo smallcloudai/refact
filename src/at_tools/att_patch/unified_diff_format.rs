@@ -641,7 +641,9 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 +++ /dev/null
 @@ ... @@
 <file_content>
-```"#.to_string()
+```
+
+DO NOT FORGET TO FOLLOW STEPS AND UNIFIED DIFF FORMAT!"#.to_string()
     }
 
     pub async fn parse_message(
