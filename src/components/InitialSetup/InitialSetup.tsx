@@ -29,6 +29,7 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
       >
         <RadioCards.Item
           value="cloud"
+          ref={cloudRef}
           style={{
             flexDirection: "column",
             alignItems: "flex-start",
