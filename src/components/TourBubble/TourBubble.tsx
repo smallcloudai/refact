@@ -5,12 +5,13 @@ import { close, next } from "../../features/Tour";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 import { TourBox } from "./TourBox";
 import { TourTitle } from "./TourTitle";
+import { MutableRefObject, useEffect, useState } from "react";
 
 export type TourBubbleProps = {
   text: string;
   step: number;
   down: boolean;
-  target: HTMLElement | null;
+  target: MutableRefObject<HTMLElement | null>;
 };
 
 export function TourBubble({ text, step, target, down }: TourBubbleProps) {
@@ -19,7 +20,16 @@ export function TourBubble({ text, step, target, down }: TourBubbleProps) {
   const { width: windowWidth } = useWindowDimensions();
 
   const isBubbleOpen = state.type === "in_progress" && state.step === step;
-  const pos = target?.getBoundingClientRect();
+  const pos = target.current?.getBoundingClientRect();
+
+  // TODO: find a better way of doing this
+  // This code is there to force a rerender if target is null
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    setTimeout(() => {
+      if (pos === undefined) setI(i + 1);
+    }, 0);
+  }, []);
 
   if (pos === undefined) {
     return <></>;
