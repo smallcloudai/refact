@@ -115,6 +115,8 @@ export const Chat: React.FC<ChatProps> = ({
   const selectedSnippet = useAppSelector((state) => state.selected_snippet);
   const isStreaming = useAppSelector((state) => state.chat.streaming);
   const isWaiting = useAppSelector((state) => state.chat.waiting_for_response);
+  const chatThread = useAppSelector((state) => state.chat.thread);
+
   const canPaste = activeFile.can_paste;
   const chatId = useAppSelector((state) => state.chat.thread.id);
   const { submit, abort, retry } = useSendChatRequest();
@@ -131,8 +133,13 @@ export const Chat: React.FC<ChatProps> = ({
   const preventSend = useAppSelector((state) => state.chat.prevent_send);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
-  const { diffPasteBack, newFile, openSettings, openFile } =
+  const { diffPasteBack, newFile, openSettings, openFile, openChatInNewTab } =
     useEventsBusForIDE();
+
+  const handleOpenChatInNewTab = useCallback(() => {
+    openChatInNewTab(chatThread);
+    // TODO: navigate to history
+  }, [chatThread, openChatInNewTab]);
 
   // TODO: add other posable errors
   // const onClearError = () => dispatch(clearChatError({ id: chatId }));
@@ -183,15 +190,11 @@ export const Chat: React.FC<ChatProps> = ({
           <ArrowLeftIcon width="16" height="16" />
           Back
         </Button>
-        <Button
-          size="1"
-          variant="surface"
-          onClick={() => {
-            // TODO:
-          }}
-        >
-          Open In Tab
-        </Button>
+        {host === "vscode" && (
+          <Button size="1" variant="surface" onClick={handleOpenChatInNewTab}>
+            Open In Tab
+          </Button>
+        )}
         <Button size="1" variant="surface" onClick={handleNewChat}>
           New Chat
         </Button>
