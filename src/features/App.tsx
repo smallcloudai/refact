@@ -146,10 +146,25 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   // goTo settings, fim, stats, hot keys
 
   return (
-    <Flex style={{ justifyContent: "center", ...style }}>
+    <Flex
+      style={{
+        flexDirection: "column",
+        alignItems: "stretch",
+        height: "100vh",
+        ...style,
+      }}
+    >
       {pages.map((page, i) => {
         return (
-          <Flex key={i} display={i === pages.length - 1 ? "flex" : "none"}>
+          <Flex
+            key={i}
+            display={i === pages.length - 1 ? "flex" : "none"}
+            style={{
+              flexDirection: "row",
+              height: "100%",
+              justifyContent: "center",
+            }}
+          >
             {page.name === "initial setup" && (
               <InitialSetup onPressNext={onPressNext} />
             )}
@@ -180,6 +195,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
                   // TODO: handle logout
                 }}
                 handleNavigation={handleNavigation}
+                style={{ maxWidth: "540px", flex: 1, height: "100%" }}
               />
             )}
             {page.name === "chat" && (
