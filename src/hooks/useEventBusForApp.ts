@@ -12,8 +12,6 @@ export function useEventBusForApp() {
 
   useEffect(() => {
     if (config.host !== "web") {
-      // eslint-disable-next-line no-console
-      console.log("not web");
       return;
     }
     const listener = (event: MessageEvent) => {
@@ -56,6 +54,9 @@ export function useEventBusForApp() {
   }, [setApiKey, setAddressURL, config.host, dispatch, addressURL, apiKey]);
 
   useEffect(() => {
+    if (config.host !== "web") {
+      return;
+    }
     dispatch(updateConfig({ addressURL, apiKey }));
   }, [apiKey, addressURL, dispatch]);
 }
