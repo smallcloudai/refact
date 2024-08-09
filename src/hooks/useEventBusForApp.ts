@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocalStorage } from "usehooks-ts";
-import { isOpenExternalUrl, isSetupHost } from "../events";
+import { isLogOut, isOpenExternalUrl, isSetupHost } from "../events";
 import { useAppDispatch, useConfig } from "../app/hooks";
 import { update as updateConfig } from "../features/Config/reducer";
 
@@ -38,6 +38,12 @@ export function useEventBusForApp() {
           setAddressURL(host.endpointAddress);
           setApiKey(host.apiKey);
         }
+        dispatch(updateConfig({ addressURL, apiKey }));
+      }
+
+      if (isLogOut(event.data)) {
+        setAddressURL("");
+        setApiKey("");
         dispatch(updateConfig({ addressURL, apiKey }));
       }
     };

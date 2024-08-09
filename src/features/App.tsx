@@ -50,6 +50,9 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   if (config.apiKey && config.addressURL && !isPageInHistory("history")) {
     navigate({ type: "push", page: { name: "history" } });
   }
+  if (!config.apiKey && !config.addressURL && isPageInHistory("history")) {
+    navigate({ type: "pop_back_to", page: "initial setup" });
+  }
 
   const setupHost = useCallback(
     (host: HostSettings) => {
@@ -85,6 +88,10 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const selfHostingSetup = (endpointAddress: string) => {
     setupHost({ type: "self", endpointAddress });
+  };
+
+  const logOut = () => {
+    postMessage({ type: EVENT_NAMES_FROM_SETUP.LOG_OUT });
   };
 
   const openExternal = (url: string) => {
@@ -172,9 +179,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
                 // onHistoryItemClick={handleHistoryItemClick}
                 // onDeleteHistoryItem={handleDelete}
                 onOpenChatInTab={undefined}
-                handleLogout={() => {
-                  // TODO: handle logout
-                }}
+                handleLogout={logOut}
                 handleNavigation={handleNavigation}
                 style={{ maxWidth: "540px", flex: 1, height: "100%" }}
               />
