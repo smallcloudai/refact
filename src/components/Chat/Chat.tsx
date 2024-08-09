@@ -8,7 +8,6 @@ import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import type { Config } from "../../features/Config/reducer";
 import { useEventsBusForIDE } from "../../hooks";
 import {
-  clearChatError,
   enableSend,
   getSelectedChatModel,
   newChatAction,
@@ -136,9 +135,9 @@ export const Chat: React.FC<ChatProps> = ({
     useEventsBusForIDE();
 
   // TODO: add other posable errors
-  const onClearError = () => dispatch(clearChatError({ id: chatId }));
+  // const onClearError = () => dispatch(clearChatError({ id: chatId }));
   // TODO: add other posable errors
-  const error = useAppSelector((state) => state.chat.error ?? caps.error);
+  // const error = useAppSelector((state) => state.chat.error ?? caps.error);
 
   // TODO: handle stop
   const handleSummit = useCallback(
@@ -228,8 +227,8 @@ export const Chat: React.FC<ChatProps> = ({
         chatId={chatId}
         isStreaming={isStreaming}
         showControls={messages.length === 0 && !isStreaming}
-        error={error}
-        clearError={onClearError}
+        // error={error}
+        // clearError={onClearError}
         // onSubmit={onAskQuestion}
         onSubmit={handleSummit}
         model={chatModel}

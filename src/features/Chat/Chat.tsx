@@ -17,6 +17,7 @@ import {
   setSystemPrompt,
   setUseTools,
 } from "./chatThread";
+import { getErrorMessage } from "../Errors/errorsSlice";
 
 export type ChatProps = {
   host: Config["host"];
@@ -52,11 +53,12 @@ export const Chat: React.FC<ChatProps> = ({
   tabbed,
   // state,
 }) => {
-  const capsRequest = useGetCapsQuery(undefined);
+  const error = useAppSelector(getErrorMessage);
+  const capsRequest = useGetCapsQuery(undefined, { skip: !!error });
   const chatModel = useAppSelector((state) => state.chat.thread.model);
 
   // TODO: these could be lower in the component tree
-  const promptsRequest = useGetPromptsQuery(undefined);
+  const promptsRequest = useGetPromptsQuery(undefined, { skip: !!error });
   const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
   const dispatch = useAppDispatch();
   const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
@@ -182,7 +184,8 @@ export const Chat: React.FC<ChatProps> = ({
       // selectedSnippet={state.selected_snippet}
       // removePreviewFileByName={removePreviewFileByName}
       requestCaps={() => {
-        void capsRequest.refetch();
+        console.log("requestCaps called");
+        // void capsRequest.refetch();
       }}
       prompts={promptsRequest.data ?? {}}
       // onStartNewChat={startNewChat}

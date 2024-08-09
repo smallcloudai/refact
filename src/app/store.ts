@@ -36,6 +36,7 @@ import {
   historySlice,
   historyMiddleware,
 } from "../features/History/historySlice";
+import { errorMiddleware, errorSlice } from "../features/Errors/errorsSlice";
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -57,6 +58,7 @@ const rootReducer = combineSlices(
     [diffApi.reducerPath]: diffApi.reducer,
   },
   historySlice,
+  errorSlice,
 );
 
 const persistConfig = {
@@ -83,7 +85,8 @@ export const store = configureStore({
         commandsApi.middleware,
         diffApi.middleware,
       )
-      .prepend(historyMiddleware.middleware);
+      .prepend(historyMiddleware.middleware)
+      .prepend(errorMiddleware.middleware);
   },
 });
 

@@ -21,6 +21,8 @@ export const promptsApi = createApi({
   refetchOnMountOrArgChange: true,
 });
 
+export const promptsEndpoints = promptsApi.endpoints;
+
 export type SystemPrompt = {
   text: string;
   description: string;

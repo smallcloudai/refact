@@ -87,7 +87,7 @@ const backUpMessages = createAction<
 >("chatThread/backUpMessages");
 
 // TODO: add history actions to this
-const chatError = createAction<PayloadWIthId & { message: string }>(
+export const chatError = createAction<PayloadWIthId & { message: string }>(
   "chatThread/error",
 );
 
