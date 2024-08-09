@@ -17,30 +17,30 @@ import {
   // setUpSystemPromptsForChat,
   cleanup,
   // screen,
-} from "../utils/test-utils";
+} from "../../utils/test-utils";
 import { Chat } from "./Chat";
-import {
-  EVENT_NAMES_TO_CHAT,
-  // EVENT_NAMES_FROM_CHAT,
-  RestoreChat,
-  // CreateNewChatThread,
-  ChatErrorStreaming,
-  // ChatReceiveCapsError,
-  // ResponseToChat,
-  // ToolCall,
-  // ToolResult,
-} from "../events";
+// import {
+//   EVENT_NAMES_TO_CHAT,
+//   EVENT_NAMES_FROM_CHAT,
+//   RestoreChat,
+//   CreateNewChatThread,
+//   ChatErrorStreaming,
+//   ChatReceiveCapsError,
+//   ResponseToChat,
+//   ToolCall,
+//   ToolResult,
+// } from "../events";
 import {
   MARS_ROVER_CHAT,
   STUB_CAPS_RESPONSE,
   SYSTEM_PROMPTS,
-} from "../__fixtures__";
-import { useEventBusForChat } from "../hooks";
+} from "../../__fixtures__";
+// import { useEventBusForChat } from "../hooks";
 import { Provider } from "react-redux";
 
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import { store } from "../app/store";
+import { store } from "../../app/store";
 
 const handlers = [
   http.get("http://127.0.0.1:8001/v1/caps", () => {
@@ -69,15 +69,10 @@ const handlers = [
 
 const worker = setupServer(...handlers);
 
-const App: React.FC<{
-  setId: (id: string) => void;
-  // eslint-disable-next-line react/prop-types
-}> = ({ setId }) => {
-  const chat = useEventBusForChat();
-  setId(chat.state.chat.id);
+const App: React.FC = () => {
   return (
     <Provider store={store}>
-      <Chat host="web" tabbed={false} {...chat} />
+      <Chat host="web" tabbed={false} backFromChat={() => ({})} />
     </Provider>
   );
 };
@@ -106,14 +101,7 @@ describe.skip("Chat", () => {
     // const windowSpy = vi.fn();
     // window.addEventListener("message", windowSpy);
 
-    let id = "";
-    const { user, ...app } = render(
-      <App
-        setId={(v) => {
-          id = v;
-        }}
-      />,
-    );
+    const { user, ...app } = render(<App />);
 
     // expect(postMessageSpy).toHaveBeenCalledWith(
     //   { type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS, payload: { id: "foo" } },
@@ -150,48 +138,48 @@ describe.skip("Chat", () => {
     //   "*",
     // );
 
-    postMessage({
-      type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
-      payload: {
-        id,
-        choices: [
-          {
-            delta: {
-              content: "",
-              role: "assistant",
-            },
-            finish_reason: null,
-            index: 0,
-          },
-        ],
-        created: 1702552152.03,
-        model: "gpt-3.5-turbo",
-      },
-    });
+    // postMessage({
+    //   type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
+    //   payload: {
+    //     id,
+    //     choices: [
+    //       {
+    //         delta: {
+    //           content: "",
+    //           role: "assistant",
+    //         },
+    //         finish_reason: null,
+    //         index: 0,
+    //       },
+    //     ],
+    //     created: 1702552152.03,
+    //     model: "gpt-3.5-turbo",
+    //   },
+    // });
 
-    postMessage({
-      type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
-      payload: {
-        id,
-        choices: [
-          {
-            delta: {
-              content: "hello there",
-              role: "assistant",
-            },
-            finish_reason: null,
-            index: 0,
-          },
-        ],
-        created: 1702552152.03,
-        model: "gpt-3.5-turbo",
-      },
-    });
+    // postMessage({
+    //   type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
+    //   payload: {
+    //     id,
+    //     choices: [
+    //       {
+    //         delta: {
+    //           content: "hello there",
+    //           role: "assistant",
+    //         },
+    //         finish_reason: null,
+    //         index: 0,
+    //       },
+    //     ],
+    //     created: 1702552152.03,
+    //     model: "gpt-3.5-turbo",
+    //   },
+    // });
 
-    postMessage({
-      type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
-      payload: { id },
-    });
+    // postMessage({
+    //   type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
+    //   payload: { id },
+    // });
 
     await waitFor(() => {
       expect(app.getAllByText("hello there")).not.toBeNull();
@@ -199,28 +187,21 @@ describe.skip("Chat", () => {
   });
 
   it("can restore a chat", async () => {
-    let id = "";
-    const app = render(
-      <App
-        setId={(v) => {
-          id = v;
-        }}
-      />,
-    );
+    const app = render(<App />);
 
-    const restoreChatAction: RestoreChat = {
-      type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
-      payload: {
-        id,
-        chat: MARS_ROVER_CHAT,
-      },
-    };
+    // const restoreChatAction: RestoreChat = {
+    //   type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
+    //   payload: {
+    //     id,
+    //     chat: MARS_ROVER_CHAT,
+    //   },
+    // };
 
-    postMessage(restoreChatAction);
+    // postMessage(restoreChatAction);
 
     const firstMessage = MARS_ROVER_CHAT.messages[0].content as string;
 
-    postMessage(restoreChatAction);
+    // postMessage(restoreChatAction);
 
     await waitFor(() => expect(app.queryByText(firstMessage)).not.toBeNull());
 
@@ -384,31 +365,24 @@ describe.skip("Chat", () => {
   // });
 
   it.skip("chat error streaming", async () => {
-    let id = "";
-    const app = render(
-      <App
-        setId={(v) => {
-          id = v;
-        }}
-      />,
-    );
+    const app = render(<App />);
 
-    const chatError: ChatErrorStreaming = {
-      type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
-      payload: {
-        id: id,
-        message: "whoops",
-      },
-    };
+    // const chatError: ChatErrorStreaming = {
+    //   type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
+    //   payload: {
+    //     id: id,
+    //     message: "whoops",
+    //   },
+    // };
 
-    postMessage(chatError);
+    // postMessage(chatError);
 
     await waitFor(() => expect(app.queryByText(/whoops/)).not.toBeNull());
   });
 
   it.skip("char error getting caps", async () => {
     // let id = "";
-    const app = render(<App setId={() => ({})} />);
+    const app = render(<App />);
 
     // TODO: set msw to send an error
 
@@ -436,7 +410,7 @@ describe.skip("Chat", () => {
     // const windowSpy = vi.fn();
     // window.addEventListener("message", windowSpy);
 
-    const { user, ...app } = render(<App setId={() => ({})} />);
+    const { user, ...app } = render(<App />);
 
     // setUpSystemPromptsForChat(id);
 

@@ -1,7 +1,7 @@
 import React from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Container, Flex, Text, Box } from "@radix-ui/themes";
-import { ToolCall, ToolResult } from "../../events";
+import { ToolCall, ToolResult } from "../../services/refact";
 import styles from "./ChatContent.module.css";
 import { CommandMarkdown, ResultMarkdown } from "../Command";
 import { Chevron } from "../Collapsible";
@@ -49,7 +49,7 @@ const ToolMessage: React.FC<{
   return (
     <Flex direction="column">
       <CommandMarkdown>{functionCalled}</CommandMarkdown>
-      <Result>{"```\n" + escapedBackticks + "\b```"}</Result>
+      <Result>{"```\n" + escapedBackticks + "\n```"}</Result>
     </Flex>
   );
 };

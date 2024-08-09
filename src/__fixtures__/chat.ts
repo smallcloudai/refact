@@ -1,5 +1,7 @@
-import { ChatMessages, ChatThread } from "../events";
-import { ChatState } from "../hooks";
+import type { RootState } from "../app/store";
+
+type ChatThread = RootState["chat"]["thread"];
+type ChatMessages = ChatThread["messages"];
 
 export const MARS_ROVER_CHAT: ChatThread = {
   id: "9afd6fef-3e49-40df-8aca-688af3621514",
@@ -58,6 +60,7 @@ export const MARS_ROVER_CHAT: ChatThread = {
       // "The quadratic formula is given by:\n\n\\[ x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{{2a}} \\]\n\nYou can find more information about the quadratic formula in the following link: [Quadratic Formula - Wikipedia](https://en.wikipedia.org/wiki/Quadratic_formula)",
       content: "block\n\n```math\nC_L\n```\n\ninline: $C_L$\n\n",
     },
+    { role: "user", content: "long message\n" + "a".repeat(10000) },
   ],
   title: "mars rover kata",
   model: "gpt-3.5-turbo",
@@ -477,7 +480,7 @@ export const CHAT_WITH_DIFFS: ChatMessages = [
   },
 ];
 
-export const CHAT_WITH_DIFF_ACTIONS: ChatState["chat"] = {
+export const CHAT_WITH_DIFF_ACTIONS: ChatThread = {
   id: "eeda523e-9b74-4df6-8d60-a14ccdd907f0",
   messages: [
     {
@@ -590,7 +593,7 @@ export const CHAT_WITH_DIFF_ACTIONS: ChatState["chat"] = {
   title: "In the project add an edible property to the frog class\n",
   model: "gpt-4o",
   createdAt: "2024-07-05T09:10:29.523Z",
-  lastUpdated: "2024-07-05T09:10:37.322Z",
+  updatedAt: "2024-07-05T09:10:37.322Z",
 };
 
 export const LARGE_DIFF: ChatThread = {
@@ -814,5 +817,5 @@ export const LARGE_DIFF: ChatThread = {
   title: "rename the frog class to bird.\n",
   model: "gpt-4o",
   createdAt: "2024-07-23T15:08:51.480Z",
-  lastUpdated: "2024-07-23T15:36:26.738Z",
+  updatedAt: "2024-07-23T15:36:26.738Z",
 };

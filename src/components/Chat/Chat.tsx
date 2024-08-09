@@ -4,29 +4,34 @@ import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
-import { useAppDispatch, useAppSelector, type Config } from "../../app/hooks";
-import { ChatState, ChatCapsState, useEventsBusForIDE } from "../../hooks";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import type { Config } from "../../features/Config/reducer";
+import { useEventsBusForIDE } from "../../hooks";
 import {
+  clearChatError,
+  enableSend,
   getSelectedChatModel,
   newChatAction,
+  setChatModel,
   useSendChatRequest,
-} from "../../features/Chat2/chatThread";
+} from "../../features/Chat/chatThread";
 
 export type ChatProps = {
   host: Config["host"];
   tabbed: Config["tabbed"];
   backFromChat: () => void;
-  openChatInNewTab: () => void;
+  // TODO: this
+  // openChatInNewTab: () => void;
   style?: React.CSSProperties;
-  onStartNewChat: () => void;
-  preventSend: boolean;
+  // onStartNewChat: () => void;
+  // preventSend: boolean;
   unCalledTools: boolean;
-  enableSend: (value: boolean) => void;
+  // enableSend: (value: boolean) => void;
 
   // chat: ChatState["chat"];
-  error: ChatState["error"];
+  // error: ChatState["error"];
   // TODO: update this
-  caps: ChatCapsState;
+  caps: ChatFormProps["caps"];
   // commands: ChatState["commands"];
   commands: ChatFormProps["commands"];
 
@@ -38,14 +43,14 @@ export type ChatProps = {
   // canPaste: ChatContentProps["canPaste"];
   // openSettings: ChatContentProps["openSettings"];
 
-  hasContextFile: ChatFormProps["hasContextFile"];
+  // hasContextFile: ChatFormProps["hasContextFile"];
   requestCommandsCompletion: ChatFormProps["requestCommandsCompletion"];
   // setSelectedCommand: ChatFormProps["setSelectedCommand"];
   maybeSendToSidebar: ChatFormProps["onClose"];
   // activeFile: ChatFormProps["attachFile"];
   filesInPreview: ChatFormProps["filesInPreview"];
   // selectedSnippet: ChatFormProps["selectedSnippet"];
-  removePreviewFileByName: ChatFormProps["removePreviewFileByName"];
+  // removePreviewFileByName: ChatFormProps["removePreviewFileByName"];
   requestCaps: ChatFormProps["requestCaps"];
   prompts: ChatFormProps["prompts"];
 
@@ -55,9 +60,9 @@ export type ChatProps = {
   canUseTools: ChatFormProps["canUseTools"];
   setUseTools: ChatFormProps["setUseTools"];
   useTools: ChatFormProps["useTools"];
-  onSetChatModel: ChatFormProps["onSetChatModel"];
+  // onSetChatModel: ChatFormProps["onSetChatModel"];
   // onAskQuestion: ChatFormProps["onSubmit"];
-  onClearError: ChatFormProps["clearError"];
+  // onClearError: ChatFormProps["clearError"];
   // onStopStreaming: ChatFormProps["onStopStreaming"];
 };
 
@@ -66,32 +71,35 @@ export const Chat: React.FC<ChatProps> = ({
   host,
   // tabbed,
   backFromChat,
-  openChatInNewTab,
+  // openChatInNewTab,
   // onStopStreaming,
   // chat,
-  error,
-  onClearError,
+
+  // do this
+  // error,
+  // onClearError,
+
   // retryQuestion,
   // isWaiting,
   // isStreaming,
   // onNewFileClick,
   // onPasteClick,
   // canPaste,
-  preventSend,
+  // preventSend,
   unCalledTools,
-  enableSend,
+  // enableSend,
   // onAskQuestion,
-  onSetChatModel,
+  // onSetChatModel,
   caps,
   commands,
-  hasContextFile,
+  // hasContextFile,
   requestCommandsCompletion,
   // setSelectedCommand,
   maybeSendToSidebar,
   // activeFile,
   filesInPreview,
   // selectedSnippet,
-  removePreviewFileByName,
+  // removePreviewFileByName,
   requestCaps,
   prompts,
   // onStartNewChat,
@@ -114,8 +122,23 @@ export const Chat: React.FC<ChatProps> = ({
   const chatModel = useAppSelector(getSelectedChatModel);
   const dispatch = useAppDispatch();
   const messages = useAppSelector((state) => state.chat.thread.messages);
+  const onSetChatModel = useCallback(
+    (value: string) => {
+      const model = caps.default_cap === value ? "" : value;
+      dispatch(setChatModel({ id: chatId, model }));
+    },
+    [caps.default_cap, chatId, dispatch],
+  );
+  const preventSend = useAppSelector((state) => state.chat.prevent_send);
+  const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
-  const { diffPasteBack, newFile, openSettings } = useEventsBusForIDE();
+  const { diffPasteBack, newFile, openSettings, openFile } =
+    useEventsBusForIDE();
+
+  // TODO: add other posable errors
+  const onClearError = () => dispatch(clearChatError({ id: chatId }));
+  // TODO: add other posable errors
+  const error = useAppSelector((state) => state.chat.error ?? caps.error);
 
   // TODO: handle stop
   const handleSummit = useCallback(
@@ -161,7 +184,13 @@ export const Chat: React.FC<ChatProps> = ({
           <ArrowLeftIcon width="16" height="16" />
           Back
         </Button>
-        <Button size="1" variant="surface" onClick={openChatInNewTab}>
+        <Button
+          size="1"
+          variant="surface"
+          onClick={() => {
+            // TODO:
+          }}
+        >
           Open In Tab
         </Button>
         <Button size="1" variant="surface" onClick={handleNewChat}>
@@ -182,13 +211,14 @@ export const Chat: React.FC<ChatProps> = ({
         canPaste={canPaste}
         ref={chatContentRef}
         openSettings={openSettings}
+        onOpenFile={openFile}
       />
       {!isStreaming && preventSend && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
           <Card>
             <Flex direction="column" align="center" gap="2">
               Chat was interupted with uncalled tools calls.
-              <Button onClick={() => enableSend(true)}>Resume</Button>
+              <Button onClick={onEnableSend}>Resume</Button>
             </Flex>
           </Card>
         </Container>
@@ -208,14 +238,14 @@ export const Chat: React.FC<ChatProps> = ({
         // onStopStreaming={onStopStreaming}
         onStopStreaming={abort}
         commands={commands}
-        hasContextFile={hasContextFile}
+        // hasContextFile={hasContextFile}
         requestCommandsCompletion={requestCommandsCompletion}
         // setSelectedCommand={setSelectedCommand}
         onClose={maybeSendToSidebar}
         attachFile={activeFile}
         filesInPreview={filesInPreview}
         selectedSnippet={selectedSnippet}
-        removePreviewFileByName={removePreviewFileByName}
+        // removePreviewFileByName={removePreviewFileByName}
         onTextAreaHeightChange={onTextAreaHeightChange}
         requestCaps={requestCaps}
         prompts={prompts}

@@ -6,23 +6,21 @@ import styles from "./ChatForm.module.css";
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
 import { TextArea, TextAreaProps } from "../TextArea";
 import { Form } from "./Form";
-import {
-  useOnPressedEnter,
-  type ChatCapsState,
-  useIsOnline,
-} from "../../hooks";
+import { useOnPressedEnter, useIsOnline } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { Button } from "@radix-ui/themes";
 import { ComboBox, type ComboBoxProps } from "../ComboBox";
-import { ChatContextFile, SystemPrompts } from "../../services/refact";
+import {
+  ChatContextFile,
+  CodeChatModel,
+  SystemPrompts,
+} from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
-import { useEffectOnce } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
 import { useConfig } from "../../app/hooks";
-import { FileInfo } from "../../events";
-import { Snippet } from "../../features/Chat2/selectedSnippet";
+import type { FileInfo, Snippet } from "../../features/Chat";
 
 type useCheckboxStateProps = {
   activeFile: FileInfo;
@@ -256,7 +254,6 @@ const useControlsState = ({
   return {
     checkboxes,
     toggleCheckbox,
-    markdown,
     reset,
     setInteracted,
   };
@@ -268,20 +265,25 @@ export type ChatFormProps = {
   className?: string;
   clearError: () => void;
   error: string | null;
-  caps: ChatCapsState;
+  caps: {
+    error: string | null;
+    fetching: boolean;
+    default_cap: string;
+    available_caps: Record<string, CodeChatModel>;
+  };
   model: string;
   onSetChatModel: (model: string) => void;
   isStreaming: boolean;
   onStopStreaming: () => void;
   commands: ComboBoxProps["commands"];
   attachFile: FileInfo;
-  hasContextFile: boolean;
+  // hasContextFile: boolean;
   requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
   requestPreviewFiles: (input: string) => void;
   // setSelectedCommand: (command: string) => void;
   filesInPreview: ChatContextFile[];
   selectedSnippet: Snippet;
-  removePreviewFileByName: (name: string) => void;
+  // removePreviewFileByName: (name: string) => void;
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
   requestCaps: () => void;
@@ -311,7 +313,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   requestPreviewFiles,
   filesInPreview,
   selectedSnippet,
-  removePreviewFileByName,
+  // removePreviewFileByName,
   onTextAreaHeightChange,
   showControls,
   // TODO: handle re-requesting caps after error
@@ -327,8 +329,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const config = useConfig();
   const [value, setValue] = React.useState("");
   // this should re-render when clicking new chat :/
-  const { markdown, checkboxes, toggleCheckbox, reset, setInteracted } =
-    useControlsState({
+  const { checkboxes, toggleCheckbox, reset, setInteracted } = useControlsState(
+    {
       activeFile: attachFile,
       snippet: selectedSnippet,
       vecdb: config.features?.vecdb ?? false,
@@ -337,7 +339,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       chatId,
       canUseTools,
       host: config.host,
-    });
+    },
+  );
 
   usePreviewFileRequest({
     isCommandExecutable: commands.is_cmd_executable,
@@ -363,12 +366,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     value,
     caps.available_caps,
   ]);
-
-  useEffectOnce(() => {
-    if (selectedSnippet.code) {
-      setValue(markdown + value);
-    }
-  });
 
   useEffect(() => {
     if (!showControls) {
@@ -438,7 +435,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       >
         <FilesPreview
           files={filesInPreview}
-          onRemovePreviewFile={removePreviewFileByName}
+          // onRemovePreviewFile={removePreviewFileByName}
         />
 
         <ComboBox

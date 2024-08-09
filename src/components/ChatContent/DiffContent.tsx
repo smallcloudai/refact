@@ -1,6 +1,6 @@
 import React from "react";
-import { Text, Container, Box, Flex, Button } from "@radix-ui/themes";
-import type { DiffChunk } from "../../events";
+import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
+import type { DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import classNames from "classnames";
@@ -207,6 +207,9 @@ export const DiffContent: React.FC<{
             }}
             loading={diffStateRequest.isFetching}
             diffs={groupedDiffs}
+            openFile={() => {
+              // TODO:
+            }}
           />
         </Collapsible.Content>
       </Collapsible.Root>
@@ -225,7 +228,8 @@ export const DiffForm: React.FC<{
   diffs: Record<string, DiffWithStatus[]>;
   loading: boolean;
   onSubmit: (toApply: boolean[]) => void;
-}> = ({ diffs, loading, onSubmit }) => {
+  openFile: (file: { file_name: string; line?: number }) => void;
+}> = ({ diffs, loading, onSubmit, openFile }) => {
   const values = React.useMemo(() => {
     return Object.values(diffs).reduce((acc, curr) => acc.concat(curr), []);
   }, [diffs]);
@@ -274,12 +278,30 @@ export const DiffForm: React.FC<{
         return (
           <Box key={key} my="2">
             <Flex justify="between" align="center" p="1">
-              <TruncateLeft size="1">{fullFileName}</TruncateLeft>
+              <TruncateLeft size="1">
+                <Link
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    const startLine = Math.min(
+                      ...diffsForFile.map((diff) => diff.line1),
+                    );
+                    openFile({
+                      file_name: fullFileName,
+                      line: startLine,
+                    });
+                  }}
+                >
+                  {fullFileName}
+                </Link>
+              </TruncateLeft>
+
               <Text size="1" as="label">
                 <Flex align="center" gap="2" pl="2">
                   {errored && "error"}
                   <Button
                     size="1"
+                    disabled={loading}
                     onClick={() => handleToggle(!applied, indeices)}
                   >
                     {applied ? "Unapply" : "Apply"}
@@ -299,7 +321,7 @@ export const DiffForm: React.FC<{
       })}
 
       <Flex gap="2" py="2">
-        <Button disabled={disableApplyAll} onClick={applyAll}>
+        <Button disabled={disableApplyAll || loading} onClick={applyAll}>
           {action}
         </Button>
       </Flex>

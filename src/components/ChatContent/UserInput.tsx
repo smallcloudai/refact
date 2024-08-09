@@ -16,7 +16,13 @@ function processLines(
 
   if (!head.startsWith("```") || nextBackTicksIndex === -1) {
     const processedLines = processedLinesMemo.concat(
-      <Text size="2" as="div" key={key} wrap="wrap">
+      <Text
+        size="2"
+        as="div"
+        key={key}
+        wrap="balance"
+        className={styles.break_word}
+      >
         {head}
       </Text>,
     );

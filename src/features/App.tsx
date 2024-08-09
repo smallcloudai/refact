@@ -8,10 +8,10 @@ import { Flex } from "@radix-ui/themes";
 import { Chat } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import {
+  // useEventBusForHost,
   usePostMessage,
-  useChatHistory,
-  useEventBusForChat,
-  useEventBusForHost,
+  // useChatHistory,
+  // useEventBusForChat,
   useEventsBusForIDE,
 } from "../hooks";
 import {
@@ -22,12 +22,12 @@ import {
 } from "../events/setup";
 import { useConfig } from "../app/hooks";
 import { FIMDebug } from "./FIM";
-import { Statistics } from "./Statistics";
 import { store, persistor } from "../app/store";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
+import { Statistics } from "./statistics";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -42,9 +42,8 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const postMessage = usePostMessage();
   const config = useConfig();
 
-  const historyHook = useChatHistory();
-  const chatHook = useEventBusForChat();
-  const { currentChatId } = useEventBusForHost();
+  // const historyHook = useChatHistory();
+  // const chatHook = useEventBusForChat();
   // const fimHook = useEventBysForFIMDebug();
   // const statisticsHook = useEventBusForStatistic();
 
@@ -100,33 +99,13 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     navigate({ type: "pop" });
   };
 
-  const handleHistoryItemClick = useCallback(
-    (id: string) => {
-      const currentChat = historyHook.history.find((item) => item.id === id);
-      if (currentChat) {
-        historyHook.setCurrentChatId(id);
-        historyHook.restoreChatFromHistory(id);
-        // chatHook.restoreChat(currentChat);
-        navigate({ type: "push", page: { name: "chat" } });
-      }
-    },
-    [historyHook, navigate],
-  );
-
-  const handleCreateNewChat = useCallback(() => {
-    historyHook.createNewChat();
-    navigate({ type: "push", page: { name: "chat" } });
-  }, [historyHook, navigate]);
-
-  const handleDelete = useCallback(
-    (id: string) => {
-      historyHook.deleteChat(id);
-    },
-    [historyHook],
-  );
+  // const handleCreateNewChat = useCallback(() => {
+  //   historyHook.createNewChat();
+  //   navigate({ type: "push", page: { name: "chat" } });
+  // }, [historyHook, navigate]);
 
   const handleNavigation = useCallback(
-    (to: "fim" | "stats" | "hot keys" | "settings" | "") => {
+    (to: "fim" | "stats" | "hot keys" | "settings" | "chat" | "") => {
       if (to === "settings") {
         openSettings();
       } else if (to === "hot keys") {
@@ -138,6 +117,8 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         });
       } else if (to === "stats") {
         navigate({ type: "push", page: { name: "statistics page" } });
+      } else if (to === "chat") {
+        navigate({ type: "push", page: { name: "chat" } });
       }
     },
     [navigate, openHotKeys, openSettings],
@@ -183,13 +164,13 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             )}
             {page.name === "history" && (
               <Sidebar
-                history={historyHook.history}
+                // history={historyHook.history}
                 takingNotes={false}
-                currentChatId={currentChatId}
-                onCreateNewChat={handleCreateNewChat}
+                // currentChatId={currentChatId}
+                // onCreateNewChat={handleCreateNewChat}
                 account={undefined}
-                onHistoryItemClick={handleHistoryItemClick}
-                onDeleteHistoryItem={handleDelete}
+                // onHistoryItemClick={handleHistoryItemClick}
+                // onDeleteHistoryItem={handleDelete}
                 onOpenChatInTab={undefined}
                 handleLogout={() => {
                   // TODO: handle logout
@@ -202,7 +183,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
               <Chat
                 host={config.host}
                 tabbed={config.tabbed}
-                {...chatHook}
+                // {...chatHook}
                 backFromChat={goBack}
               />
             )}

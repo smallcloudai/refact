@@ -4,8 +4,13 @@ import { usePostMessage } from "./usePostMessage";
 // import { useAppSelector } from "../app/hooks";
 export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
 export const ideOpenSettingsAction = createAction("ide/openSettings");
-export const ideNewFileAction = createAction("ide/newFile");
+export const ideNewFileAction = createAction<string>("ide/newFile");
 export const ideOpenHotKeys = createAction("ide/openHotKeys");
+export type OpenFilePayload = {
+  file_name: string;
+  line?: number;
+};
+export const ideOpenFile = createAction<OpenFilePayload>("ide/openFile");
 // TODO: open file
 
 export const useEventsBusForIDE = () => {
@@ -25,21 +30,33 @@ export const useEventsBusForIDE = () => {
     postMessage(action);
   }, [postMessage]);
 
-  const newFile = useCallback(() => {
-    const action = ideNewFileAction();
-    postMessage(action);
-  }, [postMessage]);
+  const newFile = useCallback(
+    (content: string) => {
+      const action = ideNewFileAction(content);
+      postMessage(action);
+    },
+    [postMessage],
+  );
 
   const openHotKeys = useCallback(() => {
     const action = ideOpenHotKeys();
     postMessage(action);
   }, [postMessage]);
 
+  const openFile = useCallback(
+    (file: OpenFilePayload) => {
+      const action = ideOpenFile(file);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   return {
     diffPasteBack,
     openSettings,
     newFile,
     openHotKeys,
+    openFile,
     // canPaste,
   };
 };

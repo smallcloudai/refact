@@ -1,56 +1,59 @@
 import React, { useMemo } from "react";
-import { useEventBusForChat } from "../hooks/useEventBusForChat";
-import type { Config } from "../app/hooks";
-import { CodeChatModel, SystemPrompts } from "../events";
-import { Chat as ChatComponent } from "../components/Chat";
+// import { useEventBusForChat } from "../hooks/useEventBusForChat";
+import type { Config } from "../../features/Config/reducer";
+import { CodeChatModel, SystemPrompts } from "../../services/refact";
+import { Chat as ChatComponent } from "../../components/Chat";
 import {
   useGetCapsQuery,
   useGetPromptsQuery,
   useGetToolsQuery,
   useGetCommandCompletionQuery,
   useGetCommandPreviewQuery,
-} from "../app/hooks";
+} from "../../app/hooks";
 import { useDebounceCallback } from "usehooks-ts";
-import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import {
   getSelectedSystemPrompt,
   setSystemPrompt,
-} from "../features/Chat2/chatThread";
+  setUseTools,
+} from "./chatThread";
 
-type ChatProps = {
+export type ChatProps = {
   host: Config["host"];
   tabbed: Config["tabbed"];
   style?: React.CSSProperties;
-} & ReturnType<typeof useEventBusForChat>;
+  backFromChat: () => void;
+};
 
 export const Chat: React.FC<ChatProps> = ({
   style,
   // askQuestion,
-  clearError,
-  setChatModel,
+  // clearError,
+  // setChatModel,
   // stopStreaming,
   backFromChat,
-  openChatInNewTab,
-  sendToSideBar,
+  // openChatInNewTab,
+  // sendToSideBar,
   // handleNewFileClick,
   // handlePasteDiffClick,
-  hasContextFile,
+  // hasContextFile,
   // requestCommandsCompletion,
   // requestPreviewFiles,
   // setSelectedCommand,
-  removePreviewFileByName,
+  // removePreviewFileByName,
   // retryQuestion,
   // maybeRequestCaps,
-  startNewChat,
+  // startNewChat,
   // setSelectedSystemPrompt,
-  setUseTools,
-  enableSend,
+  // setUseTools,
+  // enableSend,
   // openSettings,
   host,
   tabbed,
-  state,
+  // state,
 }) => {
   const capsRequest = useGetCapsQuery(undefined);
+  const chatModel = useAppSelector((state) => state.chat.thread.model);
 
   // TODO: these could be lower in the component tree
   const promptsRequest = useGetPromptsQuery(undefined);
@@ -58,6 +61,10 @@ export const Chat: React.FC<ChatProps> = ({
   const dispatch = useAppDispatch();
   const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
     dispatch(setSystemPrompt(prompt));
+
+  const useTools = useAppSelector((state) => state.chat.use_tools);
+  const onSetUseTools = (value: boolean) => dispatch(setUseTools(value));
+  const messages = useAppSelector((state) => state.chat.thread.messages);
 
   // TODO: don't make this request if there are no caps
   const toolsRequest = useGetToolsQuery(!!capsRequest.data);
@@ -93,6 +100,10 @@ export const Chat: React.FC<ChatProps> = ({
     !!capsRequest.data,
   );
 
+  const sendToSideBar = () => {
+    // TODO:
+  };
+
   // const onSetSelectedSystemPrompt = useCallback(
   //   (key: string) => {
   //     if (!promptsRequest.data) return;
@@ -113,24 +124,23 @@ export const Chat: React.FC<ChatProps> = ({
     if (!capsRequest.data) return false;
     if (!toolsRequest.data) return false;
     if (toolsRequest.data.length === 0) return false;
-    const modelName =
-      state.chat.model || capsRequest.data.code_chat_default_model;
+    const modelName = chatModel || capsRequest.data.code_chat_default_model;
 
     if (!(modelName in capsRequest.data.code_chat_models)) return false;
     const model: CodeChatModel = capsRequest.data.code_chat_models[modelName];
     if ("supports_tools" in model && model.supports_tools) return true;
     return false;
-  }, [capsRequest.data, toolsRequest.data, state.chat.model]);
+  }, [capsRequest.data, toolsRequest.data, chatModel]);
 
   // can be a selector
   const unCalledTools = React.useMemo(() => {
-    if (state.chat.messages.length === 0) return false;
-    const last = state.chat.messages[state.chat.messages.length - 1];
+    if (messages.length === 0) return false;
+    const last = messages[messages.length - 1];
     if (last.role !== "assistant") return false;
     const maybeTools = last.tool_calls;
     if (maybeTools && maybeTools.length > 0) return true;
     return false;
-  }, [state.chat.messages]);
+  }, [messages]);
 
   return (
     <ChatComponent
@@ -138,30 +148,23 @@ export const Chat: React.FC<ChatProps> = ({
       host={host}
       tabbed={tabbed}
       backFromChat={backFromChat}
-      openChatInNewTab={openChatInNewTab}
+      // openChatInNewTab={openChatInNewTab}
       // onStopStreaming={stopStreaming}
       // chat={state.chat}
-      error={state.error}
-      onClearError={clearError}
+      // error={state.error}
+      // onClearError={clearError}
       // retryQuestion={retryQuestion}
       // isWaiting={state.waiting_for_response}
       // isStreaming={state.streaming}
       // onNewFileClick={handleNewFileClick}
       // onPasteClick={handlePasteDiffClick}
       // canPaste={state.active_file.can_paste}
-      preventSend={state.prevent_send}
+      // preventSend={state.prevent_send}
       unCalledTools={unCalledTools}
-      enableSend={enableSend}
+      // enableSend={enableSend}
       // onAskQuestion={(question: string) =>
       //   askQuestion(question, promptsRequest.data, toolsRequest.data)
       // }
-      onSetChatModel={(value) => {
-        const model =
-          capsRequest.data?.code_completion_default_model === value
-            ? ""
-            : value;
-        setChatModel(model);
-      }}
       // TODO: This could be moved lower in the component tree
       caps={{
         error: capsRequest.error ? "error fetching caps" : null,
@@ -170,25 +173,26 @@ export const Chat: React.FC<ChatProps> = ({
         available_caps: capsRequest.data?.code_chat_models ?? {},
       }}
       commands={commandResult}
-      hasContextFile={hasContextFile}
+      // is this used anywhere?
+      // hasContextFile={hasContextFile}
       requestCommandsCompletion={requestCommandsCompletion}
       maybeSendToSidebar={maybeSendToSideBar}
       // activeFile={state.active_file}
       filesInPreview={commandPreview}
       // selectedSnippet={state.selected_snippet}
-      removePreviewFileByName={removePreviewFileByName}
+      // removePreviewFileByName={removePreviewFileByName}
       requestCaps={() => {
         void capsRequest.refetch();
       }}
       prompts={promptsRequest.data ?? {}}
-      onStartNewChat={startNewChat}
+      // onStartNewChat={startNewChat}
       // Could be lowered
       onSetSystemPrompt={onSetSelectedSystemPrompt}
       selectedSystemPrompt={selectedSystemPrompt}
       requestPreviewFiles={() => ({})}
       canUseTools={canUseTools}
-      setUseTools={setUseTools}
-      useTools={state.use_tools}
+      setUseTools={onSetUseTools}
+      useTools={useTools}
       // openSettings={openSettings}
     />
   );

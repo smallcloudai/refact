@@ -15,7 +15,7 @@ import { setThemeMode } from "../features/Config/reducer";
 import { useMutationObserver } from "../hooks";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
-export { type Config, setThemeMode } from "../features/Config/reducer";
+// export { type Config, setThemeMode } from "../features/Config/reducer";
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();

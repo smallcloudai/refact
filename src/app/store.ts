@@ -4,7 +4,16 @@ import {
   // createSlice,
 } from "@reduxjs/toolkit";
 import storage from "redux-persist/lib/storage";
-import { persistReducer, persistStore } from "redux-persist";
+import {
+  FLUSH,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+  REHYDRATE,
+  persistReducer,
+  persistStore,
+} from "redux-persist";
 import { statisticsApi } from "../services/refact/statistics";
 import {
   capsApi,
@@ -20,31 +29,35 @@ import {
   tipOfTheDayReducer,
 } from "../features/TipOfTheDay";
 import { reducer as configReducer } from "../features/Config/reducer";
-import { activeFileReducer } from "../features/Chat2/activeFile";
-import { selectedSnippetReducer } from "../features/Chat2/selectedSnippet";
-import { chatReducer } from "../features/Chat2/chatThread";
-import { historySlice } from "../features/History/historySlice";
-
-// import { fimSlice } from "../features/FIM/fimSlice";
+import { activeFileReducer } from "../features/Chat/activeFile";
+import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
+import { chatReducer } from "../features/Chat/chatThread";
+import {
+  historySlice,
+  historyMiddleware,
+} from "../features/History/historySlice";
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
 // their `reducerPath`s, therefore we no longer need to call `combineReducers`.
-const rootReducer = combineSlices({
-  fim: fimReducer,
-  tour: tourReducer,
-  tipOfTheDay: tipOfTheDayReducer,
-  config: configReducer,
-  active_file: activeFileReducer,
-  selected_snippet: selectedSnippetReducer,
-  chat: chatReducer,
-  [statisticsApi.reducerPath]: statisticsApi.reducer,
-  [capsApi.reducerPath]: capsApi.reducer,
-  [promptsApi.reducerPath]: promptsApi.reducer,
-  [toolsApi.reducerPath]: toolsApi.reducer,
-  [commandsApi.reducerPath]: commandsApi.reducer,
-  [diffApi.reducerPath]: diffApi.reducer,
-});
+const rootReducer = combineSlices(
+  {
+    fim: fimReducer,
+    tour: tourReducer,
+    tipOfTheDay: tipOfTheDayReducer,
+    config: configReducer,
+    active_file: activeFileReducer,
+    selected_snippet: selectedSnippetReducer,
+    chat: chatReducer,
+    [statisticsApi.reducerPath]: statisticsApi.reducer,
+    [capsApi.reducerPath]: capsApi.reducer,
+    [promptsApi.reducerPath]: promptsApi.reducer,
+    [toolsApi.reducerPath]: toolsApi.reducer,
+    [commandsApi.reducerPath]: commandsApi.reducer,
+    [diffApi.reducerPath]: diffApi.reducer,
+  },
+  historySlice,
+);
 
 const persistConfig = {
   key: "root",
@@ -57,14 +70,20 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) => {
-    return getDefaultMiddleware().concat(
-      statisticsApi.middleware,
-      capsApi.middleware,
-      promptsApi.middleware,
-      toolsApi.middleware,
-      commandsApi.middleware,
-      diffApi.middleware,
-    );
+    return getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+      },
+    })
+      .concat(
+        statisticsApi.middleware,
+        capsApi.middleware,
+        promptsApi.middleware,
+        toolsApi.middleware,
+        commandsApi.middleware,
+        diffApi.middleware,
+      )
+      .prepend(historyMiddleware.middleware);
   },
 });
 

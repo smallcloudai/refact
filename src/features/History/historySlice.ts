@@ -1,6 +1,11 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { ChatThread } from "../Chat2/chatThread";
-import { isUserMessage, UserMessage } from "../../events";
+import {
+  createSlice,
+  PayloadAction,
+  createListenerMiddleware,
+} from "@reduxjs/toolkit";
+import { ChatThread, doneStreaming, removeChatFromCache } from "../Chat";
+import { isUserMessage, UserMessage } from "../../services/refact";
+import { AppDispatch, RootState } from "../../app/store";
 
 export type ChatHistoryItem = ChatThread & {
   createdAt: string;
@@ -11,7 +16,7 @@ export type ChatHistoryItem = ChatThread & {
 export type HistoryMeta = Pick<
   ChatHistoryItem,
   "id" | "title" | "createdAt" | "model" | "updatedAt"
->;
+> & { userMessageCount: number };
 
 const initialState: Record<string, ChatHistoryItem> = {};
 
@@ -29,9 +34,9 @@ export const historySlice = createSlice({
       const now = new Date().toISOString();
       const chat: ChatHistoryItem = {
         ...action.payload,
-        title:
-          action.payload.title ??
-          (userMessage.content.replace(/^\W*/, "") || "New Chat"),
+        title: action.payload.title
+          ? action.payload.title
+          : userMessage.content.replace(/^\W*/, "") || "New Chat",
         createdAt: action.payload.createdAt ?? now,
 
         updatedAt: now,
@@ -57,15 +62,34 @@ export const historySlice = createSlice({
       return state[id];
     },
 
-    getHistoryMeta: (state): HistoryMeta[] =>
-      Object.values(state)
-        .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
-        .map((item) => {
-          const { id, title, createdAt, model, updatedAt } = item;
-          return { id, title, createdAt, model, updatedAt };
-        }),
+    getHistory: (state): ChatHistoryItem[] =>
+      Object.values(state).sort((a, b) =>
+        a.updatedAt.localeCompare(b.updatedAt),
+      ),
   },
 });
 
 export const { saveChat, deleteChatById } = historySlice.actions;
-export const { getChatById, getHistoryMeta } = historySlice.selectors;
+export const { getChatById, getHistory } = historySlice.selectors;
+
+// We could use this or reduce-reducers packages
+export const historyMiddleware = createListenerMiddleware();
+const startHistoryListening = historyMiddleware.startListening.withTypes<
+  RootState,
+  AppDispatch
+>();
+
+startHistoryListening({
+  actionCreator: doneStreaming,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    if (state.chat.thread.id === action.payload.id) {
+      listenerApi.dispatch(saveChat(state.chat.thread));
+    } else if (action.payload.id in state.chat.cache) {
+      listenerApi.dispatch(saveChat(state.chat.cache[action.payload.id]));
+      listenerApi.dispatch(removeChatFromCache({ id: action.payload.id }));
+    }
+  },
+});
+
+// TODO: add a listener for creating a new chat ?
