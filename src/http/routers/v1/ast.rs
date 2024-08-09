@@ -12,7 +12,8 @@ use crate::ast::ast_index::RequestSymbolType;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 use crate::global_context::SharedGlobalContext;
-use crate::scratchpads::chat_utils_rag::{context_msgs_from_paths, postprocess_rag_load_ast_markup};
+use crate::scratchpads::pp_context_files::pp_color_lines;
+use crate::scratchpads::pp_utils::{context_msgs_from_paths, pp_ast_markup_files};
 
 #[derive(Serialize, Deserialize, Clone)]
 struct AstQuerySearchBy {
@@ -265,20 +266,20 @@ pub async fn handle_v1_ast_file_dump(
     let mut files_set: HashSet<String> = HashSet::new();
     files_set.insert(corrected[0].clone());
     let messages = context_msgs_from_paths(global_context.clone(), files_set).await;
-    let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), &messages).await;
-    let mut settings = crate::scratchpads::chat_utils_rag::PostprocessSettings::new();
+    let files_markup = pp_ast_markup_files(global_context.clone(), &messages).await;
+    let mut settings = crate::scratchpads::pp_context_files::PostprocessSettings::new();
     settings.close_small_gaps = false;
-    let (lines_in_files, _) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage_3_6(
+    let lines_in_files = pp_color_lines(
             global_context.clone(),
             &vec![],
-            &files_markup,
+            files_markup,
             &settings,
         ).await;
     let mut result = "".to_string();
     for linevec in lines_in_files.values() {
         for lineref in linevec {
             result.push_str(format!("{}:{:04} {:<43} {:>7.3} {}\n",
-                crate::nicer_logs::last_n_chars(&lineref.fref.cpath.to_string_lossy().to_string(), 30),
+                crate::nicer_logs::last_n_chars(&lineref.file_ref.cpath.to_string_lossy().to_string(), 30),
                 lineref.line_n,
                 crate::nicer_logs::first_n_chars(&lineref.line_content, 40),
                 lineref.useful,

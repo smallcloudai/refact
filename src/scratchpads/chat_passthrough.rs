@@ -17,7 +17,8 @@ use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_generic::default_system_message_from_patch;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
-use crate::scratchpads::chat_utils_rag::HasRagResults;
+use crate::scratchpads::pp_utils::HasRagResults;
+
 
 const DEBUG: bool = true;
 

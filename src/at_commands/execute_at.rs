@@ -7,8 +7,9 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam, filter_only_context_file_from_context_tool};
 use crate::call_validation::{ChatMessage, ContextEnum};
-use crate::scratchpads::chat_utils_rag::{count_tokens, HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2, postprocess_plain_text_messages};
-
+use crate::scratchpads::pp_context_files::postprocess_context_files;
+use crate::scratchpads::pp_plain_text::postprocess_plain_text;
+use crate::scratchpads::pp_utils::{HasRagResults, count_tokens, max_tokens_for_rag_chat};
 
 pub const MIN_RAG_CONTEXT_LIMIT: usize = 256;
 
@@ -93,7 +94,7 @@ pub async fn run_at_commands(
 
             let t0 = std::time::Instant::now();
 
-            let (pp_plain_text, non_used_plain) = postprocess_plain_text_messages(
+            let (pp_plain_text, non_used_plain) = postprocess_plain_text(
                 plain_text_messages,
                 tokenizer.clone(),
                 tokens_limit_plain,
@@ -107,13 +108,13 @@ pub async fn run_at_commands(
             info!("tokens_limit_files {}", tokens_limit_files);
 
             let gcx = ccx.lock().await.global_context.clone();
-            let (post_processed, _) = postprocess_at_results2(
+            let post_processed= postprocess_context_files(
                 gcx.clone(),
                 &context_file_pp,
                 tokenizer.clone(),
                 tokens_limit_files,
                 false,
-                top_n,
+                Some(top_n),
             ).await;
             if !post_processed.is_empty() {
                 // OUTPUT: files after all custom messages and plain text

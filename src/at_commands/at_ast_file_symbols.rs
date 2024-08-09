@@ -21,7 +21,7 @@ fn results2message(result: &FileReferencesResult) -> Vec<ContextFile> {
             file_content: format!("{:?}", x.symbol_type),
             line1: x.full_range.start_point.row + 1,
             line2: x.full_range.end_point.row + 1,
-            symbol: vec![Uuid::default()],
+            symbol: vec![],
             gradient_type: -1,
             usefulness: 100.0,
             is_body_important: false

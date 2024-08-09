@@ -11,7 +11,7 @@ use crate::at_tools::att_patch::args_parser::PatchArguments;
 use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal, get_signatures_by_symbol_names};
 use crate::at_tools::att_patch::tool::DefaultToolPatch;
 use crate::call_validation::{ChatMessage, ChatPost, ChatUsage, SamplingParameters};
-use crate::scratchpads::chat_utils_rag::count_tokens;
+use crate::scratchpads::pp_utils::count_tokens;
 
 
 async fn make_chat_history(

@@ -46,7 +46,7 @@ fn results2message(results: &Vec<vecdb::vdb_structs::VecdbRecord>) -> Vec<Contex
             file_content: r.window_text.clone(),
             line1: r.start_line as usize + 1,
             line2: r.end_line as usize + 1,
-            symbol: vec![Uuid::default()],
+            symbol: vec![],
             gradient_type: -1,
             usefulness,
             is_body_important: false

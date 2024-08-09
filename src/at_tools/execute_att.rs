@@ -8,8 +8,9 @@ use tracing::{info, warn};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
 use crate::call_validation::{ChatMessage, ContextEnum};
-use crate::scratchpads::chat_utils_rag::{HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2, postprocess_plain_text_messages};
-
+use crate::scratchpads::pp_context_files::{postprocess_context_files};
+use crate::scratchpads::pp_plain_text::postprocess_plain_text;
+use crate::scratchpads::pp_utils::{HasRagResults, max_tokens_for_rag_chat};
 
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -124,7 +125,7 @@ pub async fn run_tools(
         };
         info!("run_tools: context_limit={} tokens_limit_chat_msg={} tokens_limit_files={}", context_limit, tokens_limit_chat_msg, tokens_limit_files);
 
-        let (pp_chat_msg, non_used_context_limit) = postprocess_plain_text_messages(
+        let (pp_chat_msg, non_used_context_limit) = postprocess_plain_text(
             generated_tool.iter().chain(generated_other.iter()).collect(),
             tokenizer.clone(),
             tokens_limit_chat_msg,
@@ -145,13 +146,13 @@ pub async fn run_tools(
         info!("run_tools: tokens_limit_files={} after postprocessing", tokens_limit_files);
 
         let gcx = ccx.lock().await.global_context.clone();
-        let (context_file_vec, _) = postprocess_at_results2(
+        let context_file_vec = postprocess_context_files(
             gcx.clone(),
             &for_postprocessing,
             tokenizer.clone(),
             tokens_limit_files,
             false,
-            top_n,
+            Some(top_n),
         ).await;
 
         if !context_file_vec.is_empty() {

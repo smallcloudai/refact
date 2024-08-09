@@ -18,9 +18,9 @@ use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_f
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatMessage, ContextEnum};
-use crate::scratchpads::chat_utils_rag::{max_tokens_for_rag_chat, postprocess_at_results2};
+use crate::scratchpads::pp_context_files::postprocess_context_files;
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
-
+use crate::scratchpads::pp_utils::max_tokens_for_rag_chat;
 
 #[derive(Serialize, Deserialize, Clone)]
 struct CommandCompletionPost {
@@ -154,13 +154,13 @@ pub async fn handle_v1_command_preview(
         }
     }
 
-    let (processed, _) = postprocess_at_results2(
+    let processed = postprocess_context_files(
         global_context.clone(),
         &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
         tokenizer_arc.clone(),
         rag_n_ctx,
         false,
-        crate::http::routers::v1::chat::CHAT_TOP_N,
+        Some(crate::http::routers::v1::chat::CHAT_TOP_N),
     ).await;
 
     if !processed.is_empty() {

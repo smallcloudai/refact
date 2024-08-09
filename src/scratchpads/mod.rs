@@ -10,7 +10,9 @@ pub mod chat_llama2;
 pub mod chat_passthrough;
 pub mod chat_utils_deltadelta;
 pub mod chat_utils_limit_history;
-pub mod chat_utils_rag;
+pub mod pp_utils;
+pub mod pp_context_files;
+pub mod pp_plain_text;
 
 use crate::call_validation::CodeCompletionPost;
 use crate::call_validation::ChatPost;

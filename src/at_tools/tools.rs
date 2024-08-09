@@ -39,7 +39,6 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
         ("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttGetKnowledge{}) as Box<dyn Tool + Send>))),
         // ("diff".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_diff::AttDiff{}) as Box<dyn Tool + Send>))),
         ("web".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_web::AttWeb{}) as Box<dyn Tool + Send>))),
-        ("files_skeleton".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_files_skeleton::AttFilesSkeleton{}) as Box<dyn Tool + Send>))),
         ("supercat".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_supercat::AttSuperCat{}) as Box<dyn Tool + Send>))),
         ("relevant_files".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_relevant_files::AttRelevantFiles{}) as Box<dyn Tool + Send>))),
     ]);
@@ -188,15 +187,6 @@ tools:
 
 #[allow(dead_code)]
 const NOT_READY_TOOLS: &str = r####"
-  - name: "files_skeleton"
-    description: "Collects limited files context with AST"
-    parameters:
-      - name: "paths"
-        type: "string"
-        description: "String that contains list of file names separated by commas. Use absolute file paths."
-    parameters_required:
-      - "paths"
-
   - name: "diff"
     description: "Perform a diff operation. Can be used to get git diff for a project (no arguments) or git diff for a specific file (file_path)"
     parameters:

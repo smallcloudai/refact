@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 use crate::ast::ast_module::AstModule;
 use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
+use crate::ast::structs::SymbolsSearchResultStruct;
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::at_commands::at_ast_lookup_symbols::results2message;
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -23,6 +24,7 @@ use crate::completion_cache;
 use crate::files_in_workspace::Document;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
+use crate::scratchpads::pp_context_files::postprocess_context_files;
 use crate::telemetry::snippets_collection;
 use crate::telemetry::telemetry_structs;
 
@@ -312,7 +314,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                     file_content: "".to_string(),
                     line1: (fim_line1 + 1) as usize,
                     line2: (fim_line2 + 1) as usize,
-                    symbol: vec![Uuid::default()],
+                    symbol: vec![],
                     gradient_type: -1,
                     usefulness: -1.0,
                     is_body_important: false
@@ -323,13 +325,13 @@ impl ScratchpadAbstract for SingleFileFIM {
             info!(" -- post processing starts --");
             let post_t0 = Instant::now();
             let max_files_n = 10;
-            let (postprocessed_messages, _) = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
+            let postprocessed_messages = postprocess_context_files(
                 self.global_context.clone(),
                 &ast_messages,
                 self.t.tokenizer.clone(),
                 rag_tokens_n,
                 false,
-                max_files_n,
+                Some(max_files_n),
             ).await;
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);
@@ -341,7 +343,7 @@ impl ScratchpadAbstract for SingleFileFIM {
             );
 
             if was_looking_for.is_some() {
-                self.context_used = crate::scratchpads::chat_utils_rag::context_to_fim_debug_page(
+                self.context_used = context_to_fim_debug_page(
                     &postprocessed_messages,
                     &was_looking_for.unwrap()
                 );
@@ -474,3 +476,38 @@ fn cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
     return (ans.replace("\r", ""), true);
 }
 
+pub fn context_to_fim_debug_page(
+    postprocessed_messages: &[ContextFile],
+    search_traces: &crate::ast::structs::AstCursorSearchResult,
+) -> Value {
+    let mut context = json!({});
+    fn shorter_symbol(x: &SymbolsSearchResultStruct) -> Value {
+        let mut t: Value = json!({});
+        t["name"] = Value::String(x.symbol_declaration.name.clone());
+        t["file_path"] = Value::String(x.symbol_declaration.file_path.display().to_string());
+        t["line1"] = json!(x.symbol_declaration.full_range.start_point.row + 1);
+        t["line2"] = json!(x.symbol_declaration.full_range.end_point.row + 1);
+        t
+    }
+    context["cursor_symbols"] = Value::Array(search_traces.cursor_symbols.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_declarations"] = Value::Array(search_traces.bucket_declarations.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_usage_of_same_stuff"] = Value::Array(search_traces.bucket_usage_of_same_stuff.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_high_overlap"] = Value::Array(search_traces.bucket_high_overlap.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_imports"] = Value::Array(search_traces.bucket_imports.iter()
+        .map(|x| shorter_symbol(x)).collect());
+
+    let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
+        json!({
+            "file_name": x.file_name,
+            "file_content": x.file_content,
+            "line1": x.line1,
+            "line2": x.line2,
+        })
+    }).collect();
+    context["attached_files"] = Value::Array(attached_files);
+    context
+}

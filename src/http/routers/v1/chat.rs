@@ -8,13 +8,11 @@ use hyper::{Body, Response, StatusCode};
 use tracing::info;
 
 use crate::call_validation::ChatPost;
-use crate::{cached_tokenizers, caps};
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::cached_tokenizers::cached_tokenizer;
 use crate::global_context::SharedGlobalContext;
-use crate::scratchpads;
+use crate::{caps, scratchpads};
 
 
 pub const CHAT_TOP_N: usize = 7;
@@ -142,4 +140,3 @@ async fn chat(
         ).await
     }
 }
-
