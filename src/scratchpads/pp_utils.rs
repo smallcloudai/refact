@@ -94,6 +94,7 @@ pub fn color_with_gradient_type(msg: &ContextFile, lines: &mut Vec<FileLine>) {
             }.max(0.),
             _ => 0.0,
         };
+        info!("applying gradient type {:?} to line {:04}", msg.gradient_type, line_n);
         set_useful_for_line(line, usefulness, format!("gradient_type: {:?}", msg.gradient_type));
     }
 }
@@ -171,6 +172,21 @@ pub fn colorize_if_more_useful(lines: &mut Vec<FileLine>, line1: usize, line2: u
         if let Some(line) = lines.get_mut(i) {
             let u = useful - (i as f32) * 0.001;
             if line.useful < u || line.color.is_empty() {
+                line.useful = u;
+                line.color = color.clone();
+            }
+        }
+    }
+}
+
+pub fn add_usefulness_to_lines(lines: &mut Vec<FileLine>, line1: usize, line2: usize, color: String, useful: f32) {
+    if DEBUG >= 2 {
+        info!("    add_usefulness_to_lines {}..{} <= color {:?} useful {}", line1, line2, color, useful);
+    }
+    for i in line1..line2 {
+        if let Some(line) = lines.get_mut(i) {
+            let u = (line.useful + useful).min(100.);
+            if line.useful < u {
                 line.useful = u;
                 line.color = color.clone();
             }

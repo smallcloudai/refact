@@ -13,7 +13,7 @@ use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
 use crate::files_correction::{canonical_path, correct_to_nearest_filename};
 use crate::nicer_logs::{first_n_chars, last_n_chars};
-use crate::scratchpads::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, count_tokens, downgrade_lines_if_subsymbol, pp_ast_markup_files};
+use crate::scratchpads::pp_utils::{add_usefulness_to_lines, color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, count_tokens, downgrade_lines_if_subsymbol, pp_ast_markup_files};
 
 
 pub const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
@@ -41,8 +41,8 @@ pub struct PostprocessSettings {
     pub useful_background: f32,          // first, fill usefulness of all lines with this
     pub useful_symbol_default: f32,      // when a symbol present, set usefulness higher
     // search results fill usefulness as it passed from outside
-    pub degrade_parent_coef: f32,        // goto parent from search results and mark it useful, with this coef
-    pub degrade_body_coef: f32,          // multiply body usefulness by this, so it's less useful than the declaration
+    pub downgrade_parent_coef: f32,        // goto parent from search results and mark it useful, with this coef
+    pub downgrade_body_coef: f32,          // multiply body usefulness by this, so it's less useful than the declaration
     pub comments_propagate_up_coef: f32, // mark comments above a symbol as useful, with this coef
     pub close_small_gaps: bool,
     pub take_floor: f32,                 // take/dont value
@@ -52,8 +52,8 @@ pub struct PostprocessSettings {
 impl PostprocessSettings {
     pub fn new() -> Self {
         PostprocessSettings {
-            degrade_body_coef: 0.8,
-            degrade_parent_coef: 0.6,
+            downgrade_body_coef: 0.8,
+            downgrade_parent_coef: 0.6,
             useful_background: 5.0,
             useful_symbol_default: 10.0,
             close_small_gaps: true,
@@ -85,6 +85,7 @@ fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSetti
         if DEBUG >= 2 {
             info!("file_ref {:?} has {} bytes, {} symbols", file.cpath, file.markup.file_content.len(), file.markup.symbols_sorted_by_path_len.len());
         }
+        colorize_if_more_useful(lines, 0, lines.len(), "empty".to_string(), settings.useful_background);
         for s in file.markup.symbols_sorted_by_path_len.iter() {
             if DEBUG >= 2 {
                 info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
@@ -94,10 +95,9 @@ fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSetti
                 colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, "comment".to_string(), useful);
             } else {
                 let useful = settings.useful_symbol_default;  // depends on symbol type?
-                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.symbol_path), useful);
+                add_usefulness_to_lines(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.symbol_path), useful);
             }
         }
-        colorize_if_more_useful(lines, 0, lines.len(), "empty".to_string(), settings.useful_background);
     }
     lines_in_files
 }
@@ -165,7 +165,7 @@ async fn set_lines_usefulness(
                     // make parent stand out from background as well, to make it clearer to the model where the symbol is
                     parent_path.pop();
                     let parent_path_str = parent_path.join("::");
-                    colorize_parentof(lines, &parent_path_str, settings.useful_symbol_default, msg.usefulness*settings.degrade_parent_coef);
+                    colorize_parentof(lines, &parent_path_str, settings.useful_symbol_default, msg.usefulness*settings.downgrade_parent_coef);
                 }
             }
         } else {
@@ -200,7 +200,7 @@ fn downgrade_sub_symbols(lines_in_files: &mut HashMap<PathBuf, Vec<FileLine>>, s
                     s.definition_range.end_point.row + 1
                 );
                 if def1 > def0 {
-                    downgrade_lines_if_subsymbol(lines, def0, def1, &format!("{}::body", s.symbol_path), settings.degrade_body_coef);
+                    downgrade_lines_if_subsymbol(lines, def0, def1, &format!("{}::body", s.symbol_path), settings.downgrade_body_coef);
                     // NOTE: this will not downgrade function body of a function that is a search result, because it's not a subsymbol it's the symbol itself (equal path)
                 }
             }
