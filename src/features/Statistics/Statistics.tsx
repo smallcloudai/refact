@@ -15,6 +15,7 @@ export type StatisticsProps = {
   tabbed: Config["tabbed"];
   // state: StatisticState;
 };
+
 export const Statistics: React.FC<StatisticsProps> = ({
   onCloseStatistic,
   backFromStatistic,
