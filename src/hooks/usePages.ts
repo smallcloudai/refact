@@ -16,12 +16,16 @@ export interface SelfHostingSetup {
   name: "self hosting setup";
 }
 
-export interface ChatPage {
-  name: "chat";
+export interface Welcome {
+  name: "welcome";
 }
 
 export interface HistoryList {
   name: "history";
+}
+
+export interface ChatPage {
+  name: "chat";
 }
 
 export interface FIMDebugPage {
@@ -42,6 +46,7 @@ export type Page =
   | EnterpriseSetup
   | SelfHostingSetup
   | ChatPage
+  | Welcome
   | HistoryList
   | FIMDebugPage
   | StatisticsPage

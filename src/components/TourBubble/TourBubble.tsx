@@ -1,8 +1,10 @@
-import { Flex, Link, Text } from "@radix-ui/themes";
+import { Flex, Link } from "@radix-ui/themes";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RootState } from "../../app/store";
 import { close, next } from "../../features/Tour";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
+import { TourBox } from "./TourBox";
+import { TourTitle } from "./TourTitle";
 
 export type TourBubbleProps = {
   text: string;
@@ -62,28 +64,8 @@ export function TourBubble({ text, step, target, down }: TourBubbleProps) {
               }}
             />
           )}
-          <Flex
-            style={{
-              position: "relative",
-              backgroundColor: "white",
-              borderRadius: "5px",
-              minHeight: "60px",
-              alignItems: "center",
-              padding: "7px",
-              alignSelf: "stretch",
-            }}
-          >
-            <img src="favicon.png" width={28} height={28} />
-            <Text
-              style={{
-                color: "black",
-                fontSize: 16,
-                margin: 4,
-                paddingRight: 30,
-              }}
-            >
-              {text}
-            </Text>
+          <TourBox>
+            <TourTitle title={text} />
             <Link
               style={{
                 cursor: "pointer",
@@ -112,7 +94,7 @@ export function TourBubble({ text, step, target, down }: TourBubbleProps) {
             >
               next
             </Link>
-          </Flex>
+          </TourBox>
           {down || (
             <Flex
               style={{
