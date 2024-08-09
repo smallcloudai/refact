@@ -1,1 +1,1 @@
-export { Statistics, type StatisticsProps } from "./Statistics";
+export { Statistics, type StatisticsProps } from "./Statistics.tsx";
