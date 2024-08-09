@@ -40,12 +40,15 @@ const startErrorListening = errorMiddleware.startListening.withTypes<
 startErrorListening({
   matcher: isAnyOf(chatError, isRejected),
   effect: (action, listenerApi) => {
-    if (capsEndpoints.getCaps.matchRejected(action)) {
+    if (capsEndpoints.getCaps.matchRejected(action) && !action.meta.condition) {
       const message = `fetching caps from lsp.`;
       listenerApi.dispatch(setError(message));
     }
 
-    if (promptsEndpoints.getPrompts.matchRejected(action)) {
+    if (
+      promptsEndpoints.getPrompts.matchRejected(action) &&
+      !action.meta.condition
+    ) {
       const message = `fetching system prompts.`;
       listenerApi.dispatch(setError(message));
     }

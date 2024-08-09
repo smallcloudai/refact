@@ -156,7 +156,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     }
     const next = createInitialState();
     next.thread.model = state.thread.messages.length ? state.thread.model : "";
-    state = next;
+    return next;
   });
 
   builder.addCase(chatResponse, (state, action) => {

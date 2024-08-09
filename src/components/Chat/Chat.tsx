@@ -216,7 +216,7 @@ export const Chat: React.FC<ChatProps> = ({
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
           <Card>
             <Flex direction="column" align="center" gap="2">
-              Chat was interupted with uncalled tools calls.
+              Chat was interrupted with uncalled tools calls.
               <Button onClick={onEnableSend}>Resume</Button>
             </Flex>
           </Card>
