@@ -77,7 +77,7 @@ const App: React.FC = () => {
   );
 };
 
-describe.skip("Chat", () => {
+describe("Chat", () => {
   beforeAll(() => {
     worker.listen();
   });
@@ -87,33 +87,121 @@ describe.skip("Chat", () => {
   });
 
   beforeEach(() => {
+    // worker.resetHandlers();
     stubResizeObserver();
     vi.spyOn(window, "postMessage").mockImplementation(postMessage);
   });
 
   afterEach(() => {
+    worker.resetHandlers();
     cleanup();
     vi.restoreAllMocks();
   });
 
+  const encoder = new TextEncoder();
+
   it("should send and receive messages from the window", async () => {
-    // const postMessageSpy = vi.spyOn(window, "postMessage");
-    // const windowSpy = vi.fn();
-    // window.addEventListener("message", windowSpy);
+    worker.use(
+      http.post(
+        "http://127.0.0.1:8001/v1/chat",
+        () => {
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    content: "hello\n",
+                    role: "user",
+                    tool_call_id: "",
+                    usage: null,
+                  })}`,
+                ),
+              );
+
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    choices: [
+                      {
+                        delta: {
+                          content: "hello",
+                          function_call: null,
+                          role: "assistant",
+                          tool_calls: null,
+                        },
+                        finish_reason: null,
+                        index: 0,
+                        logprobs: null,
+                      },
+                    ],
+                  })}`,
+                ),
+              );
+
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    choices: [
+                      {
+                        delta: {
+                          content: " there",
+                          function_call: null,
+                          role: null,
+                          tool_calls: null,
+                        },
+                        finish_reason: null,
+                        index: 0,
+                        logprobs: null,
+                      },
+                    ],
+                  })}`,
+                ),
+              );
+
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    choices: [
+                      {
+                        delta: {
+                          content: null,
+                          function_call: null,
+                          role: null,
+                          tool_calls: null,
+                        },
+                        finish_reason: "stop",
+                        index: 0,
+                        logprobs: null,
+                      },
+                    ],
+                  })}`,
+                ),
+              );
+
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify(["DONE"])}`),
+              );
+
+              controller.close();
+            },
+          });
+
+          return new HttpResponse(stream, {
+            headers: {
+              "Content-Type": "application/json",
+              "Transfer-Encoding": "chunked",
+            },
+          });
+        },
+        { once: true },
+      ),
+    );
 
     const { user, ...app } = render(<App />);
 
-    // expect(postMessageSpy).toHaveBeenCalledWith(
-    //   { type: EVENT_NAMES_FROM_CHAT.REQUEST_CAPS, payload: { id: "foo" } },
-    //   "*",
-    // );
-
-    // setUpCapsForChat("foo");
-    // setUpSystemPromptsForChat("foo");
-
     const select = await app.findByTitle("chat model");
 
-    expect(select.textContent).toContain("gpt-3.5-turbo");
+    await waitFor(() => expect(select.textContent).toContain("gpt-3.5-turbo"));
 
     const textarea = app.getByTestId("chat-form-textarea");
 
@@ -123,70 +211,13 @@ describe.skip("Chat", () => {
 
     await user.keyboard("{Enter}");
 
-    // expect(postMessageSpy).toHaveBeenCalledWith(
-    //   {
-    //     type: EVENT_NAMES_FROM_CHAT.ASK_QUESTION,
-    //     payload: {
-    //       id: id,
-    //       messages: [["user", "hello\n"]],
-    //       model: "", // not added because it's default
-    //       title: "",
-    //       attach_file: false,
-    //       tools: null,
-    //     },
-    //   },
-    //   "*",
-    // );
-
-    // postMessage({
-    //   type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
-    //   payload: {
-    //     id,
-    //     choices: [
-    //       {
-    //         delta: {
-    //           content: "",
-    //           role: "assistant",
-    //         },
-    //         finish_reason: null,
-    //         index: 0,
-    //       },
-    //     ],
-    //     created: 1702552152.03,
-    //     model: "gpt-3.5-turbo",
-    //   },
-    // });
-
-    // postMessage({
-    //   type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
-    //   payload: {
-    //     id,
-    //     choices: [
-    //       {
-    //         delta: {
-    //           content: "hello there",
-    //           role: "assistant",
-    //         },
-    //         finish_reason: null,
-    //         index: 0,
-    //       },
-    //     ],
-    //     created: 1702552152.03,
-    //     model: "gpt-3.5-turbo",
-    //   },
-    // });
-
-    // postMessage({
-    //   type: EVENT_NAMES_TO_CHAT.DONE_STREAMING,
-    //   payload: { id },
-    // });
-
     await waitFor(() => {
       expect(app.getAllByText("hello there")).not.toBeNull();
     });
   });
 
-  it("can restore a chat", async () => {
+  // TODO: this will need to be done higher up
+  it.skip("can restore a chat", async () => {
     const app = render(<App />);
 
     // const restoreChatAction: RestoreChat = {
@@ -364,42 +395,69 @@ describe.skip("Chat", () => {
   //   );
   // });
 
-  it.skip("chat error streaming", async () => {
-    const app = render(<App />);
+  it("char error getting caps", async () => {
+    const { user, ...app } = render(<App />);
 
-    // const chatError: ChatErrorStreaming = {
-    //   type: EVENT_NAMES_TO_CHAT.ERROR_STREAMING,
-    //   payload: {
-    //     id: id,
-    //     message: "whoops",
-    //   },
-    // };
+    worker.use(
+      http.get(
+        "http://127.0.0.1:8001/v1/caps",
+        () => {
+          return HttpResponse.error();
+        },
+        { once: true },
+      ),
+    );
 
-    // postMessage(chatError);
+    const errorRegex = /Error: fetching caps from lsp/;
+
+    await waitFor(() => expect(app.queryByText(errorRegex)).not.toBeNull());
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    await user.click(app.queryByText(errorRegex)!);
+
+    expect(app.queryByText(errorRegex)).toBeNull();
+  });
+
+  it("chat error streaming", async () => {
+    worker.use(
+      http.post(
+        "http://127.0.0.1:8001/v1/chat",
+        () => {
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    detail: "whoops",
+                  })}`,
+                ),
+              );
+            },
+          });
+          return new HttpResponse(stream, {
+            headers: {
+              "Content-Type": "application/json",
+              "Transfer-Encoding": "chunked",
+            },
+          });
+        },
+        { once: true },
+      ),
+    );
+    const { user, ...app } = render(<App />);
+
+    const textarea = app.getByTestId("chat-form-textarea");
+
+    expect(textarea).not.toBeNull();
+
+    await user.type(textarea, "hello");
+
+    await user.keyboard("{Enter}");
 
     await waitFor(() => expect(app.queryByText(/whoops/)).not.toBeNull());
   });
 
-  it.skip("char error getting caps", async () => {
-    // let id = "";
-    const app = render(<App />);
-
-    // TODO: set msw to send an error
-
-    // const chatError: ChatReceiveCapsError = {
-    //   type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS_ERROR,
-    //   payload: {
-    //     id: id,
-    //     message: "whoops error getting caps",
-    //   },
-    // };
-
-    // postMessage(chatError);
-
-    await waitFor(() => expect(app.queryByText(/whoops/)).not.toBeNull());
-  });
-
-  test("chat with different system prompt", async () => {
+  test.skip("chat with different system prompt", async () => {
     // Missing props in jsdom
     // window.PointerEvent = class PointerEvent extends Event {};
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
