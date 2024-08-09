@@ -1,1 +1,1 @@
-export * from "./Statistics";
+export { Statistics, type StatisticsProps } from "./Statistics";
