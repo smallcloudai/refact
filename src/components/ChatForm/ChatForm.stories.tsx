@@ -89,8 +89,8 @@ const meta: Meta<typeof ChatForm> = {
       },
       error: "",
     },
-    error: null,
-    clearError: noop,
+    // error: null,
+    // clearError: noop,
     showControls: true,
     // hasContextFile: false,
     commands: {

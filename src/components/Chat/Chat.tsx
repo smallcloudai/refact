@@ -50,7 +50,7 @@ export type ChatProps = {
   filesInPreview: ChatFormProps["filesInPreview"];
   // selectedSnippet: ChatFormProps["selectedSnippet"];
   // removePreviewFileByName: ChatFormProps["removePreviewFileByName"];
-  requestCaps: ChatFormProps["requestCaps"];
+  // requestCaps: ChatFormProps["requestCaps"];
   prompts: ChatFormProps["prompts"];
 
   onSetSystemPrompt: ChatFormProps["onSetSystemPrompt"];
@@ -99,7 +99,7 @@ export const Chat: React.FC<ChatProps> = ({
   filesInPreview,
   // selectedSnippet,
   // removePreviewFileByName,
-  requestCaps,
+  // requestCaps,
   prompts,
   // onStartNewChat,
   onSetSystemPrompt,
@@ -249,7 +249,7 @@ export const Chat: React.FC<ChatProps> = ({
         selectedSnippet={selectedSnippet}
         // removePreviewFileByName={removePreviewFileByName}
         onTextAreaHeightChange={onTextAreaHeightChange}
-        requestCaps={requestCaps}
+        // requestCaps={requestCaps}
         prompts={prompts}
         onSetSystemPrompt={onSetSystemPrompt}
         selectedSystemPrompt={selectedSystemPrompt}

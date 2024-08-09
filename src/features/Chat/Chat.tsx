@@ -183,10 +183,10 @@ export const Chat: React.FC<ChatProps> = ({
       filesInPreview={commandPreview}
       // selectedSnippet={state.selected_snippet}
       // removePreviewFileByName={removePreviewFileByName}
-      requestCaps={() => {
-        console.log("requestCaps called");
-        // void capsRequest.refetch();
-      }}
+      // requestCaps={() => {
+      //   console.log("requestCaps called");
+      //   void capsRequest.refetch();
+      // }}
       prompts={promptsRequest.data ?? {}}
       // onStartNewChat={startNewChat}
       // Could be lowered

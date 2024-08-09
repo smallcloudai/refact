@@ -287,7 +287,7 @@ export type ChatFormProps = {
   // removePreviewFileByName: (name: string) => void;
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
-  requestCaps: () => void;
+  // requestCaps: () => void;
   prompts: SystemPrompts;
   onSetSystemPrompt: (prompt: SystemPrompts) => void;
   selectedSystemPrompt: SystemPrompts;
@@ -318,7 +318,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onTextAreaHeightChange,
   showControls,
   // TODO: handle re-requesting caps after error
-  requestCaps,
+  // requestCaps,
   prompts,
   onSetSystemPrompt,
   selectedSystemPrompt,
@@ -354,22 +354,22 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     checkboxes,
   });
 
-  useEffect(() => {
-    if (
-      Object.keys(caps.available_caps).length === 0 &&
-      !caps.default_cap &&
-      !caps.fetching
-    ) {
-      requestCaps();
-    }
-  }, [
-    requestCaps,
-    caps.available_caps.length,
-    caps.default_cap,
-    caps.fetching,
-    value,
-    caps.available_caps,
-  ]);
+  // useEffect(() => {
+  //   if (
+  //     Object.keys(caps.available_caps).length === 0 &&
+  //     !caps.default_cap &&
+  //     !caps.fetching
+  //   ) {
+  //     requestCaps();
+  //   }
+  // }, [
+  //   requestCaps,
+  //   caps.available_caps.length,
+  //   caps.default_cap,
+  //   caps.fetching,
+  //   value,
+  //   caps.available_caps,
+  // ]);
 
   useEffect(() => {
     if (!showControls) {
