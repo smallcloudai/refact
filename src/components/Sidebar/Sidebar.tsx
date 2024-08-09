@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { Box, Flex, Button } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Footer, FooterProps } from "./Footer";
@@ -52,8 +52,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     dispatch(newChatAction({ id: currentChatId }));
     handleNavigation("chat");
   };
-  const onHistoryItemClick = (thread: ChatThread) =>
-    dispatch(restoreChat({ id: currentChatId, thread }));
+  const onHistoryItemClick = useCallback(
+    (thread: ChatThread) => {
+      dispatch(restoreChat({ id: currentChatId, thread }));
+      handleNavigation("chat");
+    },
+    [currentChatId, dispatch, handleNavigation],
+  );
 
   return (
     <Flex direction="column" style={style}>
@@ -75,7 +80,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         history={history}
         onHistoryItemClick={onHistoryItemClick}
         onDeleteHistoryItem={onDeleteHistoryItem}
-        currentChatId={currentChatId}
       />
       <Flex p="2" pb="4">
         <Footer
