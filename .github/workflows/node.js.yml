@@ -23,7 +23,7 @@ jobs:
       - run: npm ci
       - run: npm run test
       - run: npm run format:check
-      - run: npm run types -- --verbose
+      - run: npm run types
       - run: npm run lint
       - run: npm run build
 
