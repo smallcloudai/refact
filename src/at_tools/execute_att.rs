@@ -7,7 +7,7 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
-use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
+use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::scratchpads::chat_utils_rag::{HasRagResults, max_tokens_for_rag_chat, postprocess_at_results2, postprocess_plain_text_messages};
 
 
@@ -145,7 +145,7 @@ pub async fn run_tools(
         info!("run_tools: tokens_limit_files={} after postprocessing", tokens_limit_files);
 
         let gcx = ccx.lock().await.global_context.clone();
-        let (context_file, _) = postprocess_at_results2(
+        let (context_file_vec, _) = postprocess_at_results2(
             gcx.clone(),
             &for_postprocessing,
             tokenizer.clone(),
@@ -154,8 +154,8 @@ pub async fn run_tools(
             top_n,
         ).await;
 
-        if !context_file.is_empty() {
-            let json_vec = context_file.iter().map(|p| json!(p)).collect::<Vec<_>>();
+        if !context_file_vec.is_empty() {
+            let json_vec = context_file_vec.iter().map(|p| json!(p)).collect::<Vec<_>>();
             let message = ChatMessage::new(
                 "context_file".to_string(),
                 serde_json::to_string(&json_vec).unwrap_or("".to_string()),

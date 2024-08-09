@@ -141,9 +141,9 @@ pub fn filter_only_context_file_from_context_tool(tools: &Vec<ContextEnum>) -> V
         }).collect::<Vec<ContextFile>>()
 }
 
-pub fn filter_only_chat_messages_from_context_tool(tools: &Vec<ContextEnum>) -> Vec<ChatMessage> {
-    tools.iter()
-        .filter_map(|x| {
-            if let ContextEnum::ChatMessage(data) = x { Some(data.clone()) } else { None }
-        }).collect::<Vec<ChatMessage>>()
-}
+// pub fn filter_only_chat_messages_from_context_tool(tools: &Vec<ContextEnum>) -> Vec<ChatMessage> {
+//     tools.iter()
+//         .filter_map(|x| {
+//             if let ContextEnum::ChatMessage(data) = x { Some(data.clone()) } else { None }
+//         }).collect::<Vec<ChatMessage>>()
+// }

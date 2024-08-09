@@ -169,14 +169,14 @@ tools:
       - "im_going_to_do"
 
   - name: "supercat"
-    description: "read multiple files and skeletonize them. Provide symbols (AST Symbols) to highlight important parts of the file."
+    description: "Like cat in console, but better: it can read multiple files and skeletonize them. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full."
     parameters:
       - name: "paths"
         type: "string"
-        description: "Files to read and skeletonize. Must be a String of comma separated file names."
+        description: "Comma separated file names: dir1/file1.ext, dir2/file2.ext"
       - name: "symbols"
         type: "string"
-        description: "AST Symbols to highlight in files. Must be a String of comma separated symbols."
+        description: "Comma separated symbols: MyClass, MyClass::method, my_function"
     parameters_required:
       - "paths"
 
