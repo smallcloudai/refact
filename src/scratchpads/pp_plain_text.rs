@@ -23,12 +23,6 @@ pub async fn postprocess_plain_text(
 
     let tokenizer_guard = tokenizer.read().unwrap();
     for (idx, msg) in messages_sorted.iter().cloned().enumerate() {
-        // do not postprocess supercat
-        if msg.role == "supercat" {
-            results.push(msg.clone());
-            continue;
-        }
-
         let mut out = vec![];
         let mut tok_used = 0;
         for line in msg.content.lines() {

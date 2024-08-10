@@ -62,6 +62,8 @@ impl AtParam for AtParamSymbolPathQuery {
         };
 
         let value_lower = value.to_lowercase();
+        let top_n = top_n.unwrap_or(10);
+        
         let mapped_paths = names
             .iter()
             .filter(|x| x.to_lowercase().contains(&value_lower) && !x.is_empty())
@@ -106,6 +108,7 @@ impl AtParam for AtParamSymbolReferencePathQuery {
             Some(ast) => ast.read().await.get_symbols_names(RequestSymbolType::Usage).await.unwrap_or_default(),
             None => vec![]
         };
+        let top_n = top_n.unwrap_or(10);
         let value_lower = value.to_lowercase();
         let mapped_paths = index_paths
             .iter()

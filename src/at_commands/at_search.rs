@@ -11,6 +11,9 @@ use crate::call_validation::{ContextFile, ContextEnum};
 use crate::vecdb::vdb_structs::VecdbSearch;
 
 
+const TOP_N_DEFAULT: usize = 7;
+
+
 pub fn text_on_clip(query: &String, from_tool_call: bool) -> String {
     if !from_tool_call {
         return query.clone();
@@ -67,7 +70,7 @@ pub async fn execute_at_search(
     let vec_db = gcx.read().await.vec_db.clone();
     let r = match *vec_db.lock().await {
         Some(ref db) => {
-            let top_n_twice_as_big = top_n * 2;  // top_n will be cut at postprocessing stage, and we really care about top_n files, not pieces
+            let top_n_twice_as_big = top_n.unwrap_or(TOP_N_DEFAULT) * 2;  // top_n will be cut at postprocessing stage, and we really care about top_n files, not pieces
             // TODO: this code sucks, release lock, don't hold anything during the search
             let search_result = db.vecdb_search(query.clone(), top_n_twice_as_big, vecdb_scope_filter_mb).await?;
             let results = search_result.results.clone();

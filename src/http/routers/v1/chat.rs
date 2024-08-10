@@ -110,7 +110,7 @@ async fn chat(
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
         global_context.clone(),
         n_ctx,
-        CHAT_TOP_N,
+        Some(CHAT_TOP_N),
         false,
         &chat_post.messages,
     ).await));

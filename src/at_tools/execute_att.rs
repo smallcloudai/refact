@@ -29,7 +29,7 @@ pub async fn run_tools(
     let context_limit = reserve_for_context;
 
     info!("run_tools: reserve_for_context {} tokens", reserve_for_context);
-    if original_messages.len() == 0 {
+    if original_messages.is_empty() {
         return (original_messages.clone(), false);
     }
     let ass_n = original_messages.len() - 1;
@@ -89,7 +89,7 @@ pub async fn run_tools(
             let mut have_answer = false;
             for msg in tool_msg_and_maybe_more {
                 if let ContextEnum::ChatMessage(ref raw_msg) = msg {
-                    if (raw_msg.role == "tool" || raw_msg.role == "diff" || raw_msg.role == "supercat") && raw_msg.tool_call_id == t_call.id {
+                    if (raw_msg.role == "tool" || raw_msg.role == "diff") && raw_msg.tool_call_id == t_call.id {
                         generated_tool.push(raw_msg.clone());
                         have_answer = true;
                     } else {
@@ -153,7 +153,7 @@ pub async fn run_tools(
             tokenizer.clone(),
             tokens_limit_files,
             false,
-            Some(top_n),
+            top_n,
         ).await;
 
         if !context_file_vec.is_empty() {

@@ -134,6 +134,7 @@ pub async fn at_file_repair_candidates(
         let ccx_locked = ccx.lock().await;
         (ccx_locked.global_context.clone(), ccx_locked.top_n)
     };
+    let top_n = top_n.unwrap_or(10);
     file_repair_candidates(value, gcx.clone(), top_n, fuzzy).await
 }
 

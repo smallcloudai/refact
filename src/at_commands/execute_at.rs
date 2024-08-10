@@ -114,7 +114,7 @@ pub async fn run_at_commands(
                 tokenizer.clone(),
                 tokens_limit_files,
                 false,
-                Some(top_n),
+                top_n,
             ).await;
             if !post_processed.is_empty() {
                 // OUTPUT: files after all custom messages and plain text

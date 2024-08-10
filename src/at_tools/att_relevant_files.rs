@@ -25,6 +25,13 @@ pub struct AttRelevantFiles;
 #[async_trait]
 impl Tool for AttRelevantFiles {
     async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, _args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+        let (top_n_default, n_ctx_default) = {
+            let mut ccx_lock = ccx.lock().await;
+            let (top_n_default, n_ctx_default) = (ccx_lock.top_n, ccx_lock.n_ctx);
+            ccx_lock.top_n = None;
+            ccx_lock.n_ctx = 64_000;
+            (top_n_default, n_ctx_default)
+        };
         let problem = {
             let ccx_locked = ccx.lock().await;
             ccx_locked.messages.iter().filter(|m| m.role == "user").last().map(|x|x.content.clone()).ok_or(
@@ -33,6 +40,12 @@ impl Tool for AttRelevantFiles {
         };
 
         let res = find_relevant_files(ccx, tool_call_id.clone(), problem.as_str()).await?;
+
+        {
+            let mut ccx_lock = ccx.lock().await;
+            ccx_lock.top_n = top_n_default;
+            ccx_lock.n_ctx = n_ctx_default;
+        }
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -209,6 +222,69 @@ async fn strategy_definitions_references(
     Ok((file_results, sym_results))
 }
 
+async fn supercat_extract_symbols(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    user_query: &str,
+    files: Vec<String>,
+    symbols: Vec<String>,
+) -> Result<Vec<String>, String> {
+    let mut messages = vec![];
+    messages.push(ChatMessage::new("system".to_string(), STEP1_DET_SYSTEM_PROMPT.to_string()));
+    messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
+
+    let mut supercat_args = HashMap::new();
+    supercat_args.insert("paths".to_string(), files.join(","));
+    if !symbols.is_empty() {
+        supercat_args.insert("symbols".to_string(), symbols.join(","));
+    }
+
+    messages.push(pretend_tool_call(
+        "supercat",
+        serde_json::to_string(&supercat_args).unwrap().as_str()
+    ));
+
+    let mut messages = subchat_single(
+        ccx.clone(),
+        MODEL_NAME,
+        messages,
+        vec!["supercat".to_string()],
+        None,
+        true,
+        None,
+        None,
+        Some("supercat1-extract-det".to_string()),
+    ).await?.get(0).ok_or("relevant_files: supercat message was empty.".to_string())?.clone();
+
+    messages.push(ChatMessage::new("user".to_string(), SUPERCAT_EXTRACT_SYMBOLS_PROMPT.replace("{USER_QUERY}", &user_query)));
+
+    let n_choices = subchat_single(
+        ccx.clone(),
+        MODEL_NAME,
+        messages,
+        vec![],
+        Some("none".to_string()),
+        false,
+        Some(0.8),
+        Some(5usize),
+        Some("supercat2-extract".to_string()),
+    ).await?;
+
+    let mut symbols_result = vec![];
+    for msg in n_choices.into_iter().map(|x|x.last().unwrap().clone()).filter(|x|x.role == "assistant") {
+        let symbols = {
+            let re = Regex::new(r"[^,\s]+").unwrap();
+            re.find_iter(&msg.content)
+                .map(|mat| mat.as_str().to_string())
+                .collect::<Vec<_>>()
+        };
+        symbols_result.push(symbols);
+    }
+    
+    let results = reduce_by_counter(symbols_result.into_iter().flatten(), 15);
+
+    Ok(results)
+}
+
 async fn supercat_decider(
     ccx: Arc<AMutex<AtCommandsContext>>,
     user_query: &str,
@@ -240,7 +316,7 @@ async fn supercat_decider(
         None,
         None,
         Some("supercat1-det".to_string()),
-    ).await?.get(0).ok_or("relevant_files: supercat message was empty. Try again later".to_string())?.clone();
+    ).await?.get(0).ok_or("relevant_files: supercat message was empty.".to_string())?.clone();
 
     messages.push(ChatMessage::new("user".to_string(), SUPERCAT_DECIDER_PROMPT.replace("{USER_QUERY}", &user_query)));
 
@@ -299,16 +375,26 @@ async fn find_relevant_files_det(
 
     let mut paths_chosen = vec![];
     let tree_files = strategy_tree(ccx.clone(), user_query).await?;
-    let (def_ref_files, def_ref_symbols) = strategy_definitions_references(ccx.clone(), user_query).await?;
-    println!("\n\nSYMBOLS: {:?}\n\n", def_ref_symbols);
+    let (def_ref_files, mut symbols) = strategy_definitions_references(ccx.clone(), user_query).await?;
+    println!("\n\nSYMBOLS: {:?}\n\n", symbols);
     paths_chosen.extend(tree_files);
     paths_chosen.extend(def_ref_files);
+    
+    let extra_symbols = supercat_extract_symbols(
+        ccx.clone(),
+        user_query,
+        paths_chosen.clone(),
+        symbols.clone(),
+    ).await?;
+    println!("\n\nEXTRA SYMBOLS: {:?}\n\n", extra_symbols);
+    symbols.extend(extra_symbols);
+    
 
     let results = supercat_decider(
         ccx.clone(),
         user_query,
         paths_chosen,
-        def_ref_symbols,
+        symbols,
     ).await?;
 
     Ok(results)
@@ -439,6 +525,20 @@ struct SuperCatResultItem {
     reason: String,
 }
 
+const SUPERCAT_EXTRACT_SYMBOLS_PROMPT: &str = r###"
+Read slowly and carefully the problem text one more time before you start:
+
+{USER_QUERY}
+
+1. analyse thoroughly the problem statement;
+2. analyse thoroughly context given (skeletonized files from the previous message);
+3. from the given context select all the symbols (functino names, classes names etc) that you find relevant to the problem (either give releavant context or need to be changed);
+4. return the results comma separated. Do not explain anything. Avoid backticks.
+
+Output must be like this:
+MyClass, MyFunction, MyType
+"###;
+    
 const STRATEGY_TREE_PROMPT: &str = r###"
 TODO:
 1. analyse thoroughly the problem statement;

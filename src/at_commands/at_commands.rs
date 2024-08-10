@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use tokio::sync::mpsc;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use async_trait::async_trait;
-use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
@@ -24,7 +23,7 @@ use crate::at_commands::execute_at::AtCommandMember;
 pub struct AtCommandsContext {
     pub global_context: Arc<ARwLock<GlobalContext>>,
     pub n_ctx: usize,
-    pub top_n: usize,
+    pub top_n: Option<usize>,
     pub messages: Vec<ChatMessage>,
     #[allow(dead_code)]
     pub is_preview: bool,
@@ -40,7 +39,7 @@ impl AtCommandsContext {
     pub async fn new(
         global_context: Arc<ARwLock<GlobalContext>>,
         n_ctx: usize,
-        top_n: usize,
+        top_n: Option<usize>,
         is_preview: bool,
         messages: &Vec<ChatMessage>,
     ) -> Self {
@@ -137,10 +136,3 @@ pub fn filter_only_context_file_from_context_tool(tools: &Vec<ContextEnum>) -> V
             if let ContextEnum::ContextFile(data) = x { Some(data.clone()) } else { None }
         }).collect::<Vec<ContextFile>>()
 }
-
-// pub fn filter_only_chat_messages_from_context_tool(tools: &Vec<ContextEnum>) -> Vec<ChatMessage> {
-//     tools.iter()
-//         .filter_map(|x| {
-//             if let ContextEnum::ChatMessage(data) = x { Some(data.clone()) } else { None }
-//         }).collect::<Vec<ChatMessage>>()
-// }

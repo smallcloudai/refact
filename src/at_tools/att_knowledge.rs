@@ -12,6 +12,8 @@ use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::vecdb::vdb_highlev::{memories_search, ongoing_find};
 
 
+const TOP_N_DEFAULT: usize = 7;
+
 pub struct AttGetKnowledge;
 
 
@@ -32,7 +34,7 @@ impl Tool for AttGetKnowledge {
         };
 
         let vec_db = gcx.read().await.vec_db.clone();
-        let memories: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(vec_db.clone(), &im_going_to_do, top_n).await?;
+        let memories: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(vec_db.clone(), &im_going_to_do, top_n.unwrap_or(TOP_N_DEFAULT)).await?;
 
         // TODO: verify it's valid json in payload when accepting the mem into db
         let memories_json = memories.results.iter().map(|m| {
