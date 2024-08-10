@@ -26,7 +26,6 @@ pub struct AtCommandsContext {
     pub n_ctx: usize,
     pub top_n: usize,
     pub messages: Vec<ChatMessage>,
-    pub tokenizer: Option<Arc<RwLock<Tokenizer>>>,
     #[allow(dead_code)]
     pub is_preview: bool,
 
@@ -44,7 +43,6 @@ impl AtCommandsContext {
         top_n: usize,
         is_preview: bool,
         messages: &Vec<ChatMessage>,
-        tokenizer: Option<Arc<RwLock<Tokenizer>>>,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel::<serde_json::Value>();
         AtCommandsContext {
@@ -53,7 +51,6 @@ impl AtCommandsContext {
             top_n,
             is_preview,
             messages: messages.clone(),
-            tokenizer,
             at_commands: at_commands_dict(global_context.clone()).await,
             at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
             subchat_tx: Arc::new(AMutex::new(tx)),

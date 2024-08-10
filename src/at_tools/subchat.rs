@@ -70,7 +70,7 @@ async fn create_chat_post_and_scratchpad(
     chat_post.max_tokens = n_ctx;
     chat_post.scratchpad = scratchpad_name.clone();
 
-    let (scratchpad, _) = crate::scratchpads::create_chat_scratchpad(
+    let scratchpad = crate::scratchpads::create_chat_scratchpad(
         global_context.clone(),
         caps,
         model_name.to_string(),

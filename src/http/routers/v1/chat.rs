@@ -82,7 +82,7 @@ async fn chat(
         let cx_locked = global_context.write().await;
         (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
     };
-    let (mut scratchpad, tokenizer) = scratchpads::create_chat_scratchpad(
+    let mut scratchpad = scratchpads::create_chat_scratchpad(
         global_context.clone(),
         caps,
         model_name.clone(),
@@ -113,7 +113,6 @@ async fn chat(
         CHAT_TOP_N,
         false,
         &chat_post.messages,
-        Some(tokenizer.clone()),
     ).await));
 
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {

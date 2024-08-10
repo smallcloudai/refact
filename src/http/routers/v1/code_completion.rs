@@ -107,7 +107,6 @@ pub async fn handle_v1_code_completion(
         CODE_COMPLETION_TOP_N,
         true,
         &vec![],
-        None,
     ).await));
     if !code_completion_post.stream {
         crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, "completion".to_string(), model_name, client1, api_key, &mut code_completion_post.parameters, false).await
@@ -169,7 +168,6 @@ pub async fn handle_v1_code_completion_prompt(
         CODE_COMPLETION_TOP_N,
         true,
         &vec![],
-        None,
     ).await));
     let prompt = scratchpad.prompt(ccx.clone(), &mut post.parameters).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
