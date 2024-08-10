@@ -158,7 +158,7 @@ async fn set_lines_usefulness(
                 if DEBUG >= 1 {
                     info!("+ search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, msg.usefulness);
                 }
-                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.symbol_path), msg.usefulness);
+                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.symbol_path), 100.);
                 let mut parent_path = s.symbol_path.split("::").collect::<Vec<_>>();
                 if parent_path.len() > 1 {
                     // MyClass::f  ->  MyClass
