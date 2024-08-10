@@ -24,12 +24,7 @@ pub struct AttRelevantFiles;
 
 #[async_trait]
 impl Tool for AttRelevantFiles {
-    async fn tool_execute(
-        &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        tool_call_id: &String,
-        _args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, _args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let problem = {
             let ccx_locked = ccx.lock().await;
             ccx_locked.messages.iter().filter(|m| m.role == "user").last().map(|x|x.content.clone()).ok_or(

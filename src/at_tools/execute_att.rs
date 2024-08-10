@@ -12,6 +12,7 @@ use crate::scratchpads::pp_context_files::{postprocess_context_files};
 use crate::scratchpads::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::pp_utils::{HasRagResults, max_tokens_for_rag_chat};
 
+
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
     tokenizer: Arc<RwLock<Tokenizer>>,

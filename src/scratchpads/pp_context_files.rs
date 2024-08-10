@@ -17,7 +17,7 @@ use crate::scratchpads::pp_utils::{add_usefulness_to_lines, color_with_gradient_
 
 
 pub const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
-pub const DEBUG: usize = 2;  // 0 nothing, 1 summary "N lines in K files => X tokens", 2 everything
+pub const DEBUG: usize = 0;  // 0 nothing, 1 summary "N lines in K files => X tokens", 2 everything
 
 
 #[derive(Debug)]

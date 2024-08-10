@@ -126,12 +126,7 @@ impl AtCommand for AtAstLookupSymbols {
         &self.params
     }
 
-    async fn at_execute(
-        &self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        cmd: &mut AtCommandMember,
-        args: &mut Vec<AtCommandMember>
-    ) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @lookup_symbols_at {:?}", args);
 
         let mut file_path = match args.get(0) {

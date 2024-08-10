@@ -197,11 +197,7 @@ pub async fn get_project_paths(
     }
 }
 
-pub async fn context_file_from_file_path(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-    candidates: Vec<String>,
-    file_path: String,
-) -> Result<ContextFile, String> {
+pub async fn context_file_from_file_path(ccx: Arc<AMutex<AtCommandsContext>>, candidates: Vec<String>, file_path: String) -> Result<ContextFile, String> {
     let mut file_path_from_c = candidates.get(0).map(|x|x.clone()).unwrap_or(file_path.clone());
     let mut line1 = 0;
     let mut line2 = 0;
@@ -231,10 +227,7 @@ pub async fn context_file_from_file_path(
     })
 }
 
-pub async fn execute_at_file(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-    file_path: String,
-) -> Result<ContextFile, String>
+pub async fn execute_at_file(ccx: Arc<AMutex<AtCommandsContext>>, file_path: String) -> Result<ContextFile, String>
 {
     let candidates = at_file_repair_candidates(ccx.clone(), &file_path, false).await;
     match context_file_from_file_path(ccx.clone(), candidates, file_path.clone()).await {
@@ -252,12 +245,7 @@ impl AtCommand for AtFile {
         &self.params
     }
 
-    async fn at_execute(
-        &self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        cmd: &mut AtCommandMember,
-        args: &mut Vec<AtCommandMember>,
-    ) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         let mut file_path = match args.get(0) {
             Some(x) => x.clone(),
             None => {

@@ -171,12 +171,7 @@ impl AtCommand for AtDiff {
         &self.params
     }
 
-    async fn at_execute(
-        &self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        cmd: &mut AtCommandMember,
-        args: &mut Vec<AtCommandMember>,
-    ) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         let diff_chunks = match args.iter().take_while(|arg| arg.text != "\n").take(2).count() {
             0 => {
                 // No arguments: git diff for all tracked files
@@ -276,12 +271,7 @@ impl AtCommand for AtDiffRev {
         &self.params
     }
 
-    async fn at_execute(
-        &self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        cmd: &mut AtCommandMember,
-        args: &mut Vec<AtCommandMember>,
-    ) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         if args.len() < 3 {
             cmd.ok = false; cmd.reason = Some("Invalid number of arguments".to_string());
             args.clear();

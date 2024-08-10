@@ -231,12 +231,7 @@ pub async fn print_files_tree_with_budget(
 impl AtCommand for AtTree {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> { &self.params }
 
-    async fn at_execute(
-        &self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        cmd: &mut AtCommandMember,
-        args: &mut Vec<AtCommandMember>,
-    ) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         let gcx = ccx.lock().await.global_context.clone();
         let paths_from_anywhere = paths_from_anywhere(gcx.clone()).await;
         *args = args.iter().take_while(|arg| arg.text != "\n" || arg.text == "--ast").take(2).cloned().collect();

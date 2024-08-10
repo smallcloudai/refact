@@ -63,12 +63,7 @@ pub async fn real_file_path_candidate(
 
 #[async_trait]
 impl Tool for AttFile {
-    async fn tool_execute(
-        &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        tool_call_id: &String,
-        args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let p = match args.get("path") {
             Some(Value::String(s)) => s,

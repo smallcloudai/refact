@@ -19,12 +19,7 @@ pub struct AttExecuteCommand {
 
 #[async_trait]
 impl Tool for AttExecuteCommand {
-    async fn tool_execute(
-        &mut self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
-        tool_call_id: &String,
-        _args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&mut self, _ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, _args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let (stdout, stderr) = execute_cmd(&self.command, self.timeout).await?;
 
         let mut results = vec![];

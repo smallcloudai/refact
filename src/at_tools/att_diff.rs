@@ -17,12 +17,7 @@ pub struct AttDiff;
 
 #[async_trait]
 impl Tool for AttDiff {
-    async fn tool_execute(
-        &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        tool_call_id: &String,
-        args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         let diff_chunks = match args.len() {
             0 => {
                 // No arguments: git diff for all tracked files

@@ -36,8 +36,7 @@ pub async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> 
     symbols
 }
 
-async fn run_at_definition(ast: &Option<Arc<ARwLock<AstModule>>>, symbol: &String) -> Result<Vec<ContextFile>, String>
-{
+async fn run_at_definition(ast: &Option<Arc<ARwLock<AstModule>>>, symbol: &String) -> Result<Vec<ContextFile>, String> {
     return match &ast {
         Some(ast) => {
             match ast.read().await.search_by_fullpath(
@@ -81,12 +80,7 @@ impl AtCommand for AtAstDefinition {
         &self.params
     }
 
-    async fn at_execute(
-        &self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        cmd: &mut AtCommandMember,
-        args: &mut Vec<AtCommandMember>,
-    ) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @definition {:?}", args);
         let mut symbol = match args.get(0) {
             Some(x) => x.clone(),

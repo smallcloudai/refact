@@ -80,17 +80,11 @@ pub async fn execute_at_search(
 
 #[async_trait]
 impl AtCommand for AtSearch {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>
-    {
+    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
     }
 
-    async fn at_execute(
-        &self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        _cmd: &mut AtCommandMember,
-        args: &mut Vec<AtCommandMember>,
-    ) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, _cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
         let args1 = args.iter().map(|x|x.clone()).collect::<Vec<_>>();
         info!("execute @workspace {:?}", args1);
         let query = args.iter().map(|x|x.text.clone()).collect::<Vec<_>>().join(" ");

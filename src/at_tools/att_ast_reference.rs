@@ -19,12 +19,7 @@ pub struct AttAstReference;
 
 #[async_trait]
 impl Tool for AttAstReference {
-    async fn tool_execute(
-        &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        tool_call_id: &String,
-        args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
         info!("execute @references {:?}", args);
         let (gcx, top_n) = {
             let ccx_locked = ccx.lock().await;

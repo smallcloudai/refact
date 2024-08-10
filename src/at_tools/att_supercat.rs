@@ -130,7 +130,7 @@ impl Tool for AttSuperCat {
 pub fn format_context_files_to_message_content(
     context_files: Vec<ContextFile>,
 ) -> String {
-    let mut content: String = String::new();
+    let mut content = String::new();
     for x in context_files.iter() {
         content.push_str(format!("{}:\n\n{}\n\n", x.file_name.as_str(), x.file_content.as_str()).as_str());
     }

@@ -15,12 +15,7 @@ pub struct AttAstLookupSymbols;
 
 #[async_trait]
 impl Tool for AttAstLookupSymbols {
-    async fn tool_execute(
-        &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        tool_call_id: &String,
-        args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String>
+    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String>
     {
         info!("execute tool: lookup_symbols_at {:?}", args);
         let path = match args.get("path") {
