@@ -1,11 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Component, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 use crate::global_context::GlobalContext;
 use itertools::Itertools;
 use tokio::sync::RwLock as ARwLock;
 use strsim::normalized_damerau_levenshtein;
 use tracing::info;
+
 
 pub async fn paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
     let file_paths_from_memory = global_context.read().await.documents_state.memory_document_map.keys().map(|x|x.clone()).collect::<Vec<_>>();
@@ -14,7 +16,6 @@ pub async fn paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>>) ->
     let paths_from_anywhere = file_paths_from_memory.into_iter().chain(paths_from_workspace.into_iter().chain(paths_from_jsonl.into_iter()));
     paths_from_anywhere.collect::<Vec<PathBuf>>()
 }
-
 
 fn make_cache<I>(paths_iter: I) -> (
     HashMap<String, HashSet<String>>, Vec<String>, usize
@@ -45,7 +46,13 @@ fn make_cache<I>(paths_iter: I) -> (
     (cache_correction, cache_fuzzy_set.into_iter().collect(), cnt)
 }
 
-use std::time::Instant;
+pub async fn get_all_files_in_dir_recursively(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    dir: &PathBuf,
+) -> Vec<PathBuf> {
+    let paths = paths_from_anywhere(global_context.clone()).await;
+    paths.into_iter().filter(|path| path.starts_with(dir)).collect()
+}
 
 pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, HashSet<String>>>, Arc<Vec<String>>) {
     let (cache_dirty_arc, mut cache_correction_arc, mut cache_fuzzy_arc) = {

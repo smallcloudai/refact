@@ -166,6 +166,7 @@ async fn strategy_definitions_references(
     messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
     messages.push(ChatMessage::new("user".to_string(), STRATEGY_DEF_REF_PROMPT.to_string()));
 
+    // todo: simply ask list of symbols comma separated, don't ask for tools
     let n_choices = subchat_single(
         ccx.clone(),
         MODEL_NAME,
@@ -396,7 +397,10 @@ async fn find_relevant_files_det(
         paths_chosen,
         symbols,
     ).await?;
-
+    // let results = json!(paths_chosen.into_iter().map(|x|SuperCatResultItem{
+    //     file_path: x.to_string(),
+    //     reason: "none".to_string(),
+    // }).collect::<Vec<_>>());
     Ok(results)
 }
 

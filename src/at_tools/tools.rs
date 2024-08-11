@@ -172,10 +172,13 @@ tools:
     parameters:
       - name: "paths"
         type: "string"
-        description: "Comma separated file names: dir1/file1.ext, dir2/file2.ext"
+        description: "Comma separated file names or directories. e.g: dir1/file1.ext, dir2/file2.ext, dir3/dir4"
       - name: "symbols"
         type: "string"
-        description: "Comma separated symbols: MyClass, MyClass::method, my_function"
+        description: "Comma separated AST symbols: MyClass, MyClass::method, my_function"
+      - name: "detail_level"
+        type: "string"
+        description: "`fulltext` or `skeleton`; default: `fulltext`"
     parameters_required:
       - "paths"
 
