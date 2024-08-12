@@ -37,7 +37,7 @@ impl Tool for AttRelevantFiles {
             )?
         };
 
-        let res = find_relevant_files(ccx, problem.as_str()).await?;
+        let res = find_relevant_files(ccx, tool_call_id.clone(), problem.as_str()).await?;
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -91,7 +91,9 @@ async fn strategy_tree(
         true,
         None,
         None,
-        Some("strategy-tree.log".to_string()),
+        Some("strategy-tree".to_string()),
+        None,
+        None,
     ).await?.get(0).ok_or("relevant_files: tree deterministic message was empty. Try again later".to_string())?.clone();
 
     messages.push(ChatMessage::new("user".to_string(), STRATEGY_TREE_PROMPT.to_string()));
@@ -105,7 +107,9 @@ async fn strategy_tree(
         false,
         Some(0.8),
         Some(5usize),
-        Some("strategy-tree-choices.log".to_string()),
+        Some("strategy-tree-choices".to_string()),
+        None,
+        None,
     ).await?;
 
     let file_names_pattern = r"\b(?:[a-zA-Z]:\\|/)?(?:[\w-]+[/\\])*[\w-]+\.\w+\b";
@@ -152,7 +156,9 @@ async fn strategy_definitions_references(
         false,
         Some(0.8),
         Some(5usize),
-        Some("strategy-definitions-references.log".to_string()),
+        Some("strategy-definitions-references".to_string()),
+        None,
+        None,
     ).await?;
 
     let mut filenames = vec![];
@@ -169,7 +175,9 @@ async fn strategy_definitions_references(
             true,
             None,
             None,
-            None
+            None,
+            None,
+            None,
         ).await?.get(0).ok_or("relevant_files: no context files found (strategy_definitions_references). Try again later".to_string())?.clone();
 
         let only_context_files = ch_messages.into_iter().filter(|x| x.role == "context_file").collect::<Vec<_>>();
@@ -215,6 +223,7 @@ async fn find_relevant_files_det(
 #[allow(dead_code)]
 async fn find_relevant_files(
     ccx: Arc<AMutex<AtCommandsContext>>,
+    tool_call_id: String,
     user_query: &str,
 ) -> Result<Value, String> {
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
@@ -254,6 +263,8 @@ async fn find_relevant_files(
             RF_PLEASE_WRITE_MEM,
             None,
             Some(format!("{log_prefix}-rf-step1-{strategy}")),
+            Some(tool_call_id.clone()),
+            Some(format!("{log_prefix}-rf-step1-{strategy}")),
         );
         futures.push(f);
     }
@@ -280,6 +291,8 @@ async fn find_relevant_files(
         false,
         None,
         None,
+        Some(format!("{log_prefix}-rf-step2-reduce")),
+        Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step2-reduce")),
     ).await?[0].clone();
 

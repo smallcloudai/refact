@@ -44,6 +44,8 @@ pub async fn handle_v1_subchat(
         post.wrap_up_prompt.as_str(),
         None,
         Some(logfn),
+        None,
+        None,
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
 
     let resp_serialised = serde_json::to_string_pretty(&new_messages).unwrap();
@@ -89,6 +91,8 @@ pub async fn handle_v1_subchat_single(
         post.temperature,
         post.n,
         Some(logfn),
+        None,
+        None,
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
 
     let resp_serialised = serde_json::to_string_pretty(&new_messages).unwrap();

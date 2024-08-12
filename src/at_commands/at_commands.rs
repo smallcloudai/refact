@@ -30,9 +30,11 @@ pub struct AtCommandsContext {
     pub messages: Vec<ChatMessage>,
     #[allow(dead_code)]
     pub is_preview: bool,
-    pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,
+
+    pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
     pub at_tools: HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
-    pub subchat_tx: Arc<AMutex<mpsc::UnboundedSender<serde_json::Value>>>,
+
+    pub subchat_tx: Arc<AMutex<mpsc::UnboundedSender<serde_json::Value>>>, // one and only supported format for now {"tool_call_id": xx, "subchat_id": xx, "add_message": {...}}
     pub subchat_rx: Arc<AMutex<mpsc::UnboundedReceiver<serde_json::Value>>>,
 }
 

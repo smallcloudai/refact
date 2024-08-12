@@ -1,9 +1,11 @@
+from __future__ import annotations
 import uuid
 import tabulate
 import aiohttp, os, termcolor, copy, json, time
-from typing import Optional, List, Any, Tuple, Dict, Literal, Set
+from typing import Optional, List, Any, Tuple, DefaultDict, Dict, Literal, Set
+import collections
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 from rich.console import Console
 from rich.markdown import Markdown
 
@@ -39,6 +41,8 @@ class Message(BaseModel):
     finish_reason: str = ""
     tool_call_id: str = ""
     usage: Optional[Usage] = None
+    subchats: DefaultDict[str, List[Message]] = None
+    model_config = ConfigDict(exclude_none=True)
 
 
 def messages_to_dicts(
@@ -188,6 +192,7 @@ async def ask_using_http(
     only_deterministic_messages: bool = False,
 ) -> List[List[Message]]:
     deterministic: List[Message] = []
+    subchats: DefaultDict[str, List[Message]] = collections.defaultdict(list)
     post_me = {
         "model": model_name,
         "n": n_answers,
@@ -244,12 +249,27 @@ async def ask_using_http(
                         choice_collector.add_deltas(j["choices"])
                     elif "role" in j:
                         deterministic.append(Message(**j))
+                    elif "subchat_id" in j:
+                        map_key = j["tool_call_id"] + "__" + j["subchat_id"]
+                        subchats[map_key].append(Message(**j["add_message"]))
                     else:
                         print("unrecognized streaming data (2):", j)
                 for x in choice_collector.choices:
                     if x.content is not None and len(x.content) == 0:
                         x.content = None
                 choices = choice_collector.choices
+                # when streaming, subchats are streamed too
+                has_home = set()
+                for d in deterministic:
+                    if d.tool_call_id is None:
+                        continue
+                    d.subchats = collections.defaultdict(list)
+                    for k, msglist in subchats.items():
+                        if k.startswith(d.tool_call_id + "__"):
+                            subchat_id = k[len(d.tool_call_id + "__"):]
+                            d.subchats[subchat_id] = msglist
+                            has_home.add(k)
+                assert set(has_home) == set(subchats.keys()), f"Whoops, not all subchats {subchats.keys()} are attached to a tool result."
     return join_messages_and_choices(messages, deterministic, choices, verbose)
 
 

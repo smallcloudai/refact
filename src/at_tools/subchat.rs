@@ -17,7 +17,6 @@ use crate::scratchpad_abstract::ScratchpadAbstract;
 
 const TEMPERATURE: f32 = 0.2;
 const MAX_NEW_TOKENS: usize = 4096;
-const ALLOW_AT: bool = true;
 
 
 async fn create_chat_post_and_scratchpad(
@@ -78,7 +77,7 @@ async fn create_chat_post_and_scratchpad(
         &chat_post,
         &scratchpad_name,
         &scratchpad_patch,
-        ALLOW_AT,
+        false,
         supports_tools,
     ).await?;
 
@@ -107,7 +106,7 @@ async fn chat_interaction_non_stream(
         chat_post.model.clone(),
         client,
         api_key.clone(),
-        &chat_post.parameters,
+        &chat_post.parameters,   // careful: includes n
         chat_post.only_deterministic_messages,
     ).await.map_err(|e| {
         warn!("network error communicating with the model (2): {:?}", e);
@@ -141,6 +140,7 @@ async fn chat_interaction_non_stream(
 
     let choices = j.get("choices").and_then(|value| value.as_array()).ok_or("error parsing model's output: choices doesn't exist".to_string())?;
     for choice in choices {
+        // XXX: bug 'index' is ignored in scratchpad_interaction_not_stream_json, important when n>1
         let message = choice.get("message").ok_or("error parsing model's output: choice.message doesn't exist".to_string())?;
 
         // convert choice to a ChatMessage (we don't have code like this in any other place in rust, only in python and typescript)
@@ -266,6 +266,8 @@ pub async fn subchat_single(
     temperature: Option<f32>,
     n: Option<usize>,
     logfn_mb: Option<String>,
+    tx_toolid_mb: Option<String>,
+    tx_chatid_mb: Option<String>,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
     let gcx = ccx.lock().await.global_context.clone();
 
@@ -299,19 +301,12 @@ pub async fn subchat_single(
 
     let chat_response_msgs = chat_interaction(ccx.clone(), spad, &mut chat_post).await?;
 
-    let mut old_messages = messages.clone();
-    if ALLOW_AT {
-        while let Some(message) = old_messages.last() {
-            if message.role != "user" {
-                break;
-            }
-            old_messages.pop();
-        }
-    }
+    let old_messages = messages.clone();
+    // no need to remove user from old_messages here, because allow_at is false
 
-    let results = chat_response_msgs.into_iter().map(|new_msgs| {
+    let results = chat_response_msgs.iter().map(|new_msgs| {
         let mut extended_msgs = old_messages.clone();
-        extended_msgs.extend(new_msgs);
+        extended_msgs.extend(new_msgs.clone());
         extended_msgs
     }).collect::<Vec<Vec<ChatMessage>>>();
 
@@ -333,6 +328,24 @@ pub async fn subchat_single(
         }
     }
 
+    if let Some(tx_chatid) = tx_chatid_mb {
+        assert!(tx_toolid_mb.is_some());
+        let tx_toolid = tx_toolid_mb.unwrap();
+        let subchat_tx = ccx.lock().await.subchat_tx.clone();
+        for (i, choice) in chat_response_msgs.iter().enumerate() {
+            // XXX: ...-choice will not work to store in chat_client.py
+            let cid = if chat_response_msgs.len() > 1 {
+                format!("{}-choice{}", tx_chatid, i)
+            } else {
+                tx_chatid.clone()
+            };
+            for msg_in_choice in choice {
+                let message = serde_json::json!({"tool_call_id": tx_toolid, "subchat_id": cid, "add_message": msg_in_choice});
+                let _ = subchat_tx.lock().await.send(message);
+            }
+        }
+    }
+
     Ok(results)
 }
 
@@ -346,7 +359,8 @@ pub async fn subchat(
     wrap_up_prompt: &str,
     temperature: Option<f32>,
     logfn_mb: Option<String>,
-    // something streamable
+    tx_toolid_mb: Option<String>,
+    tx_chatid_mb: Option<String>,
 ) -> Result<Vec<ChatMessage>, String> {
     let mut messages = messages.clone();
     // let mut chat_usage = ChatUsage { ..Default::default() };
@@ -381,6 +395,8 @@ pub async fn subchat(
                 temperature,
                 None,
                 logfn_mb.clone(),
+                tx_toolid_mb.clone(),
+                tx_chatid_mb.clone(),
             ).await?[0].clone();
             step_n += 1;
         }
@@ -399,6 +415,8 @@ pub async fn subchat(
                 temperature,
                 None,
                 logfn_mb.clone(),
+                tx_toolid_mb.clone(),
+                tx_chatid_mb.clone(),
             ).await?[0].clone();
         }
     }
@@ -413,6 +431,8 @@ pub async fn subchat(
         temperature,
         None,
         logfn_mb.clone(),
+        tx_toolid_mb.clone(),
+        tx_chatid_mb.clone(),
     ).await?[0].clone();
     Ok(messages)
 }
