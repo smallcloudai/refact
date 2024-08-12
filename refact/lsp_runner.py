@@ -1,4 +1,5 @@
 import os
+import time
 import asyncio
 import random
 import subprocess
@@ -54,6 +55,7 @@ class LSPServerRunner:
         return f"http://127.0.0.1:{self._port}/v1"
 
     async def _start(self):
+        t0 = time.time()
         print("REFACT LSP start", " ".join(self._command))
         self._lsp_server = await asyncio.create_subprocess_exec(
             *self._command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -71,18 +73,25 @@ class LSPServerRunner:
             if not self._is_lsp_server_running:
                 raise RuntimeError(f"LSP server unexpectedly exited, bb")
             await asyncio.sleep(0.01)
-        print("REFACT LSP /start")
+        print("REFACT LSP /start in %0.2fs" % (time.time() - t0))
         assert self._is_lsp_server_running
 
     async def _stop(self):
         if self._lsp_server is not None:
-            self._lsp_server.terminate()
+            print("REFACT LSP STOP")
             try:
-                await asyncio.wait_for(self._lsp_server.wait(), timeout=5.0)
-            except asyncio.TimeoutError:
-                self._lsp_server.kill()
-                await self._lsp_server.wait()
-        assert not self._is_lsp_server_running
+                self._lsp_server.terminate()
+                try:
+                    await asyncio.wait_for(self._lsp_server.wait(), timeout=5.0)
+                except asyncio.TimeoutError:
+                    print("LSP server did not terminate in time, forcefully killing")
+                    self._lsp_server.kill()
+                    await self._lsp_server.wait()
+            except Exception as e:
+                print(f"Error stopping LSP server: {e}")
+            finally:
+                self._lsp_server = None
+            print("REFACT LSP /STOP")
 
     async def __aenter__(self):
         await self._start()

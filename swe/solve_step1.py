@@ -19,7 +19,7 @@ async def process_instance(instance_id: str, output_dir: Path, timeout: int = 12
     ]
     print(" ".join(cmdline))
     try:
-        process = await asyncio.create_subprocess_exec(cmdline)
+        process = await asyncio.create_subprocess_exec(*cmdline)
         await process.communicate()
         print(f"successfully processed instance {instance_id}")
     except Exception as e:
