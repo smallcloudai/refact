@@ -8,7 +8,7 @@ type TourProps = {
 export const Tour = ({ page }: TourProps) => {
   const refs = useTourRefs();
 
-  const chatWidth = "calc(100% - 80px)";
+  const chatWidth = "calc(100% - 20px)";
 
   return (
     <>
