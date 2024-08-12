@@ -6,7 +6,7 @@ import { ScrollArea } from "../../components/ScrollArea";
 import { StatisticView } from "../../components/StatisticView/StatisticView";
 import { PageWrapper } from "../../components/PageWrapper";
 import { useGetStatisticDataQuery } from "../../app/hooks";
-import type { Config } from "../Config/reducer";
+import type { Config } from "../Config/configSlice";
 
 export type StatisticsProps = {
   onCloseStatistic?: () => void;

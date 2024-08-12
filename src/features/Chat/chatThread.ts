@@ -335,19 +335,29 @@ const chatAskQuestionThunk = createAppAsyncThunk<
     });
 });
 
+export const selectThread = (state: RootState) => state.chat.thread;
+export const selectChatId = (state: RootState) => state.chat.thread.id;
+export const selectModel = (state: RootState) => state.chat.thread.model;
+export const selectMessages = (state: RootState) => state.chat.thread.messages;
+export const selectUseTools = (state: RootState) => state.chat.use_tools;
+export const selectIsWaiting = (state: RootState) =>
+  state.chat.waiting_for_response;
+export const selectIsStreaming = (state: RootState) => state.chat.streaming;
+export const selectPreventSend = (state: RootState) => state.chat.prevent_send;
+export const selectChatError = (state: RootState) => state.chat.error;
+
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
   const abortRef = useRef<null | ((reason?: string | undefined) => void)>(null);
   const capsRequest = useGetCapsQuery(undefined);
   const toolsRequest = useGetToolsQuery(!!capsRequest.data);
 
-  const thread = useAppSelector((state) => state.chat.thread);
-  const chatId = thread.id;
-  const streaming = useAppSelector((state) => state.chat.streaming);
-  const chatError = useAppSelector((state) => state.chat.error);
-  const preventSend = useAppSelector((state) => state.chat.prevent_send);
+  const chatId = useAppSelector(selectChatId);
+  const streaming = useAppSelector(selectIsStreaming);
+  const chatError = useAppSelector(selectChatError);
+  const preventSend = useAppSelector(selectPreventSend);
 
-  const currentMessages = useAppSelector((state) => state.chat.thread.messages);
+  const currentMessages = useAppSelector(selectMessages);
   const systemPrompt = useAppSelector(getSelectedSystemPrompt);
 
   const messagesWithSystemPrompt = useMemo(() => {
@@ -436,5 +446,3 @@ export const useSendChatRequest = () => {
     retry,
   };
 };
-
-export const selectMessages = (state: RootState) => state.chat.thread.messages;

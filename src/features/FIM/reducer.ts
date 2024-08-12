@@ -1,6 +1,7 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { request, receive, error, clearError, reset } from "./actions";
 import { FimDebugData } from "../../services/refact/fim";
+import { RootState } from "../../app/store";
 
 export type FIMDebugState = {
   data: FimDebugData | null;
@@ -36,3 +37,5 @@ export const reducer = createReducer(initialState, (builder) => {
     state.fetching = false;
   });
 });
+
+export const selectFIM = (state: RootState) => state.fim;

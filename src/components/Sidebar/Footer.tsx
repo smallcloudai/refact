@@ -20,7 +20,7 @@ import {
 import { Coin } from "../../images";
 import styles from "./sidebar.module.css";
 import { useConfig } from "../../app/hooks";
-import type { Config } from "../../features/Config/reducer";
+import type { Config } from "../../features/Config/configSlice";
 
 export type LoginInfoProps = {
   email: string;

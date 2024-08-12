@@ -1,5 +1,6 @@
 // Careful with exports that include components, it'll cause this to compile to a large file.
 import { request, ready, receive, error } from "../features/FIM";
+export { updateConfig, type Config } from "../features/Config/configSlice";
 export { type FileInfo, setFileInfo } from "../features/Chat/activeFile";
 export {
   type Snippet,
@@ -50,9 +51,6 @@ export {
 } from "../services/refact";
 
 export type * from "../services/refact";
-
-export * from "./config";
-export type * from "./config";
 
 export * from "./setup";
 export type * from "./setup";

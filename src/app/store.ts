@@ -28,7 +28,7 @@ import {
   saveTipOfTheDayToLocalStorage,
   tipOfTheDayReducer,
 } from "../features/TipOfTheDay";
-import { reducer as configReducer } from "../features/Config/reducer";
+import { reducer as configReducer } from "../features/Config/configSlice";
 import { activeFileReducer } from "../features/Chat/activeFile";
 import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
 import { chatReducer } from "../features/Chat/chatThread";

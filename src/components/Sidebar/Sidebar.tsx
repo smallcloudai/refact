@@ -8,7 +8,11 @@ import {
   getHistory,
   deleteChatById,
 } from "../../features/History/historySlice";
-import { newChatAction, restoreChat } from "../../features/Chat/chatThread";
+import {
+  newChatAction,
+  restoreChat,
+  selectChatId,
+} from "../../features/Chat/chatThread";
 import type { ChatThread } from "../../features/Chat/chatThread";
 
 export type SidebarProps = {
@@ -46,7 +50,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
   const history = useAppSelector(getHistory);
-  const currentChatId = useAppSelector((state) => state.chat.thread.id);
+
+  const currentChatId = useAppSelector(selectChatId);
   const onDeleteHistoryItem = (id: string) => dispatch(deleteChatById(id));
   const onCreateNewChat = () => {
     dispatch(newChatAction({ id: currentChatId }));

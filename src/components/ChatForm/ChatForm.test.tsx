@@ -39,7 +39,7 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
       line1: null,
       line2: null,
       can_paste: false,
-      attach: false,
+      // attach: false,
       path: "",
       cursor: null,
     },

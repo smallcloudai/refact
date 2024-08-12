@@ -4,7 +4,7 @@ import { useEventBusForFIMDebug } from "../../hooks";
 import { Callout } from "../../components/Callout";
 import { Spinner, Flex, Button } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { type Config } from "../Config/reducer";
+import { type Config } from "../Config/configSlice";
 import { PageWrapper } from "../../components/PageWrapper";
 
 export type FIMDebugProps = {

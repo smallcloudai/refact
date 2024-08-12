@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 // import { useEventBusForChat } from "../hooks/useEventBusForChat";
-import type { Config } from "../../features/Config/reducer";
+import type { Config } from "../Config/configSlice";
 import { CodeChatModel, SystemPrompts } from "../../services/refact";
 import { Chat as ChatComponent } from "../../components/Chat";
 import {
@@ -16,6 +16,9 @@ import {
   getSelectedSystemPrompt,
   setSystemPrompt,
   setUseTools,
+  selectMessages,
+  selectModel,
+  selectUseTools,
 } from "./chatThread";
 import { getErrorMessage } from "../Errors/errorsSlice";
 
@@ -55,7 +58,7 @@ export const Chat: React.FC<ChatProps> = ({
 }) => {
   const error = useAppSelector(getErrorMessage);
   const capsRequest = useGetCapsQuery(undefined, { skip: !!error });
-  const chatModel = useAppSelector((state) => state.chat.thread.model);
+  const chatModel = useAppSelector(selectModel);
 
   // TODO: these could be lower in the component tree
   const promptsRequest = useGetPromptsQuery(undefined, { skip: !!error });
@@ -64,9 +67,9 @@ export const Chat: React.FC<ChatProps> = ({
   const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
     dispatch(setSystemPrompt(prompt));
 
-  const useTools = useAppSelector((state) => state.chat.use_tools);
+  const useTools = useAppSelector(selectUseTools);
   const onSetUseTools = (value: boolean) => dispatch(setUseTools(value));
-  const messages = useAppSelector((state) => state.chat.thread.messages);
+  const messages = useAppSelector(selectMessages);
 
   // TODO: don't make this request if there are no caps
   const toolsRequest = useGetToolsQuery(!!capsRequest.data);
@@ -78,7 +81,7 @@ export const Chat: React.FC<ChatProps> = ({
     cursor: number;
   }>({ query: "", cursor: 0 });
 
-  // TODO: this could be put lower in the componet tree to prevent re-renders.
+  // TODO: this could be put lower in the component tree to prevent re-renders.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestCommandsCompletion = React.useCallback(
     useDebounceCallback(

@@ -5,15 +5,22 @@ import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import type { Config } from "../../features/Config/reducer";
+import type { Config } from "../../features/Config/configSlice";
 import { useEventsBusForIDE } from "../../hooks";
 import {
   enableSend,
   getSelectedChatModel,
   newChatAction,
+  selectIsStreaming,
+  selectIsWaiting,
   setChatModel,
   useSendChatRequest,
+  selectThread,
+  selectPreventSend,
+  selectChatId,
+  selectMessages,
 } from "../../features/Chat/chatThread";
+import { selectActiveFile, selectSelectedSnippet } from "../../features/Chat";
 
 export type ChatProps = {
   host: Config["host"];
@@ -111,18 +118,18 @@ export const Chat: React.FC<ChatProps> = ({
   // openSettings,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
-  const activeFile = useAppSelector((state) => state.active_file);
-  const selectedSnippet = useAppSelector((state) => state.selected_snippet);
-  const isStreaming = useAppSelector((state) => state.chat.streaming);
-  const isWaiting = useAppSelector((state) => state.chat.waiting_for_response);
-  const chatThread = useAppSelector((state) => state.chat.thread);
+  const activeFile = useAppSelector(selectActiveFile);
+  const selectedSnippet = useAppSelector(selectSelectedSnippet);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const chatThread = useAppSelector(selectThread);
 
   const canPaste = activeFile.can_paste;
-  const chatId = useAppSelector((state) => state.chat.thread.id);
+  const chatId = useAppSelector(selectChatId);
   const { submit, abort, retry } = useSendChatRequest();
   const chatModel = useAppSelector(getSelectedChatModel);
   const dispatch = useAppDispatch();
-  const messages = useAppSelector((state) => state.chat.thread.messages);
+  const messages = useAppSelector(selectMessages);
   const onSetChatModel = useCallback(
     (value: string) => {
       const model = caps.default_cap === value ? "" : value;
@@ -130,7 +137,7 @@ export const Chat: React.FC<ChatProps> = ({
     },
     [caps.default_cap, chatId, dispatch],
   );
-  const preventSend = useAppSelector((state) => state.chat.prevent_send);
+  const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
   const { diffPasteBack, newFile, openSettings, openFile, openChatInNewTab } =

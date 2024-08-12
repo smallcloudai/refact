@@ -11,7 +11,7 @@ import {
   DiffAppliedStateArgs,
 } from "../services/refact";
 import { useCallback, useEffect, useMemo } from "react";
-import { setThemeMode } from "../features/Config/reducer";
+import { selectConfig, setThemeMode } from "../features/Config/configSlice";
 import { useMutationObserver } from "../hooks";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
@@ -103,7 +103,7 @@ export const useGetManyDiffState = (args: DiffAppliedStateArgs[]) => {
   };
 };
 
-export const useConfig = () => useAppSelector((state) => state.config);
+export const useConfig = () => useAppSelector(selectConfig);
 
 export const useAppearance = () => {
   const config = useConfig();

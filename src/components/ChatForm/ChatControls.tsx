@@ -1,7 +1,7 @@
 import React from "react";
 import { Text, Flex, HoverCard, Link } from "@radix-ui/themes";
 import { Select } from "../Select";
-import { type Config } from "../../features/Config/reducer";
+import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
 import classNames from "classnames";

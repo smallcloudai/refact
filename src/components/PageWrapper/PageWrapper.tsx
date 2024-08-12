@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Flex } from "@radix-ui/themes";
 import styles from "./PageWrapper.module.css";
 import classNames from "classnames";
-import type { Config } from "../../features/Config/reducer";
+import type { Config } from "../../features/Config/configSlice";
 
 type PageWrapperProps = {
   children: React.ReactNode;

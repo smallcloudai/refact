@@ -101,7 +101,7 @@ const meta: Meta<typeof ChatForm> = {
     attachFile: {
       name: "todo.md",
       can_paste: true,
-      attach: false,
+      // attach: false,
       line1: 1,
       line2: 100,
       path: "/Users/refact/Projects/smallcloudai/refact-chat-js/todo.md",

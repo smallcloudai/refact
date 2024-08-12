@@ -1,4 +1,5 @@
 import { createReducer, createAction } from "@reduxjs/toolkit";
+import { RootState } from "../../app/store";
 
 export type Snippet = {
   language: string;
@@ -22,3 +23,6 @@ export const selectedSnippetReducer = createReducer(initialState, (builder) => {
     return action.payload;
   });
 });
+
+export const selectSelectedSnippet = (state: RootState) =>
+  state.selected_snippet;
