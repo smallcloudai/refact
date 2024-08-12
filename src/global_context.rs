@@ -2,7 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::Hasher;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
@@ -115,23 +115,28 @@ pub async fn try_load_caps_quickly_if_not_present(
     {
         // global_context is not locked, but a specialized async mutex is, up until caps are saved
         let _caps_reading_locked = caps_reading_lock.lock().await;
-        let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
-        {
-            let mut cx_locked = global_context.write().await;
-            if cx_locked.caps_last_attempted_ts + max_age < now {
-                cx_locked.caps = None;
-                cx_locked.caps_last_attempted_ts = 0;
-                caps_last_attempted_ts = 0;
-            } else {
-                if let Some(caps_arc) = cx_locked.caps.clone() {
-                    return Ok(caps_arc.clone());
+        let cmdline = CommandLine::from_args();
+        let mut caps_url = cmdline.address_url.clone();
+        // force read caps if caps_url is file
+        if !(!vec!["refact", "hf"].contains(&&*caps_url.to_lowercase()) && Path::new(&caps_url).exists()) {
+            let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
+            {
+                let mut cx_locked = global_context.write().await;
+                if cx_locked.caps_last_attempted_ts + max_age < now {
+                    cx_locked.caps = None;
+                    cx_locked.caps_last_attempted_ts = 0;
+                    caps_last_attempted_ts = 0;
+                } else {
+                    if let Some(caps_arc) = cx_locked.caps.clone() {
+                        return Ok(caps_arc.clone());
+                    }
+                    caps_last_attempted_ts = cx_locked.caps_last_attempted_ts;
                 }
-                caps_last_attempted_ts = cx_locked.caps_last_attempted_ts;
             }
-        }
-        if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
-            let global_context_locked = global_context.write().await;
-            return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, global_context_locked.caps_last_error.clone()));
+            if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
+                let global_context_locked = global_context.write().await;
+                return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, global_context_locked.caps_last_error.clone()));
+            }
         }
         let caps_result = crate::caps::load_caps(
             CommandLine::from_args(),

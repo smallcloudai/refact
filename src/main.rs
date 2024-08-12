@@ -89,15 +89,15 @@ async fn main() {
     files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;
     files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, false).await;
 
+    // not really needed, but it's nice to have an error message sooner if there's one
+    let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
+    
     let mut background_tasks = start_background_tasks(gcx.clone()).await;
     // vector db will spontaneously start if the downloaded caps and command line parameters are right
 
     let should_start_http = cmdline.http_port != 0;
     let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||
         (cmdline.lsp_port != 0 && cmdline.lsp_stdin_stdout == 0);
-
-    // not really needed, but it's nice to have an error message sooner if there's one
-    let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
 
     let mut main_handle: Option<JoinHandle<()>> = None;
     if should_start_http {

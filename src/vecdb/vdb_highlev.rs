@@ -12,7 +12,7 @@ use tokio::task::JoinHandle;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex };
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::background_tasks::BackgroundTasksHolder;
-
+use crate::caps::CodeAssistantCaps;
 use crate::fetch_embedding;
 use crate::files_in_workspace::Document;
 use crate::knowledge::{lance_search, MemoriesDatabase};
@@ -175,6 +175,11 @@ async fn do_i_need_to_reload_vecdb(
     return (true, Some(consts));
 }
 
+fn can_start_vecdb(caps: Arc<StdRwLock<CodeAssistantCaps>>) -> bool {
+    let caps = caps.read().unwrap();
+    !caps.default_embeddings_model.is_empty() && !caps.endpoint_embeddings_template.is_empty()
+}
+
 pub async fn vecdb_background_reload(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) {
@@ -182,6 +187,15 @@ pub async fn vecdb_background_reload(
     if !cmd_line.vecdb {
         return;
     }
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
+    if caps.is_err() {
+        return;
+    }
+    let caps = caps.unwrap();
+    if !can_start_vecdb(caps) {
+        return;
+    }
+    
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
         let (need_reload, consts) = do_i_need_to_reload_vecdb(gcx.clone()).await;

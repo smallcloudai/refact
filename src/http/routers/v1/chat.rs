@@ -80,7 +80,12 @@ async fn chat(
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
     let (client1, api_key) = {
         let cx_locked = global_context.write().await;
-        (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
+        let custom_chat_apikey = caps.read().unwrap().custom_chat_apikey.clone();
+        if custom_chat_apikey.is_empty() {
+            (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
+        } else {
+            (cx_locked.http_client.clone(), custom_chat_apikey)
+        }
     };
     let mut scratchpad = scratchpads::create_chat_scratchpad(
         global_context.clone(),
