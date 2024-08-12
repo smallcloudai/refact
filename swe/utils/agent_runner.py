@@ -44,7 +44,8 @@ class RepoContext:
     async def __aenter__(self):
         repo_path = self._workdir / self._repo_name.split("/")[-1]
         if not repo_path.exists():
-            subprocess.call(["git", "clone", f"git@github.com:{self._repo_name}.git"], cwd=self._workdir)
+            # subprocess.call(["git", "clone", f"git@github.com:{self._repo_name}.git"], cwd=self._workdir)
+            subprocess.call(["git", "clone", f"https://github.com/{self._repo_name}"], cwd=self._workdir)
         assert repo_path.exists()
         assert not self._context_repo_path.exists()
         subprocess.call(["cp", "-r", str(repo_path), str(self._context_repo_path)])
