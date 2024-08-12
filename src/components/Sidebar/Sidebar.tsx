@@ -14,6 +14,7 @@ import {
   selectChatId,
 } from "../../features/Chat/chatThread";
 import type { ChatThread } from "../../features/Chat/chatThread";
+import { useTourRefs } from "../../features/Tour";
 
 export type SidebarProps = {
   // onCreateNewChat: () => void;
@@ -36,11 +37,6 @@ export type SidebarProps = {
 >;
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  // history,
-  // onHistoryItemClick,
-  // onCreateNewChat,
-  // onDeleteHistoryItem,
-  // currentChatId,
   takingNotes,
   style,
   account,
@@ -65,6 +61,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     [currentChatId, dispatch, handleNavigation],
   );
 
+  const refs = useTourRefs();
+
   return (
     <Flex direction="column" style={style}>
       <Flex mt="4" mb="4">
@@ -76,7 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ml="auto"
           mr="auto"
           onClick={onCreateNewChat}
-          // loading={takingNotes}
+          ref={(x) => refs.setNewChat(x)}
         >
           Start a new chat
         </Button>

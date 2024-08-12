@@ -1,23 +1,55 @@
-import { Flex, Link, Text } from "@radix-ui/themes";
+import { Flex, Link } from "@radix-ui/themes";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RootState } from "../../app/store";
 import { close, next } from "../../features/Tour";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
+import { TourBox } from "./TourBox";
+import { TourTitle } from "./TourTitle";
+import { useEffect, useState } from "react";
 
 export type TourBubbleProps = {
   text: string;
   step: number;
   down: boolean;
   target: HTMLElement | null;
+  containerWidth?: string;
+  onPage: string;
+  page: string;
 };
 
-export function TourBubble({ text, step, target, down }: TourBubbleProps) {
+export function TourBubble({
+  text,
+  step,
+  target,
+  down,
+  containerWidth,
+  onPage,
+  page,
+}: TourBubbleProps) {
   const dispatch = useAppDispatch();
   const state = useAppSelector((state: RootState) => state.tour);
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const [pos, setPos] = useState<DOMRect | undefined>(undefined);
 
   const isBubbleOpen = state.type === "in_progress" && state.step === step;
-  const pos = target?.getBoundingClientRect();
+
+  // TODO: find a better way of doing this
+  // This code is there to force a rerender if target is null
+  useEffect(() => {
+    if (target === null || page !== onPage) {
+      setPos(undefined);
+    } else {
+      const newPos = target.getBoundingClientRect();
+      if (
+        pos?.left !== newPos.left ||
+        pos.right !== newPos.right ||
+        pos.top !== newPos.top ||
+        pos.bottom !== newPos.bottom
+      ) {
+        setPos(newPos);
+      }
+    }
+  }, [page, onPage, target, pos, setPos, windowWidth, windowHeight]);
 
   if (pos === undefined) {
     return <></>;
@@ -41,7 +73,7 @@ export function TourBubble({ text, step, target, down }: TourBubbleProps) {
         <Flex
           style={{
             position: "absolute",
-            width: "min(calc(100% - 20px), 540px)",
+            width: containerWidth ?? "min(calc(100% - 20px), 540px)",
             flexDirection: "column",
             alignSelf: "center",
             bottom: down ? "auto" : 0,
@@ -62,28 +94,8 @@ export function TourBubble({ text, step, target, down }: TourBubbleProps) {
               }}
             />
           )}
-          <Flex
-            style={{
-              position: "relative",
-              backgroundColor: "white",
-              borderRadius: "5px",
-              minHeight: "60px",
-              alignItems: "center",
-              padding: "7px",
-              alignSelf: "stretch",
-            }}
-          >
-            <img src="favicon.png" width={28} height={28} />
-            <Text
-              style={{
-                color: "black",
-                fontSize: 16,
-                margin: 4,
-                paddingRight: 30,
-              }}
-            >
-              {text}
-            </Text>
+          <TourBox>
+            <TourTitle title={text} />
             <Link
               style={{
                 cursor: "pointer",
@@ -112,7 +124,7 @@ export function TourBubble({ text, step, target, down }: TourBubbleProps) {
             >
               next
             </Link>
-          </Flex>
+          </TourBox>
           {down || (
             <Flex
               style={{

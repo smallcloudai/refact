@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocalStorage } from "usehooks-ts";
-import { isOpenExternalUrl, isSetupHost } from "../events";
+import { isLogOut, isOpenExternalUrl, isSetupHost } from "../events";
 import { useAppDispatch, useConfig } from "../app/hooks";
 import { updateConfig } from "../features/Config/configSlice";
 import { setFileInfo } from "../events";
@@ -13,8 +13,6 @@ export function useEventBusForApp() {
 
   useEffect(() => {
     if (config.host !== "web") {
-      // eslint-disable-next-line no-console
-      console.log("not web");
       return;
     }
     const listener = (event: MessageEvent) => {
@@ -49,6 +47,12 @@ export function useEventBusForApp() {
         }
         dispatch(updateConfig({ addressURL, apiKey }));
       }
+
+      if (isLogOut(event.data)) {
+        setAddressURL("");
+        setApiKey("");
+        dispatch(updateConfig({ addressURL, apiKey }));
+      }
     };
 
     window.addEventListener("message", listener);
@@ -59,6 +63,9 @@ export function useEventBusForApp() {
   }, [setApiKey, setAddressURL, config.host, dispatch, addressURL, apiKey]);
 
   useEffect(() => {
+    if (config.host !== "web") {
+      return;
+    }
     dispatch(updateConfig({ addressURL, apiKey }));
   }, [apiKey, addressURL, dispatch]);
 }

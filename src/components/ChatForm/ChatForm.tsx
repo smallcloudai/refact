@@ -22,6 +22,7 @@ import { usePreviewFileRequest } from "./usePreviewFileRequest";
 import { useAppDispatch, useAppSelector, useConfig } from "../../app/hooks";
 import type { FileInfo, Snippet } from "../../features/Chat";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
+import { useTourRefs } from "../../features/Tour";
 
 type useCheckboxStateProps = {
   activeFile: FileInfo;
@@ -345,6 +346,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       host: config.host,
     },
   );
+  const refs = useTourRefs();
 
   usePreviewFileRequest({
     isCommandExecutable: commands.is_cmd_executable,
@@ -418,7 +420,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   }
 
   return (
-    <Card mt="1" style={{ position: "relative", flexShrink: 0 }}>
+    <Card mt="1" style={{ flexShrink: 0, position: "static" }}>
       {!isOnline && <Callout type="info">Offline</Callout>}
 
       {isStreaming && (
@@ -432,55 +434,65 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         </Button>
       )}
 
-      <Form
-        disabled={isStreaming || !isOnline}
-        className={className}
-        onSubmit={() => handleSubmit()}
+      <Flex
+        ref={(x) => refs.setChat(x)}
+        style={{
+          flexDirection: "column",
+          alignSelf: "stretch",
+          flex: 1,
+          width: "100%",
+        }}
       >
-        <FilesPreview
-          files={filesInPreview}
-          // onRemovePreviewFile={removePreviewFileByName}
-        />
-
-        <ComboBox
-          commands={commands}
-          requestCommandsCompletion={requestCommandsCompletion}
-          value={value}
-          onChange={handleChange}
-          onSubmit={(event) => {
-            handleEnter(event);
-          }}
-          placeholder={
-            commands.completions.length > 0 ? "Type @ for commands" : ""
-          }
-          render={(props) => (
-            <TextArea
-              data-testid="chat-form-textarea"
-              required={true}
-              disabled={isStreaming}
-              {...props}
-              onTextAreaHeightChange={onTextAreaHeightChange}
-              autoFocus={true}
-            />
-          )}
-        />
-        <Flex gap="2" className={styles.buttonGroup}>
-          {onClose && (
-            <BackToSideBarButton
-              disabled={isStreaming}
-              title="return to sidebar"
-              size="1"
-              onClick={onClose}
-            />
-          )}
-          <PaperPlaneButton
-            disabled={isStreaming || !isOnline}
-            title="send"
-            size="1"
-            type="submit"
+        <Form
+          disabled={isStreaming || !isOnline}
+          className={className}
+          onSubmit={() => handleSubmit()}
+        >
+          <FilesPreview
+            files={filesInPreview}
+            // onRemovePreviewFile={removePreviewFileByName}
           />
-        </Flex>
-      </Form>
+
+          <ComboBox
+            commands={commands}
+            requestCommandsCompletion={requestCommandsCompletion}
+            value={value}
+            onChange={handleChange}
+            onSubmit={(event) => {
+              handleEnter(event);
+            }}
+            placeholder={
+              commands.completions.length > 0 ? "Type @ for commands" : ""
+            }
+            render={(props) => (
+              <TextArea
+                data-testid="chat-form-textarea"
+                required={true}
+                disabled={isStreaming}
+                {...props}
+                onTextAreaHeightChange={onTextAreaHeightChange}
+                autoFocus={true}
+              />
+            )}
+          />
+          <Flex gap="2" className={styles.buttonGroup}>
+            {onClose && (
+              <BackToSideBarButton
+                disabled={isStreaming}
+                title="return to sidebar"
+                size="1"
+                onClick={onClose}
+              />
+            )}
+            <PaperPlaneButton
+              disabled={isStreaming || !isOnline}
+              title="send"
+              size="1"
+              type="submit"
+            />
+          </Flex>
+        </Form>
+      </Flex>
 
       <ChatControls
         host={config.host}

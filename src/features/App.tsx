@@ -20,14 +20,17 @@ import {
   OpenExternalUrl,
   SetupHost,
 } from "../events/setup";
-import { useConfig } from "../app/hooks";
+import { useAppSelector, useConfig } from "../app/hooks";
 import { FIMDebug } from "./FIM";
-import { Statistics } from "./Statistics";
-import { store, persistor } from "../app/store";
+import { store, persistor, RootState } from "../app/store";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
+import { Statistics } from "./statistics";
+import { Welcome } from "../components/Tour";
+import { TourProvider } from "./Tour";
+import { Tour } from "../components/Tour/Tour";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -36,6 +39,7 @@ export interface AppProps {
 const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const { pages, navigate, isPageInHistory } = usePages();
   const { openHotKeys, openSettings } = useEventsBusForIDE();
+  const tourState = useAppSelector((state: RootState) => state.tour);
   useEventBusForApp();
   // TODO: can replace this with a selector for state.chat.thread.id
 
@@ -47,8 +51,17 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   // const fimHook = useEventBysForFIMDebug();
   // const statisticsHook = useEventBusForStatistic();
 
-  if (config.apiKey && config.addressURL && !isPageInHistory("history")) {
-    navigate({ type: "push", page: { name: "history" } });
+  const isLoggedIn = isPageInHistory("history") || isPageInHistory("welcome");
+
+  if (config.apiKey && config.addressURL && !isLoggedIn) {
+    if (tourState.type === "in_progress" && tourState.step === 1) {
+      navigate({ type: "push", page: { name: "welcome" } });
+    } else {
+      navigate({ type: "push", page: { name: "history" } });
+    }
+  }
+  if (!config.apiKey && !config.addressURL && isLoggedIn) {
+    navigate({ type: "pop_back_to", page: "initial setup" });
   }
 
   const setupHost = useCallback(
@@ -85,6 +98,14 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const selfHostingSetup = (endpointAddress: string) => {
     setupHost({ type: "self", endpointAddress });
+  };
+
+  const logOut = () => {
+    postMessage({ type: EVENT_NAMES_FROM_SETUP.LOG_OUT });
+  };
+
+  const startTour = () => {
+    navigate({ type: "push", page: { name: "history" } });
   };
 
   const openExternal = (url: string) => {
@@ -162,6 +183,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             {page.name === "self hosting setup" && (
               <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
             )}
+            {page.name === "welcome" && <Welcome onPressNext={startTour} />}
             {page.name === "history" && (
               <Sidebar
                 // history={historyHook.history}
@@ -172,9 +194,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
                 // onHistoryItemClick={handleHistoryItemClick}
                 // onDeleteHistoryItem={handleDelete}
                 onOpenChatInTab={undefined}
-                handleLogout={() => {
-                  // TODO: handle logout
-                }}
+                handleLogout={logOut}
                 handleNavigation={handleNavigation}
                 style={{ maxWidth: "540px", flex: 1, height: "100%" }}
               />
@@ -201,6 +221,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
           </Flex>
         );
       })}
+      <Tour page={pages[pages.length - 1].name} />
     </Flex>
   );
 };
@@ -210,7 +231,9 @@ export const App = () => {
     <Provider store={store}>
       <PersistGate persistor={persistor}>
         <Theme>
-          <InnerApp />
+          <TourProvider>
+            <InnerApp />
+          </TourProvider>
         </Theme>
       </PersistGate>
     </Provider>

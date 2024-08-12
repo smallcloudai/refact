@@ -1,6 +1,5 @@
 import { Button, Flex, Radio, RadioCards, Text } from "@radix-ui/themes";
-import { useRef, useState } from "react";
-import { TourBubble } from "../TourBubble";
+import { useState } from "react";
 
 export type Host = "cloud" | "self-hosting" | "enterprise";
 
@@ -12,8 +11,6 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
   onPressNext,
 }: InitialSetupProps) => {
   const [selected, setSelected] = useState<Host | undefined>(undefined);
-  const cloudRef = useRef(null);
-  const nextRef = useRef(null);
 
   const onValueChange = (value: string) => {
     setSelected(value as Host);
@@ -29,7 +26,6 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
       >
         <RadioCards.Item
           value="cloud"
-          ref={cloudRef}
           style={{
             flexDirection: "column",
             alignItems: "flex-start",
@@ -85,7 +81,6 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
         variant="outline"
         ml="auto"
         disabled={selected === undefined}
-        ref={nextRef}
         onClick={() => {
           if (selected) {
             onPressNext(selected);
@@ -94,24 +89,6 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
       >
         {"Next >"}
       </Button>
-      <TourBubble
-        text="When you write code, Refact already knows what comes next."
-        step={1}
-        target={cloudRef.current}
-        down={true}
-      />
-      <TourBubble
-        text="Ask questions in the Chat, it already knows your codebase."
-        step={2}
-        target={nextRef.current}
-        down={false}
-      />
-      <TourBubble
-        text="Ask questions in the Chat, it already knows your codebase."
-        step={3}
-        target={nextRef.current}
-        down={true}
-      />
     </Flex>
   );
 };

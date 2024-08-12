@@ -1,6 +1,7 @@
 export enum EVENT_NAMES_FROM_SETUP {
   SETUP_HOST = "setup_host",
   OPEN_EXTERNAL_URL = "open_external_url",
+  LOG_OUT = "log_out",
 }
 
 export interface CloudHost {
@@ -56,4 +57,13 @@ export interface OpenExternalUrl extends ActionFromSetup {
 export function isOpenExternalUrl(action: unknown): action is OpenExternalUrl {
   if (!isActionFromSetup(action)) return false;
   return action.type === EVENT_NAMES_FROM_SETUP.OPEN_EXTERNAL_URL;
+}
+
+export interface LogOut extends ActionFromSetup {
+  type: EVENT_NAMES_FROM_SETUP.LOG_OUT;
+}
+
+export function isLogOut(action: unknown): action is LogOut {
+  if (!isActionFromSetup(action)) return false;
+  return action.type === EVENT_NAMES_FROM_SETUP.LOG_OUT;
 }

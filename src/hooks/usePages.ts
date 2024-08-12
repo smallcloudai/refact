@@ -16,12 +16,16 @@ export interface SelfHostingSetup {
   name: "self hosting setup";
 }
 
-export interface ChatPage {
-  name: "chat";
+export interface Welcome {
+  name: "welcome";
 }
 
 export interface HistoryList {
   name: "history";
+}
+
+export interface ChatPage {
+  name: "chat";
 }
 
 export interface FIMDebugPage {
@@ -42,6 +46,7 @@ export type Page =
   | EnterpriseSetup
   | SelfHostingSetup
   | ChatPage
+  | Welcome
   | HistoryList
   | FIMDebugPage
   | StatisticsPage
@@ -61,13 +66,23 @@ export interface PopPage {
   type: "pop";
 }
 
-export type PageAction = ChangePage | PushPage | PopPage;
+export interface PopBackTo {
+  type: "pop_back_to";
+  page: Page["name"];
+}
+
+export type PageAction = ChangePage | PushPage | PopPage | PopBackTo;
 
 function pageReducer(state: Page[], action: PageAction): Page[] {
   if (action.type === "pop") {
     return state.slice(0, -1);
   } else if (action.type === "change") {
     return [...state.slice(0, -1), action.page];
+  } else if (action.type === "pop_back_to") {
+    return state.slice(
+      0,
+      state.findIndex((page) => page.name === action.page) + 1,
+    );
   } else {
     return [...state, action.page];
   }

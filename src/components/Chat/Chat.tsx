@@ -21,6 +21,7 @@ import {
   selectMessages,
 } from "../../features/Chat/chatThread";
 import { selectActiveFile, selectSelectedSnippet } from "../../features/Chat";
+import { useTourRefs } from "../../features/Tour";
 
 export type ChatProps = {
   host: Config["host"];
@@ -139,6 +140,7 @@ export const Chat: React.FC<ChatProps> = ({
   );
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
+  const refs = useTourRefs();
 
   const { diffPasteBack, newFile, openSettings, openFile, openChatInNewTab } =
     useEventsBusForIDE();
@@ -193,16 +195,31 @@ export const Chat: React.FC<ChatProps> = ({
     <PageWrapper host={host} style={style}>
       {/* {host === "vscode" && !tabbed && ( */}
       <Flex gap="2" pb="3" wrap="wrap">
-        <Button size="1" variant="surface" onClick={backFromChat}>
+        <Button
+          size="1"
+          variant="surface"
+          onClick={backFromChat}
+          ref={(x) => refs.setBack(x)}
+        >
           <ArrowLeftIcon width="16" height="16" />
           Back
         </Button>
         {host === "vscode" && (
-          <Button size="1" variant="surface" onClick={handleOpenChatInNewTab}>
+          <Button
+            size="1"
+            variant="surface"
+            onClick={handleOpenChatInNewTab}
+            ref={(x) => refs.setOpenInNewTab(x)}
+          >
             Open In Tab
           </Button>
         )}
-        <Button size="1" variant="surface" onClick={handleNewChat}>
+        <Button
+          size="1"
+          variant="surface"
+          onClick={handleNewChat}
+          ref={(x) => refs.setNewChatInside(x)}
+        >
           New Chat
         </Button>
       </Flex>
