@@ -13,6 +13,8 @@ export type TourBubbleProps = {
   down: boolean;
   target: HTMLElement | null;
   containerWidth?: string;
+  onPage: string;
+  page: string;
 };
 
 export function TourBubble({
@@ -21,6 +23,8 @@ export function TourBubble({
   target,
   down,
   containerWidth,
+  onPage,
+  page,
 }: TourBubbleProps) {
   const dispatch = useAppDispatch();
   const state = useAppSelector((state: RootState) => state.tour);
@@ -28,12 +32,11 @@ export function TourBubble({
   const [pos, setPos] = useState<DOMRect | undefined>(undefined);
 
   const isBubbleOpen = state.type === "in_progress" && state.step === step;
-  target;
 
   // TODO: find a better way of doing this
   // This code is there to force a rerender if target is null
   useEffect(() => {
-    if (target === null) {
+    if (target === null || page !== onPage) {
       setPos(undefined);
     } else {
       const newPos = target.getBoundingClientRect();
@@ -46,8 +49,7 @@ export function TourBubble({
         setPos(newPos);
       }
     }
-  }, [target, pos, setPos, windowWidth, windowHeight]);
-  console.log("rerender");
+  }, [page, onPage, target, pos, setPos, windowWidth, windowHeight]);
 
   if (pos === undefined) {
     return <></>;

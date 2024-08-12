@@ -221,7 +221,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
           </Flex>
         );
       })}
-      <Tour />
+      <Tour page={pages[pages.length - 1].name} />
     </Flex>
   );
 };

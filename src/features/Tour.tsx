@@ -109,8 +109,22 @@ export const tourReducer = createReducer<TourState>(
 export type TourRefs = {
   newChat: null | HTMLButtonElement;
   useTools: null | HTMLDivElement;
+  useModel: null | HTMLDivElement;
+  chat: null | HTMLDivElement;
+  openInNewTab: null | HTMLButtonElement;
+  newChatInside: null | HTMLButtonElement;
+  back: null | HTMLButtonElement;
+  f1: null | HTMLButtonElement;
+  more: null | HTMLButtonElement;
   setNewChat: (x: HTMLButtonElement | null) => void;
   setUseTools: (x: HTMLDivElement | null) => void;
+  setUseModel: (x: HTMLDivElement | null) => void;
+  setChat: (x: HTMLDivElement | null) => void;
+  setOpenInNewTab: (x: HTMLButtonElement | null) => void;
+  setNewChatInside: (x: HTMLButtonElement | null) => void;
+  setBack: (x: HTMLButtonElement | null) => void;
+  setF1: (x: HTMLButtonElement | null) => void;
+  setMore: (x: HTMLButtonElement | null) => void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -123,10 +137,40 @@ type TourContextProps = {
 export const TourProvider = ({ children }: TourContextProps) => {
   const [newChat, setNewChat] = useState<null | HTMLButtonElement>(null);
   const [useTools, setUseTools] = useState<null | HTMLDivElement>(null);
+  const [useModel, setUseModel] = useState<null | HTMLDivElement>(null);
+  const [chat, setChat] = useState<null | HTMLDivElement>(null);
+  const [openInNewTab, setOpenInNewTab] = useState<null | HTMLButtonElement>(
+    null,
+  );
+  const [newChatInside, setNewChatInside] = useState<null | HTMLButtonElement>(
+    null,
+  );
+  const [back, setBack] = useState<null | HTMLButtonElement>(null);
+  const [f1, setF1] = useState<null | HTMLButtonElement>(null);
+  const [more, setMore] = useState<null | HTMLButtonElement>(null);
 
   return (
     <TourContext.Provider
-      value={{ newChat, useTools, setNewChat, setUseTools }}
+      value={{
+        newChat,
+        useTools,
+        useModel,
+        chat,
+        openInNewTab,
+        newChatInside,
+        back,
+        f1,
+        more,
+        setNewChat,
+        setUseTools,
+        setUseModel,
+        setChat,
+        setOpenInNewTab,
+        setNewChatInside,
+        setBack,
+        setF1,
+        setMore,
+      }}
     >
       {children}
     </TourContext.Provider>

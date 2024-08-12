@@ -23,8 +23,16 @@ const CapsSelect: React.FC<CapsSelectProps> = ({
   onChange,
   disabled,
 }) => {
+  const refs = useTourRefs();
+
   return (
-    <Flex gap="2" align="center" wrap="wrap">
+    <Flex
+      gap="2"
+      align="center"
+      wrap="wrap"
+      ref={(x) => refs.setUseModel(x)}
+      style={{ alignSelf: "flex-start" }}
+    >
       <Text size="2">Use model:</Text>
       <Select
         disabled={disabled}

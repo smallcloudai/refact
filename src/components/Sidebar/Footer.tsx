@@ -21,6 +21,7 @@ import { Coin } from "../../images";
 import styles from "./sidebar.module.css";
 import { useConfig } from "../../app/hooks";
 import type { Config } from "../../features/Config/reducer";
+import { useTourRefs } from "../../features/Tour";
 
 export type LoginInfoProps = {
   email: string;
@@ -137,10 +138,12 @@ type SettingsProps = {
   ) => void;
 };
 const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
+  const refs = useTourRefs();
+
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
-        <IconButton variant="outline">
+        <IconButton variant="outline" ref={(x) => refs.setMore(x)}>
           <GearIcon />
         </IconButton>
       </DropdownMenu.Trigger>
