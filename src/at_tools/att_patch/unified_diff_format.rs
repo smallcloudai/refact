@@ -91,6 +91,10 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
     let mut edits = Vec::new();
     let mut keeper = false;
     let mut hunk = Vec::new();
+    let add_remove_rename_block = 
+        before_path.as_ref().map_or(false, |x| x.starts_with("/dev/null"))
+        || after_path.as_ref().map_or(false, |x| x.starts_with("/dev/null"))
+        || before_path.as_ref().map_or(false, |x| after_path.as_ref().map_or(false, |y| x != y));
 
     for line in block {
         hunk.push(line.to_string());
@@ -121,7 +125,7 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
         }
 
         let op = line.chars().next().unwrap();
-        if op == '-' || op == '+' || line.starts_with("<file_content>")  {
+        if op == '-' || op == '+' || (add_remove_rename_block && op != '@') {
             keeper = true;
             continue;
         }
@@ -311,7 +315,8 @@ fn search_diff_block_text_location(diff_blocks: &mut Vec<DiffBlock>) {
                         .map(|x| &x.line)
                         .map(|x| x.trim_start().to_string())
                         .collect::<Vec<_>>();
-                    if span.iter().any(|x| x.line_type == LineType::Plus) {
+                    if span.iter().any(|x| x.line_type == LineType::Plus) 
+                       || diff_line_span_size >= diff_block.file_lines.len() {
                         continue;
                     }
                     for file_line_idx in file_line_start_offset..=diff_block.file_lines.len() - diff_line_span_size {
@@ -1943,7 +1948,66 @@ Another text"#;
     }
 
     #[tokio::test]
+    async fn test_add_file_without_signs() {
+        let input = r#"Initial text
+```diff
+--- /dev/null
++++ tests/emergency_frog_situation/new_file.py
+@@ ... @@
+frog1 = frog.Frog()
+frog2 = frog.Frog()
+```
+Another text"#;
+        let gt_result = vec![
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/new_file.py".to_string(),
+                file_name_rename: None,
+                file_action: "add".to_string(),
+                line1: 1,
+                line2: 1,
+                lines_remove: "".to_string(),
+                lines_add: "frog1 = frog.Frog()\nfrog2 = frog.Frog()\n".to_string(),
+            },
+        ];
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        assert_eq!(result, gt_result);
+    }
+
+    #[tokio::test]
     async fn test_remove_file() {
+        let input = r#"Initial text
+```diff
+--- tests/emergency_frog_situation/holiday.py
++++ /dev/null
+@@ ... @@
+import frog
+
+
+if __name__ == __main__:
+    frog1 = frog.Frog()
+```
+Another text"#;
+        let gt_result = vec![
+            DiffChunk {
+                file_name: "tests/emergency_frog_situation/holiday.py".to_string(),
+                file_name_rename: None,
+                file_action: "remove".to_string(),
+                line1: 1,
+                line2: 1,
+                lines_remove: "".to_string(),
+                lines_add: "".to_string(),
+            },
+        ];
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        assert_eq!(result, gt_result);
+    }
+    
+    #[tokio::test]
+    async fn test_remove_file_without_signs() {
         let input = r#"Initial text
 ```diff
 --- tests/emergency_frog_situation/holiday.py
