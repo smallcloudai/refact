@@ -15,7 +15,7 @@ type TourFinished = {
   type: "finished";
 };
 
-type TourState = TourInProgress | TourClosed | TourFinished;
+export type TourState = TourInProgress | TourClosed | TourFinished;
 
 function isTourInProgress(state: unknown): state is TourInProgress {
   if (!state) return false;

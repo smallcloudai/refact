@@ -43,6 +43,7 @@ export type Chat = {
   cache: Record<string, ChatThread>;
   system_prompt: SystemPrompts;
   use_tools: boolean;
+  send_immediately: boolean;
 };
 
 const createChatThread = (): ChatThread => {
@@ -66,6 +67,7 @@ const createInitialState = (): Chat => {
     cache: {},
     system_prompt: {},
     use_tools: true,
+    send_immediately: false,
   };
 };
 
@@ -212,6 +214,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(chatAskedQuestion, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
+    state.send_immediately = false;
     state.waiting_for_response = true;
     state.streaming = true;
   });
@@ -345,6 +348,8 @@ export const selectIsWaiting = (state: RootState) =>
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;
 export const selectPreventSend = (state: RootState) => state.chat.prevent_send;
 export const selectChatError = (state: RootState) => state.chat.error;
+export const selectSendImmediately = (state: RootState) =>
+  state.chat.send_immediately;
 
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
@@ -359,6 +364,7 @@ export const useSendChatRequest = () => {
 
   const currentMessages = useAppSelector(selectMessages);
   const systemPrompt = useAppSelector(getSelectedSystemPrompt);
+  const sendImmediately = useAppSelector(selectSendImmediately);
 
   const messagesWithSystemPrompt = useMemo(() => {
     const prompts = Object.entries(systemPrompt);
@@ -408,6 +414,12 @@ export const useSendChatRequest = () => {
     },
     [sendMessages],
   );
+
+  useEffect(() => {
+    if (sendImmediately) {
+      sendMessages(messagesWithSystemPrompt);
+    }
+  }, [sendImmediately, sendMessages, messagesWithSystemPrompt]);
 
   // Automatically calls tool calls.
   useEffect(() => {

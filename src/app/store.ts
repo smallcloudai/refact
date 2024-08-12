@@ -69,6 +69,8 @@ const persistConfig = {
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
+export type RootState = ReturnType<typeof persistedReducer>;
+
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) => {
@@ -88,6 +90,7 @@ export const store = configureStore({
       .prepend(historyMiddleware.middleware)
       .prepend(errorMiddleware.middleware);
   },
+  preloadedState: window.__INITIAL_STATE__,
 });
 
 store.subscribe(() => {
@@ -98,9 +101,15 @@ store.subscribe(() => {
 export const persistor = persistStore(store);
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
-export type RootState = ReturnType<typeof store.getState>;
+// export type RootState = ReturnType<typeof store.getState>;
 // Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
 export type AppDispatch = typeof store.dispatch;
 
 // Infer the type of `store`
 export type AppStore = typeof store;
+
+declare global {
+  interface Window {
+    __INITIAL_STATE__?: RootState;
+  }
+}

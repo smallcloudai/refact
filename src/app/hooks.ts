@@ -107,6 +107,7 @@ export const useConfig = () => useAppSelector(selectConfig);
 
 export const useAppearance = () => {
   const config = useConfig();
+  const dispatch = useAppDispatch();
 
   const appearance = config.themeProps.appearance;
 
@@ -119,13 +120,13 @@ export const useAppearance = () => {
       document.body.classList.contains("vscode-high-contrast-light");
 
     if (maybeLight) {
-      setThemeMode("light");
+      dispatch(setThemeMode("light"));
     } else if (maybeDark) {
-      setThemeMode("dark");
+      dispatch(setThemeMode("dark"));
     } else {
-      setThemeMode("inherit");
+      dispatch(setThemeMode("inherit"));
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(handleChange, [handleChange]);
 
@@ -139,6 +140,6 @@ export const useAppearance = () => {
 
   return {
     appearance,
-    setApperance: setThemeMode,
+    setAppearance: setThemeMode,
   };
 };

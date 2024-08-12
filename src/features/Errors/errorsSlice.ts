@@ -10,7 +10,9 @@ import { chatError } from "../Chat/chatThread";
 import { capsEndpoints } from "../../services/refact/caps";
 import { promptsEndpoints } from "../../services/refact/prompts";
 
-const initialState: { message: string | null } = { message: null };
+export type ErrorSliceState = { message: string | null };
+
+const initialState: ErrorSliceState = { message: null };
 export const errorSlice = createSlice({
   name: "error",
   initialState,
