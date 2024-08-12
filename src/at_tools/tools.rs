@@ -185,7 +185,11 @@ tools:
   - name: "relevant_files"
     description: "Get a list of files that are relevant to solve a particular task."
     parameters:
+      - name: "problem_statement"
+        type: "string"
+        description: "Problem statement summary -- as detailed as possible."
     parameters_required:
+      - "problem_statement" 
 "####;
 
 #[allow(dead_code)]
