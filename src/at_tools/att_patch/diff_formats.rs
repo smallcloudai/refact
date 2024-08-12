@@ -29,70 +29,76 @@ pub async fn parse_diff_chunks_from_message(
     let gcx = ccx.lock().await.global_context.clone();
     let maybe_ast_module = gcx.read().await.ast_module.clone();
     for chunk in chunks.iter() {
-        continue;
-        // let path = PathBuf::from(&chunk.file_name);
-        // let text_before = match read_file_from_disk(&path).await {
-        //     Ok(text) => text,
-        //     Err(err) => {
-        //         let message = format!("Error reading file: {:?}", err);
-        //         return Err(message);
-        //     }
-        // };
-        // 
-        // // let can_apply_other_raw = can_apply_diff_chunks_other(&chunks, &applied_state, &desired_state);
-        // // let can_apply_other = fuzzy_results_into_state_vector(&can_apply_other_raw, post.chunks.len()).iter().map(|x| *x == 0 || *x == 1).collect();
-        // // // println!("can_apply_other: {:?}", can_apply_other);
-        // // 
-        // // // if chunk.file_action == "edit"
-        // 
-        // 
-        // let (text_after, fuzzy_results) = apply_diff_chunks_to_text(
-        //     &text_before.to_string(),
-        //     vec![(0, chunk)],
-        //     vec![],
-        //     1,
-        // );
-        // let state = fuzzy_results_into_state_vector(&fuzzy_results, 1);
-        // if state.iter().any(|x| *x != 1) {
-        //     return Err("Couldn't apply the generated diff, probably it's broken".to_string());
-        // }
-        // 
-        // match &maybe_ast_module {
-        //     Some(ast_module) => {
-        //         let before_error_symbols = match parse_and_get_error_symbols(
-        //             ast_module.clone(),
-        //             &path,
-        //             &text_before,
-        //         ).await {
-        //             Ok(symbols) => symbols,
-        //             Err(err) => {
-        //                 warn!("Error getting symbols from file: {:?}, skipping ast assessment", err);
-        //                 continue;
-        //             }
-        //         };
-        //         let after_error_symbols = match parse_and_get_error_symbols(
-        //             ast_module.clone(),
-        //             &path,
-        //             &Rope::from_str(&text_after),
-        //         ).await {
-        //             Ok(symbols) => symbols,
-        //             Err(err) => {
-        //                 warn!("Error getting symbols from file: {:?}, skipping ast assessment", err);
-        //                 continue;
-        //             }
-        //         };
-        //         if before_error_symbols.len() < after_error_symbols.len() {
-        //             let message = format!(
-        //                 "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs", 
-        //                 path, before_error_symbols.len(), after_error_symbols.len()
-        //             );
-        //             return Err(message);
-        //         }
-        //     }
-        //     None => {
-        //         warn!("AST module is disabled, the diff assessment is skipping");
-        //     }
-        // }
+        let path = PathBuf::from(&chunk.file_name);
+        
+        let can_apply_other_raw = can_apply_diff_chunks_other(
+            &vec![chunk.clone()], &vec![false], &vec![true]
+        );
+        let can_apply = fuzzy_results_into_state_vector(
+            &can_apply_other_raw, 1).iter().map(|x| *x == 0 || *x == 1
+        ).all(|x| x);
+        if !can_apply {
+            warn!("Couldn't apply the generated diff, the following chunk is broken:\n{:?}", chunk);
+            return Err("Couldn't apply the generated diff, probably it's broken".to_string());
+        }
+        // TODO: temporary
+        if chunk.file_action != "edit" {
+            continue;
+        }
+
+        let text_before = match read_file_from_disk(&path).await {
+            Ok(text) => text,
+            Err(err) => {
+                let message = format!("Error reading file: {:?}", err);
+                return Err(message);
+            }
+        };
+        let (text_after, fuzzy_results) = apply_diff_chunks_to_text(
+            &text_before.to_string(),
+            vec![(0, chunk)],
+            vec![],
+            1,
+        );
+        let state = fuzzy_results_into_state_vector(&fuzzy_results, 1);
+        if state.iter().any(|x| *x != 1) {
+        }
+        
+        match &maybe_ast_module {
+            Some(ast_module) => {
+                let before_error_symbols = match parse_and_get_error_symbols(
+                    ast_module.clone(),
+                    &path,
+                    &text_before,
+                ).await {
+                    Ok(symbols) => symbols,
+                    Err(err) => {
+                        warn!("Error getting symbols from file: {:?}, skipping ast assessment", err);
+                        continue;
+                    }
+                };
+                let after_error_symbols = match parse_and_get_error_symbols(
+                    ast_module.clone(),
+                    &path,
+                    &Rope::from_str(&text_after),
+                ).await {
+                    Ok(symbols) => symbols,
+                    Err(err) => {
+                        warn!("Error getting symbols from file: {:?}, skipping ast assessment", err);
+                        continue;
+                    }
+                };
+                if before_error_symbols.len() < after_error_symbols.len() {
+                    let message = format!(
+                        "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs", 
+                        path, before_error_symbols.len(), after_error_symbols.len()
+                    );
+                    return Err(message);
+                }
+            }
+            None => {
+                warn!("AST module is disabled, the diff assessment is skipping");
+            }
+        }
     }
 
     match serde_json::to_string_pretty(&chunks) {
