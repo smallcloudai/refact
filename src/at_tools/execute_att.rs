@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use hashbrown::HashSet;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -89,7 +90,7 @@ pub async fn run_tools(
             let mut have_answer = false;
             for msg in tool_msg_and_maybe_more {
                 if let ContextEnum::ChatMessage(ref raw_msg) = msg {
-                    if (raw_msg.role == "tool" || raw_msg.role == "diff" || raw_msg.role == "supercat") && raw_msg.tool_call_id == t_call.id {
+                    if (raw_msg.role == "tool" || raw_msg.role == "diff" || raw_msg.role == "supercat" || raw_msg.role == "search") && raw_msg.tool_call_id == t_call.id {
                         generated_tool.push(raw_msg.clone());
                         have_answer = true;
                     } else {
@@ -171,18 +172,25 @@ pub async fn run_tools(
 
     let mut all_messages: Vec<ChatMessage> = original_messages.iter().map(|m| m.clone()).collect();
     for msg in generated_tool.iter_mut() {
-        if msg.role == "supercat" {
-            msg.role = "tool".to_string();
+        if msg.role == "supercat" || msg.role == "search" {
             let initial_file_list = serde_json::from_str::<Vec<_>>(&msg.content).unwrap_or(vec![]);
             // file_name_attached = intersection(file_name_attached, initial_file_list)
-            let intersected_file_names = file_names_attached.iter()
-                .filter(|file_name| initial_file_list.contains(*file_name)).cloned().collect::<Vec<_>>();
-            let non_intersected_file_names = initial_file_list.iter()
-               .filter(|file_name|!file_names_attached.contains(*file_name)).cloned().collect::<Vec<_>>();
-            msg.content = format!("Supercat read and attached following files:\n{}\n", intersected_file_names.join("\n"));
-            if !non_intersected_file_names.is_empty() {
-                msg.content.push_str(format!("\nSupercat didn't attach following files:\n{}\n", non_intersected_file_names.join("\n")).as_str());
+            let intersected_file_names = file_names_attached.iter().filter(|file_name| initial_file_list.contains(*file_name)).cloned().collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
+            let non_intersected_file_names = initial_file_list.iter().filter(|file_name|!file_names_attached.contains(*file_name)).cloned().collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
+            
+            if msg.role == "supercat" {
+                msg.content = format!("Supercat read and attached following files:\n{}\n", intersected_file_names.join("\n"));
+                if !non_intersected_file_names.is_empty() {
+                    msg.content.push_str(format!("\nSupercat didn't attach following files:\n{}\n", non_intersected_file_names.join("\n")).as_str());
+                }
             }
+            if msg.role == "search" {
+                msg.content = format!("search found and attached following files:\n{}\n", intersected_file_names.join("\n"));
+                if!non_intersected_file_names.is_empty() {
+                    msg.content.push_str(format!("\nsearch found but didn't attach following files:\n{}\n", non_intersected_file_names.join("\n")).as_str());
+                }
+            }
+            msg.role = "tool".to_string();
         }
         all_messages.push(msg.clone());
         stream_back_to_user.push_in_json(json!(msg));

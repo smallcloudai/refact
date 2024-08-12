@@ -4,8 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
-use serde_json::Value;
-
+use serde_json::{json, Value};
+use tracing::info;
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
 use crate::at_commands::at_file::{at_file_repair_candidates, get_project_paths};
 use crate::at_commands::at_search::{execute_at_search, text_on_clip};
@@ -70,13 +70,17 @@ impl Tool for AttSearch {
             None => return Err("Missing argument `scope` in the search() call.".to_string())
         };
         let vector_of_context_file = execute_att_search(ccx.clone(), &query, &scope).await?;
-        tracing::info!("att-search: vector_of_context_file={:?}", vector_of_context_file);
-        let text = text_on_clip(&query, true);
+        info!("att-search: vector_of_context_file={:?}", vector_of_context_file);
+        
+        if vector_of_context_file.is_empty() {
+            return Err("search has given no results. Adjust a query or try a different scope".to_string());
+        }
 
-        let mut results = vec_context_file_to_context_tools(vector_of_context_file);
+        let mut results = vec_context_file_to_context_tools(vector_of_context_file.clone());
+        // role and content are updated in execute_att -- we need postprocessing results to fill content
         results.push(ContextEnum::ChatMessage(ChatMessage {
-            role: "tool".to_string(),
-            content: text,
+            role: "search".to_string(),
+            content: json!(vector_of_context_file.iter().map(|v| v.file_name.clone()).collect::<Vec<_>>()).to_string(),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
