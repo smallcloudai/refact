@@ -28,7 +28,9 @@ import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
 import { Statistics } from "./statistics";
-import { Welcome } from "../components/TourBubble/Welcome";
+import { Welcome } from "../components/Tour";
+import { TourProvider } from "./Tour";
+import { Tour } from "../components/Tour/Tour";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -219,6 +221,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
           </Flex>
         );
       })}
+      <Tour />
     </Flex>
   );
 };
@@ -228,7 +231,9 @@ export const App = () => {
     <Provider store={store}>
       <PersistGate persistor={persistor}>
         <Theme>
-          <InnerApp />
+          <TourProvider>
+            <InnerApp />
+          </TourProvider>
         </Theme>
       </PersistGate>
     </Provider>

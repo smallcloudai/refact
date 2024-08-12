@@ -1,4 +1,5 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
+import { createContext, useContext, useState } from "react";
 
 type TourInProgress = {
   type: "in_progress";
@@ -104,3 +105,35 @@ export const tourReducer = createReducer<TourState>(
     });
   },
 );
+
+export type TourRefs = {
+  newChat: null | HTMLButtonElement;
+  useTools: null | HTMLDivElement;
+  setNewChat: (x: HTMLButtonElement | null) => void;
+  setUseTools: (x: HTMLDivElement | null) => void;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const TourContext = createContext<TourRefs>(null!);
+
+type TourContextProps = {
+  children: React.ReactNode;
+};
+
+export const TourProvider = ({ children }: TourContextProps) => {
+  const [newChat, setNewChat] = useState<null | HTMLButtonElement>(null);
+  const [useTools, setUseTools] = useState<null | HTMLDivElement>(null);
+
+  return (
+    <TourContext.Provider
+      value={{ newChat, useTools, setNewChat, setUseTools }}
+    >
+      {children}
+    </TourContext.Provider>
+  );
+};
+
+export const useTourRefs = () => {
+  const context = useContext(TourContext);
+  return context;
+};

@@ -8,6 +8,7 @@ import classNames from "classnames";
 import { PromptSelect, PromptSelectProps } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import { useTourRefs } from "../../features/Tour";
 
 type CapsSelectProps = {
   value: string;
@@ -137,6 +138,8 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   useTools,
   setUseTools,
 }) => {
+  const refs = useTourRefs();
+
   return (
     <Flex
       pt="2"
@@ -146,15 +149,21 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
       className={classNames(styles.controls)}
     >
       {canUseTools && (
-        <ChatContolCheckBox
-          name="use_tools"
-          checked={useTools}
-          onCheckChange={(value) => setUseTools(!!value)}
-          label="Allow model to use tools"
-          infoText="Turn on when asking about your codebase. When tuned on the model can autonomously call functions to gather the best context."
-          href="https://docs.refact.ai/features/ai-chat/"
-          linkText="documentation"
-        />
+        <Flex
+          ref={(x) => refs.setUseTools(x)}
+          style={{ alignSelf: "flex-start" }}
+          id={"tour-tools"}
+        >
+          <ChatContolCheckBox
+            name="use_tools"
+            checked={useTools}
+            onCheckChange={(value) => setUseTools(!!value)}
+            label="Allow model to use tools"
+            infoText="Turn on when asking about your codebase. When tuned on the model can autonomously call functions to gather the best context."
+            href="https://docs.refact.ai/features/ai-chat/"
+            linkText="documentation"
+          />
+        </Flex>
       )}
 
       {Object.entries(checkboxes).map(([key, checkbox]) => {

@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import { Box, Flex, Button } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Footer, FooterProps } from "./Footer";
@@ -10,7 +10,7 @@ import {
 } from "../../features/History/historySlice";
 import { newChatAction, restoreChat } from "../../features/Chat/chatThread";
 import type { ChatThread } from "../../features/Chat/chatThread";
-import { TourBubble } from "../TourBubble";
+import { useTourRefs } from "../../features/Tour";
 
 export type SidebarProps = {
   // onCreateNewChat: () => void;
@@ -50,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
   const onHistoryItemClick = (thread: ChatThread) =>
     dispatch(restoreChat({ id: currentChatId, thread }));
-  const newChatRef = useRef(null);
+  const refs = useTourRefs();
 
   return (
     <Flex direction="column" style={style}>
@@ -59,12 +59,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Spinner loading={takingNotes} title="taking notes" />
         </Box>
         <Button
-          ref={newChatRef}
           variant="outline"
           ml="auto"
           mr="auto"
           onClick={onCreateNewChat}
-          // loading={takingNotes}
+          ref={(x) => refs.setNewChat(x)}
         >
           Start a new chat
         </Button>
@@ -82,18 +81,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           handleNavigation={handleNavigation}
         />
       </Flex>
-      <TourBubble
-        text="When you write code, Refact already knows what comes next."
-        target={newChatRef}
-        step={1}
-        down={true}
-      />
-      <TourBubble
-        text="Ask questions in the Chat, it already knows your codebase."
-        target={newChatRef}
-        step={2}
-        down={true}
-      />
     </Flex>
   );
 };

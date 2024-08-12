@@ -5,31 +5,49 @@ import { close, next } from "../../features/Tour";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 import { TourBox } from "./TourBox";
 import { TourTitle } from "./TourTitle";
-import { MutableRefObject, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export type TourBubbleProps = {
   text: string;
   step: number;
   down: boolean;
-  target: MutableRefObject<HTMLElement | null>;
+  target: HTMLElement | null;
+  containerWidth?: string;
 };
 
-export function TourBubble({ text, step, target, down }: TourBubbleProps) {
+export function TourBubble({
+  text,
+  step,
+  target,
+  down,
+  containerWidth,
+}: TourBubbleProps) {
   const dispatch = useAppDispatch();
   const state = useAppSelector((state: RootState) => state.tour);
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const [pos, setPos] = useState<DOMRect | undefined>(undefined);
 
   const isBubbleOpen = state.type === "in_progress" && state.step === step;
-  const pos = target.current?.getBoundingClientRect();
+  target;
 
   // TODO: find a better way of doing this
   // This code is there to force a rerender if target is null
-  const [i, setI] = useState(0);
   useEffect(() => {
-    setTimeout(() => {
-      if (pos === undefined) setI(i + 1);
-    }, 0);
-  }, []);
+    if (target === null) {
+      setPos(undefined);
+    } else {
+      const newPos = target.getBoundingClientRect();
+      if (
+        pos?.left !== newPos.left ||
+        pos.right !== newPos.right ||
+        pos.top !== newPos.top ||
+        pos.bottom !== newPos.bottom
+      ) {
+        setPos(newPos);
+      }
+    }
+  }, [target, pos, setPos, windowWidth, windowHeight]);
+  console.log("rerender");
 
   if (pos === undefined) {
     return <></>;
@@ -53,7 +71,7 @@ export function TourBubble({ text, step, target, down }: TourBubbleProps) {
         <Flex
           style={{
             position: "absolute",
-            width: "min(calc(100% - 20px), 540px)",
+            width: containerWidth ?? "min(calc(100% - 20px), 540px)",
             flexDirection: "column",
             alignSelf: "center",
             bottom: down ? "auto" : 0,
