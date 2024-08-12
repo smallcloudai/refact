@@ -1,17 +1,17 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use tokio::sync::{Mutex as AMutex};
 use async_trait::async_trait;
 use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
-use crate::at_commands::at_file::{at_file_repair_candidates, file_repair_candidates, get_project_paths};
+use crate::at_commands::at_file::{at_file_repair_candidates, get_project_paths};
 use crate::at_tools::att_file::real_file_path_candidate;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
-use crate::files_correction::{correct_to_nearest_dir_path, get_all_files_in_dir_recursively};
+use crate::files_correction::{correct_to_nearest_dir_path, get_files_in_dir};
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 
 
@@ -36,16 +36,15 @@ impl Tool for AttSuperCat {
             Some(v) => return Err(format!("argument `symbols` is not a string: {:?}", v)),
             None => vec![],
         };
-        let detail_level = match args.get("detail_level") {
-            Some(Value::String(s)) => s.to_string(),
-            Some(v) => return Err(format!("argument `detail_level` is not a string: {:?}", v)),
-            None => "fulltext".to_string()
+        let skeleton = match args.get("skeleton") {
+            Some(Value::Bool(s)) => *s,
+            Some(v) => return Err(format!("argument `skeleton` is not a bool: {:?}", v)),
+            None => false,
         };
         
-        let usefulness = match detail_level.as_str() {
-            "fulltext" => 100.,
-            "skeleton" => 0.,
-            _ => return Err(format!("argument `detail_level` must be one of: fulltext, skeleton: {:?}", detail_level)),
+        let usefulness = match skeleton {
+            true => 0.,
+            false => 100.,
         };
         
         let global_context = ccx.lock().await.global_context.clone();
@@ -59,7 +58,7 @@ impl Tool for AttSuperCat {
             } else {
                 let candidates = correct_to_nearest_dir_path(global_context.clone(), &p, false, 10).await;
                 let candidate = real_file_path_candidate(ccx.clone(), &p, &candidates, &get_project_paths(ccx.clone()).await, true).await?;
-                let files_in_dir = get_all_files_in_dir_recursively(global_context.clone(), &PathBuf::from(candidate)).await;
+                let files_in_dir = get_files_in_dir(global_context.clone(), &PathBuf::from(candidate)).await;
                 corrected_paths.extend(files_in_dir.into_iter().map(|x|x.to_string_lossy().to_string()));
             }
         }
@@ -116,9 +115,11 @@ impl Tool for AttSuperCat {
         }
 
         let mut results = vec_context_file_to_context_tools(context_files_in);
+        
+        // role and content are updated in execute_att -- we need postprocessing results to fill content
         results.push(ContextEnum::ChatMessage(ChatMessage {
-            role: "tool".to_string(),
-            content: "Attached supercat results below".to_string(),
+            role: "supercat".to_string(),
+            content: json!(corrected_paths).to_string(),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()

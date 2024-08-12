@@ -46,12 +46,14 @@ fn make_cache<I>(paths_iter: I) -> (
     (cache_correction, cache_fuzzy_set.into_iter().collect(), cnt)
 }
 
-pub async fn get_all_files_in_dir_recursively(
+pub async fn get_files_in_dir(
     global_context: Arc<ARwLock<GlobalContext>>,
     dir: &PathBuf,
 ) -> Vec<PathBuf> {
     let paths = paths_from_anywhere(global_context.clone()).await;
-    paths.into_iter().filter(|path| path.starts_with(dir)).collect()
+    paths.into_iter()
+        .filter(|path| path.parent() == Some(dir))
+        .collect()
 }
 
 pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, HashSet<String>>>, Arc<Vec<String>>) {

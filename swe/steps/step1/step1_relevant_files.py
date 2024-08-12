@@ -15,7 +15,7 @@ class RelevantFiles(Step):
     def _tools(self) -> Set[str]:
         return set()
 
-    async def process(self, problem_statement: str, repo_path: Path, **kwargs) -> List[str]:
+    async def process(self, problem_statement: str, repo_path: Path, **kwargs) -> Dict[str, Any]:
         tree_tool_call_dict = chat_client.ToolCallDict(
             id=chat_client.gen_function_call_id(),
             function=chat_client.FunctionDict(arguments='{}', name='relevant_files'),
@@ -41,9 +41,13 @@ class RelevantFiles(Step):
 
         if not isinstance(files_list[0], dict):
             raise RuntimeError(f"files list is not a list of dicts")
-        
-        files_list: List[str] = [f['file_path'] for f in files_list]
-        
-        return files_list
+
+        context_files = [f['file_path'] for f in files_list]
+        to_change_files = [f['file_path'] for f in files_list if f['reason'] == 'to_change']
+
+        return {
+            'context_files': context_files,
+            'to_change_files': to_change_files,
+        }
 
 

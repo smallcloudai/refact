@@ -175,10 +175,10 @@ tools:
         description: "Comma separated file names or directories. e.g: dir1/file1.ext, dir2/file2.ext, dir3/dir4"
       - name: "symbols"
         type: "string"
-        description: "Comma separated AST symbols: MyClass, MyClass::method, my_function"
-      - name: "detail_level"
-        type: "string"
-        description: "`fulltext` or `skeleton`; default: `fulltext`"
+        description: "Comma separated AST symbols e.g: MyClass, MyClass::method, my_function"
+      - name: "skeleton"
+        type: "boolean"
+        description: "if true, files will be skeletonized - mostly only AST symbols will be visible"
     parameters_required:
       - "paths"
 
