@@ -137,6 +137,7 @@ export type DropdownNavigationOptions =
   | "stats"
   | "settings"
   | "hot keys"
+  | "restart tour"
   | "";
 
 type SettingsProps = {
@@ -162,6 +163,9 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
         </DropdownMenu.Item>
         <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
           Hot Keys
+        </DropdownMenu.Item>
+        <DropdownMenu.Item onSelect={() => handleNavigation("restart tour")}>
+          Restart tour
         </DropdownMenu.Item>
         <DropdownMenu.Separator />
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>

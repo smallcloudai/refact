@@ -20,7 +20,7 @@ import {
   OpenExternalUrl,
   SetupHost,
 } from "../events/setup";
-import { useAppSelector, useConfig } from "../app/hooks";
+import { useAppDispatch, useAppSelector, useConfig } from "../app/hooks";
 import { FIMDebug } from "./FIM";
 import { store, persistor, RootState } from "../app/store";
 import { Provider } from "react-redux";
@@ -29,7 +29,7 @@ import { Theme } from "../components/Theme";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
 import { Statistics } from "./statistics";
 import { Welcome } from "../components/Tour";
-import { TourProvider } from "./Tour";
+import { TourProvider, restart } from "./Tour";
 import { Tour } from "../components/Tour/Tour";
 import { DropdownNavigationOptions } from "../components/Sidebar/Footer";
 
@@ -41,6 +41,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const { pages, navigate, isPageInHistory } = usePages();
   const { openHotKeys, openSettings } = useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
+  const dispatch = useAppDispatch();
   useEventBusForApp();
   // TODO: can replace this with a selector for state.chat.thread.id
 
@@ -139,6 +140,10 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         });
       } else if (to === "stats") {
         navigate({ type: "push", page: { name: "statistics page" } });
+      } else if (to === "restart tour") {
+        dispatch(restart());
+        navigate({ type: "pop_back_to", page: "initial setup" });
+        navigate({ type: "push", page: { name: "welcome" } });
       } else if (to === "chat") {
         navigate({ type: "push", page: { name: "chat" } });
       }
