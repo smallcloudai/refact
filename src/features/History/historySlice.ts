@@ -66,7 +66,7 @@ export const historySlice = createSlice({
 
     getHistory: (state): ChatHistoryItem[] =>
       Object.values(state).sort((a, b) =>
-        a.updatedAt.localeCompare(b.updatedAt),
+        b.updatedAt.localeCompare(a.updatedAt),
       ),
   },
 });
