@@ -20,7 +20,7 @@ export const Tour = ({ page, navigate }: TourProps) => {
     dispatch(next());
   }
 
-  if (state.type === "in_progress" && state.step === 8 && page === "history") {
+  if (state.type === "in_progress" && state.step === 7 && page === "history") {
     dispatch(next());
   }
 
@@ -80,17 +80,8 @@ export const Tour = ({ page, navigate }: TourProps) => {
         page={page}
       />
       <TourBubble
-        text={"Click ‘Open in Tab’ to view the chat in full screen."}
-        step={6}
-        down={true}
-        target={refs.openInNewTab}
-        containerWidth={chatWidth}
-        onPage={"chat"}
-        page={page}
-      />
-      <TourBubble
         text={"Use 'New Chat' to switch topics and create a new thread."}
-        step={7}
+        step={6}
         down={true}
         target={refs.newChatInside}
         containerWidth={chatWidth}
@@ -99,7 +90,7 @@ export const Tour = ({ page, navigate }: TourProps) => {
       />
       <TourBubble
         text={"Click ‘Back’ to see your chat history and continue discussion."}
-        step={8}
+        step={7}
         down={true}
         target={refs.back}
         containerWidth={chatWidth}
@@ -109,13 +100,13 @@ export const Tour = ({ page, navigate }: TourProps) => {
       />
       <TourBubble
         text={"Click here to discover more."}
-        step={9}
+        step={8}
         down={false}
         target={refs.more}
         onPage={"history"}
         page={page}
       />
-      <TourEnd step={10} />
+      <TourEnd step={9} />
     </>
   );
 };
