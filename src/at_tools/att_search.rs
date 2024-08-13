@@ -18,7 +18,11 @@ use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 
 pub struct AttSearch;
 
-async fn execute_att_search(ccx: Arc<AMutex<AtCommandsContext>>, query: &String, scope: &String) -> Result<Vec<ContextFile>, String> {
+async fn execute_att_search(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    query: &String,
+    scope: &String
+) -> Result<Vec<ContextFile>, String> {
     fn is_scope_a_file(scope: &String) -> bool {
         PathBuf::from(scope).extension().is_some()
     }
