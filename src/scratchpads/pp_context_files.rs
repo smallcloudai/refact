@@ -46,7 +46,7 @@ pub struct PostprocessSettings {
     pub comments_propagate_up_coef: f32, // mark comments above a symbol as useful, with this coef
     pub close_small_gaps: bool,
     pub take_floor: f32,                 // take/dont value
-    pub max_files_n: Option<usize>,              // don't produce more than n files in output
+    pub max_files_n: usize,              // don't produce more than n files in output
 }
 
 impl PostprocessSettings {
@@ -59,7 +59,7 @@ impl PostprocessSettings {
             close_small_gaps: true,
             comments_propagate_up_coef: 0.99,
             take_floor: 0.0,
-            max_files_n: Some(10),
+            max_files_n: 10,
         }
     }
 }
@@ -135,8 +135,8 @@ async fn set_lines_usefulness(
         let file_ref = lines.first().unwrap().file_ref.clone();
 
         let mut symbols_to_color = vec![];
-        if !msg.symbol.is_empty() && !(msg.symbol.len() == 1 && msg.symbol.first().unwrap_or(&Uuid::default()).is_nil()) {
-            for sym in msg.symbol.iter() {
+        if !msg.symbols.is_empty() && !(msg.symbols.len() == 1 && msg.symbols.first().unwrap_or(&Uuid::default()).is_nil()) {
+            for sym in msg.symbols.iter() {
                 if sym.is_nil() {
                     continue;
                 }
@@ -278,10 +278,8 @@ async fn pp_limit_and_merge(
         let filename = line_ref.file_ref.cpath.to_string_lossy().to_string();
 
         if !files_mentioned_set.contains(&filename) {
-            if let Some(max_files_n) = settings.max_files_n {
-                if files_mentioned_set.len() >= max_files_n {
-                    continue;
-                }
+            if files_mentioned_set.len() >= settings.max_files_n {
+                continue;
             }
             files_mentioned_set.insert(filename.clone());
             files_mentioned_sequence.push(line_ref.file_ref.cpath.clone());
@@ -354,7 +352,7 @@ async fn pp_limit_and_merge(
             file_content: out.clone(),
             line1: first_line,
             line2: last_line,
-            symbol: vec![],
+            symbols: vec![],
             gradient_type: -1,
             usefulness: 0.0,
             is_body_important: false
@@ -369,7 +367,7 @@ pub async fn postprocess_context_files(
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
-    max_files_n: Option<usize>,
+    max_files_n: usize,
 ) -> Vec<ContextFile> {
     let files_marked_up = pp_ast_markup_files(global_context.clone(), &messages).await;
 

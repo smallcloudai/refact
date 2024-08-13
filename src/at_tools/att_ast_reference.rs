@@ -16,14 +16,16 @@ use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 
-const DEFAULT_TOP_N : usize = 6;
-
-
 pub struct AttAstReference;
 
 #[async_trait]
 impl Tool for AttAstReference {
-    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<Vec<ContextEnum>, String> {
         info!("execute @references {:?}", args);
         let (gcx, top_n) = {
             let ccx_locked = ccx.lock().await;
@@ -43,7 +45,6 @@ impl Tool for AttAstReference {
         let ast_mb = gcx.read().await.ast_module.clone();
         let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
         
-        let top_n= top_n.unwrap_or(DEFAULT_TOP_N);
         let mut found_by_fuzzy_search: bool = false;
         let mut res: AstQuerySearchResult = ast.read().await.search_by_fullpath(
             symbol.clone(),

@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 use serde_json::Value;
-use uuid::Uuid;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{at_file_repair_candidates, get_project_paths, text_on_clip};
 use crate::at_tools::tools::Tool;
@@ -63,7 +62,12 @@ pub async fn real_file_path_candidate(
 
 #[async_trait]
 impl Tool for AttFile {
-    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<Vec<ContextEnum>, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let p = match args.get("path") {
             Some(Value::String(s)) => s,
@@ -83,7 +87,7 @@ impl Tool for AttFile {
                     file_content: file_content.clone(),
                     line1: 0,
                     line2: file_content.lines().count(),
-                    symbol: vec![],
+                    symbols: vec![],
                     gradient_type: 0,
                     usefulness: 100.0,
                     is_body_important: false

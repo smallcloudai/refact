@@ -12,14 +12,17 @@ use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::vecdb::vdb_highlev::{memories_search, ongoing_find};
 
 
-const TOP_N_DEFAULT: usize = 7;
-
 pub struct AttGetKnowledge;
 
 
 #[async_trait]
 impl Tool for AttGetKnowledge {
-    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<Vec<ContextEnum>, String> {
         info!("run @get-knowledge {:?}", args);
 
         let (gcx, top_n) = {
@@ -34,7 +37,7 @@ impl Tool for AttGetKnowledge {
         };
 
         let vec_db = gcx.read().await.vec_db.clone();
-        let memories: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(vec_db.clone(), &im_going_to_do, top_n.unwrap_or(TOP_N_DEFAULT)).await?;
+        let memories: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(vec_db.clone(), &im_going_to_do, top_n).await?;
 
         // TODO: verify it's valid json in payload when accepting the mem into db
         let memories_json = memories.results.iter().map(|m| {

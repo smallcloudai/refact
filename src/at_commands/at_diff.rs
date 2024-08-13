@@ -1,9 +1,9 @@
 use std::sync::Arc;
 use std::path::PathBuf;
 use tracing::info;
+use serde_json::json;
 
 use async_trait::async_trait;
-use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tokio::process::Command;
 
@@ -171,7 +171,12 @@ impl AtCommand for AtDiff {
         &self.params
     }
 
-    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         let diff_chunks = match args.iter().take_while(|arg| arg.text != "\n").take(2).count() {
             0 => {
                 // No arguments: git diff for all tracked files

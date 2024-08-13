@@ -22,7 +22,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> Vec<ContextFile>
             file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
-            symbol: vec![res.symbol_declaration.guid.clone()],
+            symbols: vec![res.symbol_declaration.guid.clone()],
             gradient_type: -1,
             usefulness: res.usefulness,
             is_body_important: false
@@ -35,7 +35,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> Vec<ContextFile>
             file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
-            symbol: vec![res.symbol_declaration.guid.clone()],
+            symbols: vec![res.symbol_declaration.guid.clone()],
             gradient_type: -1,
             usefulness: res.usefulness,
             is_body_important: true
@@ -48,7 +48,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> Vec<ContextFile>
             file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
-            symbol: vec![res.symbol_declaration.guid.clone()],
+            symbols: vec![res.symbol_declaration.guid.clone()],
             gradient_type: -1,
             usefulness: res.usefulness,
             is_body_important: true
@@ -61,7 +61,7 @@ pub async fn results2message(result: &AstCursorSearchResult) -> Vec<ContextFile>
             file_content: res.content.clone(),
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
-            symbol: vec![res.symbol_declaration.guid.clone()],
+            symbols: vec![res.symbol_declaration.guid.clone()],
             gradient_type: -1,
             usefulness: res.usefulness,
             is_body_important: false
@@ -126,7 +126,12 @@ impl AtCommand for AtAstLookupSymbols {
         &self.params
     }
 
-    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @lookup_symbols_at {:?}", args);
 
         let mut file_path = match args.get(0) {

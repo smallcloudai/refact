@@ -2,13 +2,15 @@ use std::sync::Arc;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use serde_json::Value;
+use tracing::info;
+
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
-use serde_json::{json, Value};
-use tracing::info;
+
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
 use crate::at_commands::at_file::{at_file_repair_candidates, get_project_paths};
-use crate::at_commands::at_search::{execute_at_search, text_on_clip};
+use crate::at_commands::at_search::execute_at_search;
 use crate::at_tools::att_file::real_file_path_candidate;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
@@ -44,6 +46,7 @@ async fn execute_att_search(ccx: Arc<AMutex<AtCommandsContext>>, query: &String,
             Ok(execute_at_search(ccx.clone(), &query, filter).await?)
         },
         _ if is_scope_a_dir(scope) => {
+            // TODO: complete path
             let filter = format!("(file_path LIKE '{}%')", scope);
             Ok(execute_at_search(ccx.clone(), &query, Some(filter)).await?)
         },
@@ -69,18 +72,28 @@ impl Tool for AttSearch {
             Some(v) => return Err(format!("argument `scope` is not a string: {:?}", v)),
             None => return Err("Missing argument `scope` in the search() call.".to_string())
         };
+        
         let vector_of_context_file = execute_att_search(ccx.clone(), &query, &scope).await?;
         info!("att-search: vector_of_context_file={:?}", vector_of_context_file);
         
         if vector_of_context_file.is_empty() {
             return Err("search has given no results. Adjust a query or try a different scope".to_string());
         }
-
+        
+        let file_results = vector_of_context_file.iter().map(|c|c.file_name.clone()).collect::<Vec<_>>();
+        let mut file_results_counters = HashMap::new();
+        for f in file_results.iter() {
+            *file_results_counters.entry(f.clone()).or_insert(0usize) += 1;
+        }
+        let mut content = "Records found:\n".to_string();
+        for (file_name, count) in file_results_counters.iter() {
+            content.push_str(&format!("{}: {}\n", file_name, count));
+        }
+        
         let mut results = vec_context_file_to_context_tools(vector_of_context_file.clone());
-        // role and content are updated in execute_att -- we need postprocessing results to fill content
         results.push(ContextEnum::ChatMessage(ChatMessage {
-            role: "search".to_string(),
-            content: json!(vector_of_context_file.iter().map(|v| v.file_name.clone()).collect::<Vec<_>>()).to_string(),
+            role: "tool".to_string(),
+            content,
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()

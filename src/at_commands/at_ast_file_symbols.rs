@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
-use uuid::Uuid;
 use crate::ast::ast_index::RequestSymbolType;
 
 use crate::ast::structs::FileReferencesResult;
@@ -21,7 +20,7 @@ fn results2message(result: &FileReferencesResult) -> Vec<ContextFile> {
             file_content: format!("{:?}", x.symbol_type),
             line1: x.full_range.start_point.row + 1,
             line2: x.full_range.end_point.row + 1,
-            symbol: vec![],
+            symbols: vec![],
             gradient_type: -1,
             usefulness: 100.0,
             is_body_important: false
@@ -55,7 +54,12 @@ impl AtCommand for AtAstFileSymbols {
         &self.params
     }
 
-    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         let mut cpath = match args.get(0) {
             Some(x) => x.clone(),
             None => {

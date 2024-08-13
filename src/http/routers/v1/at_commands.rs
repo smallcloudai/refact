@@ -63,7 +63,7 @@ pub async fn handle_v1_command_completion(
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
         global_context.clone(),
         fake_n_ctx,
-        Some(top_n),
+        top_n,
         true,
         &vec![],
     ).await));
@@ -132,7 +132,7 @@ pub async fn handle_v1_command_preview(
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
         global_context.clone(),
         recommended_model_record.n_ctx,
-        Some(crate::http::routers::v1::chat::CHAT_TOP_N),
+        crate::http::routers::v1::chat::CHAT_TOP_N,
         true,
         &vec![],
     ).await));
@@ -158,7 +158,7 @@ pub async fn handle_v1_command_preview(
         tokenizer_arc.clone(),
         rag_n_ctx,
         false,
-        Some(crate::http::routers::v1::chat::CHAT_TOP_N),
+        crate::http::routers::v1::chat::CHAT_TOP_N,
     ).await;
 
     if !processed.is_empty() {

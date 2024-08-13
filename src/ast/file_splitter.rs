@@ -73,8 +73,6 @@ impl AstBasedFileSplitter {
             }
         };
 
-        // let mut files_markup = HashMap::new();
-        // files_markup.insert(path_str.to_string(), Arc::new(PPFile { markup: ast_markup.clone(), cpath: path.clone(), cpath_symmetry_breaker: 0.0 }));
         let guid_to_info: HashMap<Uuid, &SymbolInformation> = ast_markup.symbols_sorted_by_path_len.iter().map(|s| (s.guid.clone(), s)).collect();
         let guids: Vec<_> = guid_to_info.iter()
             .sorted_by(|a, b| a.1.full_range.start_byte.cmp(&b.1.full_range.start_byte))

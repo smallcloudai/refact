@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use regex::Regex;
 
 use async_trait::async_trait;
@@ -13,7 +13,7 @@ use futures_util::future::join_all;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::subchat::{subchat, subchat_single};
 use crate::at_tools::tools::Tool;
-use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ContextEnum, ContextFile};
+use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
 
 
@@ -24,24 +24,16 @@ pub struct AttRelevantFiles;
 
 #[async_trait]
 impl Tool for AttRelevantFiles {
-    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
-        let problem_statement_summary = match args.get("problem_statement") {
-            Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `problem_statement` is not a string: {:?}", v)),
-            None => return Err("Missing argument `problem_statement`".to_string())
-        };
-
-        let (top_n_default, n_ctx_default) = {
-            let mut ccx_lock = ccx.lock().await;
-            let (top_n_default, n_ctx_default) = (ccx_lock.top_n, ccx_lock.n_ctx);
-            ccx_lock.top_n = None;
-            ccx_lock.n_ctx = 64_000;
-            (top_n_default, n_ctx_default)
-        };
-
-        let problem_message_mb = {
+    async fn tool_execute(
+        &mut self, ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        _args: &HashMap<String, Value>
+    ) -> Result<Vec<ContextEnum>, String> {
+        let problem = {
             let ccx_locked = ccx.lock().await;
-            ccx_locked.messages.iter().filter(|m| m.role == "user").last().map(|x|x.content.clone())
+            ccx_locked.messages.iter().filter(|m| m.role == "user").last().map(|x|x.content.clone()).ok_or(
+                "relevant_files: unable to find user problem description".to_string()
+            )?
         };
 
         let mut problem_statement = format!("Problem statement:\n{}", problem_statement_summary);
@@ -50,12 +42,6 @@ impl Tool for AttRelevantFiles {
         }
 
         let res = find_relevant_files(ccx, tool_call_id.clone(), problem_statement.as_str()).await?;
-
-        {
-            let mut ccx_lock = ccx.lock().await;
-            ccx_lock.top_n = top_n_default;
-            ccx_lock.n_ctx = n_ctx_default;
-        }
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {

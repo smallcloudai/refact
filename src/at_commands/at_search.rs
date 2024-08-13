@@ -3,15 +3,11 @@ use async_trait::async_trait;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
-use uuid::Uuid;
 
 use crate::vecdb;
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ContextFile, ContextEnum};
 use crate::vecdb::vdb_structs::VecdbSearch;
-
-
-const TOP_N_DEFAULT: usize = 7;
 
 
 pub fn text_on_clip(query: &String, from_tool_call: bool) -> String {
@@ -49,7 +45,7 @@ fn results2message(results: &Vec<vecdb::vdb_structs::VecdbRecord>) -> Vec<Contex
             file_content: r.window_text.clone(),
             line1: r.start_line as usize + 1,
             line2: r.end_line as usize + 1,
-            symbol: vec![],
+            symbols: vec![],
             gradient_type: -1,
             usefulness,
             is_body_important: false
@@ -70,7 +66,7 @@ pub async fn execute_at_search(
     let vec_db = gcx.read().await.vec_db.clone();
     let r = match *vec_db.lock().await {
         Some(ref db) => {
-            let top_n_twice_as_big = top_n.unwrap_or(TOP_N_DEFAULT) * 2;  // top_n will be cut at postprocessing stage, and we really care about top_n files, not pieces
+            let top_n_twice_as_big = top_n * 2;  // top_n will be cut at postprocessing stage, and we really care about top_n files, not pieces
             // TODO: this code sucks, release lock, don't hold anything during the search
             let search_result = db.vecdb_search(query.clone(), top_n_twice_as_big, vecdb_scope_filter_mb).await?;
             let results = search_result.results.clone();

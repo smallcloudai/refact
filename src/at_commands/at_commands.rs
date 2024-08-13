@@ -1,15 +1,13 @@
 use std::collections::HashMap;
-use tokio::sync::mpsc;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use tokio::sync::Mutex as AMutex;
-use tokio::sync::RwLock as ARwLock;
+use tokio::sync::mpsc;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextFile, ContextEnum};
 use crate::global_context::GlobalContext;
-
 use crate::at_commands::at_search::AtSearch;
 use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_ast_definition::AtAstDefinition;
@@ -23,7 +21,7 @@ use crate::at_commands::execute_at::AtCommandMember;
 pub struct AtCommandsContext {
     pub global_context: Arc<ARwLock<GlobalContext>>,
     pub n_ctx: usize,
-    pub top_n: Option<usize>,
+    pub top_n: usize,
     pub messages: Vec<ChatMessage>,
     #[allow(dead_code)]
     pub is_preview: bool,
@@ -39,7 +37,7 @@ impl AtCommandsContext {
     pub async fn new(
         global_context: Arc<ARwLock<GlobalContext>>,
         n_ctx: usize,
-        top_n: Option<usize>,
+        top_n: usize,
         is_preview: bool,
         messages: &Vec<ChatMessage>,
     ) -> Self {

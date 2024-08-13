@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Set
 
 
-class RelevantFiles(Step):
+class Locate(Step):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -23,11 +23,10 @@ class RelevantFiles(Step):
 
         tool_call_dict = chat_client.ToolCallDict(
             id=chat_client.gen_function_call_id(),
-            function=chat_client.FunctionDict(arguments=json.dumps(tool_args), name='relevant_files'),
+            function=chat_client.FunctionDict(arguments=json.dumps(tool_args), name='locate'),
             type='function')
 
         messages = [
-            # chat_client.Message(role="user", content=f"Problem statement:\n\n{problem_statement}"),
             chat_client.Message(role="assistant", finish_reason="tool_calls", tool_calls=[tool_call_dict]),
         ]
         self._trajectory.extend(print_messages(messages))

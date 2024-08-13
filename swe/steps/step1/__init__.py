@@ -1,2 +1,2 @@
 from .step1_tree import ExploreRepoStep
-from .step1_relevant_files import RelevantFiles
+from .step1_locate import Locate

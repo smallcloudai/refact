@@ -23,7 +23,7 @@ async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
             file_content: content,
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
-            symbol: vec![res.symbol_declaration.guid.clone()],
+            symbols: vec![res.symbol_declaration.guid.clone()],
             gradient_type: -1,
             usefulness: 0.5 * res.usefulness,
             is_body_important: true
@@ -75,7 +75,12 @@ impl AtCommand for AtAstReference {
         &self.params
     }
 
-    async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @references {:?}", args);
         let mut symbol = match args.get(0) {
             Some(x) => x.clone(),

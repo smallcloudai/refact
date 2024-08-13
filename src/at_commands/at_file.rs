@@ -1,16 +1,17 @@
 use std::path::PathBuf;
-use async_trait::async_trait;
 use regex::Regex;
-use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tracing::info;
 use std::sync::Arc;
-use uuid::Uuid;
+
+use async_trait::async_trait;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ContextFile, ContextEnum};
 use crate::global_context::GlobalContext;
+
 
 pub struct AtFile {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
@@ -134,7 +135,6 @@ pub async fn at_file_repair_candidates(
         let ccx_locked = ccx.lock().await;
         (ccx_locked.global_context.clone(), ccx_locked.top_n)
     };
-    let top_n = top_n.unwrap_or(10);
     file_repair_candidates(value, gcx.clone(), top_n, fuzzy).await
 }
 
@@ -198,7 +198,11 @@ pub async fn get_project_paths(
     }
 }
 
-pub async fn context_file_from_file_path(ccx: Arc<AMutex<AtCommandsContext>>, candidates: Vec<String>, file_path: String) -> Result<ContextFile, String> {
+pub async fn context_file_from_file_path(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    candidates: Vec<String>,
+    file_path: String,
+) -> Result<ContextFile, String> {
     let mut file_path_from_c = candidates.get(0).map(|x|x.clone()).unwrap_or(file_path.clone());
     let mut line1 = 0;
     let mut line2 = 0;
@@ -221,7 +225,7 @@ pub async fn context_file_from_file_path(ccx: Arc<AMutex<AtCommandsContext>>, ca
         file_content,
         line1,
         line2,
-        symbol: vec![],
+        symbols: vec![],
         gradient_type,
         usefulness: 100.0,
         is_body_important: false

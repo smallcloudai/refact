@@ -33,7 +33,7 @@ pub async fn handle_v1_subchat(
     let top_n = 7;
     let fake_n_ctx = 4096;
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(
-        AtCommandsContext::new(global_context.clone(), fake_n_ctx, Some(top_n), false, &post.messages).await
+        AtCommandsContext::new(global_context.clone(), fake_n_ctx, top_n, false, &post.messages).await
     ));
 
     let new_messages = subchat(
@@ -82,7 +82,7 @@ pub async fn handle_v1_subchat_single(
     let top_n = 7;
     let fake_n_ctx = 4096;
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(
-        AtCommandsContext::new(global_context.clone(), fake_n_ctx, Some(top_n), false, &post.messages).await)
+        AtCommandsContext::new(global_context.clone(), fake_n_ctx, top_n, false, &post.messages).await)
     );
 
     let new_messages = subchat_single(

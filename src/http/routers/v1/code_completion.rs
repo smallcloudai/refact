@@ -104,7 +104,7 @@ pub async fn handle_v1_code_completion(
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
         gcx.clone(),
         n_ctx,
-        Some(CODE_COMPLETION_TOP_N),
+        CODE_COMPLETION_TOP_N,
         true,
         &vec![],
     ).await));
@@ -165,7 +165,7 @@ pub async fn handle_v1_code_completion_prompt(
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
         gcx.clone(),
         n_ctx,
-        Some(CODE_COMPLETION_TOP_N),
+        CODE_COMPLETION_TOP_N,
         true,
         &vec![],
     ).await));
