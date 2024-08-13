@@ -22,7 +22,8 @@ use tracing::info;
 //     }
 // }
 
-pub async fn execute_cmd(command: &String, timeout_secs: usize) -> Result<(String, String), String> {
+pub async fn execute_cmd(command: &String, timeout_secs: usize) -> Result<(String, String), String>
+{
     info!("Executing command:\n{}\nwith timeout {}", command, timeout_secs);
     let timeout_duration = Duration::from_secs(timeout_secs as u64);
 

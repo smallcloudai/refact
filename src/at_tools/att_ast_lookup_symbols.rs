@@ -20,7 +20,8 @@ impl Tool for AttAstLookupSymbols {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<Vec<ContextEnum>, String>
+    {
         info!("execute tool: lookup_symbols_at {:?}", args);
         let path = match args.get("path") {
             Some(Value::String(s)) => s.clone(),

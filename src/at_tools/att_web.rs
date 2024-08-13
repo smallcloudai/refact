@@ -15,10 +15,10 @@ pub struct AttWeb;
 #[async_trait]
 impl Tool for AttWeb {
     async fn tool_execute(
-        &mut self, 
-        _ccx: Arc<AMutex<AtCommandsContext>>, 
-        tool_call_id: &String, 
-        args: &HashMap<String, Value>
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
     ) -> Result<Vec<ContextEnum>, String> {
         let url = match args.get("url") {
             Some(Value::String(s)) => s.clone(),

@@ -1,17 +1,15 @@
 use std::path::PathBuf;
+use async_trait::async_trait;
 use regex::Regex;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tracing::info;
 use std::sync::Arc;
-
-use async_trait::async_trait;
-use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ContextFile, ContextEnum};
 use crate::global_context::GlobalContext;
-
 
 pub struct AtFile {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
@@ -232,7 +230,10 @@ pub async fn context_file_from_file_path(
     })
 }
 
-pub async fn execute_at_file(ccx: Arc<AMutex<AtCommandsContext>>, file_path: String) -> Result<ContextFile, String>
+pub async fn execute_at_file(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    file_path: String,
+) -> Result<ContextFile, String>
 {
     let candidates = at_file_repair_candidates(ccx.clone(), &file_path, false).await;
     match context_file_from_file_path(ccx.clone(), candidates, file_path.clone()).await {

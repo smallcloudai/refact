@@ -39,7 +39,11 @@ fn full_path_score(path: &str, query: &str) -> f32 {
 // TODO: move to at_lookup_symbols
 #[async_trait]
 impl AtParam for AtParamSymbolPathQuery {
-    async fn is_value_valid(&self, _ccx: Arc<AMutex<AtCommandsContext>>, value: &String) -> bool {
+    async fn is_value_valid(
+        &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
+        value: &String,
+    ) -> bool {
         !value.is_empty()
     }
 
@@ -92,11 +96,19 @@ impl AtParamSymbolReferencePathQuery {
 
 #[async_trait]
 impl AtParam for AtParamSymbolReferencePathQuery {
-    async fn is_value_valid(&self, _ccx: Arc<AMutex<AtCommandsContext>>, _value: &String) -> bool {
+    async fn is_value_valid(
+        &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
+        _value: &String,
+    ) -> bool {
         return true;
     }
 
-    async fn param_completion(&self, ccx: Arc<AMutex<AtCommandsContext>>, value: &String) -> Vec<String> {
+    async fn param_completion(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        value: &String,
+    ) -> Vec<String> {
         let (gcx, top_n) = {
             let ccx_locked = ccx.lock().await;
             (ccx_locked.global_context.clone(), ccx_locked.top_n)

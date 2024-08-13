@@ -1,19 +1,24 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
 use async_trait::async_trait;
-use tokio::sync::mpsc;
-use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextFile, ContextEnum};
 use crate::global_context::GlobalContext;
+
 use crate::at_commands::at_search::AtSearch;
 use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_ast_definition::AtAstDefinition;
 use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_ast_lookup_symbols::AtAstLookupSymbols;
+// use crate::at_commands::at_file_search::AtFileSearch;
+// use crate::at_commands::at_local_notes_to_self::AtLocalNotesToSelf;
 use crate::at_commands::at_tree::AtTree;
+// use crate::at_commands::at_diff::{AtDiff, AtDiffRev};
 use crate::at_commands::at_web::AtWeb;
 use crate::at_commands::execute_at::AtCommandMember;
 
@@ -134,3 +139,4 @@ pub fn filter_only_context_file_from_context_tool(tools: &Vec<ContextEnum>) -> V
             if let ContextEnum::ContextFile(data) = x { Some(data.clone()) } else { None }
         }).collect::<Vec<ContextFile>>()
 }
+

@@ -27,7 +27,7 @@ impl Tool for AttTree {
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
-        args: &HashMap<String, Value>
+        args: &HashMap<String, Value>,
     ) -> Result<Vec<ContextEnum>, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let paths_from_anywhere = paths_from_anywhere(gcx.clone()).await;

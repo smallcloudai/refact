@@ -36,7 +36,8 @@ pub async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> 
     symbols
 }
 
-async fn run_at_definition(ast: &Option<Arc<ARwLock<AstModule>>>, symbol: &String) -> Result<Vec<ContextFile>, String> {
+async fn run_at_definition(ast: &Option<Arc<ARwLock<AstModule>>>, symbol: &String) -> Result<Vec<ContextFile>, String>
+{
     return match &ast {
         Some(ast) => {
             match ast.read().await.search_by_fullpath(
