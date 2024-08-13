@@ -31,6 +31,7 @@ import { Statistics } from "./statistics";
 import { Welcome } from "../components/Tour";
 import { TourProvider } from "./Tour";
 import { Tour } from "../components/Tour/Tour";
+import { DropdownNavigationOptions } from "../components/Sidebar/Footer";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -126,7 +127,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   // }, [historyHook, navigate]);
 
   const handleNavigation = useCallback(
-    (to: "fim" | "stats" | "hot keys" | "settings" | "chat" | "") => {
+    (to: DropdownNavigationOptions | "chat") => {
       if (to === "settings") {
         openSettings();
       } else if (to === "hot keys") {
