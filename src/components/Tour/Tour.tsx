@@ -109,6 +109,7 @@ export const Tour = ({ page, navigate }: TourProps) => {
         text={"Click here to discover more."}
         step={8}
         down={false}
+        containerWidth="min(100%, 540px)"
         target={refs.more}
         onPage={"history"}
         page={page}
