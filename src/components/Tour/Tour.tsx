@@ -1,7 +1,6 @@
 import React from "react";
 import { TourBubble } from ".";
 import { next, useTourRefs } from "../../features/Tour";
-import { TourEnd } from "./TourEnd";
 import { PageAction } from "../../hooks/usePages";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RootState } from "../../app/store";
@@ -22,6 +21,14 @@ export const Tour = ({ page, navigate }: TourProps) => {
 
   if (state.type === "in_progress" && state.step === 7 && page === "history") {
     dispatch(next());
+  }
+
+  if (state.type === "in_progress" && state.step === 9 && page === "history") {
+    navigate({ type: "push", page: { name: "tour end" } });
+  }
+
+  if (state.type === "finished" && page === "tour end") {
+    navigate({ type: "pop_back_to", page: "history" });
   }
 
   const chatWidth = "calc(100% - 20px)";
@@ -106,7 +113,6 @@ export const Tour = ({ page, navigate }: TourProps) => {
         onPage={"history"}
         page={page}
       />
-      <TourEnd step={9} />
     </>
   );
 };

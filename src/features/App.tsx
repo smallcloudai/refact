@@ -27,11 +27,12 @@ import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
-import { Statistics } from "./Statistics";
+import { Statistics } from "./statistics";
 import { Welcome } from "../components/Tour";
 import { TourProvider, restart } from "./Tour";
-import { Tour } from "../components/Tour/Tour";
+import { Tour } from "../components/Tour";
 import { DropdownNavigationOptions } from "../components/Sidebar/Footer";
+import { TourEnd } from "../components/Tour/TourEnd";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -190,6 +191,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
               <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
             )}
             {page.name === "welcome" && <Welcome onPressNext={startTour} />}
+            {page.name === "tour end" && <TourEnd />}
             {page.name === "history" && (
               <Sidebar
                 // history={historyHook.history}
