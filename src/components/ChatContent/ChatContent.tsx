@@ -23,6 +23,7 @@ import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RootState } from "../../app/store";
 import { next } from "../../features/TipOfTheDay";
 import { selectMessages } from "../../features/Chat/chatThread";
+import { AccumulatedChanges } from "./AccumulatedChanges";
 
 export const TipOfTheDay: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -132,6 +133,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       isStreaming,
     });
 
+    // TODO: this should run after the state updates :/
+    const onOpenCAccumulatedChanges = useCallback(() => {
+      innerRef.current?.scrollIntoView({ behavior: "instant", block: "end" });
+    }, [innerRef]);
+
     const toolResultsMap = React.useMemo(() => {
       return messages.reduce<Record<string, ToolResult>>((acc, message) => {
         if (!isToolMessage(message)) return acc;
@@ -220,13 +226,9 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
               // return <Markdown key={index}>{text}</Markdown>;
             }
           })}
-          {/* {!isWaiting && messages.length > 0 && (
-            <AccumulatedChanges
-              messages={messages}
-              // getDiffByIndex={getDiffByIndex}
-              // onSumbit={addOrRemoveDiff}
-            />
-          )} */}
+          {!isWaiting && messages.length > 0 && (
+            <AccumulatedChanges onOpen={onOpenCAccumulatedChanges} />
+          )}
           {isWaiting && (
             <Container py="4">
               <Spinner />
