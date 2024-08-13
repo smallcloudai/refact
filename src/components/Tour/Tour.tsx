@@ -1,5 +1,6 @@
 import { TourBubble } from ".";
 import { useTourRefs } from "../../features/Tour";
+import { TourEnd } from "./TourEnd";
 
 type TourProps = {
   page: string;
@@ -17,6 +18,7 @@ export const Tour = ({ page }: TourProps) => {
         step={1}
         target={refs.newChat}
         down={true}
+        isPointing={false}
         onPage={"history"}
         page={page}
       />
@@ -96,6 +98,7 @@ export const Tour = ({ page }: TourProps) => {
         onPage={"history"}
         page={page}
       />
+      <TourEnd step={10} />
     </>
   );
 };
