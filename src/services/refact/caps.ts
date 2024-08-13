@@ -1,3 +1,4 @@
+import { RootState } from "../../app/store";
 import { CAPS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
@@ -5,12 +6,19 @@ export const capsApi = createApi({
   reducerPath: "caps",
   baseQuery: fetchBaseQuery({
     // TODO: set this to the configured lsp url
-    baseUrl: "http://127.0.0.1:8001",
+    // baseUrl: `http://127.0.0.1:8001`,
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as RootState).config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   endpoints: (builder) => ({
-    getCaps: builder.query<CapsResponse, undefined>({
-      query: () => CAPS_URL,
-      transformResponse: (response) => {
+    getCaps: builder.query<CapsResponse, { port: number }>({
+      query: ({ port }) => ({ url: `http://127.0.0.1:${port}${CAPS_URL}` }),
+      transformResponse: (response: unknown) => {
         if (!isCapsResponse(response)) {
           throw new Error("Invalid response from caps");
         }

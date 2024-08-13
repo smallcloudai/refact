@@ -1,17 +1,24 @@
 // import { getApiKey } from "../../utils/ApiKey";
+import { RootState } from "../../app/store";
 import { AT_TOOLS_AVAILABLE_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const toolsApi = createApi({
   reducerPath: "tools",
   baseQuery: fetchBaseQuery({
-    // TODO: set this to the configured lsp url
-    // add api key
-    baseUrl: "http://127.0.0.1:8001",
+    prepareHeaders: (headers, api) => {
+      const getState = api.getState as () => RootState;
+      const state = getState();
+      const token = state.config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   endpoints: (builder) => ({
-    getTools: builder.query<ToolCommand[], undefined>({
-      query: () => AT_TOOLS_AVAILABLE_URL,
+    getTools: builder.query<ToolCommand[], { port: number }>({
+      query: ({ port }) => `http://127.0.0.1:${port}${AT_TOOLS_AVAILABLE_URL}`,
       transformResponse: (response) => {
         if (!Array.isArray(response)) {
           throw new Error("Invalid response from caps");

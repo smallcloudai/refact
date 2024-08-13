@@ -1,7 +1,8 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 // import { getApiKey, parseOrElse } from "../../utils";
-import { DEFF_STATE_URL, DIFF_APPLY_URL } from "./consts";
+import { DIFF_STATE_URL, DIFF_APPLY_URL } from "./consts";
 import { DiffChunk } from "./types";
+import { RootState } from "../../app/store";
 
 export type DiffAppliedStateArgs = {
   chunks: DiffChunk[];
@@ -16,13 +17,24 @@ export type DiffOperationArgs = {
 export const diffApi = createApi({
   reducerPath: "diffs",
   baseQuery: fetchBaseQuery({
-    baseUrl: "http://127.0.0.1:8001",
+    prepareHeaders: (headers, api) => {
+      const getState = api.getState as () => RootState;
+      const state = getState();
+      const token = state.config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   tagTypes: ["diffs"],
   endpoints: (builder) => ({
-    diffState: builder.query<DiffAppliedStateResponse, DiffAppliedStateArgs>({
-      query: ({ chunks }) => ({
-        url: DEFF_STATE_URL,
+    diffState: builder.query<
+      DiffAppliedStateResponse,
+      DiffAppliedStateArgs & { port: number }
+    >({
+      query: ({ chunks, port }) => ({
+        url: `http://127.0.0.1:${port}${DIFF_STATE_URL}`,
         method: "POST",
         credentials: "same-origin",
         redirect: "follow",
@@ -37,9 +49,12 @@ export const diffApi = createApi({
         return response as DiffAppliedStateResponse;
       },
     }),
-    diffApply: builder.mutation<DiffOperationResponse, DiffOperationArgs>({
-      query: ({ chunks, toApply }) => ({
-        url: DIFF_APPLY_URL,
+    diffApply: builder.mutation<
+      DiffOperationResponse,
+      DiffOperationArgs & { port: number }
+    >({
+      query: ({ chunks, toApply, port }) => ({
+        url: `http://127.0.0.1:${port}${DIFF_APPLY_URL}`,
         method: "POST",
         body: { chunks, apply: toApply },
       }),

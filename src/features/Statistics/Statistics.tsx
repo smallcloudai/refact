@@ -34,7 +34,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           xl: "9",
         };
 
-  const state = useGetStatisticDataQuery(undefined);
+  const state = useGetStatisticDataQuery();
 
   return (
     <PageWrapper host={host}>

@@ -1,3 +1,4 @@
+import { CHAT_URL } from "./consts";
 import { ToolCommand } from "./tools";
 import { ChatRole, ToolCall } from "./types";
 
@@ -23,6 +24,8 @@ type SendChatArgs = {
   onlyDeterministicMessages?: boolean;
   chatId?: string;
   tools: ToolCommand[] | null;
+  port?: number;
+  apiKey?: string;
 } & StreamArgs;
 
 export async function sendChat({
@@ -35,6 +38,8 @@ export async function sendChat({
   onlyDeterministicMessages: only_deterministic_messages,
   chatId: chat_id,
   tools,
+  port = 8001,
+  apiKey,
 }: SendChatArgs): Promise<Response> {
   // const toolsResponse = await getAvailableTools();
 
@@ -60,17 +65,16 @@ export async function sendChat({
   });
 
   //   const apiKey = getApiKey();
-  //   const headers = {
-  //     "Content-Type": "application/json",
-  //     ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-  //   };
-  //   const chatEndpoint = lspUrl
-  //     ? `${lspUrl.replace(/\/*$/, "")}${CHAT_URL}`
-  //     : CHAT_URL;
+  const headers = {
+    "Content-Type": "application/json",
+    ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
+  };
 
-  return fetch("http://127.0.0.1:8001/v1/chat", {
+  const url = `http://127.0.0.1:${port}${CHAT_URL}`;
+
+  return fetch(url, {
     method: "POST",
-    // headers,
+    headers,
     body,
     redirect: "follow",
     cache: "no-cache",

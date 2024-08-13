@@ -8,11 +8,18 @@ import {
   commandsApi,
   CommandCompletionResponse,
   diffApi,
+  DiffOperationArgs,
+  DiffAppliedStateArgs,
 } from "../services/refact";
 import { useCallback, useEffect } from "react";
-import { selectConfig, setThemeMode } from "../features/Config/configSlice";
+import {
+  selectConfig,
+  selectLspPort,
+  setThemeMode,
+} from "../features/Config/configSlice";
 import { useMutationObserver } from "../hooks";
-import { createAsyncThunk } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSelector } from "@reduxjs/toolkit";
+import { getErrorMessage } from "../features/Errors/errorsSlice";
 
 // export { type Config, setThemeMode } from "../features/Config/reducer";
 
@@ -33,21 +40,55 @@ export const createAppAsyncThunk: CreateAppAsyncThunk =
     dispatch: AppDispatch;
   }>();
 
-export const { useGetStatisticDataQuery } = statisticsApi;
-export const { useGetCapsQuery } = capsApi;
-export const { useGetPromptsQuery } = promptsApi;
+// export const { useGetStatisticDataQuery } = statisticsApi;
+export const useGetStatisticDataQuery = () => {
+  const lspPort = useAppSelector(selectLspPort);
+  return statisticsApi.useGetStatisticDataQuery({ port: lspPort });
+};
+// export const { useGetCapsQuery } = capsApi;
+export const useGetCapsQuery = () => {
+  const lspPort = useAppSelector(selectLspPort);
+  return capsApi.useGetCapsQuery({ port: lspPort });
+};
 
-export const useGetToolsQuery = (hasCaps: boolean) => {
-  return toolsApi.useGetToolsQuery(undefined, { skip: !hasCaps });
+// export const { useGetPromptsQuery } = promptsApi;
+
+export const useGetPromptsQuery = () => {
+  const error = useAppSelector(getErrorMessage);
+  const lspPort = useAppSelector(selectLspPort);
+  return promptsApi.useGetPromptsQuery({ port: lspPort }, { skip: !!error });
+};
+
+const selectCaps = (state: RootState) =>
+  capsApi.endpoints.getCaps.select({ port: state.config.lspPort })(state);
+
+const selectHasCaps = createSelector([selectCaps], (caps) => {
+  if (!caps.data) return false;
+  return true;
+});
+
+// const selectTools = (state: RootState) =>
+//   toolsApi.endpoints.getTools.select({ port: state.config.lspPort })(state);
+
+// const selectHasTools = createSelector([selectTools], (tools) => {
+//   if (!tools.data) return false;
+//   return tools.data.length > 0;
+// });
+
+export const useGetToolsQuery = () => {
+  const lspPort = useAppSelector(selectLspPort);
+  const hasCaps = useAppSelector(selectHasCaps);
+  return toolsApi.useGetToolsQuery({ port: lspPort }, { skip: !hasCaps });
 };
 
 export const useGetCommandCompletionQuery = (
   query: string,
   cursor: number,
-  hasCaps: boolean,
 ): CommandCompletionResponse => {
+  const lspPort = useAppSelector(selectLspPort);
+  const hasCaps = useAppSelector(selectHasCaps);
   const { data } = commandsApi.useGetCommandCompletionQuery(
-    { query, cursor },
+    { query, cursor, port: lspPort },
     { skip: !hasCaps },
   );
 
@@ -62,15 +103,37 @@ export const useGetCommandCompletionQuery = (
   return data;
 };
 
-export const useGetCommandPreviewQuery = (query: string, hasCaps: boolean) => {
-  const { data } = commandsApi.useGetCommandPreviewQuery(query, {
-    skip: !hasCaps,
-  });
+export const useGetCommandPreviewQuery = (query: string) => {
+  const hasCaps = useAppSelector(selectHasCaps);
+  const port = useAppSelector(selectLspPort);
+  const { data } = commandsApi.useGetCommandPreviewQuery(
+    { query, port },
+    {
+      skip: !hasCaps,
+    },
+  );
   if (!data) return [];
   return data;
 };
 
-export const { useDiffApplyMutation, useDiffStateQuery } = diffApi;
+export const useDiffApplyMutation = () => {
+  const port = useAppSelector(selectLspPort);
+  const [submit, result] = diffApi.useDiffApplyMutation();
+
+  const onSubmit = useCallback(
+    (args: DiffOperationArgs) => {
+      return submit({ port, ...args });
+    },
+    [port, submit],
+  );
+
+  return { onSubmit, result };
+};
+
+export const useDiffStateQuery = (args: DiffAppliedStateArgs) => {
+  const port = useAppSelector(selectLspPort);
+  return diffApi.useDiffStateQuery({ port, ...args });
+};
 
 export const useConfig = () => useAppSelector(selectConfig);
 

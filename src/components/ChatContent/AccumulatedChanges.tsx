@@ -21,6 +21,7 @@ import {
 import { selectMessages } from "../../features/Chat";
 import { createSelector } from "@reduxjs/toolkit";
 import { RootState } from "../../app/store";
+import { selectLspPort } from "../../features/Config/configSlice";
 
 const selectDiffMessages = createSelector([selectMessages], (messages) =>
   messages.filter(isDiffMessage),
@@ -35,21 +36,27 @@ const selectDiffArgs = createSelector([selectDiffMessages], (diffs) => {
 
 const selectAllDiffsState =
   (args: DiffAppliedStateArgs[]) => (state: RootState) => {
-    return args.map((arg) => diffApi.endpoints.diffState.select(arg)(state));
+    return args.map((arg) =>
+      diffApi.endpoints.diffState.select({
+        port: state.config.lspPort,
+        ...arg,
+      })(state),
+    );
   };
 
 const useGetManyDiffState = () => {
   const dispatch = useAppDispatch();
+  const port = useAppSelector(selectLspPort);
   const args = useAppSelector(selectDiffArgs);
 
   useEffect(() => {
     const results = args.map((arg) =>
-      dispatch(diffApi.endpoints.diffState.initiate(arg)),
+      dispatch(diffApi.endpoints.diffState.initiate({ port, ...arg })),
     );
     return () => {
       results.forEach((result) => result.unsubscribe());
     };
-  }, [args, dispatch]);
+  }, [args, dispatch, port]);
 
   const selectAll = useMemo(() => selectAllDiffsState(args), [args]);
 
@@ -66,8 +73,11 @@ const useGetManyDiffState = () => {
     [all],
   );
 
-  const getByArg = (arg: DiffAppliedStateArgs) =>
-    diffApi.endpoints.diffState.select(arg);
+  const getByArg = useCallback(
+    (arg: DiffAppliedStateArgs) =>
+      diffApi.endpoints.diffState.select({ port, ...arg }),
+    [port],
+  );
 
   return {
     allDiffRequest: all,
@@ -81,7 +91,7 @@ export const AccumulatedChanges: React.FC<{ onOpen: () => void }> = ({
 }) => {
   const [open, setOpen] = React.useState(false);
   // const messages = useAppSelector(selectDiffMessages);
-  const [onSubmit, result] = useDiffApplyMutation();
+  const { onSubmit, result } = useDiffApplyMutation();
 
   useEffect(() => {
     open && onOpen();

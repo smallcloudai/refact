@@ -1,3 +1,4 @@
+import { RootState } from "../../app/store";
 import { parseOrElse } from "../../utils";
 import { AT_COMMAND_COMPLETION, AT_COMMAND_PREVIEW } from "./consts";
 import { type ChatContextFile } from "./types";
@@ -8,13 +9,21 @@ export type CompletionArgs = {
   query: string;
   cursor: number;
   top_n?: number;
+  port: number;
 };
 
 export const commandsApi = createApi({
   reducerPath: "commands",
   baseQuery: fetchBaseQuery({
-    // TODO: set this to the configured lsp url
-    baseUrl: "http://127.0.0.1:8001",
+    prepareHeaders: (headers, api) => {
+      const getState = api.getState as () => RootState;
+      const state = getState();
+      const token = state.config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   endpoints: (builder) => ({
     getCommandCompletion: builder.query<
@@ -23,7 +32,7 @@ export const commandsApi = createApi({
     >({
       query: (args: CompletionArgs) => {
         return {
-          url: AT_COMMAND_COMPLETION,
+          url: `http://127.0.0.1:${args.port}${AT_COMMAND_COMPLETION}`,
           method: "POST",
           body: {
             query: args.query,
@@ -50,10 +59,13 @@ export const commandsApi = createApi({
         return response;
       },
     }),
-    getCommandPreview: builder.query<ChatContextFile[], string>({
-      query: (query) => {
+    getCommandPreview: builder.query<
+      ChatContextFile[],
+      { query: string; port: number }
+    >({
+      query: ({ query, port }) => {
         return {
-          url: AT_COMMAND_PREVIEW,
+          url: `http://127.0.0.1:${port}${AT_COMMAND_PREVIEW}`,
           method: "POST",
           body: { query },
         };

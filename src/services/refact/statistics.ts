@@ -1,18 +1,27 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 import { STATISTIC_URL } from "./consts";
+import { RootState } from "../../app/store";
 
 // TODO: this could be for the whole lsp?
+// Add port
 export const statisticsApi = createApi({
   reducerPath: "statisticsApi",
 
   baseQuery: fetchBaseQuery({
-    // TODO: set this to the configured lsp url
-    baseUrl: "http://127.0.0.1:8001",
+    prepareHeaders: (headers, api) => {
+      const getState = api.getState as () => RootState;
+      const state = getState();
+      const token = state.config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   endpoints: (builder) => ({
-    getStatisticData: builder.query<StatisticData, undefined>({
-      query: () => STATISTIC_URL,
+    getStatisticData: builder.query<StatisticData, { port: number }>({
+      query: ({ port }) => `http://127.0.0.1:${port}${STATISTIC_URL}`,
       transformResponse: (response: unknown): StatisticData => {
         if (!isStatisticDataResponse(response)) {
           throw new Error("Invalid response for statistic data");

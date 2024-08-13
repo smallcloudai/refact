@@ -15,7 +15,6 @@ import {
   useAppDispatch,
   createAppAsyncThunk,
   useAppSelector,
-  useGetCapsQuery,
   useGetToolsQuery,
 } from "../../app/hooks";
 import { type RootState } from "../../app/store";
@@ -262,6 +261,8 @@ const chatAskQuestionThunk = createAppAsyncThunk<
     stream: true,
     abortSignal: thunkAPI.signal,
     chatId,
+    apiKey: state.config.apiKey,
+    port: state.config.lspPort,
   })
     .then((response) => {
       if (!response.ok) {
@@ -354,8 +355,7 @@ export const selectSendImmediately = (state: RootState) =>
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
   const abortRef = useRef<null | ((reason?: string | undefined) => void)>(null);
-  const capsRequest = useGetCapsQuery(undefined);
-  const toolsRequest = useGetToolsQuery(!!capsRequest.data);
+  const toolsRequest = useGetToolsQuery();
 
   const chatId = useAppSelector(selectChatId);
   const streaming = useAppSelector(selectIsStreaming);

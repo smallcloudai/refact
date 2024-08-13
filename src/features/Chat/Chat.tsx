@@ -20,7 +20,6 @@ import {
   selectModel,
   selectUseTools,
 } from "./chatThread";
-import { getErrorMessage } from "../Errors/errorsSlice";
 
 export type ChatProps = {
   host: Config["host"];
@@ -56,12 +55,11 @@ export const Chat: React.FC<ChatProps> = ({
   tabbed,
   // state,
 }) => {
-  const error = useAppSelector(getErrorMessage);
-  const capsRequest = useGetCapsQuery(undefined, { skip: !!error });
+  const capsRequest = useGetCapsQuery();
   const chatModel = useAppSelector(selectModel);
 
   // TODO: these could be lower in the component tree
-  const promptsRequest = useGetPromptsQuery(undefined, { skip: !!error });
+  const promptsRequest = useGetPromptsQuery();
   const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
   const dispatch = useAppDispatch();
   const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
@@ -72,7 +70,7 @@ export const Chat: React.FC<ChatProps> = ({
   const messages = useAppSelector(selectMessages);
 
   // TODO: don't make this request if there are no caps
-  const toolsRequest = useGetToolsQuery(!!capsRequest.data);
+  const toolsRequest = useGetToolsQuery();
   // const chatRequest = useSendChatRequest();
 
   // commands should be a selector, and calling the hook ?
@@ -97,13 +95,9 @@ export const Chat: React.FC<ChatProps> = ({
   const commandResult = useGetCommandCompletionQuery(
     command.query,
     command.cursor,
-    !!capsRequest.data,
   );
 
-  const commandPreview = useGetCommandPreviewQuery(
-    command.query,
-    !!capsRequest.data,
-  );
+  const commandPreview = useGetCommandPreviewQuery(command.query);
 
   const sendToSideBar = () => {
     // TODO:

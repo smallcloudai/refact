@@ -17,7 +17,7 @@ export type Config = {
   };
   apiKey?: string;
   addressURL?: string;
-  lspPort?: number;
+  lspPort: number;
 };
 
 // this could be taken from window.__INITAL_STATE
@@ -72,3 +72,4 @@ export const selectThemeMode = (state: RootState) =>
   state.config.themeProps.appearance;
 
 export const selectConfig = (state: RootState) => state.config;
+export const selectLspPort = (state: RootState) => state.config.lspPort;

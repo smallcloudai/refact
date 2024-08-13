@@ -164,7 +164,7 @@ export const DiffContent: React.FC<{
   const [open, setOpen] = React.useState(false);
 
   const diffStateRequest = useDiffStateQuery({ chunks, toolCallId });
-  const [onSumbit, result] = useDiffApplyMutation();
+  const { onSubmit, result } = useDiffApplyMutation();
 
   const groupedDiffs: Record<string, DiffWithStatus[]> = React.useMemo(() => {
     const diffWithStatus = chunks.map((diff, index) => {
@@ -203,7 +203,7 @@ export const DiffContent: React.FC<{
         <Collapsible.Content>
           <DiffForm
             onSubmit={(toApply: boolean[]) => {
-              void onSumbit({ chunks, toApply, toolCallId });
+              void onSubmit({ chunks, toApply, toolCallId });
             }}
             loading={diffStateRequest.isFetching}
             diffs={groupedDiffs}

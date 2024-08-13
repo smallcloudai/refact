@@ -1,17 +1,25 @@
 // import { getApiKey } from "../../utils/ApiKey";
+import { RootState } from "../../app/store";
 import { CUSTOM_PROMPTS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
+// ADD port
 export const promptsApi = createApi({
   reducerPath: "prompts",
   baseQuery: fetchBaseQuery({
-    // add api key?
-    // TODO: set this to the configured lsp url
-    baseUrl: "http://127.0.0.1:8001",
+    prepareHeaders: (headers, api) => {
+      const getState = api.getState as () => RootState;
+      const state = getState();
+      const token = state.config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   endpoints: (builder) => ({
-    getPrompts: builder.query<SystemPrompts, unknown>({
-      query: () => CUSTOM_PROMPTS_URL,
+    getPrompts: builder.query<SystemPrompts, { port: number }>({
+      query: ({ port }) => `http://127.0.0.1:${port}${CUSTOM_PROMPTS_URL}`,
       transformResponse: (response: unknown) => {
         if (!isCustomPromptsResponse(response)) return {};
         return response.system_prompts;
