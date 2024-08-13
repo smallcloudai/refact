@@ -16,6 +16,7 @@ export type TourBubbleProps = {
   containerWidth?: string;
   onPage: string;
   page: string;
+  onNext?: () => void;
 };
 
 export function TourBubble({
@@ -27,6 +28,7 @@ export function TourBubble({
   onPage,
   page,
   isPointing,
+  onNext,
 }: TourBubbleProps) {
   const dispatch = useAppDispatch();
   const state = useAppSelector((state: RootState) => state.tour);
@@ -126,6 +128,7 @@ export function TourBubble({
               }}
               onClick={() => {
                 dispatch(next());
+                if (onNext) onNext();
               }}
             >
               next

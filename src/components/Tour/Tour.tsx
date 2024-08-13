@@ -1,13 +1,28 @@
+import React from "react";
 import { TourBubble } from ".";
-import { useTourRefs } from "../../features/Tour";
+import { next, useTourRefs } from "../../features/Tour";
 import { TourEnd } from "./TourEnd";
+import { PageAction } from "../../hooks/usePages";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { RootState } from "../../app/store";
 
 type TourProps = {
   page: string;
+  navigate: React.Dispatch<PageAction>;
 };
 
-export const Tour = ({ page }: TourProps) => {
+export const Tour = ({ page, navigate }: TourProps) => {
+  const dispatch = useAppDispatch();
+  const state = useAppSelector((state: RootState) => state.tour);
   const refs = useTourRefs();
+
+  if (state.type === "in_progress" && state.step === 2 && page === "chat") {
+    dispatch(next());
+  }
+
+  if (state.type === "in_progress" && state.step === 8 && page === "history") {
+    dispatch(next());
+  }
 
   const chatWidth = "calc(100% - 20px)";
 
@@ -29,6 +44,7 @@ export const Tour = ({ page }: TourProps) => {
         down={true}
         onPage={"history"}
         page={page}
+        onNext={() => navigate({ type: "push", page: { name: "chat" } })}
       />
       <TourBubble
         text={
@@ -89,6 +105,7 @@ export const Tour = ({ page }: TourProps) => {
         containerWidth={chatWidth}
         onPage={"chat"}
         page={page}
+        onNext={() => navigate({ type: "pop_back_to", page: "history" })}
       />
       <TourBubble
         text={"Click here to discover more."}

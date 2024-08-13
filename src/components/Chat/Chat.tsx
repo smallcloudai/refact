@@ -237,7 +237,9 @@ export const Chat: React.FC<ChatProps> = ({
         </Container>
       )}
       <ChatForm
-        key={`chat-form-${chatId}`}
+        // todo: find a way to not have to stringify the whole caps object
+        // the reason is that otherwise the tour bubbles will be in the wrong position due to layout shifts
+        key={`chat-form-${chatId}-${JSON.stringify(caps)}`}
         chatId={chatId}
         isStreaming={isStreaming}
         showControls={messages.length === 0 && !isStreaming}
