@@ -28,7 +28,7 @@ import {
   saveTipOfTheDayToLocalStorage,
   tipOfTheDayReducer,
 } from "../features/TipOfTheDay";
-import { reducer as configReducer } from "../features/Config/reducer";
+import { reducer as configReducer } from "../features/Config/configSlice";
 import { activeFileReducer } from "../features/Chat/activeFile";
 import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
 import { chatReducer } from "../features/Chat/chatThread";
@@ -36,6 +36,7 @@ import {
   historySlice,
   historyMiddleware,
 } from "../features/History/historySlice";
+import { errorMiddleware, errorSlice } from "../features/Errors/errorsSlice";
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -57,6 +58,7 @@ const rootReducer = combineSlices(
     [diffApi.reducerPath]: diffApi.reducer,
   },
   historySlice,
+  errorSlice,
 );
 
 const persistConfig = {
@@ -66,6 +68,8 @@ const persistConfig = {
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
+
+export type RootState = ReturnType<typeof persistedReducer>;
 
 export const store = configureStore({
   reducer: persistedReducer,
@@ -83,8 +87,10 @@ export const store = configureStore({
         commandsApi.middleware,
         diffApi.middleware,
       )
-      .prepend(historyMiddleware.middleware);
+      .prepend(historyMiddleware.middleware)
+      .prepend(errorMiddleware.middleware);
   },
+  preloadedState: window.__INITIAL_STATE__,
 });
 
 store.subscribe(() => {
@@ -95,9 +101,15 @@ store.subscribe(() => {
 export const persistor = persistStore(store);
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
-export type RootState = ReturnType<typeof store.getState>;
+// export type RootState = ReturnType<typeof store.getState>;
 // Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
 export type AppDispatch = typeof store.dispatch;
 
 // Infer the type of `store`
 export type AppStore = typeof store;
+
+declare global {
+  interface Window {
+    __INITIAL_STATE__?: RootState;
+  }
+}

@@ -18,7 +18,9 @@ export type HistoryMeta = Pick<
   "id" | "title" | "createdAt" | "model" | "updatedAt"
 > & { userMessageCount: number };
 
-const initialState: Record<string, ChatHistoryItem> = {};
+export type HistoryState = Record<string, ChatHistoryItem>;
+
+const initialState: HistoryState = {};
 
 export const historySlice = createSlice({
   name: "history",

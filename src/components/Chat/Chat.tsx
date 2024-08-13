@@ -5,16 +5,22 @@ import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import type { Config } from "../../features/Config/reducer";
+import type { Config } from "../../features/Config/configSlice";
 import { useEventsBusForIDE } from "../../hooks";
 import {
-  clearChatError,
   enableSend,
   getSelectedChatModel,
   newChatAction,
+  selectIsStreaming,
+  selectIsWaiting,
   setChatModel,
   useSendChatRequest,
+  selectThread,
+  selectPreventSend,
+  selectChatId,
+  selectMessages,
 } from "../../features/Chat/chatThread";
+import { selectActiveFile, selectSelectedSnippet } from "../../features/Chat";
 import { useTourRefs } from "../../features/Tour";
 
 export type ChatProps = {
@@ -52,7 +58,7 @@ export type ChatProps = {
   filesInPreview: ChatFormProps["filesInPreview"];
   // selectedSnippet: ChatFormProps["selectedSnippet"];
   // removePreviewFileByName: ChatFormProps["removePreviewFileByName"];
-  requestCaps: ChatFormProps["requestCaps"];
+  // requestCaps: ChatFormProps["requestCaps"];
   prompts: ChatFormProps["prompts"];
 
   onSetSystemPrompt: ChatFormProps["onSetSystemPrompt"];
@@ -101,7 +107,7 @@ export const Chat: React.FC<ChatProps> = ({
   filesInPreview,
   // selectedSnippet,
   // removePreviewFileByName,
-  requestCaps,
+  // requestCaps,
   prompts,
   // onStartNewChat,
   onSetSystemPrompt,
@@ -113,16 +119,18 @@ export const Chat: React.FC<ChatProps> = ({
   // openSettings,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
-  const activeFile = useAppSelector((state) => state.active_file);
-  const selectedSnippet = useAppSelector((state) => state.selected_snippet);
-  const isStreaming = useAppSelector((state) => state.chat.streaming);
-  const isWaiting = useAppSelector((state) => state.chat.waiting_for_response);
+  const activeFile = useAppSelector(selectActiveFile);
+  const selectedSnippet = useAppSelector(selectSelectedSnippet);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const chatThread = useAppSelector(selectThread);
+
   const canPaste = activeFile.can_paste;
-  const chatId = useAppSelector((state) => state.chat.thread.id);
+  const chatId = useAppSelector(selectChatId);
   const { submit, abort, retry } = useSendChatRequest();
   const chatModel = useAppSelector(getSelectedChatModel);
   const dispatch = useAppDispatch();
-  const messages = useAppSelector((state) => state.chat.thread.messages);
+  const messages = useAppSelector(selectMessages);
   const onSetChatModel = useCallback(
     (value: string) => {
       const model = caps.default_cap === value ? "" : value;
@@ -130,17 +138,22 @@ export const Chat: React.FC<ChatProps> = ({
     },
     [caps.default_cap, chatId, dispatch],
   );
-  const preventSend = useAppSelector((state) => state.chat.prevent_send);
+  const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
   const refs = useTourRefs();
 
-  const { diffPasteBack, newFile, openSettings, openFile } =
+  const { diffPasteBack, newFile, openSettings, openFile, openChatInNewTab } =
     useEventsBusForIDE();
 
+  const handleOpenChatInNewTab = useCallback(() => {
+    openChatInNewTab(chatThread);
+    // TODO: navigate to history
+  }, [chatThread, openChatInNewTab]);
+
   // TODO: add other posable errors
-  const onClearError = () => dispatch(clearChatError({ id: chatId }));
+  // const onClearError = () => dispatch(clearChatError({ id: chatId }));
   // TODO: add other posable errors
-  const error = useAppSelector((state) => state.chat.error ?? caps.error);
+  // const error = useAppSelector((state) => state.chat.error ?? caps.error);
 
   // TODO: handle stop
   const handleSummit = useCallback(
@@ -191,16 +204,16 @@ export const Chat: React.FC<ChatProps> = ({
           <ArrowLeftIcon width="16" height="16" />
           Back
         </Button>
-        <Button
-          size="1"
-          variant="surface"
-          onClick={() => {
-            // TODO:
-          }}
-          ref={(x) => refs.setOpenInNewTab(x)}
-        >
-          Open In Tab
-        </Button>
+        {host === "vscode" && (
+          <Button
+            size="1"
+            variant="surface"
+            onClick={handleOpenChatInNewTab}
+            ref={(x) => refs.setOpenInNewTab(x)}
+          >
+            Open In Tab
+          </Button>
+        )}
         <Button
           size="1"
           variant="surface"
@@ -230,7 +243,7 @@ export const Chat: React.FC<ChatProps> = ({
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
           <Card>
             <Flex direction="column" align="center" gap="2">
-              Chat was interupted with uncalled tools calls.
+              Chat was interrupted with uncalled tools calls.
               <Button onClick={onEnableSend}>Resume</Button>
             </Flex>
           </Card>
@@ -243,8 +256,8 @@ export const Chat: React.FC<ChatProps> = ({
         chatId={chatId}
         isStreaming={isStreaming}
         showControls={messages.length === 0 && !isStreaming}
-        error={error}
-        clearError={onClearError}
+        // error={error}
+        // clearError={onClearError}
         // onSubmit={onAskQuestion}
         onSubmit={handleSummit}
         model={chatModel}
@@ -262,7 +275,7 @@ export const Chat: React.FC<ChatProps> = ({
         selectedSnippet={selectedSnippet}
         // removePreviewFileByName={removePreviewFileByName}
         onTextAreaHeightChange={onTextAreaHeightChange}
-        requestCaps={requestCaps}
+        // requestCaps={requestCaps}
         prompts={prompts}
         onSetSystemPrompt={onSetSystemPrompt}
         selectedSystemPrompt={selectedSystemPrompt}

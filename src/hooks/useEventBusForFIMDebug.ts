@@ -3,7 +3,6 @@ import { usePostMessage } from "./usePostMessage";
 import { useEffectOnce } from "./useEffectOnce";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import type { FimDebugData } from "../services/refact";
-import { RootState } from "../app/store";
 import {
   clearError,
   request,
@@ -11,6 +10,7 @@ import {
   back,
   reset,
 } from "../features/FIM/actions";
+import { selectFIM } from "../features/FIM";
 
 export type FIMDebugState = {
   data: FimDebugData | null;
@@ -28,7 +28,7 @@ export const useEventBusForFIMDebug = () => {
   const postMessage = usePostMessage();
 
   const dispatch = useAppDispatch();
-  const state = useAppSelector((state: RootState) => state.fim);
+  const state = useAppSelector(selectFIM);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {

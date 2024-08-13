@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { type Config } from "../../features/Config/reducer";
+import { type Config } from "../../features/Config/configSlice";
 import { App } from "../../features/App";
 import ReactDOM from "react-dom/client";
 import "./web.css";

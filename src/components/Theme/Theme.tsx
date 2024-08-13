@@ -47,6 +47,7 @@ export type ThemeProps = {
   panelBackground?: "solid" | "translucent";
   radius?: "none" | "small" | "medium" | "large" | "full";
   scaling?: "90%" | "95%" | "100%" | "105%" | "110%";
+  hasBackground?: boolean;
 };
 
 const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {

@@ -13,7 +13,7 @@ export const tips: string[] = [
   "Make your code shorter: Select the code, press F1, and write /shorter",
 ];
 
-type TipOfTheDayState = {
+export type TipOfTheDayState = {
   next: number;
   tip: string;
 };

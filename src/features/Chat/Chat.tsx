@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 // import { useEventBusForChat } from "../hooks/useEventBusForChat";
-import type { Config } from "../../features/Config/reducer";
+import type { Config } from "../Config/configSlice";
 import { CodeChatModel, SystemPrompts } from "../../services/refact";
 import { Chat as ChatComponent } from "../../components/Chat";
 import {
@@ -16,7 +16,11 @@ import {
   getSelectedSystemPrompt,
   setSystemPrompt,
   setUseTools,
+  selectMessages,
+  selectModel,
+  selectUseTools,
 } from "./chatThread";
+import { getErrorMessage } from "../Errors/errorsSlice";
 
 export type ChatProps = {
   host: Config["host"];
@@ -52,19 +56,20 @@ export const Chat: React.FC<ChatProps> = ({
   tabbed,
   // state,
 }) => {
-  const capsRequest = useGetCapsQuery(undefined);
-  const chatModel = useAppSelector((state) => state.chat.thread.model);
+  const error = useAppSelector(getErrorMessage);
+  const capsRequest = useGetCapsQuery(undefined, { skip: !!error });
+  const chatModel = useAppSelector(selectModel);
 
   // TODO: these could be lower in the component tree
-  const promptsRequest = useGetPromptsQuery(undefined);
+  const promptsRequest = useGetPromptsQuery(undefined, { skip: !!error });
   const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
   const dispatch = useAppDispatch();
   const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
     dispatch(setSystemPrompt(prompt));
 
-  const useTools = useAppSelector((state) => state.chat.use_tools);
+  const useTools = useAppSelector(selectUseTools);
   const onSetUseTools = (value: boolean) => dispatch(setUseTools(value));
-  const messages = useAppSelector((state) => state.chat.thread.messages);
+  const messages = useAppSelector(selectMessages);
 
   // TODO: don't make this request if there are no caps
   const toolsRequest = useGetToolsQuery(!!capsRequest.data);
@@ -76,7 +81,7 @@ export const Chat: React.FC<ChatProps> = ({
     cursor: number;
   }>({ query: "", cursor: 0 });
 
-  // TODO: this could be put lower in the componet tree to prevent re-renders.
+  // TODO: this could be put lower in the component tree to prevent re-renders.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const requestCommandsCompletion = React.useCallback(
     useDebounceCallback(
@@ -181,9 +186,10 @@ export const Chat: React.FC<ChatProps> = ({
       filesInPreview={commandPreview}
       // selectedSnippet={state.selected_snippet}
       // removePreviewFileByName={removePreviewFileByName}
-      requestCaps={() => {
-        void capsRequest.refetch();
-      }}
+      // requestCaps={() => {
+      //   console.log("requestCaps called");
+      //   void capsRequest.refetch();
+      // }}
       prompts={promptsRequest.data ?? {}}
       // onStartNewChat={startNewChat}
       // Could be lowered

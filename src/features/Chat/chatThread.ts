@@ -43,6 +43,7 @@ export type Chat = {
   cache: Record<string, ChatThread>;
   system_prompt: SystemPrompts;
   use_tools: boolean;
+  send_immediately: boolean;
 };
 
 const createChatThread = (): ChatThread => {
@@ -66,6 +67,7 @@ const createInitialState = (): Chat => {
     cache: {},
     system_prompt: {},
     use_tools: true,
+    send_immediately: false,
   };
 };
 
@@ -87,7 +89,7 @@ const backUpMessages = createAction<
 >("chatThread/backUpMessages");
 
 // TODO: add history actions to this
-const chatError = createAction<PayloadWIthId & { message: string }>(
+export const chatError = createAction<PayloadWIthId & { message: string }>(
   "chatThread/error",
 );
 
@@ -156,7 +158,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     }
     const next = createInitialState();
     next.thread.model = state.thread.messages.length ? state.thread.model : "";
-    state = next;
+    return next;
   });
 
   builder.addCase(chatResponse, (state, action) => {
@@ -212,6 +214,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(chatAskedQuestion, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
+    state.send_immediately = false;
     state.waiting_for_response = true;
     state.streaming = true;
   });
@@ -335,20 +338,33 @@ const chatAskQuestionThunk = createAppAsyncThunk<
     });
 });
 
+export const selectThread = (state: RootState) => state.chat.thread;
+export const selectChatId = (state: RootState) => state.chat.thread.id;
+export const selectModel = (state: RootState) => state.chat.thread.model;
+export const selectMessages = (state: RootState) => state.chat.thread.messages;
+export const selectUseTools = (state: RootState) => state.chat.use_tools;
+export const selectIsWaiting = (state: RootState) =>
+  state.chat.waiting_for_response;
+export const selectIsStreaming = (state: RootState) => state.chat.streaming;
+export const selectPreventSend = (state: RootState) => state.chat.prevent_send;
+export const selectChatError = (state: RootState) => state.chat.error;
+export const selectSendImmediately = (state: RootState) =>
+  state.chat.send_immediately;
+
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
   const abortRef = useRef<null | ((reason?: string | undefined) => void)>(null);
   const capsRequest = useGetCapsQuery(undefined);
   const toolsRequest = useGetToolsQuery(!!capsRequest.data);
 
-  const thread = useAppSelector((state) => state.chat.thread);
-  const chatId = thread.id;
-  const streaming = useAppSelector((state) => state.chat.streaming);
-  const chatError = useAppSelector((state) => state.chat.error);
-  const preventSend = useAppSelector((state) => state.chat.prevent_send);
+  const chatId = useAppSelector(selectChatId);
+  const streaming = useAppSelector(selectIsStreaming);
+  const chatError = useAppSelector(selectChatError);
+  const preventSend = useAppSelector(selectPreventSend);
 
-  const currentMessages = useAppSelector((state) => state.chat.thread.messages);
+  const currentMessages = useAppSelector(selectMessages);
   const systemPrompt = useAppSelector(getSelectedSystemPrompt);
+  const sendImmediately = useAppSelector(selectSendImmediately);
 
   const messagesWithSystemPrompt = useMemo(() => {
     const prompts = Object.entries(systemPrompt);
@@ -399,6 +415,12 @@ export const useSendChatRequest = () => {
     [sendMessages],
   );
 
+  useEffect(() => {
+    if (sendImmediately) {
+      sendMessages(messagesWithSystemPrompt);
+    }
+  }, [sendImmediately, sendMessages, messagesWithSystemPrompt]);
+
   // Automatically calls tool calls.
   useEffect(() => {
     if (
@@ -436,5 +458,3 @@ export const useSendChatRequest = () => {
     retry,
   };
 };
-
-export const selectMessages = (state: RootState) => state.chat.thread.messages;

@@ -19,8 +19,9 @@ import { FilesPreview } from "./FilesPreview";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
-import { useConfig } from "../../app/hooks";
+import { useAppDispatch, useAppSelector, useConfig } from "../../app/hooks";
 import type { FileInfo, Snippet } from "../../features/Chat";
+import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 
 type useCheckboxStateProps = {
@@ -264,8 +265,8 @@ export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
-  clearError: () => void;
-  error: string | null;
+  // clearError: () => void;
+  // error: string | null;
   caps: {
     error: string | null;
     fetching: boolean;
@@ -287,7 +288,7 @@ export type ChatFormProps = {
   // removePreviewFileByName: (name: string) => void;
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
-  requestCaps: () => void;
+  // requestCaps: () => void;
   prompts: SystemPrompts;
   onSetSystemPrompt: (prompt: SystemPrompts) => void;
   selectedSystemPrompt: SystemPrompts;
@@ -301,8 +302,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
-  error,
-  clearError,
+  // error,
+  // clearError,
   caps,
   model,
   onSetChatModel,
@@ -318,7 +319,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onTextAreaHeightChange,
   showControls,
   // TODO: handle re-requesting caps after error
-  requestCaps,
+  // requestCaps,
   prompts,
   onSetSystemPrompt,
   selectedSystemPrompt,
@@ -327,7 +328,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   setUseTools,
   useTools,
 }) => {
+  const dispatch = useAppDispatch();
   const config = useConfig();
+  const error = useAppSelector(getErrorMessage);
+  const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
   const [value, setValue] = React.useState("");
   // this should re-render when clicking new chat :/
   const { checkboxes, toggleCheckbox, reset, setInteracted } = useControlsState(
@@ -352,22 +356,22 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     checkboxes,
   });
 
-  useEffect(() => {
-    if (
-      Object.keys(caps.available_caps).length === 0 &&
-      !caps.default_cap &&
-      !caps.fetching
-    ) {
-      requestCaps();
-    }
-  }, [
-    requestCaps,
-    caps.available_caps.length,
-    caps.default_cap,
-    caps.fetching,
-    value,
-    caps.available_caps,
-  ]);
+  // useEffect(() => {
+  //   if (
+  //     Object.keys(caps.available_caps).length === 0 &&
+  //     !caps.default_cap &&
+  //     !caps.fetching
+  //   ) {
+  //     requestCaps();
+  //   }
+  // }, [
+  //   requestCaps,
+  //   caps.available_caps.length,
+  //   caps.default_cap,
+  //   caps.fetching,
+  //   value,
+  //   caps.available_caps,
+  // ]);
 
   useEffect(() => {
     if (!showControls) {
@@ -409,7 +413,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (error) {
     return (
-      <ErrorCallout mt="2" onClick={clearError} timeout={null}>
+      <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
         {error}
       </ErrorCallout>
     );

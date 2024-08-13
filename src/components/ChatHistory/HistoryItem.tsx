@@ -10,7 +10,7 @@ import { isUserMessage } from "../../services/refact";
 
 export const HistoryItem: React.FC<{
   historyItem: ChatHistoryItem;
-  onClick: (id: string) => void;
+  onClick: () => void;
   onDelete: (id: string) => void;
   onOpenInTab?: (id: string) => void;
   disabled: boolean;
@@ -29,14 +29,13 @@ export const HistoryItem: React.FC<{
         className="rt-Button"
         asChild
         role="button"
-        onClick={() => onClick(historyItem.id)}
       >
         <button
           disabled={disabled}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            onClick(historyItem.id);
+            onClick();
           }}
         >
           <Text

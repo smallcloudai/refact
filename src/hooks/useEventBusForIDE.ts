@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { createAction } from "@reduxjs/toolkit";
 import { usePostMessage } from "./usePostMessage";
+import { ChatThread } from "../features/Chat";
 // import { useAppSelector } from "../app/hooks";
 export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
 export const ideOpenSettingsAction = createAction("ide/openSettings");
@@ -11,7 +12,9 @@ export type OpenFilePayload = {
   line?: number;
 };
 export const ideOpenFile = createAction<OpenFilePayload>("ide/openFile");
-// TODO: open file
+export const ideOpenChatInNewTab = createAction<ChatThread>(
+  "ide/openChatInNewTab",
+);
 
 export const useEventsBusForIDE = () => {
   const postMessage = usePostMessage();
@@ -51,12 +54,21 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const openChatInNewTab = useCallback(
+    (thread: ChatThread) => {
+      const action = ideOpenChatInNewTab(thread);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   return {
     diffPasteBack,
     openSettings,
     newFile,
     openHotKeys,
     openFile,
+    openChatInNewTab,
     // canPaste,
   };
 };

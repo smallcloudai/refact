@@ -16,7 +16,7 @@ export type DiffOperationArgs = {
 export const diffApi = createApi({
   reducerPath: "diffs",
   baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:8001",
+    baseUrl: "http://127.0.0.1:8001",
   }),
   tagTypes: ["diffs"],
   endpoints: (builder) => ({

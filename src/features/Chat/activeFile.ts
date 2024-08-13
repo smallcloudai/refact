@@ -1,11 +1,12 @@
 import { createReducer, createAction } from "@reduxjs/toolkit";
+import { RootState } from "../../app/store";
 
 export type FileInfo = {
   name: string;
   line1: number | null;
   line2: number | null;
   can_paste: boolean;
-  attach: boolean;
+  // attach: boolean;
   path: string;
   content?: string;
   usefulness?: number;
@@ -16,7 +17,7 @@ const initialState: FileInfo = {
   name: "",
   line1: null,
   line2: null,
-  attach: false,
+  // attach: false,
   can_paste: false,
   path: "",
   cursor: null,
@@ -29,3 +30,5 @@ export const activeFileReducer = createReducer(initialState, (builder) => {
     return { ...state, ...action.payload };
   });
 });
+
+export const selectActiveFile = (state: RootState) => state.active_file;

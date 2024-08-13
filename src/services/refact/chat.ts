@@ -68,13 +68,14 @@ export async function sendChat({
   //     ? `${lspUrl.replace(/\/*$/, "")}${CHAT_URL}`
   //     : CHAT_URL;
 
-  return fetch("http://localhost:8001/v1/chat", {
+  return fetch("http://127.0.0.1:8001/v1/chat", {
     method: "POST",
     // headers,
     body,
     redirect: "follow",
     cache: "no-cache",
-    referrer: "no-referrer",
+    // TODO: causes an error during tests :/
+    // referrer: "no-referrer",
     signal: abortSignal,
     credentials: "same-origin",
   });

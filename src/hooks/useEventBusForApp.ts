@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import { isLogOut, isOpenExternalUrl, isSetupHost } from "../events";
 import { useAppDispatch, useConfig } from "../app/hooks";
-import { update as updateConfig } from "../features/Config/reducer";
+import { updateConfig } from "../features/Config/configSlice";
+import { setFileInfo } from "../events";
 
 export function useEventBusForApp() {
   const config = useConfig();
@@ -17,6 +18,14 @@ export function useEventBusForApp() {
     const listener = (event: MessageEvent) => {
       if (event.source !== window) {
         return;
+      }
+
+      if (updateConfig.match(event.data)) {
+        dispatch(updateConfig(event.data.payload));
+      }
+
+      if (setFileInfo.match(event.data)) {
+        dispatch(setFileInfo(event.data.payload));
       }
 
       if (isOpenExternalUrl(event.data)) {
