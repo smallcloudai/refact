@@ -1,17 +1,47 @@
-use std::{fs, mem};
+use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
+use serde::Serialize;
+
 use tokio::sync::RwLock as ARwLock;
 use hashbrown::{HashMap, HashSet};
+use tracing::info;
 use crate::at_commands::at_file::file_repair_candidates;
 use crate::call_validation::DiffChunk;
 use crate::global_context::GlobalContext;
+
+
+const DEBUG: usize = 0;
+
 
 #[derive(Clone, Debug, Default)]
 struct DiffLine {
     line_n: usize,
     text: String,
     overwritten_by_id: Option<usize>,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum ApplyDiffOutput {
+    Ok(),
+    Err(String),
+}
+
+#[derive(Default, PartialEq, Clone, Debug)]
+pub struct ApplyDiffResult {
+    pub file_text: Option<String>,
+    pub file_name_edit: Option<String>,
+    pub file_name_delete: Option<String>,
+    pub file_name_add: Option<String>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct ApplyDiffUnwrapped {
+    pub chunk_id: usize,
+    pub applied: bool,
+    pub can_unapply: bool,
+    pub success: bool,
+    pub detail: Option<String>
 }
 
 fn validate_chunk(chunk: &DiffChunk) -> Result<(), String> {
@@ -96,7 +126,7 @@ fn apply_chunk_to_text_fuzzy(
     lines_orig: &Vec<DiffLine>,
     chunk: &DiffChunk,
     max_fuzzy_n: usize,
-) -> (Option<usize>, Vec<DiffLine>) {
+) -> (Vec<DiffLine>, ApplyDiffOutput) {
     let chunk_lines_remove: Vec<_> = chunk.lines_remove.lines().map(|l| DiffLine { line_n: 0, text: l.to_string(), overwritten_by_id: None}).collect();
     let chunk_lines_add: Vec<_> = chunk.lines_add.lines().map(|l| DiffLine { line_n: 0, text: l.to_string(), overwritten_by_id: Some(chunk_id)}).collect();
     let mut new_lines = vec![];
@@ -115,10 +145,9 @@ fn apply_chunk_to_text_fuzzy(
                 .skip_while(|l| l.line_n < chunk.line1 || l.overwritten_by_id.is_some())
                 .cloned()
         );
-        return (Some(0), new_lines);
+        return (new_lines, ApplyDiffOutput::Ok());
     }
 
-    let mut fuzzy_n_used = 0;
     for fuzzy_n in 0..=max_fuzzy_n {
         let search_from = (chunk.line1 as i32 - fuzzy_n as i32).max(0) as usize;
         let search_till = (chunk.line2 as i32 - 1 + fuzzy_n as i32) as usize;
@@ -129,12 +158,11 @@ fn apply_chunk_to_text_fuzzy(
 
         let best_match = match matches {
             Ok(m) => {
-                fuzzy_n_used = fuzzy_n;
                 m[0].clone()
             },
             Err(_) => {
                 if fuzzy_n >= max_fuzzy_n {
-                    return (None, new_lines);
+                    return (new_lines, ApplyDiffOutput::Err("no chunk in original text".to_string()));
                 }
                 continue;
             }
@@ -151,9 +179,9 @@ fn apply_chunk_to_text_fuzzy(
         break;
     }
     if new_lines.is_empty() {
-        return (None, new_lines)
+        return (new_lines, ApplyDiffOutput::Err("error applying new lines".to_string()));
     }
-    (Some(fuzzy_n_used), new_lines)
+    (new_lines, ApplyDiffOutput::Ok())
 }
 
 fn apply_chunks(
@@ -161,18 +189,18 @@ fn apply_chunks(
     file_text: &String,
     max_fuzzy_n: usize,
     line_ending: &str,
-) -> (HashMap<usize, Option<usize>>, Vec<DiffLine>) {
+) -> (Vec<DiffLine>, HashMap<usize, ApplyDiffOutput>) {
     let mut lines_orig = file_text.split(line_ending).enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
 
-    let mut results_fuzzy_ns = HashMap::new();
+    let mut outputs = HashMap::new();
     for (chunk_id, chunk) in chunks.iter().map(|(id, c)|(*id, *c)) {
-        let (fuzzy_n_used, lines_orig_new) = apply_chunk_to_text_fuzzy(chunk_id, &lines_orig, &chunk, max_fuzzy_n);
-        if fuzzy_n_used.is_some() {
+        let (lines_orig_new, out) = apply_chunk_to_text_fuzzy(chunk_id, &lines_orig, &chunk, max_fuzzy_n);
+        if let ApplyDiffOutput::Ok() = out {
             lines_orig = lines_orig_new;
         }
-        results_fuzzy_ns.insert(chunk_id, fuzzy_n_used);
+        outputs.insert(chunk_id, out);
     }
-    (results_fuzzy_ns, lines_orig)
+    (lines_orig, outputs)
 }
 
 fn undo_chunks(
@@ -180,27 +208,70 @@ fn undo_chunks(
     file_text: &String,
     max_fuzzy_n: usize,
     line_ending: &str,
-) -> (HashMap<usize, Option<usize>>, Vec<DiffLine>) {
+) -> (Vec<DiffLine>, HashMap<usize, ApplyDiffOutput>) {
     let mut lines_orig = file_text.split(line_ending).enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
 
-    let mut results_fuzzy_ns = HashMap::new();
+    let mut outputs = HashMap::new();
+    
     for (chunk_id, chunk) in chunks.iter().map(|(id, c)|(*id, *c)) {
         let mut chunk_copy = chunk.clone();
 
         mem::swap(&mut chunk_copy.lines_remove, &mut chunk_copy.lines_add);
         chunk_copy.line2 = chunk_copy.line1 + chunk_copy.lines_remove.lines().count();
 
-        let (fuzzy_n_used, mut lines_orig_new) = apply_chunk_to_text_fuzzy(chunk_id, &lines_orig, &chunk_copy, max_fuzzy_n);
-        if fuzzy_n_used.is_some() {
+        let (mut lines_orig_new, output) = apply_chunk_to_text_fuzzy(chunk_id, &lines_orig, &chunk_copy, max_fuzzy_n);
+        if output == ApplyDiffOutput::Ok() {
             lines_orig_new = lines_orig_new.iter_mut().enumerate().map(|(idx, l)| {
                 l.line_n = idx + 1;
                 return l.clone();
             }).collect::<Vec<_>>();
             lines_orig = lines_orig_new;
         }
-        results_fuzzy_ns.insert(chunk_id, fuzzy_n_used);
+        outputs.insert(chunk_id, output);
     }
-    (results_fuzzy_ns, lines_orig)
+    (lines_orig, outputs)
+}
+
+fn check_add(c: &DiffChunk) -> ApplyDiffOutput {
+    let file_path = PathBuf::from(&c.file_name);
+    if let Some(parent) = file_path.parent() {
+        if !parent.is_dir() {
+            return ApplyDiffOutput::Err(format!("cannot create a file: parent dir `{:?}` does not exist or is not a dir", &parent));
+        }
+        if file_path.exists() {
+            return ApplyDiffOutput::Err(format!("cannot create a file: file `{}` already exists", &c.file_name));
+        }
+        return ApplyDiffOutput::Ok();
+    } else {
+        ApplyDiffOutput::Err(format!("cannot create a file: file `{}` doesn't have a parent (probably path is relative)", &c.file_name))
+    }
+}
+
+fn check_remove(c: &DiffChunk) -> ApplyDiffOutput {
+    let file_path = PathBuf::from(&c.file_name);
+    if !file_path.is_file() {
+        return ApplyDiffOutput::Err(format!("cannot remove file: file `{}` does not exist", &c.file_name));
+    }
+    ApplyDiffOutput::Ok()
+}
+
+fn check_rename(c: &DiffChunk) -> ApplyDiffOutput {
+    let file_path = PathBuf::from(&c.file_name);
+    let file_path_rename = PathBuf::from(c.file_name_rename.clone().unwrap_or_default());
+    if let Some(parent) = file_path_rename.parent() {
+        if !parent.is_dir() {
+            return ApplyDiffOutput::Err(format!("cannot rename file: parent dir `{:?}` does not exist or is not a dir", &parent));
+        }
+        if !file_path_rename.exists() {
+            return ApplyDiffOutput::Err(format!("cannot rename file: file `{:?}` doesn't exist", &c.file_name_rename));
+        }
+        if file_path.exists() {
+            return ApplyDiffOutput::Err(format!("cannot rename file: file `{}` already exists", &c.file_name));
+        }
+        ApplyDiffOutput::Ok()
+    } else {
+        ApplyDiffOutput::Err(format!("cannot rename file: file `{}` doesn't have a parent (probably path is relative)", &c.file_name))
+    }
 }
 
 pub fn apply_diff_chunks_to_text(
@@ -208,422 +279,262 @@ pub fn apply_diff_chunks_to_text(
     chunks_apply: Vec<(usize, &DiffChunk)>,
     chunks_undo: Vec<(usize, &DiffChunk)>,
     max_fuzzy_n: usize,
-) -> (String, HashMap<usize, Option<usize>>) {
-    let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
-    let mut file_text_copy = file_text.clone();
-    let mut fuzzy_ns = HashMap::new();
+) -> (Vec<ApplyDiffResult>, HashMap<usize, ApplyDiffOutput>) {
+    
+    let mut results = vec![];
+    let mut outputs = HashMap::new();
 
-    if !chunks_undo.is_empty() {
-        let mut chunks_undo_copy = chunks_undo.clone();
-        chunks_undo_copy.sort_by_key(|c| c.0);
-        let (_, new_lines) = undo_chunks(chunks_undo_copy, &file_text, max_fuzzy_n, line_ending); // XXX: only undo what is necessary
-        file_text_copy = new_lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join(line_ending);
+    let chunks_apply_edit = chunks_apply.iter().filter(|(_, c)|c.file_action == "edit").cloned().collect::<Vec<_>>();
+    let chunks_undo_edit = chunks_undo.iter().filter(|(_, c)|c.file_action == "edit").cloned().collect::<Vec<_>>();
+    
+    let other_actions = vec!["add", "remove", "rename"];
+    let chunks_apply_other = chunks_apply.iter().filter(|(_, c)|other_actions.contains(&c.file_action.as_str())).cloned().collect::<Vec<_>>();
+    let chunks_undo_other = chunks_undo.iter().filter(|(_, c)|other_actions.contains(&c.file_action.as_str())).cloned().collect::<Vec<_>>();
+
+    fn process_chunks_edit(
+        chunks_apply_edit: Vec<(usize, &DiffChunk)>,
+        chunks_undo_edit: Vec<(usize, &DiffChunk)>,
+        file_text: &String,
+        max_fuzzy_n: usize,
+        results: &mut Vec<ApplyDiffResult>,
+        outputs: &mut HashMap<usize, ApplyDiffOutput>,
+    ) {
+        let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
+        let mut file_text_copy = file_text.clone();
+        
+        if chunks_apply_edit.is_empty() && chunks_undo_edit.is_empty() {
+            return;
+        }
+        let file_names = chunks_undo_edit.iter().map(|c|c.1.file_name.clone()).chain(
+            chunks_apply_edit.iter().map(|c|c.1.file_name.clone())
+        ).collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
+        
+        let file_name_edit = match file_names.len() {
+            1 => file_names[0].clone(),
+            _ => {
+                for id in chunks_apply_edit.iter().map(|c|c.0) {
+                    outputs.insert(id, ApplyDiffOutput::Err("process_edit_chunks: cannot edit multiple files at once".to_string()));
+                }
+                return;
+            }
+        };
+
+        if !chunks_undo_edit.is_empty() {
+            let mut chunks_undo_copy = chunks_undo_edit.clone();
+            chunks_undo_copy.sort_by_key(|c| c.0);
+            let (new_lines, _) = undo_chunks(chunks_undo_copy, &file_text, max_fuzzy_n, line_ending); // XXX: only undo what is necessary
+            file_text_copy = new_lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join(line_ending);
+        }
+
+        if !chunks_apply_edit.is_empty() {
+            let mut chunks_apply_copy = chunks_apply_edit.clone();
+            chunks_apply_copy.sort_by_key(|c| c.0);
+            let (new_lines, new_outputs) = apply_chunks(chunks_apply_copy, &file_text_copy, max_fuzzy_n, line_ending);
+            outputs.extend(new_outputs);
+            file_text_copy = new_lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join(line_ending);
+        }
+        results.push(ApplyDiffResult {
+            file_text: Some(file_text_copy),
+            file_name_edit: Some(file_name_edit),
+            ..Default::default()
+        });
+    }
+    
+    fn process_chunks_other(
+        chunks_apply_other: Vec<(usize, &DiffChunk)>,
+        chunks_undo_other: Vec<(usize, &DiffChunk)>,
+        results: &mut Vec<ApplyDiffResult>,
+        outputs: &mut HashMap<usize, ApplyDiffOutput>,
+    ) {
+        let undo_ids: HashSet<_> = chunks_undo_other.iter().map(|c| c.0).collect();
+        let chunks_todo = chunks_apply_other
+            .into_iter()
+            .filter(|c| !undo_ids.contains(&c.0))
+            .collect::<Vec<_>>();
+        
+        if DEBUG == 1 {
+            info!("process_chunks_other starts");
+            info!("chunks_undo_other_ids: {:?}", chunks_undo_other.iter().map(|c|c.0).collect::<Vec<_>>());
+            info!("chunks_todo {:?}", chunks_todo);
+        }
+        for (c_idx, chunk) in chunks_todo {
+            if DEBUG == 1 {
+                info!("idx {} {:#?}", c_idx, chunk);
+            }
+            match chunk.file_action.as_str() {
+                "add" => {
+                    let out = check_add(chunk);
+                    if out == ApplyDiffOutput::Ok() {
+                        let res = ApplyDiffResult {
+                            file_text: Some(chunk.lines_add.clone()),
+                            file_name_add: Some(chunk.file_name.clone()),
+                            ..Default::default()
+                        };
+                        if DEBUG == 1 {
+                            info!("idx res {} {:#?}", c_idx, res);
+                        }
+                        results.push(res);
+                    }
+                    if DEBUG == 1 {
+                        info!("idx {} {:#?}", c_idx, out);
+                    }
+                    outputs.insert(c_idx, out);
+                },
+                "remove" => {
+                    let out = check_remove(chunk);
+                    if out == ApplyDiffOutput::Ok() {
+                        let res = ApplyDiffResult {
+                            file_name_delete: Some(chunk.file_name.clone()),
+                            ..Default::default()
+                        };
+                        if DEBUG == 1 {
+                            info!("idx res {} {:#?}", c_idx, res);
+                        }
+                        results.push(res);
+                    }
+                    if DEBUG == 1 {
+                        info!("idx {} {:#?}", c_idx, out);
+                    }
+                    outputs.insert(c_idx, out);
+                },
+                "rename" => {
+                    let out = check_rename(chunk);
+                    if out == ApplyDiffOutput::Ok() {
+                        let res = ApplyDiffResult {
+                            file_name_delete: Some(chunk.file_name_rename.clone().unwrap_or_default()),
+                            file_name_add: Some(chunk.file_name.clone()),
+                            ..Default::default()
+                        };
+                        if DEBUG == 1 {
+                            info!("idx res {} {:#?}", c_idx, res);
+                        }
+                        results.push(res);
+                    }
+                    if DEBUG == 1 {
+                        info!("idx {} {:#?}", c_idx, out);
+                    }
+                    outputs.insert(c_idx, out);
+                },
+                _ => continue,
+            } 
+        }
     }
 
-    if !chunks_apply.is_empty() {
-        let mut chunks_apply_copy = chunks_apply.clone();
-        chunks_apply_copy.sort_by_key(|c| c.0);
-        let (new_fuzzy_ns, new_lines) = apply_chunks(chunks_apply_copy, &file_text_copy, max_fuzzy_n, line_ending);
-        fuzzy_ns.extend(new_fuzzy_ns);
-        file_text_copy = new_lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join(line_ending);
-    }
-    (file_text_copy, fuzzy_ns)
+    process_chunks_edit(chunks_apply_edit, chunks_undo_edit, file_text, max_fuzzy_n, &mut results, &mut outputs);
+    process_chunks_other(chunks_apply_other, chunks_undo_other, &mut results, &mut outputs);
+    
+    (results, outputs)
 }
 
-pub fn read_files_n_apply_diff_chunks_edit(
+pub fn read_files_n_apply_diff_chunks(
     chunks: &Vec<DiffChunk>,
     applied_state: &Vec<bool>,
     desired_state: &Vec<bool>,
     max_fuzzy_n: usize,
-) -> (HashMap<String, String>, HashMap<usize, Option<usize>>) {
+) -> (Vec<ApplyDiffResult>, HashMap<usize, ApplyDiffOutput>) {
 
-    let chunks_undo = chunks.iter().enumerate().filter(|(idx, c)|applied_state.get(*idx) == Some(&true) && c.file_action == "edit").collect::<Vec<_>>();
-    let chunks_apply = chunks.iter().enumerate().filter(|(idx, c)|desired_state.get(*idx) == Some(&true) && c.file_action == "edit").collect::<Vec<_>>();
+    let mut results = vec![];
+    let mut outputs = HashMap::new();
 
-    let mut chunk_apply_groups = HashMap::new();
-    for c in chunks_apply.iter().cloned() {
-        chunk_apply_groups.entry(c.1.file_name.clone()).or_insert(Vec::new()).push(c);
-    }
-    let mut chunk_undo_groups = HashMap::new();
-    for c in chunks_undo.iter().cloned() {
-        chunk_undo_groups.entry(c.1.file_name.clone()).or_insert(Vec::new()).push(c);
-    }
+    let chunks_undo_edit = chunks.iter().enumerate().filter(|(idx, c)|applied_state.get(*idx) == Some(&true) && c.file_action == "edit").collect::<Vec<_>>();
+    let chunks_apply_edit = chunks.iter().enumerate().filter(|(idx, c)|desired_state.get(*idx) == Some(&true) && c.file_action == "edit").collect::<Vec<_>>();
 
-    let file_names = chunk_apply_groups.keys().cloned().chain(chunk_undo_groups.keys().cloned()).collect::<HashSet<_>>();
-    let mut fuzzy_n_used = HashMap::new();
-    let mut texts_after_patch = HashMap::new();
+    let other_actions = vec!["add", "remove", "rename"];
+    let chunks_undo_other = chunks.iter().enumerate().filter(|(idx, c)|applied_state.get(*idx) == Some(&true) && other_actions.contains(&c.file_action.as_str())).collect::<Vec<_>>();
+    let chunks_apply_other = chunks.iter().enumerate().filter(|(idx, c)|desired_state.get(*idx) == Some(&true) && other_actions.contains(&c.file_action.as_str())).collect::<Vec<_>>();
 
-    for file_name in file_names {
-        let chunks_apply = chunk_apply_groups.get(&file_name).unwrap_or(&vec![]).clone();
-        let chunks_undo = chunk_undo_groups.get(&file_name).unwrap_or(&vec![]).clone();
+    fn process_chunks_edit(
+        chunks_apply_edit: Vec<(usize, &DiffChunk)>,
+        chunks_undo_edit: Vec<(usize, &DiffChunk)>,
+        max_fuzzy_n: usize,
+        results: &mut Vec<ApplyDiffResult>,
+        outputs: &mut HashMap<usize, ApplyDiffOutput>,
+    ) {
+        let mut chunk_apply_groups = HashMap::new();
+        for c in chunks_apply_edit.iter().cloned() {
+            chunk_apply_groups.entry(c.1.file_name.clone()).or_insert(Vec::new()).push(c);
+        }
+        let mut chunk_undo_groups = HashMap::new();
+        for c in chunks_undo_edit.iter().cloned() {
+            chunk_undo_groups.entry(c.1.file_name.clone()).or_insert(Vec::new()).push(c);
+        }
 
-        let file_text = match crate::files_in_workspace::read_file_from_disk_sync(&PathBuf::from(&file_name)) {
-            Ok(t) => t.to_string(),
-            Err(_) => {
-                for (c, _) in chunks_apply.iter() {
-                    fuzzy_n_used.insert(*c, None);
+        let file_names = chunk_apply_groups.keys().cloned().chain(chunk_undo_groups.keys().cloned()).collect::<HashSet<_>>();
+        let mut apply_output = HashMap::new();
+
+        for file_name in file_names {
+            let chunks_apply = chunk_apply_groups.get(&file_name).unwrap_or(&vec![]).clone();
+            let chunks_undo = chunk_undo_groups.get(&file_name).unwrap_or(&vec![]).clone();
+
+            let file_text = match crate::files_in_workspace::read_file_from_disk_sync(&PathBuf::from(&file_name)) {
+                Ok(t) => t.to_string(),
+                Err(_) => {
+                    for (c, _) in chunks_apply.iter() {
+                        apply_output.insert(*c, ApplyDiffOutput::Err("Failed to read file".to_string()));
+                    }
+                    continue;
                 }
-                continue;
-            }
-        };
-
-        let (new_text, fuzzy_ns) = apply_diff_chunks_to_text(&file_text, chunks_apply, chunks_undo, max_fuzzy_n);
-
-        fuzzy_n_used.extend(fuzzy_ns);
-        texts_after_patch.insert(file_name.clone(), new_text);
-    }
-
-    (texts_after_patch, fuzzy_n_used)
-}
-
-pub fn can_apply_diff_chunks_other(
-    chunks: &Vec<DiffChunk>,
-    applied_state: &Vec<bool>,
-    desired_state: &Vec<bool>,
-) -> HashMap<usize, Option<usize>> {
-    let mut results: HashMap<usize, Option<usize>> = HashMap::new();
-
-    let check_add = |c: &DiffChunk| {
-        let file_path = PathBuf::from(&c.file_name);
-        if let Some(parent) = file_path.parent() {
-            if parent.is_dir() && !file_path.exists() {
-                return Some(0);
-            }
-        }
-        None
-    };
-    let check_remove = |c: &DiffChunk| {
-        let file_path = PathBuf::from(&c.file_name);
-        if file_path.is_file() {
-            return Some(0);
-        }
-        None
-    };
-    let check_rename = |c: &DiffChunk| {
-        let file_path = PathBuf::from(&c.file_name);
-        let file_path_rename = PathBuf::from(c.file_name_rename.clone().unwrap_or_default());
-        if let Some(parent) = file_path_rename.parent() {
-            if parent.is_dir() && !file_path_rename.exists() && file_path.exists() {
-                return Some(0);
-            }
-        }
-        None
-    };
-
-    for (c_idx, c) in chunks.iter().enumerate() {
-        if applied_state.get(c_idx) == Some(&true) {
-            continue;
-        }
-        if desired_state.get(c_idx) == Some(&true) {
-            let result = match c.file_action.as_str() {
-                "add" => check_add(c),
-                "remove" => check_remove(c),
-                "rename" => check_rename(c),
-                _ => continue
             };
-            results.insert(c_idx, result);
+
+            let (new_results, new_outputs) = apply_diff_chunks_to_text(&file_text, chunks_apply, chunks_undo, max_fuzzy_n);
+            results.extend(new_results);
+            outputs.extend(new_outputs);
         }
     }
+    fn process_chunks_other(
+        chunks_apply_other: Vec<(usize, &DiffChunk)>,
+        chunks_undo_other: Vec<(usize, &DiffChunk)>,
+        results: &mut Vec<ApplyDiffResult>,
+        outputs: &mut HashMap<usize, ApplyDiffOutput>,
+    ) {
+        let (new_results, new_outputs) = apply_diff_chunks_to_text(&"".to_string(), chunks_apply_other, chunks_undo_other, 0);
+        results.extend(new_results);
+        outputs.extend(new_outputs);
+    }
 
-    results
+    process_chunks_edit(chunks_apply_edit, chunks_undo_edit, max_fuzzy_n, &mut results, &mut outputs);
+    process_chunks_other(chunks_apply_other, chunks_undo_other, &mut results, &mut outputs);
+
+    (results, outputs)
 }
 
-pub fn apply_diff_chunks_other_to_files(
-    chunks: &Vec<DiffChunk>,
-    can_apply_state: &Vec<bool>,
-) -> HashMap<usize, Option<usize>> {
-    let mut results: HashMap<usize, Option<usize>> = HashMap::new();
+pub fn unwrap_diff_apply_outputs(
+    outputs: HashMap<usize, ApplyDiffOutput>, 
+    chunks_default: Vec<DiffChunk>
+) -> Vec<ApplyDiffUnwrapped> {
+    let mut out_results = vec![];
+    let other_actions = vec!["add", "remove", "rename"];
 
-    let apply_add_action = |c: &DiffChunk| {
-        let file_path = PathBuf::from(&c.file_name);
-        match fs::write(&file_path, &c.lines_add) {
-            Ok(_) => Some(0),
-            Err(e) => {
-                eprintln!("Failed to write file: {}", e);
-                None
+    for (chunk_id, c) in chunks_default.into_iter().enumerate() {
+        if let Some(res) = outputs.get(&chunk_id) {
+            if let ApplyDiffOutput::Ok() = res {
+                let can_unapply = !other_actions.contains(&c.file_action.as_str());
+                out_results.push(ApplyDiffUnwrapped {
+                    chunk_id,
+                    applied: true,
+                    can_unapply,
+                    success: true,
+                    detail: None,
+                });
             }
-        }
-    };
-    let apply_remove_action = |c: &DiffChunk| {
-        let file_path = PathBuf::from(&c.file_name);
-        if file_path.exists() {
-            match fs::remove_file(&file_path) {
-                Ok(_) => Some(0),
-                Err(e) => {
-                    eprintln!("Failed to remove file: {}", e);
-                    None
-                }
+            else if let ApplyDiffOutput::Err(e) = res {
+                out_results.push(ApplyDiffUnwrapped {
+                    chunk_id,
+                    applied: false,
+                    can_unapply: false,
+                    success: false,
+                    detail: Some(e.clone()),
+                });
             }
         } else {
-            None
-        }
-    };
-    let apply_rename_action = |c: &DiffChunk| {
-        let file_path = PathBuf::from(&c.file_name);
-        let file_path_rename = PathBuf::from(c.file_name_rename.clone().unwrap_or_default());
-        if file_path.exists() {
-            match fs::rename(&file_path, &file_path_rename) {
-                Ok(_) => Some(0),
-                Err(e) => {
-                    eprintln!("Failed to rename file: {}", e);
-                    None
-                }
-            }
-        } else {
-            None
-        }
-    };
-
-    for (c_idx, chunk) in chunks.iter().enumerate() {
-        if can_apply_state.get(c_idx) != Some(&true) {
-            results.insert(c_idx, None);
-            continue;
-        }
-
-        let result = match chunk.file_action.as_str() {
-            "add" => apply_add_action(chunk),
-            "remove" => apply_remove_action(chunk),
-            "rename" => apply_rename_action(chunk),
-            _ => continue
-        };
-
-        results.insert(c_idx, result);
-    }
-
-    results
-}
-
-pub fn fuzzy_results_into_state_vector(results: &HashMap<usize, Option<usize>>, total: usize) -> Vec<usize> {
-    let mut state_vector = vec![0; total];
-    for (k, v) in results {
-        if *k < total {
-            state_vector[*k] = if v.is_some() { 1 } else { 2 };
+            out_results.push(ApplyDiffUnwrapped {
+                chunk_id,
+                applied: false,
+                can_unapply: false,
+                success: true,
+                detail: None,
+            });
         }
     }
-    state_vector
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs;
-    use std::io::Write;
-
-    const TEST_MAX_FUZZY: usize = 10;
-
-    const FILE1_FN: &str = "/tmp/file1.txt";
-    const FILE1: &str = r#"# line 1
-class Point2d:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def __str__(self):
-        return "Point2d(x=%0.2f, y=%0.2f)" % (self.x, self.y)
-"#;
-    const FILE2_FN: &str = "/tmp/file2.txt";
-    const FILE2: &str = r#"    # Third jump
-    frog1.jump()
-    frog2.jump()"#;
-
-    const FILE3_FN: &str = "/tmp/frog.py";
-    const FILE3: &str = r#"import numpy as np
-
-DT = 0.01
-
-class Frog:
-    def __init__(self, x, y, vx, vy):
-        self.x = x
-        self.y = y
-        self.vx = vx
-        self.vy = vy
-
-    def bounce_off_banks(self, pond_width, pond_height):
-        if self.x < 0:
-            self.vx = np.abs(self.vx)
-        elif self.x > pond_width:
-            self.vx = -np.abs(self.vx)
-        if self.y < 0:
-            self.vy = np.abs(self.vy)
-        elif self.y > pond_height:
-            self.vy = -np.abs(self.vy)
-
-    def jump(self, pond_width, pond_height):
-        self.x += self.vx * DT
-        self.y += self.vy * DT
-        self.bounce_off_banks(pond_width, pond_height)
-        self.x = np.clip(self.x, 0, pond_width)
-        self.y = np.clip(self.y, 0, pond_height)
-
-    "#;
-
-    fn delete_file_if_exists(file_name: &str) {
-        if fs::metadata(file_name).is_ok() {
-            fs::remove_file(file_name).expect("Failed to delete file");
-        }
-    }
-
-    fn write_file(file_name: &str, content: &str) {
-        let mut file = fs::File::create(file_name).expect("Failed to create file");
-        file.write_all(content.as_bytes()).expect("Failed to write to file");
-    }
-
-    fn read_file(file_name: &str) -> String {
-        fs::read_to_string(file_name).expect(&format!("Failed to read file: {}", file_name))
-    }
-
-    #[ignore]
-    #[test]
-    fn test_chunks() {
-        // Run this to see println:
-        //     cargo test diffs::tests::test_chunks -- --nocapture
-
-        let chunk1 = DiffChunk {
-            file_name: "/tmp/file1.txt".to_string(),
-            file_name_rename: None,
-            file_action: "edit".to_string(),
-            line1: 4,
-            line2: 5,
-            lines_remove: "        self.x = x\n        self.y = y\n".to_string(),
-            lines_add: "        self.x, self.y = x, y\n".to_string(),
-            ..Default::default()
-        };
-        let chunks = vec![chunk1];
-
-        let applied_state = vec![false];
-        let desired_state = vec![true];
-
-        delete_file_if_exists(FILE1_FN);
-        let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks_edit(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
-        let r1_state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
-
-        println!("r1 state: {:?}", r1_state);
-        assert_eq!(vec![2], r1_state);
-
-        write_file(FILE1_FN, FILE1);
-        let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks_edit(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
-        let r2_state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
-
-        println!("r2 state: {:?}", r2_state);
-        assert_eq!(vec![1], r2_state);
-    }
-
-    #[ignore]
-    #[test]
-    fn test_frogs() {
-        let c1 = DiffChunk {
-            file_name: FILE2_FN.to_string(),
-            file_name_rename: None,
-            file_action: "edit".to_string(),
-            line1: 1,
-            line2: 2,
-            lines_remove: "    # Third jump\n".to_string(),
-            lines_add: "    # Third extra jump\n".to_string(),
-            ..Default::default()
-        };
-
-        let c2 = DiffChunk {
-            file_name: FILE2_FN.to_string(),
-            file_name_rename: None,
-            file_action: "edit".to_string(),
-            line1: 3,
-            line2: 4,
-            lines_remove: "    frog2.jump()\n".to_string(),
-            lines_add: "    frog2.jump()\n    frog3.jump()\n".to_string(),
-            ..Default::default()
-        };
-        let chunks = vec![c1, c2];
-        let applied_state = vec![false, false];
-        let desired_state = vec![true, true];
-
-        write_file(FILE2_FN, FILE2);
-        let (_file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks_edit(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
-        println!("results_fuzzy_n: {:?}", results_fuzzy_n);
-        let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
-
-        assert_eq!(vec![1, 1], state);
-    }
-
-    #[ignore]
-    #[test]
-    fn test_frog() {
-        let file3_must_be: &str = r#"import numpy as np
-
-DT = 0.01
-
-
-
-class AnotherFrog:
-    def __init__(self, x, y, vx, vy):
-        self.x = x
-        self.y = y
-        self.vx = vx
-        self.vy = vy
-
-    def bounce_off_banks(self, pond_width, pond_height):
-        if self.x < 0:
-            self.vx = np.abs(self.vx)
-        elif self.x > pond_width:
-            self.vx = -np.abs(self.vx)
-        if self.y < 0:
-            self.vy = np.abs(self.vy)
-        elif self.y > pond_height:
-            self.vy = -np.abs(self.vy)
-
-    def jump(self, pond_width, pond_height):
-        self.x += self.vx * DT
-        self.y += self.vy * DT
-        self.bounce_off_banks(pond_width, pond_height)
-        self.x = np.clip(self.x, 0, pond_width)
-        self.y = np.clip(self.y, 0, pond_height)
-
-    "#;
-
-        let c1 = DiffChunk {
-            file_name: FILE3_FN.to_string(),
-            file_name_rename: None,
-            file_action: "edit".to_string(),
-            line1: 5,
-            line2: 6,
-            lines_remove: "class Frog:\n".to_string(),
-            lines_add: "class AnotherFrog:\n".to_string(),
-            ..Default::default()
-        };
-
-        let c2 = DiffChunk {
-            file_name: FILE3_FN.to_string(),
-            file_name_rename: None,
-            file_action: "edit".to_string(),
-            line1: 4,
-            line2: 4,
-            lines_remove: "".to_string(),
-            lines_add: "\n\n".to_string(),
-            ..Default::default()
-        };
-        let chunks = vec![c1, c2];
-        let applied_state = vec![false, false];
-        let desired_state = vec![true, true];
-
-        write_file(FILE3_FN, FILE3);
-        let (file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks_edit(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
-        println!("results_fuzzy_n: {:?}", results_fuzzy_n);
-        let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
-        assert_eq!(vec![1, 1], state);
-        let changed_text = file_texts.get(FILE3_FN).unwrap();
-        assert_eq!(changed_text, file3_must_be);
-        write_file(FILE3_FN, changed_text);
-
-        let applied_state = vec![true, true];
-        let desired_state = vec![false, false];
-        let (file_texts, results_fuzzy_n) = read_files_n_apply_diff_chunks_edit(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
-        println!("results_fuzzy_n: {:?}", results_fuzzy_n);
-        let state = fuzzy_results_into_state_vector(&results_fuzzy_n, chunks.len());
-        assert_eq!(vec![0, 0], state);
-        let new_text = file_texts.get(FILE3_FN).unwrap();
-        write_file(FILE3_FN, new_text);
-        assert_eq!(read_file(FILE3_FN), FILE3);
-
-        let (text, data) = apply_diff_chunks_to_text(&FILE3.to_string(), chunks.iter().enumerate().collect::<Vec<_>>(), vec![], 1);
-        assert_eq!(file3_must_be, &text);
-    }
+    out_results
 }

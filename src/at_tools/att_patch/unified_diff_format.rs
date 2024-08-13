@@ -688,18 +688,19 @@ mod tests {
 
     use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
     use crate::call_validation::DiffChunk;
-    use crate::diffs::{apply_diff_chunks_to_text, fuzzy_results_into_state_vector};
+    use crate::diffs::{apply_diff_chunks_to_text, unwrap_diff_apply_outputs};
 
     fn apply_diff(path: &String, chunks: &Vec<DiffChunk>) -> (String, String) {
         let text = std::fs::read_to_string(PathBuf::from(path)).unwrap();
-        let (changed_text, fuzzy_results) = apply_diff_chunks_to_text(
+        let (results, outputs) = apply_diff_chunks_to_text(
             &text,
             chunks.iter().enumerate().collect::<Vec<_>>(),
             vec![],
             1,
         );
-        let state = fuzzy_results_into_state_vector(&fuzzy_results, chunks.len());
-        assert!(state.iter().all(|x| *x == 1));
+        let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
+        assert_eq!(outputs_unwrapped.into_iter().all(|x|x.applied), true);
+        let changed_text = results[0].clone().file_text.unwrap();
         (text, changed_text)
     }
 

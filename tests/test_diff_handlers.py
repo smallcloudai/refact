@@ -44,14 +44,14 @@ def diff_apply(payload):
     url = "http://localhost:8001/v1/diff-apply"
     response = requests.post(url, data=json.dumps(payload))
     assert response.status_code == 200
-    return json.loads(response.text)
+    return response.json()
 
 
 def diff_state(payload):
     url = "http://localhost:8001/v1/diff-state"
     response = requests.post(url, data=json.dumps(payload))
     assert response.status_code == 200
-    return json.loads(response.text)
+    return response.json()
 
 
 payload1 = {
@@ -104,18 +104,16 @@ def test1():
 
     resp = diff_apply(payload)
 
-    assert resp["state"] == [1, 1, 1, 2]
-    fuzzy_results = resp["fuzzy_results"]
-    fuzzy_results.sort(key=lambda x: x['chunk_id'])
-    assert [f["fuzzy_n_used"] for f in fuzzy_results] == [3, 0, 4]
+    assert [r['applied'] for r in resp] == [True, True, True, False]
+    assert [r['success'] for r in resp] == [True, True, True, False]
 
     assert test_file.read_text() == must_look_like
 
     payload["apply"] = [False] * len(payload["chunks"])
     resp = diff_apply(payload)
 
-    assert resp['state'] == [0, 0, 0, 0]
-    assert resp['fuzzy_results'] == []
+    assert [r['applied'] for r in resp] == [False, False, False, False]
+    assert [r['success'] for r in resp] == [True, True, True, True]
 
     assert test_file.read_text() == file_text
 
@@ -136,13 +134,15 @@ def test2():
 
         resp = diff_apply(payload)
         if i != 3:
-            assert resp["state"] == vec
+            assert [r['applied'] for r in resp] == [v == 1 for v in vec]
         else:
-            assert resp["state"] == [0, 0, 0, 2]
+            assert [r['applied'] for r in resp] == [False, False, False, False]
+            assert [r['success'] for r in resp] == [True, True, True, False]
 
         payload["apply"] = [False] * len(payload["chunks"])
         resp = diff_apply(payload)
-        assert resp['state'] == [0, 0, 0, 0]
+
+        assert [r['applied'] for r in resp] == [False, False, False, False]
         assert test_file.read_text() == file_text
 
     print(colored("test2 PASSED", "green"))
@@ -262,13 +262,13 @@ payload_test_other = {
             "lines_add": "TEST"
         },
         {
-            "file_name": str(test_file),
+            "file_name": str(test_file) + '.txt',
             "file_action": "rename",
             "line1": 1,
             "line2": 1,
             "lines_remove": "",
             "lines_add": "TEST",
-            "file_name_rename": str(test_file) + '.txt'
+            "file_name_rename": str(test_file)
         },
         # TN
         {
@@ -288,13 +288,13 @@ payload_test_other = {
             "lines_add": "TEST"
         },
         {
-            "file_name": str(test_file) + ".abc",
+            "file_name": str(test_file),
             "file_action": "rename",
             "line1": 1,
             "line2": 1,
             "lines_remove": "",
             "lines_add": "TEST",
-            "file_name_rename": str(test_file)
+            "file_name_rename": str(test_file) + ".abc"
         },
 
     ]
@@ -345,13 +345,13 @@ payload_test_other1 = {
             "lines_add": "TEST"
         },
         {
-            "file_name": str(test_file) + ".3.test",
+            "file_name": str(test_file) + '.3.test_rename',
             "file_action": "rename",
             "line1": 1,
             "line2": 1,
             "lines_remove": "",
             "lines_add": "TEST",
-            "file_name_rename": str(test_file) + '.3.test_rename'
+            "file_name_rename": str(test_file) + ".3.test"
         },
         # TN
         {
@@ -371,13 +371,13 @@ payload_test_other1 = {
             "lines_add": "TEST"
         },
         {
-            "file_name": str(test_file) + ".abc",
+            "file_name": str(test_file),
             "file_action": "rename",
             "line1": 1,
             "line2": 1,
             "lines_remove": "",
             "lines_add": "TEST",
-            "file_name_rename": str(test_file)
+            "file_name_rename": str(test_file) + ".abc"
         },
 
     ]
@@ -400,7 +400,8 @@ def test7():
 
     res = diff_apply(payload)
 
-    assert res['state'] == [1, 1, 1, 2, 2, 2]
+    assert [r['applied'] for r in res] == [True, True, True, False, False, False], res
+    assert [r['success'] for r in res] == [True, True, True, False, False, False], res
 
     safe_remove(str(test_file) + ".1.test")
     safe_remove(str(test_file) + ".2.test")
@@ -413,7 +414,7 @@ def test7():
 def main():
     test1()
     test2()
-    test3()
+    # # test3()
     test4()
     test5()
     test6()

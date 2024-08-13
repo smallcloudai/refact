@@ -7,7 +7,7 @@ use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::att_patch::ast_interaction::parse_and_get_error_symbols;
 use crate::at_tools::att_patch::tool::DefaultToolPatch;
-use crate::diffs::{apply_diff_chunks_other_to_files, apply_diff_chunks_to_text, can_apply_diff_chunks_other, fuzzy_results_into_state_vector};
+use crate::diffs::{apply_diff_chunks_to_text, unwrap_diff_apply_outputs};
 use crate::files_in_workspace::read_file_from_disk;
 
 
@@ -31,21 +31,10 @@ pub async fn parse_diff_chunks_from_message(
     for chunk in chunks.iter() {
         let path = PathBuf::from(&chunk.file_name);
         
-        let can_apply_other_raw = can_apply_diff_chunks_other(
-            &vec![chunk.clone()], &vec![false], &vec![true]
-        );
-        let can_apply = fuzzy_results_into_state_vector(
-            &can_apply_other_raw, 1).iter().map(|x| *x == 0 || *x == 1
-        ).all(|x| x);
-        if !can_apply {
-            warn!("Couldn't apply the generated diff, the following chunk is broken:\n{:?}", chunk);
-            return Err("Couldn't apply the generated diff, probably it's broken".to_string());
-        }
         // TODO: temporary
         if chunk.file_action != "edit" {
             continue;
         }
-
         let text_before = match read_file_from_disk(&path).await {
             Ok(text) => text,
             Err(err) => {
@@ -53,15 +42,31 @@ pub async fn parse_diff_chunks_from_message(
                 return Err(message);
             }
         };
-        let (text_after, fuzzy_results) = apply_diff_chunks_to_text(
+
+        let (results, outputs) = apply_diff_chunks_to_text(
             &text_before.to_string(),
-            vec![(0, chunk)],
-            vec![],
-            1,
+            vec![(0usize, chunk)],
+            vec![], 
+            1
         );
-        let state = fuzzy_results_into_state_vector(&fuzzy_results, 1);
-        if state.iter().any(|x| *x != 1) {
+        
+        let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, vec![chunk.clone()]);
+        let all_applied = outputs_unwrapped.iter().all(|x|x.applied);
+
+        if !all_applied {
+            warn!("Couldn't apply the generated diff, the following chunk is broken:\n{:?}", chunk);
+            return Err("Couldn't apply the generated diff, probably it's broken".to_string());
         }
+
+        if results.is_empty() {
+            return Err("No apply results were found".to_string());
+        }
+        let res = results.get(0).unwrap();
+        if res.file_text.is_none() {
+            return Err("text_after is missing".to_string());
+        }
+        // TODO: handle add, remove, edit as well
+        let text_after = res.file_text.clone().unwrap();
         
         match &maybe_ast_module {
             Some(ast_module) => {
