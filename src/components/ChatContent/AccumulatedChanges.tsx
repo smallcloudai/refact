@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect, useMemo, useCallback } from "react";
 import { Container, Text, Flex, Box, Button } from "@radix-ui/themes";
 import {
-  ChatMessages,
+  diffApi,
   DiffAppliedStateArgs,
   DiffChunk,
   isDiffMessage,
@@ -12,13 +12,80 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import { TruncateLeft } from "../Text";
 import { ScrollArea } from "../ScrollArea";
-import { useDiffApplyMutation, useGetManyDiffState } from "../../app/hooks";
+import {
+  useAppSelector,
+  useDiffApplyMutation,
+  useAppDispatch,
+  // useGetManyDiffState,
+} from "../../app/hooks";
+import { selectMessages } from "../../features/Chat";
+import { createSelector } from "@reduxjs/toolkit";
+import { RootState } from "../../app/store";
 
-export const AccumulatedChanges: React.FC<{ messages: ChatMessages }> = ({
-  messages,
+const selectDiffMessages = createSelector([selectMessages], (messages) =>
+  messages.filter(isDiffMessage),
+);
+
+const selectDiffArgs = createSelector([selectDiffMessages], (diffs) => {
+  return diffs.map<DiffAppliedStateArgs>((diff) => ({
+    chunks: diff.content,
+    toolCallId: diff.tool_call_id,
+  }));
+});
+
+const selectAllDiffsState =
+  (args: DiffAppliedStateArgs[]) => (state: RootState) => {
+    return args.map((arg) => diffApi.endpoints.diffState.select(arg)(state));
+  };
+
+const useGetManyDiffState = () => {
+  const dispatch = useAppDispatch();
+  const args = useAppSelector(selectDiffArgs);
+
+  useEffect(() => {
+    const results = args.map((arg) =>
+      dispatch(diffApi.endpoints.diffState.initiate(arg)),
+    );
+    return () => {
+      results.forEach((result) => result.unsubscribe());
+    };
+  }, [args, dispatch]);
+
+  const selectAll = useMemo(() => selectAllDiffsState(args), [args]);
+
+  const all = useAppSelector(selectAll, {
+    // TODO: fix this warning, it maybe cause by the query resolving
+    devModeChecks: { stabilityCheck: "never" },
+  });
+
+  const getByToolCallId = useCallback(
+    (toolCallId: string) => {
+      const item = all.find((d) => d.originalArgs?.toolCallId === toolCallId);
+      return item;
+    },
+    [all],
+  );
+
+  const getByArg = (arg: DiffAppliedStateArgs) =>
+    diffApi.endpoints.diffState.select(arg);
+
+  return {
+    allDiffRequest: all,
+    getByToolCallId,
+    getByArg,
+  };
+};
+
+export const AccumulatedChanges: React.FC<{ onOpen: () => void }> = ({
+  onOpen,
 }) => {
   const [open, setOpen] = React.useState(false);
+  // const messages = useAppSelector(selectDiffMessages);
   const [onSubmit, result] = useDiffApplyMutation();
+
+  useEffect(() => {
+    open && onOpen();
+  }, [open, onOpen]);
 
   const handleSubmit = React.useCallback(
     (chunks: DiffChunk[], toApply: boolean[], toolCallId: string) => {
@@ -27,19 +94,7 @@ export const AccumulatedChanges: React.FC<{ messages: ChatMessages }> = ({
     [onSubmit],
   );
 
-  const args = React.useMemo(() => {
-    return messages.reduce<DiffAppliedStateArgs[]>((acc, diff) => {
-      if (!isDiffMessage(diff)) return acc;
-      const arg: DiffAppliedStateArgs = {
-        chunks: diff.content,
-        toolCallId: diff.tool_call_id,
-      };
-      return [...acc, arg];
-    }, []);
-  }, [messages]);
-
-  // TODO: warning here
-  const { allDiffRequest } = useGetManyDiffState(args);
+  const { allDiffRequest } = useGetManyDiffState();
 
   const loading = React.useMemo(() => {
     if (result.isLoading) return true;

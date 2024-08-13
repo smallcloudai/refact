@@ -133,6 +133,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
       isStreaming,
     });
 
+    // TODO: this should run after the state updates :/
+    const onOpenCAccumulatedChanges = useCallback(() => {
+      innerRef.current?.scrollIntoView({ behavior: "instant", block: "end" });
+    }, [innerRef]);
+
     const toolResultsMap = React.useMemo(() => {
       return messages.reduce<Record<string, ToolResult>>((acc, message) => {
         if (!isToolMessage(message)) return acc;
@@ -222,11 +227,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
             }
           })}
           {!isWaiting && messages.length > 0 && (
-            <AccumulatedChanges
-              messages={messages}
-              // getDiffByIndex={getDiffByIndex}
-              // onSumbit={addOrRemoveDiff}
-            />
+            <AccumulatedChanges onOpen={onOpenCAccumulatedChanges} />
           )}
           {isWaiting && (
             <Container py="4">
