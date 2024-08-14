@@ -67,5 +67,5 @@ export function useEventBusForApp() {
       return;
     }
     dispatch(updateConfig({ addressURL, apiKey }));
-  }, [apiKey, addressURL, dispatch]);
+  }, [apiKey, addressURL, dispatch, config.host]);
 }

@@ -51,14 +51,19 @@ function isTourState(state: unknown): state is TourState {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const initialState: TourState = {
   type: "in_progress",
   step: 1,
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const next = createAction("tour/next");
+// eslint-disable-next-line react-refresh/only-export-components
 export const close = createAction("tour/close");
+// eslint-disable-next-line react-refresh/only-export-components
 export const finish = createAction("tour/finish");
+// eslint-disable-next-line react-refresh/only-export-components
 export const restart = createAction("tour/restart");
 
 function loadFromLocalStorage(): TourState {
@@ -75,6 +80,7 @@ function loadFromLocalStorage(): TourState {
   }
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const saveTourToLocalStorage = (state: { tour: TourState }) => {
   try {
     localStorage.setItem("tour", JSON.stringify(state.tour));
@@ -84,6 +90,7 @@ export const saveTourToLocalStorage = (state: { tour: TourState }) => {
   }
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const tourReducer = createReducer<TourState>(
   loadFromLocalStorage(),
   (builder) => {
@@ -185,6 +192,7 @@ export const TourProvider = ({ children }: TourContextProps) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTourRefs = () => {
   const context = useContext(TourContext);
   return context;

@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { TourBubble } from ".";
+import { TourBubble } from "./TourBubble";
 import { next, useTourRefs } from "../../features/Tour";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RootState } from "../../app/store";

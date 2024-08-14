@@ -30,9 +30,10 @@ export const TipOfTheDay: React.FC = () => {
   const config = useConfig();
   const state = useAppSelector((state: RootState) => state.tipOfTheDay);
 
+  // TODO: find out what this is about.
   useEffect(() => {
     dispatch(next(config));
-  }, [dispatch]);
+  }, [dispatch, config]);
 
   return <Text>💡 {state.tip}</Text>;
 };

@@ -65,10 +65,10 @@ export const tipOfTheDayReducer = createReducer<TipOfTheDayState>(
   loadFromLocalStorage(),
   (builder) => {
     builder.addCase(next, (state, action) => {
-      console.log({ action });
+      // console.log({ action });
       const keyBindings = action.payload.keyBindings;
       let tip = tips[state.next % tips.length];
-      console.log({ keyBindings });
+      // console.log({ keyBindings });
 
       if (keyBindings?.completeManual !== undefined) {
         tip = tip.replace("[MANUAL_COMPLETION]", keyBindings.completeManual);
