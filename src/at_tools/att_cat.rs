@@ -119,7 +119,7 @@ impl Tool for AttCat {
             };
             context_files_in.push(cf);
         }
-        let filenames_present = context_files_in.iter().map(|x|x.file_name.clone()).collect::<Vec<_>>();
+        let filenames_present = context_files_in.iter().map(|x|x.file_name.clone()).collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
 
         let mut content = "".to_string();
         if !filenames_present.is_empty() {
