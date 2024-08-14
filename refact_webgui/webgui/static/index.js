@@ -197,7 +197,8 @@ if (fintune_tab) {
         })
         .then(function(data) {
             if(data.status) {
-                disable_finetune_tab();
+                disable_tab('finetune');
+                disable_tab('upload');
             }
         })
         .catch(function(error) {
@@ -206,8 +207,8 @@ if (fintune_tab) {
         });
 }
 
-function disable_finetune_tab() {
-    const fintune_tab = document.querySelector('#finetune');
+function disable_tab(tabname) {
+    const fintune_tab = document.querySelector('#' + tabname);
     fintune_tab.ariaDisabled = true;
     fintune_tab.querySelector('.row').style.opacity = '0.3';
     fintune_tab.querySelector('.row').style.pointerEvents = 'none';
@@ -216,7 +217,7 @@ function disable_finetune_tab() {
     fintune_tab.querySelector('.row').style.webkitFilter = 'grayscale(1)';
     const info_box = document.createElement('div');
     info_box.className = 'info-box';
-    info_box.innerHTML = 'Finetuning is not supported for Neuron yet';
+    info_box.innerHTML = 'Function is not supported for Neuron yet';
     fintune_tab.appendChild(info_box);
     info_box.style.position = 'absolute';
     info_box.style.left = '50%';
@@ -227,6 +228,10 @@ function disable_finetune_tab() {
     info_box.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
     info_box.style.padding = '30px 50px';
     info_box.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+    if(tabname === 'upload') {
+        const new_project = document.querySelector('.start-project');
+        new_project.style.display = 'none';
+    }
 }
 
 

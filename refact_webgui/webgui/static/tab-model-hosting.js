@@ -8,6 +8,7 @@ let gpus_popup = false;
 let models_data = null;
 let finetune_configs_and_runs;
 let force_render_models_assigned = false;
+let gpus_avaliable = null;
 
 
 function update_finetune_configs_and_runs() {
@@ -25,6 +26,7 @@ function get_gpus() {
         return response.json();
     })
     .then(function(data) {
+        gpus_avaliable = data.gpus;
         render_gpus(data);
     })
    .catch(function(error) {
@@ -194,13 +196,15 @@ function render_models_assigned(models) {
         let context = document.createElement("td");
         context.style.width = "15%";
         let finetune_info = document.createElement("td");
-        finetune_info.style.width = "35%";
+        finetune_info.style.width = "20%";
         let select_gpus = document.createElement("td");
         select_gpus.style.width = "15%";
         let gpus_share = document.createElement("td");
         gpus_share.style.width = "10%";
         let del = document.createElement("td");
         del.style.width = "5%";
+        const instance = document.createElement("td");
+        instance.style.width = "15%";
 
         model_name.textContent = index;
         finetune_info.classList.add('model-finetune-info');
@@ -293,6 +297,28 @@ function render_models_assigned(models) {
             select_gpus.appendChild(select_gpus_div);
         }
 
+        const instance_select = document.createElement("select");
+        instance_select.classList.add('form-select','form-select-sm');
+        const instance_option = document.createElement("option");
+        instance_option.setAttribute('value','auto');
+        instance_option.textContent = 'auto';
+        instance_select.appendChild(instance_option);
+        // add gpus index number as option
+        console.log('gpus_avaliable',gpus_avaliable);
+        for (let i = 0; i < gpus_avaliable.length; i++) {
+            const instance_option = document.createElement("option");
+            instance_option.setAttribute('value',i+1);
+            instance_option.textContent = i+1;
+            instance_select.appendChild(instance_option);
+        }
+        instance.appendChild(instance_select);
+
+        instance_select.addEventListener('change', function() {
+            const selected_value = Number(this.value);
+            // save_model_assigned();
+        });
+        
+
         if(models_info[index].has_share_gpu) {
             const gpus_checkbox = document.createElement("input");
             gpus_checkbox.setAttribute('type','checkbox');
@@ -327,6 +353,7 @@ function render_models_assigned(models) {
         row.appendChild(context);
         row.appendChild(finetune_info);
         row.appendChild(select_gpus);
+        row.appendChild(instance);
         row.appendChild(gpus_share);
         row.appendChild(del);
         models_table.appendChild(row);
