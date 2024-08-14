@@ -35,7 +35,10 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
     setSelectedSystemPrompt,
     setUseTools,
     enableSend,
+    getDiffByIndex,
+    addOrRemoveDiff,
     openSettings,
+    openFile,
   } = useEventBusForChat();
 
   const maybeSendToSideBar =
@@ -107,6 +110,8 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         </Flex>
       )}
       <ChatContent
+        key={`chat-content-${state.chat.id}`}
+        addOrRemoveDiff={addOrRemoveDiff}
         messages={state.chat.messages}
         onRetry={retryQuestion}
         isWaiting={state.waiting_for_response}
@@ -115,7 +120,13 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         onPasteClick={handlePasteDiffClick}
         canPaste={state.active_file.can_paste}
         ref={chatContentRef}
+        getDiffByIndex={getDiffByIndex}
         openSettings={openSettings}
+        chatKey={state.chat.id}
+        onOpenFile={(file) => {
+          // if(host !== "web") { openFile(file) }
+          openFile(file);
+        }}
       />
       {!state.streaming && state.prevent_send && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
@@ -128,6 +139,7 @@ export const Chat: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
         </Container>
       )}
       <ChatForm
+        key={`chat-form-${state.chat.id}`}
         chatId={state.chat.id}
         isStreaming={state.streaming}
         showControls={state.chat.messages.length === 0 && !state.streaming}

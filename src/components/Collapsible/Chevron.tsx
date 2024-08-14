@@ -10,6 +10,8 @@ export type ChevronProps = {
 
 export const Chevron: React.FC<ChevronProps> = ({ open, className }) => {
   return (
-    <ChevronDownIcon className={classNames(open && styles.up, className)} />
+    <ChevronDownIcon
+      className={classNames(open ? styles.down : styles.right, className)}
+    />
   );
 };

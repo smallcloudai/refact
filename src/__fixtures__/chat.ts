@@ -1,4 +1,5 @@
 import { ChatMessages, ChatThread } from "../events";
+import { ChatState } from "../hooks";
 
 export const MARS_ROVER_CHAT: ChatThread = {
   id: "9afd6fef-3e49-40df-8aca-688af3621514",
@@ -52,6 +53,8 @@ export const MARS_ROVER_CHAT: ChatThread = {
       // "The quadratic formula is given by:\n\n\\[ x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{{2a}} \\]\n\nYou can find more information about the quadratic formula in the following link: [Quadratic Formula - Wikipedia](https://en.wikipedia.org/wiki/Quadratic_formula)",
       "block\n\n```math\nC_L\n```\n\ninline: $C_L$\n\n",
     ],
+
+    ["user", "long message\n" + "a".repeat(10000)],
   ],
   title: "mars rover kata",
   model: "gpt-3.5-turbo",
@@ -387,4 +390,437 @@ export const FROG_CHAT: ChatThread = {
   ],
   title: "",
   model: "",
+};
+
+export const CHAT_WITH_DIFFS: ChatMessages = [
+  [
+    "assistant",
+    "Persistence is essential in software development to ensure that data is stored and maintained even after the application is closed or the system is shut down.",
+    null,
+  ],
+  [
+    "context_file",
+    [
+      {
+        file_name:
+          "hibernate-orm/hibernate-core/src/test/java/org/hibernate/orm/test/id/usertype/UserTypeComparableIdTest.java",
+        line1: 1,
+        line2: 228,
+        file_content:
+          "/*\\n * Hibernate, Relational Persistence for Idiomatic Java\\n *\\n * License: GNU Lesser General Public License (LGPL), version 2.1 or later.\\n * See the lgpl.txt",
+      },
+    ],
+  ],
+  [
+    "diff",
+    [
+      {
+        file_name: "file1.py",
+        file_action: "edit",
+        line1: 5,
+        line2: 6,
+        lines_remove: "def f(x: int):\n    return x*2\n",
+        lines_add: "def f(x: float):\n    return x*3\n",
+      },
+      {
+        file_name: "file1.py",
+        file_action: "edit",
+        line1: 8,
+        line2: 9,
+        lines_remove: "def g(x: int):\n    return x*4\n",
+        lines_add: "def g(x: float):\n    return x*5\n",
+      },
+      {
+        file_name: "file2.py",
+        file_action: "new",
+        lines_add: "def main():\n    file1.f(6)\n",
+        line1: 1,
+        line2: 2,
+        lines_remove: "",
+      },
+    ],
+    "test_tool_call_id",
+  ],
+  ["user", "A longer diff"],
+  ["assistant", "here you go"],
+  [
+    "diff",
+    [
+      {
+        file_name: "long.py",
+        file_action: "new",
+        lines_add: "def main():    file1.f(6);    ".repeat(6),
+        lines_remove: "",
+        line1: 1,
+        line2: 2,
+      },
+    ],
+    "test_tool_call_id",
+  ],
+];
+
+export const CHAT_WITH_DIFF_ACTIONS: ChatState["chat"] = {
+  id: "eeda523e-9b74-4df6-8d60-a14ccdd907f0",
+  messages: [
+    ["user", "In the project add an edible property to the frog class\n"],
+    [
+      "assistant",
+      "",
+      [
+        {
+          function: {
+            arguments: '{"query":"class Frog"}',
+            name: "search_workspace",
+          },
+          id: "call_n5qeQaFZNAoaP3qJzRiGO6Js",
+          index: 0,
+          type: "function",
+        },
+      ],
+    ],
+    [
+      "tool",
+      {
+        tool_call_id: "call_n5qeQaFZNAoaP3qJzRiGO6Js",
+        content: "performed vecdb search, results below",
+      },
+    ],
+    [
+      "context_file",
+      [
+        {
+          file_content:
+            '# Picking up context, goal in this file:\n# - goto parent class, two times\n# - dump parent class\n\nimport frog\n\nX,Y = 50, 50\nW = 100\nH = 100\n\n\n# This this a comment for the Toad class, above the class\nclass Toad(frog.Frog):\n    def __init__(self, x, y, vx, vy):\n        super().__init__(x, y, vx, vy)\n        self.name = "Bob"\n\n\nclass EuropeanCommonToad(frog.Frog):\n    """\n    This is a comment for EuropeanCommonToad class, inside the class\n    """\n\n    def __init__(self, x, y, vx, vy):\n        super().__init__(x, y, vx, vy)\n        self.name = "EU Toad"\n\n\nif __name__ == "__main__":\n    toad = EuropeanCommonToad(100, 100, 200, -200)\n    toad.jump(W, H)\n    print(toad.name, toad.x, toad.y)\n\n',
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+          line1: 1,
+          line2: 32,
+          usefulness: 0,
+        },
+        {
+          file_content:
+            "import numpy as np\n\nDT = 0.01\n\nclass Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n\n    def bounce_off_banks(self, pond_width, pond_height):\n        if self.x < 0:\n            self.vx = np.abs(self.vx)\n        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n            self.vy = np.abs(self.vy)\n        elif self.y > pond_height:\n            self.vy = -np.abs(self.vy)\n\n    def jump(self, pond_width, pond_height):\n        self.x += self.vx * DT\n        self.y += self.vy * DT\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n\n",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+          line1: 1,
+          line2: 27,
+          usefulness: 0,
+        },
+        {
+          file_content:
+            '# Picking up context, goal in this file:\n# - pick up type of p\n# - prioritize type definition over all the noise\n\nimport pygame\nimport numpy as np\nimport frog\nfrom typing import Tuple\n\n\nW = 640\nH = 480\n\n\ndef draw_hello_frog(\n    screen: pygame.Surface,\n    message: str,\n    color: Tuple[int, int, int] = (0, 255, 255),\n    font_name: str = "Arial",\n) -> None:\n    font = pygame.font.SysFont(font_name, 32)\n    text = font.render(message, True, color)\n    text_rect = text.get_rect()\n    text_rect.center = (W / 2, H / 2)\n    screen.blit(text, text_rect)\n\n\ncreatures = [\n    frog.Frog(\n        np.random.uniform(0, W),\n        np.random.uniform(0, H),\n        np.random.uniform(-W/10, H/10),\n        np.random.uniform(-W/10, H/10),\n    ) for i in range(10)]\n\n\ndef main_loop():\n    screen = pygame.display.set_mode((W,H))   # without space because it\'s a test it needs to pick up right line below\n    quit_flag = False\n    while not quit_flag:\n        for event in pygame.event.get():\n            if event.type == pygame.QUIT:\n                quit_flag = True\n        screen.fill((0, 0, 0))\n        for p in creatures:\n            pygame.draw.circle(screen, (0, 255, 0), (p.x, p.y), 10)\n        draw_hello_frog(screen, "Jump To Conclusions!", (0, 200, 0))\n        pygame.display.flip()\n        pygame.time.Clock().tick(60)\n        p: frog.Frog\n        for p in creatures:\n            p.jump(W, H)\n\n\nif __name__ == \'__main__\':\n    pygame.init()\n    pygame.display.set_caption("Pond")\n    main_loop()\n    pygame.quit()\n',
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py",
+          line1: 1,
+          line2: 58,
+          usefulness: 0,
+        },
+        {
+          file_content:
+            "# Picking up context, goal in this file:\n# - without any other information, find method usage in another file by text similarity\n\nimport numpy as np\nimport frog\n\nX,Y = 50, 50\nW = 100\nH = 100\n\ndef bring_your_own_frog_to_work_day(f):\n    f.jump(W, H)\n",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/work_day.py",
+          line1: 1,
+          line2: 11,
+          usefulness: 0,
+        },
+      ],
+    ],
+    [
+      "assistant",
+      "",
+      [
+        {
+          function: {
+            arguments:
+              '{"path":"/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py","todo":"Add an \'edible\' property to the Frog class and initialize it in the constructor."}',
+            name: "patch",
+          },
+          id: "call_dIXVNlzugvrPJvTF5G7n1YgK",
+          index: 0,
+          type: "function",
+        },
+      ],
+    ],
+    [
+      "diff",
+      [
+        {
+          file_action: "edit",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+          line1: 1,
+          line2: 1,
+          lines_add:
+            "class Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n        self.edible = True",
+          lines_remove:
+            "class Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy",
+        },
+      ],
+      "test_tool_call_id",
+    ],
+    [
+      "assistant",
+      "The `Frog` class has been updated to include an `edible` property.",
+      null,
+    ],
+  ],
+  title: "In the project add an edible property to the frog class\n",
+  model: "gpt-4o",
+  applied_diffs: {
+    "diff-5": {
+      fetching: false,
+      error: "Bad Request",
+      diff_id: "diff-5",
+      state: [0],
+      can_apply: [false],
+      applied_chunks: [false],
+    },
+  },
+  createdAt: "2024-07-05T09:10:29.523Z",
+  lastUpdated: "2024-07-05T09:10:37.322Z",
+};
+
+export const LARGE_DIFF: ChatState["chat"] = {
+  id: "7ebafb62-a701-43a3-9bdd-fd1425b54536",
+  messages: [
+    ["user", "rename the frog class to bird."],
+    [
+      "assistant",
+      "",
+      [
+        {
+          function: {
+            arguments: "{}",
+            name: "tree",
+          },
+          id: "call_b0ZalvpaQCZLGIHS0t4O3tH3",
+          index: 0,
+          type: "function",
+        },
+      ],
+    ],
+    [
+      "tool",
+      {
+        tool_call_id: "call_b0ZalvpaQCZLGIHS0t4O3tH3",
+        content:
+          "  \n    Users\n      marc\n        Projects\n          refact-lsp\n            tests\n              emergency_frog_situation\n                frog.py\n                holiday.py\n                jump_to_conclusions.py\n                set_as_avatar.py\n                work_day.py\n",
+      },
+    ],
+    [
+      "assistant",
+      "",
+      [
+        {
+          function: {
+            arguments: '{"query":"class Frog"}',
+            name: "search_workspace",
+          },
+          id: "call_YozL4pz5zNwdEaNWhdVQdcIF",
+          index: 0,
+          type: "function",
+        },
+      ],
+    ],
+    [
+      "tool",
+      {
+        tool_call_id: "call_YozL4pz5zNwdEaNWhdVQdcIF",
+        content: "performed vecdb search, results below",
+      },
+    ],
+    [
+      "context_file",
+      [
+        {
+          file_content:
+            '# Picking up context, goal in this file:\n# - goto parent class, two times\n# - dump parent class\n\nimport frog\n\nX,Y = 50, 50\nW = 100\nH = 100\n\n\n# This this a comment for the Toad class, above the class\nclass Toad(frog.Frog):\n    def __init__(self, x, y, vx, vy):\n        super().__init__(x, y, vx, vy)\n        self.name = "Bob"\n\n\nclass EuropeanCommonToad(frog.Frog):\n    """\n    This is a comment for EuropeanCommonToad class, inside the class\n    """\n\n    def __init__(self, x, y, vx, vy):\n        super().__init__(x, y, vx, vy)\n        self.name = "EU Toad"\n\n\nif __name__ == "__main__":\n    toad = EuropeanCommonToad(100, 100, 200, -200)\n    toad.jump(W, H)\n    print(toad.name, toad.x, toad.y)\n\n',
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+          line1: 1,
+          line2: 32,
+          usefulness: 0,
+        },
+        {
+          file_content:
+            "import numpy as np\n\nDT = 0.01\n\nclass Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n\n    def bounce_off_banks(self, pond_width, pond_height):\n        if self.x < 0:\n            self.vx = np.abs(self.vx)\n        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n            self.vy = np.abs(self.vy)\n        elif self.y > pond_height:\n            self.vy = -np.abs(self.vy)\n\n    def jump(self, pond_width, pond_height):\n        self.x += self.vx * DT\n        self.y += self.vy * DT\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+          line1: 1,
+          line2: 26,
+          usefulness: 0,
+        },
+        {
+          file_content:
+            '# Picking up context, goal in this file:\n# - pick up type of p\n# - prioritize type definition over all the noise\n\nimport pygame\nimport numpy as np\nimport frog\nfrom typing import Tuple\n\n\nW = 640\nH = 480\n\n\ndef draw_hello_frog(\n    screen: pygame.Surface,\n    message: str,\n    color: Tuple[int, int, int] = (0, 255, 255),\n    font_name: str = "Arial",\n) -> None:\n    font = pygame.font.SysFont(font_name, 32)\n    text = font.render(message, True, color)\n    text_rect = text.get_rect()\n    text_rect.center = (W / 2, H / 2)\n    screen.blit(text, text_rect)\n\n\ncreatures = [\n    frog.Frog(\n        np.random.uniform(0, W),\n        np.random.uniform(0, H),\n        np.random.uniform(-W/10, H/10),\n        np.random.uniform(-W/10, H/10),\n    ) for i in range(10)]\n\n\ndef main_loop():\n    screen = pygame.display.set_mode((W,H))   # without space because it\'s a test it needs to pick up right line below\n    quit_flag = False\n    while not quit_flag:\n        for event in pygame.event.get():\n            if event.type == pygame.QUIT:\n                quit_flag = True\n        screen.fill((0, 0, 0))\n        for p in creatures:\n            pygame.draw.circle(screen, (0, 255, 0), (p.x, p.y), 10)\n        draw_hello_frog(screen, "Jump To Conclusions!", (0, 200, 0))\n        pygame.display.flip()\n        pygame.time.Clock().tick(60)\n        p: frog.Frog\n        for p in creatures:\n            p.jump(W, H)\n\n\nif __name__ == \'__main__\':\n    pygame.init()\n    pygame.display.set_caption("Pond")\n    main_loop()\n    pygame.quit()\n',
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py",
+          line1: 1,
+          line2: 58,
+          usefulness: 0,
+        },
+        {
+          file_content:
+            "# Picking up context, goal in this file:\n# - without any other information, find method usage in another file by text similarity\n\nimport numpy as np\nimport frog\n\nX,Y = 50, 50\nW = 100\nH = 100\n\ndef bring_your_own_frog_to_work_day(f):\n    f.jump(W, H)\n",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/work_day.py",
+          line1: 1,
+          line2: 11,
+          usefulness: 0,
+        },
+        {
+          file_content:
+            "import frog\n\n\nif __name__ == __main__:\n    frog1 = frog.Frog()\n    frog2 = frog.Frog()\n\n    # First jump\n    frog1.jump()\n    frog2.jump()\n\n    # Second jump\n    frog1.jump()\n    frog2.jump()\n\n    # Third jump\n    frog1.jump()\n    frog2.jump()\n\n    # Forth jump\n    frog1.jump()\n    frog2.jump()\n",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/holiday.py",
+          line1: 1,
+          line2: 21,
+          usefulness: 0,
+        },
+      ],
+    ],
+    [
+      "assistant",
+      "",
+      [
+        {
+          function: {
+            arguments:
+              '{"paths":"/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py,/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py,/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py,/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/work_day.py,/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/holiday.py","symbols":"Frog","todo":"Rename the class Frog to Bird and update all its references accordingly."}',
+            name: "patch",
+          },
+          id: "call_GViOZuuRlNT5tGK7RXQZxkhu",
+          index: 0,
+          type: "function",
+        },
+      ],
+    ],
+    [
+      "diff",
+      [
+        {
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+          file_action: "edit",
+          line1: 5,
+          line2: 6,
+          lines_remove: "class Frog:\n",
+          lines_add: "class Bird:\n",
+        },
+        {
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+          file_action: "edit",
+          line1: 5,
+          line2: 6,
+          lines_remove: "import frog\n",
+          lines_add: "import frog as bird\n",
+        },
+        {
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+          file_action: "edit",
+          line1: 13,
+          line2: 14,
+          lines_remove: "class Toad(frog.Frog):\n",
+          lines_add: "class Toad(bird.Bird):\n",
+        },
+        {
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/set_as_avatar.py",
+          file_action: "edit",
+          line1: 19,
+          line2: 20,
+          lines_remove: "class EuropeanCommonToad(frog.Frog):\n",
+          lines_add: "class EuropeanCommonToad(bird.Bird):\n",
+        },
+        {
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py",
+          file_action: "edit",
+          line1: 7,
+          line2: 8,
+          lines_remove: "import frog\n",
+          lines_add: "import frog as bird\n",
+        },
+        {
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py",
+          file_action: "edit",
+          line1: 29,
+          line2: 30,
+          lines_remove: "    frog.Frog(\n",
+          lines_add: "    bird.Bird(\n",
+        },
+        {
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/jump_to_conclusions.py",
+          file_action: "edit",
+          line1: 50,
+          line2: 51,
+          lines_remove: "        p: frog.Frog\n",
+          lines_add: "        p: bird.Bird\n",
+        },
+        {
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/work_day.py",
+          file_action: "edit",
+          line1: 5,
+          line2: 6,
+          lines_remove: "import frog\n",
+          lines_add: "import frog as bird\n",
+        },
+        {
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/holiday.py",
+          file_action: "edit",
+          line1: 1,
+          line2: 2,
+          lines_remove: "import frog\n",
+          lines_add: "import frog as bird\n",
+        },
+        {
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/holiday.py",
+          file_action: "edit",
+          line1: 5,
+          line2: 7,
+          lines_remove: "    frog1 = frog.Frog()\n    frog2 = frog.Frog()\n",
+          lines_add: "    frog1 = bird.Bird()\n    frog2 = bird.Bird()\n",
+        },
+      ],
+      "call_GViOZuuRlNT5tGK7RXQZxkhu",
+    ],
+    [
+      "assistant",
+      "The class `Frog` has been successfully renamed to `Bird` and all its references have been updated accordingly in the following files:\n\n- `frog.py`\n- `set_as_avatar.py`\n- `jump_to_conclusions.py`\n- `work_day.py`\n- `holiday.py`\n\nIs there anything else you need help with?",
+      null,
+    ],
+  ],
+  title: "rename the frog class to bird.\n",
+  model: "gpt-4o",
+  applied_diffs: {
+    "diff-7": {
+      fetching: false,
+      error: null,
+      diff_id: "diff-7",
+      state: [],
+      applied_chunks: [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ],
+      can_apply: [true, true, true, true, true, true, true, true, true, true],
+    },
+  },
+  createdAt: "2024-07-23T15:08:51.480Z",
+  lastUpdated: "2024-07-23T15:36:26.738Z",
 };
