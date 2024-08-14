@@ -1,14 +1,14 @@
 // Careful with exports that include components, it'll cause this to compile to a large file.
-import { FileInfo } from "../features/Chat/activeFile";
-import { Chat } from "../features/Chat/chatThread";
-import { Snippet } from "../features/Chat/selectedSnippet";
-import { Config } from "../features/Config/configSlice";
-import { ErrorSliceState } from "../features/Errors/errorsSlice";
+import type { FileInfo } from "../features/Chat/activeFile";
+import type { Chat } from "../features/Chat/chatThread";
+import type { Snippet } from "../features/Chat/selectedSnippet";
+import type { Config } from "../features/Config/configSlice";
+import type { ErrorSliceState } from "../features/Errors/errorsSlice";
 import { request, ready, receive, error } from "../features/FIM";
-import { HistoryState } from "../features/History/historySlice";
-import { TipOfTheDayState } from "../features/TipOfTheDay";
-import { TourState } from "../features/Tour";
-import { FIMDebugState } from "../hooks";
+import type { HistoryState } from "../features/History/historySlice";
+import type { TipOfTheDayState } from "../features/TipOfTheDay";
+import type { TourState } from "../features/Tour";
+import type { FIMDebugState } from "../hooks";
 // import { rootReducer } from "../app/store";
 export { updateConfig, type Config } from "../features/Config/configSlice";
 export { type FileInfo, setFileInfo } from "../features/Chat/activeFile";

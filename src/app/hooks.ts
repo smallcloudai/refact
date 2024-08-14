@@ -34,6 +34,7 @@ type CreateAppAsyncThunk = ReturnType<
     dispatch: AppDispatch;
   }>
 >;
+// TODO: this cause a circular dependency issue :/
 export const createAppAsyncThunk: CreateAppAsyncThunk =
   createAsyncThunk.withTypes<{
     state: RootState;

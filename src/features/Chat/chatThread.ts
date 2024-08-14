@@ -1,5 +1,9 @@
 import { useEffect, useCallback, useRef, useMemo } from "react";
-import { createReducer, createAction } from "@reduxjs/toolkit";
+import {
+  createReducer,
+  createAction,
+  createAsyncThunk,
+} from "@reduxjs/toolkit";
 import { v4 as uuidv4 } from "uuid";
 import {
   ChatMessage,
@@ -10,14 +14,14 @@ import {
   isChatUserMessageResponse,
 } from "../../services/refact";
 // TODO: update this type
-import { type ChatResponse } from "../../services/refact";
+import type { ChatResponse } from "../../services/refact";
 import {
   useAppDispatch,
-  createAppAsyncThunk,
+  // createAppAsyncThunk,
   useAppSelector,
   useGetToolsQuery,
 } from "../../app/hooks";
-import { type RootState } from "../../app/store";
+import { type AppDispatch, type RootState } from "../../app/store";
 import { parseOrElse } from "../../utils";
 import { formatChatResponse, formatMessagesForLsp } from "./utils";
 import { sendChat } from "../../services/refact";
@@ -242,6 +246,12 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.thread = action.payload.thread;
   });
 });
+
+// TODO: This is the circular dep when imported from hooks :/
+const createAppAsyncThunk = createAsyncThunk.withTypes<{
+  state: RootState;
+  dispatch: AppDispatch;
+}>();
 
 const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
