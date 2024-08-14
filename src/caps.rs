@@ -4,11 +4,8 @@ use serde::Serialize;
 use std::fs::File;
 use std::collections::HashMap;
 use std::io::Read;
-use std::path::Path;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use std::vec;
-use similar::DiffableStr;
 use tokio::sync::RwLock;
 use url::Url;
 use crate::global_context::GlobalContext;
@@ -42,9 +39,11 @@ pub struct ModelsOnly {
 fn default_tokenizer_path_template() -> String {
     String::from("https://huggingface.co/$MODEL/resolve/main/tokenizer.json")
 }
+
 fn default_telemetry_basic_dest() -> String {
     String::from("https://www.smallcloud.ai/v1/telemetry-basic")
 }
+
 fn default_telemetry_basic_retrieve_my_own() -> String {
     String::from("https://staging.smallcloud.ai/v1/telemetry-retrieve-my-own-stats")
 }
@@ -125,11 +124,11 @@ fn load_caps_from_buf(
     caps_url: &String,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let mut r1_mb_error_text = "".to_string();
-    
+
     let r1_mb: Option<CodeAssistantCaps> = match serde_json::from_str(&buffer) {
         Ok(v) => v,
         Err(e) => {
-            match serde_yaml::from_str(&buffer) { 
+            match serde_yaml::from_str(&buffer) {
                 Ok(v) => v,
                 Err(e) => {
                     r1_mb_error_text = format!("{}", e);
@@ -145,7 +144,7 @@ fn load_caps_from_buf(
         error!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e);
         format!("failed to parse KNOWN_MODELS: {}", e)
     })?;
-    
+
     if r1.running_models.is_empty() {
         let mut running_models = Vec::new();
         if !r1.code_chat_default_model.is_empty() {
@@ -156,7 +155,7 @@ fn load_caps_from_buf(
         }
         r1.running_models = running_models;
     }
-    
+
     _inherit_r1_from_r0(&mut r1, &r0);
     apply_models_dict_patch(&mut r1);
     r1.endpoint_template = relative_to_full_url(&caps_url, &r1.endpoint_template)?;
@@ -180,8 +179,9 @@ fn load_caps_from_buf(
     Ok(Arc::new(StdRwLock::new(r1)))
 }
 
-async fn load_caps_buf_from_file(cmdline: crate::global_context::CommandLine,
-                                 global_context: Arc<RwLock<GlobalContext>>,
+async fn load_caps_buf_from_file(
+    cmdline: crate::global_context::CommandLine,
+    _global_context: Arc<RwLock<GlobalContext>>,
 ) -> Result<(String, String), String> {
     let caps_url = cmdline.address_url.clone();
     let mut buffer = String::new();
@@ -241,7 +241,7 @@ async fn load_caps_buf_from_url(
         Some(u) => u.clone(),
         None => return Err("caps_url is none".to_string())
     };
-    
+
     Ok((buffer, caps_url))
 }
 
@@ -250,13 +250,12 @@ pub async fn load_caps(
     global_context: Arc<RwLock<GlobalContext>>,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let mut caps_url = cmdline.address_url.clone();
-    let mut buf = String::new();
-    if !vec!["refact", "hf"].contains(&&*caps_url.to_lowercase()) && Path::new(&caps_url).exists() {
-        (buf, caps_url) = load_caps_buf_from_file(cmdline, global_context).await?
-    } else {
+    let buf: String;
+    if caps_url == "Refact" || caps_url.starts_with("http") {
         (buf, caps_url) = load_caps_buf_from_url(cmdline, global_context).await?
+    } else {
+        (buf, caps_url) = load_caps_buf_from_file(cmdline, global_context).await?
     }
-    
     load_caps_from_buf(&buf, &caps_url)
 }
 
