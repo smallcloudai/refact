@@ -1,4 +1,4 @@
-import { Flex, Link } from "@radix-ui/themes";
+import { Flex, Link, useThemeContext } from "@radix-ui/themes";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RootState } from "../../app/store";
 import { close, next } from "../../features/Tour";
@@ -34,6 +34,7 @@ export function TourBubble({
   const state = useAppSelector((state: RootState) => state.tour);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [pos, setPos] = useState<DOMRect | undefined>(undefined);
+  const appearance = useThemeContext().appearance;
 
   const isBubbleOpen = state.type === "in_progress" && state.step === step;
 
@@ -64,6 +65,7 @@ export function TourBubble({
   }
 
   const centX = (pos.left + pos.right) / 2 - windowWidth / 2;
+  const arrowColor = appearance == "dark" ? "white" : "black";
 
   return (
     isBubbleOpen && (
@@ -95,7 +97,7 @@ export function TourBubble({
                 height: 0,
                 borderLeft: "15px solid transparent",
                 borderRight: "15px solid transparent",
-                borderBottom: "15px solid white",
+                borderBottom: `15px solid ${arrowColor}`,
                 alignSelf: "center",
                 position: "relative",
                 left: centX,
@@ -110,7 +112,7 @@ export function TourBubble({
                 position: "absolute",
                 right: "8px",
                 top: "1px",
-                color: "black",
+                color: appearance == "dark" ? "black" : "white",
               }}
               onClick={() => {
                 dispatch(close());
@@ -124,7 +126,7 @@ export function TourBubble({
                 position: "absolute",
                 right: "10px",
                 bottom: "10px",
-                color: "#004069",
+                color: appearance == "dark" ? "#004069" : "#54a1ff",
               }}
               onClick={() => {
                 dispatch(next());
@@ -141,7 +143,7 @@ export function TourBubble({
                 height: 0,
                 borderLeft: "15px solid transparent",
                 borderRight: "15px solid transparent",
-                borderTop: "15px solid white",
+                borderTop: `15px solid ${arrowColor}`,
                 alignSelf: "center",
                 position: "relative",
                 left: centX,
