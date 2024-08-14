@@ -1001,8 +1001,6 @@ export const useEventBusForChat = () => {
       state.chat.id,
       state.chat.title,
       state.chat.model,
-      state.selected_system_prompt,
-      state.system_prompts.prompts,
       state.use_tools,
       state.tools,
       clearError,
