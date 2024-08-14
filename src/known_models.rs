@@ -111,7 +111,9 @@ pub const KNOWN_MODELS: &str = r####"
                 "gpt-4",
                 "gpt-4-turbo",
                 "gpt-4-turbo-2024-04-09",
-                "openai/gpt-3.5-turbo"
+                "openai/gpt-3.5-turbo",
+                "openai/gpt-4",
+                "openai/gpt-4-turbo"
             ]
         },
         "gpt-4o": {
