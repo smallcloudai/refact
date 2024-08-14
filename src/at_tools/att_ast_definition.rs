@@ -9,13 +9,34 @@ use serde_json::Value;
 
 use crate::ast::ast_index::RequestSymbolType;
 use crate::ast::structs::AstQuerySearchResult;
-use crate::at_commands::at_ast_definition::results2message;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::tools::Tool;
-use crate::call_validation::{ChatMessage, ContextEnum};
+use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 
 
 pub struct AttAstDefinition;
+
+
+pub async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
+    // info!("results2message {:?}", result);
+    let mut symbols = vec![];
+    for res in &result.search_results {
+        let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
+        let content = res.symbol_declaration.get_content_from_file().await.unwrap_or("".to_string());
+        symbols.push(ContextFile {
+            file_name,
+            file_content: content,
+            line1: res.symbol_declaration.full_range.start_point.row + 1,
+            line2: res.symbol_declaration.full_range.end_point.row + 1,
+            symbol: res.symbol_declaration.guid.clone(),
+            gradient_type: -1,
+            usefulness: res.usefulness,
+            is_body_important: false
+        });
+    }
+    symbols
+}
+
 
 #[async_trait]
 impl Tool for AttAstDefinition {

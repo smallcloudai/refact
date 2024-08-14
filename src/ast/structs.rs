@@ -29,6 +29,21 @@ pub struct AstCursorSearchResult {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AstDeclarationSearchResult {
+    pub query_text: String,
+    pub exact_matches: Vec<SymbolsSearchResultStruct>,
+    pub fuzzy_matches: Vec<SymbolsSearchResultStruct>
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AstReferencesSearchResult {
+    pub query_text: String,
+    pub declaration_exact_matches: Vec<SymbolsSearchResultStruct>,
+    pub declaration_fuzzy_matches: Vec<SymbolsSearchResultStruct>,
+    pub references_for_exact_matches: Vec<SymbolsSearchResultStruct>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AstQuerySearchResult {
     pub query_text: String,
     pub search_results: Vec<SymbolsSearchResultStruct>,

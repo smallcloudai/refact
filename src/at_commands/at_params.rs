@@ -1,9 +1,9 @@
-use std::sync::Arc;
-use async_trait::async_trait;
-use itertools::Itertools;
-use strsim::jaro_winkler;
 use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
+use async_trait::async_trait;
+use itertools::Itertools;
+use std::sync::Arc;
+use strsim::jaro_winkler;
 use tokio::sync::Mutex as AMutex;
 
 
@@ -69,59 +69,6 @@ impl AtParam for AtParamSymbolPathQuery {
         let mapped_paths = names
             .iter()
             .filter(|x| x.to_lowercase().contains(&value_lower) && !x.is_empty())
-            .map(|f| (f, full_path_score(&f, &value.to_string())));
-        let sorted_paths = mapped_paths
-            .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
-            .rev()
-            .map(|(s, _)| s.clone())
-            .take(top_n)
-            .collect::<Vec<String>>();
-        return sorted_paths;
-    }
-
-    fn param_completion_valid(&self) -> bool {
-        true
-    }
-}
-
-
-#[derive(Debug)]
-pub struct AtParamSymbolReferencePathQuery;
-
-impl AtParamSymbolReferencePathQuery {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-#[async_trait]
-impl AtParam for AtParamSymbolReferencePathQuery {
-    async fn is_value_valid(
-        &self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
-        _value: &String,
-    ) -> bool {
-        return true;
-    }
-
-    async fn param_completion(
-        &self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        value: &String,
-    ) -> Vec<String> {
-        let (gcx, top_n) = {
-            let ccx_locked = ccx.lock().await;
-            (ccx_locked.global_context.clone(), ccx_locked.top_n)
-        };
-        let ast = gcx.read().await.ast_module.clone();
-        let index_paths = match &ast {
-            Some(ast) => ast.read().await.get_symbols_names(RequestSymbolType::Usage).await.unwrap_or_default(),
-            None => vec![]
-        };
-        let value_lower = value.to_lowercase();
-        let mapped_paths = index_paths
-            .iter()
-            .filter(|x| x.to_lowercase().contains(&value_lower))
             .map(|f| (f, full_path_score(&f, &value.to_string())));
         let sorted_paths = mapped_paths
             .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())

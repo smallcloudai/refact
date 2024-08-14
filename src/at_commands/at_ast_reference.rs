@@ -3,19 +3,19 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
-use crate::ast::structs::AstQuerySearchResult;
+use crate::ast::structs::{AstQuerySearchResult, AstReferencesSearchResult};
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
-use crate::at_commands::at_params::AtParamSymbolReferencePathQuery;
+use crate::at_commands::at_params::AtParamSymbolPathQuery;
 use crate::call_validation::{ContextFile, ContextEnum};
 use tracing::info;
 use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 
 
-async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
+async fn results2message(result: &AstReferencesSearchResult) -> Vec<ContextFile> {
     // info!("results2message {:?}", result);
     let mut symbols = vec![];
-    for res in &result.search_results {
+    for res in &result.references_for_exact_matches {
         let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
         let content = res.symbol_declaration.get_content_from_file().await.unwrap_or("".to_string());
         symbols.push(ContextFile {
@@ -40,7 +40,7 @@ impl AtAstReference {
     pub fn new() -> Self {
         AtAstReference {
             params: vec![
-                Arc::new(AMutex::new(AtParamSymbolReferencePathQuery::new()))
+                Arc::new(AMutex::new(AtParamSymbolPathQuery::new()))
             ],
         }
     }
@@ -49,18 +49,13 @@ impl AtAstReference {
 pub async fn execute_at_ast_reference(
     ccx: Arc<AMutex<AtCommandsContext>>,
     symbol_path: &String,
-) -> Result<(Vec<ContextFile>, usize), String> {
+) -> Result<Vec<ContextFile>, String> {
     let gcx = ccx.lock().await.global_context.clone();
     let ast = gcx.read().await.ast_module.clone();
     let x = match &ast {
         Some(ast) => {
-            match ast.read().await.search_by_fullpath(
-                symbol_path.clone(),
-                RequestSymbolType::Usage,
-                false,
-                10
-            ).await {
-                Ok(res) => Ok((results2message(&res).await, res.refs_n)),
+            match ast.read().await.search_references(symbol_path.clone()).await {
+                Ok(res) => Ok(results2message(&res).await),
                 Err(err) => Err(err)
             }
         }
@@ -95,9 +90,9 @@ impl AtCommand for AtAstReference {
         args.clear();
         args.push(symbol.clone());
 
-        let (query_result, refs_n) = execute_at_ast_reference(ccx.clone(), &symbol.text).await?;
+        let query_result = execute_at_ast_reference(ccx.clone(), &symbol.text).await?;
         let results = vec_context_file_to_context_tools(query_result);
-        let text = format!("`{}` (found {} usages)", symbol.text, refs_n);
+        let text = format!("`{}` (found {} usages)", symbol.text, results.len());
 
         Ok((results, text))
     }
