@@ -13,7 +13,7 @@ use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
 use crate::files_correction::{canonical_path, correct_to_nearest_filename};
 use crate::nicer_logs::{first_n_chars, last_n_chars};
-use crate::scratchpads::pp_utils::{add_usefulness_to_lines, color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, count_tokens, downgrade_lines_if_subsymbol, pp_ast_markup_files};
+use crate::scratchpads::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, count_tokens, downgrade_lines_if_subsymbol, pp_ast_markup_files};
 
 
 pub const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
@@ -85,7 +85,6 @@ fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSetti
         if DEBUG >= 2 {
             info!("file_ref {:?} has {} bytes, {} symbols", file.cpath, file.markup.file_content.len(), file.markup.symbols_sorted_by_path_len.len());
         }
-        colorize_if_more_useful(lines, 0, lines.len(), "empty".to_string(), settings.useful_background);
         for s in file.markup.symbols_sorted_by_path_len.iter() {
             if DEBUG >= 2 {
                 info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
@@ -95,9 +94,10 @@ fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSetti
                 colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, "comment".to_string(), useful);
             } else {
                 let useful = settings.useful_symbol_default;  // depends on symbol type?
-                add_usefulness_to_lines(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.symbol_path), useful);
+                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.symbol_path), useful);
             }
         }
+        colorize_if_more_useful(lines, 0, lines.len(), "empty".to_string(), settings.useful_background);
     }
     lines_in_files
 }
@@ -158,7 +158,7 @@ async fn set_lines_usefulness(
                 if DEBUG >= 1 {
                     info!("+ search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, msg.usefulness);
                 }
-                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.symbol_path), 100.);
+                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.symbol_path), msg.usefulness);
                 let mut parent_path = s.symbol_path.split("::").collect::<Vec<_>>();
                 if parent_path.len() > 1 {
                     // MyClass::f  ->  MyClass
@@ -368,11 +368,15 @@ pub async fn postprocess_context_files(
     tokens_limit: usize,
     single_file_mode: bool,
     max_files_n: usize,
+    skeletonize: bool,
 ) -> Vec<ContextFile> {
     let files_marked_up = pp_ast_markup_files(global_context.clone(), &messages).await;
 
     let mut settings = PostprocessSettings::new();
     settings.max_files_n = max_files_n;
+    if skeletonize {
+        settings.take_floor = 9.;
+    }
     
     let mut lines_in_files = pp_color_lines(
         global_context.clone(),

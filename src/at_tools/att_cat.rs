@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use tokio::sync::{Mutex as AMutex};
 use async_trait::async_trait;
-
+use tracing::info;
 use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
 use crate::at_commands::at_file::{at_file_repair_candidates, get_project_paths};
@@ -47,16 +47,11 @@ impl Tool for AttCat {
             Some(v) => return Err(format!("argument `skeleton` is not a bool: {:?}", v)),
             None => false,
         };
-        
-        let usefulness = match skeleton {
-            true => 0.,
-            false => 100.,
-        };
-        
         let global_context = ccx.lock().await.global_context.clone();
         
         let mut files_not_found_errs = vec![];
         let mut corrected_paths = vec![];
+        
         for p in paths {
             if PathBuf::from(&p).extension().is_some() {
                 let candidates = at_file_repair_candidates(ccx.clone(), &p, false).await;
@@ -78,6 +73,7 @@ impl Tool for AttCat {
         
         // drop duplicates
         let corrected_paths = corrected_paths.into_iter().collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
+        
         let mut context_files_in = vec![];
         let mut symbols_found = vec![];
         
@@ -88,44 +84,43 @@ impl Tool for AttCat {
                 let mut doc = Document::new(&PathBuf::from(p));
                 let text = get_file_text_from_memory_or_disk(global_context.clone(), &PathBuf::from(p)).await?.to_string();
                 doc.update_text(&text);
-                let doc_syms = ast_lock.get_file_symbols(RequestSymbolType::All, &doc).await?
-                    .symbols.iter().map(|s|(s.name.clone(), s.guid.clone())).collect::<Vec<_>>();
                 
-                let sym_set_str = doc_syms.iter().filter(|(s_name, _)|symbols_str.contains(s_name)).collect::<Vec<_>>();
-                symbols_found.extend(sym_set_str.iter().map(|s|s.0.clone()).collect::<Vec<_>>());
-                let sym_set = sym_set_str.into_iter().map(|(_, s_uuid)|s_uuid.clone()).collect::<Vec<_>>();
-                
-                let text = doc.text.map(|t|t.to_string()).unwrap_or("".to_string());
-                let cf = ContextFile {
-                    file_name: p.clone(),
-                    file_content: text.clone(),
-                    line1: 0,
-                    line2: text.lines().count(),
-                    symbols: sym_set,
-                    gradient_type: -1,
-                    usefulness,
-                    is_body_important: false,
-                };
-                context_files_in.push(cf);
+                let doc_syms = ast_lock.get_file_symbols(RequestSymbolType::All, &doc).await?.symbols;
+                let syms_intersection = doc_syms.into_iter().filter(|s|symbols_str.contains(&s.name)).collect::<Vec<_>>();
+                for sym in syms_intersection {
+                    symbols_found.push(sym.name.clone());
+                    let cf = ContextFile {
+                        file_name: p.clone(),
+                        file_content: "".to_string(),
+                        line1: sym.full_range.start_point.row + 1,
+                        line2: sym.full_range.end_point.row + 1,
+                        symbols: vec![sym.guid.clone()],
+                        gradient_type: -1,
+                        usefulness: 100.,
+                        is_body_important: false,
+                    };
+                    context_files_in.push(cf);
+                }
             }
         }
-        
+
         let filenames_present = context_files_in.iter().map(|x|x.file_name.clone()).collect::<Vec<_>>();
         for p in corrected_paths.iter().filter(|x|!filenames_present.contains(x)) {
             let text = get_file_text_from_memory_or_disk(global_context.clone(), &PathBuf::from(p)).await?.to_string();
             let cf = ContextFile {
                 file_name: p.clone(),
-                file_content: text.clone(),
+                file_content: "".to_string(),
                 line1: 0,
                 line2: text.lines().count(),
                 symbols: vec![],
                 gradient_type: -1,
-                usefulness,
+                usefulness: 0.,
                 is_body_important: false,
             };
             context_files_in.push(cf);
         }
-        
+        let filenames_present = context_files_in.iter().map(|x|x.file_name.clone()).collect::<Vec<_>>();
+
         let mut content = "".to_string();
         if !filenames_present.is_empty() {
             content.push_str(&format!("Files found:\n{}\n\n", filenames_present.join("\n")));
@@ -147,7 +142,9 @@ impl Tool for AttCat {
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
         }));
-        
+
+        ccx.lock().await.pp_skeleton = skeleton;
+
         Ok(results)
     }
 

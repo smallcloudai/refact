@@ -179,21 +179,6 @@ pub fn colorize_if_more_useful(lines: &mut Vec<FileLine>, line1: usize, line2: u
     }
 }
 
-pub fn add_usefulness_to_lines(lines: &mut Vec<FileLine>, line1: usize, line2: usize, color: String, useful: f32) {
-    if DEBUG >= 2 {
-        info!("    add_usefulness_to_lines {}..{} <= color {:?} useful {}", line1, line2, color, useful);
-    }
-    for i in line1..line2 {
-        if let Some(line) = lines.get_mut(i) {
-            let u = (line.useful + useful).min(100.);
-            if line.useful < u {
-                line.useful = u;
-                line.color = color.clone();
-            }
-        }
-    }
-}
-
 pub async fn context_msgs_from_paths(
     global_context: Arc<ARwLock<GlobalContext>>,
     files_set: HashSet<String>

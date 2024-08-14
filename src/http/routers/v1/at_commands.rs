@@ -159,6 +159,7 @@ pub async fn handle_v1_command_preview(
         rag_n_ctx,
         false,
         crate::http::routers::v1::chat::CHAT_TOP_N,
+        false,
     ).await;
 
     if !processed.is_empty() {

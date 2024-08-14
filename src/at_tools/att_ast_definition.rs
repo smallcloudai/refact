@@ -17,7 +17,6 @@ use crate::call_validation::{ChatMessage, ContextEnum};
 
 pub struct AttAstDefinition;
 
-
 #[async_trait]
 impl Tool for AttAstDefinition {
     async fn tool_execute(
@@ -43,6 +42,7 @@ impl Tool for AttAstDefinition {
 
         let ast_mb = gcx.read().await.ast_module.clone();
         let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
+
         let mut found_by_fuzzy_search: bool = false;
         let mut res: AstQuerySearchResult = ast.read().await.search_by_fullpath(
             symbol.clone(),

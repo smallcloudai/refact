@@ -106,8 +106,10 @@ pub async fn run_at_commands(
             }
             tokens_limit_files += non_used_plain;
             info!("tokens_limit_files {}", tokens_limit_files);
-
-            let gcx = ccx.lock().await.global_context.clone();
+            let (gcx, pp_skeleton) = {
+                let ccx_lock = ccx.lock().await;
+                (ccx_lock.global_context.clone(), ccx_lock.pp_skeleton)
+            };
             let post_processed = postprocess_context_files(
                 gcx.clone(),
                 &context_file_pp,
@@ -115,6 +117,7 @@ pub async fn run_at_commands(
                 tokens_limit_files,
                 false,
                 top_n,
+                pp_skeleton,
             ).await;
             if !post_processed.is_empty() {
                 // OUTPUT: files after all custom messages and plain text
@@ -138,6 +141,9 @@ pub async fn run_at_commands(
             stream_back_to_user.push_in_json(json!(msg));
         }
     }
+    
+    ccx.lock().await.pp_skeleton = false;
+    
     return (rebuilt_messages.clone(), user_msg_starts, any_context_produced)
 }
 

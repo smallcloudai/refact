@@ -331,6 +331,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                 rag_tokens_n,
                 false,
                 max_files_n,
+                false,
             ).await;
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);

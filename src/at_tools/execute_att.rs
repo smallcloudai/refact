@@ -146,7 +146,10 @@ pub async fn run_tools(
         tokens_limit_files += non_used_context_limit;
         info!("run_tools: tokens_limit_files={} after postprocessing", tokens_limit_files);
 
-        let gcx = ccx.lock().await.global_context.clone();
+        let (gcx, pp_skeleton) = { 
+            let ccx_lock = ccx.lock().await;
+            (ccx_lock.global_context.clone(), ccx_lock.pp_skeleton)
+        };
         let context_file_vec = postprocess_context_files(
             gcx.clone(),
             &for_postprocessing,
@@ -154,6 +157,7 @@ pub async fn run_tools(
             tokens_limit_files,
             false,
             top_n,
+            pp_skeleton
         ).await;
 
         if !context_file_vec.is_empty() {
@@ -176,5 +180,7 @@ pub async fn run_tools(
         stream_back_to_user.push_in_json(json!(msg));
     }
 
+    ccx.lock().await.pp_skeleton = false;
+    
     (all_messages, true)
 }

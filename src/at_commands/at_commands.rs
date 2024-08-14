@@ -30,6 +30,7 @@ pub struct AtCommandsContext {
     pub messages: Vec<ChatMessage>,
     #[allow(dead_code)]
     pub is_preview: bool,
+    pub pp_skeleton: bool,
 
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
     pub at_tools: HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
@@ -52,6 +53,7 @@ impl AtCommandsContext {
             n_ctx,
             top_n,
             is_preview,
+            pp_skeleton: false,
             messages: messages.clone(),
             at_commands: at_commands_dict(global_context.clone()).await,
             at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
