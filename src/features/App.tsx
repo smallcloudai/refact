@@ -204,7 +204,11 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
                 onOpenChatInTab={undefined}
                 handleLogout={logOut}
                 handleNavigation={handleNavigation}
-                style={{ maxWidth: "540px", flex: 1, height: "100%" }}
+                style={{
+                  maxWidth: "min(100vw, 540px)",
+                  flex: 1,
+                  height: "100%",
+                }}
               />
             )}
             {page.name === "chat" && (
