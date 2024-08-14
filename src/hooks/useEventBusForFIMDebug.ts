@@ -7,9 +7,11 @@ import {
   clearError,
   request,
   ready,
-  back,
   reset,
+  receive,
+  error,
 } from "../features/FIM/actions";
+import { pop } from "../features/Pages/pagesSlice";
 import { selectFIM } from "../features/FIM";
 
 export type FIMDebugState = {
@@ -28,11 +30,17 @@ export const useEventBusForFIMDebug = () => {
   const postMessage = usePostMessage();
 
   const dispatch = useAppDispatch();
+
   const state = useAppSelector(selectFIM);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
-      dispatch(event.data);
+      if (receive.match(event.data)) {
+        dispatch(event.data);
+      }
+      if (error.match(event.data)) {
+        dispatch(event.data);
+      }
     };
 
     window.addEventListener("message", listener);
@@ -47,15 +55,21 @@ export const useEventBusForFIMDebug = () => {
     };
   });
 
-  const requestFimData = useCallback(() => {
+  useEffect(() => {
     if (state.data === null && state.error === null && !state.fetching) {
+      dispatch(request());
       postMessage(request());
     }
-  }, [state.data, state.error, state.fetching, postMessage]);
+  }, [state.data, state.error, state.fetching, postMessage, dispatch]);
 
-  useEffect(() => {
-    requestFimData();
-  }, [requestFimData]);
+  // useEffectOnce(() => {
+  //   requestFimData();
+  // });
+  // useEffect(() => {
+  //   return () => {
+  //     dispatch(reset());
+  //   };
+  // }, [dispatch]);
 
   const clearErrorMessage = useCallback(() => {
     dispatch(clearError());
@@ -63,8 +77,8 @@ export const useEventBusForFIMDebug = () => {
 
   const backFromFim = useCallback(() => {
     // TODO: move to navigate
-    postMessage(back());
-  }, [postMessage]);
+    dispatch(pop());
+  }, [dispatch]);
 
   return {
     state,

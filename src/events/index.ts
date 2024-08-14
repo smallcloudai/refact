@@ -7,6 +7,7 @@ import type { ErrorSliceState } from "../features/Errors/errorsSlice";
 import { request, ready, receive, error } from "../features/FIM";
 import type { HistoryState } from "../features/History/historySlice";
 import type { TipOfTheDayState } from "../features/TipOfTheDay";
+import type { PageSliceState } from "../features/Pages/pagesSlice";
 import type { TourState } from "../features/Tour";
 import type { FIMDebugState } from "../hooks";
 // import { rootReducer } from "../app/store";
@@ -29,6 +30,7 @@ export type InitialState = {
   chat: Chat;
   history: HistoryState;
   error: ErrorSliceState;
+  pages: PageSliceState;
 };
 
 export {

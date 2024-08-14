@@ -1,6 +1,5 @@
 import React, { useCallback } from "react";
 import { Host, InitialSetup } from "../components/InitialSetup";
-import { usePages } from "../hooks/usePages";
 import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
@@ -20,7 +19,7 @@ import {
   OpenExternalUrl,
   SetupHost,
 } from "../events/setup";
-import { useAppSelector, useConfig } from "../app/hooks";
+import { useAppDispatch, useAppSelector, useConfig } from "../app/hooks";
 import { FIMDebug } from "./FIM";
 import { store, persistor, RootState } from "../app/store";
 import { Provider } from "react-redux";
@@ -31,13 +30,27 @@ import { Statistics } from "./Statistics";
 import { Welcome } from "../components/Tour";
 import { TourProvider } from "./Tour";
 import { Tour } from "../components/Tour/Tour";
+import {
+  push,
+  popBackTo,
+  pop,
+  selectPages,
+} from "../features/Pages/pagesSlice";
 
 export interface AppProps {
   style?: React.CSSProperties;
 }
 
 const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
-  const { pages, navigate, isPageInHistory } = usePages();
+  const dispatch = useAppDispatch();
+  const pages = useAppSelector(selectPages);
+  const isPageInHistory = useCallback(
+    (pageName: string) => {
+      return pages.some((page) => page.name === pageName);
+    },
+    [pages],
+  );
+
   const { openHotKeys, openSettings } = useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
   useEventBusForApp();
@@ -46,22 +59,17 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const postMessage = usePostMessage();
   const config = useConfig();
 
-  // const historyHook = useChatHistory();
-  // const chatHook = useEventBusForChat();
-  // const fimHook = useEventBysForFIMDebug();
-  // const statisticsHook = useEventBusForStatistic();
-
   const isLoggedIn = isPageInHistory("history") || isPageInHistory("welcome");
 
   if (config.apiKey && config.addressURL && !isLoggedIn) {
     if (tourState.type === "in_progress" && tourState.step === 1) {
-      navigate({ type: "push", page: { name: "welcome" } });
+      dispatch(push({ name: "welcome" }));
     } else {
-      navigate({ type: "push", page: { name: "history" } });
+      dispatch(push({ name: "history" }));
     }
   }
   if (!config.apiKey && !config.addressURL && isLoggedIn) {
-    navigate({ type: "pop_back_to", page: "initial setup" });
+    dispatch(popBackTo("initial setup"));
   }
 
   const setupHost = useCallback(
@@ -80,11 +88,11 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const onPressNext = (host: Host) => {
     if (host === "cloud") {
-      navigate({ type: "push", page: { name: "cloud login" } });
+      dispatch(push({ name: "cloud login" }));
     } else if (host === "enterprise") {
-      navigate({ type: "push", page: { name: "enterprise setup" } });
+      dispatch(push({ name: "enterprise setup" }));
     } else {
-      navigate({ type: "push", page: { name: "self hosting setup" } });
+      dispatch(push({ name: "self hosting setup" }));
     }
   };
 
@@ -105,7 +113,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   };
 
   const startTour = () => {
-    navigate({ type: "push", page: { name: "history" } });
+    dispatch(push({ name: "history" }));
   };
 
   const openExternal = (url: string) => {
@@ -117,7 +125,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   };
 
   const goBack = () => {
-    navigate({ type: "pop" });
+    dispatch(pop());
   };
 
   // const handleCreateNewChat = useCallback(() => {
@@ -132,17 +140,20 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
       } else if (to === "hot keys") {
         openHotKeys();
       } else if (to === "fim") {
-        navigate({
-          type: "push",
-          page: { name: "fill in the middle debug page" },
-        });
+        // navigate({
+        //   type: "push",
+        //   page: { name: "fill in the middle debug page" },
+        // });
+        dispatch(push({ name: "fill in the middle debug page" }));
       } else if (to === "stats") {
-        navigate({ type: "push", page: { name: "statistics page" } });
+        // navigate({ type: "push", page: { name: "statistics page" } });
+        dispatch(push({ name: "statistics page" }));
       } else if (to === "chat") {
-        navigate({ type: "push", page: { name: "chat" } });
+        // navigate({ type: "push", page: { name: "chat" } });
+        dispatch(push({ name: "chat" }));
       }
     },
-    [navigate, openHotKeys, openSettings],
+    [dispatch, openHotKeys, openSettings],
   );
 
   // goTo settings, fim, stats, hot keys

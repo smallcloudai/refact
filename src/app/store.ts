@@ -37,6 +37,7 @@ import {
   historyMiddleware,
 } from "../features/History/historySlice";
 import { errorMiddleware, errorSlice } from "../features/Errors/errorsSlice";
+import { pagesSlice } from "../features/Pages/pagesSlice";
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -59,6 +60,7 @@ const rootReducer = combineSlices(
   },
   historySlice,
   errorSlice,
+  pagesSlice,
 );
 
 const persistConfig = {
