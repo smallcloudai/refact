@@ -124,7 +124,7 @@ export function TourBubble({
                 position: "absolute",
                 right: "10px",
                 bottom: "10px",
-                color: "#3312a3",
+                color: "#004069",
               }}
               onClick={() => {
                 dispatch(next());
