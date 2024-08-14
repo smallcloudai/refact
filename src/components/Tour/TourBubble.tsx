@@ -122,8 +122,8 @@ export function TourBubble({
               style={{
                 cursor: "pointer",
                 position: "absolute",
-                right: "5px",
-                bottom: "5px",
+                right: "10px",
+                bottom: "10px",
                 color: "#3312a3",
               }}
               onClick={() => {
