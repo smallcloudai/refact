@@ -188,6 +188,47 @@ function plugins_to_top_nav_bar(plugins) {
     });
 }
 
+// TODO: tab-finetune-disabled route and !!! data.status should be true/false
+const fintune_tab = document.querySelector('#finetune');
+if (fintune_tab) {
+    fetch("/tab-finetune-disabled")
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if(data.status) {
+                disable_finetune_tab();
+            }
+        })
+        .catch(function(error) {
+            console.log('tab-finetune-status',error);
+            general_error(error);
+        });
+}
+
+function disable_finetune_tab() {
+    const fintune_tab = document.querySelector('#finetune');
+    fintune_tab.ariaDisabled = true;
+    fintune_tab.querySelector('.row').style.opacity = '0.3';
+    fintune_tab.querySelector('.row').style.pointerEvents = 'none';
+    fintune_tab.querySelector('.row').style.cursor = 'not-allowed';
+    fintune_tab.querySelector('.row').style.filter = 'grayscale(1)';
+    fintune_tab.querySelector('.row').style.webkitFilter = 'grayscale(1)';
+    const info_box = document.createElement('div');
+    info_box.className = 'info-box';
+    info_box.innerHTML = 'Finetuning is not supported for Neuron yet';
+    fintune_tab.appendChild(info_box);
+    info_box.style.position = 'absolute';
+    info_box.style.left = '50%';
+    info_box.style.top = '50%';
+    info_box.style.transform = 'translate(-50%, -50%)';
+    info_box.style.fontSize = '20px';
+    info_box.style.fontWeight = 'bold';
+    info_box.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+    info_box.style.padding = '30px 50px';
+    info_box.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+}
+
 
 const inputs_for_validate = document.querySelectorAll('.validate');
 let typing_timer;
