@@ -197,7 +197,9 @@ describe("Chat", () => {
       ),
     );
 
-    const { user, ...app } = render(<App />);
+    const { user, ...app } = render(<App />, {
+      preloadedState: { pages: [{ name: "chat" }] },
+    });
 
     const select = await app.findByTitle("chat model");
 

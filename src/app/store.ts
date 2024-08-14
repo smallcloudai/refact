@@ -78,32 +78,42 @@ const persistedReducer = persistReducer<ReturnType<typeof rootReducer>>(
 
 export type RootState = ReturnType<typeof persistedReducer>;
 
-export const store = configureStore({
-  reducer: persistedReducer,
-  middleware: (getDefaultMiddleware) => {
-    return getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-      },
-    })
-      .concat(
-        statisticsApi.middleware,
-        capsApi.middleware,
-        promptsApi.middleware,
-        toolsApi.middleware,
-        commandsApi.middleware,
-        diffApi.middleware,
-      )
-      .prepend(historyMiddleware.middleware)
-      .prepend(errorMiddleware.middleware);
-  },
-  preloadedState: window.__INITIAL_STATE__,
-});
+export function setUpStore(preloadedState?: Partial<RootState>) {
+  const initialState = {
+    ...preloadedState,
+    ...window.__INITIAL_STATE__,
+  } as RootState;
 
-store.subscribe(() => {
-  saveTourToLocalStorage(store.getState());
-  saveTipOfTheDayToLocalStorage(store.getState());
-});
+  const store = configureStore({
+    reducer: persistedReducer,
+    preloadedState: initialState,
+    middleware: (getDefaultMiddleware) => {
+      return getDefaultMiddleware({
+        serializableCheck: {
+          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        },
+      })
+        .concat(
+          statisticsApi.middleware,
+          capsApi.middleware,
+          promptsApi.middleware,
+          toolsApi.middleware,
+          commandsApi.middleware,
+          diffApi.middleware,
+        )
+        .prepend(historyMiddleware.middleware)
+        .prepend(errorMiddleware.middleware);
+    },
+  });
+
+  store.subscribe(() => {
+    saveTourToLocalStorage(store.getState());
+    saveTipOfTheDayToLocalStorage(store.getState());
+  });
+
+  return store;
+}
+export const store = setUpStore();
 
 export const persistor = persistStore(store);
 

@@ -40,7 +40,9 @@ const startErrorListening = errorMiddleware.startListening.withTypes<
 >();
 
 startErrorListening({
-  matcher: isAnyOf(chatError, isRejected),
+  // matcher: isAnyOf(chatError, isRejected),
+  // TODO: figure out why this breaks the tests when it's not a function :/
+  matcher: isAnyOf((d) => chatError.match(d), isRejected),
   effect: (action, listenerApi) => {
     if (capsEndpoints.getCaps.matchRejected(action) && !action.meta.condition) {
       const message = `fetching caps from lsp.`;

@@ -1,26 +1,51 @@
-import { ReactElement } from "react";
+import { PropsWithChildren, ReactElement } from "react";
 import { vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { render, RenderOptions } from "@testing-library/react";
-import userEvent, { UserEvent } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 import { Theme } from "@radix-ui/themes";
 import { Provider } from "react-redux";
-import { store } from "../app/store";
+import { AppStore, RootState, setUpStore } from "../app/store";
+import { TourProvider } from "../features/Tour";
+
+// This type interface extends the default options for render from RTL, as well
+// as allows the user to specify other things such as initialState, store.
+interface ExtendedRenderOptions
+  extends Omit<RenderOptions, "queries" | "wrapper"> {
+  preloadedState?: Partial<RootState>;
+  store?: AppStore;
+}
 
 const customRender = (
   ui: ReactElement,
-  options?: Omit<RenderOptions, "wrapper">,
-): ReturnType<typeof render> & { user: UserEvent } => {
+  options: ExtendedRenderOptions = {},
+) => {
   const user = userEvent.setup();
+  const {
+    preloadedState,
+    // Automatically create a store instance if no store was passed in
+    store = setUpStore({
+      // @ts-expect-error finished
+      tour: { type: "finished", step: 0 },
+      ...preloadedState,
+    }),
+    ...renderOptions
+  } = options;
+
+  const Wrapper = ({ children }: PropsWithChildren) => (
+    <Provider store={store}>
+      <Theme>
+        <TourProvider>{children}</TourProvider>
+      </Theme>
+    </Provider>
+  );
+
   return {
     ...render(ui, {
-      wrapper: ({ children }) => (
-        <Provider store={store}>
-          <Theme>{children}</Theme>
-        </Provider>
-      ),
-      ...options,
+      wrapper: Wrapper,
+      ...renderOptions,
     }),
+    store,
     user,
   };
 };
