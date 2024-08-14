@@ -1,9 +1,10 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
+import { Config } from "../events";
 
 // todo: get shortcuts from settings
 export const tips: string[] = [
   "Press 'Shift + Enter' to move to a new line in the Chat.",
-  "Need a break from suggestions? You can pause them by clicking the 'Refact' icon in the status bar. The manual completion trigger still works: press 'Option + Space'.",
+  "Need a break from suggestions? You can pause them by clicking the 'Refact' icon in the status bar. The manual completion trigger still works: press [MANUAL_COMPLETION].",
   "Use the @file <file_name> command to attach a file to the chat context. To add the definition of a symbol to the chat context, use @definition <ClassOrFunctionName>.",
   "Need to find and fix bugs in your code? Select a piece of code, such as a function, press F1 to open the Toolbox, and write /bugs. It will also work on the whole file, provided it's not too large.",
   "Looking to edit your code? Select the lines you want to change, press F1, and write /edit <Instructions>.",
@@ -33,7 +34,7 @@ const initialState: TipOfTheDayState = {
   tip: "",
 };
 
-export const next = createAction("tipOfTheDay/next");
+export const next = createAction<Config>("tipOfTheDay/next");
 
 function loadFromLocalStorage(): TipOfTheDayState {
   try {
@@ -63,10 +64,24 @@ export const saveTipOfTheDayToLocalStorage = (state: {
 export const tipOfTheDayReducer = createReducer<TipOfTheDayState>(
   loadFromLocalStorage(),
   (builder) => {
-    builder.addCase(next, (state) => {
+    builder.addCase(next, (state, action) => {
+      console.log({ action });
+      const keyBindings = action.payload.keyBindings;
+      let tip = tips[state.next % tips.length];
+      console.log({ keyBindings });
+
+      if (keyBindings?.completeManual !== undefined) {
+        tip = tip.replace("[MANUAL_COMPLETION]", keyBindings.completeManual);
+      } else {
+        tip = tip.replace(
+          "[MANUAL_COMPLETION]",
+          "the key binding for manual completion",
+        );
+      }
+
       return {
         next: (state.next + 1) % tips.length,
-        tip: tips[state.next % tips.length],
+        tip,
       };
     });
   },
