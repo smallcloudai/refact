@@ -1,12 +1,42 @@
+import React, { useCallback } from "react";
 import { TourBubble } from ".";
-import { useTourRefs } from "../../features/Tour";
+import { next, useTourRefs } from "../../features/Tour";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { RootState } from "../../app/store";
+import { push } from "../../features/Pages/pagesSlice";
 
-type TourProps = {
+export type TourProps = {
   page: string;
 };
 
-export const Tour = ({ page }: TourProps) => {
+export const Tour: React.FC<TourProps> = ({ page }) => {
+  const dispatch = useAppDispatch();
+  const state = useAppSelector((state: RootState) => state.tour);
   const refs = useTourRefs();
+
+  const openChat = useCallback(() => {
+    dispatch(push({ name: "chat" }));
+  }, [dispatch]);
+
+  const openHistory = useCallback(() => {
+    dispatch(push({ name: "history" }));
+  }, [dispatch]);
+
+  if (state.type === "in_progress" && state.step === 2 && page === "chat") {
+    dispatch(next());
+  }
+
+  if (state.type === "in_progress" && state.step === 7 && page === "history") {
+    dispatch(next());
+  }
+
+  if (state.type === "in_progress" && state.step === 9 && page === "history") {
+    dispatch(push({ name: "tour end" }));
+  }
+
+  if (state.type === "finished" && page === "tour end") {
+    dispatch(push({ name: "history" }));
+  }
 
   const chatWidth = "calc(100% - 20px)";
 
@@ -17,6 +47,7 @@ export const Tour = ({ page }: TourProps) => {
         step={1}
         target={refs.newChat}
         down={true}
+        isPointing={false}
         onPage={"history"}
         page={page}
       />
@@ -27,6 +58,7 @@ export const Tour = ({ page }: TourProps) => {
         down={true}
         onPage={"history"}
         page={page}
+        onNext={openChat}
       />
       <TourBubble
         text={
@@ -62,17 +94,8 @@ export const Tour = ({ page }: TourProps) => {
         page={page}
       />
       <TourBubble
-        text={"Click ‘Open in Tab’ to view the chat in full screen."}
-        step={6}
-        down={true}
-        target={refs.openInNewTab}
-        containerWidth={chatWidth}
-        onPage={"chat"}
-        page={page}
-      />
-      <TourBubble
         text={"Use 'New Chat' to switch topics and create a new thread."}
-        step={7}
+        step={6}
         down={true}
         target={refs.newChatInside}
         containerWidth={chatWidth}
@@ -81,17 +104,19 @@ export const Tour = ({ page }: TourProps) => {
       />
       <TourBubble
         text={"Click ‘Back’ to see your chat history and continue discussion."}
-        step={8}
+        step={7}
         down={true}
         target={refs.back}
         containerWidth={chatWidth}
         onPage={"chat"}
         page={page}
+        onNext={openHistory}
       />
       <TourBubble
         text={"Click here to discover more."}
-        step={9}
+        step={8}
         down={false}
+        containerWidth="min(100%, 540px)"
         target={refs.more}
         onPage={"history"}
         page={page}

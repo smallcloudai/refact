@@ -132,10 +132,16 @@ const Links: React.FC<{ hasAccount: boolean }> = ({ hasAccount }) => {
   );
 };
 
+export type DropdownNavigationOptions =
+  | "fim"
+  | "stats"
+  | "settings"
+  | "hot keys"
+  | "restart tour"
+  | "";
+
 type SettingsProps = {
-  handleNavigation: (
-    to: "fim" | "stats" | "settings" | "hot keys" | "",
-  ) => void;
+  handleNavigation: (to: DropdownNavigationOptions) => void;
 };
 const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
   const refs = useTourRefs();
@@ -158,6 +164,9 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
         <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
           Hot Keys
         </DropdownMenu.Item>
+        <DropdownMenu.Item onSelect={() => handleNavigation("restart tour")}>
+          Restart tour
+        </DropdownMenu.Item>
         <DropdownMenu.Separator />
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
           Settings
@@ -170,9 +179,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
 export type FooterProps = {
   account?: LoginInfoProps;
   handleLogout: () => void;
-  handleNavigation: (
-    to: "fim" | "stats" | "settings" | "hot keys" | "",
-  ) => void;
+  handleNavigation: (to: DropdownNavigationOptions) => void;
 };
 
 export const Footer: React.FC<FooterProps> = ({

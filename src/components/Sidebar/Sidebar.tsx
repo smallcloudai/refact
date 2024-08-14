@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { Box, Flex, Button } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
-import { Footer, FooterProps } from "./Footer";
+import { DropdownNavigationOptions, Footer, FooterProps } from "./Footer";
 import { Spinner } from "@radix-ui/themes";
 import { useAppSelector, useAppDispatch } from "../../app/hooks";
 import {
@@ -24,9 +24,7 @@ export type SidebarProps = {
   style?: React.CSSProperties;
   account?: FooterProps["account"];
   handleLogout: () => void;
-  handleNavigation: (
-    to: "fim" | "stats" | "settings" | "hot keys" | "chat" | "",
-  ) => void;
+  handleNavigation: (to: DropdownNavigationOptions | "chat") => void;
 } & Omit<
   ChatHistoryProps,
   | "history"

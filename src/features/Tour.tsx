@@ -58,6 +58,8 @@ export const initialState: TourState = {
 
 export const next = createAction("tour/next");
 export const close = createAction("tour/close");
+export const finish = createAction("tour/finish");
+export const restart = createAction("tour/restart");
 
 function loadFromLocalStorage(): TourState {
   try {
@@ -102,6 +104,12 @@ export const tourReducer = createReducer<TourState>(
         };
       }
       return state;
+    });
+    builder.addCase(finish, () => {
+      return { type: "finished" };
+    });
+    builder.addCase(restart, () => {
+      return { type: "in_progress", step: 1 };
     });
   },
 );

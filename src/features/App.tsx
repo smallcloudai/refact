@@ -28,14 +28,16 @@ import { Theme } from "../components/Theme";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
 import { Statistics } from "./Statistics";
 import { Welcome } from "../components/Tour";
-import { TourProvider } from "./Tour";
-import { Tour } from "../components/Tour/Tour";
 import {
   push,
   popBackTo,
   pop,
   selectPages,
 } from "../features/Pages/pagesSlice";
+import { TourProvider, restart } from "./Tour";
+import { Tour } from "../components/Tour";
+import { DropdownNavigationOptions } from "../components/Sidebar/Footer";
+import { TourEnd } from "../components/Tour/TourEnd";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -134,22 +136,20 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   // }, [historyHook, navigate]);
 
   const handleNavigation = useCallback(
-    (to: "fim" | "stats" | "hot keys" | "settings" | "chat" | "") => {
+    (to: DropdownNavigationOptions | "chat") => {
       if (to === "settings") {
         openSettings();
       } else if (to === "hot keys") {
         openHotKeys();
       } else if (to === "fim") {
-        // navigate({
-        //   type: "push",
-        //   page: { name: "fill in the middle debug page" },
-        // });
         dispatch(push({ name: "fill in the middle debug page" }));
       } else if (to === "stats") {
-        // navigate({ type: "push", page: { name: "statistics page" } });
         dispatch(push({ name: "statistics page" }));
+      } else if (to === "restart tour") {
+        dispatch(restart());
+        dispatch(popBackTo("initial setup"));
+        dispatch(push({ name: "welcome" }));
       } else if (to === "chat") {
-        // navigate({ type: "push", page: { name: "chat" } });
         dispatch(push({ name: "chat" }));
       }
     },
@@ -195,6 +195,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
               <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
             )}
             {page.name === "welcome" && <Welcome onPressNext={startTour} />}
+            {page.name === "tour end" && <TourEnd />}
             {page.name === "history" && (
               <Sidebar
                 // history={historyHook.history}

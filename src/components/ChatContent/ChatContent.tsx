@@ -27,10 +27,11 @@ import { AccumulatedChanges } from "./AccumulatedChanges";
 
 export const TipOfTheDay: React.FC = () => {
   const dispatch = useAppDispatch();
+  const config = useConfig();
   const state = useAppSelector((state: RootState) => state.tipOfTheDay);
 
   useEffect(() => {
-    dispatch(next());
+    dispatch(next(config));
   }, [dispatch]);
 
   return <Text>💡 {state.tip}</Text>;

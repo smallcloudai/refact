@@ -20,6 +20,10 @@ export interface Welcome {
   name: "welcome";
 }
 
+export interface TourEnd {
+  name: "tour end";
+}
+
 export interface HistoryList {
   name: "history";
 }
@@ -47,6 +51,7 @@ export type Page =
   | SelfHostingSetup
   | ChatPage
   | Welcome
+  | TourEnd
   | HistoryList
   | FIMDebugPage
   | StatisticsPage

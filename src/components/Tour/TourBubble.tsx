@@ -11,10 +11,12 @@ export type TourBubbleProps = {
   text: string;
   step: number;
   down: boolean;
+  isPointing?: boolean;
   target: HTMLElement | null;
   containerWidth?: string;
   onPage: string;
   page: string;
+  onNext?: () => void;
 };
 
 export function TourBubble({
@@ -25,6 +27,8 @@ export function TourBubble({
   containerWidth,
   onPage,
   page,
+  isPointing,
+  onNext,
 }: TourBubbleProps) {
   const dispatch = useAppDispatch();
   const state = useAppSelector((state: RootState) => state.tour);
@@ -32,6 +36,10 @@ export function TourBubble({
   const [pos, setPos] = useState<DOMRect | undefined>(undefined);
 
   const isBubbleOpen = state.type === "in_progress" && state.step === step;
+
+  if (isPointing === undefined) {
+    isPointing = true;
+  }
 
   // TODO: find a better way of doing this
   // This code is there to force a rerender if target is null
@@ -80,7 +88,7 @@ export function TourBubble({
             top: down ? 0 : "auto",
           }}
         >
-          {down && (
+          {down && isPointing && (
             <Flex
               style={{
                 width: 0,
@@ -120,12 +128,13 @@ export function TourBubble({
               }}
               onClick={() => {
                 dispatch(next());
+                if (onNext) onNext();
               }}
             >
               next
             </Link>
           </TourBox>
-          {down || (
+          {down || !isPointing || (
             <Flex
               style={{
                 width: 0,
