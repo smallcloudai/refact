@@ -26,7 +26,7 @@ import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
-import { Statistics } from "./Statistics";
+import { Statistics } from "./statistics";
 import { Welcome } from "../components/Tour";
 import {
   push,
