@@ -38,6 +38,7 @@ import {
 } from "../features/History/historySlice";
 import { errorMiddleware, errorSlice } from "../features/Errors/errorsSlice";
 import { pagesSlice } from "../features/Pages/pagesSlice";
+import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -67,9 +68,13 @@ const persistConfig = {
   key: "root",
   storage,
   whitelist: [historySlice.reducerPath],
+  stateReconciler: mergeInitialState,
 };
 
-const persistedReducer = persistReducer(persistConfig, rootReducer);
+const persistedReducer = persistReducer<ReturnType<typeof rootReducer>>(
+  persistConfig,
+  rootReducer,
+);
 
 export type RootState = ReturnType<typeof persistedReducer>;
 
