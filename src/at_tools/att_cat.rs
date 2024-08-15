@@ -21,9 +21,9 @@ pub struct AttCat;
 #[async_trait]
 impl Tool for AttCat {
     async fn tool_execute(
-        &mut self, 
-        ccx: Arc<AMutex<AtCommandsContext>>, 
-        tool_call_id: &String, 
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
         args: &HashMap<String, Value>
     ) -> Result<Vec<ContextEnum>, String> {
         let paths = match args.get("paths") {
@@ -44,14 +44,23 @@ impl Tool for AttCat {
         };
         let skeleton = match args.get("skeleton") {
             Some(Value::Bool(s)) => *s,
+            Some(Value::String(s)) => {
+                if s == "true" {
+                    true
+                } else if s == "false" {
+                    false
+                } else {
+                    return Err(format!("argument `skeleton` is not a bool: {:?}", s));
+                }
+            }
             Some(v) => return Err(format!("argument `skeleton` is not a bool: {:?}", v)),
             None => false,
         };
         let global_context = ccx.lock().await.global_context.clone();
-        
+
         let mut files_not_found_errs = vec![];
         let mut corrected_paths = vec![];
-        
+
         for p in paths {
             if PathBuf::from(&p).extension().is_some() {
                 let candidates = at_file_repair_candidates(ccx.clone(), &p, false).await;
@@ -70,13 +79,13 @@ impl Tool for AttCat {
                 corrected_paths.extend(files_in_dir.into_iter().map(|x|x.to_string_lossy().to_string()));
             }
         }
-        
+
         // drop duplicates
         let corrected_paths = corrected_paths.into_iter().collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
-        
+
         let mut context_files_in = vec![];
         let mut symbols_found = vec![];
-        
+
         if !symbols_str.is_empty() {
             let ast_arc = global_context.read().await.ast_module.clone().unwrap();
             let ast_lock = ast_arc.read().await;
@@ -84,7 +93,7 @@ impl Tool for AttCat {
                 let mut doc = Document::new(&PathBuf::from(p));
                 let text = get_file_text_from_memory_or_disk(global_context.clone(), &PathBuf::from(p)).await?.to_string();
                 doc.update_text(&text);
-                
+
                 let doc_syms = ast_lock.get_file_symbols(RequestSymbolType::All, &doc).await?.symbols;
                 let syms_intersection = doc_syms.into_iter().filter(|s|symbols_str.contains(&s.name)).collect::<Vec<_>>();
                 for sym in syms_intersection {
@@ -124,7 +133,7 @@ impl Tool for AttCat {
         let mut content = "".to_string();
         if !filenames_present.is_empty() {
             content.push_str(&format!("Files found:\n{}\n\n", filenames_present.join("\n")));
-            
+
             let symbols_not_found = symbols_str.iter().filter(|x|!symbols_found.contains(x)).cloned().collect::<Vec<_>>();
             if !symbols_not_found.is_empty() {
                 content.push_str(&format!("Symbols not found in the {} files:\n{}\n\n", filenames_present.len(), symbols_not_found.join("\n")));
@@ -133,7 +142,7 @@ impl Tool for AttCat {
         if !files_not_found_errs.is_empty() {
             content.push_str(&format!("Files not found:\n{}\n\n", files_not_found_errs.join("\n\n")));
         }
-        
+
         let mut results = vec_context_file_to_context_tools(context_files_in);
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
