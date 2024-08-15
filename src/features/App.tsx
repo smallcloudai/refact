@@ -6,13 +6,7 @@ import { SelfHostingSetup } from "../components/SelfHostingSetup";
 import { Flex } from "@radix-ui/themes";
 import { Chat } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
-import {
-  // useEventBusForHost,
-  usePostMessage,
-  // useChatHistory,
-  // useEventBusForChat,
-  useEventsBusForIDE,
-} from "../hooks";
+import { usePostMessage, useEventsBusForIDE } from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
   HostSettings,
@@ -56,7 +50,6 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const { openHotKeys, openSettings } = useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
   useEventBusForApp();
-  // TODO: can replace this with a selector for state.chat.thread.id
 
   const postMessage = usePostMessage();
   const config = useConfig();
@@ -215,7 +208,6 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
               <Chat
                 host={config.host}
                 tabbed={config.tabbed}
-                // {...chatHook}
                 backFromChat={goBack}
               />
             )}

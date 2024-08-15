@@ -30,9 +30,10 @@ export const TipOfTheDay: React.FC = () => {
   const config = useConfig();
   const state = useAppSelector((state: RootState) => state.tipOfTheDay);
 
+  // TODO: find out what this is about.
   useEffect(() => {
     dispatch(next(config));
-  }, [dispatch]);
+  }, [dispatch, config]);
 
   return <Text>💡 {state.tip}</Text>;
 };
@@ -115,7 +116,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
   (props, ref) => {
     const {
       // messages,
-      // onRetry,
+      onRetry,
       isWaiting,
       onNewFileClick,
       onPasteClick,
@@ -185,12 +186,11 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
 
             if (message.role === "user") {
               const key = chatKey + "user-input-" + index;
-              const handleRetry = (_question: string) => {
-                // TODO: retry action
-                // const toSend = messages
-                //   .slice(0, index)
-                //   .concat([["user", question]]);
-                // onRetry(toSend);
+              const handleRetry = (question: string) => {
+                const toSend = messages
+                  .slice(0, index)
+                  .concat([{ role: "user", content: question }]);
+                onRetry(toSend);
               };
               return (
                 <UserInput

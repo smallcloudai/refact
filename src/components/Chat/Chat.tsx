@@ -15,7 +15,7 @@ import {
   selectIsWaiting,
   setChatModel,
   useSendChatRequest,
-  selectThread,
+  // selectThread,
   selectPreventSend,
   selectChatId,
   selectMessages,
@@ -123,7 +123,7 @@ export const Chat: React.FC<ChatProps> = ({
   const selectedSnippet = useAppSelector(selectSelectedSnippet);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  const chatThread = useAppSelector(selectThread);
+  // const chatThread = useAppSelector(selectThread);
 
   const canPaste = activeFile.can_paste;
   const chatId = useAppSelector(selectChatId);
@@ -142,13 +142,18 @@ export const Chat: React.FC<ChatProps> = ({
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
   const refs = useTourRefs();
 
-  const { diffPasteBack, newFile, openSettings, openFile, openChatInNewTab } =
-    useEventsBusForIDE();
+  const {
+    diffPasteBack,
+    newFile,
+    openSettings,
+    openFile,
+    // openChatInNewTab: _openChatInNewTab,
+  } = useEventsBusForIDE();
 
-  const handleOpenChatInNewTab = useCallback(() => {
-    openChatInNewTab(chatThread);
-    // TODO: navigate to history
-  }, [chatThread, openChatInNewTab]);
+  // const handleOpenChatInNewTab = useCallback(() => {
+  //   openChatInNewTab(chatThread);
+  //   // TODO: navigate to history
+  // }, [chatThread, openChatInNewTab]);
 
   // TODO: add other posable errors
   // const onClearError = () => dispatch(clearChatError({ id: chatId }));
@@ -204,7 +209,7 @@ export const Chat: React.FC<ChatProps> = ({
           <ArrowLeftIcon width="16" height="16" />
           Back
         </Button>
-        {host === "vscode" && (
+        {/* {host === "vscode" && (
           <Button
             size="1"
             variant="surface"
@@ -213,7 +218,7 @@ export const Chat: React.FC<ChatProps> = ({
           >
             Open In Tab
           </Button>
-        )}
+        )} */}
         <Button
           size="1"
           variant="surface"

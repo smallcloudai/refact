@@ -38,6 +38,7 @@ import {
 } from "../features/History/historySlice";
 import { errorMiddleware, errorSlice } from "../features/Errors/errorsSlice";
 import { pagesSlice } from "../features/Pages/pagesSlice";
+import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -67,38 +68,52 @@ const persistConfig = {
   key: "root",
   storage,
   whitelist: [historySlice.reducerPath],
+  stateReconciler: mergeInitialState,
 };
 
-const persistedReducer = persistReducer(persistConfig, rootReducer);
+const persistedReducer = persistReducer<ReturnType<typeof rootReducer>>(
+  persistConfig,
+  rootReducer,
+);
 
 export type RootState = ReturnType<typeof persistedReducer>;
 
-export const store = configureStore({
-  reducer: persistedReducer,
-  middleware: (getDefaultMiddleware) => {
-    return getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-      },
-    })
-      .concat(
-        statisticsApi.middleware,
-        capsApi.middleware,
-        promptsApi.middleware,
-        toolsApi.middleware,
-        commandsApi.middleware,
-        diffApi.middleware,
-      )
-      .prepend(historyMiddleware.middleware)
-      .prepend(errorMiddleware.middleware);
-  },
-  preloadedState: window.__INITIAL_STATE__,
-});
+export function setUpStore(preloadedState?: Partial<RootState>) {
+  const initialState = {
+    ...preloadedState,
+    ...window.__INITIAL_STATE__,
+  } as RootState;
 
-store.subscribe(() => {
-  saveTourToLocalStorage(store.getState());
-  saveTipOfTheDayToLocalStorage(store.getState());
-});
+  const store = configureStore({
+    reducer: persistedReducer,
+    preloadedState: initialState,
+    middleware: (getDefaultMiddleware) => {
+      return getDefaultMiddleware({
+        serializableCheck: {
+          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        },
+      })
+        .concat(
+          statisticsApi.middleware,
+          capsApi.middleware,
+          promptsApi.middleware,
+          toolsApi.middleware,
+          commandsApi.middleware,
+          diffApi.middleware,
+        )
+        .prepend(historyMiddleware.middleware)
+        .prepend(errorMiddleware.middleware);
+    },
+  });
+
+  store.subscribe(() => {
+    saveTourToLocalStorage(store.getState());
+    saveTipOfTheDayToLocalStorage(store.getState());
+  });
+
+  return store;
+}
+export const store = setUpStore();
 
 export const persistor = persistStore(store);
 

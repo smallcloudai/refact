@@ -16,7 +16,7 @@ export const FIMDebug: React.FC<FIMDebugProps> = ({ host, tabbed }) => {
   const { state, clearErrorMessage, backFromFim } = useEventBusForFIMDebug();
   return (
     <PageWrapper host={host}>
-      {host === "vscode" && !tabbed && (
+      {!tabbed && (
         <Flex gap="2" p="2" wrap="wrap">
           <Button size="1" variant="surface" onClick={backFromFim}>
             <ArrowLeftIcon width="16" height="16" />

@@ -18,7 +18,7 @@ import {
   useAppDispatch,
   // useGetManyDiffState,
 } from "../../app/hooks";
-import { selectMessages } from "../../features/Chat";
+import { selectMessages } from "../../features/Chat/chatThread";
 import { createSelector } from "@reduxjs/toolkit";
 import { RootState } from "../../app/store";
 import { selectLspPort } from "../../features/Config/configSlice";
