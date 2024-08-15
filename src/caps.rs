@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use serde_json::Value;
 use tokio::sync::RwLock;
 use url::Url;
 use crate::global_context::GlobalContext;
@@ -239,7 +240,16 @@ async fn load_caps_buf_from_url(
         warn!("status={}; server responded with:\n{}", status, buffer);
     }
     if status != 200 {
-        return Err(format!("cannot fetch caps, status={}", status));
+        let response_json: serde_json::Result<Value> = serde_json::from_str(&buffer);
+        return if let Ok(response_json) = response_json {
+            if let Some(detail) = response_json.get("detail") {
+                Err(detail.as_str().unwrap().to_string())
+            } else {
+                Err(format!("cannot fetch caps, status={}", status))
+            }
+        } else {
+            Err(format!("cannot fetch caps, status={}", status))
+        }
     }
 
     let caps_url: String = match caps_urls.get(0) {
