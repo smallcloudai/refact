@@ -13,9 +13,6 @@ export function useEventBusForApp() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    if (config.host !== "web") {
-      return;
-    }
     const listener = (event: MessageEvent) => {
       if (event.source !== window) {
         return;
