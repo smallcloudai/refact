@@ -5,7 +5,7 @@ use tokio::sync::Mutex as AMutex;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use tracing::info;
+use tracing::{info, error};
 
 use crate::call_validation::ChatPost;
 use crate::caps::CodeAssistantCaps;
@@ -83,6 +83,15 @@ async fn chat(
         let custom_chat_apikey = caps.read().unwrap().custom_chat_apikey.clone();
         if custom_chat_apikey.is_empty() {
             (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
+        } else if custom_chat_apikey.starts_with("$") {
+            let env_var_name = &custom_chat_apikey[1..];
+            match std::env::var(env_var_name) {
+                Ok(env_value) => (cx_locked.http_client.clone(), env_value),
+                Err(e) => {
+                    error!("Tried to read API key from env var {}, but failed: {}", env_var_name, e);
+                    (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
+                }
+            }
         } else {
             (cx_locked.http_client.clone(), custom_chat_apikey)
         }
