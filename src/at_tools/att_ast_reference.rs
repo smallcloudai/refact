@@ -1,15 +1,11 @@
-use std::cmp::max;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use tokio::sync::Mutex as AMutex;
-use itertools::Itertools;
 use serde_json::Value;
-use tracing::info;
+use tokio::sync::Mutex as AMutex;
 
-use crate::ast::ast_index::RequestSymbolType;
-use crate::ast::structs::AstQuerySearchResult;
+use crate::ast::structs::AstReferencesSearchResult;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::att_ast_definition::results2message;
 use crate::at_tools::tools::Tool;
@@ -25,12 +21,6 @@ impl Tool for AttAstReference {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<Vec<ContextEnum>, String> {
-        info!("execute @references {:?}", args);
-        let (gcx, top_n) = {
-            let ccx_locked = ccx.lock().await;
-            (ccx_locked.global_context.clone(), ccx_locked.top_n)
-        };
-
         let mut symbol = match args.get("symbol") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => { return Err(format!("argument `symbol` is not a string: {:?}", v)) }
@@ -41,66 +31,70 @@ impl Tool for AttAstReference {
             symbol = symbol[dot_index + 1..].to_string();
         }
 
+        let (gcx, top_n) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.global_context.clone(), ccx_locked.top_n)
+        };
+
         let ast_mb = gcx.read().await.ast_module.clone();
         let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
-
-        let mut found_by_fuzzy_search: bool = false;
-        let mut res: AstQuerySearchResult = ast.read().await.search_by_fullpath(
-            symbol.clone(),
-            RequestSymbolType::Usage,
-            false,
-            top_n,
-        ).await?;
-        res = if res.search_results.is_empty() {
-            found_by_fuzzy_search = true;
-            ast.read().await.search_by_fullpath(
-                symbol.clone(),
-                RequestSymbolType::Usage,
-                true,
-                max(top_n, 6),
-            ).await?
-        } else {
-            res
-        };
-        if res.search_results.is_empty() {
-            return Err(format!("There is no `{}` in the syntax tree, and no similar names found :/", symbol).to_string());
+        let mut res: AstReferencesSearchResult = ast.read().await.search_references(symbol.clone()).await?;
+        if (res.declaration_exact_matches.len() + res.declaration_fuzzy_matches.len()) == 0 {
+            return Err(format!("No definitions with the name `{}` or similar names were found in the project.", symbol).to_string());
         }
-
-        let (mut messages, tool_message) = if found_by_fuzzy_search {
-            let messages = results2message(&res)
-                .await
-                .into_iter()
-                .map(|x| ContextEnum::ContextFile(x))
-                .take(1)
-                .collect::<Vec<ContextEnum>>();
-            let found_path = res.search_results[0].symbol_declaration.symbol_path.clone();
-            let other_names = res.search_results
-                .iter()
-                .skip(1)
-                .map(|r| r.symbol_declaration.symbol_path.clone())
-                .sorted()
-                .unique()
-                .collect::<Vec<String>>();
-            let mut tool_message = format!(
-                "When trying to list references to `{symbol}`, a problem occurred: there's no symbol spelled exactly like that, but here's the closest fuzzy match: `{found_path}`. \
-                You can call again with that name or with one of these:\n\n"
-            ).to_string();
-            for x in other_names.into_iter() {
-                tool_message.push_str(&format!("`{}`\n", x));
-            }
-            (messages, tool_message)
-        } else {
-            let messages = results2message(&res)
-                .await
-                .into_iter().map(|x| ContextEnum::ContextFile(x))
-                .collect::<Vec<ContextEnum>>();
-            let mut tool_message = format!("References to `{}` found at:\n", symbol).to_string();
-            for r in res.search_results.iter() {
+        let (mut messages, mut tool_message) = if !res.declaration_exact_matches.is_empty() {
+            let mut tool_message = format!("Definitions found with the name `{}`:\n", symbol).to_string();
+            for r in res.declaration_exact_matches.iter() {
                 let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
                 let decl_range = &r.symbol_declaration.full_range;
-                tool_message.push_str(&format!("{}:{}-{}\n", file_path_str, decl_range.start_point.row + 1, decl_range.end_point.row + 1));
+                tool_message.push_str(&format!(
+                    "`{}` at {}:{}-{}\n",
+                    r.symbol_declaration.symbol_path,
+                    file_path_str,
+                    decl_range.start_point.row + 1,
+                    decl_range.end_point.row + 1
+                ));
             }
-            (messages, tool_message)
+            if res.references_for_exact_matches.is_empty() {
+                tool_message.push_str("There are 0 references found for those definitions.");
+                (vec![], tool_message)
+            } else {
+                tool_message.push_str("References found for those definitions are presented below:\n");
+                for r in res.references_for_exact_matches.iter() {
+                    let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
+                    let decl_range = &r.symbol_declaration.full_range;
+                    tool_message.push_str(&format!(
+                        "`{}` at {}:{}-{}\n",
+                        r.symbol_declaration.symbol_path,
+                        file_path_str,
+                        decl_range.start_point.row + 1,
+                        decl_range.end_point.row + 1
+                    ));
+                }
+                let messages = results2message(&res.references_for_exact_matches, true)
+                    .await
+                    .into_iter().map(|x| ContextEnum::ContextFile(x))
+                    .collect::<Vec<ContextEnum>>();
+                (messages, tool_message)
+            }
+        } else {
+            let mut tool_message = format!(
+                "The definition with name `{}` wasn't not found in the project.\nThere are definitions with similar names presented:\n",
+                symbol
+            ).to_string();
+            for r in res.declaration_fuzzy_matches.iter() {
+                let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
+                let decl_range = &r.symbol_declaration.full_range;
+                tool_message.push_str(&format!(
+                    "`{}` at {}:{}-{}\n",
+                    r.symbol_declaration.symbol_path,
+                    file_path_str,
+                    decl_range.start_point.row + 1,
+                    decl_range.end_point.row + 1
+                ));
+            }
+            tool_message.push_str("You can call the `reference` tool one more time with one of those names.");
+            (vec![], tool_message)
         };
 
         messages.push(ContextEnum::ChatMessage(ChatMessage {
