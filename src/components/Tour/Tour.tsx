@@ -4,6 +4,7 @@ import { next, useTourRefs } from "../../features/Tour";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RootState } from "../../app/store";
 import { push } from "../../features/Pages/pagesSlice";
+import completionGif from "../../../public/completion.gif";
 
 export type TourProps = {
   page: string;
@@ -50,7 +51,12 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         isPointing={false}
         onPage={"history"}
         page={page}
-      />
+      >
+        <img
+          style={{ marginTop: "10px", marginBottom: "30px" }}
+          src={completionGif}
+        />
+      </TourBubble>
       <TourBubble
         text="Ask questions in the Chat, it already knows your codebase."
         step={2}
