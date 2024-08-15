@@ -67,6 +67,7 @@ export const diffApi = createApi({
       },
     }),
   }),
+  refetchOnMountOrArgChange: true,
 });
 
 export interface DiffAppliedStateResponse {
