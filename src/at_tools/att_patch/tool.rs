@@ -64,7 +64,7 @@ fn choose_correct_chunk(chunks: Vec<Result<String, String>>) -> Result<String, S
         .iter()
         .max_by_key(|(_, v)| *v)
         .map(|(k, _)| k.to_string())
-        .unwrap_or("".to_string()))
+        .expect("see the logic above, this array should not be empty"))
 }
 
 #[async_trait]
