@@ -33,7 +33,7 @@ pub async fn get_signatures_by_symbol_names(
     symbol_names: &Vec<String>,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Option<String> {
-    return if let Some(ast_module) = gcx.read().await.ast_module.clone() {
+    if let Some(ast_module) = gcx.read().await.ast_module.clone() {
         let mut symbols = vec![];
         for name in symbol_names.iter() {
             let res = match ast_module
@@ -57,14 +57,14 @@ pub async fn get_signatures_by_symbol_names(
         }
     } else {
         None
-    };
+    }
 }
 
 pub async fn get_signatures_by_imports_traversal(
     paths: &Vec<String>,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Option<String> {
-    return if let Some(ast_module) = gcx.read().await.ast_module.clone() {
+    if let Some(ast_module) = gcx.read().await.ast_module.clone() {
         let mut symbols = vec![];
         for filename in paths.iter() {
             if let Ok(path) = PathBuf::from_str(filename) {
@@ -99,7 +99,7 @@ pub async fn get_signatures_by_imports_traversal(
         }
     } else {
         None
-    };
+    }
 }
 
 pub async fn parse_and_get_error_symbols(
