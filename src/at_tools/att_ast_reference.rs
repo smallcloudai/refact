@@ -38,12 +38,12 @@ impl Tool for AttAstReference {
 
         let ast_mb = gcx.read().await.ast_module.clone();
         let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
-        let mut res: AstReferencesSearchResult = ast.read().await.search_references(symbol.clone()).await?;
+        let res: AstReferencesSearchResult = ast.read().await.search_references(symbol.clone()).await?;
         if (res.declaration_exact_matches.len() + res.declaration_fuzzy_matches.len()) == 0 {
             return Err(format!("No definitions with the name `{}` or similar names were found in the project.", symbol).to_string());
         }
-        let (mut messages, mut tool_message) = if !res.declaration_exact_matches.is_empty() {
-            let mut tool_message = format!("Definitions found with the name `{}`:\n", symbol).to_string();
+        let (mut messages, tool_message) = if !res.declaration_exact_matches.is_empty() {
+            let mut tool_message = format!("Definitions found:\n").to_string();
             for r in res.declaration_exact_matches.iter() {
                 let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
                 let decl_range = &r.symbol_declaration.full_range;
@@ -56,10 +56,10 @@ impl Tool for AttAstReference {
                 ));
             }
             if res.references_for_exact_matches.is_empty() {
-                tool_message.push_str("There are 0 references found for those definitions.");
+                tool_message.push_str("There are 0 references found in workspace for those definitions.");
                 (vec![], tool_message)
             } else {
-                tool_message.push_str("References found for those definitions are presented below:\n");
+                tool_message.push_str("References found in workspace for those definitions:\n");
                 for r in res.references_for_exact_matches.iter() {
                     let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
                     let decl_range = &r.symbol_declaration.full_range;
@@ -79,7 +79,7 @@ impl Tool for AttAstReference {
             }
         } else {
             let mut tool_message = format!(
-                "The definition with name `{}` wasn't not found in the project.\nThere are definitions with similar names presented:\n",
+                "No definition with name `{}` found in the workspace.\nThere are definitions with similar names though:\n",
                 symbol
             ).to_string();
             for r in res.declaration_fuzzy_matches.iter() {
@@ -93,7 +93,7 @@ impl Tool for AttAstReference {
                     decl_range.end_point.row + 1
                 ));
             }
-            tool_message.push_str("You can call the `reference` tool one more time with one of those names.");
+            // tool_message.push_str("You can call the `reference` tool one more time with one of those names.");
             (vec![], tool_message)
         };
 

@@ -27,7 +27,7 @@ pub async fn results2message(
             file_content: content,
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
-            symbol: res.symbol_declaration.guid.clone(),
+            symbols: vec![res.symbol_declaration.guid.clone()],
             gradient_type: -1,
             usefulness: res.usefulness,
             is_body_important
@@ -55,23 +55,19 @@ impl Tool for AttAstDefinition {
             symbol = symbol[dot_index + 1..].to_string();
         }
 
-        let (gcx, top_n) = {
-            let ccx_locked = ccx.lock().await;
-            (ccx_locked.global_context.clone(), ccx_locked.top_n)
-        };
-
+        let gcx = ccx.lock().await.global_context.clone();
         let ast_mb = gcx.read().await.ast_module.clone();
         let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
-        let mut res: AstDeclarationSearchResult = ast.read().await.search_declarations(symbol.clone()).await?;
+        let res: AstDeclarationSearchResult = ast.read().await.search_declarations(symbol.clone()).await?;
         if (res.exact_matches.len() + res.fuzzy_matches.len()) == 0 {
-            return Err(format!("No definitions with the name `{}` or similar names were found in the project.", symbol).to_string());
+            return Err(format!("No definitions with the name `{}` or similar names were found in the workspace.", symbol).to_string());
         }
-        let (mut messages, mut tool_message) = if !res.exact_matches.is_empty() {
+        let (mut messages, tool_message) = if !res.exact_matches.is_empty() {
             let messages = results2message(&res.exact_matches, false)
                 .await
                 .into_iter().map(|x| ContextEnum::ContextFile(x))
                 .collect::<Vec<ContextEnum>>();
-            let mut tool_message = format!("Definitions found with the name `{}`:\n", symbol).to_string();
+            let mut tool_message = format!("Definitions found:\n").to_string();
             for r in res.exact_matches.iter() {
                 let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
                 let decl_range = &r.symbol_declaration.full_range;
@@ -86,7 +82,7 @@ impl Tool for AttAstDefinition {
             (messages, tool_message)
         } else {
             let mut tool_message = format!(
-                "The definition with name `{}` wasn't not found in the project.\nThere are definitions with similar names presented:\n",
+                "No definitions with name `{}` found in the workspace.\nThere are definitions with similar names though:\n",
                 symbol
             ).to_string();
             for r in res.fuzzy_matches.iter() {
@@ -100,7 +96,6 @@ impl Tool for AttAstDefinition {
                     decl_range.end_point.row + 1
                 ));
             }
-            tool_message.push_str("You can call the `definition` tool one more time with one of those names.");
             (vec![], tool_message)
         };
 
