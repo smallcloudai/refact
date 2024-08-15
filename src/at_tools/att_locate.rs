@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::string::ToString;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
@@ -50,7 +50,7 @@ impl Tool for AttLocate{
         if let Some(problem_message) = problem_message_mb {
             problem_statement = format!("{}\n\nProblem described by user:\n{}", problem_statement, problem_message);
         }
-        
+
         let mut usage = ChatUsage{..Default::default()};
         let res = locate_relevant_files(ccx.clone(), problem_statement.as_str(), tool_call_id.clone(), &mut usage).await?;
 
@@ -138,7 +138,7 @@ async fn strategy_tree(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step1-tree")),
     ).await?.get(0).ok_or("relevant_files: tree deterministic message was empty. Try again later".to_string())?.clone();
-    
+
     messages.push(ChatMessage::new("user".to_string(), STRATEGY_TREE_PROMPT.to_string()));
 
     let n_choices = subchat_single(
@@ -155,7 +155,7 @@ async fn strategy_tree(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step1-tree-result")),
     ).await?;
-    
+
     assert_eq!(n_choices.len(), 5);
 
     let file_names_pattern = r"\b(?:[a-zA-Z]:\\|/)?(?:[\w-]+[/\\])*[\w-]+\.\w+\b";
@@ -385,6 +385,7 @@ async fn supercat_decider(
 
     let mut results_to_change = vec![];
     let mut results_context = vec![];
+    let mut file_descriptions: HashMap<String, HashSet<String>> = HashMap::new();
 
     for ch_messages in n_choices {
         let answer_mb = ch_messages.last().filter(|x|x.role == "assistant").map(|x|x.content.clone());
@@ -396,6 +397,11 @@ async fn supercat_decider(
             Ok(x) => x,
             Err(_) => continue
         };
+
+        for r in results.iter() {
+            file_descriptions.entry(r.file_path.clone()).or_insert(HashSet::new()).insert(r.description.clone());
+        }
+
         let to_change = results.iter().filter(|x|x.reason == "to_change").map(|x|x.file_path.clone()).collect::<Vec<_>>();
         if to_change.is_empty() || to_change.len() > 1 {
             continue;
@@ -410,9 +416,17 @@ async fn supercat_decider(
     let files_context = reduce_by_counter(results_context.into_iter().flatten(), 5);
 
     let mut res = vec![];
-    res.push(SuperCatResultItem{file_path: file_to_change, reason: "to_change".to_string()});
+    res.push(SuperCatResultItem{
+        file_path: file_to_change.clone(),
+        reason: "to_change".to_string(),
+        description: file_descriptions.get(&file_to_change).unwrap_or(&HashSet::new()).into_iter().cloned().collect::<Vec<_>>().join(", "),
+    });
     res.extend(
-        files_context.into_iter().map(|x| SuperCatResultItem{file_path: x, reason: "context".to_string()})
+        files_context.into_iter().map(|x| SuperCatResultItem{
+            file_path: x.clone(), 
+            reason: "context".to_string(),
+            description: file_descriptions.get(&x).unwrap_or(&HashSet::new()).into_iter().cloned().collect::<Vec<_>>().join(", "),
+        })
     );
     Ok(json!(res))
 }
@@ -425,7 +439,7 @@ async fn locate_relevant_files(
 ) -> Result<Value, String> {
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let mut paths_chosen = vec![];
-    
+
     let tree_files = strategy_tree(
         ccx.clone(),
         user_query,
@@ -457,16 +471,22 @@ async fn locate_relevant_files(
 
     symbols.extend(extra_symbols);
 
-    let results = supercat_decider(
+    let file_results = supercat_decider(
         ccx.clone(),
         user_query,
         paths_chosen,
-        symbols,
+        symbols.clone(),
         log_prefix.clone(),
         tool_call_id.clone(),
         usage_collector,
     ).await?;
-    Ok(results)
+
+    let results_dict = json!({
+        "files": file_results,
+        "symbols": symbols,
+    });
+
+    Ok(results_dict)
 }
 
 
@@ -488,11 +508,13 @@ Format you must obey:
 [
     {
         "file_path": "/a/b/c/file.py",
-        "reason": "to_change"
+        "reason": "to_change",
+        "description": "contains class MyClass, body of which needs to be changed."
     },
     {
         "file_path": "/a/b/c/file1.py",
-        "reason": "context"
+        "reason": "context",
+        "description": "contains functions my_function0, my_function1 that provide useful context"
     }
     ...
 ]
@@ -506,6 +528,7 @@ format you return must be a valid JSON, explain nothing, don't use any quotes or
 struct SuperCatResultItem {
     file_path: String,
     reason: String,
+    description: String,
 }
 
 const SUPERCAT_EXTRACT_SYMBOLS_PROMPT: &str = r###"

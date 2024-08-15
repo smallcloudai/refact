@@ -36,10 +36,12 @@ class Locate(Step):
 
         res_message = [m for m in new_messages if m.role == "tool"][-1]
         try:
-            files_list: List[Dict[str, Any]] = json.loads(res_message.content)
+            results: Dict[str, List[Any]] = json.loads(res_message.content)
         except Exception as e:
             raise RuntimeError(f"content is not decodable as json:\n{res_message.content}\nError: {e}")
-        
+
+        files_list = results.get('files')
+
         if not files_list:
             raise RuntimeError(f"no files found")
 
