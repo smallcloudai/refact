@@ -256,6 +256,19 @@ fn format_messages_as_markdown(messages: &[ChatMessage]) -> String {
     formatted
 }
 
+fn update_usage_from_messages(usage: &mut ChatUsage, messages: &Vec<Vec<ChatMessage>>) {
+    // even if n_choices > 1, usage is identical in each Vec<ChatMessage>, so we could take the first one
+    if let Some(message_0) = messages.get(0) {
+        if let Some(last_message) = message_0.last() {
+            if let Some(u) = last_message.usage.as_ref() {
+                usage.total_tokens += u.total_tokens;
+                usage.completion_tokens += u.completion_tokens;
+                usage.prompt_tokens += u.prompt_tokens;
+            }
+        }
+    }
+}
+
 pub async fn subchat_single(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
@@ -265,6 +278,7 @@ pub async fn subchat_single(
     only_deterministic_messages: bool,
     temperature: Option<f32>,
     n: usize,
+    usage_collector_mb: Option<&mut ChatUsage>,
     logfn_mb: Option<String>,
     tx_toolid_mb: Option<String>,
     tx_chatid_mb: Option<String>,
@@ -309,6 +323,10 @@ pub async fn subchat_single(
         extended_msgs.extend(new_msgs.clone());
         extended_msgs
     }).collect::<Vec<Vec<ChatMessage>>>();
+    
+    if let Some(usage_collector) = usage_collector_mb {
+        update_usage_from_messages(usage_collector, &results);
+    }
 
     if let Some(logfn) = logfn_mb {
         if results.len() > 1 {
@@ -363,7 +381,7 @@ pub async fn subchat(
     tx_chatid_mb: Option<String>,
 ) -> Result<Vec<ChatMessage>, String> {
     let mut messages = messages.clone();
-    // let mut chat_usage = ChatUsage { ..Default::default() };
+    let mut usage_collector = ChatUsage { ..Default::default() };
     // for attempt in attempt_n
     {
         // keep session
@@ -394,6 +412,7 @@ pub async fn subchat(
                 false,
                 temperature,
                 1,
+                Some(&mut usage_collector),
                 logfn_mb.clone(),
                 tx_toolid_mb.clone(),
                 tx_chatid_mb.clone(),
@@ -414,6 +433,7 @@ pub async fn subchat(
                 true,   // <-- only runs tool calls
                 temperature,
                 1,
+                Some(&mut usage_collector),
                 logfn_mb.clone(),
                 tx_toolid_mb.clone(),
                 tx_chatid_mb.clone(),
@@ -430,9 +450,14 @@ pub async fn subchat(
         false,
         temperature,
         1,
+        Some(&mut usage_collector),
         logfn_mb.clone(),
         tx_toolid_mb.clone(),
         tx_chatid_mb.clone(),
     ).await?[0].clone();
+    
+    if let Some(last_message) = messages.last_mut() {
+        last_message.usage = Some(usage_collector);
+    }
     Ok(messages)
 }

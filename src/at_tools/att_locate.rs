@@ -7,11 +7,11 @@ use regex::Regex;
 
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
-
+use tracing::info;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::subchat::subchat_single;
 use crate::at_tools::tools::Tool;
-use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ContextEnum, ContextFile};
+use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage, ContextEnum, ContextFile};
 
 
 const MODEL_NAME: &str = "gpt-4o-mini"; // TODO: move to a ChatPost
@@ -50,14 +50,16 @@ impl Tool for AttLocate{
         if let Some(problem_message) = problem_message_mb {
             problem_statement = format!("{}\n\nProblem described by user:\n{}", problem_statement, problem_message);
         }
-
-        let res = locate_relevant_files(ccx.clone(), problem_statement.as_str(), tool_call_id.clone()).await?;
+        
+        let mut usage = ChatUsage{..Default::default()};
+        let res = locate_relevant_files(ccx.clone(), problem_statement.as_str(), tool_call_id.clone(), &mut usage).await?;
 
         {
             let mut ccx_lock = ccx.lock().await;
             ccx_lock.top_n = top_n_default;
             ccx_lock.n_ctx = n_ctx_default;
         }
+        info!("att_locate produced usage: {:?}", usage);
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -65,7 +67,7 @@ impl Tool for AttLocate{
             content: format!("{}", serde_json::to_string_pretty(&res).unwrap()),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
-            ..Default::default()
+            usage: Some(usage),
         }));
 
         Ok(results)
@@ -112,6 +114,7 @@ async fn strategy_tree(
     user_query: &str,
     log_prefix: String,
     tool_call_id: String,
+    usage: &mut ChatUsage,
 ) -> Result<Vec<String>, String> {
     // results = problem + tool_tree + pick 5 files * n_choices_times -> reduce(counters: 5)
 
@@ -130,6 +133,7 @@ async fn strategy_tree(
         true,
         None,
         1,
+        Some(usage),
         None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step1-tree")),
@@ -146,6 +150,7 @@ async fn strategy_tree(
         false,
         Some(0.8),
         5,
+        Some(usage),
         Some(format!("{log_prefix}-locate-step1-tree-result")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step1-tree-result")),
@@ -177,6 +182,7 @@ async fn strategy_definitions_references(
     user_query: &str,
     log_prefix: String,
     tool_call_id: String,
+    usage: &mut ChatUsage,
 ) -> Result<(Vec<String>, Vec<String>), String>{
     // results = problem -> (collect definitions + references) * n_choices + map(into_filenames) -> reduce(counters: 5)
     let mut messages = vec![];
@@ -194,6 +200,7 @@ async fn strategy_definitions_references(
         false,
         Some(0.8),
         5,
+        Some(usage),
         Some(format!("{log_prefix}-locate-step2-defs-refs")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step2-defs-refs")),
@@ -219,6 +226,7 @@ async fn strategy_definitions_references(
             true,
             None,
             1,
+            Some(usage),
             Some(format!("{log_prefix}-locate-step2-defs-refs-result")),
             Some(tool_call_id.clone()),
             Some(format!("{log_prefix}-locate-step2-defs-refs-result")),
@@ -248,6 +256,7 @@ async fn supercat_extract_symbols(
     symbols: Vec<String>,
     log_prefix: String,
     tool_call_id: String,
+    usage: &mut ChatUsage,
 ) -> Result<Vec<String>, String> {
     let mut messages = vec![];
     messages.push(ChatMessage::new("system".to_string(), STEP1_DET_SYSTEM_PROMPT.to_string()));
@@ -274,6 +283,7 @@ async fn supercat_extract_symbols(
         true,
         None,
         1,
+        Some(usage),
         None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step3-cat")),
@@ -290,6 +300,7 @@ async fn supercat_extract_symbols(
         false,
         Some(0.8),
         5,
+        Some(usage),
         Some(format!("{log_prefix}-locate-step3-cat-result")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step3-cat-result")),
@@ -320,6 +331,7 @@ async fn supercat_decider(
     symbols: Vec<String>,
     log_prefix: String,
     tool_call_id: String,
+    usage: &mut ChatUsage,
 ) -> Result<Value, String> {
     let mut messages = vec![];
     messages.push(ChatMessage::new("system".to_string(), STEP1_DET_SYSTEM_PROMPT.to_string()));
@@ -346,6 +358,7 @@ async fn supercat_decider(
         true,
         None,
         1,
+        Some(usage),
         None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step4-det")),
@@ -362,6 +375,7 @@ async fn supercat_decider(
         false,
         Some(0.8),
         5,
+        Some(usage),
         Some(format!("{log_prefix}-locate-step4-det-result")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step4-det-result")),
@@ -407,22 +421,25 @@ async fn locate_relevant_files(
     ccx: Arc<AMutex<AtCommandsContext>>,
     user_query: &str,
     tool_call_id: String,
+    usage_collector: &mut ChatUsage,
 ) -> Result<Value, String> {
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let mut paths_chosen = vec![];
-
+    
     let tree_files = strategy_tree(
         ccx.clone(),
         user_query,
         log_prefix.clone(),
-        tool_call_id.clone()
+        tool_call_id.clone(),
+        usage_collector,
     ).await?;
 
     let (def_ref_files, mut symbols) = strategy_definitions_references(
         ccx.clone(),
         user_query,
         log_prefix.clone(),
-        tool_call_id.clone()
+        tool_call_id.clone(),
+        usage_collector,
     ).await?;
 
     paths_chosen.extend(tree_files);
@@ -434,7 +451,8 @@ async fn locate_relevant_files(
         paths_chosen.clone(),
         symbols.clone(),
         log_prefix.clone(),
-        tool_call_id.clone()
+        tool_call_id.clone(),
+        usage_collector,
     ).await?;
 
     symbols.extend(extra_symbols);
@@ -445,7 +463,8 @@ async fn locate_relevant_files(
         paths_chosen,
         symbols,
         log_prefix.clone(),
-        tool_call_id.clone()
+        tool_call_id.clone(),
+        usage_collector,
     ).await?;
     Ok(results)
 }

@@ -269,6 +269,7 @@ async fn find_relevant_files(
         false,
         None,
         1,
+        None, // todo: specify usage_collector
         Some(format!("{log_prefix}-rf-step2-reduce")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step2-reduce")),

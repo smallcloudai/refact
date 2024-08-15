@@ -97,6 +97,7 @@ pub async fn handle_v1_subchat_single(
         post.only_deterministic_messages,
         post.temperature,
         post.n,
+        None,
         Some(logfn),
         None,
         None,
