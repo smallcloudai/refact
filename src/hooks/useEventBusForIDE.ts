@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { createAction } from "@reduxjs/toolkit";
 import { usePostMessage } from "./usePostMessage";
-import { ChatThread } from "../features/Chat";
+import type { ChatThread } from "../features/Chat";
 // import { useAppSelector } from "../app/hooks";
 export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
 export const ideOpenSettingsAction = createAction("ide/openSettings");

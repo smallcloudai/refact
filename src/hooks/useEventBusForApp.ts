@@ -3,7 +3,8 @@ import { useLocalStorage } from "usehooks-ts";
 import { isLogOut, isOpenExternalUrl, isSetupHost } from "../events";
 import { useAppDispatch, useConfig } from "../app/hooks";
 import { updateConfig } from "../features/Config/configSlice";
-import { setFileInfo } from "../events";
+import { setFileInfo } from "../features/Chat/activeFile";
+import { setSelectedSnippet } from "../features/Chat/selectedSnippet";
 
 export function useEventBusForApp() {
   const config = useConfig();
@@ -26,6 +27,10 @@ export function useEventBusForApp() {
 
       if (setFileInfo.match(event.data)) {
         dispatch(setFileInfo(event.data.payload));
+      }
+
+      if (setSelectedSnippet.match(event.data)) {
+        dispatch(setSelectedSnippet(event.data.payload));
       }
 
       if (isOpenExternalUrl(event.data)) {
