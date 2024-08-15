@@ -2,6 +2,9 @@ cloud_name: OpenAI API
 chat_endpoint: "https://api.openai.com/v1/chat/completions"
 chat_apikey: "$OPENAI_API_KEY"
 chat_model: gpt-4o-mini
+running_models:
+  - gpt-4o
+  - gpt-4o-mini
 
-# no code completion :/
+# no code completion though :/
 

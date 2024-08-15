@@ -179,7 +179,7 @@ fn load_caps_from_buf(
     info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
     info!("caps {} chat models", r1.code_chat_models.len());
     info!("caps default chat model: \"{}\"", r1.code_chat_default_model);
-    // info!("running models: {:?}", r1.running_models);
+    info!("running models: {:?}", r1.running_models);
     // info!("code_chat_models models: {:?}", r1.code_chat_models);
     // info!("code completion models: {:?}", r1.code_completion_models);
     Ok(Arc::new(StdRwLock::new(r1)))
