@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { useConfig } from "../contexts/config-context";
 import {
   DocumentationSettings,
   DocumentationSource,
@@ -9,6 +8,7 @@ import {
   DOCUMENTATION_LIST,
   DOCUMENTATION_REMOVE,
 } from "../services/refact/consts";
+import { useConfig } from "../app/hooks";
 
 type DocListResponse = {
   url: string;

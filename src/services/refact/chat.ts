@@ -1,21 +1,20 @@
-import { getApiKey } from "../../utils/ApiKey";
 import { CHAT_URL } from "./consts";
-import {
-  type ChatRole,
-  type ChatMessages,
-  type ToolCall,
-  isAssistantMessage,
-  isToolMessage,
-  isDiffMessage,
-} from "./types";
 import { ToolCommand } from "./tools";
+import { ChatRole, ToolCall } from "./types";
+
+export type LspChatMessage = {
+  role: ChatRole;
+  content: string | null;
+  tool_calls?: Omit<ToolCall, "index">[];
+  tool_call_id?: string;
+};
 
 type StreamArgs =
   | {
       stream: true;
-      abortController: AbortController;
+      abortSignal: AbortSignal;
     }
-  | { stream: false; abortController?: undefined | AbortController };
+  | { stream: false; abortSignal?: undefined | AbortSignal };
 
 type SendChatArgs = {
   messages: LspChatMessage[];
@@ -25,62 +24,22 @@ type SendChatArgs = {
   onlyDeterministicMessages?: boolean;
   chatId?: string;
   tools: ToolCommand[] | null;
+  port?: number;
+  apiKey?: string;
 } & StreamArgs;
-
-export type LspChatMessage = {
-  role: ChatRole;
-  content: string | null;
-  tool_calls?: Omit<ToolCall, "index">[];
-  tool_call_id?: string;
-};
-
-export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
-  return messages.reduce<LspChatMessage[]>((acc, message) => {
-    if (isAssistantMessage(message)) {
-      return acc.concat([
-        {
-          role: message[0],
-          content: message[1],
-          tool_calls: message[2] ?? undefined,
-        },
-      ]);
-    }
-
-    if (isToolMessage(message)) {
-      return acc.concat([
-        {
-          role: "tool",
-          content: message[1].content,
-          tool_call_id: message[1].tool_call_id,
-        },
-      ]);
-    }
-
-    if (isDiffMessage(message)) {
-      const diff = {
-        role: message[0],
-        content: JSON.stringify(message[1]),
-        tool_call_id: message[2],
-      };
-      return acc.concat([diff]);
-    }
-
-    const content =
-      typeof message[1] === "string" ? message[1] : JSON.stringify(message[1]);
-    return [...acc, { role: message[0], content }];
-  }, []);
-}
 
 export async function sendChat({
   messages,
   model,
-  abortController,
+  abortSignal,
   stream,
-  lspUrl,
+  // lspUrl,
   // takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
   chatId: chat_id,
   tools,
+  port = 8001,
+  apiKey,
 }: SendChatArgs): Promise<Response> {
   // const toolsResponse = await getAvailableTools();
 
@@ -105,23 +64,23 @@ export async function sendChat({
     chat_id,
   });
 
-  const apiKey = getApiKey();
+  //   const apiKey = getApiKey();
   const headers = {
     "Content-Type": "application/json",
     ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
   };
-  const chatEndpoint = lspUrl
-    ? `${lspUrl.replace(/\/*$/, "")}${CHAT_URL}`
-    : CHAT_URL;
 
-  return fetch(chatEndpoint, {
+  const url = `http://127.0.0.1:${port}${CHAT_URL}`;
+
+  return fetch(url, {
     method: "POST",
     headers,
     body,
     redirect: "follow",
     cache: "no-cache",
-    referrer: "no-referrer",
-    signal: abortController?.signal,
+    // TODO: causes an error during tests :/
+    // referrer: "no-referrer",
+    signal: abortSignal,
     credentials: "same-origin",
   });
 }

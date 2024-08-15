@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 
 import { ChatForm } from "./ChatForm";
 import { SYSTEM_PROMPTS } from "../../__fixtures__";
-import { ConfigProvider } from "../../contexts/config-context";
 import { useDebounceCallback } from "usehooks-ts";
 
 const testCommands = [
@@ -90,10 +89,10 @@ const meta: Meta<typeof ChatForm> = {
       },
       error: "",
     },
-    error: null,
-    clearError: noop,
+    // error: null,
+    // clearError: noop,
     showControls: true,
-    hasContextFile: false,
+    // hasContextFile: false,
     commands: {
       completions: testCommands,
       replace: [-1, -1],
@@ -102,7 +101,7 @@ const meta: Meta<typeof ChatForm> = {
     attachFile: {
       name: "todo.md",
       can_paste: true,
-      attach: false,
+      // attach: false,
       line1: 1,
       line2: 100,
       path: "/Users/refact/Projects/smallcloudai/refact-chat-js/todo.md",
@@ -167,14 +166,14 @@ const meta: Meta<typeof ChatForm> = {
       },
     ],
     selectedSnippet: { code: "", language: "", basename: "", path: "" },
-    removePreviewFileByName: () => ({}),
+    // removePreviewFileByName: () => ({}),
     requestPreviewFiles: () => ({}),
     // requestCommandsCompletion: () => ({}),
-    setSelectedCommand: () => ({}),
+    // setSelectedCommand: () => ({}),
     onTextAreaHeightChange: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
-    selectedSystemPrompt: null,
+    // selectedSystemPrompt: null,
     useTools: true,
     canUseTools: true,
     setUseTools: noop,
@@ -182,13 +181,15 @@ const meta: Meta<typeof ChatForm> = {
   decorators: [
     (Children) => {
       const requestCommandsCompletion = useDebounceCallback(() => ({}), 0);
-      return (
-        <ConfigProvider
-          config={{ host: "vscode", features: { vecdb: true, ast: true } }}
-        >
-          <Children requestCommandsCompletion={requestCommandsCompletion} />
-        </ConfigProvider>
-      );
+      // TODO: use redux store
+      // return (
+      //   <ConfigProvider
+      //     config={{ host: "vscode", features: { vecdb: true, ast: true } }}
+      //   >
+      //     <Children requestCommandsCompletion={requestCommandsCompletion} />
+      //   </ConfigProvider>
+      // );
+      return <Children requestCommandsCompletion={requestCommandsCompletion} />;
     },
   ],
 } satisfies Meta<typeof ChatForm>;

@@ -46,60 +46,71 @@ export type ToolResult = {
   content: string;
 };
 
-interface BaseMessage
-  extends Array<
+// interface BaseMessage
+//   extends Array<
+//     | string
+//     | ChatContextFile[]
+//     | ToolCall[]
+//     | ToolResult
+//     | undefined
+//     | null
+//     | ContextMemory[]
+//     | DiffChunk[]
+//   > {
+//   0: ChatRole;
+//   1:
+//     | null
+//     | string
+//     | ChatContextFile[]
+//     | ToolResult
+//     | ContextMemory[]
+//     | DiffChunk[];
+// }
+
+interface BaseMessage {
+  role: ChatRole;
+  content:
     | string
     | ChatContextFile[]
-    | ToolCall[]
     | ToolResult
-    | undefined
-    | null
     | ContextMemory[]
     | DiffChunk[]
-  > {
-  0: ChatRole;
-  1:
-    | null
-    | string
-    | ChatContextFile[]
-    | ToolResult
-    | ContextMemory[]
-    | DiffChunk[];
+    | null;
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
-  0: "context_file";
-  1: ChatContextFile[];
+  role: "context_file";
+  content: ChatContextFile[];
 }
 
 export interface UserMessage extends BaseMessage {
-  0: "user";
-  1: string;
+  role: "user";
+  content: string;
 }
 
 export interface AssistantMessage extends BaseMessage {
-  0: "assistant";
-  1: string | null;
-  2?: ToolCall[] | null;
+  role: "assistant";
+  content: string | null;
+  tool_calls?: ToolCall[] | null;
 }
 
 export interface ToolCallMessage extends AssistantMessage {
-  2: ToolCall[];
+  tool_calls: ToolCall[];
 }
 
 export interface SystemMessage extends BaseMessage {
-  0: "system";
-  1: string;
+  role: "system";
+  content: string;
 }
 
 export interface ToolMessage extends BaseMessage {
-  0: "tool";
-  1: ToolResult;
+  role: "tool";
+  content: ToolResult;
 }
 
 export interface MemoryMessage extends BaseMessage {
-  0: "context_memory";
-  1: ContextMemory[];
+  role: "context_memory";
+  content: ContextMemory[];
 }
 
 // TODO: There maybe sub-types for this
@@ -114,18 +125,18 @@ export type DiffChunk = {
   // chunk_id?: number;
 };
 export interface DiffMessage extends BaseMessage {
-  0: "diff";
-  1: DiffChunk[];
-  2: string; // tool_call_id
+  role: "diff";
+  content: DiffChunk[];
+  tool_call_id: string; // tool_call_id
 }
 
 export function isUserMessage(message: ChatMessage): message is UserMessage {
-  return message[0] === "user";
+  return message.role === "user";
 }
 
 export interface PlainTextMessage extends BaseMessage {
-  0: "plain_text";
-  1: string;
+  role: "plain_text";
+  content: string;
 }
 /**
  * {"content":"[{\"memo_id\":\"about_frog_class.txt\",\"memo_text\":\"The Frog class is used to test the project, located in tests folder.\\n\"},{\"memo_id\":\"answer_in_spanish.txt\",\"memo_text\":\"User actually preferes answers in Spanish, so do that.\\n\"}]","role":"context_memory","tool_call_id":"","tool_calls":null}
@@ -146,28 +157,28 @@ export type ChatMessages = ChatMessage[];
 export function isChatContextFileMessage(
   message: ChatMessage,
 ): message is ChatContextFileMessage {
-  return message[0] === "context_file";
+  return message.role === "context_file";
 }
 
 export function isAssistantMessage(
   message: ChatMessage,
 ): message is AssistantMessage {
-  return message[0] === "assistant";
+  return message.role === "assistant";
 }
 
 export function isToolMessage(message: ChatMessage): message is ToolMessage {
-  return message[0] === "tool";
+  return message.role === "tool";
 }
 
 export function isDiffMessage(message: ChatMessage): message is DiffMessage {
-  return message[0] === "diff";
+  return message.role === "diff";
 }
 
 export function isToolCallMessage(
   message: ChatMessage,
 ): message is ToolCallMessage {
   if (!isAssistantMessage(message)) return false;
-  const tool_calls = message[2];
+  const tool_calls = message.tool_calls;
   if (!tool_calls) return false;
   // TODO: check browser support of evey
   return tool_calls.every(isToolCall);
@@ -176,7 +187,7 @@ export function isToolCallMessage(
 export function isPlainTextMessage(
   message: ChatMessage,
 ): message is PlainTextMessage {
-  return message[0] === "plain_text";
+  return message.role === "plain_text";
 }
 
 interface BaseDelta {

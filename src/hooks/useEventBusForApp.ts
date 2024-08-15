@@ -1,16 +1,36 @@
 import { useEffect } from "react";
-import { Config } from "../contexts/config-context";
 import { useLocalStorage } from "usehooks-ts";
-import { isOpenExternalUrl, isSetupHost } from "../events";
+import { isLogOut, isOpenExternalUrl, isSetupHost } from "../events";
+import { useAppDispatch, useConfig } from "../app/hooks";
+import { updateConfig } from "../features/Config/configSlice";
+import { setFileInfo } from "../features/Chat/activeFile";
+import { setSelectedSnippet } from "../features/Chat/selectedSnippet";
 
-export function useEventBusForApp(config: Config): { config: Config } {
+export function useEventBusForApp() {
+  const config = useConfig();
   const [addressURL, setAddressURL] = useLocalStorage("lspUrl", "");
   const [apiKey, setApiKey] = useLocalStorage("apiKey", "");
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
+    if (config.host !== "web") {
+      return;
+    }
     const listener = (event: MessageEvent) => {
       if (event.source !== window) {
         return;
+      }
+
+      if (updateConfig.match(event.data)) {
+        dispatch(updateConfig(event.data.payload));
+      }
+
+      if (setFileInfo.match(event.data)) {
+        dispatch(setFileInfo(event.data.payload));
+      }
+
+      if (setSelectedSnippet.match(event.data)) {
+        dispatch(setSelectedSnippet(event.data.payload));
       }
 
       if (isOpenExternalUrl(event.data)) {
@@ -30,6 +50,13 @@ export function useEventBusForApp(config: Config): { config: Config } {
           setAddressURL(host.endpointAddress);
           setApiKey(host.apiKey);
         }
+        dispatch(updateConfig({ addressURL, apiKey }));
+      }
+
+      if (isLogOut(event.data)) {
+        setAddressURL("");
+        setApiKey("");
+        dispatch(updateConfig({ addressURL, apiKey }));
       }
     };
 
@@ -38,7 +65,12 @@ export function useEventBusForApp(config: Config): { config: Config } {
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [setApiKey, setAddressURL]);
+  }, [setApiKey, setAddressURL, config.host, dispatch, addressURL, apiKey]);
 
-  return { config: { addressURL, apiKey, ...config } };
+  useEffect(() => {
+    if (config.host !== "web") {
+      return;
+    }
+    dispatch(updateConfig({ addressURL, apiKey }));
+  }, [apiKey, addressURL, dispatch, config.host]);
 }

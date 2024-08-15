@@ -1,19 +1,21 @@
 import React from "react";
 import { Card, Flex, Text, Box } from "@radix-ui/themes";
-import type { ChatHistoryItem } from "../../hooks/useChatHistory";
+// import type { ChatHistoryItem } from "../../hooks/useChatHistory";
 import { ChatBubbleIcon } from "@radix-ui/react-icons";
 import { CloseButton } from "../Buttons/Buttons";
 import { IconButton } from "@radix-ui/themes";
 import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
+import type { ChatHistoryItem } from "../../features/History/historySlice";
+import { isUserMessage } from "../../services/refact";
 
 export const HistoryItem: React.FC<{
-  chat: ChatHistoryItem;
-  onClick: (id: string) => void;
+  historyItem: ChatHistoryItem;
+  onClick: () => void;
   onDelete: (id: string) => void;
   onOpenInTab?: (id: string) => void;
   disabled: boolean;
-}> = ({ chat, onClick, onDelete, onOpenInTab, disabled }) => {
-  const dateCreated = new Date(chat.createdAt);
+}> = ({ historyItem, onClick, onDelete, onOpenInTab, disabled }) => {
+  const dateCreated = new Date(historyItem.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
   return (
     <Box style={{ position: "relative", width: "100%" }}>
@@ -27,14 +29,13 @@ export const HistoryItem: React.FC<{
         className="rt-Button"
         asChild
         role="button"
-        onClick={() => onClick(chat.id)}
       >
         <button
           disabled={disabled}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            onClick(chat.id);
+            onClick();
           }}
         >
           <Text
@@ -47,7 +48,7 @@ export const HistoryItem: React.FC<{
               whiteSpace: "nowrap",
             }}
           >
-            {chat.title}
+            {historyItem.title}
           </Text>
 
           <Flex justify="between" style={{ marginTop: "8px" }}>
@@ -56,7 +57,7 @@ export const HistoryItem: React.FC<{
               style={{ display: "flex", gap: "4px", alignItems: "center" }}
             >
               <ChatBubbleIcon />{" "}
-              {chat.messages.filter((message) => message[0] === "user").length}
+              {historyItem.messages.filter(isUserMessage).length}
             </Text>
 
             <Text size="1">{dateTimeString}</Text>
@@ -64,7 +65,6 @@ export const HistoryItem: React.FC<{
         </button>
       </Card>
 
-      {/**TODO: open in tab button */}
       <Flex
         style={{
           position: "absolute",
@@ -84,7 +84,7 @@ export const HistoryItem: React.FC<{
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              onOpenInTab(chat.id);
+              onOpenInTab(historyItem.id);
             }}
             variant="ghost"
           >
@@ -95,11 +95,10 @@ export const HistoryItem: React.FC<{
         <CloseButton
           size="1"
           // needs to be smaller
-
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            onDelete(chat.id);
+            onDelete(historyItem.id);
           }}
           iconSize={10}
           title="delete chat"

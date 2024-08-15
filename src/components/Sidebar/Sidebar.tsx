@@ -1,84 +1,94 @@
-import React, { useState } from "react";
-import { Box, Flex, Button, IconButton } from "@radix-ui/themes";
-import { BarChartIcon } from "@radix-ui/react-icons";
-import styles from "./sidebar.module.css";
+import React, { useCallback } from "react";
+import { Box, Flex, Button } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
-import { Settings } from "./Settings";
-import { Statistic } from "../../features/Statistic";
-import { useConfig } from "../../contexts/config-context";
+import { DropdownNavigationOptions, Footer, FooterProps } from "./Footer";
 import { Spinner } from "@radix-ui/themes";
+import { useAppSelector, useAppDispatch } from "../../app/hooks";
+import {
+  getHistory,
+  deleteChatById,
+} from "../../features/History/historySlice";
+import {
+  newChatAction,
+  restoreChat,
+  selectChatId,
+} from "../../features/Chat/chatThread";
+import type { ChatThread } from "../../features/Chat/chatThread";
+import { useTourRefs } from "../../features/Tour";
 
-export const Sidebar: React.FC<
-  {
-    onCreateNewChat: () => void;
-    takingNotes: boolean;
-    currentChatId: string;
-  } & ChatHistoryProps
-> = ({
-  history,
-  onHistoryItemClick,
-  onCreateNewChat,
-  onDeleteHistoryItem,
-  currentChatId,
+export type SidebarProps = {
+  // onCreateNewChat: () => void;
+  takingNotes: boolean;
+  // currentChatId: string;
+  className?: string;
+  style?: React.CSSProperties;
+  account?: FooterProps["account"];
+  handleLogout: () => void;
+  handleNavigation: (to: DropdownNavigationOptions | "chat") => void;
+} & Omit<
+  ChatHistoryProps,
+  | "history"
+  | "onDeleteHistoryItem"
+  | "onCreateNewChat"
+  | "onHistoryItemClick"
+  | "currentChatId"
+>;
+
+export const Sidebar: React.FC<SidebarProps> = ({
   takingNotes,
+  style,
+  account,
+  handleLogout,
+  handleNavigation,
 }) => {
-  const [isOpenedStatistic, setIsOpenedStatistic] = useState(false);
-  const handleCloseStatistic = () => {
-    setIsOpenedStatistic(false);
-  };
-  const { features } = useConfig();
+  // TODO: these can be lowered.
+  const dispatch = useAppDispatch();
+  const history = useAppSelector(getHistory);
 
-  // const [currentItem, setItem] = useState("")
+  const currentChatId = useAppSelector(selectChatId);
+  const onDeleteHistoryItem = (id: string) => dispatch(deleteChatById(id));
+  const onCreateNewChat = () => {
+    dispatch(newChatAction({ id: currentChatId }));
+    handleNavigation("chat");
+  };
+  const onHistoryItemClick = useCallback(
+    (thread: ChatThread) => {
+      dispatch(restoreChat({ id: currentChatId, thread }));
+      handleNavigation("chat");
+    },
+    [currentChatId, dispatch, handleNavigation],
+  );
+
+  const refs = useTourRefs();
 
   return (
-    <Box className={styles.sidebar}>
-      {isOpenedStatistic ? (
-        <Statistic onCloseStatistic={handleCloseStatistic} />
-      ) : (
-        <Flex
-          direction="column"
-          position="fixed"
-          left="0"
-          bottom="0"
-          top="0"
-          style={{
-            width: "inherit",
-          }}
+    <Flex direction="column" style={style}>
+      <Flex mt="4" mb="4">
+        <Box position="absolute" ml="5" mt="2">
+          <Spinner loading={takingNotes} title="taking notes" />
+        </Box>
+        <Button
+          variant="outline"
+          ml="auto"
+          mr="auto"
+          onClick={onCreateNewChat}
+          ref={(x) => refs.setNewChat(x)}
         >
-          <Flex mt="4" mb="4">
-            <Box position="absolute" ml="5" mt="2">
-              <Spinner loading={takingNotes} title="taking notes" />
-            </Box>
-            <Button
-              variant="outline"
-              ml="auto"
-              mr="auto"
-              onClick={onCreateNewChat}
-              // loading={takingNotes}
-            >
-              Start a new chat
-            </Button>
-          </Flex>
-          <ChatHistory
-            history={history}
-            onHistoryItemClick={onHistoryItemClick}
-            onDeleteHistoryItem={onDeleteHistoryItem}
-            currentChatId={currentChatId}
-          />
-          <Flex p="2" gap="1">
-            <Settings />
-            {features?.statistics && (
-              <IconButton
-                variant="outline"
-                title="Bar Chart"
-                onClick={() => setIsOpenedStatistic(true)}
-              >
-                <BarChartIcon />
-              </IconButton>
-            )}
-          </Flex>
-        </Flex>
-      )}
-    </Box>
+          Start a new chat
+        </Button>
+      </Flex>
+      <ChatHistory
+        history={history}
+        onHistoryItemClick={onHistoryItemClick}
+        onDeleteHistoryItem={onDeleteHistoryItem}
+      />
+      <Flex p="2" pb="4">
+        <Footer
+          handleLogout={handleLogout}
+          account={account}
+          handleNavigation={handleNavigation}
+        />
+      </Flex>
+    </Flex>
   );
 };

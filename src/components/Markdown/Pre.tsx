@@ -2,7 +2,7 @@ import React from "react";
 import { Button, Flex } from "@radix-ui/themes";
 import { RightButton, RightButtonGroup } from "../Buttons/";
 import "./highlightjs.css";
-import { useConfig } from "../../contexts/config-context";
+import { useConfig } from "../../app/hooks";
 
 const PreTagWithButtons: React.FC<
   React.PropsWithChildren<{

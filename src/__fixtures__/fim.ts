@@ -1,4 +1,4 @@
-import type { FimDebugData } from "../events";
+import type { FimDebugData } from "../services/refact";
 
 export const STUB: FimDebugData = {
   choices: [

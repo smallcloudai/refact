@@ -1,18 +1,18 @@
 import React from "react";
 import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
-import { type DiffChunk } from "../../events";
+import type { DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import classNames from "classnames";
 
 import styles from "./ChatContent.module.css";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
-import { type DiffChunkStatus } from "../../hooks";
 import { filename } from "../../utils";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
+import { useDiffApplyMutation, useDiffStateQuery } from "../../app/hooks";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -80,49 +80,42 @@ export const Diff: React.FC<DiffProps> = ({ diff }) => {
   );
 };
 
-export type DiffContentProps = {
-  diffs: DiffChunk[];
-  appliedChunks: DiffChunkStatus | null;
-  onSubmit: (toApply: boolean[]) => void;
-  openFile: (file: { file_name: string; line?: number }) => void;
-};
-
 export type DiffChunkWithTypeAndApply = DiffChunk & {
   type: DiffType;
   apply: boolean;
 };
 
-const DiffsWithoutForm: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
-  diffs,
-}) => {
-  return (
-    <Flex direction="column" maxWidth="100%" gap="2">
-      {Object.entries(diffs).map(([fullFilePath, diffsForfile]) => {
-        return (
-          <Box key={fullFilePath}>
-            <Text size="1" wrap="wrap">
-              {fullFilePath}
-            </Text>
-            <ScrollArea scrollbars="horizontal" asChild>
-              <Box
-                style={{
-                  background: "rgb(51, 51, 51)",
-                  // backgroundOverflow: "visible",
-                }}
-              >
-                {diffsForfile.map((diff, index) => {
-                  return (
-                    <Diff diff={diff} key={diff.file_name + "-" + index} />
-                  );
-                })}
-              </Box>
-            </ScrollArea>
-          </Box>
-        );
-      })}
-    </Flex>
-  );
-};
+// const DiffsWithoutForm: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
+//   diffs,
+// }) => {
+//   return (
+//     <Flex direction="column" maxWidth="100%" gap="2">
+//       {Object.entries(diffs).map(([fullFilePath, diffsForfile]) => {
+//         return (
+//           <Box key={fullFilePath}>
+//             <Text size="1" wrap="wrap">
+//               {fullFilePath}
+//             </Text>
+//             <ScrollArea scrollbars="horizontal" asChild>
+//               <Box
+//                 style={{
+//                   background: "rgb(51, 51, 51)",
+//                   // backgroundOverflow: "visible",
+//                 }}
+//               >
+//                 {diffsForfile.map((diff, index) => {
+//                   return (
+//                     <Diff diff={diff} key={diff.file_name + "-" + index} />
+//                   );
+//                 })}
+//               </Box>
+//             </ScrollArea>
+//           </Box>
+//         );
+//       })}
+//     </Flex>
+//   );
+// };
 
 export const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
   diffs,
@@ -164,32 +157,37 @@ export const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
   return process(entries);
 };
 
-export const DiffContent: React.FC<DiffContentProps> = ({
-  diffs,
-  appliedChunks,
-  onSubmit,
-  openFile,
-}) => {
+export const DiffContent: React.FC<{
+  chunks: DiffChunk[];
+  toolCallId: string;
+}> = ({ chunks, toolCallId }) => {
   const [open, setOpen] = React.useState(false);
 
+  const diffStateRequest = useDiffStateQuery({ chunks, toolCallId });
+  const { onSubmit, result } = useDiffApplyMutation();
+
   const groupedDiffs: Record<string, DiffWithStatus[]> = React.useMemo(() => {
-    const diffWithStatus = diffs.map((diff, index) => {
+    const diffWithStatus = chunks.map((diff, index) => {
       return {
         ...diff,
-        state: appliedChunks?.state[index] ?? 0,
-        can_apply: appliedChunks?.can_apply[index] ?? false,
-        applied: appliedChunks?.applied_chunks[index] ?? false,
+        state: result.data?.state[index] ?? 0,
+        can_apply: diffStateRequest.data?.can_apply[index] ?? false,
+        applied: diffStateRequest.data?.state[index] ?? false,
         index,
       };
     });
 
     return groupBy(diffWithStatus, (diff) => diff.file_name);
   }, [
-    appliedChunks?.applied_chunks,
-    appliedChunks?.can_apply,
-    appliedChunks?.state,
-    diffs,
+    chunks,
+    diffStateRequest.data?.can_apply,
+    diffStateRequest.data?.state,
+    result.data?.state,
   ]);
+
+  // if (diffStateRequest.isFetching) return null;
+  // if (diffStateRequest.isError) return null;
+  // if (!diffStateRequest.data) return null;
 
   return (
     <Container>
@@ -203,16 +201,16 @@ export const DiffContent: React.FC<DiffContentProps> = ({
           </Flex>
         </Collapsible.Trigger>
         <Collapsible.Content>
-          {!appliedChunks?.state ? (
-            <DiffsWithoutForm diffs={groupedDiffs} />
-          ) : (
-            <DiffForm
-              onSubmit={onSubmit}
-              loading={appliedChunks.fetching}
-              diffs={groupedDiffs}
-              openFile={openFile}
-            />
-          )}
+          <DiffForm
+            onSubmit={(toApply: boolean[]) => {
+              void onSubmit({ chunks, toApply, toolCallId });
+            }}
+            loading={diffStateRequest.isFetching}
+            diffs={groupedDiffs}
+            openFile={() => {
+              // TODO:
+            }}
+          />
         </Collapsible.Content>
       </Collapsible.Root>
     </Container>

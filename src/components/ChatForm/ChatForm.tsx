@@ -6,25 +6,27 @@ import styles from "./ChatForm.module.css";
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
 import { TextArea, TextAreaProps } from "../TextArea";
 import { Form } from "./Form";
-import {
-  useOnPressedEnter,
-  type ChatCapsState,
-  useIsOnline,
-} from "../../hooks";
+import { useOnPressedEnter, useIsOnline } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { Button } from "@radix-ui/themes";
 import { ComboBox, type ComboBoxProps } from "../ComboBox";
-import type { ChatState } from "../../hooks";
-import { ChatContextFile, SystemPrompts } from "../../services/refact";
+import {
+  ChatContextFile,
+  CodeChatModel,
+  SystemPrompts,
+} from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
-import { useConfig } from "../../contexts/config-context";
 import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
+import { useAppDispatch, useAppSelector, useConfig } from "../../app/hooks";
+import type { FileInfo, Snippet } from "../../features/Chat";
+import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
+import { useTourRefs } from "../../features/Tour";
 
 type useCheckboxStateProps = {
-  activeFile: ChatState["active_file"];
-  snippet: ChatState["selected_snippet"];
+  activeFile: FileInfo;
+  snippet: Snippet;
   vecdb: boolean;
   ast: boolean;
   allBoxes: boolean;
@@ -263,28 +265,33 @@ export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
-  clearError: () => void;
-  error: string | null;
-  caps: ChatCapsState;
+  // clearError: () => void;
+  // error: string | null;
+  caps: {
+    error: string | null;
+    fetching: boolean;
+    default_cap: string;
+    available_caps: Record<string, CodeChatModel>;
+  };
   model: string;
   onSetChatModel: (model: string) => void;
   isStreaming: boolean;
   onStopStreaming: () => void;
   commands: ComboBoxProps["commands"];
-  attachFile: ChatState["active_file"];
-  hasContextFile: boolean;
+  attachFile: FileInfo;
+  // hasContextFile: boolean;
   requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
   requestPreviewFiles: (input: string) => void;
-  setSelectedCommand: (command: string) => void;
+  // setSelectedCommand: (command: string) => void;
   filesInPreview: ChatContextFile[];
-  selectedSnippet: ChatState["selected_snippet"];
-  removePreviewFileByName: (name: string) => void;
+  selectedSnippet: Snippet;
+  // removePreviewFileByName: (name: string) => void;
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
-  requestCaps: () => void;
+  // requestCaps: () => void;
   prompts: SystemPrompts;
-  onSetSystemPrompt: (prompt: string) => void;
-  selectedSystemPrompt: null | string;
+  onSetSystemPrompt: (prompt: SystemPrompts) => void;
+  selectedSystemPrompt: SystemPrompts;
   chatId: string;
   canUseTools: boolean;
   setUseTools: (value: boolean) => void;
@@ -295,8 +302,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
-  error,
-  clearError,
+  // error,
+  // clearError,
   caps,
   model,
   onSetChatModel,
@@ -308,10 +315,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   requestPreviewFiles,
   filesInPreview,
   selectedSnippet,
-  removePreviewFileByName,
+  // removePreviewFileByName,
   onTextAreaHeightChange,
   showControls,
-  requestCaps,
+  // TODO: handle re-requesting caps after error
+  // requestCaps,
   prompts,
   onSetSystemPrompt,
   selectedSystemPrompt,
@@ -320,7 +328,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   setUseTools,
   useTools,
 }) => {
+  const dispatch = useAppDispatch();
   const config = useConfig();
+  const error = useAppSelector(getErrorMessage);
+  const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
   const [value, setValue] = React.useState("");
   // this should re-render when clicking new chat :/
   const { checkboxes, toggleCheckbox, reset, setInteracted } = useControlsState(
@@ -335,6 +346,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       host: config.host,
     },
   );
+  const refs = useTourRefs();
 
   usePreviewFileRequest({
     isCommandExecutable: commands.is_cmd_executable,
@@ -344,22 +356,22 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     checkboxes,
   });
 
-  useEffect(() => {
-    if (
-      Object.keys(caps.available_caps).length === 0 &&
-      !caps.default_cap &&
-      !caps.fetching
-    ) {
-      requestCaps();
-    }
-  }, [
-    requestCaps,
-    caps.available_caps.length,
-    caps.default_cap,
-    caps.fetching,
-    value,
-    caps.available_caps,
-  ]);
+  // useEffect(() => {
+  //   if (
+  //     Object.keys(caps.available_caps).length === 0 &&
+  //     !caps.default_cap &&
+  //     !caps.fetching
+  //   ) {
+  //     requestCaps();
+  //   }
+  // }, [
+  //   requestCaps,
+  //   caps.available_caps.length,
+  //   caps.default_cap,
+  //   caps.fetching,
+  //   value,
+  //   caps.available_caps,
+  // ]);
 
   useEffect(() => {
     if (!showControls) {
@@ -401,14 +413,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (error) {
     return (
-      <ErrorCallout mt="2" onClick={clearError} timeout={null}>
+      <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
         {error}
       </ErrorCallout>
     );
   }
 
   return (
-    <Card mt="1" style={{ position: "relative", flexShrink: 0 }}>
+    <Card mt="1" style={{ flexShrink: 0, position: "static" }}>
       {!isOnline && <Callout type="info">Offline</Callout>}
 
       {isStreaming && (
@@ -422,55 +434,65 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         </Button>
       )}
 
-      <Form
-        disabled={isStreaming || !isOnline}
-        className={className}
-        onSubmit={() => handleSubmit()}
+      <Flex
+        ref={(x) => refs.setChat(x)}
+        style={{
+          flexDirection: "column",
+          alignSelf: "stretch",
+          flex: 1,
+          width: "100%",
+        }}
       >
-        <FilesPreview
-          files={filesInPreview}
-          onRemovePreviewFile={removePreviewFileByName}
-        />
-
-        <ComboBox
-          commands={commands}
-          requestCommandsCompletion={requestCommandsCompletion}
-          value={value}
-          onChange={handleChange}
-          onSubmit={(event) => {
-            handleEnter(event);
-          }}
-          placeholder={
-            commands.completions.length > 0 ? "Type @ for commands" : ""
-          }
-          render={(props) => (
-            <TextArea
-              data-testid="chat-form-textarea"
-              required={true}
-              disabled={isStreaming}
-              {...props}
-              onTextAreaHeightChange={onTextAreaHeightChange}
-              autoFocus={true}
-            />
-          )}
-        />
-        <Flex gap="2" className={styles.buttonGroup}>
-          {onClose && (
-            <BackToSideBarButton
-              disabled={isStreaming}
-              title="return to sidebar"
-              size="1"
-              onClick={onClose}
-            />
-          )}
-          <PaperPlaneButton
-            disabled={isStreaming || !isOnline}
-            title="send"
-            size="1"
-            type="submit"
+        <Form
+          disabled={isStreaming || !isOnline}
+          className={className}
+          onSubmit={() => handleSubmit()}
+        >
+          <FilesPreview
+            files={filesInPreview}
+            // onRemovePreviewFile={removePreviewFileByName}
           />
-        </Flex>
-      </Form>
+
+          <ComboBox
+            commands={commands}
+            requestCommandsCompletion={requestCommandsCompletion}
+            value={value}
+            onChange={handleChange}
+            onSubmit={(event) => {
+              handleEnter(event);
+            }}
+            placeholder={
+              commands.completions.length > 0 ? "Type @ for commands" : ""
+            }
+            render={(props) => (
+              <TextArea
+                data-testid="chat-form-textarea"
+                required={true}
+                disabled={isStreaming}
+                {...props}
+                onTextAreaHeightChange={onTextAreaHeightChange}
+                autoFocus={true}
+              />
+            )}
+          />
+          <Flex gap="2" className={styles.buttonGroup}>
+            {onClose && (
+              <BackToSideBarButton
+                disabled={isStreaming}
+                title="return to sidebar"
+                size="1"
+                onClick={onClose}
+              />
+            )}
+            <PaperPlaneButton
+              disabled={isStreaming || !isOnline}
+              title="send"
+              size="1"
+              type="submit"
+            />
+          </Flex>
+        </Form>
+      </Flex>
 
       <ChatControls
         host={config.host}
@@ -483,7 +505,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           options: Object.keys(caps.available_caps),
         }}
         promptsProps={{
-          value: selectedSystemPrompt ?? "",
+          value: selectedSystemPrompt,
           prompts: prompts,
           onChange: onSetSystemPrompt,
         }}

@@ -1,5 +1,35 @@
-import { getApiKey } from "../../utils/ApiKey";
+// import { getApiKey } from "../../utils/ApiKey";
+import { RootState } from "../../app/store";
 import { CUSTOM_PROMPTS_URL } from "./consts";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+// ADD port
+export const promptsApi = createApi({
+  reducerPath: "prompts",
+  baseQuery: fetchBaseQuery({
+    prepareHeaders: (headers, api) => {
+      const getState = api.getState as () => RootState;
+      const state = getState();
+      const token = state.config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  endpoints: (builder) => ({
+    getPrompts: builder.query<SystemPrompts, { port: number }>({
+      query: ({ port }) => `http://127.0.0.1:${port}${CUSTOM_PROMPTS_URL}`,
+      transformResponse: (response: unknown) => {
+        if (!isCustomPromptsResponse(response)) return {};
+        return response.system_prompts;
+      },
+    }),
+  }),
+  refetchOnMountOrArgChange: true,
+});
+
+export const promptsEndpoints = promptsApi.endpoints;
 
 export type SystemPrompt = {
   text: string;
@@ -41,34 +71,34 @@ export function isCustomPromptsResponse(
   return isSystemPrompts(json.system_prompts);
 }
 
-export async function getPrompts(lspUrl?: string): Promise<SystemPrompts> {
-  const customPromptsUrl = lspUrl
-    ? `${lspUrl.replace(/\/*$/, "")}${CUSTOM_PROMPTS_URL}`
-    : CUSTOM_PROMPTS_URL;
+// export async function getPrompts(lspUrl?: string): Promise<SystemPrompts> {
+//   const customPromptsUrl = lspUrl
+//     ? `${lspUrl.replace(/\/*$/, "")}${CUSTOM_PROMPTS_URL}`
+//     : CUSTOM_PROMPTS_URL;
 
-  const apiKey = getApiKey();
+//   const apiKey = getApiKey();
 
-  const response = await fetch(customPromptsUrl, {
-    method: "GET",
-    credentials: "same-origin",
-    redirect: "follow",
-    cache: "no-cache",
-    referrer: "no-referrer",
-    headers: {
-      accept: "application/json",
-      ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-    },
-  });
+//   const response = await fetch(customPromptsUrl, {
+//     method: "GET",
+//     credentials: "same-origin",
+//     redirect: "follow",
+//     cache: "no-cache",
+//     referrer: "no-referrer",
+//     headers: {
+//       accept: "application/json",
+//       ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
+//     },
+//   });
 
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
+//   if (!response.ok) {
+//     throw new Error(response.statusText);
+//   }
 
-  const json: unknown = await response.json();
+//   const json: unknown = await response.json();
 
-  if (!isCustomPromptsResponse(json)) {
-    return {};
-  }
+//   if (!isCustomPromptsResponse(json)) {
+//     return {};
+//   }
 
-  return json.system_prompts;
-}
+//   return json.system_prompts;
+// }

@@ -1,5 +1,5 @@
-import { ChatContextFile } from "../../events";
-import { ChatState } from "../../hooks";
+import { ChatContextFile } from "../../services/refact";
+import { FileInfo } from "../../features/Chat/activeFile";
 import { Checkbox } from "./ChatControls";
 
 export function addCheckboxValuesToInput(
@@ -48,9 +48,7 @@ export function addCheckboxValuesToInput(
   return result;
 }
 
-export function activeFileToContextFile(
-  fileInfo: ChatState["active_file"],
-): ChatContextFile {
+export function activeFileToContextFile(fileInfo: FileInfo): ChatContextFile {
   const content = fileInfo.content ?? "";
   return {
     file_name: fileInfo.path,
