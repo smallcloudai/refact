@@ -40,12 +40,17 @@ fn choose_correct_chunk(chunks: Vec<Result<String, String>>) -> Result<String, S
         .collect::<Vec<_>>();
     if !errors.is_empty() {
         warn!("There is a list of errors for some generated diffs");
-        for err in errors {
+        for err in errors.iter() {
             warn!("{err}");
         }
     }
     if chunks.iter().all(|res| res.is_err()) {
-        return Err("No valid chunks were generated".to_string());
+        let mut err_message = "No valid chunks were generated, reasons are:\n".to_string();
+        for err in errors.iter() {
+            err_message.push_str(format!("- {err}\n").as_str());
+        }
+        err_message.push_str("Try to call `patch` one more time to generate a correct diff");
+        return Err(err_message);
     }
 
     let non_error_chunks = chunks
@@ -91,10 +96,7 @@ impl Tool for ToolPatch {
         let mut chunks_for_answers = vec![];
         for answer in answers.iter() {
             warn!("Patch model answer:\n{}", &answer);
-            let parsed_chunks = parse_diff_chunks_from_message(ccx.clone(), &answer).await.map_err(|err| {
-                warn!(err);
-                format!("{err}. Try to call `patch` one more time to generate a correct diff")
-            });
+            let parsed_chunks = parse_diff_chunks_from_message(ccx.clone(), &answer).await;
             chunks_for_answers.push(parsed_chunks);
         }
         let chunks = choose_correct_chunk(chunks_for_answers)?;

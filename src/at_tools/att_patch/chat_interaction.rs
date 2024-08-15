@@ -1,9 +1,9 @@
-use serde_json::Value;
+use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use std::sync::{Arc, RwLock};
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
-use tokio::sync::RwLock as ARwLock;
 use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -11,11 +11,17 @@ use crate::at_commands::at_file::execute_at_file;
 use crate::at_tools::att_patch::args_parser::PatchArguments;
 use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal, get_signatures_by_symbol_names};
 use crate::at_tools::att_patch::tool::{DefaultToolPatch, DEFAULT_MODEL_NAME, MAX_NEW_TOKENS, N_CHOICES, TEMPERATURE};
-use crate::at_tools::subchat::{subchat, subchat_single};
-use crate::call_validation::{ChatMessage, ChatPost, ChatUsage, SamplingParameters};
-use crate::global_context::GlobalContext;
+use crate::at_tools::subchat::subchat_single;
+use crate::cached_tokenizers;
+use crate::call_validation::ChatMessage;
 use crate::scratchpads::pp_utils::count_tokens;
-use crate::{cached_tokenizers, scratchpads};
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LocateItem {
+    pub file_path: String,
+    pub reason: String,
+}
 
 
 async fn get_max_tokens(
@@ -61,6 +67,44 @@ async fn load_tokenizer(
     ).await
 }
 
+
+async fn get_locate_data(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+) -> Option<Vec<LocateItem>> {
+    let messages = ccx.lock().await.messages.clone();
+    let mut locate_tool_ids = vec![];
+    for message in messages.iter().rev() {
+        for tools in message.tool_calls.iter() {
+            for tool in tools.iter() {
+                if tool.function.name == "locate" {
+                    locate_tool_ids.push(tool.id.clone());
+                }
+            }
+        }
+    }
+
+    let mut locate_data = vec![];
+    for id in locate_tool_ids.iter() {
+        let data = match messages.iter().find_or_first(|x| x.tool_call_id == *id) {
+            Some(data) => {
+                let locate_items: Vec<LocateItem> = match serde_json::from_str(&data.content) {
+                    Ok(res) => res,
+                    Err(err) => {
+                        warn!("failed to parse locate data: {}", err);
+                        continue;
+                    }
+                };
+                locate_items
+            }
+            None => {
+                continue
+            }
+        };
+        locate_data.push(data);
+    }
+    locate_data.first().cloned()
+}
+
 async fn make_chat_history(
     ccx: Arc<AMutex<AtCommandsContext>>,
     args: &PatchArguments,
@@ -83,7 +127,7 @@ async fn make_chat_history(
         get_signatures_by_imports_traversal(&args.paths, gcx.clone()).await
     };
     let mut tokens: usize = 0;
-    let max_tokens: usize = max_tokens - crate::at_tools::att_patch::tool::MAX_NEW_TOKENS;
+    let max_tokens: usize = max_tokens - MAX_NEW_TOKENS;
     let tokenizer_ref = tokenizer.read().unwrap().clone();
     let task_message = format!("The task is:\n{}", args.todo).to_string();
     let mut chat_messages = vec![
@@ -139,7 +183,6 @@ async fn make_chat_history(
     info!("tokens num: {tokens}");
     Ok(chat_messages)
 }
-
 
 pub async fn execute_chat_model(
     ccx: Arc<AMutex<AtCommandsContext>>,

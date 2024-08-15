@@ -124,17 +124,14 @@ tools:
       - "symbol"
 
   - name: "patch"
-    description: "A tool to fix, edit a bunch of existing source files. This tool can edit, rename, create or delete files"
+    description: "A tool designed to apply modifications to multiple source files efficiently. The tool can perform a range of actions: editing, renaming, creating, or deleting files. It is particularly useful for applying changes or updates across multiple files simultaneously, ensuring consistency"
     parameters:
       - name: "paths"
         type: "string"
-        description: "A single string that contains all necessary to edit file names separated by commas. Use absolute file paths. Do not pass list of strings!"
+        description: "A single string that specifies all file names to be edited, separated by commas. This string should contain absolute file paths"
       - name: "todo"
         type: "string"
-        description: "A complete and usefull description of required changes for the given files"
-      - name: "symbols"
-        type: "string"
-        description: "An optional argument, symbol names that might be usefull to make necessary changes"
+        description: "A detailed and precise description of the changes required for the specified files, which may include code examples"
     parameters_required:
       - "paths"
       - "todo"
