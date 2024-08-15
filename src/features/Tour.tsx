@@ -66,6 +66,7 @@ export const finish = createAction("tour/finish");
 // eslint-disable-next-line react-refresh/only-export-components
 export const restart = createAction("tour/restart");
 
+// TODO: add tour to persist config in src/app/store.ts, and then use a selector to get it.
 function loadFromLocalStorage(): TourState {
   try {
     const serialisedState = localStorage.getItem("tour");
@@ -80,6 +81,7 @@ function loadFromLocalStorage(): TourState {
   }
 }
 
+// TODO: add tour to persist config in src/app/store.ts and it will save automatically.
 // eslint-disable-next-line react-refresh/only-export-components
 export const saveTourToLocalStorage = (state: { tour: TourState }) => {
   try {
