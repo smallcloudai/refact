@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
+use itertools::Itertools;
 use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 
@@ -15,7 +16,7 @@ use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum};
 
 pub const DEFAULT_MODEL_NAME: &str = "gpt-4o-mini";
 pub const MAX_NEW_TOKENS: usize = 8192;
-pub const TEMPERATURE: f32 = 0.5;
+pub const TEMPERATURE: f32 = 0.7;
 pub const N_CHOICES: usize = 16;
 pub type DefaultToolPatch = UnifiedDiffFormat;
 
@@ -46,7 +47,7 @@ fn choose_correct_chunk(chunks: Vec<Result<String, String>>) -> Result<String, S
     }
     if chunks.iter().all(|res| res.is_err()) {
         let mut err_message = "No valid chunks were generated, reasons are:\n".to_string();
-        for err in errors.iter() {
+        for err in errors.iter().unique() {
             err_message.push_str(format!("- {err}\n").as_str());
         }
         err_message.push_str("Try to call `patch` one more time to generate a correct diff");

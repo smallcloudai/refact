@@ -231,7 +231,9 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
         if before_path != after_path {
             action = "rename".to_string();
             if after_path.exists() {
-                return Err("cannot rename, destination file name already exists".to_string())
+                return Err(format!(
+                    "cannot rename {before_path:?}, destination file {after_path:?} name already exists"
+                ))
             }
         }
 
