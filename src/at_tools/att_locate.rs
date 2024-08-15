@@ -130,7 +130,7 @@ async fn strategy_tree(
         true,
         None,
         1,
-        Some(format!("{log_prefix}-locate-step1-tree")),
+        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step1-tree")),
     ).await?.get(0).ok_or("relevant_files: tree deterministic message was empty. Try again later".to_string())?.clone();
@@ -199,7 +199,7 @@ async fn strategy_definitions_references(
 
     let mut filenames = vec![];
     let mut symbols = vec![];
-    for (i, ch_messages) in n_choices.into_iter().enumerate() {
+    for ch_messages in n_choices.into_iter() {
         let ch_symbols = ch_messages.last().unwrap().clone().tool_calls.unwrap_or(vec![]).iter()
             .filter_map(|x| {
                 let json_value = serde_json::from_str(&x.function.arguments).unwrap_or(Value::Null);
@@ -259,7 +259,7 @@ async fn supercat_extract_symbols(
     }
 
     messages.push(pretend_tool_call(
-        "supercat",
+        "cat",
         serde_json::to_string(&supercat_args).unwrap().as_str()
     ));
 
@@ -267,15 +267,15 @@ async fn supercat_extract_symbols(
         ccx.clone(),
         MODEL_NAME,
         messages,
-        vec!["supercat".to_string()],
+        vec!["cat".to_string()],
         None,
         true,
         None,
         1,
-        Some(format!("{log_prefix}-locate-step3-cat")),
+        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step3-cat")),
-    ).await?.get(0).ok_or("relevant_files: supercat message was empty.".to_string())?.clone();
+    ).await?.get(0).ok_or("relevant_files: cat message was empty.".to_string())?.clone();
 
     messages.push(ChatMessage::new("user".to_string(), SUPERCAT_EXTRACT_SYMBOLS_PROMPT.replace("{USER_QUERY}", &user_query)));
 
@@ -329,7 +329,7 @@ async fn supercat_decider(
     }
 
     messages.push(pretend_tool_call(
-        "supercat",
+        "cat",
         serde_json::to_string(&supercat_args).unwrap().as_str()
     ));
 
@@ -337,12 +337,12 @@ async fn supercat_decider(
         ccx.clone(),
         MODEL_NAME,
         messages,
-        vec!["supercat".to_string()],
+        vec!["cat".to_string()],
         None,
         true,
         None,
         1,
-        Some(format!("{log_prefix}-locate-step4-det")),
+        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step4-det")),
     ).await?.get(0).ok_or("relevant_files: supercat message was empty.".to_string())?.clone();
