@@ -118,7 +118,7 @@ export function TourBubble({
                 dispatch(close());
               }}
             >
-              x
+              ×
             </Link>
             <Link
               style={{
@@ -126,6 +126,9 @@ export function TourBubble({
                 position: "absolute",
                 right: "10px",
                 bottom: "10px",
+                textTransform: "uppercase",
+                fontSize: "12px",
+                fontWeight: "bold",
                 color: appearance == "dark" ? "#004069" : "#54a1ff",
               }}
               onClick={() => {
