@@ -153,7 +153,7 @@ pub async fn try_load_caps_quickly_if_not_present(
                     Ok(caps)
                 },
                 Err(e) => {
-                    error!("caps fetch failed: \"{}\"", e);
+                    error!("caps fetch failed: {:?}", e);
                     global_context_locked.caps_last_error = format!("caps fetch failed: {}", e);
                     return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, global_context_locked.caps_last_error.clone()));
                 }
