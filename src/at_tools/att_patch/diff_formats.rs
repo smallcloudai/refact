@@ -58,6 +58,9 @@ pub async fn parse_diff_chunks_from_message(
             warn!("No apply results were found for the chunk:\n{:?}", chunk);
             return Err("No apply results were found".to_string());
         }
+        if chunk.file_action == "remove" {
+            continue;
+        }
         let text_after = if let Some(file_text) = results.first().map(|x| x.file_text.clone()).flatten() {
             file_text
         } else {
