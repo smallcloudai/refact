@@ -65,7 +65,6 @@ export const HistoryItem: React.FC<{
         </button>
       </Card>
 
-      {/**TODO: open in tab button */}
       <Flex
         style={{
           position: "absolute",
@@ -96,7 +95,6 @@ export const HistoryItem: React.FC<{
         <CloseButton
           size="1"
           // needs to be smaller
-
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
