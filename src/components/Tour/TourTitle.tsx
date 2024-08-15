@@ -19,8 +19,10 @@ export function TourTitle({ title }: TourTitle) {
       <Text
         style={{
           color: appearance == "dark" ? "black" : "white",
-          fontSize: 16,
+          fontSize: 14,
           margin: 4,
+          marginTop: 0,
+          marginLeft: 8,
           paddingRight: 30,
           alignSelf: "center",
         }}
