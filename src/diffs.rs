@@ -262,10 +262,10 @@ fn check_rename(c: &DiffChunk) -> ApplyDiffOutput {
         if !parent.is_dir() {
             return ApplyDiffOutput::Err(format!("cannot rename file: parent dir `{:?}` does not exist or is not a dir", &parent));
         }
-        if !file_path_rename.exists() {
+        if !file_path.exists() {
             return ApplyDiffOutput::Err(format!("cannot rename file: file `{:?}` doesn't exist", &c.file_name_rename));
         }
-        if file_path.exists() {
+        if file_path_rename.exists() {
             return ApplyDiffOutput::Err(format!("cannot rename file: file `{}` already exists", &c.file_name));
         }
         ApplyDiffOutput::Ok()
