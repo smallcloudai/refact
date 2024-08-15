@@ -68,8 +68,11 @@ struct SubChatSinglePost {
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
     temperature: Option<f32>,
-    n: Option<usize>,
+    #[serde(default = "default_n")]
+    n: usize,
 }
+
+fn default_n() -> usize { 1 }
 
 pub async fn handle_v1_subchat_single(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,

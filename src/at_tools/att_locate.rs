@@ -22,9 +22,9 @@ pub struct AttLocate;
 #[async_trait]
 impl Tool for AttLocate{
     async fn tool_execute(
-        &mut self, 
-        ccx: Arc<AMutex<AtCommandsContext>>, 
-        tool_call_id: &String, 
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
         args: &HashMap<String, Value>
     ) -> Result<Vec<ContextEnum>, String> {
         let problem_statement_summary = match args.get("problem_statement") {
@@ -51,7 +51,7 @@ impl Tool for AttLocate{
             problem_statement = format!("{}\n\nProblem described by user:\n{}", problem_statement, problem_message);
         }
 
-        let res = locate_relevant_files(ccx.clone(), problem_statement.as_str()).await?;
+        let res = locate_relevant_files(ccx.clone(), problem_statement.as_str(), tool_call_id.clone()).await?;
 
         {
             let mut ccx_lock = ccx.lock().await;
@@ -110,6 +110,8 @@ where
 async fn strategy_tree(
     ccx: Arc<AMutex<AtCommandsContext>>,
     user_query: &str,
+    log_prefix: String,
+    tool_call_id: String,
 ) -> Result<Vec<String>, String> {
     // results = problem + tool_tree + pick 5 files * n_choices_times -> reduce(counters: 5)
 
@@ -127,8 +129,10 @@ async fn strategy_tree(
         None,
         true,
         None,
-        None,
-        Some("strategy-tree".to_string()),
+        1,
+        Some(format!("{log_prefix}-locate-step1-tree")),
+        Some(tool_call_id.clone()),
+        Some(format!("{log_prefix}-locate-step1-tree")),
     ).await?.get(0).ok_or("relevant_files: tree deterministic message was empty. Try again later".to_string())?.clone();
 
     messages.push(ChatMessage::new("user".to_string(), STRATEGY_TREE_PROMPT.to_string()));
@@ -141,8 +145,10 @@ async fn strategy_tree(
         Some("none".to_string()),
         false,
         Some(0.8),
-        Some(5usize),
-        Some("strategy-tree-choices".to_string()),
+        5,
+        Some(format!("{log_prefix}-locate-step1-tree-result")),
+        Some(tool_call_id.clone()),
+        Some(format!("{log_prefix}-locate-step1-tree-result")),
     ).await?;
 
     let file_names_pattern = r"\b(?:[a-zA-Z]:\\|/)?(?:[\w-]+[/\\])*[\w-]+\.\w+\b";
@@ -167,6 +173,8 @@ async fn strategy_tree(
 async fn strategy_definitions_references(
     ccx: Arc<AMutex<AtCommandsContext>>,
     user_query: &str,
+    log_prefix: String,
+    tool_call_id: String,
 ) -> Result<(Vec<String>, Vec<String>), String>{
     // results = problem -> (collect definitions + references) * n_choices + map(into_filenames) -> reduce(counters: 5)
     let mut messages = vec![];
@@ -183,13 +191,15 @@ async fn strategy_definitions_references(
         Some("required".to_string()),
         false,
         Some(0.8),
-        Some(5usize),
-        Some("strategy-definitions-references".to_string()),
+        5,
+        Some(format!("{log_prefix}-locate-step2-defs-refs")),
+        Some(tool_call_id.clone()),
+        Some(format!("{log_prefix}-locate-step2-defs-refs")),
     ).await?;
 
     let mut filenames = vec![];
     let mut symbols = vec![];
-    for ch_messages in n_choices.into_iter() {
+    for (i, ch_messages) in n_choices.into_iter().enumerate() {
         let ch_symbols = ch_messages.last().unwrap().clone().tool_calls.unwrap_or(vec![]).iter()
             .filter_map(|x| {
                 let json_value = serde_json::from_str(&x.function.arguments).unwrap_or(Value::Null);
@@ -206,8 +216,10 @@ async fn strategy_definitions_references(
             None,
             true,
             None,
-            None,
-            None
+            1,
+            Some(format!("{log_prefix}-locate-step2-defs-refs-result")),
+            Some(tool_call_id.clone()),
+            Some(format!("{log_prefix}-locate-step2-defs-refs-result")),
         ).await?.get(0).ok_or("relevant_files: no context files found (strategy_definitions_references). Try again later".to_string())?.clone();
 
         let only_context_files = ch_messages.into_iter().filter(|x| x.role == "context_file").collect::<Vec<_>>();
@@ -232,6 +244,8 @@ async fn supercat_extract_symbols(
     user_query: &str,
     files: Vec<String>,
     symbols: Vec<String>,
+    log_prefix: String,
+    tool_call_id: String,
 ) -> Result<Vec<String>, String> {
     let mut messages = vec![];
     messages.push(ChatMessage::new("system".to_string(), STEP1_DET_SYSTEM_PROMPT.to_string()));
@@ -257,8 +271,10 @@ async fn supercat_extract_symbols(
         None,
         true,
         None,
-        None,
-        Some("supercat1-extract-det".to_string()),
+        1,
+        Some(format!("{log_prefix}-locate-step3-cat")),
+        Some(tool_call_id.clone()),
+        Some(format!("{log_prefix}-locate-step3-cat")),
     ).await?.get(0).ok_or("relevant_files: supercat message was empty.".to_string())?.clone();
 
     messages.push(ChatMessage::new("user".to_string(), SUPERCAT_EXTRACT_SYMBOLS_PROMPT.replace("{USER_QUERY}", &user_query)));
@@ -271,8 +287,10 @@ async fn supercat_extract_symbols(
         Some("none".to_string()),
         false,
         Some(0.8),
-        Some(5usize),
-        Some("supercat2-extract".to_string()),
+        5,
+        Some(format!("{log_prefix}-locate-step3-cat-result")),
+        Some(tool_call_id.clone()),
+        Some(format!("{log_prefix}-locate-step3-cat-result")),
     ).await?;
 
     let mut symbols_result = vec![];
@@ -296,6 +314,8 @@ async fn supercat_decider(
     user_query: &str,
     files: Vec<String>,
     symbols: Vec<String>,
+    log_prefix: String,
+    tool_call_id: String,
 ) -> Result<Value, String> {
     let mut messages = vec![];
     messages.push(ChatMessage::new("system".to_string(), STEP1_DET_SYSTEM_PROMPT.to_string()));
@@ -321,8 +341,10 @@ async fn supercat_decider(
         None,
         true,
         None,
-        None,
-        Some("supercat1-det".to_string()),
+        1,
+        Some(format!("{log_prefix}-locate-step4-det")),
+        Some(tool_call_id.clone()),
+        Some(format!("{log_prefix}-locate-step4-det")),
     ).await?.get(0).ok_or("relevant_files: supercat message was empty.".to_string())?.clone();
 
     messages.push(ChatMessage::new("user".to_string(), SUPERCAT_DECIDER_PROMPT.replace("{USER_QUERY}", &user_query)));
@@ -335,8 +357,10 @@ async fn supercat_decider(
         Some("none".to_string()),
         false,
         Some(0.8),
-        Some(5usize),
-        Some("supercat2-choices".to_string()),
+        5,
+        Some(format!("{log_prefix}-locate-step4-det-result")),
+        Some(tool_call_id.clone()),
+        Some(format!("{log_prefix}-locate-step4-det-result")),
     ).await?;
 
     let mut results_to_change = vec![];
@@ -375,12 +399,25 @@ async fn supercat_decider(
 
 async fn locate_relevant_files(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    user_query: &str
+    user_query: &str,
+    tool_call_id: String,
 ) -> Result<Value, String> {
+    let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let mut paths_chosen = vec![];
 
-    let tree_files = strategy_tree(ccx.clone(), user_query).await?;
-    let (def_ref_files, mut symbols) = strategy_definitions_references(ccx.clone(), user_query).await?;
+    let tree_files = strategy_tree(
+        ccx.clone(),
+        user_query,
+        log_prefix.clone(),
+        tool_call_id.clone()
+    ).await?;
+
+    let (def_ref_files, mut symbols) = strategy_definitions_references(
+        ccx.clone(),
+        user_query,
+        log_prefix.clone(),
+        tool_call_id.clone()
+    ).await?;
 
     paths_chosen.extend(tree_files);
     paths_chosen.extend(def_ref_files);
@@ -390,6 +427,8 @@ async fn locate_relevant_files(
         user_query,
         paths_chosen.clone(),
         symbols.clone(),
+        log_prefix.clone(),
+        tool_call_id.clone()
     ).await?;
 
     symbols.extend(extra_symbols);
@@ -399,6 +438,8 @@ async fn locate_relevant_files(
         user_query,
         paths_chosen,
         symbols,
+        log_prefix.clone(),
+        tool_call_id.clone()
     ).await?;
     Ok(results)
 }
