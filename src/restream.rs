@@ -225,7 +225,6 @@ pub async fn scratchpad_interaction_stream(
                     } => {
                         if let Some(value) = value {
                             let tmp = serde_json::to_string(&value).unwrap();
-                            info!("{:?}", tmp);
                             if tmp == "1337" {
                                 break;  // the only way out of this loop
                             }

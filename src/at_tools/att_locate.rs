@@ -134,7 +134,7 @@ async fn strategy_tree(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step1-tree")),
     ).await?.get(0).ok_or("relevant_files: tree deterministic message was empty. Try again later".to_string())?.clone();
-
+    
     messages.push(ChatMessage::new("user".to_string(), STRATEGY_TREE_PROMPT.to_string()));
 
     let n_choices = subchat_single(
@@ -150,6 +150,8 @@ async fn strategy_tree(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step1-tree-result")),
     ).await?;
+    
+    assert_eq!(n_choices.len(), 5);
 
     let file_names_pattern = r"\b(?:[a-zA-Z]:\\|/)?(?:[\w-]+[/\\])*[\w-]+\.\w+\b";
     let re = Regex::new(file_names_pattern).unwrap();
@@ -276,7 +278,7 @@ async fn supercat_extract_symbols(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step3-cat")),
     ).await?.get(0).ok_or("relevant_files: cat message was empty.".to_string())?.clone();
-
+    
     messages.push(ChatMessage::new("user".to_string(), SUPERCAT_EXTRACT_SYMBOLS_PROMPT.replace("{USER_QUERY}", &user_query)));
 
     let n_choices = subchat_single(
@@ -292,6 +294,8 @@ async fn supercat_extract_symbols(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step3-cat-result")),
     ).await?;
+    
+    assert_eq!(n_choices.len(), 5);
 
     let mut symbols_result = vec![];
     for msg in n_choices.into_iter().map(|x|x.last().unwrap().clone()).filter(|x|x.role == "assistant") {
@@ -346,7 +350,7 @@ async fn supercat_decider(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step4-det")),
     ).await?.get(0).ok_or("relevant_files: supercat message was empty.".to_string())?.clone();
-
+    
     messages.push(ChatMessage::new("user".to_string(), SUPERCAT_DECIDER_PROMPT.replace("{USER_QUERY}", &user_query)));
 
     let n_choices = subchat_single(
@@ -362,6 +366,8 @@ async fn supercat_decider(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step4-det-result")),
     ).await?;
+    
+    assert_eq!(n_choices.len(), 5);
 
     let mut results_to_change = vec![];
     let mut results_context = vec![];
