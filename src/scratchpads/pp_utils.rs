@@ -94,7 +94,6 @@ pub fn color_with_gradient_type(msg: &ContextFile, lines: &mut Vec<FileLine>) {
             }.max(0.),
             _ => 0.0,
         };
-        info!("applying gradient type {:?} to line {:04}", msg.gradient_type, line_n);
         set_useful_for_line(line, usefulness, format!("gradient_type: {:?}", msg.gradient_type));
     }
 }
