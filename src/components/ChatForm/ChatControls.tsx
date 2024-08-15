@@ -160,7 +160,6 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
         <Flex
           ref={(x) => refs.setUseTools(x)}
           style={{ alignSelf: "flex-start" }}
-          id={"tour-tools"}
         >
           <ChatContolCheckBox
             name="use_tools"
@@ -182,22 +181,31 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           return null;
         }
         return (
-          <ChatContolCheckBox
-            key={key}
-            name={checkbox.name}
-            label={checkbox.label}
-            checked={checkbox.checked}
-            disabled={checkbox.disabled}
-            onCheckChange={(value) => onCheckedChange(key, value)}
-            infoText={checkbox.info?.text}
-            href={checkbox.info?.link}
-            linkText={checkbox.info?.linkText}
-            fileName={checkbox.fileName}
-          />
+          <Flex style={{ alignSelf: "flex-start" }} key={key}>
+            <ChatContolCheckBox
+              name={checkbox.name}
+              label={checkbox.label}
+              checked={checkbox.checked}
+              disabled={checkbox.disabled}
+              onCheckChange={(value) => onCheckedChange(key, value)}
+              infoText={checkbox.info?.text}
+              href={checkbox.info?.link}
+              linkText={checkbox.info?.linkText}
+              fileName={checkbox.fileName}
+            />
+          </Flex>
         );
       })}
-      {showControls && <CapsSelect {...selectProps} />}
-      {showControls && <PromptSelect {...promptsProps} />}
+      {showControls && (
+        <Flex style={{ alignSelf: "flex-start" }}>
+          <CapsSelect {...selectProps} />
+        </Flex>
+      )}
+      {showControls && (
+        <Flex style={{ alignSelf: "flex-start" }}>
+          <PromptSelect {...promptsProps} />
+        </Flex>
+      )}
     </Flex>
   );
 };
