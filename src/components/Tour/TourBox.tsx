@@ -1,4 +1,4 @@
-import { Flex } from "@radix-ui/themes";
+import { Flex, useThemeContext } from "@radix-ui/themes";
 import { CSSProperties, ReactNode } from "react";
 
 export type TourBubbleProps = {
@@ -7,12 +7,14 @@ export type TourBubbleProps = {
 };
 
 export function TourBox({ children, style }: TourBubbleProps) {
+  const appearance = useThemeContext().appearance;
+
   return (
     <Flex
       direction="column"
       style={{
         position: "relative",
-        backgroundColor: "white",
+        backgroundColor: appearance === "dark" ? "white" : "black",
         borderRadius: "5px",
         minHeight: "60px",
         justifyContent: "center",
