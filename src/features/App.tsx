@@ -20,7 +20,7 @@ import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
-import { Statistics } from "./statistics";
+import { Statistics } from "./Statistics";
 import { Welcome } from "../components/Tour";
 import {
   push,
