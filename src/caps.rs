@@ -59,8 +59,7 @@ fn default_code_completion_n_ctx() -> usize {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
     pub cloud_name: String,
-    #[serde(default)]
-    #[serde(alias = "default_endpoint_style")]
+    #[serde(default = "default_endpoint_style")]
     pub endpoint_style: String,
     #[serde(default)]
     #[serde(alias = "completion_endpoint")]
@@ -128,11 +127,17 @@ fn load_caps_from_buf(
     let r1_mb: Option<CodeAssistantCaps> = match serde_json::from_str(&buffer) {
         Ok(v) => v,
         Err(e) => {
-            match serde_yaml::from_str(&buffer) {
-                Ok(v) => v,
-                Err(e) => {
-                    r1_mb_error_text = format!("{}", e);
-                    None
+            // incorrect json
+            if buffer.trim_start().starts_with(&['{', '[']) {
+                r1_mb_error_text = format!("{}", e);
+                None
+            } else {
+                match serde_yaml::from_str(&buffer) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        r1_mb_error_text = format!("{}", e);
+                        None
+                    }
                 }
             }
         }
