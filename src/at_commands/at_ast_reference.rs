@@ -3,12 +3,11 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
-use crate::ast::structs::{AstQuerySearchResult, AstReferencesSearchResult};
+use crate::ast::structs::AstReferencesSearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::at_params::AtParamSymbolPathQuery;
 use crate::call_validation::{ContextFile, ContextEnum};
 use tracing::info;
-use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 
 

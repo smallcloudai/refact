@@ -204,9 +204,6 @@ async fn load_caps_buf_from_url(
     let mut caps_urls: Vec<String> = Vec::new();
     if cmdline.address_url == "Refact" {
         caps_urls.push("https://inference.smallcloud.ai/coding_assistant_caps.json".to_string());
-    } else if cmdline.address_url == "HF" {
-        buffer = HF_DEFAULT_CAPS.to_string();
-        caps_urls.push("<compiled-in-caps-hf>".to_string());
     } else {
         let base_url = Url::parse(&cmdline.address_url.clone()).map_err(|_| "failed to parse address url (1)".to_string())?;
         let joined_url = base_url.join(&CAPS_FILENAME).map_err(|_| "failed to parse address url (2)".to_string())?;
@@ -249,7 +246,7 @@ async fn load_caps_buf_from_url(
             }
         } else {
             Err(format!("cannot fetch caps, status={}", status))
-        }
+        };
     }
 
     let caps_url: String = match caps_urls.get(0) {
@@ -397,24 +394,6 @@ pub fn which_scratchpad_to_use<'a>(
         ));
     }
 }
-
-const HF_DEFAULT_CAPS: &str = r#"
-{
-    "cloud_name": "Hugging Face",
-    "endpoint_template": "https://api-inference.huggingface.co/models/$MODEL",
-    "endpoint_style": "hf",
-    "tokenizer_path_template": "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
-    "tokenizer_rewrite_path": {
-        "meta-llama/Llama-2-70b-chat-hf": "TheBloke/Llama-2-70B-fp16"
-    },
-    "code_completion_default_model": "bigcode/starcoder",
-    "code_completion_n_ctx": 2048,
-    "code_chat_default_model": "meta-llama/Llama-2-70b-chat-hf",
-    "telemetry_basic_dest": "https://staging.smallcloud.ai/v1/telemetry-basic",
-    "telemetry_corrected_snippets_dest": "https://www.smallcloud.ai/v1/feedback",
-    "running_models": ["bigcode/starcoder", "meta-llama/Llama-2-70b-chat-hf"]
-}
-"#;
 
 
 const SIMPLE_CAPS: &str = r#"

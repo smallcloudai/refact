@@ -1,0 +1,13 @@
+cloud_name: OpenAI API
+endpoint_style: "hf"
+
+chat_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
+chat_apikey: "$HF_TOKEN"
+chat_model: meta-llama/Llama-2-70b-chat-hf
+
+completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
+completion_model: bigcode/starcoder2-3b
+completion_apikey: "$HF_TOKEN"
+  
+tokenizer_rewrite_path:
+  meta-llama/Llama-2-70b-chat-hf: TheBloke/Llama-2-70B-fp16

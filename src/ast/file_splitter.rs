@@ -44,7 +44,6 @@ impl AstBasedFileSplitter {
         let doc_text: String = doc.text_as_string().unwrap();
         let doc_lines: Vec<String> = doc_text.split("\n").map(|x| x.to_string()).collect();
         let path = doc.path.clone();
-        let path_str = doc.path.to_str().unwrap();
 
         let mut parser = match get_ast_parser_by_filename(&path) {
             Ok(parser) => parser,
