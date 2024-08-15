@@ -65,6 +65,67 @@ export type ChatControlsProps = {
   setUseTools: (value: boolean) => void;
 };
 
+const ChatContolCheckBox: React.FC<{
+  name: string;
+  checked: boolean;
+  disabled?: boolean;
+  onCheckChange: (value: boolean | string) => void;
+  label: string;
+  fileName?: string;
+  infoText?: string;
+  href?: string;
+  linkText?: string;
+}> = ({
+  name,
+  checked,
+  disabled,
+  onCheckChange,
+  label,
+  fileName,
+  infoText,
+  href,
+  linkText,
+}) => {
+  return (
+    <Flex justify="between">
+      <Checkbox
+        size="1"
+        name={name}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckChange}
+      >
+        {" "}
+        {label}
+        <TruncateLeft>{fileName}</TruncateLeft>
+      </Checkbox>
+      {infoText && (
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <QuestionMarkCircledIcon />
+          </HoverCard.Trigger>
+          <HoverCard.Content maxWidth="240px" size="1">
+            <Flex direction="column" gap="4">
+              <Text as="div" size="1">
+                {infoText}
+              </Text>
+
+              {href && linkText && (
+                <Text size="1">
+                  Read more on our{" "}
+                  <Link size="1" href={href}>
+                    {linkText}
+                  </Link>
+                </Text>
+              )}
+            </Flex>
+          </HoverCard.Content>
+        </HoverCard.Root>
+      )}
+    </Flex>
+  );
+};
+
 export const ChatControls: React.FC<ChatControlsProps> = ({
   checkboxes,
   onCheckedChange,
@@ -85,38 +146,15 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
       className={classNames(styles.controls)}
     >
       {canUseTools && (
-        <Flex justify="between">
-          <Checkbox
-            name="use_tools"
-            checked={useTools}
-            size="1"
-            onCheckedChange={(value) => setUseTools(!!value)}
-          >
-            Allow model to use tools
-          </Checkbox>
-          <HoverCard.Root>
-            <HoverCard.Trigger>
-              <QuestionMarkCircledIcon />
-            </HoverCard.Trigger>
-            <HoverCard.Content maxWidth="240px" size="1">
-              <Flex direction="column" gap="4">
-                <Text as="div" size="1">
-                  Allow the model to call various functions to help you,
-                  especially search to gather more information.
-                </Text>
-                <Text size="1">
-                  Read more on our{" "}
-                  <Link
-                    size="1"
-                    href="https://docs.refact.ai/features/ai-chat/"
-                  >
-                    documentation
-                  </Link>
-                </Text>
-              </Flex>
-            </HoverCard.Content>
-          </HoverCard.Root>
-        </Flex>
+        <ChatContolCheckBox
+          name="use_tools"
+          checked={useTools}
+          onCheckChange={(value) => setUseTools(!!value)}
+          label="Allow model to use tools"
+          infoText="Turn on when asking about your codebase. When tuned on the model can autonomously call functions to gather the best context."
+          href="https://docs.refact.ai/features/ai-chat/"
+          linkText="documentation"
+        />
       )}
 
       {Object.entries(checkboxes).map(([key, checkbox]) => {
@@ -127,43 +165,18 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           return null;
         }
         return (
-          <Flex key={key} justify="between">
-            <Checkbox
-              size="1"
-              name={checkbox.name}
-              checked={checkbox.checked}
-              disabled={checkbox.disabled}
-              // title={checkbox.info}
-              onCheckedChange={(value) => onCheckedChange(key, value)}
-            >
-              {" "}
-              {checkbox.label}
-              <TruncateLeft>{checkbox.fileName}</TruncateLeft>
-            </Checkbox>
-            {checkbox.info && (
-              <HoverCard.Root>
-                <HoverCard.Trigger>
-                  <QuestionMarkCircledIcon />
-                </HoverCard.Trigger>
-                <HoverCard.Content maxWidth="240px" size="1">
-                  <Flex direction="column" gap="4">
-                    <Text as="div" size="1">
-                      {checkbox.info.text}
-                    </Text>
-
-                    {checkbox.info.link && checkbox.info.linkText && (
-                      <Text size="1">
-                        Read more on our{" "}
-                        <Link size="1" href={checkbox.info.link}>
-                          {checkbox.info.linkText}
-                        </Link>
-                      </Text>
-                    )}
-                  </Flex>
-                </HoverCard.Content>
-              </HoverCard.Root>
-            )}
-          </Flex>
+          <ChatContolCheckBox
+            key={key}
+            name={checkbox.name}
+            label={checkbox.label}
+            checked={checkbox.checked}
+            disabled={checkbox.disabled}
+            onCheckChange={(value) => onCheckedChange(key, value)}
+            infoText={checkbox.info?.text}
+            href={checkbox.info?.link}
+            linkText={checkbox.info?.linkText}
+            fileName={checkbox.fileName}
+          />
         );
       })}
       {showControls && <CapsSelect {...selectProps} />}

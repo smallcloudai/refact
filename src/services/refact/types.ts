@@ -4,7 +4,9 @@ export type ChatRole =
   | "context_file"
   | "system"
   | "tool"
-  | "context_memory";
+  | "context_memory"
+  | "diff"
+  | "plain_text";
 
 export type ChatContextFile = {
   file_name: string;
@@ -53,9 +55,16 @@ interface BaseMessage
     | undefined
     | null
     | ContextMemory[]
+    | DiffChunk[]
   > {
   0: ChatRole;
-  1: null | string | ChatContextFile[] | ToolResult | ContextMemory[];
+  1:
+    | null
+    | string
+    | ChatContextFile[]
+    | ToolResult
+    | ContextMemory[]
+    | DiffChunk[];
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
@@ -93,10 +102,31 @@ export interface MemoryMessage extends BaseMessage {
   1: ContextMemory[];
 }
 
+// TODO: There maybe sub-types for this
+export type DiffChunk = {
+  file_name: string;
+  file_action: string;
+  line1: number;
+  line2: number;
+  lines_remove: string;
+  lines_add: string;
+  // apply?: boolean;
+  // chunk_id?: number;
+};
+export interface DiffMessage extends BaseMessage {
+  0: "diff";
+  1: DiffChunk[];
+  2: string; // tool_call_id
+}
+
 export function isUserMessage(message: ChatMessage): message is UserMessage {
   return message[0] === "user";
 }
 
+export interface PlainTextMessage extends BaseMessage {
+  0: "plain_text";
+  1: string;
+}
 /**
  * {"content":"[{\"memo_id\":\"about_frog_class.txt\",\"memo_text\":\"The Frog class is used to test the project, located in tests folder.\\n\"},{\"memo_id\":\"answer_in_spanish.txt\",\"memo_text\":\"User actually preferes answers in Spanish, so do that.\\n\"}]","role":"context_memory","tool_call_id":"","tool_calls":null}
  */
@@ -107,7 +137,9 @@ export type ChatMessage =
   | ChatContextFileMessage
   | SystemMessage
   | ToolMessage
-  | MemoryMessage;
+  | MemoryMessage
+  | DiffMessage
+  | PlainTextMessage;
 
 export type ChatMessages = ChatMessage[];
 
@@ -127,6 +159,10 @@ export function isToolMessage(message: ChatMessage): message is ToolMessage {
   return message[0] === "tool";
 }
 
+export function isDiffMessage(message: ChatMessage): message is DiffMessage {
+  return message[0] === "diff";
+}
+
 export function isToolCallMessage(
   message: ChatMessage,
 ): message is ToolCallMessage {
@@ -135,6 +171,12 @@ export function isToolCallMessage(
   if (!tool_calls) return false;
   // TODO: check browser support of evey
   return tool_calls.every(isToolCall);
+}
+
+export function isPlainTextMessage(
+  message: ChatMessage,
+): message is PlainTextMessage {
+  return message[0] === "plain_text";
 }
 
 interface BaseDelta {
@@ -225,6 +267,33 @@ export function isToolResponse(json: unknown): json is ToolResponse {
   if (!("role" in json)) return false;
   if (!("tool_call_id" in json)) return false;
   return json.role === "tool";
+}
+
+export type DiffResponse = {
+  role: "diff";
+  content: string;
+  tool_call_id: string;
+};
+
+export function isDiffResponse(json: unknown): json is DiffResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("content" in json)) return false;
+  if (!("role" in json)) return false;
+  return json.role === "diff";
+}
+export interface PlainTextResponse {
+  role: "plain_text";
+  content: string;
+  tool_call_id: string;
+  tool_calls?: ToolCall[];
+}
+
+export function isPlainTextResponse(json: unknown): json is PlainTextResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("role" in json)) return false;
+  return json.role === "plain_text";
 }
 
 type ChatResponseChoice = {

@@ -1,46 +1,26 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
-
 import styles from "./Command.module.css";
-
-import SyntaxHighlighter from "react-syntax-highlighter";
-import { Code } from "@radix-ui/themes";
+import { type SyntaxHighlighterProps } from "react-syntax-highlighter";
 import classNames from "classnames";
 import type { Element } from "hast";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
+import {
+  MarkdownCodeBlock,
+  type MarkdownCodeBlockProps,
+} from "../Markdown/CodeBlock";
 
-const CodeBlock: React.FC<
-  React.JSX.IntrinsicElements["code"] & {
-    node?: Element | undefined;
-    style: Record<string, React.CSSProperties>;
-  }
-> = ({ children, className, color: _color, ref: _ref, node: _node, style }) => {
-  const match = /language-(\w+)/.exec(className ?? "");
-  const textWithOutTrailingNewLine = String(children).replace(/\n$/, "");
-
-  const language: string = match && match.length > 0 ? match[1] : "text";
-  return (
-    <SyntaxHighlighter
-      style={style}
-      className={className}
-      CodeTag={(props) => (
-        <Code {...props} size="2" className={classNames(styles.code)} />
-      )}
-      PreTag={(props) => <pre {...props} className={classNames(styles.pre)} />}
-      language={language}
-      // useInlineStyles={false}
-    >
-      {textWithOutTrailingNewLine.trim()}
-    </SyntaxHighlighter>
-  );
-};
+type CodeBlockProps = React.JSX.IntrinsicElements["code"] & {
+  node?: Element | undefined;
+  style?: MarkdownCodeBlockProps["style"];
+} & Pick<SyntaxHighlighterProps, "showLineNumbers" | "startingLineNumber">;
 
 export type MarkdownProps = {
   children: string;
   className?: string;
-  style?: Record<string, React.CSSProperties>;
-};
+} & Pick<CodeBlockProps, "showLineNumbers" | "startingLineNumber" | "style">;
+
 export const Markdown: React.FC<MarkdownProps> = ({
   children,
   className,
@@ -50,11 +30,11 @@ export const Markdown: React.FC<MarkdownProps> = ({
     <ReactMarkdown
       className={classNames(styles.markdown, className)}
       components={{
-        code(props) {
-          return <CodeBlock {...props} style={style} />;
+        code({ color: _color, ref: _ref, node: _node, ...props }) {
+          return <MarkdownCodeBlock {...props} style={style} />;
         },
-        p(props) {
-          return <CodeBlock {...props} style={style} />;
+        p({ color: _color, ref: _ref, node: _node, ...props }) {
+          return <MarkdownCodeBlock {...props} style={style} />;
         },
       }}
     >

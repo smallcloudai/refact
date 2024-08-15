@@ -1,4 +1,4 @@
-import React from "react";
+import React, { CSSProperties } from "react";
 import SyntaxHighlighter, {
   type SyntaxHighlighterProps,
 } from "react-syntax-highlighter";
@@ -18,23 +18,23 @@ export type MarkdownControls = {
   canPaste: boolean;
 };
 
-type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] &
-  Partial<MarkdownControls> & { node?: Element | undefined } & Pick<
+export type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] &
+  Partial<MarkdownControls> & {
+    node?: Element | undefined;
+    style?: Record<string, CSSProperties> | SyntaxHighlighterProps["style"];
+  } & Pick<
     SyntaxHighlighterProps,
-    "showLineNumbers" | "startingLineNumber"
+    "showLineNumbers" | "startingLineNumber" | "useInlineStyles"
   >;
 
-export const MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
+const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   children,
   className,
-  color: _color,
-  ref: _ref,
-  node: _node,
   onCopyClick,
   onNewFileClick,
   onPasteClick,
   canPaste,
-  ...rest
+  style = hljsStyle,
 }) => {
   const codeRef = React.useRef<HTMLElement | null>(null);
   const match = /language-(\w+)/.exec(className ?? "");
@@ -68,8 +68,7 @@ export const MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
     return (
       <Text size="2">
         <SyntaxHighlighter
-          {...rest}
-          style={hljsStyle}
+          style={style}
           className={className}
           PreTag={(props) => <PreTag {...props} {...preTagProps} />}
           CodeTag={(props) => (
@@ -89,11 +88,10 @@ export const MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   }
 
   return (
-    <Code
-      {...rest}
-      className={classNames(styles.code, styles.code_inline, className)}
-    >
+    <Code className={classNames(styles.code, styles.code_inline, className)}>
       {children}
     </Code>
   );
 };
+
+export const MarkdownCodeBlock = React.memo(_MarkdownCodeBlock);

@@ -6,6 +6,7 @@ import {
   type ToolCall,
   isAssistantMessage,
   isToolMessage,
+  isDiffMessage,
 } from "./types";
 import { ToolCommand } from "./tools";
 
@@ -53,6 +54,15 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
           tool_call_id: message[1].tool_call_id,
         },
       ]);
+    }
+
+    if (isDiffMessage(message)) {
+      const diff = {
+        role: message[0],
+        content: JSON.stringify(message[1]),
+        tool_call_id: message[2],
+      };
+      return acc.concat([diff]);
     }
 
     const content =

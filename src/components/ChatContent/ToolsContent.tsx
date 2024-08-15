@@ -1,38 +1,18 @@
 import React from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
-import { Container, Flex, Text, Box, Button } from "@radix-ui/themes";
+import { Container, Flex, Text, Box } from "@radix-ui/themes";
 import { ToolCall, ToolResult } from "../../events";
-import classNames from "classnames";
 import styles from "./ChatContent.module.css";
 import { CommandMarkdown, ResultMarkdown } from "../Command";
 import { Chevron } from "../Collapsible";
+import { Reveal } from "../Reveal";
 
 const Result: React.FC<{ children: string }> = ({ children }) => {
   const lines = children.split("\n");
-  const [open, setOpen] = React.useState(false);
-  if (lines.length < 9 || open)
-    return (
-      <ResultMarkdown className={styles.tool_result}>{children}</ResultMarkdown>
-    );
-  const toShow = lines.slice(0, 9).join("\n") + "\n ";
   return (
-    <Button
-      variant="ghost"
-      onClick={() => setOpen(true)}
-      asChild
-      className={styles.tool_result_button}
-    >
-      <Flex direction="column" position="relative" align="start">
-        <ResultMarkdown
-          className={classNames(styles.tool_result, styles.tool_result_hidden)}
-        >
-          {toShow}
-        </ResultMarkdown>
-        <Flex position="absolute" bottom="2" width="100%" justify="center">
-          Click for more
-        </Flex>
-      </Flex>
-    </Button>
+    <Reveal defaultOpen={lines.length < 9}>
+      <ResultMarkdown className={styles.tool_result}>{children}</ResultMarkdown>
+    </Reveal>
   );
 };
 
@@ -69,7 +49,7 @@ const ToolMessage: React.FC<{
   return (
     <Flex direction="column">
       <CommandMarkdown>{functionCalled}</CommandMarkdown>
-      <Result>{escapedBackticks}</Result>
+      <Result>{"```\n" + escapedBackticks + "\n```"}</Result>
     </Flex>
   );
 };
@@ -83,6 +63,12 @@ export const ToolContent: React.FC<{
   if (toolCalls.length === 0) return null;
 
   const toolNames = toolCalls.reduce<string[]>((acc, toolCall) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (toolCall === null) {
+      // eslint-disable-next-line no-console
+      console.error("toolCall is null");
+      return acc;
+    }
     if (!toolCall.function.name) return acc;
     if (acc.includes(toolCall.function.name)) return acc;
     return [...acc, toolCall.function.name];
@@ -94,13 +80,20 @@ export const ToolContent: React.FC<{
         <Collapsible.Trigger asChild>
           <Flex gap="2" align="center">
             <Text weight="light" size="1">
-              🔨 {toolNames.join(", ")}
+              🔨 {toolNames.join(", ")}{" "}
+              {toolCalls.length > 1 && "(" + toolCalls.length + ")"}
             </Text>
             <Chevron open={open} />
           </Flex>
         </Collapsible.Trigger>
         <Collapsible.Content>
           {toolCalls.map((toolCall) => {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (toolCall === null) {
+              // eslint-disable-next-line no-console
+              console.error("toolCall is null");
+              return;
+            }
             if (toolCall.id === undefined) return;
             const result = results[toolCall.id];
             const key = `${toolCall.id}-${toolCall.index}`;
