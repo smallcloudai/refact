@@ -30,44 +30,40 @@ pub async fn parse_diff_chunks_from_message(
     let maybe_ast_module = gcx.read().await.ast_module.clone();
     for chunk in chunks.iter() {
         let path = PathBuf::from(&chunk.file_name);
-        
-        // TODO: temporary
-        if chunk.file_action != "edit" {
-            continue;
-        }
-        let text_before = match read_file_from_disk(&path).await {
-            Ok(text) => text,
-            Err(err) => {
-                let message = format!("Error reading file: {:?}", err);
-                return Err(message);
+        let text_before = if chunk.file_action == "add" {
+            Rope::new()
+        } else {
+            match read_file_from_disk(&path).await {
+                Ok(text) => text,
+                Err(err) => {
+                    let message = format!("Error reading file: {:?}", err);
+                    return Err(message);
+                }
             }
         };
-
         let (results, outputs) = apply_diff_chunks_to_text(
             &text_before.to_string(),
             vec![(0usize, chunk)],
             vec![], 
             1
         );
-        
         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, vec![chunk.clone()]);
         let all_applied = outputs_unwrapped.iter().all(|x|x.applied);
-
+        let reason = outputs_unwrapped.first().unwrap().detail.clone();
         if !all_applied {
             warn!("Couldn't apply the generated diff, the following chunk is broken:\n{:?}", chunk);
-            return Err("Couldn't apply the generated diff, probably it's broken".to_string());
+            return Err(format!("Couldn't apply the generated diff, probably it's broken: {:?}", reason));
         }
-
         if results.is_empty() {
+            warn!("No apply results were found for the chunk:\n{:?}", chunk);
             return Err("No apply results were found".to_string());
         }
-        let res = results.get(0).unwrap();
-        if res.file_text.is_none() {
-            return Err("text_after is missing".to_string());
-        }
-        // TODO: handle add, remove, edit as well
-        let text_after = res.file_text.clone().unwrap();
-        
+        let text_after = if let Some(file_text) = results.first().map(|x| x.file_text.clone()).flatten() {
+            file_text
+        } else {
+            warn!("Diff application error: text_after is missing for the chunk:\n{:?}", chunk);
+            return Err("Diff application error: text_after is missing".to_string());
+        };
         match &maybe_ast_module {
             Some(ast_module) => {
                 let before_error_symbols = match parse_and_get_error_symbols(
