@@ -15,6 +15,8 @@ export type Config = {
     vecdb?: boolean;
     ast?: boolean;
   };
+  apiKey?: string;
+  addressURL?: string;
 };
 
 export interface UpdateConfigMessage {

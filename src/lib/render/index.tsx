@@ -8,6 +8,8 @@ import { Chat } from "./Chat";
 export { renderHistoryList } from "./RenderHistoryList";
 export { renderStatistic } from "./RenderStatistic";
 export { renderFIMDebug } from "./RenderFIMDebug";
+export { renderApp } from "./RenderApp";
+export { renderAppHost } from "./RenderAppHost";
 
 export function render(element: HTMLElement, config: Config) {
   ReactDOM.createRoot(element).render(<Chat {...config} />);
