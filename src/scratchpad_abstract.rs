@@ -16,6 +16,7 @@ pub trait ScratchpadAbstract: Send {
         &mut self,
         patch: &Value,
         exploration_tools: bool,
+        agentic_tools: bool,
     ) -> Result<(), String>;
 
     async fn prompt(

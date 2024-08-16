@@ -15,7 +15,6 @@ use crate::call_validation::{ChatMessage, ChatPost, ContextFile, ContextMemory, 
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::scratchpads::chat_generic::default_system_message_from_patch;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::pp_utils::HasRagResults;
 
@@ -87,10 +86,11 @@ impl ChatPassthrough {
 impl ScratchpadAbstract for ChatPassthrough {
     async fn apply_model_adaptation_patch(
         &mut self,
-        patch: &Value,
+        _patch: &Value,
         exploration_tools: bool,
+        agentic_tools: bool,
     ) -> Result<(), String> {
-        self.default_system_message = default_system_message_from_patch(&patch, self.global_context.clone(), exploration_tools).await;
+        self.default_system_message = crate::toolbox::toolbox_config::get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await;
         Ok(())
     }
 

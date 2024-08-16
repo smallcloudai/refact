@@ -1,18 +1,18 @@
 use std::sync::Arc;
-use std::collections::HashMap;
+// use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::sync::Mutex as AMutex;
-use async_trait::async_trait;
-use serde_json::Value;
+// use async_trait::async_trait;
+// use serde_json::Value;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_commands::at_file::{at_file_repair_candidates, get_project_paths, text_on_clip};
-use crate::at_tools::tools::Tool;
-use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
+use crate::at_commands::at_file::at_file_repair_candidates;
+// use crate::at_tools::tools::Tool;
+// use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 use crate::files_correction::correct_to_nearest_dir_path;
-use crate::files_in_workspace::get_file_text_from_memory_or_disk;
+// use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 
 
-pub struct AttFile;
+// pub struct AttFile;
 
 pub async fn real_file_path_candidate(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -60,53 +60,53 @@ pub async fn real_file_path_candidate(
     Ok(candidates.get(0).unwrap_or(&"".to_string()).clone())
 }
 
-#[async_trait]
-impl Tool for AttFile {
-    async fn tool_execute(
-        &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        tool_call_id: &String,
-        args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
-        let gcx = ccx.lock().await.global_context.clone();
-        let p = match args.get("path") {
-            Some(Value::String(s)) => s,
-            Some(v) => { return Err(format!("argument `path` is not a string: {:?}", v)) },
-            None => { return Err("argument `path` is missing".to_string()) }
-        };
+// #[async_trait]
+// impl Tool for AttFile {
+//     async fn tool_execute(
+//         &mut self,
+//         ccx: Arc<AMutex<AtCommandsContext>>,
+//         tool_call_id: &String,
+//         args: &HashMap<String, Value>,
+//     ) -> Result<Vec<ContextEnum>, String> {
+//         let gcx = ccx.lock().await.global_context.clone();
+//         let p = match args.get("path") {
+//             Some(Value::String(s)) => s,
+//             Some(v) => { return Err(format!("argument `path` is not a string: {:?}", v)) },
+//             None => { return Err("argument `path` is missing".to_string()) }
+//         };
 
-        let candidates = at_file_repair_candidates(ccx.clone(), p, false).await;
-        let candidate = real_file_path_candidate(ccx.clone(), p, &candidates, &get_project_paths(ccx.clone()).await, false).await?;
-        let file_text_mb = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(candidate.clone())).await;
+//         let candidates = at_file_repair_candidates(ccx.clone(), p, false).await;
+//         let candidate = real_file_path_candidate(ccx.clone(), p, &candidates, &get_project_paths(ccx.clone()).await, false).await?;
+//         let file_text_mb = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(candidate.clone())).await;
 
-        let mut results = vec![];
-        let content_on_clip = match file_text_mb {
-            Ok(file_content) => {
-                let res = ContextFile {
-                    file_name: candidate,
-                    file_content: file_content.clone(),
-                    line1: 0,
-                    line2: file_content.lines().count(),
-                    symbols: vec![],
-                    gradient_type: 0,
-                    usefulness: 100.0,
-                    is_body_important: false
-                };
-                let content = text_on_clip(&res, true);
-                results.push(ContextEnum::ContextFile(res));
-                content
-            }
-            Err(e) => e
-        };
+//         let mut results = vec![];
+//         let content_on_clip = match file_text_mb {
+//             Ok(file_content) => {
+//                 let res = ContextFile {
+//                     file_name: candidate,
+//                     file_content: file_content.clone(),
+//                     line1: 0,
+//                     line2: file_content.lines().count(),
+//                     symbols: vec![],
+//                     gradient_type: 0,
+//                     usefulness: 100.0,
+//                     is_body_important: false
+//                 };
+//                 let content = text_on_clip(&res, true);
+//                 results.push(ContextEnum::ContextFile(res));
+//                 content
+//             }
+//             Err(e) => e
+//         };
 
-        results.push(ContextEnum::ChatMessage(ChatMessage {
-            role: "tool".to_string(),
-            content: content_on_clip,
-            tool_calls: None,
-            tool_call_id: tool_call_id.clone(),
-            ..Default::default()
-        }));
+//         results.push(ContextEnum::ChatMessage(ChatMessage {
+//             role: "tool".to_string(),
+//             content: content_on_clip,
+//             tool_calls: None,
+//             tool_call_id: tool_call_id.clone(),
+//             ..Default::default()
+//         }));
 
-        Ok(results)
-    }
-}
+//         Ok(results)
+//     }
+// }

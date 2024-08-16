@@ -13,7 +13,6 @@ use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParamet
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::scratchpads::chat_generic::default_system_message_from_patch;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::pp_utils::HasRagResults;
@@ -63,10 +62,11 @@ impl ScratchpadAbstract for ChatLlama2 {
         &mut self,
         patch: &Value,
         exploration_tools: bool,
+        agentic_tools: bool,
     ) -> Result<(), String> {
         self.keyword_s = patch.get("s").and_then(|x| x.as_str()).unwrap_or("<s>").to_string();
         self.keyword_slash_s = patch.get("slash_s").and_then(|x| x.as_str()).unwrap_or("</s>").to_string();
-        self.default_system_message = default_system_message_from_patch(&patch, self.global_context.clone(), exploration_tools).await;
+        self.default_system_message = crate::toolbox::toolbox_config::get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await;
         self.t.eot = self.keyword_s.clone();
         info!("llama2 chat model adaptation patch applied {:?}", self.keyword_s);
         self.t.assert_one_token(&self.t.eot.as_str())?;

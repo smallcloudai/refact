@@ -27,7 +27,7 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
 {
     let tools_all =  HashMap::from([
         ("search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_search::AttSearch{}) as Box<dyn Tool + Send>))),
-        ("file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file::AttFile{}) as Box<dyn Tool + Send>))),
+        // ("file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file::AttFile{}) as Box<dyn Tool + Send>))),
         ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_definition::AttAstDefinition{}) as Box<dyn Tool + Send>))),
         ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_reference::AttAstReference{}) as Box<dyn Tool + Send>))),
         ("tree".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_tree::AttTree{}) as Box<dyn Tool + Send>))),
@@ -96,15 +96,6 @@ tools:
       - "query"
       - "scope"
 
-  - name: "file"
-    description: "Read the file, the same as cat shell command, but skeletonizes files that are too large. Doesn't work on dirs."
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "Either absolute path or preceeding_dirs/file.ext"
-    parameters_required:
-      - "path"
-
   - name: "definition"
     description: "Read definition of a symbol in the project using AST"
     parameters:
@@ -122,19 +113,6 @@ tools:
         description: "The exact name of a function, method, class, type alias. No spaces allowed."
     parameters_required:
       - "symbol"
-
-  - name: "patch"
-    description: "A tool designed to apply modifications to multiple source files efficiently. The tool can perform a range of actions: editing, renaming, creating, or deleting files. It is particularly useful for applying changes or updates across multiple files simultaneously, ensuring consistency"
-    parameters:
-      - name: "paths"
-        type: "string"
-        description: "A single string that specifies all file names to be edited, separated by commas. This string should contain absolute file paths"
-      - name: "todo"
-        type: "string"
-        description: "A detailed and precise description of the changes required for the specified files, which may include code examples"
-    parameters_required:
-      - "paths"
-      - "todo"
 
   - name: "tree"
     description: "Get a files tree with symbols for the project. Use it to get familiar with the project, file names and symbols"
@@ -170,24 +148,41 @@ tools:
     parameters:
       - name: "paths"
         type: "string"
-        description: "Comma separated file names or directories. e.g: dir1/file1.ext, dir2/file2.ext, dir3/dir4"
+        description: "Comma separated file names or directories: dir1/file1.ext, dir2/file2.ext, dir3/dir4"
       - name: "symbols"
         type: "string"
-        description: "Comma separated AST symbols e.g: MyClass, MyClass::method, my_function"
+        description: "Comma separated AST symbols: MyClass, MyClass::method, my_function"
       - name: "skeleton"
         type: "boolean"
         description: "if true, files will be skeletonized - mostly only AST symbols will be visible"
     parameters_required:
       - "paths"
 
+  # -- agentic tools below --
+
   - name: "locate"
+    agentic: true
     description: "Get a list of files that are relevant to solve a particular task."
     parameters:
       - name: "problem_statement"
         type: "string"
-        description: "Problem statement summary -- as detailed as possible."
+        description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words."
     parameters_required:
-      - "problem_statement" 
+      - "problem_statement"
+
+  - name: "patch"
+    agentic: true
+    description: "Make modifications to multiple source files. Can edit, rename, create, delete files. Calling this once for multiple files is better than multiple calls, because the changes will be consistent between the files."
+    parameters:
+      - name: "paths"
+        type: "string"
+        description: "If there is a good locate() call above, use 'pick_locate_json_above' magic string. If there isn't, use comma separated files list: dir/file1.ext, dir/file2.ext"
+      - name: "todo"
+        type: "string"
+        description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words."
+    parameters_required:
+      - "paths"
+      - "todo"
 "####;
 
 #[allow(dead_code)]
@@ -250,13 +245,15 @@ const NOT_READY_TOOLS: &str = r####"
 
 
 #[derive(Deserialize)]
-pub struct DictDeserialize {
+pub struct ToolDictDeserialize {
     pub tools: Vec<ToolDict>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ToolDict {
     pub name: String,
+    #[serde(default)]
+    pub agentic: bool,
     pub description: String,
     pub parameters: Vec<AtParamDict>,
     pub parameters_required: Vec<String>,
@@ -272,6 +269,7 @@ pub struct AtParamDict {
 
 pub fn make_openai_tool_value(
     name: String,
+    agentic: bool,
     description: String,
     parameters_required: Vec<String>,
     parameters: Vec<AtParamDict>,
@@ -290,6 +288,7 @@ pub fn make_openai_tool_value(
             "type": "function",
             "function": {
                 "name": name,
+                "agentic": agentic,
                 "description": description,
                 "parameters": {
                     "type": "object",
@@ -305,6 +304,7 @@ impl ToolDict {
     pub fn into_openai_style(self) -> Value {
         make_openai_tool_value(
             self.name,
+            self.agentic,
             self.description,
             self.parameters_required,
             self.parameters,
@@ -313,7 +313,7 @@ impl ToolDict {
 }
 
 pub fn tools_compiled_in(turned_on: &Vec<String>) -> Result<Vec<ToolDict>, String> {
-    let at_dict: DictDeserialize = serde_yaml::from_str(TOOLS)
+    let at_dict: ToolDictDeserialize = serde_yaml::from_str(TOOLS)
         .map_err(|e|format!("Failed to parse TOOLS: {}", e))?;
     Ok(at_dict.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>())
 }

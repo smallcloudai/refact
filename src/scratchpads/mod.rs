@@ -47,7 +47,7 @@ pub async fn create_code_completion_scratchpad(
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }
-    result.apply_model_adaptation_patch(scratchpad_patch, false).await?;
+    result.apply_model_adaptation_patch(scratchpad_patch, false, false).await?;
     verify_has_send(&result);
     Ok(result)
 }
@@ -74,6 +74,7 @@ pub async fn create_chat_scratchpad(
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }
     let mut exploration_tools: bool = false;
+    let mut agentic_tools: bool = false;
     if post.tools.is_some() {
         for t in post.tools.as_ref().unwrap() {
             let tobj = t.as_object().unwrap();
@@ -82,11 +83,14 @@ pub async fn create_chat_scratchpad(
                     if name.as_str() == Some("definition") {
                         exploration_tools = true;
                     }
+                    if name.as_str() == Some("patch") {
+                        agentic_tools = true;
+                    }
                 }
             }
         }
     }
-    result.apply_model_adaptation_patch(scratchpad_patch, exploration_tools).await?;
+    result.apply_model_adaptation_patch(scratchpad_patch, exploration_tools, agentic_tools).await?;
     verify_has_send(&result);
     Ok(result)
 }
