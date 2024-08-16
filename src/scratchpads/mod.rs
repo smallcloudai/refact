@@ -2,7 +2,6 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock as ARwLock;
 use tokenizers::Tokenizer;
-use crate::ast::ast_module::AstModule;
 
 pub mod completion_single_file_fim;
 pub mod chat_generic;
@@ -14,6 +13,7 @@ pub mod pp_utils;
 pub mod pp_context_files;
 pub mod pp_plain_text;
 
+use crate::ast::ast_module::AstModule;
 use crate::call_validation::CodeCompletionPost;
 use crate::call_validation::ChatPost;
 use crate::global_context::GlobalContext;
