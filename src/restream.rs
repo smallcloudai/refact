@@ -1,5 +1,6 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock as StdRwLock};
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 use tokio::sync::mpsc;
 use async_stream::stream;
 use futures::StreamExt;
@@ -18,25 +19,101 @@ use crate::telemetry::telemetry_structs;
 use crate::at_commands::at_commands::AtCommandsContext;
 
 
+async fn _get_endpoint_and_stuff_from_model_name(
+    gcx: Arc<ARwLock<crate::global_context::GlobalContext>>,
+    caps: Arc<StdRwLock<crate::caps::CodeAssistantCaps>>,
+    model_name: String,
+) -> (String, String, String, String)
+{
+    let (
+        custom_apikey,
+        mut endpoint_style,
+        custom_endpoint_style,
+        mut endpoint_template,
+        custom_endpoint_template,
+        endpoint_chat_passthrough
+    ) = {
+        let caps_locked = caps.read().unwrap();
+        let is_chat = caps_locked.code_chat_models.contains_key(&model_name);
+        if is_chat {
+            (
+                caps_locked.chat_apikey.clone(),
+                caps_locked.endpoint_style.clone(),      // abstract
+                caps_locked.chat_endpoint_style.clone(), // chat-specific
+                caps_locked.endpoint_template.clone(),   // abstract
+                caps_locked.chat_endpoint.clone(),       // chat-specific
+                caps_locked.endpoint_chat_passthrough.clone(),
+            )
+        } else {
+            (
+                caps_locked.completion_apikey.clone(),
+                caps_locked.endpoint_style.clone(),             // abstract
+                caps_locked.completion_endpoint_style.clone(),  // completion-specific
+                caps_locked.endpoint_template.clone(),          // abstract
+                caps_locked.completion_endpoint.clone(),        // completion-specific
+                "".to_string(),
+            )
+        }
+    };
+    let api_key = {
+        let gcx_locked = gcx.write().await;
+        if custom_apikey.is_empty() {
+            gcx_locked.cmdline.api_key.clone()
+        } else if custom_apikey.starts_with("$") {
+            let env_var_name = &custom_apikey[1..];
+            match std::env::var(env_var_name) {
+                Ok(env_value) => env_value,
+                Err(e) => {
+                    error!("Tried to read API key from env var {}, but failed: {}", env_var_name, e);
+                    gcx_locked.cmdline.api_key.clone()
+                }
+            }
+        } else {
+            custom_apikey
+        }
+    };
+    if !custom_endpoint_style.is_empty() {
+        endpoint_style = custom_endpoint_style;
+    }
+    if !custom_endpoint_template.is_empty() {
+        endpoint_template = custom_endpoint_template;
+    }
+    return (
+        api_key,
+        endpoint_template,
+        endpoint_style,
+        endpoint_chat_passthrough,
+    )
+}
+
 pub async fn scratchpad_interaction_not_stream_json(
     ccx: Arc<AMutex<AtCommandsContext>>,
     scratchpad: &mut Box<dyn ScratchpadAbstract>,
     scope: String,
     prompt: &str,
     model_name: String,
-    client: reqwest::Client,
-    bearer: String,
     parameters: &SamplingParameters,  // includes n
     only_deterministic_messages: bool,
 ) -> Result<serde_json::Value, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let gcx = ccx.lock().await.global_context.clone();
-    let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage, slowdown_arc) = {
-        let cx = gcx.write().await;
-        let caps = cx.caps.clone().unwrap();
-        let caps_locked = caps.read().unwrap();
-        (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), caps_locked.endpoint_chat_passthrough.clone(), cx.telemetry.clone(), cx.http_client_slowdown.clone())
+    let (client, caps, tele_storage, slowdown_arc) = {
+        let gcx_locked = gcx.write().await;
+        let caps = gcx_locked.caps.clone().unwrap();
+        (
+            gcx_locked.http_client.clone(),
+            caps,
+            gcx_locked.telemetry.clone(),
+            gcx_locked.http_client_slowdown.clone()
+        )
     };
+    let (
+        bearer,
+        endpoint_template,
+        endpoint_style,
+        endpoint_chat_passthrough,
+    ) = _get_endpoint_and_stuff_from_model_name(gcx.clone(), caps.clone(), model_name.clone()).await;
+
     let mut save_url: String = String::new();
     let _ = slowdown_arc.acquire().await;
     let mut model_says = if only_deterministic_messages {
@@ -144,8 +221,6 @@ pub async fn scratchpad_interaction_not_stream(
     scratchpad: &mut Box<dyn ScratchpadAbstract>,
     scope: String,
     model_name: String,
-    client: reqwest::Client,
-    bearer: String,
     parameters: &mut SamplingParameters,
     only_deterministic_messages: bool,
 ) -> Result<Response<Body>, ScratchError> {
@@ -165,8 +240,6 @@ pub async fn scratchpad_interaction_not_stream(
         scope,
         prompt.as_str(),
         model_name,
-        client,
-        bearer,
         parameters,
         only_deterministic_messages,
     ).await?;
@@ -188,8 +261,6 @@ pub async fn scratchpad_interaction_stream(
     mut scratchpad: Box<dyn ScratchpadAbstract>,
     scope: String,
     mut model_name: String,
-    client: reqwest::Client,
-    bearer: String,
     parameters: SamplingParameters,
     only_deterministic_messages: bool,
 ) -> Result<Response<Body>, ScratchError> {
@@ -200,12 +271,22 @@ pub async fn scratchpad_interaction_stream(
         let my_ccx = ccx.clone();
 
         let gcx = ccx.lock().await.global_context.clone();
-        let (endpoint_style, endpoint_template, endpoint_chat_passthrough, tele_storage, slowdown_arc) = {
-            let cx = gcx.write().await;
-            let caps = cx.caps.clone().unwrap();
-            let caps_locked = caps.read().unwrap();
-            (caps_locked.endpoint_style.clone(), caps_locked.endpoint_template.clone(), caps_locked.endpoint_chat_passthrough.clone(), cx.telemetry.clone(), cx.http_client_slowdown.clone())
+        let (client, caps, tele_storage, slowdown_arc) = {
+            let gcx_locked = gcx.write().await;
+            let caps = gcx_locked.caps.clone().unwrap();
+            (
+                gcx_locked.http_client.clone(),
+                caps,
+                gcx_locked.telemetry.clone(),
+                gcx_locked.http_client_slowdown.clone()
+            )
         };
+        let (
+            bearer,
+            endpoint_template,
+            endpoint_style,
+            endpoint_chat_passthrough,
+        ) = _get_endpoint_and_stuff_from_model_name(gcx.clone(), caps.clone(), model_name.clone()).await;
 
         let t0 = std::time::Instant::now();
         let mut prompt = String::new();

@@ -7,7 +7,7 @@ use std::io::Read;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use serde_json::Value;
-use tokio::sync::RwLock;
+use tokio::sync::RwLock as ARwLock;
 use url::Url;
 use crate::global_context::GlobalContext;
 use crate::known_models::KNOWN_MODELS;
@@ -60,11 +60,27 @@ fn default_code_completion_n_ctx() -> usize {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
     pub cloud_name: String,
+
     #[serde(default = "default_endpoint_style")]
     pub endpoint_style: String,
     #[serde(default)]
-    #[serde(alias = "completion_endpoint")]
+    pub chat_endpoint_style: String,
+    #[serde(default)]
+    pub completion_endpoint_style: String,
+
+    #[serde(default)]
     pub endpoint_template: String,
+    #[serde(default)]
+    pub completion_endpoint: String,
+    #[serde(default)]
+    pub chat_endpoint: String,
+
+    // default api key is in the command line
+    #[serde(default)]
+    pub completion_apikey: String,
+    #[serde(default)]
+    pub chat_apikey: String,
+
     #[serde(default)]
     #[serde(alias = "chat_endpoint")]
     pub endpoint_chat_passthrough: String,
@@ -109,14 +125,9 @@ pub struct CodeAssistantCaps {
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
     #[serde(default)]
     pub code_chat_default_system_prompt: String,
+
     #[serde(default)]
-    pub customization: String,
-    #[serde(default)]
-    #[serde(alias = "completion_apikey")]
-    pub custom_completion_apikey: String,
-    #[serde(default)]
-    #[serde(alias = "chat_apikey")]
-    pub custom_chat_apikey: String,
+    pub customization: String,  // on self-hosting server, allows to customize toolbox & friends for all engineers
 }
 
 fn load_caps_from_buf(
@@ -187,7 +198,7 @@ fn load_caps_from_buf(
 
 async fn load_caps_buf_from_file(
     cmdline: crate::global_context::CommandLine,
-    _global_context: Arc<RwLock<GlobalContext>>,
+    _global_context: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(String, String), String> {
     let caps_url = cmdline.address_url.clone();
     let mut buffer = String::new();
@@ -198,7 +209,7 @@ async fn load_caps_buf_from_file(
 
 async fn load_caps_buf_from_url(
     cmdline: crate::global_context::CommandLine,
-    global_context: Arc<RwLock<GlobalContext>>,
+    global_context: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(String, String), String> {
     let mut buffer = String::new();
     let mut caps_urls: Vec<String> = Vec::new();
@@ -259,7 +270,7 @@ async fn load_caps_buf_from_url(
 
 pub async fn load_caps(
     cmdline: crate::global_context::CommandLine,
-    global_context: Arc<RwLock<GlobalContext>>,
+    global_context: Arc<ARwLock<GlobalContext>>,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let mut caps_url = cmdline.address_url.clone();
     let buf: String;

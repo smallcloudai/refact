@@ -70,9 +70,9 @@ pub async fn handle_v1_code_completion(
         code_completion_post.scratchpad = scratchpad_name.clone();
     }
     code_completion_post.parameters.temperature = Some(code_completion_post.parameters.temperature.unwrap_or(0.2));
-    let (client1, api_key, cache_arc, tele_storage) = {
-        let cx_locked = gcx.write().await;
-        (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone(), cx_locked.completions_cache.clone(), cx_locked.telemetry.clone())
+    let (cache_arc, tele_storage) = {
+        let gcx_locked = gcx.write().await;
+        (gcx_locked.completions_cache.clone(), gcx_locked.telemetry.clone())
     };
     if !code_completion_post.no_cache {
         let cache_key = completion_cache::cache_key_from_post(&code_completion_post);
@@ -109,9 +109,9 @@ pub async fn handle_v1_code_completion(
         &vec![]
     ).await));
     if !code_completion_post.stream {
-        crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, "completion".to_string(), model_name, client1, api_key, &mut code_completion_post.parameters, false).await
+        crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, "completion".to_string(), model_name, &mut code_completion_post.parameters, false).await
     } else {
-        crate::restream::scratchpad_interaction_stream(ccx.clone(), scratchpad, "completion-stream".to_string(), model_name, client1, api_key, code_completion_post.parameters.clone(), false).await
+        crate::restream::scratchpad_interaction_stream(ccx.clone(), scratchpad, "completion-stream".to_string(), model_name, code_completion_post.parameters.clone(), false).await
     }
 }
 

@@ -2,7 +2,6 @@ use std::sync::Arc;
 use std::collections::HashSet;
 use std::fs::{self};
 use textwrap::wrap;
-use reqwest::Client;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use serde_json::Value;
@@ -94,8 +93,6 @@ async fn chat_interaction_non_stream(
     mut spad: Box<dyn ScratchpadAbstract>,
     prompt: &String,
     chat_post: &ChatPost,
-    client: Client,
-    api_key: &String,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
     let t1 = std::time::Instant::now();
     let j = crate::restream::scratchpad_interaction_not_stream_json(
@@ -104,8 +101,6 @@ async fn chat_interaction_non_stream(
         "chat".to_string(),
         prompt,
         chat_post.model.clone(),
-        client,
-        api_key.clone(),
         &chat_post.parameters,   // careful: includes n
         chat_post.only_deterministic_messages,
     ).await.map_err(|e| {
@@ -188,16 +183,7 @@ async fn chat_interaction(
     mut spad: Box<dyn ScratchpadAbstract>,
     chat_post: &mut ChatPost,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
-    let (gcx, _n_ctx) = {
-        let ccx_locked= ccx.lock().await;
-        (ccx_locked.global_context.clone(), ccx_locked.n_ctx)
-    };
-    let (client, api_key) = {
-        let cx_locked = gcx.write().await;
-        (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
-    };
     let prompt = spad.prompt(ccx.clone(), &mut chat_post.parameters).await?;
-
     let stream = chat_post.stream.unwrap_or(false);
     return if stream {
         todo!();
@@ -207,8 +193,6 @@ async fn chat_interaction(
             spad,
             &prompt,
             chat_post,
-            client,
-            &api_key,
         ).await?)
     }
 }
