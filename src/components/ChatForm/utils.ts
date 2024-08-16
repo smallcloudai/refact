@@ -1,10 +1,10 @@
 import { ChatContextFile } from "../../services/refact";
 import { FileInfo } from "../../features/Chat/activeFile";
-import { Checkbox } from "./ChatControls";
+import type { Checkboxes } from "./useCheckBoxes";
 
 export function addCheckboxValuesToInput(
   input: string,
-  checkboxes: Record<string, Checkbox>,
+  checkboxes: Checkboxes,
   _vecdb: boolean,
 ) {
   // prompts go to start
@@ -17,9 +17,9 @@ export function addCheckboxValuesToInput(
     result = `${checkboxes.selected_lines.value ?? ""}\n` + result;
   }
 
-  if (checkboxes.use_memory.checked && checkboxes.use_memory.hide !== true) {
-    result = `@local-notes-to-self\n` + result;
-  }
+  // if (checkboxes.use_memory.checked && checkboxes.use_memory.hide !== true) {
+  //   result = `@local-notes-to-self\n` + result;
+  // }
 
   // if (
   //   checkboxes.lookup_symbols.checked &&

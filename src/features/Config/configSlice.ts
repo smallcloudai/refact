@@ -66,3 +66,7 @@ export const selectThemeMode = (state: RootState) =>
 
 export const selectConfig = (state: RootState) => state.config;
 export const selectLspPort = (state: RootState) => state.config.lspPort;
+export const selectVecdb = (state: RootState) =>
+  state.config.features?.vecdb ?? false;
+export const selectAst = (state: RootState) =>
+  state.config.features?.ast ?? false;

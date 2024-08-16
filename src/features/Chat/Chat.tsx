@@ -119,6 +119,7 @@ export const Chat: React.FC<ChatProps> = ({
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
 
+  // make this a hook ?
   const canUseTools = useMemo(() => {
     if (!capsRequest.data) return false;
     if (!toolsRequest.data) return false;
