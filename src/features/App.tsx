@@ -19,7 +19,7 @@ import { store, persistor, RootState } from "../app/store";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
-import { useEventBusForApp } from "../hooks/useEventBusForApp";
+import { useEventBusForWeb } from "../hooks/useEventBusForWeb";
 import { Statistics } from "./Statistics";
 import { Welcome } from "../components/Tour";
 import {
@@ -32,6 +32,7 @@ import { TourProvider, restart } from "./Tour";
 import { Tour } from "../components/Tour";
 import { DropdownNavigationOptions } from "../components/Sidebar/Footer";
 import { TourEnd } from "../components/Tour/TourEnd";
+import { useEventBusForApp } from "../hooks/useEventBusForApp";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -49,6 +50,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const { openHotKeys, openSettings } = useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
+  useEventBusForWeb();
   useEventBusForApp();
 
   const postMessage = usePostMessage();
