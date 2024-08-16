@@ -286,6 +286,7 @@ const chatAskQuestionThunk = createAppAsyncThunk<
       return reader.read().then(function pump({ done, value }): Promise<void> {
         if (done) return Promise.resolve();
         if (thunkAPI.signal.aborted) {
+          console.log("Aborted");
           return Promise.resolve();
         }
 
@@ -472,12 +473,6 @@ export const useSendChatRequest = () => {
       abortRef.current();
     }
   };
-
-  useEffect(() => {
-    if (!streaming && abortRef.current) {
-      abortRef.current = null;
-    }
-  }, [streaming]);
 
   return {
     submit,
