@@ -87,7 +87,13 @@ impl Tool for ToolPatch {
                 return Err(format!("Cannot parse input arguments: {err}. Try to call `patch` one more time with valid arguments"));
             }
         };
-        let answers = match execute_chat_model(ccx.clone(), tool_call_id, &args).await {
+        let mut usage = ChatUsage{..Default::default()};
+        let answers = match execute_chat_model(
+            ccx.clone(),
+            tool_call_id,
+            &args,
+            &mut usage,
+        ).await {
             Ok(res) => res,
             Err(err) => {
                 return Err(format!("Patch model execution problem: {err}. Try to call `patch` one more time"));
@@ -108,7 +114,7 @@ impl Tool for ToolPatch {
                 content: chunks,
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
-                usage: None  // TODO: add to subchat
+                usage: Some(usage),
             })
         ])
     }

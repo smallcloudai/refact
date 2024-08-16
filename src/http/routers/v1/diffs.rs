@@ -90,9 +90,9 @@ async fn write_results_on_disk(results: Vec<ApplyDiffResult>) -> Result<Vec<Docu
             Err(format!("File `{}` does not exist", &file_path_rename))
         }
     }
-    
+
     let mut docs2index = vec![];
-    
+
     for r in results {
         if r.file_name_edit.is_some() && r.file_text.is_some() {
             write_to_file(&r.file_name_edit.clone().unwrap(), &r.file_text.clone().unwrap()).await?;
@@ -140,7 +140,7 @@ async fn sync_documents_ast_vecdb(global_context: Arc<ARwLock<GlobalContext>>, d
             });
         }
     }
-    
+
     let vecdb_enqueued = if let Some(vservice) = {
         let cx = global_context.write().await;
         let vec_db_guard = cx.vec_db.lock().await;
@@ -151,14 +151,14 @@ async fn sync_documents_ast_vecdb(global_context: Arc<ARwLock<GlobalContext>>, d
     } else {
         false
     };
-    
+
     if vecdb_enqueued {
         let vecdb = global_context.write().await.vec_db.clone();
-        memories_block_until_vectorized(vecdb).await.map_err(|e| 
+        memories_block_until_vectorized(vecdb).await.map_err(|e|
             ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
         )?;
     }
-    
+
     Ok(())
 }
 
@@ -181,13 +181,13 @@ pub async fn handle_v1_diff_apply(
     let (results, outputs) = read_files_n_apply_diff_chunks(&post.chunks, &applied_state, &desired_state, MAX_FUZZY_N);
 
     let docs2index = write_results_on_disk(results.clone()).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
-    
+
     sync_documents_ast_vecdb(global_context.clone(), docs2index).await?;
-         
+
     let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, post.chunks);
-    
+
     global_context.write().await.documents_state.diffs_applied_state.insert(post.id, outputs_unwrapped.iter().map(|x|x.applied == true).collect::<Vec<_>>());
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
@@ -386,7 +386,7 @@ class Frog:
         write_file(FILE2_FN, FILE2);
         let (_, outputs) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
-        
+
         assert_eq!(outputs_unwrapped.iter().map(|x|x.applied).collect::<Vec<_>>(), vec![true, true]);
     }
 
@@ -452,11 +452,11 @@ class AnotherFrog:
         write_file(FILE3_FN, FILE3);
         let (results, outputs) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
-        
-        assert_eq!(outputs_unwrapped.into_iter().map(|(x)|x.applied).collect::<Vec<_>>(), vec![true, true]);
-        
+
+        assert_eq!(outputs_unwrapped.into_iter().map(|x|x.applied).collect::<Vec<_>>(), vec![true, true]);
+
         let changed_text = results[0].clone().file_text.unwrap();
-        
+
         assert_eq!(changed_text.as_str(), file3_must_be);
         write_file(FILE3_FN, changed_text.as_str());
 
@@ -464,7 +464,7 @@ class AnotherFrog:
         let desired_state = vec![false, false];
         let (results, outputs) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
-        
+
         assert_eq!(outputs_unwrapped.iter().map(|x|x.applied).collect::<Vec<bool>>(), vec![false, false]);
         assert_eq!(outputs_unwrapped.iter().map(|x|x.success).collect::<Vec<bool>>(), vec![true, true]);
 

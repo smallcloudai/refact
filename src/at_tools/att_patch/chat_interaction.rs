@@ -13,7 +13,7 @@ use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_trav
 use crate::at_tools::att_patch::tool::{DefaultToolPatch, DEFAULT_MODEL_NAME, MAX_NEW_TOKENS, N_CHOICES, TEMPERATURE};
 use crate::at_tools::subchat::subchat_single;
 use crate::cached_tokenizers;
-use crate::call_validation::ChatMessage;
+use crate::call_validation::{ChatMessage, ChatUsage};
 use crate::scratchpads::pp_utils::count_tokens;
 
 
@@ -188,6 +188,7 @@ pub async fn execute_chat_model(
     ccx: Arc<AMutex<AtCommandsContext>>,
     tool_call_id: &String,
     args: &PatchArguments,
+    usage: &mut ChatUsage,
 ) -> Result<Vec<String>, String> {
     let messages = make_chat_history(ccx.clone(), args).await?;
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
@@ -201,6 +202,7 @@ pub async fn execute_chat_model(
         Some(TEMPERATURE),
         Some(MAX_NEW_TOKENS),
         N_CHOICES,
+        Some(usage),
         Some(format!("{log_prefix}-patch")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-patch")),
