@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
@@ -420,8 +421,9 @@ async fn supercat_decider(
         results_context.push(context);
     }
 
-    let file_to_change = reduce_by_counter(results_to_change.into_iter(), 1).get(0).ok_or("relevant_files: no top file to change (supercat). Try again".to_string())?.clone();
-    let files_context = reduce_by_counter(results_context.into_iter().flatten(), 5);
+    let file_to_change = reduce_by_counter(results_to_change.into_iter().filter(|x|PathBuf::from(x).is_file()), 1)
+        .get(0).ok_or("relevant_files: no top file to change (supercat). Try again".to_string())?.clone();
+    let files_context = reduce_by_counter(results_context.into_iter().flatten().filter(|x|PathBuf::from(x).is_file()), 5);
 
     let mut res = vec![];
     res.push(SuperCatResultItem{
@@ -478,6 +480,7 @@ async fn locate_relevant_files(
     ).await?;
 
     symbols.extend(extra_symbols);
+    let symbols = symbols.into_iter().collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
 
     let file_results = supercat_decider(
         ccx.clone(),
