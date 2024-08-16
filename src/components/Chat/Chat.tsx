@@ -134,9 +134,9 @@ export const Chat: React.FC<ChatProps> = ({
   const onSetChatModel = useCallback(
     (value: string) => {
       const model = caps.default_cap === value ? "" : value;
-      dispatch(setChatModel({ id: chatId, model }));
+      dispatch(setChatModel(model));
     },
-    [caps.default_cap, chatId, dispatch],
+    [caps.default_cap, dispatch],
   );
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));

@@ -101,9 +101,7 @@ export const doneStreaming = createAction<PayloadWIthId>(
   "chatThread/doneStreaming",
 );
 
-export const setChatModel = createAction<PayloadWIthId & { model: string }>(
-  "chatThread/setChatModel",
-);
+export const setChatModel = createAction<string>("chatThread/setChatModel");
 export const getSelectedChatModel = (state: RootState) =>
   state.chat.thread.model;
 
@@ -146,8 +144,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setChatModel, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
-    state.thread.model = action.payload.model;
+    state.thread.model = action.payload;
   });
 
   builder.addCase(setSystemPrompt, (state, action) => {
