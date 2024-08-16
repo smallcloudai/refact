@@ -193,7 +193,7 @@ export const Chat: React.FC<ChatProps> = ({
         textarea.focus();
       }
     },
-    [chatId, dispatch],
+    [dispatch],
   );
 
   return (
