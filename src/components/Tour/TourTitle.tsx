@@ -17,12 +17,16 @@ export function TourTitle({ title }: TourTitle) {
         style={{ marginTop: 5, marginBottom: 5 }}
       />
       <Text
+        size="2"
+        m="4"
+        mt="0"
+        ml="2"
         style={{
           color: appearance == "dark" ? "black" : "white",
-          fontSize: 14,
-          margin: 4,
-          marginTop: 0,
-          marginLeft: 8,
+          // fontSize: 14,
+          // margin: 4,
+          // marginTop: 0,
+          // marginLeft: 8,
           paddingRight: 30,
           alignSelf: "center",
         }}
