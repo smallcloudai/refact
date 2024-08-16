@@ -15,10 +15,11 @@ import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import {
   getSelectedSystemPrompt,
   setSystemPrompt,
-  setUseTools,
+  setToolUse,
   selectMessages,
   selectModel,
-  selectUseTools,
+  selectToolUse,
+  ToolUse,
 } from "./chatThread";
 
 export type ChatProps = {
@@ -65,8 +66,8 @@ export const Chat: React.FC<ChatProps> = ({
   const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
     dispatch(setSystemPrompt(prompt));
 
-  const useTools = useAppSelector(selectUseTools);
-  const onSetUseTools = (value: boolean) => dispatch(setUseTools(value));
+  const useTools = useAppSelector(selectToolUse);
+  const onSetToolUse = (value: ToolUse) => dispatch(setToolUse(value));
   const messages = useAppSelector(selectMessages);
 
   // TODO: don't make this request if there are no caps
@@ -191,8 +192,8 @@ export const Chat: React.FC<ChatProps> = ({
       selectedSystemPrompt={selectedSystemPrompt}
       requestPreviewFiles={() => ({})}
       canUseTools={canUseTools}
-      setUseTools={onSetUseTools}
-      useTools={useTools}
+      toolUse={useTools}
+      setToolUse={onSetToolUse}
       // openSettings={openSettings}
     />
   );

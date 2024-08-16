@@ -36,6 +36,8 @@ export type ChatThread = {
   updatedAt?: string;
 };
 
+export type ToolUse = "quick" | "explore" | "agent";
+
 export type Chat = {
   streaming: boolean;
   thread: ChatThread;
@@ -45,7 +47,7 @@ export type Chat = {
   waiting_for_response: boolean;
   cache: Record<string, ChatThread>;
   system_prompt: SystemPrompts;
-  use_tools: boolean;
+  tool_use: ToolUse;
   send_immediately: boolean;
 };
 
@@ -69,7 +71,7 @@ const createInitialState = (): Chat => {
     waiting_for_response: false,
     cache: {},
     system_prompt: {},
-    use_tools: true,
+    tool_use: "agent",
     send_immediately: false,
   };
 };
@@ -128,11 +130,11 @@ export const clearChatError = createAction<PayloadWIthId>(
 
 export const enableSend = createAction<PayloadWIthId>("chatThread/enableSend");
 
-export const setUseTools = createAction<boolean>("chatThread/setUseTools");
+export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
 export const chatReducer = createReducer(initialState, (builder) => {
-  builder.addCase(setUseTools, (state, action) => {
-    state.use_tools = action.payload;
+  builder.addCase(setToolUse, (state, action) => {
+    state.tool_use = action.payload;
   });
 
   builder.addCase(enableSend, (state, action) => {
@@ -369,7 +371,7 @@ export const selectThread = (state: RootState) => state.chat.thread;
 export const selectChatId = (state: RootState) => state.chat.thread.id;
 export const selectModel = (state: RootState) => state.chat.thread.model;
 export const selectMessages = (state: RootState) => state.chat.thread.messages;
-export const selectUseTools = (state: RootState) => state.chat.use_tools;
+export const selectToolUse = (state: RootState) => state.chat.tool_use;
 export const selectIsWaiting = (state: RootState) =>
   state.chat.waiting_for_response;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;

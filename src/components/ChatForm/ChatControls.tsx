@@ -9,6 +9,8 @@ import { PromptSelect, PromptSelectProps } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
+import { ToolUseSwitch } from "./ToolUseSwitch";
+import { ToolUse } from "../../features/Chat";
 
 type CapsSelectProps = {
   value: string;
@@ -69,9 +71,9 @@ export type ChatControlsProps = {
   promptsProps: PromptSelectProps;
   host: Config["host"];
   showControls: boolean;
-  useTools: boolean;
   canUseTools: boolean;
-  setUseTools: (value: boolean) => void;
+  toolUse: ToolUse;
+  setToolUse: (value: ToolUse) => void;
 };
 
 const ChatContolCheckBox: React.FC<{
@@ -143,8 +145,8 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   host,
   showControls,
   canUseTools,
-  useTools,
-  setUseTools,
+  toolUse,
+  setToolUse,
 }) => {
   const refs = useTourRefs();
 
@@ -161,15 +163,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           ref={(x) => refs.setUseTools(x)}
           style={{ alignSelf: "flex-start" }}
         >
-          <ChatContolCheckBox
-            name="use_tools"
-            checked={useTools}
-            onCheckChange={(value) => setUseTools(!!value)}
-            label="Allow model to use tools"
-            infoText="Turn on when asking about your codebase. When tuned on the model can autonomously call functions to gather the best context."
-            href="https://docs.refact.ai/features/ai-chat/"
-            linkText="documentation"
-          />
+          <ToolUseSwitch toolUse={toolUse} setToolUse={setToolUse} />
         </Flex>
       )}
 

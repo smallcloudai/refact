@@ -20,7 +20,7 @@ import { ChatControls, ChatControlsProps, Checkbox } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
 import { useAppDispatch, useAppSelector, useConfig } from "../../app/hooks";
-import type { FileInfo, Snippet } from "../../features/Chat";
+import type { FileInfo, Snippet, ToolUse } from "../../features/Chat";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 
@@ -294,8 +294,8 @@ export type ChatFormProps = {
   selectedSystemPrompt: SystemPrompts;
   chatId: string;
   canUseTools: boolean;
-  setUseTools: (value: boolean) => void;
-  useTools: boolean;
+  toolUse: ToolUse;
+  setToolUse: (value: ToolUse) => void;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -325,8 +325,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   selectedSystemPrompt,
   chatId,
   canUseTools,
-  setUseTools,
-  useTools,
+  toolUse,
+  setToolUse,
 }) => {
   const dispatch = useAppDispatch();
   const config = useConfig();
@@ -510,9 +510,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           prompts: prompts,
           onChange: onSetSystemPrompt,
         }}
-        useTools={useTools}
         canUseTools={canUseTools}
-        setUseTools={setUseTools}
+        toolUse={toolUse}
+        setToolUse={setToolUse}
       />
     </Card>
   );
