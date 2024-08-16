@@ -291,13 +291,21 @@ const chatAskQuestionThunk = createAppAsyncThunk<
 
         const streamAsString = decoder.decode(value);
 
+        const maybeError = checkForDetailMessage(streamAsString);
+        if (maybeError) {
+          const error = new Error(maybeError.detail);
+          throw error;
+        }
+
         const deltas = streamAsString
           .split("\n\n")
           .filter((str) => str.length > 0);
+
         if (deltas.length === 0) return Promise.resolve();
 
         // could be improved
         for (const delta of deltas) {
+          // can have error here.
           if (!delta.startsWith("data: ")) {
             // eslint-disable-next-line no-console
             console.log("Unexpected data in streaming buf: " + delta);
@@ -316,23 +324,21 @@ const chatAskQuestionThunk = createAppAsyncThunk<
             return Promise.reject(error);
           }
 
-          // TODO: add better type checking
+          const maybeErrorData = checkForDetailMessage(maybeJsonString);
+          if (maybeErrorData) {
+            const errorMessage: string =
+              typeof maybeErrorData.detail === "string"
+                ? maybeErrorData.detail
+                : JSON.stringify(maybeErrorData.detail);
+            const error = new Error(errorMessage);
+            // eslint-disable-next-line no-console
+            console.error(error);
+            throw error;
+          }
           const json = parseOrElse<Record<string, unknown>>(
             maybeJsonString,
             {},
           );
-
-          if ("detail" in json) {
-            const errorMessage: string =
-              typeof json.detail === "string"
-                ? json.detail
-                : JSON.stringify(json.detail);
-            const error = new Error(errorMessage);
-
-            // eslint-disable-next-line no-console
-            console.error(error);
-            return Promise.reject(error);
-          }
 
           // TODO: type check this. also some models create a new id :/
           thunkAPI.dispatch(
@@ -350,6 +356,14 @@ const chatAskQuestionThunk = createAppAsyncThunk<
       thunkAPI.dispatch(doneStreaming({ id: chatId }));
     });
 });
+
+type DetailMessage = { detail: string };
+
+function checkForDetailMessage(str: string): DetailMessage | false {
+  const json = parseOrElse(str, {});
+  if ("detail" in json) return json as DetailMessage;
+  return false;
+}
 
 export const selectThread = (state: RootState) => state.chat.thread;
 export const selectChatId = (state: RootState) => state.chat.thread.id;
