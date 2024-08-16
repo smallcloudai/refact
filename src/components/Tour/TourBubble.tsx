@@ -5,7 +5,7 @@ import { close, next } from "../../features/Tour";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 import { TourBox } from "./TourBox";
 import { TourTitle } from "./TourTitle";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 export type TourBubbleProps = {
   text: string;
@@ -16,6 +16,7 @@ export type TourBubbleProps = {
   containerWidth?: string;
   onPage: string;
   page: string;
+  children?: ReactNode;
   onNext?: () => void;
 };
 
@@ -28,6 +29,7 @@ export function TourBubble({
   onPage,
   page,
   isPointing,
+  children,
   onNext,
 }: TourBubbleProps) {
   const dispatch = useAppDispatch();
@@ -90,7 +92,7 @@ export function TourBubble({
             top: down ? 0 : "auto",
           }}
         >
-          {down && isPointing && (
+          {down && (
             <Flex
               style={{
                 width: 0,
@@ -100,12 +102,14 @@ export function TourBubble({
                 borderBottom: `15px solid ${arrowColor}`,
                 alignSelf: "center",
                 position: "relative",
+                opacity: isPointing ? 1 : 0,
                 left: centX,
               }}
             />
           )}
           <TourBox>
             <TourTitle title={text} />
+            {children}
             <Link
               style={{
                 cursor: "pointer",
@@ -136,7 +140,7 @@ export function TourBubble({
               next
             </Link>
           </TourBox>
-          {down || !isPointing || (
+          {down || (
             <Flex
               style={{
                 width: 0,
@@ -146,6 +150,7 @@ export function TourBubble({
                 borderTop: `15px solid ${arrowColor}`,
                 alignSelf: "center",
                 position: "relative",
+                opacity: isPointing ? 1 : 0,
                 left: centX,
               }}
             />
