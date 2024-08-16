@@ -9,7 +9,6 @@ const noop = () => ({});
 
 const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
-    // removePreviewFileByName: noop,
     chatId: "chatId",
     selectedSnippet: { code: "", language: "", path: "", basename: "" },
     onSubmit: (_str: string) => ({}),
@@ -23,10 +22,8 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
       available_caps: {},
       error: "",
     },
-    // error: "",
-    // clearError: noop,
     showControls: true,
-    // hasContextFile: false,
+
     commands: {
       completions: [],
       replace: [-1, -1],
@@ -34,19 +31,8 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
     },
     requestCommandsCompletion: useDebounceCallback(noop, 0),
     requestPreviewFiles: noop,
-    attachFile: {
-      name: "",
-      line1: null,
-      line2: null,
-      can_paste: false,
-      // attach: false,
-      path: "",
-      cursor: null,
-    },
-    // setSelectedCommand: noop,
     filesInPreview: [],
     onTextAreaHeightChange: noop,
-    // requestCaps: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
     selectedSystemPrompt: {},
@@ -56,21 +42,6 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
     ...props,
   };
 
-  // return (
-
-  //   <ConfigProvider
-  //     config={{
-  //       host: host ?? "web",
-  //       features: {
-  //         vecdb: true,
-  //         ast: true,
-  //       },
-  //     }}
-  //   >
-  //     <ChatForm {...defaultProps} />
-  //   </ConfigProvider>
-  // );
-  // TODO: use store provider
   return <ChatForm {...defaultProps} />;
 };
 
@@ -132,9 +103,9 @@ describe("ChatForm", () => {
       path: "path/to/foo.txt",
       cursor: 2,
     };
-    const { user, ...app } = render(
-      <App onSubmit={fakeOnSubmit} attachFile={activeFile} />,
-    );
+    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />, {
+      preloadedState: { active_file: activeFile },
+    });
 
     const label = app.queryByText(/Lookup symbols/);
     expect(label).not.toBeNull();

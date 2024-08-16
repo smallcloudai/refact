@@ -16,242 +16,20 @@ import {
   SystemPrompts,
 } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
-import {
-  ChatControls,
-  // ChatControlsProps,
-  // Checkbox
-} from "./ChatControls";
+import { ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
 import { useAppDispatch, useAppSelector, useConfig } from "../../app/hooks";
-import {
-  type Snippet,
-  // selectSelectedSnippet,
-} from "../../features/Chat/selectedSnippet";
-import {
-  // selectActiveFile,
-  type FileInfo,
-} from "../../features/Chat/activeFile";
+import { type Snippet } from "../../features/Chat/selectedSnippet";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useCheckboxes } from "./useCheckBoxes";
-
-// type useCheckboxStateProps = {
-//   activeFile: FileInfo;
-//   snippet: Snippet;
-//   vecdb: boolean;
-//   ast: boolean;
-//   allBoxes: boolean;
-//   chatId: string;
-//   canUseTools: boolean;
-//   host: string;
-// };
-
-// const useControlsState = ({
-//   // activeFile,
-//   snippet,
-//   vecdb,
-//   ast,
-//   allBoxes,
-//   chatId,
-//   canUseTools,
-//   host,
-// }: useCheckboxStateProps) => {
-//   const [interacted, setInteracted] = React.useState(false);
-
-//   // const fullPathWithCursor = useMemo(() => {
-//   //   if (activeFile.cursor === null) {
-//   //     return activeFile.path;
-//   //   }
-//   //   return `${activeFile.path}:${activeFile.cursor}`;
-//   // }, [activeFile.path, activeFile.cursor]);
-
-//   // const fileNameWithLines = useMemo(() => {
-//   //   const hasLines = activeFile.line1 !== null && activeFile.line2 !== null;
-//   //   if (!hasLines) return activeFile.name;
-//   //   return `${activeFile.name}:${activeFile.line1}-${activeFile.line2}`;
-//   // }, [activeFile.name, activeFile.line1, activeFile.line2]);
-
-//   // const filePathWithLines = useMemo(() => {
-//   //   const hasLines = activeFile.line1 !== null && activeFile.line2 !== null;
-
-//   //   if (!hasLines) return activeFile.path;
-//   //   return `${activeFile.path}:${activeFile.line1}-${activeFile.line2}`;
-//   // }, [activeFile.path, activeFile.line1, activeFile.line2]);
-
-//   const markdown = useMemo(() => {
-//     return "```" + snippet.language + "\n" + snippet.code + "\n```\n";
-//   }, [snippet.language, snippet.code]);
-
-//   const codeLineCount = useMemo(() => {
-//     if (snippet.code.length === 0) return 0;
-//     return snippet.code.split("\n").length;
-//   }, [snippet.code]);
-
-//   const defaultState = useMemo(() => {
-//     return {
-//       use_memory: {
-//         name: "use_memory",
-//         checked: true,
-//         label: "Use memory",
-//         disabled: false,
-//         hide: true, // !allBoxes,
-//         info: {
-//           text: "Uses notes previously written by assistant, to improve on mistakes. Setting this checkbox is equivalent to @local-notes-to-self command in the text.",
-//           link: "https://docs.refact.ai/features/ai-chat/",
-//           linkText: "documentation",
-//         },
-//       },
-//       search_workspace: {
-//         name: "search_workspace",
-//         checked: false,
-//         label: "Search workspace",
-//         disabled: false,
-//         hide: !vecdb || !allBoxes || canUseTools,
-//         info: {
-//           text: "Searches all files in your workspace using vector database, uses the whole text in the input box as a search query. Setting this checkbox is equivalent to @workspace command in the text.",
-//           link: "https://docs.refact.ai/features/ai-chat/",
-//           linkText: "documentation",
-//         },
-//       },
-//       // file_upload: attachFileCheckboxData,
-//       // lookup_symbols: {
-//       //   name: "lookup_symbols",
-//       //   checked: !!snippet.code && !!activeFile.name,
-//       //   label: "Lookup symbols at cursor",
-//       //   value: fullPathWithCursor,
-//       //   disabled: !activeFile.name,
-//       //   hide: !ast || !allBoxes,
-//       //   defaultChecked: !!snippet.code && !!activeFile.name,
-//       //   info: {
-//       //     text: "Extracts symbols around the cursor position and searches for them in the AST index. Equivalent to @symbols-at file_name.ext:CURSOR_LINE in the text",
-//       //     link: "https://docs.refact.ai/features/ai-chat/",
-//       //     linkText: "documentation",
-//       //   },
-//       // },
-//       // selected_lines: {
-//       //   name: "selected_lines",
-//       //   checked: !!snippet.code,
-//       //   label: `Selected ${codeLineCount} lines`,
-//       //   value: markdown,
-//       //   disabled: !snippet.code,
-//       //   hide: host === "web",
-//       //   info: {
-//       //     text: "Adds the currently selected lines as a snippet for analysis or modification. Equivalent to code in triple backticks ``` in the text.",
-//       //   },
-//       // },
-//     } as const;
-//   }, [allBoxes, canUseTools, vecdb]);
-
-//   const [checkboxes, setCheckboxes] =
-//     React.useState<ChatControlsProps["checkboxes"]>(defaultState);
-
-//   const reset = useCallback(() => {
-//     setInteracted(false);
-//     setCheckboxes(defaultState), [defaultState];
-//   }, [setCheckboxes, setInteracted, defaultState]);
-
-//   const toggleCheckbox = useCallback(
-//     (name: string, value: boolean | string) => {
-//       setInteracted(true);
-//       setCheckboxes((prev) => {
-//         const checkbox: Checkbox = { ...prev[name], checked: !!value };
-//         const maybeAddFile: Record<string, Checkbox> =
-//           name === "lookup_symbols" && !!value
-//             ? { file_upload: { ...prev.file_upload, checked: true } }
-//             : { file_upload: prev.file_upload };
-//         const nextValue = { ...prev, ...maybeAddFile, [name]: checkbox };
-//         return nextValue;
-//       });
-//     },
-//     [setCheckboxes, setInteracted],
-//   );
-
-//   useEffect(() => {
-//     setCheckboxes((prev) => {
-//       // const lookupDisabled = prev.lookup_symbols.checked
-//       //   ? false
-//       //   : !activeFile.name;
-
-//       // const selectedLineDisabled = prev.selected_lines.checked
-//       //   ? false
-//       //   : !snippet.code;
-
-//       // const fileUploadDisabled = prev.file_upload.checked
-//       //   ? false
-//       //   : !activeFile.name;
-
-//       const nextValue = {
-//         ...prev,
-//         // use_memory: {
-//         //   ...prev.use_memory,
-//         //   hide: false,
-//         // },
-//         search_workspace: {
-//           ...prev.search_workspace,
-//           hide: !vecdb || !allBoxes || canUseTools,
-//         },
-//         // lookup_symbols: {
-//         //   ...prev.lookup_symbols,
-//         //   value: fullPathWithCursor,
-//         //   disabled: lookupDisabled,
-//         //   hide: !ast || !allBoxes,
-//         //   checked: interacted
-//         //     ? prev.lookup_symbols.checked
-//         //     : !!snippet.code && !!activeFile.name,
-//         // },
-//         // selected_lines: {
-//         //   ...prev.selected_lines,
-//         //   label: `Selected ${codeLineCount} lines`,
-//         //   value: markdown,
-//         //   disabled: selectedLineDisabled,
-//         //   checked: interacted
-//         //     ? prev.selected_lines.checked && !!snippet.code
-//         //     : !!snippet.code,
-//         // },
-//         // file_upload: {
-//         //   ...prev.file_upload,
-//         //   value: filePathWithLines,
-//         //   fileName: activeFile.name,
-//         //   disabled: fileUploadDisabled,
-//         //   hide: !allBoxes,
-//         //   checked: interacted
-//         //     ? prev.file_upload.checked
-//         //     : !!snippet.code && !!activeFile.name,
-//         // },
-//       };
-
-//       return nextValue;
-//     });
-//   }, [
-//     ast,
-//     codeLineCount,
-//     // interacted,
-//     markdown,
-//     snippet.code,
-//     vecdb,
-//     allBoxes,
-//     canUseTools,
-//   ]);
-
-//   useEffect(() => {
-//     return () => setCheckboxes(defaultState);
-//   }, [defaultState, chatId]);
-
-//   return {
-//     checkboxes,
-//     toggleCheckbox,
-//     reset,
-//     setInteracted,
-//   };
-// };
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
-  // clearError: () => void;
-  // error: string | null;
+
   caps: {
     error: string | null;
     fetching: boolean;
@@ -262,18 +40,17 @@ export type ChatFormProps = {
   onSetChatModel: (model: string) => void;
   isStreaming: boolean;
   onStopStreaming: () => void;
+  // TODO this can moved lower
   commands: ComboBoxProps["commands"];
-  attachFile: FileInfo;
-  // hasContextFile: boolean;
   requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
   requestPreviewFiles: (input: string) => void;
-  // setSelectedCommand: (command: string) => void;
+
   filesInPreview: ChatContextFile[];
   selectedSnippet: Snippet;
-  // removePreviewFileByName: (name: string) => void;
+
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
-  // requestCaps: () => void;
+
   prompts: SystemPrompts;
   onSetSystemPrompt: (prompt: SystemPrompts) => void;
   selectedSystemPrompt: SystemPrompts;
@@ -287,31 +64,20 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
-  // error,
-  // clearError,
   caps,
   model,
   onSetChatModel,
   isStreaming,
   onStopStreaming,
   commands,
-  // attachFile,
   requestCommandsCompletion,
   requestPreviewFiles,
   filesInPreview,
-  // selectedSnippet,
-  // removePreviewFileByName,
   onTextAreaHeightChange,
   showControls,
-  // TODO: handle re-requesting caps after error
-  // requestCaps,
   prompts,
   onSetSystemPrompt,
   selectedSystemPrompt,
-  // chatId,
-  // canUseTools,
-  // setUseTools,
-  // useTools,
 }) => {
   const dispatch = useAppDispatch();
   const config = useConfig();
@@ -322,19 +88,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const [_interacted, setInteracted] = React.useState(false);
   const [checkboxes, toggleCheckbox] = useCheckboxes();
 
-  // this should re-render when clicking new chat :/
-  // const { checkboxes, toggleCheckbox, reset, setInteracted } = useControlsState(
-  //   {
-  //     activeFile: attachFile,
-  //     snippet: selectedSnippet,
-  //     vecdb: config.features?.vecdb ?? false,
-  //     ast: config.features?.ast ?? false,
-  //     allBoxes: showControls,
-  //     chatId,
-  //     canUseTools,
-  //     host: config.host,
-  //   },
-  // );
   const refs = useTourRefs();
 
   usePreviewFileRequest({
@@ -344,29 +97,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     vecdb: config.features?.vecdb ?? false,
     checkboxes,
   });
-
-  // useEffect(() => {
-  //   if (
-  //     Object.keys(caps.available_caps).length === 0 &&
-  //     !caps.default_cap &&
-  //     !caps.fetching
-  //   ) {
-  //     requestCaps();
-  //   }
-  // }, [
-  //   requestCaps,
-  //   caps.available_caps.length,
-  //   caps.default_cap,
-  //   caps.fetching,
-  //   value,
-  //   caps.available_caps,
-  // ]);
-
-  // useEffect(() => {
-  //   if (!showControls) {
-  //     reset();
-  //   }
-  // }, [showControls, reset]);
 
   const isOnline = useIsOnline();
 
@@ -499,9 +229,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           prompts: prompts,
           onChange: onSetSystemPrompt,
         }}
-        // useTools={useTools}
-        // canUseTools={canUseTools}
-        // setUseTools={setUseTools}
       />
     </Card>
   );

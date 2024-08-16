@@ -75,9 +75,6 @@ export type ChatControlsProps = {
   promptsProps: PromptSelectProps;
   host: Config["host"];
   showControls: boolean;
-  // useTools: boolean;
-  // canUseTools: boolean;
-  // setUseTools: (value: boolean) => void;
 };
 
 const ChatContolCheckBox: React.FC<{
@@ -148,8 +145,6 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   promptsProps,
   host,
   showControls,
-  // useTools,
-  // setUseTools,
 }) => {
   const refs = useTourRefs();
   const canUseTools = useCanUseTools();
