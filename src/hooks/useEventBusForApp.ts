@@ -14,10 +14,6 @@ export function useEventBusForApp() {
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
-      if (event.source !== window) {
-        return;
-      }
-
       if (updateConfig.match(event.data)) {
         dispatch(updateConfig(event.data.payload));
       }
