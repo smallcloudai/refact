@@ -223,7 +223,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         >
           {matches.map((item, index) => (
             <Item
-              store={combobox}
               key={item + "-" + index}
               value={item}
               onClick={(e) => onItemClick(item, e)}
