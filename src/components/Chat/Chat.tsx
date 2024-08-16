@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useEffect } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
@@ -185,16 +185,24 @@ export const Chat: React.FC<ChatProps> = ({
       // TODO: could be improved
       const action = newChatAction({ id: chatId });
       dispatch(action);
-      // TODO: improve this
-      const textarea = document.querySelector<HTMLTextAreaElement>(
-        '[data-testid="chat-form-textarea"]',
-      );
-      if (textarea !== null) {
-        textarea.focus();
-      }
     },
     [chatId, dispatch],
   );
+
+  const focusTextarea = useCallback(() => {
+    const textarea = document.querySelector<HTMLTextAreaElement>(
+      '[data-testid="chat-form-textarea"]',
+    );
+    if (textarea) {
+      textarea.focus();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isWaiting && !isStreaming) {
+      focusTextarea();
+    }
+  }, [isWaiting, isStreaming, focusTextarea]);
 
   return (
     <PageWrapper host={host} style={style}>
