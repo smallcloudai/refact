@@ -1339,6 +1339,12 @@ class Frog:
         # extra row 2
         # extra row 3
 "#;
+        let mut gt_changed_text = String::from(gt_changed_text);
+        #[cfg(target_os = "windows")]
+        {
+            gt_changed_text = gt_changed_text.replace("\n", "\r\n");
+        }
+        
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
