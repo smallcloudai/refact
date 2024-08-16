@@ -285,7 +285,9 @@ const chatAskQuestionThunk = createAppAsyncThunk<
 
       return reader.read().then(function pump({ done, value }): Promise<void> {
         if (done) return Promise.resolve();
-        if (thunkAPI.signal.aborted) return Promise.resolve();
+        if (thunkAPI.signal.aborted) {
+          return Promise.resolve();
+        }
 
         const streamAsString = decoder.decode(value);
 
@@ -365,6 +367,7 @@ export const selectSendImmediately = (state: RootState) =>
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
   const abortRef = useRef<null | ((reason?: string | undefined) => void)>(null);
+
   const toolsRequest = useGetToolsQuery();
 
   const chatId = useAppSelector(selectChatId);
@@ -450,11 +453,11 @@ export const useSendChatRequest = () => {
     }
   }, [chatError, currentMessages, preventSend, sendMessages, streaming]);
 
-  const abort = useCallback(() => {
+  const abort = () => {
     if (abortRef.current) {
       abortRef.current();
     }
-  }, [abortRef]);
+  };
 
   useEffect(() => {
     if (!streaming && abortRef.current) {
