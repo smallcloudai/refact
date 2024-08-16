@@ -14,13 +14,28 @@
   max-height: min(var(--popover-available-height, 186px), 186px);
 }
 
+.popover__box {
+  overflow-y: hidden;
+  overflow-x: hidden;
+  display: flex !important;
+  flex-direction: column !important;
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+}
+
 .item {
   display: flex;
   cursor: default;
-  align-items: center;
-  justify-content: flex-start;
+  margin: 0 -4px !important;
+  padding: 2px 4px !important;
 }
 
 .item[data-active-item] {
   background-color: var(--accent-a5);
+}
+
+.combobox__item {
+  display: flex;
+  align-items: flex-start !important;
+  flex-direction: column !important;
 }

@@ -472,6 +472,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 {...props}
                 onTextAreaHeightChange={onTextAreaHeightChange}
                 autoFocus={true}
+                style={{ boxShadow: "none", outline: "none" }}
               />
             )}
           />
