@@ -60,6 +60,7 @@ impl ToolCustDict {
     pub fn into_openai_style(self) -> serde_json::Value {
         make_openai_tool_value(
             self.name,
+            false,
             self.description,
             self.parameters_required,
             self.parameters,
@@ -224,18 +225,43 @@ pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<Tool
     load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt).map_err(|e| e.to_string())
 }
 
-pub async fn get_default_system_prompt(global_context: Arc<ARwLock<GlobalContext>>, have_exploration_tools: bool) -> Result<String, String> {
-    let tconfig = load_customization(global_context.clone()).await?;
-    if have_exploration_tools {
-        match tconfig.system_prompts.get("exploration_tools").and_then(|x|Some(x.text.clone())) {
-            Some(x) => Ok(x),
-            None => Err("no default system prompt found".to_string()),
-        }
-    } else {
-        match tconfig.system_prompts.get("default").and_then(|x|Some(x.text.clone())) {
-            Some(x) => Ok(x),
-            None => Err("no default system prompt found".to_string()),
-        }
+pub async fn get_default_system_prompt(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    have_exploration_tools: bool,
+    have_agentic_tools: bool,
+) -> String {
+    match load_customization(global_context.clone()).await {
+        Ok(tconfig) => {
+            if have_agentic_tools {
+                tconfig.system_prompts.get("agentic_tools")
+                   .map_or_else(
+                        || {
+                            tracing::error!("cannot find system prompt `agentic_tools`");
+                            String::new()
+                        },
+                        |x| x.text.clone()
+                    )
+            } else if have_exploration_tools {
+                tconfig.system_prompts.get("exploration_tools")
+                    .map_or_else(
+                        || {
+                            tracing::error!("cannot find system prompt `exploration_tools`");
+                            String::new()
+                        },
+                        |x| x.text.clone()
+                    )
+            } else {
+                tconfig.system_prompts.get("default")
+                    .map_or_else(
+                        || {
+                            tracing::error!("cannot find system prompt `default`");
+                            String::new()
+                        },
+                        |x| x.text.clone()
+                    )
+            }
+        },
+        Err(_) => String::new(),
     }
 }
 
