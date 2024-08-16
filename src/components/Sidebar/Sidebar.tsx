@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const currentChatId = useAppSelector(selectChatId);
   const onDeleteHistoryItem = (id: string) => dispatch(deleteChatById(id));
   const onCreateNewChat = () => {
-    dispatch(newChatAction({ id: currentChatId }));
+    dispatch(newChatAction());
     handleNavigation("chat");
   };
   const onHistoryItemClick = useCallback(

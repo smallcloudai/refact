@@ -183,7 +183,7 @@ export const Chat: React.FC<ChatProps> = ({
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.currentTarget.blur();
       // TODO: could be improved
-      const action = newChatAction({ id: chatId });
+      const action = newChatAction();
       dispatch(action);
       // TODO: improve this
       const textarea = document.querySelector<HTMLTextAreaElement>(

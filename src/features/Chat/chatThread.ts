@@ -78,7 +78,7 @@ const initialState = createInitialState();
 
 type PayloadWIthId = { id: string };
 // TODO: add history actions to this
-export const newChatAction = createAction<PayloadWIthId>("chatThread/new");
+export const newChatAction = createAction("chatThread/new");
 
 const chatResponse = createAction<PayloadWIthId & ChatResponse>(
   "chatThread/response",
@@ -151,8 +151,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.system_prompt = action.payload;
   });
 
-  builder.addCase(newChatAction, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
+  builder.addCase(newChatAction, (state) => {
     if (state.streaming) {
       state.cache[state.thread.id] = state.thread;
     }

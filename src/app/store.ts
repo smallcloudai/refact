@@ -39,6 +39,7 @@ import {
 import { errorMiddleware, errorSlice } from "../features/Errors/errorsSlice";
 import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
+import { listenerMiddleware } from "./middleware";
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -102,7 +103,8 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
           diffApi.middleware,
         )
         .prepend(historyMiddleware.middleware)
-        .prepend(errorMiddleware.middleware);
+        .prepend(errorMiddleware.middleware)
+        .prepend(listenerMiddleware.middleware);
     },
   });
 
