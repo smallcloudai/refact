@@ -96,7 +96,11 @@ class TabFinetuneRouter(APIRouter):
         self.add_api_route("/tab-finetune-remove/{run_id}", self._tab_finetune_remove, methods=["GET"])
         self.add_api_route("/tab-finetune-training-launch", self._tab_finetune_training_launch, methods=["POST"])
         self.add_api_route("/tab-finetune-training-get", self._tab_finetune_training_get, methods=["GET"])
+        self.add_api_route("/tab-finetune-is-disabled", self._tab_finetune_is_disabled, methods=["GET"])
         self._model_assigner = model_assigner
+
+    async def _tab_finetune_is_disabled(self):
+        return JSONResponse(dict(status=True, msg=""))
 
     async def _running_models_and_loras(self):
         return Response(json.dumps(running_models_and_loras(self._model_assigner), indent=4) + "\n")

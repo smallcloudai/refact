@@ -305,19 +305,20 @@ function render_models_assigned(models) {
         instance_select.appendChild(instance_option);
         // add gpus index number as option
         console.log('gpus_avaliable',gpus_avaliable);
-        for (let i = 0; i < gpus_avaliable.length; i++) {
+        for (let i = 0; i < gpus_avaliable.length / models_data.model_assign[index].gpus_shard; i++) {
             const instance_option = document.createElement("option");
-            instance_option.setAttribute('value',i+1);
-            instance_option.textContent = i+1;
+            instance_option.setAttribute('value',i + 1);
+            instance_option.textContent = i + 1;
+            if (models_data.model_assign[index].n_instance === i + 1) {
+                instance_option.setAttribute('selected','selected');
+            }
             instance_select.appendChild(instance_option);
         }
-        instance.appendChild(instance_select);
-
         instance_select.addEventListener('change', function() {
-            const selected_value = Number(this.value);
-            // save_model_assigned();
+            models_data.model_assign[index].n_instance = this.value === "auto"? "auto" : Number(this.value);
+            save_model_assigned();
         });
-        
+        instance.appendChild(instance_select);
 
         if(models_info[index].has_share_gpu) {
             const gpus_checkbox = document.createElement("input");

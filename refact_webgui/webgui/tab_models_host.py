@@ -11,7 +11,7 @@ from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 from pydantic import field_validator
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 
 __all__ = ["TabHostRouter"]
@@ -33,7 +33,8 @@ class ModifyLorasPost(BaseModel):
 class TabHostModelRec(BaseModel):
     gpus_shard: int = Query(default=1, ge=1, le=4)
     share_gpu: bool = False
-    n_ctx: Optional[int] = None
+    n_ctx: Optional[int] = None,
+    n_instance: Union[str, int] = "auto"
 
 
 class TabHostModelsAssign(BaseModel):

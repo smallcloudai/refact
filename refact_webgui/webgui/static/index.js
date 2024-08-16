@@ -191,14 +191,14 @@ function plugins_to_top_nav_bar(plugins) {
 // TODO: tab-finetune-disabled route and !!! data.status should be true/false
 const fintune_tab = document.querySelector('#finetune');
 if (fintune_tab) {
-    fetch("/tab-finetune-disabled")
+    fetch("/tab-finetune-is-disabled")
         .then(function(response) {
             return response.json();
         })
         .then(function(data) {
-            if(data.status) {
-                disable_tab('finetune');
-                disable_tab('upload');
+            if(!data.status) {
+                disable_tab('finetune', data.msg);
+                disable_tab('upload', data.msg);
             }
         })
         .catch(function(error) {
@@ -207,7 +207,7 @@ if (fintune_tab) {
         });
 }
 
-function disable_tab(tabname) {
+function disable_tab(tabname, msg) {
     const fintune_tab = document.querySelector('#' + tabname);
     fintune_tab.ariaDisabled = true;
     fintune_tab.querySelector('.row').style.opacity = '0.3';
@@ -217,7 +217,7 @@ function disable_tab(tabname) {
     fintune_tab.querySelector('.row').style.webkitFilter = 'grayscale(1)';
     const info_box = document.createElement('div');
     info_box.className = 'info-box';
-    info_box.innerHTML = 'Function is not supported for Neuron yet';
+    info_box.innerHTML = msg;
     fintune_tab.appendChild(info_box);
     info_box.style.position = 'absolute';
     info_box.style.left = '50%';

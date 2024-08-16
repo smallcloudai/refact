@@ -67,6 +67,10 @@ class ModelAssigner:
     def models_db_with_passthrough(self) -> Dict[str, Any]:
         return {**self.models_db, **self.passthrough_mini_db}
 
+    @property
+    def supported_shard_backends(self) -> List[str]:
+        return ["transformers"]
+
     def _model_assign_to_groups(self, model_assign: Dict[str, Dict]) -> List[ModelGroup]:
         model_groups: List[ModelGroup] = []
         shared_group = ModelGroup()
@@ -77,7 +81,7 @@ class ModelAssigner:
             if assignment["gpus_shard"] not in [1, 2, 4]:
                 log(f"invalid shard count {assignment['gpus_shard']}, skipping '{model_name}'")
                 continue
-            if self.models_db[model_name]["backend"] not in ["transformers"] and assignment["gpus_shard"] > 1:
+            if self.models_db[model_name]["backend"] not in self.supported_shard_backends and assignment["gpus_shard"] > 1:
                 log(f"sharding not supported for '{self.models_db['backend']}' backend, skipping '{model_name}'")
                 continue
             if assignment.get("share_gpu", False) and self.models_db[model_name]["backend"] in SHARE_GPU_BACKENDS:
@@ -241,7 +245,7 @@ class ModelAssigner:
                 "has_finetune": has_finetune,
                 "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
-                "has_sharding": rec["backend"] in ["transformers"],
+                "has_sharding": rec["backend"] in ["transformers", "neuron"],
                 "has_share_gpu": rec["backend"] in SHARE_GPU_BACKENDS,
                 "default_n_ctx": default_n_ctx,
                 "available_n_ctx": available_n_ctx,
