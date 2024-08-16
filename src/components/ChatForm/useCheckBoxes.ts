@@ -22,7 +22,6 @@ const shouldShowSelector = createSelector(
 const useAttachActiveFile = (): [Checkbox, () => void] => {
   const activeFile = useAppSelector(selectActiveFile);
   const shouldShow = useAppSelector(shouldShowSelector);
-  console.log({ shouldShow });
 
   const filePathWithLines = useMemo(() => {
     const hasLines = activeFile.line1 !== null && activeFile.line2 !== null;
