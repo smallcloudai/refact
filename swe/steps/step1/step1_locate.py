@@ -41,19 +41,19 @@ class Locate(Step):
             raise RuntimeError(f"content is not decodable as json:\n{res_message.content}\nError: {e}")
 
         files_list = results.get('files')
+        # print("files_list", files_list)
+        symbols = results.get('symbols')
+        # print("symbols", symbols)
+        return files_list, symbols
 
-        if not files_list:
-            raise RuntimeError(f"no files found")
-
-        if not isinstance(files_list[0], dict):
-            raise RuntimeError(f"files list is not a list of dicts")
-
-        context_files = [f['file_path'] for f in files_list]
-        to_change_files = [f['file_path'] for f in files_list if f['reason'] == 'to_change']
-
-        return {
-            'context_files': context_files,
-            'to_change_files': to_change_files,
-        }
-
+        # if not files_list:
+        #     raise RuntimeError(f"no files found")
+        # if not isinstance(files_list[0], dict):
+        #     raise RuntimeError(f"files list is not a list of dicts")
+        # context_files = [f['file_path'] for f in files_list]
+        # to_change_files = [f['file_path'] for f in files_list if f['reason'] == 'to_change']
+        # return {
+        #     'context_files': context_files,
+        #     'to_change_files': to_change_files,
+        # }
 

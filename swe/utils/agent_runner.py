@@ -1,4 +1,5 @@
 import shutil
+import os
 import subprocess
 import traceback
 
@@ -6,7 +7,7 @@ from uuid import uuid4
 from async_timeout import timeout
 from datasets import load_dataset
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Tuple, List
 
 from swe import SWE_WORKDIR
 from refact.lsp_runner import LSPServerRunner
@@ -66,15 +67,39 @@ class AgentRunner:
         self._use_vecdb = use_vecdb
         self._repos_workdir = SWE_WORKDIR / "repos"
 
-    async def _steps(self, base_url: str, repo_path: Path, **kwargs) -> Dict[str, Any]:
+    async def _steps(self, base_url: str, repo_path: Path, **kwargs) -> Tuple[Dict[str, Any], List[Any]]:
         raise NotImplementedError()
 
-    async def run(self, repo_name: str, base_commit: str, **kwargs):
+    async def run(
+        self,
+        repo_name: str,
+        base_commit: str,
+        output_dir: str,
+        instance_id: str,
+        **kwargs
+    ):
+        lsp_log_fn = os.path.join(output_dir, instance_id) + "-lsp.log"
         try:
-            async with RepoContext(repo_name, base_commit, self._repos_workdir) as repo_path:
-                async with LSPServerRunner(repo_path=str(repo_path), use_ast=self._use_ast, use_vecdb=self._use_vecdb) as runner:
+            async with RepoContext(
+                repo_name,
+                base_commit,
+                self._repos_workdir,
+            ) as repo_path:
+                async with LSPServerRunner(
+                    repo_path=str(repo_path),
+                    lsp_log_fn=lsp_log_fn,
+                    use_ast=self._use_ast,
+                    use_vecdb=self._use_vecdb,
+                ) as runner:
                     async with timeout(self._timeout):
-                        return await self._steps(base_url=runner.base_url, repo_path=repo_path, **kwargs)
+                        results, trajectory = await self._steps(
+                            base_url=runner.base_url,
+                            repo_path=repo_path,
+                            instance_id=instance_id,
+                            output_dir=output_dir,
+                            **kwargs)
+                        results["lsp_log_fn"] = lsp_log_fn
+                        return results, trajectory
         except Exception as e:
             raise e
             return {

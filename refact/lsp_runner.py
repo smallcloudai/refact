@@ -26,7 +26,13 @@ def localhost_port_not_in_use(start: int, stop: int):
 
 
 class LSPServerRunner:
-    def __init__(self, repo_path: str, use_ast: bool, use_vecdb: bool):
+    def __init__(
+        self,
+        repo_path: str,
+        lsp_log_fn: str,
+        use_ast: bool,
+        use_vecdb: bool,
+    ):
         base_command = os.environ["REFACT_LSP_BASE_COMMAND"]
         # /Users/valaises/RustroverProjects/refact-lsp/target/debug/refact-lsp --address-url http://localhost:8008 -k MYKEY
         assert base_command, "env REFACT_LSP_BASE_COMMAND must be specified"
@@ -41,6 +47,7 @@ class LSPServerRunner:
         if use_vecdb:
             self._command.append("--vecdb")
 
+        self.lsp_log_fn = lsp_log_fn
         self._use_ast = use_ast
         self._use_vecdb = use_vecdb
         self._port: int = port
@@ -61,20 +68,44 @@ class LSPServerRunner:
             *self._command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         ast_ok, vecdb_ok = False, False
         while True:
-            stderr = await self._lsp_server.stderr.readline()
-            if "AST COMPLETE" in stderr.decode():
-                print("AST initialized")
-                ast_ok = True
-            if "VECDB COMPLETE" in stderr.decode():
-                print("VECDB initialized")
-                vecdb_ok = False
+            while True:
+                stderr_line = await self._query_stderr()
+                if stderr_line is None:
+                    break
+                if "AST COMPLETE" in stderr_line:
+                    print("AST initialized")
+                    ast_ok = True
+                if "VECDB COMPLETE" in stderr_line:
+                    print("VECDB initialized")
+                    vecdb_ok = False
             if (self._use_ast == ast_ok) and (self._use_vecdb == vecdb_ok):
                 break
             if not self._is_lsp_server_running:
                 raise RuntimeError(f"LSP server unexpectedly exited, bb")
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.1)
         print("REFACT LSP /start in %0.2fs" % (time.time() - t0))
+        self._stderr_task = asyncio.create_task(self._stderr_background_reader())
         assert self._is_lsp_server_running
+
+    async def _stderr_background_reader(self):
+        while self._is_lsp_server_running:
+            while True:
+                line = await self._query_stderr()
+                if line is None:
+                    break
+            await asyncio.sleep(0.1)
+
+    async def _query_stderr(self):
+        if not self._is_lsp_server_running or self._lsp_server.stderr.at_eof():
+            return None
+        try:
+            line = await asyncio.wait_for(self._lsp_server.stderr.readline(), timeout=0.1)
+            line = line.decode()
+            with open(self.lsp_log_fn, "a") as f:
+                f.write(line)
+            return line
+        except asyncio.TimeoutError:
+            return None
 
     async def _stop(self):
         if self._lsp_server is not None:

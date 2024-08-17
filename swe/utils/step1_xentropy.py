@@ -1,4 +1,5 @@
 import json
+import os
 import asyncio
 import traceback
 import numpy as np
@@ -39,9 +40,8 @@ def calculate_cross_entropy(true_filename: str, found_files_tochange: Dict[str, 
                 break
         else:
             v_true_distribution.append(1.0)
-            # have other ratings
-            assert sum(v_model_ratings) > 0
-            v_model_ratings.append(1)
+            assert sum(v_model_ratings) > 0, "must have other ratings"
+            v_model_ratings.append(0)
 
     v_true_distribution = np.array(v_true_distribution)
     v_model_ratings = np.array(v_model_ratings)
@@ -65,18 +65,26 @@ class StepOneOnlyRunner(AgentRunner):
         rf = Locate(base_url=base_url, model_name=MODEL, attempts=1)
         found_files: Dict[str, Dict[str, Any]]    # {"filename": {"prop1": value, "prop2": value}, ...}
         try:
-            found_files = await rf.process(
+            found_files, symbols = await rf.process(
                 problem_statement=problem_statement,
                 repo_path=repo_path)
         except Exception as e:
             raise e
             results["error"] = f"step1: {type(e)} {str(e) or traceback.format_exc()}"
             found_files = {}
-        results["found_files"] = found_files
-        results["patched_file_is_found"] = filename_mentioned(true_filename, "\n".join(found_files))
-        found_files_tochange = {k: d for k, d in found_files.items() if d["WHY_CODE"] == "TOCHANGE"}
+        if isinstance(found_files, list):
+            found_files_tochange = {d["file_path"]: d for d in found_files if d["reason"] == "to_change"}
+            found_files_list = [d["file_path"] for d in found_files_tochange.values()]
+            for d in found_files_tochange.values():
+                d["RELEVANCY"] = 5
+        else:
+            found_files_tochange = {k: d for k, d in found_files.items() if d["WHY_CODE"] == "TOCHANGE"}
+            found_files_list = list(found_files_tochange.keys())
+        results["found_files"] = found_files_list
+        results["patched_file_is_found"] = filename_mentioned(true_filename, "\n".join(found_files_list))
         results["model_name"] = rf.model_name
         results["usage"] = rf.usage
+        # def calculate_cross_entropy(true_filename: str, found_files_tochange: Dict[str, Dict[str, Any]]) -> float:
         results["cross_entropy"] = calculate_cross_entropy(true_filename, found_files_tochange)
         return results, rf.trajectory
 
@@ -109,6 +117,7 @@ async def main():
         r, traj = await runner.run(
             repo_name=instance["repo"],
             base_commit=instance["base_commit"],
+            output_dir=args.output_dir,
             **results,
         )
         results.update(**r, **results)
@@ -117,13 +126,12 @@ async def main():
         results["error"] = str(e) or traceback.format_exc()
 
     cross_entropy = results.get("cross_entropy", 9.0)
-    result_filename = args.output_dir / ("%0.3f-%s.json" % (cross_entropy, args.instance_id))
-    traj_filename = args.output_dir / ("%0.3f-%s.md" % (cross_entropy, args.instance_id))
-    with open(result_filename, "w") as f:
+    lsp_log_fn = results["lsp_log_fn"]
+    os.rename(lsp_log_fn, args.output_dir / ("%0.3f-%s-lsp.log" % (cross_entropy, args.instance_id)))
+    with open(args.output_dir / ("%0.3f-%s.json" % (cross_entropy, args.instance_id)), "w") as f:
         json.dump(results, f, indent=4)
-    with open(traj_filename, "w") as f:
+    with open(args.output_dir / ("%0.3f-%s.md" % (cross_entropy, args.instance_id)), "w") as f:
         f.write(traj)
-
     return results
 
 
