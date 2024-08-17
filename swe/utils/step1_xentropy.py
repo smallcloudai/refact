@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 
 from swe.utils import AgentRunner
 from swe.utils import get_swe_bench_lite_instance
-from swe.steps import ExploreRepoStep, RelevantFiles
+from swe.steps import ExploreRepoStep, Locate
 from swe.utils.common import patched_file
 from swe.utils.common import filename_mentioned
 
@@ -62,7 +62,7 @@ class StepOneOnlyRunner(AgentRunner):
         true_filename: str = patched_file(kwargs["problem_patch"])
         results["patched_file"] = true_filename
         results["patched_file_mentioned_in_problem"] = filename_mentioned(true_filename, problem_statement)
-        rf = RelevantFiles(base_url=base_url, model_name=MODEL, attempts=1)
+        rf = Locate(base_url=base_url, model_name=MODEL, attempts=1)
         found_files: Dict[str, Dict[str, Any]]    # {"filename": {"prop1": value, "prop2": value}, ...}
         try:
             found_files = await rf.process(

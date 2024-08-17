@@ -97,7 +97,7 @@ pub struct CodeAssistantCaps {
     pub default_embeddings_model: String,
     #[serde(default)]
     pub endpoint_embeddings_template: String,
-    #[serde(default)]
+    #[serde(default = "default_endpoint_style")]
     pub endpoint_embeddings_style: String,
     #[serde(default)]
     pub size_embeddings: i32,
