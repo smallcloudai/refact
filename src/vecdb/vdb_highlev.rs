@@ -82,7 +82,7 @@ async fn _create_vecdb(
         return Err("no caps, will not start or reload vecdb".to_string());
     }
 
-    let base_dir: PathBuf = match cmdline.vecdb_forced_path.as_str() {
+    let base_dir: PathBuf = match cmdline.vecdb_force_path.as_str() {
         "" => cache_dir,
         path => PathBuf::from(path),
     };
@@ -195,7 +195,7 @@ pub async fn vecdb_background_reload(
     if !can_start_vecdb(caps) {
         return;
     }
-    
+
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
         let (need_reload, consts) = do_i_need_to_reload_vecdb(gcx.clone()).await;

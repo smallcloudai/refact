@@ -30,7 +30,7 @@ pub struct CommandLine {
     pub ping_message: String,
     #[structopt(long, help="Send logs to stderr, as opposed to ~/.cache/refact/logs, so it's easier to debug.")]
     pub logs_stderr: bool,
-    #[structopt(long, short="u", help="URL to start working. The first step is to fetch refact-caps / coding_assistant_caps.json.")]
+    #[structopt(long, short="u", help="URL to start working. The first step is to fetch capabilities from $URL/refact-caps. You can supply your own caps in a local file, too, for the bring-your-own-key use case.")]
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
@@ -38,9 +38,9 @@ pub struct CommandLine {
     pub http_port: u16,
     #[structopt(long, default_value="", help="End-user client version, such as version of VS Code plugin.")]
     pub enduser_client_version: String,
-    #[structopt(long, short="b", help="Send basic telemetry (counters and errors)")]
+    #[structopt(long, short="b", help="Send basic telemetry (counters and errors).")]
     pub basic_telemetry: bool,
-    #[structopt(long, short="s", help="Send snippet telemetry (code snippets)")]
+    #[structopt(long, short="s", help="Send snippet telemetry (code snippets).")]
     pub snippet_telemetry: bool,
     #[structopt(long, default_value="0", help="Bind 127.0.0.1:<port> and act as an LSP server. This is compatible with having an HTTP server at the same time.")]
     pub lsp_port: u16,
@@ -48,25 +48,25 @@ pub struct CommandLine {
     pub lsp_stdin_stdout: u16,
     #[structopt(long, help="Trust self-signed SSL certificates")]
     pub insecure: bool,
-    #[structopt(long, short="v", help="Verbose logging, lots of output")]
+    #[structopt(long, short="v", help="Makes DEBUG log level visible, instead of the default INFO.")]
     pub verbose: bool,
-    #[structopt(long, help="Use AST. For it to start working, give it a jsonl files list or LSP workspace folders.")]
+    #[structopt(long, help="Use AST, for it to start working, give it a jsonl files list or LSP workspace folders.")]
     pub ast: bool,
-    #[structopt(long, help="Use AST light mode. Could be useful for large projects and weak systems. In this mode we don't parse variables")]
+    #[structopt(long, help="Use AST light mode, could be useful for large projects and little memory. Less information gets stored.")]
     pub ast_light_mode: bool,
     #[structopt(long, default_value="15000", help="Maximum files for AST index, to avoid OOM on large projects.")]
     pub ast_max_files: usize,
     #[structopt(long, help="Use vector database. Give it a jsonl files list or LSP workspace folders, and also caps need to have an embedding model.")]
     pub vecdb: bool,
-    #[structopt(long, help="Delete all memories, start fresh.")]
+    #[structopt(long, help="Delete all memories, start with empty memory.")]
     pub reset_memory: bool,
     #[structopt(long, default_value="15000", help="Maximum files count for VecDB index, to avoid OOM.")]
     pub vecdb_max_files: usize,
-    #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to vecdb and ast")]
+    #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to VecDB and AST.")]
     pub files_jsonl_path: String,
-    #[structopt(long, default_value="", help="Vecdb storage path")]
-    pub vecdb_forced_path: String,
-    #[structopt(long, short="w", default_value="", help="Workspace folder to find files for vecdb and AST. An LSP or HTTP request can override this later.")]
+    #[structopt(long, default_value="", help="Set VecDB storage path manually.")]
+    pub vecdb_force_path: String,
+    #[structopt(long, short="w", default_value="", help="Workspace folder to find files for VecDB and AST. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
 }
 impl CommandLine {
