@@ -482,23 +482,19 @@ def print_messages(messages: List[Message]) -> List[str]:
             message_str.append(m.content)
             # console.print(Markdown(m.content))
 
-        message_str.append("")
-        # console.print("")
 
         if not _is_tool_call(m):
             results.append("\n".join(message_str))
             continue
 
-        header = "TOOL CALLS:"
-        message_str.append(header)
-        # console.print(_wrap_color(header))
-
-        message = "\n".join([
+        t = "\n".join([
             f"{tool_call.function.name}({tool_call.function.arguments}) [id={tool_call.id[:20]}]"
             for tool_call in m.tool_calls
         ])
-        message_str.append(message)
+        message_str.append(t)
         # console.print(message)
+        message_str.append("")
+        # console.print("")
 
         results.append("\n".join(message_str))
 
