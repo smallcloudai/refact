@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import psutil
 import time
 import datetime
 import termcolor
@@ -263,7 +264,12 @@ def _upload_results_loop(upload_q: multiprocessing.Queue, cancelled_q: multiproc
     setproctitle.setproctitle("upload_results_loop")
     req_session = infserver_session()
     exit_flag = False
+    parent_pid = os.getppid()
     while not exit_flag:
+        if not psutil.pid_exists(parent_pid):
+            logger.warning("Parent process no longer exists, exiting.")
+            exit_flag = True
+            break
         try:
             upload_dict = upload_q.get(timeout=600)
         except queue.Empty as e:
