@@ -255,11 +255,14 @@ impl AstModule {
             .filter(|s| s.borrow().name() == query)
             .filter_map(|s| symbol_to_search_res_struct(&ast_ref, &query, s))
             .collect::<Vec<_>>();
-        let fuzzy_matches = sorted_decl_symbols
+
+        let mut fuzzy_matches = sorted_decl_symbols
             .iter()
             .filter(|s| s.borrow().name() != query)
             .filter_map(|s| symbol_to_search_res_struct(&ast_ref, &query, s))
             .collect::<Vec<_>>();
+        fuzzy_matches.sort_by(|a, b| b.usefulness.partial_cmp(&a.usefulness).unwrap());
+        fuzzy_matches.truncate(10);
         let res = AstDeclarationSearchResult {
             query_text: query,
             exact_matches,
@@ -321,7 +324,7 @@ impl AstModule {
             .filter(|s| s.symbol_declaration.symbol_type == SymbolType::FunctionDeclaration)
             .map(|s| {
                 ast_ref.search_by_name(
-                    &s.symbol_declaration.name, RequestSymbolType::Usage, None, 
+                    &s.symbol_declaration.name, RequestSymbolType::Usage, None,
                     Some(s.symbol_declaration.language), false, false
                 ).unwrap_or_default()
             })
