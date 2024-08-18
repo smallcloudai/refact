@@ -177,6 +177,9 @@ fn load_caps_from_buf(
     apply_models_dict_patch(&mut r1);
     r1.endpoint_template = relative_to_full_url(&caps_url, &r1.endpoint_template)?;
     r1.endpoint_chat_passthrough = relative_to_full_url(&caps_url, &r1.endpoint_chat_passthrough)?;
+    if r1.endpoint_chat_passthrough.is_empty() {
+        r1.endpoint_chat_passthrough = relative_to_full_url(&caps_url, &r1.chat_endpoint)?;
+    }
     r1.telemetry_basic_dest = relative_to_full_url(&caps_url, &r1.telemetry_basic_dest)?;
     r1.telemetry_corrected_snippets_dest = relative_to_full_url(&caps_url, &r1.telemetry_corrected_snippets_dest)?;
     r1.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &r1.telemetry_basic_retrieve_my_own)?;
