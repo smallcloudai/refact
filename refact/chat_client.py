@@ -1,6 +1,7 @@
 from __future__ import annotations
 import uuid
 import tabulate
+import textwrap
 import aiohttp, os, termcolor, copy, json, time
 from typing import Optional, List, Any, Tuple, DefaultDict, Dict, Literal, Set
 import collections
@@ -418,8 +419,8 @@ def print_block(name: str, n: int, width: int = 90) -> str:
     message = f"\n\n{tabulate.tabulate([[block_text]], tablefmt='double_grid')}\n\n"
     tabulate.PRESERVE_WHITESPACE = False
 
-    console = Console()
-    console.print(message)
+    # console = Console()
+    # console.print(message)
 
     return message
 
@@ -432,7 +433,7 @@ def print_messages(messages: List[Message]) -> List[str]:
         return f"[bold {color}]{s}[/bold {color}]"
 
     results = []
-    console = Console()
+    # console = Console()
     role_to_header = {
         "system": "SYSTEM:",
         "assistant": "ASSISTANT:",
@@ -448,7 +449,7 @@ def print_messages(messages: List[Message]) -> List[str]:
         if m.role == "tool":
             header = header.format(uid=m.tool_call_id[:20])
         message_str.append(header)
-        console.print(_wrap_color(header))
+        # console.print(_wrap_color(header))
 
         if m.role == "context_file":
             message = "\n".join([
@@ -456,26 +457,33 @@ def print_messages(messages: List[Message]) -> List[str]:
                 for file in json.loads(m.content)
             ])
             message_str.append(message)
-            console.print(message)
+            # console.print(message)
         elif m.role == "diff":
             for chunk in json.loads(m.content):
                 message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
                 message_str.append(message)
-                console.print(message)
+                # console.print(message)
                 if len(chunk["lines_add"]) > 0:
                     message = "\n".join([f"+{line}" for line in chunk['lines_add'].splitlines()])
                     message_str.append(message)
-                    console.print(_wrap_color(message, "green"))
+                    # console.print(_wrap_color(message, "green"))
                 if len(chunk["lines_remove"]) > 0:
                     message = "\n".join([f"-{line}" for line in chunk['lines_remove'].splitlines()])
                     message_str.append(message)
-                    console.print(_wrap_color(message, "red"))
+                    # console.print(_wrap_color(message, "red"))
         elif m.role in role_to_header and m.content:
+            if m.subchats:
+                # print(m.subchats)
+                for subchat_id, subchat_msgs in m.subchats.items():
+                    subchats_strs = print_messages(subchat_msgs)
+                    subchats_str = "\n".join(subchats_strs)
+                    subchats_str = "\n".join([f" - {subchat_id} -   {line}" for line in subchats_str.splitlines()])
+                    message_str.append(subchats_str)
             message_str.append(m.content)
-            console.print(Markdown(m.content))
+            # console.print(Markdown(m.content))
 
         message_str.append("")
-        console.print("")
+        # console.print("")
 
         if not _is_tool_call(m):
             results.append("\n".join(message_str))
@@ -483,14 +491,14 @@ def print_messages(messages: List[Message]) -> List[str]:
 
         header = "TOOL CALLS:"
         message_str.append(header)
-        console.print(_wrap_color(header))
+        # console.print(_wrap_color(header))
 
         message = "\n".join([
             f"{tool_call.function.name}({tool_call.function.arguments}) [id={tool_call.id[:20]}]"
             for tool_call in m.tool_calls
         ])
         message_str.append(message)
-        console.print(message)
+        # console.print(message)
 
         results.append("\n".join(message_str))
 
