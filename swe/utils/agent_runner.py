@@ -2,6 +2,7 @@ import shutil
 import os
 import subprocess
 import traceback
+import filelock
 
 from uuid import uuid4
 from async_timeout import timeout
@@ -44,12 +45,14 @@ class RepoContext:
 
     async def __aenter__(self):
         repo_path = self._workdir / self._repo_name.split("/")[-1]
-        if not repo_path.exists():
-            # subprocess.call(["git", "clone", f"git@github.com:{self._repo_name}.git"], cwd=self._workdir)
-            subprocess.call(["git", "clone", f"https://github.com/{self._repo_name}"], cwd=self._workdir)
-        assert repo_path.exists()
-        assert not self._context_repo_path.exists()
-        subprocess.call(["cp", "-r", str(repo_path), str(self._context_repo_path)])
+        lock_path = str(repo_path) + ".lock"
+        with filelock.FileLock(lock_path):
+            if not repo_path.exists():
+                # subprocess.call(["git", "clone", f"git@github.com:{self._repo_name}.git"], cwd=self._workdir)
+                subprocess.call(["git", "clone", f"https://github.com/{self._repo_name}"], cwd=self._workdir)
+            assert repo_path.exists()
+            assert not self._context_repo_path.exists()
+            subprocess.call(["cp", "-r", str(repo_path), str(self._context_repo_path)])
         subprocess.call(["git", "clean", "-fd"], cwd=str(self._context_repo_path))
         subprocess.call(["git", "reset", "--hard", self._base_commit], cwd=str(self._context_repo_path))
         subprocess.call(["git", "--no-pager", "log", "-1"], cwd=str(self._context_repo_path))
