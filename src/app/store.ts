@@ -36,7 +36,7 @@ import {
   historySlice,
   historyMiddleware,
 } from "../features/History/historySlice";
-import { errorMiddleware, errorSlice } from "../features/Errors/errorsSlice";
+import { errorSlice } from "../features/Errors/errorsSlice";
 import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
@@ -89,22 +89,24 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
     reducer: persistedReducer,
     preloadedState: initialState,
     middleware: (getDefaultMiddleware) => {
-      return getDefaultMiddleware({
-        serializableCheck: {
-          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-        },
-      })
-        .concat(
-          statisticsApi.middleware,
-          capsApi.middleware,
-          promptsApi.middleware,
-          toolsApi.middleware,
-          commandsApi.middleware,
-          diffApi.middleware,
-        )
-        .prepend(historyMiddleware.middleware)
-        .prepend(errorMiddleware.middleware)
-        .prepend(listenerMiddleware.middleware);
+      return (
+        getDefaultMiddleware({
+          serializableCheck: {
+            ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+          },
+        })
+          .concat(
+            statisticsApi.middleware,
+            capsApi.middleware,
+            promptsApi.middleware,
+            toolsApi.middleware,
+            commandsApi.middleware,
+            diffApi.middleware,
+          )
+          .prepend(historyMiddleware.middleware)
+          // .prepend(errorMiddleware.middleware)
+          .prepend(listenerMiddleware.middleware)
+      );
     },
   });
 

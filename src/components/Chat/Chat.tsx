@@ -20,7 +20,8 @@ import {
   selectChatId,
   selectMessages,
 } from "../../features/Chat/chatThread";
-import { selectActiveFile, selectSelectedSnippet } from "../../features/Chat";
+import { selectSelectedSnippet } from "../../features/Chat/selectedSnippet";
+import { selectActiveFile } from "../../features/Chat/activeFile";
 import { useTourRefs } from "../../features/Tour";
 
 export type ChatProps = {

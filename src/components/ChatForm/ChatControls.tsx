@@ -10,7 +10,11 @@ import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
-import { ToolUse, selectToolUse, setToolUse } from "../../features/Chat";
+import {
+  ToolUse,
+  selectToolUse,
+  setToolUse,
+} from "../../features/Chat/chatThread";
 import { useCanUseTools } from "../../hooks/useCanUseTools";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 

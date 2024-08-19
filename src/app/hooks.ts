@@ -17,7 +17,7 @@ import {
   selectLspPort,
   setThemeMode,
 } from "../features/Config/configSlice";
-import { useMutationObserver } from "../hooks";
+import { useMutationObserver } from "../hooks/useMutationObserver";
 import { createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import { getErrorMessage } from "../features/Errors/errorsSlice";
 
