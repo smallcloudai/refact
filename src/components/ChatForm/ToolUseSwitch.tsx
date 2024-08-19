@@ -14,7 +14,6 @@ export const ToolUseSwitch = ({ toolUse, setToolUse }: ToolUseSwitchProps) => {
         defaultValue="quick"
         value={toolUse}
         onValueChange={(x) => {
-          console.log({ x });
           setToolUse(x as ToolUse);
         }}
       >

@@ -66,7 +66,7 @@ export const Chat: React.FC<ChatProps> = ({
   const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
     dispatch(setSystemPrompt(prompt));
 
-  const useTools = useAppSelector(selectToolUse);
+  const toolUse = useAppSelector(selectToolUse);
   const onSetToolUse = (value: ToolUse) => dispatch(setToolUse(value));
   const messages = useAppSelector(selectMessages);
 
@@ -192,7 +192,7 @@ export const Chat: React.FC<ChatProps> = ({
       selectedSystemPrompt={selectedSystemPrompt}
       requestPreviewFiles={() => ({})}
       canUseTools={canUseTools}
-      toolUse={useTools}
+      toolUse={toolUse}
       setToolUse={onSetToolUse}
       // openSettings={openSettings}
     />

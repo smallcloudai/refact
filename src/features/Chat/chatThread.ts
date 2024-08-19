@@ -394,6 +394,7 @@ export const useSendChatRequest = () => {
   const currentMessages = useAppSelector(selectMessages);
   const systemPrompt = useAppSelector(getSelectedSystemPrompt);
   const sendImmediately = useAppSelector(selectSendImmediately);
+  const toolUse = useAppSelector(selectToolUse);
 
   const messagesWithSystemPrompt = useMemo(() => {
     const prompts = Object.entries(systemPrompt);
@@ -409,7 +410,12 @@ export const useSendChatRequest = () => {
 
   const sendMessages = useCallback(
     (messages: ChatMessages) => {
-      const tools = toolsRequest.data ?? null;
+      let tools = toolsRequest.data ?? null;
+      if (toolUse === "quick") {
+        tools = [];
+      } else if (toolUse === "explore") {
+        tools = tools?.filter((t) => !t.function.agentic) ?? [];
+      }
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
@@ -422,7 +428,7 @@ export const useSendChatRequest = () => {
       const dispatchedAction = dispatch(action);
       abortRef.current = dispatchedAction.abort;
     },
-    [chatId, dispatch, toolsRequest.data],
+    [chatId, dispatch, toolsRequest.data, toolUse],
   );
 
   const submit = useCallback(
