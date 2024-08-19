@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { Text, Flex, HoverCard, Link } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
@@ -10,7 +10,9 @@ import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
-import { ToolUse } from "../../features/Chat";
+import { ToolUse, selectToolUse, setToolUse } from "../../features/Chat";
+import { useCanUseTools } from "../../hooks/useCanUseTools";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
 
 type CapsSelectProps = {
   value: string;
@@ -66,14 +68,14 @@ export type Checkbox = {
 
 export type ChatControlsProps = {
   checkboxes: Record<string, Checkbox>;
-  onCheckedChange: (name: string, checked: boolean | string) => void;
+  onCheckedChange: (
+    name: keyof ChatControlsProps["checkboxes"],
+    checked: boolean | string,
+  ) => void;
   selectProps: CapsSelectProps;
   promptsProps: PromptSelectProps;
   host: Config["host"];
   showControls: boolean;
-  canUseTools: boolean;
-  toolUse: ToolUse;
-  setToolUse: (value: ToolUse) => void;
 };
 
 const ChatContolCheckBox: React.FC<{
@@ -144,11 +146,15 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   promptsProps,
   host,
   showControls,
-  canUseTools,
-  toolUse,
-  setToolUse,
 }) => {
   const refs = useTourRefs();
+  const canUseTools = useCanUseTools();
+  const dispatch = useAppDispatch();
+  const toolUse = useAppSelector(selectToolUse);
+  const onSetToolUse = useCallback(
+    (value: ToolUse) => dispatch(setToolUse(value)),
+    [dispatch],
+  );
 
   return (
     <Flex
@@ -186,7 +192,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           ref={(x) => refs.setUseTools(x)}
           style={{ alignSelf: "flex-start" }}
         >
-          <ToolUseSwitch toolUse={toolUse} setToolUse={setToolUse} />
+          <ToolUseSwitch toolUse={toolUse} setToolUse={onSetToolUse} />
         </Flex>
       )}
 

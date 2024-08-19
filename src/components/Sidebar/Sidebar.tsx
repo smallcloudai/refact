@@ -8,11 +8,7 @@ import {
   getHistory,
   deleteChatById,
 } from "../../features/History/historySlice";
-import {
-  newChatAction,
-  restoreChat,
-  selectChatId,
-} from "../../features/Chat/chatThread";
+import { newChatAction, restoreChat } from "../../features/Chat/chatThread";
 import type { ChatThread } from "../../features/Chat/chatThread";
 import { useTourRefs } from "../../features/Tour";
 
@@ -45,18 +41,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const dispatch = useAppDispatch();
   const history = useAppSelector(getHistory);
 
-  const currentChatId = useAppSelector(selectChatId);
   const onDeleteHistoryItem = (id: string) => dispatch(deleteChatById(id));
   const onCreateNewChat = () => {
-    dispatch(newChatAction({ id: currentChatId }));
+    dispatch(newChatAction());
     handleNavigation("chat");
   };
   const onHistoryItemClick = useCallback(
     (thread: ChatThread) => {
-      dispatch(restoreChat({ id: currentChatId, thread }));
+      dispatch(restoreChat(thread));
       handleNavigation("chat");
     },
-    [currentChatId, dispatch, handleNavigation],
+    [dispatch, handleNavigation],
   );
 
   const refs = useTourRefs();

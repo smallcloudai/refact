@@ -80,7 +80,7 @@ const initialState = createInitialState();
 
 type PayloadWIthId = { id: string };
 // TODO: add history actions to this
-export const newChatAction = createAction<PayloadWIthId>("chatThread/new");
+export const newChatAction = createAction("chatThread/new");
 
 const chatResponse = createAction<PayloadWIthId & ChatResponse>(
   "chatThread/response",
@@ -103,9 +103,7 @@ export const doneStreaming = createAction<PayloadWIthId>(
   "chatThread/doneStreaming",
 );
 
-export const setChatModel = createAction<PayloadWIthId & { model: string }>(
-  "chatThread/setChatModel",
-);
+export const setChatModel = createAction<string>("chatThread/setChatModel");
 export const getSelectedChatModel = (state: RootState) =>
   state.chat.thread.model;
 
@@ -120,9 +118,7 @@ export const removeChatFromCache = createAction<PayloadWIthId>(
   "chatThread/removeChatFromCache",
 );
 
-export const restoreChat = createAction<PayloadWIthId & { thread: ChatThread }>(
-  "chatThread/restoreChat",
-);
+export const restoreChat = createAction<ChatThread>("chatThread/restoreChat");
 
 export const clearChatError = createAction<PayloadWIthId>(
   "chatThread/clearError",
@@ -148,16 +144,14 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setChatModel, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
-    state.thread.model = action.payload.model;
+    state.thread.model = action.payload;
   });
 
   builder.addCase(setSystemPrompt, (state, action) => {
     state.system_prompt = action.payload;
   });
 
-  builder.addCase(newChatAction, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
+  builder.addCase(newChatAction, (state) => {
     if (state.streaming) {
       state.cache[state.thread.id] = state.thread;
     }
@@ -237,15 +231,20 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(restoreChat, (state, action) => {
-    if (action.payload.id !== state.thread.id) return state;
+    const mostUptoDateThread =
+      action.payload.id in state.cache
+        ? { ...state.cache[action.payload.id] }
+        : action.payload;
+
+    state.error = null;
+    state.waiting_for_response = false;
+
     if (state.streaming) {
       state.cache[state.thread.id] = state.thread;
       state.streaming = false;
     }
-    state.error = null;
-    state.waiting_for_response = false;
-    state.previous_message_length = action.payload.thread.messages.length;
-    state.thread = action.payload.thread;
+    state.previous_message_length = mostUptoDateThread.messages.length;
+    state.thread = mostUptoDateThread;
   });
 });
 
@@ -485,12 +484,6 @@ export const useSendChatRequest = () => {
       abortRef.current();
     }
   };
-
-  useEffect(() => {
-    if (!streaming && abortRef.current) {
-      abortRef.current = null;
-    }
-  }, [streaming]);
 
   return {
     submit,

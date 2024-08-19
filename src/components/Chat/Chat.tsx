@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useEffect } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
@@ -30,100 +30,55 @@ export type ChatProps = {
   // TODO: this
   // openChatInNewTab: () => void;
   style?: React.CSSProperties;
-  // onStartNewChat: () => void;
-  // preventSend: boolean;
+
   unCalledTools: boolean;
   // enableSend: (value: boolean) => void;
 
-  // chat: ChatState["chat"];
-  // error: ChatState["error"];
   // TODO: update this
   caps: ChatFormProps["caps"];
-  // commands: ChatState["commands"];
   commands: ChatFormProps["commands"];
 
-  // retryQuestion: ChatContentProps["onRetry"];
-  // isWaiting: ChatContentProps["isWaiting"];
-  // isStreaming: ChatContentProps["isStreaming"];
-  // onNewFileClick: ChatContentProps["onNewFileClick"];
-  // onPasteClick: ChatContentProps["onPasteClick"];
-  // canPaste: ChatContentProps["canPaste"];
-  // openSettings: ChatContentProps["openSettings"];
-
-  // hasContextFile: ChatFormProps["hasContextFile"];
   requestCommandsCompletion: ChatFormProps["requestCommandsCompletion"];
-  // setSelectedCommand: ChatFormProps["setSelectedCommand"];
+
   maybeSendToSidebar: ChatFormProps["onClose"];
-  // activeFile: ChatFormProps["attachFile"];
+
   filesInPreview: ChatFormProps["filesInPreview"];
-  // selectedSnippet: ChatFormProps["selectedSnippet"];
-  // removePreviewFileByName: ChatFormProps["removePreviewFileByName"];
-  // requestCaps: ChatFormProps["requestCaps"];
+
   prompts: ChatFormProps["prompts"];
 
   onSetSystemPrompt: ChatFormProps["onSetSystemPrompt"];
   selectedSystemPrompt: ChatFormProps["selectedSystemPrompt"];
   requestPreviewFiles: ChatFormProps["requestPreviewFiles"];
-  canUseTools: ChatFormProps["canUseTools"];
-  toolUse: ChatFormProps["toolUse"];
-  setToolUse: ChatFormProps["setToolUse"];
-  // onSetChatModel: ChatFormProps["onSetChatModel"];
-  // onAskQuestion: ChatFormProps["onSubmit"];
-  // onClearError: ChatFormProps["clearError"];
-  // onStopStreaming: ChatFormProps["onStopStreaming"];
 };
 
 export const Chat: React.FC<ChatProps> = ({
   style,
   host,
-  // tabbed,
+
   backFromChat,
-  // openChatInNewTab,
-  // onStopStreaming,
-  // chat,
 
-  // do this
-  // error,
-  // onClearError,
-
-  // retryQuestion,
-  // isWaiting,
-  // isStreaming,
-  // onNewFileClick,
-  // onPasteClick,
-  // canPaste,
-  // preventSend,
   unCalledTools,
-  // enableSend,
-  // onAskQuestion,
-  // onSetChatModel,
+
   caps,
   commands,
-  // hasContextFile,
+
   requestCommandsCompletion,
-  // setSelectedCommand,
+
   maybeSendToSidebar,
-  // activeFile,
+
   filesInPreview,
-  // selectedSnippet,
-  // removePreviewFileByName,
-  // requestCaps,
+
   prompts,
-  // onStartNewChat,
+
   onSetSystemPrompt,
   selectedSystemPrompt,
   requestPreviewFiles,
-  canUseTools,
-  toolUse,
-  setToolUse,
-  // openSettings,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
   const activeFile = useAppSelector(selectActiveFile);
   const selectedSnippet = useAppSelector(selectSelectedSnippet);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  // const chatThread = useAppSelector(selectThread);
 
   const canPaste = activeFile.can_paste;
   const chatId = useAppSelector(selectChatId);
@@ -134,9 +89,9 @@ export const Chat: React.FC<ChatProps> = ({
   const onSetChatModel = useCallback(
     (value: string) => {
       const model = caps.default_cap === value ? "" : value;
-      dispatch(setChatModel({ id: chatId, model }));
+      dispatch(setChatModel(model));
     },
-    [caps.default_cap, chatId, dispatch],
+    [caps.default_cap, dispatch],
   );
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
@@ -183,18 +138,26 @@ export const Chat: React.FC<ChatProps> = ({
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.currentTarget.blur();
       // TODO: could be improved
-      const action = newChatAction({ id: chatId });
+      const action = newChatAction();
       dispatch(action);
-      // TODO: improve this
-      const textarea = document.querySelector<HTMLTextAreaElement>(
-        '[data-testid="chat-form-textarea"]',
-      );
-      if (textarea !== null) {
-        textarea.focus();
-      }
     },
-    [chatId, dispatch],
+    [dispatch],
   );
+
+  const focusTextarea = useCallback(() => {
+    const textarea = document.querySelector<HTMLTextAreaElement>(
+      '[data-testid="chat-form-textarea"]',
+    );
+    if (textarea) {
+      textarea.focus();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isWaiting && !isStreaming) {
+      focusTextarea();
+    }
+  }, [isWaiting, isStreaming, focusTextarea]);
 
   return (
     <PageWrapper host={host} style={style}>
@@ -261,33 +224,21 @@ export const Chat: React.FC<ChatProps> = ({
         chatId={chatId}
         isStreaming={isStreaming}
         showControls={messages.length === 0 && !isStreaming}
-        // error={error}
-        // clearError={onClearError}
-        // onSubmit={onAskQuestion}
         onSubmit={handleSummit}
         model={chatModel}
         onSetChatModel={onSetChatModel}
         caps={caps}
-        // onStopStreaming={onStopStreaming}
         onStopStreaming={abort}
         commands={commands}
-        // hasContextFile={hasContextFile}
         requestCommandsCompletion={requestCommandsCompletion}
-        // setSelectedCommand={setSelectedCommand}
         onClose={maybeSendToSidebar}
-        attachFile={activeFile}
         filesInPreview={filesInPreview}
         selectedSnippet={selectedSnippet}
-        // removePreviewFileByName={removePreviewFileByName}
         onTextAreaHeightChange={onTextAreaHeightChange}
-        // requestCaps={requestCaps}
         prompts={prompts}
         onSetSystemPrompt={onSetSystemPrompt}
         selectedSystemPrompt={selectedSystemPrompt}
         requestPreviewFiles={requestPreviewFiles}
-        canUseTools={canUseTools}
-        toolUse={toolUse}
-        setToolUse={setToolUse}
       />
       <Flex justify="between" pl="1" pr="1" pt="1">
         {messages.length > 0 && (

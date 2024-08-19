@@ -1,12 +1,10 @@
-import React, { useMemo } from "react";
-// import { useEventBusForChat } from "../hooks/useEventBusForChat";
+import React from "react";
 import type { Config } from "../Config/configSlice";
-import { CodeChatModel, SystemPrompts } from "../../services/refact";
+import { SystemPrompts } from "../../services/refact";
 import { Chat as ChatComponent } from "../../components/Chat";
 import {
   useGetCapsQuery,
   useGetPromptsQuery,
-  useGetToolsQuery,
   useGetCommandCompletionQuery,
   useGetCommandPreviewQuery,
 } from "../../app/hooks";
@@ -15,11 +13,7 @@ import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import {
   getSelectedSystemPrompt,
   setSystemPrompt,
-  setToolUse,
   selectMessages,
-  selectModel,
-  selectToolUse,
-  ToolUse,
 } from "./chatThread";
 
 export type ChatProps = {
@@ -57,7 +51,6 @@ export const Chat: React.FC<ChatProps> = ({
   // state,
 }) => {
   const capsRequest = useGetCapsQuery();
-  const chatModel = useAppSelector(selectModel);
 
   // TODO: these could be lower in the component tree
   const promptsRequest = useGetPromptsQuery();
@@ -66,12 +59,8 @@ export const Chat: React.FC<ChatProps> = ({
   const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
     dispatch(setSystemPrompt(prompt));
 
-  const toolUse = useAppSelector(selectToolUse);
-  const onSetToolUse = (value: ToolUse) => dispatch(setToolUse(value));
   const messages = useAppSelector(selectMessages);
 
-  // TODO: don't make this request if there are no caps
-  const toolsRequest = useGetToolsQuery();
   // const chatRequest = useSendChatRequest();
 
   // commands should be a selector, and calling the hook ?
@@ -119,18 +108,6 @@ export const Chat: React.FC<ChatProps> = ({
 
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
-
-  const canUseTools = useMemo(() => {
-    if (!capsRequest.data) return false;
-    if (!toolsRequest.data) return false;
-    if (toolsRequest.data.length === 0) return false;
-    const modelName = chatModel || capsRequest.data.code_chat_default_model;
-
-    if (!(modelName in capsRequest.data.code_chat_models)) return false;
-    const model: CodeChatModel = capsRequest.data.code_chat_models[modelName];
-    if ("supports_tools" in model && model.supports_tools) return true;
-    return false;
-  }, [capsRequest.data, toolsRequest.data, chatModel]);
 
   // can be a selector
   const unCalledTools = React.useMemo(() => {
@@ -191,9 +168,6 @@ export const Chat: React.FC<ChatProps> = ({
       onSetSystemPrompt={onSetSelectedSystemPrompt}
       selectedSystemPrompt={selectedSystemPrompt}
       requestPreviewFiles={() => ({})}
-      canUseTools={canUseTools}
-      toolUse={toolUse}
-      setToolUse={onSetToolUse}
       // openSettings={openSettings}
     />
   );
