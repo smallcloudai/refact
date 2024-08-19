@@ -51,8 +51,8 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
     onSetSystemPrompt: noop,
     selectedSystemPrompt: {},
     canUseTools: false,
-    setUseTools: noop,
-    useTools: false,
+    setToolUse: noop,
+    toolUse: "agent",
     ...props,
   };
 
