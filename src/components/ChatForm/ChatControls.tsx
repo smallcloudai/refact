@@ -158,15 +158,6 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
       direction="column"
       className={classNames(styles.controls)}
     >
-      {canUseTools && (
-        <Flex
-          ref={(x) => refs.setUseTools(x)}
-          style={{ alignSelf: "flex-start" }}
-        >
-          <ToolUseSwitch toolUse={toolUse} setToolUse={setToolUse} />
-        </Flex>
-      )}
-
       {Object.entries(checkboxes).map(([key, checkbox]) => {
         if (host === "web" && checkbox.name === "file_upload") {
           return null;
@@ -190,6 +181,15 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           </Flex>
         );
       })}
+      {canUseTools && showControls && (
+        <Flex
+          ref={(x) => refs.setUseTools(x)}
+          style={{ alignSelf: "flex-start" }}
+        >
+          <ToolUseSwitch toolUse={toolUse} setToolUse={setToolUse} />
+        </Flex>
+      )}
+
       {showControls && (
         <Flex style={{ alignSelf: "flex-start" }}>
           <CapsSelect {...selectProps} />
