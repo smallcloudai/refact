@@ -50,6 +50,7 @@ function makeConfig(library: "browser" | "node") {
           ),
         },
         setupFiles: ["./src/utils/test-setup.ts"],
+        isolate: true,
       },
       css: {
         modules: {},

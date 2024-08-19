@@ -116,6 +116,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
   return store;
 }
 export const store = setUpStore();
+export type Store = typeof store;
 
 export const persistor = persistStore(store);
 

@@ -1,9 +1,28 @@
 import { render } from "../../utils/test-utils";
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ChatForm, ChatFormProps } from "./ChatForm";
 import React from "react";
 import { SYSTEM_PROMPTS } from "../../__fixtures__";
 import { useDebounceCallback } from "usehooks-ts";
+
+import {
+  server,
+  goodCaps,
+  goodPrompts,
+  noTools,
+  noCommandPreview,
+  noCompletions,
+} from "../../utils/mockServer";
+
+const handlers = [
+  goodCaps,
+  goodPrompts,
+  noTools,
+  noCommandPreview,
+  noCompletions,
+];
+
+server.use(...handlers);
 
 const noop = () => ({});
 
@@ -46,6 +65,10 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
 };
 
 describe("ChatForm", () => {
+  beforeEach(() => {
+    server.use(...handlers);
+  });
+
   test("when I push enter it should call onSubmit", async () => {
     const fakeOnSubmit = vi.fn();
 
@@ -122,7 +145,7 @@ describe("ChatForm", () => {
   });
 
   // TODO: fix this test because the host is not set in redux
-  test.skip("checkbox snippet", async () => {
+  test("checkbox snippet", async () => {
     // skipped because if the snippet is there on the first render it's automatically appened
     const fakeOnSubmit = vi.fn();
     const snippet = {
@@ -131,23 +154,14 @@ describe("ChatForm", () => {
       path: "/Users/refact/projects/print1.py",
       basename: "print1.py",
     };
-    const { user, ...app } = render(
-      <App
-        onSubmit={fakeOnSubmit}
-        // host="ide"
-      />,
-    );
-
-    app.rerender(
-      <App
-        onSubmit={fakeOnSubmit}
-        selectedSnippet={snippet}
-        // host="ide"
-      />,
-    );
+    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />, {
+      preloadedState: {
+        selected_snippet: snippet,
+        config: { host: "vscode", themeProps: {}, lspPort: 8001 },
+      },
+    });
 
     const label = app.queryByText(/Selected \d* lines/);
-    app.debug();
     expect(label).not.toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const textarea = app.container.querySelector("textarea")!;
