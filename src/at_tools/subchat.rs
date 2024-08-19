@@ -310,7 +310,7 @@ pub async fn subchat_single(
         extended_msgs.extend(new_msgs.clone());
         extended_msgs
     }).collect::<Vec<Vec<ChatMessage>>>();
-    
+
     if let Some(usage_collector) = usage_collector_mb {
         update_usage_from_messages(usage_collector, &results);
     }
@@ -362,11 +362,12 @@ pub async fn subchat(
     wrap_up_depth: usize,
     wrap_up_tokens_cnt: usize,
     wrap_up_prompt: &str,
+    wrap_up_n: usize,
     temperature: Option<f32>,
     logfn_mb: Option<String>,
     tx_toolid_mb: Option<String>,
     tx_chatid_mb: Option<String>,
-) -> Result<Vec<ChatMessage>, String> {
+) -> Result<Vec<Vec<ChatMessage>>, String> {
     let mut messages = messages.clone();
     let mut usage_collector = ChatUsage { ..Default::default() };
     // for attempt in attempt_n
@@ -430,7 +431,7 @@ pub async fn subchat(
         }
     }
     messages.push(ChatMessage::new("user".to_string(), wrap_up_prompt.to_string()));
-    messages = subchat_single(
+    let choices = subchat_single(
         ccx.clone(),
         model_name,
         messages,
@@ -439,15 +440,14 @@ pub async fn subchat(
         false,
         temperature,
         None,
-        1,
+        wrap_up_n,
         Some(&mut usage_collector),
         logfn_mb.clone(),
         tx_toolid_mb.clone(),
         tx_chatid_mb.clone(),
-    ).await?[0].clone();
-    
-    if let Some(last_message) = messages.last_mut() {
-        last_message.usage = Some(usage_collector);
-    }
-    Ok(messages)
+    ).await?;
+    // if let Some(last_message) = messages.last_mut() {
+    //     last_message.usage = Some(usage_collector);
+    // }
+    Ok(choices)
 }

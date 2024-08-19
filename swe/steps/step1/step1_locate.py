@@ -18,7 +18,7 @@ class Locate(Step):
     async def process(self, problem_statement: str, repo_path: Path, **kwargs) -> Dict[str, Any]:
 
         tool_args = {
-            "problem_statement": f"Problem statement:\n\n{problem_statement}",
+            "problem_statement": problem_statement,
         }
 
         tool_call_dict = chat_client.ToolCallDict(
@@ -40,12 +40,40 @@ class Locate(Step):
         except Exception as e:
             raise RuntimeError(f"content is not decodable as json:\n{res_message.content}\nError: {e}")
 
-        files_list = results.get('files')
-        # print("files_list", files_list)
-        symbols = results.get('symbols')
-        # print("symbols", symbols)
-        return files_list, symbols
+        # {
+        #   "sphinx/domains/index.py": {
+        #     "SYMBOLS": "IndexDomain,IndexDirective,IndexRole,setup",
+        #     "WHY_CODE": "DEFINITIONS",
+        #     "WHY_DESC": "Defines the index domain and its directives, crucial for understanding how index
+        # entries are processed.",
+        #     "RELEVANCY": 5
+        #   },
+        #   "sphinx/addnodes.py": {
+        #     "SYMBOLS": "index",
+        #     "WHY_CODE": "DEFINITIONS",
+        #     "WHY_DESC": "This class is specifically for index entries and may contain logic that leads to
+        # the creation of duplicate sections.",
+        #     "RELEVANCY": 5
+        #   },
+        #   "sphinx/writers/html.py": {
+        #     "SYMBOLS": "HTMLWriter, HTMLTranslator",
+        #     "WHY_CODE": "HIGHLEV",
+        #     "WHY_DESC": "This file is responsible for generating HTML output and may contain the logic that
+        # leads to the creation of the duplicate 'Symbols' sections.",
+        #     "RELEVANCY": 5
+        #   }
+        # }
 
+        if 1:
+            # Oleg branch
+            return results, []
+        else:
+            # Valerii branch
+            files_list = results.get('files')
+            symbols = results.get('symbols')
+            return files_list, symbols
+
+        # older Valerii branch
         # if not files_list:
         #     raise RuntimeError(f"no files found")
         # if not isinstance(files_list[0], dict):

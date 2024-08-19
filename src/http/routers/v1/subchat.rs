@@ -44,6 +44,7 @@ pub async fn handle_v1_subchat(
         post.wrap_up_depth,
         post.wrap_up_tokens_cnt,
         post.wrap_up_prompt.as_str(),
+        1,
         None,
         Some(logfn),
         None,

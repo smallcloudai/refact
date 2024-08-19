@@ -5,10 +5,11 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use regex::Regex;
-
+use rand::prelude::SliceRandom;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
+
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::subchat::subchat_single;
 use crate::at_tools::tools::Tool;
@@ -33,8 +34,8 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
             let tconfig = load_customization(gcx.clone()).await?;
             tconfig.subchat_tool_parameters.get(tool_name).cloned()
                 .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
-        }    
-    }; 
+        }
+    };
     let _ = get_model_record(gcx, &params.model).await?; // check if the model exists
     Ok(params)
 }
@@ -47,7 +48,7 @@ impl Tool for AttLocate{
         tool_call_id: &String,
         args: &HashMap<String, Value>
     ) -> Result<Vec<ContextEnum>, String> {
-        
+
         let problem_statement_summary = match args.get("problem_statement") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `problem_statement` is not a string: {:?}", v)),
@@ -96,9 +97,14 @@ impl Tool for AttLocate{
     }
 }
 
-fn pretend_tool_call(tool_name: &str, tool_arguments: &str) -> ChatMessage {
+pub fn pretend_tool_call(tool_name: &str, tool_arguments: &str, content: String) -> ChatMessage {
+    let mut rng = rand::thread_rng();
+    let hex_chars: Vec<char> = "0123456789abcdef".chars().collect();
+    let random_hex: String = (0..6)
+        .map(|_| *hex_chars.choose(&mut rng).unwrap())
+        .collect();
     let tool_call = ChatToolCall {
-        id: format!("{tool_name}_123"),
+        id: format!("{tool_name}_{random_hex}"),
         function: ChatToolFunction {
             arguments: tool_arguments.to_string(),
             name: tool_name.to_string()
@@ -107,7 +113,7 @@ fn pretend_tool_call(tool_name: &str, tool_arguments: &str) -> ChatMessage {
     };
     ChatMessage {
         role: "assistant".to_string(),
-        content: "".to_string(),
+        content: content,
         tool_calls: Some(vec![tool_call]),
         tool_call_id: "".to_string(),
         ..Default::default()
@@ -142,7 +148,7 @@ async fn strategy_tree(
     messages.push(ChatMessage::new("system".to_string(), STEP1_DET_SYSTEM_PROMPT.to_string()));
     messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
 
-    messages.push(pretend_tool_call("tree", "{}"));
+    messages.push(pretend_tool_call("tree", "{}", "".to_string()));
 
     let mut messages = subchat_single(
         ccx.clone(),
@@ -297,7 +303,8 @@ async fn supercat_extract_symbols(
 
     messages.push(pretend_tool_call(
         "cat",
-        serde_json::to_string(&supercat_args).unwrap().as_str()
+        serde_json::to_string(&supercat_args).unwrap().as_str(),
+        "".to_string(),
     ));
 
     let mut messages = subchat_single(
@@ -315,7 +322,7 @@ async fn supercat_extract_symbols(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step3-cat")),
     ).await?.get(0).ok_or("relevant_files: cat message was empty.".to_string())?.clone();
-    
+
     messages.push(ChatMessage::new("user".to_string(), SUPERCAT_EXTRACT_SYMBOLS_PROMPT.replace("{USER_QUERY}", &user_query)));
 
     let n_choices = subchat_single(
@@ -333,7 +340,7 @@ async fn supercat_extract_symbols(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step3-cat-result")),
     ).await?;
-    
+
     assert_eq!(n_choices.len(), 5);
 
     let mut symbols_result = vec![];
@@ -375,7 +382,8 @@ async fn supercat_decider(
 
     messages.push(pretend_tool_call(
         "cat",
-        serde_json::to_string(&supercat_args).unwrap().as_str()
+        serde_json::to_string(&supercat_args).unwrap().as_str(),
+        "".to_string()
     ));
 
     let mut messages = subchat_single(
@@ -393,7 +401,7 @@ async fn supercat_decider(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step4-det")),
     ).await?.get(0).ok_or("relevant_files: supercat message was empty.".to_string())?.clone();
-    
+
     messages.push(ChatMessage::new("user".to_string(), SUPERCAT_DECIDER_PROMPT.replace("{USER_QUERY}", &user_query)));
 
     let n_choices = subchat_single(
@@ -411,7 +419,7 @@ async fn supercat_decider(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step4-det-result")),
     ).await?;
-    
+
     assert_eq!(n_choices.len(), 5);
 
     let mut results_to_change = vec![];
@@ -455,7 +463,7 @@ async fn supercat_decider(
     });
     res.extend(
         files_context.into_iter().map(|x| SuperCatResultItem{
-            file_path: x.clone(), 
+            file_path: x.clone(),
             reason: "context".to_string(),
             description: file_descriptions.get(&x).unwrap_or(&HashSet::new()).into_iter().cloned().collect::<Vec<_>>().join(", "),
         })
