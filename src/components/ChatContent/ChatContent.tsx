@@ -230,7 +230,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
           {!isWaiting && messages.length > 0 && (
             <AccumulatedChanges onOpen={onOpenCAccumulatedChanges} />
           )}
-          {isWaiting && (
+          {(isWaiting || isStreaming) && (
             <Container py="4">
               <Spinner />
             </Container>
