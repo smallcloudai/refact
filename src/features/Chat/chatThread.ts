@@ -416,6 +416,11 @@ export const useSendChatRequest = () => {
       } else if (toolUse === "explore") {
         tools = tools?.filter((t) => !t.function.agentic) ?? [];
       }
+      tools =
+        tools?.map((t) => {
+          const { agentic: _, ...remaining } = t.function;
+          return { ...t, function: { ...remaining } };
+        }) ?? [];
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 

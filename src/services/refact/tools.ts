@@ -41,7 +41,7 @@ export type ToolParams = {
 };
 
 export type ToolFunction = {
-  agentic: boolean;
+  agentic?: boolean;
   name: string;
   description: string;
   parameters: ToolParams[];
