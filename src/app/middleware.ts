@@ -7,6 +7,7 @@ import { promptsApi } from "../services/refact/prompts";
 import { toolsApi } from "../services/refact/tools";
 import { commandsApi } from "../services/refact/commands";
 import { diffApi } from "../services/refact/diffs";
+import { clearError } from "../features/Errors/errorsSlice";
 
 export const listenerMiddleware = createListenerMiddleware();
 const startErrorListening = listenerMiddleware.startListening.withTypes<
@@ -30,5 +31,7 @@ startErrorListening({
       commandsApi.util.resetApiState(),
       diffApi.util.resetApiState(),
     ].forEach((api) => listenerApi.dispatch(api));
+
+    listenerApi.dispatch(clearError());
   },
 });

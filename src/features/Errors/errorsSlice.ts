@@ -45,8 +45,8 @@ startErrorListening({
   matcher: isAnyOf(isRejected),
   effect: (action, listenerApi) => {
     if (capsEndpoints.getCaps.matchRejected(action) && !action.meta.condition) {
-      const message = `fetching caps from lsp.`;
-      listenerApi.dispatch(setError(action.error.message ?? message));
+      const message = `fetching caps from lsp`;
+      listenerApi.dispatch(setError(message));
     }
 
     if (
