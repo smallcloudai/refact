@@ -85,7 +85,7 @@ const useAttachSelectedSnippet = (): [Checkbox, () => void] => {
 
   const codeLineCount = useMemo(() => {
     if (snippet.code.length === 0) return 0;
-    return snippet.code.split("\n").length;
+    return snippet.code.split("\n").filter((str) => str).length;
   }, [snippet.code]);
 
   const label = useMemo(() => {
