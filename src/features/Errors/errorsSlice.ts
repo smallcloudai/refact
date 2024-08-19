@@ -60,9 +60,9 @@ startErrorListening({
     if (
       chatAskQuestionThunk.rejected.match(action) &&
       !action.meta.aborted &&
-      action.error.message
+      typeof action.payload === "string"
     ) {
-      listenerApi.dispatch(setError(action.error.message));
+      listenerApi.dispatch(setError(action.payload));
     }
   },
 });
