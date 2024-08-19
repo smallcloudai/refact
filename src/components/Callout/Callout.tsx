@@ -1,5 +1,5 @@
 import React from "react";
-import { Callout as RadixCallout } from "@radix-ui/themes";
+import { Flex, Callout as RadixCallout } from "@radix-ui/themes";
 import {
   ExclamationTriangleIcon,
   InfoCircledIcon,
@@ -25,12 +25,14 @@ export const Callout: React.FC<CalloutProps> = ({
   useTimeout(onClick, timeout);
   return (
     <RadixCallout.Root mx="2" onClick={onClick} {...props}>
-      <RadixCallout.Icon>
-        {type === "error" ? <ExclamationTriangleIcon /> : <InfoCircledIcon />}
-      </RadixCallout.Icon>
-      <RadixCallout.Text className={styles.callout_text} wrap="wrap">
-        {children}
-      </RadixCallout.Text>
+      <Flex direction="row" align="center" gap="4">
+        <RadixCallout.Icon>
+          {type === "error" ? <ExclamationTriangleIcon /> : <InfoCircledIcon />}
+        </RadixCallout.Icon>
+        <RadixCallout.Text className={styles.callout_text} wrap="wrap">
+          {children}
+        </RadixCallout.Text>
+      </Flex>
     </RadixCallout.Root>
   );
 };

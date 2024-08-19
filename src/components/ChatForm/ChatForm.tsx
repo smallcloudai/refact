@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 
-import { Flex, Card } from "@radix-ui/themes";
+import { Flex, Card, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
@@ -131,6 +131,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     return (
       <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
         {error}
+        <Text size="1" as="div">
+          Click to retry
+        </Text>
       </ErrorCallout>
     );
   }
