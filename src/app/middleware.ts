@@ -26,7 +26,7 @@ startErrorListening({
       statisticsApi.util.resetApiState(),
       capsApi.util.resetApiState(),
       promptsApi.util.resetApiState(),
-      toolsApi.util.resetApiState,
+      toolsApi.util.resetApiState(),
       commandsApi.util.resetApiState(),
       diffApi.util.resetApiState(),
     ].forEach((api) => listenerApi.dispatch(api));

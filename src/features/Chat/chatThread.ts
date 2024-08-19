@@ -91,7 +91,7 @@ const backUpMessages = createAction<
   PayloadWIthId & { messages: ChatThread["messages"] }
 >("chatThread/backUpMessages");
 
-// TODO: add history actions to this
+// TODO: add history actions to this, maybe not used any more
 export const chatError = createAction<PayloadWIthId & { message: string }>(
   "chatThread/error",
 );
@@ -252,7 +252,7 @@ const createAppAsyncThunk = createAsyncThunk.withTypes<{
   dispatch: AppDispatch;
 }>();
 
-const chatAskQuestionThunk = createAppAsyncThunk<
+export const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
     messages: ChatMessages;
@@ -263,7 +263,7 @@ const chatAskQuestionThunk = createAppAsyncThunk<
   const state = thunkAPI.getState();
   // const messagesWithPrompt =
   const messagesForLsp = formatMessagesForLsp(messages);
-  sendChat({
+  return sendChat({
     messages: messagesForLsp,
     model: state.chat.thread.model,
     tools,
@@ -285,6 +285,7 @@ const chatAskQuestionThunk = createAppAsyncThunk<
       return reader.read().then(function pump({ done, value }): Promise<void> {
         if (done) return Promise.resolve();
         if (thunkAPI.signal.aborted) {
+          console.log("Thunk Aborted");
           return Promise.resolve();
         }
 
@@ -349,7 +350,10 @@ const chatAskQuestionThunk = createAppAsyncThunk<
       });
     })
     .catch((err: Error) => {
-      return thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
+      // console.log("Catch called");
+      thunkAPI.dispatch(doneStreaming({ id: chatId }));
+      return thunkAPI.rejectWithValue(err.message);
+      // return thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
     })
     .finally(() => {
       thunkAPI.dispatch(doneStreaming({ id: chatId }));
