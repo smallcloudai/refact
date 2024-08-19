@@ -9,9 +9,10 @@ import { PromptSelect, PromptSelectProps } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
+import { ToolUseSwitch } from "./ToolUseSwitch";
+import { ToolUse, selectToolUse, setToolUse } from "../../features/Chat";
 import { useCanUseTools } from "../../hooks/useCanUseTools";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import { selectUseTools, setUseTools } from "../../features/Chat/chatThread";
 
 type CapsSelectProps = {
   value: string;
@@ -149,9 +150,9 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   const refs = useTourRefs();
   const canUseTools = useCanUseTools();
   const dispatch = useAppDispatch();
-  const useTools = useAppSelector(selectUseTools);
-  const onSetUseTools = useCallback(
-    (value: boolean | string) => dispatch(setUseTools(!!value)),
+  const toolUse = useAppSelector(selectToolUse);
+  const onSetToolUse = useCallback(
+    (value: ToolUse) => dispatch(setToolUse(value)),
     [dispatch],
   );
 
@@ -163,23 +164,6 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
       direction="column"
       className={classNames(styles.controls)}
     >
-      {canUseTools && (
-        <Flex
-          ref={(x) => refs.setUseTools(x)}
-          style={{ alignSelf: "flex-start" }}
-        >
-          <ChatContolCheckBox
-            name="use_tools"
-            checked={useTools}
-            onCheckChange={onSetUseTools}
-            label="Allow model to use tools"
-            infoText="Turn on when asking about your codebase. When tuned on the model can autonomously call functions to gather the best context."
-            href="https://docs.refact.ai/features/ai-chat/"
-            linkText="documentation"
-          />
-        </Flex>
-      )}
-
       {Object.entries(checkboxes).map(([key, checkbox]) => {
         if (host === "web" && checkbox.name === "file_upload") {
           return null;
@@ -203,6 +187,15 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           </Flex>
         );
       })}
+      {canUseTools && showControls && (
+        <Flex
+          ref={(x) => refs.setUseTools(x)}
+          style={{ alignSelf: "flex-start" }}
+        >
+          <ToolUseSwitch toolUse={toolUse} setToolUse={onSetToolUse} />
+        </Flex>
+      )}
+
       {showControls && (
         <Flex style={{ alignSelf: "flex-start" }}>
           <CapsSelect {...selectProps} />

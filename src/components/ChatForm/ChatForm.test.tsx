@@ -55,9 +55,6 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
     selectedSystemPrompt: {},
-    canUseTools: false,
-    setUseTools: noop,
-    useTools: false,
     ...props,
   };
 

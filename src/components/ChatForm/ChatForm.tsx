@@ -20,7 +20,7 @@ import { ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
 import { useAppDispatch, useAppSelector, useConfig } from "../../app/hooks";
-import { type Snippet } from "../../features/Chat/selectedSnippet";
+import type { Snippet } from "../../features/Chat";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useCheckboxes } from "./useCheckBoxes";
@@ -55,9 +55,6 @@ export type ChatFormProps = {
   onSetSystemPrompt: (prompt: SystemPrompts) => void;
   selectedSystemPrompt: SystemPrompts;
   chatId: string;
-  canUseTools: boolean;
-  setUseTools: (value: boolean) => void;
-  useTools: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({

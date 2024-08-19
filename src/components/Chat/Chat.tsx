@@ -49,9 +49,6 @@ export type ChatProps = {
   onSetSystemPrompt: ChatFormProps["onSetSystemPrompt"];
   selectedSystemPrompt: ChatFormProps["selectedSystemPrompt"];
   requestPreviewFiles: ChatFormProps["requestPreviewFiles"];
-  canUseTools: ChatFormProps["canUseTools"];
-  setUseTools: ChatFormProps["setUseTools"];
-  useTools: ChatFormProps["useTools"];
 };
 
 export const Chat: React.FC<ChatProps> = ({
@@ -76,9 +73,6 @@ export const Chat: React.FC<ChatProps> = ({
   onSetSystemPrompt,
   selectedSystemPrompt,
   requestPreviewFiles,
-  canUseTools,
-  setUseTools,
-  useTools,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
   const activeFile = useAppSelector(selectActiveFile);
@@ -245,9 +239,6 @@ export const Chat: React.FC<ChatProps> = ({
         onSetSystemPrompt={onSetSystemPrompt}
         selectedSystemPrompt={selectedSystemPrompt}
         requestPreviewFiles={requestPreviewFiles}
-        canUseTools={canUseTools}
-        setUseTools={setUseTools}
-        useTools={useTools}
       />
       <Flex justify="between" pl="1" pr="1" pt="1">
         {messages.length > 0 && (
