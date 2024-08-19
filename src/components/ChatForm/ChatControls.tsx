@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { Text, Flex, HoverCard, Link } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
@@ -9,6 +9,9 @@ import { PromptSelect, PromptSelectProps } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
+import { useCanUseTools } from "../../hooks/useCanUseTools";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { selectUseTools, setUseTools } from "../../features/Chat/chatThread";
 
 type CapsSelectProps = {
   value: string;
@@ -64,14 +67,14 @@ export type Checkbox = {
 
 export type ChatControlsProps = {
   checkboxes: Record<string, Checkbox>;
-  onCheckedChange: (name: string, checked: boolean | string) => void;
+  onCheckedChange: (
+    name: keyof ChatControlsProps["checkboxes"],
+    checked: boolean | string,
+  ) => void;
   selectProps: CapsSelectProps;
   promptsProps: PromptSelectProps;
   host: Config["host"];
   showControls: boolean;
-  useTools: boolean;
-  canUseTools: boolean;
-  setUseTools: (value: boolean) => void;
 };
 
 const ChatContolCheckBox: React.FC<{
@@ -142,11 +145,15 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   promptsProps,
   host,
   showControls,
-  canUseTools,
-  useTools,
-  setUseTools,
 }) => {
   const refs = useTourRefs();
+  const canUseTools = useCanUseTools();
+  const dispatch = useAppDispatch();
+  const useTools = useAppSelector(selectUseTools);
+  const onSetUseTools = useCallback(
+    (value: boolean | string) => dispatch(setUseTools(!!value)),
+    [dispatch],
+  );
 
   return (
     <Flex
@@ -164,7 +171,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           <ChatContolCheckBox
             name="use_tools"
             checked={useTools}
-            onCheckChange={(value) => setUseTools(!!value)}
+            onCheckChange={onSetUseTools}
             label="Allow model to use tools"
             infoText="Turn on when asking about your codebase. When tuned on the model can autonomously call functions to gather the best context."
             href="https://docs.refact.ai/features/ai-chat/"

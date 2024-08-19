@@ -98,15 +98,15 @@ const meta: Meta<typeof ChatForm> = {
       replace: [-1, -1],
       is_cmd_executable: false,
     },
-    attachFile: {
-      name: "todo.md",
-      can_paste: true,
-      // attach: false,
-      line1: 1,
-      line2: 100,
-      path: "/Users/refact/Projects/smallcloudai/refact-chat-js/todo.md",
-      cursor: 50,
-    },
+    // attachFile: {
+    //   name: "todo.md",
+    //   can_paste: true,
+    //   // attach: false,
+    //   line1: 1,
+    //   line2: 100,
+    //   path: "/Users/refact/Projects/smallcloudai/refact-chat-js/todo.md",
+    //   cursor: 50,
+    // },
     filesInPreview: [
       {
         file_name:

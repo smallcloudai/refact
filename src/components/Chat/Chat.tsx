@@ -30,35 +30,20 @@ export type ChatProps = {
   // TODO: this
   // openChatInNewTab: () => void;
   style?: React.CSSProperties;
-  // onStartNewChat: () => void;
-  // preventSend: boolean;
+
   unCalledTools: boolean;
   // enableSend: (value: boolean) => void;
 
-  // chat: ChatState["chat"];
-  // error: ChatState["error"];
   // TODO: update this
   caps: ChatFormProps["caps"];
-  // commands: ChatState["commands"];
   commands: ChatFormProps["commands"];
 
-  // retryQuestion: ChatContentProps["onRetry"];
-  // isWaiting: ChatContentProps["isWaiting"];
-  // isStreaming: ChatContentProps["isStreaming"];
-  // onNewFileClick: ChatContentProps["onNewFileClick"];
-  // onPasteClick: ChatContentProps["onPasteClick"];
-  // canPaste: ChatContentProps["canPaste"];
-  // openSettings: ChatContentProps["openSettings"];
-
-  // hasContextFile: ChatFormProps["hasContextFile"];
   requestCommandsCompletion: ChatFormProps["requestCommandsCompletion"];
-  // setSelectedCommand: ChatFormProps["setSelectedCommand"];
+
   maybeSendToSidebar: ChatFormProps["onClose"];
-  // activeFile: ChatFormProps["attachFile"];
+
   filesInPreview: ChatFormProps["filesInPreview"];
-  // selectedSnippet: ChatFormProps["selectedSnippet"];
-  // removePreviewFileByName: ChatFormProps["removePreviewFileByName"];
-  // requestCaps: ChatFormProps["requestCaps"];
+
   prompts: ChatFormProps["prompts"];
 
   onSetSystemPrompt: ChatFormProps["onSetSystemPrompt"];
@@ -67,63 +52,39 @@ export type ChatProps = {
   canUseTools: ChatFormProps["canUseTools"];
   setUseTools: ChatFormProps["setUseTools"];
   useTools: ChatFormProps["useTools"];
-  // onSetChatModel: ChatFormProps["onSetChatModel"];
-  // onAskQuestion: ChatFormProps["onSubmit"];
-  // onClearError: ChatFormProps["clearError"];
-  // onStopStreaming: ChatFormProps["onStopStreaming"];
 };
 
 export const Chat: React.FC<ChatProps> = ({
   style,
   host,
-  // tabbed,
+
   backFromChat,
-  // openChatInNewTab,
-  // onStopStreaming,
-  // chat,
 
-  // do this
-  // error,
-  // onClearError,
-
-  // retryQuestion,
-  // isWaiting,
-  // isStreaming,
-  // onNewFileClick,
-  // onPasteClick,
-  // canPaste,
-  // preventSend,
   unCalledTools,
-  // enableSend,
-  // onAskQuestion,
-  // onSetChatModel,
+
   caps,
   commands,
-  // hasContextFile,
+
   requestCommandsCompletion,
-  // setSelectedCommand,
+
   maybeSendToSidebar,
-  // activeFile,
+
   filesInPreview,
-  // selectedSnippet,
-  // removePreviewFileByName,
-  // requestCaps,
+
   prompts,
-  // onStartNewChat,
+
   onSetSystemPrompt,
   selectedSystemPrompt,
   requestPreviewFiles,
   canUseTools,
   setUseTools,
   useTools,
-  // openSettings,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
   const activeFile = useAppSelector(selectActiveFile);
   const selectedSnippet = useAppSelector(selectSelectedSnippet);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  // const chatThread = useAppSelector(selectThread);
 
   const canPaste = activeFile.can_paste;
   const chatId = useAppSelector(selectChatId);
@@ -269,26 +230,17 @@ export const Chat: React.FC<ChatProps> = ({
         chatId={chatId}
         isStreaming={isStreaming}
         showControls={messages.length === 0 && !isStreaming}
-        // error={error}
-        // clearError={onClearError}
-        // onSubmit={onAskQuestion}
         onSubmit={handleSummit}
         model={chatModel}
         onSetChatModel={onSetChatModel}
         caps={caps}
-        // onStopStreaming={onStopStreaming}
         onStopStreaming={abort}
         commands={commands}
-        // hasContextFile={hasContextFile}
         requestCommandsCompletion={requestCommandsCompletion}
-        // setSelectedCommand={setSelectedCommand}
         onClose={maybeSendToSidebar}
-        attachFile={activeFile}
         filesInPreview={filesInPreview}
         selectedSnippet={selectedSnippet}
-        // removePreviewFileByName={removePreviewFileByName}
         onTextAreaHeightChange={onTextAreaHeightChange}
-        // requestCaps={requestCaps}
         prompts={prompts}
         onSetSystemPrompt={onSetSystemPrompt}
         selectedSystemPrompt={selectedSystemPrompt}
