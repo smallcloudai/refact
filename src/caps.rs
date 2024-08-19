@@ -67,10 +67,11 @@ pub struct CodeAssistantCaps {
     pub cloud_name: String,
 
     #[serde(default = "default_endpoint_style")]
+    #[serde(alias = "chat_endpoint_style")]
     pub endpoint_style: String,
     #[serde(default)]
     pub chat_endpoint_style: String,
-    #[serde(default)]
+    #[serde(default = "default_endpoint_style")]
     pub completion_endpoint_style: String,
 
     #[serde(default)]
