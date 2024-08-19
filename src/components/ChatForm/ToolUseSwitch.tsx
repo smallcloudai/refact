@@ -8,8 +8,8 @@ type ToolUseSwitchProps = {
 
 export const ToolUseSwitch = ({ toolUse, setToolUse }: ToolUseSwitchProps) => {
   return (
-    <Flex direction="column" gap="8px" align="start">
-      <Text size="2">How fast you want the answer:</Text>
+    <Flex direction="column" gap="1" align="start">
+      <Text size="1">How fast do you want the answer:</Text>
       <SegmentedControl.Root
         defaultValue="quick"
         value={toolUse}
