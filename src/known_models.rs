@@ -183,7 +183,8 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "llama3/8b/instruct/vllm",
-                "llama3/8b/instruct/neuron"
+                "llama3/8b/instruct/neuron",
+                "meta-llama/llama-3.1-8b-instruct"
             ]
         },
         "llama2/7b": {
