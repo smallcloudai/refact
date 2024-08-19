@@ -94,21 +94,32 @@ pub async fn forward_to_hf_style_endpoint_streaming(
     Ok(event_source)
 }
 
+#[derive(Serialize)]
+struct EmbeddingsPayloadHFOptions {
+    pub wait_for_model: bool
+}
+
+impl EmbeddingsPayloadHFOptions {
+    pub fn new() -> Self {
+        Self { wait_for_model: true }
+    }
+}
 
 #[derive(Serialize)]
 struct EmbeddingsPayloadHF {
-    pub inputs: String,
+    pub inputs: Vec<String>,
+    pub options: EmbeddingsPayloadHFOptions,
 }
 
 
 pub async fn get_embedding_hf_style(
     client: Arc<AMutex<reqwest::Client>>,
-    text: String,
+    text: Vec<String>,
     endpoint_template: &String,
     model_name: &String,
     api_key: &String,
-) -> Result<Vec<f32>, String> {
-    let payload = EmbeddingsPayloadHF { inputs: text };
+) -> Result<Vec<Vec<f32>>, String> {
+    let payload = EmbeddingsPayloadHF { inputs: text, options: EmbeddingsPayloadHFOptions::new() };
     let url = endpoint_template.clone().replace("$MODEL", &model_name);
 
     let maybe_response = client.lock().await
@@ -117,17 +128,23 @@ pub async fn get_embedding_hf_style(
         .json(&payload)
         .send()
         .await;
-
-    // FIXME: doesn't support batch
+    
     match maybe_response {
         Ok(response) => {
-            if response.status().is_success() {
-                match response.json::<Vec<f32>>().await {
-                    Ok(embedding) => Ok(embedding),
+            let status = response.status().clone();
+            if status.is_success() {
+                match response.json::<Vec<Vec<f32>>>().await {
+                    Ok(embedding) => 
+                        Ok(embedding),
                     Err(err) => Err(format!("Failed to parse the response: {:?}", err)),
                 }
             } else {
-                Err(format!("Failed to get a response: {:?}", response.status()))
+                let body = response.text().await.unwrap().clone();
+                if body.is_empty() {
+                    Err(format!("Failed to get a response: {:?}", status))
+                } else {
+                    Err(format!("Failed to get a response: {:?}", body))
+                }
             }
         }
         Err(err) => Err(format!("Failed to send a request: {:?}", err)),

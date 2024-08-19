@@ -6,9 +6,6 @@ cloud_name: OpenAI API
 chat_endpoint: "https://api.openai.com/v1/chat/completions"
 chat_apikey: "$OPENAI_API_KEY"
 chat_model: gpt-4o-mini
-running_models:
-  - gpt-4o
-  - gpt-4o-mini
 
 
 # -- vectorization model --
@@ -20,3 +17,12 @@ size_embeddings: 1536
 
 # no code completion though :/
 
+embedding_endpoint: "https://api.openai.com/v1/embeddings"
+embedding_apikey: "$OPENAI_API_KEY"
+embedding_default_model: text-embedding-3-small
+embedding_size: 1536
+
+running_models:
+  - gpt-4o
+  - gpt-4o-mini
+  - text-embedding-3-small

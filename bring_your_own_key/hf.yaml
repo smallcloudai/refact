@@ -1,4 +1,4 @@
-cloud_name: OpenAI API
+cloud_name: HuggingFace API
 endpoint_style: "hf"
 
 chat_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
@@ -11,3 +11,9 @@ completion_apikey: "$HF_TOKEN"
   
 tokenizer_rewrite_path:
   meta-llama/Llama-2-70b-chat-hf: TheBloke/Llama-2-70B-fp16
+  
+embedding_endpoint_style: "hf"
+embedding_endpoint: "https://api-inference.huggingface.co/pipeline/feature-extraction/$MODEL"
+embedding_apikey: "$HF_TOKEN"
+embedding_default_model: thenlper/gte-base
+embedding_size: 768

@@ -31,7 +31,7 @@ impl Tool for AttAstReference {
             symbol = symbol[dot_index + 1..].to_string();
         }
 
-        let (gcx, top_n) = {
+        let (gcx, _top_n) = {
             let ccx_locked = ccx.lock().await;
             (ccx_locked.global_context.clone(), ccx_locked.top_n)
         };

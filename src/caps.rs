@@ -9,7 +9,8 @@ use std::sync::RwLock as StdRwLock;
 use serde_json::Value;
 use tokio::sync::RwLock as ARwLock;
 use url::Url;
-use crate::global_context::GlobalContext;
+use crate::custom_error::ScratchError;
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::known_models::KNOWN_MODELS;
 
 const CAPS_FILENAME: &str = "refact-caps";
@@ -57,6 +58,10 @@ fn default_code_completion_n_ctx() -> usize {
     2048
 }
 
+fn default_endpoint_embeddings_style() -> String {
+    String::from("openai")
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
     pub cloud_name: String,
@@ -80,6 +85,8 @@ pub struct CodeAssistantCaps {
     pub completion_apikey: String,
     #[serde(default)]
     pub chat_apikey: String,
+    #[serde(default)]
+    pub embedding_apikey: String,
 
     #[serde(default)]
     #[serde(alias = "chat_endpoint")]
@@ -110,12 +117,16 @@ pub struct CodeAssistantCaps {
     #[serde(default)]
     pub models_dict_patch: HashMap<String, ModelRecord>,
     #[serde(default)]
+    #[serde(alias = "embedding_default_model")]
     pub default_embeddings_model: String,
     #[serde(default)]
+    #[serde(alias = "embedding_endpoint")]
     pub endpoint_embeddings_template: String,
-    #[serde(default = "default_endpoint_style")]
+    #[serde(default = "default_endpoint_embeddings_style")]
+    #[serde(alias = "embedding_endpoint_style")]
     pub endpoint_embeddings_style: String,
     #[serde(default)]
+    #[serde(alias = "embedding_size")]
     pub size_embeddings: i32,
     #[serde(default)]
     pub embedding_n_ctx: usize,
@@ -170,6 +181,9 @@ fn load_caps_from_buf(
         if !r1.code_completion_default_model.is_empty() {
             running_models.push(r1.code_completion_default_model.clone());
         }
+        if !r1.default_embeddings_model.is_empty() {
+            running_models.push(r1.default_embeddings_model.clone());
+        }
         r1.running_models = running_models;
     }
 
@@ -198,6 +212,70 @@ fn load_caps_from_buf(
     // info!("code completion models: {:?}", r1.code_completion_models);
     Ok(Arc::new(StdRwLock::new(r1)))
 }
+
+macro_rules! get_api_key {
+    ($gcx:expr, $caps:expr, $field:ident) => {{
+        let cx_locked = $gcx.read().await;
+        let custom_apikey = $caps.read().unwrap().$field.clone();
+        if custom_apikey.is_empty() {
+            cx_locked.cmdline.api_key.clone()
+        } else if custom_apikey.starts_with("$") {
+            let env_var_name = &custom_apikey[1..];
+            match std::env::var(env_var_name) {
+                Ok(env_value) => env_value,
+                Err(e) => {
+                    error!("Tried to read API key from env var {}, but failed: {}", env_var_name, e);
+                    cx_locked.cmdline.api_key.clone()
+                }
+            }
+        } else {
+            custom_apikey
+        }
+    }};
+}
+
+async fn get_custom_chat_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
+    let caps = try_load_caps_quickly_if_not_present(
+        gcx.clone(), 0,
+    ).await;
+
+    if let Err(err) = caps {
+        return Err(err);
+    }
+    let caps = caps?;
+
+    let api_key = get_api_key!(gcx, caps, chat_apikey);
+    Ok(api_key)
+}
+
+pub async fn get_custom_embedding_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
+    let caps = try_load_caps_quickly_if_not_present(
+        gcx.clone(), 0,
+    ).await;
+
+    if let Err(err) = caps {
+        return Err(err);
+    }
+    let caps = caps?;
+
+    let api_key = get_api_key!(gcx, caps, embedding_apikey);
+    Ok(api_key)
+}
+
+async fn get_custom_completion_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
+    let caps = try_load_caps_quickly_if_not_present(
+        gcx.clone(), 0,
+    ).await;
+
+    if let Err(err) = caps {
+        return Err(err);
+    }
+    let caps = caps?;
+
+    let api_key = get_api_key!(gcx, caps, completion_apikey);
+    Ok(api_key)
+}
+
 
 async fn load_caps_buf_from_file(
     cmdline: crate::global_context::CommandLine,

@@ -1,25 +1,25 @@
+use indexmap::IndexMap;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
 use std::sync::Mutex as StdMutex;
-use std::collections::HashMap;
+use std::sync::RwLock as StdRwLock;
 use tokenizers::Tokenizer;
-use indexmap::IndexMap;
-use tracing::{info, error};
+use tracing::{error, info};
 
-use async_trait::async_trait;
-use tokio::task::JoinHandle;
-use tokio::sync::{RwLock as ARwLock, Mutex as AMutex };
-use crate::global_context::{CommandLine, GlobalContext};
 use crate::background_tasks::BackgroundTasksHolder;
-use crate::caps::CodeAssistantCaps;
+use crate::caps::{get_custom_embedding_api_key, CodeAssistantCaps};
 use crate::fetch_embedding;
 use crate::files_in_workspace::Document;
+use crate::global_context::{CommandLine, GlobalContext};
 use crate::knowledge::{lance_search, MemoriesDatabase};
-use crate::vecdb::vdb_lance::VecDBHandler;
-use crate::vecdb::vdb_thread::{FileVectorizerService, vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files};
-use crate::vecdb::vdb_structs::{SearchResult, VecdbSearch, VecDbStatus, VecdbConstants, MemoRecord, MemoSearchResult, OngoingWork};
 use crate::vecdb::vdb_cache::VecDBCache;
+use crate::vecdb::vdb_lance::VecDBHandler;
+use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, OngoingWork, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
+use crate::vecdb::vdb_thread::{vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
+use async_trait::async_trait;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use tokio::task::JoinHandle;
 
 
 fn vecdb_constants(
@@ -52,9 +52,10 @@ pub struct VecDb {
 }
 
 async fn vecdb_test_request(
-    vecdb: &VecDb
+    vecdb: &VecDb,
+    api_key: &String,
 ) -> Result<(), String> {
-    let search_result = vecdb.vecdb_search("test query".to_string(), 3, None).await;
+    let search_result = vecdb.vecdb_search("test query".to_string(), 3, None, api_key).await;
     match search_result {
         Ok(_) => {
             Ok(())
@@ -72,15 +73,16 @@ async fn _create_vecdb(
     constants: VecdbConstants,
 ) -> Result<(), String> {
     info!("vecdb: attempting to launch");
+    let api_key = get_custom_embedding_api_key(gcx.clone()).await;
 
-    let (cache_dir, cmdline, caps_arc_maybe) = {
+    let (cache_dir, cmdline) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone(), gcx_locked.caps.clone())
-
+        (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone())
     };
-    if caps_arc_maybe.is_none() {
-        return Err("no caps, will not start or reload vecdb".to_string());
+    if let Err(err) = api_key {
+        return Err(err.message);
     }
+    let api_key = api_key.unwrap();
 
     let base_dir: PathBuf = match cmdline.vecdb_forced_path.as_str() {
         "" => cache_dir,
@@ -90,6 +92,7 @@ async fn _create_vecdb(
         &base_dir,
         cmdline.clone(),
         constants,
+        &api_key
     ).await {
         Ok(res) => Some(res),
         Err(err) => {
@@ -105,9 +108,9 @@ async fn _create_vecdb(
     };
     let vec_db = vec_db_mb.unwrap();
 
-    match vecdb_test_request(&vec_db).await {
-        Ok(_) => {},
-        Err(s) => {return Err(s);}
+    match vecdb_test_request(&vec_db, &api_key).await {
+        Ok(_) => {}
+        Err(s) => { return Err(s); }
     }
     info!("vecdb: test request complete");
 
@@ -137,7 +140,7 @@ async fn do_i_need_to_reload_vecdb(
         Err(e) => {
             // This branch makes caps error disappear, unless we print it right here:
             info!("vecdb: no caps, will not start or reload vecdb, the error was: {}", e);
-            return (false, None)
+            return (false, None);
         }
     };
 
@@ -195,7 +198,7 @@ pub async fn vecdb_background_reload(
     if !can_start_vecdb(caps) {
         return;
     }
-    
+
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
         let (need_reload, consts) = do_i_need_to_reload_vecdb(gcx.clone()).await;
@@ -226,17 +229,19 @@ impl VecDb {
         cache_dir: &PathBuf,
         cmdline: CommandLine,
         constants: VecdbConstants,
+        api_key: &String
     ) -> Result<VecDb, String> {
         let handler = VecDBHandler::init(constants.embedding_size).await?;
         let cache = VecDBCache::init(cache_dir, &constants.model_name, constants.embedding_size).await?;
         let vecdb_handler = Arc::new(AMutex::new(handler));
         let vecdb_cache = Arc::new(AMutex::new(cache));
         let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(cache_dir, &constants, cmdline.reset_memory).await?));
+        
         let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),
             vecdb_cache.clone(),
             constants.clone(),
-            cmdline.api_key.clone(),
+            api_key.clone(),
             memdb.clone(),
         ).await));
         Ok(VecDb {
@@ -361,7 +366,7 @@ pub async fn memories_select_all(
 
 pub async fn memories_erase(
     vec_db: Arc<AMutex<Option<VecDb>>>,
-    memid: &str
+    memid: &str,
 ) -> Result<usize, String> {
     let memdb = {
         let vec_db_guard = vec_db.lock().await;
@@ -420,7 +425,7 @@ pub async fn memories_search(
         &constants.endpoint_embeddings_template,
         vec![query.clone()],
         &cmdline.api_key,
-        5
+        5,
     ).await?;
     if embedding.is_empty() {
         return Err("memdb_search: empty embedding".to_string());
@@ -437,7 +442,7 @@ pub async fn memories_search(
         let score_b = calculate_score(b.distance, b.mstat_times_used);
         score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
     });
-    Ok(MemoSearchResult {query_text: query.clone(), results })
+    Ok(MemoSearchResult { query_text: query.clone(), results })
 }
 
 pub async fn ongoing_update_or_create(
@@ -536,6 +541,7 @@ impl VecdbSearch for VecDb {
         query: String,
         top_n: usize,
         vecdb_scope_filter_mb: Option<String>,
+        api_key: &String,
     ) -> Result<SearchResult, String> {
         // TODO: move away from struct, replace self with Arc, make locks shorter
         let t0 = std::time::Instant::now();
@@ -545,8 +551,8 @@ impl VecdbSearch for VecDb {
             &self.constants.model_name,
             &self.constants.endpoint_embeddings_template,
             vec![query.clone()],
-            &self.cmdline.api_key,
-            5
+            api_key,
+            5,
         ).await;
         if embedding_mb.is_err() {
             return Err(embedding_mb.unwrap_err().to_string());
