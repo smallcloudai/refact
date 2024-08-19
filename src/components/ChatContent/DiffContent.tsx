@@ -6,7 +6,7 @@ import SyntaxHighlighter from "react-syntax-highlighter";
 import classNames from "classnames";
 
 import styles from "./ChatContent.module.css";
-import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
+import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/railscasts";
 import { filename } from "../../utils";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
