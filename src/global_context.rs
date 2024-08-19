@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
-
+use arrow::ipc::Bool;
 use hyper::StatusCode;
 use structopt::StructOpt;
 use tokenizers::Tokenizer;
@@ -30,7 +30,7 @@ pub struct CommandLine {
     pub ping_message: String,
     #[structopt(long, help="Send logs to stderr, as opposed to ~/.cache/refact/logs, so it's easier to debug.")]
     pub logs_stderr: bool,
-    #[structopt(long, short="u", help="URL to start working. The first step is to fetch refact-caps / coding_assistant_caps.json.")]
+    #[structopt(long, short="u", default_value="", help="URL to start working. The first step is to fetch refact-caps / coding_assistant_caps.json.")]
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
@@ -68,6 +68,8 @@ pub struct CommandLine {
     pub vecdb_forced_path: String,
     #[structopt(long, short="w", default_value="", help="Workspace folder to find files for vecdb and AST. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
+    #[structopt(long, help="Generate template.yaml for custom settings")]
+    pub save_byok_file: bool
 }
 impl CommandLine {
     fn create_hash(msg: String) -> String {
@@ -116,6 +118,7 @@ pub async fn try_load_caps_quickly_if_not_present(
         // global_context is not locked, but a specialized async mutex is, up until caps are saved
         let _caps_reading_locked = caps_reading_lock.lock().await;
         let cmdline = CommandLine::from_args();
+        
         let caps_url = cmdline.address_url.clone();
         if caps_url == "Refact" || caps_url.starts_with("http") {
             let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };

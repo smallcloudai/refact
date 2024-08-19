@@ -1,17 +1,17 @@
-use tracing::{info, warn, error};
-use serde::Deserialize;
-use serde::Serialize;
-use std::fs::File;
-use std::collections::HashMap;
-use std::io::Read;
-use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
-use serde_json::Value;
-use tokio::sync::RwLock as ARwLock;
-use url::Url;
 use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::known_models::KNOWN_MODELS;
+use serde::Deserialize;
+use serde::Serialize;
+use serde_json::Value;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
+use std::sync::Arc;
+use std::sync::RwLock as StdRwLock;
+use tokio::sync::RwLock as ARwLock;
+use tracing::{error, info, warn};
+use url::Url;
 
 const CAPS_FILENAME: &str = "refact-caps";
 const CAPS_FILENAME_FALLBACK: &str = "coding_assistant_caps.json";
@@ -489,22 +489,72 @@ pub fn which_scratchpad_to_use<'a>(
 }
 
 
-const SIMPLE_CAPS: &str = r#"
+pub const SIMPLE_CAPS: &str = r#"
+# other examples https://github.com/smallcloudai/refact-lsp/tree/main/bring_your_own_key
+
 cloud_name: OpenAI
 chat_endpoint: "https://api.openai.com/v1/chat/completions"
-chat_apikey: "sk-..."
-chat_model: gpt-3.5-turbo
+chat_apikey: "sk-..." # or use "$OPENAI_API_KEY" and key will be used from environment
+chat_model: gpt-4o-mini
+
+# ------------
+# cloud_name: OpenRouter API
+
+# chat_endpoint: "https://openrouter.ai/api/v1/chat/completions"
+# chat_apikey: "$OPENROUTER_API_KEY"
+# chat_model: meta-llama/llama-3.1-8b-instruct
+# tokenizer_rewrite_path:
+#   meta-llama/llama-3.1-8b-instruct: unsloth/llama-3-8b-bnb-4bit
+
+# running_models:
+#   - openai/gpt-4o
+#   - meta-llama/llama-3.1-8b-instruct
+
+# ------------
+# cloud_name: HuggingFace API
+# endpoint_style: "hf"
+# 
+# chat_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
+# chat_apikey: "$HF_TOKEN"
+# chat_model: meta-llama/Llama-2-70b-chat-hf
+# 
+# completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
+# completion_model: bigcode/starcoder2-3b
+# completion_apikey: "$HF_TOKEN"
+#   
+# tokenizer_rewrite_path:
+#   meta-llama/Llama-2-70b-chat-hf: TheBloke/Llama-2-70B-fp16
+#   
+# embedding_endpoint_style: "hf"
+# embedding_endpoint: "https://api-inference.huggingface.co/pipeline/feature-extraction/$MODEL"
+# embedding_apikey: "$HF_TOKEN"
+# embedding_default_model: thenlper/gte-base
+# embedding_size: 768
 
 # ------------
 # cloud_name: RefactEnterprise
-# endpoint_style: <endpoint_style> # default: openai
+
+# copmletion_endpoint_style: <endpoint_style> # default: openai
 # completion_endpoint: <your-address>/v1/completions # default: ""
 # completion_apikey: <your-api-key> # default: ""
 # completion_model: <your-model> # default: ""
 # completion_n_ctx: <your-n-ctx> # default: 2048
+
+# chat_endpoint_style: <endpoint_style> # default: openai
 # chat_endpoint: <your-address>/v1/chat/completions # default: ""
 # chat_apikey: "<your-api-key>" # default: ""
 # chat_model: "<your-chat-model>" # default: ""
+
+# embedding_endpoint_style: <endpoint_style> # default: openai
+# embedding_endpoint: <your-address> # default: ""
+# embedding_apikey: <your-api-key> # default: ""
+# embedding_default_model: <your-model> # default: ""
+# embedding_size: <your-embedding-size> # default: 0
+
+# running_models: # all extra models will be loaded
+#   - <your-model>
+#   - <your-model>
+
 # tokenizer_path_template: <your-template-address> # default: https://huggingface.co/$MODEL/resolve/main/tokenizer.json
 # telemetry_basic_dest: <your-telemetry-address> # default: https://www.smallcloud.ai/v1/telemetry-basic
 # telemetry_basic_retrieve_my_own: <your-telemetry-address> # default: https://staging.smallcloud.ai/v1/telemetry-retrieve-my-own-stats
