@@ -244,7 +244,7 @@ pub async fn get_default_system_prompt(
             let dirs_lock = workspace_dirs_arc.lock().unwrap();
             dirs_lock.clone().into_iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>()
         };
-        let additional_info = format!("ENVIRONMENT INFO:\nDATETIME: {}\nOS: {}\nUSER: {}\nWORKSPACE_DIRS: {}\n", datetime, os, username, workspace_dirs.join(", "));
+        let additional_info = format!("ENVIRONMENT INFO:\nDATETIME: {}\nOS: {}\nUSER: {}\nWORKSPACE_DIRS:\n{}\n", datetime, os, username, workspace_dirs.join("\n"));
         format!("{}\n\n{}", system_prompt, additional_info)
     }
     
