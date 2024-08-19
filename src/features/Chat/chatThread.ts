@@ -285,7 +285,6 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       return reader.read().then(function pump({ done, value }): Promise<void> {
         if (done) return Promise.resolve();
         if (thunkAPI.signal.aborted) {
-          console.log("Thunk Aborted");
           return Promise.resolve();
         }
 
