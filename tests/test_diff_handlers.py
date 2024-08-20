@@ -47,6 +47,13 @@ def diff_apply(payload):
     return response.json()
 
 
+def diff_preview(payload):
+    url = "http://localhost:8001/v1/diff-preview"
+    response = requests.post(url, data=json.dumps(payload))
+    assert response.status_code == 200
+    return response.json()
+
+
 def diff_state(payload):
     url = "http://localhost:8001/v1/diff-state"
     response = requests.post(url, data=json.dumps(payload))
@@ -467,6 +474,107 @@ def test8():
     print(colored("test8 PASSED", "green"))
 
 
+FILE0 = """import numpy as np
+
+DT = 0.01
+
+class Frog:
+    def __init__(self, x, y, vx, vy):
+        self.x = x
+        self.y = y
+        self.vx = vx
+        self.vy = vy
+
+    def bounce_off_banks(self, pond_width, pond_height):
+        if self.x < 0:
+            self.vx = np.abs(self.vx)
+        elif self.x > pond_width:
+            self.vx = -np.abs(self.vx)
+        if self.y < 0:
+            self.vy = np.abs(self.vy)
+        elif self.y > pond_height:
+            self.vy = -np.abs(self.vy)
+
+    def jump(self, pond_width, pond_height):
+        self.x += self.vx * DT
+        self.y += self.vy * DT
+        self.bounce_off_banks(pond_width, pond_height)
+        self.x = np.clip(self.x, 0, pond_width)
+        self.y = np.clip(self.y, 0, pond_height)
+
+"""
+
+FILE1 = """import numpy as np
+
+DT = 0.01
+
+
+
+class AnotherFrog:
+    def __init__(self, x, y, vx, vy):
+        self.x = x
+        self.y = y
+        self.vx = vx
+        self.vy = vy
+
+    def bounce_off_banks(self, pond_width, pond_height):
+        if self.x < 0:
+            self.vx = np.abs(self.vx)
+        elif self.x > pond_width:
+            self.vx = -np.abs(self.vx)
+        if self.y < 0:
+            self.vy = np.abs(self.vy)
+        elif self.y > pond_height:
+            self.vy = -np.abs(self.vy)
+
+    def jump(self, pond_width, pond_height):
+        self.x += self.vx * DT
+        self.y += self.vy * DT
+        self.bounce_off_banks(pond_width, pond_height)
+        self.x = np.clip(self.x, 0, pond_width)
+        self.y = np.clip(self.y, 0, pond_height)
+
+"""
+
+frog_payload = {
+    "apply": [True, True],
+    "chunks": [
+        {
+            "file_name": "/tmp/frog.py",
+            "file_action": "edit",
+            "line1": 5,
+            "line2": 6,
+            "lines_remove": "class Frog:\n",
+            "lines_add": "class AnotherFrog:\n"
+        },
+        {
+            "file_name": "/tmp/frog.py",
+            "file_action": "edit",
+            "line1": 4,
+            "line2": 4,
+            "lines_remove": "",
+            "lines_add": "\n\n"
+        }
+    ]
+}
+
+
+def test9():
+    with open("/tmp/frog.py", "w") as f:
+        f.write(FILE0)
+
+    resp = diff_preview(frog_payload)
+
+    assert [r["applied"] for r in resp["state"]] == [True, True], resp
+    assert len(resp["results"]) == 1, resp
+    r0 = resp["results"][0]
+
+    assert r0["file_name_edit"] == "/tmp/frog.py"
+    assert r0["file_text"] == FILE1
+
+    print(colored("test9 PASSED", "green"))
+
+
 def main():
     test1()
     test2()
@@ -476,6 +584,7 @@ def main():
     test6()
     test7()
     test8()
+    test9()
 
 
 if __name__ == "__main__":

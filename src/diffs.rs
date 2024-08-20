@@ -28,7 +28,7 @@ pub enum ApplyDiffOutput {
     Err(String),
 }
 
-#[derive(Default, PartialEq, Clone, Debug)]
+#[derive(Default, PartialEq, Clone, Debug, Serialize)]
 pub struct ApplyDiffResult {
     pub file_text: Option<String>,
     pub file_name_edit: Option<String>,

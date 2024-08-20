@@ -14,7 +14,7 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::DiffChunk;
 use crate::custom_error::ScratchError;
-use crate::diffs::{unwrap_diff_apply_outputs, correct_and_validate_chunks, ApplyDiffResult, read_files_n_apply_diff_chunks};
+use crate::diffs::{unwrap_diff_apply_outputs, correct_and_validate_chunks, ApplyDiffResult, read_files_n_apply_diff_chunks, ApplyDiffUnwrapped};
 use crate::files_in_workspace::{Document, read_file_from_disk};
 use crate::global_context::GlobalContext;
 use crate::vecdb::vdb_highlev::memories_block_until_vectorized;
@@ -213,6 +213,44 @@ pub async fn handle_v1_diff_apply(
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string_pretty(&outputs_unwrapped).unwrap()))
+        .unwrap())
+}
+
+#[derive(Serialize)]
+struct DiffPreviewResponse {
+    state: Vec<ApplyDiffUnwrapped>,
+    results: Vec<ApplyDiffResult>,
+}
+
+pub async fn handle_v1_diff_preview(
+    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> axum::response::Result<Response<Body>, ScratchError> {
+    let mut post = serde_json::from_slice::<DiffPost>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+    post.set_id();
+
+    validate_post(&post)?;
+    correct_and_validate_chunks(global_context.clone(), &mut post.chunks).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
+
+    let applied_state = {
+        let diff_state = global_context.read().await.documents_state.diffs_applied_state.clone();
+        diff_state.get(&post.id).map(|x| x.clone()).unwrap_or_default()
+    };
+    let desired_state = post.apply.clone();
+    let (results, outputs) = read_files_n_apply_diff_chunks(&post.chunks, &applied_state, &desired_state, MAX_FUZZY_N);
+
+    let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, post.chunks);
+
+    let resp = DiffPreviewResponse {
+        state: outputs_unwrapped,
+        results,
+    };
+    
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string_pretty(&resp).unwrap()))
         .unwrap())
 }
 
