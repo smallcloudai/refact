@@ -515,10 +515,15 @@ fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
 pub struct UnifiedDiffFormat {}
 
 impl UnifiedDiffFormat {
-    pub fn prompt() -> String {
-        r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT. 
+    pub fn prompt(
+        workspace_projects_dirs: &str,
+        first_workspace_project_dir: &str
+    ) -> String {
+        let mut prompt = r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT. 
 You will be given a problem statement and a list of files. 
 Your objective is to create a unified diff with a specific format output based on the provided task and files. 
+In the diff generation use following project directories:
+%WORKSPACE_PROJECTS_DIRS%
 
 ### STEPS TO FOLLOW for generating the correct diff
 1. Review the provided tasks and files.
@@ -548,8 +553,8 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 - Only output hunks that specify changes with `+` or `-` lines.
 - Format example for the task: "Replace is_prime with a call to sympy"
 ```diff
---- /home/mathweb/flask/app.py
-+++ /home/mathweb/flask/app.py
+--- %FIRST_WORKSPACE_PROJECT_DIR%/test.py
++++ %FIRST_WORKSPACE_PROJECT_DIR%/test.py
 @@ ... @@
 +import sympy
 +
@@ -592,10 +597,10 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 - Include all lines to the hunk which must be appeared in the file.
 - Do not skip any lines.
 - Mark all lines with `+` sign.
-- Format example for the task: "Add a new file `/home/mathweb/my_app/quicksort.py` with a quick sort function in it".
+- Format example for the task: "Add a new file `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py` with a quick sort function in it".
 ```diff
 --- /dev/null
-+++ /home/mathweb/my_app/quicksort.py
++++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
 @@ ... @@
 +def quicksort(arr):
 +    if len(arr) <= 1:
@@ -615,10 +620,10 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 - To rename a file 2 filenames need to be used: an old filename and a new filename (the absolute path is preferable).
 - Both filenames need to be taken from the given task description.
 - The file can be edited at the same time, the same `edit` rules must be used 
-- Format example for the task: "Rename the file `/home/mathweb/my_app/quicksort.py` to `/home/mathweb/my_app/quicksort_old.py` with the function inside it".
+- Format example for the task: "Rename the file `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py` to `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py` with the function inside it".
 ```diff
---- /home/mathweb/my_app/quicksort.py
-+++ /home/mathweb/my_app/quicksort_old.py
+--- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
++++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py
 @@ ... @@
 -def quicksort(arr):
 +def quicksort_old(arr):
@@ -633,23 +638,26 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 ```
 - If you need just to rename a file, follow this format:
 ```diff
---- /home/mathweb/my_app/quicksort.py
-+++ /home/mathweb/my_app/quicksort_old.py
+--- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
++++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py
 @@ ... @@
 <file_content>
 ```
 ## Rules for `delete` action to generate correct diffs:
 - To remove a file, make sure that you output a correct filename (the absolute path is preferable)
 - Instead of copying the whole file, just print `<file_content>` after the `@@ ... @@` line
-- Format example for the task: "Remove the file `/home/mathweb/my_app/quicksort.py`".
+- Format example for the task: "Remove the file `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py`".
 ```diff
---- /home/mathweb/my_app/quicksort.py
+--- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
 +++ /dev/null
 @@ ... @@
 <file_content>
 ```
 
-DO NOT FORGET TO FOLLOW STEPS AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string()
+DO NOT FORGET TO FOLLOW STEPS AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string();
+        prompt
+            .replace("%WORKSPACE_PROJECTS_DIRS%", workspace_projects_dirs)
+            .replace("%FIRST_WORKSPACE_PROJECT_DIR%", first_workspace_project_dir)
     }
 
     pub async fn parse_message(

@@ -711,6 +711,23 @@ impl AstModule {
         )
     }
 
+    pub async fn imported_file_paths_by_file_path(
+        &self,
+        doc: &Document,
+        imports_depth: usize,
+    ) -> Result<Vec<PathBuf>, String> {
+        let t0 = std::time::Instant::now();
+        let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
+            Ok(ast) => ast,
+            Err(_) => {
+                return Err("ast timeout".to_string());
+            }
+        };
+        let results = ast_ref.paths_from_imports_by_file_path(&doc, imports_depth);
+        info!("ast imported_file_paths_by_file_path time {:.3}s, found {} results", t0.elapsed().as_secs_f32(), results.len());
+        Ok(results)
+    }
+
     pub async fn file_markup(
         &self,
         doc: &Document,

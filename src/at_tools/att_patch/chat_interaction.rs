@@ -1,20 +1,22 @@
+use std::collections::HashMap;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::execute_at_file;
 use crate::at_tools::att_patch::args_parser::PatchArguments;
-use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal, get_signatures_by_symbol_names};
 use crate::at_tools::att_patch::tool::{DefaultToolPatch, N_CHOICES};
+use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal };
 use crate::at_tools::subchat::subchat_single;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatUsage};
 use crate::caps::get_model_record;
+use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage};
 use crate::scratchpads::pp_utils::count_tokens;
 
 
@@ -22,6 +24,13 @@ use crate::scratchpads::pp_utils::count_tokens;
 pub struct LocateItem {
     pub file_path: String,
     pub reason: String,
+    pub description: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LocateData {
+    pub files: Vec<LocateItem>,
+    pub symbols: Vec<String>,
 }
 
 async fn load_tokenizer(
@@ -43,10 +52,26 @@ async fn load_tokenizer(
     ).await
 }
 
+async fn format_diff_prompt(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+) -> String {
+    let gcx = ccx.lock().await.global_context.clone();
+    let mut workspace_dirs = {
+        let workspace_dirs_arc = gcx.read().await.documents_state.workspace_folders.clone();
+        let dirs_lock = workspace_dirs_arc.lock().unwrap();
+        dirs_lock.clone().into_iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>()
+    };
+    if workspace_dirs.is_empty() {
+        workspace_dirs.push(String::from("/home/user/project"));
+    }
+    let workspace_project_dirs = workspace_dirs.join("\n");
+    let first_workspace_dir = workspace_dirs.first().expect("added above");
+    DefaultToolPatch::prompt(&workspace_project_dirs, first_workspace_dir)
+}
 
 async fn get_locate_data(
     ccx: Arc<AMutex<AtCommandsContext>>,
-) -> Option<Vec<LocateItem>> {
+) -> Option<LocateData> {
     let messages = ccx.lock().await.messages.clone();
     let mut locate_tool_ids = vec![];
     for message in messages.iter().rev() {
@@ -63,14 +88,14 @@ async fn get_locate_data(
     for id in locate_tool_ids.iter() {
         let data = match messages.iter().find_or_first(|x| x.tool_call_id == *id) {
             Some(data) => {
-                let locate_items: Vec<LocateItem> = match serde_json::from_str(&data.content) {
+                let locate_data: LocateData = match serde_json::from_str(&data.content) {
                     Ok(res) => res,
                     Err(err) => {
                         warn!("failed to parse locate data: {}", err);
                         continue;
                     }
                 };
-                locate_items
+                locate_data
             }
             None => {
                 continue
@@ -81,30 +106,107 @@ async fn get_locate_data(
     locate_data.first().cloned()
 }
 
+async fn create_extra_context(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    paths: Vec<String>,
+    extra_paths_mb: Option<Vec<String>>,
+    extra_symbols_mb: Option<Vec<String>>,
+    messages: &Vec<ChatMessage>,
+    tool_call_id: &String,
+    usage: &mut ChatUsage,
+) -> Result<Vec<ChatMessage>, String> {
+    let gcx = ccx.lock().await.global_context.clone();
+    let mut new_messages = messages.clone();
+    let cat_args = if extra_paths_mb.is_some() && extra_symbols_mb.is_some() {
+        let mut cat_args = HashMap::new();
+        cat_args.insert("paths".to_string(), extra_paths_mb
+            .expect("checked above")
+            .join(",")
+        );
+        if let Some(extra_symbols) = extra_symbols_mb {
+            if !extra_symbols.is_empty() {
+                cat_args.insert("symbols".to_string(), extra_symbols.join(","));
+            }
+        }
+        cat_args.insert("skeleton".to_string(), "true".to_string());
+        Some(cat_args)
+    } else {
+        if let Some(paths) = get_signatures_by_imports_traversal(
+            &paths, gcx.clone()
+        ).await {
+            let mut cat_args = HashMap::new();
+            cat_args.insert("paths".to_string(), paths
+                .iter()
+                .map(|x| x.to_string_lossy())
+                .join(",")
+            );
+            cat_args.insert("skeleton".to_string(), "true".to_string());
+            Some(cat_args)
+        } else {
+            None
+        }
+    };
+    if let Some(cat_args) = cat_args {
+        new_messages.push(ChatMessage {
+            role: "assistant".to_string(),
+            content: "".to_string(),
+            tool_calls: Some(vec![ChatToolCall {
+                id: "patch_cat_42".to_string(),
+                function: ChatToolFunction {
+                    arguments: serde_json::to_string(&cat_args).unwrap().to_string(),
+                    name: "cat".to_string()
+                },
+                tool_type: "function".to_string(),
+            }]),
+            tool_call_id: "".to_string(),
+            ..Default::default()
+        });
+        let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
+        let messages = subchat_single(
+            ccx.clone(),
+            &DEFAULT_MODEL_NAME,
+            new_messages,
+            vec!["cat".to_string()],
+            None,
+            true,
+            Some(TEMPERATURE),
+            Some(MAX_NEW_TOKENS),
+            N_CHOICES,
+            Some(usage),
+            Some(format!("{log_prefix}-patch")),
+            Some(tool_call_id.clone()),
+            Some(format!("{log_prefix}-patch")),
+        )
+            .await?
+            .get(0)
+            .ok_or("relevant_files: tree deterministic message was empty. Try again later".to_string())?
+            .clone();
+        Ok(messages)
+    } else {
+        warn!("no extra context for the patch is using");
+        Ok(new_messages)
+    }
+}
+
 async fn make_chat_history(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model: &str,
     max_tokens: usize,
     max_new_tokens: usize,
     args: &PatchArguments,
+    tool_call_id: &String,
+    usage: &mut ChatUsage,
 ) -> Result<Vec<ChatMessage>, String> {
     let tokenizer = match load_tokenizer(ccx.clone(), model).await {
         Ok(t) => t,
         Err(e) => return Err(e),
     };
 
-    let gcx = ccx.lock().await.global_context.clone();
-    let system_prompt = DefaultToolPatch::prompt();
-    // TODO: use budget for extra context construction
-    let maybe_extra_context = if let Some(symbols_names) = args.symbol_names.clone() {
-        get_signatures_by_symbol_names(&symbols_names, gcx.clone()).await
-    } else {
-        get_signatures_by_imports_traversal(&args.paths, gcx.clone()).await
-    };
     let mut tokens: usize = 0;
     let max_tokens: usize = max_tokens.saturating_sub(max_new_tokens);
+    let system_prompt = format_diff_prompt(ccx.clone()).await;
     let tokenizer_ref = tokenizer.read().unwrap().clone();
-    let task_message = format!("The task is:\n{}", args.todo).to_string();
+    let task_message = args.todo.clone();
     let mut chat_messages = vec![
         ChatMessage::new(
             "system".to_string(),
@@ -114,11 +216,31 @@ async fn make_chat_history(
     tokens += 3 + count_tokens(&tokenizer_ref, &system_prompt);
     tokens += 3 + count_tokens(&tokenizer_ref, &task_message);
     if tokens > max_tokens {
-        return Err(format!("too many tokens: {tokens} > {max_tokens}"));
+        return Err(format!("too many tokens for the todo message: {tokens} > {max_tokens}, reduce the todo message length"));
     }
-
-    let has_single_file = args.paths.len() == 1;
-    for (idx, file) in args.paths.iter().enumerate() {
+    
+    let (paths, extra_paths_mb, extra_symbols_mb) = {
+        if args.use_locate_for_context {
+            if let Some(locate_data) = get_locate_data(ccx.clone()).await {
+                let paths = locate_data.files.iter()
+                    .filter(|x| x.reason.to_lowercase() == "to_change")
+                    .map(|x| x.file_path.clone())
+                    .collect::<Vec<_>>();
+                let extra_paths = locate_data.files.iter()
+                    .filter(|x| x.reason.to_lowercase() != "to_change")
+                    .map(|x| x.file_path.clone())
+                    .collect::<Vec<_>>();
+                (paths, Some(extra_paths), Some(locate_data.symbols))
+            } else {
+                return Err("locate data has not found though it was asked to use it".to_string());
+            }
+        } else {
+            (args.paths.clone(), None, None)
+        }
+    };
+    
+    let has_single_file = paths.len() == 1;
+    for (idx, file) in paths.iter().enumerate() {
         match execute_at_file(ccx.clone(), file.clone()).await {
             Ok(res) => {
                 let message = format!("{}\n```\n{}\n```", res.file_name, res.file_content).to_string();
@@ -144,18 +266,12 @@ async fn make_chat_history(
             }
         }
     }
-    if let Some(extra_context) = maybe_extra_context {
-        let message = format!("Extra context for the files:\n{}", extra_context).to_string();
-        tokens += 3 + count_tokens(&tokenizer_ref, &message);
-        if tokens > max_tokens {
-            warn!("Too many tokens for the extra context, skipping it: {tokens} > {max_tokens}");
-        } else {
-            chat_messages.push(ChatMessage::new("user".to_string(), message));
-        }
-    }
-
     chat_messages.push(ChatMessage::new("user".to_string(), task_message));
-    info!("tokens num: {tokens}");
+
+    let chat_messages = create_extra_context(
+        ccx.clone(), paths, extra_paths_mb, extra_symbols_mb, &mut chat_messages, tool_call_id, usage
+    ).await?;
+    
     Ok(chat_messages)
 }
 
@@ -169,7 +285,9 @@ pub async fn execute_chat_model(
     args: &PatchArguments,
     usage: &mut ChatUsage,
 ) -> Result<Vec<String>, String> {
-    let messages = make_chat_history(ccx.clone(), model, max_tokens, max_new_tokens, args).await?;
+    let messages = make_chat_history(
+        ccx.clone(), model, max_tokens, max_new_tokens, args, tool_call_id, usage
+    ).await?;
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let response = subchat_single(
         ccx.clone(),

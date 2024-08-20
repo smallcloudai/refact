@@ -4,8 +4,8 @@ use serde_json::Value;
 
 pub struct PatchArguments {
     pub paths: Vec<String>,
-    pub symbol_names: Option<Vec<String>>,
     pub todo: String,
+    pub use_locate_for_context: bool,
 }
 
 pub async fn parse_arguments(
@@ -16,10 +16,10 @@ pub async fn parse_arguments(
         Some(v) => { return Err(format!("argument `paths` is not a string: {:?}", v)) }
         None => { return Err("argument `path` is not a string".to_string()) }
     };
-    let symbol_names = match args.get("symbols") {
-        Some(Value::String(s)) => Some(s.split(",").map(|x| x.to_string()).collect::<Vec<String>>()),
-        Some(v) => { return Err(format!("argument `symbols` is not a string: {:?}", v)) }
-        None => None
+    let use_locate_for_context = if let Some(p) = paths.get(0) {
+        p == "use_locate_for_context"
+    } else {
+        false
     };
     let todo = match args.get("todo") {
         Some(Value::String(s)) => s.clone(),
@@ -28,7 +28,7 @@ pub async fn parse_arguments(
     };
     Ok(PatchArguments {
         paths,
-        symbol_names,
         todo,
+        use_locate_for_context
     })
 }
