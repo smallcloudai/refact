@@ -9,6 +9,7 @@ import { useLogout } from "./useLogout";
 const useLoginPolling = (skip: boolean) => {
   const host = useAppSelector(selectHost);
 
+  // TODO: check if this is reset after logout.
   const newLoginTicket = useMemo(() => {
     return (
       Math.random().toString(36).substring(2, 15) +
