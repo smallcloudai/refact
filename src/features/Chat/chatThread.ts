@@ -156,6 +156,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       state.cache[state.thread.id] = state.thread;
     }
     const next = createInitialState();
+    next.tool_use = state.tool_use;
     next.thread.model = state.thread.messages.length ? state.thread.model : "";
     return next;
   });
