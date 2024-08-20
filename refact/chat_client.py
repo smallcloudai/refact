@@ -409,7 +409,12 @@ def gen_function_call_id():
     return f"call_{uuid.uuid4()}".replace("-", "")
 
 
-def print_block(name: str, n: int, width: int = 90) -> str:
+def print_block(
+    name: str,
+    n: int,
+    width: int = 90,
+    also_print_to_console: bool = True,
+) -> str:
     block_text = f"{name.upper()} {n}"
     left_padding = " " * ((width - len(block_text)) // 2)
     right_padding = " " * (width - len(block_text) - len(left_padding))
@@ -419,13 +424,22 @@ def print_block(name: str, n: int, width: int = 90) -> str:
     message = f"\n\n{tabulate.tabulate([[block_text]], tablefmt='double_grid')}\n\n"
     tabulate.PRESERVE_WHITESPACE = False
 
-    # console = Console()
-    # console.print(message)
+    if also_print_to_console:
+        console = Console()
+        console.print(message)
 
     return message
 
 
-def print_messages(messages: List[Message]) -> List[str]:
+def print_messages(
+    messages: List[Message],
+    also_print_to_console: bool = True,
+) -> List[str]:
+    def con(x):
+        console = Console()
+        if also_print_to_console:
+            console.print(x)
+
     def _is_tool_call(m: Message) -> bool:
         return m.tool_calls is not None and len(m.tool_calls) > 0
 
@@ -433,7 +447,6 @@ def print_messages(messages: List[Message]) -> List[str]:
         return f"[bold {color}]{s}[/bold {color}]"
 
     results = []
-    # console = Console()
     role_to_header = {
         "system": "SYSTEM:",
         "assistant": "ASSISTANT:",
@@ -449,7 +462,7 @@ def print_messages(messages: List[Message]) -> List[str]:
         if m.role == "tool":
             header = header.format(uid=m.tool_call_id[:20])
         message_str.append(header)
-        # console.print(_wrap_color(header))
+        con(_wrap_color(header))
 
         if m.role == "context_file":
             message = "\n".join([
@@ -458,22 +471,22 @@ def print_messages(messages: List[Message]) -> List[str]:
             ])
             message_str.append(message)
             message_str.append("")
-            # console.print(message)
-            # console.print()
+            con(message)
+            con("")
 
         elif m.role == "diff":
             for chunk in json.loads(m.content):
                 message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
                 message_str.append(message)
-                # console.print(message)
+                con(message)
                 if len(chunk["lines_add"]) > 0:
                     message = "\n".join([f"+{line}" for line in chunk['lines_add'].splitlines()])
                     message_str.append(message)
-                    # console.print(_wrap_color(message, "green"))
+                    con(_wrap_color(message, "green"))
                 if len(chunk["lines_remove"]) > 0:
                     message = "\n".join([f"-{line}" for line in chunk['lines_remove'].splitlines()])
                     message_str.append(message)
-                    # console.print(_wrap_color(message, "red"))
+                    con(_wrap_color(message, "red"))
 
         elif m.role in role_to_header and m.content:
             if m.subchats:
@@ -483,7 +496,7 @@ def print_messages(messages: List[Message]) -> List[str]:
                     subchats_str = "\n".join([f" - {subchat_id} -   {line}" for line in subchats_str.splitlines()])
                     message_str.append(subchats_str)
             message_str.append(m.content)
-            # console.print(Markdown(m.content))
+            con(Markdown(m.content))
 
         if not _is_tool_call(m):
             results.append("\n".join(message_str))
@@ -494,9 +507,9 @@ def print_messages(messages: List[Message]) -> List[str]:
             for tool_call in m.tool_calls
         ])
         message_str.append(t)
-        # console.print(message)
+        con(t)
         message_str.append("")
-        # console.print("")
+        con("")
 
         results.append("\n".join(message_str))
 

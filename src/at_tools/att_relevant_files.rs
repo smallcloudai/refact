@@ -196,11 +196,11 @@ async fn find_relevant_files(
     user_query: String,
 ) -> Result<Value, String> {
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
-    // let vecdb_on = {
-    //     let gcx = gcx.read().await;
-    //     let vecdb = gcx.vec_db.lock().await;
-    //     vecdb.is_some()
-    // };
+    let _vecdb_on = {
+        let gcx = gcx.read().await;
+        let vecdb = gcx.vec_db.lock().await;
+        vecdb.is_some()
+    };
 
     let sys = RF_SYSTEM_PROMPT
         .replace("{ATTEMPTS}", &format!("{RF_ATTEMPTS}"))
