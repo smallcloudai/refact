@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use serde_json::Value;
 
-use tokio::sync::{Mutex as AMutex};
+use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 
 use crate::ast::ast_index::RequestSymbolType;
@@ -36,8 +36,11 @@ impl Tool for AttCat {
         };
         let symbols_str = match args.get("symbols") {
             Some(Value::String(s)) => {
-                let symbols = s.split(",").map(|x|x.trim().to_string()).collect::<Vec<_>>();
-                symbols
+                if s == "*" {
+                    vec![]
+                } else {
+                    s.split(",").map(|x|x.trim().to_string()).collect::<Vec<_>>()
+                }
             },
             Some(v) => return Err(format!("argument `symbols` is not a string: {:?}", v)),
             None => vec![],

@@ -457,7 +457,10 @@ def print_messages(messages: List[Message]) -> List[str]:
                 for file in json.loads(m.content)
             ])
             message_str.append(message)
+            message_str.append("")
             # console.print(message)
+            # console.print()
+
         elif m.role == "diff":
             for chunk in json.loads(m.content):
                 message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
@@ -471,9 +474,9 @@ def print_messages(messages: List[Message]) -> List[str]:
                     message = "\n".join([f"-{line}" for line in chunk['lines_remove'].splitlines()])
                     message_str.append(message)
                     # console.print(_wrap_color(message, "red"))
+
         elif m.role in role_to_header and m.content:
             if m.subchats:
-                # print(m.subchats)
                 for subchat_id, subchat_msgs in m.subchats.items():
                     subchats_strs = print_messages(subchat_msgs)
                     subchats_str = "\n".join(subchats_strs)
@@ -481,7 +484,6 @@ def print_messages(messages: List[Message]) -> List[str]:
                     message_str.append(subchats_str)
             message_str.append(m.content)
             # console.print(Markdown(m.content))
-
 
         if not _is_tool_call(m):
             results.append("\n".join(message_str))
