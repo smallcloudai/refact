@@ -286,8 +286,17 @@ async fn make_chat_history(
 
     let mut chat_messages = create_extra_context(
         ccx.clone(), paths, extra_paths_mb, extra_symbols_mb, &mut chat_messages, tool_call_id, usage
-    ).await?;
+    ).await?
+        .iter()
+        .map(|x| if x.role != "tool" { x.clone() } else { 
+            let mut x = x.clone();
+            x.content = "Files for extra context (do not modify them!):".to_string();
+            x
+        })
+        .collect::<Vec<_>>();
+    
     chat_messages.push(ChatMessage::new("user".to_string(), task_message));
+
 
     Ok(chat_messages)
 }
