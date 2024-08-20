@@ -1,7 +1,8 @@
 import { Button, Flex, Text, TextField } from "@radix-ui/themes";
 import { Checkbox } from "../Checkbox";
 import { useEffect, useRef, useState } from "react";
-import { useLogin, isGoodResponse } from "../../services/smallcloud";
+import { useLogin } from "../../hooks";
+import { isGoodResponse } from "../../services/smallcloud";
 
 export interface CloudLoginProps {
   goBack: () => void;
