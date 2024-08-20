@@ -99,7 +99,6 @@ class AgentRunner:
                             base_url=runner.base_url,
                             repo_path=repo_path,
                             instance_id=instance_id,
-                            output_dir=output_dir,
                             **kwargs)
                         results["lsp_log_fn"] = lsp_log_fn
                         return results, trajectory

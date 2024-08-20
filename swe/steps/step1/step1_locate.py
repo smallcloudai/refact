@@ -64,7 +64,7 @@ class Locate(Step):
         #   }
         # }
 
-        if 1:
+        if 0:
             # Oleg branch
             return results, []
         else:

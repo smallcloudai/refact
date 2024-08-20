@@ -11,7 +11,7 @@ use tokio::sync::RwLock as ARwLock;
 use futures_util::future::join_all;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::subchat::{subchat, subchat_single};
+use crate::at_tools::subchat::subchat;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
@@ -19,7 +19,6 @@ use crate::global_context::GlobalContext;
 
 const RF_OUTPUT_FILES: usize = 6;
 const RF_ATTEMPTS: usize = 1;
-const RF_WRAP_UP_DEPTH: usize = 5;
 const RF_WRAP_UP_TOKENS_CNT: usize = 8000;
 const RF_MODEL_NAME: &str = "gpt-4o-mini";
 
@@ -197,11 +196,11 @@ async fn find_relevant_files(
     user_query: String,
 ) -> Result<Value, String> {
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
-    let vecdb_on = {
-        let gcx = gcx.read().await;
-        let vecdb = gcx.vec_db.lock().await;
-        vecdb.is_some()
-    };
+    // let vecdb_on = {
+    //     let gcx = gcx.read().await;
+    //     let vecdb = gcx.vec_db.lock().await;
+    //     vecdb.is_some()
+    // };
 
     let sys = RF_SYSTEM_PROMPT
         .replace("{ATTEMPTS}", &format!("{RF_ATTEMPTS}"))
