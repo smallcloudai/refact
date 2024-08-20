@@ -126,23 +126,33 @@ well between chat restarts and they are always in English. Answer in the languag
 
 
 const RF_REDUCE_USER_MSG: &str = r###"
-💿 Look at the expert outputs above. Call cat() once with all the files and symbols. You have enough tokens for one big call, don't worry.
-But don't call anything else. After the cat() call, you need to think and output a formalized structure, all within a single response.
-Write down a couple of interpretations of the task, something like "Interpretation 1: user wants to do this, and the best file to start this change is file1".
-Decide which interpretation is most likely correct.
-Only one or two files can be TOCHANGE; decide which are the best; and it's not zero, you need to decide which file or two will receive the most meaningful updates
-if the user were to change something about the task. And remember, experts make mistakes; take their RELEVANCY ratings critically, and write your own.
+💿 Call cat() once with all the files and symbols. You have enough tokens for one big call, don't worry. Don't call anything else.
+"###;
+
+const RF_REDUCE_WRAP_UP: &str = r###"
+Look at the expert outputs above, think step by step. Follow this plan:
+
+1. Write down a couple of interpretations of the original task, something like "Interpretation 1: user wants to do this, and the best place to start this change is at file1.ext, near my_function1, in my_function2".
+
+2. Decide which interpretation is most likely correct.
+
+3. Decide which one or two files will receive the most meaningful updates if the user was to change the code in that interpretation. You'll need to label them TOCHANGE later.
+
+4. Write down which files might support the change, some of them contain high-level logic, some have definitions.
+
+5. Experts make mistakes; take their RELEVANCY ratings critically, and write your own by looking at the actual code and the best interpretation.
 All the files cannot have relevancy 5; most of them are likely 3, "might provide good insight into the logic behind the program but not directly relevant", but you can
 write 1 or 2 if you accidentally wrote a file name and changed your mind about how useful it is, not a problem.
-Finally, go ahead and formalize that interpretation in the following JSON format, write "REDUCE_OUTPUT", and continue with triple backquotes.
+
+6. After you have completed 1-5, go ahead and formalize your best interpretation in the following JSON format, write "REDUCE_OUTPUT", and continue with triple backquotes.
 
 REDUCE_OUTPUT
 ```
 {
     "dir/dir/file.ext": {
-        "SYMBOLS": "symbol1,symbol2",     // Comma-separated list of functions/classes/types/variables/etc defined within this file that are actually relevant. List all symbols that are relevant, not just some of them.  Use your own judgement, don't just copy from an expert.
+        "SYMBOLS": "symbol1,symbol2",     // Comma-separated list of functions/classes/types/variables/etc defined within this file that are actually relevant. List all symbols that are relevant, not just some of them. Use your own judgement, don't just copy from an expert.
         "WHY_CODE": "string",             // Write down the reason to include this file in output, pick one of: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE. Use your own judgement, don't just copy from an expert.
-        "WHY_DESC": "string",             // Describe why this file matters wrt the task, what's going on inside? Copy the best explanation from an expert.
+        "WHY_DESC": "string",             // Describe why this file matters wrt the task, what's going on inside? Describe the file in general in a sentense or two, and then describe what specifically is the relation to the task.
         "RELEVANCY": 0                    // Critically evaluate how is this file really relevant to your interpretation of the task. Rate from 1 to 5. 1 = has TBD, role is unclear, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
     }
 }
@@ -150,14 +160,18 @@ REDUCE_OUTPUT
 "###;
 
 fn parse_reduce_output(content: &str) -> Result<Value, String> {
-    // Step 1: Extract the JSON content
     let re = Regex::new(r"(?s)REDUCE_OUTPUT\s*```(?:json)?\s*(.+?)\s*```").unwrap();
     let json_str = re.captures(content)
         .and_then(|cap| cap.get(1))
         .map(|m| m.as_str().trim())
-        .ok_or_else(|| "Unable to find REDUCE_OUTPUT section :/".to_string())?;
-    let output: Value = serde_json::from_str(json_str)
-        .map_err(|e| format!("Unable to parse JSON: {:?}", e))?;
+        .ok_or_else(|| {
+            tracing::warn!("Unable to find REDUCE_OUTPUT section:\n{}", content);
+            "Unable to find REDUCE_OUTPUT section".to_string()
+        })?;
+    let output: Value = serde_json::from_str(json_str).map_err(|e| {
+            tracing::warn!("Unable to parse JSON:\n{}({})", json_str, e);
+            format!("Unable to parse JSON: {:?}", e)
+        })?;
     Ok(output)
 }
 
@@ -251,6 +265,8 @@ async fn find_relevant_files(
             })
         })
         .collect();
+
+    // Reduce
     let mut messages = vec![];
     messages.push(ChatMessage::new("system".to_string(), RF_REDUCE_SYSTEM_PROMPT.to_string()));
     messages.push(ChatMessage::new("user".to_string(), format!("User provided task:\n\n{}", user_query)));
@@ -258,18 +274,16 @@ async fn find_relevant_files(
         messages.push(ChatMessage::new("user".to_string(), format!("Expert {} says:\n\n{}", i + 1, expert_message.content)));
     }
     messages.push(ChatMessage::new("user".to_string(), format!("{}", RF_REDUCE_USER_MSG)));
-
-    let result = subchat_single(
+    let result = subchat(
         ccx.clone(),
         RF_MODEL_NAME,
         messages,
-        vec![],
-        None,
-        false,
-        None,
-        None,
+        vec!["cat".to_string()],
         1,
-        None, // todo: specify usage_collector
+        RF_WRAP_UP_TOKENS_CNT,
+        RF_REDUCE_WRAP_UP,
+        1,
+        Some(0.0),
         Some(format!("{log_prefix}-rf-step2-reduce")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step2-reduce")),
