@@ -32,6 +32,7 @@ import { TourProvider, restart } from "./Tour";
 import { Tour } from "../components/Tour";
 import { DropdownNavigationOptions } from "../components/Sidebar/Footer";
 import { TourEnd } from "../components/Tour/TourEnd";
+import { BringYourOwnKey } from "../components/BringYourOwnKey/BringYourOwnKey";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -86,8 +87,10 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
       dispatch(push({ name: "cloud login" }));
     } else if (host === "enterprise") {
       dispatch(push({ name: "enterprise setup" }));
-    } else {
+    } else if (host === "self-hosting") {
       dispatch(push({ name: "self hosting setup" }));
+    } else {
+      dispatch(push({ name: "bring your own key" }));
     }
   };
 
@@ -101,6 +104,10 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const selfHostingSetup = (endpointAddress: string) => {
     setupHost({ type: "self", endpointAddress });
+  };
+
+  const bringYourOwnKeySetup = () => {
+    setupHost({ type: "bring-your-own-key" });
   };
 
   const logOut = () => {
@@ -186,6 +193,9 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             )}
             {page.name === "self hosting setup" && (
               <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
+            )}
+            {page.name === "bring your own key" && (
+              <BringYourOwnKey goBack={goBack} next={bringYourOwnKeySetup} />
             )}
             {page.name === "welcome" && <Welcome onPressNext={startTour} />}
             {page.name === "tour end" && <TourEnd />}
