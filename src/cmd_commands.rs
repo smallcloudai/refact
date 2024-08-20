@@ -7,7 +7,7 @@ use crate::caps::SIMPLE_CAPS;
 use crate::global_context::CommandLine;
 
 fn generate_byok_file(cache_dir: &PathBuf) {
-    let file_name = cache_dir.join("custom_caps.yaml");
+    let file_name = cache_dir.join("bring-your-own-key.yaml");
     let mut file = fs::File::create(file_name).expect("Failed to create file");
     file.write_all(SIMPLE_CAPS.as_ref()).expect("Failed to write to file");
 }
