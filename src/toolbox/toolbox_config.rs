@@ -232,30 +232,14 @@ pub async fn get_default_system_prompt(
     have_exploration_tools: bool,
     have_agentic_tools: bool,
 ) -> String {
-    async fn embed_additional_environment_info(global_context: Arc<ARwLock<GlobalContext>>, system_prompt: &str) -> String {
-        let datetime = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-        let os = std::env::consts::OS;
-        let username = std::env::var("USER")
-            .or_else(|_| std::env::var("USERNAME"))
-            .unwrap_or_else(|_| String::from("unknown"));
-        
-        let workspace_dirs = {
-            let workspace_dirs_arc = global_context.read().await.documents_state.workspace_folders.clone();
-            let dirs_lock = workspace_dirs_arc.lock().unwrap();
-            dirs_lock.clone().into_iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>()
-        };
-        let additional_info = format!("ENVIRONMENT INFO:\nDATETIME: {}\nOS: {}\nUSER: {}\nWORKSPACE_DIRS:\n{}\n", datetime, os, username, workspace_dirs.join("\n"));
-        format!("{}\n\n{}", system_prompt, additional_info)
-    }
-    
     let tconfig = match load_customization(global_context.clone()).await {
         Ok(tconfig) => tconfig,
         Err(e) => {
             error!("cannot load_customization: {e}");
-            return "".to_string() 
+            return "".to_string()
         },
     };
-    let system_prompt = if have_agentic_tools {
+    let mut system_prompt = if have_agentic_tools {
         tconfig.system_prompts.get("agentic_tools")
             .map_or_else(
                 || {
@@ -283,7 +267,25 @@ pub async fn get_default_system_prompt(
                 |x| x.text.clone()
             )
     };
-    let system_prompt = embed_additional_environment_info(global_context.clone(), &system_prompt).await;
+
+    // let mut additional_info = String::new();
+    // let datetime = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    // let os = std::env::consts::OS;
+    // let username = std::env::var("USER")
+    //     .or_else(|_| std::env::var("USERNAME"))
+    //     .unwrap_or_else(|_| String::from("unknown"));
+    // let additional_info += format!("ENVIRONMENT INFO:\nDATETIME: {}\nOS: {}\nUSER: {}\n", datetime, os, username);
+
+    let workspace_dirs = {
+        let workspace_dirs_arc = global_context.read().await.documents_state.workspace_folders.clone();
+        let dirs_lock = workspace_dirs_arc.lock().unwrap();
+        dirs_lock.clone().into_iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>()
+    };
+    if !workspace_dirs.is_empty() && system_prompt.contains("%WORKSPACE_PROJECTS_INFO%") {
+        system_prompt = system_prompt.replace("%WORKSPACE_PROJECTS_INFO%", &format!("The current IDE workspace has these project directories:\n{}\n", workspace_dirs.join("\n")).as_str());
+    }
+
+    info!("system_prompt\n{}", system_prompt);
     system_prompt
 }
 

@@ -34,6 +34,8 @@ PROMPT_AGENTIC_TOOLS: |
   [mode3] You are Refact Chat, a coding assistant. Use triple backquotes for code blocks. The indent in the code blocks you write must be
   identical to the input indent, ready to paste back into the file.
 
+  %WORKSPACE_PROJECTS_INFO%
+
   You are entrusted the agentic tools, locate() and patch(). They think for a long time, but produce reliable results and hide
   complexity, as to not waste tokens here in this chat.
 
