@@ -6,8 +6,7 @@ use structopt::StructOpt;
 use crate::caps::SIMPLE_CAPS;
 use crate::global_context::CommandLine;
 
-fn generate_byok_file(cache_dir: &PathBuf) {
-    let file_name = cache_dir.join("bring-your-own-key.yaml");
+fn generate_byok_file(file_name: &PathBuf) {
     let mut file = fs::File::create(file_name).expect("Failed to create file");
     file.write_all(SIMPLE_CAPS.as_ref()).expect("Failed to write to file");
 }
@@ -15,7 +14,9 @@ fn generate_byok_file(cache_dir: &PathBuf) {
 pub fn exec_commands_if_exists(cache_dir: &PathBuf) {
     let cmdline = CommandLine::from_args();
     if cmdline.save_byok_file {
-        generate_byok_file(&cache_dir);
+        let file_name = cache_dir.join("bring-your-own-key.yaml");
+        generate_byok_file(&file_name);
+        println!("{}", file_name.display());
         exit(0);
     }
 }
