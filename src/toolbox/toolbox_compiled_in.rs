@@ -73,6 +73,15 @@ system_prompts:
   agentic_tools:
     text: "%PROMPT_AGENTIC_TOOLS%"
 
+subchat_tool_parameters:
+  patch:
+    model: "gpt-4o-mini"
+    n_ctx: 32000
+    temperature: 0.7
+    max_new_tokens: 8192
+  locate:
+    model: "gpt-4o-mini"
+    n_ctx: 32000
 
 toolbox_commands:
   shorter:

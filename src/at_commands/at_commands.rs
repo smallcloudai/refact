@@ -7,7 +7,7 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::at_tools::tools::Tool;
-use crate::call_validation::{ChatMessage, ContextFile, ContextEnum};
+use crate::call_validation::{ChatMessage, ContextFile, ContextEnum, SubchatParameters};
 use crate::global_context::GlobalContext;
 
 use crate::at_commands::at_search::AtSearch;
@@ -34,6 +34,7 @@ pub struct AtCommandsContext {
 
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
     pub at_tools: HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
+    pub subchat_tool_parameters: HashMap<String, SubchatParameters>,
 
     pub subchat_tx: Arc<AMutex<mpsc::UnboundedSender<serde_json::Value>>>, // one and only supported format for now {"tool_call_id": xx, "subchat_id": xx, "add_message": {...}}
     pub subchat_rx: Arc<AMutex<mpsc::UnboundedReceiver<serde_json::Value>>>,
@@ -45,7 +46,7 @@ impl AtCommandsContext {
         n_ctx: usize,
         top_n: usize,
         is_preview: bool,
-        messages: &Vec<ChatMessage>,
+        messages: Vec<ChatMessage>,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel::<serde_json::Value>();
         AtCommandsContext {
@@ -54,9 +55,12 @@ impl AtCommandsContext {
             top_n,
             is_preview,
             pp_skeleton: false,
-            messages: messages.clone(),
+            messages,
+            
             at_commands: at_commands_dict(global_context.clone()).await,
             at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
+            subchat_tool_parameters: HashMap::new(),
+            
             subchat_tx: Arc::new(AMutex::new(tx)),
             subchat_rx: Arc::new(AMutex::new(rx)),
         }

@@ -488,6 +488,24 @@ pub fn which_scratchpad_to_use<'a>(
     }
 }
 
+pub async fn get_model_record(
+    global_context: Arc<RwLock<GlobalContext>>,
+    model: &str,
+) -> Result<ModelRecord, String> {
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(
+        global_context.clone(), 0,
+    ).await.map_err(|e| {
+        warn!("no caps: {:?}", e);
+        format!("failed to load caps: {}", e)
+    })?;
+
+    let caps_lock = caps.read().unwrap();
+    match caps_lock.code_chat_models.get(model) {
+        Some(res) => Ok(res.clone()),
+        None => Err(format!("no model record for model `{}`", model))
+    }
+}
+
 
 pub const SIMPLE_CAPS: &str = r#"
 # other examples https://github.com/smallcloudai/refact-lsp/tree/main/bring_your_own_key

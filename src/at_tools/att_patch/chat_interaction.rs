@@ -10,10 +10,11 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::execute_at_file;
 use crate::at_tools::att_patch::args_parser::PatchArguments;
 use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal, get_signatures_by_symbol_names};
-use crate::at_tools::att_patch::tool::{DefaultToolPatch, DEFAULT_MODEL_NAME, MAX_NEW_TOKENS, N_CHOICES, TEMPERATURE};
+use crate::at_tools::att_patch::tool::{DefaultToolPatch, N_CHOICES};
 use crate::at_tools::subchat::subchat_single;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatUsage};
+use crate::caps::get_model_record;
 use crate::scratchpads::pp_utils::count_tokens;
 
 
@@ -23,34 +24,9 @@ pub struct LocateItem {
     pub reason: String,
 }
 
-
-async fn get_max_tokens(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-) -> Result<usize, String> {
-    let gcx = ccx.lock().await.global_context.clone();
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(
-        gcx.clone(), 0,
-    )
-        .await
-        .map_err(|e| {
-            warn!("no caps: {:?}", e);
-            "network error communicating with the model (1)".to_string()
-        })?;
-
-    let x = match caps.read().unwrap().code_chat_models.get(
-        DEFAULT_MODEL_NAME
-    ) {
-        Some(res) => Ok(res.n_ctx),
-        None => Err(format!(
-            "the default patch model {} is not available in the caps",
-            &DEFAULT_MODEL_NAME
-        ))
-    };
-    x
-}
-
 async fn load_tokenizer(
-    ccx: Arc<AMutex<AtCommandsContext>>
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    model: &str,
 ) -> Result<Arc<StdRwLock<Tokenizer>>, String> {
     let gcx = ccx.lock().await.global_context.clone();
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(
@@ -63,7 +39,7 @@ async fn load_tokenizer(
         })?;
 
     cached_tokenizers::cached_tokenizer(
-        caps.clone(), gcx.clone(), DEFAULT_MODEL_NAME.to_string(),
+        caps.clone(), gcx.clone(), model.to_string(),
     ).await
 }
 
@@ -107,14 +83,13 @@ async fn get_locate_data(
 
 async fn make_chat_history(
     ccx: Arc<AMutex<AtCommandsContext>>,
+    model: &str,
+    max_tokens: usize,
+    max_new_tokens: usize,
     args: &PatchArguments,
 ) -> Result<Vec<ChatMessage>, String> {
-    let tokenizer = match load_tokenizer(ccx.clone()).await {
+    let tokenizer = match load_tokenizer(ccx.clone(), model).await {
         Ok(t) => t,
-        Err(e) => return Err(e),
-    };
-    let max_tokens = match get_max_tokens(ccx.clone()).await {
-        Ok(n) => n,
         Err(e) => return Err(e),
     };
 
@@ -127,7 +102,7 @@ async fn make_chat_history(
         get_signatures_by_imports_traversal(&args.paths, gcx.clone()).await
     };
     let mut tokens: usize = 0;
-    let max_tokens: usize = max_tokens - MAX_NEW_TOKENS;
+    let max_tokens: usize = max_tokens.saturating_sub(max_new_tokens);
     let tokenizer_ref = tokenizer.read().unwrap().clone();
     let task_message = format!("The task is:\n{}", args.todo).to_string();
     let mut chat_messages = vec![
@@ -186,21 +161,25 @@ async fn make_chat_history(
 
 pub async fn execute_chat_model(
     ccx: Arc<AMutex<AtCommandsContext>>,
+    model: &str,
+    max_tokens: usize,
+    temperature: Option<f32>,
+    max_new_tokens: usize,
     tool_call_id: &String,
     args: &PatchArguments,
     usage: &mut ChatUsage,
 ) -> Result<Vec<String>, String> {
-    let messages = make_chat_history(ccx.clone(), args).await?;
+    let messages = make_chat_history(ccx.clone(), model, max_tokens, max_new_tokens, args).await?;
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let response = subchat_single(
         ccx.clone(),
-        &DEFAULT_MODEL_NAME,
+        model,
         messages,
         vec![],
         None,
         false,
-        Some(TEMPERATURE),
-        Some(MAX_NEW_TOKENS),
+        temperature,
+        Some(max_new_tokens),
         N_CHOICES,
         Some(usage),
         Some(format!("{log_prefix}-patch")),

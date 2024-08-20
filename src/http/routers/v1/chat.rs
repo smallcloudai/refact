@@ -103,17 +103,19 @@ async fn chat(
     //     ));
     //     let _ = std::fs::write(&notes_path, serde_json::to_string_pretty(&chat_post.messages).unwrap());
     // }
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+    let mut ccx = AtCommandsContext::new(
         global_context.clone(),
         n_ctx,
         CHAT_TOP_N,
         false,
-        &chat_post.messages,
-    ).await));
+        chat_post.messages.clone(),
+    ).await;
+    ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
+    let ccx_arc = Arc::new(AMutex::new(ccx));
 
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {
         crate::restream::scratchpad_interaction_not_stream(
-            ccx.clone(),
+            ccx_arc.clone(),
             &mut scratchpad,
             "chat".to_string(),
             model_name,
@@ -122,7 +124,7 @@ async fn chat(
         ).await
     } else {
         crate::restream::scratchpad_interaction_stream(
-            ccx.clone(),
+            ccx_arc.clone(),
             scratchpad,
             "chat-stream".to_string(),
             model_name,

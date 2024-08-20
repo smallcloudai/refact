@@ -12,7 +12,7 @@ use crate::call_validation::{ChatMessage, ChatPost, ChatToolCall, ChatUsage, Sam
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
 use crate::http::routers::v1::chat::lookup_chat_scratchpad;
 use crate::scratchpad_abstract::ScratchpadAbstract;
-
+use crate::toolbox::toolbox_config::load_customization;
 
 const TEMPERATURE: f32 = 0.2;
 const MAX_NEW_TOKENS: usize = 4096;
@@ -35,6 +35,7 @@ async fn create_chat_post_and_scratchpad(
         warn!("no caps: {:?}", e);
         "no caps".to_string()
     })?;
+    let tconfig = load_customization(global_context.clone()).await?;
 
     let mut chat_post = ChatPost {
         messages: messages.iter().cloned().cloned().collect::<Vec<_>>(),
@@ -54,6 +55,7 @@ async fn create_chat_post_and_scratchpad(
         tools,
         tool_choice,
         only_deterministic_messages,
+        subchat_tool_parameters: tconfig.subchat_tool_parameters.clone(),
         chat_id: "".to_string(),
     };
 
