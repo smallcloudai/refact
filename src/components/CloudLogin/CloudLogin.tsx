@@ -1,6 +1,7 @@
 import { Button, Flex, Text, TextField } from "@radix-ui/themes";
 import { Checkbox } from "../Checkbox";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLogin, isGoodResponse } from "../../services/smallcloud";
 
 export interface CloudLoginProps {
   goBack: () => void;
@@ -8,95 +9,22 @@ export interface CloudLoginProps {
   openExternal: (url: string) => void;
 }
 
-interface OkResponse {
-  retcode: "OK";
-  secret_key: string;
-}
-
-function isOkResponse(json: unknown): json is OkResponse {
-  if (!json) return false;
-  if (typeof json !== "object") return false;
-  if (!("retcode" in json)) return false;
-  if (json.retcode !== "OK") return false;
-  if (!("secret_key" in json)) return false;
-  if (typeof json.secret_key !== "string") return false;
-  return true;
-}
-
 export const CloudLogin: React.FC<CloudLoginProps> = ({
   goBack,
   next,
-  openExternal,
+  // openExternal,
 }: CloudLoginProps) => {
   const [sendCorrectedCodeSnippets, setSendCorrectedCodeSnippets] =
     useState(false);
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const loginTicket = useRef("");
   const interval = useRef<NodeJS.Timeout | undefined>(undefined);
   const input = useRef<HTMLInputElement>(null);
 
-  const login = useCallback(() => {
-    setLoading(true);
-
-    const newLoginTicket =
-      Math.random().toString(36).substring(2, 15) +
-      "-" +
-      Math.random().toString(36).substring(2, 15);
-    loginTicket.current = newLoginTicket;
-    openExternal(
-      `https://refact.smallcloud.ai/authentication?token=${newLoginTicket}&utm_source=plugin&utm_medium=vscode&utm_campaign=login`,
-    );
-
-    if (interval.current !== undefined) {
-      clearInterval(interval.current);
-    }
-
-    interval.current = setInterval(() => {
-      if (loginTicket.current !== newLoginTicket) {
-        return;
-      }
-      if (apiKey === "") {
-        const fetchApiKey = async () => {
-          const url =
-            "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket";
-          const headers = {
-            "Content-Type": "application/json",
-            Authorization: `codify-${newLoginTicket}`,
-          };
-          const init: RequestInit = {
-            method: "GET",
-            redirect: "follow",
-            cache: "no-cache",
-            referrer: "no-referrer",
-            headers,
-          };
-          const response = await fetch(url, init);
-          if (!response.ok) {
-            // eslint-disable-next-line no-console
-            console.error(`Unable to recall login ticket: ${response.status}`);
-            return;
-          }
-
-          const json: unknown = await response.json();
-          if (isOkResponse(json)) {
-            if (interval.current) {
-              setApiKey(json.secret_key);
-              setLoading(false);
-              clearInterval(interval.current);
-              interval.current = undefined;
-            }
-          }
-        };
-        void fetchApiKey();
-      }
-    }, 5000);
-  }, [loginTicket, apiKey, openExternal, setApiKey]);
+  const { loginThroughWeb, loginWithKey, polling } = useLogin();
 
   useEffect(() => {
     setError(false);
-    setLoading(false);
     if (interval.current) {
       interval.current = undefined;
     }
@@ -116,7 +44,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
       return;
     }
 
-    if (loading) {
+    if (polling.isFetching) {
       const loadingText = "Fetching API Key ";
       const animationFrames = ["/", "|", "\\", "-"];
       let index = 0;
@@ -132,7 +60,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
     } else {
       current.placeholder = "";
     }
-  }, [input, loading]);
+  }, [input, polling.isFetching]);
 
   const canSubmit = Boolean(apiKey);
   const onSubmit = () => {
@@ -140,8 +68,22 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
       setError(true);
       return;
     }
+    loginWithKey(apiKey);
+    // TODO: validate the key with user.data
     next(apiKey, sendCorrectedCodeSnippets);
   };
+
+  useEffect(() => {
+    if (polling.error) {
+      setError(true);
+    }
+  }, [polling.error]);
+
+  useEffect(() => {
+    if (isGoodResponse(polling.data)) {
+      setApiKey(polling.data.secret_key);
+    }
+  }, [polling.data]);
 
   return (
     <Flex direction="column" gap="2" maxWidth="540px" m="8px">
@@ -149,7 +91,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
         Cloud inference
       </Text>
       <Text size="2">Quick login via website:</Text>
-      <Button onClick={login}>Login / Create Account</Button>
+      <Button onClick={loginThroughWeb}>Login / Create Account</Button>
       <Text size="2" mt="2">
         Alternatively, paste an existing Refact API key here:
       </Text>
