@@ -108,7 +108,7 @@ async fn get_locate_data(
 
 async fn create_extra_context(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    paths: Vec<String>,
+    paths: Vec<(String, Option<String>)>,
     extra_paths_mb: Option<Vec<String>>,
     extra_symbols_mb: Option<Vec<String>>,
     messages: &Vec<ChatMessage>,
@@ -132,7 +132,7 @@ async fn create_extra_context(
         Some(cat_args)
     } else {
         if let Some(paths) = get_signatures_by_imports_traversal(
-            &paths, gcx.clone()
+            &paths.iter().map(|x| x.0.clone()).collect(), gcx.clone()
         ).await {
             let mut cat_args = HashMap::new();
             cat_args.insert("paths".to_string(), paths
@@ -224,7 +224,7 @@ async fn make_chat_history(
             if let Some(locate_data) = get_locate_data(ccx.clone()).await {
                 let paths = locate_data.files.iter()
                     .filter(|x| x.reason.to_lowercase() == "to_change")
-                    .map(|x| x.file_path.clone())
+                    .map(|x| (x.file_path.clone(), Some(x.description.clone())))
                     .collect::<Vec<_>>();
                 let extra_paths = locate_data.files.iter()
                     .filter(|x| x.reason.to_lowercase() != "to_change")
@@ -235,15 +235,32 @@ async fn make_chat_history(
                 return Err("locate data has not found though it was asked to use it".to_string());
             }
         } else {
-            (args.paths.clone(), None, None)
+            (
+                args.paths.iter().map(|x| (x.clone(), None)).collect::<Vec<_>>(), 
+                None,
+                None
+            )
         }
     };
     
     let has_single_file = paths.len() == 1;
-    for (idx, file) in paths.iter().enumerate() {
+    for (idx, (file, description_mb)) in paths.iter().enumerate() {
         match execute_at_file(ccx.clone(), file.clone()).await {
             Ok(res) => {
-                let message = format!("{}\n```\n{}\n```", res.file_name, res.file_content).to_string();
+                let message = if let Some(description) = description_mb {
+                    format!(
+                        "File to modify: {}\nDescription: {}\nContent:\n```\n{}\n```",
+                        res.file_name,
+                        description,
+                        res.file_content
+                    ).to_string()
+                } else {
+                    format!(
+                        "File to modify: {}\nContent:\n```\n{}\n```",
+                        res.file_name,
+                        res.file_content
+                    ).to_string()
+                };
                 tokens += 3 + count_tokens(&tokenizer_ref, &message);
                 if tokens > max_tokens {
                     let err_message = if has_single_file || idx == 0 {
@@ -266,12 +283,12 @@ async fn make_chat_history(
             }
         }
     }
-    chat_messages.push(ChatMessage::new("user".to_string(), task_message));
 
-    let chat_messages = create_extra_context(
+    let mut chat_messages = create_extra_context(
         ccx.clone(), paths, extra_paths_mb, extra_symbols_mb, &mut chat_messages, tool_call_id, usage
     ).await?;
-    
+    chat_messages.push(ChatMessage::new("user".to_string(), task_message));
+
     Ok(chat_messages)
 }
 

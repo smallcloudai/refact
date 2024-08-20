@@ -17,7 +17,7 @@ pub async fn parse_arguments(
         None => { return Err("argument `path` is not a string".to_string()) }
     };
     let use_locate_for_context = if let Some(p) = paths.get(0) {
-        p == "use_locate_for_context"
+        p == "pick_locate_json_above"
     } else {
         false
     };
