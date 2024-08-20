@@ -41,7 +41,7 @@
 }
 
 .diff {
-  background: rgb(35, 35, 35);
+  background: #252525;
   max-width: unset;
 }
 
@@ -76,6 +76,45 @@
 
 .diff pre > code > span {
   min-width: 2.5em !important;
+}
+
+.diff_line > span {
+  font-family:
+    Consolas,
+    Monaco,
+    Lucida Console,
+    Liberation Mono,
+    DejaVu Sans Mono,
+    Bitstream Vera Sans Mono,
+    Courier New;
+  color: #c6cdd5;
+}
+
+.diff_line_number {
+  min-width: 50px;
+  padding-right: 8px;
+  text-align: end;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.diff_sign {
+  padding-left: 6px;
+  padding-right: 6px;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.diff_line_content {
+  flex: 1;
 }
 
 /** TODO: it seems the background doesn't grow inside of the scroll area */

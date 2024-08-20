@@ -2,11 +2,7 @@ import React from "react";
 import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
 import type { DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import classNames from "classnames";
-
 import styles from "./ChatContent.module.css";
-import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/railscasts";
 import { filename } from "../../utils";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
@@ -16,65 +12,81 @@ import { useDiffApplyMutation, useDiffStateQuery } from "../../app/hooks";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
-function toDiff(str: string, type: "add" | "remove"): string {
-  const sign = type === "add" ? "+" : "-";
-
+function toDiff(str: string): string {
   const replaceEscapedEOL = str
     .split("\n")
     .filter((_) => _)
-    .join("\n" + sign);
+    .join("\n");
 
-  return sign + replaceEscapedEOL;
+  return replaceEscapedEOL;
 }
 
-const _Highlight: React.FC<{
-  children: string;
-  showLineNumbers?: boolean;
-  startingLineNumber?: number;
-  className: string;
-}> = ({ children, className, ...rest }) => {
+const DiffLine: React.FC<{
+  lineNumber?: number;
+  sign: string;
+  line: string;
+}> = ({ lineNumber, sign, line }) => {
+  const backgroundColorLeft = sign === "-" ? "#592e30" : "#3b5840";
+  const backgroundColor = sign === "-" ? "#3e2628" : "#2c3e33";
   return (
-    <SyntaxHighlighter
-      style={hljsStyle}
-      PreTag={(props) => (
-        <pre {...props} className={classNames(styles.diff_pre, className)} />
-      )}
-      language="diff"
-      {...rest}
-    >
-      {children}
-    </SyntaxHighlighter>
+    <Flex className={styles.diff_line}>
+      <Text
+        size="2"
+        className={styles.diff_line_number}
+        style={{ backgroundColor: backgroundColorLeft }}
+      >
+        {lineNumber ?? ""}
+      </Text>
+      <Text size="2" className={styles.diff_sign} style={{ backgroundColor }}>
+        {sign}
+      </Text>
+      <Text
+        size="2"
+        className={styles.diff_line_content}
+        style={{ backgroundColor }}
+      >
+        {line}
+      </Text>
+    </Flex>
   );
 };
 
-const Highlight = React.memo(_Highlight);
+const DiffHighlight: React.FC<{
+  startLine?: number;
+  sign: string;
+  text: string;
+}> = ({ startLine, sign, text }) => {
+  const lines = text.split("\n");
+  return (
+    <Flex direction="column">
+      {lines.map((line, index) => {
+        return (
+          <DiffLine
+            key={index}
+            line={line}
+            sign={sign}
+            lineNumber={startLine ? index + startLine : undefined}
+          />
+        );
+      })}
+    </Flex>
+  );
+};
 
 type DiffProps = {
   diff: DiffChunk;
 };
 
 export const Diff: React.FC<DiffProps> = ({ diff }) => {
-  const removeString = diff.lines_remove && toDiff(diff.lines_remove, "remove");
-  const addString = diff.lines_add && toDiff(diff.lines_add, "add");
+  const removeString = diff.lines_remove && toDiff(diff.lines_remove);
+  const addString = diff.lines_add && toDiff(diff.lines_add);
   return (
     <Flex className={styles.diff} py="2" direction="column">
       {removeString && (
-        <Highlight
-          className={styles.diff_first}
-          showLineNumbers={!!diff.line1}
-          startingLineNumber={diff.line1}
-        >
-          {removeString}
-        </Highlight>
+        <DiffHighlight startLine={diff.line1} sign={"-"} text={removeString} />
       )}
       {addString && (
-        <Highlight
-          className={styles.diff_second}
-          showLineNumbers={!!diff.line1}
-          startingLineNumber={diff.line1}
-        >
-          {addString}
-        </Highlight>
+        <DiffHighlight startLine={diff.line1} sign={"+"} text={addString} />
       )}
     </Flex>
   );
