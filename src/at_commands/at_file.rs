@@ -138,11 +138,17 @@ pub async fn real_file_path_candidate(
         let similar_paths_str = if dirs {
             correct_to_nearest_dir_path(gcx.clone(), file_path, true, 10).await.join("\n")
         } else {
-            file_repair_candidates(gcx.clone(), file_path, 10, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n")
+            let file_name = f_path.file_name().ok_or(format!("unable to get file name from path: {:?}", f_path))?.to_string_lossy().to_string();
+            file_repair_candidates(gcx.clone(), &file_name, 10, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n")
         };
         if f_path.is_absolute() {
             if !project_paths.iter().any(|x|f_path.starts_with(x)) {
                 return Err(format!("Path {:?} is outside of project directories:\n\n{:?}\n\nThere are paths with similar names:\n{}", f_path, project_paths, similar_paths_str));
+            }
+            return if similar_paths_str.is_empty() {
+                Err(format!("The path {:?} does not exist. There are no similar names either.", f_path))
+            } else {
+                Err(format!("The path {:?} does not exist.\n\nThere are paths with similar names however:\n{}", f_path, similar_paths_str))
             }
         }
         if f_path.is_relative() {
@@ -151,15 +157,15 @@ pub async fn real_file_path_candidate(
                 let projpath_options_str = projpath_options.iter().map(|x|x.to_string_lossy().to_string()).collect::<Vec<_>>().join("\n");
                 return Err(format!("The path {:?} is ambiguous.\n\nAdding project path, it might be:\n{:?}\n\nAlso, there are similar filepaths:\n{}", f_path, projpath_options_str, similar_paths_str));
             }
-            if projpath_options.is_empty() {
+            return if projpath_options.is_empty() {
                 if similar_paths_str.is_empty() {
-                    return Err(format!("The path {:?} does not exist. There are no similar names either.", f_path));
+                    Err(format!("The path {:?} does not exist. There are no similar names either.", f_path))
                 } else {
-                    return Err(format!("The path {:?} does not exist.\n\nThere are paths with similar names however:\n{}", f_path, similar_paths_str));
+                    Err(format!("The path {:?} does not exist.\n\nThere are paths with similar names however:\n{}", f_path, similar_paths_str))
                 }
             } else {
                 f_path = projpath_options[0].clone();
-                return Ok(f_path.to_string_lossy().to_string());
+                Ok(f_path.to_string_lossy().to_string())
             }
         }
     }
@@ -167,7 +173,11 @@ pub async fn real_file_path_candidate(
     if candidates.len() > 1 {
         return Err(format!("The path {:?} is ambiguous.\n\nIt could be interpreted as:\n{}", file_path, candidates.join("\n")));
     }
-    Ok(candidates.get(0).unwrap_or(&"".to_string()).clone())
+    let candidate = candidates.get(0).unwrap_or(&"".to_string()).clone();
+    if !PathBuf::from(&candidate).exists() {
+        return Err(format!("The path {:?} was not found on disk.", candidate));
+    }
+    Ok(candidate)
 }
 
 pub fn text_on_clip(result: &ContextFile, from_tool_call: bool) -> String {
