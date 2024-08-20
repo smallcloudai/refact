@@ -325,6 +325,10 @@ pub struct ChatPost {
     pub chat_id: String,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Serialize, Deserialize, Clone, Hash, Debug, Eq, PartialEq, Default)]
 pub struct DiffChunk {
     pub file_name: String,
@@ -335,10 +339,6 @@ pub struct DiffChunk {
     pub lines_add: String,
     #[serde(default)]
     pub file_name_rename: Option<String>,
+    #[serde(default = "default_true")]
+    pub is_file: bool,
 }
-
-// impl DiffChunk {
-//     pub fn is_empty(&self) -> bool {
-//         self.lines_add.is_empty() && self.lines_remove.is_empty()
-//     }
-// }

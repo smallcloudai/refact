@@ -9,6 +9,7 @@ use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ContextFile, ContextEnum};
+use crate::files_correction::correct_to_nearest_dir_path;
 use crate::global_context::GlobalContext;
 
 pub struct AtFile {
@@ -102,8 +103,8 @@ fn put_colon_back_to_arg(value: &mut String, colon: &Option<ColonLinesRange>) {
 }
 
 pub async fn file_repair_candidates(
-    value: &String,
     gcx: Arc<ARwLock<GlobalContext>>,
+    value: &String,
     top_n: usize,
     fuzzy: bool
 ) -> Vec<String> {
@@ -124,16 +125,49 @@ pub async fn file_repair_candidates(
     }).collect()
 }
 
-pub async fn at_file_repair_candidates(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-    value: &String,
-    fuzzy: bool,
-) -> Vec<String> {
-    let (gcx, top_n) = {
-        let ccx_locked = ccx.lock().await;
-        (ccx_locked.global_context.clone(), ccx_locked.top_n)
-    };
-    file_repair_candidates(value, gcx.clone(), top_n, fuzzy).await
+pub async fn real_file_path_candidate(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    file_path: &String,
+    candidates: &Vec<String>,
+    project_paths: &Vec<PathBuf>,
+    dirs: bool,
+) -> Result<String, String>{
+    let mut f_path = PathBuf::from(file_path);
+
+    if candidates.is_empty() {
+        let similar_paths_str = if dirs {
+            correct_to_nearest_dir_path(gcx.clone(), file_path, true, 10).await.join("\n")
+        } else {
+            file_repair_candidates(gcx.clone(), file_path, 10, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n")
+        };
+        if f_path.is_absolute() {
+            if !project_paths.iter().any(|x|f_path.starts_with(x)) {
+                return Err(format!("Path {:?} is outside of project directories:\n\n{:?}\n\nThere are paths with similar names:\n{}", f_path, project_paths, similar_paths_str));
+            }
+        }
+        if f_path.is_relative() {
+            let projpath_options = project_paths.iter().map(|x|x.join(&f_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
+            if projpath_options.len() > 1 {
+                let projpath_options_str = projpath_options.iter().map(|x|x.to_string_lossy().to_string()).collect::<Vec<_>>().join("\n");
+                return Err(format!("The path {:?} is ambiguous.\n\nAdding project path, it might be:\n{:?}\n\nAlso, there are similar filepaths:\n{}", f_path, projpath_options_str, similar_paths_str));
+            }
+            if projpath_options.is_empty() {
+                if similar_paths_str.is_empty() {
+                    return Err(format!("The path {:?} does not exist. There are no similar names either.", f_path));
+                } else {
+                    return Err(format!("The path {:?} does not exist.\n\nThere are paths with similar names however:\n{}", f_path, similar_paths_str));
+                }
+            } else {
+                f_path = projpath_options[0].clone();
+                return Ok(f_path.to_string_lossy().to_string());
+            }
+        }
+    }
+
+    if candidates.len() > 1 {
+        return Err(format!("The path {:?} is ambiguous.\n\nIt could be interpreted as:\n{}", file_path, candidates.join("\n")));
+    }
+    Ok(candidates.get(0).unwrap_or(&"".to_string()).clone())
 }
 
 pub fn text_on_clip(result: &ContextFile, from_tool_call: bool) -> String {
@@ -167,33 +201,32 @@ impl AtParam for AtParamFilePath {
         ccx: Arc<AMutex<AtCommandsContext>>,
         value: &String,
     ) -> Vec<String> {
-        let candidates =  at_file_repair_candidates(ccx.clone(), value, false).await;
+        let (gcx, top_n) = {
+            let ccx_lock = ccx.lock().await;
+            (ccx_lock.global_context.clone(), ccx_lock.top_n)
+        };
+        let candidates = file_repair_candidates(gcx.clone(), value, top_n, false).await;
         if !candidates.is_empty() {
             return candidates;
         }
         let file_path = PathBuf::from(value);
         if file_path.is_relative() {
-            let project_paths = get_project_paths(ccx.clone()).await;
+            let project_paths = get_project_paths(gcx.clone()).await;
             let options = project_paths.iter().map(|x|x.join(&file_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
             if !options.is_empty() {
                 return options.iter().map(|x| x.to_string_lossy().to_string()).collect();
             }
         }
-        return at_file_repair_candidates(ccx.clone(), value, true).await;
+        return file_repair_candidates(gcx.clone(), value, top_n, true).await;
     }
 
     fn param_completion_valid(&self) -> bool {true}
 }
 
-pub async fn get_project_paths(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-) -> Vec<PathBuf> {
-    let gcx = ccx.lock().await.global_context.clone();
-    {
-        let gcx_locked = gcx.write().await;
-        let workspace_folders = gcx_locked.documents_state.workspace_folders.lock().unwrap();
-        workspace_folders.iter().cloned().collect::<Vec<_>>()
-    }
+pub async fn get_project_paths(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
+    let gcx_locked = gcx.write().await;
+    let workspace_folders = gcx_locked.documents_state.workspace_folders.lock().unwrap();
+    workspace_folders.iter().cloned().collect::<Vec<_>>()
 }
 
 pub async fn context_file_from_file_path(
@@ -235,13 +268,17 @@ pub async fn execute_at_file(
     file_path: String,
 ) -> Result<ContextFile, String>
 {
-    let candidates = at_file_repair_candidates(ccx.clone(), &file_path, false).await;
+    let (gcx, top_n) = {
+        let ccx_lock = ccx.lock().await;
+        (ccx_lock.global_context.clone(), ccx_lock.top_n)
+    };
+    let candidates = file_repair_candidates(gcx.clone(), &file_path, top_n, false).await;
     match context_file_from_file_path(ccx.clone(), candidates, file_path.clone()).await {
         Ok(x) => { return Ok(x) },
         Err(e) => { info!("non-fuzzy at file has failed to get file_path: {:?}", e); }
     }
 
-    let candidates_fuzzy = at_file_repair_candidates(ccx.clone(), &file_path, true).await;
+    let candidates_fuzzy = file_repair_candidates(gcx.clone(), &file_path, top_n, true).await;
     context_file_from_file_path(ccx.clone(), candidates_fuzzy, file_path).await
 }
 

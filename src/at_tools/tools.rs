@@ -27,7 +27,6 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
 {
     let tools_all =  HashMap::from([
         ("search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_search::AttSearch{}) as Box<dyn Tool + Send>))),
-        // ("file".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_file::AttFile{}) as Box<dyn Tool + Send>))),
         ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_definition::AttAstDefinition{}) as Box<dyn Tool + Send>))),
         ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_reference::AttAstReference{}) as Box<dyn Tool + Send>))),
         ("tree".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_tree::AttTree{}) as Box<dyn Tool + Send>))),

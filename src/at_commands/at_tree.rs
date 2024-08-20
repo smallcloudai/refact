@@ -12,9 +12,8 @@ use tracing::warn;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::treesitter::structs::SymbolType;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::at_file::get_project_paths;
+use crate::at_commands::at_file::{get_project_paths, real_file_path_candidate};
 use crate::at_commands::execute_at::AtCommandMember;
-use crate::at_tools::att_file::real_file_path_candidate;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::files_correction::{correct_to_nearest_dir_path, paths_from_anywhere};
 use crate::files_in_workspace::Document;
@@ -246,7 +245,7 @@ impl AtCommand for AtTree {
             Some(arg) => {
                 let path = arg.text.clone();
                 let candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
-                let candidate = real_file_path_candidate(ccx.clone(), &path, &candidates, &get_project_paths(ccx.clone()).await, true).await.map_err(|e| {
+                let candidate = real_file_path_candidate(gcx.clone(), &path, &candidates, &get_project_paths(gcx.clone()).await, true).await.map_err(|e| {
                     cmd.ok = false; cmd.reason = Some(e.clone()); args.clear();
                     e
                 })?;

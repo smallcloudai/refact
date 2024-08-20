@@ -3,11 +3,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use serde::Serialize;
 
-use tokio::sync::RwLock as ARwLock;
+use tokio::sync::{RwLock as ARwLock};
 use hashbrown::{HashMap, HashSet};
 use tracing::info;
-use crate::at_commands::at_file::file_repair_candidates;
+use crate::at_commands::at_file::{file_repair_candidates, get_project_paths, real_file_path_candidate};
 use crate::call_validation::DiffChunk;
+use crate::files_correction::correct_to_nearest_dir_path;
 use crate::global_context::GlobalContext;
 
 
@@ -57,36 +58,57 @@ fn validate_chunk(chunk: &DiffChunk) -> Result<(), String> {
     if chunk.file_name_rename.is_some() && chunk.file_action != "rename" {
         return Err(format!("file_name_rename is not allowed for file_action `{}`. file_action must've been `rename`.", chunk.file_action));
     }
+    if !chunk.is_file && chunk.file_action.as_str() == "edit" {
+        return Err("file_action `edit` is not allowed for non-file chunks".to_string());
+    }
+    if !chunk.is_file && !chunk.lines_add.is_empty() &&!chunk.lines_remove.is_empty() {
+        return Err("lines add and lines remove should be empty for non-file chunks".to_string());
+    }
     Ok(())
 }
 
 pub async fn correct_and_validate_chunks(
+    gcx: Arc<ARwLock<GlobalContext>>,
     chunks: &mut Vec<DiffChunk>,
-    global_context: Arc<ARwLock<GlobalContext>>
 ) -> Result<(), String> {
-    for c in chunks.iter_mut() {
-        let file_path = PathBuf::from(&c.file_name);
-        if !file_path.is_file() && c.file_action == "edit" {
-            let candidates = file_repair_candidates(&c.file_name, global_context.clone(), 5, false).await;
-            let fuzzy_candidates = file_repair_candidates(&c.file_name, global_context.clone(), 5, true).await;
-
-            if candidates.len() > 1 {
-                return Err(format!("file_name `{}` is ambiguous, could be interpreted as:\n{}", &c.file_name, candidates.join("\n")));
+    async fn detect_file_type_and_complete_path(
+        gcx: Arc<ARwLock<GlobalContext>>,
+        path_str: &String,
+        chunk: &DiffChunk,
+    ) -> Result<(String, bool), String>{
+        let path = PathBuf::from(path_str);
+        return if path.is_file() {
+            Ok((path_str.clone(), true))
+        } else if path.is_dir() {
+            Ok((path_str.clone(), false))
+        } else {
+            // has extension -> is_file; no extension and lines_add/remove are !empty -> file; else -> dir
+            let is_file = path.extension().is_some() || (path.extension().is_some() && (!chunk.lines_add.is_empty() || !chunk.lines_remove.is_empty()));
+            if is_file {
+                let candidates = file_repair_candidates(gcx.clone(), path_str, 10, false).await;
+                let candidate = real_file_path_candidate(gcx.clone(), path_str, &candidates, &get_project_paths(gcx.clone()).await, false).await?;
+                Ok((candidate, true))
+            } else {
+                let candidates = correct_to_nearest_dir_path(gcx.clone(), path_str, false, 10).await;
+                let candidate = real_file_path_candidate(gcx.clone(), path_str, &candidates, &get_project_paths(gcx.clone()).await, true).await?;
+                Ok((candidate, false))
             }
-            if candidates.is_empty() {
-                return if !fuzzy_candidates.is_empty() {
-                    Err(format!("file_name `{}` is not found.\nHowever, there are similar paths:\n{}", &c.file_name, fuzzy_candidates.join("\n")))
-                } else {
-                    Err(format!("file_name `{}` is not found", &c.file_name))
-                }
-            }
-            let candidate = candidates.get(0).unwrap();
-            if !PathBuf::from(&candidate).is_file() {
-                return Err(format!("file_name `{}` is not found.\nHowever, there are similar paths:\n{}", &c.file_name, fuzzy_candidates.join("\n")));
-            }
-            c.file_name = candidate.clone();
         }
-
+    }
+    
+    for c in chunks.iter_mut() {
+        if let Some(file_path_rename) = &c.file_name_rename {
+            let (true_file_path_rename, is_file_rename) = detect_file_type_and_complete_path(gcx.clone(), &file_path_rename, c).await?;
+            c.is_file = is_file_rename;
+            c.file_name_rename = Some(true_file_path_rename);
+        } else {
+            let (true_file_path, is_file) = detect_file_type_and_complete_path(gcx.clone(), &c.file_name, c).await?;
+            c.is_file = is_file;
+            if c.file_action != "add" {
+                c.file_name = true_file_path;
+            }
+        }
+        
         validate_chunk(c).map_err(|e| format!("error validating chunk {:?}:\n{}", c, e))?;
     }
     Ok(())
@@ -212,7 +234,7 @@ fn undo_chunks(
     let mut lines_orig = file_text.split(line_ending).enumerate().map(|(line_n, l)| DiffLine { line_n: line_n + 1, text: l.to_string(), ..Default::default()}).collect::<Vec<_>>();
 
     let mut outputs = HashMap::new();
-
+    
     for (chunk_id, chunk) in chunks.iter().map(|(id, c)|(*id, *c)) {
         let mut chunk_copy = chunk.clone();
 
@@ -233,39 +255,55 @@ fn undo_chunks(
 }
 
 fn check_add(c: &DiffChunk) -> ApplyDiffOutput {
-    let file_path = PathBuf::from(&c.file_name);
-    if let Some(parent) = file_path.parent() {
+    let path = PathBuf::from(&c.file_name);
+    if let Some(parent) = path.parent() {
         if !parent.is_dir() {
-            return ApplyDiffOutput::Err(format!("cannot create a file: parent dir `{:?}` does not exist or is not a dir", &parent));
+            return ApplyDiffOutput::Err(format!("cannot create a path: parent dir `{:?}` does not exist or is not a dir", &parent));
         }
-        if file_path.exists() {
-            return ApplyDiffOutput::Err(format!("cannot create a file: file `{}` already exists", &c.file_name));
+        if path.exists() {
+            return ApplyDiffOutput::Err(format!("cannot create a path: path `{}` already exists", &c.file_name));
         }
         return ApplyDiffOutput::Ok();
     } else {
-        ApplyDiffOutput::Err(format!("cannot create a file: file `{}` doesn't have a parent (probably path is relative)", &c.file_name))
+        ApplyDiffOutput::Err(format!("cannot create a path: path `{}` doesn't have a parent (probably it is relative)", &c.file_name))
     }
 }
 
 fn check_remove(c: &DiffChunk) -> ApplyDiffOutput {
-    let file_path = PathBuf::from(&c.file_name);
-    if !file_path.is_file() {
-        return ApplyDiffOutput::Err(format!("cannot remove file: file `{}` does not exist", &c.file_name));
+    let path = PathBuf::from(&c.file_name);
+    if c.is_file {
+        if !path.is_file() {
+            return ApplyDiffOutput::Err(format!("cannot remove file: file `{}` does not exist", &c.file_name));
+        }
+    } else {
+        if !path.is_dir() {
+            return ApplyDiffOutput::Err(format!("cannot remove dir: dir `{}` does not exist", &c.file_name));
+        }
+        match path.read_dir() {
+            Ok(mut dir) => {
+                if dir.next().is_some() {
+                    return ApplyDiffOutput::Err(format!("cannot remove dir `{}`: dir is not empty", &c.file_name));
+                }
+            }
+            Err(_) => {
+                return ApplyDiffOutput::Err(format!("cannot remove dir `{}`: cannot list content to check if it is empty", &c.file_name));
+            }
+        }
     }
     ApplyDiffOutput::Ok()
 }
 
 fn check_rename(c: &DiffChunk) -> ApplyDiffOutput {
-    let file_path = PathBuf::from(&c.file_name);
-    let file_path_rename = PathBuf::from(c.file_name_rename.clone().unwrap_or_default());
-    if let Some(parent) = file_path_rename.parent() {
+    let path = PathBuf::from(&c.file_name);
+    let path_rename = PathBuf::from(c.file_name_rename.clone().unwrap_or_default());
+    if let Some(parent) = path_rename.parent() {
         if !parent.is_dir() {
             return ApplyDiffOutput::Err(format!("cannot rename file: parent dir `{:?}` does not exist or is not a dir", &parent));
         }
-        if !file_path.exists() {
+        if !path_rename.exists() {
             return ApplyDiffOutput::Err(format!("cannot rename file: file `{:?}` doesn't exist", &c.file_name_rename));
         }
-        if file_path_rename.exists() {
+        if path.exists() {
             return ApplyDiffOutput::Err(format!("cannot rename file: file `{}` already exists", &c.file_name));
         }
         ApplyDiffOutput::Ok()
@@ -280,13 +318,13 @@ pub fn apply_diff_chunks_to_text(
     chunks_undo: Vec<(usize, &DiffChunk)>,
     max_fuzzy_n: usize,
 ) -> (Vec<ApplyDiffResult>, HashMap<usize, ApplyDiffOutput>) {
-
+    
     let mut results = vec![];
     let mut outputs = HashMap::new();
 
     let chunks_apply_edit = chunks_apply.iter().filter(|(_, c)|c.file_action == "edit").cloned().collect::<Vec<_>>();
     let chunks_undo_edit = chunks_undo.iter().filter(|(_, c)|c.file_action == "edit").cloned().collect::<Vec<_>>();
-
+    
     let other_actions = vec!["add", "remove", "rename"];
     let chunks_apply_other = chunks_apply.iter().filter(|(_, c)|other_actions.contains(&c.file_action.as_str())).cloned().collect::<Vec<_>>();
     let chunks_undo_other = chunks_undo.iter().filter(|(_, c)|other_actions.contains(&c.file_action.as_str())).cloned().collect::<Vec<_>>();
@@ -301,14 +339,14 @@ pub fn apply_diff_chunks_to_text(
     ) {
         let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
         let mut file_text_copy = file_text.clone();
-
+        
         if chunks_apply_edit.is_empty() && chunks_undo_edit.is_empty() {
             return;
         }
         let file_names = chunks_undo_edit.iter().map(|c|c.1.file_name.clone()).chain(
             chunks_apply_edit.iter().map(|c|c.1.file_name.clone())
         ).collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
-
+        
         let file_name_edit = match file_names.len() {
             1 => file_names[0].clone(),
             _ => {
@@ -339,7 +377,7 @@ pub fn apply_diff_chunks_to_text(
             ..Default::default()
         });
     }
-
+    
     fn process_chunks_other(
         chunks_apply_other: Vec<(usize, &DiffChunk)>,
         chunks_undo_other: Vec<(usize, &DiffChunk)>,
@@ -351,7 +389,7 @@ pub fn apply_diff_chunks_to_text(
             .into_iter()
             .filter(|c| !undo_ids.contains(&c.0))
             .collect::<Vec<_>>();
-
+        
         if DEBUG == 1 {
             info!("process_chunks_other starts");
             info!("chunks_undo_other_ids: {:?}", chunks_undo_other.iter().map(|c|c.0).collect::<Vec<_>>());
@@ -416,13 +454,13 @@ pub fn apply_diff_chunks_to_text(
                     outputs.insert(c_idx, out);
                 },
                 _ => continue,
-            }
+            } 
         }
     }
 
     process_chunks_edit(chunks_apply_edit, chunks_undo_edit, file_text, max_fuzzy_n, &mut results, &mut outputs);
     process_chunks_other(chunks_apply_other, chunks_undo_other, &mut results, &mut outputs);
-
+    
     (results, outputs)
 }
 
@@ -499,7 +537,7 @@ pub fn read_files_n_apply_diff_chunks(
 }
 
 pub fn unwrap_diff_apply_outputs(
-    outputs: HashMap<usize, ApplyDiffOutput>,
+    outputs: HashMap<usize, ApplyDiffOutput>, 
     chunks_default: Vec<DiffChunk>
 ) -> Vec<ApplyDiffUnwrapped> {
     let mut out_results = vec![];
