@@ -422,7 +422,7 @@ async fn supercat_decider(
     }
 
     let file_to_change = reduce_by_counter(results_to_change.into_iter().filter(|x|PathBuf::from(x).is_file()), 1)
-        .get(0).ok_or("relevant_files: no top file to change (supercat). Try again".to_string())?.clone();
+        .get(0).ok_or("locate: no file to change found".to_string())?.clone();
     let files_context = reduce_by_counter(results_context.into_iter().flatten().filter(|x|PathBuf::from(x).is_file()), 5);
 
     let mut res = vec![];
