@@ -5,9 +5,10 @@ export type User = {
   account: string;
   inference_url: string;
   inference: string;
+  metering_balance: number;
 };
 
-function isUser(json: unknown): json is StreamedLoginResponse {
+function isUser(json: unknown): json is User {
   return (
     typeof json === "object" &&
     json !== null &&
@@ -29,7 +30,6 @@ type GoodResponse = User & {
   "longthink-filters": unknown[];
   "longthink-functions-today": Record<string, LongThinkFunction>;
   "longthink-functions-today-v2": Record<string, LongThinkFunction>;
-  metering_balance: number;
 };
 
 export function isGoodResponse(json: unknown): json is GoodResponse {
@@ -105,7 +105,7 @@ export const smallCloudApi = createApi({
         });
       },
     }),
-    getUser: builder.query({
+    getUser: builder.query<User, string>({
       query: (apiKey: string) => {
         return {
           url: "login",

@@ -1,56 +1,26 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   Flex,
   IconButton,
   Text,
-  Strong,
   Link,
   DropdownMenu,
   LinkProps,
 } from "@radix-ui/themes";
 import {
   GearIcon,
-  ReloadIcon,
   ExitIcon,
   Link2Icon,
   GitHubLogoIcon,
   DiscordLogoIcon,
 } from "@radix-ui/react-icons";
 
-import { Coin } from "../../images";
-import styles from "./sidebar.module.css";
+// import { Coin } from "../../images";
+
 import { useConfig } from "../../app/hooks";
 import type { Config } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
-
-export type LoginInfoProps = {
-  email: string;
-  tokens: number;
-  plan: string;
-};
-const LoginInfo: React.FC<LoginInfoProps> = ({ email, tokens, plan }) => {
-  return (
-    <Flex direction="column" gap="1">
-      <Flex justify="between">
-        <Text size="1">{email}</Text>
-        <Text size="1" align="center">
-          <Flex align="center" gap="1">
-            <Coin className={styles.coin} /> {tokens}
-          </Flex>
-        </Text>
-      </Flex>
-
-      <Flex align="center" gap="1">
-        <Text size="1">
-          Active Plan: <Strong>{plan}</Strong>{" "}
-        </Text>
-        <IconButton size="1" variant="ghost" title="refresh">
-          <ReloadIcon height="8px" width="8px" />
-        </IconButton>
-      </Flex>
-    </Flex>
-  );
-};
+import { useGetUser, useLogout } from "../../hooks";
 
 const Logout: React.FC<{
   onClick: React.MouseEventHandler<HTMLAnchorElement>;
@@ -177,36 +147,26 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
 };
 
 export type FooterProps = {
-  account?: LoginInfoProps;
-  handleLogout: () => void;
   handleNavigation: (to: DropdownNavigationOptions) => void;
 };
 
-export const Footer: React.FC<FooterProps> = ({
-  account,
-  handleLogout,
-  handleNavigation,
-}) => {
+export const Footer: React.FC<FooterProps> = ({ handleNavigation }) => {
+  const user = useGetUser();
+  const logout = useLogout();
+  const handleLogout = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      logout();
+    },
+    [logout],
+  );
   return (
     <Flex direction="column" gap="2" flexGrow="1">
-      {account && (
-        <LoginInfo
-          email={account.email}
-          tokens={account.tokens}
-          plan={account.plan}
-        />
-      )}
       <Flex justify="between">
-        <Logout
-          onClick={(e) => {
-            e.preventDefault();
-            handleLogout();
-          }}
-        />
+        <Logout onClick={handleLogout} />
         <Settings handleNavigation={handleNavigation} />
       </Flex>
-
-      <Links hasAccount={!!account} />
+      <Links hasAccount={!!user.data} />
     </Flex>
   );
 };
