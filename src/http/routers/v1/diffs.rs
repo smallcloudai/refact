@@ -275,10 +275,8 @@ pub async fn handle_v1_diff_state(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
     use std::io::Write;
-    use crate::diffs::apply_diff_chunks_to_text;
 
     const TEST_MAX_FUZZY: usize = 10;
 

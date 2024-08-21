@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
-use arrow::ipc::Bool;
 use hyper::StatusCode;
 use structopt::StructOpt;
 use tokenizers::Tokenizer;

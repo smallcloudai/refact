@@ -14,7 +14,6 @@ use crate::at_tools::att_patch::tool::{DefaultToolPatch, N_CHOICES};
 use crate::at_tools::subchat::subchat_single;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatUsage};
-use crate::caps::get_model_record;
 use crate::scratchpads::pp_utils::count_tokens;
 
 

@@ -1948,6 +1948,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "frog1 = frog.Frog()\nfrog2 = frog.Frog()\n".to_string(),
+                is_file: false,
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1976,6 +1977,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "frog1 = frog.Frog()\nfrog2 = frog.Frog()\n".to_string(),
+                is_file: false,
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2007,6 +2009,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "".to_string(),
+                is_file: false,
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2034,6 +2037,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "".to_string(),
+                is_file: false,
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2061,6 +2065,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "".to_string(),
+                is_file: false,
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2115,6 +2120,7 @@ if __name__ == __main__:
                 line2: 11,
                 lines_remove: "".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
+                is_file: false,
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(

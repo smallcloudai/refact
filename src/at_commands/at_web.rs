@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{warn, info};
+use tracing::info;
 
 use reqwest::Client;
 use async_trait::async_trait;
@@ -207,6 +207,7 @@ impl AtCommand for AtWeb {
 
 #[cfg(test)]
 mod tests {
+    use tracing::warn;
     use super::*;
 
     #[tokio::test]

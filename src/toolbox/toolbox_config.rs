@@ -1,7 +1,6 @@
 use serde_yaml;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
-use std::hash::Hash;
 use tokio::sync::RwLock as ARwLock;
 use crate::call_validation::{ChatMessage, SubchatParameters};
 use std::io::Write;
