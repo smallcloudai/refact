@@ -1,7 +1,11 @@
 import { Button, Flex, Radio, RadioCards, Text } from "@radix-ui/themes";
 import { useState } from "react";
 
-export type Host = "cloud" | "self-hosting" | "enterprise";
+export type Host =
+  | "cloud"
+  | "self-hosting"
+  | "enterprise"
+  | "bring-your-own-key";
 
 export type InitialSetupProps = {
   onPressNext: (host: Host) => void;
@@ -74,6 +78,25 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
           <Text size="2">- Uses your private server only</Text>
           <Text size="2">
             - Sends telemetry and code snippets to your private server
+          </Text>
+        </RadioCards.Item>
+        <RadioCards.Item
+          value="bring-your-own-key"
+          style={{
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 0,
+          }}
+        >
+          <Flex gap="6px">
+            <Radio
+              value="bring-your-own-key"
+              checked={selected === "bring-your-own-key"}
+            />
+            <Text size="3">Bring your own key</Text>
+          </Flex>
+          <Text size="2">
+            - Connect to any OpenAI or HuggingFace style server.
           </Text>
         </RadioCards.Item>
       </RadioCards.Root>
