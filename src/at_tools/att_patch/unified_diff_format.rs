@@ -67,7 +67,6 @@ impl DiffBlock {
     }
 }
 
-
 fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Edit>) {
     let mut line_num = start_line_num;
     while line_num < lines.len() {
@@ -432,6 +431,8 @@ fn splitting_diff_blocks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffBlock> {
                     });
                     diff_lines.clear();
                 }
+            } else {
+                exported_blocks.extend(new_blocks);
             }
         } else {
             exported_blocks.extend(new_blocks);
@@ -2234,141 +2235,93 @@ if __name__ == __main__:
     #[tokio::test]
     async fn info_test() {
         let input = r#"
-To consolidate the repeated functions `updateBird`, `flap`, `gameLoop`, and the event listener for `keydown` in `flappy_bird.js`, I will create single implementations for each of these functions and remove the duplicates. Here's the modified code:
+        
+### Unified Diff Format
+
+Now, we will generate the diff format for adding the `index.html` and `game.js` files.
 
 ```diff
---- /home/svakhreev/tmp/flappy_bird/flappy_bird.js
-+++ /home/svakhreev/tmp/flappy_bird/flappy_bird.js
+--- /dev/null
++++ /home/svakhreev/tmp/flappy_bird/index.html
 @@ file_replace_block @@
- let canvas = document.getElementById('gameCanvas');
- let ctx = canvas.getContext('2d');
- let obstacles = [];
- let gameOver = false;
- let score = 0;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; background: #70c5ce; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="320" height="480"></canvas>
+    <script src="game.js"></script>
+</body>
+</html>
+--- /dev/null
++++ /home/svakhreev/tmp/flappy_bird/game.js
+@@ file_replace_block @@
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
- function createObstacle() {
-     let obstacleHeight = Math.random() * (canvas.height / 2) + 20;
-     let obstacleY = (canvas.height - obstacleHeight) / 2; // Center the obstacle in the middle
-     let obstacle = {
-         x: canvas.width,
-         y: obstacleY,
-         width: 20,
-         height: obstacleHeight,
-         passed: false // Track if the obstacle has been passed
-     };
-     obstacles.push(obstacle);
- }
+let bird = { x: 50, y: 150, width: 20, height: 20, gravity: 0.6, lift: -15, velocity: 0 };
+let pipes = [];
+let score = 0;
+let frame = 0;
 
- function drawObstacles() {
-     ctx.fillStyle = 'green';
-     obstacles.forEach(obstacle => {
-         ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-     });
- }
+function setup() {
+    document.addEventListener('keydown', () => {
+        bird.velocity += bird.lift;
+    });
 
- let bird = {
-     x: 50,
-     y: 150,
-     width: 20,
-     height: 20,
-     gravity: 0.4,
-     lift: -8,
-     velocity: 0
- };
+    setInterval(() => {
+        frame++;
+        if (frame % 90 === 0) {
+            pipes.push({ x: canvas.width, y: Math.random() * (canvas.height - 100), width: 20, height: 100 });
+        }
+        update();
+    }, 1000 / 60);
+}
 
- function checkCollision() {
-     obstacles.forEach(obstacle => {
-         if (bird.x < obstacle.x + obstacle.width &&
-             bird.x + bird.width > obstacle.x &&
-             bird.y < obstacle.y + obstacle.height &&
-             bird.y + bird.height > obstacle.y) {
-             gameOver = true;
-         }
-     });
- }
+function update() {
+    bird.velocity += bird.gravity;
+    bird.y += bird.velocity;
 
- function drawScore() {
-     ctx.fillStyle = 'black';
-     ctx.font = '20px Arial';
-     ctx.fillText('Score: ' + score, 10, 20); // Display score on canvas
- }
+    for (let i = pipes.length - 1; i >= 0; i--) {
+        pipes[i].x -= 2;
 
- function drawBird() {
-     ctx.fillStyle = 'yellow';
-     ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
- }
+        if (pipes[i].x + pipes[i].width < 0) {
+            pipes.splice(i, 1);
+            score++;
+        }
 
- function updateBird() {
-     bird.velocity += bird.gravity;
-     bird.y += bird.velocity;
+        if (bird.x < pipes[i].x + pipes[i].width && bird.x + bird.width > pipes[i].x && bird.y < pipes[i].y + pipes[i].height) {
+            alert('Game Over! Your score: ' + score);
+            document.location.reload();
+        }
+    }
 
-     if (bird.y + bird.height >= canvas.height) {
-         bird.y = canvas.height - bird.height;
-         bird.velocity = 0;
-     }
+    draw();
+}
 
-     if (bird.y < 0) {
-         bird.y = 0;
-         bird.velocity = 0;
-     }
- }
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'yellow';
+    ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
 
- function flap() {
-     bird.velocity += bird.lift;
- }
+    ctx.fillStyle = 'green';
+    for (let pipe of pipes) {
+        ctx.fillRect(pipe.x, pipe.y, pipe.width, pipe.height);
+        ctx.fillRect(pipe.x, pipe.y + pipe.height + 100, pipe.width, canvas.height - pipe.y - pipe.height - 100);
+    }
 
- function updateObstacles() {
-     obstacles.forEach(obstacle => {
-         obstacle.x -= 2; // Move the obstacle to the left
-         // Check if the bird has passed the obstacle
-         if (!obstacle.passed && obstacle.x + obstacle.width < bird.x) {
-             score++; // Increment score
-             obstacle.passed = true; // Mark this obstacle as passed
-         }
-     });
-     // Remove obstacles that have gone off screen
-     obstacles = obstacles.filter(obstacle => obstacle.x + obstacle.width > 0);
- }
+    ctx.fillStyle = 'black';
+    ctx.fillText('Score: ' + score, 10, 20);
+}
 
- function restartGame() {
-     gameOver = false;
-     obstacles = [];
-     score = 0;
-     bird.y = 150; // Reset bird position
-     bird.velocity = 0; // Reset bird velocity
-     gameLoop(); // Restart the game loop
- }
-
- function gameLoop() {
-     ctx.clearRect(0, 0, canvas.width, canvas.height);
-     drawBird();
-     updateBird();
-     drawObstacles();
-     updateObstacles();
-     drawScore(); // Draw score in the game loop
-     checkCollision();
-
-     if (gameOver) {
-         ctx.fillStyle = 'red';
-         ctx.font = '30px Arial';
-         ctx.fillText('Game Over', canvas.width / 2 - 70, canvas.height / 2);
-         ctx.fillText('Press R to Restart', canvas.width / 2 - 100, canvas.height / 2 + 40);
-         return; // Stop the game loop
-     }
-
-     requestAnimationFrame(gameLoop);
- }
-
- document.addEventListener('keydown', function(event) {
-     if (event.key === 'r' && gameOver) {
-         restartGame();
-     } else if (event.key === ' ') {
-         flap(); // Flap only on space key
-     }
- });
-
- setInterval(createObstacle, 1500); // Create a new obstacle every 1.5 seconds
- gameLoop();
+setup();
 ```
 
 "#;
