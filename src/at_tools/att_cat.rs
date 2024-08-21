@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use tokio::sync::{Mutex as AMutex};
 use async_trait::async_trait;
+
 use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
 use crate::at_commands::at_file::{file_repair_candidates, get_project_paths, real_file_path_candidate};
@@ -15,6 +16,7 @@ use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 
 
 pub struct AttCat;
+
 
 #[async_trait]
 impl Tool for AttCat {
@@ -63,16 +65,17 @@ impl Tool for AttCat {
         let mut corrected_paths = vec![];
 
         for p in paths {
-            if PathBuf::from(&p).extension().is_some() {
-                let candidates = file_repair_candidates(gcx.clone(), &p, top_n, false).await;
-                let file_path = match real_file_path_candidate(gcx.clone(), &p, &candidates, &get_project_paths(gcx.clone()).await, false).await {
+            let candidates_file = file_repair_candidates(gcx.clone(), &p, top_n, false).await;
+            let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &p, false, top_n).await;
+            
+            if PathBuf::from(&p).extension().is_some() || candidates_dir.is_empty() {
+                let file_path = match real_file_path_candidate(gcx.clone(), &p, &candidates_file, &get_project_paths(gcx.clone()).await, false).await {
                     Ok(f) => f,
                     Err(e) => { files_not_found_errs.push(e); continue;}
                 };
                 corrected_paths.push(file_path);
             } else {
-                let candidates = correct_to_nearest_dir_path(gcx.clone(), &p, false, 10).await;
-                let candidate = match real_file_path_candidate(gcx.clone(), &p, &candidates, &get_project_paths(gcx.clone()).await, true).await {
+                let candidate = match real_file_path_candidate(gcx.clone(), &p, &candidates_dir, &get_project_paths(gcx.clone()).await, true).await {
                     Ok(f) => f,
                     Err(e) => { files_not_found_errs.push(e); continue;}
                 };
@@ -113,7 +116,6 @@ impl Tool for AttCat {
                 }
             }
         }
-
         let filenames_present = context_files_in.iter().map(|x|x.file_name.clone()).collect::<Vec<_>>();
         for p in corrected_paths.iter().filter(|x|!filenames_present.contains(x)) {
             let text = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await?.to_string();
@@ -133,7 +135,7 @@ impl Tool for AttCat {
 
         let mut content = "".to_string();
         if !filenames_present.is_empty() {
-            content.push_str(&format!("Files found:\n{}\n\n", filenames_present.join("\n")));
+            content.push_str(&format!("Paths found:\n{}\n\n", filenames_present.join("\n")));
 
             let symbols_not_found = symbols_str.iter().filter(|x|!symbols_found.contains(x)).cloned().collect::<Vec<_>>();
             if !symbols_not_found.is_empty() {
@@ -141,7 +143,7 @@ impl Tool for AttCat {
             }
         }
         if !files_not_found_errs.is_empty() {
-            content.push_str(&format!("Files not found:\n{}\n\n", files_not_found_errs.join("\n\n")));
+            content.push_str(&format!("Paths not found:\n{}\n\n", files_not_found_errs.join("\n\n")));
         }
 
         let mut results = vec_context_file_to_context_tools(context_files_in);
