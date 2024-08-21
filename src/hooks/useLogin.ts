@@ -27,23 +27,26 @@ export const useLogin = () => {
     skip: canLogin,
   });
 
-  const loginThroughWeb = useCallback((pro: boolean) => {
-    setIsPollingLogin(true);
-    const baseUrl = pro
-      ? "https://refact.smallcloud.ai/pro?sidebar"
-      : "https://refact.smallcloud.ai/authentication";
-    const initUrl = new URL(baseUrl);
-    initUrl.searchParams.set("token", newLoginTicket);
-    initUrl.searchParams.set("utm_source", "plugin");
-    initUrl.searchParams.set("utm_medium", host);
-    initUrl.searchParams.set("utm_campaign", "login");
-    const initUrlString = initUrl.toString();
-    const openUrlMessage: OpenExternalUrl = {
-      type: EVENT_NAMES_FROM_SETUP.OPEN_EXTERNAL_URL,
-      payload: { url: initUrlString },
-    };
-    postMessage(openUrlMessage);
-  }, []);
+  const loginThroughWeb = useCallback(
+    (pro: boolean) => {
+      setIsPollingLogin(true);
+      const baseUrl = pro
+        ? "https://refact.smallcloud.ai/pro?sidebar"
+        : "https://refact.smallcloud.ai/authentication";
+      const initUrl = new URL(baseUrl);
+      initUrl.searchParams.set("token", newLoginTicket);
+      initUrl.searchParams.set("utm_source", "plugin");
+      initUrl.searchParams.set("utm_medium", host);
+      initUrl.searchParams.set("utm_campaign", "login");
+      const initUrlString = initUrl.toString();
+      const openUrlMessage: OpenExternalUrl = {
+        type: EVENT_NAMES_FROM_SETUP.OPEN_EXTERNAL_URL,
+        payload: { url: initUrlString },
+      };
+      postMessage(openUrlMessage);
+    },
+    [host, newLoginTicket],
+  );
 
   const cancelLogin = useCallback(() => {
     setIsPollingLogin(false);
