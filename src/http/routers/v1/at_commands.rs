@@ -65,7 +65,7 @@ pub async fn handle_v1_command_completion(
         fake_n_ctx,
         top_n,
         true,
-        &vec![],
+        vec![],
     ).await));
 
     let at_commands = {
@@ -134,7 +134,7 @@ pub async fn handle_v1_command_preview(
         recommended_model_record.n_ctx,
         crate::http::routers::v1::chat::CHAT_TOP_N,
         true,
-        &vec![],
+        vec![],
     ).await));
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(

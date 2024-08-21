@@ -302,8 +302,20 @@ payload_test_other = {
 
 def safe_remove(file_path):
     try:
-        os.remove(file_path)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+        elif os.path.isdir(file_path):
+            os.rmdir(file_path)
     except FileNotFoundError:
+        pass
+    except OSError as e:
+        print(f"Error: {e.strerror}")
+
+
+def safe_create(file_path):
+    try:
+        os.makedirs(file_path)
+    except FileExistsError:
         pass
 
 
@@ -411,6 +423,104 @@ def test7():
     print(colored("test7 PASSED", "green"))
 
 
+payload_test_dirs_TP = {
+    "apply": [True, True, True],
+    "chunks": [
+        {
+            "file_name": str(current_dir / "test_dir1"),
+            "file_action": "add",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": ""
+        },
+        {
+            "file_name": str(current_dir / "test_dir2"),
+            "file_action": "remove",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": ""
+        },
+        {
+            "file_name": str(current_dir / "test_dir3"),
+            "file_action": "rename",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "",
+            "file_name_rename": str(current_dir / "test_dir4")
+        },
+    ]
+}
+
+payload_test_dirs_TN = {
+    "apply": [True, True, True],
+    "chunks": [
+        {
+            "file_name": str(current_dir / "test_dir3"),
+            "file_action": "add",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": ""
+        },
+        {
+            "file_name": str(current_dir / "test_dir2"),
+            "file_action": "remove",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": ""
+        },
+        {
+            "file_name": str(current_dir / "test_dir3"),
+            "file_action": "rename",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "",
+            "file_name_rename": str(current_dir / "test_dir4")
+        },
+    ]
+}
+
+
+def test8():
+    def init():
+        safe_remove(current_dir / "test_dir1")
+        safe_create(current_dir / "test_dir2")
+        safe_remove(current_dir / "test_dir3")
+        safe_create(current_dir / "test_dir4")
+
+    init()
+
+    payload = copy(payload_test_dirs_TP)
+    del payload["apply"]
+
+    resp = diff_state(payload)
+
+    assert resp['can_apply'] == [True, True, True], resp
+
+    payload1 = copy(payload_test_dirs_TP)
+
+    resp = diff_apply(payload1)
+    assert [r['applied'] for r in resp] == [True, True, True], resp
+
+    assert (current_dir / "test_dir1").name in os.listdir(current_dir), os.listdir(current_dir)
+    assert (current_dir / "test_dir2").name not in os.listdir(current_dir)
+    assert (current_dir / "test_dir3").name in os.listdir(current_dir)
+    assert (current_dir / "test_dir4").name not in os.listdir(current_dir)
+
+    payload2 = copy(payload_test_dirs_TN)
+    
+    resp = diff_apply(payload2)
+    assert [r['applied'] for r in resp] == [False, False, False], resp
+    assert [r['success'] for r in resp] == [False, False, False], resp
+
+    print(colored("test8 PASSED", "green"))
+
+
 def main():
     test1()
     test2()
@@ -419,6 +529,7 @@ def main():
     test5()
     test6()
     test7()
+    test8()
 
 
 if __name__ == "__main__":

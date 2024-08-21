@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::info;
+use tracing::{warn, info};
 
 use reqwest::Client;
 use async_trait::async_trait;
@@ -213,8 +213,8 @@ mod tests {
     async fn test_execute_at_web() {
         let url = "https://doc.rust-lang.org/book/ch03-04-comments.html";
         match execute_at_web(url).await {
-            Ok(text) => println!("Test executed successfully:\n\n{text}"),
-            Err(e) => eprintln!("Test failed with error: {e}"),
+            Ok(text) => info!("Test executed successfully:\n\n{text}"),
+            Err(e) => warn!("Test failed with error: {e}"),
         }
     }
 }

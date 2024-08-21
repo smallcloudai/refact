@@ -1,12 +1,11 @@
-use axum::Extension;
-use axum::response::Result;
-use hyper::{Body, Response, StatusCode};
-use serde::{Deserialize, Serialize};
-
+use crate::caps::get_custom_embedding_api_key;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 use crate::vecdb::vdb_structs::VecdbSearch;
-
+use axum::response::Result;
+use axum::Extension;
+use hyper::{Body, Response, StatusCode};
+use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone)]
 struct VecDBPost {
     query: String,
@@ -24,12 +23,14 @@ pub async fn handle_v1_vecdb_search(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
+    let api_key = get_custom_embedding_api_key(global_context.clone()).await?;
     let cx_locked = global_context.read().await;
+
     let search_res = match *cx_locked.vec_db.lock().await {
-        Some(ref db) => db.vecdb_search(post.query.to_string(), post.top_n, None).await,
+        Some(ref db) => db.vecdb_search(post.query.to_string(), post.top_n, None, &api_key).await,
         None => {
             return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, NO_VECDB.to_string()
+                StatusCode::INTERNAL_SERVER_ERROR, NO_VECDB.to_string(),
             ));
         }
     };

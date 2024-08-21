@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tracing::error;
 
-// use crate::forward_to_hf_endpoint::get_embedding_hf_style;
+use crate::forward_to_hf_endpoint::get_embedding_hf_style;
 use crate::forward_to_openai_endpoint::get_embedding_openai_style;
 
 pub async fn get_embedding(
@@ -15,7 +15,7 @@ pub async fn get_embedding(
     api_key: &String,
 ) -> Result<Vec<Vec<f32>>, String> {
     match endpoint_embeddings_style.to_lowercase().as_str() {
-        // "hf" => get_embedding_hf_style(client, text, endpoint_template, model_name, api_key).await,
+        "hf" => get_embedding_hf_style(client, text, endpoint_template, model_name, api_key).await,
         "openai" => get_embedding_openai_style(client, text, endpoint_template, model_name, api_key).await,
         _ => {
             error!("Invalid endpoint_embeddings_style: {}", endpoint_embeddings_style);

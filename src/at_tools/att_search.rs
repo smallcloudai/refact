@@ -9,9 +9,8 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
-use crate::at_commands::at_file::{at_file_repair_candidates, get_project_paths};
+use crate::at_commands::at_file::{file_repair_candidates, get_project_paths, real_file_path_candidate};
 use crate::at_commands::at_search::execute_at_search;
-use crate::at_tools::att_file::real_file_path_candidate;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 
@@ -33,18 +32,19 @@ async fn execute_att_search(
             Err(_) => false,
         }
     }
+    let gcx = ccx.lock().await.global_context.clone();
 
     return match scope.as_str() {
         "workspace" => {
             Ok(execute_at_search(ccx.clone(), &query, None).await?)
         },
         _ if is_scope_a_file(scope) => {
-            let candidates = at_file_repair_candidates(ccx.clone(), scope, false).await;
+            let candidates = file_repair_candidates(gcx.clone(), scope, 10, false).await;
             let file_path = real_file_path_candidate(
-                ccx.clone(),
+                gcx.clone(),
                 scope,
                 &candidates,
-                &get_project_paths(ccx.clone()
+                &get_project_paths(gcx.clone()
             ).await, false).await?;
             let filter = Some(format!("(file_path = \"{}\")", file_path));
             Ok(execute_at_search(ccx.clone(), &query, filter).await?)

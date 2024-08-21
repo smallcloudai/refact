@@ -7,8 +7,7 @@ use tokio::sync::{Mutex as AMutex};
 use async_trait::async_trait;
 use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
-use crate::at_commands::at_file::{at_file_repair_candidates, get_project_paths};
-use crate::at_tools::att_file::real_file_path_candidate;
+use crate::at_commands::at_file::{file_repair_candidates, get_project_paths, real_file_path_candidate};
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 use crate::files_correction::{correct_to_nearest_dir_path, get_files_in_dir};
@@ -55,26 +54,29 @@ impl Tool for AttCat {
             Some(v) => return Err(format!("argument `skeleton` is not a bool: {:?}", v)),
             None => false,
         };
-        let global_context = ccx.lock().await.global_context.clone();
+        let (gcx, top_n) = { 
+            let ccx_lock = ccx.lock().await;
+            (ccx_lock.global_context.clone(), ccx_lock.top_n)
+        };
 
         let mut files_not_found_errs = vec![];
         let mut corrected_paths = vec![];
 
         for p in paths {
             if PathBuf::from(&p).extension().is_some() {
-                let candidates = at_file_repair_candidates(ccx.clone(), &p, false).await;
-                let file_path = match real_file_path_candidate(ccx.clone(), &p, &candidates, &get_project_paths(ccx.clone()).await, false).await {
+                let candidates = file_repair_candidates(gcx.clone(), &p, top_n, false).await;
+                let file_path = match real_file_path_candidate(gcx.clone(), &p, &candidates, &get_project_paths(gcx.clone()).await, false).await {
                     Ok(f) => f,
                     Err(e) => { files_not_found_errs.push(e); continue;}
                 };
                 corrected_paths.push(file_path);
             } else {
-                let candidates = correct_to_nearest_dir_path(global_context.clone(), &p, false, 10).await;
-                let candidate = match real_file_path_candidate(ccx.clone(), &p, &candidates, &get_project_paths(ccx.clone()).await, true).await {
+                let candidates = correct_to_nearest_dir_path(gcx.clone(), &p, false, 10).await;
+                let candidate = match real_file_path_candidate(gcx.clone(), &p, &candidates, &get_project_paths(gcx.clone()).await, true).await {
                     Ok(f) => f,
                     Err(e) => { files_not_found_errs.push(e); continue;}
                 };
-                let files_in_dir = get_files_in_dir(global_context.clone(), &PathBuf::from(candidate)).await;
+                let files_in_dir = get_files_in_dir(gcx.clone(), &PathBuf::from(candidate)).await;
                 corrected_paths.extend(files_in_dir.into_iter().map(|x|x.to_string_lossy().to_string()));
             }
         }
@@ -86,11 +88,11 @@ impl Tool for AttCat {
         let mut symbols_found = vec![];
 
         if !symbols_str.is_empty() {
-            let ast_arc = global_context.read().await.ast_module.clone().unwrap();
+            let ast_arc = gcx.read().await.ast_module.clone().unwrap();
             let ast_lock = ast_arc.read().await;
             for p in corrected_paths.iter() {
                 let mut doc = Document::new(&PathBuf::from(p));
-                let text = get_file_text_from_memory_or_disk(global_context.clone(), &PathBuf::from(p)).await?.to_string();
+                let text = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await?.to_string();
                 doc.update_text(&text);
 
                 let doc_syms = ast_lock.get_file_symbols(RequestSymbolType::All, &doc).await?.symbols;
@@ -114,7 +116,7 @@ impl Tool for AttCat {
 
         let filenames_present = context_files_in.iter().map(|x|x.file_name.clone()).collect::<Vec<_>>();
         for p in corrected_paths.iter().filter(|x|!filenames_present.contains(x)) {
-            let text = get_file_text_from_memory_or_disk(global_context.clone(), &PathBuf::from(p)).await?.to_string();
+            let text = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await?.to_string();
             let cf = ContextFile {
                 file_name: p.clone(),
                 file_content: "".to_string(),

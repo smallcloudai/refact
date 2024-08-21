@@ -34,7 +34,9 @@ pub const KNOWN_MODELS: &str = r####"
                 "starcoder2/3b",
                 "starcoder2/7b",
                 "starcoder2/15b",
-                "bigcode/starcoder2-3b"
+                "bigcode/starcoder2-3b",
+                "bigcode/starcoder2-7b",
+                "bigcode/starcoder2-15b"
             ]
         },
         "smallcloudai/Refact-1_6B-fim": {
@@ -181,7 +183,8 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "llama3/8b/instruct/vllm",
-                "llama3/8b/instruct/neuron"
+                "llama3/8b/instruct/neuron",
+                "meta-llama/llama-3.1-8b-instruct"
             ]
         },
         "llama2/7b": {

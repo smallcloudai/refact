@@ -1,18 +1,23 @@
 use serde_yaml;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use std::hash::Hash;
 use tokio::sync::RwLock as ARwLock;
-use crate::call_validation::ChatMessage;
+use crate::call_validation::{ChatMessage, SubchatParameters};
 use std::io::Write;
 use std::sync::Arc;
+use tracing::{error, info};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
 use crate::at_tools::tools::{AtParamDict, make_openai_tool_value};
+use crate::toolbox::toolbox_compiled_in::{COMPILED_IN_CUSTOMIZATION_YAML, COMPILED_IN_INITIAL_USER_YAML};
 
 
 #[derive(Deserialize)]
 pub struct ToolboxConfigDeserialize {
     #[serde(default)]
     pub system_prompts: HashMap<String, SystemPrompt>,
+    #[serde(default)]
+    pub subchat_tool_parameters: HashMap<String, SubchatParameters>,
     #[serde(default)]
     pub toolbox_commands: HashMap<String, ToolboxCommand>,
     #[serde(default)]
@@ -21,9 +26,10 @@ pub struct ToolboxConfigDeserialize {
     pub tools_parameters: Vec<AtParamDict>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ToolboxConfig {
     pub system_prompts: HashMap<String, SystemPrompt>,
+    pub subchat_tool_parameters: HashMap<String, SubchatParameters>,
     pub toolbox_commands: HashMap<String, ToolboxCommand>,
     pub tools: Vec<ToolCustDict>,
 }
@@ -134,8 +140,8 @@ fn replace_variables_in_system_prompts(config: &mut ToolboxConfig, variables: &H
 }
 
 fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default_system_prompt: &str) -> Result<ToolboxConfig, String> {
-    let default_unstructured: serde_yaml::Value = serde_yaml::from_str(crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML)
-        .map_err(|e| format!("Error parsing default YAML: {}\n{}", e, crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML))?;
+    let default_unstructured: serde_yaml::Value = serde_yaml::from_str(COMPILED_IN_CUSTOMIZATION_YAML)
+        .map_err(|e| format!("Error parsing default YAML: {}\n{}", e, COMPILED_IN_CUSTOMIZATION_YAML))?;
     let user_unstructured: serde_yaml::Value = serde_yaml::from_str(user_yaml)
         .map_err(|e| format!("Error parsing customization.yaml: {}\n{}", e, user_yaml))?;
 
@@ -143,8 +149,8 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
     extract_mapping_values(&default_unstructured.as_mapping(), &mut variables);
     extract_mapping_values(&user_unstructured.as_mapping(), &mut variables);
 
-    let work_config_deserialize: ToolboxConfigDeserialize = serde_yaml::from_str(crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML)
-        .map_err(|e| format!("Error parsing default ToolboxConfig: {}\n{}", e, crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML))?;
+    let work_config_deserialize: ToolboxConfigDeserialize = serde_yaml::from_str(COMPILED_IN_CUSTOMIZATION_YAML)
+        .map_err(|e| format!("Error parsing default ToolboxConfig: {}\n{}", e, COMPILED_IN_CUSTOMIZATION_YAML))?;
     let tools = work_config_deserialize.tools.iter()
         .map(|x|ToolCustDict::new(x, &work_config_deserialize.tools_parameters))
         .collect::<Vec<ToolCustDict>>();
@@ -152,6 +158,7 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
     let mut work_config = ToolboxConfig {
         system_prompts: work_config_deserialize.system_prompts,
         toolbox_commands: work_config_deserialize.toolbox_commands,
+        subchat_tool_parameters: work_config_deserialize.subchat_tool_parameters,
         tools,
     };
 
@@ -165,6 +172,7 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
         system_prompts: user_config_deserialize.system_prompts,
         toolbox_commands: user_config_deserialize.toolbox_commands,
         tools: user_tools,
+        ..Default::default()
     };
 
     replace_variables_in_messages(&mut work_config, &variables);
@@ -178,6 +186,7 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
         system_prompts: caps_config_deserialize.system_prompts,
         toolbox_commands: caps_config_deserialize.toolbox_commands,
         tools: vec![],
+        ..Default::default()
     };
 
     work_config.system_prompts.extend(caps_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
@@ -208,10 +217,10 @@ pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<Tool
     if !user_config_path.exists() {
         let mut file = std::fs::File::create(&user_config_path)
             .map_err(|e| format!("Failed to create file: {}", e))?;
-        file.write_all(crate::toolbox::toolbox_compiled_in::COMPILED_IN_INITIAL_USER_YAML.as_bytes())
+        file.write_all(COMPILED_IN_INITIAL_USER_YAML.as_bytes())
             .map_err(|e| format!("Failed to write to file: {}", e))?;
 
-        let the_default = String::from(crate::toolbox::toolbox_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML);
+        let the_default = String::from(COMPILED_IN_CUSTOMIZATION_YAML);
         for line in the_default.split('\n') {
             let mut comment = String::from("# ");
             comment.push_str(line);
@@ -230,39 +239,61 @@ pub async fn get_default_system_prompt(
     have_exploration_tools: bool,
     have_agentic_tools: bool,
 ) -> String {
-    match load_customization(global_context.clone()).await {
-        Ok(tconfig) => {
-            if have_agentic_tools {
-                tconfig.system_prompts.get("agentic_tools")
-                   .map_or_else(
-                        || {
-                            tracing::error!("cannot find system prompt `agentic_tools`");
-                            String::new()
-                        },
-                        |x| x.text.clone()
-                    )
-            } else if have_exploration_tools {
-                tconfig.system_prompts.get("exploration_tools")
-                    .map_or_else(
-                        || {
-                            tracing::error!("cannot find system prompt `exploration_tools`");
-                            String::new()
-                        },
-                        |x| x.text.clone()
-                    )
-            } else {
-                tconfig.system_prompts.get("default")
-                    .map_or_else(
-                        || {
-                            tracing::error!("cannot find system prompt `default`");
-                            String::new()
-                        },
-                        |x| x.text.clone()
-                    )
-            }
+    let tconfig = match load_customization(global_context.clone()).await {
+        Ok(tconfig) => tconfig,
+        Err(e) => {
+            error!("cannot load_customization: {e}");
+            return "".to_string()
         },
-        Err(_) => String::new(),
+    };
+    let mut system_prompt = if have_agentic_tools {
+        tconfig.system_prompts.get("agentic_tools")
+            .map_or_else(
+                || {
+                    error!("cannot find system prompt `agentic_tools`");
+                    String::new()
+                },
+                |x| x.text.clone()
+            )
+    } else if have_exploration_tools {
+        tconfig.system_prompts.get("exploration_tools")
+            .map_or_else(
+                || {
+                    error!("cannot find system prompt `exploration_tools`");
+                    String::new()
+                },
+                |x| x.text.clone()
+            )
+    } else {
+        tconfig.system_prompts.get("default")
+            .map_or_else(
+                || {
+                    error!("cannot find system prompt `default`");
+                    String::new()
+                },
+                |x| x.text.clone()
+            )
+    };
+
+    // let mut additional_info = String::new();
+    // let datetime = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    // let os = std::env::consts::OS;
+    // let username = std::env::var("USER")
+    //     .or_else(|_| std::env::var("USERNAME"))
+    //     .unwrap_or_else(|_| String::from("unknown"));
+    // let additional_info += format!("ENVIRONMENT INFO:\nDATETIME: {}\nOS: {}\nUSER: {}\n", datetime, os, username);
+
+    let workspace_dirs = {
+        let workspace_dirs_arc = global_context.read().await.documents_state.workspace_folders.clone();
+        let dirs_lock = workspace_dirs_arc.lock().unwrap();
+        dirs_lock.clone().into_iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>()
+    };
+    if !workspace_dirs.is_empty() && system_prompt.contains("%WORKSPACE_PROJECTS_INFO%") {
+        system_prompt = system_prompt.replace("%WORKSPACE_PROJECTS_INFO%", &format!("The current IDE workspace has these project directories:\n{}\n", workspace_dirs.join("\n")).as_str());
     }
+
+    info!("system_prompt\n{}", system_prompt);
+    system_prompt
 }
 
 #[cfg(test)]
@@ -271,6 +302,6 @@ mod tests {
 
     #[test]
     fn is_compiled_in_toolbox_valid_yaml() {
-        let _config = load_and_mix_with_users_config(crate::toolbox::toolbox_compiled_in::COMPILED_IN_INITIAL_USER_YAML, "", "");
+        let _config = load_and_mix_with_users_config(COMPILED_IN_INITIAL_USER_YAML, "", "");
     }
 }

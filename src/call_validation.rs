@@ -299,6 +299,15 @@ where
     Option::<String>::deserialize(deserializer).map(|opt| opt.unwrap_or_default())
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SubchatParameters {
+    pub model: String,
+    pub n_ctx: usize,
+    #[serde(default)]
+    pub temperature: Option<f32>,
+    #[serde(default)]
+    pub max_new_tokens: usize,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatPost {
@@ -322,7 +331,13 @@ pub struct ChatPost {
     #[serde(default)]
     pub only_deterministic_messages: bool,  // means don't sample from the model
     #[serde(default)]
+    pub subchat_tool_parameters: HashMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
+    #[serde(default)]
     pub chat_id: String,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Serialize, Deserialize, Clone, Hash, Debug, Eq, PartialEq, Default)]
@@ -335,10 +350,6 @@ pub struct DiffChunk {
     pub lines_add: String,
     #[serde(default)]
     pub file_name_rename: Option<String>,
+    #[serde(default = "default_true")]
+    pub is_file: bool,
 }
-
-// impl DiffChunk {
-//     pub fn is_empty(&self) -> bool {
-//         self.lines_add.is_empty() && self.lines_remove.is_empty()
-//     }
-// }

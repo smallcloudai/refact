@@ -131,7 +131,7 @@ async fn ast_indexer_thread(
     ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_index: Arc<AMutex<AstIndex>>,
     ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
-    ast_max_files: usize,
+    _ast_max_files: usize,
     status: Arc<AMutex<AstIndexStatus>>,
 ) {
     let mut reported_stats = true;

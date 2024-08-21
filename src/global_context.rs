@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
-
+use arrow::ipc::Bool;
 use hyper::StatusCode;
 use structopt::StructOpt;
 use tokenizers::Tokenizer;
@@ -68,6 +68,8 @@ pub struct CommandLine {
     pub vecdb_force_path: String,
     #[structopt(long, short="w", default_value="", help="Workspace folder to find files for VecDB and AST. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
+    #[structopt(long, help="Generate template.yaml for custom settings")]
+    pub save_byok_file: bool
 }
 impl CommandLine {
     fn create_hash(msg: String) -> String {
@@ -116,6 +118,7 @@ pub async fn try_load_caps_quickly_if_not_present(
         // global_context is not locked, but a specialized async mutex is, up until caps are saved
         let _caps_reading_locked = caps_reading_lock.lock().await;
         let cmdline = CommandLine::from_args();
+
         let caps_url = cmdline.address_url.clone();
         if caps_url == "Refact" || caps_url.starts_with("http") {
             let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };

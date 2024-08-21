@@ -58,36 +58,50 @@ async fn write_results_on_disk(results: Vec<ApplyDiffResult>) -> Result<Vec<Docu
         Ok(())
     }
 
-    fn apply_add_action(file_path: &String, file_text: &String) -> Result<(), String> {
-        fs::write(&PathBuf::from(file_path), file_text).map_err(|e| {
-            eprintln!("Failed to write file: {}", e);
-            format!("Failed to write file: {}", e)
-        })
+    fn apply_add_action(path_str: &String, file_text: &String) -> Result<(), String> {
+        let path = PathBuf::from(path_str);
+        if path.extension().is_some() {
+            fs::write(&path, file_text).map_err(|e| {
+                warn!("Failed to write file: {}", e);
+                format!("Failed to write file: {}", e)
+            })
+        } else {
+            fs::create_dir_all(&path).map_err(|e| {
+                warn!("Failed to create dir: {}", e);
+                format!("Failed to create dir: {}", e)
+            })
+        }
     }
-
-    fn apply_remove_action(file_path: &String) -> Result<(), String> {
-        let path = PathBuf::from(file_path);
-        if path.exists() {
+    
+    fn apply_remove_action(path_str: &String) -> Result<(), String> {
+        let path = PathBuf::from(path_str);
+        return if path.is_file() {
             fs::remove_file(&path).map_err(|e| {
-                eprintln!("Failed to remove file: {}", e);
+                warn!("Failed to remove file: {}", e);
                 format!("Failed to remove file: {}", e)
             })
+        }
+        else if path.is_dir() {
+            fs::remove_dir(&path).map_err(|e| {
+                warn!("Failed to remove dir: {}", e);
+                format!("Failed to remove dir: {}", e)
+            })
         } else {
-            Err(format!("File `{}` does not exist", &file_path))
+            return Err(format!("Failed to Remove: Path `{}` does not exist", path_str))
         }
     }
 
-    fn apply_rename_action(file_path_rename: &String, file_path: &String) -> Result<(), String> {
-        if PathBuf::from(file_path).exists() {
-            return Err(format!("File `{}` already exists", &file_path_rename));
+    fn apply_rename_action(rename_from: &String, rename_into: &String) -> Result<(), String> {
+        if PathBuf::from(rename_into).exists() {
+            return Err(format!("Path `{}` (rename into) already exists", &rename_into));
         }
-        if PathBuf::from(file_path_rename).exists() {
-            fs::rename(&file_path_rename, &file_path).map_err(|e| {
-                eprintln!("Failed to rename file: {}", e);
-                format!("Failed to rename file: {}", e)
+        if PathBuf::from(rename_from).exists() {
+            fs::rename(rename_from, rename_into).map_err(|e| {
+                warn!("Failed to rename path: {}", e);
+                format!("Failed to rename path: {}", e)
             })
         } else {
-            Err(format!("File `{}` does not exist", &file_path_rename))
+            Err(format!("Path `{}` does not exist", &rename_from))
         }
     }
 
@@ -101,17 +115,24 @@ async fn write_results_on_disk(results: Vec<ApplyDiffResult>) -> Result<Vec<Docu
             docs2index.push(doc);
         }
         else if r.file_name_delete.is_some() && r.file_name_add.is_some() {
-            apply_rename_action(&r.file_name_delete.unwrap(), &r.file_name_add.clone().unwrap())?;
-            let mut doc = Document::new(&PathBuf::from(&r.file_name_add.unwrap()));
-            let text = read_file_from_disk(&doc.path).await?.to_string();
-            doc.update_text(&text);
-            docs2index.push(doc);
+            let rename_from = &r.file_name_delete.unwrap();
+            let rename_into = &r.file_name_add.unwrap();
+            apply_rename_action(rename_from, rename_into)?;
+            if PathBuf::from(rename_into).is_file() {
+                let mut doc = Document::new(&PathBuf::from(rename_into));
+                let text = read_file_from_disk(&doc.path).await?.to_string();
+                doc.update_text(&text);
+                docs2index.push(doc);
+            }
         }
         else if r.file_name_add.is_some() && r.file_text.is_some() {
-            apply_add_action(&r.file_name_add.clone().unwrap(), &r.file_text.clone().unwrap())?;
-            let mut doc = Document::new(&PathBuf::from(&r.file_name_add.unwrap()));
-            doc.update_text(&r.file_text.unwrap());
-            docs2index.push(doc);
+            let path_add = &r.file_name_add.unwrap();
+            apply_add_action(path_add, &r.file_text.clone().unwrap())?;
+            if PathBuf::from(path_add).is_file() {
+                let mut doc = Document::new(&PathBuf::from(path_add));
+                doc.update_text(&r.file_text.unwrap());
+                docs2index.push(doc);
+            }
         }
         else if r.file_name_delete.is_some() {
             apply_remove_action(&r.file_name_delete.unwrap())?;
@@ -171,7 +192,7 @@ pub async fn handle_v1_diff_apply(
     post.set_id();
 
     validate_post(&post)?;
-    correct_and_validate_chunks(&mut post.chunks, global_context.clone()).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
+    correct_and_validate_chunks(global_context.clone(), &mut post.chunks).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
 
     let applied_state = {
         let diff_state = global_context.read().await.documents_state.diffs_applied_state.clone();
@@ -225,7 +246,7 @@ pub async fn handle_v1_diff_state(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     post.set_id();
 
-    correct_and_validate_chunks(&mut post.chunks, global_context.clone()).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
+    correct_and_validate_chunks(global_context.clone(), &mut post.chunks).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
 
     let applied_state = {
         let diff_state = global_context.read().await.documents_state.diffs_applied_state.clone();

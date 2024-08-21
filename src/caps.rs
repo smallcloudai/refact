@@ -1,16 +1,17 @@
-use tracing::{info, warn, error};
+use crate::custom_error::ScratchError;
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::known_models::KNOWN_MODELS;
 use serde::Deserialize;
 use serde::Serialize;
-use std::fs::File;
+use serde_json::Value;
 use std::collections::HashMap;
+use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use serde_json::Value;
-use tokio::sync::RwLock;
+use tokio::sync::RwLock as ARwLock;
+use tracing::{error, info, warn};
 use url::Url;
-use crate::global_context::GlobalContext;
-use crate::known_models::KNOWN_MODELS;
 
 const CAPS_FILENAME: &str = "refact-caps";
 const CAPS_FILENAME_FALLBACK: &str = "coding_assistant_caps.json";
@@ -57,14 +58,37 @@ fn default_code_completion_n_ctx() -> usize {
     2048
 }
 
+fn default_endpoint_embeddings_style() -> String {
+    String::from("openai")
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
     pub cloud_name: String,
+
     #[serde(default = "default_endpoint_style")]
+    #[serde(alias = "chat_endpoint_style")]
     pub endpoint_style: String,
     #[serde(default)]
-    #[serde(alias = "completion_endpoint")]
+    pub chat_endpoint_style: String,
+    #[serde(default = "default_endpoint_style")]
+    pub completion_endpoint_style: String,
+
+    #[serde(default)]
     pub endpoint_template: String,
+    #[serde(default)]
+    pub completion_endpoint: String,
+    #[serde(default)]
+    pub chat_endpoint: String,
+
+    // default api key is in the command line
+    #[serde(default)]
+    pub completion_apikey: String,
+    #[serde(default)]
+    pub chat_apikey: String,
+    #[serde(default)]
+    pub embedding_apikey: String,
+
     #[serde(default)]
     #[serde(alias = "chat_endpoint")]
     pub endpoint_chat_passthrough: String,
@@ -94,12 +118,16 @@ pub struct CodeAssistantCaps {
     #[serde(default)]
     pub models_dict_patch: HashMap<String, ModelRecord>,
     #[serde(default)]
+    #[serde(alias = "embedding_default_model")]
     pub default_embeddings_model: String,
     #[serde(default)]
+    #[serde(alias = "embedding_endpoint")]
     pub endpoint_embeddings_template: String,
-    #[serde(default)]
+    #[serde(default = "default_endpoint_embeddings_style")]
+    #[serde(alias = "embedding_endpoint_style")]
     pub endpoint_embeddings_style: String,
     #[serde(default)]
+    #[serde(alias = "embedding_size")]
     pub size_embeddings: i32,
     #[serde(default)]
     pub embedding_n_ctx: usize,
@@ -109,14 +137,9 @@ pub struct CodeAssistantCaps {
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
     #[serde(default)]
     pub code_chat_default_system_prompt: String,
+
     #[serde(default)]
-    pub customization: String,
-    #[serde(default)]
-    #[serde(alias = "completion_apikey")]
-    pub custom_completion_apikey: String,
-    #[serde(default)]
-    #[serde(alias = "chat_apikey")]
-    pub custom_chat_apikey: String,
+    pub customization: String,  // on self-hosting server, allows to customize toolbox & friends for all engineers
 }
 
 fn load_caps_from_buf(
@@ -159,6 +182,9 @@ fn load_caps_from_buf(
         if !r1.code_completion_default_model.is_empty() {
             running_models.push(r1.code_completion_default_model.clone());
         }
+        if !r1.default_embeddings_model.is_empty() {
+            running_models.push(r1.default_embeddings_model.clone());
+        }
         r1.running_models = running_models;
     }
 
@@ -166,6 +192,9 @@ fn load_caps_from_buf(
     apply_models_dict_patch(&mut r1);
     r1.endpoint_template = relative_to_full_url(&caps_url, &r1.endpoint_template)?;
     r1.endpoint_chat_passthrough = relative_to_full_url(&caps_url, &r1.endpoint_chat_passthrough)?;
+    if r1.endpoint_chat_passthrough.is_empty() {
+        r1.endpoint_chat_passthrough = relative_to_full_url(&caps_url, &r1.chat_endpoint)?;
+    }
     r1.telemetry_basic_dest = relative_to_full_url(&caps_url, &r1.telemetry_basic_dest)?;
     r1.telemetry_corrected_snippets_dest = relative_to_full_url(&caps_url, &r1.telemetry_corrected_snippets_dest)?;
     r1.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &r1.telemetry_basic_retrieve_my_own)?;
@@ -185,9 +214,73 @@ fn load_caps_from_buf(
     Ok(Arc::new(StdRwLock::new(r1)))
 }
 
+macro_rules! get_api_key {
+    ($gcx:expr, $caps:expr, $field:ident) => {{
+        let cx_locked = $gcx.read().await;
+        let custom_apikey = $caps.read().unwrap().$field.clone();
+        if custom_apikey.is_empty() {
+            cx_locked.cmdline.api_key.clone()
+        } else if custom_apikey.starts_with("$") {
+            let env_var_name = &custom_apikey[1..];
+            match std::env::var(env_var_name) {
+                Ok(env_value) => env_value,
+                Err(e) => {
+                    error!("Tried to read API key from env var {}, but failed: {}", env_var_name, e);
+                    cx_locked.cmdline.api_key.clone()
+                }
+            }
+        } else {
+            custom_apikey
+        }
+    }};
+}
+
+async fn get_custom_chat_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
+    let caps = try_load_caps_quickly_if_not_present(
+        gcx.clone(), 0,
+    ).await;
+
+    if let Err(err) = caps {
+        return Err(err);
+    }
+    let caps = caps?;
+
+    let api_key = get_api_key!(gcx, caps, chat_apikey);
+    Ok(api_key)
+}
+
+pub async fn get_custom_embedding_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
+    let caps = try_load_caps_quickly_if_not_present(
+        gcx.clone(), 0,
+    ).await;
+
+    if let Err(err) = caps {
+        return Err(err);
+    }
+    let caps = caps?;
+
+    let api_key = get_api_key!(gcx, caps, embedding_apikey);
+    Ok(api_key)
+}
+
+async fn get_custom_completion_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
+    let caps = try_load_caps_quickly_if_not_present(
+        gcx.clone(), 0,
+    ).await;
+
+    if let Err(err) = caps {
+        return Err(err);
+    }
+    let caps = caps?;
+
+    let api_key = get_api_key!(gcx, caps, completion_apikey);
+    Ok(api_key)
+}
+
+
 async fn load_caps_buf_from_file(
     cmdline: crate::global_context::CommandLine,
-    _global_context: Arc<RwLock<GlobalContext>>,
+    _global_context: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(String, String), String> {
     let caps_url = cmdline.address_url.clone();
     let mut buffer = String::new();
@@ -198,7 +291,7 @@ async fn load_caps_buf_from_file(
 
 async fn load_caps_buf_from_url(
     cmdline: crate::global_context::CommandLine,
-    global_context: Arc<RwLock<GlobalContext>>,
+    global_context: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(String, String), String> {
     let mut buffer = String::new();
     let mut caps_urls: Vec<String> = Vec::new();
@@ -259,7 +352,7 @@ async fn load_caps_buf_from_url(
 
 pub async fn load_caps(
     cmdline: crate::global_context::CommandLine,
-    global_context: Arc<RwLock<GlobalContext>>,
+    global_context: Arc<ARwLock<GlobalContext>>,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let mut caps_url = cmdline.address_url.clone();
     let buf: String;
@@ -395,23 +488,91 @@ pub fn which_scratchpad_to_use<'a>(
     }
 }
 
+pub async fn get_model_record(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    model: &str,
+) -> Result<ModelRecord, String> {
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(
+        gcx.clone(), 0,
+    ).await.map_err(|e| {
+        warn!("no caps: {:?}", e);
+        format!("failed to load caps: {}", e)
+    })?;
 
-const SIMPLE_CAPS: &str = r#"
+    let caps_lock = caps.read().unwrap();
+    match caps_lock.code_chat_models.get(model) {
+        Some(res) => Ok(res.clone()),
+        None => Err(format!("no model record for model `{}`", model))
+    }
+}
+
+
+pub const SIMPLE_CAPS: &str = r#"
+# other examples https://github.com/smallcloudai/refact-lsp/tree/main/bring_your_own_key
+
 cloud_name: OpenAI
 chat_endpoint: "https://api.openai.com/v1/chat/completions"
-chat_apikey: "sk-..."
-chat_model: gpt-3.5-turbo
+chat_apikey: "sk-..." # or use "$OPENAI_API_KEY" and key will be used from environment
+chat_model: gpt-4o-mini
+
+# ------------
+# cloud_name: OpenRouter API
+
+# chat_endpoint: "https://openrouter.ai/api/v1/chat/completions"
+# chat_apikey: "$OPENROUTER_API_KEY"
+# chat_model: meta-llama/llama-3.1-8b-instruct
+# tokenizer_rewrite_path:
+#   meta-llama/llama-3.1-8b-instruct: unsloth/llama-3-8b-bnb-4bit
+
+# running_models:
+#   - openai/gpt-4o
+#   - meta-llama/llama-3.1-8b-instruct
+
+# ------------
+# cloud_name: HuggingFace API
+# endpoint_style: "hf"
+#
+# chat_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
+# chat_apikey: "$HF_TOKEN"
+# chat_model: meta-llama/Llama-2-70b-chat-hf
+#
+# completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
+# completion_model: bigcode/starcoder2-3b
+# completion_apikey: "$HF_TOKEN"
+#
+# tokenizer_rewrite_path:
+#   meta-llama/Llama-2-70b-chat-hf: TheBloke/Llama-2-70B-fp16
+#
+# embedding_endpoint_style: "hf"
+# embedding_endpoint: "https://api-inference.huggingface.co/pipeline/feature-extraction/$MODEL"
+# embedding_apikey: "$HF_TOKEN"
+# embedding_default_model: thenlper/gte-base
+# embedding_size: 768
 
 # ------------
 # cloud_name: RefactEnterprise
-# endpoint_style: <endpoint_style> # default: openai
+
+# copmletion_endpoint_style: <endpoint_style> # default: openai
 # completion_endpoint: <your-address>/v1/completions # default: ""
 # completion_apikey: <your-api-key> # default: ""
 # completion_model: <your-model> # default: ""
 # completion_n_ctx: <your-n-ctx> # default: 2048
+
+# chat_endpoint_style: <endpoint_style> # default: openai
 # chat_endpoint: <your-address>/v1/chat/completions # default: ""
 # chat_apikey: "<your-api-key>" # default: ""
 # chat_model: "<your-chat-model>" # default: ""
+
+# embedding_endpoint_style: <endpoint_style> # default: openai
+# embedding_endpoint: <your-address> # default: ""
+# embedding_apikey: <your-api-key> # default: ""
+# embedding_default_model: <your-model> # default: ""
+# embedding_size: <your-embedding-size> # default: 0
+
+# running_models: # all extra models will be loaded
+#   - <your-model>
+#   - <your-model>
+
 # tokenizer_path_template: <your-template-address> # default: https://huggingface.co/$MODEL/resolve/main/tokenizer.json
 # telemetry_basic_dest: <your-telemetry-address> # default: https://www.smallcloud.ai/v1/telemetry-basic
 # telemetry_basic_retrieve_my_own: <your-telemetry-address> # default: https://staging.smallcloud.ai/v1/telemetry-retrieve-my-own-stats

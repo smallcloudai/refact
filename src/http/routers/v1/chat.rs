@@ -5,7 +5,7 @@ use tokio::sync::Mutex as AMutex;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use tracing::{info, error};
+use tracing::info;
 
 use crate::call_validation::ChatPost;
 use crate::caps::CodeAssistantCaps;
@@ -78,24 +78,6 @@ async fn chat(
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.2)));
     chat_post.model = model_name.clone();
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
-    let (client1, api_key) = {
-        let cx_locked = global_context.write().await;
-        let custom_chat_apikey = caps.read().unwrap().custom_chat_apikey.clone();
-        if custom_chat_apikey.is_empty() {
-            (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
-        } else if custom_chat_apikey.starts_with("$") {
-            let env_var_name = &custom_chat_apikey[1..];
-            match std::env::var(env_var_name) {
-                Ok(env_value) => (cx_locked.http_client.clone(), env_value),
-                Err(e) => {
-                    error!("Tried to read API key from env var {}, but failed: {}", env_var_name, e);
-                    (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
-                }
-            }
-        } else {
-            (cx_locked.http_client.clone(), custom_chat_apikey)
-        }
-    };
     let mut scratchpad = scratchpads::create_chat_scratchpad(
         global_context.clone(),
         caps,
@@ -121,33 +103,31 @@ async fn chat(
     //     ));
     //     let _ = std::fs::write(&notes_path, serde_json::to_string_pretty(&chat_post.messages).unwrap());
     // }
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+    let mut ccx = AtCommandsContext::new(
         global_context.clone(),
         n_ctx,
         CHAT_TOP_N,
         false,
-        &chat_post.messages,
-    ).await));
+        chat_post.messages.clone(),
+    ).await;
+    ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
+    let ccx_arc = Arc::new(AMutex::new(ccx));
 
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {
         crate::restream::scratchpad_interaction_not_stream(
-            ccx.clone(),
+            ccx_arc.clone(),
             &mut scratchpad,
             "chat".to_string(),
             model_name,
-            client1,
-            api_key,
             &mut chat_post.parameters,
             chat_post.only_deterministic_messages,
         ).await
     } else {
         crate::restream::scratchpad_interaction_stream(
-            ccx.clone(),
+            ccx_arc.clone(),
             scratchpad,
             "chat-stream".to_string(),
             model_name,
-            client1,
-            api_key,
             chat_post.parameters.clone(),
             chat_post.only_deterministic_messages,
         ).await

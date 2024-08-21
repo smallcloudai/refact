@@ -1,12 +1,13 @@
-use std::sync::Arc;
+use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommand, AtCommandsContext, AtParam};
 use async_trait::async_trait;
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
+use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
-use crate::vecdb;
 use crate::at_commands::execute_at::AtCommandMember;
-use crate::call_validation::{ContextFile, ContextEnum};
+use crate::call_validation::{ContextEnum, ContextFile};
+use crate::caps::get_custom_embedding_api_key;
+use crate::vecdb;
 use crate::vecdb::vdb_structs::VecdbSearch;
 
 
@@ -63,12 +64,19 @@ pub async fn execute_at_search(
         let ccx_locked = ccx.lock().await;
         (ccx_locked.global_context.clone(), ccx_locked.top_n)
     };
+    
+    let api_key = get_custom_embedding_api_key(gcx.clone()).await;
+    if let Err(err) = api_key {
+        return Err(err.message);
+    }
+    let api_key = api_key.unwrap();
+    
     let vec_db = gcx.read().await.vec_db.clone();
     let r = match *vec_db.lock().await {
         Some(ref db) => {
             let top_n_twice_as_big = top_n * 2;  // top_n will be cut at postprocessing stage, and we really care about top_n files, not pieces
             // TODO: this code sucks, release lock, don't hold anything during the search
-            let search_result = db.vecdb_search(query.clone(), top_n_twice_as_big, vecdb_scope_filter_mb).await?;
+            let search_result = db.vecdb_search(query.clone(), top_n_twice_as_big, vecdb_scope_filter_mb, &api_key).await?;
             let results = search_result.results.clone();
             return Ok(results2message(&results));
         }
