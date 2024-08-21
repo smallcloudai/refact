@@ -19,7 +19,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
 
   useEffect(() => {
     cancelLogin();
-  }, [selected]);
+  }, [selected, cancelLogin]);
 
   useEffect(() => {
     const { current } = loginButton;
@@ -51,7 +51,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
       loginWithKey(apiKey);
       next(apiKey, false);
     }
-  }, [polling.data]);
+  }, [polling.data, loginWithKey, next]);
 
   const onValueChange = (value: string) => {
     setSelected(value as "free" | "pro");
