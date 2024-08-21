@@ -23,7 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/smallcloudai/refact-chat-js"
+    "url": "git+https://github.com/smallcloudai/refact-chat-js.git"
   },
   "bugs": {
     "url": "https://github.com/smallcloudai/refact-chat-js/issues"
