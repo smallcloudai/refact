@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import {
   Flex,
   IconButton,
@@ -6,11 +6,7 @@ import {
   DropdownMenu,
   LinkProps,
 } from "@radix-ui/themes";
-import {
-  ExitIcon,
-  DiscordLogoIcon,
-  DotsVerticalIcon,
-} from "@radix-ui/react-icons";
+import { DiscordLogoIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
 
 // import { Coin } from "../../images";
 
@@ -20,23 +16,6 @@ import { useTourRefs } from "../../features/Tour";
 import { useGetUser, useLogout } from "../../hooks";
 import { Coin } from "../../images/coin";
 import styles from "./sidebar.module.css";
-
-const Logout: React.FC<{
-  onClick: React.MouseEventHandler<HTMLAnchorElement>;
-}> = ({ onClick }) => {
-  return (
-    <Flex asChild gap="1" align="center">
-      <Link
-        onClick={onClick}
-        size="1"
-        style={{ cursor: "var(--cursor-link)" }}
-        underline="hover"
-      >
-        <ExitIcon /> Logout
-      </Link>
-    </Flex>
-  );
-};
 
 const LinkItem: React.FC<LinkProps> = ({ children, href }) => {
   return (
@@ -82,6 +61,7 @@ export type DropdownNavigationOptions =
   | "settings"
   | "hot keys"
   | "restart tour"
+  | "cloud login"
   | "";
 
 type SettingsProps = {
@@ -91,6 +71,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
   const refs = useTourRefs();
   const user = useGetUser();
   const host = useAppSelector(selectHost);
+  const logout = useLogout();
 
   const bugUrl = linkForBugReports(host);
   const accountLink = linkForAccount(host);
@@ -122,6 +103,18 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
               coins
             </Flex>
           </DropdownMenu.Label>
+        )}
+
+        {user.data && (
+          <DropdownMenu.Item
+            onSelect={(event) => {
+              event.preventDefault();
+              logout();
+              handleNavigation("cloud login");
+            }}
+          >
+            Logout
+          </DropdownMenu.Item>
         )}
 
         <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
@@ -172,23 +165,12 @@ export type FooterProps = {
 };
 
 export const Footer: React.FC<FooterProps> = ({ handleNavigation }) => {
-  const logout = useLogout();
-  const handleLogout = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>) => {
-      e.preventDefault();
-      logout();
-    },
-    [logout],
-  );
   return (
     <Flex direction="column" gap="2" flexGrow="1" justify="center">
       <Flex justify="between" align="center">
-        <Flex gap="2" direction="column">
-          <Logout onClick={handleLogout} />
-          <LinkItem href="https://www.smallcloud.ai/discord">
-            <DiscordLogoIcon width="10px" height="10px" /> Discord
-          </LinkItem>
-        </Flex>
+        <LinkItem href="https://www.smallcloud.ai/discord">
+          <DiscordLogoIcon width="10px" height="10px" /> Discord
+        </LinkItem>
         <Settings handleNavigation={handleNavigation} />
       </Flex>
     </Flex>
