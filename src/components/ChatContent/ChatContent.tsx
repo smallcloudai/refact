@@ -35,7 +35,11 @@ export const TipOfTheDay: React.FC = () => {
     dispatch(next(config));
   }, [dispatch, config]);
 
-  return <Text>💡 Tip of the day: {state.tip}</Text>;
+  return (
+    <Text>
+      💡 <b>Tip of the day</b>: {state.tip}
+    </Text>
+  );
 };
 
 const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
@@ -230,7 +234,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
           {!isWaiting && messages.length > 0 && (
             <AccumulatedChanges onOpen={onOpenCAccumulatedChanges} />
           )}
-          {(isWaiting || isStreaming) && (
+          {isWaiting && (
             <Container py="4">
               <Spinner />
             </Container>

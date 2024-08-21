@@ -22,6 +22,7 @@ import {
   commandsApi,
   diffApi,
 } from "../services/refact";
+import { smallCloudApi } from "../services/smallcloud";
 import { reducer as fimReducer } from "../features/FIM/reducer";
 import { saveTourToLocalStorage, tourReducer } from "../features/Tour";
 import {
@@ -59,6 +60,7 @@ const rootReducer = combineSlices(
     [toolsApi.reducerPath]: toolsApi.reducer,
     [commandsApi.reducerPath]: commandsApi.reducer,
     [diffApi.reducerPath]: diffApi.reducer,
+    [smallCloudApi.reducerPath]: smallCloudApi.reducer,
   },
   historySlice,
   errorSlice,
@@ -102,6 +104,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
             toolsApi.middleware,
             commandsApi.middleware,
             diffApi.middleware,
+            smallCloudApi.middleware,
           )
           .prepend(historyMiddleware.middleware)
           // .prepend(errorMiddleware.middleware)
