@@ -84,7 +84,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
             <Text size="3">Free plan</Text>
           </Flex>
           <Text size="2">- Code completions: Refact 1.6 model</Text>
-          <Text size="2">- In-IDE Chat: GPT-3.5</Text>
+          <Text size="2">- In-IDE Chat: GPT-4o mini</Text>
           <Text size="2">- Toolbox (refactor code, find bugs, etc.)</Text>
           <Text size="2">- 2048-context length for completions</Text>
           <Text size="2">- 4096-context length for chat</Text>
