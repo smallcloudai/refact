@@ -5,10 +5,10 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_commands::at_file::execute_at_file;
+use crate::at_commands::at_file::{at_file_repair_candidates, context_file_from_file_path};
 use crate::at_tools::att_patch::args_parser::PatchArguments;
 use crate::at_tools::att_patch::tool::{DefaultToolPatch, N_CHOICES};
 use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal };
@@ -16,7 +16,7 @@ use crate::at_tools::subchat::subchat_single;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatUsage};
 use crate::caps::get_model_record;
-use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage};
+use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage, ContextFile};
 use crate::scratchpads::pp_utils::count_tokens;
 
 
@@ -32,6 +32,18 @@ pub struct LocateData {
     pub files: Vec<LocateItem>,
     pub symbols: Vec<String>,
 }
+
+async fn read_file(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    file_path: String,
+) -> Option<ContextFile> {
+    let candidates = at_file_repair_candidates(ccx.clone(), &file_path, false).await;
+    match context_file_from_file_path(ccx.clone(), candidates, file_path.clone()).await {
+        Ok(x) => Some(x),
+        Err(e) => None
+    }
+}
+
 
 async fn load_tokenizer(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -245,8 +257,8 @@ async fn make_chat_history(
     
     let has_single_file = paths.len() == 1;
     for (idx, (file, description_mb)) in paths.iter().enumerate() {
-        match execute_at_file(ccx.clone(), file.clone()).await {
-            Ok(res) => {
+        match read_file(ccx.clone(), file.clone()).await {
+            Some(res) => {
                 let message = if let Some(description) = description_mb {
                     format!(
                         "File to modify: {}\nDescription: {}\nContent:\n```\n{}\n```",
@@ -272,7 +284,7 @@ async fn make_chat_history(
                 }
                 chat_messages.push(ChatMessage::new("user".to_string(), message));
             }
-            Err(_) => {
+            None => {
                 let message = format!(
                     "{}\n<{}>",
                     file,

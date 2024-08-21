@@ -89,7 +89,6 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
     }
 
     let mut edits = Vec::new();
-    let mut keeper = false;
     let mut hunk = Vec::new();
     let add_remove_rename_block = 
         before_path.as_ref().map_or(false, |x| x.starts_with("/dev/null"))
@@ -120,19 +119,17 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
             before_path = before_path_new;
             after_path = Some(line[4..].trim().to_string());
             hunk.clear();
-            keeper = false;
             continue;
         }
 
         let op = line.chars().next().unwrap();
         if op == '-' || op == '+' || (add_remove_rename_block && op != '@') {
-            keeper = true;
             continue;
         }
         if op != '@' {
             continue;
         }
-        if !keeper {
+        if hunk.len() <= 1 {
             hunk.clear();
             continue;
         }
@@ -144,7 +141,6 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
             hunk: hunk.clone(),
         });
         hunk.clear();
-        keeper = false;
     }
 
     (line_num + 1, edits)
@@ -245,11 +241,20 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
                     |x| x
                         .lines()
                         .into_iter()
-                        .map(|x| x.to_string().trim_end().to_string())
+                        .map(|x| {
+                            if let Some(stripped_row) = x.to_string()
+                                .replace("\r\n", "\n")
+                                .strip_suffix("\n") {
+                                stripped_row.to_string()
+                            } else {
+                                x.to_string()
+                            }
+                        })
                         .collect::<Vec<_>>()
                 )?));
         let mut block_has_minus_plus = false;
         let mut current_lines = vec![];
+        let has_any_line_no_leading_space = edit.hunk.iter().any(|x| !x.starts_with(" "));
         for line in edit.hunk.iter() {
             if line.starts_with("-") || line.starts_with("+") {
                 let is_plus = line.starts_with("+");
@@ -274,7 +279,11 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
                     current_lines.clear();
                 }
                 current_lines.push(DiffLine {
-                    line: if line.starts_with(" ") { line[1..].to_string() } else { line.clone() },
+                    line: if !has_any_line_no_leading_space && line.starts_with(" ") {
+                        line[1..].to_string()
+                    } else {
+                        line.clone()
+                    },
                     line_type: LineType::Space,
                     file_line_num_idx: None,
                     correct_spaces_offset: None,
@@ -365,6 +374,55 @@ fn search_diff_block_text_location(diff_blocks: &mut Vec<DiffBlock>) {
     }
 }
 
+fn splitting_diff_chunks(diff_block: &DiffBlock) -> Option<Vec<DiffBlock>> {
+    let mut new_diff_blocks = vec![];
+    if diff_block.diff_lines.iter().all(|x| x.line_type == LineType::Space) {
+        let original_text = diff_block.file_lines.join("\n");
+        let text_after = diff_block.diff_lines.iter().map(|x| x.line.clone()).join("\n");
+        let diffs = diff::lines(&original_text, &text_after);
+        let mut line_num: usize = 0;
+        let mut diff_lines = vec![];
+        for diff in diffs {
+            match diff {
+                diff::Result::Left(l) => {
+                    diff_lines.push(DiffLine {
+                        line: l.to_string(), 
+                        line_type: LineType::Minus,
+                        file_line_num_idx: Some(line_num), 
+                        correct_spaces_offset: Some(0)
+                    });
+                    line_num += 1;
+                }
+                diff::Result::Right(r) => {
+                    diff_lines.push(DiffLine {
+                        line: r.to_string(), 
+                        line_type: LineType::Plus,
+                        file_line_num_idx: Some(line_num), 
+                        correct_spaces_offset: Some(0)
+                    });
+                }
+                diff::Result::Both(_, _) => {
+                    line_num += 1;
+                    if !diff_lines.is_empty() {
+                        new_diff_blocks.push(DiffBlock {
+                            file_name_before: diff_block.file_name_before.clone(),
+                            file_name_after: diff_block.file_name_after.clone(),
+                            action: diff_block.action.clone(),
+                            file_lines: diff_block.file_lines.clone(),
+                            hunk_idx: diff_block.hunk_idx,
+                            diff_lines: diff_lines.clone(),
+                        });
+                        diff_lines.clear();
+                    }
+                }
+            }
+        }
+        Some(new_diff_blocks)
+    } else {
+        None
+    }
+}
+
 // Step 1. Fix idents using correct_spaces_offset 
 // Step 2. If non-found is the first line, and it is a `+` type then set the 0 index
 // Step 3. Fix missing `+` lines. If line is without `+` symbol and is file line index is not found then consider it a `+` line (except the first line)
@@ -452,7 +510,7 @@ fn normalize_diff_block(diff_block: &mut DiffBlock) -> Result<(), String> {
         ));
     }
 
-    return Ok(());
+    Ok(())
 }
 
 fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
@@ -539,7 +597,9 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 - Return edits similar to unified diffs that `diff -U0` would produce.
 - Don't include line numbers like `diff -U0` does. The user's patch tool doesn't need them.
 - Don't include timestamps with the file paths.
-- Start each hunk of changes with a `@@ ... @@` line.
+- There are two types of hunk: `@@ -+ block @@` and `@@ file_replace_block @@`.
+- `@@ -+ block @@` hunk MUST contain `-` or `+` types of lines.
+- `@@ file_replace_block @@` hunk MUST replace the whole file with a new content.
 - The user's patch tool needs CORRECT patches that apply cleanly against the current contents of the file.
 - Make sure you mark all new or modified lines with `+`.
 - Make sure you include and mark all lines that need to be removed or changed as `-` lines.
@@ -551,14 +611,14 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 - To move code within a file, use 2 hunks: 1 to delete it from its current location, 1 to insert it in the new location
 - Include the first 2 lines with the real file paths which were given before
 - Only output hunks that specify changes with `+` or `-` lines.
-- Format example for the task: "Replace is_prime with a call to sympy"
+- @@ -+ block @@ format example for the task: "Replace is_prime with a call to sympy"
 ```diff
 --- %FIRST_WORKSPACE_PROJECT_DIR%/test.py
 +++ %FIRST_WORKSPACE_PROJECT_DIR%/test.py
-@@ ... @@
+@@ -+ block @@
 +import sympy
 +
-@@ ... @@
+@@ -+ block @@
 -def is_prime(x):
 -    if x < 2:
 -        return False
@@ -567,7 +627,7 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 -        if x % i == 0:
 -            return False
 -    return True
-@@ ... @@
+@@ -+ block @@
 -@app.route('/prime/<int:n>')
 -def nth_prime(n):
 -    count = 0
@@ -586,11 +646,36 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 +        if sympy.isprime(num):
 +            count += 1
 +    return str(num)
-@@ ... @@
+@@ -+ block @@
 +
 +def nth_prime_test(n):
 +    pass
 ```
+- If the file is small ot it's needed to make a lot of changes - just use `@@ file_replace_block @@` without using `-` or `+` lines.
+- When use `@@ file_replace_block @@` hunk, you must replace the whole file with the new code.
+- `@@ file_replace_block @@` format example for the task: "Replace is_prime with a call to sympy": "Replace is_prime with a call to sympy":
+```diff
+--- %FIRST_WORKSPACE_PROJECT_DIR%/test.py
++++ %FIRST_WORKSPACE_PROJECT_DIR%/test.py
+@@ file_replace_block @@
+ import sympy
+
+ @app.route('/prime/<int:n>')
+ def nth_prime(n):
+     count = 0
+     num = 1
+     while count < n:
+         num += 1
+         if sympy.isprime(num):
+             count += 1
+     return str(num)
+
+ def nth_prime_test(n):
+     pass
+```
+- In the example above, the whole file is going to be replaced with the new code and the new hunk header is used: `@@ file_replace_block @@`
+- Only `@@ file_replace_block @@` hunk type can be generated without `+` and `-` lines.
+
 ## Rules for `add` action to generate correct diffs:
 - To add a new file, make sure that you output a correct filename (an absolute path is preferable). 
 - The filename needs to be taken from the given task.
@@ -601,20 +686,20 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 ```diff
 --- /dev/null
 +++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
-@@ ... @@
-+def quicksort(arr):
-+    if len(arr) <= 1:
-+        return arr
-+    pivot = arr[len(arr) // 2]
-+    left = [x for x in arr if x < pivot]
-+    middle = [x for x in arr if x == pivot]
-+    right = [x for x in arr if x > pivot]
-+    return quicksort(left) + middle + quicksort(right)
-+
-+# Example usage
-+arr = [3, 6, 8, 10, 1, 2, 1]
-+sorted_arr = quicksort(arr)
-+print(sorted_arr)
+@@ file_replace_block @@
+ def quicksort(arr):
+     if len(arr) <= 1:
+         return arr
+     pivot = arr[len(arr) // 2]
+     left = [x for x in arr if x < pivot]
+     middle = [x for x in arr if x == pivot]
+     right = [x for x in arr if x > pivot]
+     return quicksort(left) + middle + quicksort(right)
+ 
+ # Example usage
+ arr = [3, 6, 8, 10, 1, 2, 1]
+ sorted_arr = quicksort(arr)
+ print(sorted_arr)
 ```
 ## Rules for `rename` action to generate correct diffs:
 - To rename a file 2 filenames need to be used: an old filename and a new filename (the absolute path is preferable).
@@ -624,7 +709,7 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 ```diff
 --- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
 +++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py
-@@ ... @@
+@@ -+ block @@
 -def quicksort(arr):
 +def quicksort_old(arr):
      middle = [x for x in arr if x == pivot]
@@ -640,20 +725,19 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 ```diff
 --- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
 +++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py
-@@ ... @@
+@@ file_replace_block @@
 <file_content>
 ```
 ## Rules for `delete` action to generate correct diffs:
 - To remove a file, make sure that you output a correct filename (the absolute path is preferable)
-- Instead of copying the whole file, just print `<file_content>` after the `@@ ... @@` line
+- Instead of copying the whole file, just print `<file_content>` after the `@@ file_replace_block @@` line
 - Format example for the task: "Remove the file `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py`".
 ```diff
 --- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
 +++ /dev/null
-@@ ... @@
+@@ file_replace_block @@
 <file_content>
 ```
-
 DO NOT FORGET TO FOLLOW STEPS AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string();
         prompt
             .replace("%WORKSPACE_PROJECTS_DIRS%", workspace_projects_dirs)
@@ -666,6 +750,9 @@ DO NOT FORGET TO FOLLOW STEPS AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string();
         let edits = get_edit_hunks(content);
         let mut diff_blocks = edit_hunks_to_diff_blocks(&edits).await?;
         search_diff_block_text_location(&mut diff_blocks);
+        diff_blocks.extend(
+            diff_blocks.iter().filter_map(|x| splitting_diff_chunks(x)).flatten().collect::<Vec<_>>()
+        );
         for block in diff_blocks.iter_mut() {
             match normalize_diff_block(block) {
                 Ok(_) => {}
@@ -743,10 +830,8 @@ Another text"#;
         let input = r#"Initial text
 ```diff
 Another text"#;
-        let result = UnifiedDiffFormat::parse_message(input).await.expect(
-            "Failed to parse diff message"
-        );
-        assert!(result.is_empty());
+        let result = UnifiedDiffFormat::parse_message(input).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
@@ -767,10 +852,8 @@ some invalid text
 ```
 ```
 ```diff"#;
-        let result = UnifiedDiffFormat::parse_message(input).await.expect(
-            "Failed to parse diff message"
-        );
-        assert!(result.is_empty());
+        let result = UnifiedDiffFormat::parse_message(input).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
@@ -2133,91 +2216,151 @@ if __name__ == __main__:
 
     #[tokio::test]
     async fn info_test() {
-        let input = r#"```diff
---- /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/bird.py
-+++ /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/bird.py
-@@ ... @@
- class Bird:
-+    """
-+    A class representing a bird.
-+    
-+    Attributes:
-+        x (float): The x-coordinate of the bird's position.
-+        y (float): The y-coordinate of the bird's position.
-+        vx (float): The velocity of the bird in the x direction.
-+        vy (float): The velocity of the bird in the y direction.
-+        name (str): The name of the bird.
-+        size (int): The size of the bird.
-+    """
-     
-     def __init__(self, x, y, vx, vy):
-         self.x = x
-         self.y = y
-         self.vx = vx
-         self.vy = vy
-         self.name = "Unnamed Bird"
-         self.size = 1
-
-     def fly(self):
-         """Move the bird's position based on its velocity."""
-         self.x += self.vx
-         self.y += self.vy
-
-     def change_name(self, new_name):
-         """Change the bird's name to a new name."""
-         self.name = new_name
-
-     def grow(self, amount):
-         """Increase the bird's size by a specified amount."""
-         self.size += amount
-+
-```
-
+        let input = r#"
 ```diff
---- /dev/null
-+++ /home/svakhreev/projects/refact-lsp/tests/emergency_frog_situation/test_bird.py
-@@ ... @@
-+import unittest
-+from bird import Bird
-+
-+class TestBird(unittest.TestCase):
-+
-+    def setUp(self):
-+        """Create a Bird instance for testing."""
-+        self.bird = Bird(0, 0, 1, 1)
-+
-+    def test_initial_attributes(self):
-+        """Test the initial attributes of the Bird."""
-+        self.assertEqual(self.bird.x, 0)
-+        self.assertEqual(self.bird.y, 0)
-+        self.assertEqual(self.bird.vx, 1)
-+        self.assertEqual(self.bird.vy, 1)
-+        self.assertEqual(self.bird.name, "Unnamed Bird")
-+        self.assertEqual(self.bird.size, 1)
-+
-+    def test_fly(self):
-+        """Test the fly method."""
-+        self.bird.fly()
-+        self.assertEqual(self.bird.x, 1)
-+        self.assertEqual(self.bird.y, 1)
-+
-+    def test_change_name(self):
-+        """Test changing the bird's name."""
-+        self.bird.change_name("Tweety")
-+        self.assertEqual(self.bird.name, "Tweety")
-+
-+    def test_grow(self):
-+        """Test the grow method."""
-+        self.bird.grow(2)
-+        self.assertEqual(self.bird.size, 3)
-+
-+if __name__ == "__main__":
-+    unittest.main()
+--- /home/svakhreev/tmp/flappy_bird/flappy_bird.js
++++ /home/svakhreev/tmp/flappy_bird/flappy_bird.js
+@@ -+ block @@
+ let canvas = document.getElementById('gameCanvas');
+ let ctx = canvas.getContext('2d');
+ let obstacles = [];
+ let gameOver = false;
+ let score = 0;
+
+ function createObstacle() {
+     let obstacleHeight = Math.random() * (canvas.height / 2) + 20;
+     let obstacleY = (canvas.height - obstacleHeight) / 2; // Center the obstacle in the middle
+     let obstacle = {
+         x: canvas.width,
+         y: obstacleY,
+         width: 20,
+         height: obstacleHeight,
+         passed: false // Track if the obstacle has been passed
+     };
+     obstacles.push(obstacle);
+ }
+
+ function drawObstacles() {
+     ctx.fillStyle = 'green';
+     obstacles.forEach(obstacle => {
+         ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+     });
+ }
+
+ let bird = {
+     x: 50,
+     y: 150,
+     width: 20,
+     height: 20,
+     gravity: 0.4,
+     lift: -8,
+     velocity: 0
+ };
+
+ function checkCollision() {
+     obstacles.forEach(obstacle => {
+         if (bird.x < obstacle.x + obstacle.width &&
+             bird.x + bird.width > obstacle.x &&
+             bird.y < obstacle.y + obstacle.height &&
+             bird.y + bird.height > obstacle.y) {
+             gameOver = true;
+         }
+     });
+ }
+
+ function drawScore() {
+     ctx.fillStyle = 'black';
+     ctx.font = '20px Arial';
+     ctx.fillText('Score: ' + score, 10, 20); // Display score on canvas
+ }
+
+ function drawBird() {
+     ctx.fillStyle = 'yellow';
+     ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+ }
+
+ function updateBird() {
+     bird.velocity += bird.gravity;
+     bird.y += bird.velocity;
+     
+     if (bird.y + bird.height >= canvas.height) {
+         bird.y = canvas.height - bird.height;
+         bird.velocity = 0;
+     }
+     
+     if (bird.y < 0) {
+         bird.y = 0;
+         bird.velocity = 0;
+     }
+ }
+
+ function flap() {
+     bird.velocity += bird.lift;
+ }
+
+ function updateObstacles() {
+     obstacles.forEach(obstacle => {
+         obstacle.x -= 2; // Move the obstacle to the left
+         // Increment score if the obstacle has been passed
+         if (!obstacle.passed && obstacle.x + obstacle.width < bird.x) {
+             score++; // Increase score
+             obstacle.passed = true; // Mark as passed
+         }
+     });
+     // Remove obstacles that have gone off screen
+     obstacles = obstacles.filter(obstacle => obstacle.x + obstacle.width > 0);
+ }
+
+ function restartGame() {
+     gameOver = false;
+     obstacles = [];
+     score = 0;
+     bird.y = 150; // Reset bird position
+     bird.velocity = 0; // Reset bird velocity
+     gameLoop(); // Restart the game loop
+ }
+
+ function gameLoop() {
+     ctx.clearRect(0, 0, canvas.width, canvas.height);
+     drawBird();
+     updateBird();
+     drawObstacles();
+     updateObstacles();
+     drawScore(); // Draw score in the game loop
+     checkCollision();
+     
+     if (gameOver) {
+         ctx.fillStyle = 'red';
+         ctx.font = '30px Arial';
+         ctx.fillText('Game Over', canvas.width / 2 - 70, canvas.height / 2);
+         ctx.fillText('Press R to Restart', canvas.width / 2 - 100, canvas.height / 2 + 40);
+         return; // Stop the game loop
+     }
+     
+     requestAnimationFrame(gameLoop);
+ }
+
+ document.addEventListener('keydown', function(event) {
+     if (event.key === 'r' && gameOver) {
+         restartGame();
+     } else if (event.key === ' ') {
+         flap(); // Flap only on space key
+     }
+ });
+
+ setInterval(createObstacle, 1500); // Create a new obstacle every 1.5 seconds
+ gameLoop();
 ```
 "#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        let (_, changed_text) = apply_diff(
+            &"/home/svakhreev/tmp/flappy_bird/flappy_bird.js".to_string(),
+            &result,
+        );
+
+        assert_eq!(input, changed_text);
         print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
     }
 }

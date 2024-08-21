@@ -15,7 +15,6 @@ use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum};
 
-
 pub const N_CHOICES: usize = 16;
 pub type DefaultToolPatch = UnifiedDiffFormat;
 
