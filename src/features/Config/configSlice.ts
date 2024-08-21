@@ -18,7 +18,7 @@ export type Config = {
   keyBindings?: {
     completeManual?: string;
   };
-  apiKey?: string;
+  apiKey?: string | null;
   addressURL?: string;
   lspPort: number;
 };
@@ -26,6 +26,7 @@ export type Config = {
 const initialState: Config = {
   host: "web",
   lspPort: 8001,
+  apiKey: null,
   features: {
     statistics: true,
     vecdb: true,
@@ -40,6 +41,7 @@ export const updateConfig = createAction<Partial<Config>>("config/update");
 export const setThemeMode = createAction<"light" | "dark" | "inherit">(
   "config/setThemeMode",
 );
+export const setApiKey = createAction<string | null>("config/setApiKey");
 
 export const reducer = createReducer<Config>(initialState, (builder) => {
   // TODO: toggle darkmode for web host?
@@ -59,6 +61,10 @@ export const reducer = createReducer<Config>(initialState, (builder) => {
   builder.addCase(setThemeMode, (state, action) => {
     state.themeProps.appearance = action.payload;
   });
+
+  builder.addCase(setApiKey, (state, action) => {
+    state.apiKey = action.payload;
+  });
 });
 
 export const selectThemeMode = (state: RootState) =>
@@ -70,3 +76,6 @@ export const selectVecdb = (state: RootState) =>
   state.config.features?.vecdb ?? false;
 export const selectAst = (state: RootState) =>
   state.config.features?.ast ?? false;
+
+export const selectApiKey = (state: RootState) => state.config.apiKey;
+export const selectHost = (state: RootState) => state.config.host;

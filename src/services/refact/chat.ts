@@ -25,7 +25,7 @@ type SendChatArgs = {
   chatId?: string;
   tools: ToolCommand[] | null;
   port?: number;
-  apiKey?: string;
+  apiKey?: string | null;
 } & StreamArgs;
 
 export async function sendChat({

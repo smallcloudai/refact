@@ -2,72 +2,20 @@ import React from "react";
 import {
   Flex,
   IconButton,
-  Text,
-  Strong,
   Link,
   DropdownMenu,
   LinkProps,
 } from "@radix-ui/themes";
-import {
-  GearIcon,
-  ReloadIcon,
-  ExitIcon,
-  Link2Icon,
-  GitHubLogoIcon,
-  DiscordLogoIcon,
-} from "@radix-ui/react-icons";
+import { DiscordLogoIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
 
-import { Coin } from "../../images";
-import styles from "./sidebar.module.css";
-import { useConfig } from "../../app/hooks";
-import type { Config } from "../../features/Config/configSlice";
+// import { Coin } from "../../images";
+
+import { useAppSelector } from "../../app/hooks";
+import { selectHost, type Config } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
-
-export type LoginInfoProps = {
-  email: string;
-  tokens: number;
-  plan: string;
-};
-const LoginInfo: React.FC<LoginInfoProps> = ({ email, tokens, plan }) => {
-  return (
-    <Flex direction="column" gap="1">
-      <Flex justify="between">
-        <Text size="1">{email}</Text>
-        <Text size="1" align="center">
-          <Flex align="center" gap="1">
-            <Coin className={styles.coin} /> {tokens}
-          </Flex>
-        </Text>
-      </Flex>
-
-      <Flex align="center" gap="1">
-        <Text size="1">
-          Active Plan: <Strong>{plan}</Strong>{" "}
-        </Text>
-        <IconButton size="1" variant="ghost" title="refresh">
-          <ReloadIcon height="8px" width="8px" />
-        </IconButton>
-      </Flex>
-    </Flex>
-  );
-};
-
-const Logout: React.FC<{
-  onClick: React.MouseEventHandler<HTMLAnchorElement>;
-}> = ({ onClick }) => {
-  return (
-    <Flex asChild gap="1" align="center">
-      <Link
-        onClick={onClick}
-        size="1"
-        style={{ cursor: "var(--cursor-link)" }}
-        underline="hover"
-      >
-        <ExitIcon /> Logout
-      </Link>
-    </Flex>
-  );
-};
+import { useGetUser, useLogout } from "../../hooks";
+import { Coin } from "../../images/coin";
+import styles from "./sidebar.module.css";
 
 const LinkItem: React.FC<LinkProps> = ({ children, href }) => {
   return (
@@ -107,37 +55,13 @@ function linkForAccount(host: Config["host"]): string {
   }
 }
 
-const Links: React.FC<{ hasAccount: boolean }> = ({ hasAccount }) => {
-  const { host } = useConfig();
-  const bugUrl = linkForBugReports(host);
-  const accountLink = linkForAccount(host);
-  return (
-    <Text size="1">
-      <Flex gap="2" justify="between">
-        {hasAccount && (
-          <LinkItem href={accountLink}>
-            <Link2Icon width="10px" height="10px" /> Your Account
-          </LinkItem>
-        )}
-
-        <LinkItem href={bugUrl}>
-          <GitHubLogoIcon width="10px" height="10px" /> Report Bug
-        </LinkItem>
-
-        <LinkItem href="https://www.smallcloud.ai/discord">
-          <DiscordLogoIcon width="10px" height="10px" /> Discord
-        </LinkItem>
-      </Flex>
-    </Text>
-  );
-};
-
 export type DropdownNavigationOptions =
   | "fim"
   | "stats"
   | "settings"
   | "hot keys"
   | "restart tour"
+  | "cloud login"
   | "";
 
 type SettingsProps = {
@@ -145,29 +69,89 @@ type SettingsProps = {
 };
 const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
   const refs = useTourRefs();
+  const user = useGetUser();
+  const host = useAppSelector(selectHost);
+  const logout = useLogout();
+
+  const bugUrl = linkForBugReports(host);
+  const accountLink = linkForAccount(host);
 
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
         <IconButton variant="outline" ref={(x) => refs.setMore(x)}>
-          <GearIcon />
+          <DotsVerticalIcon />
         </IconButton>
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Content>
-        <DropdownMenu.Item onSelect={() => handleNavigation("fim")}>
-          FIM debug
-        </DropdownMenu.Item>
+        {user.data && (
+          <DropdownMenu.Item
+            onSelect={(event) => {
+              event.preventDefault();
+              window.open(accountLink, "_blank");
+            }}
+          >
+            {user.data.account}
+          </DropdownMenu.Item>
+        )}
+
+        {user.data && (
+          <DropdownMenu.Label>
+            <Flex align="center" gap="1">
+              <Coin className={styles.coin} /> {user.data.metering_balance}{" "}
+              coins
+            </Flex>
+          </DropdownMenu.Label>
+        )}
+
+        {user.data && (
+          <DropdownMenu.Item
+            onSelect={(event) => {
+              event.preventDefault();
+              logout();
+              handleNavigation("cloud login");
+            }}
+          >
+            Logout
+          </DropdownMenu.Item>
+        )}
+
         <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
           Statistics
         </DropdownMenu.Item>
+
+        <DropdownMenu.Separator />
+
+        <DropdownMenu.Item
+          onSelect={(event) => {
+            event.preventDefault();
+            window.open(bugUrl, "_blank");
+          }}
+        >
+          Report a bug
+        </DropdownMenu.Item>
+
+        <DropdownMenu.Item onSelect={() => handleNavigation("fim")}>
+          FIM debug
+        </DropdownMenu.Item>
+
+        <DropdownMenu.Separator />
+        {/* TODO: enable these */}
+        {/* <DropdownMenu.Item hidden>Edit customization.yaml</DropdownMenu.Item>
+
+        <DropdownMenu.Item hidden>
+          Edit Bring-Your-Own-Key.yaml
+        </DropdownMenu.Item> */}
+
         <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
           Hot Keys
         </DropdownMenu.Item>
+
         <DropdownMenu.Item onSelect={() => handleNavigation("restart tour")}>
           Restart tour
         </DropdownMenu.Item>
-        <DropdownMenu.Separator />
+
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
           Settings
         </DropdownMenu.Item>
@@ -177,36 +161,18 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
 };
 
 export type FooterProps = {
-  account?: LoginInfoProps;
-  handleLogout: () => void;
   handleNavigation: (to: DropdownNavigationOptions) => void;
 };
 
-export const Footer: React.FC<FooterProps> = ({
-  account,
-  handleLogout,
-  handleNavigation,
-}) => {
+export const Footer: React.FC<FooterProps> = ({ handleNavigation }) => {
   return (
-    <Flex direction="column" gap="2" flexGrow="1">
-      {account && (
-        <LoginInfo
-          email={account.email}
-          tokens={account.tokens}
-          plan={account.plan}
-        />
-      )}
-      <Flex justify="between">
-        <Logout
-          onClick={(e) => {
-            e.preventDefault();
-            handleLogout();
-          }}
-        />
+    <Flex direction="column" gap="2" flexGrow="1" justify="center">
+      <Flex justify="between" align="center">
+        <LinkItem href="https://www.smallcloud.ai/discord">
+          <DiscordLogoIcon width="10px" height="10px" /> Discord
+        </LinkItem>
         <Settings handleNavigation={handleNavigation} />
       </Flex>
-
-      <Links hasAccount={!!account} />
     </Flex>
   );
 };

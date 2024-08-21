@@ -103,10 +103,6 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     setupHost({ type: "self", endpointAddress });
   };
 
-  const logOut = () => {
-    postMessage({ type: EVENT_NAMES_FROM_SETUP.LOG_OUT });
-  };
-
   const startTour = () => {
     dispatch(push({ name: "history" }));
   };
@@ -191,15 +187,8 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             {page.name === "tour end" && <TourEnd />}
             {page.name === "history" && (
               <Sidebar
-                // history={historyHook.history}
                 takingNotes={false}
-                // currentChatId={currentChatId}
-                // onCreateNewChat={handleCreateNewChat}
-                account={undefined}
-                // onHistoryItemClick={handleHistoryItemClick}
-                // onDeleteHistoryItem={handleDelete}
                 onOpenChatInTab={undefined}
-                handleLogout={logOut}
                 handleNavigation={handleNavigation}
                 style={{
                   maxWidth: "min(100vw, 540px)",

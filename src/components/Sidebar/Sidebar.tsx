@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { Box, Flex, Button } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
-import { DropdownNavigationOptions, Footer, FooterProps } from "./Footer";
+import { DropdownNavigationOptions, Footer } from "./Footer";
 import { Spinner } from "@radix-ui/themes";
 import { useAppSelector, useAppDispatch } from "../../app/hooks";
 import {
@@ -13,13 +13,9 @@ import type { ChatThread } from "../../features/Chat/chatThread";
 import { useTourRefs } from "../../features/Tour";
 
 export type SidebarProps = {
-  // onCreateNewChat: () => void;
   takingNotes: boolean;
-  // currentChatId: string;
   className?: string;
   style?: React.CSSProperties;
-  account?: FooterProps["account"];
-  handleLogout: () => void;
   handleNavigation: (to: DropdownNavigationOptions | "chat") => void;
 } & Omit<
   ChatHistoryProps,
@@ -33,8 +29,6 @@ export type SidebarProps = {
 export const Sidebar: React.FC<SidebarProps> = ({
   takingNotes,
   style,
-  account,
-  handleLogout,
   handleNavigation,
 }) => {
   // TODO: these can be lowered.
@@ -78,11 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         onDeleteHistoryItem={onDeleteHistoryItem}
       />
       <Flex p="2" pb="4">
-        <Footer
-          handleLogout={handleLogout}
-          account={account}
-          handleNavigation={handleNavigation}
-        />
+        <Footer handleNavigation={handleNavigation} />
       </Flex>
     </Flex>
   );
