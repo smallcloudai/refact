@@ -67,7 +67,7 @@ pub struct CommandLine {
     pub vecdb_force_path: String,
     #[structopt(long, short="w", default_value="", help="Workspace folder to find files for VecDB and AST. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
-    #[structopt(long, help="Generate template.yaml for custom settings")]
+    #[structopt(long, help="Generate ~/.cache/refact/bring-your-own-key.yaml to manually specify models, endpoints, and keys.")]
     pub save_byok_file: bool
 }
 impl CommandLine {

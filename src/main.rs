@@ -8,7 +8,7 @@ use tracing_appender;
 use backtrace;
 
 use crate::background_tasks::start_background_tasks;
-use crate::cmd_commands::exec_commands_if_exists;
+use crate::cmd_commands::exec_command_if_exists;
 use crate::lsp::spawn_lsp_task;
 use crate::telemetry::{basic_transmit, snippets_transmit};
 
@@ -51,7 +51,7 @@ async fn main() {
     rayon::ThreadPoolBuilder::new().num_threads(cpu_num / 2).build_global().unwrap();
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
     let cache_dir = home_dir.join(".cache/refact");
-    exec_commands_if_exists(&cache_dir);
+    exec_command_if_exists(&cache_dir);
     let (gcx, ask_shutdown_receiver, shutdown_flag, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
     let (logs_writer, _guard) = if cmdline.logs_stderr {
         tracing_appender::non_blocking(std::io::stderr())

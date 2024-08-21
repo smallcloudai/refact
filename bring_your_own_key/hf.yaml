@@ -5,6 +5,7 @@ chat_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
 chat_apikey: "$HF_TOKEN"
 chat_model: meta-llama/Llama-2-70b-chat-hf
 
+completion_endpoint_style: "hf"
 completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
 completion_model: bigcode/starcoder2-3b
 completion_apikey: "$HF_TOKEN"

@@ -11,7 +11,7 @@ fn generate_byok_file(file_name: &PathBuf) {
     file.write_all(SIMPLE_CAPS.as_ref()).expect("Failed to write to file");
 }
 
-pub fn exec_commands_if_exists(cache_dir: &PathBuf) {
+pub fn exec_command_if_exists(cache_dir: &PathBuf) {
     let cmdline = CommandLine::from_args();
     if cmdline.save_byok_file {
         let file_name = cache_dir.join("bring-your-own-key.yaml");
