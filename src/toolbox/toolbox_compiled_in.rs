@@ -76,8 +76,8 @@ system_prompts:
 subchat_tool_parameters:
   patch:
     model: "gpt-4o-mini"
-    n_ctx: 32000
-    temperature: 0.7
+    n_ctx: 64000
+    temperature: 0.5
     max_new_tokens: 8192
   locate:
     model: "gpt-4o-mini"

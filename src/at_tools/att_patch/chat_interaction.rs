@@ -8,13 +8,12 @@ use tokio::sync::Mutex as AMutex;
 use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_commands::at_file::{at_file_repair_candidates, context_file_from_file_path};
+use crate::at_commands::at_file::{file_repair_candidates, context_file_from_file_path};
 use crate::at_tools::att_patch::args_parser::PatchArguments;
 use crate::at_tools::att_patch::tool::{DefaultToolPatch, N_CHOICES};
 use crate::at_tools::att_patch::ast_interaction::{get_signatures_by_imports_traversal };
 use crate::at_tools::subchat::subchat_single;
 use crate::cached_tokenizers;
-use crate::call_validation::{ChatMessage, ChatUsage};
 use crate::caps::get_model_record;
 use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage, ContextFile};
 use crate::scratchpads::pp_utils::count_tokens;
@@ -37,7 +36,8 @@ async fn read_file(
     ccx: Arc<AMutex<AtCommandsContext>>,
     file_path: String,
 ) -> Option<ContextFile> {
-    let candidates = at_file_repair_candidates(ccx.clone(), &file_path, false).await;
+    let gcx = ccx.lock().await.global_context.clone();
+    let candidates = file_repair_candidates(gcx.clone(), &file_path, 10, false).await;
     match context_file_from_file_path(ccx.clone(), candidates, file_path.clone()).await {
         Ok(x) => Some(x),
         Err(e) => None
@@ -126,6 +126,9 @@ async fn create_extra_context(
     messages: &Vec<ChatMessage>,
     tool_call_id: &String,
     usage: &mut ChatUsage,
+    model: &str,
+    temperature: Option<f32>,
+    max_new_tokens: usize,
 ) -> Result<Vec<ChatMessage>, String> {
     let gcx = ccx.lock().await.global_context.clone();
     let mut new_messages = messages.clone();
@@ -176,13 +179,13 @@ async fn create_extra_context(
         let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
         let messages = subchat_single(
             ccx.clone(),
-            &DEFAULT_MODEL_NAME,
+            &model,
             new_messages,
             vec!["cat".to_string()],
             None,
             true,
-            Some(TEMPERATURE),
-            Some(MAX_NEW_TOKENS),
+            temperature,
+            Some(max_new_tokens),
             N_CHOICES,
             Some(usage),
             Some(format!("{log_prefix}-patch")),
@@ -204,6 +207,7 @@ async fn make_chat_history(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model: &str,
     max_tokens: usize,
+    temperature: Option<f32>,
     max_new_tokens: usize,
     args: &PatchArguments,
     tool_call_id: &String,
@@ -297,7 +301,8 @@ async fn make_chat_history(
     }
 
     let mut chat_messages = create_extra_context(
-        ccx.clone(), paths, extra_paths_mb, extra_symbols_mb, &mut chat_messages, tool_call_id, usage
+        ccx.clone(), paths, extra_paths_mb, extra_symbols_mb, &mut chat_messages, tool_call_id, 
+        usage, model, temperature, max_new_tokens
     ).await?
         .iter()
         .map(|x| if x.role != "tool" { x.clone() } else { 
@@ -324,7 +329,8 @@ pub async fn execute_chat_model(
     usage: &mut ChatUsage,
 ) -> Result<Vec<String>, String> {
     let messages = make_chat_history(
-        ccx.clone(), model, max_tokens, max_new_tokens, args, tool_call_id, usage
+        ccx.clone(), model, max_tokens, temperature, 
+        max_new_tokens, args, tool_call_id, usage,
     ).await?;
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let response = subchat_single(

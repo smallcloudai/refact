@@ -28,7 +28,7 @@ pub async fn parse_diff_chunks_from_message(
 
     let gcx = ccx.lock().await.global_context.clone();
     let maybe_ast_module = gcx.read().await.ast_module.clone();
-    correct_and_validate_chunks(&mut chunks, gcx).await?;
+    correct_and_validate_chunks(gcx, &mut chunks).await?;
     for chunk in chunks.iter() {
         let path = PathBuf::from(&chunk.file_name);
         let text_before = if chunk.file_action == "add" {
