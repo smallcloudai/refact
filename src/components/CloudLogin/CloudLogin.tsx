@@ -64,7 +64,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
   return (
     <Flex direction="column" gap="2" maxWidth="540px" m="8px">
       <Text weight="bold" size="4">
-        Cloud inference
+        Select plan
       </Text>
       <RadioCards.Root
         style={{ display: "flex", flexDirection: "column", gap: "6px" }}
