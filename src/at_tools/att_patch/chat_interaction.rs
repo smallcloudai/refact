@@ -40,7 +40,7 @@ async fn read_file(
     let candidates = file_repair_candidates(gcx.clone(), &file_path, 10, false).await;
     match context_file_from_file_path(ccx.clone(), candidates, file_path.clone()).await {
         Ok(x) => Some(x),
-        Err(e) => None
+        Err(_) => None
     }
 }
 
