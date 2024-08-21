@@ -10,9 +10,9 @@ chat_model: gpt-4o-mini
 
 # -- vectorization model --
 
-default_embeddings_model: text-embedding-3-small
-endpoint_embeddings_template: https://api.openai.com/v1/embeddings
-size_embeddings: 1536
+#default_embeddings_model: text-embedding-3-small
+#endpoint_embeddings_template: https://api.openai.com/v1/embeddings
+#size_embeddings: 1536
 
 
 # no code completion though :/
