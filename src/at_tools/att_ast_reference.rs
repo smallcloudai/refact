@@ -26,6 +26,21 @@ impl Tool for AttAstReference {
             Some(v) => { return Err(format!("argument `symbol` is not a string: {:?}", v)) }
             None => { return Err("argument `symbol` is missing".to_string()) }
         };
+        let skeleton = match args.get("skeleton") {
+            Some(Value::Bool(s)) => *s,
+            Some(Value::String(s)) => {
+                if s == "true" {
+                    true
+                } else if s == "false" {
+                    false
+                } else {
+                    return Err(format!("argument `skeleton` is not a bool: {:?}", s));
+                }
+            }
+            Some(v) => return Err(format!("argument `skeleton` is not a bool: {:?}", v)),
+            None => false,
+        };
+        ccx.lock().await.pp_skeleton = skeleton;
 
         if let Some(dot_index) = symbol.find('.') {
             symbol = symbol[dot_index + 1..].to_string();

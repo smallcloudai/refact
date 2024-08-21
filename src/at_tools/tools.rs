@@ -40,8 +40,8 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
         ("web".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_web::AttWeb{}) as Box<dyn Tool + Send>))),
         ("cat".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_cat::AttCat{}) as Box<dyn Tool + Send>))),
         // ("relevant_files".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_relevant_files::AttRelevantFiles{}) as Box<dyn Tool + Send>))),
-        ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_locate::AttLocate{}) as Box<dyn Tool + Send>))),
-        // ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_relevant_files::AttRelevantFiles{}) as Box<dyn Tool + Send>))),
+        // ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_locate::AttLocate{}) as Box<dyn Tool + Send>))),
+        ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_relevant_files::AttRelevantFiles{}) as Box<dyn Tool + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
@@ -102,6 +102,9 @@ tools:
       - name: "symbol"
         type: "string"
         description: "The exact name of a function, method, class, type alias. No spaces allowed."
+      - name: "skeleton"
+        type: "boolean"
+        description: "Skeletonize ouput. Set true to explore, set false when as much context as possible is needed."
     parameters_required:
       - "symbol"
 
@@ -111,6 +114,9 @@ tools:
       - name: "symbol"
         type: "string"
         description: "The exact name of a function, method, class, type alias. No spaces allowed."
+      - name: "skeleton"
+        type: "boolean"
+        description: "Skeletonize ouput. Set true to explore, set false when as much context as possible is needed."
     parameters_required:
       - "symbol"
 

@@ -57,9 +57,9 @@ impl Tool for AttCat {
                 }
             }
             Some(v) => return Err(format!("argument `skeleton` is not a bool: {:?}", v)),
-            None => false,
+            None => false,  // the default
         };
-        let (gcx, top_n) = { 
+        let (gcx, top_n) = {
             let ccx_lock = ccx.lock().await;
             (ccx_lock.global_context.clone(), ccx_lock.top_n)
         };

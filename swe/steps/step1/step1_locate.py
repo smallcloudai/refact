@@ -40,7 +40,7 @@ class Locate(Step):
         except Exception as e:
             raise RuntimeError(f"content is not decodable as json:\n{res_message.content}\nError: {e}")
 
-        if 0:
+        if 1:
             # Oleg branch
             # {
             #   "filename": {

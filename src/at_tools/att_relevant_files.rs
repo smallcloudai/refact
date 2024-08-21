@@ -60,10 +60,6 @@ impl Tool for AttRelevantFiles {
 }
 
 
-// const USE_STRATEGY_PROMPT: &str = r###"
-// 💿 The strategy you must follow is {USE_STRATEGY}
-// "###;
-
 const RF_SYSTEM_PROMPT: &str = r###"You are an expert in finding relevant files within a big project. Your job is to find files, don't propose any changes.
 
 Look at task description. Here's the list of reasons a file might be relevant wrt task description:
@@ -78,9 +74,15 @@ pick up your results, likely they will have to only look at symbols selected by 
 not whole files, because of the space constraints.
 
 Potential strategies:
-CATFILES = call tree(), spot up to 20 suspicious files just by looking at file names.
-GOTODEF = call definition() for symbols either visible in task description, or symbols you can guess; don't call definition() for symbols from standard libraries, only symbols within the project are indexed.
+
+TREEGUESS = call tree(), spot up to 20 suspicious files just by looking at file names.
+
+GOTODEF = call definition("xxx", skeleton=true) in parallel for symbols either visible in task description, or symbols you can guess; don't call definition() for symbols from standard libraries, only
+symbols within the project are indexed. It's fine, or even desirable to have a second round of parallel definition("xxx", skeleton=true) calls, but only for symbols that are actually relevant for
+the task. If the strategy doesn't work, just give up and save time.
+
 VECDBSEARCH = search() can find semantically similar code, text in comments, and sometimes documentation.
+
 CUSTOM = a different strategy that makes sense for the task at hand, try something dissimilar to the strategies described.
 
 You'll receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate
@@ -215,7 +217,7 @@ async fn find_relevant_files(
     let mut futures = vec![];
 
     let mut strategy_tree = strategy_messages.clone();
-    strategy_tree.push(crate::at_tools::att_locate::pretend_tool_call("tree", "{}", "I'll use CATFILES strategy, to do that I need to start with a tree() call.".to_string()));
+    strategy_tree.push(crate::at_tools::att_locate::pretend_tool_call("tree", "{}", "I'll use TREEGUESS strategy, to do that I need to start with a tree() call.".to_string()));
     futures.push(subchat(
         ccx.clone(),
         RF_MODEL_NAME,
@@ -226,35 +228,27 @@ async fn find_relevant_files(
         RF_EXPERT_PLEASE_WRAP_UP,
         4,
         Some(0.8),
-        Some(format!("{log_prefix}-rf-step1-tree")),
+        Some(format!("{log_prefix}-rf-step1-treeguess")),
         Some(tool_call_id.clone()),
-        Some(format!("{log_prefix}-rf-step1-tree")),
+        Some(format!("{log_prefix}-rf-step1-treeguess")),
     ));
 
-    // let mut strategies = vec!["CATFILES", "GOTODEF", "GOTOREF", "CUSTOM"];
-    // if vecdb_on {
-    //     tools_subset.push("search".to_string());
-    //     strategies.push("VECDBSEARCH");
-    // }
-
-    // for strategy in strategies {
-    //     let mut messages_copy = messages.clone();
-    //     messages_copy.push(ChatMessage::new("user".to_string(), USE_STRATEGY_PROMPT.replace("{USE_STRATEGY}", &strategy)));
-    //     let f = subchat(
-    //         ccx.clone(),
-    //         RF_MODEL_NAME,
-    //         messages_copy,
-    //         tools_subset.clone(),
-    //         RF_WRAP_UP_DEPTH,
-    //         RF_WRAP_UP_TOKENS_CNT,
-    //         RF_EXPERT_PLEASE_WRAP_UP,
-    //         None,
-    //         Some(format!("{log_prefix}-rf-step1-{strategy}")),
-    //         Some(tool_call_id.clone()),
-    //         Some(format!("{log_prefix}-rf-step1-{strategy}")),
-    //     );
-    //     futures.push(f);
-    // }
+    let mut strategy_gotodef = strategy_messages.clone();
+    strategy_gotodef.push(ChatMessage::new("user".to_string(), "💿 Use GOTODEF strategy.".to_string()));
+    futures.push(subchat(
+        ccx.clone(),
+        RF_MODEL_NAME,
+        strategy_gotodef,
+        vec!["definition", "references", "cat"].iter().map(|x|x.to_string()).collect::<Vec<_>>(),
+        5,
+        RF_WRAP_UP_TOKENS_CNT,
+        RF_EXPERT_PLEASE_WRAP_UP,
+        1,
+        Some(0.2),
+        Some(format!("{log_prefix}-rf-step1-gotodef")),
+        Some(tool_call_id.clone()),
+        Some(format!("{log_prefix}-rf-step1-gotodef")),
+    ));
 
     let results: Vec<Vec<Vec<ChatMessage>>> = join_all(futures).await.into_iter().filter_map(|x| x.ok()).collect();
     let only_last_messages: Vec<ChatMessage> = results.into_iter()
