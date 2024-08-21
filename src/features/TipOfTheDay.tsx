@@ -1,5 +1,5 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
-import { Config } from "../events";
+import type { Config } from "../features/Config/configSlice";
 
 // todo: get shortcuts from settings
 export const tips: string[] = [
