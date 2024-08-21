@@ -421,12 +421,23 @@ fn splitting_diff_blocks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffBlock> {
                         }
                     }
                 }
+                if !diff_lines.is_empty() {
+                    exported_blocks.push(DiffBlock {
+                        file_name_before: diff_block.file_name_before.clone(),
+                        file_name_after: diff_block.file_name_after.clone(),
+                        action: diff_block.action.clone(),
+                        file_lines: diff_block.file_lines.clone(),
+                        hunk_idx: diff_block.hunk_idx,
+                        diff_lines: diff_lines.clone(),
+                    });
+                    diff_lines.clear();
+                }
             }
         } else {
             exported_blocks.extend(new_blocks);
         }
     }
-    diff_blocks.clone()
+    exported_blocks.clone()
 }
 
 // Step 1. Fix idents using correct_spaces_offset 
@@ -592,8 +603,8 @@ In the diff generation use following project directories:
 ### STEPS TO FOLLOW for generating the correct diff
 1. Review the provided tasks and files.
 2. Use extra context if it's given to make changes as correct as possible, but don't change files in the extra context.
-3. Before generating the diff, write short code snippets which solve the todo. Those snippets then are going to be translated to the diff format.
-4. Generate the diff in the specified format (which is given below).
+3. Before generating the diff, write code snippets in a free form which solve the given task. Those snippets then are going to be translated to the diff format.
+4. Translate generated solution to the unified diff format, which is given below.
 
 ### UNIFIED DIFF FORMATTING RULES
 There are 4 possible actions can be expressed as the unified diff: editing, adding, renaming and removing files. 
@@ -2223,32 +2234,143 @@ if __name__ == __main__:
     #[tokio::test]
     async fn info_test() {
         let input = r#"
+To consolidate the repeated functions `updateBird`, `flap`, `gameLoop`, and the event listener for `keydown` in `flappy_bird.js`, I will create single implementations for each of these functions and remove the duplicates. Here's the modified code:
+
 ```diff
 --- /home/svakhreev/tmp/flappy_bird/flappy_bird.js
 +++ /home/svakhreev/tmp/flappy_bird/flappy_bird.js
-@@ -+ block @@
-+function calculateScore() {
-+    obstacles.forEach(obstacle => {
-+        if (!obstacle.passed && bird.x > obstacle.x + obstacle.width) {
-+            score++; // Increase score when the bird passes an obstacle
-+            obstacle.passed = true; // Mark the obstacle as passed
-+        }
-+    });
-+}
-+
-@@ -+ block @@
-     updateObstacles();
-+    calculateScore(); // Update score based on passed obstacles
-     drawScore(); // Draw score in the game loop
-@@ -+ block @@
+@@ file_replace_block @@
+ let canvas = document.getElementById('gameCanvas');
+ let ctx = canvas.getContext('2d');
+ let obstacles = [];
+ let gameOver = false;
+ let score = 0;
+
+ function createObstacle() {
+     let obstacleHeight = Math.random() * (canvas.height / 2) + 20;
+     let obstacleY = (canvas.height - obstacleHeight) / 2; // Center the obstacle in the middle
+     let obstacle = {
+         x: canvas.width,
+         y: obstacleY,
+         width: 20,
+         height: obstacleHeight,
+         passed: false // Track if the obstacle has been passed
+     };
+     obstacles.push(obstacle);
+ }
+
+ function drawObstacles() {
+     ctx.fillStyle = 'green';
      obstacles.forEach(obstacle => {
          ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
      });
-+    ctx.fillStyle = 'black';
-+    ctx.font = '20px Arial';
-+    ctx.fillText('Score: ' + score, 10, 20); // Display score on canvas
  }
+
+ let bird = {
+     x: 50,
+     y: 150,
+     width: 20,
+     height: 20,
+     gravity: 0.4,
+     lift: -8,
+     velocity: 0
+ };
+
+ function checkCollision() {
+     obstacles.forEach(obstacle => {
+         if (bird.x < obstacle.x + obstacle.width &&
+             bird.x + bird.width > obstacle.x &&
+             bird.y < obstacle.y + obstacle.height &&
+             bird.y + bird.height > obstacle.y) {
+             gameOver = true;
+         }
+     });
+ }
+
+ function drawScore() {
+     ctx.fillStyle = 'black';
+     ctx.font = '20px Arial';
+     ctx.fillText('Score: ' + score, 10, 20); // Display score on canvas
+ }
+
+ function drawBird() {
+     ctx.fillStyle = 'yellow';
+     ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+ }
+
+ function updateBird() {
+     bird.velocity += bird.gravity;
+     bird.y += bird.velocity;
+
+     if (bird.y + bird.height >= canvas.height) {
+         bird.y = canvas.height - bird.height;
+         bird.velocity = 0;
+     }
+
+     if (bird.y < 0) {
+         bird.y = 0;
+         bird.velocity = 0;
+     }
+ }
+
+ function flap() {
+     bird.velocity += bird.lift;
+ }
+
+ function updateObstacles() {
+     obstacles.forEach(obstacle => {
+         obstacle.x -= 2; // Move the obstacle to the left
+         // Check if the bird has passed the obstacle
+         if (!obstacle.passed && obstacle.x + obstacle.width < bird.x) {
+             score++; // Increment score
+             obstacle.passed = true; // Mark this obstacle as passed
+         }
+     });
+     // Remove obstacles that have gone off screen
+     obstacles = obstacles.filter(obstacle => obstacle.x + obstacle.width > 0);
+ }
+
+ function restartGame() {
+     gameOver = false;
+     obstacles = [];
+     score = 0;
+     bird.y = 150; // Reset bird position
+     bird.velocity = 0; // Reset bird velocity
+     gameLoop(); // Restart the game loop
+ }
+
+ function gameLoop() {
+     ctx.clearRect(0, 0, canvas.width, canvas.height);
+     drawBird();
+     updateBird();
+     drawObstacles();
+     updateObstacles();
+     drawScore(); // Draw score in the game loop
+     checkCollision();
+
+     if (gameOver) {
+         ctx.fillStyle = 'red';
+         ctx.font = '30px Arial';
+         ctx.fillText('Game Over', canvas.width / 2 - 70, canvas.height / 2);
+         ctx.fillText('Press R to Restart', canvas.width / 2 - 100, canvas.height / 2 + 40);
+         return; // Stop the game loop
+     }
+
+     requestAnimationFrame(gameLoop);
+ }
+
+ document.addEventListener('keydown', function(event) {
+     if (event.key === 'r' && gameOver) {
+         restartGame();
+     } else if (event.key === ' ') {
+         flap(); // Flap only on space key
+     }
+ });
+
+ setInterval(createObstacle, 1500); // Create a new obstacle every 1.5 seconds
+ gameLoop();
 ```
+
 "#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
@@ -2258,7 +2380,7 @@ if __name__ == __main__:
             &result,
         );
 
-        assert_eq!(input, changed_text);
+        assert_eq!(changed_text, input);
         print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
     }
 }

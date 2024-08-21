@@ -64,11 +64,17 @@ fn choose_correct_chunk(chunks: Vec<Result<String, String>>) -> Result<String, S
     for chunk in non_error_chunks.iter() {
         *chunks_freq.entry(chunk.as_str()).or_insert(0) += 1;
     }
-    Ok(chunks_freq
+    let max_repeats = chunks_freq.iter().max_by_key(|(k, _)| *k).unwrap().1.clone();
+    let chunks_max_repeats = chunks_freq
         .iter()
-        .max_by_key(|(_, v)| *v)
-        .map(|(k, _)| k.to_string())
-        .expect("see the logic above, this array should not be empty"))
+        .filter(|(k, v)| **v == max_repeats)
+        .map(|x| x.0.clone())
+        .collect::<Vec<_>>();
+    Ok(chunks_max_repeats
+        .iter()
+        .max()
+        .expect("There is no max repeats")
+        .to_string())
 }
 
 #[async_trait]
