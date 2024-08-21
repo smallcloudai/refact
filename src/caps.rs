@@ -489,11 +489,11 @@ pub fn which_scratchpad_to_use<'a>(
 }
 
 pub async fn get_model_record(
-    global_context: Arc<RwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     model: &str,
 ) -> Result<ModelRecord, String> {
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(
-        global_context.clone(), 0,
+        gcx.clone(), 0,
     ).await.map_err(|e| {
         warn!("no caps: {:?}", e);
         format!("failed to load caps: {}", e)
@@ -531,18 +531,18 @@ chat_model: gpt-4o-mini
 # ------------
 # cloud_name: HuggingFace API
 # endpoint_style: "hf"
-# 
+#
 # chat_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
 # chat_apikey: "$HF_TOKEN"
 # chat_model: meta-llama/Llama-2-70b-chat-hf
-# 
+#
 # completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
 # completion_model: bigcode/starcoder2-3b
 # completion_apikey: "$HF_TOKEN"
-#   
+#
 # tokenizer_rewrite_path:
 #   meta-llama/Llama-2-70b-chat-hf: TheBloke/Llama-2-70B-fp16
-#   
+#
 # embedding_endpoint_style: "hf"
 # embedding_endpoint: "https://api-inference.huggingface.co/pipeline/feature-extraction/$MODEL"
 # embedding_apikey: "$HF_TOKEN"
