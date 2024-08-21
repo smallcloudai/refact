@@ -64,6 +64,9 @@ fn validate_chunk(chunk: &DiffChunk) -> Result<(), String> {
     if !chunk.is_file && !chunk.lines_add.is_empty() &&!chunk.lines_remove.is_empty() {
         return Err("lines add and lines remove should be empty for non-file chunks".to_string());
     }
+    if chunk.file_action == "add" && !chunk.lines_remove.is_empty() {
+        return Err("file_action `add` is not allowed with lines remove".to_string());
+    }
     Ok(())
 }
 
@@ -97,20 +100,20 @@ pub async fn correct_and_validate_chunks(
     }
     
     for c in chunks.iter_mut() {
-        if let Some(file_path_rename) = &c.file_name_rename {
-            let (true_file_path_rename, is_file_rename) = detect_file_type_and_complete_path(gcx.clone(), &file_path_rename, c).await?;
+        if c.file_action == "add" {
+            c.is_file = PathBuf::from(&c.file_name).extension().is_some() || !c.lines_add.is_empty();
+        } else if c.file_action == "rename" {
+            let (true_file_path_rename, is_file_rename) = detect_file_type_and_complete_path(gcx.clone(), &c.file_name_rename.clone().unwrap_or_default(), c).await?;
             c.is_file = is_file_rename;
             c.file_name_rename = Some(true_file_path_rename);
         } else {
             let (true_file_path, is_file) = detect_file_type_and_complete_path(gcx.clone(), &c.file_name, c).await?;
             c.is_file = is_file;
-            if c.file_action != "add" {
-                c.file_name = true_file_path;
-            }
+            c.file_name = true_file_path;
         }
-        
         validate_chunk(c).map_err(|e| format!("error validating chunk {:?}:\n{}", c, e))?;
     }
+        
     Ok(())
 }
 
