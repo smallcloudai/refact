@@ -176,13 +176,14 @@ export const DiffContent: React.FC<{
   const [open, setOpen] = React.useState(false);
 
   const diffStateRequest = useDiffStateQuery({ chunks, toolCallId });
-  const { onSubmit, result } = useDiffApplyMutation();
+  const { onSubmit, result: _result } = useDiffApplyMutation();
 
   const groupedDiffs: Record<string, DiffWithStatus[]> = React.useMemo(() => {
     const diffWithStatus = chunks.map((diff, index) => {
       return {
         ...diff,
-        state: result.data?.state[index] ?? 0,
+
+        // state: result.data?.state[index] ?? 0,
         can_apply: diffStateRequest.data?.can_apply[index] ?? false,
         applied: diffStateRequest.data?.state[index] ?? false,
         index,
@@ -190,12 +191,7 @@ export const DiffContent: React.FC<{
     });
 
     return groupBy(diffWithStatus, (diff) => diff.file_name);
-  }, [
-    chunks,
-    diffStateRequest.data?.can_apply,
-    diffStateRequest.data?.state,
-    result.data?.state,
-  ]);
+  }, [chunks, diffStateRequest]);
 
   // if (diffStateRequest.isFetching) return null;
   // if (diffStateRequest.isError) return null;
@@ -230,7 +226,7 @@ export const DiffContent: React.FC<{
 };
 
 export type DiffWithStatus = DiffChunk & {
-  state: 0 | 1 | 2;
+  state?: 0 | 1 | 2;
   can_apply: boolean;
   applied: boolean;
   index: number;
