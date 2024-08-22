@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::path::PathBuf;
+use hashbrown::HashMap;
 use tokio::sync::Mutex as AMutex;
 use ropey::Rope;
 use tracing::warn;
@@ -28,9 +29,22 @@ pub async fn parse_diff_chunks_from_message(
     let gcx = ccx.lock().await.global_context.clone();
     let maybe_ast_module = gcx.read().await.ast_module.clone();
     correct_and_validate_chunks(gcx, &mut chunks).await?;
+    let mut chunks_per_files = HashMap::new();
     for chunk in chunks.iter() {
-        let path = PathBuf::from(&chunk.file_name);
-        let text_before = if chunk.file_action == "add" {
+        chunks_per_files.entry(chunk.file_name.clone()).or_insert(vec![]).push(chunk.clone());
+    }
+    for (file_name, chunks) in chunks_per_files {
+        let path = PathBuf::from(&file_name);
+        let action = chunks
+            .first()
+            .map(|x| x.file_action.clone())
+            .expect("chunks should have at least one element");
+        if (action == "add" || action == "remove" || action == "rename") && chunks.len() > 1 {
+            warn!("The file `{:?}` has multiple `add` or `remove` or `rename` diff chunks, it's not supported now", path);
+            return Err(format!("The file `{:?}` has multiple `add` or `remove` or `rename` diff chunks, it's not supported now", path));
+        }
+        
+        let text_before = if action == "add" {
             Rope::new()
         } else {
             match read_file_from_disk(&path).await {
@@ -43,31 +57,34 @@ pub async fn parse_diff_chunks_from_message(
         };
         let (results, outputs) = apply_diff_chunks_to_text(
             &text_before.to_string(),
-            vec![(0usize, chunk)],
+            chunks.iter().enumerate().collect::<Vec<_>>(),
             vec![], 
             1
         );
-        let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, vec![chunk.clone()]);
+        let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
         let all_applied = outputs_unwrapped.iter().all(|x|x.applied);
-        let reason = outputs_unwrapped.first().unwrap().detail.clone();
         if !all_applied {
-            warn!("Couldn't apply the generated diff, the following chunk is broken:\n{:?}", chunk);
-            return Err(format!("Couldn't apply the generated diff, probably it's broken: {:?}", reason));
+            let mut message = "Couldn't apply the generated diff, the following chunk is broken:\n".to_string();
+            for apply_out in outputs_unwrapped.iter().filter(|x| x.applied)  {
+                message.push_str(&format!("{:?}\n", apply_out.detail));
+            }
+            warn!(message);
+            return Err(message);
         }
         if results.is_empty() {
-            warn!("No apply results were found for the chunk:\n{:?}", chunk);
-            return Err("No apply results were found".to_string());
+            warn!("No apply results were found for the filename:\n{:?}", file_name);
+            return Err(format!("No apply results were found for the filename:\n{:?}", file_name));
         }
 
         let text_after = if let Some(file_text) = results.first().map(|x| x.file_text.clone()).flatten() {
             file_text
         } else {
             // those chunks could miss the text_after, so we just skip them
-            if chunk.file_action == "remove" || chunk.file_action == "rename" {
+            if action == "remove" || action == "rename" {
                 continue;
             }
-            warn!("Diff application error: text_after is missing for the chunk:\n{:?}", chunk);
-            return Err("Diff application error: text_after is missing".to_string());
+            warn!("Diff application error: text_after is missing for the filename:\n{:?}", file_name);
+            return Err(format!("Diff application error: text_after is missing for the filename:\n{:?}", file_name));
         };
         match &maybe_ast_module {
             Some(ast_module) => {

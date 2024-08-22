@@ -601,7 +601,7 @@ impl UnifiedDiffFormat {
         workspace_projects_dirs: &str,
         first_workspace_project_dir: &str,
     ) -> String {
-        let mut prompt = r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT. 
+        let prompt = r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT. 
 You will be given a problem statement and a list of files. 
 Your objective is to create a unified diff with a specific format output based on the provided task and files. 
 In the diff generation use following project directories:
