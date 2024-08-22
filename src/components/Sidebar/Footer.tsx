@@ -105,17 +105,15 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
           </DropdownMenu.Label>
         )}
 
-        {user.data && (
-          <DropdownMenu.Item
-            onSelect={(event) => {
-              event.preventDefault();
-              logout();
-              handleNavigation("cloud login");
-            }}
-          >
-            Logout
-          </DropdownMenu.Item>
-        )}
+        <DropdownMenu.Item
+          onSelect={(event) => {
+            event.preventDefault();
+            logout();
+            handleNavigation("cloud login");
+          }}
+        >
+          Logout
+        </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
           Statistics
