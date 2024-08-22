@@ -289,9 +289,8 @@ async fn make_chat_history(
             }
             None => {
                 let message = format!(
-                    "{}\n<{}>",
+                    "The file `{}` cannot be found on the disk; it needs to be added to the project (use add format)",
                     file,
-                    "Cannot find given file on the disk, probably it's intended to be added"
                 ).to_string();
                 tokens += 3 + count_tokens(&tokenizer_ref, &message);
                 chat_messages.push(ChatMessage::new("user".to_string(), message));

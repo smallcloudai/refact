@@ -629,6 +629,7 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 - When use `@@ -+ block @@`, make sure you mark all new or modified lines with `+`.
 - When use `@@ -+ block @@`, make sure you include and mark all lines that need to be removed or changed as `-` lines.
 - When use `@@ file_replace_block @@` there is no need to use `-` or `+` markings for lines.
+- Use `@@ file_replace_block @@` if it's needed to fix syntax errors in the file.
 - Output hunks in whatever order makes the most sense.
 - Rewrite the whole blocks of code instead of making multiple small changes.
 - Use filenames from the user as given, don't change them.
@@ -2250,21 +2251,118 @@ if __name__ == __main__:
     #[tokio::test]
     async fn info_test() {
         let input = r#"
+
+1. Fixing the missing curly braces in `startObstacleCreation` and `drawObstacles`.
+2. Correcting the array initialization for `obstacles`.
+3. Fixing the typo in `createObstacle`.
+4. Completing the condition in `updateObstacles`.
+5. Adding missing closing braces for functions.
+
+Now, let's translate these changes into a unified diff format.
+
 ```diff
 --- /home/svakhreev/tmp/flappy_bird/game.js
 +++ /home/svakhreev/tmp/flappy_bird/game.js
-@@ -+ block @@
- function updateObstacles() {
-     obstacles.forEach(obstacle => {
-         obstacle.x -= 2; // Move obstacles to the left
-     });
-     // Remove obstacles that are off-screen
--    if (obstacles.length && obstacles[0].x + obstacles[0].widt
-+    if (obstacles.length && obstacles[0].x + obstacles[0].width <= 0) {
-         obstacles.shift();
-         score++; // Increment score when an obstacle is passed
-     }
- }
+@@ file_replace_block @@
+let obstacleInterval; // Variable to hold the interval ID
+
+function startObstacleCreation() {
+    if (!obstacleInterval) { // Check if the interval is not already set
+        obstacleInterval = setInterval(createObstacle, 3000); // Create a new obstacle every 3 seconds
+    }
+}
+const obstacles = []; // Array to hold obstacles
+const obstacleWidth = 20; // Width of the obstacles
+const obstacleHeight = 100; // Height of the obstacles
+let score = 0; // Initialize score
+
+function createObstacle() {
+    const obstacle = {
+        x: canvas.width,
+        y: Math.random() * (canvas.height - obstacleHeight),
+        width: obstacleWidth,
+        height: obstacleHeight
+    };
+    obstacles.push(obstacle);
+}
+
+function drawObstacles() {
+    ctx.fillStyle = 'red'; // Color of the obstacles
+    obstacles.forEach(obstacle => {
+        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    });
+}
+
+function updateObstacles() {
+    obstacles.forEach(obstacle => {
+        obstacle.x -= 2; // Move obstacles to the left
+    });
+    // Remove obstacles that are off-screen
+    if (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
+        obstacles.shift();
+        score++; // Increment score when an obstacle is passed
+    }
+}
+
+function checkCollision() {
+    obstacles.forEach(obstacle => {
+        if (bird.x < obstacle.x + obstacle.width &&
+            bird.x + bird.width > obstacle.x &&
+            bird.y < obstacle.y + obstacle.height &&
+            bird.y + bird.height > obstacle.y) {
+            // Collision detected
+            score = 0; // Reset score
+            obstacles.length = 0; // Clear obstacles
+            clearInterval(obstacleInterval); // Clear the existing interval
+            obstacleInterval = null; // Reset the interval ID
+            startObstacleCreation(); // Start a new interval for obstacle creation
+            gameLoop(); // Restart the game loop
+        }
+    });
+}
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let bird = { x: 50, y: 150, width: 20, height: 20, gravity: 0.6, lift: -15, velocity: 0 };
+
+function drawBird() {
+    ctx.fillStyle = "yellow";
+    ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+}
+
+function update() {
+    bird.velocity += bird.gravity;
+    bird.y += bird.velocity;
+    
+    if (bird.y + bird.height >= canvas.height) {
+        bird.y = canvas.height - bird.height;
+        bird.velocity = 0;
+    }
+    
+    if (bird.y < 0) {
+        bird.y = 0;
+        bird.velocity = 0;
+    }
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBird();
+    update();
+    drawObstacles(); // Draw obstacles
+    updateObstacles(); // Update obstacles
+    checkCollision(); // Check for collisions
+    requestAnimationFrame(gameLoop);
+}
+
+document.addEventListener("keydown", () => {
+    bird.velocity += bird.lift;
+});
+// Start the obstacle creation interval when the game starts
+startObstacleCreation();
+
+gameLoop();
 ``` 
 "#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
