@@ -758,6 +758,7 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 @@ file_replace_block @@
 <file_content>
 ```
+USING `+` and `-` markings IS MANDATORY in `@@ -+ block @@`!!!
 DO NOT FORGET TO FOLLOW STEPS AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string();
         prompt
             .replace("%WORKSPACE_PROJECTS_DIRS%", workspace_projects_dirs)
