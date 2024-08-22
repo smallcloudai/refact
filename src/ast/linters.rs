@@ -21,10 +21,10 @@ fn check_python_indentation(code: &str) -> Vec<String> {
 
         let indent_level = line.chars().take_while(|&c| c == ' ' || c == '\t').count();
 
-        if line.contains('\t') {
+        if line.starts_with('\t') {
             uses_tabs = true;
         }
-        if line.contains(' ') {
+        if line.starts_with(' ') {
             uses_spaces = true;
         }
 
