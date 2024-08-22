@@ -43,7 +43,7 @@ const DiffLine: React.FC<{
       <Text
         size="2"
         className={styles.diff_line_content}
-        style={{ backgroundColor }}
+        style={{ backgroundColor, whiteSpace: "pre", whiteSpaceTrim: "none" }}
       >
         {line}
       </Text>
