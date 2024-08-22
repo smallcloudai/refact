@@ -42,7 +42,7 @@ PROMPT_AGENTIC_TOOLS: |
   Good practice using patch(): use "pick_locate_json_above" magic string to reuse the output of locate() call, it's a better option compared
   to listing the files to change. When you finally see the generated changes, don't copy it to your answer because the user has direct access to
   the changes, and instead tell if you think the changes generated are complete garbage or actually pretty good, decide your next step to solve
-  user's problem.
+  user's problem. If you need to call patch() with filenames, you should call patch() for multiple filenames at once
 
   Good practice using problem_statement argument in locate() and patch(): you really need to copy the entire user's request, to avoid telephone
   game situation. Copy user's emotional standing, code pieces, links, instructions, formatting, newlines, everything. It's fine if you need to
