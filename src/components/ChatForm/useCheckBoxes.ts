@@ -32,7 +32,7 @@ const useAttachActiveFile = (): [Checkbox, () => void] => {
 
   const [attachFileCheckboxData, setAttachFile] = useState<Checkbox>({
     name: "file_upload",
-    checked: false,
+    checked: !!activeFile.name,
     label: "Attach",
     value: filePathWithLines,
     disabled: !activeFile.name,
