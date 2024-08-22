@@ -16,6 +16,7 @@ import { useTourRefs } from "../../features/Tour";
 import { useGetUser, useLogout } from "../../hooks";
 import { Coin } from "../../images/coin";
 import styles from "./sidebar.module.css";
+import { useOpenUrl } from "../../hooks/useOpenUrl";
 
 const LinkItem: React.FC<LinkProps> = ({ children, href }) => {
   return (
@@ -75,6 +76,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
 
   const bugUrl = linkForBugReports(host);
   const accountLink = linkForAccount(host);
+  const openUrl = useOpenUrl();
 
   return (
     <DropdownMenu.Root>
@@ -89,7 +91,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
           <DropdownMenu.Item
             onSelect={(event) => {
               event.preventDefault();
-              window.open(accountLink, "_blank");
+              openUrl(accountLink);
             }}
           >
             {user.data.account}
@@ -124,7 +126,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
         <DropdownMenu.Item
           onSelect={(event) => {
             event.preventDefault();
-            window.open(bugUrl, "_blank");
+            openUrl(bugUrl);
           }}
         >
           Report a bug
