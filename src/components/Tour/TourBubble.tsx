@@ -16,6 +16,7 @@ export type TourBubbleProps = {
   containerWidth?: string;
   onPage: string;
   page: string;
+  deltaY?: number;
   children?: ReactNode;
   onNext?: () => void;
 };
@@ -29,6 +30,7 @@ export function TourBubble({
   onPage,
   page,
   isPointing,
+  deltaY,
   children,
   onNext,
 }: TourBubbleProps) {
@@ -99,7 +101,7 @@ export function TourBubble({
           height: 0,
           width: "100%",
           alignSelf: "center",
-          top: down ? pos.bottom : pos.top,
+          top: (deltaY ?? 0) + (down ? pos.bottom : pos.top),
           zIndex: 100,
         }}
       >

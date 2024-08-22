@@ -51,6 +51,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         isPointing={false}
         onPage={"history"}
         page={page}
+        deltaY={-40}
       >
         <img
           style={{ marginTop: "10px", marginBottom: "30px" }}
