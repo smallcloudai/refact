@@ -22,6 +22,7 @@ import {
   commandsApi,
   diffApi,
 } from "../services/refact";
+import { smallCloudApi } from "../services/smallcloud";
 import { reducer as fimReducer } from "../features/FIM/reducer";
 import { saveTourToLocalStorage, tourReducer } from "../features/Tour";
 import {
@@ -36,9 +37,10 @@ import {
   historySlice,
   historyMiddleware,
 } from "../features/History/historySlice";
-import { errorMiddleware, errorSlice } from "../features/Errors/errorsSlice";
+import { errorSlice } from "../features/Errors/errorsSlice";
 import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
+import { listenerMiddleware } from "./middleware";
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -58,6 +60,7 @@ const rootReducer = combineSlices(
     [toolsApi.reducerPath]: toolsApi.reducer,
     [commandsApi.reducerPath]: commandsApi.reducer,
     [diffApi.reducerPath]: diffApi.reducer,
+    [smallCloudApi.reducerPath]: smallCloudApi.reducer,
   },
   historySlice,
   errorSlice,
@@ -88,21 +91,25 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
     reducer: persistedReducer,
     preloadedState: initialState,
     middleware: (getDefaultMiddleware) => {
-      return getDefaultMiddleware({
-        serializableCheck: {
-          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-        },
-      })
-        .concat(
-          statisticsApi.middleware,
-          capsApi.middleware,
-          promptsApi.middleware,
-          toolsApi.middleware,
-          commandsApi.middleware,
-          diffApi.middleware,
-        )
-        .prepend(historyMiddleware.middleware)
-        .prepend(errorMiddleware.middleware);
+      return (
+        getDefaultMiddleware({
+          serializableCheck: {
+            ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+          },
+        })
+          .concat(
+            statisticsApi.middleware,
+            capsApi.middleware,
+            promptsApi.middleware,
+            toolsApi.middleware,
+            commandsApi.middleware,
+            diffApi.middleware,
+            smallCloudApi.middleware,
+          )
+          .prepend(historyMiddleware.middleware)
+          // .prepend(errorMiddleware.middleware)
+          .prepend(listenerMiddleware.middleware)
+      );
     },
   });
 
@@ -114,6 +121,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
   return store;
 }
 export const store = setUpStore();
+export type Store = typeof store;
 
 export const persistor = persistStore(store);
 

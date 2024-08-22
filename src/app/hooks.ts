@@ -17,7 +17,7 @@ import {
   selectLspPort,
   setThemeMode,
 } from "../features/Config/configSlice";
-import { useMutationObserver } from "../hooks";
+import { useMutationObserver } from "../hooks/useMutationObserver";
 import { createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import { getErrorMessage } from "../features/Errors/errorsSlice";
 
@@ -49,7 +49,8 @@ export const useGetStatisticDataQuery = () => {
 // export const { useGetCapsQuery } = capsApi;
 export const useGetCapsQuery = () => {
   const lspPort = useAppSelector(selectLspPort);
-  return capsApi.useGetCapsQuery({ port: lspPort });
+  const error = useAppSelector(getErrorMessage);
+  return capsApi.useGetCapsQuery({ port: lspPort }, { skip: !!error });
 };
 
 // export const { useGetPromptsQuery } = promptsApi;

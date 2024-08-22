@@ -35,7 +35,11 @@ export const TipOfTheDay: React.FC = () => {
     dispatch(next(config));
   }, [dispatch, config]);
 
-  return <Text>💡 Tip of the day: {state.tip}</Text>;
+  return (
+    <Text>
+      💡 <b>Tip of the day</b>: {state.tip}
+    </Text>
+  );
 };
 
 const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {

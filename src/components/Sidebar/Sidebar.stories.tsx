@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Sidebar, SidebarProps } from "./Sidebar";
-// import { HISTORY } from "../../__fixtures__/history";
 
 const App: React.FC<SidebarProps> = (props) => {
   return <Sidebar {...props} style={{ width: "260px", flexShrink: 0 }} />;
@@ -9,6 +8,7 @@ const App: React.FC<SidebarProps> = (props) => {
 const meta = {
   title: "Sidebar",
   component: App,
+  // decorators: [(Story) => <Provider store={store}>{Story}</Provider>],
   args: {
     // history: [
     //   ...HISTORY,
@@ -26,7 +26,6 @@ const meta = {
     // ],
     takingNotes: false,
     // currentChatId: "",
-    handleLogout: () => ({}),
   },
 } satisfies Meta<typeof App>;
 
@@ -35,13 +34,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Primary: Story = {
-  args: {
-    account: {
-      email: "user@example.org",
-      tokens: 1800,
-      plan: "Pro",
-    },
-  },
+  // args: {
+  //   account: {
+  //     email: "user@example.org",
+  //     tokens: 1800,
+  //     plan: "Pro",
+  //   },
+  // },
 };
 
 export const Cloud: Story = {};

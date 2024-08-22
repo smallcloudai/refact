@@ -36,6 +36,8 @@ export type ChatThread = {
   updatedAt?: string;
 };
 
+export type ToolUse = "quick" | "explore" | "agent";
+
 export type Chat = {
   streaming: boolean;
   thread: ChatThread;
@@ -45,7 +47,7 @@ export type Chat = {
   waiting_for_response: boolean;
   cache: Record<string, ChatThread>;
   system_prompt: SystemPrompts;
-  use_tools: boolean;
+  tool_use: ToolUse;
   send_immediately: boolean;
 };
 
@@ -69,7 +71,7 @@ const createInitialState = (): Chat => {
     waiting_for_response: false,
     cache: {},
     system_prompt: {},
-    use_tools: true,
+    tool_use: "agent",
     send_immediately: false,
   };
 };
@@ -78,7 +80,7 @@ const initialState = createInitialState();
 
 type PayloadWIthId = { id: string };
 // TODO: add history actions to this
-export const newChatAction = createAction<PayloadWIthId>("chatThread/new");
+export const newChatAction = createAction("chatThread/new");
 
 const chatResponse = createAction<PayloadWIthId & ChatResponse>(
   "chatThread/response",
@@ -91,7 +93,7 @@ const backUpMessages = createAction<
   PayloadWIthId & { messages: ChatThread["messages"] }
 >("chatThread/backUpMessages");
 
-// TODO: add history actions to this
+// TODO: add history actions to this, maybe not used any more
 export const chatError = createAction<PayloadWIthId & { message: string }>(
   "chatThread/error",
 );
@@ -101,9 +103,7 @@ export const doneStreaming = createAction<PayloadWIthId>(
   "chatThread/doneStreaming",
 );
 
-export const setChatModel = createAction<PayloadWIthId & { model: string }>(
-  "chatThread/setChatModel",
-);
+export const setChatModel = createAction<string>("chatThread/setChatModel");
 export const getSelectedChatModel = (state: RootState) =>
   state.chat.thread.model;
 
@@ -118,9 +118,7 @@ export const removeChatFromCache = createAction<PayloadWIthId>(
   "chatThread/removeChatFromCache",
 );
 
-export const restoreChat = createAction<PayloadWIthId & { thread: ChatThread }>(
-  "chatThread/restoreChat",
-);
+export const restoreChat = createAction<ChatThread>("chatThread/restoreChat");
 
 export const clearChatError = createAction<PayloadWIthId>(
   "chatThread/clearError",
@@ -128,11 +126,11 @@ export const clearChatError = createAction<PayloadWIthId>(
 
 export const enableSend = createAction<PayloadWIthId>("chatThread/enableSend");
 
-export const setUseTools = createAction<boolean>("chatThread/setUseTools");
+export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
 export const chatReducer = createReducer(initialState, (builder) => {
-  builder.addCase(setUseTools, (state, action) => {
-    state.use_tools = action.payload;
+  builder.addCase(setToolUse, (state, action) => {
+    state.tool_use = action.payload;
   });
 
   builder.addCase(enableSend, (state, action) => {
@@ -146,20 +144,19 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setChatModel, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
-    state.thread.model = action.payload.model;
+    state.thread.model = action.payload;
   });
 
   builder.addCase(setSystemPrompt, (state, action) => {
     state.system_prompt = action.payload;
   });
 
-  builder.addCase(newChatAction, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
+  builder.addCase(newChatAction, (state) => {
     if (state.streaming) {
       state.cache[state.thread.id] = state.thread;
     }
     const next = createInitialState();
+    next.tool_use = state.tool_use;
     next.thread.model = state.thread.messages.length ? state.thread.model : "";
     return next;
   });
@@ -235,15 +232,20 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(restoreChat, (state, action) => {
-    if (action.payload.id !== state.thread.id) return state;
+    const mostUptoDateThread =
+      action.payload.id in state.cache
+        ? { ...state.cache[action.payload.id] }
+        : action.payload;
+
+    state.error = null;
+    state.waiting_for_response = false;
+
     if (state.streaming) {
       state.cache[state.thread.id] = state.thread;
       state.streaming = false;
     }
-    state.error = null;
-    state.waiting_for_response = false;
-    state.previous_message_length = action.payload.thread.messages.length;
-    state.thread = action.payload.thread;
+    state.previous_message_length = mostUptoDateThread.messages.length;
+    state.thread = mostUptoDateThread;
   });
 });
 
@@ -253,7 +255,7 @@ const createAppAsyncThunk = createAsyncThunk.withTypes<{
   dispatch: AppDispatch;
 }>();
 
-const chatAskQuestionThunk = createAppAsyncThunk<
+export const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
     messages: ChatMessages;
@@ -264,7 +266,7 @@ const chatAskQuestionThunk = createAppAsyncThunk<
   const state = thunkAPI.getState();
   // const messagesWithPrompt =
   const messagesForLsp = formatMessagesForLsp(messages);
-  sendChat({
+  return sendChat({
     messages: messagesForLsp,
     model: state.chat.thread.model,
     tools,
@@ -350,7 +352,10 @@ const chatAskQuestionThunk = createAppAsyncThunk<
       });
     })
     .catch((err: Error) => {
-      return thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
+      // console.log("Catch called");
+      thunkAPI.dispatch(doneStreaming({ id: chatId }));
+      return thunkAPI.rejectWithValue(err.message);
+      // return thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
     })
     .finally(() => {
       thunkAPI.dispatch(doneStreaming({ id: chatId }));
@@ -369,7 +374,7 @@ export const selectThread = (state: RootState) => state.chat.thread;
 export const selectChatId = (state: RootState) => state.chat.thread.id;
 export const selectModel = (state: RootState) => state.chat.thread.model;
 export const selectMessages = (state: RootState) => state.chat.thread.messages;
-export const selectUseTools = (state: RootState) => state.chat.use_tools;
+export const selectToolUse = (state: RootState) => state.chat.tool_use;
 export const selectIsWaiting = (state: RootState) =>
   state.chat.waiting_for_response;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;
@@ -392,6 +397,7 @@ export const useSendChatRequest = () => {
   const currentMessages = useAppSelector(selectMessages);
   const systemPrompt = useAppSelector(getSelectedSystemPrompt);
   const sendImmediately = useAppSelector(selectSendImmediately);
+  const toolUse = useAppSelector(selectToolUse);
 
   const messagesWithSystemPrompt = useMemo(() => {
     const prompts = Object.entries(systemPrompt);
@@ -407,7 +413,17 @@ export const useSendChatRequest = () => {
 
   const sendMessages = useCallback(
     (messages: ChatMessages) => {
-      const tools = toolsRequest.data ?? null;
+      let tools = toolsRequest.data ?? null;
+      if (toolUse === "quick") {
+        tools = [];
+      } else if (toolUse === "explore") {
+        tools = tools?.filter((t) => !t.function.agentic) ?? [];
+      }
+      tools =
+        tools?.map((t) => {
+          const { agentic: _, ...remaining } = t.function;
+          return { ...t, function: { ...remaining } };
+        }) ?? [];
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
@@ -420,7 +436,7 @@ export const useSendChatRequest = () => {
       const dispatchedAction = dispatch(action);
       abortRef.current = dispatchedAction.abort;
     },
-    [chatId, dispatch, toolsRequest.data],
+    [chatId, dispatch, toolsRequest.data, toolUse],
   );
 
   const submit = useCallback(
@@ -472,12 +488,6 @@ export const useSendChatRequest = () => {
       abortRef.current();
     }
   };
-
-  useEffect(() => {
-    if (!streaming && abortRef.current) {
-      abortRef.current = null;
-    }
-  }, [streaming]);
 
   return {
     submit,

@@ -2,7 +2,7 @@ import { useCallback, useEffect } from "react";
 import { usePostMessage } from "./usePostMessage";
 import { useEffectOnce } from "./useEffectOnce";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
-import type { FimDebugData } from "../services/refact";
+import type { FimDebugData } from "../services/refact/fim";
 import {
   clearError,
   request,
@@ -12,7 +12,7 @@ import {
   error,
 } from "../features/FIM/actions";
 import { pop } from "../features/Pages/pagesSlice";
-import { selectFIM } from "../features/FIM";
+import { selectFIM } from "../features/FIM/reducer";
 
 export type FIMDebugState = {
   data: FimDebugData | null;

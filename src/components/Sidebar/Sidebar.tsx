@@ -1,29 +1,21 @@
 import React, { useCallback } from "react";
 import { Box, Flex, Button } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
-import { DropdownNavigationOptions, Footer, FooterProps } from "./Footer";
+import { DropdownNavigationOptions, Footer } from "./Footer";
 import { Spinner } from "@radix-ui/themes";
 import { useAppSelector, useAppDispatch } from "../../app/hooks";
 import {
   getHistory,
   deleteChatById,
 } from "../../features/History/historySlice";
-import {
-  newChatAction,
-  restoreChat,
-  selectChatId,
-} from "../../features/Chat/chatThread";
+import { newChatAction, restoreChat } from "../../features/Chat/chatThread";
 import type { ChatThread } from "../../features/Chat/chatThread";
 import { useTourRefs } from "../../features/Tour";
 
 export type SidebarProps = {
-  // onCreateNewChat: () => void;
   takingNotes: boolean;
-  // currentChatId: string;
   className?: string;
   style?: React.CSSProperties;
-  account?: FooterProps["account"];
-  handleLogout: () => void;
   handleNavigation: (to: DropdownNavigationOptions | "chat") => void;
 } & Omit<
   ChatHistoryProps,
@@ -37,26 +29,23 @@ export type SidebarProps = {
 export const Sidebar: React.FC<SidebarProps> = ({
   takingNotes,
   style,
-  account,
-  handleLogout,
   handleNavigation,
 }) => {
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
   const history = useAppSelector(getHistory);
 
-  const currentChatId = useAppSelector(selectChatId);
   const onDeleteHistoryItem = (id: string) => dispatch(deleteChatById(id));
   const onCreateNewChat = () => {
-    dispatch(newChatAction({ id: currentChatId }));
+    dispatch(newChatAction());
     handleNavigation("chat");
   };
   const onHistoryItemClick = useCallback(
     (thread: ChatThread) => {
-      dispatch(restoreChat({ id: currentChatId, thread }));
+      dispatch(restoreChat(thread));
       handleNavigation("chat");
     },
-    [currentChatId, dispatch, handleNavigation],
+    [dispatch, handleNavigation],
   );
 
   const refs = useTourRefs();
@@ -83,11 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         onDeleteHistoryItem={onDeleteHistoryItem}
       />
       <Flex p="2" pb="4">
-        <Footer
-          handleLogout={handleLogout}
-          account={account}
-          handleNavigation={handleNavigation}
-        />
+        <Footer handleNavigation={handleNavigation} />
       </Flex>
     </Flex>
   );

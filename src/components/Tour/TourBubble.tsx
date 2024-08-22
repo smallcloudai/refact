@@ -47,20 +47,41 @@ export function TourBubble({
   // TODO: find a better way of doing this
   // This code is there to force a rerender if target is null
   useEffect(() => {
-    if (target === null || page !== onPage) {
-      setPos(undefined);
-    } else {
-      const newPos = target.getBoundingClientRect();
-      if (
-        pos?.left !== newPos.left ||
-        pos.right !== newPos.right ||
-        pos.top !== newPos.top ||
-        pos.bottom !== newPos.bottom
-      ) {
-        setPos(newPos);
+    const update = () => {
+      if (target === null || page !== onPage) {
+        if (pos !== undefined) {
+          setPos(undefined);
+        }
+      } else {
+        const newPos = target.getBoundingClientRect();
+        if (
+          pos?.left !== newPos.left ||
+          pos.right !== newPos.right ||
+          pos.top !== newPos.top ||
+          pos.bottom !== newPos.bottom
+        ) {
+          setPos(newPos);
+        }
       }
+    };
+    update();
+
+    if (target !== null && page === onPage && isBubbleOpen) {
+      const interval = setInterval(update, 100);
+      return () => {
+        clearInterval(interval);
+      };
     }
-  }, [page, onPage, target, pos, setPos, windowWidth, windowHeight]);
+  }, [
+    page,
+    onPage,
+    target,
+    pos,
+    setPos,
+    windowWidth,
+    windowHeight,
+    isBubbleOpen,
+  ]);
 
   if (pos === undefined) {
     return <></>;
@@ -122,7 +143,7 @@ export function TourBubble({
                 dispatch(close());
               }}
             >
-              x
+              ×
             </Link>
             <Link
               style={{
@@ -130,6 +151,9 @@ export function TourBubble({
                 position: "absolute",
                 right: "10px",
                 bottom: "10px",
+                textTransform: "uppercase",
+                fontSize: "12px",
+                fontWeight: "bold",
                 color: appearance == "dark" ? "#004069" : "#54a1ff",
               }}
               onClick={() => {

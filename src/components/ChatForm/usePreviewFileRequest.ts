@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
-import { type Checkbox } from "./ChatControls";
+import type { Checkboxes } from "./useCheckBoxes";
 
 import { addCheckboxValuesToInput } from "./utils";
 
 type UsePreviewFileRequestArgs = {
   isCommandExecutable: boolean;
   requestPreviewFiles: (input: string) => void;
-  checkboxes: Record<string, Checkbox>;
+  checkboxes: Checkboxes;
   query: string;
   vecdb: boolean;
 };
