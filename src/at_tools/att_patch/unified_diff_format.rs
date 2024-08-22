@@ -625,6 +625,8 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 - When use `@@ file_replace_block @@` there is no need to use `-` or `+` markings for lines.
 - Output hunks in whatever order makes the most sense.
 - Rewrite the whole blocks of code instead of making multiple small changes.
+- Use filenames from the user as given, don't change them.
+- Include / import symbols which are used in the diff.
 
 ## Rules for `edit` action to generate correct diffs:
 - When editing a function, method, loop, etc. use a hunk to replace the *entire* code block.

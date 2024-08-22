@@ -3,9 +3,8 @@ use std::path::PathBuf;
 use tokio::sync::Mutex as AMutex;
 use ropey::Rope;
 use tracing::warn;
-
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::att_patch::ast_interaction::parse_and_get_error_symbols;
+use crate::at_tools::att_patch::ast_interaction::{lint_and_get_error_messages, parse_and_get_error_symbols};
 use crate::at_tools::att_patch::tool::DefaultToolPatch;
 use crate::diffs::{apply_diff_chunks_to_text, correct_and_validate_chunks, unwrap_diff_apply_outputs};
 use crate::files_in_workspace::read_file_from_disk;
@@ -98,6 +97,22 @@ pub async fn parse_diff_chunks_from_message(
                     let message = format!(
                         "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs", 
                         path, before_error_symbols.len(), after_error_symbols.len()
+                    );
+                    return Err(message);
+                }
+
+                let before_lint_errors = lint_and_get_error_messages(
+                    &path,
+                    &Rope::from_str(&text_after),
+                );
+                let after_lint_errors = lint_and_get_error_messages(
+                    &path,
+                    &Rope::from_str(&text_after),
+                );
+                if before_lint_errors.len() < after_lint_errors.len() {
+                    let message = format!(
+                        "Linting has failed: the generated diff had introduced lint issues into the file `{:?}`: {} before errs < {} after errs",
+                        path, before_lint_errors.len(), after_lint_errors.len()
                     );
                     return Err(message);
                 }

@@ -10,6 +10,7 @@ use tracing::warn;
 
 use crate::ast::ast_index::RequestSymbolType;
 use crate::ast::ast_module::AstModule;
+use crate::ast::linters::lint;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
@@ -79,5 +80,25 @@ pub async fn parse_and_get_error_symbols(
             .filter(|x| x.is_error)
             .collect::<Vec<_>>()),
         Err(err) => Err(err)
+    }
+}
+
+
+pub fn lint_and_get_error_messages(
+    path: &PathBuf,
+    file_text: &Rope,
+) -> Vec<String> {
+    let dummy_filename = PathBuf::from(rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(16)
+        .map(char::from)
+        .collect::<String>());
+    let new_filename = dummy_filename.with_extension(
+        path.extension().unwrap_or_default()
+    );
+    let doc = Document { path: new_filename.clone(), text: Some(file_text.clone()) };
+    match lint(&doc) {
+        Ok(_) => vec![],
+        Err(problems) => problems,
     }
 }

@@ -1,14 +1,13 @@
 use async_trait::async_trait;
+use itertools::Itertools;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
-use itertools::Itertools;
 use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::att_locate::unwrap_subchat_params;
-use crate::at_tools::att_patch::args_parser::parse_arguments;
 use crate::at_tools::att_patch::chat_interaction::execute_chat_model;
 use crate::at_tools::att_patch::diff_formats::parse_diff_chunks_from_message;
 use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
@@ -18,6 +17,12 @@ use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum};
 pub const N_CHOICES: usize = 16;
 pub type DefaultToolPatch = UnifiedDiffFormat;
 
+
+pub struct PatchArguments {
+    pub paths: Vec<String>,
+    pub todo: String,
+    pub use_locate_for_context: bool,
+}
 
 pub struct ToolPatch {
     pub usage: Option<ChatUsage>,
@@ -29,6 +34,31 @@ impl ToolPatch {
             usage: None
         }
     }
+}
+
+pub async fn parse_arguments(
+    args: &HashMap<String, Value>,
+) -> Result<PatchArguments, String> {
+    let paths = match args.get("paths") {
+        Some(Value::String(s)) => s.split(",").map(|x| x.to_string()).collect::<Vec<String>>(),
+        Some(v) => { return Err(format!("argument `paths` is not a string: {:?}", v)) }
+        None => { return Err("argument `path` is not a string".to_string()) }
+    };
+    let use_locate_for_context = if let Some(p) = paths.get(0) {
+        p == "pick_locate_json_above"
+    } else {
+        false
+    };
+    let todo = match args.get("todo") {
+        Some(Value::String(s)) => s.clone(),
+        Some(v) => { return Err(format!("argument `todo` is not a string: {:?}", v)) }
+        None => { "".to_string() }
+    };
+    Ok(PatchArguments {
+        paths,
+        todo,
+        use_locate_for_context,
+    })
 }
 
 fn choose_correct_chunk(chunks: Vec<Result<String, String>>) -> Result<String, String> {
@@ -91,7 +121,7 @@ impl Tool for ToolPatch {
                 return Err(format!("Cannot parse input arguments: {err}. Try to call `patch` one more time with valid arguments"));
             }
         };
-        let mut usage = ChatUsage{..Default::default()};
+        let mut usage = ChatUsage { ..Default::default() };
 
         let params = unwrap_subchat_params(ccx.clone(), "patch").await?;
         let ccx_subchat = {
