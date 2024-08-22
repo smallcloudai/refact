@@ -5,8 +5,10 @@ import { selectHost, setApiKey } from "../features/Config/configSlice";
 import { useGetUser } from "./useGetUser";
 import { useLogout } from "./useLogout";
 import { useOpenUrl } from "./useOpenUrl";
+import { useEventsBusForIDE } from "./useEventBusForIDE";
 
 export const useLogin = () => {
+  const { setupHost } = useEventsBusForIDE();
   const dispatch = useAppDispatch();
   const user = useGetUser();
   const logout = useLogout();
@@ -62,8 +64,13 @@ export const useLogin = () => {
     if (isGoodResponse(loginPollingResult.data)) {
       setIsPollingLogin(false);
       dispatch(setApiKey(loginPollingResult.data.secret_key));
+      setupHost({
+        type: "cloud",
+        apiKey: loginPollingResult.data.secret_key,
+        sendCorrectedCodeSnippets: false,
+      });
     }
-  }, [dispatch, loginPollingResult.data]);
+  }, [dispatch, loginPollingResult.data, setupHost]);
 
   return {
     loginThroughWeb,

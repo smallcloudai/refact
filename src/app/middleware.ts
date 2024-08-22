@@ -45,7 +45,6 @@ startErrorListening({
 });
 
 startErrorListening({
-  // matcher: isAnyOf(chatError, isRejected),
   // TODO: figure out why this breaks the tests when it's not a function :/
   matcher: isAnyOf(isRejected),
   effect: (action, listenerApi) => {

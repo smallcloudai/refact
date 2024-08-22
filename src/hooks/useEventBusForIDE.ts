@@ -2,6 +2,11 @@ import { useCallback } from "react";
 import { createAction } from "@reduxjs/toolkit";
 import { usePostMessage } from "./usePostMessage";
 import type { ChatThread } from "../features/Chat";
+import {
+  EVENT_NAMES_FROM_SETUP,
+  HostSettings,
+  SetupHost,
+} from "../events/setup";
 // import { useAppSelector } from "../app/hooks";
 export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
 export const ideOpenSettingsAction = createAction("ide/openSettings");
@@ -19,6 +24,20 @@ export const ideOpenChatInNewTab = createAction<ChatThread>(
 export const useEventsBusForIDE = () => {
   const postMessage = usePostMessage();
   // const canPaste = useAppSelector((state) => state.active_file.can_paste);
+
+  const setupHost = useCallback(
+    (host: HostSettings) => {
+      const setupHost: SetupHost = {
+        type: EVENT_NAMES_FROM_SETUP.SETUP_HOST,
+        payload: {
+          host,
+        },
+      };
+
+      postMessage(setupHost);
+    },
+    [postMessage],
+  );
 
   const diffPasteBack = useCallback(
     (content: string) => {
@@ -69,6 +88,7 @@ export const useEventsBusForIDE = () => {
     openHotKeys,
     openFile,
     openChatInNewTab,
+    setupHost,
     // canPaste,
   };
 };

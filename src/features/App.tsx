@@ -6,12 +6,8 @@ import { SelfHostingSetup } from "../components/SelfHostingSetup";
 import { Flex } from "@radix-ui/themes";
 import { Chat } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
-import { usePostMessage, useEventsBusForIDE } from "../hooks";
-import {
-  EVENT_NAMES_FROM_SETUP,
-  HostSettings,
-  SetupHost,
-} from "../events/setup";
+import { useEventsBusForIDE } from "../hooks";
+
 import { useAppDispatch, useAppSelector, useConfig } from "../app/hooks";
 import { FIMDebug } from "./FIM";
 import { store, persistor, RootState } from "../app/store";
@@ -48,12 +44,11 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     [pages],
   );
 
-  const { openHotKeys, openSettings } = useEventsBusForIDE();
+  const { openHotKeys, openSettings, setupHost } = useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
   useEventBusForWeb();
   useEventBusForApp();
 
-  const postMessage = usePostMessage();
   const config = useConfig();
 
   const isLoggedIn = isPageInHistory("history") || isPageInHistory("welcome");
@@ -68,20 +63,6 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   if (!config.apiKey && !config.addressURL && isLoggedIn) {
     dispatch(popBackTo("initial setup"));
   }
-
-  const setupHost = useCallback(
-    (host: HostSettings) => {
-      const setupHost: SetupHost = {
-        type: EVENT_NAMES_FROM_SETUP.SETUP_HOST,
-        payload: {
-          host,
-        },
-      };
-
-      postMessage(setupHost);
-    },
-    [postMessage],
-  );
 
   const onPressNext = (host: Host) => {
     if (host === "cloud") {
