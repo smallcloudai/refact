@@ -10,7 +10,6 @@ import { usePostMessage, useEventsBusForIDE } from "../hooks";
 import {
   EVENT_NAMES_FROM_SETUP,
   HostSettings,
-  OpenExternalUrl,
   SetupHost,
 } from "../events/setup";
 import { useAppDispatch, useAppSelector, useConfig } from "../app/hooks";
@@ -116,14 +115,6 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     dispatch(push({ name: "history" }));
   };
 
-  const openExternal = (url: string) => {
-    const openUrlMessage: OpenExternalUrl = {
-      type: EVENT_NAMES_FROM_SETUP.OPEN_EXTERNAL_URL,
-      payload: { url },
-    };
-    postMessage(openUrlMessage);
-  };
-
   const goBack = () => {
     dispatch(pop());
   };
@@ -180,11 +171,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
               <InitialSetup onPressNext={onPressNext} />
             )}
             {page.name === "cloud login" && (
-              <CloudLogin
-                goBack={goBack}
-                openExternal={openExternal}
-                next={cloudLogin}
-              />
+              <CloudLogin goBack={goBack} next={cloudLogin} />
             )}
             {page.name === "enterprise setup" && (
               <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />

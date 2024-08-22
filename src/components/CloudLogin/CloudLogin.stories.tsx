@@ -9,7 +9,6 @@ const meta: Meta<typeof CloudLogin> = {
   args: {
     goBack: fn(),
     next: fn(),
-    openExternal: fn(),
   },
   decorators: [
     (Children) => {
