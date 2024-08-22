@@ -5,6 +5,7 @@ import { EVENT_NAMES_FROM_SETUP, OpenExternalUrl } from "../events/setup";
 import { selectHost, setApiKey } from "../features/Config/configSlice";
 import { useGetUser } from "./useGetUser";
 import { useLogout } from "./useLogout";
+import { usePostMessage } from ".";
 
 export const useLogin = () => {
   const dispatch = useAppDispatch();
@@ -14,6 +15,7 @@ export const useLogin = () => {
   const [isPollingLogin, setIsPollingLogin] = useState<boolean>(false);
   const canLogin = !user.data && !isPollingLogin;
   const host = useAppSelector(selectHost);
+  const postMessage = usePostMessage();
 
   const newLoginTicket = useMemo(() => {
     return (
@@ -45,7 +47,7 @@ export const useLogin = () => {
       };
       postMessage(openUrlMessage);
     },
-    [host, newLoginTicket],
+    [host, newLoginTicket, postMessage],
   );
 
   const cancelLogin = useCallback(() => {
