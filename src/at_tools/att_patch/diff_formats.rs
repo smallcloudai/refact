@@ -64,7 +64,7 @@ pub async fn parse_diff_chunks_from_message(
         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
         let all_applied = outputs_unwrapped.iter().all(|x|x.applied);
         if !all_applied {
-            let mut message = "Couldn't apply the generated diff, the following chunk is broken:\n".to_string();
+            let mut message = format!("Couldn't apply the generated diff, the chunks for the file `{file_name}` are broken:\n").to_string();
             for apply_out in outputs_unwrapped.iter().filter(|x| x.applied)  {
                 message.push_str(&format!("{:?}\n", apply_out.detail));
             }
