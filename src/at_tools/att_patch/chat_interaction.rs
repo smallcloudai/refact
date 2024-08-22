@@ -247,7 +247,7 @@ async fn make_chat_history(
                     .collect::<Vec<_>>();
                 (paths, Some(extra_paths), Some(locate_data.symbols))
             } else {
-                return Err("locate data has not found though it was asked to use, call `locate` tool or pass the exact filenames".to_string());
+                return Err("locate data could not be located even though it was requested for use, call `locate` tool or pass the filenames directly".to_string());
             }
         } else {
             (
