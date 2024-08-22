@@ -10,7 +10,7 @@ import {
   restoreChat,
 } from "../features/Chat/chatThread";
 import { statisticsApi } from "../services/refact/statistics";
-import { capsApi } from "../services/refact/caps";
+import { capsApi, isCapsErrorResponse } from "../services/refact/caps";
 import { promptsApi } from "../services/refact/prompts";
 import { toolsApi } from "../services/refact/tools";
 import { commandsApi } from "../services/refact/commands";
@@ -53,7 +53,9 @@ startErrorListening({
       capsApi.endpoints.getCaps.matchRejected(action) &&
       !action.meta.condition
     ) {
-      const message = `fetching caps from lsp`;
+      const message = isCapsErrorResponse(action.payload?.data)
+        ? action.payload.data.detail
+        : `fetching caps from lsp`;
       listenerApi.dispatch(setError(message));
     }
 

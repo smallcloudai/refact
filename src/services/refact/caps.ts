@@ -5,8 +5,6 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 export const capsApi = createApi({
   reducerPath: "caps",
   baseQuery: fetchBaseQuery({
-    // TODO: set this to the configured lsp url
-    // baseUrl: `http://127.0.0.1:8001`,
     prepareHeaders: (headers, { getState }) => {
       const token = (getState() as RootState).config.apiKey;
       if (token) {
@@ -26,7 +24,6 @@ export const capsApi = createApi({
       },
     }),
   }),
-  // refetchOnMountOrArgChange: true,
 });
 
 export const capsEndpoints = capsApi.endpoints;
@@ -75,6 +72,18 @@ export function isCapsResponse(json: unknown): json is CapsResponse {
   if (!("code_chat_default_model" in json)) return false;
   if (typeof json.code_chat_default_model !== "string") return false;
   if (!("code_chat_models" in json)) return false;
+  return true;
+}
+
+type CapsErrorResponse = {
+  detail: string;
+};
+
+export function isCapsErrorResponse(json: unknown): json is CapsErrorResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("detail" in json)) return false;
+  if (typeof json.detail !== "string") return false;
   return true;
 }
 
