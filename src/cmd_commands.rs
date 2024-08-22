@@ -15,7 +15,9 @@ pub fn exec_command_if_exists(cache_dir: &PathBuf) {
     let cmdline = CommandLine::from_args();
     if cmdline.save_byok_file {
         let file_name = cache_dir.join("bring-your-own-key.yaml");
-        generate_byok_file(&file_name);
+        if !file_name.exists() {
+            generate_byok_file(&file_name);
+        }
         println!("{}", file_name.display());
         exit(0);
     }
