@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { isGoodResponse, smallCloudApi } from "../services/smallcloud";
-import { EVENT_NAMES_FROM_SETUP, OpenExternalUrl } from "../events/setup";
 import { selectHost, setApiKey } from "../features/Config/configSlice";
 import { useGetUser } from "./useGetUser";
 import { useLogout } from "./useLogout";
-import { usePostMessage } from ".";
+import { useOpenUrl } from "./useOpenUrl";
 
 export const useLogin = () => {
   const dispatch = useAppDispatch();
@@ -15,7 +14,7 @@ export const useLogin = () => {
   const [isPollingLogin, setIsPollingLogin] = useState<boolean>(false);
   const canLogin = !user.data && !isPollingLogin;
   const host = useAppSelector(selectHost);
-  const postMessage = usePostMessage();
+  const openUrl = useOpenUrl();
 
   const newLoginTicket = useMemo(() => {
     return (
@@ -41,13 +40,9 @@ export const useLogin = () => {
       initUrl.searchParams.set("utm_medium", host);
       initUrl.searchParams.set("utm_campaign", "login");
       const initUrlString = initUrl.toString();
-      const openUrlMessage: OpenExternalUrl = {
-        type: EVENT_NAMES_FROM_SETUP.OPEN_EXTERNAL_URL,
-        payload: { url: initUrlString },
-      };
-      postMessage(openUrlMessage);
+      openUrl(initUrlString);
     },
-    [host, newLoginTicket, postMessage],
+    [host, newLoginTicket, openUrl],
   );
 
   const cancelLogin = useCallback(() => {
