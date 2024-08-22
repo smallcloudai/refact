@@ -87,7 +87,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
           <Text size="2">- In-IDE Chat: GPT-4o mini</Text>
           <Text size="2">- Toolbox (refactor code, find bugs, etc.)</Text>
           <Text size="2">- 2048-context length for completions</Text>
-          <Text size="2">- 4096-context length for chat</Text>
+          <Text size="2">- 8k context length for chat</Text>
         </RadioCards.Item>
         <RadioCards.Item
           value="pro"
@@ -110,6 +110,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
           </Text>
           <Text size="2">+ More AI models for Toolbox</Text>
           <Text size="2">+ x2 context length for completions</Text>
+          <Text size="2">+ x4 context length for chat</Text>
         </RadioCards.Item>
       </RadioCards.Root>
       <Flex gap="2">
