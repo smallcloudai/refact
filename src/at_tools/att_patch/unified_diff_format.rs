@@ -2054,6 +2054,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "frog1 = frog.Frog()\nfrog2 = frog.Frog()\n".to_string(),
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2082,6 +2083,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "frog1 = frog.Frog()\nfrog2 = frog.Frog()\n".to_string(),
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2113,6 +2115,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "".to_string(),
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2140,6 +2143,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "".to_string(),
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2167,6 +2171,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "".to_string(),
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2221,6 +2226,7 @@ if __name__ == __main__:
                 line2: 11,
                 lines_remove: "".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2238,105 +2244,33 @@ if __name__ == __main__:
     #[tokio::test]
     async fn info_test() {
         let input = r#"
-        
-### Unified Diff Format
-
-Now, we will generate the diff format for adding the `index.html` and `game.js` files.
-
 ```diff
---- /dev/null
-+++ /home/svakhreev/tmp/flappy_bird/index.html
-@@ file_replace_block @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flappy Bird</title>
-    <style>
-        body { margin: 0; }
-        canvas { display: block; background: #70c5ce; }
-    </style>
-</head>
-<body>
-    <canvas id="gameCanvas" width="320" height="480"></canvas>
-    <script src="game.js"></script>
-</body>
-</html>
---- /dev/null
+--- /home/svakhreev/tmp/flappy_bird/game.js
 +++ /home/svakhreev/tmp/flappy_bird/game.js
-@@ file_replace_block @@
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-let bird = { x: 50, y: 150, width: 20, height: 20, gravity: 0.6, lift: -15, velocity: 0 };
-let pipes = [];
-let score = 0;
-let frame = 0;
-
-function setup() {
-    document.addEventListener('keydown', () => {
-        bird.velocity += bird.lift;
-    });
-
-    setInterval(() => {
-        frame++;
-        if (frame % 90 === 0) {
-            pipes.push({ x: canvas.width, y: Math.random() * (canvas.height - 100), width: 20, height: 100 });
-        }
-        update();
-    }, 1000 / 60);
-}
-
-function update() {
-    bird.velocity += bird.gravity;
-    bird.y += bird.velocity;
-
-    for (let i = pipes.length - 1; i >= 0; i--) {
-        pipes[i].x -= 2;
-
-        if (pipes[i].x + pipes[i].width < 0) {
-            pipes.splice(i, 1);
-            score++;
-        }
-
-        if (bird.x < pipes[i].x + pipes[i].width && bird.x + bird.width > pipes[i].x && bird.y < pipes[i].y + pipes[i].height) {
-            alert('Game Over! Your score: ' + score);
-            document.location.reload();
-        }
-    }
-
-    draw();
-}
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'yellow';
-    ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
-
-    ctx.fillStyle = 'green';
-    for (let pipe of pipes) {
-        ctx.fillRect(pipe.x, pipe.y, pipe.width, pipe.height);
-        ctx.fillRect(pipe.x, pipe.y + pipe.height + 100, pipe.width, canvas.height - pipe.y - pipe.height - 100);
-    }
-
-    ctx.fillStyle = 'black';
-    ctx.fillText('Score: ' + score, 10, 20);
-}
-
-setup();
-```
-
+@@ -+ block @@
+ function updateObstacles() {
+     obstacles.forEach(obstacle => {
+         obstacle.x -= 2; // Move obstacles to the left
+     });
+     // Remove obstacles that are off-screen
+-    if (obstacles.length && obstacles[0].x + obstacles[0].widt
++    if (obstacles.length && obstacles[0].x + obstacles[0].width <= 0) {
+         obstacles.shift();
+         score++; // Increment score when an obstacle is passed
+     }
+ }
+``` 
 "#;
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
             "Failed to parse diff message"
         );
+        print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
+
         let (_, changed_text) = apply_diff(
-            &"/home/svakhreev/tmp/flappy_bird/flappy_bird.js".to_string(),
+            &"/home/svakhreev/tmp/flappy_bird/game.js".to_string(),
             &result,
         );
 
         assert_eq!(changed_text, input);
-        print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
     }
 }
