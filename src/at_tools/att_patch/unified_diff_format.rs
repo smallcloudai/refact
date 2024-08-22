@@ -441,6 +441,7 @@ fn splitting_diff_blocks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffBlock> {
     exported_blocks.clone()
 }
 
+// Step 0. Remove those chunks which remove and add the same code 
 // Step 1. Fix idents using correct_spaces_offset 
 // Step 2. If non-found is the first line, and it is a `+` type then set the 0 index
 // Step 3. Fix missing `+` lines. If line is without `+` symbol and is file line index is not found then consider it a `+` line (except the first line)
@@ -534,7 +535,7 @@ fn normalize_diff_block(diff_block: &mut DiffBlock) -> Result<(), String> {
 fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
     diff_blocks
         .iter()
-        .map(|block| {
+        .filter_map(|block| {
             let useful_block_lines = block
                 .diff_lines
                 .iter()
@@ -551,7 +552,20 @@ fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
                 assert_eq!(block.file_name_before, block.file_name_after);
                 (block.file_name_before.to_string_lossy().to_string(), None)
             };
-            DiffChunk {
+            let lines_remove = useful_block_lines
+                .iter()
+                .filter(|x| x.line_type == LineType::Minus)
+                .map(|x| format!("{}\n", x.line.clone()))
+                .join("");
+            let lines_add = useful_block_lines
+                .iter()
+                .filter(|x| x.line_type == LineType::Plus)
+                .map(|x| format!("{}\n", x.line.clone()))
+                .join("");
+            if lines_remove == lines_add {
+                return None;
+            }
+            Some(DiffChunk {
                 file_name: filename,
                 file_name_rename: filename_rename,
                 file_action: block.action.clone(),
@@ -571,18 +585,10 @@ fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
                     })
                     .max()
                     .unwrap_or(1),
-                lines_remove: useful_block_lines
-                    .iter()
-                    .filter(|x| x.line_type == LineType::Minus)
-                    .map(|x| format!("{}\n", x.line.clone()))
-                    .join(""),
-                lines_add: useful_block_lines
-                    .iter()
-                    .filter(|x| x.line_type == LineType::Plus)
-                    .map(|x| format!("{}\n", x.line.clone()))
-                    .join(""),
+                lines_remove,
+                lines_add,
                 ..Default::default()
-            }
+            })
         })
         .collect()
 }
