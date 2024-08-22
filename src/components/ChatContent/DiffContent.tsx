@@ -157,8 +157,13 @@ export const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
         style={{ display: "inline-block" }}
         key={fullPath + "-" + diffForFile.length}
       >
-        {name} <Text color="red">{removes}</Text>
-        <Text color="green">{adds}</Text>
+        {name}{" "}
+        <Text color="red" wrap="wrap">
+          {removes}
+        </Text>
+        <Text color="green" wrap="wrap">
+          {adds}
+        </Text>
       </Text>
     );
     const nextMemo = memo.length > 0 ? [...memo, ", ", element] : [element];
