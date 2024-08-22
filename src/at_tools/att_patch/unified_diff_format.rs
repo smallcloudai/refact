@@ -377,8 +377,8 @@ fn splitting_diff_blocks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffBlock> {
     let mut exported_blocks = vec![];
     for (_, blocks) in &diff_blocks.iter().group_by(|x| x.hunk_idx) {
         let new_blocks: Vec<_> = blocks.cloned().collect();
-        if new_blocks.len() == 1 {
-            let diff_block = new_blocks.first().expect("cannot find diff block");
+        let diff_block = new_blocks.first().expect("cannot find diff block");
+        if new_blocks.len() == 1 && diff_block.action == "edit" {
             if diff_block.diff_lines.iter().all(|x| x.line_type == LineType::Space) {
                 let original_text = diff_block.file_lines.join("\n");
                 let text_after = diff_block.diff_lines.iter().map(|x| x.line.clone()).join("\n");
