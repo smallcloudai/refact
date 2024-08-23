@@ -112,7 +112,7 @@ export const smallCloudApi = createApi({
           method: "GET",
           redirect: "follow",
           cache: "no-cache",
-          referrer: "no-referrer",
+          // referrer: "no-referrer",
           headers: {
             "Content-Type": "application/json",
             Authorization: "Bearer " + apiKey,

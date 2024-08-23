@@ -29,7 +29,7 @@ import { Chat } from "./Chat";
 //   ToolCall,
 //   ToolResult,
 // } from "../events";
-import { MARS_ROVER_CHAT, STUB_CAPS_RESPONSE } from "../../__fixtures__";
+import { STUB_CAPS_RESPONSE } from "../../__fixtures__";
 // import { useEventBusForChat } from "../hooks";
 
 import { http, HttpResponse } from "msw";
@@ -236,63 +236,6 @@ describe("Chat", () => {
     await waitFor(() => {
       expect(screen.getAllByText("hello there")).not.toBeNull();
     });
-  });
-
-  it.skip("char error getting caps", async () => {
-    server.use(goodPrompts, noCommandPreview, noCompletions, noTools);
-    server.use(
-      http.get("http://127.0.0.1:8001/v1/caps", () => {
-        return HttpResponse.error();
-      }),
-    );
-
-    const { user, ...app } = render(
-      <Chat host="web" tabbed={false} backFromChat={() => ({})} />,
-    );
-
-    // screen.debug(app.container, 1000000);
-
-    const newChat = app.getByText(/New Chat/i);
-    // app.debug(newChat);
-    // vi.advanceTimersToNextTimer();
-    await user.click(newChat);
-
-    const errorRegex = /Error: fetching caps from lsp/;
-
-    await waitFor(() => {
-      // console.log(server.listHandlers());
-      // console.log(store.getState());
-      // app.debug(app.container, 1000000);
-      expect(app.queryByText(errorRegex)).not.toBeNull();
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await user.click(app.queryByText(errorRegex)!);
-
-    expect(app.queryByText(errorRegex)).toBeNull();
-  });
-
-  // TODO: this will need to be done higher up
-  it.skip("can restore a chat", async () => {
-    const app = render(<App />);
-
-    // const restoreChatAction: RestoreChat = {
-    //   type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
-    //   payload: {
-    //     id,
-    //     chat: MARS_ROVER_CHAT,
-    //   },
-    // };
-
-    // postMessage(restoreChatAction);
-
-    const firstMessage = MARS_ROVER_CHAT.messages[0].content as string;
-
-    // postMessage(restoreChatAction);
-
-    await waitFor(() => expect(app.queryByText(firstMessage)).not.toBeNull());
-
-    await waitFor(() => expect(app.queryByText(/Certainly!/)).not.toBeNull());
   });
 
   // TODO: skip until history is added

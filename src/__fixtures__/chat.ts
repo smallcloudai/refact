@@ -1,9 +1,10 @@
 import type { RootState } from "../app/store";
+import { ChatHistoryItem } from "../events";
 
 type ChatThread = RootState["chat"]["thread"];
 type ChatMessages = ChatThread["messages"];
 
-export const MARS_ROVER_CHAT: ChatThread = {
+export const MARS_ROVER_CHAT: ChatHistoryItem = {
   id: "9afd6fef-3e49-40df-8aca-688af3621514",
   messages: [
     // [
@@ -64,8 +65,8 @@ export const MARS_ROVER_CHAT: ChatThread = {
   ],
   title: "mars rover kata",
   model: "gpt-3.5-turbo",
-  //   createdAt: "2023-12-21T17:32:50.186Z",
-  //   lastUpdated: "2023-12-21T17:33:22.209Z",
+  createdAt: "2023-12-21T17:32:50.186Z",
+  updatedAt: "2023-12-21T17:33:22.209Z",
 };
 
 export const CHAT_FUNCTIONS_MESSAGES: ChatMessages = [

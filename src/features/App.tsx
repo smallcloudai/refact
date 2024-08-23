@@ -34,7 +34,7 @@ export interface AppProps {
   style?: React.CSSProperties;
 }
 
-const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
+export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const dispatch = useAppDispatch();
   const pages = useAppSelector(selectPages);
   const isPageInHistory = useCallback(

@@ -3,7 +3,6 @@ import { http, HttpResponse, type HttpHandler } from "msw";
 import { setupServer } from "msw/node";
 import { SYSTEM_PROMPTS } from "../__fixtures__/prompts";
 import { STUB_CAPS_RESPONSE } from "../__fixtures__/caps";
-
 import type { Store } from "../app/store";
 import {
   capsApi,
@@ -74,6 +73,19 @@ export const noCommandPreview: HttpHandler = http.post(
   () => {
     return HttpResponse.json({
       messages: [],
+    });
+  },
+);
+
+export const goodUser: HttpHandler = http.get(
+  "https://www.smallcloud.ai/v1",
+  () => {
+    return HttpResponse.json({
+      retcode: "OK",
+      account: "party@refact.ai",
+      inference_url: "https://www.smallcloud.ai/v1",
+      inference: "PRO",
+      metering_balance: -100000,
     });
   },
 );
