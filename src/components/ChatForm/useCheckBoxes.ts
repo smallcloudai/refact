@@ -19,9 +19,18 @@ const shouldShowSelector = createSelector(
   },
 );
 
-const useAttachActiveFile = (): [Checkbox, () => void] => {
+const messageLengthSelector = createSelector(
+  [selectMessages],
+  (messages) => messages.length,
+);
+
+const useAttachActiveFile = (
+  interacted: boolean,
+  hasSnippet: boolean,
+): [Checkbox, () => void] => {
   const activeFile = useAppSelector(selectActiveFile);
   const shouldShow = useAppSelector(shouldShowSelector);
+  const messageLength = useAppSelector(messageLengthSelector);
 
   const filePathWithLines = useMemo(() => {
     const hasLines = activeFile.line1 !== null && activeFile.line2 !== null;
@@ -32,7 +41,7 @@ const useAttachActiveFile = (): [Checkbox, () => void] => {
 
   const [attachFileCheckboxData, setAttachFile] = useState<Checkbox>({
     name: "file_upload",
-    checked: !!activeFile.name,
+    checked: !!activeFile.name && messageLength === 0 && hasSnippet,
     label: "Attach",
     value: filePathWithLines,
     disabled: !activeFile.name,
@@ -46,7 +55,7 @@ const useAttachActiveFile = (): [Checkbox, () => void] => {
   });
 
   useEffect(() => {
-    if (!attachFileCheckboxData.checked) {
+    if (!attachFileCheckboxData.checked || !interacted) {
       setAttachFile((prev) => {
         return {
           ...prev,
@@ -54,6 +63,7 @@ const useAttachActiveFile = (): [Checkbox, () => void] => {
           value: filePathWithLines,
           disabled: !activeFile.name,
           fileName: activeFile.name,
+          checked: !!activeFile.name && shouldShow && hasSnippet,
         };
       });
     }
@@ -61,8 +71,18 @@ const useAttachActiveFile = (): [Checkbox, () => void] => {
     activeFile.name,
     attachFileCheckboxData.checked,
     filePathWithLines,
+    hasSnippet,
+    interacted,
     shouldShow,
   ]);
+
+  useEffect(() => {
+    if (messageLength > 0 && attachFileCheckboxData.hide === false) {
+      setAttachFile((prev) => {
+        return { ...prev, hide: true, checked: false };
+      });
+    }
+  }, [attachFileCheckboxData.hide, messageLength]);
 
   const onToggleAttachFile = useCallback(() => {
     setAttachFile((prev) => {
@@ -76,9 +96,12 @@ const useAttachActiveFile = (): [Checkbox, () => void] => {
   return [attachFileCheckboxData, onToggleAttachFile];
 };
 
-const useAttachSelectedSnippet = (): [Checkbox, () => void] => {
+const useAttachSelectedSnippet = (
+  interacted: boolean,
+): [Checkbox, () => void] => {
   const { host } = useConfig();
   const snippet = useAppSelector(selectSelectedSnippet);
+  const messageLength = useAppSelector(messageLengthSelector);
   const markdown = useMemo(() => {
     return "```" + snippet.language + "\n" + snippet.code + "\n```\n";
   }, [snippet.language, snippet.code]);
@@ -95,7 +118,7 @@ const useAttachSelectedSnippet = (): [Checkbox, () => void] => {
   const [attachedSelectedSnippet, setAttachedSelectedSnippet] =
     useState<Checkbox>({
       name: "selected_lines",
-      checked: !!snippet.code,
+      checked: !!snippet.code && messageLength === 0,
       label: label,
       value: markdown,
       disabled: !snippet.code,
@@ -106,7 +129,7 @@ const useAttachSelectedSnippet = (): [Checkbox, () => void] => {
     });
 
   useEffect(() => {
-    if (!attachedSelectedSnippet.checked) {
+    if (!attachedSelectedSnippet.checked || !interacted) {
       setAttachedSelectedSnippet((prev) => {
         return {
           ...prev,
@@ -114,10 +137,18 @@ const useAttachSelectedSnippet = (): [Checkbox, () => void] => {
           value: markdown,
           disabled: !snippet.code,
           hide: host === "web",
+          checked: !!snippet.code,
         };
       });
     }
-  }, [snippet.code, host, attachedSelectedSnippet.checked, label, markdown]);
+  }, [
+    snippet.code,
+    host,
+    attachedSelectedSnippet.checked,
+    label,
+    markdown,
+    interacted,
+  ]);
 
   const onToggleAttachedSelectedSnippet = useCallback(() => {
     setAttachedSelectedSnippet((prev) => {
@@ -127,6 +158,17 @@ const useAttachSelectedSnippet = (): [Checkbox, () => void] => {
       };
     });
   }, []);
+
+  useEffect(() => {
+    if (messageLength > 0) {
+      setAttachedSelectedSnippet((prev) => {
+        return {
+          ...prev,
+          checked: false,
+        };
+      });
+    }
+  }, [messageLength]);
 
   return [attachedSelectedSnippet, onToggleAttachedSelectedSnippet];
 };
@@ -176,12 +218,17 @@ export type Checkboxes = {
   selected_lines: Checkbox;
 };
 
-export const useCheckboxes = (): [Checkboxes, (name: string) => void] => {
-  // TODO: add interacted so that auto select doesn't mess things up
-  const [attachFileCheckboxData, onToggleAttachFile] = useAttachActiveFile();
+export const useCheckboxes = () => {
+  const [interacted, setInteracted] = useState(false);
+
   const [attachedSelectedSnippet, onToggleAttachedSelectedSnippet] =
-    useAttachSelectedSnippet();
+    useAttachSelectedSnippet(interacted);
   const [searchWorkspace, onToggleSearchWorkspace] = useSearchWorkSpace();
+
+  const [attachFileCheckboxData, onToggleAttachFile] = useAttachActiveFile(
+    interacted,
+    attachedSelectedSnippet.checked,
+  );
 
   const checkboxes = useMemo(
     () => ({
@@ -191,6 +238,23 @@ export const useCheckboxes = (): [Checkboxes, (name: string) => void] => {
     }),
     [attachFileCheckboxData, attachedSelectedSnippet, searchWorkspace],
   );
+
+  useEffect(() => {
+    if (
+      !interacted &&
+      attachedSelectedSnippet.checked &&
+      !attachFileCheckboxData.checked &&
+      !attachFileCheckboxData.hide
+    ) {
+      onToggleAttachFile();
+    }
+  }, [
+    attachFileCheckboxData.checked,
+    attachFileCheckboxData.hide,
+    attachedSelectedSnippet.checked,
+    interacted,
+    onToggleAttachFile,
+  ]);
 
   const onToggleCheckbox = useCallback(
     (name: string) => {
@@ -205,6 +269,8 @@ export const useCheckboxes = (): [Checkboxes, (name: string) => void] => {
           onToggleAttachedSelectedSnippet();
           break;
       }
+
+      setInteracted(true);
     },
     [
       onToggleAttachFile,
@@ -213,5 +279,24 @@ export const useCheckboxes = (): [Checkboxes, (name: string) => void] => {
     ],
   );
 
-  return [checkboxes, onToggleCheckbox];
+  const unCheckAll = useCallback(() => {
+    if (attachFileCheckboxData.checked) {
+      onToggleAttachFile();
+    }
+    if (attachedSelectedSnippet.checked) {
+      onToggleAttachedSelectedSnippet();
+    }
+    if (searchWorkspace.checked) {
+      onToggleSearchWorkspace();
+    }
+  }, [
+    attachFileCheckboxData.checked,
+    attachedSelectedSnippet.checked,
+    onToggleAttachFile,
+    onToggleAttachedSelectedSnippet,
+    onToggleSearchWorkspace,
+    searchWorkspace.checked,
+  ]);
+
+  return { checkboxes, onToggleCheckbox, setInteracted, unCheckAll };
 };

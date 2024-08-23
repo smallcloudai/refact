@@ -20,7 +20,6 @@ import { ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { usePreviewFileRequest } from "./usePreviewFileRequest";
 import { useAppDispatch, useAppSelector, useConfig } from "../../app/hooks";
-import type { Snippet } from "../../features/Chat/selectedSnippet";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useCheckboxes } from "./useCheckBoxes";
@@ -46,7 +45,6 @@ export type ChatFormProps = {
   requestPreviewFiles: (input: string) => void;
 
   filesInPreview: ChatContextFile[];
-  selectedSnippet: Snippet;
 
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
@@ -82,8 +80,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
   const [value, setValue] = React.useState("");
 
-  const [_interacted, setInteracted] = React.useState(false);
-  const [checkboxes, toggleCheckbox] = useCheckboxes();
+  const { checkboxes, onToggleCheckbox, setInteracted, unCheckAll } =
+    useCheckboxes();
 
   const refs = useTourRefs();
 
@@ -107,6 +105,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       );
       onSubmit(valueIncludingChecks);
       setValue(() => "");
+      unCheckAll();
     }
   }, [
     value,
@@ -115,14 +114,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     checkboxes,
     config.features?.vecdb,
     onSubmit,
+    unCheckAll,
   ]);
 
   const handleEnter = useOnPressedEnter(handleSubmit);
 
   const handleChange = useCallback(
     (command: string) => {
-      setInteracted(true);
       setValue(command);
+      setInteracted(true);
     },
     [setInteracted],
   );
@@ -218,7 +218,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         host={config.host}
         checkboxes={checkboxes}
         showControls={showControls}
-        onCheckedChange={toggleCheckbox}
+        onCheckedChange={onToggleCheckbox}
         selectProps={{
           value: model || caps.default_cap,
           onChange: onSetChatModel,
