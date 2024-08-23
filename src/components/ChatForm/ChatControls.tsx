@@ -112,14 +112,13 @@ const ChatControlCheckBox: React.FC<{
         disabled={disabled}
         onCheckedChange={onCheckChange}
       >
-        {" "}
         {label}
-        <TruncateLeft>{fileName}</TruncateLeft>
+        {fileName && <TruncateLeft>{fileName}</TruncateLeft>}
       </Checkbox>
       {infoText && (
         <HoverCard.Root>
           <HoverCard.Trigger>
-            <QuestionMarkCircledIcon />
+            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
           </HoverCard.Trigger>
           <HoverCard.Content maxWidth="240px" size="1">
             <Flex direction="column" gap="4">
