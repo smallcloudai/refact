@@ -78,4 +78,5 @@ export const selectAst = (state: RootState) =>
   state.config.features?.ast ?? false;
 
 export const selectApiKey = (state: RootState) => state.config.apiKey;
+export const selectAddressURL = (state: RootState) => state.config.addressURL;
 export const selectHost = (state: RootState) => state.config.host;
