@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { isGoodResponse, smallCloudApi } from "../services/smallcloud";
 import { selectHost, setApiKey } from "../features/Config/configSlice";
@@ -12,9 +12,8 @@ export const useLogin = () => {
   const dispatch = useAppDispatch();
   const user = useGetUser();
   const logout = useLogout();
+  const abortRef = useRef<() => void>(() => ({}));
 
-  const [isPollingLogin, setIsPollingLogin] = useState<boolean>(false);
-  const canLogin = !user.data && !isPollingLogin;
   const host = useAppSelector(selectHost);
   const openUrl = useOpenUrl();
 
@@ -26,13 +25,16 @@ export const useLogin = () => {
     );
   }, []);
 
-  const loginPollingResult = smallCloudApi.useLoginQuery(newLoginTicket, {
-    skip: canLogin,
-  });
+  const loginPollingResult = useAppSelector(
+    smallCloudApi.endpoints.login.select(newLoginTicket),
+  );
 
   const loginThroughWeb = useCallback(
     (pro: boolean) => {
-      setIsPollingLogin(true);
+      const thunk = dispatch(
+        smallCloudApi.endpoints.login.initiate(newLoginTicket),
+      );
+      abortRef.current = () => thunk.abort();
       const baseUrl = pro
         ? "https://refact.smallcloud.ai/pro?sidebar"
         : "https://refact.smallcloud.ai/authentication";
@@ -44,17 +46,12 @@ export const useLogin = () => {
       const initUrlString = initUrl.toString();
       openUrl(initUrlString);
     },
-    [host, newLoginTicket, openUrl],
+    [dispatch, host, newLoginTicket, openUrl],
   );
-
-  const cancelLogin = useCallback(() => {
-    setIsPollingLogin(false);
-  }, []);
 
   // TODO: handle errors
   const loginWithKey = useCallback(
     (key: string) => {
-      setIsPollingLogin(false);
       dispatch(setApiKey(key));
     },
     [dispatch],
@@ -62,7 +59,6 @@ export const useLogin = () => {
 
   useEffect(() => {
     if (isGoodResponse(loginPollingResult.data)) {
-      setIsPollingLogin(false);
       dispatch(setApiKey(loginPollingResult.data.secret_key));
       setupHost({
         type: "cloud",
@@ -77,8 +73,7 @@ export const useLogin = () => {
     loginWithKey,
     user,
     polling: loginPollingResult,
-    isPollingLogin,
-    cancelLogin,
+    cancelLogin: abortRef,
     logout,
   };
 };

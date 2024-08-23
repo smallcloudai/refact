@@ -10,22 +10,16 @@ export interface CloudLoginProps {
 
 export const CloudLogin: React.FC<CloudLoginProps> = ({
   goBack,
-  next,
+  // next,
 }: CloudLoginProps) => {
   const [selected, setSelected] = useState<"free" | "pro">("free");
   const loginButton = useRef<HTMLButtonElement>(null);
 
-  const {
-    loginThroughWeb,
-    cancelLogin,
-    loginWithKey,
-    isPollingLogin,
-    polling,
-  } = useLogin();
+  const { loginThroughWeb, cancelLogin, loginWithKey, polling } = useLogin();
 
   useEffect(() => {
-    cancelLogin();
-  }, [selected, cancelLogin]);
+    cancelLogin.current();
+  }, [cancelLogin, selected]);
 
   useEffect(() => {
     const { current } = loginButton;
@@ -33,7 +27,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
       return;
     }
 
-    if (polling.isFetching) {
+    if (polling.isLoading) {
       const loadingText = "Fetching API Key ";
       const animationFrames = ["/", "|", "\\", "-"];
       let index = 0;
@@ -49,16 +43,15 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
     } else {
       current.innerText = "Login / Create Account";
     }
-  }, [loginButton, polling.isFetching]);
+  }, [loginButton, polling.isLoading]);
 
   useEffect(() => {
-    if (isGoodResponse(polling.data) && isPollingLogin) {
+    if (isGoodResponse(polling.data)) {
       const apiKey = polling.data.secret_key;
-      cancelLogin();
       loginWithKey(apiKey);
-      next(apiKey, false);
+      // next(apiKey, false);
     }
-  }, [polling.data, loginWithKey, next, cancelLogin, isPollingLogin]);
+  }, [polling.data, loginWithKey]);
 
   const onValueChange = (value: string) => {
     setSelected(value as "free" | "pro");
@@ -129,9 +122,9 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
           onClick={onLogin}
           style={{
             width: 200,
-            fontFamily: polling.isFetching ? "monospace" : undefined,
+            fontFamily: polling.isLoading ? "monospace" : undefined,
           }}
-          disabled={polling.isFetching}
+          disabled={polling.isLoading}
         >
           Login / Create Account
         </Button>
