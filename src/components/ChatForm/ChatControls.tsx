@@ -82,7 +82,7 @@ export type ChatControlsProps = {
   showControls: boolean;
 };
 
-const ChatContolCheckBox: React.FC<{
+const ChatControlCheckBox: React.FC<{
   name: string;
   checked: boolean;
   disabled?: boolean;
@@ -177,7 +177,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
         }
         return (
           <Flex style={{ alignSelf: "flex-start" }} key={key}>
-            <ChatContolCheckBox
+            <ChatControlCheckBox
               name={checkbox.name}
               label={checkbox.label}
               checked={checkbox.checked}
