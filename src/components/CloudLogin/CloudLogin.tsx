@@ -5,12 +5,10 @@ import { isGoodResponse } from "../../services/smallcloud";
 
 export interface CloudLoginProps {
   goBack: () => void;
-  next: (apiKey: string, sendCorrectedCodeSnippets: boolean) => void;
 }
 
 export const CloudLogin: React.FC<CloudLoginProps> = ({
   goBack,
-  // next,
 }: CloudLoginProps) => {
   const [selected, setSelected] = useState<"free" | "pro">("free");
   const loginButton = useRef<HTMLButtonElement>(null);
@@ -49,7 +47,6 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
     if (isGoodResponse(polling.data)) {
       const apiKey = polling.data.secret_key;
       loginWithKey(apiKey);
-      // next(apiKey, false);
     }
   }, [polling.data, loginWithKey]);
 
