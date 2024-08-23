@@ -106,6 +106,13 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
             </Flex>
           </DropdownMenu.Label>
         )}
+        {user.data && (
+          <DropdownMenu.Label>
+            <Flex align="center" gap="1">
+              Active plan: {user.data.inference}
+            </Flex>
+          </DropdownMenu.Label>
+        )}
 
         <DropdownMenu.Item
           onSelect={(event) => {
