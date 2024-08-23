@@ -80,7 +80,7 @@ const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     setupHost({ type: "cloud", apiKey, sendCorrectedCodeSnippets });
   };
 
-  const enterpriseSetup = (apiKey: string, endpointAddress: string) => {
+  const enterpriseSetup = (endpointAddress: string, apiKey: string) => {
     setupHost({ type: "enterprise", apiKey, endpointAddress });
   };
 
