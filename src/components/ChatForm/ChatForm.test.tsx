@@ -29,7 +29,6 @@ const noop = () => ({});
 const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
     chatId: "chatId",
-    selectedSnippet: { code: "", language: "", path: "", basename: "" },
     onSubmit: (_str: string) => ({}),
     isStreaming: false,
     onStopStreaming: noop,
@@ -143,7 +142,6 @@ describe("ChatForm", () => {
 
   // TODO: fix this test because the host is not set in redux
   test("checkbox snippet", async () => {
-    // skipped because if the snippet is there on the first render it's automatically appened
     const fakeOnSubmit = vi.fn();
     const snippet = {
       language: "python",
@@ -151,12 +149,23 @@ describe("ChatForm", () => {
       path: "/Users/refact/projects/print1.py",
       basename: "print1.py",
     };
-    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />, {
-      preloadedState: {
-        selected_snippet: snippet,
-        config: { host: "vscode", themeProps: {}, lspPort: 8001 },
+    const { user, ...app } = render(
+      <App chatId="test-3" onSubmit={fakeOnSubmit} />,
+      {
+        preloadedState: {
+          selected_snippet: snippet,
+          active_file: {
+            name: "foo.txt",
+            cursor: 1,
+            path: "foo.txt",
+            line1: 0,
+            line2: 0,
+            can_paste: true,
+          },
+          config: { host: "vscode", themeProps: {}, lspPort: 8001 },
+        },
       },
-    });
+    );
 
     const label = app.queryByText(/Selected \d* lines/);
     expect(label).not.toBeNull();
@@ -165,7 +174,7 @@ describe("ChatForm", () => {
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     const markdown = "```python\nprint(1)\n```\n";
-    const expected = `${markdown}\nfoo\n`;
+    const expected = `@file foo.txt:0-0\n${markdown}\nfoo\n`;
     expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
   });
 });
