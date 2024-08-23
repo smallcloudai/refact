@@ -15,7 +15,13 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
   const [selected, setSelected] = useState<"free" | "pro">("free");
   const loginButton = useRef<HTMLButtonElement>(null);
 
-  const { loginThroughWeb, cancelLogin, loginWithKey, polling } = useLogin();
+  const {
+    loginThroughWeb,
+    cancelLogin,
+    loginWithKey,
+    isPollingLogin,
+    polling,
+  } = useLogin();
 
   useEffect(() => {
     cancelLogin();
@@ -46,12 +52,13 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
   }, [loginButton, polling.isFetching]);
 
   useEffect(() => {
-    if (isGoodResponse(polling.data)) {
+    if (isGoodResponse(polling.data) && isPollingLogin) {
       const apiKey = polling.data.secret_key;
+      cancelLogin();
       loginWithKey(apiKey);
       next(apiKey, false);
     }
-  }, [polling.data, loginWithKey, next]);
+  }, [polling.data, loginWithKey, next, cancelLogin, isPollingLogin]);
 
   const onValueChange = (value: string) => {
     setSelected(value as "free" | "pro");

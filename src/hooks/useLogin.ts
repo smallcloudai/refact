@@ -77,6 +77,7 @@ export const useLogin = () => {
     loginWithKey,
     user,
     polling: loginPollingResult,
+    isPollingLogin,
     cancelLogin,
     logout,
   };
