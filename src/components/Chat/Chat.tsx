@@ -20,7 +20,6 @@ import {
   selectChatId,
   selectMessages,
 } from "../../features/Chat/chatThread";
-import { selectSelectedSnippet } from "../../features/Chat/selectedSnippet";
 import { selectActiveFile } from "../../features/Chat/activeFile";
 import { useTourRefs } from "../../features/Tour";
 
@@ -77,7 +76,6 @@ export const Chat: React.FC<ChatProps> = ({
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
   const activeFile = useAppSelector(selectActiveFile);
-  const selectedSnippet = useAppSelector(selectSelectedSnippet);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
 
@@ -234,7 +232,6 @@ export const Chat: React.FC<ChatProps> = ({
         requestCommandsCompletion={requestCommandsCompletion}
         onClose={maybeSendToSidebar}
         filesInPreview={filesInPreview}
-        selectedSnippet={selectedSnippet}
         onTextAreaHeightChange={onTextAreaHeightChange}
         prompts={prompts}
         onSetSystemPrompt={onSetSystemPrompt}
