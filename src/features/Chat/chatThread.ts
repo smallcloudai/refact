@@ -450,14 +450,6 @@ export const useSendChatRequest = () => {
     [messagesWithSystemPrompt, sendMessages],
   );
 
-  // TODO: retry
-  const retry = useCallback(
-    (messages: ChatMessages) => {
-      sendMessages(messages);
-    },
-    [sendMessages],
-  );
-
   useEffect(() => {
     if (sendImmediately) {
       sendMessages(messagesWithSystemPrompt);
@@ -487,6 +479,11 @@ export const useSendChatRequest = () => {
     if (abortRef.current) {
       abortRef.current();
     }
+  };
+
+  const retry = (messages: ChatMessages) => {
+    abort();
+    sendMessages(messages);
   };
 
   return {
