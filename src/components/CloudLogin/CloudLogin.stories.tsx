@@ -8,7 +8,6 @@ const meta: Meta<typeof CloudLogin> = {
   component: CloudLogin,
   args: {
     goBack: fn(),
-    next: fn(),
   },
   decorators: [
     (Children) => {

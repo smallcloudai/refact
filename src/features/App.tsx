@@ -76,10 +76,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     }
   };
 
-  const cloudLogin = (apiKey: string, sendCorrectedCodeSnippets: boolean) => {
-    setupHost({ type: "cloud", apiKey, sendCorrectedCodeSnippets });
-  };
-
   const enterpriseSetup = (endpointAddress: string, apiKey: string) => {
     setupHost({ type: "enterprise", apiKey, endpointAddress });
   };
@@ -151,9 +147,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             {page.name === "initial setup" && (
               <InitialSetup onPressNext={onPressNext} />
             )}
-            {page.name === "cloud login" && (
-              <CloudLogin goBack={goBack} next={cloudLogin} />
-            )}
+            {page.name === "cloud login" && <CloudLogin goBack={goBack} />}
             {page.name === "enterprise setup" && (
               <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
             )}
