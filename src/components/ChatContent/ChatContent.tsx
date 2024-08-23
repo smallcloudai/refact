@@ -57,7 +57,7 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 
   if (config.host === "web") {
     <Flex direction="column" gap="4">
-      <Text>Welcome to Refact chat! How can I assist you today?</Text>;
+      <Text>Welcome to Refact chat!</Text>;
       <TipOfTheDay />
     </Flex>;
   }
@@ -99,7 +99,7 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 
   return (
     <Flex direction="column" gap="4">
-      <Text>Welcome to Refact chat! How can I assist you today?</Text>
+      <Text>Welcome to Refact chat.</Text>
       <TipOfTheDay />
     </Flex>
   );

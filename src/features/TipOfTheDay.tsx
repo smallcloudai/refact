@@ -8,42 +8,39 @@ function matchesHost(tipHost: TipHost, host: string): boolean {
 }
 
 export const tips: [TipHost, string][] = [
-  ["all", "Press 'Shift + Enter' to move to a new line in the Chat."],
+  ["all", "Press 'Shift + Enter' to move to a new line in the chat input box."],
   [
     "all",
-    "Need a break from suggestions? You can pause them by clicking the 'Refact' icon in the status bar. The manual completion trigger still works: press [MANUAL_COMPLETION].",
+    "Need a break from code suggestions? You can pause them by clicking the 'Refact' icon in the status bar. On pause, the manual code completion still works: press [MANUAL_COMPLETION].",
+  ],
+  ["all", "Use @file <file_name> to attach a file to the chat context."],
+  [
+    "all",
+    "Use @definition <class_or_function_name> to add the definition to the chat context. You can even combine it with text, for example: what is the relationship between @definition Frog and @definition Toad?",
   ],
   [
     "all",
-    "Use the @file <file_name> command to attach a file to the chat context.",
+    "After you did something useful with one piece of code, you can select another piece of code and ask the model to do the same thing as a follow-up.",
   ],
   [
     "all",
-    "To add the definition of a symbol to the chat context, use @definition <ClassOrFunctionName>.",
+    "The quickest way to call chat is to press F1. You can change key bindings in the menu.",
   ],
   [
-    "vscode",
-    "Need to find and fix bugs in your code? Select a piece of code, such as a function, press F1 to open the Toolbox, and write /bugs. It will also work on the whole file, provided it's not too large.",
+    "all",
+    'Before hitting F1, you can select a bit of code and the chat will automatically tick the "Attach" checkboxes. After you get a modified version of the code from chat, you can paste it back, IDE will show diff for you to see the changes.',
   ],
   [
-    "vscode",
-    "Looking to edit your code? Select the lines you want to change, press F1, and write /edit <Instructions>.",
+    "all",
+    'You can manually combine @file @definition @references @search to collect a lot of context, and ask a complex question. Try it, the chat handles complex questions pretty well! If there is too much code to fit into model limits, context post-processing will start to skeletonize the code -- replace function bodies, comments, includes with "...".',
   ],
   [
-    "vscode",
-    "Need to explain code? Select the code snippet, press F1, and type /explain",
+    "all",
+    "You can rely on exploration tools to collect the context for you. For this to work better, write class and function names exactly, or ask the model to search for a specific thing first.",
   ],
   [
-    "vscode",
-    "Need to summarize code? Select the part, press F1, and write /summarize",
-  ],
-  [
-    "vscode",
-    "Want to create new code? Ask Refact to do it for you: press F1 and write /gen with a task description.",
-  ],
-  [
-    "vscode",
-    "Make your code shorter: Select the code, press F1, and write /shorter",
+    "all",
+    "Use @web http://... to add a web page to the context. Or just give model the URL it will use the web() exploration tool to check it out.",
   ],
 ];
 
