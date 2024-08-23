@@ -41,6 +41,7 @@ import {
   noTools,
   noCommandPreview,
   noCompletions,
+  goodUser,
 } from "../../utils/mockServer";
 
 const handlers = [
@@ -49,6 +50,7 @@ const handlers = [
   noTools,
   noCommandPreview,
   noCompletions,
+  goodUser,
 ];
 
 // const handlers = [
@@ -360,6 +362,7 @@ describe("Chat", () => {
       goodCaps,
       noCommandPreview,
       noCompletions,
+      noTools,
     );
     server.use(
       http.post(
