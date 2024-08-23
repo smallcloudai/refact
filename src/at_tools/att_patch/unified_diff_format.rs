@@ -67,7 +67,6 @@ impl DiffBlock {
     }
 }
 
-
 fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Edit>) {
     let mut line_num = start_line_num;
     while line_num < lines.len() {
@@ -89,12 +88,11 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
     }
 
     let mut edits = Vec::new();
-    let mut keeper = false;
     let mut hunk = Vec::new();
-    let add_remove_rename_block = 
+    let add_remove_rename_block =
         before_path.as_ref().map_or(false, |x| x.starts_with("/dev/null"))
-        || after_path.as_ref().map_or(false, |x| x.starts_with("/dev/null"))
-        || before_path.as_ref().map_or(false, |x| after_path.as_ref().map_or(false, |y| x != y));
+            || after_path.as_ref().map_or(false, |x| x.starts_with("/dev/null"))
+            || before_path.as_ref().map_or(false, |x| after_path.as_ref().map_or(false, |y| x != y));
 
     for line in block {
         hunk.push(line.to_string());
@@ -120,19 +118,17 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
             before_path = before_path_new;
             after_path = Some(line[4..].trim().to_string());
             hunk.clear();
-            keeper = false;
             continue;
         }
 
         let op = line.chars().next().unwrap();
         if op == '-' || op == '+' || (add_remove_rename_block && op != '@') {
-            keeper = true;
             continue;
         }
         if op != '@' {
             continue;
         }
-        if !keeper {
+        if hunk.len() <= 1 {
             hunk.clear();
             continue;
         }
@@ -144,7 +140,6 @@ fn process_fenced_block(lines: &[&str], start_line_num: usize) -> (usize, Vec<Ed
             hunk: hunk.clone(),
         });
         hunk.clear();
-        keeper = false;
     }
 
     (line_num + 1, edits)
@@ -178,7 +173,7 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
                 line: if x.starts_with("+") { x[1..].to_string() } else { x.clone() },
                 line_type: LineType::Plus,
                 file_line_num_idx: Some(0),
-                correct_spaces_offset: Some(0)
+                correct_spaces_offset: Some(0),
             })
             .collect::<Vec<_>>();
         DiffBlock {
@@ -191,7 +186,7 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
         }
     }
 
-    fn make_remove_type_diff_block(idx: usize, before_path: &PathBuf, after_path: &PathBuf)-> DiffBlock  {
+    fn make_remove_type_diff_block(idx: usize, before_path: &PathBuf, after_path: &PathBuf) -> DiffBlock {
         DiffBlock {
             file_name_before: before_path.clone(),
             file_name_after: after_path.clone(),
@@ -233,7 +228,7 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
             if after_path.exists() {
                 return Err(format!(
                     "cannot rename {before_path:?}, destination file {after_path:?} name already exists"
-                ))
+                ));
             }
         }
 
@@ -245,11 +240,20 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
                     |x| x
                         .lines()
                         .into_iter()
-                        .map(|x| x.to_string().trim_end().to_string())
+                        .map(|x| {
+                            if let Some(stripped_row) = x.to_string()
+                                .replace("\r\n", "\n")
+                                .strip_suffix("\n") {
+                                stripped_row.to_string()
+                            } else {
+                                x.to_string()
+                            }
+                        })
                         .collect::<Vec<_>>()
                 )?));
         let mut block_has_minus_plus = false;
         let mut current_lines = vec![];
+        let has_any_line_no_leading_space = edit.hunk.iter().any(|x| !x.starts_with(" "));
         for line in edit.hunk.iter() {
             if line.starts_with("-") || line.starts_with("+") {
                 let is_plus = line.starts_with("+");
@@ -274,7 +278,11 @@ async fn edit_hunks_to_diff_blocks(edits: &Vec<Edit>) -> Result<Vec<DiffBlock>, 
                     current_lines.clear();
                 }
                 current_lines.push(DiffLine {
-                    line: if line.starts_with(" ") { line[1..].to_string() } else { line.clone() },
+                    line: if !has_any_line_no_leading_space && line.starts_with(" ") {
+                        line[1..].to_string()
+                    } else {
+                        line.clone()
+                    },
                     line_type: LineType::Space,
                     file_line_num_idx: None,
                     correct_spaces_offset: None,
@@ -317,8 +325,8 @@ fn search_diff_block_text_location(diff_blocks: &mut Vec<DiffBlock>) {
                         .map(|x| &x.line)
                         .map(|x| x.trim_start().to_string())
                         .collect::<Vec<_>>();
-                    if span.iter().any(|x| x.line_type == LineType::Plus) 
-                       || diff_line_span_size >= diff_block.file_lines.len() {
+                    if span.iter().any(|x| x.line_type == LineType::Plus)
+                        || diff_line_span_size >= diff_block.file_lines.len() {
                         continue;
                     }
                     for file_line_idx in file_line_start_offset..=diff_block.file_lines.len() - diff_line_span_size {
@@ -365,11 +373,80 @@ fn search_diff_block_text_location(diff_blocks: &mut Vec<DiffBlock>) {
     }
 }
 
-// Step 1. Fix idents using correct_spaces_offset 
+fn splitting_diff_blocks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffBlock> {
+    let mut exported_blocks = vec![];
+    for (_, blocks) in &diff_blocks.iter().group_by(|x| x.hunk_idx) {
+        let new_blocks: Vec<_> = blocks.cloned().collect();
+        let diff_block = new_blocks.first().expect("cannot find diff block");
+        if new_blocks.len() == 1 && diff_block.action == "edit" {
+            if diff_block.diff_lines.iter().all(|x| x.line_type == LineType::Space) {
+                let original_text = diff_block.file_lines.join("\n");
+                let text_after = diff_block.diff_lines.iter().map(|x| x.line.clone()).join("\n");
+                let diffs = diff::lines(&original_text, &text_after);
+                let mut line_num: usize = 0;
+                let mut diff_lines = vec![];
+                for diff in diffs {
+                    match diff {
+                        diff::Result::Left(l) => {
+                            diff_lines.push(DiffLine {
+                                line: l.to_string(),
+                                line_type: LineType::Minus,
+                                file_line_num_idx: Some(line_num),
+                                correct_spaces_offset: Some(0),
+                            });
+                            line_num += 1;
+                        }
+                        diff::Result::Right(r) => {
+                            diff_lines.push(DiffLine {
+                                line: r.to_string(),
+                                line_type: LineType::Plus,
+                                file_line_num_idx: Some(line_num),
+                                correct_spaces_offset: Some(0),
+                            });
+                        }
+                        diff::Result::Both(_, _) => {
+                            line_num += 1;
+                            if !diff_lines.is_empty() {
+                                exported_blocks.push(DiffBlock {
+                                    file_name_before: diff_block.file_name_before.clone(),
+                                    file_name_after: diff_block.file_name_after.clone(),
+                                    action: diff_block.action.clone(),
+                                    file_lines: diff_block.file_lines.clone(),
+                                    hunk_idx: diff_block.hunk_idx,
+                                    diff_lines: diff_lines.clone(),
+                                });
+                                diff_lines.clear();
+                            }
+                        }
+                    }
+                }
+                if !diff_lines.is_empty() {
+                    exported_blocks.push(DiffBlock {
+                        file_name_before: diff_block.file_name_before.clone(),
+                        file_name_after: diff_block.file_name_after.clone(),
+                        action: diff_block.action.clone(),
+                        file_lines: diff_block.file_lines.clone(),
+                        hunk_idx: diff_block.hunk_idx,
+                        diff_lines: diff_lines.clone(),
+                    });
+                    diff_lines.clear();
+                }
+            } else {
+                exported_blocks.extend(new_blocks);
+            }
+        } else {
+            exported_blocks.extend(new_blocks);
+        }
+    }
+    exported_blocks.clone()
+}
+
+// Step 0. Remove those chunks which remove and add the same code
+// Step 1. Fix idents using correct_spaces_offset
 // Step 2. If non-found is the first line, and it is a `+` type then set the 0 index
 // Step 3. Fix missing `+` lines. If line is without `+` symbol and is file line index is not found then consider it a `+` line (except the first line)
 // Step 4. Fix missing `-` lines. If line is without `-` symbol and file index is found and the nearest `+` line is quite similar then consider it as a `-` line
-// Step 5. Fill out all non-found file indexes using the last one found. 
+// Step 5. Fill out all non-found file indexes using the last one found.
 fn normalize_diff_block(diff_block: &mut DiffBlock) -> Result<(), String> {
     if diff_block.diff_lines.is_empty() {
         return Ok(());
@@ -452,13 +529,13 @@ fn normalize_diff_block(diff_block: &mut DiffBlock) -> Result<(), String> {
         ));
     }
 
-    return Ok(());
+    Ok(())
 }
 
 fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
     diff_blocks
         .iter()
-        .map(|block| {
+        .filter_map(|block| {
             let useful_block_lines = block
                 .diff_lines
                 .iter()
@@ -475,7 +552,20 @@ fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
                 assert_eq!(block.file_name_before, block.file_name_after);
                 (block.file_name_before.to_string_lossy().to_string(), None)
             };
-            DiffChunk {
+            let lines_remove = useful_block_lines
+                .iter()
+                .filter(|x| x.line_type == LineType::Minus)
+                .map(|x| format!("{}\n", x.line.clone()))
+                .join("");
+            let lines_add = useful_block_lines
+                .iter()
+                .filter(|x| x.line_type == LineType::Plus)
+                .map(|x| format!("{}\n", x.line.clone()))
+                .join("");
+            if lines_remove == lines_add {
+                return None;
+            }
+            Some(DiffChunk {
                 file_name: filename,
                 file_name_rename: filename_rename,
                 file_action: block.action.clone(),
@@ -495,18 +585,10 @@ fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
                     })
                     .max()
                     .unwrap_or(1),
-                lines_remove: useful_block_lines
-                    .iter()
-                    .filter(|x| x.line_type == LineType::Minus)
-                    .map(|x| format!("{}\n", x.line.clone()))
-                    .join(""),
-                lines_add: useful_block_lines
-                    .iter()
-                    .filter(|x| x.line_type == LineType::Plus)
-                    .map(|x| format!("{}\n", x.line.clone()))
-                    .join(""),
+                lines_remove,
+                lines_add,
                 ..Default::default()
-            }
+            })
         })
         .collect()
 }
@@ -515,54 +597,68 @@ fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
 pub struct UnifiedDiffFormat {}
 
 impl UnifiedDiffFormat {
-    pub fn prompt() -> String {
-        r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT. 
-You will be given a problem statement and a list of files. 
-Your objective is to create a unified diff with a specific format output based on the provided task and files. 
+    pub fn prompt(
+        workspace_projects_dirs: &str,
+        first_workspace_project_dir: &str,
+    ) -> String {
+        let prompt = r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT.
+You will be given a problem statement and a list of files.
+Your objective is to create a unified diff with a specific format output based on the provided task and files.
+In the diff generation use following project directories:
+%WORKSPACE_PROJECTS_DIRS%
 
 ### STEPS TO FOLLOW for generating the correct diff
 1. Review the provided tasks and files.
-2. Use extra context (list of related symbols signatures) if it's given to make changes correct.
-3. Generate the diff in the specified format (which is given below).
+2. Use extra context if it's given to make changes as correct as possible, but don't change files in the extra context.
+3. Before generating the diff, write code snippets in a free form which solve the given task. Those snippets then are going to be translated to the diff format.
+4. Translate generated solution to the unified diff format, which is given below.
 
 ### UNIFIED DIFF FORMATTING RULES
-There are 4 possible actions can be expressed as the unified diff: editing, adding, renaming and removing files. 
+There are 4 possible actions can be expressed as the unified diff: editing, adding, renaming and removing files.
 
 ## Common rules to generate correct diffs:
 - Fence the diff with "```diff" and "```".
 - Make changes for every given file.
-- Return edits similar to unified diffs that `diff -U0` would produce.
-- Don't include line numbers like `diff -U0` does. The user's patch tool doesn't need them.
+- Return edits similar to unified diffs that `diff -U2` would produce.
+- Don't include line numbers like `diff -U2` does. The user's patch tool doesn't need them.
+- Copy a few lines from the original file and paste them before the `-` and `+` lines, otherwise the diff will be incorrect.
 - Don't include timestamps with the file paths.
-- Start each hunk of changes with a `@@ ... @@` line.
+- There are two types of hunk: `@@ -+ block @@` and `@@ file_replace_block @@`.
+- `@@ -+ block @@` hunk MUST contain `-` or `+` types of lines.
+- `@@ file_replace_block @@` hunk MUST replace the whole file with a new content.
 - The user's patch tool needs CORRECT patches that apply cleanly against the current contents of the file.
-- Make sure you mark all new or modified lines with `+`.
-- Make sure you include and mark all lines that need to be removed or changed as `-` lines.
+- When using the `@@ -+ block @@`, make sure you mark all new or modified lines with `+`.
+- When using the `@@ -+ block @@`, make sure you include and mark all lines that need to be removed or changed as `-` lines.
+- When using the `@@ file_replace_block @@` there is no need to use `-` or `+` markings for lines.
+- Use `@@ file_replace_block @@` if it's needed to fix syntax errors in the file.
 - Output hunks in whatever order makes the most sense.
+- Rewrite the whole blocks of code instead of making multiple small changes.
+- Use filenames from the user as given, don't change them.
+- Include / import symbols which are used in the diff.
 
 ## Rules for `edit` action to generate correct diffs:
 - When editing a function, method, loop, etc. use a hunk to replace the *entire* code block.
-- Delete the entire existing version with `-` lines and then add a new, updated version with `+` lines. This will help you generate correct code and correct diffs.
-- To move code within a file, use 2 hunks: 1 to delete it from its current location, 1 to insert it in the new location
-- Include the first 2 lines with the real file paths which were given before
-- Only output hunks that specify changes with `+` or `-` lines.
-- Format example for the task: "Replace is_prime with a call to sympy"
+- When using the `@@ -+ block @@`, delete the entire existing version with `-` lines and then add a new, updated version with `+` lines. This will help you generate correct code and correct diffs.
+- When using the `@@ -+ block @@`, only output hunks that specify changes with `+` or `-` lines.
+- When using the `@@ -+ block @@`, copy a few lines from the original file and paste them before the `-` and `+` lines.
+- When using the `@@ file_replace_block @@`, only output the hunks which rewrites the whole file without using `+` or `-`.
+- @@ -+ block @@ format example for the task: "Replace is_prime with a call to sympy"
 ```diff
---- /home/mathweb/flask/app.py
-+++ /home/mathweb/flask/app.py
-@@ ... @@
+--- %FIRST_WORKSPACE_PROJECT_DIR%/test.py
++++ %FIRST_WORKSPACE_PROJECT_DIR%/test.py
+@@ -+ block @@
 +import sympy
 +
-@@ ... @@
+@@ -+ block @@
 -def is_prime(x):
 -    if x < 2:
 -        return False
--    for i in range(2, 
+-    for i in range(2,
 -                  int(math.sqrt(x)) + 1):
 -        if x % i == 0:
 -            return False
 -    return True
-@@ ... @@
+@@ -+ block @@
 -@app.route('/prime/<int:n>')
 -def nth_prime(n):
 -    count = 0
@@ -581,45 +677,70 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 +        if sympy.isprime(num):
 +            count += 1
 +    return str(num)
-@@ ... @@
+@@ -+ block @@
 +
 +def nth_prime_test(n):
 +    pass
 ```
+- If the file is small ot it's needed to make a lot of changes - just use `@@ file_replace_block @@` without using `-` or `+` lines.
+- When use `@@ file_replace_block @@` hunk, you must replace the whole file with the new code.
+- `@@ file_replace_block @@` format example for the task: "Replace is_prime with a call to sympy": "Replace is_prime with a call to sympy":
+```diff
+--- %FIRST_WORKSPACE_PROJECT_DIR%/test.py
++++ %FIRST_WORKSPACE_PROJECT_DIR%/test.py
+@@ file_replace_block @@
+ import sympy
+
+ @app.route('/prime/<int:n>')
+ def nth_prime(n):
+     count = 0
+     num = 1
+     while count < n:
+         num += 1
+         if sympy.isprime(num):
+             count += 1
+     return str(num)
+
+ def nth_prime_test(n):
+     pass
+```
+- In the example above, the whole file is going to be replaced with the new code and the new hunk header is used: `@@ file_replace_block @@`
+- Only `@@ file_replace_block @@` hunk type can be generated without `+` and `-` lines.
+
 ## Rules for `add` action to generate correct diffs:
-- To add a new file, make sure that you output a correct filename (an absolute path is preferable). 
+- To add a new file, make sure that you output a correct filename (an absolute path is preferable).
 - The filename needs to be taken from the given task.
 - Include all lines to the hunk which must be appeared in the file.
 - Do not skip any lines.
 - Mark all lines with `+` sign.
-- Format example for the task: "Add a new file `/home/mathweb/my_app/quicksort.py` with a quick sort function in it".
+- Format example for the task: "Add a new file `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py` with a quick sort function in it".
 ```diff
 --- /dev/null
-+++ /home/mathweb/my_app/quicksort.py
-@@ ... @@
-+def quicksort(arr):
-+    if len(arr) <= 1:
-+        return arr
-+    pivot = arr[len(arr) // 2]
-+    left = [x for x in arr if x < pivot]
-+    middle = [x for x in arr if x == pivot]
-+    right = [x for x in arr if x > pivot]
-+    return quicksort(left) + middle + quicksort(right)
-+
-+# Example usage
-+arr = [3, 6, 8, 10, 1, 2, 1]
-+sorted_arr = quicksort(arr)
-+print(sorted_arr)
++++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
+@@ file_replace_block @@
+ def quicksort(arr):
+     if len(arr) <= 1:
+         return arr
+     pivot = arr[len(arr) // 2]
+     left = [x for x in arr if x < pivot]
+     middle = [x for x in arr if x == pivot]
+     right = [x for x in arr if x > pivot]
+     return quicksort(left) + middle + quicksort(right)
+
+ # Example usage
+ arr = [3, 6, 8, 10, 1, 2, 1]
+ sorted_arr = quicksort(arr)
+ print(sorted_arr)
 ```
 ## Rules for `rename` action to generate correct diffs:
 - To rename a file 2 filenames need to be used: an old filename and a new filename (the absolute path is preferable).
 - Both filenames need to be taken from the given task description.
-- The file can be edited at the same time, the same `edit` rules must be used 
-- Format example for the task: "Rename the file `/home/mathweb/my_app/quicksort.py` to `/home/mathweb/my_app/quicksort_old.py` with the function inside it".
+- The file can be edited at the same time, the same `edit` rules must be used
+- Format example for the task: "Rename the file `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py` to `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py` with the function inside it".
 ```diff
---- /home/mathweb/my_app/quicksort.py
-+++ /home/mathweb/my_app/quicksort_old.py
-@@ ... @@
+--- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
++++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py
+@@ -+ block @@
 -def quicksort(arr):
 +def quicksort_old(arr):
      middle = [x for x in arr if x == pivot]
@@ -633,23 +754,26 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 ```
 - If you need just to rename a file, follow this format:
 ```diff
---- /home/mathweb/my_app/quicksort.py
-+++ /home/mathweb/my_app/quicksort_old.py
-@@ ... @@
+--- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
++++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py
+@@ file_replace_block @@
 <file_content>
 ```
 ## Rules for `delete` action to generate correct diffs:
 - To remove a file, make sure that you output a correct filename (the absolute path is preferable)
-- Instead of copying the whole file, just print `<file_content>` after the `@@ ... @@` line
-- Format example for the task: "Remove the file `/home/mathweb/my_app/quicksort.py`".
+- Instead of copying the whole file, just print `<file_content>` after the `@@ file_replace_block @@` line
+- Format example for the task: "Remove the file `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py`".
 ```diff
---- /home/mathweb/my_app/quicksort.py
+--- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
 +++ /dev/null
-@@ ... @@
+@@ file_replace_block @@
 <file_content>
 ```
-
-DO NOT FORGET TO FOLLOW STEPS AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string()
+USING `+` and `-` markings IS MANDATORY in `@@ -+ block @@`!!!
+DO NOT FORGET TO FOLLOW STEPS AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string();
+        prompt
+            .replace("%WORKSPACE_PROJECTS_DIRS%", workspace_projects_dirs)
+            .replace("%FIRST_WORKSPACE_PROJECT_DIR%", first_workspace_project_dir)
     }
 
     pub async fn parse_message(
@@ -658,6 +782,7 @@ DO NOT FORGET TO FOLLOW STEPS AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string()
         let edits = get_edit_hunks(content);
         let mut diff_blocks = edit_hunks_to_diff_blocks(&edits).await?;
         search_diff_block_text_location(&mut diff_blocks);
+        let mut diff_blocks = splitting_diff_blocks(&diff_blocks);
         for block in diff_blocks.iter_mut() {
             match normalize_diff_block(block) {
                 Ok(_) => {}
@@ -701,7 +826,7 @@ mod tests {
             1,
         );
         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
-        assert_eq!(outputs_unwrapped.into_iter().all(|x|x.applied), true);
+        assert_eq!(outputs_unwrapped.into_iter().all(|x| x.applied), true);
         let changed_text = results[0].clone().file_text.unwrap();
         (text, changed_text)
     }
@@ -735,10 +860,8 @@ Another text"#;
         let input = r#"Initial text
 ```diff
 Another text"#;
-        let result = UnifiedDiffFormat::parse_message(input).await.expect(
-            "Failed to parse diff message"
-        );
-        assert!(result.is_empty());
+        let result = UnifiedDiffFormat::parse_message(input).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
@@ -759,17 +882,15 @@ some invalid text
 ```
 ```
 ```diff"#;
-        let result = UnifiedDiffFormat::parse_message(input).await.expect(
-            "Failed to parse diff message"
-        );
-        assert!(result.is_empty());
+        let result = UnifiedDiffFormat::parse_message(input).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_empty_6() {
-        let input =  r#"Initial text
+        let input = r#"Initial text
 ```diff
-+++ 
++++
 ```
 Another text"#;
         let result = UnifiedDiffFormat::parse_message(input).await;
@@ -779,10 +900,10 @@ Another text"#;
 
     #[tokio::test]
     async fn test_empty_7() {
-        let input =  r#"Initial text
+        let input = r#"Initial text
 ```diff
---- 
-+++ 
+---
++++
 @@ ... @@
 ```
 Another text"#;
@@ -792,9 +913,9 @@ Another text"#;
 
     #[tokio::test]
     async fn test_empty_8() {
-        let input =  r#"Initial text
+        let input = r#"Initial text
 ```diff
----  
+---
 +++ asd
 @@ ... @@
 ```
@@ -854,8 +975,8 @@ class AnotherFrog:
 +++ tests/emergency_frog_situation/frog.py
 @@ ... @@
  DT = 0.01
- 
- 
+
+
 -class Frog:
 ```
 Another text"#;
@@ -898,7 +1019,7 @@ DT = 0.01
 +++ tests/emergency_frog_situation/frog.py
 @@ ... @@
  DT = 0.01
- 
+
  class Frog:
 +    # Frog class description
 ```
@@ -1344,7 +1465,7 @@ class Frog:
         {
             gt_changed_text = gt_changed_text.replace("\n", "\r\n");
         }
-        
+
         let gt_result = vec![
             DiffChunk {
                 file_name: "tests/emergency_frog_situation/frog.py".to_string(),
@@ -1387,7 +1508,7 @@ class Frog:
 +++ tests/emergency_frog_situation/set_as_avatar.py
 @@ ... @@
      """
- 
+
      def __init__(self, x, y, vx, vy):
 +        # extra row 1
 +        # extra row 2
@@ -1457,7 +1578,7 @@ class EuropeanCommonToad(frog.Frog):
 +++ tests/emergency_frog_situation/holiday.py
 @@ ... @@
      frog2.jump()
- 
+
 -    # Third jump
 +    # New Comment
 ```
@@ -1518,13 +1639,13 @@ if __name__ == __main__:
 @@ ... @@
      frog1.jump()
      frog2.jump()
- 
+
      # Second jump
 +    frog3 = Frog()
      frog1.jump()
      frog2.jump()
 +    frog3.jump()
- 
+
 -    # Third jump
 +    # Third extra jump
      frog1.jump()
@@ -1948,7 +2069,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "frog1 = frog.Frog()\nfrog2 = frog.Frog()\n".to_string(),
-                is_file: false,
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -1977,7 +2098,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "frog1 = frog.Frog()\nfrog2 = frog.Frog()\n".to_string(),
-                is_file: false,
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2009,7 +2130,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "".to_string(),
-                is_file: false,
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2017,7 +2138,7 @@ Another text"#;
         );
         assert_eq!(result, gt_result);
     }
-    
+
     #[tokio::test]
     async fn test_remove_file_without_signs() {
         let input = r#"Initial text
@@ -2037,7 +2158,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "".to_string(),
-                is_file: false,
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2045,7 +2166,7 @@ Another text"#;
         );
         assert_eq!(result, gt_result);
     }
-    
+
     #[tokio::test]
     async fn test_rename_file() {
         let input = r#"Initial text
@@ -2065,7 +2186,7 @@ Another text"#;
                 line2: 1,
                 lines_remove: "".to_string(),
                 lines_add: "".to_string(),
-                is_file: false,
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2120,7 +2241,7 @@ if __name__ == __main__:
                 line2: 11,
                 lines_remove: "".to_string(),
                 lines_add: "    # Third extra jump\n".to_string(),
-                is_file: false,
+                is_file: true
             },
         ];
         let result = UnifiedDiffFormat::parse_message(input).await.expect(
@@ -2133,5 +2254,135 @@ if __name__ == __main__:
         //     &result,
         // );
         // assert_eq!(changed_text, gt_changed_text);
+    }
+
+    #[tokio::test]
+    async fn info_test() {
+        let input = r#"
+
+1. Fixing the missing curly braces in `startObstacleCreation` and `drawObstacles`.
+2. Correcting the array initialization for `obstacles`.
+3. Fixing the typo in `createObstacle`.
+4. Completing the condition in `updateObstacles`.
+5. Adding missing closing braces for functions.
+
+Now, let's translate these changes into a unified diff format.
+
+```diff
+--- /home/svakhreev/tmp/flappy_bird/game.js
++++ /home/svakhreev/tmp/flappy_bird/game.js
+@@ file_replace_block @@
+let obstacleInterval; // Variable to hold the interval ID
+
+function startObstacleCreation() {
+    if (!obstacleInterval) { // Check if the interval is not already set
+        obstacleInterval = setInterval(createObstacle, 3000); // Create a new obstacle every 3 seconds
+    }
+}
+const obstacles = []; // Array to hold obstacles
+const obstacleWidth = 20; // Width of the obstacles
+const obstacleHeight = 100; // Height of the obstacles
+let score = 0; // Initialize score
+
+function createObstacle() {
+    const obstacle = {
+        x: canvas.width,
+        y: Math.random() * (canvas.height - obstacleHeight),
+        width: obstacleWidth,
+        height: obstacleHeight
+    };
+    obstacles.push(obstacle);
+}
+
+function drawObstacles() {
+    ctx.fillStyle = 'red'; // Color of the obstacles
+    obstacles.forEach(obstacle => {
+        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    });
+}
+
+function updateObstacles() {
+    obstacles.forEach(obstacle => {
+        obstacle.x -= 2; // Move obstacles to the left
+    });
+    // Remove obstacles that are off-screen
+    if (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
+        obstacles.shift();
+        score++; // Increment score when an obstacle is passed
+    }
+}
+
+function checkCollision() {
+    obstacles.forEach(obstacle => {
+        if (bird.x < obstacle.x + obstacle.width &&
+            bird.x + bird.width > obstacle.x &&
+            bird.y < obstacle.y + obstacle.height &&
+            bird.y + bird.height > obstacle.y) {
+            // Collision detected
+            score = 0; // Reset score
+            obstacles.length = 0; // Clear obstacles
+            clearInterval(obstacleInterval); // Clear the existing interval
+            obstacleInterval = null; // Reset the interval ID
+            startObstacleCreation(); // Start a new interval for obstacle creation
+            gameLoop(); // Restart the game loop
+        }
+    });
+}
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let bird = { x: 50, y: 150, width: 20, height: 20, gravity: 0.6, lift: -15, velocity: 0 };
+
+function drawBird() {
+    ctx.fillStyle = "yellow";
+    ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+}
+
+function update() {
+    bird.velocity += bird.gravity;
+    bird.y += bird.velocity;
+
+    if (bird.y + bird.height >= canvas.height) {
+        bird.y = canvas.height - bird.height;
+        bird.velocity = 0;
+    }
+
+    if (bird.y < 0) {
+        bird.y = 0;
+        bird.velocity = 0;
+    }
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBird();
+    update();
+    drawObstacles(); // Draw obstacles
+    updateObstacles(); // Update obstacles
+    checkCollision(); // Check for collisions
+    requestAnimationFrame(gameLoop);
+}
+
+document.addEventListener("keydown", () => {
+    bird.velocity += bird.lift;
+});
+// Start the obstacle creation interval when the game starts
+startObstacleCreation();
+
+gameLoop();
+```
+"#;
+        let result = UnifiedDiffFormat::parse_message(input).await.expect(
+            "Failed to parse diff message"
+        );
+        print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
+
+        let (_, changed_text) = apply_diff(
+            &"/home/svakhreev/tmp/flappy_bird/game.js".to_string(),
+            &result,
+        );
+
+        assert_eq!(changed_text, input);
     }
 }

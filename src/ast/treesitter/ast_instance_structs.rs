@@ -666,7 +666,7 @@ impl AstSymbolInstance for ImportDeclaration {
         false
     }
 
-    fn is_declaration(&self) -> bool { true }
+    fn is_declaration(&self) -> bool { false }
 
     fn symbol_type(&self) -> SymbolType {
         SymbolType::ImportDeclaration

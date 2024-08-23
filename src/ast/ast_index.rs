@@ -832,11 +832,49 @@ impl AstIndex {
         self.decl_symbols_from_imports(&symbols, imports_depth)
     }
 
-    pub(crate) fn decl_symbols_from_imports(
+    pub(crate) fn paths_from_imports_by_file_path(
+        &self,
+        doc: &Document,
+        imports_depth: usize
+    )-> Vec<PathBuf> {
+        let symbols = self.path_by_symbols
+            .get(&doc.path)
+            .map(|symbols| {
+                symbols
+                    .iter()
+                    .filter(|s| s.borrow().is_declaration())
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        self.paths_from_imports(&symbols, imports_depth)
+    }
+
+    fn decl_symbols_from_imports(
         &self,
         parsed_symbols: &Vec<AstSymbolInstanceRc>,
         imports_depth: usize,
     ) -> Vec<AstSymbolInstanceRc> {
+        self.paths_from_imports(parsed_symbols, imports_depth)
+            .iter()
+            .unique()
+            .filter_map(|p| self.path_by_symbols.get(p))
+            .flatten()
+            .cloned()
+            .filter(|s| {
+                let symbol_type = s.borrow().symbol_type();
+                symbol_type == SymbolType::StructDeclaration
+                    || symbol_type == SymbolType::TypeAlias
+                    || symbol_type == SymbolType::FunctionDeclaration
+            })
+            .collect::<Vec<_>>()
+    }
+
+    fn paths_from_imports(
+        &self,
+        parsed_symbols: &Vec<AstSymbolInstanceRc>,
+        imports_depth: usize,
+    ) -> Vec<PathBuf> {
         let mut paths: Vec<PathBuf> = vec![];
         let mut current_depth_symbols = parsed_symbols.clone();
         let mut current_depth = 0;
@@ -863,18 +901,6 @@ impl AstIndex {
         }
 
         paths
-            .iter()
-            .unique()
-            .filter_map(|p| self.path_by_symbols.get(p))
-            .flatten()
-            .cloned()
-            .filter(|s| {
-                let symbol_type = s.borrow().symbol_type();
-                symbol_type == SymbolType::StructDeclaration
-                    || symbol_type == SymbolType::TypeAlias
-                    || symbol_type == SymbolType::FunctionDeclaration
-            })
-            .collect::<Vec<_>>()
     }
 
     pub fn file_markup(
