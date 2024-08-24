@@ -115,7 +115,7 @@ pub async fn run_tools(
             generated_tool.push(tool_failed_message.clone());
         }
     }
-    
+
     if context_limit > MIN_RAG_CONTEXT_LIMIT {
         let (tokens_limit_chat_msg, mut tokens_limit_files) = {
             if for_postprocessing.is_empty() {
@@ -146,7 +146,7 @@ pub async fn run_tools(
         tokens_limit_files += non_used_context_limit;
         info!("run_tools: tokens_limit_files={} after postprocessing", tokens_limit_files);
 
-        let (gcx, pp_skeleton) = { 
+        let (gcx, pp_skeleton) = {
             let ccx_lock = ccx.lock().await;
             (ccx_lock.global_context.clone(), ccx_lock.pp_skeleton)
         };
@@ -181,6 +181,6 @@ pub async fn run_tools(
     }
 
     ccx.lock().await.pp_skeleton = false;
-    
+
     (all_messages, true)
 }

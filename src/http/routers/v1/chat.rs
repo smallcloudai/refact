@@ -77,6 +77,42 @@ async fn chat(
     chat_post.parameters.n = chat_post.n;
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.2)));
     chat_post.model = model_name.clone();
+
+    // extra validation to catch {"query": "Frog", "scope": "workspace"}{"query": "Toad", "scope": "workspace"}
+    let re = regex::Regex::new(r"\{.*?\}").unwrap();
+    for message in &mut chat_post.messages {
+        if let Some(tool_calls) = &mut message.tool_calls {
+            for call in tool_calls {
+                let args_input = &call.function.arguments;
+                let will_it_work = match serde_json::from_str(args_input);
+                if will_it_work.is_ok() {
+                    continue;
+                }
+                tracing::warn!("Failed to parse tool call arguments: {}", will_it_work.err().unwrap());
+                let args_corrected_json: serde_json::Value = if let Some(captures) = re.captures(args_input) {
+                    let corrected_arg = captures.get(0).unwrap().as_str();
+                    tracing::warn!("Invalid JSON found in tool call arguments; using corrected string: {}", corrected_arg);
+                    match serde_json::from_str(corrected_arg) {
+                        Ok(value) => value,
+                        Err(e) => {
+                            tracing::warn!("Failed to parse corrected tool call arguments: {}", e);
+                            continue;
+                        }
+                    }
+                } else {
+                    tracing::warn!("No valid JSON found in tool call arguments.");
+                    continue;
+                };
+                if let Ok(args_corrected) = serde_json::to_string(&args_corrected_json) {
+                    tracing::warn!("Correcting tool call arguments from {:?} to {:?}", args_input, args_corrected);
+                    call.function.arguments = args_corrected;  // <-------------------------------------------------- correction is saved here
+                } else {
+                    tracing::warn!("Failed to serialize corrected tool call arguments.");
+                }
+            }
+        }
+    }
+
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
     let mut scratchpad = scratchpads::create_chat_scratchpad(
         global_context.clone(),
