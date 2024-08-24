@@ -84,7 +84,7 @@ async fn chat(
         if let Some(tool_calls) = &mut message.tool_calls {
             for call in tool_calls {
                 let args_input = &call.function.arguments;
-                let will_it_work = match serde_json::from_str(args_input);
+                let will_it_work: Result<serde_json::Value, _> = serde_json::from_str(args_input);
                 if will_it_work.is_ok() {
                     continue;
                 }
