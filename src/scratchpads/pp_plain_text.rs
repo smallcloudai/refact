@@ -31,6 +31,7 @@ pub async fn postprocess_plain_text(
                 if out.is_empty() {
                     out.push("No content: tokens limit reached");
                 }
+                out.push("Truncated: too many tokens\n");
                 break;
             }
             tok_used += line_tokens;
