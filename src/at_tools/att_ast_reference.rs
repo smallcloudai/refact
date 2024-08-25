@@ -70,21 +70,37 @@ impl Tool for AttAstReference {
                     decl_range.end_point.row + 1
                 ));
             }
+            tool_message.push_str("\n");
             if res.references_for_exact_matches.is_empty() {
                 tool_message.push_str("There are 0 references found in workspace for those definitions.");
                 (vec![], tool_message)
             } else {
-                tool_message.push_str("References found in workspace for those definitions:\n");
-                for r in res.references_for_exact_matches.iter() {
+                tool_message.push_str(format!("Found {} references in the workspace for those definitions:\n", res.references_for_exact_matches.len()).as_str());
+                let max_display = 30;
+                for (i, r) in res.references_for_exact_matches.iter().enumerate() {
+                    if i >= max_display {
+                        let remaining = res.references_for_exact_matches.len() - max_display;
+                        tool_message.push_str(&format!("...and {} more...\n", remaining));
+                        break;
+                    }
                     let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
                     let decl_range = &r.symbol_declaration.full_range;
-                    tool_message.push_str(&format!(
-                        "`{}` at {}:{}-{}\n",
-                        r.symbol_declaration.symbol_path,
-                        file_path_str,
-                        decl_range.start_point.row + 1,
-                        decl_range.end_point.row + 1
-                    ));
+                    if decl_range.start_point.row == decl_range.end_point.row {
+                        tool_message.push_str(&format!(
+                            "`{}` at {}:{}\n",
+                            r.symbol_declaration.symbol_path,
+                            file_path_str,
+                            decl_range.start_point.row + 1
+                        ));
+                    } else {
+                        tool_message.push_str(&format!(
+                            "`{}` at {}:{}-{}\n",
+                            r.symbol_declaration.symbol_path,
+                            file_path_str,
+                            decl_range.start_point.row + 1,
+                            decl_range.end_point.row + 1
+                        ));
+                    }
                 }
                 let messages = results2message(&res.references_for_exact_matches, true)
                     .await
