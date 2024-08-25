@@ -35,7 +35,7 @@ pub struct AstIndexStatus {
 
 pub struct AstModule {
     pub ast_index_service: Arc<AMutex<AstIndexService>>,
-    ast_index: Arc<AMutex<AstIndex>>,
+    pub ast_index: Arc<AMutex<AstIndex>>,
     status: Arc<AMutex<AstIndexStatus>>,
 }
 

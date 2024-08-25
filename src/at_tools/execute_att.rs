@@ -26,7 +26,11 @@ pub async fn run_tools(
         (ccx_locked.n_ctx, ccx_locked.top_n)
     };
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
-    let context_limit = reserve_for_context;
+    let tokens_for_rag = reserve_for_context;
+    {
+        let mut ccx_locked = ccx.lock().await;
+        ccx_locked.tokens_for_rag = tokens_for_rag;
+    };
 
     info!("run_tools: reserve_for_context {} tokens", reserve_for_context);
     if original_messages.is_empty() {
@@ -45,7 +49,7 @@ pub async fn run_tools(
     let at_tools = ccx.lock().await.at_tools.clone();
 
     let mut for_postprocessing = vec![];
-    let mut generated_tool = vec![];  // tool must go first
+    let mut generated_tool = vec![];  // tool results must go first
     let mut generated_other = vec![];
 
     for t_call in ass_msg.tool_calls.as_ref().unwrap_or(&vec![]).iter() {
@@ -116,17 +120,17 @@ pub async fn run_tools(
         }
     }
 
-    if context_limit > MIN_RAG_CONTEXT_LIMIT {
+    if tokens_for_rag > MIN_RAG_CONTEXT_LIMIT {
         let (tokens_limit_chat_msg, mut tokens_limit_files) = {
             if for_postprocessing.is_empty() {
-                (context_limit, 0)
+                (tokens_for_rag, 0)
             } else {
-                (context_limit / 2, context_limit / 2)
+                (tokens_for_rag / 2, tokens_for_rag / 2)
             }
         };
-        info!("run_tools: context_limit={} tokens_limit_chat_msg={} tokens_limit_files={}", context_limit, tokens_limit_chat_msg, tokens_limit_files);
+        info!("run_tools: tokens_for_rag={} tokens_limit_chat_msg={} tokens_limit_files={}", tokens_for_rag, tokens_limit_chat_msg, tokens_limit_files);
 
-        let (pp_chat_msg, non_used_context_limit) = postprocess_plain_text(
+        let (pp_chat_msg, non_used_tokens_for_rag) = postprocess_plain_text(
             generated_tool.iter().chain(generated_other.iter()).collect(),
             tokenizer.clone(),
             tokens_limit_chat_msg,
@@ -143,7 +147,7 @@ pub async fn run_tools(
             }
         }
 
-        tokens_limit_files += non_used_context_limit;
+        tokens_limit_files += non_used_tokens_for_rag;
         info!("run_tools: tokens_limit_files={} after postprocessing", tokens_limit_files);
 
         let (gcx, pp_skeleton) = {

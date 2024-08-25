@@ -27,6 +27,7 @@ pub struct AtCommandsContext {
     pub global_context: Arc<ARwLock<GlobalContext>>,
     pub n_ctx: usize,
     pub top_n: usize,
+    pub tokens_for_rag: usize,
     pub messages: Vec<ChatMessage>,
     #[allow(dead_code)]
     pub is_preview: bool,
@@ -53,14 +54,15 @@ impl AtCommandsContext {
             global_context: global_context.clone(),
             n_ctx,
             top_n,
+            tokens_for_rag: 0,
             is_preview,
             pp_skeleton: false,
             messages,
-            
+
             at_commands: at_commands_dict(global_context.clone()).await,
             at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
             subchat_tool_parameters: HashMap::new(),
-            
+
             subchat_tx: Arc::new(AMutex::new(tx)),
             subchat_rx: Arc::new(AMutex::new(rx)),
         }

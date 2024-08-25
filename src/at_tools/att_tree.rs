@@ -60,7 +60,7 @@ impl Tool for AttTree {
             None => construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere)
         };
 
-        let content = print_files_tree_with_budget(gcx.clone(), tree, use_ast).await.map_err(|err| {
+        let content = print_files_tree_with_budget(ccx.clone(), tree, use_ast).await.map_err(|err| {
             warn!("print_files_tree_with_budget err: {}", err);
             err
         })?;
