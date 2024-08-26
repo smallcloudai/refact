@@ -148,7 +148,7 @@ pub async fn real_file_path_candidate(
             return if similar_paths_str.is_empty() {
                 Err(format!("The path {:?} does not exist. There are no similar names either.", f_path))
             } else {
-                Err(format!("The path {:?} does not exist.\n\nThere are paths with similar names however:\n{}", f_path, similar_paths_str))
+                Err(format!("The path {:?} does not exist. There are paths with similar names however:\n{}", f_path, similar_paths_str))
             }
         }
         if f_path.is_relative() {
@@ -161,7 +161,7 @@ pub async fn real_file_path_candidate(
                 if similar_paths_str.is_empty() {
                     Err(format!("The path {:?} does not exist. There are no similar names either.", f_path))
                 } else {
-                    Err(format!("The path {:?} does not exist.\n\nThere are paths with similar names however:\n{}", f_path, similar_paths_str))
+                    Err(format!("The path {:?} does not exist. There are paths with similar names however:\n{}", f_path, similar_paths_str))
                 }
             } else {
                 f_path = projpath_options[0].clone();
