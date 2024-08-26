@@ -8,17 +8,21 @@ import {
   DiffChunk,
   ToolCall,
   ToolResult,
+  UserMessage,
   isAssistantDelta,
   isAssistantMessage,
   isChatContextFileDelta,
   isChatResponseChoice,
-  isChatUserMessageResponse,
+  isContextFileResponse,
+  isContextMemoryResponse,
   isDiffMessage,
   isDiffResponse,
   isPlainTextResponse,
   isToolCallDelta,
   isToolMessage,
   isToolResponse,
+  isUserMessage,
+  isUserResponse,
 } from "../../services/refact";
 import { parseOrElse } from "../../utils";
 import { type LspChatMessage } from "../../services/refact";
@@ -88,21 +92,52 @@ export function mergeToolCalls(prev: ToolCall[], add: ToolCall[]): ToolCall[] {
   }, prev);
 }
 
+function lastIndexOf<T>(arr: T[], predicate: (a: T) => boolean): number {
+  let index = -1;
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (predicate(arr[i])) {
+      index = i;
+      break;
+    }
+  }
+  return index;
+}
+
+function replaceLastUserMessage(
+  messages: ChatMessages,
+  userMessage: UserMessage,
+): ChatMessages {
+  if (messages.length === 0) {
+    return [userMessage];
+  }
+  const lastUserMessageIndex = lastIndexOf<ChatMessage>(
+    messages,
+    isUserMessage,
+  );
+
+  if (lastUserMessageIndex === -1) {
+    return [...messages, userMessage];
+  }
+
+  return [...messages].splice(lastUserMessageIndex, 1, userMessage);
+}
+
 export function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
 ): ChatMessages {
-  if (isChatUserMessageResponse(response)) {
-    if (response.role === "context_file") {
-      const content = parseOrElse<ChatContextFile[]>(response.content, []);
-      // const msg: ChatContextFileMessage = { role: response.role, content };
-      return [...messages, { role: response.role, content }];
-    } else if (response.role === "context_memory") {
-      const content = parseOrElse<ContextMemory[]>(response.content, []);
-      return [...messages, { role: response.role, content }];
-    }
+  if (isUserResponse(response)) {
+    return replaceLastUserMessage(messages, response);
+  }
 
-    return [...messages, { role: response.role, content: response.content }];
+  if (isContextFileResponse(response)) {
+    const content = parseOrElse<ChatContextFile[]>(response.content, []);
+    return [...messages, { role: response.role, content }];
+  }
+
+  if (isContextMemoryResponse(response)) {
+    const content = parseOrElse<ContextMemory[]>(response.content, []);
+    return [...messages, { role: response.role, content }];
   }
 
   if (isToolResponse(response)) {

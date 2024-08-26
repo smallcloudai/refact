@@ -11,7 +11,6 @@ import {
   SystemPrompts,
   ToolCommand,
   isAssistantMessage,
-  isChatUserMessageResponse,
 } from "../../services/refact";
 // TODO: update this type
 import type { ChatResponse } from "../../services/refact";
@@ -43,6 +42,7 @@ export type Chat = {
   thread: ChatThread;
   error: null | string;
   prevent_send: boolean;
+  // Can be removed.
   previous_message_length: number;
   waiting_for_response: boolean;
   cache: Record<string, ChatThread>;
@@ -183,14 +183,14 @@ export const chatReducer = createReducer(initialState, (builder) => {
       return state;
     }
 
-    const hasUserMessage = isChatUserMessageResponse(action.payload);
-
-    const current = hasUserMessage
-      ? state.thread.messages.slice(0, state.previous_message_length)
-      : state.thread.messages;
+    // const hasUserMessage = isChatUserMessageResponse(action.payload);
+    // TODO: if this works we can remove previous_message_length
+    // const current = hasUserMessage
+    //   ? state.thread.messages.slice(0, state.previous_message_length)
+    //   : state.thread.messages;
 
     // TODO: this might not be needed any more, because we can mutate the last message.
-    const messages = formatChatResponse(current, action.payload);
+    const messages = formatChatResponse(state.thread.messages, action.payload);
 
     state.streaming = true;
     state.waiting_for_response = false;
