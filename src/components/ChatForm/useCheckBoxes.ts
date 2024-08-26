@@ -63,7 +63,7 @@ const useAttachActiveFile = (
           value: filePathWithLines,
           disabled: !activeFile.name,
           fileName: activeFile.name,
-          checked: !!activeFile.name && shouldShow && hasSnippet,
+          checked: !!activeFile.name && shouldShow && hasSnippet && !interacted,
         };
       });
     }
