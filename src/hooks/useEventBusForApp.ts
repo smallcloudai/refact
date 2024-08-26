@@ -42,5 +42,5 @@ export function useEventBusForApp() {
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [config.host, dispatch]);
+  }, [config.host, dispatch, pages]);
 }
