@@ -125,12 +125,18 @@ export const clearChatError = createAction<PayloadWIthId>(
 );
 
 export const enableSend = createAction<PayloadWIthId>("chatThread/enableSend");
+const setPreventSend = createAction<PayloadWIthId>("chatThread/preventSend");
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
 export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(setToolUse, (state, action) => {
     state.tool_use = action.payload;
+  });
+
+  builder.addCase(setPreventSend, (state, action) => {
+    if (state.thread.id !== action.payload.id) return state;
+    state.prevent_send = true;
   });
 
   builder.addCase(enableSend, (state, action) => {
@@ -217,6 +223,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.send_immediately = false;
     state.waiting_for_response = true;
     state.streaming = true;
+    state.prevent_send = false;
   });
 
   builder.addCase(removeChatFromCache, (state, action) => {
@@ -288,6 +295,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       return reader.read().then(function pump({ done, value }): Promise<void> {
         if (done) return Promise.resolve();
         if (thunkAPI.signal.aborted) {
+          thunkAPI.dispatch(setPreventSend({ id: chatId }));
           return Promise.resolve();
         }
 
@@ -354,8 +362,8 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     .catch((err: Error) => {
       // console.log("Catch called");
       thunkAPI.dispatch(doneStreaming({ id: chatId }));
+      thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
       return thunkAPI.rejectWithValue(err.message);
-      // return thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
     })
     .finally(() => {
       thunkAPI.dispatch(doneStreaming({ id: chatId }));
@@ -386,12 +394,16 @@ export const selectSendImmediately = (state: RootState) =>
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
   const abortRef = useRef<null | ((reason?: string | undefined) => void)>(null);
+  const hasError = useAppSelector(selectChatError);
 
   const toolsRequest = useGetToolsQuery();
 
   const chatId = useAppSelector(selectChatId);
   const streaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
   const chatError = useAppSelector(selectChatError);
+
+  const errored: boolean = !!hasError || !!chatError;
   const preventSend = useAppSelector(selectPreventSend);
 
   const currentMessages = useAppSelector(selectMessages);
@@ -458,12 +470,7 @@ export const useSendChatRequest = () => {
 
   // Automatically calls tool calls.
   useEffect(() => {
-    if (
-      !streaming &&
-      currentMessages.length > 0 &&
-      !chatError &&
-      !preventSend
-    ) {
+    if (!streaming && currentMessages.length > 0 && !errored && !preventSend) {
       const lastMessage = currentMessages.slice(-1)[0];
       if (
         isAssistantMessage(lastMessage) &&
@@ -473,10 +480,10 @@ export const useSendChatRequest = () => {
         sendMessages(currentMessages);
       }
     }
-  }, [chatError, currentMessages, preventSend, sendMessages, streaming]);
+  }, [errored, currentMessages, preventSend, sendMessages, streaming]);
 
   const abort = () => {
-    if (abortRef.current) {
+    if (abortRef.current && (streaming || isWaiting)) {
       abortRef.current();
     }
   };
