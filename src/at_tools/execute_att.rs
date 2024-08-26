@@ -7,11 +7,32 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
-use crate::call_validation::{ChatMessage, ContextEnum};
+use crate::call_validation::{ChatMessage, ContextEnum, SubchatParameters};
 use crate::scratchpads::pp_context_files::postprocess_context_files;
 use crate::scratchpads::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::pp_utils::{HasRagResults, max_tokens_for_rag_chat};
+use crate::toolbox::toolbox_config::load_customization;
+use crate::caps::get_model_record;
 
+
+pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_name: &str) -> Result<SubchatParameters, String> {
+    let (gcx, params_mb) = {
+        let ccx_locked = ccx.lock().await;
+        let gcx = ccx_locked.global_context.clone();
+        let params = ccx_locked.subchat_tool_parameters.get(tool_name).cloned();
+        (gcx, params)
+    };
+    let params = match params_mb {
+        Some(params) => params,
+        None => {
+            let tconfig = load_customization(gcx.clone()).await?;
+            tconfig.subchat_tool_parameters.get(tool_name).cloned()
+                .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
+        }
+    };
+    let _ = get_model_record(gcx, &params.subchat_model).await?; // check if the model exists
+    Ok(params)
+}
 
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,

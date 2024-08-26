@@ -13,21 +13,21 @@ use futures_util::future::join_all;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::subchat::subchat;
 use crate::at_tools::tools::Tool;
-use crate::call_validation::{ChatMessage, ContextEnum};
+use crate::call_validation::{ChatMessage, ContextEnum, SubchatParameters};
 use crate::global_context::GlobalContext;
 
 
 const RF_OUTPUT_FILES: usize = 6;
 const RF_ATTEMPTS: usize = 1;
-const RF_WRAP_UP_TOKENS_CNT: usize = 8000;
-const RF_MODEL_NAME: &str = "gpt-4o-mini";
+
 
 pub struct AttRelevantFiles;
 
 #[async_trait]
 impl Tool for AttRelevantFiles {
     async fn tool_execute(
-        &mut self, ccx: Arc<AMutex<AtCommandsContext>>,
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>
     ) -> Result<Vec<ContextEnum>, String> {
@@ -37,8 +37,24 @@ impl Tool for AttRelevantFiles {
             None => return Err("Missing argument `problem_statement`".to_string())
         };
 
+        let params = crate::at_tools::execute_att::unwrap_subchat_params(ccx.clone(), "locate").await?;
+        let ccx_subchat = {
+            let ccx_lock = ccx.lock().await;
+            let mut t = AtCommandsContext::new(
+                ccx_lock.global_context.clone(),
+                params.subchat_n_ctx,
+                30,
+                false,
+                ccx_lock.messages.clone(),
+            ).await;
+            t.subchat_tx = ccx_lock.subchat_tx.clone();
+            t.subchat_rx = ccx_lock.subchat_rx.clone();
+            Arc::new(AMutex::new(t))
+        };
+
         let res = find_relevant_files(
-            ccx,
+            ccx_subchat,
+            params,
             tool_call_id.clone(),
             problem_statement,
         ).await?;
@@ -194,6 +210,7 @@ struct ReduceFileItem {
 
 async fn find_relevant_files(
     ccx: Arc<AMutex<AtCommandsContext>>,
+    subchat_params: SubchatParameters,
     tool_call_id: String,
     user_query: String,
 ) -> Result<Value, String> {
@@ -220,11 +237,11 @@ async fn find_relevant_files(
     strategy_tree.push(crate::at_tools::att_locate::pretend_tool_call("tree", "{}", "I'll use TREEGUESS strategy, to do that I need to start with a tree() call.".to_string()));
     futures.push(subchat(
         ccx.clone(),
-        RF_MODEL_NAME,
+        subchat_params.subchat_model.as_str(),
         strategy_tree,
         tools_subset.clone(),
         0,
-        RF_WRAP_UP_TOKENS_CNT,
+        subchat_params.subchat_max_new_tokens,
         RF_EXPERT_PLEASE_WRAP_UP,
         4,
         Some(0.8),
@@ -237,11 +254,11 @@ async fn find_relevant_files(
     strategy_gotodef.push(ChatMessage::new("user".to_string(), "💿 Use GOTODEF strategy.".to_string()));
     futures.push(subchat(
         ccx.clone(),
-        RF_MODEL_NAME,
+        subchat_params.subchat_model.as_str(),
         strategy_gotodef,
         vec!["definition", "references", "cat"].iter().map(|x|x.to_string()).collect::<Vec<_>>(),
         5,
-        RF_WRAP_UP_TOKENS_CNT,
+        subchat_params.subchat_max_new_tokens,
         RF_EXPERT_PLEASE_WRAP_UP,
         1,
         Some(0.2),
@@ -269,11 +286,11 @@ async fn find_relevant_files(
     messages.push(ChatMessage::new("user".to_string(), format!("{}", RF_REDUCE_USER_MSG)));
     let result = subchat(
         ccx.clone(),
-        RF_MODEL_NAME,
+        subchat_params.subchat_model.as_str(),
         messages,
         vec!["cat".to_string()],
         1,
-        RF_WRAP_UP_TOKENS_CNT,
+        subchat_params.subchat_max_new_tokens,
         RF_REDUCE_WRAP_UP,
         1,
         Some(0.0),

@@ -13,32 +13,11 @@ use tracing::info;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::subchat::subchat_single;
 use crate::at_tools::tools::Tool;
-use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage, ContextEnum, ContextFile, SubchatParameters};
-use crate::caps::get_model_record;
-use crate::toolbox::toolbox_config::load_customization;
+use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage, ContextEnum, ContextFile};
 
 
 pub struct AttLocate;
 
-
-pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_name: &str) -> Result<SubchatParameters, String> {
-    let (gcx, params_mb) = {
-        let ccx_locked = ccx.lock().await;
-        let gcx = ccx_locked.global_context.clone();
-        let params = ccx_locked.subchat_tool_parameters.get(tool_name).cloned();
-        (gcx, params)
-    };
-    let params = match params_mb {
-        Some(params) => params,
-        None => {
-            let tconfig = load_customization(gcx.clone()).await?;
-            tconfig.subchat_tool_parameters.get(tool_name).cloned()
-                .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
-        }
-    };
-    let _ = get_model_record(gcx, &params.model).await?; // check if the model exists
-    Ok(params)
-}
 
 #[async_trait]
 impl Tool for AttLocate{
@@ -55,12 +34,12 @@ impl Tool for AttLocate{
             None => return Err("Missing argument `problem_statement`".to_string())
         };
 
-        let params = unwrap_subchat_params(ccx.clone(), "locate").await?;
+        let params = crate::at_tools::execute_att::unwrap_subchat_params(ccx.clone(), "locate").await?;
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
             Arc::new(AMutex::new(AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
-                params.n_ctx,
+                params.subchat_n_ctx,
                 30,
                 false,
                 ccx_lock.messages.clone(),
@@ -78,7 +57,7 @@ impl Tool for AttLocate{
         }
 
         let mut usage = ChatUsage{..Default::default()};
-        let res = locate_relevant_files(ccx_subchat.clone(), &params.model, problem_statement.as_str(), tool_call_id.clone(), &mut usage).await?;
+        let res = locate_relevant_files(ccx_subchat.clone(), &params.subchat_model, problem_statement.as_str(), tool_call_id.clone(), &mut usage).await?;
         info!("att_locate produced usage: {:?}", usage);
 
         let mut results = vec![];

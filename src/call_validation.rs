@@ -301,12 +301,14 @@ where
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubchatParameters {
-    pub model: String,
-    pub n_ctx: usize,
+    pub subchat_model: String,
+    pub subchat_n_ctx: usize,
     #[serde(default)]
-    pub temperature: Option<f32>,
+    pub subchat_tokens_for_rag: usize,
     #[serde(default)]
-    pub max_new_tokens: usize,
+    pub subchat_temperature: Option<f32>,
+    #[serde(default)]
+    pub subchat_max_new_tokens: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
