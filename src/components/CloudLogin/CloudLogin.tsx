@@ -39,7 +39,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
         clearInterval(interval);
       };
     } else {
-      current.innerText = "Login / Create Account";
+      current.innerText = "Login";
     }
   }, [loginButton, polling.isLoading]);
 
@@ -60,9 +60,21 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
 
   return (
     <Flex direction="column" gap="2" maxWidth="540px" m="8px">
-      <Text weight="bold" size="4">
-        Select plan
+      <Button
+        ref={loginButton}
+        onClick={onLogin}
+        style={{
+          width: "100%",
+          fontFamily: polling.isLoading ? "monospace" : undefined,
+        }}
+        disabled={polling.isLoading}
+      >
+        Login
+      </Button>
+      <Text weight="bold" size="3" align={"center"}>
+        or Create New Account
       </Text>
+
       <RadioCards.Root
         style={{ display: "flex", flexDirection: "column", gap: "6px" }}
         value={selected}
@@ -114,16 +126,8 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
         <Button variant="outline" mr="auto" onClick={goBack}>
           {"< Back"}
         </Button>
-        <Button
-          ref={loginButton}
-          onClick={onLogin}
-          style={{
-            width: 200,
-            fontFamily: polling.isLoading ? "monospace" : undefined,
-          }}
-          disabled={polling.isLoading}
-        >
-          Login / Create Account
+        <Button ml="auto" onClick={onLogin}>
+          {"Create New Account"}
         </Button>
       </Flex>
     </Flex>
