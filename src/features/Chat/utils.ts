@@ -116,7 +116,7 @@ function replaceLastUserMessage(
   );
 
   const result = messages.map((message, i) => {
-    if (i === lastUserMessageIndex) userMessage;
+    if (i === lastUserMessageIndex) return userMessage;
     return message;
   });
 
