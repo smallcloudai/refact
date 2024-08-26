@@ -115,11 +115,12 @@ function replaceLastUserMessage(
     isUserMessage,
   );
 
-  if (lastUserMessageIndex === -1) {
-    return [...messages, userMessage];
-  }
+  const result = messages.map((message, i) => {
+    if (i === lastUserMessageIndex) userMessage;
+    return message;
+  });
 
-  return [...messages].splice(lastUserMessageIndex, 1, userMessage);
+  return result;
 }
 
 export function formatChatResponse(
@@ -127,7 +128,10 @@ export function formatChatResponse(
   response: ChatResponse,
 ): ChatMessages {
   if (isUserResponse(response)) {
-    return replaceLastUserMessage(messages, response);
+    return replaceLastUserMessage(messages, {
+      role: response.role,
+      content: response.content,
+    });
   }
 
   if (isContextFileResponse(response)) {
