@@ -10,7 +10,7 @@ type ToolUseSwitchProps = {
 export const ToolUseSwitch = ({ toolUse, setToolUse }: ToolUseSwitchProps) => {
   return (
     <Flex direction="column" gap="3" mb="2" align="start">
-      <Text size="1">How fast do you want the answer:</Text>
+      <Text size="2">How fast do you want the answer:</Text>
       <Flex direction="row" gap="1" align="center">
         <SegmentedControl.Root
           defaultValue="quick"
@@ -30,19 +30,24 @@ export const ToolUseSwitch = ({ toolUse, setToolUse }: ToolUseSwitchProps) => {
           <HoverCard.Content size="2" maxWidth="280px">
             <Text weight="bold">Quick</Text>
             <Text as="p" size="2">
-              Provides a fast response with less detail.
+              The model doesn&apos;t have access to any tools and answers
+              immediately. You still can provide context using @-commands, try
+              @help.
             </Text>
             <Text as="div" mt="2" weight="bold">
               Explore
             </Text>
             <Text as="p" size="2">
-              Explores the topic in more depth.
+              The model has access to exploration tools and collects the
+              necessary context for you.
             </Text>
             <Text as="div" mt="2" weight="bold">
               Agent
             </Text>
             <Text as="p" size="2">
-              Acts as an agent to perform tasks.
+              The model has agent capabilities, might take a long time to
+              respond. For example it can provide a high-quality context to
+              solve a problem.
             </Text>
           </HoverCard.Content>
         </HoverCard.Root>
