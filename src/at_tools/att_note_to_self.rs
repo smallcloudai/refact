@@ -20,7 +20,7 @@ impl Tool for AtNoteToSelf {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
         let cache_dir = {
             let gcx_locked = gcx.read().await;
@@ -79,6 +79,6 @@ impl Tool for AtNoteToSelf {
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
         }));
-        Ok(results)
+        Ok((false, results))
     }
 }

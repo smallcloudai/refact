@@ -22,7 +22,7 @@ impl Tool for AttGetKnowledge {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
         info!("run @get-knowledge {:?}", args);
 
         let (gcx, top_n) = {
@@ -94,7 +94,7 @@ impl Tool for AttGetKnowledge {
             }));
         }
 
-        Ok(results)
+        Ok((false, results))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {

@@ -114,7 +114,7 @@ impl Tool for ToolPatch {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
         let args = match parse_arguments(args).await {
             Ok(res) => res,
             Err(err) => {
@@ -159,7 +159,7 @@ impl Tool for ToolPatch {
         }
         let chunks = choose_correct_chunk(chunks_for_answers)?;
 
-        Ok(vec![
+        Ok((false, vec![
             ContextEnum::ChatMessage(ChatMessage {
                 role: "diff".to_string(),
                 content: chunks,
@@ -167,7 +167,7 @@ impl Tool for ToolPatch {
                 tool_call_id: tool_call_id.clone(),
                 usage: Some(usage),
             })
-        ])
+        ]))
     }
 
     fn usage(&mut self) -> &mut Option<ChatUsage> {

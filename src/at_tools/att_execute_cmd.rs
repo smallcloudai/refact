@@ -24,7 +24,7 @@ impl Tool for AttExecuteCommand {
         _ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         _args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
         let (stdout, stderr) = execute_cmd(&self.command, self.timeout).await?;
 
         let mut results = vec![];
@@ -35,6 +35,6 @@ impl Tool for AttExecuteCommand {
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
         }));
-        Ok(results)
+        Ok((false, results))
     }
 }

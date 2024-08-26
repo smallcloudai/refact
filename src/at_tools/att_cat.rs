@@ -25,7 +25,8 @@ impl Tool for AttCat {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let mut corrections = false;
         let paths = match args.get("paths") {
             Some(Value::String(s)) => {
                 let paths = s.split(",").map(|x|x.trim().to_string()).collect::<Vec<_>>();
@@ -70,7 +71,7 @@ impl Tool for AttCat {
         for p in paths {
             let candidates_file = file_repair_candidates(gcx.clone(), &p, top_n, false).await;
             let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &p, false, top_n).await;
-            
+
             if PathBuf::from(&p).extension().is_some() || candidates_dir.is_empty() {
                 let file_path = match real_file_path_candidate(gcx.clone(), &p, &candidates_file, &get_project_paths(gcx.clone()).await, false).await {
                     Ok(f) => f,
@@ -143,10 +144,12 @@ impl Tool for AttCat {
             let symbols_not_found = symbols_str.iter().filter(|x|!symbols_found.contains(x)).cloned().collect::<Vec<_>>();
             if !symbols_not_found.is_empty() {
                 content.push_str(&format!("Symbols not found in the {} files:\n{}\n\n", filenames_present.len(), symbols_not_found.join("\n")));
+                corrections = true;
             }
         }
         if !files_not_found_errs.is_empty() {
             content.push_str(&format!("Paths not found:\n{}\n\n", files_not_found_errs.join("\n\n")));
+            corrections = true;
         }
 
         let mut results = vec_context_file_to_context_tools(context_files_in);
@@ -160,7 +163,7 @@ impl Tool for AttCat {
 
         ccx.lock().await.pp_skeleton = skeleton;
 
-        Ok(results)
+        Ok((corrections, results))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {

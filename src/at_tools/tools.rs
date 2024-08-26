@@ -14,8 +14,15 @@ use crate::toolbox::toolbox_config::ToolCustDict;
 
 #[async_trait]
 pub trait Tool: Send + Sync {
-    async fn tool_execute(&mut self, ccx: Arc<AMutex<AtCommandsContext>>, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String>;
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>
+    ) -> Result<(bool, Vec<ContextEnum>), String>;
+
     fn tool_depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
+
     fn usage(&mut self) -> &mut Option<ChatUsage> {
         static mut DEFAULT_USAGE: Option<ChatUsage> = None;
         #[allow(static_mut_refs)]

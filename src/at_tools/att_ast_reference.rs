@@ -20,7 +20,8 @@ impl Tool for AttAstReference {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let mut corrections = false;
         let mut symbol = match args.get("symbol") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => { return Err(format!("argument `symbol` is not a string: {:?}", v)) }
@@ -55,6 +56,8 @@ impl Tool for AttAstReference {
         let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
         let res: AstReferencesSearchResult = ast.read().await.search_references(symbol.clone()).await?;
         if (res.declaration_exact_matches.len() + res.declaration_fuzzy_matches.len()) == 0 {
+            // corrections = true;
+            // TODO: not a error!
             return Err(format!("No definitions with the name `{}` or similar names were found in the project.", symbol).to_string());
         }
         let (mut messages, tool_message) = if !res.declaration_exact_matches.is_empty() {
@@ -76,7 +79,7 @@ impl Tool for AttAstReference {
                 (vec![], tool_message)
             } else {
                 tool_message.push_str(format!("Found {} references in the workspace for those definitions:\n", res.references_for_exact_matches.len()).as_str());
-                let max_display = 30;
+                let max_display = 20;
                 for (i, r) in res.references_for_exact_matches.iter().enumerate() {
                     if i >= max_display {
                         let remaining = res.references_for_exact_matches.len() - max_display;
@@ -109,6 +112,7 @@ impl Tool for AttAstReference {
                 (messages, tool_message)
             }
         } else {
+            corrections = true;
             let mut tool_message = format!(
                 "No definition with name `{}` found in the workspace.\nThere are definitions with similar names though:\n",
                 symbol
@@ -135,7 +139,7 @@ impl Tool for AttAstReference {
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
         }));
-        Ok(messages)
+        Ok((corrections, messages))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {

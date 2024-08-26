@@ -21,7 +21,7 @@ impl Tool for AttDiff {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
         let diff_chunks = match args.len() {
             0 => {
@@ -52,6 +52,6 @@ impl Tool for AttDiff {
             ..Default::default()
         }));
 
-        Ok(results)
+        Ok((false, results))
     }
 }

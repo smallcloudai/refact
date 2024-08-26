@@ -32,6 +32,7 @@ pub struct AtCommandsContext {
     #[allow(dead_code)]
     pub is_preview: bool,
     pub pp_skeleton: bool,
+    pub correction_only_up_to_step: usize,  // suppresses context_file messages, writes a correction message instead
 
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
     pub at_tools: HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
@@ -57,6 +58,7 @@ impl AtCommandsContext {
             tokens_for_rag: 0,
             is_preview,
             pp_skeleton: false,
+            correction_only_up_to_step: 0,
             messages,
 
             at_commands: at_commands_dict(global_context.clone()).await,

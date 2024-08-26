@@ -26,7 +26,7 @@ impl Tool for AttLocate{
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
 
         let problem_statement_summary = match args.get("problem_statement") {
             Some(Value::String(s)) => s.clone(),
@@ -69,8 +69,9 @@ impl Tool for AttLocate{
             usage: Some(usage),
         }));
 
-        Ok(results)
+        Ok((false, results))
     }
+
     fn tool_depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }

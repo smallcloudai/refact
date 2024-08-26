@@ -44,7 +44,8 @@ impl Tool for AttAstDefinition {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let mut corrections = false;
         let mut symbol = match args.get("symbol") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => { return Err(format!("argument `symbol` is not a string: {:?}", v)) }
@@ -96,6 +97,7 @@ impl Tool for AttAstDefinition {
             }
             (messages, tool_message)
         } else {
+            corrections = true;
             let mut tool_message = format!(
                 "No definitions with name `{}` found in the workspace.\nThere are definitions with similar names though:\n",
                 symbol
@@ -121,7 +123,7 @@ impl Tool for AttAstDefinition {
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
         }));
-        Ok(messages)
+        Ok((corrections, messages))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {

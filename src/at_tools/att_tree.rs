@@ -27,7 +27,7 @@ impl Tool for AttTree {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
         let paths_from_anywhere = paths_from_anywhere(gcx.clone()).await;
 
@@ -65,7 +65,7 @@ impl Tool for AttTree {
             err
         })?;
 
-        Ok(vec![
+        Ok((false, vec![
             ContextEnum::ChatMessage(ChatMessage {
                 role: "tool".to_string(),
                 content,
@@ -73,6 +73,6 @@ impl Tool for AttTree {
                 tool_call_id: tool_call_id.clone(),
                 ..Default::default()
             })
-        ])
+        ]))
     }
 }

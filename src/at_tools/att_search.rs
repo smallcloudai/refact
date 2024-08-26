@@ -66,7 +66,7 @@ impl Tool for AttSearch {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
         let query = match args.get("query") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `query` is not a string: {:?}", v)),
@@ -109,8 +109,9 @@ impl Tool for AttSearch {
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
         }));
-        Ok(results)
+        Ok((false, results))
     }
+
     fn tool_depends_on(&self) -> Vec<String> {
         vec!["vecdb".to_string()]
     }

@@ -42,9 +42,9 @@ pub async fn run_tools(
     stream_back_to_user: &mut HasRagResults,
 ) -> (Vec<ChatMessage>, bool)
 {
-    let (n_ctx, top_n) = {
+    let (n_ctx, top_n, correction_only_up_to_step) = {
         let ccx_locked = ccx.lock().await;
-        (ccx_locked.n_ctx, ccx_locked.top_n)
+        (ccx_locked.n_ctx, ccx_locked.top_n, ccx_locked.correction_only_up_to_step)
     };
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     let tokens_for_rag = reserve_for_context;
@@ -72,6 +72,7 @@ pub async fn run_tools(
     let mut for_postprocessing = vec![];
     let mut generated_tool = vec![];  // tool results must go first
     let mut generated_other = vec![];
+    let mut any_corrections = false;
 
     for t_call in ass_msg.tool_calls.as_ref().unwrap_or(&vec![]).iter() {
         if let Some(cmd) = at_tools.get(&t_call.function.name) {
@@ -109,8 +110,9 @@ pub async fn run_tools(
                 }
                 generated_tool.push(tool_failed_message.clone());
                 continue;
-            }
-            let tool_msg_and_maybe_more = tool_msg_and_maybe_more_mb.unwrap();
+            };
+            let (corrections, tool_msg_and_maybe_more) = tool_msg_and_maybe_more_mb.unwrap();
+            any_corrections |= corrections;
             let mut have_answer = false;
             for msg in tool_msg_and_maybe_more {
                 if let ContextEnum::ChatMessage(ref raw_msg) = msg {
@@ -141,7 +143,11 @@ pub async fn run_tools(
         }
     }
 
-    if tokens_for_rag > MIN_RAG_CONTEXT_LIMIT {
+    if any_corrections && original_messages.len() <= correction_only_up_to_step {
+        generated_other.clear();
+        generated_other.push(ChatMessage::new("user".to_string(), format!("💿 There are corrections in the tool calls, all the output files are suppressed. Call again with corrections.")));
+
+    } else if tokens_for_rag > MIN_RAG_CONTEXT_LIMIT {
         let (tokens_limit_chat_msg, mut tokens_limit_files) = {
             if for_postprocessing.is_empty() {
                 (tokens_for_rag, 0)
@@ -193,6 +199,8 @@ pub async fn run_tools(
             );
             generated_other.push(message.clone());
         }
+    } else {
+        tracing::warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.")
     }
 
     let mut all_messages = original_messages.iter().map(|m| m.clone()).collect::<Vec<_>>();

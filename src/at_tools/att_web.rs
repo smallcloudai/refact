@@ -19,7 +19,7 @@ impl Tool for AttWeb {
         _ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
         let url = match args.get("url") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `url` is not a string: {:?}", v)),
@@ -37,7 +37,7 @@ impl Tool for AttWeb {
             ..Default::default()
         }));
 
-        Ok(results)
+        Ok((false, results))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {

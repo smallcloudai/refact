@@ -20,7 +20,7 @@ impl Tool for AttAstLookupSymbols {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
-    ) -> Result<Vec<ContextEnum>, String>
+    ) -> Result<(bool, Vec<ContextEnum>), String>
     {
         info!("execute tool: lookup_symbols_at {:?}", args);
         let path = match args.get("path") {
@@ -44,7 +44,7 @@ impl Tool for AttAstLookupSymbols {
             ..Default::default()
         }));
 
-        Ok(results)
+        Ok((false, results))
     }
     fn tool_depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
