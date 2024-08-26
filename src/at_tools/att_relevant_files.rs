@@ -30,7 +30,7 @@ impl Tool for AttRelevantFiles {
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>
-    ) -> Result<Vec<ContextEnum>, String> {
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
         let problem_statement = match args.get("problem_statement") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `problem_statement` is not a string: {:?}", v)),
@@ -68,8 +68,9 @@ impl Tool for AttRelevantFiles {
             ..Default::default()
         }));
 
-        Ok(results)
+        Ok((false, results))
     }
+
     fn tool_depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }
@@ -78,76 +79,90 @@ impl Tool for AttRelevantFiles {
 
 const RF_SYSTEM_PROMPT: &str = r###"You are an expert in finding relevant files within a big project. Your job is to find files, don't propose any changes.
 
-Look at task description. Here's the list of reasons a file might be relevant wrt task description:
+Here's the list of reasons a file or symbol might be relevant wrt task description:
+
 TOCHANGE = changes to that file are necessary to complete the task
 DEFINITIONS = file has classes/functions/types involved, but no changes needed
 HIGHLEV = file is crucial to understand the logic, such as a database scheme, high level script
 USERCODE = file has code that uses the things the task description is about
+SIMILAR = has code that might provide an example of how to write things similar to elements of the task
 
-You have to be mindful of the token count, as some files are large. It's essential to
-select specific symbols within a file that are relevant. Another expert will
-pick up your results, likely they will have to only look at symbols selected by you,
-not whole files, because of the space constraints.
 
 Potential strategies:
 
 TREEGUESS = call tree(), spot up to 20 suspicious files just by looking at file names.
 
-GOTODEF = call definition("xxx", skeleton=true) in parallel for symbols either visible in task description, or symbols you can guess; don't call definition() for symbols from standard libraries, only
-symbols within the project are indexed. It's fine, or even desirable to have a second round of parallel definition("xxx", skeleton=true) calls, but only for symbols that are actually relevant for
-the task. If the strategy doesn't work, just give up and save time.
+GOTODEF = call definition("xxx", skeleton=true) in parallel for symbols either visible in task description, or symbols you can guess; don't call definition() for symbols
+from standard libraries, only symbols within the project are indexed.
 
-VECDBSEARCH = search() can find semantically similar code, text in comments, and sometimes documentation.
+VECDBSEARCH = call up to five search() in parallel, some good ideas on what to look for: symbols mentioned in the task, one call for each symbol,
+strings mentioned, or write imaginary code that does the thing to fix search("    def f():\n        print(\"the example function!\")")
 
-CUSTOM = a different strategy that makes sense for the task at hand, try something dissimilar to the strategies described.
 
 You'll receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate
 well between chat restarts and they are always in English. Answer in the language the user prefers.
-
-EXPLAIN YOUR ACTIONS BEFORE CALLING ANY FUNCTIONS. IT'S FORBIDDEN TO CALL TOOLS UNTIL YOU EXPLAINED WHAT YOU ARE GOING TO DO.
 "###;
 
 const RF_EXPERT_PLEASE_WRAP_UP: &str = r###"You are out of turns or tokens for this chat. Now you need to save your progress, such that a new chat can pick up from there. Use this structure:
 {
-    "OUTPUT": {                       // The output is dict<filename, info_dict>.
-        "dir/dir/file.ext": {           // Here you need a strict absolute path with no ambiguity at all.
+    "OUTPUT": {                           // The output is dict<filename, info_dict>.
+        "dir/dir/file.ext": {             // Here you need a strict absolute path with no ambiguity at all.
             "SYMBOLS": "symbol1,symbol2", // Comma-separated list of functions/classes/types/variables/etc defined within this file that are actually relevant, for example "MyClass::my_function". List all symbols that are relevant, not just some of them. Write "*" to indicate the whole file is necessary. Write "TBD" to indicate you didn't look inside yet.
-            "WHY_CODE": "string",         // Write down the reason to include this file in output, pick one of: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE. Put TBD if you didn't look inside.
-            "WHY_DESC": "string",         // Describe why this file matters wrt the task, what's going on inside? Put TBD if you didn't look inside.
-            "RELEVANCY": 0                // Critically evaluate how is this file really relevant to the task. Rate from 1 to 5. 1 = no evidence this file even exists, 2 = file exists but you didn't look inside, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
         }
     ],
 }
 "###;
 
-const RF_REDUCE_SYSTEM_PROMPT: &str = r###"
-You will receive output generated by experts using different strategies. They will give you this format:
+const RF_REDUCE_SYSTEM_PROMPT: &str = r###"You will receive output generated by experts using different strategies. They will give you this format:
 
 {
   "OUTPUT": {
       "dir/dir/file.ext": {
           "SYMBOLS": "symbol1,symbol2", // Comma-separated list of functions/classes/types/variables/etc defined within this file that are actually relevant. "*" might indicate the whole file is necessary. "TBD" might indicate the expert didn't look into the file.
-          "WHY_CODE": "string",         // The reason to include this file in expert's output, one of: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE.
-          "WHY_DESC": "string",         // Description why this file matters wrt the task.
-          "RELEVANCY": 0                // Expert's own evaluation of their results, 1 to 5. 1 = this file doesn't even exist, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
       }
   ],
   ...
 }
 
-Experts can make mistakes. Your role is to reduce their noisy output into a single more reliable output.
+Steps you need to follow:
 
-You'll receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate
-well between chat restarts and they are always in English. Answer in the language the user prefers.
+STEP1_CAT: on your first turn, call cat() once with all the files and symbols coming from experts. You have enough tokens for one big
+call. Don't call anything else. Pass skeleton=True to the cat() call.
+
+STEP2_EXPAND: on the second turn, after you see all the files coming from the cat() call, your job is to expand the visible scope by
+looking up everything necessary to complete the task.
+
+* definitions: which classes and functions are necessary to understand the task? Don't ask about any well-known library functions
+or classes like String and Arc in rust, librarires like re, os, subprocess in python, because they are are already well-known and including them
+will not help, and libraries are not included in the AST index anyway.
+
+* references: what relevant symbols require looking at usages from outside to fully understand it? If the task is no repair my_function then it's
+a good idea to look up usages of my_function.
+
+* similar code: maybe the task is already solved somewhere in the project, write a piece of code that would be required to solve
+the problem, and put it into "query" argument of a search(). You can write the entire function if it's not too big. Search also works well for
+examples of tricky calls, just write a couple of lines that will be hard to get right.
+
+Examples:
+definition("my_method1")
+definition("MyClass2")
+references("my_method2")
+search("    def f():\n        print(\"the example function!\")")
+search("    my_object->tricky_call(with, weird, parameters)")
+
+Limits on the number of calls are pretty liberal, 30 definitions, 5 references and 3 searches is a reasonable answer.
+
+Don't explain much, say STEP1_CAT or STEP2_EXPAND depending on which step you are on, and then call the functions.
+
+IT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING WHICH STEP YOU ARE ON. EXPLAIN FIRST!
 "###;
 
+// The convention for methods uses :: delimiter like this Class::method
+// references("my_top_level_function3")
 
-const RF_REDUCE_USER_MSG: &str = r###"
-💿 Call cat() once with all the files and symbols. You have enough tokens for one big call, don't worry. Don't call anything else.
-"###;
 
 const RF_REDUCE_WRAP_UP: &str = r###"
-Look at the expert outputs above, think step by step. Follow this plan:
+Experts can make mistakes. Your role is to reduce their noisy output into a single more reliable output. Think step by step. Follow this plan:
 
 1. Write down a couple of interpretations of the original task, something like "Interpretation 1: user wants to do this, and the best place to start this change is at file1.ext, near my_function1, in my_function2".
 
@@ -155,10 +170,9 @@ Look at the expert outputs above, think step by step. Follow this plan:
 
 3. Decide which one or two files will receive the most meaningful updates if the user was to change the code in that interpretation. You'll need to label them TOCHANGE later.
 
-4. Write down which files might support the change, some of them contain high-level logic, some have definitions.
+4. Write down which files might support the change, some of them contain high-level logic, some have definitions, some similar code.
 
-5. Experts make mistakes; take their RELEVANCY ratings critically, and write your own by looking at the actual code and the best interpretation.
-All the files cannot have relevancy 5; most of them are likely 3, "might provide good insight into the logic behind the program but not directly relevant", but you can
+5. All the files cannot have relevancy 5; most of them are likely 3, "might provide good insight into the logic behind the program but not directly relevant", but you can
 write 1 or 2 if you accidentally wrote a file name and changed your mind about how useful it is, not a problem.
 
 6. After you have completed 1-5, go ahead and formalize your best interpretation in the following JSON format, write "REDUCE_OUTPUT", and continue with triple backquotes.
@@ -167,14 +181,38 @@ REDUCE_OUTPUT
 ```
 {
     "dir/dir/file.ext": {
-        "SYMBOLS": "symbol1,symbol2",     // Comma-separated list of functions/classes/types/variables/etc defined within this file that are actually relevant. List all symbols that are relevant, not just some of them. Use your own judgement, don't just copy from an expert.
-        "WHY_CODE": "string",             // Write down the reason to include this file in output, pick one of: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE. Use your own judgement, don't just copy from an expert.
+        "SYMBOLS": "symbol1,symbol2",     // Comma-separated list of functions/classes/types/variables/etc defined within this file that are actually relevant. List all symbols that are relevant, not just some of them. Use your own judgement, don't copy from experts.
+        "WHY_CODE": "string",             // Write down the reason to include this file in output, pick one of: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE, SIMILAR.
         "WHY_DESC": "string",             // Describe why this file matters wrt the task, what's going on inside? Describe the file in general in a sentense or two, and then describe what specifically is the relation to the task.
         "RELEVANCY": 0                    // Critically evaluate how is this file really relevant to your interpretation of the task. Rate from 1 to 5. 1 = has TBD, role is unclear, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
     }
 }
 ```
 "###;
+
+
+
+// REDUCE2 cat(files, symbols, skeleton=True) definition() usage() search() --EXPAND--> definition() usage() search() calls
+// EXPAND cat(files, symbols) -> definition() usage() search() calls -> JSON2 files/symbols/RELEVANCY
+// Experts make mistakes; take their RELEVANCY ratings critically, and write your own by looking at the actual code and the best interpretation.
+// REDUCE2 cat(fles, symbols) definition() usage() search() -> JSON3
+// 1. Confirm relevant symbols: look at the files already present in context, and write down all relevant
+// Write a very short pseudo code of the most important piece to fix, mentioning classes and functions necessary.The pseudo code from point 1 might help.
+// You have to be mindful of the token count, as some files are large. It's essential to
+// select specific symbols within a file that are relevant. Another expert will
+// pick up your results, likely they will have to only look at symbols selected by you,
+// not whole files, because of the space constraints.
+
+// You'll receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate
+// well between chat restarts and they are always in English. Answer in the language the user prefers.
+
+// "WHY_CODE": "string",         // The reason to include this file in expert's output, one of: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE.
+// "WHY_DESC": "string",         // Description why this file matters wrt the task.
+// "RELEVANCY": 0                // Expert's own evaluation of their results, 1 to 5. 1 = this file doesn't even exist, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
+
+// "WHY_CODE": "string",         // Write down the reason to include this file in output, pick one of: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE. Put TBD if you didn't look inside.
+// "WHY_DESC": "string",         // Describe why this file matters wrt the task, what's going on inside? Put TBD if you didn't look inside.
+// "RELEVANCY": 0                // Critically evaluate how is this file really relevant to the task. Rate from 1 to 5. 1 = no evidence this file even exists, 2 = file exists but you didn't look inside, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
 
 fn parse_reduce_output(content: &str) -> Result<Value, String> {
     let re = Regex::new(r"(?s)REDUCE_OUTPUT\s*```(?:json)?\s*(.+?)\s*```").unwrap();
@@ -215,7 +253,7 @@ async fn find_relevant_files(
     user_query: String,
 ) -> Result<Value, String> {
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
-    let _vecdb_on = {
+    let vecdb_on = {
         let gcx = gcx.read().await;
         let vecdb = gcx.vec_db.lock().await;
         vecdb.is_some()
@@ -250,14 +288,19 @@ async fn find_relevant_files(
         Some(format!("{log_prefix}-rf-step1-treeguess")),
     ));
 
-    let mut strategy_gotodef = strategy_messages.clone();
-    strategy_gotodef.push(ChatMessage::new("user".to_string(), "💿 Use GOTODEF strategy.".to_string()));
+    let mut strategy_search = strategy_messages.clone();
+    strategy_search.push(ChatMessage::new("user".to_string(), if vecdb_on {
+            "💿 Use VECDBSEARCH strategy.".to_string()
+        } else {
+            "💿 Use GOTODEF strategy.".to_string()
+        }
+    ));
     futures.push(subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
-        strategy_gotodef,
-        vec!["definition", "references", "cat"].iter().map(|x|x.to_string()).collect::<Vec<_>>(),
-        5,
+        strategy_search,
+        vec!["definition", "references", "search"].iter().map(|x|x.to_string()).collect::<Vec<_>>(),
+        1,
         subchat_params.subchat_max_new_tokens,
         RF_EXPERT_PLEASE_WRAP_UP,
         1,
@@ -276,20 +319,30 @@ async fn find_relevant_files(
         })
         .collect();
 
-    // Reduce
+    // | tree() -TREEGUESS-> files x4
+    // | search() -VECDBSEARCH-> files and symbols
+    // cat(files, symbols, skeleton=True) --EXPAND--> definition() usage() search() calls -REDUCE-> json files/symbols/RELEVANCY
+
+    // expand/reduce
     let mut messages = vec![];
     messages.push(ChatMessage::new("system".to_string(), RF_REDUCE_SYSTEM_PROMPT.to_string()));
     messages.push(ChatMessage::new("user".to_string(), format!("User provided task:\n\n{}", user_query)));
     for (i, expert_message) in only_last_messages.into_iter().enumerate() {
         messages.push(ChatMessage::new("user".to_string(), format!("Expert {} says:\n\n{}", i + 1, expert_message.content)));
     }
-    messages.push(ChatMessage::new("user".to_string(), format!("{}", RF_REDUCE_USER_MSG)));
+    messages.push(ChatMessage::new("user".to_string(), "Start your answer with STEP1_CAT".to_string()));
+
+    {
+        let mut ccx_locked = ccx.lock().await;
+        ccx_locked.correction_only_up_to_step = messages.len() + 1;
+    }
+
     let result = subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
         messages,
-        vec!["cat".to_string()],
-        1,
+        vec!["cat", "definition", "references", "search"].iter().map(|x|x.to_string()).collect::<Vec<_>>(),
+        2,
         subchat_params.subchat_max_new_tokens,
         RF_REDUCE_WRAP_UP,
         1,
