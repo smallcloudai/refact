@@ -137,7 +137,7 @@ const useAttachSelectedSnippet = (
           value: markdown,
           disabled: !snippet.code,
           hide: host === "web",
-          checked: !!snippet.code,
+          checked: !!snippet.code && !interacted,
         };
       });
     }
