@@ -109,6 +109,14 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
           <Flex gap="6px">
             <Radio value="pro" checked={selected === "pro"} />
             <Text size="3">Pro plan</Text>
+            <Text
+              size="2"
+              as="div"
+              weight="bold"
+              style={{ position: "absolute", right: "var(--space-3)" }}
+            >
+              1 MONTH FREE
+            </Text>
           </Flex>
           <Text size="2" mb="10px">
             As in the Free plan, plus:
