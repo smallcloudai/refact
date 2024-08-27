@@ -39,6 +39,7 @@ export {
   ideOpenFile,
   type OpenFilePayload,
   ideDiffPasteBackAction,
+  ideDiffPreviewAction,
   ideNewFileAction,
   ideOpenHotKeys,
   ideOpenSettingsAction,

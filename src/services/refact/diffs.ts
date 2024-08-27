@@ -1,5 +1,4 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-// import { getApiKey, parseOrElse } from "../../utils";
 import { DIFF_STATE_URL, DIFF_APPLY_URL } from "./consts";
 import { DiffChunk } from "./types";
 import { RootState } from "../../app/store";
@@ -122,6 +121,25 @@ export interface DiffOperationResponse {
 
   state: (0 | 1 | 2)[];
 }
+
+export type DiffApplyResponse = {
+  chunk_id: number;
+  applied: boolean;
+  can_unapply: boolean;
+  success: boolean;
+  detail: null | string;
+}[];
+
+export interface DiffPreviewResponse {
+  state: DiffApplyResponse;
+  results: {
+    file_text: string;
+    file_name_edit: string;
+    file_name_delete: null | string;
+    file_name_add: null | string;
+  }[];
+}
+
 // TODO: delete this
 // export async function doDiff(
 //   chunks: DiffChunk[],
