@@ -29,15 +29,29 @@ export const RetryForm: React.FC<{
 
   const onPressedEnter = useOnPressedEnter(handleRetry);
 
-  const handleOnKeyUp = useCallback(
+  const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (shiftEnterToSubmit && !event.shiftKey && event.key === "Enter") {
         onChange(value + "\n");
         return;
       }
-      onPressedEnter(event);
     },
-    [onPressedEnter, shiftEnterToSubmit, value],
+    [shiftEnterToSubmit, value],
+  );
+
+  const handleOnKeyUp = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!shiftEnterToSubmit && !event.shiftKey && event.key === "Enter") {
+        onPressedEnter(event);
+      } else if (
+        shiftEnterToSubmit &&
+        event.shiftKey &&
+        event.key === "Enter"
+      ) {
+        onPressedEnter(event);
+      }
+    },
+    [onPressedEnter, shiftEnterToSubmit],
   );
 
   return (
@@ -51,6 +65,7 @@ export const RetryForm: React.FC<{
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onKeyUp={handleOnKeyUp}
+        onKeyDown={handleKeyDown}
       />
       <Flex
         align="center"

@@ -106,8 +106,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       if (state.open && event.key === "Tab") {
         event.preventDefault();
       }
+
+      if (shiftEnterToSubmit && event.key === "Enter" && !event.shiftKey) {
+        onChange(value + "\n");
+        return;
+      }
     },
-    [combobox],
+    [combobox, onChange, shiftEnterToSubmit, value],
   );
 
   const onKeyUp = useCallback(
@@ -143,7 +148,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         event.key === "Enter" &&
         !event.shiftKey
       ) {
-        onChange(value + "\n");
         return;
       }
 
@@ -177,13 +181,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       combobox,
       handleReplace,
       hasMatches,
-      onChange,
       onSubmit,
       shiftEnterToSubmit,
       state.activeId,
       state.activeValue,
       state.open,
-      value,
     ],
   );
 
