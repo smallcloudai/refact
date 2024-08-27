@@ -209,7 +209,7 @@ pub struct ContextFile {
     pub symbols: Vec<Uuid>,
     #[serde(default = "default_gradient_type_value", skip_serializing)]
     pub gradient_type: i32,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub usefulness: f32,  // higher is better
     #[serde(default, skip_serializing)]
     pub is_body_important: bool
