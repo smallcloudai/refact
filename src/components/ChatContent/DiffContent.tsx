@@ -29,7 +29,7 @@ const DiffLine: React.FC<{
   const backgroundColorLeft = sign === "-" ? "#592e30" : "#3b5840";
   const backgroundColor = sign === "-" ? "#3e2628" : "#2c3e33";
   return (
-    <Flex className={styles.diff_line}>
+    <Flex className={styles.diff_line} style={{ minWidth: "min-content" }}>
       <Text
         size="2"
         className={styles.diff_line_number}
@@ -43,7 +43,12 @@ const DiffLine: React.FC<{
       <Text
         size="2"
         className={styles.diff_line_content}
-        style={{ backgroundColor, whiteSpace: "pre", whiteSpaceTrim: "none" }}
+        style={{
+          backgroundColor,
+          whiteSpace: "pre",
+          whiteSpaceTrim: "none",
+          minWidth: "min-content",
+        }}
       >
         {line}
       </Text>
@@ -58,7 +63,10 @@ const DiffHighlight: React.FC<{
 }> = ({ startLine, sign, text }) => {
   const lines = text.split("\n");
   return (
-    <Flex direction="column">
+    <Flex
+      direction="column"
+      style={{ minWidth: "min-content", alignSelf: "stretch", width: "100%" }}
+    >
       {lines.map((line, index) => {
         return (
           <DiffLine
@@ -81,7 +89,12 @@ export const Diff: React.FC<DiffProps> = ({ diff }) => {
   const removeString = diff.lines_remove && toDiff(diff.lines_remove);
   const addString = diff.lines_add && toDiff(diff.lines_add);
   return (
-    <Flex className={styles.diff} py="2" direction="column">
+    <Flex
+      className={styles.diff}
+      py="2"
+      direction="column"
+      style={{ minWidth: "min-content" }}
+    >
       {removeString && (
         <DiffHighlight startLine={diff.line1} sign={"-"} text={removeString} />
       )}
@@ -323,10 +336,17 @@ export const DiffForm: React.FC<{
               </Text>
             </Flex>
             <ScrollArea scrollbars="horizontal" asChild>
-              <Box style={{ background: "rgb(51, 51, 51)" }}>
-                {diffsForFile.map((diff, i) => (
-                  <Diff key={`${fullFileName}-${index}-${i}`} diff={diff} />
-                ))}
+              <Box style={{ minWidth: "100%" }}>
+                <Box
+                  style={{
+                    background: "rgb(51, 51, 51)",
+                    minWidth: "min-content",
+                  }}
+                >
+                  {diffsForFile.map((diff, i) => (
+                    <Diff key={`${fullFileName}-${index}-${i}`} diff={diff} />
+                  ))}
+                </Box>
               </Box>
             </ScrollArea>
           </Box>
