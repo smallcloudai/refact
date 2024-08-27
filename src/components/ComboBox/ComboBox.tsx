@@ -178,11 +178,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       combobox,
       handleReplace,
       hasMatches,
+      onChange,
       onSubmit,
       shiftEnterToSubmit,
       state.activeId,
       state.activeValue,
       state.open,
+      value,
     ],
   );
 
