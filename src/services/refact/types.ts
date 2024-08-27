@@ -270,6 +270,37 @@ export function isChatUserMessageResponse(
   );
 }
 
+export type UserMessageResponse = ChatUserMessageResponse & {
+  role: "user";
+};
+
+export function isUserResponse(json: unknown): json is UserMessageResponse {
+  if (!isChatUserMessageResponse(json)) return false;
+  return json.role === "user";
+}
+
+export type ContextFileResponse = ChatUserMessageResponse & {
+  role: "context_file";
+};
+
+export function isContextFileResponse(
+  json: unknown,
+): json is ContextFileResponse {
+  if (!isChatUserMessageResponse(json)) return false;
+  return json.role === "context_file";
+}
+
+export type ContextMemoryResponse = ChatUserMessageResponse & {
+  role: "context_memory";
+};
+
+export function isContextMemoryResponse(
+  json: unknown,
+): json is ContextMemoryResponse {
+  if (!isChatUserMessageResponse(json)) return false;
+  return json.role === "context_memory";
+}
+
 export function isToolResponse(json: unknown): json is ToolResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;

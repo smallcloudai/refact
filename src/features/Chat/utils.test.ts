@@ -2,12 +2,94 @@ import { describe, expect, test } from "vitest";
 // import { v4 as uuidv4 } from "uuid";
 // import { reducer, createInitialState } from ".";
 import {
+  ChatMessages,
+  UserMessageResponse,
   // EVENT_NAMES_TO_CHAT,
   type ToolCall,
   // ResponseToChat,
   // ActionToChat,
 } from "../../services/refact";
-import { mergeToolCalls } from "./utils";
+import { mergeToolCalls, formatChatResponse } from "./utils";
+
+describe("formatChatResponse", () => {
+  test("it should replace the last user message", () => {
+    const message: UserMessageResponse = {
+      id: "test",
+      content: " what is this for?\n",
+      role: "user",
+    };
+
+    const messages: ChatMessages = [
+      { role: "user", content: "Hello" },
+      {
+        role: "assistant",
+        content: "Hi",
+        tool_calls: [
+          {
+            function: {
+              arguments:
+                '{"problem_statement":"What is the difference between the Toad and Frog classes?"}',
+              name: "locate",
+            },
+            id: "call_6qxVYwV6MTcazl1Fy5pRlImi",
+            index: 0,
+            type: "function",
+          },
+        ],
+      },
+      {
+        role: "tool",
+        content: {
+          tool_call_id: "call_6qxVYwV6MTcazl1Fy5pRlImi",
+          content: "stuff",
+        },
+      },
+      {
+        role: "context_file",
+        content: [
+          {
+            file_content: "stuff",
+            file_name: "refact-chat-js/src/services/refact/chat.ts",
+            line1: 1,
+            line2: 85,
+            usefulness: 0,
+          },
+        ],
+      },
+      {
+        role: "assistant",
+        content: "test response",
+      },
+      {
+        role: "user",
+        content:
+          "@file /Users/marc/Projects/refact-chat-js/src/__fixtures__/chat_diff.ts what is this for?\n",
+      },
+      {
+        role: "context_file",
+        content: [
+          {
+            file_content: "test content",
+            file_name: "refact-chat-js/src/__fixtures__/chat_diff.ts",
+            line1: 1,
+            line2: 30,
+            usefulness: 0,
+          },
+        ],
+      },
+    ];
+
+    const result = formatChatResponse(messages, message);
+
+    const expected = [
+      ...messages.slice(0, 5),
+      { role: message.role, content: message.content },
+      ...messages.slice(6),
+    ];
+
+    expect(result).toEqual(expected);
+  });
+});
 
 describe("mergeToolCalls", () => {
   test("combines two tool calls", () => {

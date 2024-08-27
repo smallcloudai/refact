@@ -11,7 +11,6 @@ import {
   SystemPrompts,
   ToolCommand,
   isAssistantMessage,
-  isChatUserMessageResponse,
 } from "../../services/refact";
 // TODO: update this type
 import type { ChatResponse } from "../../services/refact";
@@ -31,7 +30,6 @@ export type ChatThread = {
   messages: ChatMessages;
   model: string;
   title?: string;
-  // attach_file?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -43,7 +41,6 @@ export type Chat = {
   thread: ChatThread;
   error: null | string;
   prevent_send: boolean;
-  previous_message_length: number;
   waiting_for_response: boolean;
   cache: Record<string, ChatThread>;
   system_prompt: SystemPrompts;
@@ -67,7 +64,6 @@ const createInitialState = (): Chat => {
     thread: createChatThread(),
     error: null,
     prevent_send: false,
-    previous_message_length: 0,
     waiting_for_response: false,
     cache: {},
     system_prompt: {},
@@ -183,18 +179,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
       return state;
     }
 
-    const hasUserMessage = isChatUserMessageResponse(action.payload);
-
-    const current = hasUserMessage
-      ? state.thread.messages.slice(0, state.previous_message_length)
-      : state.thread.messages;
-
-    // TODO: this might not be needed any more, because we can mutate the last message.
-    const messages = formatChatResponse(current, action.payload);
+    const messages = formatChatResponse(state.thread.messages, action.payload);
 
     state.streaming = true;
     state.waiting_for_response = false;
-    state.previous_message_length = messages.length;
     state.thread.messages = messages;
   });
 
@@ -202,7 +190,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     // TODO: should it also save to history?
     state.error = null;
     // state.previous_message_length = state.thread.messages.length;
-    state.previous_message_length = action.payload.messages.length - 1;
     state.thread.messages = action.payload.messages;
   });
 
@@ -251,7 +238,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
       state.cache[state.thread.id] = state.thread;
       state.streaming = false;
     }
-    state.previous_message_length = mostUptoDateThread.messages.length;
     state.thread = mostUptoDateThread;
   });
 });
