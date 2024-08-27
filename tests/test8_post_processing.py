@@ -22,13 +22,13 @@ def generate_tool_call(tool_name, tool_arguments):
     }
     return tool_call
 
-# symbol = "Frog"
-symbol = "bounce_off_banks"
+symbol = "Frog"
+# symbol = "bounce_off_banks"
 # symbol = "DeltaDeltaChatStreamer::response_n_choices"
 
 initial_messages = [
-chat_client.Message(role="user", content=f"Call definition() for {symbol}"),
-chat_client.Message(role="assistant", content="Alright, here we go", tool_calls=[generate_tool_call("definition", {"symbol": symbol})]),
+chat_client.Message(role="user", content=f"Call references() for {symbol}"),
+chat_client.Message(role="assistant", content="Alright, here we go", tool_calls=[generate_tool_call("references", {"symbol": symbol})]),
 ]
 
 async def ask_chat(messages):
@@ -50,7 +50,7 @@ async def ask_chat(messages):
         }
     )
     for i, msg in enumerate(assistant_choices[0]):
-        print("messages[%d] role=%-15s content=%s" % (i, msg.role, msg.content.replace("\n", "\\n")[:40] if msg.content is not None else "None"))
+        print("messages[%d] role=%-15s content=%s" % (i, msg.role, msg.content.replace("\n", "\\n")[:400] if msg.content is not None else "None"))
         if msg.role == "context_file":
             context_files = json.loads(msg.content)
             for fdict in context_files:
