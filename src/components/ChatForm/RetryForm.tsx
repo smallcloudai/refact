@@ -1,15 +1,19 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Button, Flex } from "@radix-ui/themes";
 
 import { TextArea } from "../TextArea";
 import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
 import { Form } from "./Form";
 
+import { useAppSelector } from "../../app/hooks";
+import { selectSubmitOption } from "../../features/Config/configSlice";
+
 export const RetryForm: React.FC<{
   value: string;
   onSubmit: (value: string) => void;
   onClose: () => void;
 }> = (props) => {
+  const shiftEnterToSubmit = useAppSelector(selectSubmitOption);
   const [value, onChange] = useState(props.value);
   const closeAndReset = () => {
     onChange(props.value);
@@ -25,6 +29,17 @@ export const RetryForm: React.FC<{
 
   const onPressedEnter = useOnPressedEnter(handleRetry);
 
+  const handleOnKeyUp = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (shiftEnterToSubmit && !event.shiftKey && event.key === "Enter") {
+        onChange(value + "\n");
+        return;
+      }
+      onPressedEnter(event);
+    },
+    [onPressedEnter, shiftEnterToSubmit, value],
+  );
+
   return (
     <Form
       onSubmit={(event) => {
@@ -35,7 +50,7 @@ export const RetryForm: React.FC<{
       <TextArea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        onKeyUp={onPressedEnter}
+        onKeyUp={handleOnKeyUp}
       />
       <Flex
         align="center"
