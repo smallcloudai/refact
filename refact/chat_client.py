@@ -143,7 +143,10 @@ class ChoiceDeltaCollector:
     def add_deltas(self, j_choices: List[Dict[str, Any]]):
         assert len(j_choices) == self.n_answers
         for j_choice in j_choices:
-            choice: Message = self.choices[j_choice["index"]]
+            j_index = j_choice["index"]
+            if j_index < 0 or j_index >= self.n_answers:
+                raise ValueError(f"add_deltas(): invalid choice index {j_index} for choices")
+            choice: Message = self.choices[j_index]
             delta = j_choice["delta"]
             if (j_tool_calls := delta.get("tool_calls", None)) is not None:
                 for plus_tool in j_tool_calls:
@@ -191,6 +194,7 @@ async def ask_using_http(
     verbose: bool = True,
     max_tokens: int = 1000,
     only_deterministic_messages: bool = False,
+    postprocess_parameters: Optional[Dict[str, Any]],
 ) -> List[List[Message]]:
     deterministic: List[Message] = []
     subchats: DefaultDict[str, List[Message]] = collections.defaultdict(list)
@@ -206,6 +210,7 @@ async def ask_using_http(
         "tool_choice": tool_choice,
         "max_tokens": max_tokens,
         "only_deterministic_messages": only_deterministic_messages,
+        "postprocess_parameters": postprocess_parameters,
     }
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:
@@ -255,10 +260,16 @@ async def ask_using_http(
                         subchats[map_key].append(Message(**j["add_message"]))
                     else:
                         print("unrecognized streaming data (2):", j)
+                end_str = buffer.decode('utf-8').strip()
+                if end_str.startswith("{"):  # server whats to tell us something!
+                    something_from_server = json.loads(end_str)
+                    if "detail" in something_from_server:
+                        raise RuntimeError(something_from_server["detail"])
+                    print("SERVER SAYS:", end_str)
                 for x in choice_collector.choices:
                     if x.content is not None and len(x.content) == 0:
                         x.content = None
-                choices = choice_collector.choices
+                choices = [(x if x.content is not None or x.tool_calls is not None else None) for x in choice_collector.choices]
                 # when streaming, subchats are streamed too
                 has_home = set()
                 for d in deterministic:

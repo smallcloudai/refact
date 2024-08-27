@@ -177,18 +177,24 @@ pub async fn run_tools(
         tokens_limit_files += non_used_tokens_for_rag;
         info!("run_tools: tokens_limit_files={} after postprocessing", tokens_limit_files);
 
-        let (gcx, pp_skeleton) = {
-            let ccx_lock = ccx.lock().await;
-            (ccx_lock.global_context.clone(), ccx_lock.pp_skeleton)
+        let (gcx, mut pp_settings, pp_skeleton) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.global_context.clone(), ccx_locked.postprocess_parameters.clone(), ccx_locked.pp_skeleton)
         };
+        if pp_settings.max_files_n == 0 {
+            pp_settings.max_files_n = top_n;
+        }
+        if pp_skeleton && pp_settings.take_floor == 0.0 {
+            pp_settings.take_floor = 9.0;
+        }
+
         let context_file_vec = postprocess_context_files(
             gcx.clone(),
             &for_postprocessing,
             tokenizer.clone(),
             tokens_limit_files,
             false,
-            top_n,
-            pp_skeleton
+            &pp_settings,
         ).await;
 
         if !context_file_vec.is_empty() {

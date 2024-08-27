@@ -6,7 +6,7 @@ use tokenizers::Tokenizer;
 use tracing::{info, warn};
 
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam, filter_only_context_file_from_context_tool};
-use crate::call_validation::{ChatMessage, ContextEnum};
+use crate::call_validation::{ChatMessage, ContextEnum, PostprocessSettings};
 use crate::scratchpads::pp_context_files::postprocess_context_files;
 use crate::scratchpads::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::pp_utils::{HasRagResults, count_tokens, max_tokens_for_rag_chat};
@@ -106,18 +106,21 @@ pub async fn run_at_commands(
             }
             tokens_limit_files += non_used_plain;
             info!("tokens_limit_files {}", tokens_limit_files);
-            let (gcx, pp_skeleton) = {
-                let ccx_lock = ccx.lock().await;
-                (ccx_lock.global_context.clone(), ccx_lock.pp_skeleton)
+            let (gcx, mut pp_settings, pp_skeleton) = {
+                let ccx_locked = ccx.lock().await;
+                (ccx_locked.global_context.clone(), ccx_locked.postprocess_parameters.clone(), ccx_locked.pp_skeleton)
             };
+            pp_settings.max_files_n = top_n;
+            if pp_skeleton {
+                pp_settings.take_floor = 9.;
+            }
             let post_processed = postprocess_context_files(
                 gcx.clone(),
                 &context_file_pp,
                 tokenizer.clone(),
                 tokens_limit_files,
                 false,
-                top_n,
-                pp_skeleton,
+                &pp_settings,
             ).await;
             if !post_processed.is_empty() {
                 // OUTPUT: files after all custom messages and plain text
@@ -141,9 +144,9 @@ pub async fn run_at_commands(
             stream_back_to_user.push_in_json(json!(msg));
         }
     }
-    
+
     ccx.lock().await.pp_skeleton = false;
-    
+
     return (rebuilt_messages.clone(), user_msg_starts, any_context_produced)
 }
 

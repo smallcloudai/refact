@@ -8,7 +8,7 @@ use serde_json::Value;
 use tracing::{error, info, warn};
 use crate::at_tools::tools::{at_tools_merged_and_filtered, tools_compiled_in};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatMessage, ChatPost, ChatToolCall, ChatUsage, SamplingParameters};
+use crate::call_validation::{ChatMessage, ChatPost, ChatToolCall, ChatUsage, SamplingParameters, PostprocessSettings};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
 use crate::http::routers::v1::chat::lookup_chat_scratchpad;
 use crate::scratchpad_abstract::ScratchpadAbstract;
@@ -56,6 +56,7 @@ async fn create_chat_post_and_scratchpad(
         tool_choice,
         only_deterministic_messages,
         subchat_tool_parameters: tconfig.subchat_tool_parameters.clone(),
+        postprocess_parameters: PostprocessSettings::new(),
         chat_id: "".to_string(),
     };
 

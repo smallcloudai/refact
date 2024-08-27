@@ -14,6 +14,8 @@ use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 use crate::global_context::SharedGlobalContext;
 use crate::scratchpads::pp_context_files::pp_color_lines;
 use crate::scratchpads::pp_utils::{context_msgs_from_paths, pp_ast_markup_files};
+use crate::call_validation::PostprocessSettings;
+
 
 #[derive(Serialize, Deserialize, Clone)]
 struct AstQuerySearchBy {
@@ -267,7 +269,7 @@ pub async fn handle_v1_ast_file_dump(
     files_set.insert(corrected[0].clone());
     let messages = context_msgs_from_paths(global_context.clone(), files_set).await;
     let files_markup = pp_ast_markup_files(global_context.clone(), &messages).await;
-    let mut settings = crate::scratchpads::pp_context_files::PostprocessSettings::new();
+    let mut settings = PostprocessSettings::new();
     settings.close_small_gaps = false;
     let lines_in_files = pp_color_lines(
             global_context.clone(),

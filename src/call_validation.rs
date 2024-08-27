@@ -311,7 +311,7 @@ pub struct SubchatParameters {
     pub subchat_max_new_tokens: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ChatPost {
     pub messages: Vec<ChatMessage>,
     #[serde(default)]
@@ -334,6 +334,9 @@ pub struct ChatPost {
     pub only_deterministic_messages: bool,  // means don't sample from the model
     #[serde(default)]
     pub subchat_tool_parameters: HashMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
+    #[serde(default="PostprocessSettings::new")]
+    pub postprocess_parameters: PostprocessSettings,
+    #[allow(dead_code)]
     #[serde(default)]
     pub chat_id: String,
 }
@@ -354,4 +357,39 @@ pub struct DiffChunk {
     pub file_name_rename: Option<String>,
     #[serde(default = "default_true")]
     pub is_file: bool,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
+pub struct PostprocessSettings {
+    pub useful_background: f32,          // first, fill usefulness of all lines with this
+    pub useful_symbol_default: f32,      // when a symbol present, set usefulness higher
+    // search results fill usefulness as it passed from outside
+    pub downgrade_parent_coef: f32,      // goto parent from search results and mark it useful, with this coef
+    pub downgrade_body_coef: f32,        // multiply body usefulness by this, so it's less useful than the declaration
+    pub comments_propagate_up_coef: f32, // mark comments above a symbol as useful, with this coef
+    pub close_small_gaps: bool,
+    pub take_floor: f32,                 // take/dont value
+    pub max_files_n: usize,              // don't produce more than n files in output
+}
+
+impl Default for PostprocessSettings {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PostprocessSettings {
+    pub fn new() -> Self {
+        PostprocessSettings {
+            downgrade_body_coef: 0.8,
+            downgrade_parent_coef: 0.6,
+            useful_background: 5.0,
+            useful_symbol_default: 10.0,
+            close_small_gaps: true,
+            comments_propagate_up_coef: 0.99,
+            take_floor: 0.0,
+            max_files_n: 0,
+        }
+    }
 }

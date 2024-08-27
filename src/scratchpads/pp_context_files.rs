@@ -8,7 +8,7 @@ use tokio::sync::RwLock as ARwLock;
 use uuid::Uuid;
 use crate::ast::treesitter::structs::SymbolType;
 
-use crate::call_validation::ContextFile;
+use crate::call_validation::{ContextFile, PostprocessSettings};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
 use crate::files_correction::{canonical_path, correct_to_nearest_filename};
@@ -37,32 +37,6 @@ pub struct FileLine {
     pub take: bool,
 }
 
-pub struct PostprocessSettings {
-    pub useful_background: f32,          // first, fill usefulness of all lines with this
-    pub useful_symbol_default: f32,      // when a symbol present, set usefulness higher
-    // search results fill usefulness as it passed from outside
-    pub downgrade_parent_coef: f32,        // goto parent from search results and mark it useful, with this coef
-    pub downgrade_body_coef: f32,          // multiply body usefulness by this, so it's less useful than the declaration
-    pub comments_propagate_up_coef: f32, // mark comments above a symbol as useful, with this coef
-    pub close_small_gaps: bool,
-    pub take_floor: f32,                 // take/dont value
-    pub max_files_n: usize,              // don't produce more than n files in output
-}
-
-impl PostprocessSettings {
-    pub fn new() -> Self {
-        PostprocessSettings {
-            downgrade_body_coef: 0.8,
-            downgrade_parent_coef: 0.6,
-            useful_background: 5.0,
-            useful_symbol_default: 10.0,
-            close_small_gaps: true,
-            comments_propagate_up_coef: 0.99,
-            take_floor: 0.0,
-            max_files_n: 10,
-        }
-    }
-}
 
 fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSettings) -> HashMap<PathBuf, Vec<FileLine>> {
     let mut lines_in_files = HashMap::new();
@@ -236,7 +210,7 @@ pub async fn pp_color_lines(
 ) -> HashMap<PathBuf, Vec<FileLine>> {
     // Generate line refs, fill background scopes found in a file (not search results yet)
     let mut lines_in_files = collect_lines_from_files(files, settings);
-    
+
     // Fill in usefulness from search results
     set_lines_usefulness(global_context.clone(), messages, &mut lines_in_files, settings).await;
 
@@ -258,7 +232,7 @@ async fn pp_limit_and_merge(
 ) -> Vec<ContextFile> {
     // Sort
     let mut lines_by_useful = lines_in_files.values_mut().flatten().collect::<Vec<_>>();
-    
+
     lines_by_useful.sort_by(|a, b| {
         let av = a.useful + a.file_ref.cpath_symmetry_breaker;
         let bv = b.useful + b.file_ref.cpath_symmetry_breaker;
@@ -300,15 +274,18 @@ async fn pp_limit_and_merge(
     }
     if DEBUG >= 2 {
         for lines in lines_in_files.values() {
+            let mut t = String::new();
             for line_ref in lines.iter() {
-                info!("{} {}:{:04} {:>7.3} {}",
-                if line_ref.take { "take" } else { "dont" },
-                last_n_chars(&line_ref.file_ref.cpath.to_string_lossy().to_string(), 30),
-                line_ref.line_n,
-                line_ref.useful,
-                first_n_chars(&line_ref.line_content, 20)
-            );
+                t.push_str(format!("{} {}:{:04} {:>7.3} {:43} {:43}\n",
+                    if line_ref.take { "take" } else { "dont" },
+                    last_n_chars(&line_ref.file_ref.cpath.to_string_lossy().to_string(), 30),
+                    line_ref.line_n,
+                    line_ref.useful,
+                    first_n_chars(&line_ref.line_content, 40),
+                    first_n_chars(&line_ref.color, 40),
+                ).as_str());
             }
+            info!("\n{}", t);
         }
     }
 
@@ -367,29 +344,24 @@ pub async fn postprocess_context_files(
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
-    max_files_n: usize,
-    skeletonize: bool,
+    settings: &PostprocessSettings,
 ) -> Vec<ContextFile> {
+    assert!(settings.max_files_n > 0);
+    info!("\n\nsettings = {:?}\n\n", settings);
     let files_marked_up = pp_ast_markup_files(global_context.clone(), &messages).await;
 
-    let mut settings = PostprocessSettings::new();
-    settings.max_files_n = max_files_n;
-    if skeletonize {
-        settings.take_floor = 9.;
-    }
-    
     let mut lines_in_files = pp_color_lines(
         global_context.clone(),
         &messages,
         files_marked_up,
-        &settings,
+        settings,
     ).await;
 
     pp_limit_and_merge(
-        &mut lines_in_files, 
-        tokenizer, 
-        tokens_limit, 
-        single_file_mode, 
-        &settings
+        &mut lines_in_files,
+        tokenizer,
+        tokens_limit,
+        single_file_mode,
+        settings
     ).await
 }

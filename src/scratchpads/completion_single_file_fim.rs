@@ -324,15 +324,22 @@ impl ScratchpadAbstract for SingleFileFIM {
 
             info!(" -- post processing starts --");
             let post_t0 = Instant::now();
-            let max_files_n = 10;
+
+            let mut pp_settings = {
+                let ccx_locked = ccx.lock().await;
+                ccx_locked.postprocess_parameters.clone()
+            };
+            if pp_settings.max_files_n == 0 {
+                pp_settings.max_files_n = 10;
+            }
+
             let postprocessed_messages = postprocess_context_files(
                 self.global_context.clone(),
                 &ast_messages,
                 self.t.tokenizer.clone(),
                 rag_tokens_n,
                 false,
-                max_files_n,
-                false,
+                &pp_settings,
             ).await;
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);

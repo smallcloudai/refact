@@ -152,14 +152,21 @@ pub async fn handle_v1_command_preview(
         }
     }
 
+    let mut pp_settings = {
+        let ccx_locked = ccx.lock().await;
+        ccx_locked.postprocess_parameters.clone()
+    };
+    if pp_settings.max_files_n == 0 {
+        pp_settings.max_files_n = crate::http::routers::v1::chat::CHAT_TOP_N;
+    }
+
     let processed = postprocess_context_files(
         global_context.clone(),
         &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
         tokenizer_arc.clone(),
         rag_n_ctx,
         false,
-        crate::http::routers::v1::chat::CHAT_TOP_N,
-        false,
+        &pp_settings,
     ).await;
 
     if !processed.is_empty() {

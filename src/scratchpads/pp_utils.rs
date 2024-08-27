@@ -7,11 +7,11 @@ use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
 
-use crate::call_validation::ContextFile;
+use crate::call_validation::{ContextFile, PostprocessSettings};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
-use crate::scratchpads::pp_context_files::{PPFile, FileLine, PostprocessSettings, DEBUG, RESERVE_FOR_QUESTION_AND_FOLLOWUP};
+use crate::scratchpads::pp_context_files::{PPFile, FileLine, DEBUG, RESERVE_FOR_QUESTION_AND_FOLLOWUP};
 
 
 pub struct HasRagResults {
@@ -241,7 +241,7 @@ pub fn colorize_comments_up(lines: &mut Vec<FileLine>, settings: &PostprocessSet
         }
         let this_line = this_line.unwrap();
         let next_line = next_line.unwrap();
-        
+
         let u = next_line.useful * settings.comments_propagate_up_coef;
         if this_line.color == "comment" && this_line.useful < u {
             this_line.useful = u;
@@ -259,19 +259,19 @@ pub fn downgrade_lines_if_subsymbol(lines: &mut Vec<FileLine>, line1_base0: usiz
             continue;
         }
         if let Some(line) = lines.get_mut(i) {
-            if subsymbol.starts_with(&line.color) {
-                if i == line2_base0-1 || i == line1_base0 {
-                    if line.line_content.trim().len() == 1 {  // only closing bracket -- don't degrade, for C++ void f()  { ... }  last line with "}" only
-                        continue;
-                    }
+            if i == line2_base0-1 || i == line1_base0 {
+                if line.line_content.trim().len() == 1 {  // only closing bracket -- don't degrade, for C++ void f()  { ... }  last line with "}" only
+                    continue;
                 }
-                line.useful *= downgrade_coef;
+            }
+            line.useful *= downgrade_coef;
+            changes_cnt += 1;
+            if subsymbol.starts_with(&line.color) {
                 line.color = subsymbol.clone();
-                changes_cnt += 1;
             }
         }
     }
     if DEBUG >= 2 {
-        info!("        {}..{} ({} affected) <= subsymbol {:?} downgrade {}", changes_cnt, line1_base0, line2_base0, subsymbol, downgrade_coef);
+        info!("        {}..{} ({} affected) <= subsymbol {:?} downgrade {}", line1_base0, line2_base0, changes_cnt, subsymbol, downgrade_coef);
     }
 }

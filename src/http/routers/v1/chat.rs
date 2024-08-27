@@ -147,6 +147,7 @@ async fn chat(
         chat_post.messages.clone(),
     ).await;
     ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
+    ccx.postprocess_parameters = chat_post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {

@@ -17,7 +17,6 @@ pub async fn results2message(
     search_results: &Vec<SymbolsSearchResultStruct>,
     is_body_important: bool
 ) -> Vec<ContextFile> {
-    // info!("results2message {:?}", result);
     let mut symbols = vec![];
     for res in search_results {
         let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
