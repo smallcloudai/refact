@@ -239,23 +239,6 @@ export const useCheckboxes = () => {
     [attachFileCheckboxData, attachedSelectedSnippet, searchWorkspace],
   );
 
-  useEffect(() => {
-    if (
-      !interacted &&
-      attachedSelectedSnippet.checked &&
-      !attachFileCheckboxData.checked &&
-      !attachFileCheckboxData.hide
-    ) {
-      onToggleAttachFile();
-    }
-  }, [
-    attachFileCheckboxData.checked,
-    attachFileCheckboxData.hide,
-    attachedSelectedSnippet.checked,
-    interacted,
-    onToggleAttachFile,
-  ]);
-
   const onToggleCheckbox = useCallback(
     (name: string) => {
       switch (name) {
