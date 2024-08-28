@@ -11,9 +11,7 @@ export interface CloudLoginProps {
 export const CloudLogin: React.FC<CloudLoginProps> = ({
   goBack,
 }: CloudLoginProps) => {
-  const [selected, setSelected] = useState<"free" | "pro" | undefined>(
-    undefined,
-  );
+  const [selected, setSelected] = useState<"free" | "pro">("pro");
   const loginButton = useRef<HTMLButtonElement>(null);
 
   const { loginThroughWeb, cancelLogin, loginWithKey, polling } = useLogin();
@@ -42,7 +40,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
         clearInterval(interval);
       };
     } else {
-      current.innerText = "Login";
+      current.innerText = "Log In";
     }
   }, [loginButton, polling.isLoading]);
 
