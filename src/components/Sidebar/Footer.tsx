@@ -93,7 +93,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
       method: "GET",
     });
     return await response.text();
-  }, []);
+  }, [port]);
 
   return (
     <DropdownMenu.Root>
