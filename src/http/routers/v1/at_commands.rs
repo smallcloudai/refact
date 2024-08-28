@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use axum::response::Result;
 use axum::Extension;
 use hyper::{Body, Response, StatusCode};
@@ -20,6 +21,7 @@ use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::scratchpads::pp_context_files::postprocess_context_files;
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
+use crate::at_commands::at_file::get_project_paths;
 use crate::scratchpads::pp_utils::max_tokens_for_rag_chat;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -97,6 +99,20 @@ pub async fn handle_v1_command_completion(
         .unwrap())
 }
 
+fn pretty_filename_for_preview(project_paths: &Vec<PathBuf>, filename: &str) -> String {
+    for p in project_paths.iter() {
+        let p_str = format!("{}/", p.to_string_lossy().to_string());
+        if filename.starts_with(&p_str) {
+            let file_name_rel = filename.trim_start_matches(&p_str);
+            if let Some(project_name) = p.file_name().map(|x|x.to_string_lossy().to_string()) {
+                return format!("{}: {}", project_name, file_name_rel);
+            }
+            break;
+        }
+    }
+    return filename.to_string();
+}
+
 pub async fn handle_v1_command_preview(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
@@ -160,7 +176,7 @@ pub async fn handle_v1_command_preview(
         pp_settings.max_files_n = crate::http::routers::v1::chat::CHAT_TOP_N;
     }
 
-    let processed = postprocess_context_files(
+    let mut processed = postprocess_context_files(
         global_context.clone(),
         &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
         tokenizer_arc.clone(),
@@ -168,6 +184,11 @@ pub async fn handle_v1_command_preview(
         false,
         &pp_settings,
     ).await;
+    
+    let project_paths = get_project_paths(global_context.clone()).await;
+    for p in processed.iter_mut() {
+        p.file_name = format!(" {}", pretty_filename_for_preview(&project_paths, &p.file_name));
+    }
 
     if !processed.is_empty() {
         let message = ChatMessage {
