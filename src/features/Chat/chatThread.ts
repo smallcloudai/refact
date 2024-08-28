@@ -84,8 +84,7 @@ const chatResponse = createAction<PayloadWIthId & ChatResponse>(
 
 const chatAskedQuestion = createAction<PayloadWIthId>("chatThread/askQuestion");
 
-// TODO: does this need history actions?
-const backUpMessages = createAction<
+export const backUpMessages = createAction<
   PayloadWIthId & { messages: ChatThread["messages"] }
 >("chatThread/backUpMessages");
 
@@ -226,6 +225,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(restoreChat, (state, action) => {
+    if (state.thread.id === action.payload.id) return state;
     const mostUptoDateThread =
       action.payload.id in state.cache
         ? { ...state.cache[action.payload.id] }
@@ -257,7 +257,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
   }
 >("chatThread/sendChat", ({ messages, chatId, tools }, thunkAPI) => {
   const state = thunkAPI.getState();
-  // const messagesWithPrompt =
+
   const messagesForLsp = formatMessagesForLsp(messages);
   return sendChat({
     messages: messagesForLsp,

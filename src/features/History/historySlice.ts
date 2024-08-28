@@ -3,7 +3,12 @@ import {
   PayloadAction,
   createListenerMiddleware,
 } from "@reduxjs/toolkit";
-import { ChatThread, doneStreaming, removeChatFromCache } from "../Chat";
+import {
+  backUpMessages,
+  ChatThread,
+  doneStreaming,
+  removeChatFromCache,
+} from "../Chat";
 import { isUserMessage, UserMessage } from "../../services/refact";
 import { AppDispatch, RootState } from "../../app/store";
 
@@ -91,6 +96,16 @@ startHistoryListening({
       listenerApi.dispatch(saveChat(state.chat.cache[action.payload.id]));
       listenerApi.dispatch(removeChatFromCache({ id: action.payload.id }));
     }
+  },
+});
+
+startHistoryListening({
+  actionCreator: backUpMessages,
+  effect: (action, listenerApi) => {
+    const thread = listenerApi.getState().chat.thread;
+    if (thread.id !== action.payload.id) return;
+    const toSave = { ...thread, messages: action.payload.messages };
+    listenerApi.dispatch(saveChat(toSave));
   },
 });
 
