@@ -1,4 +1,5 @@
 import { Button, Flex, Radio, RadioCards, Text } from "@radix-ui/themes";
+import { ChevronRightIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 
 export type Host =
@@ -22,8 +23,9 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
 
   return (
     <Flex direction="column" gap="2" maxWidth="540px" m="8px">
-      <Text size="4">Initial Setup</Text>
+      <Text size="4">Which Refact.ai setup would you like to use?</Text>
       <RadioCards.Root
+        color="tomato"
         style={{ display: "flex", flexDirection: "column", gap: "6px" }}
         value={selected}
         onValueChange={onValueChange}
@@ -36,13 +38,17 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
             gap: 0,
           }}
         >
-          <Flex gap="6px">
-            <Radio value="cloud" checked={selected === "cloud"} />
-            <Text size="3">Refact Cloud</Text>
+          <Flex align="center" mb="1">
+            <Radio mr="2" value="cloud" checked={selected === "cloud"} />
+            <Text weight="medium" size="3">
+              Refact Cloud
+            </Text>
           </Flex>
-          <Text size="2">- Easy to start</Text>
-          <Text size="2">- Free tier</Text>
-          <Text size="2">- PRO plan with a great choice of models</Text>
+          <Flex pl="5" direction="column">
+            <Text size="2">- Easy to start</Text>
+            <Text size="2">- Free tier</Text>
+            <Text size="2">- PRO plan with a great choice of models</Text>
+          </Flex>
         </RadioCards.Item>
         <RadioCards.Item
           value="enterprise"
@@ -52,14 +58,22 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
             gap: 0,
           }}
         >
-          <Flex gap="6px">
-            <Radio value="enterprise" checked={selected === "enterprise"} />
-            <Text size="3">Enterprise</Text>
+          <Flex align="center" mb="1">
+            <Radio
+              mr="2"
+              value="enterprise"
+              checked={selected === "enterprise"}
+            />
+            <Text weight="medium" size="3">
+              Enterprise
+            </Text>
           </Flex>
-          <Text size="2">- Uses your private server only</Text>
-          <Text size="2">- Sends telemetry to your private server</Text>
-          <Text size="2">- Fine-tune completion models to your codebase</Text>
-          <Text size="2">- Customize for the entire team</Text>
+          <Flex pl="5" direction="column">
+            <Text size="2">- Uses your private server only</Text>
+            <Text size="2">- Sends telemetry to your private server</Text>
+            <Text size="2">- Fine-tune completion models to your codebase</Text>
+            <Text size="2">- Customize for the entire team</Text>
+          </Flex>
         </RadioCards.Item>
         <RadioCards.Item
           value="self-hosting"
@@ -69,14 +83,22 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
             gap: 0,
           }}
         >
-          <Flex gap="6px">
-            <Radio value="self-hosting" checked={selected === "self-hosting"} />
-            <Text size="3">Self-Hosting with Refact Server</Text>
+          <Flex align="center" mb="1">
+            <Radio
+              mr="2"
+              value="self-hosting"
+              checked={selected === "self-hosting"}
+            />
+            <Text weight="medium" size="3">
+              Self-Hosting with Refact Server
+            </Text>
           </Flex>
           {/* TODO: add link to self-hosting doc */}
-          <Text size="2">- Uses your own server</Text>
-          <Text size="2">- Fine-tune completion models to your codebase</Text>
-          <Text size="2">- Your code never leaves your control</Text>
+          <Flex pl="5" direction="column">
+            <Text size="2">- Uses your own server</Text>
+            <Text size="2">- Fine-tune completion models to your codebase</Text>
+            <Text size="2">- Your code never leaves your control</Text>
+          </Flex>
         </RadioCards.Item>
         <RadioCards.Item
           value="bring-your-own-key"
@@ -86,23 +108,30 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
             gap: 0,
           }}
         >
-          <Flex gap="6px">
+          <Flex align="center" mb="1">
             <Radio
+              mr="2"
               value="bring-your-own-key"
               checked={selected === "bring-your-own-key"}
             />
-            <Text size="3">Bring Your Own Key</Text>
+            <Text weight="medium" size="3">
+              Bring Your Own Key
+            </Text>
           </Flex>
-          <Text size="2">
-            - Connect to any OpenAI- or HuggingFace-style server
-          </Text>
-          <Text size="2">
-            - Separate endpoints and keys for chat, completion, embedding
-          </Text>
+          <Flex pl="5" direction="column">
+            <Text size="2">
+              - Connect to any OpenAI- or HuggingFace-style server
+            </Text>
+            <Text size="2">
+              - Separate endpoints and keys for chat, completion, embedding
+            </Text>
+          </Flex>
         </RadioCards.Item>
       </RadioCards.Root>
       <Button
-        variant="outline"
+        color="gray"
+        highContrast
+        variant="solid"
         ml="auto"
         disabled={selected === undefined}
         onClick={() => {
@@ -111,7 +140,8 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
           }
         }}
       >
-        {"Next >"}
+        {"Next"}
+        <ChevronRightIcon />
       </Button>
     </Flex>
   );
