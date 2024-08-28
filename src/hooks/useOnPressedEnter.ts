@@ -1,8 +1,24 @@
-import { KeyboardEvent, KeyboardEventHandler } from "react";
+import {
+  useCallback,
+  type KeyboardEvent,
+  type KeyboardEventHandler,
+} from "react";
+import { useAppSelector } from "../app/hooks";
+import { selectSubmitOption } from "../features/Config/configSlice";
 
-export const useOnPressedEnter =
-  (onPress: KeyboardEventHandler) => (event: KeyboardEvent) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      onPress(event);
-    }
-  };
+export const useOnPressedEnter = (onPress: KeyboardEventHandler) => {
+  const submitOption = useAppSelector(selectSubmitOption);
+
+  const onKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      if (!submitOption && event.key === "Enter" && !event.shiftKey) {
+        onPress(event);
+      } else if (submitOption && event.key === "Enter" && event.shiftKey) {
+        onPress(event);
+      }
+    },
+    [submitOption, onPress],
+  );
+
+  return onKeyPress;
+};
