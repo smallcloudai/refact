@@ -37,7 +37,7 @@ impl AtCommand for AtWeb {
 
     async fn at_execute(
         &self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         cmd: &mut AtCommandMember,
         args: &mut Vec<AtCommandMember>,
     ) -> Result<(Vec<ContextEnum>, String), String> {
@@ -50,10 +50,22 @@ impl AtCommand for AtWeb {
             }
         };
         args.truncate(1);
+        
+        let preview_cache = {
+            let gcx = ccx.lock().await.global_context.clone();
+            let gcx_read = gcx.read().await;
+            gcx_read.at_commands_preview_cache.clone()
+        };
+        let text_from_cache = preview_cache.lock().await.get(&format!("@web:{}", url.text));
 
-        let text = execute_at_web(&url.text).await.map_err(|e|
-            format!("Failed to execute @web {}.\nError: {e}", url.text)
-        )?;
+        let text = match text_from_cache {
+            Some(text) => text,
+            None => {
+                let text = execute_at_web(&url.text).await.map_err(|e|format!("Failed to execute @web {}.\nError: {e}", url.text))?;
+                preview_cache.lock().await.insert(format!("@web:{}", url.text), text.clone());
+                text
+            }
+        };
 
         let message = ChatMessage::new(
             "plain_text".to_string(),

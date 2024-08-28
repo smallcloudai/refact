@@ -21,10 +21,14 @@ pub async fn run_at_commands(
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
 ) -> (Vec<ChatMessage>, usize, bool) {
-    let (n_ctx, top_n) = {
+    let (n_ctx, top_n, is_preview, gcx) = {
         let ccx_locked = ccx.lock().await;
-        (ccx_locked.n_ctx, ccx_locked.top_n)
+        (ccx_locked.n_ctx, ccx_locked.top_n, ccx_locked.is_preview, ccx_locked.global_context.clone())
     };
+    if !is_preview {
+        let preview_cache = gcx.read().await.at_commands_preview_cache.clone();
+        preview_cache.lock().await.clear();
+    }
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     info!("reserve_for_context {} tokens", reserve_for_context);
 

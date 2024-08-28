@@ -81,6 +81,31 @@ impl CommandLine {
     }
 }
 
+pub struct AtCommandsPreviewCache {
+    pub cache: HashMap<String, String>,
+}
+
+impl AtCommandsPreviewCache {
+    pub fn new() -> Self { Self { cache: HashMap::new() } }
+    pub fn get(&self, key: &str) -> Option<String> {
+        let val = self.cache.get(key).cloned();
+        if val.is_some() {
+            info!("AtCommandsPreviewCache: SOME: key={:?}", key);
+        } else {
+            info!("AtCommandsPreviewCache: NONE: key={:?}", key);
+        }
+        val
+    }
+    pub fn insert(&mut self, key: String, value: String) {
+        self.cache.insert(key.clone(), value);
+        info!("AtCommandsPreviewCache: insert: key={:?}. new_len: {:?}", key, self.cache.len());
+    }
+    pub fn clear(&mut self) {
+        self.cache.clear();
+        info!("AtCommandsPreviewCache: clear; new_len: {:?}", self.cache.len());
+    }
+}
+
 pub struct GlobalContext {
     pub cmdline: CommandLine,
     pub http_client: reqwest::Client,
@@ -99,6 +124,7 @@ pub struct GlobalContext {
     pub vec_db_error: String,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
+    pub at_commands_preview_cache: Arc<AMutex<AtCommandsPreviewCache>>,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -271,6 +297,7 @@ pub async fn create_global_context(
         vec_db_error: String::new(),
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState::new(workspace_dirs).await,
+        at_commands_preview_cache: Arc::new(AMutex::new(AtCommandsPreviewCache::new())),
     };
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {
