@@ -261,7 +261,6 @@ impl AstModule {
             .filter_map(|s| symbol_to_search_res_struct(&ast_ref, s, 10.0))
             .collect::<Vec<_>>();
         fuzzy_matches.sort_by(|a, b| b.usefulness.partial_cmp(&a.usefulness).unwrap());
-        fuzzy_matches.truncate(10);
         let res = AstDeclarationSearchResult {
             query_text: query,
             exact_matches,

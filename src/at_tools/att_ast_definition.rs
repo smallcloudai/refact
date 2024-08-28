@@ -101,7 +101,7 @@ impl Tool for AttAstDefinition {
                 "No definitions with name `{}` found in the workspace.\nThere are definitions with similar names though:\n",
                 symbol
             ).to_string();
-            for r in res.fuzzy_matches.iter() {
+            for r in res.fuzzy_matches.iter().take(10) {
                 let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
                 let decl_range = &r.symbol_declaration.full_range;
                 tool_message.push_str(&format!(
@@ -110,6 +110,12 @@ impl Tool for AttAstDefinition {
                     file_path_str,
                     decl_range.start_point.row + 1,
                     decl_range.end_point.row + 1
+                ));
+            }
+            if res.fuzzy_matches.len() > 10 {
+                tool_message.push_str(&format!(
+                    "...and {} more...\n",
+                    res.fuzzy_matches.len() - 10
                 ));
             }
             (vec![], tool_message)
