@@ -13,6 +13,62 @@ use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 
+pub struct AtWeb {
+    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
+}
+
+impl AtWeb {
+    pub fn new() -> Self {
+        AtWeb {
+            params: vec![],
+        }
+    }
+}
+
+pub fn text_on_clip(url_text: &str) -> String {
+    format!("[see text downloaded from {url_text} above]")
+}
+
+#[async_trait]
+impl AtCommand for AtWeb {
+    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
+        &self.params
+    }
+
+    async fn at_execute(
+        &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
+        let url = match args.get(0) {
+            Some(x) => x.clone(),
+            None => {
+                cmd.ok = false; cmd.reason = Some("missing URL".to_string());
+                args.clear();
+                return Err("missing URL".to_string());
+            }
+        };
+        args.truncate(1);
+
+        let text = execute_at_web(&url.text).await.map_err(|e|
+            format!("Failed to execute @web {}.\nError: {e}", url.text)
+        )?;
+
+        let message = ChatMessage::new(
+            "plain_text".to_string(),
+            text,
+        );
+
+        info!("executed @web {}", url.text);
+        Ok((vec![ContextEnum::ChatMessage(message)], text_on_clip(&url.text)))
+    }
+
+    fn depends_on(&self) -> Vec<String> {
+        vec![]
+    }
+}
+
 #[derive(Clone, Copy)]
 struct CustomTextConversion;
 
@@ -149,61 +205,6 @@ pub async fn execute_at_web(url: &str) -> Result<String, String>{
     Ok(text)
 }
 
-pub struct AtWeb {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
-}
-
-impl AtWeb {
-    pub fn new() -> Self {
-        AtWeb {
-            params: vec![],
-        }
-    }
-}
-
-pub fn text_on_clip(url_text: &str) -> String {
-    format!("[see text downloaded from {url_text} above]")
-}
-
-#[async_trait]
-impl AtCommand for AtWeb {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
-        &self.params
-    }
-
-    async fn at_execute(
-        &self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
-        cmd: &mut AtCommandMember,
-        args: &mut Vec<AtCommandMember>,
-    ) -> Result<(Vec<ContextEnum>, String), String> {
-        let url = match args.get(0) {
-            Some(x) => x.clone(),
-            None => {
-                cmd.ok = false; cmd.reason = Some("missing URL".to_string());
-                args.clear();
-                return Err("missing URL".to_string());
-            }
-        };
-        args.truncate(1);
-
-        let text = execute_at_web(&url.text).await.map_err(|e|
-            format!("Failed to execute @web {}.\nError: {e}", url.text)
-        )?;
-
-        let message = ChatMessage::new(
-            "plain_text".to_string(),
-            text,
-        );
-
-        info!("executed @web {}", url.text);
-        Ok((vec![ContextEnum::ChatMessage(message)], text_on_clip(&url.text)))
-    }
-
-    fn depends_on(&self) -> Vec<String> {
-        vec![]
-    }
-}
 
 #[cfg(test)]
 mod tests {
