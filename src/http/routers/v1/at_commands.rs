@@ -21,7 +21,7 @@ use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::scratchpads::pp_context_files::postprocess_context_files;
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
-use crate::at_commands::at_file::get_project_paths;
+use crate::at_commands::at_file::{file_repair_candidates, get_project_paths};
 use crate::scratchpads::pp_utils::max_tokens_for_rag_chat;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -187,7 +187,11 @@ pub async fn handle_v1_command_preview(
     
     let project_paths = get_project_paths(global_context.clone()).await;
     for p in processed.iter_mut() {
-        p.file_name = format!(" {}", pretty_filename_for_preview(&project_paths, &p.file_name));
+        let candidates = file_repair_candidates(global_context.clone(), &p.file_name, 3, false).await;
+        if candidates.len() == 1 {
+            p.file_name = candidates[0].clone();
+            p.file_name = format!(" {}", pretty_filename_for_preview(&project_paths, &p.file_name));
+        }
     }
 
     if !processed.is_empty() {

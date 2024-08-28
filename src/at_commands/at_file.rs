@@ -196,6 +196,39 @@ impl AtParamFilePath {
     }
 }
 
+async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: Vec<String>) -> Vec<String> {
+    let project_paths = get_project_paths(gcx.clone()).await;
+
+    let mut results = vec![];
+    let p_paths_str = project_paths.iter().map(|x|x.to_string_lossy().to_string()).map(|x|format!("{}/", x)).collect::<Vec<_>>();
+    for p in paths {
+        let matches = p_paths_str.iter().filter(|x|p.starts_with(*x)).cloned().collect::<Vec<_>>();
+        if matches.is_empty() || matches.len() > 1 {
+            results.push(p);
+            continue;
+        }
+        let m = matches[0].clone();
+        let p_no_base = p.trim_start_matches(&m);
+        
+        let candidates = file_repair_candidates(gcx.clone(), &p_no_base.to_string(), 3, false).await;
+        if candidates.len() == 1 {
+            results.push(p_no_base.to_string());
+            continue;
+        }
+        let m_file_name = PathBuf::from(&m).file_name().unwrap().to_string_lossy().to_string();
+        let p_no_base = format!("{}/{}", m_file_name, p_no_base);
+        
+        let candidates = file_repair_candidates(gcx.clone(), &p_no_base.to_string(), 3, false).await;
+        if candidates.len() == 1 {
+            results.push(p_no_base.to_string());
+        } else {
+            results.push(p.to_string());
+        }
+    }
+    results
+}
+
+
 #[async_trait]
 impl AtParam for AtParamFilePath {
     async fn is_value_valid(
@@ -215,19 +248,22 @@ impl AtParam for AtParamFilePath {
             let ccx_lock = ccx.lock().await;
             (ccx_lock.global_context.clone(), ccx_lock.top_n)
         };
+        
         let candidates = file_repair_candidates(gcx.clone(), value, top_n, false).await;
         if !candidates.is_empty() {
-            return candidates;
+            return shortify_paths(gcx.clone(), candidates).await;
         }
         let file_path = PathBuf::from(value);
         if file_path.is_relative() {
             let project_paths = get_project_paths(gcx.clone()).await;
             let options = project_paths.iter().map(|x|x.join(&file_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
             if !options.is_empty() {
-                return options.iter().map(|x| x.to_string_lossy().to_string()).collect();
+                let res = options.iter().map(|x| x.to_string_lossy().to_string()).collect();
+                return shortify_paths(gcx.clone(), res).await;
             }
         }
-        return file_repair_candidates(gcx.clone(), value, top_n, true).await;
+        let res = file_repair_candidates(gcx.clone(), value, top_n, true).await;
+        shortify_paths(gcx.clone(), res).await
     }
 
     fn param_completion_valid(&self) -> bool {true}
