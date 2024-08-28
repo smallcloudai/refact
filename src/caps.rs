@@ -295,7 +295,7 @@ async fn load_caps_buf_from_url(
 ) -> Result<(String, String), String> {
     let mut buffer = String::new();
     let mut caps_urls: Vec<String> = Vec::new();
-    if cmdline.address_url == "Refact" {
+    if cmdline.address_url.to_lowercase() == "refact" {
         caps_urls.push("https://inference.smallcloud.ai/coding_assistant_caps.json".to_string());
     } else {
         let base_url = Url::parse(&cmdline.address_url.clone()).map_err(|_| "failed to parse address url (1)".to_string())?;
@@ -356,7 +356,7 @@ pub async fn load_caps(
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let mut caps_url = cmdline.address_url.clone();
     let buf: String;
-    if caps_url == "Refact" || caps_url.starts_with("http") {
+    if caps_url.to_lowercase() == "refact" || caps_url.starts_with("http") {
         (buf, caps_url) = load_caps_buf_from_url(cmdline, global_context).await?
     } else {
         (buf, caps_url) = load_caps_buf_from_file(cmdline, global_context).await?

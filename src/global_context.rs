@@ -119,7 +119,7 @@ pub async fn try_load_caps_quickly_if_not_present(
         let cmdline = CommandLine::from_args();
 
         let caps_url = cmdline.address_url.clone();
-        if caps_url == "Refact" || caps_url.starts_with("http") {
+        if caps_url.to_lowercase() == "refact" || caps_url.starts_with("http") {
             let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
             {
                 let mut cx_locked = global_context.write().await;
