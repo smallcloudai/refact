@@ -8,6 +8,16 @@ export interface CloudLoginProps {
   goBack: () => void;
 }
 
+export const bulletStyle = {
+  marginRight: "5px",
+  verticalAlign: "middle",
+  display: "inline-flex",
+  width: "4px",
+  height: "4px",
+  backgroundColor: "var(--gray-12)",
+  borderRadius: "50%",
+};
+
 export const CloudLogin: React.FC<CloudLoginProps> = ({
   goBack,
 }: CloudLoginProps) => {
@@ -99,11 +109,22 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
             <Text size="3">Free plan</Text>
           </Flex>
           <Flex pl="5" direction="column">
-            <Text size="2">- Code completions: Refact 1.6 model</Text>
-            <Text size="2">- In-IDE Chat: GPT-4o mini</Text>
-            <Text size="2">- Toolbox (refactor code, find bugs, etc.)</Text>
-            <Text size="2">- 2048-context length for completions</Text>
-            <Text size="2">- 8k context length for chat</Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Code completions: Refact 1.6 model
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>In-IDE Chat: GPT-4o mini
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Toolbox (refactor code, find bugs,
+              etc.)
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>2048-context length for completions
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>8k context length for chat
+            </Text>
           </Flex>
         </RadioCards.Item>
         <RadioCards.Item
@@ -136,16 +157,25 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
             </Flex>
           </Flex>
           <Flex pl="5" direction="column">
-            <Text size="2" mb="1" mt="1">
+            <Text size="2" mt="1">
               As in the Free plan, plus:
             </Text>
-            <Text size="2">+ Code completions: StarCode2-3B model</Text>
             <Text size="2">
-              + In-IDE Chat: GPT-4o, GPT-4 turbo, Claude 3.5 Sonnet
+              <i style={bulletStyle}></i>Code completions: StarCode2-3B model
             </Text>
-            <Text size="2">+ More AI models for Toolbox</Text>
-            <Text size="2">+ x2 context length for completions</Text>
-            <Text size="2">+ x4 context length for chat</Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>In-IDE Chat: GPT-4o, GPT-4 turbo,
+              Claude 3.5 Sonnet
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>More AI models for Toolbox
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>x2 context length for completions
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>x4 context length for chat
+            </Text>
           </Flex>
         </RadioCards.Item>
       </RadioCards.Root>

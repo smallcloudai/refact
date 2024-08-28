@@ -12,6 +12,16 @@ export type InitialSetupProps = {
   onPressNext: (host: Host) => void;
 };
 
+export const bulletStyle = {
+  marginRight: "5px",
+  verticalAlign: "middle",
+  display: "inline-flex",
+  width: "4px",
+  height: "4px",
+  backgroundColor: "var(--gray-12)",
+  borderRadius: "50%",
+};
+
 export const InitialSetup: React.FC<InitialSetupProps> = ({
   onPressNext,
 }: InitialSetupProps) => {
@@ -45,9 +55,15 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
             </Text>
           </Flex>
           <Flex pl="5" direction="column">
-            <Text size="2">- Easy to start</Text>
-            <Text size="2">- Free tier</Text>
-            <Text size="2">- PRO plan with a great choice of models</Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Easy to start
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Free tier
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>PRO plan with a great choice of models
+            </Text>
           </Flex>
         </RadioCards.Item>
         <RadioCards.Item
@@ -69,10 +85,19 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
             </Text>
           </Flex>
           <Flex pl="5" direction="column">
-            <Text size="2">- Uses your private server only</Text>
-            <Text size="2">- Sends telemetry to your private server</Text>
-            <Text size="2">- Fine-tune completion models to your codebase</Text>
-            <Text size="2">- Customize for the entire team</Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Uses your private server only
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Sends telemetry to your private server
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Fine-tune completion models to your
+              codebase
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Customize for the entire team
+            </Text>
           </Flex>
         </RadioCards.Item>
         <RadioCards.Item
@@ -95,9 +120,16 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
           </Flex>
           {/* TODO: add link to self-hosting doc */}
           <Flex pl="5" direction="column">
-            <Text size="2">- Uses your own server</Text>
-            <Text size="2">- Fine-tune completion models to your codebase</Text>
-            <Text size="2">- Your code never leaves your control</Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Uses your own server
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Fine-tune completion models to your
+              codebase
+            </Text>
+            <Text size="2">
+              <i style={bulletStyle}></i>Your code never leaves your control
+            </Text>
           </Flex>
         </RadioCards.Item>
         <RadioCards.Item
@@ -120,10 +152,12 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
           </Flex>
           <Flex pl="5" direction="column">
             <Text size="2">
-              - Connect to any OpenAI- or HuggingFace-style server
+              <i style={bulletStyle}></i>Connect to any OpenAI- or
+              HuggingFace-style server
             </Text>
             <Text size="2">
-              - Separate endpoints and keys for chat, completion, embedding
+              <i style={bulletStyle}></i>Separate endpoints and keys for chat,
+              completion, embedding
             </Text>
           </Flex>
         </RadioCards.Item>
