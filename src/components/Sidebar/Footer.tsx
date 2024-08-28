@@ -10,10 +10,10 @@ import { DiscordLogoIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
 
 // import { Coin } from "../../images";
 
-import { useAppSelector } from "../../app/hooks";
+import { useAppSelector, useConfig } from "../../app/hooks";
 import { selectHost, type Config } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
-import { useGetUser, useLogout } from "../../hooks";
+import { useEventsBusForIDE, useGetUser, useLogout } from "../../hooks";
 import { Coin } from "../../images/coin";
 import styles from "./sidebar.module.css";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
@@ -73,10 +73,12 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
   const user = useGetUser();
   const host = useAppSelector(selectHost);
   const logout = useLogout();
+  const { addressURL } = useConfig();
 
   const bugUrl = linkForBugReports(host);
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
+  const { openFile } = useEventsBusForIDE();
 
   return (
     <DropdownMenu.Root>
@@ -112,6 +114,16 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
               Active plan: {user.data.inference}
             </Flex>
           </DropdownMenu.Label>
+        )}
+        {addressURL?.endsWith(".yaml") && (
+          <DropdownMenu.Item
+            onSelect={(event) => {
+              event.preventDefault();
+              openFile({ file_name: addressURL });
+            }}
+          >
+            Edit bring your own key
+          </DropdownMenu.Item>
         )}
 
         <DropdownMenu.Item
