@@ -4,7 +4,7 @@ use regex::Regex;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tracing::info;
 use std::sync::Arc;
-
+use itertools::Itertools;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
@@ -304,12 +304,15 @@ impl AtCommand for AtFile {
         cmd: &mut AtCommandMember,
         args: &mut Vec<AtCommandMember>,
     ) -> Result<(Vec<ContextEnum>, String), String> {
-        let mut file_path = match args.get(0) {
+        let mut file_path = match args.iter().filter(|x|!x.text.trim().is_empty()).next() {
             Some(x) => x.clone(),
             None => {
-                cmd.ok = false; cmd.reason = Some("missing file path".to_string());
+                cmd.ok = false; cmd.reason = Some("no file provided".to_string());
                 args.clear();
-                return Err("missing file path".to_string());
+                if ccx.lock().await.is_preview {
+                    return Ok((vec![], "".to_string()));
+                }
+                return Err("Cannot execute @file: no file provided".to_string());
             }
         };
         correct_at_arg(ccx.clone(), self.params[0].clone(), &mut file_path).await;
