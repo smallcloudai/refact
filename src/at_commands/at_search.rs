@@ -98,8 +98,15 @@ impl AtCommand for AtSearch {
         args: &mut Vec<AtCommandMember>,
     ) -> Result<(Vec<ContextEnum>, String), String> {
         let args1 = args.iter().map(|x|x.clone()).collect::<Vec<_>>();
-        info!("execute @workspace {:?}", args1);
+        info!("execute @search {:?}", args1.iter().map(|x|x.text.clone()).collect::<Vec<_>>());
+        
         let query = args.iter().map(|x|x.text.clone()).collect::<Vec<_>>().join(" ");
+        if query.trim().is_empty() {
+            if ccx.lock().await.is_preview {
+                return Ok((vec![], "".to_string()));
+            }
+            return Err("Cannot execute search: query is empty.".to_string());
+        }
 
         let vector_of_context_file = execute_at_search(ccx.clone(), &query, None).await?;
         let text = text_on_clip(&query, false);
