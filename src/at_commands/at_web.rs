@@ -188,7 +188,7 @@ async fn fetch_html(url: &str, timeout: Duration) -> Result<String, String> {
         .send().await.map_err(|e| e.to_string())?;
 
     if !response.status().is_success() {
-        return Err(format!("unable to fetch url: {}; status ", url));
+        return Err(format!("unable to fetch url: {}; status: {}", url, response.status()));
     }
     let body = response.text().await.map_err(|e| e.to_string())?;
     Ok(body)
