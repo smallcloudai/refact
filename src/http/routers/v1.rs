@@ -7,6 +7,7 @@ use axum::routing::post;
 use futures::Future;
 use hyper::Body;
 use hyper::Response;
+use toolbox::handle_v1_customization_path;
 use tower_http::cors::CorsLayer;
 
 
@@ -93,6 +94,7 @@ pub fn make_v1_router() -> Router {
 
         .route("/rag-status", telemetry_get!(handle_v1_rag_status))
         // experimental
+        .route("/customization-path", telemetry_get!(handle_v1_customization_path))
         .route("/customization", telemetry_get!(handle_v1_customization))
         .route("/rewrite-assistant-says-to-at-commands", telemetry_post!(handle_v1_rewrite_assistant_says_to_at_commands))
 
