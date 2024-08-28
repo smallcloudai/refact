@@ -7,8 +7,10 @@ import {
   HostSettings,
   SetupHost,
 } from "../events/setup";
-// import { useAppSelector } from "../app/hooks";
+import { DiffPreviewResponse } from "../events";
 export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
+export const ideDiffPreviewAction =
+  createAction<DiffPreviewResponse>("ide/diffPreview");
 export const ideOpenSettingsAction = createAction("ide/openSettings");
 export const ideNewFileAction = createAction<string>("ide/newFile");
 export const ideOpenHotKeys = createAction("ide/openHotKeys");
@@ -43,6 +45,13 @@ export const useEventsBusForIDE = () => {
     (content: string) => {
       const action = ideDiffPasteBackAction(content);
       postMessage(action);
+    },
+    [postMessage],
+  );
+
+  const diffPreview = useCallback(
+    (preview: DiffPreviewResponse) => {
+      postMessage(ideDiffPreviewAction(preview));
     },
     [postMessage],
   );
@@ -89,6 +98,7 @@ export const useEventsBusForIDE = () => {
     openFile,
     openChatInNewTab,
     setupHost,
+    diffPreview,
     // canPaste,
   };
 };
