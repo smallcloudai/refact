@@ -78,7 +78,7 @@ export const noCommandPreview: HttpHandler = http.post(
 );
 
 export const goodUser: HttpHandler = http.get(
-  "https://www.smallcloud.ai/v1",
+  "https://www.smallcloud.ai/v1/login",
   () => {
     return HttpResponse.json({
       retcode: "OK",
