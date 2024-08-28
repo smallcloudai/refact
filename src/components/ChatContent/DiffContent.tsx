@@ -324,7 +324,6 @@ export const DiffForm: React.FC<{
     [onSubmit, values],
   );
 
-  const port = useAppSelector(selectLspPort);
   const handlePreview = React.useCallback(
     (value: boolean, indices: number[]) => {
       const toApply = values.map((diff, index) => {
@@ -333,7 +332,7 @@ export const DiffForm: React.FC<{
       });
       onPreview(toApply);
     },
-    [port, values, onPreview],
+    [values, onPreview],
   );
 
   return (
