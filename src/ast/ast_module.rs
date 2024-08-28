@@ -61,17 +61,16 @@ fn full_path_score(path: &str, query: &str) -> f32 {
 
 fn symbol_to_search_res_struct(
     ast_ref: &MutexGuard<AstIndex>,
-    query: &String,
     s: &AstSymbolInstanceRc,
+    usefulness: f32,
 ) -> Option<SymbolsSearchResultStruct> {
     let mut info_struct = s.borrow().symbol_info_struct();
     info_struct.symbol_path = ast_ref.get_symbol_full_path(s);
-    let name = info_struct.name.clone();
     let content = info_struct.get_content_from_file_blocked().ok()?;
     Some(SymbolsSearchResultStruct {
         symbol_declaration: info_struct,
         content,
-        usefulness: jaro_winkler(&query, &name) as f32 * 100.0,
+        usefulness
     })
 }
 
@@ -223,7 +222,7 @@ impl AstModule {
                         query_text: query.clone(),
                         exact_matches: symbols
                             .iter()
-                            .filter_map(|s| symbol_to_search_res_struct(&ast_ref, &query, &s))
+                            .filter_map(|s| symbol_to_search_res_struct(&ast_ref, &s, 100.0))
                             .collect::<Vec<_>>(),
                         fuzzy_matches: vec![],
                     };
@@ -253,13 +252,13 @@ impl AstModule {
         let exact_matches = sorted_decl_symbols
             .iter()
             .filter(|s| s.borrow().name() == query)
-            .filter_map(|s| symbol_to_search_res_struct(&ast_ref, &query, s))
+            .filter_map(|s| symbol_to_search_res_struct(&ast_ref, s, 100.0))
             .collect::<Vec<_>>();
 
         let mut fuzzy_matches = sorted_decl_symbols
             .iter()
             .filter(|s| s.borrow().name() != query)
-            .filter_map(|s| symbol_to_search_res_struct(&ast_ref, &query, s))
+            .filter_map(|s| symbol_to_search_res_struct(&ast_ref, s, 10.0))
             .collect::<Vec<_>>();
         fuzzy_matches.sort_by(|a, b| b.usefulness.partial_cmp(&a.usefulness).unwrap());
         fuzzy_matches.truncate(10);
@@ -366,7 +365,7 @@ impl AstModule {
             declaration_fuzzy_matches: declarations.fuzzy_matches,
             references_for_exact_matches: usages
                 .iter()
-                .filter_map(|s| symbol_to_search_res_struct(&ast_ref, &query, s))
+                .filter_map(|s| symbol_to_search_res_struct(&ast_ref, s, 100.0))
                 .collect::<Vec<_>>(),
         };
         log(&t0, &res);
