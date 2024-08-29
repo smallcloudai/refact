@@ -168,7 +168,6 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
             const f = async () => {
               event.preventDefault();
               const file_name = await getCustomizationPath();
-              console.log({ file_name });
               openFile({ file_name });
             };
             void f();
