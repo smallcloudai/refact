@@ -5,13 +5,8 @@ import {
   DiffOperationArgs,
   DiffAppliedStateArgs,
 } from "../services/refact";
-import { useCallback, useEffect } from "react";
-import {
-  selectConfig,
-  selectLspPort,
-  setThemeMode,
-} from "../features/Config/configSlice";
-import { useMutationObserver } from "../hooks/useMutationObserver";
+import { useCallback } from "react";
+import { selectConfig, selectLspPort } from "../features/Config/configSlice";
 
 // export { type Config, setThemeMode } from "../features/Config/reducer";
 
@@ -40,42 +35,3 @@ export const useDiffStateQuery = (args: DiffAppliedStateArgs) => {
 };
 
 export const useConfig = () => useAppSelector(selectConfig);
-
-export const useAppearance = () => {
-  const config = useConfig();
-  const dispatch = useAppDispatch();
-
-  const appearance = config.themeProps.appearance;
-
-  const handleChange = useCallback(() => {
-    const maybeDark =
-      document.body.classList.contains("vscode-dark") ||
-      document.body.classList.contains("vscode-high-contrast");
-    const maybeLight =
-      document.body.classList.contains("vscode-light") ||
-      document.body.classList.contains("vscode-high-contrast-light");
-
-    if (maybeLight) {
-      dispatch(setThemeMode("light"));
-    } else if (maybeDark) {
-      dispatch(setThemeMode("dark"));
-    } else {
-      dispatch(setThemeMode("inherit"));
-    }
-  }, [dispatch]);
-
-  useEffect(handleChange, [handleChange]);
-
-  // TODO: remove this
-  useMutationObserver(document.body, handleChange, {
-    attributes: true,
-    characterData: false,
-    childList: false,
-    subtree: false,
-  });
-
-  return {
-    appearance,
-    setAppearance: setThemeMode,
-  };
-};

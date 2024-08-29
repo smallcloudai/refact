@@ -15,3 +15,4 @@ export * from "./useHasCaps";
 export * from "./useGetPromptsQuery";
 export * from "./useGetStatisticDataQuery";
 export * from "./useGetToolsQuery";
+export * from "./useAppearance";

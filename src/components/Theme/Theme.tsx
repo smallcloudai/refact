@@ -1,15 +1,10 @@
 import React from "react";
-import {
-  Theme as RadixTheme,
-  IconButton,
-  // ThemePanel
-} from "@radix-ui/themes";
+import { Theme as RadixTheme, IconButton } from "@radix-ui/themes";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
-import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
-// import { useConfig } from "../../contexts/config-context";
 import { useConfig } from "../../app/hooks";
+import { useAppearance } from "../../hooks";
 
 export type ThemeProps = {
   children: JSX.Element;
@@ -52,7 +47,7 @@ export type ThemeProps = {
 
 const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
   // TODO: use redux here
-  const { isDarkMode, toggle } = useDarkMode();
+  const { isDarkMode, toggle } = useAppearance();
   const Icon = isDarkMode ? MoonIcon : SunIcon;
   return (
     <RadixTheme {...props} appearance={isDarkMode ? "dark" : "light"}>
@@ -76,18 +71,13 @@ const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
 export const Theme: React.FC<ThemeProps> = (props) => {
   // TODO: use redux here
   const { host, themeProps } = useConfig();
+  const { appearance } = useAppearance();
 
   if (host === "web") {
     return (
-      <ThemeWithDarkMode
-        {...themeProps}
-        {...props}
-        appearance={themeProps.appearance}
-      />
+      <ThemeWithDarkMode {...themeProps} {...props} appearance={appearance} />
     );
   }
 
-  return (
-    <RadixTheme {...themeProps} {...props} appearance={themeProps.appearance} />
-  );
+  return <RadixTheme {...themeProps} {...props} appearance={appearance} />;
 };
