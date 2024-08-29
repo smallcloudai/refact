@@ -29,11 +29,11 @@ export const BringYourOwnKey: React.FC<BringYourOwnKeyProps> = ({
         <a href="https://github.com/smallcloudai/refact-lsp/issues">
           refact-lsp issues
         </a>{" "}
-        page. Also, report positive experience to discord.
+        page. Also, report positive experience to{" "}
+        <a href="https://www.smallcloud.ai/discord">discord</a>!
       </Text>
       <Text size="2">
-        The button below creates bring-your-own-key.yaml and opens it in the
-        IDE.
+        The button below opens bring-your-own-key.yaml in the IDE.
       </Text>
       <Flex gap="2">
         <Button variant="outline" mr="auto" onClick={goBack}>
