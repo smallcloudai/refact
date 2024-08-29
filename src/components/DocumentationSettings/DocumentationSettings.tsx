@@ -1,6 +1,7 @@
 import { Button, Dialog, Flex, Table, Text, TextField } from "@radix-ui/themes";
 import { DocumentationActions } from "./DocumentationActions";
 import { useState } from "react";
+import { ChevronLeftIcon } from "@radix-ui/react-icons";
 
 export interface DocumentationSource {
   url: string;
@@ -67,6 +68,7 @@ export const DocumentationSettings: React.FC<DocumentationSettingsProps> = ({
       )}
       <Flex direction="row">
         <Button variant="outline" mr="auto">
+          <ChevronLeftIcon />
           {"< Back"}
         </Button>
         <Dialog.Root>

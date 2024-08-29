@@ -1,5 +1,6 @@
 import { Button, Flex, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
+import { ChevronLeftIcon } from "@radix-ui/react-icons";
 
 export interface EnterpriseSetupProps {
   goBack: () => void;
@@ -87,10 +88,24 @@ export const EnterpriseSetup: React.FC<EnterpriseSetupProps> = ({
         </Text>
       )}
       <Flex gap="2">
-        <Button variant="outline" mr="auto" onClick={goBack}>
-          {"< Back"}
+        <Button
+          color="gray"
+          highContrast
+          variant="outline"
+          mr="auto"
+          onClick={goBack}
+        >
+          <ChevronLeftIcon />
+          {"Back"}
         </Button>
-        <Button ml="auto" type="submit" onClick={onSubmit}>
+        <Button
+          color="gray"
+          highContrast
+          variant="solid"
+          ml="auto"
+          type="submit"
+          onClick={onSubmit}
+        >
           {"Save"}
         </Button>
       </Flex>

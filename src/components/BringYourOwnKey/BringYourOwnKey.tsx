@@ -1,4 +1,5 @@
 import { Button, Flex, Text } from "@radix-ui/themes";
+import { ChevronLeftIcon } from "@radix-ui/react-icons";
 
 export interface BringYourOwnKeyProps {
   goBack: () => void;
@@ -35,11 +36,25 @@ export const BringYourOwnKey: React.FC<BringYourOwnKeyProps> = ({
       <Text size="2">
         The button below opens bring-your-own-key.yaml in the IDE.
       </Text>
-      <Flex gap="2">
-        <Button variant="outline" mr="auto" onClick={goBack}>
-          {"< Back"}
+      <Flex gap="2" mt="1">
+        <Button
+          color="gray"
+          highContrast
+          variant="outline"
+          mr="auto"
+          onClick={goBack}
+        >
+          <ChevronLeftIcon />
+          {"Back"}
         </Button>
-        <Button ml="auto" type="submit" onClick={onSubmit}>
+        <Button
+          color="gray"
+          highContrast
+          variant="solid"
+          ml="auto"
+          type="submit"
+          onClick={onSubmit}
+        >
           {"Edit BYOK file"}
         </Button>
       </Flex>
