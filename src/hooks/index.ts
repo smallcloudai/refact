@@ -13,3 +13,4 @@ export * from "./useLogout";
 export * from "./useGetCapsQuery";
 export * from "./useHasCaps";
 export * from "./useGetPromptsQuery";
+export * from "./useGetStatisticDataQuery";

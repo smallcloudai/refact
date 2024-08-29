@@ -1,7 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "./store";
 import {
-  statisticsApi,
   toolsApi,
   diffApi,
   DiffOperationArgs,
@@ -14,7 +13,6 @@ import {
   setThemeMode,
 } from "../features/Config/configSlice";
 import { useMutationObserver } from "../hooks/useMutationObserver";
-import { createAsyncThunk } from "@reduxjs/toolkit";
 import { useHasCaps } from "../hooks/useHasCaps";
 
 // export { type Config, setThemeMode } from "../features/Config/reducer";
@@ -23,25 +21,6 @@ import { useHasCaps } from "../hooks/useHasCaps";
 
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
-
-type CreateAppAsyncThunk = ReturnType<
-  typeof createAsyncThunk.withTypes<{
-    state: RootState;
-    dispatch: AppDispatch;
-  }>
->;
-// TODO: this cause a circular dependency issue :/
-export const createAppAsyncThunk: CreateAppAsyncThunk =
-  createAsyncThunk.withTypes<{
-    state: RootState;
-    dispatch: AppDispatch;
-  }>();
-
-// export const { useGetStatisticDataQuery } = statisticsApi;
-export const useGetStatisticDataQuery = () => {
-  const lspPort = useAppSelector(selectLspPort);
-  return statisticsApi.useGetStatisticDataQuery({ port: lspPort });
-};
 
 export const useGetToolsQuery = () => {
   const lspPort = useAppSelector(selectLspPort);
