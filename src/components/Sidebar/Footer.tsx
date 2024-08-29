@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   Flex,
   IconButton,
@@ -10,13 +10,18 @@ import { DiscordLogoIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
 
 // import { Coin } from "../../images";
 
-import { useAppSelector } from "../../app/hooks";
-import { selectHost, type Config } from "../../features/Config/configSlice";
+import { useAppSelector, useConfig } from "../../app/hooks";
+import {
+  selectHost,
+  type Config,
+  selectLspPort,
+} from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
-import { useGetUser, useLogout } from "../../hooks";
+import { useEventsBusForIDE, useGetUser, useLogout } from "../../hooks";
 import { Coin } from "../../images/coin";
 import styles from "./sidebar.module.css";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
+import { CUSTOMIZATION_PATH } from "../../services/refact/consts";
 
 const LinkItem: React.FC<LinkProps> = ({ children, href }) => {
   return (
@@ -73,10 +78,22 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
   const user = useGetUser();
   const host = useAppSelector(selectHost);
   const logout = useLogout();
+  const { addressURL } = useConfig();
 
   const bugUrl = linkForBugReports(host);
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
+  const { openFile } = useEventsBusForIDE();
+
+  const port = useAppSelector(selectLspPort);
+  const getCustomizationPath = useCallback(async () => {
+    const previewEndpoint = `http://127.0.0.1:${port}${CUSTOMIZATION_PATH}`;
+
+    const response = await fetch(previewEndpoint, {
+      method: "GET",
+    });
+    return await response.text();
+  }, [port]);
 
   return (
     <DropdownMenu.Root>
@@ -144,12 +161,30 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
         </DropdownMenu.Item>
 
         <DropdownMenu.Separator />
-        {/* TODO: enable these */}
-        {/* <DropdownMenu.Item hidden>Edit customization.yaml</DropdownMenu.Item>
 
-        <DropdownMenu.Item hidden>
-          Edit Bring-Your-Own-Key.yaml
-        </DropdownMenu.Item> */}
+        <DropdownMenu.Item
+          onSelect={(event) => {
+            const f = async () => {
+              event.preventDefault();
+              const file_name = await getCustomizationPath();
+              openFile({ file_name });
+            };
+            void f();
+          }}
+        >
+          Edit customization.yaml
+        </DropdownMenu.Item>
+
+        {addressURL?.endsWith(".yaml") && (
+          <DropdownMenu.Item
+            onSelect={(event) => {
+              event.preventDefault();
+              openFile({ file_name: addressURL });
+            }}
+          >
+            Edit bring your own key
+          </DropdownMenu.Item>
+        )}
 
         <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
           Hot Keys

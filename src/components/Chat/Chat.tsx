@@ -54,22 +54,14 @@ export type ChatProps = {
 export const Chat: React.FC<ChatProps> = ({
   style,
   host,
-
   backFromChat,
-
   unCalledTools,
-
   caps,
   commands,
-
   requestCommandsCompletion,
-
   maybeSendToSidebar,
-
   filesInPreview,
-
   prompts,
-
   onSetSystemPrompt,
   selectedSystemPrompt,
   requestPreviewFiles,

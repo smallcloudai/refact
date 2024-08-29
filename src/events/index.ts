@@ -1,6 +1,7 @@
 // Careful with exports that include components, it'll cause this to compile to a large file.
 import type { FileInfo } from "../features/Chat/activeFile";
-import type { Chat } from "../features/Chat/chatThread";
+export { newChatAction } from "../features/Chat/chatThread";
+import { type Chat } from "../features/Chat/chatThread";
 import type { Snippet } from "../features/Chat/selectedSnippet";
 import type { Config } from "../features/Config/configSlice";
 import type { ErrorSliceState } from "../features/Errors/errorsSlice";
@@ -38,6 +39,7 @@ export {
   ideOpenFile,
   type OpenFilePayload,
   ideDiffPasteBackAction,
+  ideDiffPreviewAction,
   ideNewFileAction,
   ideOpenHotKeys,
   ideOpenSettingsAction,

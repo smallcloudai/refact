@@ -1,12 +1,19 @@
 import { useEffect } from "react";
-import { useAppDispatch, useConfig } from "../app/hooks";
+import { useAppDispatch, useAppSelector, useConfig } from "../app/hooks";
 import { updateConfig } from "../features/Config/configSlice";
 import { setFileInfo } from "../features/Chat/activeFile";
 import { setSelectedSnippet } from "../features/Chat/selectedSnippet";
+import { newChatAction } from "../events";
+import {
+  isPageInHistory,
+  push,
+  selectPages,
+} from "../features/Pages/pagesSlice";
 
 export function useEventBusForApp() {
   const config = useConfig();
   const dispatch = useAppDispatch();
+  const pages = useAppSelector(selectPages);
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -21,6 +28,13 @@ export function useEventBusForApp() {
       if (setSelectedSnippet.match(event.data)) {
         dispatch(setSelectedSnippet(event.data.payload));
       }
+
+      if (newChatAction.match(event.data)) {
+        if (!isPageInHistory({ pages }, "chat")) {
+          dispatch(push({ name: "chat" }));
+        }
+        dispatch(newChatAction(event.data.payload));
+      }
     };
 
     window.addEventListener("message", listener);
@@ -28,5 +42,5 @@ export function useEventBusForApp() {
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [config.host, dispatch]);
+  }, [config.host, dispatch, pages]);
 }

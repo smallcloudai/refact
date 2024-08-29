@@ -8,6 +8,8 @@ import { Popover } from "./Popover";
 import { TruncateLeft } from "../Text";
 import { type DebouncedState } from "usehooks-ts";
 import { CommandCompletionResponse } from "../../services/refact";
+import { useAppSelector } from "../../app/hooks";
+import { selectSubmitOption } from "../../features/Config/configSlice";
 
 export type ComboBoxProps = {
   commands: CommandCompletionResponse;
@@ -32,6 +34,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [moveCursorTo, setMoveCursorTo] = React.useState<number | null>(null);
+  const shiftEnterToSubmit = useAppSelector(selectSubmitOption);
 
   const combobox = useComboboxStore({
     defaultOpen: false,
@@ -111,14 +114,37 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (!ref.current) return;
 
-      if (event.key === "Enter" && !event.shiftKey && !hasMatches) {
+      if (
+        !shiftEnterToSubmit &&
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        !hasMatches
+      ) {
+        event.stopPropagation();
+        onSubmit(event);
+        setMoveCursorTo(null);
+        return;
+      } else if (
+        shiftEnterToSubmit &&
+        event.key === "Enter" &&
+        event.shiftKey &&
+        !hasMatches
+      ) {
         event.stopPropagation();
         onSubmit(event);
         setMoveCursorTo(null);
         return;
       }
 
-      if (event.key === "Enter" && event.shiftKey) {
+      if (!shiftEnterToSubmit && event.key === "Enter" && event.shiftKey) {
+        return;
+      } else if (
+        shiftEnterToSubmit &&
+        event.key === "Enter" &&
+        !event.shiftKey
+      ) {
+        onChange(value + "\n");
+
         return;
       }
 
@@ -152,10 +178,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       combobox,
       handleReplace,
       hasMatches,
+      onChange,
       onSubmit,
+      shiftEnterToSubmit,
       state.activeId,
       state.activeValue,
       state.open,
+      value,
     ],
   );
 

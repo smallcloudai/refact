@@ -51,7 +51,10 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const config = useConfig();
 
-  const isLoggedIn = isPageInHistory("history") || isPageInHistory("welcome");
+  const isLoggedIn =
+    isPageInHistory("history") ||
+    isPageInHistory("welcome") ||
+    isPageInHistory("chat");
 
   if (config.apiKey && config.addressURL && !isLoggedIn) {
     if (tourState.type === "in_progress" && tourState.step === 1) {

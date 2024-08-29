@@ -63,7 +63,7 @@ const useAttachActiveFile = (
           value: filePathWithLines,
           disabled: !activeFile.name,
           fileName: activeFile.name,
-          checked: !!activeFile.name && shouldShow && hasSnippet,
+          checked: !!activeFile.name && shouldShow && hasSnippet && !interacted,
         };
       });
     }
@@ -137,7 +137,7 @@ const useAttachSelectedSnippet = (
           value: markdown,
           disabled: !snippet.code,
           hide: host === "web",
-          checked: !!snippet.code,
+          checked: !!snippet.code && !interacted,
         };
       });
     }
@@ -238,23 +238,6 @@ export const useCheckboxes = () => {
     }),
     [attachFileCheckboxData, attachedSelectedSnippet, searchWorkspace],
   );
-
-  useEffect(() => {
-    if (
-      !interacted &&
-      attachedSelectedSnippet.checked &&
-      !attachFileCheckboxData.checked &&
-      !attachFileCheckboxData.hide
-    ) {
-      onToggleAttachFile();
-    }
-  }, [
-    attachFileCheckboxData.checked,
-    attachFileCheckboxData.hide,
-    attachedSelectedSnippet.checked,
-    interacted,
-    onToggleAttachFile,
-  ]);
 
   const onToggleCheckbox = useCallback(
     (name: string) => {

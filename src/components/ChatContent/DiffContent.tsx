@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
-import type { DiffChunk } from "../../services/refact";
+import { DiffPreviewResponse, type DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
 import styles from "./ChatContent.module.css";
 import { filename } from "../../utils";
@@ -8,7 +8,15 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
-import { useDiffApplyMutation, useDiffStateQuery } from "../../app/hooks";
+import {
+  useAppSelector,
+  useConfig,
+  useDiffApplyMutation,
+  useDiffStateQuery,
+} from "../../app/hooks";
+import { selectLspPort } from "../../features/Config/configSlice";
+import { DIFF_PREVIEW_URL } from "../../services/refact/consts";
+import { useEventsBusForIDE } from "../../hooks";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -29,7 +37,7 @@ const DiffLine: React.FC<{
   const backgroundColorLeft = sign === "-" ? "#592e30" : "#3b5840";
   const backgroundColor = sign === "-" ? "#3e2628" : "#2c3e33";
   return (
-    <Flex className={styles.diff_line}>
+    <Flex className={styles.diff_line} style={{ minWidth: "min-content" }}>
       <Text
         size="2"
         className={styles.diff_line_number}
@@ -43,7 +51,12 @@ const DiffLine: React.FC<{
       <Text
         size="2"
         className={styles.diff_line_content}
-        style={{ backgroundColor, whiteSpace: "pre", whiteSpaceTrim: "none" }}
+        style={{
+          backgroundColor,
+          whiteSpace: "pre",
+          whiteSpaceTrim: "none",
+          minWidth: "min-content",
+        }}
       >
         {line}
       </Text>
@@ -58,7 +71,10 @@ const DiffHighlight: React.FC<{
 }> = ({ startLine, sign, text }) => {
   const lines = text.split("\n");
   return (
-    <Flex direction="column">
+    <Flex
+      direction="column"
+      style={{ minWidth: "min-content", alignSelf: "stretch", width: "100%" }}
+    >
       {lines.map((line, index) => {
         return (
           <DiffLine
@@ -81,7 +97,12 @@ export const Diff: React.FC<DiffProps> = ({ diff }) => {
   const removeString = diff.lines_remove && toDiff(diff.lines_remove);
   const addString = diff.lines_add && toDiff(diff.lines_add);
   return (
-    <Flex className={styles.diff} py="2" direction="column">
+    <Flex
+      className={styles.diff}
+      py="2"
+      direction="column"
+      style={{ minWidth: "min-content" }}
+    >
       {removeString && (
         <DiffHighlight startLine={diff.line1} sign={"-"} text={removeString} />
       )}
@@ -179,6 +200,8 @@ export const DiffContent: React.FC<{
   toolCallId: string;
 }> = ({ chunks, toolCallId }) => {
   const [open, setOpen] = React.useState(false);
+  const port = useAppSelector(selectLspPort);
+  const { diffPreview } = useEventsBusForIDE();
 
   const diffStateRequest = useDiffStateQuery({ chunks, toolCallId });
   const { onSubmit, result: _result } = useDiffApplyMutation();
@@ -202,6 +225,23 @@ export const DiffContent: React.FC<{
   // if (diffStateRequest.isError) return null;
   // if (!diffStateRequest.data) return null;
 
+  const onPreview = React.useCallback(
+    (toApply: boolean[]) => {
+      const f = async (toApply: boolean[]) => {
+        const previewEndpoint = `http://127.0.0.1:${port}${DIFF_PREVIEW_URL}`;
+
+        const response = await fetch(previewEndpoint, {
+          method: "POST",
+          body: JSON.stringify({ chunks, apply: toApply }),
+        });
+        const preview = (await response.json()) as DiffPreviewResponse;
+        diffPreview(preview);
+      };
+      void f(toApply);
+    },
+    [chunks, port, diffPreview],
+  );
+
   return (
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
@@ -218,6 +258,7 @@ export const DiffContent: React.FC<{
             onSubmit={(toApply: boolean[]) => {
               void onSubmit({ chunks, toApply, toolCallId });
             }}
+            onPreview={onPreview}
             loading={diffStateRequest.isFetching}
             diffs={groupedDiffs}
             openFile={() => {
@@ -241,8 +282,10 @@ export const DiffForm: React.FC<{
   diffs: Record<string, DiffWithStatus[]>;
   loading: boolean;
   onSubmit: (toApply: boolean[]) => void;
+  onPreview: (toApply: boolean[]) => void;
   openFile: (file: { file_name: string; line?: number }) => void;
-}> = ({ diffs, loading, onSubmit, openFile }) => {
+}> = ({ diffs, loading, onSubmit, onPreview, openFile }) => {
+  const { host } = useConfig();
   const values = React.useMemo(() => {
     return Object.values(diffs).reduce((acc, curr) => acc.concat(curr), []);
   }, [diffs]);
@@ -271,14 +314,25 @@ export const DiffForm: React.FC<{
   }, [diffs, onSubmit]);
 
   const handleToggle = React.useCallback(
-    (value: boolean, indeices: number[]) => {
+    (value: boolean, indices: number[]) => {
       const toApply = values.map((diff, index) => {
-        if (indeices.includes(index)) return value;
+        if (indices.includes(index)) return value;
         return diff.applied;
       });
       onSubmit(toApply);
     },
     [onSubmit, values],
+  );
+
+  const handlePreview = React.useCallback(
+    (value: boolean, indices: number[]) => {
+      const toApply = values.map((diff, index) => {
+        if (indices.includes(index)) return value;
+        return diff.applied;
+      });
+      onPreview(toApply);
+    },
+    [values, onPreview],
   );
 
   return (
@@ -287,7 +341,7 @@ export const DiffForm: React.FC<{
         const key = fullFileName + "-" + index;
         const errored = diffsForFile.some((diff) => diff.state === 2);
         const applied = diffsForFile.every((diff) => diff.applied);
-        const indeices = diffsForFile.map((diff) => diff.index);
+        const indices = diffsForFile.map((diff) => diff.index);
         return (
           <Box key={key} my="2">
             <Flex justify="between" align="center" p="1">
@@ -309,13 +363,28 @@ export const DiffForm: React.FC<{
                 </Link>
               </TruncateLeft>
 
+              {host === "vscode" && (
+                <Text size="1" as="label">
+                  <Flex align="center" gap="2" pl="2">
+                    {errored && "error"}
+                    <Button
+                      size="1"
+                      disabled={loading}
+                      onClick={() => handlePreview(!applied, indices)}
+                    >
+                      Preview
+                    </Button>
+                  </Flex>
+                </Text>
+              )}
+
               <Text size="1" as="label">
                 <Flex align="center" gap="2" pl="2">
                   {errored && "error"}
                   <Button
                     size="1"
                     disabled={loading}
-                    onClick={() => handleToggle(!applied, indeices)}
+                    onClick={() => handleToggle(!applied, indices)}
                   >
                     {applied ? "Unapply" : "Apply"}
                   </Button>
@@ -323,10 +392,17 @@ export const DiffForm: React.FC<{
               </Text>
             </Flex>
             <ScrollArea scrollbars="horizontal" asChild>
-              <Box style={{ background: "rgb(51, 51, 51)" }}>
-                {diffsForFile.map((diff, i) => (
-                  <Diff key={`${fullFileName}-${index}-${i}`} diff={diff} />
-                ))}
+              <Box style={{ minWidth: "100%" }}>
+                <Box
+                  style={{
+                    background: "rgb(51, 51, 51)",
+                    minWidth: "min-content",
+                  }}
+                >
+                  {diffsForFile.map((diff, i) => (
+                    <Diff key={`${fullFileName}-${index}-${i}`} diff={diff} />
+                  ))}
+                </Box>
               </Box>
             </ScrollArea>
           </Box>

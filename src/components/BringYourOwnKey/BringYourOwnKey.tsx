@@ -55,7 +55,7 @@ export const BringYourOwnKey: React.FC<BringYourOwnKeyProps> = ({
           type="submit"
           onClick={onSubmit}
         >
-          {"Create BYOK file"}
+          {"Edit BYOK file"}
         </Button>
       </Flex>
     </Flex>

@@ -5,6 +5,7 @@ import { RootState } from "../../app/store";
 
 export type Config = {
   host: "web" | "ide" | "vscode" | "jetbrains";
+  lspPort: number;
   tabbed?: boolean;
   lspUrl?: string;
   dev?: boolean;
@@ -20,7 +21,7 @@ export type Config = {
   };
   apiKey?: string | null;
   addressURL?: string;
-  lspPort: number;
+  shiftEnterToSubmit?: boolean;
 };
 
 const initialState: Config = {
@@ -35,6 +36,7 @@ const initialState: Config = {
   themeProps: {
     appearance: "dark",
   },
+  shiftEnterToSubmit: false,
 };
 
 export const updateConfig = createAction<Partial<Config>>("config/update");
@@ -56,6 +58,8 @@ export const reducer = createReducer<Config>(initialState, (builder) => {
     state.addressURL = action.payload.addressURL ?? state.addressURL;
     state.lspPort = action.payload.lspPort ?? state.lspPort;
     state.keyBindings = action.payload.keyBindings ?? state.keyBindings;
+    state.shiftEnterToSubmit =
+      action.payload.shiftEnterToSubmit ?? state.shiftEnterToSubmit;
   });
 
   builder.addCase(setThemeMode, (state, action) => {
@@ -80,3 +84,5 @@ export const selectAst = (state: RootState) =>
 export const selectApiKey = (state: RootState) => state.config.apiKey;
 export const selectAddressURL = (state: RootState) => state.config.addressURL;
 export const selectHost = (state: RootState) => state.config.host;
+export const selectSubmitOption = (state: RootState) =>
+  state.config.shiftEnterToSubmit ?? false;
