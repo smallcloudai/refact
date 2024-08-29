@@ -30,7 +30,11 @@ export const statisticsApi = createApi({
         const state = getState();
         const port = state.config.lspPort;
         const url = `http://127.0.0.1:${port}${STATISTIC_URL}`;
-        const result = await baseQuery(url);
+        const result = await baseQuery({
+          url,
+          credentials: "same-origin",
+          redirect: "follow",
+        });
         if (result.error) return { error: result.error };
         if (!isStatisticDataResponse(result.data)) {
           return {

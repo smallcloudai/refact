@@ -14,10 +14,10 @@ import { TruncateLeft } from "../Text";
 import { ScrollArea } from "../ScrollArea";
 import {
   useAppSelector,
-  useDiffApplyMutation,
   useAppDispatch,
   // useGetManyDiffState,
 } from "../../app/hooks";
+import { useDiffApplyMutation } from "../../hooks";
 import { selectMessages } from "../../features/Chat/chatThread";
 import { createSelector } from "@reduxjs/toolkit";
 import { RootState } from "../../app/store";

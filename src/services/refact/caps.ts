@@ -24,7 +24,11 @@ export const capsApi = createApi({
         const port = state.config.lspPort as unknown as number;
         const url = `http://127.0.0.1:${port}${CAPS_URL}`;
         // return baseQuery(url);
-        const result = await baseQuery(url);
+        const result = await baseQuery({
+          url,
+          credentials: "same-origin",
+          redirect: "follow",
+        });
         if (result.error) {
           return { error: result.error };
         }

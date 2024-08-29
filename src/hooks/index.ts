@@ -16,3 +16,5 @@ export * from "./useGetPromptsQuery";
 export * from "./useGetStatisticDataQuery";
 export * from "./useGetToolsQuery";
 export * from "./useAppearance";
+export * from "./useDiffApplyMutation";
+export * from "./useDiffStateQuery";

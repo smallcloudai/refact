@@ -27,7 +27,11 @@ export const toolsApi = createApi({
         const state = getState();
         const port = state.config.lspPort;
         const url = `http://127.0.0.1:${port}${AT_TOOLS_AVAILABLE_URL}`;
-        const result = await baseQuery(url);
+        const result = await baseQuery({
+          url,
+          credentials: "same-origin",
+          redirect: "follow",
+        });
         if (result.error) return result;
         if (!Array.isArray(result.data)) {
           return {

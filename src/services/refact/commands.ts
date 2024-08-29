@@ -34,6 +34,8 @@ export const commandsApi = createApi({
         return {
           url: `http://127.0.0.1:${args.port}${AT_COMMAND_COMPLETION}`,
           method: "POST",
+          credentials: "same-origin",
+          redirect: "follow",
           body: {
             query: args.query,
             cursor: args.cursor,
@@ -67,6 +69,8 @@ export const commandsApi = createApi({
         return {
           url: `http://127.0.0.1:${port}${AT_COMMAND_PREVIEW}`,
           method: "POST",
+          credentials: "same-origin",
+          redirect: "follow",
           body: { query },
         };
       },
