@@ -1,28 +1,16 @@
 cloud_name: OpenAI API
 
-
-# -- chat --
-
 chat_endpoint: "https://api.openai.com/v1/chat/completions"
-chat_apikey: "$OPENAI_API_KEY"
+chat_apikey: "sk-..."       # or use $OPENAI_API_KEY if you have it in global environment variables
 chat_model: gpt-4o-mini
 
-
-# -- vectorization model --
-
-#default_embeddings_model: text-embedding-3-small
-#endpoint_embeddings_template: https://api.openai.com/v1/embeddings
-#size_embeddings: 1536
-
+embedding_endpoint: "https://api.openai.com/v1/embeddings"
+embedding_apikey: "sk-..."
+embedding_model: text-embedding-3-small
+embedding_size: 1536
 
 # no code completion though :/
 
-embedding_endpoint: "https://api.openai.com/v1/embeddings"
-embedding_apikey: "$OPENAI_API_KEY"
-embedding_default_model: text-embedding-3-small
-embedding_size: 1536
 
 running_models:
   - gpt-4o
-  - gpt-4o-mini
-  - text-embedding-3-small
