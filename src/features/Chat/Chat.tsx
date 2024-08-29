@@ -2,7 +2,8 @@ import React from "react";
 import type { Config } from "../Config/configSlice";
 import { SystemPrompts } from "../../services/refact";
 import { Chat as ChatComponent } from "../../components/Chat";
-import { useGetCapsQuery, useGetPromptsQuery } from "../../app/hooks";
+import { useGetPromptsQuery } from "../../hooks";
+import { useGetCapsQuery } from "../../hooks/useGetCapsQuery";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import {
   getSelectedSystemPrompt,

@@ -1,9 +1,11 @@
-// import { getApiKey } from "../../utils/ApiKey";
 import { RootState } from "../../app/store";
 import { CUSTOM_PROMPTS_URL } from "./consts";
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import {
+  createApi,
+  fetchBaseQuery,
+  FetchBaseQueryError,
+} from "@reduxjs/toolkit/query/react";
 
-// ADD port
 export const promptsApi = createApi({
   reducerPath: "prompts",
   baseQuery: fetchBaseQuery({
@@ -18,11 +20,23 @@ export const promptsApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    getPrompts: builder.query<SystemPrompts, { port: number }>({
-      query: ({ port }) => `http://127.0.0.1:${port}${CUSTOM_PROMPTS_URL}`,
-      transformResponse: (response: unknown) => {
-        if (!isCustomPromptsResponse(response)) return {};
-        return response.system_prompts;
+    getPrompts: builder.query<SystemPrompts, undefined>({
+      queryFn: async (_args, api, _opts, baseQuery) => {
+        const getState = api.getState as () => RootState;
+        const state = getState();
+        const port = state.config.lspPort;
+        const url = `http://127.0.0.1:${port}${CUSTOM_PROMPTS_URL}`;
+        const result = await baseQuery(url);
+        if (result.error) return { error: result.error };
+        if (!isCustomPromptsResponse(result.data)) {
+          return {
+            error: {
+              data: result.data,
+              error: "Invalid response from server",
+            } as FetchBaseQueryError,
+          };
+        }
+        return { data: result.data.system_prompts };
       },
     }),
   }),

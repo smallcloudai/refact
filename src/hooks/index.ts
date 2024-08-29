@@ -10,3 +10,6 @@ export * from "./useEventBusForIDE";
 export * from "./useGetUser";
 export * from "./useLogin";
 export * from "./useLogout";
+export * from "./useGetCapsQuery";
+export * from "./useHasCaps";
+export * from "./useGetPromptsQuery";

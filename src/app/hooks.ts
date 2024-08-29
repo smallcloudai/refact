@@ -2,8 +2,6 @@ import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "./store";
 import {
   statisticsApi,
-  capsApi,
-  promptsApi,
   toolsApi,
   diffApi,
   DiffOperationArgs,
@@ -17,7 +15,7 @@ import {
 } from "../features/Config/configSlice";
 import { useMutationObserver } from "../hooks/useMutationObserver";
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { getErrorMessage } from "../features/Errors/errorsSlice";
+import { useHasCaps } from "../hooks/useHasCaps";
 
 // export { type Config, setThemeMode } from "../features/Config/reducer";
 
@@ -44,33 +42,6 @@ export const useGetStatisticDataQuery = () => {
   const lspPort = useAppSelector(selectLspPort);
   return statisticsApi.useGetStatisticDataQuery({ port: lspPort });
 };
-// export const { useGetCapsQuery } = capsApi;
-// move this
-export const useGetCapsQuery = () => {
-  const error = useAppSelector(getErrorMessage);
-  return capsApi.useGetCapsQuery(undefined, { skip: !!error });
-};
-
-export const useHasCaps = () => {
-  const maybeCaps = useGetCapsQuery();
-  return !!maybeCaps.data;
-};
-
-// export const { useGetPromptsQuery } = promptsApi;
-
-export const useGetPromptsQuery = () => {
-  const error = useAppSelector(getErrorMessage);
-  const lspPort = useAppSelector(selectLspPort);
-  return promptsApi.useGetPromptsQuery({ port: lspPort }, { skip: !!error });
-};
-
-// const selectTools = (state: RootState) =>
-//   toolsApi.endpoints.getTools.select({ port: state.config.lspPort })(state);
-
-// const selectHasTools = createSelector([selectTools], (tools) => {
-//   if (!tools.data) return false;
-//   return tools.data.length > 0;
-// });
 
 export const useGetToolsQuery = () => {
   const lspPort = useAppSelector(selectLspPort);

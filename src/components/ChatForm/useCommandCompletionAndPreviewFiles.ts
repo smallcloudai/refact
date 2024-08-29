@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Checkboxes } from "./useCheckBoxes";
-import { useAppSelector, useHasCaps } from "../../app/hooks";
+import { useAppSelector } from "../../app/hooks";
+import { useHasCaps } from "../../hooks/useHasCaps";
 import { addCheckboxValuesToInput } from "./utils";
 import { selectLspPort, selectVecdb } from "../../features/Config/configSlice";
 import {
