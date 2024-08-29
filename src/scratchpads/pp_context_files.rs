@@ -25,6 +25,7 @@ pub struct PPFile {
     pub markup: FileASTMarkup,
     pub cpath: PathBuf,
     pub cpath_symmetry_breaker: f32,
+    pub shorter_path: String,
 }
 
 #[derive(Debug, Clone)]
@@ -325,7 +326,7 @@ async fn pp_limit_and_merge(
             continue;
         }
         context_files_merged.push(ContextFile {
-            file_name: cpath.to_string_lossy().to_string(),
+            file_name: file_ref.shorter_path.clone(),
             file_content: out.clone(),
             line1: first_line,
             line2: last_line,
@@ -339,7 +340,7 @@ async fn pp_limit_and_merge(
 }
 
 pub async fn postprocess_context_files(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     messages: &Vec<ContextFile>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
@@ -347,11 +348,10 @@ pub async fn postprocess_context_files(
     settings: &PostprocessSettings,
 ) -> Vec<ContextFile> {
     assert!(settings.max_files_n > 0);
-    info!("\n\nsettings = {:?}\n\n", settings);
-    let files_marked_up = pp_ast_markup_files(global_context.clone(), &messages).await;
+    let files_marked_up = pp_ast_markup_files(gcx.clone(), &messages).await;
 
     let mut lines_in_files = pp_color_lines(
-        global_context.clone(),
+        gcx.clone(),
         &messages,
         files_marked_up,
         settings,

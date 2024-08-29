@@ -11,6 +11,7 @@ use crate::call_validation::{ContextFile, PostprocessSettings};
 use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
+use crate::files_correction::shortify_paths;
 use crate::scratchpads::pp_context_files::{PPFile, FileLine, DEBUG, RESERVE_FOR_QUESTION_AND_FOLLOWUP};
 
 
@@ -112,12 +113,16 @@ fn calculate_hash(path: &PathBuf) -> u64 {
 }
 
 pub async fn pp_ast_markup_files(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     messages: &Vec<ContextFile>,
 ) -> Vec<Arc<PPFile>> {
     let mut files_markup: HashMap<String, Arc<PPFile>> = HashMap::new();
-    let ast_module = global_context.read().await.ast_module.clone();
-    for message in messages {
+    let ast_module = gcx.read().await.ast_module.clone();
+    let shortified_paths: Vec<String> = shortify_paths(
+        gcx.clone(),
+        messages.iter().map(|m| m.file_name.clone()).collect()).await;
+
+    for (i, message) in messages.iter().enumerate() {
         let file_name = message.file_name.clone();
         if files_markup.contains_key(&file_name) {
             continue;
@@ -125,13 +130,13 @@ pub async fn pp_ast_markup_files(
         let path = crate::files_correction::canonical_path(&file_name.clone());
         let cpath_symmetry_breaker: f32 = (calculate_hash(&path) as f32) / (u64::MAX as f32) / 100.0;
         let mut doc = Document::new(&path);
-        let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default();
+        let text = get_file_text_from_memory_or_disk(gcx.clone(), &doc.path).await.unwrap_or_default();
         doc.update_text(&text);
         let mut f: Option<Arc<PPFile>> = None;
         if let Some(ast) = &ast_module {
             match ast.read().await.file_markup(&doc).await {
                 Ok(markup) => {
-                    f = Some(Arc::new(PPFile { markup, cpath: path, cpath_symmetry_breaker }));
+                    f = Some(Arc::new(PPFile { markup, cpath: path, cpath_symmetry_breaker, shorter_path: shortified_paths[i].clone() } ));
                 },
                 Err(err) => {
                     warn!("postprocess_rag_stage1 query file {:?} markup problem: {}", file_name, err);
@@ -148,6 +153,7 @@ pub async fn pp_ast_markup_files(
                     },
                     cpath: doc.path.clone(),
                     cpath_symmetry_breaker,
+                    shorter_path: shortified_paths[i].clone(),
                 }));
                 files_markup.insert(file_name.clone(), f.unwrap());
             },
