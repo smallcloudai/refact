@@ -117,7 +117,7 @@ impl Tool for AttAstReference {
                 "No definition with name `{}` found in the workspace.\nThere are definitions with similar names though:\n",
                 symbol
             ).to_string();
-            for r in res.declaration_fuzzy_matches.iter() {
+            for r in res.declaration_fuzzy_matches.iter().take(20) {
                 let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
                 let decl_range = &r.symbol_declaration.full_range;
                 tool_message.push_str(&format!(
@@ -126,6 +126,12 @@ impl Tool for AttAstReference {
                     file_path_str,
                     decl_range.start_point.row + 1,
                     decl_range.end_point.row + 1
+                ));
+            }
+            if res.declaration_fuzzy_matches.len() > 20 {
+                tool_message.push_str(&format!(
+                    "...and {} more...\n",
+                    res.declaration_fuzzy_matches.len() - 20
                 ));
             }
             // tool_message.push_str("You can call the `reference` tool one more time with one of those names.");
