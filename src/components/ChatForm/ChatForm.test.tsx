@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ChatForm, ChatFormProps } from "./ChatForm";
 import React from "react";
 import { SYSTEM_PROMPTS } from "../../__fixtures__";
-import { useDebounceCallback } from "usehooks-ts";
 
 import {
   server,
@@ -41,15 +40,6 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
       error: "",
     },
     showControls: true,
-
-    commands: {
-      completions: [],
-      replace: [-1, -1],
-      is_cmd_executable: false,
-    },
-    requestCommandsCompletion: useDebounceCallback(noop, 0),
-    requestPreviewFiles: noop,
-    filesInPreview: [],
     onTextAreaHeightChange: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
@@ -140,7 +130,6 @@ describe("ChatForm", () => {
     expect(fakeOnSubmit).toHaveBeenCalledWith(epexted);
   });
 
-  // TODO: fix this test because the host is not set in redux
   test("checkbox snippet", async () => {
     const fakeOnSubmit = vi.fn();
     const snippet = {

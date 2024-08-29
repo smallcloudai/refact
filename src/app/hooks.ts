@@ -5,8 +5,6 @@ import {
   capsApi,
   promptsApi,
   toolsApi,
-  commandsApi,
-  CommandCompletionResponse,
   diffApi,
   DiffOperationArgs,
   DiffAppliedStateArgs,
@@ -18,7 +16,7 @@ import {
   setThemeMode,
 } from "../features/Config/configSlice";
 import { useMutationObserver } from "../hooks/useMutationObserver";
-import { createAsyncThunk, createSelector } from "@reduxjs/toolkit";
+import { createAsyncThunk } from "@reduxjs/toolkit";
 import { getErrorMessage } from "../features/Errors/errorsSlice";
 
 // export { type Config, setThemeMode } from "../features/Config/reducer";
@@ -47,10 +45,15 @@ export const useGetStatisticDataQuery = () => {
   return statisticsApi.useGetStatisticDataQuery({ port: lspPort });
 };
 // export const { useGetCapsQuery } = capsApi;
+// move this
 export const useGetCapsQuery = () => {
-  const lspPort = useAppSelector(selectLspPort);
   const error = useAppSelector(getErrorMessage);
-  return capsApi.useGetCapsQuery({ port: lspPort }, { skip: !!error });
+  return capsApi.useGetCapsQuery(undefined, { skip: !!error });
+};
+
+export const useHasCaps = () => {
+  const maybeCaps = useGetCapsQuery();
+  return !!maybeCaps.data;
 };
 
 // export const { useGetPromptsQuery } = promptsApi;
@@ -60,14 +63,6 @@ export const useGetPromptsQuery = () => {
   const lspPort = useAppSelector(selectLspPort);
   return promptsApi.useGetPromptsQuery({ port: lspPort }, { skip: !!error });
 };
-
-const selectCaps = (state: RootState) =>
-  capsApi.endpoints.getCaps.select({ port: state.config.lspPort })(state);
-
-const selectHasCaps = createSelector([selectCaps], (caps) => {
-  if (!caps.data) return false;
-  return true;
-});
 
 // const selectTools = (state: RootState) =>
 //   toolsApi.endpoints.getTools.select({ port: state.config.lspPort })(state);
@@ -79,43 +74,8 @@ const selectHasCaps = createSelector([selectCaps], (caps) => {
 
 export const useGetToolsQuery = () => {
   const lspPort = useAppSelector(selectLspPort);
-  const hasCaps = useAppSelector(selectHasCaps);
+  const hasCaps = useHasCaps();
   return toolsApi.useGetToolsQuery({ port: lspPort }, { skip: !hasCaps });
-};
-
-export const useGetCommandCompletionQuery = (
-  query: string,
-  cursor: number,
-): CommandCompletionResponse => {
-  const lspPort = useAppSelector(selectLspPort);
-  const hasCaps = useAppSelector(selectHasCaps);
-  const { data } = commandsApi.useGetCommandCompletionQuery(
-    { query, cursor, port: lspPort },
-    { skip: !hasCaps },
-  );
-
-  if (!data) {
-    return {
-      completions: [],
-      replace: [0, 0],
-      is_cmd_executable: false,
-    };
-  }
-
-  return data;
-};
-
-export const useGetCommandPreviewQuery = (query: string) => {
-  const hasCaps = useAppSelector(selectHasCaps);
-  const port = useAppSelector(selectLspPort);
-  const { data } = commandsApi.useGetCommandPreviewQuery(
-    { query, port },
-    {
-      skip: !hasCaps,
-    },
-  );
-  if (!data) return [];
-  return data;
 };
 
 export const useDiffApplyMutation = () => {
