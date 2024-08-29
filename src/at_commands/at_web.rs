@@ -25,10 +25,6 @@ impl AtWeb {
     }
 }
 
-pub fn text_on_clip(url_text: &str) -> String {
-    format!("[see text downloaded from {url_text} above]")
-}
-
 #[async_trait]
 impl AtCommand for AtWeb {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
@@ -50,7 +46,7 @@ impl AtCommand for AtWeb {
             }
         };
         args.truncate(1);
-        
+
         let preview_cache = {
             let gcx = ccx.lock().await.global_context.clone();
             let gcx_read = gcx.read().await;
@@ -73,7 +69,7 @@ impl AtCommand for AtWeb {
         );
 
         info!("executed @web {}", url.text);
-        Ok((vec![ContextEnum::ChatMessage(message)], text_on_clip(&url.text)))
+        Ok((vec![ContextEnum::ChatMessage(message)], format!("[see text downloaded from {} above]", url.text)))
     }
 
     fn depends_on(&self) -> Vec<String> {
