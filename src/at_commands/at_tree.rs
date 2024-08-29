@@ -9,10 +9,10 @@ use tracing::warn;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::treesitter::structs::SymbolType;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::at_file::{get_project_paths, real_file_path_candidate};
+use crate::at_commands::at_file::real_file_path_candidate;
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum};
-use crate::files_correction::{correct_to_nearest_dir_path, paths_from_anywhere};
+use crate::files_correction::{correct_to_nearest_dir_path, get_project_paths, paths_from_anywhere};
 use crate::files_in_workspace::Document;
 
 

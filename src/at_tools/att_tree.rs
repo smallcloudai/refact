@@ -7,11 +7,11 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_commands::at_file::{get_project_paths, real_file_path_candidate};
+use crate::at_commands::at_file::real_file_path_candidate;
 use crate::at_commands::at_tree::{construct_tree_out_of_flat_list_of_paths, print_files_tree_with_budget};
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
-use crate::files_correction::{correct_to_nearest_dir_path, paths_from_anywhere};
+use crate::files_correction::{correct_to_nearest_dir_path, get_project_paths, paths_from_anywhere};
 
 
 pub struct AttTree;

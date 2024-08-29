@@ -9,8 +9,9 @@ use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ContextFile, ContextEnum};
-use crate::files_correction::correct_to_nearest_dir_path;
+use crate::files_correction::{correct_to_nearest_filename, correct_to_nearest_dir_path, shortify_paths, get_project_paths};
 use crate::global_context::GlobalContext;
+
 
 pub struct AtFile {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
@@ -111,7 +112,7 @@ pub async fn file_repair_candidates(
     let mut correction_candidate = value.clone();
     let colon_mb = colon_lines_range_from_arg(&mut correction_candidate);
 
-    let result: Vec<String> = crate::files_correction::correct_to_nearest_filename(
+    let result: Vec<String> = correct_to_nearest_filename(
         gcx.clone(),
         &correction_candidate,
         fuzzy,
@@ -196,32 +197,6 @@ impl AtParamFilePath {
     }
 }
 
-/// Attempts to shorten file paths by removing project path prefixes.
-/// Returns the shortened path if unambiguous, otherwise returns the original path.
-async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: Vec<String>) -> Vec<String> {
-    let project_paths = get_project_paths(gcx.clone()).await;
-    let p_paths_str: Vec<String> = project_paths.iter()
-        .map(|x| x.to_string_lossy().into_owned())
-        .collect();
-    let mut results = Vec::with_capacity(paths.len());
-    for p in paths {
-        let matching_proj = p_paths_str.iter()
-            .find(|proj| p.starts_with(proj));
-        if let Some(proj) = matching_proj {
-            let p_no_base = p.strip_prefix(proj).unwrap_or(&p).trim_start_matches('/');
-            if !p_no_base.is_empty() {
-                let candidates = file_repair_candidates(gcx.clone(), &p_no_base.to_string(), 3, false).await;
-                if candidates.len() == 1 {
-                    results.push(p_no_base.to_string());
-                    continue;
-                }
-            }
-        }
-        results.push(p);
-    }
-    results
-}
-
 
 #[async_trait]
 impl AtParam for AtParamFilePath {
@@ -261,12 +236,6 @@ impl AtParam for AtParamFilePath {
     }
 
     fn param_completion_valid(&self) -> bool {true}
-}
-
-pub async fn get_project_paths(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
-    let gcx_locked = gcx.write().await;
-    let workspace_folders = gcx_locked.documents_state.workspace_folders.lock().unwrap();
-    workspace_folders.iter().cloned().collect::<Vec<_>>()
 }
 
 pub async fn context_file_from_file_path(

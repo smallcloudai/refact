@@ -178,6 +178,39 @@ pub async fn correct_to_nearest_dir_path(
     vec![]
 }
 
+pub async fn get_project_paths(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
+    let gcx_locked = gcx.write().await;
+    let workspace_folders = gcx_locked.documents_state.workspace_folders.lock().unwrap();
+    workspace_folders.iter().cloned().collect::<Vec<_>>()
+}
+
+pub async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: Vec<String>) -> Vec<String> {
+    let (cache_correction_arc, _) = files_cache_rebuild_as_needed(gcx.clone()).await;
+    let project_paths = get_project_paths(gcx.clone()).await;
+    let p_paths_str: Vec<String> = project_paths.iter()
+        .map(|x| x.to_string_lossy().into_owned())
+        .collect();
+
+    let mut results = Vec::with_capacity(paths.len());
+    for p in paths {
+        let matching_proj = p_paths_str.iter().find(|proj| p.starts_with(*proj));
+        if let Some(proj) = matching_proj {
+            let p_no_base = p.strip_prefix(proj).unwrap_or(&p).trim_start_matches('/');
+            if !p_no_base.is_empty() {
+                if let Some(candidates) = cache_correction_arc.get(p_no_base) {
+                    if candidates.len() == 1 {
+                        results.push(p_no_base.to_string());
+                        continue;
+                    }
+                }
+            }
+        }
+        // If we reach here, we couldn't shorten the path unambiguously
+        results.push(p);
+    }
+    results
+}
+
 fn absolute(path: &std::path::Path) -> std::io::Result<PathBuf> {
     let mut components = path.strip_prefix(".").unwrap_or(path).components();
     let path_os = path.as_os_str().as_encoded_bytes();

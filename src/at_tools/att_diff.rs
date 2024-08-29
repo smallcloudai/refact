@@ -7,7 +7,8 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_diff::{execute_diff_for_vcs, get_last_accessed_file};
-use crate::at_commands::at_file::{file_repair_candidates, get_project_paths, real_file_path_candidate};
+use crate::at_commands::at_file::{file_repair_candidates, real_file_path_candidate};
+use crate::files_correction::get_project_paths;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 

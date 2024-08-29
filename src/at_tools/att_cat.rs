@@ -8,10 +8,10 @@ use async_trait::async_trait;
 
 use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
-use crate::at_commands::at_file::{file_repair_candidates, get_project_paths, real_file_path_candidate};
+use crate::at_commands::at_file::{file_repair_candidates, real_file_path_candidate};
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
-use crate::files_correction::{correct_to_nearest_dir_path, get_files_in_dir};
+use crate::files_correction::{correct_to_nearest_dir_path, get_project_paths, get_files_in_dir};
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 
 

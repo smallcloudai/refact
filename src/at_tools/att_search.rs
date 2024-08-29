@@ -10,8 +10,9 @@ use itertools::Itertools;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommandsContext};
-use crate::at_commands::at_file::{file_repair_candidates, get_project_paths, real_file_path_candidate};
+use crate::at_commands::at_file::{file_repair_candidates, real_file_path_candidate};
 use crate::at_commands::at_search::execute_at_search;
+use crate::files_correction::get_project_paths;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 
