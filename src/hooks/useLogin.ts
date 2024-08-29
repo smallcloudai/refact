@@ -36,7 +36,8 @@ export const useLogin = () => {
       initUrl.searchParams.set("utm_campaign", "login");
       const initUrlString = initUrl.toString();
       openUrl(initUrlString);
-      abortRef.current = () => loginTrigger(ticket).abort();
+      const thunk = loginTrigger(ticket);
+      abortRef.current = () => thunk.abort();
     },
     [host, loginTrigger, openUrl],
   );
@@ -65,7 +66,7 @@ export const useLogin = () => {
     loginWithKey,
     user,
     polling: loginPollingResult,
-    cancelLogin: abortRef.current,
+    cancelLogin: abortRef,
     logout,
   };
 };
