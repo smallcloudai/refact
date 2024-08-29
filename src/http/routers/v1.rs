@@ -7,7 +7,6 @@ use axum::routing::post;
 use futures::Future;
 use hyper::Body;
 use hyper::Response;
-use toolbox::handle_v1_customization_path;
 use tower_http::cors::CorsLayer;
 
 
@@ -29,6 +28,7 @@ use crate::http::routers::v1::lsp_like_handlers::{handle_v1_lsp_did_change, hand
 use crate::http::routers::v1::status::handle_v1_rag_status;
 use crate::http::routers::v1::toolbox::handle_v1_customization;
 use crate::http::routers::v1::toolbox::handle_v1_rewrite_assistant_says_to_at_commands;
+use crate::http::routers::v1::toolbox::handle_v1_config_path;
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
 use crate::http::routers::v1::diffs::{handle_v1_diff_apply, handle_v1_diff_preview, handle_v1_diff_state};
 use crate::http::routers::v1::handlers_memdb::{handle_mem_query, handle_mem_add, handle_mem_erase, handle_mem_update_used, handle_mem_block_until_vectorized, handle_mem_list, handle_ongoing_update_or_create, handle_ongoing_dump};
@@ -93,8 +93,8 @@ pub fn make_v1_router() -> Router {
         .route("/ast-status", telemetry_get!(handle_v1_ast_status))
 
         .route("/rag-status", telemetry_get!(handle_v1_rag_status))
+        .route("/config-path", telemetry_get!(handle_v1_config_path))
         // experimental
-        .route("/customization-path", telemetry_get!(handle_v1_customization_path))
         .route("/customization", telemetry_get!(handle_v1_customization))
         .route("/rewrite-assistant-says-to-at-commands", telemetry_post!(handle_v1_rewrite_assistant_says_to_at_commands))
 

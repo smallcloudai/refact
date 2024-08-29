@@ -14,15 +14,14 @@ use crate::custom_error::ScratchError;
 use crate::toolbox::toolbox_config::load_customization;
 
 
-pub async fn handle_v1_customization_path(
+pub async fn handle_v1_config_path(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let cache_dir = global_context.read().await.cache_dir.clone();
-    let user_config_path = cache_dir.join("customization.yaml");
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(user_config_path.to_str().unwrap().to_string()))
+        .body(Body::from(cache_dir.to_str().unwrap().to_string()))
         .unwrap())
 }
 
