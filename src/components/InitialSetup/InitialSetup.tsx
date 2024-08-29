@@ -12,7 +12,7 @@ export type InitialSetupProps = {
   onPressNext: (host: Host) => void;
 };
 
-export const bulletStyle = {
+const bulletStyle = {
   marginRight: "5px",
   verticalAlign: "middle",
   display: "inline-flex",

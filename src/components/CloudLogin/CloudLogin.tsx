@@ -8,7 +8,8 @@ export interface CloudLoginProps {
   goBack: () => void;
 }
 
-export const bulletStyle = {
+// TODO: duplicated else where, could be a component
+const bulletStyle = {
   marginRight: "5px",
   verticalAlign: "middle",
   display: "inline-flex",
