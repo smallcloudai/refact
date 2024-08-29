@@ -3,13 +3,26 @@ import {get_finetune_config_and_runs} from './tab-finetune.js';
 import {add_finetune_selectors_factory, update_checkpoints_list, set_finetune_info_into_state, finetune_switch_activate} from './utils/tab-model-hosting-utils.js';
 import {get_spinner} from "./utils/utils.js";
 
-
+let max_replicas_available = false;
 let gpus_popup = false;
 let models_data = null;
 let finetune_configs_and_runs;
 let force_render_models_assigned = false;
 let gpus_avaliable = null;
 
+function get_max_replicas_available() {
+    fetch("/tab-host-max-replicas-available")
+    .then(function(response) {
+        return response.text();
+    })
+    .then(function(data) {
+        max_replicas_available = data === "true";
+    })
+   .catch(function(error) {
+        console.log('tab-host-max-replicas-available',error);
+        general_error(error);
+    });
+}
 
 function update_finetune_configs_and_runs() {
     get_finetune_config_and_runs().then((data) => {
@@ -203,8 +216,8 @@ function render_models_assigned(models) {
         gpus_share.style.width = "10%";
         let del = document.createElement("td");
         del.style.width = "5%";
-        const instance = document.createElement("td");
-        instance.style.width = "15%";
+        const max_replicas = document.createElement("td");
+        max_replicas.style.width = "10%";
 
         model_name.textContent = index;
         finetune_info.classList.add('model-finetune-info');
@@ -297,28 +310,33 @@ function render_models_assigned(models) {
             select_gpus.appendChild(select_gpus_div);
         }
 
-        const instance_select = document.createElement("select");
-        instance_select.classList.add('form-select','form-select-sm');
-        const instance_option = document.createElement("option");
-        instance_option.setAttribute('value','auto');
-        instance_option.textContent = 'auto';
-        instance_select.appendChild(instance_option);
+        const max_replicas_select = document.createElement("select");
+        max_replicas_select.classList.add('form-select','form-select-sm');
+        const max_replicas_option = document.createElement("option");
+        max_replicas_option.setAttribute('value','auto');
+        max_replicas_option.textContent = 'auto';
+        max_replicas_select.appendChild(max_replicas_option);
         // add gpus index number as option
-        console.log('gpus_avaliable',gpus_avaliable);
+        console.log('gpus_avaliable', gpus_avaliable);
         for (let i = 0; i < gpus_avaliable.length / models_data.model_assign[index].gpus_shard; i++) {
-            const instance_option = document.createElement("option");
-            instance_option.setAttribute('value',i + 1);
-            instance_option.textContent = i + 1;
-            if (models_data.model_assign[index].n_instance === i + 1) {
-                instance_option.setAttribute('selected','selected');
+            const max_replicas_option = document.createElement("option");
+            max_replicas_option.setAttribute('value',i + 1);
+            max_replicas_option.textContent = i + 1;
+            if (models_data.model_assign[index].max_replicas === i + 1) {
+                max_replicas_option.setAttribute('selected','selected');
             }
-            instance_select.appendChild(instance_option);
+            max_replicas_select.appendChild(max_replicas_option);
         }
-        instance_select.addEventListener('change', function() {
-            models_data.model_assign[index].n_instance = this.value === "auto"? "auto" : Number(this.value);
+        max_replicas_select.addEventListener('change', function() {
+            models_data.model_assign[index].max_replicas = this.value === "auto" ? "auto" : Number(this.value);
             save_model_assigned();
         });
-        instance.appendChild(instance_select);
+        if (models_data.model_assign[index].share_gpu && models_data.model_assign[index].share_gpu) {
+            max_replicas_select.selectedIndex = 0
+            max_replicas_select.disabled = true
+            save_model_assigned();
+        }
+        max_replicas.appendChild(max_replicas_select);
 
         if(models_info[index].has_share_gpu) {
             const gpus_checkbox = document.createElement("input");
@@ -330,10 +348,13 @@ function render_models_assigned(models) {
                 gpus_checkbox.checked = true;
             } 
             gpus_checkbox.addEventListener('change', function() {
-                if(this.checked) {
+                if (this.checked) {
                     models_data.model_assign[index].share_gpu = true;
+                    max_replicas_select.selectedIndex = 0
+                    max_replicas_select.disabled = true
                 } else {
                     models_data.model_assign[index].share_gpu = false;
+                    max_replicas_select.disabled = false
                 }
                 save_model_assigned();
             });
@@ -354,7 +375,7 @@ function render_models_assigned(models) {
         row.appendChild(context);
         row.appendChild(finetune_info);
         row.appendChild(select_gpus);
-        row.appendChild(instance);
+        row.appendChild(max_replicas);
         row.appendChild(gpus_share);
         row.appendChild(del);
         models_table.appendChild(row);
@@ -707,6 +728,7 @@ function format_memory(memory_in_mb, decimalPlaces = 2) {
 export async function init(general_error) {
     let req = await fetch('/tab-model-hosting.html');
     document.querySelector('#model-hosting').innerHTML = await req.text();
+    get_max_replicas_available()
     get_gpus();
     update_finetune_configs_and_runs();
     get_models();
@@ -722,6 +744,7 @@ export async function init(general_error) {
 }
 
 export function tab_switched_here() {
+    get_max_replicas_available()
     get_gpus();
     update_finetune_configs_and_runs();
     get_models();
@@ -731,6 +754,7 @@ export function tab_switched_away() {
 }
 
 export function tab_update_each_couple_of_seconds() {
+    get_max_replicas_available()
     get_gpus();
     update_finetune_configs_and_runs();
     if (force_render_models_assigned) {

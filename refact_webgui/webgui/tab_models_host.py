@@ -34,7 +34,7 @@ class TabHostModelRec(BaseModel):
     gpus_shard: int = Query(default=1, ge=1, le=4)
     share_gpu: bool = False
     n_ctx: Optional[int] = None,
-    n_instance: Union[str, int] = "auto"
+    max_replicas: Union[str, int] = "auto"
 
 
 class TabHostModelsAssign(BaseModel):
@@ -55,6 +55,10 @@ class TabHostRouter(APIRouter):
         self.add_api_route("/tab-host-have-gpus", self._tab_host_have_gpus, methods=["GET"])
         self.add_api_route("/tab-host-models-get", self._tab_host_models_get, methods=["GET"])
         self.add_api_route("/tab-host-models-assign", self._tab_host_models_assign, methods=["POST"])
+        self.add_api_route("/tab-host-max-replicas-available", self._tab_host_max_replicas_available, methods=["GET"])
+
+    def _tab_host_max_replicas_available(self):
+        return False
 
     async def _modify_loras(self, post: ModifyLorasPost):
         active_loras = get_active_loras(self._model_assigner.models_db)
