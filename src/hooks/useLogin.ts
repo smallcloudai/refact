@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { isGoodResponse, smallCloudApi } from "../services/smallcloud";
 import { selectHost, setApiKey } from "../features/Config/configSlice";
@@ -17,36 +17,28 @@ export const useLogin = () => {
   const host = useAppSelector(selectHost);
   const openUrl = useOpenUrl();
 
-  const newLoginTicket = useMemo(() => {
-    return (
-      Math.random().toString(36).substring(2, 15) +
-      "-" +
-      Math.random().toString(36).substring(2, 15)
-    );
-  }, []);
-
-  const loginPollingResult = useAppSelector(
-    smallCloudApi.endpoints.login.select(newLoginTicket),
-  );
+  const [loginTrigger, loginPollingResult] = smallCloudApi.useLazyLoginQuery();
 
   const loginThroughWeb = useCallback(
     (pro: boolean) => {
-      const thunk = dispatch(
-        smallCloudApi.endpoints.login.initiate(newLoginTicket),
-      );
-      abortRef.current = () => thunk.abort();
+      const ticket =
+        Math.random().toString(36).substring(2, 15) +
+        "-" +
+        Math.random().toString(36).substring(2, 15);
+
       const baseUrl = pro
         ? "https://refact.smallcloud.ai/pro?sidebar"
         : "https://refact.smallcloud.ai/authentication";
       const initUrl = new URL(baseUrl);
-      initUrl.searchParams.set("token", newLoginTicket);
+      initUrl.searchParams.set("token", ticket);
       initUrl.searchParams.set("utm_source", "plugin");
       initUrl.searchParams.set("utm_medium", host);
       initUrl.searchParams.set("utm_campaign", "login");
       const initUrlString = initUrl.toString();
       openUrl(initUrlString);
+      abortRef.current = () => loginTrigger(ticket).abort();
     },
-    [dispatch, host, newLoginTicket, openUrl],
+    [host, loginTrigger, openUrl],
   );
 
   // TODO: handle errors
@@ -73,7 +65,7 @@ export const useLogin = () => {
     loginWithKey,
     user,
     polling: loginPollingResult,
-    cancelLogin: abortRef,
+    cancelLogin: abortRef.current,
     logout,
   };
 };

@@ -33,7 +33,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
-  const history = useAppSelector(getHistory);
+  const history = useAppSelector(getHistory, {
+    // TODO: selector issue here
+    devModeChecks: { stabilityCheck: "never" },
+  });
 
   const onDeleteHistoryItem = (id: string) => dispatch(deleteChatById(id));
   const onCreateNewChat = () => {

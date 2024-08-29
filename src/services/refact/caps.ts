@@ -1,6 +1,10 @@
 import { RootState } from "../../app/store";
 import { CAPS_URL } from "./consts";
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import {
+  createApi,
+  fetchBaseQuery,
+  FetchBaseQueryError,
+} from "@reduxjs/toolkit/query/react";
 
 export const capsApi = createApi({
   reducerPath: "caps",
@@ -14,13 +18,27 @@ export const capsApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    getCaps: builder.query<CapsResponse, { port: number }>({
-      query: ({ port }) => ({ url: `http://127.0.0.1:${port}${CAPS_URL}` }),
-      transformResponse: (response: unknown) => {
-        if (!isCapsResponse(response)) {
-          throw new Error("Invalid response from caps");
+    getCaps: builder.query<CapsResponse, undefined>({
+      queryFn: async (_args, api, _opts, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${CAPS_URL}`;
+        // return baseQuery(url);
+        const result = await baseQuery(url);
+        if (result.error) {
+          return { error: result.error };
         }
-        return response;
+        if (!isCapsResponse(result.data)) {
+          return {
+            meta: result.meta,
+            error: {
+              error: "Invalid response from caps",
+              data: result.data,
+            } as FetchBaseQueryError,
+          };
+        }
+
+        return { data: result.data };
       },
     }),
   }),
