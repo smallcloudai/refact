@@ -6,6 +6,8 @@ import {
   ChatResponse,
   ContextMemory,
   DiffChunk,
+  PlainTextMessage,
+  PlainTextResponse,
   ToolCall,
   ToolResult,
   UserMessage,
@@ -123,6 +125,28 @@ function replaceLastUserMessage(
   return result;
 }
 
+function putPlainTextBeforeUserMessage(
+  messages: ChatMessages,
+  response: PlainTextResponse,
+): ChatMessages {
+  const message: PlainTextMessage = {
+    role: response.role,
+    content: response.content,
+  };
+
+  if (messages.length === 0) {
+    return [message];
+  }
+
+  const lastMessage = messages[messages.length - 1];
+
+  if (!isUserMessage(lastMessage)) {
+    return [...messages, message];
+  }
+
+  return messages.slice(0, -1).concat(message, lastMessage);
+}
+
 export function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
@@ -159,7 +183,7 @@ export function formatChatResponse(
   }
 
   if (isPlainTextResponse(response)) {
-    return [...messages, response];
+    return putPlainTextBeforeUserMessage(messages, response);
   }
 
   if (!isChatResponseChoice(response)) {
