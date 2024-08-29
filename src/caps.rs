@@ -515,6 +515,7 @@ embedding_apikey: "sk-..."
 embedding_model: text-embedding-3-small
 embedding_size: 1536
 
+completion_endpoint_style: "hf"
 completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
 completion_model: bigcode/starcoder2-3b
 completion_apikey: "hf_..."    # or use $HF_TOKEN if you have it in global environment variables
