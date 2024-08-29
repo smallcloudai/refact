@@ -42,6 +42,7 @@ pub struct AstIndex {
     type_guid_to_dependent_guids: HashMap<Uuid, HashSet<Uuid>>,
     declaration_guid_to_usage_names: StdHashMap<Uuid, HashSet<String>>,
     import_components_succ_solution_index: HashMap<String, ImportDeclaration>,
+    declaration_guid_to_dependent_symbols: HashMap<Uuid, HashSet<Uuid>>,
     ast_max_files: usize,
     has_changes: bool,
     ast_light_mode: bool,
@@ -82,6 +83,7 @@ impl AstIndex {
             type_guid_to_dependent_guids: HashMap::new(),
             declaration_guid_to_usage_names: StdHashMap::new(),
             import_components_succ_solution_index: HashMap::new(),
+            declaration_guid_to_dependent_symbols: HashMap::new(),
             ast_max_files,
             has_changes: false,
             ast_light_mode,
@@ -214,6 +216,7 @@ impl AstIndex {
             let guid = symbol.borrow().guid().clone();
             self.symbols_by_guid.remove(&guid);
             self.type_guid_to_dependent_guids.remove(&guid);
+            self.declaration_guid_to_dependent_symbols.remove(&guid);
             self.declaration_guid_to_usage_names.remove(&guid);
             removed_guids.insert(guid.clone());
         }
@@ -230,6 +233,7 @@ impl AstIndex {
         self.symbols_by_guid.clear();
         self.path_by_symbols.clear();
         self.type_guid_to_dependent_guids.clear();
+        self.declaration_guid_to_dependent_symbols.clear();
         self.declaration_guid_to_usage_names.clear();
         self.has_changes = true;
     }
@@ -480,6 +484,19 @@ impl AstIndex {
                 }
             }
         }
+    }
+    
+    pub(crate) fn get_type_related_symbols(
+        &self,
+        declaration_guid: &Uuid,
+    ) -> Result<Vec<AstSymbolInstanceRc>, String> {
+        Ok(self.declaration_guid_to_dependent_symbols
+            .get(declaration_guid)
+            .unwrap_or(&HashSet::new())
+            .iter()
+            .filter_map(|x| self.symbols_by_guid.get(x))
+            .cloned()
+            .collect::<Vec<_>>())
     }
 
     fn get_declarations_by_parent(
@@ -1430,6 +1447,9 @@ impl AstIndex {
             if self.type_guid_to_dependent_guids.contains_key(&guid) {
                 self.type_guid_to_dependent_guids.remove(&guid);
             }
+            if self.declaration_guid_to_dependent_symbols.contains_key(&guid) {
+                self.declaration_guid_to_dependent_symbols.remove(&guid);
+            }
             if self.declaration_guid_to_usage_names.contains_key(&guid) {
                 self.declaration_guid_to_usage_names.remove(&guid);
             }
@@ -1477,6 +1497,10 @@ impl AstIndex {
                 .iter()
                 .filter_map(|t| t.guid.clone()) {
                 self.type_guid_to_dependent_guids.entry(guid).or_default().insert(s_guid.clone());
+                self.declaration_guid_to_dependent_symbols
+                    .entry(guid.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(s_guid.clone());
             }
 
             // for those symbols which doesn't have their own scope

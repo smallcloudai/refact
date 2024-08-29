@@ -330,7 +330,15 @@ impl AstModule {
             .filter(|s| {
                 s.borrow().symbol_type() == SymbolType::FunctionCall
             })
-            .unique_by(|s| s.borrow().guid().clone())
+            .collect::<Vec<_>>();
+        let type_related_symbols = declarations
+            .exact_matches
+            .iter()
+            .map(|s| {
+                ast_ref.get_type_related_symbols(&s.symbol_declaration.guid)
+                    .unwrap_or_default()
+            })
+            .flatten()
             .collect::<Vec<_>>();
         let usages = declarations
             .exact_matches
@@ -355,6 +363,7 @@ impl AstModule {
                     .collect::<Vec<_>>()
             })
             .flatten()
+            .chain(type_related_symbols)
             .chain(func_calls_matched_by_name)
             .unique_by(|s| s.borrow().guid().clone())
             .collect::<Vec<_>>();
