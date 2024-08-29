@@ -196,34 +196,28 @@ impl AtParamFilePath {
     }
 }
 
+/// Attempts to shorten file paths by removing project path prefixes.
+/// Returns the shortened path if unambiguous, otherwise returns the original path.
 async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: Vec<String>) -> Vec<String> {
     let project_paths = get_project_paths(gcx.clone()).await;
-
-    let mut results = vec![];
-    let p_paths_str = project_paths.iter().map(|x|x.to_string_lossy().to_string()).map(|x|format!("{}/", x)).collect::<Vec<_>>();
+    let p_paths_str: Vec<String> = project_paths.iter()
+        .map(|x| x.to_string_lossy().into_owned())
+        .collect();
+    let mut results = Vec::with_capacity(paths.len());
     for p in paths {
-        let matches = p_paths_str.iter().filter(|x|p.starts_with(*x)).cloned().collect::<Vec<_>>();
-        if matches.is_empty() || matches.len() > 1 {
-            results.push(p);
-            continue;
+        let matching_proj = p_paths_str.iter()
+            .find(|proj| p.starts_with(proj));
+        if let Some(proj) = matching_proj {
+            let p_no_base = p.strip_prefix(proj).unwrap_or(&p).trim_start_matches('/');
+            if !p_no_base.is_empty() {
+                let candidates = file_repair_candidates(gcx.clone(), &p_no_base.to_string(), 3, false).await;
+                if candidates.len() == 1 {
+                    results.push(p_no_base.to_string());
+                    continue;
+                }
+            }
         }
-        let m = matches[0].clone();
-        let p_no_base = p.trim_start_matches(&m);
-        
-        let candidates = file_repair_candidates(gcx.clone(), &p_no_base.to_string(), 3, false).await;
-        if candidates.len() == 1 {
-            results.push(p_no_base.to_string());
-            continue;
-        }
-        let m_file_name = PathBuf::from(&m).file_name().unwrap().to_string_lossy().to_string();
-        let p_no_base = format!("{}/{}", m_file_name, p_no_base);
-        
-        let candidates = file_repair_candidates(gcx.clone(), &p_no_base.to_string(), 3, false).await;
-        if candidates.len() == 1 {
-            results.push(p_no_base.to_string());
-        } else {
-            results.push(p.to_string());
-        }
+        results.push(p);
     }
     results
 }
@@ -248,7 +242,7 @@ impl AtParam for AtParamFilePath {
             let ccx_lock = ccx.lock().await;
             (ccx_lock.global_context.clone(), ccx_lock.top_n)
         };
-        
+
         let candidates = file_repair_candidates(gcx.clone(), value, top_n, false).await;
         if !candidates.is_empty() {
             return shortify_paths(gcx.clone(), candidates).await;
