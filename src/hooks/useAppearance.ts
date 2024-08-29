@@ -29,7 +29,6 @@ export const useAppearance = () => {
 
   useEffect(handleChange, [handleChange]);
 
-  // TODO: remove this
   useMutationObserver(document.body, handleChange, {
     attributes: true,
     characterData: false,
@@ -38,10 +37,11 @@ export const useAppearance = () => {
   });
 
   const toggle = useCallback(() => {
-    if (appearance === "dark") return setThemeMode("light");
-    if (appearance === "light") return setThemeMode("dark");
-    if (appearance === "inherit") return setThemeMode("dark");
-  }, [appearance]);
+    console.log("toggle");
+    if (appearance === "dark") return dispatch(setThemeMode("light"));
+    if (appearance === "light") return dispatch(setThemeMode("dark"));
+    if (appearance === "inherit") return dispatch(setThemeMode("dark"));
+  }, [appearance, dispatch]);
 
   return {
     appearance,
