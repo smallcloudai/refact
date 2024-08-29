@@ -8,7 +8,7 @@ import {
   DOCUMENTATION_LIST,
   DOCUMENTATION_REMOVE,
 } from "../services/refact/consts";
-import { useConfig } from "../app/hooks";
+import { useConfig } from "../hooks";
 
 type DocListResponse = {
   url: string;

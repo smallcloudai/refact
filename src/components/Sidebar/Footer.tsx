@@ -10,14 +10,19 @@ import { DiscordLogoIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
 
 // import { Coin } from "../../images";
 
-import { useAppSelector, useConfig } from "../../app/hooks";
+import { useAppSelector } from "../../app/hooks";
 import {
   selectHost,
   type Config,
   selectLspPort,
 } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
-import { useEventsBusForIDE, useGetUser, useLogout } from "../../hooks";
+import {
+  useEventsBusForIDE,
+  useGetUser,
+  useLogout,
+  useConfig,
+} from "../../hooks";
 import { Coin } from "../../images/coin";
 import styles from "./sidebar.module.css";
 import { useOpenUrl } from "../../hooks/useOpenUrl";

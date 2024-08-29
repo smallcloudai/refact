@@ -3,8 +3,7 @@ import { Theme as RadixTheme, IconButton } from "@radix-ui/themes";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
-import { useConfig } from "../../app/hooks";
-import { useAppearance } from "../../hooks";
+import { useAppearance, useConfig } from "../../hooks";
 
 export type ThemeProps = {
   children: JSX.Element;

@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import { isLogOut, isOpenExternalUrl, isSetupHost } from "../events";
-import { useAppDispatch, useConfig } from "../app/hooks";
+import { useAppDispatch } from "../app/hooks";
+import { useConfig } from "./useConfig";
 import { updateConfig } from "../features/Config/configSlice";
 
 // all of the events that are normally handeled by the IDE
