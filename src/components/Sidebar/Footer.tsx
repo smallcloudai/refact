@@ -21,7 +21,7 @@ import { useEventsBusForIDE, useGetUser, useLogout } from "../../hooks";
 import { Coin } from "../../images/coin";
 import styles from "./sidebar.module.css";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
-import { CUSTOMIZATION_PATH } from "../../services/refact/consts";
+import { CONFIG_PATH_URL } from "../../services/refact/consts";
 
 const LinkItem: React.FC<LinkProps> = ({ children, href }) => {
   return (
@@ -87,12 +87,13 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
 
   const port = useAppSelector(selectLspPort);
   const getCustomizationPath = useCallback(async () => {
-    const previewEndpoint = `http://127.0.0.1:${port}${CUSTOMIZATION_PATH}`;
+    const previewEndpoint = `http://127.0.0.1:${port}${CONFIG_PATH_URL}`;
 
     const response = await fetch(previewEndpoint, {
       method: "GET",
     });
-    return await response.text();
+    const configPath = await response.text();
+    return configPath + "/customization.yaml";
   }, [port]);
 
   return (
@@ -167,6 +168,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
             const f = async () => {
               event.preventDefault();
               const file_name = await getCustomizationPath();
+              console.log({ file_name });
               openFile({ file_name });
             };
             void f();

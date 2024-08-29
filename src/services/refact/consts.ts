@@ -8,7 +8,7 @@ export const AT_TOOLS_AVAILABLE_URL = "/v1/tools";
 export const DIFF_APPLY_URL = "/v1/diff-apply";
 export const DIFF_STATE_URL = "/v1/diff-state";
 export const DIFF_PREVIEW_URL = "/v1/diff-preview";
-export const CUSTOMIZATION_PATH = "/v1/customization-path";
+export const CONFIG_PATH_URL = "/v1/config-path";
 // TODO: add a service for the docs.
 export const DOCUMENTATION_LIST = `/v1/docs-list`;
 export const DOCUMENTATION_ADD = `/v1/docs-add`;
