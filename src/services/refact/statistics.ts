@@ -7,8 +7,6 @@ import {
 import { STATISTIC_URL } from "./consts";
 import { RootState } from "../../app/store";
 
-// TODO: this could be for the whole lsp?
-// Add port
 export const statisticsApi = createApi({
   reducerPath: "statisticsApi",
 
