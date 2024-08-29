@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap as StdHashMap;
 use std::hash::Hash;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Components, PathBuf, StripPrefixError};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -43,6 +43,7 @@ pub struct AstIndex {
     declaration_guid_to_usage_names: StdHashMap<Uuid, HashSet<String>>,
     import_components_succ_solution_index: HashMap<String, ImportDeclaration>,
     declaration_guid_to_dependent_symbols: HashMap<Uuid, HashSet<Uuid>>,
+    common_path_prefix: Option<String>,
     ast_max_files: usize,
     has_changes: bool,
     ast_light_mode: bool,
@@ -66,6 +67,24 @@ pub(crate) struct IndexingStats {
     pub(crate) non_found: usize,
 }
 
+fn common_prefix(s1: &str, s2: &str) -> String {
+    let mut prefix = String::new();
+    let chars1: Vec<char> = s1.chars().collect();
+    let chars2: Vec<char> = s2.chars().collect();
+
+    let min_length = std::cmp::min(chars1.len(), chars2.len());
+
+    for i in 0..min_length {
+        if chars1[i] == chars2[i] {
+            prefix.push(chars1[i]);
+        } else {
+            break;
+        }
+    }
+
+    prefix
+}
+
 impl AstIndex {
     pub fn init(
         ast_max_files: usize,
@@ -84,6 +103,7 @@ impl AstIndex {
             declaration_guid_to_usage_names: StdHashMap::new(),
             import_components_succ_solution_index: HashMap::new(),
             declaration_guid_to_dependent_symbols: HashMap::new(),
+            common_path_prefix: None,
             ast_max_files,
             has_changes: false,
             ast_light_mode,
@@ -480,12 +500,30 @@ impl AstIndex {
                     }
                 }
                 None => {
-                    return current_path;
+                    break;
+                    
                 }
             }
         }
+        
+        if let Some(common_prefix) = &self.common_path_prefix {
+            match symbol.borrow().file_path().strip_prefix(
+                &common_prefix
+            ).ok() {
+                Some(x) => {
+                    let file_prefix = x.components()
+                        .map(|x| x.as_os_str().to_string_lossy())
+                        .map(|x| x.rsplit_once(".").map_or(x.to_string(), |x| x.0.to_string()))
+                        .join("::");
+                    current_path = format!("{file_prefix}::{current_path}");
+                }
+                None => {}
+            };
+        }
+        
+        current_path
     }
-    
+
     pub(crate) fn get_type_related_symbols(
         &self,
         declaration_guid: &Uuid,
@@ -503,7 +541,7 @@ impl AstIndex {
         &self,
         symbol: &AstSymbolInstanceRc,
         base_usefulness: f32,
-        symbols_by_guid: &HashMap<Uuid, AstSymbolInstanceRc>
+        symbols_by_guid: &HashMap<Uuid, AstSymbolInstanceRc>,
     ) -> (Vec<AstSymbolInstanceRc>, HashMap<Uuid, f32>) {
         let mut current_symbol = symbol.clone();
         let mut parents_symbols: Vec<AstSymbolInstanceRc> = vec![];
@@ -1454,6 +1492,23 @@ impl AstIndex {
                 self.declaration_guid_to_usage_names.remove(&guid);
             }
         }
+        if symbols.is_empty() {
+            return;
+        }
+
+        let mut current_common_path_prefix = symbols
+            .first().expect("emptiness checked above")
+            .borrow()
+            .file_path()
+            .to_string_lossy()
+            .to_string();
+        for symbol in symbols.iter().skip(1) {
+            current_common_path_prefix = common_prefix(
+                &current_common_path_prefix, 
+                &symbol.borrow().file_path().to_string_lossy()
+            );
+        }
+        self.common_path_prefix = Some(current_common_path_prefix);
 
         for symbol in symbols
             .iter()
@@ -1474,7 +1529,7 @@ impl AstIndex {
                 }
             }
             if symbol.borrow().is_type() {
-                continue
+                continue;
             }
 
             let (name, s_guid, mut types, is_declaration, symbol_type, parent_guid) = {
