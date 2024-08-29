@@ -66,8 +66,9 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
     setSelected(value as "free" | "pro");
   };
 
-  const onLogin = () => {
-    loginThroughWeb(selected === "pro");
+  const onLogin = (plan: "free" | "pro") => {
+    setSelected(plan);
+    loginThroughWeb(plan === "pro");
   };
 
   return (
@@ -75,7 +76,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
       <Text size="3">Already have a Refact.ai account?</Text>
       <Button
         ref={loginButton}
-        onClick={onLogin}
+        onClick={() => onLogin("free")}
         color="gray"
         highContrast
         variant="solid"
@@ -193,7 +194,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
         </Button>
         <Button
           ml="auto"
-          onClick={onLogin}
+          onClick={() => onLogin(selected)}
           color="gray"
           highContrast
           variant="solid"
