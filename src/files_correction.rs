@@ -68,12 +68,13 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
 
     let mut cache_dirty_ref = cache_dirty_arc.lock().await;
     if *cache_dirty_ref {
-        info!("Rebuilding files cache...");
+        info!("rebuilding files cache...");
+        // filter only get_project_dirs?
         let start_time = Instant::now();
         let paths_from_anywhere = paths_from_anywhere(global_context.clone()).await;
         let (cache_correction, cache_fuzzy, cnt) = make_cache(paths_from_anywhere);
 
-        info!("Rebuild completed in {}s, {} URLs => cache_correction.len is now {}", start_time.elapsed().as_secs(), cnt, cache_correction.len());
+        info!("rebuild completed in {}s, {} URLs => cache_correction.len is now {}", start_time.elapsed().as_secs(), cnt, cache_correction.len());
 
         cache_correction_arc = Arc::new(cache_correction);
         cache_fuzzy_arc = Arc::new(cache_fuzzy);
@@ -178,7 +179,7 @@ pub async fn correct_to_nearest_dir_path(
     vec![]
 }
 
-pub async fn get_project_paths(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
+pub async fn get_project_dirs(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
     let gcx_locked = gcx.write().await;
     let workspace_folders = gcx_locked.documents_state.workspace_folders.lock().unwrap();
     workspace_folders.iter().cloned().collect::<Vec<_>>()
@@ -186,8 +187,8 @@ pub async fn get_project_paths(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf>
 
 pub async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: Vec<String>) -> Vec<String> {
     let (cache_correction_arc, _) = files_cache_rebuild_as_needed(gcx.clone()).await;
-    let project_paths = get_project_paths(gcx.clone()).await;
-    let p_paths_str: Vec<String> = project_paths.iter()
+    let project_dirs = get_project_dirs(gcx.clone()).await;
+    let p_paths_str: Vec<String> = project_dirs.iter()
         .map(|x| x.to_string_lossy().into_owned())
         .collect();
 

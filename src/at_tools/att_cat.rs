@@ -8,10 +8,10 @@ use async_trait::async_trait;
 
 use crate::ast::ast_index::RequestSymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
-use crate::at_commands::at_file::{file_repair_candidates, real_file_path_candidate};
+use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
-use crate::files_correction::{correct_to_nearest_dir_path, get_project_paths, get_files_in_dir};
+use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, get_files_in_dir};
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 
 
@@ -73,13 +73,13 @@ impl Tool for AttCat {
             let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &p, false, top_n).await;
 
             if PathBuf::from(&p).extension().is_some() || candidates_dir.is_empty() {
-                let file_path = match real_file_path_candidate(gcx.clone(), &p, &candidates_file, &get_project_paths(gcx.clone()).await, false).await {
+                let file_path = match return_one_candidate_or_a_good_error(gcx.clone(), &p, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
                     Ok(f) => f,
                     Err(e) => { files_not_found_errs.push(e); continue;}
                 };
                 corrected_paths.push(file_path);
             } else {
-                let candidate = match real_file_path_candidate(gcx.clone(), &p, &candidates_dir, &get_project_paths(gcx.clone()).await, true).await {
+                let candidate = match return_one_candidate_or_a_good_error(gcx.clone(), &p, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
                     Ok(f) => f,
                     Err(e) => { files_not_found_errs.push(e); continue;}
                 };

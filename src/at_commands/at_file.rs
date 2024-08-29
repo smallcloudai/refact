@@ -9,7 +9,7 @@ use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::call_validation::{ContextFile, ContextEnum};
-use crate::files_correction::{correct_to_nearest_filename, correct_to_nearest_dir_path, shortify_paths, get_project_paths};
+use crate::files_correction::{correct_to_nearest_filename, correct_to_nearest_dir_path, shortify_paths, get_project_dirs};
 use crate::global_context::GlobalContext;
 
 
@@ -126,7 +126,7 @@ pub async fn file_repair_candidates(
     }).collect()
 }
 
-pub async fn real_file_path_candidate(
+pub async fn return_one_candidate_or_a_good_error(
     gcx: Arc<ARwLock<GlobalContext>>,
     file_path: &String,
     candidates: &Vec<String>,
@@ -174,6 +174,7 @@ pub async fn real_file_path_candidate(
     if candidates.len() > 1 {
         return Err(format!("The path {:?} is ambiguous.\n\nIt could be interpreted as:\n{}", file_path, candidates.join("\n")));
     }
+
     let candidate = candidates.get(0).unwrap_or(&"".to_string()).clone();
     if !PathBuf::from(&candidate).exists() {
         return Err(format!("The path {:?} was not found on disk.", candidate));
@@ -224,8 +225,8 @@ impl AtParam for AtParamFilePath {
         }
         let file_path = PathBuf::from(value);
         if file_path.is_relative() {
-            let project_paths = get_project_paths(gcx.clone()).await;
-            let options = project_paths.iter().map(|x|x.join(&file_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
+            let project_dirs = get_project_dirs(gcx.clone()).await;
+            let options = project_dirs.iter().map(|x|x.join(&file_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
             if !options.is_empty() {
                 let res = options.iter().map(|x| x.to_string_lossy().to_string()).collect();
                 return shortify_paths(gcx.clone(), res).await;

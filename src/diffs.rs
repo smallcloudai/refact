@@ -6,9 +6,9 @@ use serde::Serialize;
 use tokio::sync::RwLock as ARwLock;
 use hashbrown::{HashMap, HashSet};
 use tracing::info;
-use crate::at_commands::at_file::{file_repair_candidates, real_file_path_candidate};
+use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::call_validation::DiffChunk;
-use crate::files_correction::{get_project_paths, correct_to_nearest_dir_path};
+use crate::files_correction::{get_project_dirs, correct_to_nearest_dir_path};
 use crate::global_context::GlobalContext;
 
 
@@ -89,11 +89,11 @@ pub async fn correct_and_validate_chunks(
             let is_file = path.extension().is_some() || (path.extension().is_some() && (!chunk.lines_add.is_empty() || !chunk.lines_remove.is_empty()));
             if is_file {
                 let candidates = file_repair_candidates(gcx.clone(), path_str, 10, false).await;
-                let candidate = real_file_path_candidate(gcx.clone(), path_str, &candidates, &get_project_paths(gcx.clone()).await, false).await?;
+                let candidate = return_one_candidate_or_a_good_error(gcx.clone(), path_str, &candidates, &get_project_dirs(gcx.clone()).await, false).await?;
                 Ok((candidate, true))
             } else {
                 let candidates = correct_to_nearest_dir_path(gcx.clone(), path_str, false, 10).await;
-                let candidate = real_file_path_candidate(gcx.clone(), path_str, &candidates, &get_project_paths(gcx.clone()).await, true).await?;
+                let candidate = return_one_candidate_or_a_good_error(gcx.clone(), path_str, &candidates, &get_project_dirs(gcx.clone()).await, true).await?;
                 Ok((candidate, false))
             }
         }

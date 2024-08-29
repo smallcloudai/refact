@@ -9,10 +9,10 @@ use tracing::warn;
 use crate::ast::ast_index::{AstIndex, RequestSymbolType};
 use crate::ast::treesitter::structs::SymbolType;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::at_file::real_file_path_candidate;
+use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum};
-use crate::files_correction::{correct_to_nearest_dir_path, get_project_paths, paths_from_anywhere};
+use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, paths_from_anywhere};
 use crate::files_in_workspace::Document;
 
 
@@ -200,7 +200,7 @@ pub async fn print_files_tree_with_budget(
     if !use_ast {
         ast_module_option = None;
     }
-    // This function sucks and there's no way to fix it
+    // These locks suck and there's no way to fix it
     match ast_module_option {
         Some(ast_module) => {
             let ast_index: Arc<AMutex<AstIndex>> = ast_module.read().await.ast_index.clone();
@@ -224,19 +224,25 @@ impl AtCommand for AtTree {
     ) -> Result<(Vec<ContextEnum>, String), String> {
         let gcx = ccx.lock().await.global_context.clone();
         let paths_from_anywhere = paths_from_anywhere(gcx.clone()).await;
+
+        let project_dirs = get_project_dirs(gcx.clone()).await;
+        let filtered_paths: Vec<PathBuf> = paths_from_anywhere.into_iter()
+            .filter(|path| project_dirs.iter().any(|project_path| path.starts_with(project_path)))
+            .collect();
+
         *args = args.iter().take_while(|arg| arg.text != "\n" || arg.text == "--ast").take(2).cloned().collect();
 
         let tree = match args.iter().find(|x| x.text != "--ast") {
-            None => construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere),
+            None => construct_tree_out_of_flat_list_of_paths(&filtered_paths),
             Some(arg) => {
                 let path = arg.text.clone();
                 let candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
-                let candidate = real_file_path_candidate(gcx.clone(), &path, &candidates, &get_project_paths(gcx.clone()).await, true).await.map_err(|e| {
+                let candidate = return_one_candidate_or_a_good_error(gcx.clone(), &path, &candidates, &get_project_dirs(gcx.clone()).await, true).await.map_err(|e| {
                     cmd.ok = false; cmd.reason = Some(e.clone()); args.clear();
                     e
                 })?;
                 let true_path = PathBuf::from(candidate);
-                let filtered_paths_from_anywhere = paths_from_anywhere.iter().filter(|f|f.starts_with(&true_path)).cloned().collect::<Vec<_>>();
+                let filtered_paths_from_anywhere = filtered_paths.iter().filter(|f|f.starts_with(&true_path)).cloned().collect::<Vec<_>>();
                 construct_tree_out_of_flat_list_of_paths(&filtered_paths_from_anywhere)
             }
         };

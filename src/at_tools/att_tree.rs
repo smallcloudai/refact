@@ -7,11 +7,11 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_commands::at_file::real_file_path_candidate;
+use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::at_commands::at_tree::{construct_tree_out_of_flat_list_of_paths, print_files_tree_with_budget};
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
-use crate::files_correction::{correct_to_nearest_dir_path, get_project_paths, paths_from_anywhere};
+use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, paths_from_anywhere};
 
 
 pub struct AttTree;
@@ -52,7 +52,7 @@ impl Tool for AttTree {
         let tree = match path_mb {
             Some(path) => {
                 let candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
-                let candidate = real_file_path_candidate(gcx.clone(), &path, &candidates, &get_project_paths(gcx.clone()).await, true).await?;
+                let candidate = return_one_candidate_or_a_good_error(gcx.clone(), &path, &candidates, &get_project_dirs(gcx.clone()).await, true).await?;
                 let true_path = PathBuf::from(candidate);
                 let filtered_paths_from_anywhere = paths_from_anywhere.iter().filter(|f|f.starts_with(&true_path)).cloned().collect();
                 construct_tree_out_of_flat_list_of_paths(&filtered_paths_from_anywhere)

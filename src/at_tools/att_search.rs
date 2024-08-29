@@ -10,9 +10,9 @@ use itertools::Itertools;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommandsContext};
-use crate::at_commands::at_file::{file_repair_candidates, real_file_path_candidate};
+use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::at_commands::at_search::execute_at_search;
-use crate::files_correction::get_project_paths;
+use crate::files_correction::get_project_dirs;
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 
@@ -42,11 +42,11 @@ async fn execute_att_search(
         }
         _ if is_scope_a_file(scope) => {
             let candidates = file_repair_candidates(gcx.clone(), scope, 10, false).await;
-            let file_path = real_file_path_candidate(
+            let file_path = return_one_candidate_or_a_good_error(
                 gcx.clone(),
                 scope,
                 &candidates,
-                &get_project_paths(gcx.clone()
+                &get_project_dirs(gcx.clone()
                 ).await, false).await?;
             let filter = Some(format!("(file_path = \"{}\")", file_path));
             Ok(execute_at_search(ccx.clone(), &query, filter).await?)
