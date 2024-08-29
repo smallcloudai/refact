@@ -14,12 +14,8 @@ import {
 } from "../../services/refact";
 // TODO: update this type
 import type { ChatResponse } from "../../services/refact";
-import {
-  useAppDispatch,
-  // createAppAsyncThunk,
-  useAppSelector,
-  useGetToolsQuery,
-} from "../../app/hooks";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { useGetToolsQuery } from "../../hooks";
 import { type AppDispatch, type RootState } from "../../app/store";
 import { parseOrElse } from "../../utils";
 import { formatChatResponse, formatMessagesForLsp } from "./utils";

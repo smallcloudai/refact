@@ -1,7 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "./store";
 import {
-  toolsApi,
   diffApi,
   DiffOperationArgs,
   DiffAppliedStateArgs,
@@ -13,7 +12,6 @@ import {
   setThemeMode,
 } from "../features/Config/configSlice";
 import { useMutationObserver } from "../hooks/useMutationObserver";
-import { useHasCaps } from "../hooks/useHasCaps";
 
 // export { type Config, setThemeMode } from "../features/Config/reducer";
 
@@ -21,12 +19,6 @@ import { useHasCaps } from "../hooks/useHasCaps";
 
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
-
-export const useGetToolsQuery = () => {
-  const lspPort = useAppSelector(selectLspPort);
-  const hasCaps = useHasCaps();
-  return toolsApi.useGetToolsQuery({ port: lspPort }, { skip: !hasCaps });
-};
 
 export const useDiffApplyMutation = () => {
   const port = useAppSelector(selectLspPort);
