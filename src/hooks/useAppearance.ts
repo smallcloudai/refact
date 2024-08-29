@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useAppDispatch } from "../app/hooks";
 import { useConfig } from "./useConfig";
 import { setThemeMode } from "../features/Config/configSlice";
@@ -26,8 +26,6 @@ export const useAppearance = () => {
       dispatch(setThemeMode("inherit"));
     }
   }, [dispatch]);
-
-  useEffect(handleChange, [handleChange]);
 
   useMutationObserver(document.body, handleChange, {
     attributes: true,
