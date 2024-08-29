@@ -47,7 +47,7 @@ fn default_telemetry_basic_dest() -> String {
 }
 
 fn default_telemetry_basic_retrieve_my_own() -> String {
-    String::from("https://staging.smallcloud.ai/v1/telemetry-retrieve-my-own-stats")
+    String::from("https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats")
 }
 
 fn default_endpoint_style() -> String {
@@ -118,7 +118,7 @@ pub struct CodeAssistantCaps {
     #[serde(default)]
     pub models_dict_patch: HashMap<String, ModelRecord>,
     #[serde(default)]
-    #[serde(alias = "embedding_default_model")]
+    #[serde(alias = "embedding_model")]
     pub default_embeddings_model: String,
     #[serde(default)]
     #[serde(alias = "embedding_endpoint")]
@@ -174,18 +174,14 @@ fn load_caps_from_buf(
         format!("failed to parse KNOWN_MODELS: {}", e)
     })?;
 
-    if r1.running_models.is_empty() {
-        let mut running_models = Vec::new();
-        if !r1.code_chat_default_model.is_empty() {
-            running_models.push(r1.code_chat_default_model.clone());
-        }
-        if !r1.code_completion_default_model.is_empty() {
-            running_models.push(r1.code_completion_default_model.clone());
-        }
-        if !r1.default_embeddings_model.is_empty() {
-            running_models.push(r1.default_embeddings_model.clone());
-        }
-        r1.running_models = running_models;
+    if !r1.code_chat_default_model.is_empty() && !r1.running_models.contains(&r1.code_chat_default_model) {
+        r1.running_models.push(r1.code_chat_default_model.clone());
+    }
+    if !r1.code_completion_default_model.is_empty() && !r1.running_models.contains(&r1.code_completion_default_model) {
+        r1.running_models.push(r1.code_completion_default_model.clone());
+    }
+    if !r1.default_embeddings_model.is_empty() && !r1.running_models.contains(&r1.default_embeddings_model) {
+        r1.running_models.push(r1.default_embeddings_model.clone());
     }
 
     _inherit_r1_from_r0(&mut r1, &r0);
@@ -508,73 +504,28 @@ pub async fn get_model_record(
 
 
 pub const SIMPLE_CAPS: &str = r#"
-# other examples https://github.com/smallcloudai/refact-lsp/tree/main/bring_your_own_key
+cloud_name: My own mix of clouds!
 
-cloud_name: OpenAI
 chat_endpoint: "https://api.openai.com/v1/chat/completions"
-chat_apikey: "sk-..." # or use "$OPENAI_API_KEY" and key will be used from environment
+chat_apikey: "sk-..."       # or use $OPENAI_API_KEY if you have it in global environment variables
 chat_model: gpt-4o-mini
 
-# ------------
-# cloud_name: OpenRouter API
+embedding_endpoint: "https://api.openai.com/v1/embeddings"
+embedding_apikey: "sk-..."
+embedding_model: text-embedding-3-small
+embedding_size: 1536
 
-# chat_endpoint: "https://openrouter.ai/api/v1/chat/completions"
-# chat_apikey: "$OPENROUTER_API_KEY"
-# chat_model: meta-llama/llama-3.1-8b-instruct
-# tokenizer_rewrite_path:
-#   meta-llama/llama-3.1-8b-instruct: unsloth/llama-3-8b-bnb-4bit
+completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
+completion_model: bigcode/starcoder2-3b
+completion_apikey: "hf_..."    # or use $HF_TOKEN if you have it in global environment variables
 
-# running_models:
-#   - openai/gpt-4o
-#   - meta-llama/llama-3.1-8b-instruct
+running_models:   # all models mentioned in *_model are automatically running, but you can add more
+  - gpt-4o-mini
+  - gpt-4o
 
-# ------------
-# cloud_name: HuggingFace API
-# endpoint_style: "hf"
-#
-# chat_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
-# chat_apikey: "$HF_TOKEN"
-# chat_model: meta-llama/Llama-2-70b-chat-hf
-#
-# completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
-# completion_model: bigcode/starcoder2-3b
-# completion_apikey: "$HF_TOKEN"
-#
-# tokenizer_rewrite_path:
-#   meta-llama/Llama-2-70b-chat-hf: TheBloke/Llama-2-70B-fp16
-#
-# embedding_endpoint_style: "hf"
-# embedding_endpoint: "https://api-inference.huggingface.co/pipeline/feature-extraction/$MODEL"
-# embedding_apikey: "$HF_TOKEN"
-# embedding_default_model: thenlper/gte-base
-# embedding_size: 768
+# More examples https://github.com/smallcloudai/refact-lsp/tree/dev/bring_your_own_key
 
-# ------------
-# cloud_name: RefactEnterprise
-
-# copmletion_endpoint_style: <endpoint_style> # default: openai
-# completion_endpoint: <your-address>/v1/completions # default: ""
-# completion_apikey: <your-api-key> # default: ""
-# completion_model: <your-model> # default: ""
-# completion_n_ctx: <your-n-ctx> # default: 2048
-
-# chat_endpoint_style: <endpoint_style> # default: openai
-# chat_endpoint: <your-address>/v1/chat/completions # default: ""
-# chat_apikey: "<your-api-key>" # default: ""
-# chat_model: "<your-chat-model>" # default: ""
-
-# embedding_endpoint_style: <endpoint_style> # default: openai
-# embedding_endpoint: <your-address> # default: ""
-# embedding_apikey: <your-api-key> # default: ""
-# embedding_default_model: <your-model> # default: ""
-# embedding_size: <your-embedding-size> # default: 0
-
-# running_models: # all extra models will be loaded
-#   - <your-model>
-#   - <your-model>
-
-# tokenizer_path_template: <your-template-address> # default: https://huggingface.co/$MODEL/resolve/main/tokenizer.json
-# telemetry_basic_dest: <your-telemetry-address> # default: https://www.smallcloud.ai/v1/telemetry-basic
-# telemetry_basic_retrieve_my_own: <your-telemetry-address> # default: https://staging.smallcloud.ai/v1/telemetry-retrieve-my-own-stats
-# ------------
+# Refact sends basic telemetry (counters), you can send it to a different address (a Refact self-hosting server is especially useful) or set to an empty string for no telemetry.
+# telemetry_basic_dest: <your-telemetry-address>             # default: https://www.smallcloud.ai/v1/telemetry-basic
+# telemetry_basic_retrieve_my_own: <your-telemetry-address>  # default: https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats
 "#;
