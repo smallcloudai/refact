@@ -113,7 +113,11 @@ const ChatControlCheckBox: React.FC<{
         onCheckedChange={onCheckChange}
       >
         {label}
-        {fileName && <TruncateLeft>{fileName}</TruncateLeft>}
+        {fileName && (
+          <Flex ml="-3px">
+            <TruncateLeft>{fileName}</TruncateLeft>
+          </Flex>
+        )}
       </Checkbox>
       {infoText && (
         <HoverCard.Root>

@@ -6,7 +6,6 @@
   text-overflow: ellipsis;
   direction: rtl;
   max-width: 100%;
-  margin-left: -4px;
   /* line-height: var(--line-height-2, 20px); */
 }
 
