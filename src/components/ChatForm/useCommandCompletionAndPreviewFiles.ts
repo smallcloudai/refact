@@ -79,13 +79,8 @@ function useGetCommandPreviewQuery(query: string): ChatContextFile[] {
   return data;
 }
 
-function useGetPreviewFiles(
-  query: string,
-  checkboxes: Checkboxes,
-  isExecutable: boolean,
-) {
+function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
   const hasVecdb = useAppSelector(selectVecdb);
-  const [wasExecutable, setWasExecutable] = useState<boolean>(isExecutable);
 
   const queryWithCheckboxes = useMemo(
     () => addCheckboxValuesToInput(query, checkboxes, hasVecdb),
@@ -102,34 +97,17 @@ function useGetPreviewFiles(
   );
 
   useEffect(() => {
-    if (isExecutable) {
-      debounceSetPreviewQuery(queryWithCheckboxes);
-      setWasExecutable(true);
-    } else if (wasExecutable) {
-      debounceSetPreviewQuery(query);
-      setWasExecutable(false);
-    }
-  }, [
-    isExecutable,
-    debounceSetPreviewQuery,
-    query,
-    queryWithCheckboxes,
-    wasExecutable,
-  ]);
+    debounceSetPreviewQuery(queryWithCheckboxes);
+  }, [debounceSetPreviewQuery, queryWithCheckboxes]);
 
   const previewFileResponse = useGetCommandPreviewQuery(previewQuery);
-
   return previewFileResponse;
 }
 
 export function useCommandCompletionAndPreviewFiles(checkboxes: Checkboxes) {
   const { commands, requestCompletion, query } = useCommandCompletion();
 
-  const previewFileResponse = useGetPreviewFiles(
-    query,
-    checkboxes,
-    commands.is_cmd_executable,
-  );
+  const previewFileResponse = useGetPreviewFiles(query, checkboxes);
 
   return {
     commands,
