@@ -355,4 +355,5 @@ export function isChatResponseChoice(
 export type ChatResponse =
   | ChatResponseChoice
   | ChatUserMessageResponse
-  | ToolResponse;
+  | ToolResponse
+  | PlainTextResponse;
