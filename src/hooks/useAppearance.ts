@@ -37,7 +37,6 @@ export const useAppearance = () => {
   });
 
   const toggle = useCallback(() => {
-    console.log("toggle");
     if (appearance === "dark") return dispatch(setThemeMode("light"));
     if (appearance === "light") return dispatch(setThemeMode("dark"));
     if (appearance === "inherit") return dispatch(setThemeMode("dark"));
