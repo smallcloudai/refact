@@ -13,6 +13,13 @@ export type DiffOperationArgs = {
   toApply: boolean[];
   toolCallId: string;
 };
+
+export interface DiffAppliedStateResponse {
+  id: number;
+  state: boolean[];
+  can_apply: boolean[];
+}
+
 export const diffApi = createApi({
   reducerPath: "diffs",
   baseQuery: fetchBaseQuery({
@@ -28,38 +35,46 @@ export const diffApi = createApi({
   }),
   tagTypes: ["diffs"],
   endpoints: (builder) => ({
-    diffState: builder.query<
-      DiffAppliedStateResponse,
-      DiffAppliedStateArgs & { port: number }
-    >({
-      query: ({ chunks, port }) => ({
-        url: `http://127.0.0.1:${port}${DIFF_STATE_URL}`,
-        method: "POST",
-        credentials: "same-origin",
-        redirect: "follow",
-        body: { chunks },
-      }),
+    diffState: builder.query<DiffAppliedStateResponse, DiffAppliedStateArgs>({
+      queryFn: async (args, api, _extraOptions, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${DIFF_STATE_URL}`;
+        const result = await baseQuery({
+          url: url,
+          method: "POST",
+          credentials: "same-origin",
+          redirect: "follow",
+          // referrer: "no-referrer",
+          body: { chunks: args.chunks },
+        });
 
+        if (result.error) return { error: result.error };
+        // TODO: type check
+        return { data: result.data as DiffAppliedStateResponse };
+      },
       providesTags: (_result, _error, args) => {
         return [{ type: "diffs", id: args.toolCallId }];
       },
-      transformResponse: (response: unknown) => {
-        // TODO: type check
-        return response as DiffAppliedStateResponse;
-      },
     }),
-    diffApply: builder.mutation<
-      DiffOperationResponse,
-      DiffOperationArgs & { port: number }
-    >({
-      query: ({ chunks, toApply, port }) => ({
-        url: `http://127.0.0.1:${port}${DIFF_APPLY_URL}`,
-        method: "POST",
-        body: { chunks, apply: toApply },
-      }),
-      transformResponse: (response: unknown) => {
-        // TODO: type check
-        return response as DiffOperationResponse;
+    diffApply: builder.mutation<DiffOperationResponse, DiffOperationArgs>({
+      queryFn: async (args, api, _extraOptions, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${DIFF_APPLY_URL}`;
+        const result = await baseQuery({
+          url: url,
+          method: "POST",
+          credentials: "same-origin",
+          redirect: "follow",
+          body: { chunks: args.chunks, apply: args.toApply },
+        });
+
+        if (result.error) {
+          return { error: result.error };
+        }
+
+        return { data: result.data as DiffOperationResponse };
       },
       invalidatesTags: (_result, _error, args) => {
         return [{ type: "diffs", id: args.toolCallId }];
@@ -68,50 +83,6 @@ export const diffApi = createApi({
   }),
   refetchOnMountOrArgChange: true,
 });
-
-export interface DiffAppliedStateResponse {
-  id: number;
-  state: boolean[];
-  can_apply: boolean[];
-}
-
-// export async function checkDiff(
-//   chunks: DiffChunk[],
-//   lspUrl?: string,
-// ): Promise<DiffAppliedStateResponse> {
-//   const addr = lspUrl
-//     ? `${lspUrl.replace(/\/*$/, "")}${DEFF_STATE_URL}`
-//     : DEFF_STATE_URL;
-
-//   const apiKey = getApiKey();
-
-//   const response = await fetch(addr, {
-//     method: "POST",
-//     body: JSON.stringify({ chunks }),
-//     credentials: "same-origin",
-//     redirect: "follow",
-//     cache: "no-cache",
-//     referrer: "no-referrer",
-//     headers: {
-//       accept: "application/json",
-//       ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-//     },
-//   });
-
-//   if (!response.ok) {
-//     throw new Error(response.statusText);
-//   }
-
-//   const text = await response.text();
-
-//   const json = parseOrElse<DiffAppliedStateResponse>(text, {
-//     id: 0,
-//     state: [],
-//     can_apply: [],
-//   });
-
-//   return json;
-// }
 
 export interface DiffOperationResponse {
   fuzzy_results: {
@@ -139,45 +110,3 @@ export interface DiffPreviewResponse {
     file_name_add: null | string;
   }[];
 }
-
-// TODO: delete this
-// export async function doDiff(
-//   chunks: DiffChunk[],
-//   toApply: boolean[],
-//   lspUrl?: string,
-// ): Promise<DiffOperationResponse> {
-//   const addr = lspUrl
-//     ? `${lspUrl.replace(/\/*$/, "")}${DIFF_APPLY_URL}`
-//     : DIFF_APPLY_URL;
-
-//   const apiKey = getApiKey();
-
-//   const response = await fetch(addr, {
-//     method: "POST",
-//     body: JSON.stringify({
-//       apply: toApply,
-//       chunks,
-//     }),
-//     credentials: "same-origin",
-//     redirect: "follow",
-//     cache: "no-cache",
-//     referrer: "no-referrer",
-//     headers: {
-//       accept: "application/json",
-//       ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-//     },
-//   });
-
-//   if (!response.ok) {
-//     throw new Error(response.statusText);
-//   }
-
-//   const text = await response.text();
-
-//   const json = parseOrElse<DiffOperationResponse>(text, {
-//     fuzzy_results: [],
-//     state: [],
-//   });
-
-//   return json;
-// }

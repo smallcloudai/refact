@@ -14,14 +14,13 @@ import { TruncateLeft } from "../Text";
 import { ScrollArea } from "../ScrollArea";
 import {
   useAppSelector,
-  useDiffApplyMutation,
   useAppDispatch,
   // useGetManyDiffState,
 } from "../../app/hooks";
+import { useDiffApplyMutation } from "../../hooks";
 import { selectMessages } from "../../features/Chat/chatThread";
 import { createSelector } from "@reduxjs/toolkit";
 import { RootState } from "../../app/store";
-import { selectLspPort } from "../../features/Config/configSlice";
 
 const selectDiffMessages = createSelector([selectMessages], (messages) =>
   messages.filter(isDiffMessage),
@@ -36,27 +35,22 @@ const selectDiffArgs = createSelector([selectDiffMessages], (diffs) => {
 
 const selectAllDiffsState =
   (args: DiffAppliedStateArgs[]) => (state: RootState) => {
-    return args.map((arg) =>
-      diffApi.endpoints.diffState.select({
-        port: state.config.lspPort,
-        ...arg,
-      })(state),
-    );
+    return args.map((arg) => diffApi.endpoints.diffState.select(arg)(state));
   };
 
+// TODO: add hooks and selector for getting the many results. https://redux-toolkit.js.org/rtk-query/usage/queries#selecting-data-from-a-query-result
 const useGetManyDiffState = () => {
   const dispatch = useAppDispatch();
-  const port = useAppSelector(selectLspPort);
   const args = useAppSelector(selectDiffArgs);
 
   useEffect(() => {
     const results = args.map((arg) =>
-      dispatch(diffApi.endpoints.diffState.initiate({ port, ...arg })),
+      dispatch(diffApi.endpoints.diffState.initiate(arg)),
     );
     return () => {
       results.forEach((result) => result.unsubscribe());
     };
-  }, [args, dispatch, port]);
+  }, [args, dispatch]);
 
   const selectAll = useMemo(() => selectAllDiffsState(args), [args]);
 
@@ -73,10 +67,10 @@ const useGetManyDiffState = () => {
     [all],
   );
 
+  // TODO: https://redux-toolkit.js.org/rtk-query/usage/queries#selecting-data-from-a-query-result
   const getByArg = useCallback(
-    (arg: DiffAppliedStateArgs) =>
-      diffApi.endpoints.diffState.select({ port, ...arg }),
-    [port],
+    (arg: DiffAppliedStateArgs) => diffApi.endpoints.diffState.select(arg),
+    [],
   );
 
   return {

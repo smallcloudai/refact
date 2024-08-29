@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useAppSelector } from "../../app/hooks";
 import { selectSelectedSnippet } from "../../features/Chat/selectedSnippet";
 import { selectActiveFile } from "../../features/Chat/activeFile";
-import { useConfig } from "../../app/hooks";
+import { useConfig } from "../../hooks";
 import type { Checkbox } from "./ChatControls";
 import {
   selectIsStreaming,

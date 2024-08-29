@@ -90,6 +90,9 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
   const store = configureStore({
     reducer: persistedReducer,
     preloadedState: initialState,
+    devTools: {
+      maxAge: 1000,
+    },
     middleware: (getDefaultMiddleware) => {
       return (
         getDefaultMiddleware({

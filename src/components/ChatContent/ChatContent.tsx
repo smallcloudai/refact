@@ -18,7 +18,7 @@ import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
 import { DiffContent } from "./DiffContent";
 import { PlainText } from "./PlainText";
-import { useConfig } from "../../app/hooks";
+import { useConfig } from "../../hooks";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RootState } from "../../app/store";
 import { next } from "../../features/TipOfTheDay";

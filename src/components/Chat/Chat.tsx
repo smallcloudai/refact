@@ -27,28 +27,14 @@ export type ChatProps = {
   host: Config["host"];
   tabbed: Config["tabbed"];
   backFromChat: () => void;
-  // TODO: this
-  // openChatInNewTab: () => void;
   style?: React.CSSProperties;
-
   unCalledTools: boolean;
-  // enableSend: (value: boolean) => void;
-
   // TODO: update this
   caps: ChatFormProps["caps"];
-  commands: ChatFormProps["commands"];
-
-  requestCommandsCompletion: ChatFormProps["requestCommandsCompletion"];
-
   maybeSendToSidebar: ChatFormProps["onClose"];
-
-  filesInPreview: ChatFormProps["filesInPreview"];
-
   prompts: ChatFormProps["prompts"];
-
   onSetSystemPrompt: ChatFormProps["onSetSystemPrompt"];
   selectedSystemPrompt: ChatFormProps["selectedSystemPrompt"];
-  requestPreviewFiles: ChatFormProps["requestPreviewFiles"];
 };
 
 export const Chat: React.FC<ChatProps> = ({
@@ -57,14 +43,10 @@ export const Chat: React.FC<ChatProps> = ({
   backFromChat,
   unCalledTools,
   caps,
-  commands,
-  requestCommandsCompletion,
   maybeSendToSidebar,
-  filesInPreview,
   prompts,
   onSetSystemPrompt,
   selectedSystemPrompt,
-  requestPreviewFiles,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
   const activeFile = useAppSelector(selectActiveFile);
@@ -96,17 +78,6 @@ export const Chat: React.FC<ChatProps> = ({
     // openChatInNewTab: _openChatInNewTab,
   } = useEventsBusForIDE();
 
-  // const handleOpenChatInNewTab = useCallback(() => {
-  //   openChatInNewTab(chatThread);
-  //   // TODO: navigate to history
-  // }, [chatThread, openChatInNewTab]);
-
-  // TODO: add other posable errors
-  // const onClearError = () => dispatch(clearChatError({ id: chatId }));
-  // TODO: add other posable errors
-  // const error = useAppSelector((state) => state.chat.error ?? caps.error);
-
-  // TODO: handle stop
   const handleSummit = useCallback(
     (value: string) => {
       submit(value);
@@ -220,15 +191,11 @@ export const Chat: React.FC<ChatProps> = ({
         onSetChatModel={onSetChatModel}
         caps={caps}
         onStopStreaming={abort}
-        commands={commands}
-        requestCommandsCompletion={requestCommandsCompletion}
         onClose={maybeSendToSidebar}
-        filesInPreview={filesInPreview}
         onTextAreaHeightChange={onTextAreaHeightChange}
         prompts={prompts}
         onSetSystemPrompt={onSetSystemPrompt}
         selectedSystemPrompt={selectedSystemPrompt}
-        requestPreviewFiles={requestPreviewFiles}
       />
       <Flex justify="between" pl="1" pr="1" pt="1">
         {messages.length > 0 && (

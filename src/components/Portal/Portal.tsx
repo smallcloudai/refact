@@ -1,6 +1,6 @@
 import React from "react";
 import { createPortal } from "react-dom";
-import { useConfig } from "../../app/hooks";
+import { useConfig } from "../../hooks";
 import { Theme } from "../Theme";
 
 export type PortalProps = { element?: HTMLElement; children: JSX.Element };

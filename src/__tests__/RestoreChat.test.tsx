@@ -11,7 +11,6 @@ import {
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 
-// TODO: get user
 describe("Restore Chat from history", () => {
   test("Restore chat from history", async () => {
     server.use(
@@ -25,7 +24,7 @@ describe("Restore Chat from history", () => {
 
     const { user, ...app } = render(<InnerApp />, {
       preloadedState: {
-        pages: [{ name: "history" }],
+        pages: [{ name: "initial setup" }, { name: "history" }],
         history: {
           id: {
             title: "test title",

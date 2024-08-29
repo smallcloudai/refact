@@ -6,20 +6,16 @@ import styles from "./ChatForm.module.css";
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
 import { TextArea, TextAreaProps } from "../TextArea";
 import { Form } from "./Form";
-import { useOnPressedEnter, useIsOnline } from "../../hooks";
+import { useOnPressedEnter, useIsOnline, useConfig } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { Button } from "@radix-ui/themes";
-import { ComboBox, type ComboBoxProps } from "../ComboBox";
-import {
-  ChatContextFile,
-  CodeChatModel,
-  SystemPrompts,
-} from "../../services/refact";
+import { ComboBox } from "../ComboBox";
+import { CodeChatModel, SystemPrompts } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
-import { usePreviewFileRequest } from "./usePreviewFileRequest";
-import { useAppDispatch, useAppSelector, useConfig } from "../../app/hooks";
+import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useCheckboxes } from "./useCheckBoxes";
@@ -28,7 +24,6 @@ export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
-
   caps: {
     error: string | null;
     fetching: boolean;
@@ -39,16 +34,8 @@ export type ChatFormProps = {
   onSetChatModel: (model: string) => void;
   isStreaming: boolean;
   onStopStreaming: () => void;
-  // TODO this can moved lower
-  commands: ComboBoxProps["commands"];
-  requestCommandsCompletion: ComboBoxProps["requestCommandsCompletion"];
-  requestPreviewFiles: (input: string) => void;
-
-  filesInPreview: ChatContextFile[];
-
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
-
   prompts: SystemPrompts;
   onSetSystemPrompt: (prompt: SystemPrompts) => void;
   selectedSystemPrompt: SystemPrompts;
@@ -64,10 +51,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onSetChatModel,
   isStreaming,
   onStopStreaming,
-  commands,
-  requestCommandsCompletion,
-  requestPreviewFiles,
-  filesInPreview,
   onTextAreaHeightChange,
   showControls,
   prompts,
@@ -83,15 +66,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const { checkboxes, onToggleCheckbox, setInteracted, unCheckAll } =
     useCheckboxes();
 
-  const refs = useTourRefs();
+  const { previewFiles, commands, requestCompletion } =
+    useCommandCompletionAndPreviewFiles(checkboxes);
 
-  usePreviewFileRequest({
-    isCommandExecutable: commands.is_cmd_executable,
-    requestPreviewFiles: requestPreviewFiles,
-    query: value,
-    vecdb: config.features?.vecdb ?? false,
-    checkboxes,
-  });
+  const refs = useTourRefs();
 
   const isOnline = useIsOnline();
 
@@ -138,6 +116,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }
 
+  // return <div></div>;
+
   return (
     <Card mt="1" style={{ flexShrink: 0, position: "static" }}>
       {!isOnline && <Callout type="info">Offline</Callout>}
@@ -167,14 +147,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           className={className}
           onSubmit={() => handleSubmit()}
         >
-          <FilesPreview
-            files={filesInPreview}
-            // onRemovePreviewFile={removePreviewFileByName}
-          />
+          <FilesPreview files={previewFiles} />
 
           <ComboBox
             commands={commands}
-            requestCommandsCompletion={requestCommandsCompletion}
+            requestCommandsCompletion={requestCompletion}
             value={value}
             onChange={handleChange}
             onSubmit={(event) => {

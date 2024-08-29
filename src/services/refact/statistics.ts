@@ -1,4 +1,8 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import {
+  createApi,
+  fetchBaseQuery,
+  type FetchBaseQueryError,
+} from "@reduxjs/toolkit/query/react";
 
 import { STATISTIC_URL } from "./consts";
 import { RootState } from "../../app/store";
@@ -20,16 +24,36 @@ export const statisticsApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    getStatisticData: builder.query<StatisticData, { port: number }>({
-      query: ({ port }) => `http://127.0.0.1:${port}${STATISTIC_URL}`,
-      transformResponse: (response: unknown): StatisticData => {
-        if (!isStatisticDataResponse(response)) {
-          throw new Error("Invalid response for statistic data");
+    getStatisticData: builder.query<StatisticData, undefined>({
+      queryFn: async (_args, api, _opts, baseQuery) => {
+        const getState = api.getState as () => RootState;
+        const state = getState();
+        const port = state.config.lspPort;
+        const url = `http://127.0.0.1:${port}${STATISTIC_URL}`;
+        const result = await baseQuery({
+          url,
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+        if (result.error) return { error: result.error };
+        if (!isStatisticDataResponse(result.data)) {
+          return {
+            error: {
+              data: result.data,
+              error: "Invalid response from server",
+            } as FetchBaseQueryError,
+          };
         }
         try {
-          return JSON.parse(response.data) as StatisticData;
-        } catch {
-          throw new Error("Invalid response for statistic data");
+          const json = JSON.parse(result.data.data) as StatisticData;
+          return { data: json };
+        } catch (e) {
+          return {
+            error: {
+              data: result.data.data,
+              error: "Invalid response from server",
+            } as FetchBaseQueryError,
+          };
         }
       },
     }),

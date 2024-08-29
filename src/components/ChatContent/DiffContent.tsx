@@ -8,15 +8,11 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
-import {
-  useAppSelector,
-  useConfig,
-  useDiffApplyMutation,
-  useDiffStateQuery,
-} from "../../app/hooks";
+import { useAppSelector } from "../../app/hooks";
+import { useDiffApplyMutation, useConfig } from "../../hooks";
 import { selectLspPort } from "../../features/Config/configSlice";
 import { DIFF_PREVIEW_URL } from "../../services/refact/consts";
-import { useEventsBusForIDE } from "../../hooks";
+import { useEventsBusForIDE, useDiffStateQuery } from "../../hooks";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 

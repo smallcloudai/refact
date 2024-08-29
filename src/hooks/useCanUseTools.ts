@@ -1,9 +1,7 @@
 import { useMemo } from "react";
-import {
-  useAppSelector,
-  useGetCapsQuery,
-  useGetToolsQuery,
-} from "../app/hooks";
+import { useAppSelector } from "../app/hooks";
+import { useGetToolsQuery } from "./useGetToolsQuery";
+import { useGetCapsQuery } from "./useGetCapsQuery";
 import { selectModel } from "../features/Chat/chatThread";
 import { CodeChatModel } from "../services/refact/caps";
 

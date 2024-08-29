@@ -6,9 +6,9 @@ import { SelfHostingSetup } from "../components/SelfHostingSetup";
 import { Flex } from "@radix-ui/themes";
 import { Chat } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
-import { useEventsBusForIDE } from "../hooks";
+import { useEventsBusForIDE, useConfig } from "../hooks";
 
-import { useAppDispatch, useAppSelector, useConfig } from "../app/hooks";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { FIMDebug } from "./FIM";
 import { store, persistor, RootState } from "../app/store";
 import { Provider } from "react-redux";
