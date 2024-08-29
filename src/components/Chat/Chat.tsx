@@ -4,7 +4,7 @@ import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 import type { Config } from "../../features/Config/configSlice";
 import { useEventsBusForIDE } from "../../hooks";
 import {

@@ -19,7 +19,7 @@ import { useAutoScroll } from "./useAutoScroll";
 import { DiffContent } from "./DiffContent";
 import { PlainText } from "./PlainText";
 import { useConfig } from "../../hooks";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 import { RootState } from "../../app/store";
 import { next } from "../../features/TipOfTheDay";
 import { selectMessages } from "../../features/Chat/chatThread";

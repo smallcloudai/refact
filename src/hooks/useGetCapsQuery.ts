@@ -1,4 +1,4 @@
-import { useAppSelector } from "../app/hooks";
+import { useAppSelector } from "./useAppSelector";
 import { getErrorMessage } from "../features/Errors/errorsSlice";
 import { capsApi } from "../services/refact/caps";
 

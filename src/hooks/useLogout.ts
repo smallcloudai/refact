@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useAppDispatch } from "../app/hooks";
+import { useAppDispatch } from "./useAppDispatch";
 import { usePostMessage } from "./usePostMessage";
 import { EVENT_NAMES_FROM_SETUP } from "../events/setup";
 import { setApiKey } from "../features/Config/configSlice";

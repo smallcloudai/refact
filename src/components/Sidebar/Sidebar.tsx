@@ -3,7 +3,7 @@ import { Box, Flex, Button } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { DropdownNavigationOptions, Footer } from "./Footer";
 import { Spinner } from "@radix-ui/themes";
-import { useAppSelector, useAppDispatch } from "../../app/hooks";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 import {
   getHistory,
   deleteChatById,

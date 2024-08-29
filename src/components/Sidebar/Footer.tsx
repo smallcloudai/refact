@@ -8,9 +8,6 @@ import {
 } from "@radix-ui/themes";
 import { DiscordLogoIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
 
-// import { Coin } from "../../images";
-
-import { useAppSelector } from "../../app/hooks";
 import {
   selectHost,
   type Config,
@@ -22,6 +19,7 @@ import {
   useGetUser,
   useLogout,
   useConfig,
+  useAppSelector,
 } from "../../hooks";
 import { Coin } from "../../images/coin";
 import styles from "./sidebar.module.css";

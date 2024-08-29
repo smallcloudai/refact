@@ -19,3 +19,5 @@ export * from "./useAppearance";
 export * from "./useDiffApplyMutation";
 export * from "./useDiffStateQuery";
 export * from "./useConfig";
+export * from "./useAppDispatch";
+export * from "./useAppSelector";

@@ -16,7 +16,7 @@ import {
   setToolUse,
 } from "../../features/Chat/chatThread";
 import { useCanUseTools } from "../../hooks/useCanUseTools";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 
 type CapsSelectProps = {
   value: string;

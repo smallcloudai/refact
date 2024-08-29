@@ -1,7 +1,8 @@
 import { useCallback, useEffect } from "react";
 import { usePostMessage } from "./usePostMessage";
 import { useEffectOnce } from "./useEffectOnce";
-import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { useAppSelector } from "./useAppSelector";
+import { useAppDispatch } from "./useAppDispatch";
 import type { FimDebugData } from "../services/refact/fim";
 import {
   clearError,
