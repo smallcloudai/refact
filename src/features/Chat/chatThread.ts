@@ -63,7 +63,7 @@ const createInitialState = (): Chat => {
     waiting_for_response: false,
     cache: {},
     system_prompt: {},
-    tool_use: "agent",
+    tool_use: "explore",
     send_immediately: false,
   };
 };
