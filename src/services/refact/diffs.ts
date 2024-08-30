@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { DIFF_STATE_URL, DIFF_APPLY_URL } from "./consts";
+import { DIFF_STATE_URL, DIFF_APPLY_URL, DIFF_PREVIEW_URL } from "./consts";
 import { DiffChunk } from "./types";
 import { RootState } from "../../app/store";
 
@@ -12,6 +12,11 @@ export type DiffOperationArgs = {
   chunks: DiffChunk[];
   toApply: boolean[];
   toolCallId: string;
+};
+
+export type DiffPreviewArgs = {
+  chunks: DiffChunk[];
+  toApply: boolean[];
 };
 
 export interface DiffAppliedStateResponse {
@@ -33,7 +38,7 @@ export const diffApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["diffs"],
+  tagTypes: ["DIFF_STATE", "DIFF_PREVIEW"],
   endpoints: (builder) => ({
     diffState: builder.query<DiffAppliedStateResponse, DiffAppliedStateArgs>({
       queryFn: async (args, api, _extraOptions, baseQuery) => {
@@ -54,7 +59,7 @@ export const diffApi = createApi({
         return { data: result.data as DiffAppliedStateResponse };
       },
       providesTags: (_result, _error, args) => {
-        return [{ type: "diffs", id: args.toolCallId }];
+        return [{ type: "DIFF_STATE", id: args.toolCallId }];
       },
     }),
     diffApply: builder.mutation<DiffOperationResponse, DiffOperationArgs>({
@@ -77,8 +82,41 @@ export const diffApi = createApi({
         return { data: result.data as DiffOperationResponse };
       },
       invalidatesTags: (_result, _error, args) => {
-        return [{ type: "diffs", id: args.toolCallId }];
+        return [
+          { type: "DIFF_STATE", id: args.toolCallId },
+          { type: "DIFF_PREVIEW", id: args.toolCallId },
+        ];
       },
+    }),
+
+    diffPreview: builder.query<DiffPreviewResponse, DiffPreviewArgs>({
+      queryFn: async (args, api, _extraOptions, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${DIFF_PREVIEW_URL}`;
+        const result = await baseQuery({
+          url: url,
+          method: "POST",
+          credentials: "same-origin",
+          redirect: "follow",
+          body: { chunks: args.chunks, apply: args.toApply },
+        });
+
+        if (result.error) {
+          return { error: result.error };
+        }
+
+        return { data: result.data as DiffPreviewResponse };
+      },
+      // providesTags: (_result, _error, args) => {
+      //   return [{ type: "DIFF_PREVIEW", id: args.toolCallId }];
+      // },
+      // invalidatesTags: (res, _error) => {
+      //   if (!res) return [];
+      //   return res.state.map((chunk) => {
+      //     return { type: "DIFF_STATE", id: chunk.chunk_id };
+      //   });
+      // },
     }),
   }),
   refetchOnMountOrArgChange: true,
