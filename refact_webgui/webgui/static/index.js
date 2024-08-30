@@ -196,10 +196,10 @@ if (fintune_tab) {
             return response.json();
         })
         .then(function(data) {
-            if(!data.status) {
-                disable_tab('finetune', data.msg);
-                disable_tab('upload', data.msg);
-            }
+            // if(data.status) {
+            //     disable_tab('finetune', data.msg);
+            //     disable_tab('upload', data.msg);
+            // }
         })
         .catch(function(error) {
             console.log('tab-finetune-status',error);
