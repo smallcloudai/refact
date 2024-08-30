@@ -1,0 +1,126 @@
+import { Button, Flex, TabNav, Text } from "@radix-ui/themes";
+import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
+import { PlusIcon } from "@radix-ui/react-icons";
+import { newChatAction } from "../../events";
+import { restart, useTourRefs } from "../../features/Tour";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { popBackTo, push } from "../../features/Pages/pagesSlice";
+import { useCallback } from "react";
+import { getHistory } from "../../features/History/historySlice";
+import { restoreChat } from "../../features/Chat";
+import { TruncateLeft } from "../Text";
+
+export type DashboardTab = {
+  type: "dashboard";
+};
+
+function isDashboardTab(tab: Tab): tab is DashboardTab {
+  return tab.type === "dashboard";
+}
+
+export type ChatTab = {
+  type: "chat";
+  id: string;
+};
+
+function isChatTab(tab: Tab): tab is ChatTab {
+  return tab.type === "chat";
+}
+
+export type Tab = DashboardTab | ChatTab;
+
+export type ToolbarProps = {
+  activeTab: Tab;
+};
+
+export const Toolbar = ({ activeTab }: ToolbarProps) => {
+  const dispatch = useAppDispatch();
+
+  const refs = useTourRefs();
+
+  const history = useAppSelector(getHistory, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
+
+  const handleNavigation = (to: DropdownNavigationOptions | "chat") => {
+    if (to === "settings") {
+      openSettings();
+    } else if (to === "hot keys") {
+      openHotKeys();
+    } else if (to === "fim") {
+      dispatch(push({ name: "fill in the middle debug page" }));
+    } else if (to === "stats") {
+      dispatch(push({ name: "statistics page" }));
+    } else if (to === "restart tour") {
+      dispatch(restart());
+      dispatch(popBackTo("initial setup"));
+      dispatch(push({ name: "welcome" }));
+    } else if (to === "chat") {
+      dispatch(push({ name: "chat" }));
+    }
+  };
+
+  const onCreateNewChat = () => {
+    dispatch(newChatAction());
+    handleNavigation("chat");
+  };
+
+  const goToTab = useCallback(
+    (tab: Tab) => {
+      if (tab.type === "dashboard") {
+        dispatch(popBackTo("history"));
+      } else {
+        const chat = history.find((chat) => chat.id === tab.id);
+        if (chat != undefined) {
+          dispatch(restoreChat(chat));
+        }
+        dispatch(popBackTo("history"));
+        dispatch(push({ name: "chat" }));
+      }
+    },
+    [dispatch, history],
+  );
+
+  return (
+    <Flex style={{ alignItems: "center", margin: 4, gap: 4 }}>
+      <TabNav.Root style={{ flex: 1, overflowX: "scroll" }}>
+        <TabNav.Link
+          active={isDashboardTab(activeTab)}
+          onClick={() => goToTab({ type: "dashboard" })}
+        >
+          Dashboard
+        </TabNav.Link>
+        {history.map((chat) => {
+          return (
+            <TabNav.Link
+              active={isChatTab(activeTab) && activeTab.id == chat.id}
+              key={chat.id}
+              onClick={() => goToTab({ type: "chat", id: chat.id })}
+            >
+              <TruncateLeft style={{ maxWidth: "140px" }}>
+                {chat.title}
+              </TruncateLeft>
+            </TabNav.Link>
+          );
+        })}
+      </TabNav.Root>
+      <Button
+        variant="outline"
+        ref={(x) => refs.setNewChat(x)}
+        onClick={onCreateNewChat}
+      >
+        <PlusIcon />
+        <Text>New chat</Text>
+      </Button>
+      <Dropdown handleNavigation={handleNavigation} />
+    </Flex>
+  );
+};
+
+function openSettings() {
+  throw new Error("Function not implemented.");
+}
+
+function openHotKeys() {
+  throw new Error("Function not implemented.");
+}

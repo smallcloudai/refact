@@ -23,9 +23,8 @@ import {
   pop,
   selectPages,
 } from "../features/Pages/pagesSlice";
-import { TourProvider, restart } from "./Tour";
+import { TourProvider } from "./Tour";
 import { Tour } from "../components/Tour";
-import { DropdownNavigationOptions } from "../components/Sidebar/Footer";
 import { TourEnd } from "../components/Tour/TourEnd";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
 import { BringYourOwnKey } from "../components/BringYourOwnKey/BringYourOwnKey";
@@ -44,7 +43,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     [pages],
   );
 
-  const { openHotKeys, openSettings, setupHost } = useEventsBusForIDE();
+  const { setupHost } = useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
   useEventBusForWeb();
   useEventBusForApp();
@@ -99,34 +98,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     dispatch(pop());
   };
 
-  // const handleCreateNewChat = useCallback(() => {
-  //   historyHook.createNewChat();
-  //   navigate({ type: "push", page: { name: "chat" } });
-  // }, [historyHook, navigate]);
-
-  const handleNavigation = useCallback(
-    (to: DropdownNavigationOptions | "chat") => {
-      if (to === "settings") {
-        openSettings();
-      } else if (to === "hot keys") {
-        openHotKeys();
-      } else if (to === "fim") {
-        dispatch(push({ name: "fill in the middle debug page" }));
-      } else if (to === "stats") {
-        dispatch(push({ name: "statistics page" }));
-      } else if (to === "restart tour") {
-        dispatch(restart());
-        dispatch(popBackTo("initial setup"));
-        dispatch(push({ name: "welcome" }));
-      } else if (to === "chat") {
-        dispatch(push({ name: "chat" }));
-      }
-    },
-    [dispatch, openHotKeys, openSettings],
-  );
-
-  // goTo settings, fim, stats, hot keys
-
   return (
     <Flex
       style={{
@@ -166,9 +137,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
               <Sidebar
                 takingNotes={false}
                 onOpenChatInTab={undefined}
-                handleNavigation={handleNavigation}
                 style={{
-                  maxWidth: "min(100vw, 540px)",
                   flex: 1,
                   height: "100%",
                 }}

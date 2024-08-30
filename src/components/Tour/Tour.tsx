@@ -124,7 +124,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
       <TourBubble
         text={"Click here to discover more."}
         step={8}
-        down={false}
+        down={true}
         containerWidth="min(100%, 540px)"
         target={refs.more}
         onPage={"history"}

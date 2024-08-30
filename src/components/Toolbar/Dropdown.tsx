@@ -1,47 +1,34 @@
-import React, { useCallback } from "react";
-import {
-  Flex,
-  IconButton,
-  Link,
-  DropdownMenu,
-  LinkProps,
-} from "@radix-ui/themes";
-import { DiscordLogoIcon, DotsVerticalIcon } from "@radix-ui/react-icons";
-
-// import { Coin } from "../../images";
-
+import { useCallback } from "react";
 import { useAppSelector } from "../../app/hooks";
-import {
-  selectHost,
-  type Config,
-  selectLspPort,
-} from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
+  useConfig,
   useEventsBusForIDE,
   useGetUser,
   useLogout,
-  useConfig,
 } from "../../hooks";
-import { Coin } from "../../images/coin";
-import styles from "./sidebar.module.css";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
+import {
+  Config,
+  selectHost,
+  selectLspPort,
+} from "../../features/Config/configSlice";
 import { CONFIG_PATH_URL } from "../../services/refact/consts";
+import { DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
+import { HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { Coin } from "../../images";
 
-const LinkItem: React.FC<LinkProps> = ({ children, href }) => {
-  return (
-    <Flex asChild gap="1" align="center">
-      <Link
-        size="1"
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        underline="hover"
-      >
-        {children}
-      </Link>
-    </Flex>
-  );
+export type DropdownNavigationOptions =
+  | "fim"
+  | "stats"
+  | "settings"
+  | "hot keys"
+  | "restart tour"
+  | "cloud login"
+  | "";
+
+type DropdownProps = {
+  handleNavigation: (to: DropdownNavigationOptions) => void;
 };
 
 function linkForBugReports(host: Config["host"]): string {
@@ -66,19 +53,9 @@ function linkForAccount(host: Config["host"]): string {
   }
 }
 
-export type DropdownNavigationOptions =
-  | "fim"
-  | "stats"
-  | "settings"
-  | "hot keys"
-  | "restart tour"
-  | "cloud login"
-  | "";
-
-type SettingsProps = {
-  handleNavigation: (to: DropdownNavigationOptions) => void;
-};
-const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
+export const Dropdown: React.FC<DropdownProps> = ({
+  handleNavigation,
+}: DropdownProps) => {
   const refs = useTourRefs();
   const user = useGetUser();
   const host = useAppSelector(selectHost);
@@ -105,7 +82,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
         <IconButton variant="outline" ref={(x) => refs.setMore(x)}>
-          <DotsVerticalIcon />
+          <HamburgerMenuIcon />
         </IconButton>
       </DropdownMenu.Trigger>
 
@@ -124,8 +101,7 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
         {user.data && (
           <DropdownMenu.Label>
             <Flex align="center" gap="1">
-              <Coin className={styles.coin} /> {user.data.metering_balance}{" "}
-              coins
+              <Coin /> {user.data.metering_balance} coins
             </Flex>
           </DropdownMenu.Label>
         )}
@@ -205,22 +181,5 @@ const Settings: React.FC<SettingsProps> = ({ handleNavigation }) => {
         </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
-  );
-};
-
-export type FooterProps = {
-  handleNavigation: (to: DropdownNavigationOptions) => void;
-};
-
-export const Footer: React.FC<FooterProps> = ({ handleNavigation }) => {
-  return (
-    <Flex direction="column" gap="2" flexGrow="1" justify="center">
-      <Flex justify="between" align="center">
-        <LinkItem href="https://www.smallcloud.ai/discord">
-          <DiscordLogoIcon width="10px" height="10px" /> Discord
-        </LinkItem>
-        <Settings handleNavigation={handleNavigation} />
-      </Flex>
-    </Flex>
   );
 };

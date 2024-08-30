@@ -1,22 +1,23 @@
 import React, { useCallback } from "react";
-import { Box, Flex, Button } from "@radix-ui/themes";
+import { Box, Flex } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
-import { DropdownNavigationOptions, Footer } from "./Footer";
 import { Spinner } from "@radix-ui/themes";
 import { useAppSelector, useAppDispatch } from "../../app/hooks";
 import {
   getHistory,
   deleteChatById,
 } from "../../features/History/historySlice";
-import { newChatAction, restoreChat } from "../../features/Chat/chatThread";
+import { restoreChat } from "../../features/Chat/chatThread";
 import type { ChatThread } from "../../features/Chat/chatThread";
-import { useTourRefs } from "../../features/Tour";
+import { Toolbar } from "../Toolbar";
+import { push } from "../../features/Pages/pagesSlice";
+import { PageWrapper } from "../PageWrapper";
+import { useConfig } from "../../hooks";
 
 export type SidebarProps = {
   takingNotes: boolean;
   className?: string;
   style?: React.CSSProperties;
-  handleNavigation: (to: DropdownNavigationOptions | "chat") => void;
 } & Omit<
   ChatHistoryProps,
   | "history"
@@ -26,11 +27,7 @@ export type SidebarProps = {
   | "currentChatId"
 >;
 
-export const Sidebar: React.FC<SidebarProps> = ({
-  takingNotes,
-  style,
-  handleNavigation,
-}) => {
+export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
   const history = useAppSelector(getHistory, {
@@ -39,44 +36,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
   });
 
   const onDeleteHistoryItem = (id: string) => dispatch(deleteChatById(id));
-  const onCreateNewChat = () => {
-    dispatch(newChatAction());
-    handleNavigation("chat");
-  };
   const onHistoryItemClick = useCallback(
     (thread: ChatThread) => {
       dispatch(restoreChat(thread));
-      handleNavigation("chat");
+      dispatch(push({ name: "chat" }));
     },
-    [dispatch, handleNavigation],
+    [dispatch],
   );
 
-  const refs = useTourRefs();
+  const { host } = useConfig();
 
   return (
-    <Flex direction="column" style={style}>
-      <Flex mt="4" mb="4">
+    <PageWrapper host={host} style={style}>
+      <Toolbar activeTab={{ type: "dashboard" }} />
+      <Flex mt="4">
         <Box position="absolute" ml="5" mt="2">
           <Spinner loading={takingNotes} title="taking notes" />
         </Box>
-        <Button
-          variant="outline"
-          ml="auto"
-          mr="auto"
-          onClick={onCreateNewChat}
-          ref={(x) => refs.setNewChat(x)}
-        >
-          Start a new chat
-        </Button>
       </Flex>
       <ChatHistory
         history={history}
         onHistoryItemClick={onHistoryItemClick}
         onDeleteHistoryItem={onDeleteHistoryItem}
       />
-      <Flex p="2" pb="4">
-        <Footer handleNavigation={handleNavigation} />
-      </Flex>
-    </Flex>
+    </PageWrapper>
   );
 };
