@@ -9,7 +9,6 @@ export type CompletionArgs = {
   query: string;
   cursor: number;
   top_n?: number;
-  port: number;
 };
 
 export const commandsApi = createApi({
@@ -30,9 +29,12 @@ export const commandsApi = createApi({
       CommandCompletionResponse,
       CompletionArgs
     >({
-      query: (args: CompletionArgs) => {
-        return {
-          url: `http://127.0.0.1:${args.port}${AT_COMMAND_COMPLETION}`,
+      queryFn: async (args, api, _opts, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${AT_COMMAND_COMPLETION}`;
+        const response = await baseQuery({
+          url,
           method: "POST",
           credentials: "same-origin",
           redirect: "follow",
@@ -41,49 +43,63 @@ export const commandsApi = createApi({
             cursor: args.cursor,
             top_n: args.top_n ?? 5,
           },
-        };
-      },
-      transformResponse: (response) => {
-        if (
-          !isCommandCompletionResponse(response) &&
-          !isDetailMessage(response)
-        ) {
-          throw new Error("Invalid response from command completion");
-        }
+        });
 
-        if (isDetailMessage(response)) {
+        if (response.error) return { error: response.error };
+        if (isCommandCompletionResponse(response.data)) {
+          return { data: response.data };
+        } else if (isDetailMessage(response.data)) {
           return {
-            completions: [],
-            replace: [0, 0],
-            is_cmd_executable: false,
+            data: {
+              completions: [],
+              replace: [0, 0],
+              is_cmd_executable: false,
+            },
+          };
+        } else {
+          return {
+            error: {
+              error: "Invalid response from command completion",
+              data: response.data,
+              status: "CUSTOM_ERROR",
+            },
           };
         }
-        return response;
       },
     }),
-    getCommandPreview: builder.query<
-      ChatContextFile[],
-      { query: string; port: number }
-    >({
-      query: ({ query, port }) => {
-        return {
-          url: `http://127.0.0.1:${port}${AT_COMMAND_PREVIEW}`,
+    getCommandPreview: builder.query<ChatContextFile[], string>({
+      queryFn: async (query, api, _opts, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${AT_COMMAND_PREVIEW}`;
+        const response = await baseQuery({
+          url,
           method: "POST",
           credentials: "same-origin",
           redirect: "follow",
           body: { query },
-        };
-      },
-      transformResponse: (response) => {
-        if (!isCommandPreviewResponse(response) && !isDetailMessage(response)) {
-          throw new Error("Invalid response from command preview");
+        });
+
+        if (response.error) return { error: response.error };
+
+        if (
+          !isCommandPreviewResponse(response.data) &&
+          !isDetailMessage(response.data)
+        ) {
+          return {
+            error: {
+              data: response.data,
+              status: "CUSTOM_ERROR",
+              error: "Invalid response from command preview",
+            },
+          };
         }
 
-        if (isDetailMessage(response)) {
-          return [];
+        if (isDetailMessage(response.data)) {
+          return { data: [] };
         }
 
-        const files = response.messages.reduce<ChatContextFile[]>(
+        const files = response.data.messages.reduce<ChatContextFile[]>(
           (acc, { content }) => {
             const fileData = parseOrElse<ChatContextFile[]>(content, []);
             return [...acc, ...fileData];
@@ -91,7 +107,7 @@ export const commandsApi = createApi({
           [],
         );
 
-        return files;
+        return { data: files };
       },
     }),
   }),

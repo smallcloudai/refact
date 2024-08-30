@@ -3,7 +3,7 @@ import { useDebounceCallback } from "usehooks-ts";
 import { Checkboxes } from "./useCheckBoxes";
 import { useHasCaps, useAppSelector } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
-import { selectLspPort, selectVecdb } from "../../features/Config/configSlice";
+import { selectVecdb } from "../../features/Config/configSlice";
 import {
   type CommandCompletionResponse,
   commandsApi,
@@ -15,10 +15,9 @@ function useGetCommandCompletionQuery(
   cursor: number,
   skip = false,
 ): CommandCompletionResponse {
-  const lspPort = useAppSelector(selectLspPort);
   const hasCaps = useHasCaps();
   const { data } = commandsApi.useGetCommandCompletionQuery(
-    { query, cursor, port: lspPort },
+    { query, cursor },
     { skip: !hasCaps || skip },
   );
 
@@ -67,13 +66,9 @@ function useCommandCompletion() {
 
 function useGetCommandPreviewQuery(query: string): ChatContextFile[] {
   const hasCaps = useHasCaps();
-  const port = useAppSelector(selectLspPort);
-  const { data } = commandsApi.useGetCommandPreviewQuery(
-    { query, port },
-    {
-      skip: !hasCaps,
-    },
-  );
+  const { data } = commandsApi.useGetCommandPreviewQuery(query, {
+    skip: !hasCaps,
+  });
   if (!data) return [];
   return data;
 }

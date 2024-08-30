@@ -1,8 +1,4 @@
-import {
-  createApi,
-  fetchBaseQuery,
-  type FetchBaseQueryError,
-} from "@reduxjs/toolkit/query/react";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 import { STATISTIC_URL } from "./consts";
 import { RootState } from "../../app/store";
@@ -39,7 +35,8 @@ export const statisticsApi = createApi({
             error: {
               data: result.data,
               error: "Invalid response from server",
-            } as FetchBaseQueryError,
+              status: "CUSTOM_ERROR",
+            },
           };
         }
         try {
@@ -50,7 +47,9 @@ export const statisticsApi = createApi({
             error: {
               data: result.data.data,
               error: "Invalid response from server",
-            } as FetchBaseQueryError,
+              originalStatus: 200,
+              status: "PARSING_ERROR",
+            },
           };
         }
       },

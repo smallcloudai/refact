@@ -220,6 +220,7 @@ export const DiffContent: React.FC<{
   // if (diffStateRequest.isError) return null;
   // if (!diffStateRequest.data) return null;
 
+  // TODO: move this
   const onPreview = React.useCallback(
     (toApply: boolean[]) => {
       const f = async (toApply: boolean[]) => {

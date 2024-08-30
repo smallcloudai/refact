@@ -1,10 +1,6 @@
 import { RootState } from "../../app/store";
 import { CAPS_URL } from "./consts";
-import {
-  createApi,
-  fetchBaseQuery,
-  FetchBaseQueryError,
-} from "@reduxjs/toolkit/query/react";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const capsApi = createApi({
   reducerPath: "caps",
@@ -38,7 +34,8 @@ export const capsApi = createApi({
             error: {
               error: "Invalid response from caps",
               data: result.data,
-            } as FetchBaseQueryError,
+              status: "CUSTOM_ERROR",
+            },
           };
         }
 
