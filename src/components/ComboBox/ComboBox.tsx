@@ -86,6 +86,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const handleReplace = useCallback(
     (input: string) => {
       if (!ref.current) return;
+      if (input === "@help") {
+        console.log("@help");
+      }
       const nextValue = replaceRange(
         ref.current.value,
         commands.replace,
@@ -250,6 +253,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
           }}
           maxWidth={popoverWidth}
         >
+          <Item value="help" onClick={(e) => onItemClick("@help", e)}>
+            <TruncateLeft>@help</TruncateLeft>
+          </Item>
           {matches.map((item, index) => (
             <Item
               key={item + "-" + index}
