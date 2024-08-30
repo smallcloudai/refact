@@ -515,10 +515,10 @@ embedding_apikey: "sk-..."
 embedding_model: text-embedding-3-small
 embedding_size: 1536
 
-completion_endpoint_style: "hf"
 completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
-completion_model: bigcode/starcoder2-3b
+completion_endpoint_style: "hf"
 completion_apikey: "hf_..."    # or use $HF_TOKEN if you have it in global environment variables
+completion_model: bigcode/starcoder2-3b
 
 running_models:   # all models mentioned in *_model are automatically running, but you can add more
   - gpt-4o-mini
