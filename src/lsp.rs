@@ -271,6 +271,17 @@ impl LanguageServer for Backend {
         ).await
     }
 
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        self.client
+            .log_message(MessageType::INFO, "{refact-lsp} file closed")
+            .await;
+        let cpath = crate::files_correction::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
+        files_in_workspace::on_did_close(
+            self.gcx.clone(),
+            &cpath,
+        ).await;
+    }
+
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let path = crate::files_correction::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
         files_in_workspace::on_did_change(
@@ -286,14 +297,6 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "{refact-lsp} file saved")
             .await;
         info!("{} saved", path.display());
-    }
-
-    async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        self.client
-            .log_message(MessageType::INFO, "{refact-lsp} file closed")
-            .await;
-        let path = crate::files_correction::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
-        info!("{} closed", path.display());
     }
 
     async fn shutdown(&self) -> Result<()> {

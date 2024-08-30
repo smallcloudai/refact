@@ -477,6 +477,19 @@ pub async fn on_did_open(
     *gcx.read().await.documents_state.last_accessed_file.lock().unwrap() = Some(cpath.clone());
 }
 
+pub async fn on_did_close(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    cpath: &PathBuf,
+) {
+    info!("on_did_close {}", crate::nicer_logs::last_n_chars(&cpath.display().to_string(), 30));
+    {
+        let mut cx = gcx.write().await;
+        if cx.documents_state.memory_document_map.remove(cpath).is_none() {
+            tracing::error!("on_did_close: failed to remove from memory_document_map {:?}", cpath.display());
+        }
+    }
+}
+
 pub async fn on_did_change(
     gcx: Arc<ARwLock<GlobalContext>>,
     path: &PathBuf,
