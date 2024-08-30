@@ -224,11 +224,13 @@ impl AtCommand for AtTree {
     ) -> Result<(Vec<ContextEnum>, String), String> {
         let gcx = ccx.lock().await.global_context.clone();
         let paths_from_anywhere = paths_from_anywhere(gcx.clone()).await;
+        let paths_from_anywhere_len = paths_from_anywhere.len();
 
         let project_dirs = get_project_dirs(gcx.clone()).await;
         let filtered_paths: Vec<PathBuf> = paths_from_anywhere.into_iter()
-            .filter(|path| project_dirs.iter().any(|project_path| path.starts_with(project_path)))
+            .filter(|path| project_dirs.iter().any(|project_dir| path.starts_with(project_dir)))
             .collect();
+        tracing::info!("tree: project_dirs={:?} file paths {} filtered project dirs only => {} paths", project_dirs, paths_from_anywhere_len, filtered_paths.len());
 
         *args = args.iter().take_while(|arg| arg.text != "\n" || arg.text == "--ast").take(2).cloned().collect();
 
@@ -237,13 +239,16 @@ impl AtCommand for AtTree {
             Some(arg) => {
                 let path = arg.text.clone();
                 let candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
-                let candidate = return_one_candidate_or_a_good_error(gcx.clone(), &path, &candidates, &get_project_dirs(gcx.clone()).await, true).await.map_err(|e| {
-                    cmd.ok = false; cmd.reason = Some(e.clone()); args.clear();
+                let candidate = return_one_candidate_or_a_good_error(gcx.clone(), &path, &candidates, &project_dirs, true).await.map_err(|e| {
+                    cmd.ok = false;
+                    cmd.reason = Some(e.clone());
+                    args.clear();
                     e
                 })?;
-                let true_path = PathBuf::from(candidate);
-                let filtered_paths_from_anywhere = filtered_paths.iter().filter(|f|f.starts_with(&true_path)).cloned().collect::<Vec<_>>();
-                construct_tree_out_of_flat_list_of_paths(&filtered_paths_from_anywhere)
+                let start_dir = PathBuf::from(candidate);
+                let paths_start_with_start_dir = filtered_paths.iter()
+                    .filter(|f|f.starts_with(&start_dir)).cloned().collect::<Vec<_>>();
+                construct_tree_out_of_flat_list_of_paths(&paths_start_with_start_dir)
             }
         };
 
