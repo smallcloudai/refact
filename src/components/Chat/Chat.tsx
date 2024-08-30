@@ -6,7 +6,7 @@ import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
 import { useAppSelector, useAppDispatch } from "../../hooks";
 import type { Config } from "../../features/Config/configSlice";
-import { useEventsBusForIDE } from "../../hooks";
+import { useEventsBusForIDE, useSendChatRequest } from "../../hooks";
 import {
   enableSend,
   getSelectedChatModel,
@@ -14,12 +14,11 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   setChatModel,
-  useSendChatRequest,
   // selectThread,
   selectPreventSend,
   selectChatId,
   selectMessages,
-} from "../../features/Chat/chatThread";
+} from "../../features/Chat/Thread";
 import { selectActiveFile } from "../../features/Chat/activeFile";
 import { useTourRefs } from "../../features/Tour";
 

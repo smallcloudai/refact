@@ -14,7 +14,7 @@ import { TruncateLeft } from "../Text";
 import { ScrollArea } from "../ScrollArea";
 import { useAppSelector, useAppDispatch } from "../../hooks";
 import { useDiffApplyMutation } from "../../hooks";
-import { selectMessages } from "../../features/Chat/chatThread";
+import { selectMessages } from "../../features/Chat/Thread/selectors";
 import { createSelector } from "@reduxjs/toolkit";
 import { RootState } from "../../app/store";
 

@@ -12,7 +12,7 @@ import {
   getSelectedSystemPrompt,
   setSystemPrompt,
   selectMessages,
-} from "./chatThread";
+} from "./Thread";
 
 export type ChatProps = {
   host: Config["host"];

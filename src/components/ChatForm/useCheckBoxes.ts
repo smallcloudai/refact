@@ -6,7 +6,7 @@ import type { Checkbox } from "./ChatControls";
 import {
   selectIsStreaming,
   selectMessages,
-} from "../../features/Chat/chatThread";
+} from "../../features/Chat/Thread/selectors";
 import { selectVecdb } from "../../features/Config/configSlice";
 import { createSelector } from "@reduxjs/toolkit";
 import { useCanUseTools } from "../../hooks/useCanUseTools";

@@ -4,7 +4,7 @@ import { ScrollArea } from "../ScrollArea";
 import { HistoryItem } from "./HistoryItem";
 // import type { ChatHistoryItem } from "../../hooks/useChatHistory";
 import type { ChatHistoryItem } from "../../features/History/historySlice";
-import type { ChatThread } from "../../features/Chat/chatThread";
+import type { ChatThread } from "../../features/Chat/Thread/types";
 
 export type ChatHistoryProps = {
   history: ChatHistoryItem[];

@@ -8,8 +8,11 @@ import {
   getHistory,
   deleteChatById,
 } from "../../features/History/historySlice";
-import { newChatAction, restoreChat } from "../../features/Chat/chatThread";
-import type { ChatThread } from "../../features/Chat/chatThread";
+import {
+  newChatAction,
+  restoreChat,
+  type ChatThread,
+} from "../../features/Chat/Thread";
 import { useTourRefs } from "../../features/Tour";
 
 export type SidebarProps = {

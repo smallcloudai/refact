@@ -21,3 +21,4 @@ export * from "./useDiffStateQuery";
 export * from "./useConfig";
 export * from "./useAppDispatch";
 export * from "./useAppSelector";
+export * from "./useSendChatRequest";

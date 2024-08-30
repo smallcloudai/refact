@@ -3,7 +3,6 @@ import path from "path";
 import { PluginOption, UserConfig, defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import eslint from "vite-plugin-eslint";
-import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 import { coverageConfigDefaults } from "vitest/config";
 import dts from "vite-plugin-dts";
@@ -59,18 +58,6 @@ function makeConfig(library: "browser" | "node") {
       },
     };
     // TODO: confirm this solves the issue with getRandomValues
-    if (library === "browser") {
-      CONFIG.plugins?.push(
-        nodePolyfills({
-          include: ["crypto"],
-          globals: {
-            Buffer: false,
-            global: false,
-            process: false,
-          },
-        }),
-      );
-    }
 
     if (command !== "serve") {
       CONFIG.mode = "production";

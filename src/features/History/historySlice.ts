@@ -8,7 +8,7 @@ import {
   ChatThread,
   doneStreaming,
   removeChatFromCache,
-} from "../Chat";
+} from "../Chat/Thread";
 import { isUserMessage, UserMessage } from "../../services/refact";
 import { AppDispatch, RootState } from "../../app/store";
 

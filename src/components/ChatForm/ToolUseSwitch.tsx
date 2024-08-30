@@ -1,5 +1,5 @@
 import { Flex, SegmentedControl, Text, HoverCard } from "@radix-ui/themes";
-import { ToolUse } from "../../features/Chat";
+import { ToolUse } from "../../features/Chat/Thread";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 
 type ToolUseSwitchProps = {
