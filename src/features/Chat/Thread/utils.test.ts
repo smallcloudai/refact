@@ -6,7 +6,7 @@ import {
   UserMessage,
   UserMessageResponse,
   type ToolCall,
-} from "../../services/refact";
+} from "../../../services/refact";
 import { mergeToolCalls, formatChatResponse } from "./utils";
 
 describe("formatChatResponse", () => {
@@ -81,8 +81,8 @@ describe("formatChatResponse", () => {
 
     const expected = [
       ...messages.slice(0, 5),
-      { role: message.role, content: message.content },
       ...messages.slice(6),
+      { role: message.role, content: message.content },
     ];
 
     expect(result).toEqual(expected);

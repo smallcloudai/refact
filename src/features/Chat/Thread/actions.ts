@@ -12,7 +12,7 @@ import type {
 import type { AppDispatch, RootState } from "../../../app/store";
 import type { SystemPrompts } from "../../../services/refact/prompts";
 import { parseOrElse } from "../../../utils/parseOrElse";
-import { formatMessagesForLsp } from "../utils";
+import { formatMessagesForLsp } from "./utils";
 import { sendChat } from "../../../services/refact/chat";
 import { ToolCommand } from "../../../services/refact/tools";
 
