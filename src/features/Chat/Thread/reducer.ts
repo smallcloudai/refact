@@ -16,7 +16,7 @@ import {
   restoreChat,
   setPreventSend,
 } from "./actions";
-import { formatChatResponse } from "../utils";
+import { formatChatResponse } from "./utils";
 
 const createChatThread = (): ChatThread => {
   const chat: ChatThread = {

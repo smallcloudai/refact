@@ -6,8 +6,6 @@ import {
   ChatResponse,
   ContextMemory,
   DiffChunk,
-  PlainTextMessage,
-  PlainTextResponse,
   ToolCall,
   ToolResult,
   UserMessage,
@@ -25,9 +23,9 @@ import {
   isToolResponse,
   isUserMessage,
   isUserResponse,
-} from "../../services/refact";
-import { parseOrElse } from "../../utils";
-import { type LspChatMessage } from "../../services/refact";
+} from "../../../services/refact";
+import { parseOrElse } from "../../../utils";
+import { type LspChatMessage } from "../../../services/refact";
 
 // export const TAKE_NOTE_MESSAGE = [
 //   'How many times user has corrected or directed you? Write "Number of correction points N".',
@@ -117,34 +115,9 @@ function replaceLastUserMessage(
     isUserMessage,
   );
 
-  const result = messages.map((message, i) => {
-    if (i === lastUserMessageIndex) return userMessage;
-    return message;
-  });
+  const result = messages.filter((_, index) => index !== lastUserMessageIndex);
 
-  return result;
-}
-
-function putPlainTextBeforeUserMessage(
-  messages: ChatMessages,
-  response: PlainTextResponse,
-): ChatMessages {
-  const message: PlainTextMessage = {
-    role: response.role,
-    content: response.content,
-  };
-
-  if (messages.length === 0) {
-    return [message];
-  }
-
-  const lastMessage = messages[messages.length - 1];
-
-  if (!isUserMessage(lastMessage)) {
-    return [...messages, message];
-  }
-
-  return messages.slice(0, -1).concat(message, lastMessage);
+  return result.concat([userMessage]);
 }
 
 export function formatChatResponse(
@@ -183,7 +156,7 @@ export function formatChatResponse(
   }
 
   if (isPlainTextResponse(response)) {
-    return putPlainTextBeforeUserMessage(messages, response);
+    return [...messages, { role: response.role, content: response.content }];
   }
 
   if (!isChatResponseChoice(response)) {
