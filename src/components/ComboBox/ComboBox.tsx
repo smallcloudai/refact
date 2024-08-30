@@ -21,6 +21,7 @@ export type ComboBoxProps = {
   requestCommandsCompletion: DebouncedState<
     (query: string, cursor: number) => void
   >;
+  onHelpClick: () => void;
 };
 
 export const ComboBox: React.FC<ComboBoxProps> = ({
@@ -31,6 +32,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   value,
   render,
   requestCommandsCompletion,
+  onHelpClick,
 }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [moveCursorTo, setMoveCursorTo] = React.useState<number | null>(null);
@@ -44,7 +46,14 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   const state = combobox.useState();
 
-  const matches = useMemo(() => commands.completions, [commands.completions]);
+  // const matches = useMemo(() => commands.completions, [commands.completions]);
+
+  const matches = useMemo(
+    () => commands.completions.filter((item) => item !== "@help"),
+    [commands.completions],
+  );
+
+  const allMatches = useMemo(() => ["@help", ...matches], [matches]);
 
   const hasMatches = useMemo(() => {
     return matches.length > 0;
@@ -61,11 +70,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
-  }, [combobox, hasMatches, matches]);
+  }, [combobox, hasMatches, allMatches]);
 
   React.useEffect(() => {
     combobox.render();
-  }, [combobox, value, matches]);
+  }, [combobox, value, allMatches]);
 
   React.useEffect(() => {
     if (!ref.current) return;
@@ -86,9 +95,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   const handleReplace = useCallback(
     (input: string) => {
       if (!ref.current) return;
-      if (input === "@help") {
-        console.log("@help");
-      }
       const nextValue = replaceRange(
         ref.current.value,
         commands.replace,
@@ -112,7 +118,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     },
     [combobox],
   );
-
+  // TODO: filter matches
   const onKeyUp = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (!ref.current) return;
@@ -169,7 +175,12 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       if (state.open && tabOrEnterOrSpace && command) {
         event.preventDefault();
         event.stopPropagation();
-        handleReplace(command);
+        if (command === "@help") {
+          closeCombobox();
+          onHelpClick();
+        } else {
+          handleReplace(command);
+        }
       }
 
       if (event.key === "Escape") {
@@ -202,9 +213,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     (item: string, event: React.MouseEvent<HTMLDivElement>) => {
       event.stopPropagation();
       event.preventDefault();
-      handleReplace(item);
+      if (item === "@help") {
+        onHelpClick();
+      } else {
+        handleReplace(item);
+      }
     },
-    [handleReplace],
+    [handleReplace, onHelpClick],
   );
 
   const popoverWidth = ref.current
@@ -253,10 +268,10 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
           }}
           maxWidth={popoverWidth}
         >
-          <Item value="help" onClick={(e) => onItemClick("@help", e)}>
+          {/* <Item value="@help" onClick={(e) => onItemClick("@help", e)}>
             <TruncateLeft>@help</TruncateLeft>
-          </Item>
-          {matches.map((item, index) => (
+          </Item> */}
+          {allMatches.map((item, index) => (
             <Item
               key={item + "-" + index}
               value={item}
@@ -265,6 +280,15 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
               <TruncateLeft>{item}</TruncateLeft>
             </Item>
           ))}
+          {/* {matches.map((item, index) => (
+            <Item
+              key={item + "-" + index}
+              value={item}
+              onClick={(e) => onItemClick(item, e)}
+            >
+              <TruncateLeft>{item}</TruncateLeft>
+            </Item>
+          ))} */}
         </Popover>
       </Portal>
     </>

@@ -40,6 +40,7 @@ export type ChatFormProps = {
   onSetSystemPrompt: (prompt: SystemPrompts) => void;
   selectedSystemPrompt: SystemPrompts;
   chatId: string;
+  onHelpClick: () => void;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -60,6 +61,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const dispatch = useAppDispatch();
   const config = useConfig();
   const error = useAppSelector(getErrorMessage);
+  const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
   const [value, setValue] = React.useState("");
 
@@ -97,10 +99,35 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const handleEnter = useOnPressedEnter(handleSubmit);
 
+  const handleHelpInfo = useCallback((info: React.ReactNode | null) => {
+    setHelpInfo(info);
+  }, []);
+
+  const helpText = () => (
+    <Flex direction="column">
+      <Text size="2" weight="bold">
+        Available commands:
+      </Text>
+      <Text size="2">@web: Attaches a webpage to the chat.</Text>
+      <Text size="2">@tree: Find information in current file tree.</Text>
+      <Text size="2">@file: Attaches a file to the chat</Text>
+    </Flex>
+  );
+
+  const handleHelpCommand = useCallback(() => {
+    setHelpInfo(helpText());
+  }, []);
+
   const handleChange = useCallback(
     (command: string) => {
       setValue(command);
       setInteracted(true);
+      const trimmedCommand = command.trim();
+      if (trimmedCommand === "@help") {
+        handleHelpInfo(helpText()); // This line has been fixed
+      } else {
+        handleHelpInfo(null);
+      }
     },
     [setInteracted],
   );
@@ -142,6 +169,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           width: "100%",
         }}
       >
+        {helpInfo && (
+          <Flex mb="3" direction="column" className={styles.helpInfo}>
+            {helpInfo}
+          </Flex>
+        )}
         <Form
           disabled={isStreaming || !isOnline}
           className={className}
@@ -150,6 +182,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           <FilesPreview files={previewFiles} />
 
           <ComboBox
+            onHelpClick={handleHelpCommand}
             commands={commands}
             requestCommandsCompletion={requestCompletion}
             value={value}
