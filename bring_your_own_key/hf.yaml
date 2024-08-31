@@ -16,5 +16,5 @@ tokenizer_rewrite_path:   # because you need to agree to licensing agreement in 
 embedding_endpoint: "https://api-inference.huggingface.co/pipeline/feature-extraction/$MODEL"
 embedding_endpoint_style: "hf"
 embedding_apikey: "$HF_TOKEN"
-embedding_default_model: thenlper/gte-base
+embedding_model: thenlper/gte-base
 embedding_size: 768
