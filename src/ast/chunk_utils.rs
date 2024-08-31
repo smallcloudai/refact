@@ -33,6 +33,7 @@ pub fn get_chunks(text: &String,
 
     {  // try to split chunks from top to bottom
         let mut line_idx: usize = 0;
+        let mut previous_start = line_idx;
         while line_idx < lines.len() {
             let line = lines[line_idx];
             let line_with_newline = if current_line_accum.is_empty() { line.to_string() } else { format!("{}\n", line) };
@@ -50,8 +51,9 @@ pub fn get_chunks(text: &String,
                 });
                 current_line_accum.clear();
                 current_token_n = 0;
-                current_line_number = current_line_number + line_idx as u64 - intersection_lines as u64;
-                line_idx -= intersection_lines;
+                current_line_number = current_line_number + (line_idx as u64) - (intersection_lines as u64);
+                line_idx = (previous_start + 1).max(line_idx - intersection_lines);
+                previous_start = line_idx;
             } else {
                 current_token_n += text_orig_tok_n;
                 current_line_accum.push_back(line);
