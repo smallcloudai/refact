@@ -8,23 +8,8 @@ use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextMemory};
 
 
-fn text_on_clip(from_tool_call: bool) -> String {
-    if !from_tool_call {
-        return "".to_string();
-    }
-    unimplemented!()
-}
-
 pub struct AtLocalNotesToSelf {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
-}
-
-impl AtLocalNotesToSelf {
-    pub fn new() -> Self {
-        AtLocalNotesToSelf {
-            params: vec![],
-        }
-    }
 }
 
 #[async_trait]
@@ -67,7 +52,7 @@ impl AtCommand for AtLocalNotesToSelf {
         );
         let mut result = vec![];
         result.push(ContextEnum::ChatMessage(chat_message));
-        let text = text_on_clip(false);
+        let text = "here be dragons".to_string();
         Ok((result, text))
     }
 }
