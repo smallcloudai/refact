@@ -288,7 +288,10 @@ pub async fn get_default_system_prompt(
         dirs_lock.clone().into_iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>()
     };
     if !workspace_dirs.is_empty() && system_prompt.contains("%WORKSPACE_PROJECTS_INFO%") {
-        system_prompt = system_prompt.replace("%WORKSPACE_PROJECTS_INFO%", &format!("The current IDE workspace has these project directories:\n{}\n", workspace_dirs.join("\n")).as_str());
+        system_prompt = system_prompt.replace(
+            "%WORKSPACE_PROJECTS_INFO%",
+            &format!("The current IDE workspace has these project directories:\n{}\n", workspace_dirs.join("\n")).as_str()
+            );
     }
 
     info!("system_prompt\n{}", system_prompt);
