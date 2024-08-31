@@ -136,7 +136,7 @@ async fn do_i_need_to_reload_vecdb(
             b = 64;
         }
         VecdbConstants {
-            model_name: caps_locked.default_embeddings_model.clone(),
+            embedding_model: caps_locked.embedding_model.clone(),
             embedding_size: caps_locked.embedding_size,
             embedding_batch: b,
             vectorizer_n_ctx: caps_locked.embedding_n_ctx,
@@ -154,7 +154,7 @@ async fn do_i_need_to_reload_vecdb(
         None => {}
         Some(ref db) => {
             if
-                db.constants.model_name == consts.model_name &&
+                db.constants.embedding_model == consts.embedding_model &&
                 db.constants.endpoint_embeddings_template == consts.endpoint_embeddings_template &&
                 db.constants.endpoint_embeddings_style == consts.endpoint_embeddings_style &&
                 db.constants.splitter_window_size == consts.splitter_window_size &&
@@ -166,13 +166,13 @@ async fn do_i_need_to_reload_vecdb(
         }
     }
 
-    if consts.model_name.is_empty() || consts.endpoint_embeddings_template.is_empty() {
-        error!("no vecdb launch: default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty()");
+    if consts.embedding_model.is_empty() || consts.endpoint_embeddings_template.is_empty() {
+        error!("command line says to launch vecdb, but this will not happen: embedding_model.is_empty() || endpoint_embeddings_template.is_empty()");
         return (true, None);
     }
 
     let tokenizer_maybe = crate::cached_tokenizers::cached_tokenizer(
-        caps.clone(), gcx.clone(), consts.model_name.clone()).await;
+        caps.clone(), gcx.clone(), consts.embedding_model.clone()).await;
     if tokenizer_maybe.is_err() {
         error!("vecdb launch failed, embedding model tokenizer didn't load: {}", tokenizer_maybe.unwrap_err());
         return (false, None);
@@ -184,7 +184,7 @@ async fn do_i_need_to_reload_vecdb(
 
 fn can_start_vecdb(caps: Arc<StdRwLock<CodeAssistantCaps>>) -> bool {
     let caps = caps.read().unwrap();
-    !caps.default_embeddings_model.is_empty() && !caps.endpoint_embeddings_template.is_empty()
+    !caps.embedding_model.is_empty() && !caps.endpoint_embeddings_template.is_empty()
 }
 
 pub async fn vecdb_background_reload(
@@ -238,7 +238,7 @@ impl VecDb {
         api_key: &String
     ) -> Result<VecDb, String> {
         let handler = VecDBHandler::init(constants.embedding_size).await?;
-        let cache = VecDBCache::init(cache_dir, &constants.model_name, constants.embedding_size).await?;
+        let cache = VecDBCache::init(cache_dir, &constants.embedding_model, constants.embedding_size).await?;
         let vecdb_handler = Arc::new(AMutex::new(handler));
         let vecdb_cache = Arc::new(AMutex::new(cache));
         let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(cache_dir, &constants, cmdline.reset_memory).await?));
@@ -432,7 +432,7 @@ pub async fn memories_search(
     let embedding = fetch_embedding::get_embedding_with_retry(
         vecdb_emb_client,
         &constants.endpoint_embeddings_style,
-        &constants.model_name,
+        &constants.embedding_model,
         &constants.endpoint_embeddings_template,
         vec![query.clone()],
         &cmdline.api_key,
@@ -559,7 +559,7 @@ impl VecdbSearch for VecDb {
         let embedding_mb = fetch_embedding::get_embedding_with_retry(
             self.vecdb_emb_client.clone(),
             &self.constants.endpoint_embeddings_style,
-            &self.constants.model_name,
+            &self.constants.embedding_model,
             &self.constants.endpoint_embeddings_template,
             vec![query.clone()],
             api_key,

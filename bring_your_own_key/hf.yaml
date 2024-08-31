@@ -18,3 +18,4 @@ embedding_endpoint_style: "hf"
 embedding_apikey: "$HF_TOKEN"
 embedding_model: thenlper/gte-base
 embedding_size: 768
+#embedding_batch: 64

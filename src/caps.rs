@@ -118,8 +118,8 @@ pub struct CodeAssistantCaps {
     #[serde(default)]
     pub models_dict_patch: HashMap<String, ModelRecord>,
     #[serde(default)]
-    #[serde(alias = "embedding_model")]
-    pub default_embeddings_model: String,
+    #[serde(alias = "default_embeddings_model")]
+    pub embedding_model: String,
     #[serde(default)]
     #[serde(alias = "embedding_endpoint")]
     pub endpoint_embeddings_template: String,
@@ -182,8 +182,8 @@ fn load_caps_from_buf(
     if !r1.code_completion_default_model.is_empty() && !r1.running_models.contains(&r1.code_completion_default_model) {
         r1.running_models.push(r1.code_completion_default_model.clone());
     }
-    if !r1.default_embeddings_model.is_empty() && !r1.running_models.contains(&r1.default_embeddings_model) {
-        r1.running_models.push(r1.default_embeddings_model.clone());
+    if !r1.embedding_model.is_empty() && !r1.running_models.contains(&r1.embedding_model) {
+        r1.running_models.push(r1.embedding_model.clone());
     }
 
     _inherit_r1_from_r0(&mut r1, &r0);
@@ -423,7 +423,7 @@ fn _inherit_r1_from_r0(
     }
 
     for k in r1.running_models.iter() {
-        if !r1.code_completion_models.contains_key(k) && !r1.code_chat_models.contains_key(k) && *k != r1.default_embeddings_model {
+        if !r1.code_completion_models.contains_key(k) && !r1.code_chat_models.contains_key(k) && *k != r1.embedding_model {
             warn!("indicated as running, unknown model {:?}, maybe update this rust binary", k);
         }
     }

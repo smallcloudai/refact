@@ -104,7 +104,7 @@ async fn vectorize_batch_from_q(
     let batch_result = get_embedding_with_retry(
         client.clone(),
         &constants.endpoint_embeddings_style.clone(),
-        &constants.model_name.clone(),
+        &constants.embedding_model.clone(),
         &constants.endpoint_embeddings_template.clone(),
         batch.iter().map(|x| x.window_text.clone()).collect(),
         api_key,

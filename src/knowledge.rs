@@ -395,7 +395,7 @@ pub async fn vectorize_dirty_memories(
         let embedding_mb = crate::fetch_embedding::get_embedding_with_retry(
             client.clone(),
             &my_constants.endpoint_embeddings_style,
-            &my_constants.model_name,
+            &my_constants.embedding_model,
             &my_constants.endpoint_embeddings_template,
             texts,
             api_key,
