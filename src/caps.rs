@@ -127,8 +127,10 @@ pub struct CodeAssistantCaps {
     #[serde(alias = "embedding_endpoint_style")]
     pub endpoint_embeddings_style: String,
     #[serde(default)]
-    #[serde(alias = "embedding_size")]
-    pub size_embeddings: i32,
+    #[serde(alias = "size_embeddings")]
+    pub embedding_size: i32,
+    #[serde(default)]
+    pub embedding_batch: usize,
     #[serde(default)]
     pub embedding_n_ctx: usize,
     #[serde(default)]

@@ -24,7 +24,8 @@ pub struct VecdbConstants {
     // constant in a sense it cannot be changed without creating a new db
     pub model_name: String,
     pub embedding_size: i32,
-    pub tokenizer: Arc<StdRwLock<Tokenizer>>,
+    pub embedding_batch: usize,
+    pub tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
     pub vectorizer_n_ctx: usize,
     pub endpoint_embeddings_template: String,
     pub endpoint_embeddings_style: String,

@@ -24,7 +24,6 @@ impl BackgroundTasksHolder {
         self.tasks.push(task);
     }
 
-
     pub fn extend<T>(&mut self, tasks: T)
         where
             T: IntoIterator<Item=JoinHandle<()>>,
@@ -32,11 +31,12 @@ impl BackgroundTasksHolder {
         self.tasks.extend(tasks);
     }
 
-    pub async fn abort(self) {
-        for task in self.tasks {
+    pub async fn abort(&mut self) {
+        for task in self.tasks.iter_mut() {
             task.abort();
             let _ = task.await;
         }
+        self.tasks.clear();
     }
 }
 

@@ -218,8 +218,6 @@ async fn vectorize_thread(
     tokenizer: Arc<StdRwLock<Tokenizer>>,
     gcx_weak: Weak<ARwLock<GlobalContext>>,
 ) {
-    const B: usize = 64;
-
     let mut files_total: usize = 0;
     let mut reported_unprocessed: usize = 0;
     let mut embed_q: Vec<SplitResult> = vec![];
@@ -253,7 +251,7 @@ async fn vectorize_thread(
         }
 
         loop {
-            if embed_q.len() >= B || (!embed_q.is_empty() && files_unprocessed == 0) {
+            if embed_q.len() >= constants.embedding_batch || (!embed_q.is_empty() && files_unprocessed == 0) {
                 vectorize_batch_from_q(
                     &mut embed_q,
                     vstatus.clone(),
@@ -262,7 +260,7 @@ async fn vectorize_thread(
                     &api_key,
                     vecdb_handler_arc.clone(),
                     vecdb_cache_arc.clone(),
-                    B,
+                    constants.embedding_batch,
                 ).await.unwrap_or_else(|err| {
                     warn!("Error vectorizing: {}", err);
                 });
@@ -298,7 +296,7 @@ async fn vectorize_thread(
                         vstatus.clone(),
                         client.clone(),
                         &api_key,
-                        B,
+                        constants.embedding_batch,
                     ).await;
                     info!("/MEMDB {:?}", r);
                     continue;

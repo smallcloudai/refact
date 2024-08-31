@@ -1,10 +1,12 @@
-use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
-use tokenizers::Tokenizer;
+use indexmap::IndexMap;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use tokio::task::JoinHandle;
+use async_trait::async_trait;
 use tracing::{error, info};
 
 use crate::background_tasks::BackgroundTasksHolder;
@@ -17,29 +19,7 @@ use crate::vecdb::vdb_cache::VecDBCache;
 use crate::vecdb::vdb_lance::VecDBHandler;
 use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, OngoingWork, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
 use crate::vecdb::vdb_thread::{vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
-use async_trait::async_trait;
-use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
-use tokio::task::JoinHandle;
 
-
-fn vecdb_constants(
-    caps: Arc<StdRwLock<crate::caps::CodeAssistantCaps>>,
-    tokenizer: Arc<StdRwLock<Tokenizer>>,
-    vecdb_max_files: usize,
-) -> VecdbConstants {
-    let caps_locked = caps.read().unwrap();
-    VecdbConstants {
-        model_name: caps_locked.default_embeddings_model.clone(),
-        embedding_size: caps_locked.size_embeddings.clone(),
-        vectorizer_n_ctx: caps_locked.embedding_n_ctx,
-        tokenizer: tokenizer.clone(),
-        endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
-        endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
-        cooldown_secs: 20,
-        splitter_window_size: caps_locked.embedding_n_ctx / 2,
-        vecdb_max_files: vecdb_max_files,
-    }
-}
 
 pub struct VecDb {
     pub memdb: Arc<AMutex<MemoriesDatabase>>,
@@ -144,36 +124,60 @@ async fn do_i_need_to_reload_vecdb(
         }
     };
 
-    let model_name = {
-        let caps_locked = caps.read().unwrap();
-        caps_locked.default_embeddings_model.clone()
-    };
-    let tokenizer_maybe = crate::cached_tokenizers::cached_tokenizer(
-        caps.clone(), gcx.clone(), model_name).await;
-    if tokenizer_maybe.is_err() {
-        error!("vecdb launch failed, embedding model tokenizer didn't load: {}", tokenizer_maybe.unwrap_err());
-        return (false, None);
-    }
-
     let vecdb_max_files = gcx.read().await.cmdline.vecdb_max_files;
-    let consts = vecdb_constants(caps.clone(), tokenizer_maybe.unwrap(), vecdb_max_files);
+    let mut consts = {
+        let caps_locked = caps.read().unwrap();
+        let mut b = caps_locked.embedding_batch;
+        if b == 0 {
+            b = 64;
+        }
+        if b > 256 {
+            tracing::warn!("embedding_batch can't be higher than 256");
+            b = 64;
+        }
+        VecdbConstants {
+            model_name: caps_locked.default_embeddings_model.clone(),
+            embedding_size: caps_locked.embedding_size,
+            embedding_batch: b,
+            vectorizer_n_ctx: caps_locked.embedding_n_ctx,
+            tokenizer: None,
+            endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
+            endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
+            cooldown_secs: 20,
+            splitter_window_size: caps_locked.embedding_n_ctx / 2,
+            vecdb_max_files: vecdb_max_files,
+        }
+    };
 
-    if consts.model_name.is_empty() || consts.endpoint_embeddings_template.is_empty() {
-        error!("vecdb launch failed: default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty()");
-        return (false, None);
-    }
-
-    match *gcx.write().await.vec_db.lock().await {
+    let vec_db = gcx.write().await.vec_db.clone();
+    match *vec_db.lock().await {
         None => {}
         Some(ref db) => {
-            if db.constants.model_name == consts.model_name &&
+            if
+                db.constants.model_name == consts.model_name &&
                 db.constants.endpoint_embeddings_template == consts.endpoint_embeddings_template &&
-                db.constants.endpoint_embeddings_style == consts.endpoint_embeddings_style
+                db.constants.endpoint_embeddings_style == consts.endpoint_embeddings_style &&
+                db.constants.splitter_window_size == consts.splitter_window_size &&
+                db.constants.embedding_batch == consts.embedding_batch &&
+                db.constants.embedding_size == consts.embedding_size
             {
                 return (false, None);
             }
         }
     }
+
+    if consts.model_name.is_empty() || consts.endpoint_embeddings_template.is_empty() {
+        error!("no vecdb launch: default_embeddings_model.is_empty() || endpoint_embeddings_template.is_empty()");
+        return (true, None);
+    }
+
+    let tokenizer_maybe = crate::cached_tokenizers::cached_tokenizer(
+        caps.clone(), gcx.clone(), consts.model_name.clone()).await;
+    if tokenizer_maybe.is_err() {
+        error!("vecdb launch failed, embedding model tokenizer didn't load: {}", tokenizer_maybe.unwrap_err());
+        return (false, None);
+    }
+    consts.tokenizer = Some(tokenizer_maybe.clone().unwrap());
 
     return (true, Some(consts));
 }
@@ -202,8 +206,10 @@ pub async fn vecdb_background_reload(
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
         let (need_reload, consts) = do_i_need_to_reload_vecdb(gcx.clone()).await;
-        if need_reload && consts.is_some() {
+        if need_reload {
             background_tasks.abort().await;
+        }
+        if need_reload && consts.is_some() {
             background_tasks = BackgroundTasksHolder::new(vec![]);
             match _create_vecdb(
                 gcx.clone(),
@@ -236,7 +242,7 @@ impl VecDb {
         let vecdb_handler = Arc::new(AMutex::new(handler));
         let vecdb_cache = Arc::new(AMutex::new(cache));
         let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(cache_dir, &constants, cmdline.reset_memory).await?));
-        
+
         let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),
             vecdb_cache.clone(),
@@ -261,7 +267,12 @@ impl VecDb {
     ) -> Vec<JoinHandle<()>> {
         info!("vecdb: start_background_tasks");
         vectorizer_enqueue_dirty_memory(self.vectorizer_service.clone()).await;
-        return self.vectorizer_service.lock().await.vecdb_start_background_tasks(self.vecdb_emb_client.clone(), gcx.clone(), self.constants.tokenizer.clone()).await;
+        let my_tokenizer = self.constants.tokenizer.clone().unwrap();
+        return self.vectorizer_service.lock().await.vecdb_start_background_tasks(
+            self.vecdb_emb_client.clone(),
+            gcx.clone(),
+            my_tokenizer.clone(),
+        ).await;
     }
 
     pub async fn vectorizer_enqueue_files(&self, documents: &Vec<Document>, process_immediately: bool) {
