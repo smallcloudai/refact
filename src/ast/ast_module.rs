@@ -615,7 +615,7 @@ impl AstModule {
             }
         };
 
-        info!("to_buckets {}", crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(), 30));
+        info!("to_buckets {}", crate::nicer_logs::last_n_chars(&doc.doc_path.to_string_lossy().to_string(), 30));
         let (cursor_usages, declarations, usages, bucket_high_overlap, bucket_imports, guid_to_usefulness) =
             ast_ref.symbols_near_cursor_to_buckets(
                 &doc,
@@ -627,7 +627,7 @@ impl AstModule {
             );
         let symbol_to_search_res = |x: &AstSymbolInstanceRc| {
             let symbol_declaration = x.borrow().symbol_info_struct();
-            let content = if symbol_declaration.file_path == doc.path {
+            let content = if symbol_declaration.file_path == doc.doc_path {
                 symbol_declaration.get_content(&code.to_string()).unwrap_or_default()
             } else {
                 symbol_declaration.get_content_from_file_blocked().unwrap_or_default()
@@ -645,7 +645,7 @@ impl AstModule {
 
         let result = AstCursorSearchResult {
             query_text: "".to_string(),
-            file_path: doc.path.clone(),
+            file_path: doc.doc_path.clone(),
             cursor,
             cursor_symbols: cursor_usages
                 .iter()
@@ -765,7 +765,7 @@ impl AstModule {
             Err(err) => { return Err(format!("Error: {}", err)); }
         };
         Ok(FileReferencesResult {
-            file_path: doc.path.clone(),
+            file_path: doc.doc_path.clone(),
             symbols,
         })
     }

@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use axum::response::Result;
 use axum::Extension;
 use hyper::{Body, Response, StatusCode};

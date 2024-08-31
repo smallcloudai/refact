@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, context_file_from_file_path};

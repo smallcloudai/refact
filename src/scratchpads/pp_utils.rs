@@ -130,7 +130,7 @@ pub async fn pp_ast_markup_files(
         let path = crate::files_correction::canonical_path(&file_name.clone());
         let cpath_symmetry_breaker: f32 = (calculate_hash(&path) as f32) / (u64::MAX as f32) / 100.0;
         let mut doc = Document::new(&path);
-        let text = get_file_text_from_memory_or_disk(gcx.clone(), &doc.path).await.unwrap_or_default();
+        let text = get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await.unwrap_or_default();
         doc.update_text(&text);
         let mut f: Option<Arc<PPFile>> = None;
         if let Some(ast) = &ast_module {
@@ -147,11 +147,11 @@ pub async fn pp_ast_markup_files(
             None => {
                 f = Some(Arc::new(PPFile {
                     markup: FileASTMarkup {
-                        file_path: doc.path.clone(),
+                        file_path: doc.doc_path.clone(),
                         file_content: text,
                         symbols_sorted_by_path_len: Vec::new(),
                     },
-                    cpath: doc.path.clone(),
+                    cpath: doc.doc_path.clone(),
                     cpath_symmetry_breaker,
                     shorter_path: shortified_paths[i].clone(),
                 }));

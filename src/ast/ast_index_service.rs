@@ -59,7 +59,7 @@ async fn cooldown_queue_thread(
                 match e.typ {
                     AstEventType::Add => {
                         for doc in e.docs.iter() {
-                            latest_events.insert(doc.path.clone(), e.clone());
+                            latest_events.insert(doc.doc_path.clone(), e.clone());
                         }
                     }
                     AstEventType::AstReset => {
@@ -87,7 +87,7 @@ async fn cooldown_queue_thread(
         for (_path, original_event) in latest_events.iter() {
             if original_event.posted_ts + Duration::from_secs(cooldown_secs) < now {  // old enough
                 for doc in original_event.docs.iter() {
-                    paths_to_launch.insert(doc.path.clone());
+                    paths_to_launch.insert(doc.doc_path.clone());
                 }
             }
             if paths_to_launch.len() >= 32 {
@@ -100,7 +100,7 @@ async fn cooldown_queue_thread(
             let mut launch_event = AstEvent { docs: Vec::new(), typ: AstEventType::Add, posted_ts: now };
             for path in paths_to_launch {
                 latest_events.remove(&path);
-                launch_event.docs.push(Document { path: path.clone(), text: None });
+                launch_event.docs.push(Document { doc_path: path.clone(), doc_text: None });
             }
             ast_immediate_q.lock().await.push_back(Arc::new(launch_event));
             continue;
@@ -216,7 +216,7 @@ async fn ast_indexer_thread(
             let mut docs_with_text: Vec<Document> = Vec::new();
             for doc in processing_events.iter().flat_map(|x| x.docs.iter()) {
                 if !is_ast_full {
-                    match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.path).await {
+                    match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await {
                         Ok(file_text) => {
                             stats_parsed_cnt += 1;
                             let mut doc_copy = doc.clone();
@@ -224,7 +224,7 @@ async fn ast_indexer_thread(
                             docs_with_text.push(doc_copy);
                         }
                         Err(e) => {
-                            tracing::warn!("cannot read file {}: {}", crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30), e);
+                            tracing::warn!("cannot read file {}: {}", crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30), e);
                             continue;
                         }
                     }

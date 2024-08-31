@@ -6,7 +6,7 @@ use tokenizers::Tokenizer;
 use tracing::{info, warn};
 
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam, filter_only_context_file_from_context_tool};
-use crate::call_validation::{ChatMessage, ContextEnum, PostprocessSettings};
+use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::scratchpads::pp_context_files::postprocess_context_files;
 use crate::scratchpads::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::pp_utils::{HasRagResults, count_tokens, max_tokens_for_rag_chat};

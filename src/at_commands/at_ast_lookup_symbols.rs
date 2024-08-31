@@ -105,7 +105,7 @@ pub async fn execute_at_ast_lookup_symbols(ccx: Arc<AMutex<AtCommandsContext>>, 
     let ast = gcx.read().await.ast_module.clone();
     let x = match &ast {
         Some(ast) => {
-            let mut doc = crate::files_in_workspace::Document { path: cpath.clone(), text: None };
+            let mut doc = crate::files_in_workspace::Document { doc_path: cpath.clone(), doc_text: None };
             let file_text = crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &cpath).await?; // FIXME
             doc.update_text(&file_text);
             match ast.read().await.symbols_near_cursor_to_buckets(

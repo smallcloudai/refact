@@ -217,7 +217,10 @@ pub async fn handle_v1_ast_file_markup(
             Some(ast) => {
                 // corrected is already canonical path, so skip it here
                 let mut doc = Document::new(&PathBuf::from(&corrected[0]));
-                let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default(); // FIXME unwrap
+                let text = get_file_text_from_memory_or_disk(
+                    global_context.clone(),
+                    &doc.doc_path,
+                ).await.unwrap_or_default(); // FIXME unwrap
                 doc.update_text(&text);
 
                 ast.read().await.file_markup(&doc).await
@@ -343,7 +346,7 @@ pub async fn handle_v1_ast_index_file(
     })?;
     let cpath = crate::files_correction::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     let mut doc = Document::new(&cpath);
-    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default(); // FIXME unwrap
+    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.doc_path).await.unwrap_or_default(); // FIXME unwrap
     doc.update_text(&text);
 
     let ast_module = global_context.read().await.ast_module.clone();

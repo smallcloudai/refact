@@ -101,7 +101,7 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
 fn _print_symbols(ast_index_maybe: Option<&AstIndex>, entry: &PathsHolderNode) -> String
 {
     if let Some(ast) = ast_index_maybe {
-        let doc = Document { path: entry.path.clone(), text: None };
+        let doc = Document { doc_path: entry.path.clone(), doc_text: None };
         match ast.get_by_file_path(RequestSymbolType::Declaration, &doc) {
             Ok(symbols) => {
                 let symbols_list = symbols

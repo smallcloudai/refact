@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap as StdHashMap;
 use std::hash::Hash;
 use std::io::Write;
-use std::path::{Components, PathBuf, StripPrefixError};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -111,20 +111,20 @@ impl AstIndex {
     }
 
     pub fn parse(doc: &Document) -> Result<Vec<AstSymbolInstanceArc>, String> {
-        let mut parser = match get_ast_parser_by_filename(&doc.path) {
+        let mut parser = match get_ast_parser_by_filename(&doc.doc_path) {
             Ok(parser) => parser,
             Err(err) => {
                 return Err(err.message);
             }
         };
-        let text = doc.text.clone().unwrap().to_string();
+        let text = doc.doc_text.clone().unwrap().to_string();
         let t_ = std::time::Instant::now();
-        let symbol_instances = parser.parse(&text, &doc.path);
+        let symbol_instances = parser.parse(&text, &doc.doc_path);
         let t_elapsed = t_.elapsed();
         if symbol_instances.len() > TOO_MANY_SYMBOLS_IN_FILE {
             info!(
                 "parsed {}, {} symbols, took {:.3}s to parse, skip",
-                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30),
+                crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30),
                 symbol_instances.len(),
                 t_elapsed.as_secs_f32()
             );
@@ -132,7 +132,7 @@ impl AstIndex {
         } else {
             info!(
                 "parsed {}, {} symbols, took {:.3}s to parse",
-                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30),
+                crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30),
                 symbol_instances.len(),
                 t_elapsed.as_secs_f32()
             );
@@ -151,7 +151,7 @@ impl AstIndex {
                 "Too many files in the ast index ({} >= {}), skipping the {}",
                 self.path_by_symbols.len(),
                 self.ast_max_files,
-                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30)
+                crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30)
             );
             return Err("ast index too many files".to_string());
         }
@@ -202,7 +202,7 @@ impl AstIndex {
                 self.usage_symbols_by_name.entry(symbol_ref.name().to_string()).or_insert_with(Vec::new).push(symbol.clone());
             }
             self.symbols_by_guid.insert(symbol_ref.guid().clone(), symbol.clone());
-            self.path_by_symbols.entry(doc.path.clone()).or_insert_with(Vec::new).push(symbol.clone());
+            self.path_by_symbols.entry(doc.doc_path.clone()).or_insert_with(Vec::new).push(symbol.clone());
         }
 
         Ok(())
@@ -224,7 +224,7 @@ impl AstIndex {
         // - `dependent_guids` in the `type_guid_to_dependent_guids` index
         // - `linked_guids` in the all TypeDefs (inside all symbols)
 
-        let symbols = self.path_by_symbols.remove(&doc.path);
+        let symbols = self.path_by_symbols.remove(&doc.doc_path);
         let has_removed = symbols.is_some();
         if !has_removed {
             return false;
@@ -327,7 +327,7 @@ impl AstIndex {
             .iter()
             .filter(|s| {
                 let s_ref = s.borrow();
-                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.path != *s_ref.file_path());
+                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.doc_path != *s_ref.file_path());
                 let correct_language = language.map_or(true, |l| l == *s_ref.language());
                 correct_doc && correct_language
             });
@@ -406,7 +406,7 @@ impl AstIndex {
                     None => return false,
                 };
                 let correct_language = language.map_or(true, |l| l == language_id);
-                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.path != **path);
+                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.doc_path != **path);
                 correct_doc && correct_language
             })
             .filter_map(|(path, symbols)| {
@@ -472,7 +472,7 @@ impl AstIndex {
             .filter_map(|guid| self.symbols_by_guid.get(guid))
             .filter(|s| {
                 let s_ref = s.borrow();
-                exception_doc.clone().map_or(true, |doc| doc.path != *s_ref.file_path())
+                exception_doc.clone().map_or(true, |doc| doc.doc_path != *s_ref.file_path())
             })
             .cloned()
             .collect::<Vec<_>>())
@@ -501,11 +501,11 @@ impl AstIndex {
                 }
                 None => {
                     break;
-                    
+
                 }
             }
         }
-        
+
         if let Some(common_prefix) = &self.common_path_prefix {
             match symbol.borrow().file_path().strip_prefix(
                 &common_prefix
@@ -520,7 +520,7 @@ impl AstIndex {
                 None => {}
             };
         }
-        
+
         current_path
     }
 
@@ -596,7 +596,7 @@ impl AstIndex {
     ) {
         let t_parse_t0 = std::time::Instant::now();
         let file_symbols = self.parse_single_file(doc, code);
-        let language = get_language_id_by_filename(&doc.path);
+        let language = get_language_id_by_filename(&doc.doc_path);
         let t_parse_ms = t_parse_t0.elapsed().as_millis() as i32;
 
         let mut guid_to_usefulness: HashMap<Uuid, f32> = HashMap::new();
@@ -875,7 +875,7 @@ impl AstIndex {
         imports_depth: usize
     )-> Vec<AstSymbolInstanceRc> {
         let symbols = self.path_by_symbols
-            .get(&doc.path)
+            .get(&doc.doc_path)
             .map(|symbols| {
                 symbols
                     .iter()
@@ -893,7 +893,7 @@ impl AstIndex {
         imports_depth: usize
     )-> Vec<PathBuf> {
         let symbols = self.path_by_symbols
-            .get(&doc.path)
+            .get(&doc.doc_path)
             .map(|symbols| {
                 symbols
                     .iter()
@@ -962,19 +962,19 @@ impl AstIndex {
         &self,
         doc: &Document,
     ) -> Result<FileASTMarkup, String> {
-        assert!(doc.text.is_some());
-        let symbols = match self.path_by_symbols.get(&doc.path) {
+        assert!(doc.doc_text.is_some());
+        let symbols = match self.path_by_symbols.get(&doc.doc_path) {
             Some(x) => x.iter().map(|s| s.borrow().symbol_info_struct()).collect::<Vec<_>>(),
             None => {
-                info!("no symbols in index for {:?}, assuming it's a new file of some sort and parsing it", doc.path);
-                let mut parser = match get_ast_parser_by_filename(&doc.path) {
+                info!("no symbols in index for {:?}, assuming it's a new file of some sort and parsing it", doc.doc_path);
+                let mut parser = match get_ast_parser_by_filename(&doc.doc_path) {
                     Ok(parser) => parser,
                     Err(e) => {
-                        return Err(format!("no symbols in index for {:?}, and cannot find a parser this kind of file: {}", doc.path, e.message));
+                        return Err(format!("no symbols in index for {:?}, and cannot find a parser this kind of file: {}", doc.doc_path, e.message));
                     }
                 };
                 let t0 = std::time::Instant::now();
-                let symbols = parser.parse(doc.text.as_ref().unwrap().to_string().as_str(), &doc.path);
+                let symbols = parser.parse(doc.doc_text.as_ref().unwrap().to_string().as_str(), &doc.doc_path);
                 info!("/parse {}ms", t0.elapsed().as_millis());
                 symbols.iter().map(|s| s.read().symbol_info_struct()).collect::<Vec<_>>()
             }
@@ -988,7 +988,7 @@ impl AstIndex {
         doc: &Document,
     ) -> Result<Vec<SymbolInformation>, String> {
         let symbols = self.path_by_symbols
-            .get(&doc.path)
+            .get(&doc.doc_path)
             .map(|symbols| {
                 symbols
                     .iter()
@@ -1504,7 +1504,7 @@ impl AstIndex {
             .to_string();
         for symbol in symbols.iter().skip(1) {
             current_common_path_prefix = common_prefix(
-                &current_common_path_prefix, 
+                &current_common_path_prefix,
                 &symbol.borrow().file_path().to_string_lossy()
             );
         }

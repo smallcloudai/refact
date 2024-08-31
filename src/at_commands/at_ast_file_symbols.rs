@@ -77,7 +77,7 @@ impl AtCommand for AtAstFileSymbols {
         let ast = ccx_lock.global_context.read().await.ast_module.clone();
         let x = match &ast {
             Some(ast) => {
-                let doc = crate::files_in_workspace::Document { path: PathBuf::from(cpath.text), text: None };
+                let doc = crate::files_in_workspace::Document { doc_path: PathBuf::from(cpath.text), doc_text: None };
                 match ast.read().await.get_file_symbols(RequestSymbolType::All, &doc).await {
                     Ok(res) => Ok(results2message(&res)),
                     Err(err) => Err(err)

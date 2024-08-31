@@ -72,7 +72,7 @@ async fn write_results_on_disk(results: Vec<ApplyDiffResult>) -> Result<Vec<Docu
             })
         }
     }
-    
+
     fn apply_remove_action(path_str: &String) -> Result<(), String> {
         let path = PathBuf::from(path_str);
         return if path.is_file() {
@@ -120,7 +120,7 @@ async fn write_results_on_disk(results: Vec<ApplyDiffResult>) -> Result<Vec<Docu
             apply_rename_action(rename_from, rename_into)?;
             if PathBuf::from(rename_into).is_file() {
                 let mut doc = Document::new(&PathBuf::from(rename_into));
-                let text = read_file_from_disk(&doc.path).await?.to_string();
+                let text = read_file_from_disk(&doc.doc_path).await?.to_string();
                 doc.update_text(&text);
                 docs2index.push(doc);
             }
@@ -156,7 +156,7 @@ async fn sync_documents_ast_vecdb(global_context: Arc<ARwLock<GlobalContext>>, d
         let mut ast_write = ast.write().await;
         for doc in docs.iter() {
             let _ = ast_write.ast_add_file_no_queue(doc, true).await.map_err(|e| {
-                let e_text = format!("Failed to sync doc {:?} with AST. Error:\n{}", doc.path, e);
+                let e_text = format!("Failed to sync doc {:?} with AST. Error:\n{}", doc.doc_path, e);
                 warn!(e_text);
             });
         }
@@ -246,7 +246,7 @@ pub async fn handle_v1_diff_preview(
         state: outputs_unwrapped,
         results,
     };
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
@@ -383,7 +383,7 @@ class Frog:
 //     fn test_chunks() {
 //         // Run this to see println:
 //         //     cargo test diffs::tests::test_chunks -- --nocapture
-// 
+//
 //         let chunk1 = DiffChunk {
 //             file_name: "/tmp/file1.txt".to_string(),
 //             file_name_rename: None,
@@ -395,24 +395,24 @@ class Frog:
 //             ..Default::default()
 //         };
 //         let chunks = vec![chunk1];
-// 
+//
 //         let applied_state = vec![false];
 //         let desired_state = vec![true];
-// 
+//
 //         delete_file_if_exists(FILE1_FN);
 //         let (_, outputs) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
 //         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
-// 
+//
 //         assert_eq!(outputs_unwrapped[0].success, true);
-// 
+//
 //         write_file(FILE1_FN, FILE1);
 //         let (_, outputs) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
 //         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
-// 
+//
 //         assert_eq!(outputs_unwrapped[0].success, true);
 //         assert_eq!(outputs_unwrapped[0].applied, true);
 //     }
-// 
+//
 //     #[test]
 //     fn test_frogs() {
 //         let c1 = DiffChunk {
@@ -425,7 +425,7 @@ class Frog:
 //             lines_add: "    # Third extra jump\n".to_string(),
 //             ..Default::default()
 //         };
-// 
+//
 //         let c2 = DiffChunk {
 //             file_name: FILE2_FN.to_string(),
 //             file_name_rename: None,
@@ -439,29 +439,29 @@ class Frog:
 //         let chunks = vec![c1, c2];
 //         let applied_state = vec![false, false];
 //         let desired_state = vec![true, true];
-// 
+//
 //         write_file(FILE2_FN, FILE2);
 //         let (_, outputs) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
 //         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
-// 
+//
 //         assert_eq!(outputs_unwrapped.iter().map(|x|x.applied).collect::<Vec<_>>(), vec![true, true]);
 //     }
-// 
+//
 //     #[test]
 //     fn test_frog() {
 //         let file3_must_be: &str = r#"import numpy as np
-// 
+//
 // DT = 0.01
-// 
-// 
-// 
+//
+//
+//
 // class AnotherFrog:
 //     def __init__(self, x, y, vx, vy):
 //         self.x = x
 //         self.y = y
 //         self.vx = vx
 //         self.vy = vy
-// 
+//
 //     def bounce_off_banks(self, pond_width, pond_height):
 //         if self.x < 0:
 //             self.vx = np.abs(self.vx)
@@ -471,16 +471,16 @@ class Frog:
 //             self.vy = np.abs(self.vy)
 //         elif self.y > pond_height:
 //             self.vy = -np.abs(self.vy)
-// 
+//
 //     def jump(self, pond_width, pond_height):
 //         self.x += self.vx * DT
 //         self.y += self.vy * DT
 //         self.bounce_off_banks(pond_width, pond_height)
 //         self.x = np.clip(self.x, 0, pond_width)
 //         self.y = np.clip(self.y, 0, pond_height)
-// 
+//
 //     "#;
-// 
+//
 //         let c1 = DiffChunk {
 //             file_name: FILE3_FN.to_string(),
 //             file_name_rename: None,
@@ -491,7 +491,7 @@ class Frog:
 //             lines_add: "class AnotherFrog:\n".to_string(),
 //             ..Default::default()
 //         };
-// 
+//
 //         let c2 = DiffChunk {
 //             file_name: FILE3_FN.to_string(),
 //             file_name_rename: None,
@@ -505,30 +505,30 @@ class Frog:
 //         let chunks = vec![c1, c2];
 //         let applied_state = vec![false, false];
 //         let desired_state = vec![true, true];
-// 
+//
 //         write_file(FILE3_FN, FILE3);
 //         let (results, outputs) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
 //         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
-// 
+//
 //         assert_eq!(outputs_unwrapped.into_iter().map(|x|x.applied).collect::<Vec<_>>(), vec![true, true]);
-// 
+//
 //         let changed_text = results[0].clone().file_text.unwrap();
-// 
+//
 //         assert_eq!(changed_text.as_str(), file3_must_be);
 //         write_file(FILE3_FN, changed_text.as_str());
-// 
+//
 //         let applied_state = vec![true, true];
 //         let desired_state = vec![false, false];
 //         let (results, outputs) = read_files_n_apply_diff_chunks(&chunks, &applied_state, &desired_state, TEST_MAX_FUZZY);
 //         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
-// 
+//
 //         assert_eq!(outputs_unwrapped.iter().map(|x|x.applied).collect::<Vec<bool>>(), vec![false, false]);
 //         assert_eq!(outputs_unwrapped.iter().map(|x|x.success).collect::<Vec<bool>>(), vec![true, true]);
-// 
+//
 //         let new_text = results[0].clone().file_text.unwrap();
 //         write_file(FILE3_FN, &new_text);
 //         assert_eq!(read_file(FILE3_FN), FILE3);
-// 
+//
 //         let (results, _) = apply_diff_chunks_to_text(&FILE3.to_string(), chunks.iter().enumerate().collect::<Vec<_>>(), vec![], 1);
 //         let new_text = results[0].clone().file_text.unwrap();
 //         assert_eq!(file3_must_be, new_text.as_str());

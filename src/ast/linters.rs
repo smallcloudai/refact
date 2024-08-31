@@ -49,9 +49,9 @@ fn check_python_indentation(code: &str) -> Vec<String> {
 
 
 pub fn lint(doc: &Document) -> Result<(), Vec<String>> {
-    let maybe_language_id = get_language_id_by_filename(&doc.path);
+    let maybe_language_id = get_language_id_by_filename(&doc.doc_path);
     if let Some(language_id) = maybe_language_id {
-        let code = doc.text.as_ref().map(|x| x.to_string()).expect("Document text is not available");
+        let code = doc.doc_text.as_ref().map(|x| x.to_string()).expect("Document text is not available");
         match language_id {
             LanguageId::Python => {
                 let mut problems = vec![];

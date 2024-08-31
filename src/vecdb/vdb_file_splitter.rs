@@ -25,7 +25,7 @@ impl FileSplitter {
                                      tokenizer: Arc<StdRwLock<Tokenizer>>,
                                      tokens_limit: usize,
     ) -> Result<Vec<SplitResult>, String> {
-        let path = doc.path.clone();
+        let path = doc.doc_path.clone();
         let text = match doc.clone().get_text_or_read_from_disk().await {
             Ok(s) => s,
             Err(e) => return Err(e.to_string())

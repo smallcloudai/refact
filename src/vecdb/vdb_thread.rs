@@ -344,7 +344,7 @@ async fn vectorize_thread(
                 }
             }
         };
-        let last_30_chars = crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30);
+        let last_30_chars = crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30);
 
         // Not from memory, vecdb works on files from disk
         if let Err(err) = doc.update_text_from_disk().await {
@@ -364,7 +364,7 @@ async fn vectorize_thread(
         });
 
         if DEBUG_WRITE_VECDB_FILES {
-            let path_vecdb = doc.path.with_extension("vecdb");
+            let path_vecdb = doc.doc_path.with_extension("vecdb");
             if let Ok(mut file) = std::fs::File::create(path_vecdb) {
                 let mut writer = std::io::BufWriter::new(&mut file);
                 for chunk in split_data.iter() {

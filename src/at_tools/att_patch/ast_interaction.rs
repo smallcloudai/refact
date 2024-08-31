@@ -8,7 +8,6 @@ use ropey::Rope;
 use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
 
-use crate::ast::ast_index::RequestSymbolType;
 use crate::ast::ast_module::AstModule;
 use crate::ast::linters::lint;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
@@ -69,7 +68,7 @@ pub async fn parse_and_get_error_symbols(
     let new_filename = dummy_filename.with_extension(
         path.extension().unwrap_or_default()
     );
-    let doc = Document { path: new_filename.clone(), text: Some(file_text.clone()) };
+    let doc = Document { doc_path: new_filename.clone(), doc_text: Some(file_text.clone()) };
     match ast_module.read()
         .await
         .file_markup(&doc)
@@ -96,7 +95,7 @@ pub fn lint_and_get_error_messages(
     let new_filename = dummy_filename.with_extension(
         path.extension().unwrap_or_default()
     );
-    let doc = Document { path: new_filename.clone(), text: Some(file_text.clone()) };
+    let doc = Document { doc_path: new_filename.clone(), doc_text: Some(file_text.clone()) };
     match lint(&doc) {
         Ok(_) => vec![],
         Err(problems) => problems,
