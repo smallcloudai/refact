@@ -24,7 +24,7 @@ use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
 use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
 use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
-use crate::http::routers::v1::lsp_like_handlers::{handle_v1_lsp_did_change, handle_v1_lsp_add_folder, handle_v1_lsp_initialize, handle_v1_lsp_remove_folder};
+use crate::http::routers::v1::lsp_like_handlers::{handle_v1_lsp_did_change, handle_v1_lsp_add_folder, handle_v1_lsp_initialize, handle_v1_lsp_remove_folder, handle_v1_set_active_document};
 use crate::http::routers::v1::status::handle_v1_rag_status;
 use crate::http::routers::v1::toolbox::handle_v1_customization;
 use crate::http::routers::v1::toolbox::handle_v1_rewrite_assistant_says_to_at_commands;
@@ -77,6 +77,7 @@ pub fn make_v1_router() -> Router {
         .route("/lsp-did-changed", telemetry_post!(handle_v1_lsp_did_change))
         .route("/lsp-add-folder", telemetry_post!(handle_v1_lsp_add_folder))
         .route("/lsp-remove-folder", telemetry_post!(handle_v1_lsp_remove_folder))
+        .route("/lsp-set-active-document", telemetry_post!(handle_v1_set_active_document))
 
         .route("/get-dashboard-plots", telemetry_get!(get_dashboard_plots))
 
@@ -115,6 +116,6 @@ pub fn make_v1_router() -> Router {
 
         .route("/subchat", telemetry_post!(handle_v1_subchat))
         .route("/subchat-single", telemetry_post!(handle_v1_subchat_single))
-        
+
         .layer(CorsLayer::very_permissive())
 }

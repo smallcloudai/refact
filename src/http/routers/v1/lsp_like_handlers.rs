@@ -23,6 +23,12 @@ struct LspLikeDidChange {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+struct LspLikeSetActiveDocument {
+    pub uri: Url,
+    pub text: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 struct LspLikeAddFolder {
     pub uri: Url,
 }
@@ -64,6 +70,22 @@ pub async fn handle_v1_lsp_did_change(
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(json!({"success": 1}).to_string()))
+        .unwrap())
+}
+
+pub async fn handle_v1_set_active_document(
+    Extension(global_context): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<LspLikeSetActiveDocument>(&body_bytes).map_err(|e| {
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    let path = crate::files_correction::canonical_path(&post.uri.to_file_path().unwrap_or_default().display().to_string());
+    tracing::info!("ACTIVE_DOC {:?}", crate::nicer_logs::last_n_chars(&path.to_string_lossy().to_string(), 30));
+    global_context.write().await.documents_state.active_file_path = Some(path);
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from(json!({"success": true}).to_string()))
         .unwrap())
 }
 

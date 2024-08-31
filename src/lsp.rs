@@ -68,6 +68,11 @@ pub struct SnippetAcceptedParams {
     snippet_telemetry_id: u64,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ChangeActiveFile {
+    pub uri: Url,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TestHeadTailAddedText {
     pub text_a: String,
@@ -170,18 +175,11 @@ impl Backend {
         Ok(SuccessRes { success })
     }
 
-    pub async fn test_if_head_tail_equal_return_added_text(&self, params: TestHeadTailAddedText) -> Result<TestHeadTailAddedTextRes> {
-        let (is_valid, grey_corrected) = telemetry::utils::if_head_tail_equal_return_added_text(
-            &params.text_a, &params.text_b, &params.orig_grey_text
-        );
-        let mut unchanged_percentage = -1.;
-        if is_valid {
-            unchanged_percentage = telemetry::utils::unchanged_percentage(
-                &params.orig_grey_text,
-                &grey_corrected,
-            );
-        }
-        Ok(TestHeadTailAddedTextRes { is_valid, grey_corrected, unchanged_percentage })
+    pub async fn set_active_document(&self, params: ChangeActiveFile) -> Result<SuccessRes> {
+        let path = crate::files_correction::canonical_path(&params.uri.to_file_path().unwrap_or_default().display().to_string());
+        info!("ACTIVE_DOC {:?}", crate::nicer_logs::last_n_chars(&path.to_string_lossy().to_string(), 30));
+        self.gcx.write().await.documents_state.active_file_path = Some(path);
+        Ok(SuccessRes { success: true })
     }
  }
 
@@ -310,31 +308,26 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
-        for _add_folder in params.event.added {
-            // TODO
+        for add_folder in params.event.added {
+            info!("UNCLEAR LSP EVENT: did_change_workspace_folders/add {}", add_folder.name);
         }
-        for _delete_folder in params.event.removed {
-            // TODO
+        for delete_folder in params.event.removed {
+            info!("UNCLEAR LSP EVENT: did_change_workspace_folders/add {}", delete_folder.name);
         }
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        async fn on_delete(event: FileEvent, gcx: Arc<ARwLock<GlobalContext>>) {
-            let cpath = crate::files_correction::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
-            on_did_delete(gcx, &cpath).await;
-        }
-        async fn on_create(event: FileEvent, gcx: Arc<ARwLock<GlobalContext>>) {
-            let cpath = crate::files_correction::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
-            let text = read_file_from_disk(&cpath).await.map(|x|x.to_string()).unwrap_or("".to_string());
-            on_did_change(gcx, &cpath, &text).await;
-        }
-
         for event in params.changes {
             if event.typ == FileChangeType::DELETED {
-                on_delete(event, self.gcx.clone()).await;
+                let cpath = crate::files_correction::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
+                info!("UNCLEAR LSP EVENT: did_change_watched_files/delete {}", cpath.display());
+                // on_did_delete(gcx, &cpath).await;
             }
             else if event.typ == FileChangeType::CREATED {
-                on_create(event, self.gcx.clone()).await;
+                let cpath = crate::files_correction::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
+                info!("UNCLEAR LSP EVENT: did_change_watched_files/change {}", cpath.display());
+                // let text = read_file_from_disk(&cpath).await.map(|x|x.to_string()).unwrap_or("".to_string());
+                // on_did_change(gcx, &cpath, &text).await;
             }
         }
     }
@@ -349,7 +342,7 @@ async fn build_lsp_service(
     })
         .custom_method("refact/getCompletions", Backend::get_completions)
         .custom_method("refact/acceptCompletion", Backend::accept_snippet)
-        .custom_method("refact/test_if_head_tail_equal_return_added_text", Backend::test_if_head_tail_equal_return_added_text)
+        .custom_method("refact/setActiveDocument", Backend::set_active_document)
         .finish();
     (lsp_service, socket)
 }

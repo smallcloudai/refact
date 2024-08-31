@@ -98,14 +98,14 @@ impl Document {
 pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub workspace_files: Arc<StdMutex<Vec<PathBuf>>>,
-    pub last_accessed_file: Arc<StdMutex<Option<PathBuf>>>,  // XXX: not the right way to do it, maybe track open file
+    pub active_file_path: Option<PathBuf>,
     pub jsonl_files: Arc<StdMutex<Vec<PathBuf>>>,
     // document_map on windows: c%3A/Users/user\Documents/file.ext
     // query on windows: C:/Users/user/Documents/file.ext
     pub memory_document_map: HashMap<PathBuf, Arc<ARwLock<Document>>>,   // if a file is open in IDE, and it's outside workspace dirs, it will be in this map and not in workspace_files
     pub cache_dirty: Arc<AMutex<bool>>,
     pub cache_correction: Arc<HashMap<String, HashSet<String>>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
-    pub cache_fuzzy: Arc<Vec<String>>,                   // slow linear search
+    pub cache_fuzzy: Arc<Vec<String>>,                            // slow linear search
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
     pub total_reset: bool,
     pub total_reset_ts: std::time::SystemTime,
@@ -137,7 +137,7 @@ impl DocumentsState {
         Self {
             workspace_folders: Arc::new(StdMutex::new(workspace_dirs)),
             workspace_files: Arc::new(StdMutex::new(Vec::new())),
-            last_accessed_file: Arc::new(StdMutex::new(None)),
+            active_file_path: None,
             jsonl_files: Arc::new(StdMutex::new(Vec::new())),
             memory_document_map: HashMap::new(),
             cache_dirty: Arc::new(AMutex::<bool>::new(false)),
@@ -262,21 +262,21 @@ async fn ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>> 
     }
 }
 
-pub async fn detect_vcs_in_dir(file_path: &PathBuf) -> Option<&'static str> {
-    let mut directory = file_path.to_path_buf();
-    if directory.is_file() {
-        directory.pop(); // Get the parent directory if the path is a file
+pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf, &'static str)> {
+    let mut dir = file_path.clone();
+    if dir.is_file() {
+        dir.pop();
     }
-
-    return if is_git_repo(&directory).await {
-        Some("git")
-    } else if is_svn_repo(&directory).await {
-        Some("svn")
-    } else if is_hg_repo(&directory).await {
-        Some("hg")
-    } else {
-        None
+    while dir.pop() {
+        if is_git_repo(&dir).await {
+            return Some((dir.clone(), "git"));
+        } else if is_svn_repo(&dir).await {
+            return Some((dir.clone(), "svn"));
+        } else if is_hg_repo(&dir).await {
+            return Some((dir.clone(), "hg"));
+        }
     }
+    None
 }
 
 async fn is_git_repo(directory: &PathBuf) -> bool {
@@ -472,8 +472,8 @@ pub async fn on_did_open(
     let (_doc_arc, dirty_arc, mark_dirty) = overwrite_or_create_document(gcx.clone(), doc).await;
     if mark_dirty {
         (*dirty_arc.lock().await) = true;
-    }
-    *gcx.read().await.documents_state.last_accessed_file.lock().unwrap() = Some(cpath.clone());
+    };
+    gcx.write().await.documents_state.active_file_path = Some(cpath.clone());
 }
 
 pub async fn on_did_close(
