@@ -49,6 +49,7 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> H
         // ("relevant_files".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_relevant_files::AttRelevantFiles{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_locate::AttLocate{}) as Box<dyn Tool + Send>))),
         ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_relevant_files::AttRelevantFiles{}) as Box<dyn Tool + Send>))),
+        ("github".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::tool_github::ToolGithub{}) as Box<dyn Tool + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
@@ -196,6 +197,20 @@ tools:
     parameters_required:
       - "paths"
       - "todo"
+
+  - name: "github"
+    agentic: true
+    description: "Access to gh command line command, to fetch issues, review PRs."
+    parameters:
+      - name: "project_dir"
+        type: "string"
+        description: "Look at system prompt for location of version control (.git folder) of the active file."
+      - name: "command"
+        type: "string"
+        description: 'Examples:\ngh issue create --body "hello world" --title "Testing gh integration"\ngh issue list --author @me --json id,title,labels,updatedAt,body\n'
+    parameters_required:
+      - "project_dir"
+      - "command"
 "####;
 
 #[allow(dead_code)]
