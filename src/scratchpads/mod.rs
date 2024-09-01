@@ -80,7 +80,7 @@ pub async fn create_chat_scratchpad(
             let tobj = t.as_object().unwrap();
             if let Some(function) = tobj.get("function") {
                 if let Some(name) = function.get("name") {
-                    if name.as_str() == Some("definition") {
+                    if name.as_str() == Some("web") {  // anything that will still be on without ast and vecdb
                         exploration_tools = true;
                     }
                     if name.as_str() == Some("patch") {
