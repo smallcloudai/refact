@@ -25,7 +25,6 @@ struct LspLikeDidChange {
 #[derive(Serialize, Deserialize, Clone)]
 struct LspLikeSetActiveDocument {
     pub uri: Url,
-    pub text: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

@@ -504,6 +504,8 @@ pub async fn on_did_change(
         (*dirty_arc.lock().await) = true;
     }
 
+    gcx.write().await.documents_state.active_file_path = Some(path.clone());
+
     let mut go_ahead = true;
     {
         let is_it_good = is_valid_file(path);
