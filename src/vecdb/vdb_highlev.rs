@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
-use std::sync::RwLock as StdRwLock;
 use indexmap::IndexMap;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::task::JoinHandle;
@@ -10,7 +9,7 @@ use async_trait::async_trait;
 use tracing::{error, info};
 
 use crate::background_tasks::BackgroundTasksHolder;
-use crate::caps::{get_custom_embedding_api_key, CodeAssistantCaps};
+use crate::caps::get_custom_embedding_api_key;
 use crate::fetch_embedding;
 use crate::files_in_workspace::Document;
 use crate::global_context::{CommandLine, GlobalContext};
@@ -182,24 +181,11 @@ async fn do_i_need_to_reload_vecdb(
     return (true, Some(consts));
 }
 
-fn can_start_vecdb(caps: Arc<StdRwLock<CodeAssistantCaps>>) -> bool {
-    let caps = caps.read().unwrap();
-    !caps.embedding_model.is_empty() && !caps.endpoint_embeddings_template.is_empty()
-}
-
 pub async fn vecdb_background_reload(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) {
     let cmd_line = gcx.read().await.cmdline.clone();
     if !cmd_line.vecdb {
-        return;
-    }
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
-    if caps.is_err() {
-        return;
-    }
-    let caps = caps.unwrap();
-    if !can_start_vecdb(caps) {
         return;
     }
 
