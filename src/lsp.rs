@@ -15,10 +15,9 @@ use tracing::{error, info};
 
 use crate::call_validation::{CodeCompletionInputs, CodeCompletionPost, CursorPosition, SamplingParameters};
 use crate::files_in_workspace;
-use crate::files_in_workspace::{on_did_change, on_did_delete, read_file_from_disk};
+use crate::files_in_workspace::{on_did_change, on_did_delete};
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::http::routers::v1::code_completion::handle_v1_code_completion;
-use crate::telemetry;
 use crate::telemetry::snippets_collection;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -282,7 +281,7 @@ impl LanguageServer for Backend {
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let path = crate::files_correction::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
-        files_in_workspace::on_did_change(
+        on_did_change(
             self.gcx.clone(),
             &path,
             &params.content_changes[0].text  // TODO: This text could be just a part of the whole file (if range is not none)
@@ -321,13 +320,12 @@ impl LanguageServer for Backend {
             if event.typ == FileChangeType::DELETED {
                 let cpath = crate::files_correction::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
                 info!("UNCLEAR LSP EVENT: did_change_watched_files/delete {}", cpath.display());
-                // on_did_delete(gcx, &cpath).await;
+                on_did_delete(self.gcx.clone(), &cpath).await;
             }
             else if event.typ == FileChangeType::CREATED {
                 let cpath = crate::files_correction::canonical_path(&event.uri.to_file_path().unwrap_or_default().display().to_string());
                 info!("UNCLEAR LSP EVENT: did_change_watched_files/change {}", cpath.display());
-                // let text = read_file_from_disk(&cpath).await.map(|x|x.to_string()).unwrap_or("".to_string());
-                // on_did_change(gcx, &cpath, &text).await;
+                // on_did_change(self.gcx.clone(), &cpath, &text).await;
             }
         }
     }
