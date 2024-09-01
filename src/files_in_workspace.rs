@@ -7,7 +7,6 @@ use crate::global_context::GlobalContext;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use notify::event::{CreateKind, DataChange, ModifyKind, RemoveKind};
 use ropey::Rope;
-use tokio::process::Command;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 
 use tracing::info;

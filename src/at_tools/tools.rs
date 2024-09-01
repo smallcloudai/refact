@@ -39,6 +39,19 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> I
         (gcx_locked.ast_module.is_some(), vecdb.is_some(), gcx_locked.cmdline.experimental)
     };
 
+    let integrations_yaml = crate::integrations::load_integrations(gcx).await;
+    let integrations_value = if integrations_yaml.is_empty() {
+        serde_yaml::Value::default()
+    } else {
+        match serde_yaml::from_str(integrations_yaml.as_str()) {
+            Ok(value) => value,
+            Err(e) => {
+                tracing::error!("Failed to parse integrations.yaml: {}", e);
+                serde_yaml::Value::default()
+            }
+        }
+    };
+
     let mut tools_all = IndexMap::from([
         ("search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_search::AttSearch{}) as Box<dyn Tool + Send>))),
         ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_definition::AttAstDefinition{}) as Box<dyn Tool + Send>))),
@@ -55,7 +68,9 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> I
     if experimental {
         // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttSaveKnowledge{}) as Box<dyn Tool + Send>))),
         // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
-        tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::tool_github::ToolGithub{}) as Box<dyn Tool + Send>)));
+        if let Some(github_tool) = crate::at_tools::tool_github::ToolGithub::new_if_configured(&integrations_value) {
+            tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(github_tool) as Box<dyn Tool + Send>)));
+        }
     }
 
     let mut filtered_tools = IndexMap::new();
@@ -89,7 +104,7 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> I
     filtered_tools
 }
 
-const TOOLS: &str = r####"
+const BUILT_IN_TOOLS: &str = r####"
 tools:
   - name: "search"
     description: "Find similar pieces of code or text using vector database"
@@ -199,7 +214,6 @@ tools:
       - "todo"
 
   - name: "github"
-    agentic: true
     description: "Access to gh command line command, to fetch issues, review PRs."
     parameters:
       - name: "project_dir"
@@ -207,7 +221,7 @@ tools:
         description: "Look at system prompt for location of version control (.git folder) of the active file."
       - name: "command"
         type: "string"
-        description: 'Examples:\ngh issue create --body "hello world" --title "Testing gh integration"\ngh issue list --author @me --json id,title,labels,updatedAt,body\n'
+        description: 'Examples:\ngh issue create --body "hello world" --title "Testing gh integration"\ngh issue list --author @me --json number,title,updatedAt,url\n'
     parameters_required:
       - "project_dir"
       - "command"
@@ -341,8 +355,8 @@ impl ToolDict {
 }
 
 pub fn tool_description_list_from_yaml(turned_on: &Vec<String>) -> Result<Vec<ToolDict>, String> {
-    let at_dict: ToolDictDeserialize = serde_yaml::from_str(TOOLS)
-        .map_err(|e|format!("Failed to parse TOOLS: {}", e))?;
+    let at_dict: ToolDictDeserialize = serde_yaml::from_str(BUILT_IN_TOOLS)
+        .map_err(|e|format!("Failed to parse BUILT_IN_TOOLS: {}", e))?;
     Ok(at_dict.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>())
 }
 

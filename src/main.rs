@@ -43,6 +43,7 @@ mod toolbox;
 mod ast;
 mod diffs;
 mod knowledge;
+mod integrations;
 mod cmd_commands;
 
 #[tokio::main]
@@ -94,7 +95,7 @@ async fn main() {
 
     // not really needed, but it's nice to have an error message sooner if there's one
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
-    
+
     let mut background_tasks = start_background_tasks(gcx.clone()).await;
     // vector db will spontaneously start if the downloaded caps and command line parameters are right
 
