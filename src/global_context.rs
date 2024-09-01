@@ -68,8 +68,11 @@ pub struct CommandLine {
     #[structopt(long, short="w", default_value="", help="Workspace folder to find files for VecDB and AST. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
     #[structopt(long, help="Generate ~/.cache/refact/bring-your-own-key.yaml to manually specify models, endpoints, and keys.")]
-    pub save_byok_file: bool
+    pub save_byok_file: bool,
+    #[structopt(long, help="Enable experimental features, such as new integrations.")]
+    pub experimental: bool,
 }
+
 impl CommandLine {
     fn create_hash(msg: String) -> String {
         let mut hasher = DefaultHasher::new();

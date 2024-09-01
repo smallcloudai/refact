@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 use serde_json::{Value, json};
@@ -30,63 +31,62 @@ pub trait Tool: Send + Sync {
     }
 }
 
-pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>
+pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>
 {
-    let tools_all =  HashMap::from([
+    let (ast_on, vecdb_on, experimental) = {
+        let gcx_locked = gcx.read().await;
+        let vecdb = gcx_locked.vec_db.lock().await;
+        (gcx_locked.ast_module.is_some(), vecdb.is_some(), gcx_locked.cmdline.experimental)
+    };
+
+    let mut tools_all = IndexMap::from([
         ("search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_search::AttSearch{}) as Box<dyn Tool + Send>))),
         ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_definition::AttAstDefinition{}) as Box<dyn Tool + Send>))),
         ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_reference::AttAstReference{}) as Box<dyn Tool + Send>))),
         ("tree".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_tree::AttTree{}) as Box<dyn Tool + Send>))),
-        // ("symbols_at".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_lookup_symbols::AttAstLookupSymbols{}) as Box<dyn AtTool + Send>))),
-        // ("remember_how_to_use_tools".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
-        // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
         ("patch".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_patch::tool::ToolPatch::new()) as Box<dyn Tool + Send>))),
-        // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttSaveKnowledge{}) as Box<dyn Tool + Send>))),
         ("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttGetKnowledge{}) as Box<dyn Tool + Send>))),
-        // ("diff".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_diff::AttDiff{}) as Box<dyn Tool + Send>))),
         ("web".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_web::AttWeb{}) as Box<dyn Tool + Send>))),
         ("cat".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_cat::AttCat{}) as Box<dyn Tool + Send>))),
-        // ("relevant_files".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_relevant_files::AttRelevantFiles{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_locate::AttLocate{}) as Box<dyn Tool + Send>))),
         ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_relevant_files::AttRelevantFiles{}) as Box<dyn Tool + Send>))),
-        ("github".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::tool_github::ToolGithub{}) as Box<dyn Tool + Send>))),
     ]);
 
-    let (ast_on, vecdb_on) = {
-        let gcx = gcx.read().await;
-        let vecdb = gcx.vec_db.lock().await;
-        (gcx.ast_module.is_some(), vecdb.is_some())
-    };
-
-    let mut result = HashMap::new();
-    for (key, value) in tools_all {
-        let command = value.lock().await;
-        let depends_on = command.tool_depends_on();
-        if depends_on.contains(&"ast".to_string()) && !ast_on {
-            continue;
-        }
-        if depends_on.contains(&"vecdb".to_string()) && !vecdb_on {
-            continue;
-        }
-        result.insert(key, value.clone());
+    if experimental {
+        // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttSaveKnowledge{}) as Box<dyn Tool + Send>))),
+        // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
+        tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::tool_github::ToolGithub{}) as Box<dyn Tool + Send>)));
     }
 
-    let tconfig_maybe = crate::toolbox::toolbox_config::load_customization(gcx.clone()).await;
-    if tconfig_maybe.is_err() {
-        tracing::error!("Error loading toolbox config: {:?}", tconfig_maybe.err().unwrap());
-    } else {
-        for cust in tconfig_maybe.unwrap().tools {
-            result.insert(
-                cust.name.clone(),
-                Arc::new(AMutex::new(Box::new(crate::at_tools::att_execute_cmd::AttExecuteCommand {
-                    command: cust.command,
-                    timeout: cust.timeout,
-                    output_postprocess: cust.output_postprocess,
-                }) as Box<dyn Tool + Send>)));
+    let mut filtered_tools = IndexMap::new();
+    for (tool_name, tool_arc) in tools_all {
+        let tool_locked = tool_arc.lock().await;
+        let dependencies = tool_locked.tool_depends_on();
+        if dependencies.contains(&"ast".to_string()) && !ast_on {
+            continue;
         }
+        if dependencies.contains(&"vecdb".to_string()) && !vecdb_on {
+            continue;
+        }
+        filtered_tools.insert(tool_name, tool_arc.clone());
     }
 
-    result
+    // let tconfig_maybe = crate::toolbox::toolbox_config::load_customization(gcx.clone()).await;
+    // if tconfig_maybe.is_err() {
+    //     tracing::error!("Error loading toolbox config: {:?}", tconfig_maybe.err().unwrap());
+    // } else {
+    //     for cust in tconfig_maybe.unwrap().tools {
+    //         result.insert(
+    //             cust.name.clone(),
+    //             Arc::new(AMutex::new(Box::new(crate::at_tools::att_execute_cmd::AttExecuteCommand {
+    //                 command: cust.command,
+    //                 timeout: cust.timeout,
+    //                 output_postprocess: cust.output_postprocess,
+    //             }) as Box<dyn Tool + Send>)));
+    //     }
+    // }
+
+    filtered_tools
 }
 
 const TOOLS: &str = r####"
@@ -340,7 +340,7 @@ impl ToolDict {
     }
 }
 
-pub fn tools_compiled_in(turned_on: &Vec<String>) -> Result<Vec<ToolDict>, String> {
+pub fn tool_description_list_from_yaml(turned_on: &Vec<String>) -> Result<Vec<ToolDict>, String> {
     let at_dict: ToolDictDeserialize = serde_yaml::from_str(TOOLS)
         .map_err(|e|format!("Failed to parse TOOLS: {}", e))?;
     Ok(at_dict.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>())

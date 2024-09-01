@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -35,7 +36,7 @@ pub struct AtCommandsContext {
     pub correction_only_up_to_step: usize,  // suppresses context_file messages, writes a correction message instead
 
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
-    pub at_tools: HashMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
+    pub at_tools: IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
     pub subchat_tool_parameters: HashMap<String, SubchatParameters>,
     pub postprocess_parameters: PostprocessSettings,
 

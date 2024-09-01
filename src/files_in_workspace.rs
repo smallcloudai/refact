@@ -262,54 +262,53 @@ async fn ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>> 
     }
 }
 
+#[allow(dead_code)]
 pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf, &'static str)> {
     let mut dir = file_path.clone();
     if dir.is_file() {
         dir.pop();
     }
     while dir.pop() {
-        if is_git_repo(&dir).await {
+        if dir.join(".git").is_dir() {
             return Some((dir.clone(), "git"));
-        } else if is_svn_repo(&dir).await {
+        } else if dir.join(".svn").is_dir() {
             return Some((dir.clone(), "svn"));
-        } else if is_hg_repo(&dir).await {
+        } else if dir.join(".hg").is_dir() {
             return Some((dir.clone(), "hg"));
         }
     }
     None
 }
 
-async fn is_git_repo(directory: &PathBuf) -> bool {
-    Command::new("git")
-        .arg("rev-parse")
-        .arg("--is-inside-work-tree")
-        .current_dir(directory)
-        .output()
-        .await
-        .map(|output| output.status.success())
-        .unwrap_or(false)
-}
-
-async fn is_svn_repo(directory: &PathBuf) -> bool {
-    Command::new("svn")
-        .arg("info")
-        .current_dir(directory)
-        .output()
-        .await
-        .map(|output| output.status.success())
-        .unwrap_or(false)
-}
-
-async fn is_hg_repo(directory: &PathBuf) -> bool {
-    Command::new("hg")
-        .arg("root")
-        .current_dir(directory)
-        .output()
-        .await
-        .map(|output| output.status.success())
-        .unwrap_or(false)
-}
-
+// Slow version of version control detection:
+// async fn is_git_repo(directory: &PathBuf) -> bool {
+//     Command::new("git")
+//         .arg("rev-parse")
+//         .arg("--is-inside-work-tree")
+//         .current_dir(directory)
+//         .output()
+//         .await
+//         .map(|output| output.status.success())
+//         .unwrap_or(false)
+// }
+// async fn is_svn_repo(directory: &PathBuf) -> bool {
+//     Command::new("svn")
+//         .arg("info")
+//         .current_dir(directory)
+//         .output()
+//         .await
+//         .map(|output| output.status.success())
+//         .unwrap_or(false)
+// }
+// async fn is_hg_repo(directory: &PathBuf) -> bool {
+//     Command::new("hg")
+//         .arg("root")
+//         .current_dir(directory)
+//         .output()
+//         .await
+//         .map(|output| output.status.success())
+//         .unwrap_or(false)
+// }
 
 async fn ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = vec![];
