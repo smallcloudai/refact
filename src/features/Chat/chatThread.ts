@@ -228,7 +228,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (state.thread.id === action.payload.id) return state;
     const mostUptoDateThread =
       action.payload.id in state.cache
-        ? { ...state.cache[action.payload.id], read: true }
+        ? { ...state.cache[action.payload.id] }
         : { ...action.payload, read: true };
 
     state.error = null;

@@ -1,4 +1,4 @@
-import { Button, Flex, TabNav, Text } from "@radix-ui/themes";
+import { Button, Flex, Spinner, TabNav, Text } from "@radix-ui/themes";
 import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
 import { PlusIcon } from "@radix-ui/react-icons";
 import { newChatAction } from "../../events";
@@ -41,6 +41,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const history = useAppSelector(getHistory, {
     devModeChecks: { stabilityCheck: "never" },
   });
+  const cache = useAppSelector((app) => app.chat.cache);
 
   const handleNavigation = (to: DropdownNavigationOptions | "chat") => {
     if (to === "settings") {
@@ -105,6 +106,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 key={chat.id}
                 onClick={() => goToTab({ type: "chat", id: chat.id })}
               >
+                {chat.id in cache && <Spinner />}
                 <TruncateLeft style={{ maxWidth: "140px" }}>
                   {chat.title}
                 </TruncateLeft>
