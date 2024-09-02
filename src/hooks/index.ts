@@ -22,3 +22,4 @@ export * from "./useConfig";
 export * from "./useAppDispatch";
 export * from "./useAppSelector";
 export * from "./useSendChatRequest";
+export * from "./useDiffPreview";

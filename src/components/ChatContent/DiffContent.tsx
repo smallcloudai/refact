@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
-import { DiffPreviewResponse, type DiffChunk } from "../../services/refact";
+import { type DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
 import styles from "./ChatContent.module.css";
 import { filename } from "../../utils";
@@ -8,10 +8,12 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
-import { useDiffApplyMutation, useConfig, useAppSelector } from "../../hooks";
-import { selectLspPort } from "../../features/Config/configSlice";
-import { DIFF_PREVIEW_URL } from "../../services/refact/consts";
-import { useEventsBusForIDE, useDiffStateQuery } from "../../hooks";
+import {
+  useDiffApplyMutation,
+  useDiffStateQuery,
+  useConfig,
+  useDiffPreview,
+} from "../../hooks";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -195,17 +197,17 @@ export const DiffContent: React.FC<{
   toolCallId: string;
 }> = ({ chunks, toolCallId }) => {
   const [open, setOpen] = React.useState(false);
-  const port = useAppSelector(selectLspPort);
-  const { diffPreview } = useEventsBusForIDE();
 
   const diffStateRequest = useDiffStateQuery({ chunks, toolCallId });
+
+  const { onPreview, previewResult: _previewResult } = useDiffPreview(chunks);
+
   const { onSubmit, result: _result } = useDiffApplyMutation();
 
   const groupedDiffs: Record<string, DiffWithStatus[]> = React.useMemo(() => {
     const diffWithStatus = chunks.map((diff, index) => {
       return {
         ...diff,
-
         // state: result.data?.state[index] ?? 0,
         can_apply: diffStateRequest.data?.can_apply[index] ?? false,
         applied: diffStateRequest.data?.state[index] ?? false,
@@ -219,24 +221,6 @@ export const DiffContent: React.FC<{
   // if (diffStateRequest.isFetching) return null;
   // if (diffStateRequest.isError) return null;
   // if (!diffStateRequest.data) return null;
-
-  // TODO: move this
-  const onPreview = React.useCallback(
-    (toApply: boolean[]) => {
-      const f = async (toApply: boolean[]) => {
-        const previewEndpoint = `http://127.0.0.1:${port}${DIFF_PREVIEW_URL}`;
-
-        const response = await fetch(previewEndpoint, {
-          method: "POST",
-          body: JSON.stringify({ chunks, apply: toApply }),
-        });
-        const preview = (await response.json()) as DiffPreviewResponse;
-        diffPreview(preview);
-      };
-      void f(toApply);
-    },
-    [chunks, port, diffPreview],
-  );
 
   return (
     <Container>
@@ -255,7 +239,7 @@ export const DiffContent: React.FC<{
               void onSubmit({ chunks, toApply, toolCallId });
             }}
             onPreview={onPreview}
-            loading={diffStateRequest.isFetching}
+            loading={diffStateRequest.isLoading}
             diffs={groupedDiffs}
             openFile={() => {
               // TODO:
@@ -278,7 +262,7 @@ export const DiffForm: React.FC<{
   diffs: Record<string, DiffWithStatus[]>;
   loading: boolean;
   onSubmit: (toApply: boolean[]) => void;
-  onPreview: (toApply: boolean[]) => void;
+  onPreview: (toApply: boolean[]) => void | Promise<void>;
   openFile: (file: { file_name: string; line?: number }) => void;
 }> = ({ diffs, loading, onSubmit, onPreview, openFile }) => {
   const { host } = useConfig();
@@ -326,7 +310,7 @@ export const DiffForm: React.FC<{
         if (indices.includes(index)) return value;
         return diff.applied;
       });
-      onPreview(toApply);
+      void onPreview(toApply);
     },
     [values, onPreview],
   );
@@ -359,10 +343,10 @@ export const DiffForm: React.FC<{
                 </Link>
               </TruncateLeft>
 
-              {host === "vscode" && (
-                <Text size="1" as="label">
-                  <Flex align="center" gap="2" pl="2">
-                    {errored && "error"}
+              <Text size="1" as="label">
+                <Flex align="center" gap="2" pl="2">
+                  {errored && "error"}
+                  {host === "vscode" && (
                     <Button
                       size="1"
                       disabled={loading}
@@ -370,13 +354,7 @@ export const DiffForm: React.FC<{
                     >
                       Preview
                     </Button>
-                  </Flex>
-                </Text>
-              )}
-
-              <Text size="1" as="label">
-                <Flex align="center" gap="2" pl="2">
-                  {errored && "error"}
+                  )}
                   <Button
                     size="1"
                     disabled={loading}
