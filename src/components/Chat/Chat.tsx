@@ -2,15 +2,17 @@ import React, { useCallback, useRef, useEffect } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
-import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { PageWrapper } from "../PageWrapper";
-import { useAppSelector, useAppDispatch } from "../../hooks";
+import {
+  useAppSelector,
+  useAppDispatch,
+  useSendChatRequest,
+} from "../../hooks";
 import type { Config } from "../../features/Config/configSlice";
-import { useEventsBusForIDE, useSendChatRequest } from "../../hooks";
+import { useEventsBusForIDE } from "../../hooks";
 import {
   enableSend,
   getSelectedChatModel,
-  newChatAction,
   selectIsStreaming,
   selectIsWaiting,
   setChatModel,
@@ -20,7 +22,7 @@ import {
   selectMessages,
 } from "../../features/Chat/Thread";
 import { selectActiveFile } from "../../features/Chat/activeFile";
-import { useTourRefs } from "../../features/Tour";
+import { Toolbar } from "../Toolbar";
 
 export type ChatProps = {
   host: Config["host"];
@@ -39,7 +41,6 @@ export type ChatProps = {
 export const Chat: React.FC<ChatProps> = ({
   style,
   host,
-  backFromChat,
   unCalledTools,
   caps,
   maybeSendToSidebar,
@@ -67,7 +68,6 @@ export const Chat: React.FC<ChatProps> = ({
   );
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
-  const refs = useTourRefs();
 
   const {
     diffPasteBack,
@@ -95,16 +95,6 @@ export const Chat: React.FC<ChatProps> = ({
       });
   }, [chatContentRef]);
 
-  const handleNewChat = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      event.currentTarget.blur();
-      // TODO: could be improved
-      const action = newChatAction();
-      dispatch(action);
-    },
-    [dispatch],
-  );
-
   const focusTextarea = useCallback(() => {
     const textarea = document.querySelector<HTMLTextAreaElement>(
       '[data-testid="chat-form-textarea"]',
@@ -122,37 +112,7 @@ export const Chat: React.FC<ChatProps> = ({
 
   return (
     <PageWrapper host={host} style={style}>
-      {/* {host === "vscode" && !tabbed && ( */}
-      <Flex gap="2" pb="3" wrap="wrap">
-        <Button
-          size="1"
-          variant="surface"
-          onClick={backFromChat}
-          ref={(x) => refs.setBack(x)}
-        >
-          <ArrowLeftIcon width="16" height="16" />
-          Back
-        </Button>
-        {/* {host === "vscode" && (
-          <Button
-            size="1"
-            variant="surface"
-            onClick={handleOpenChatInNewTab}
-            ref={(x) => refs.setOpenInNewTab(x)}
-          >
-            Open In Tab
-          </Button>
-        )} */}
-        <Button
-          size="1"
-          variant="surface"
-          onClick={handleNewChat}
-          ref={(x) => refs.setNewChatInside(x)}
-        >
-          New Chat
-        </Button>
-      </Flex>
-      {/* )} */}
+      <Toolbar activeTab={{ type: "chat", id: chatId }} />
       <ChatContent
         key={`chat-content-${chatId}`}
         chatKey={chatId}

@@ -2,7 +2,7 @@ import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   checkForDetailMessage,
   type ChatThread,
-  type PayloadWIthId,
+  type PayloadWithId,
   type ToolUse,
 } from "./types";
 import type {
@@ -18,25 +18,25 @@ import { ToolCommand } from "../../../services/refact/tools";
 
 export const newChatAction = createAction("chatThread/new");
 
-export const chatResponse = createAction<PayloadWIthId & ChatResponse>(
+export const chatResponse = createAction<PayloadWithId & ChatResponse>(
   "chatThread/response",
 );
 
-export const chatAskedQuestion = createAction<PayloadWIthId>(
+export const chatAskedQuestion = createAction<PayloadWithId>(
   "chatThread/askQuestion",
 );
 
 export const backUpMessages = createAction<
-  PayloadWIthId & { messages: ChatThread["messages"] }
+  PayloadWithId & { messages: ChatThread["messages"] }
 >("chatThread/backUpMessages");
 
 // TODO: add history actions to this, maybe not used any more
-export const chatError = createAction<PayloadWIthId & { message: string }>(
+export const chatError = createAction<PayloadWithId & { message: string }>(
   "chatThread/error",
 );
 
 // TODO: include history actions with this one, this could be done by making it a thunk, or use reduce-reducers.
-export const doneStreaming = createAction<PayloadWIthId>(
+export const doneStreaming = createAction<PayloadWithId>(
   "chatThread/doneStreaming",
 );
 
@@ -48,18 +48,18 @@ export const setSystemPrompt = createAction<SystemPrompts>(
   "chatThread/setSystemPrompt",
 );
 
-export const removeChatFromCache = createAction<PayloadWIthId>(
+export const removeChatFromCache = createAction<PayloadWithId>(
   "chatThread/removeChatFromCache",
 );
 
 export const restoreChat = createAction<ChatThread>("chatThread/restoreChat");
 
-export const clearChatError = createAction<PayloadWIthId>(
+export const clearChatError = createAction<PayloadWithId>(
   "chatThread/clearError",
 );
 
-export const enableSend = createAction<PayloadWIthId>("chatThread/enableSend");
-export const setPreventSend = createAction<PayloadWIthId>(
+export const enableSend = createAction<PayloadWithId>("chatThread/enableSend");
+export const setPreventSend = createAction<PayloadWithId>(
   "chatThread/preventSend",
 );
 

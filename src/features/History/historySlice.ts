@@ -5,9 +5,11 @@ import {
 } from "@reduxjs/toolkit";
 import {
   backUpMessages,
+  chatAskedQuestion,
   ChatThread,
   doneStreaming,
   removeChatFromCache,
+  restoreChat,
 } from "../Chat/Thread";
 import { isUserMessage, UserMessage } from "../../services/refact";
 import { AppDispatch, RootState } from "../../app/store";
@@ -53,6 +55,16 @@ export const historySlice = createSlice({
       state[chat.id] = chat;
     },
 
+    markChatAsUnread: (state, action: PayloadAction<string>) => {
+      const chatId = action.payload;
+      state[chatId].read = false;
+    },
+
+    markChatAsRead: (state, action: PayloadAction<string>) => {
+      const chatId = action.payload;
+      state[chatId].read = true;
+    },
+
     deleteChatById: (state, action: PayloadAction<string>) => {
       return Object.entries(state).reduce<Record<string, ChatHistoryItem>>(
         (acc, [key, value]) => {
@@ -76,7 +88,8 @@ export const historySlice = createSlice({
   },
 });
 
-export const { saveChat, deleteChatById } = historySlice.actions;
+export const { saveChat, deleteChatById, markChatAsUnread, markChatAsRead } =
+  historySlice.actions;
 export const { getChatById, getHistory } = historySlice.selectors;
 
 // We could use this or reduce-reducers packages
@@ -106,6 +119,23 @@ startHistoryListening({
     if (thread.id !== action.payload.id) return;
     const toSave = { ...thread, messages: action.payload.messages };
     listenerApi.dispatch(saveChat(toSave));
+  },
+});
+
+startHistoryListening({
+  actionCreator: chatAskedQuestion,
+  effect: (action, listenerApi) => {
+    listenerApi.dispatch(markChatAsUnread(action.payload.id));
+  },
+});
+
+startHistoryListening({
+  actionCreator: restoreChat,
+  effect: (action, listenerApi) => {
+    const chat = listenerApi.getState().chat;
+    if (chat.thread.id == action.payload.id && chat.streaming) return;
+    if (action.payload.id in chat.cache) return;
+    listenerApi.dispatch(markChatAsRead(action.payload.id));
   },
 });
 

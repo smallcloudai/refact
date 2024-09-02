@@ -1,12 +1,13 @@
 import React from "react";
-import { Card, Flex, Text, Box } from "@radix-ui/themes";
+import { Card, Flex, Text, Box, Spinner } from "@radix-ui/themes";
 // import type { ChatHistoryItem } from "../../hooks/useChatHistory";
-import { ChatBubbleIcon } from "@radix-ui/react-icons";
+import { ChatBubbleIcon, DotFilledIcon } from "@radix-ui/react-icons";
 import { CloseButton } from "../Buttons/Buttons";
 import { IconButton } from "@radix-ui/themes";
 import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
 import type { ChatHistoryItem } from "../../features/History/historySlice";
 import { isUserMessage } from "../../services/refact";
+import { useAppSelector } from "../../hooks";
 
 export const HistoryItem: React.FC<{
   historyItem: ChatHistoryItem;
@@ -17,6 +18,9 @@ export const HistoryItem: React.FC<{
 }> = ({ historyItem, onClick, onDelete, onOpenInTab, disabled }) => {
   const dateCreated = new Date(historyItem.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
+  const cache = useAppSelector((app) => app.chat.cache);
+
+  const isStreaming = historyItem.id in cache;
   return (
     <Box style={{ position: "relative", width: "100%" }}>
       <Card
@@ -38,18 +42,24 @@ export const HistoryItem: React.FC<{
             onClick();
           }}
         >
-          <Text
-            as="div"
-            size="2"
-            weight="bold"
-            style={{
-              textOverflow: "ellipsis",
-              overflow: "hidden",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {historyItem.title}
-          </Text>
+          <Flex style={{ alignItems: "center", gap: 2 }}>
+            {isStreaming && <Spinner />}
+            {!isStreaming &&
+              historyItem.read !== undefined &&
+              !historyItem.read && <DotFilledIcon />}
+            <Text
+              as="div"
+              size="2"
+              weight="bold"
+              style={{
+                textOverflow: "ellipsis",
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {historyItem.title}
+            </Text>
+          </Flex>
 
           <Flex justify="between" style={{ marginTop: "8px" }}>
             <Text

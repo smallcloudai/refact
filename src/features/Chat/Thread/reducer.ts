@@ -73,10 +73,11 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(newChatAction, (state) => {
-    if (state.streaming) {
-      state.cache[state.thread.id] = state.thread;
-    }
     const next = createInitialState();
+    next.cache = { ...state.cache };
+    if (state.streaming) {
+      next.cache[state.thread.id] = { ...state.thread, read: false };
+    }
     next.tool_use = state.tool_use;
     next.thread.model = state.thread.model;
     return next;
@@ -94,7 +95,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       const thread = state.cache[action.payload.id];
       // TODO: this might not be needed any more, because we can mutate the last message.
       const messages = formatChatResponse(thread.messages, action.payload);
-      state.thread.messages = messages;
+      thread.messages = messages;
       return state;
     }
 
@@ -122,6 +123,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(doneStreaming, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
     state.streaming = false;
+    state.thread.read = true;
   });
 
   builder.addCase(chatAskedQuestion, (state, action) => {
@@ -129,6 +131,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.send_immediately = false;
     state.waiting_for_response = true;
     state.streaming = true;
+    state.thread.read = false;
     state.prevent_send = false;
   });
 
@@ -149,13 +152,19 @@ export const chatReducer = createReducer(initialState, (builder) => {
     const mostUptoDateThread =
       action.payload.id in state.cache
         ? { ...state.cache[action.payload.id] }
-        : action.payload;
+        : { ...action.payload, read: true };
 
     state.error = null;
     state.waiting_for_response = false;
 
     if (state.streaming) {
-      state.cache[state.thread.id] = state.thread;
+      state.cache[state.thread.id] = { ...state.thread, read: false };
+    }
+    if (action.payload.id in state.cache) {
+      const { [action.payload.id]: _, ...rest } = state.cache;
+      state.cache = rest;
+      state.streaming = true;
+    } else {
       state.streaming = false;
     }
     state.thread = mostUptoDateThread;

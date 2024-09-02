@@ -9,6 +9,7 @@ export type ChatThread = {
   title?: string;
   createdAt?: string;
   updatedAt?: string;
+  read?: boolean;
 };
 
 export type ToolUse = "quick" | "explore" | "agent";
@@ -25,7 +26,7 @@ export type Chat = {
   send_immediately: boolean;
 };
 
-export type PayloadWIthId = { id: string };
+export type PayloadWithId = { id: string };
 
 export type DetailMessage = { detail: string };
 

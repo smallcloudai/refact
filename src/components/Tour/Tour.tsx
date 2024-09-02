@@ -29,11 +29,11 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
     dispatch(next());
   }
 
-  if (state.type === "in_progress" && state.step === 7 && page === "history") {
+  if (state.type === "in_progress" && state.step === 6 && page === "history") {
     dispatch(next());
   }
 
-  if (state.type === "in_progress" && state.step === 9 && page === "history") {
+  if (state.type === "in_progress" && state.step === 8 && page === "history") {
     dispatch(push({ name: "tour end" }));
   }
 
@@ -68,6 +68,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         onPage={"history"}
         page={page}
         onNext={openChat}
+        containerWidth={chatWidth}
       />
       <TourBubble
         text={
@@ -103,17 +104,10 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         page={page}
       />
       <TourBubble
-        text={"Use 'New Chat' to switch topics and create a new thread."}
+        text={
+          "Click ‘Dashboard’ to see your chat history and continue discussion."
+        }
         step={6}
-        down={true}
-        target={refs.newChatInside}
-        containerWidth={chatWidth}
-        onPage={"chat"}
-        page={page}
-      />
-      <TourBubble
-        text={"Click ‘Back’ to see your chat history and continue discussion."}
-        step={7}
         down={true}
         target={refs.back}
         containerWidth={chatWidth}
@@ -123,9 +117,9 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
       />
       <TourBubble
         text={"Click here to discover more."}
-        step={8}
-        down={false}
-        containerWidth="min(100%, 540px)"
+        step={7}
+        down={true}
+        containerWidth={chatWidth}
         target={refs.more}
         onPage={"history"}
         page={page}
