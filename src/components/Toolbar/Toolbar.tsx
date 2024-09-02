@@ -56,6 +56,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
       dispatch(popBackTo("initial setup"));
       dispatch(push({ name: "welcome" }));
     } else if (to === "chat") {
+      dispatch(popBackTo("history"));
       dispatch(push({ name: "chat" }));
     }
   };
@@ -69,6 +70,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     (tab: Tab) => {
       if (tab.type === "dashboard") {
         dispatch(popBackTo("history"));
+        dispatch(newChatAction());
       } else {
         const chat = history.find((chat) => chat.id === tab.id);
         if (chat != undefined) {
@@ -90,19 +92,25 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         >
           Dashboard
         </TabNav.Link>
-        {history.map((chat) => {
-          return (
-            <TabNav.Link
-              active={isChatTab(activeTab) && activeTab.id == chat.id}
-              key={chat.id}
-              onClick={() => goToTab({ type: "chat", id: chat.id })}
-            >
-              <TruncateLeft style={{ maxWidth: "140px" }}>
-                {chat.title}
-              </TruncateLeft>
-            </TabNav.Link>
-          );
-        })}
+        {history
+          .filter(
+            (chat) =>
+              !chat.read ||
+              (activeTab.type === "chat" && activeTab.id == chat.id),
+          )
+          .map((chat) => {
+            return (
+              <TabNav.Link
+                active={isChatTab(activeTab) && activeTab.id == chat.id}
+                key={chat.id}
+                onClick={() => goToTab({ type: "chat", id: chat.id })}
+              >
+                <TruncateLeft style={{ maxWidth: "140px" }}>
+                  {chat.title}
+                </TruncateLeft>
+              </TabNav.Link>
+            );
+          })}
       </TabNav.Root>
       <Button
         variant="outline"

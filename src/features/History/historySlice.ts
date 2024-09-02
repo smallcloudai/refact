@@ -8,6 +8,7 @@ import {
   ChatThread,
   doneStreaming,
   removeChatFromCache,
+  restoreChat,
 } from "../Chat";
 import { isUserMessage, UserMessage } from "../../services/refact";
 import { AppDispatch, RootState } from "../../app/store";
@@ -105,6 +106,16 @@ startHistoryListening({
     const thread = listenerApi.getState().chat.thread;
     if (thread.id !== action.payload.id) return;
     const toSave = { ...thread, messages: action.payload.messages };
+    listenerApi.dispatch(saveChat(toSave));
+  },
+});
+
+startHistoryListening({
+  actionCreator: restoreChat,
+  effect: (action, listenerApi) => {
+    const thread = listenerApi.getState().chat.thread;
+    if (thread.id !== action.payload.id) return;
+    const toSave = { ...thread };
     listenerApi.dispatch(saveChat(toSave));
   },
 });
