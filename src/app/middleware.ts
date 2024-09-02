@@ -8,7 +8,7 @@ import {
   chatAskQuestionThunk,
   newChatAction,
   restoreChat,
-} from "../features/Chat/chatThread";
+} from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { capsApi, isCapsErrorResponse } from "../services/refact/caps";
 import { promptsApi } from "../services/refact/prompts";

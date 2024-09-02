@@ -1,10 +1,6 @@
 import { RootState } from "../../app/store";
 import { CUSTOM_PROMPTS_URL } from "./consts";
-import {
-  createApi,
-  fetchBaseQuery,
-  FetchBaseQueryError,
-} from "@reduxjs/toolkit/query/react";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const promptsApi = createApi({
   reducerPath: "prompts",
@@ -37,7 +33,8 @@ export const promptsApi = createApi({
             error: {
               data: result.data,
               error: "Invalid response from server",
-            } as FetchBaseQueryError,
+              status: "CUSTOM_ERROR",
+            },
           };
         }
         return { data: result.data.system_prompts };
@@ -88,35 +85,3 @@ export function isCustomPromptsResponse(
   if (json.system_prompts === null) return false;
   return isSystemPrompts(json.system_prompts);
 }
-
-// export async function getPrompts(lspUrl?: string): Promise<SystemPrompts> {
-//   const customPromptsUrl = lspUrl
-//     ? `${lspUrl.replace(/\/*$/, "")}${CUSTOM_PROMPTS_URL}`
-//     : CUSTOM_PROMPTS_URL;
-
-//   const apiKey = getApiKey();
-
-//   const response = await fetch(customPromptsUrl, {
-//     method: "GET",
-//     credentials: "same-origin",
-//     redirect: "follow",
-//     cache: "no-cache",
-//     referrer: "no-referrer",
-//     headers: {
-//       accept: "application/json",
-//       ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-//     },
-//   });
-
-//   if (!response.ok) {
-//     throw new Error(response.statusText);
-//   }
-
-//   const json: unknown = await response.json();
-
-//   if (!isCustomPromptsResponse(json)) {
-//     return {};
-//   }
-
-//   return json.system_prompts;
-// }

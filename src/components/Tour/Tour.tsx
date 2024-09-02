@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { TourBubble } from "./TourBubble";
 import { next, useTourRefs } from "../../features/Tour";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 import { RootState } from "../../app/store";
 import { push } from "../../features/Pages/pagesSlice";
 import completionGif from "../../../public/completion.gif";

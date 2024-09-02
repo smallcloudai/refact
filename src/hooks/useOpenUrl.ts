@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { usePostMessage } from ".";
+import { usePostMessage } from "./usePostMessage";
 import { EVENT_NAMES_FROM_SETUP } from "../events";
 
 export function useOpenUrl() {

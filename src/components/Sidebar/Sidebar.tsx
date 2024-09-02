@@ -2,17 +2,16 @@ import React, { useCallback } from "react";
 import { Box, Flex } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Spinner } from "@radix-ui/themes";
-import { useAppSelector, useAppDispatch } from "../../app/hooks";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 import {
   getHistory,
   deleteChatById,
 } from "../../features/History/historySlice";
-import { restoreChat } from "../../features/Chat/chatThread";
-import type { ChatThread } from "../../features/Chat/chatThread";
 import { Toolbar } from "../Toolbar";
 import { push } from "../../features/Pages/pagesSlice";
 import { PageWrapper } from "../PageWrapper";
 import { useConfig } from "../../hooks";
+import { restoreChat, type ChatThread } from "../../features/Chat/Thread";
 
 export type SidebarProps = {
   takingNotes: boolean;

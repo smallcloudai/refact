@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useAppDispatch } from "../app/hooks";
+import { useAppDispatch } from "./useAppDispatch";
 import { useConfig } from "./useConfig";
 import { setThemeMode } from "../features/Config/configSlice";
 import { useMutationObserver } from "./useMutationObserver";

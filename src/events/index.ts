@@ -1,7 +1,9 @@
 // Careful with exports that include components, it'll cause this to compile to a large file.
 import type { FileInfo } from "../features/Chat/activeFile";
-export { newChatAction } from "../features/Chat/chatThread";
-import { type Chat } from "../features/Chat/chatThread";
+// TODO: this cause more exports than needed :/
+export { type ChatThread, type Chat } from "../features/Chat/Thread/types";
+export { newChatAction } from "../features/Chat/Thread/actions";
+import { type Chat } from "../features/Chat/Thread/types";
 import type { Snippet } from "../features/Chat/selectedSnippet";
 import type { Config } from "../features/Config/configSlice";
 import type { ErrorSliceState } from "../features/Errors/errorsSlice";
@@ -20,7 +22,6 @@ export {
 } from "../features/Chat/selectedSnippet";
 export type { FimDebugData } from "../services/refact/fim";
 export type { ChatHistoryItem } from "../features/History/historySlice";
-export type { ChatThread } from "../features/Chat/chatThread";
 // TODO: re-exporting from redux seems to break things :/
 export type InitialState = {
   fim: FIMDebugState;

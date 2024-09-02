@@ -32,7 +32,7 @@ import {
 import { reducer as configReducer } from "../features/Config/configSlice";
 import { activeFileReducer } from "../features/Chat/activeFile";
 import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
-import { chatReducer } from "../features/Chat/chatThread";
+import { chatReducer } from "../features/Chat/Thread/reducer";
 import {
   historySlice,
   historyMiddleware,

@@ -8,8 +8,7 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
-import { useAppSelector } from "../../app/hooks";
-import { useDiffApplyMutation, useConfig } from "../../hooks";
+import { useDiffApplyMutation, useConfig, useAppSelector } from "../../hooks";
 import { selectLspPort } from "../../features/Config/configSlice";
 import { DIFF_PREVIEW_URL } from "../../services/refact/consts";
 import { useEventsBusForIDE, useDiffStateQuery } from "../../hooks";
@@ -221,6 +220,7 @@ export const DiffContent: React.FC<{
   // if (diffStateRequest.isError) return null;
   // if (!diffStateRequest.data) return null;
 
+  // TODO: move this
   const onPreview = React.useCallback(
     (toApply: boolean[]) => {
       const f = async (toApply: boolean[]) => {

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { useAppSelector } from "./useAppSelector";
+import { useAppDispatch } from "./useAppDispatch";
 import { useConfig } from "./useConfig";
 import { updateConfig } from "../features/Config/configSlice";
 import { setFileInfo } from "../features/Chat/activeFile";

@@ -10,13 +10,9 @@ import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
-import {
-  ToolUse,
-  selectToolUse,
-  setToolUse,
-} from "../../features/Chat/chatThread";
+import { ToolUse, selectToolUse, setToolUse } from "../../features/Chat/Thread";
 import { useCanUseTools } from "../../hooks/useCanUseTools";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 
 type CapsSelectProps = {
   value: string;

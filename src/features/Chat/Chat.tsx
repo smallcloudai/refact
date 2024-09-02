@@ -2,14 +2,17 @@ import React from "react";
 import type { Config } from "../Config/configSlice";
 import { SystemPrompts } from "../../services/refact";
 import { Chat as ChatComponent } from "../../components/Chat";
-import { useGetPromptsQuery } from "../../hooks";
+import {
+  useGetPromptsQuery,
+  useAppDispatch,
+  useAppSelector,
+} from "../../hooks";
 import { useGetCapsQuery } from "../../hooks/useGetCapsQuery";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import {
   getSelectedSystemPrompt,
   setSystemPrompt,
   selectMessages,
-} from "./chatThread";
+} from "./Thread";
 
 export type ChatProps = {
   host: Config["host"];

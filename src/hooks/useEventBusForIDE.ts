@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { createAction } from "@reduxjs/toolkit";
 import { usePostMessage } from "./usePostMessage";
-import type { ChatThread } from "../features/Chat";
+import type { ChatThread } from "../features/Chat/Thread/types";
 import {
   EVENT_NAMES_FROM_SETUP,
   HostSettings,

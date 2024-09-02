@@ -2,7 +2,7 @@ import { Flex, Text, useThemeContext } from "@radix-ui/themes";
 import { TourBox } from "./TourBox";
 import { TourTitle } from "./TourTitle";
 import { TourButton } from "./TourButton";
-import { useAppDispatch } from "../../app/hooks";
+import { useAppDispatch } from "../../hooks";
 import { finish } from "../../features/Tour";
 
 export const TourEnd = () => {

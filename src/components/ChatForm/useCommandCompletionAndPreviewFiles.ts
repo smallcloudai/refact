@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Checkboxes } from "./useCheckBoxes";
-import { useAppSelector } from "../../app/hooks";
-import { useHasCaps } from "../../hooks/useHasCaps";
+import { useHasCaps, useAppSelector } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
-import { selectLspPort, selectVecdb } from "../../features/Config/configSlice";
+import { selectVecdb } from "../../features/Config/configSlice";
 import {
   type CommandCompletionResponse,
   commandsApi,
@@ -16,10 +15,9 @@ function useGetCommandCompletionQuery(
   cursor: number,
   skip = false,
 ): CommandCompletionResponse {
-  const lspPort = useAppSelector(selectLspPort);
   const hasCaps = useHasCaps();
   const { data } = commandsApi.useGetCommandCompletionQuery(
-    { query, cursor, port: lspPort },
+    { query, cursor },
     { skip: !hasCaps || skip },
   );
 
@@ -68,24 +66,15 @@ function useCommandCompletion() {
 
 function useGetCommandPreviewQuery(query: string): ChatContextFile[] {
   const hasCaps = useHasCaps();
-  const port = useAppSelector(selectLspPort);
-  const { data } = commandsApi.useGetCommandPreviewQuery(
-    { query, port },
-    {
-      skip: !hasCaps,
-    },
-  );
+  const { data } = commandsApi.useGetCommandPreviewQuery(query, {
+    skip: !hasCaps,
+  });
   if (!data) return [];
   return data;
 }
 
-function useGetPreviewFiles(
-  query: string,
-  checkboxes: Checkboxes,
-  isExecutable: boolean,
-) {
+function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
   const hasVecdb = useAppSelector(selectVecdb);
-  const [wasExecutable, setWasExecutable] = useState<boolean>(isExecutable);
 
   const queryWithCheckboxes = useMemo(
     () => addCheckboxValuesToInput(query, checkboxes, hasVecdb),
@@ -102,34 +91,17 @@ function useGetPreviewFiles(
   );
 
   useEffect(() => {
-    if (isExecutable) {
-      debounceSetPreviewQuery(queryWithCheckboxes);
-      setWasExecutable(true);
-    } else if (wasExecutable) {
-      debounceSetPreviewQuery(query);
-      setWasExecutable(false);
-    }
-  }, [
-    isExecutable,
-    debounceSetPreviewQuery,
-    query,
-    queryWithCheckboxes,
-    wasExecutable,
-  ]);
+    debounceSetPreviewQuery(queryWithCheckboxes);
+  }, [debounceSetPreviewQuery, queryWithCheckboxes]);
 
   const previewFileResponse = useGetCommandPreviewQuery(previewQuery);
-
   return previewFileResponse;
 }
 
 export function useCommandCompletionAndPreviewFiles(checkboxes: Checkboxes) {
   const { commands, requestCompletion, query } = useCommandCompletion();
 
-  const previewFileResponse = useGetPreviewFiles(
-    query,
-    checkboxes,
-    commands.is_cmd_executable,
-  );
+  const previewFileResponse = useGetPreviewFiles(query, checkboxes);
 
   return {
     commands,

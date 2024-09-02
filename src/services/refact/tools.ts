@@ -1,11 +1,6 @@
-// import { getApiKey } from "../../utils/ApiKey";
 import { RootState } from "../../app/store";
 import { AT_TOOLS_AVAILABLE_URL } from "./consts";
-import {
-  createApi,
-  fetchBaseQuery,
-  FetchBaseQueryError,
-} from "@reduxjs/toolkit/query/react";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const toolsApi = createApi({
   reducerPath: "tools",
@@ -38,7 +33,8 @@ export const toolsApi = createApi({
             error: {
               error: "Invalid response from tools",
               data: result.data,
-            } as FetchBaseQueryError,
+              status: "CUSTOM_ERROR",
+            },
           };
         }
         const tools = result.data.filter((d) =>

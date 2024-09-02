@@ -5,7 +5,7 @@ import { TextArea } from "../TextArea";
 import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
 import { Form } from "./Form";
 
-import { useAppSelector } from "../../app/hooks";
+import { useAppSelector } from "../../hooks";
 import { selectSubmitOption } from "../../features/Config/configSlice";
 
 export const RetryForm: React.FC<{

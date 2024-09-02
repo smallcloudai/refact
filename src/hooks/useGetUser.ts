@@ -1,4 +1,4 @@
-import { useAppSelector } from "../app/hooks";
+import { useAppSelector } from "./useAppSelector";
 import { selectAddressURL, selectApiKey } from "../features/Config/configSlice";
 import { smallCloudApi } from "../services/smallcloud";
 

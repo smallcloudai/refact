@@ -1,4 +1,4 @@
-import { useAppSelector } from "../app/hooks";
+import { useAppSelector } from "./useAppSelector";
 import { selectConfig } from "../features/Config/configSlice";
 
 export const useConfig = () => useAppSelector(selectConfig);

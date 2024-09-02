@@ -3,6 +3,7 @@ import path from "path";
 import { PluginOption, UserConfig, defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import eslint from "vite-plugin-eslint";
+
 import { coverageConfigDefaults } from "vitest/config";
 import dts from "vite-plugin-dts";
 
@@ -56,6 +57,7 @@ function makeConfig(library: "browser" | "node") {
         modules: {},
       },
     };
+    // TODO: confirm this solves the issue with getRandomValues
 
     if (command !== "serve") {
       CONFIG.mode = "production";

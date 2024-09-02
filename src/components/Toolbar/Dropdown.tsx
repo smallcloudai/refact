@@ -1,18 +1,18 @@
-import { useCallback } from "react";
-import { useAppSelector } from "../../app/hooks";
+import React, { useCallback } from "react";
+import {
+  selectHost,
+  type Config,
+  selectLspPort,
+} from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
   useConfig,
   useEventsBusForIDE,
   useGetUser,
   useLogout,
+  useAppSelector,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
-import {
-  Config,
-  selectHost,
-  selectLspPort,
-} from "../../features/Config/configSlice";
 import { CONFIG_PATH_URL } from "../../services/refact/consts";
 import { DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";

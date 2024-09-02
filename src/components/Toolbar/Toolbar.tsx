@@ -3,12 +3,12 @@ import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
 import { DotFilledIcon, PlusIcon } from "@radix-ui/react-icons";
 import { newChatAction } from "../../events";
 import { restart, useTourRefs } from "../../features/Tour";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { popBackTo, push } from "../../features/Pages/pagesSlice";
 import { useCallback } from "react";
 import { getHistory } from "../../features/History/historySlice";
 import { restoreChat } from "../../features/Chat";
 import { TruncateLeft } from "../Text";
+import { useAppDispatch, useAppSelector } from "../../hooks";
 
 export type DashboardTab = {
   type: "dashboard";

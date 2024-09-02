@@ -1,5 +1,5 @@
 import { Flex, Link, useThemeContext } from "@radix-ui/themes";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 import { RootState } from "../../app/store";
 import { close, next } from "../../features/Tour";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";

@@ -3,7 +3,11 @@ import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
 import { PageWrapper } from "../PageWrapper";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
+import {
+  useAppSelector,
+  useAppDispatch,
+  useSendChatRequest,
+} from "../../hooks";
 import type { Config } from "../../features/Config/configSlice";
 import { useEventsBusForIDE } from "../../hooks";
 import {
@@ -12,11 +16,11 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   setChatModel,
-  useSendChatRequest,
+  // selectThread,
   selectPreventSend,
   selectChatId,
   selectMessages,
-} from "../../features/Chat/chatThread";
+} from "../../features/Chat/Thread";
 import { selectActiveFile } from "../../features/Chat/activeFile";
 import { Toolbar } from "../Toolbar";
 

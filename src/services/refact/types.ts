@@ -46,27 +46,6 @@ export type ToolResult = {
   content: string;
 };
 
-// interface BaseMessage
-//   extends Array<
-//     | string
-//     | ChatContextFile[]
-//     | ToolCall[]
-//     | ToolResult
-//     | undefined
-//     | null
-//     | ContextMemory[]
-//     | DiffChunk[]
-//   > {
-//   0: ChatRole;
-//   1:
-//     | null
-//     | string
-//     | ChatContextFile[]
-//     | ToolResult
-//     | ContextMemory[]
-//     | DiffChunk[];
-// }
-
 interface BaseMessage {
   role: ChatRole;
   content:
@@ -127,7 +106,7 @@ export type DiffChunk = {
 export interface DiffMessage extends BaseMessage {
   role: "diff";
   content: DiffChunk[];
-  tool_call_id: string; // tool_call_id
+  tool_call_id: string;
 }
 
 export function isUserMessage(message: ChatMessage): message is UserMessage {
@@ -138,9 +117,6 @@ export interface PlainTextMessage extends BaseMessage {
   role: "plain_text";
   content: string;
 }
-/**
- * {"content":"[{\"memo_id\":\"about_frog_class.txt\",\"memo_text\":\"The Frog class is used to test the project, located in tests folder.\\n\"},{\"memo_id\":\"answer_in_spanish.txt\",\"memo_text\":\"User actually preferes answers in Spanish, so do that.\\n\"}]","role":"context_memory","tool_call_id":"","tool_calls":null}
- */
 
 export type ChatMessage =
   | UserMessage
@@ -355,4 +331,5 @@ export function isChatResponseChoice(
 export type ChatResponse =
   | ChatResponseChoice
   | ChatUserMessageResponse
-  | ToolResponse;
+  | ToolResponse
+  | PlainTextResponse;

@@ -3,7 +3,7 @@ import {
   type KeyboardEvent,
   type KeyboardEventHandler,
 } from "react";
-import { useAppSelector } from "../app/hooks";
+import { useAppSelector } from "./useAppSelector";
 import { selectSubmitOption } from "../features/Config/configSlice";
 
 export const useOnPressedEnter = (onPress: KeyboardEventHandler) => {

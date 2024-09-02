@@ -1,10 +1,6 @@
 import { RootState } from "../../app/store";
 import { CAPS_URL } from "./consts";
-import {
-  createApi,
-  fetchBaseQuery,
-  FetchBaseQueryError,
-} from "@reduxjs/toolkit/query/react";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const capsApi = createApi({
   reducerPath: "caps",
@@ -38,7 +34,8 @@ export const capsApi = createApi({
             error: {
               error: "Invalid response from caps",
               data: result.data,
-            } as FetchBaseQueryError,
+              status: "CUSTOM_ERROR",
+            },
           };
         }
 
@@ -108,29 +105,3 @@ export function isCapsErrorResponse(json: unknown): json is CapsErrorResponse {
   if (typeof json.detail !== "string") return false;
   return true;
 }
-
-// export async function getCaps(lspUrl?: string): Promise<CapsResponse> {
-//   const capsEndpoint = lspUrl
-//     ? `${lspUrl.replace(/\/*$/, "")}${CAPS_URL}`
-//     : CAPS_URL;
-
-//   const response = await fetch(capsEndpoint, {
-//     method: "GET",
-//     credentials: "same-origin",
-//     headers: {
-//       accept: "application/json",
-//     },
-//   });
-
-//   if (!response.ok) {
-//     throw new Error(response.statusText);
-//   }
-
-//   const json: unknown = await response.json();
-
-//   if (!isCapsResponse(json)) {
-//     throw new Error("Invalid response from caps");
-//   }
-
-//   return json;
-// }

@@ -1,14 +1,12 @@
 import { describe, expect, test } from "vitest";
-// import { v4 as uuidv4 } from "uuid";
-// import { reducer, createInitialState } from ".";
 import {
   ChatMessages,
+  PlainTextMessage,
+  PlainTextResponse,
+  UserMessage,
   UserMessageResponse,
-  // EVENT_NAMES_TO_CHAT,
   type ToolCall,
-  // ResponseToChat,
-  // ActionToChat,
-} from "../../services/refact";
+} from "../../../services/refact";
 import { mergeToolCalls, formatChatResponse } from "./utils";
 
 describe("formatChatResponse", () => {
@@ -83,9 +81,48 @@ describe("formatChatResponse", () => {
 
     const expected = [
       ...messages.slice(0, 5),
-      { role: message.role, content: message.content },
       ...messages.slice(6),
+      { role: message.role, content: message.content },
     ];
+
+    expect(result).toEqual(expected);
+  });
+
+  test("it should put plain text before a user message at the end of the array", () => {
+    const userMessage: UserMessage = {
+      role: "user",
+      content: "Hello",
+    };
+
+    const sentMessages = [userMessage];
+
+    const updatedUserMessage: UserMessage = {
+      role: "user",
+      content: "hi",
+    };
+
+    const userMessageResponse: UserMessageResponse = {
+      ...updatedUserMessage,
+      id: "user message",
+    };
+
+    const plainTextMessage: PlainTextMessage = {
+      role: "plain_text",
+      content: "test",
+    };
+
+    const plainTextResponse: PlainTextResponse = {
+      ...plainTextMessage,
+      tool_call_id: "toolCallId",
+    };
+
+    const response = [plainTextResponse, userMessageResponse];
+
+    const result = response.reduce<ChatMessages>((messages, message) => {
+      return formatChatResponse(messages, message);
+    }, sentMessages);
+
+    const expected = [plainTextMessage, updatedUserMessage];
 
     expect(result).toEqual(expected);
   });

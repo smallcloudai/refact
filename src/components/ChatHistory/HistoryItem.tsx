@@ -7,7 +7,7 @@ import { IconButton } from "@radix-ui/themes";
 import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
 import type { ChatHistoryItem } from "../../features/History/historySlice";
 import { isUserMessage } from "../../services/refact";
-import { useAppSelector } from "../../app/hooks";
+import { useAppSelector } from "../../hooks";
 
 export const HistoryItem: React.FC<{
   historyItem: ChatHistoryItem;
