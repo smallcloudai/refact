@@ -256,10 +256,12 @@ impl VecDBHandler {
         top_n: usize,
         vecdb_scope_filter_mb: Option<String>,
     ) -> vectordb::error::Result<Vec<VecdbRecord>> {
+        let use_prefilter = vecdb_scope_filter_mb.is_some();
         let query = self
             .data_table
             .clone()
             .search(Some(Float32Array::from(embedding.clone())))
+            .prefilter(use_prefilter)
             .filter(vecdb_scope_filter_mb)
             .limit(top_n)
             .use_index(true)
