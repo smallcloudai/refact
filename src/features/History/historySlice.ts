@@ -133,10 +133,8 @@ startHistoryListening({
   actionCreator: restoreChat,
   effect: (action, listenerApi) => {
     const chat = listenerApi.getState().chat;
-    console.log({ chat, action });
     if (chat.thread.id == action.payload.id && chat.streaming) return;
     if (action.payload.id in chat.cache) return;
-    console.log("read");
     listenerApi.dispatch(markChatAsRead(action.payload.id));
   },
 });
