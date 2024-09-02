@@ -17,7 +17,7 @@ use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::pp_utils::HasRagResults;
-
+use crate::toolbox::toolbox_config::postprocess_system_prompt;
 
 const DEBUG: bool = true;
 
@@ -61,6 +61,18 @@ impl GenericChatScratchpad {
     }
 }
 
+pub async fn apply_messages_patch(
+    global_context: Arc<ARwLock<GlobalContext>>, 
+    messages: &mut Vec<ChatMessage>
+) {
+    for m in messages.iter_mut() {
+        if m.role == "system" {
+            let system_prompt = postprocess_system_prompt(global_context.clone(), m.content.as_str()).await;
+            m.content = system_prompt;
+        }
+    }
+}
+
 #[async_trait]
 impl ScratchpadAbstract for GenericChatScratchpad {
     async fn apply_model_adaptation_patch(
@@ -100,11 +112,12 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         let n_ctx = ccx.lock().await.n_ctx;
-        let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
+        let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
             run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.post.messages, &mut self.has_rag_results).await
         } else {
             (self.post.messages.clone(), self.post.messages.len(), false)
         };
+        apply_messages_patch(self.global_context.clone(), &mut messages).await;
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, n_ctx, &self.default_system_message)?;
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24

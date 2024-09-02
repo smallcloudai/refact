@@ -15,6 +15,7 @@ use crate::call_validation::{ChatMessage, ChatPost, ContextFile, ContextMemory, 
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
+use crate::scratchpads::chat_generic::apply_messages_patch;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::pp_utils::HasRagResults;
 
@@ -110,6 +111,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         if self.supports_tools {
             (messages, _) = run_tools(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await;
         };
+        apply_messages_patch(self.global_context.clone(), &mut messages).await;
         let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
