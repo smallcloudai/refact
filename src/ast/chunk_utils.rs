@@ -52,7 +52,7 @@ pub fn get_chunks(text: &String,
                 current_line_accum.clear();
                 current_token_n = 0;
                 current_line_number = current_line_number + (line_idx as u64) - (intersection_lines as u64);
-                line_idx = (previous_start + 1).max(line_idx - intersection_lines);
+                line_idx = (previous_start + 1).max((line_idx as i64 - intersection_lines as i64).max(0) as usize);
                 previous_start = line_idx;
             } else {
                 current_token_n += text_orig_tok_n;
