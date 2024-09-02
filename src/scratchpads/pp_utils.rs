@@ -130,7 +130,13 @@ pub async fn pp_ast_markup_files(
         let path = crate::files_correction::canonical_path(&file_name.clone());
         let cpath_symmetry_breaker: f32 = (calculate_hash(&path) as f32) / (u64::MAX as f32) / 100.0;
         let mut doc = Document::new(&path);
-        let text = get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await.unwrap_or_default();
+        let text = match get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await {
+            Ok(text) => text,
+            Err(e) => {
+                warn!("pp_ast_markup_files: cannot read file: {:?}\nERROR: {}", file_name, e);
+                continue;
+            }
+        };
         doc.update_text(&text);
         let mut f: Option<Arc<PPFile>> = None;
         if let Some(ast) = &ast_module {
@@ -191,7 +197,13 @@ pub async fn context_msgs_from_paths(
     let mut messages = vec![];
     for file_name in files_set {
         let path = crate::files_correction::canonical_path(&file_name.clone());
-        let text = get_file_text_from_memory_or_disk(global_context.clone(), &path).await.unwrap_or_default();
+        let text = match get_file_text_from_memory_or_disk(global_context.clone(), &path).await {
+            Ok(text) => text,
+            Err(e) => {
+                warn!("context_msgs_from_paths: cannot read file: {:?}\nERROR: {}", file_name, e);
+                continue;
+            }
+        };
         messages.push(ContextFile {
             file_name: file_name.clone(),
             file_content: text.clone(),
