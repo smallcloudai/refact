@@ -1,6 +1,6 @@
 import { Button, Flex, Spinner, TabNav, Text } from "@radix-ui/themes";
 import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
-import { PlusIcon } from "@radix-ui/react-icons";
+import { DotFilledIcon, PlusIcon } from "@radix-ui/react-icons";
 import { newChatAction } from "../../events";
 import { restart, useTourRefs } from "../../features/Tour";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
@@ -41,6 +41,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const history = useAppSelector(getHistory, {
     devModeChecks: { stabilityCheck: "never" },
   });
+  const isStreaming = useAppSelector((app) => app.chat.streaming);
   const cache = useAppSelector((app) => app.chat.cache);
 
   const handleNavigation = (to: DropdownNavigationOptions | "chat") => {
@@ -100,13 +101,17 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
               (activeTab.type === "chat" && activeTab.id == chat.id),
           )
           .map((chat) => {
+            const isStreamingThisTab =
+              chat.id in cache ||
+              (isChatTab(activeTab) && chat.id === activeTab.id && isStreaming);
             return (
               <TabNav.Link
                 active={isChatTab(activeTab) && activeTab.id == chat.id}
                 key={chat.id}
                 onClick={() => goToTab({ type: "chat", id: chat.id })}
               >
-                {chat.id in cache && <Spinner />}
+                {isStreamingThisTab && <Spinner />}
+                {!isStreamingThisTab && !chat.read && <DotFilledIcon />}
                 <TruncateLeft style={{ maxWidth: "140px" }}>
                   {chat.title}
                 </TruncateLeft>
