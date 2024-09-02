@@ -220,7 +220,9 @@ pub async fn handle_v1_ast_file_markup(
                 let text = get_file_text_from_memory_or_disk(
                     global_context.clone(),
                     &doc.doc_path,
-                ).await.unwrap_or_default(); // FIXME unwrap
+                ).await.map_err(|e|{
+                    ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
+                })?;
                 doc.update_text(&text);
 
                 ast.read().await.file_markup(&doc).await
@@ -307,7 +309,9 @@ pub async fn handle_v1_ast_file_symbols(
     })?;
     let cpath = crate::files_correction::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     let mut doc = Document::new(&cpath);
-    let file_text = get_file_text_from_memory_or_disk(global_context.clone(), &cpath).await.unwrap_or_default(); // FIXME unwrap
+    let file_text = get_file_text_from_memory_or_disk(global_context.clone(), &cpath).await.map_err(|e|
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
+    )?;
     doc.update_text(&file_text);
 
     let ast_module = global_context.read().await.ast_module.clone();
@@ -346,7 +350,9 @@ pub async fn handle_v1_ast_index_file(
     })?;
     let cpath = crate::files_correction::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     let mut doc = Document::new(&cpath);
-    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.doc_path).await.unwrap_or_default(); // FIXME unwrap
+    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.doc_path).await.map_err(|e|
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
+    )?;
     doc.update_text(&text);
 
     let ast_module = global_context.read().await.ast_module.clone();

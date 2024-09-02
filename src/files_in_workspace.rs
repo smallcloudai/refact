@@ -23,8 +23,6 @@ pub struct Document {
     pub doc_text: Option<Rope>,
 }
 
-
-// FIXME: make sure error printed, not unwrap_or_default
 pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<GlobalContext>>, file_path: &PathBuf) -> Result<String, String>
 {
     if let Some(doc) = global_context.read().await.documents_state.memory_document_map.get(file_path) {
@@ -34,6 +32,7 @@ pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<Globa
         }
     }
     read_file_from_disk(&file_path).await.map(|x|x.to_string())
+        .map_err(|e|format!("Failed to read file: not found in memory, not found on disk. Error:\n{}", e))
 }
 
 impl Document {
