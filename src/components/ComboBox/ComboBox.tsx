@@ -53,7 +53,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     [commands.completions],
   );
 
-  const allMatches = useMemo(() => ["@help", ...matches], [matches]);
+  const allMatches = useMemo(() => {
+    return matches.length > 0 && matches[0].startsWith("@")
+      ? ["@help", ...matches]
+      : matches;
+  }, [matches]);
 
   const hasMatches = useMemo(() => {
     return matches.length > 0;
@@ -215,6 +219,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       event.preventDefault();
       if (item === "@help") {
         onHelpClick();
+        closeCombobox();
       } else {
         handleReplace(item);
       }
