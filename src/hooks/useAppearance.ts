@@ -18,14 +18,12 @@ export const useAppearance = () => {
       document.body.classList.contains("vscode-light") ||
       document.body.classList.contains("vscode-high-contrast-light");
 
-    if (maybeLight) {
+    if (maybeLight && appearance !== "light") {
       dispatch(setThemeMode("light"));
-    } else if (maybeDark) {
+    } else if (maybeDark && appearance !== "dark") {
       dispatch(setThemeMode("dark"));
-    } else {
-      dispatch(setThemeMode("inherit"));
     }
-  }, [dispatch]);
+  }, [appearance, dispatch]);
 
   useMutationObserver(document.body, handleChange, {
     attributes: true,
