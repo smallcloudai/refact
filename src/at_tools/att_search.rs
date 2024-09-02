@@ -91,7 +91,7 @@ impl Tool for AttSearch {
         vector_of_context_file.iter().for_each(|rec| {
             file_results_to_reqs.entry(rec.file_name.clone()).or_insert(vec![]).push(rec)
         });
-        let used_files: HashSet<String> = HashSet::new();
+        let mut used_files: HashSet<String> = HashSet::new();
         for rec in vector_of_context_file.iter().sorted_by(|rec1, rec2| rec2.usefulness.total_cmp(&rec1.usefulness)) {
             if !used_files.contains(&rec.file_name) {
                 content.push_str(&format!("{}:\n", rec.file_name.clone()));
@@ -99,6 +99,7 @@ impl Tool for AttSearch {
                 for file_req in file_recs.iter().sorted_by(|rec1, rec2| rec2.usefulness.total_cmp(&rec1.usefulness)) {
                     content.push_str(&format!("    lines {}-{} match {}\n", file_req.line1, file_req.line2, file_req.usefulness));
                 }
+                used_files.insert(rec.file_name.clone());
             }
         }
 
