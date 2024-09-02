@@ -26,7 +26,7 @@ export type Chat = {
   send_immediately: boolean;
 };
 
-export type PayloadWIthId = { id: string };
+export type PayloadWithId = { id: string };
 
 export type DetailMessage = { detail: string };
 
