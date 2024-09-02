@@ -112,7 +112,9 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 onClick={() => goToTab({ type: "chat", id: chat.id })}
               >
                 {isStreamingThisTab && <Spinner />}
-                {!isStreamingThisTab && !chat.read && <DotFilledIcon />}
+                {!isStreamingThisTab &&
+                  chat.read !== undefined &&
+                  !chat.read && <DotFilledIcon />}
                 <TruncateLeft style={{ maxWidth: "140px" }}>
                   {chat.title}
                 </TruncateLeft>

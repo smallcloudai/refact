@@ -44,7 +44,9 @@ export const HistoryItem: React.FC<{
         >
           <Flex style={{ alignItems: "center", gap: 2 }}>
             {isStreaming && <Spinner />}
-            {!isStreaming && !historyItem.read && <DotFilledIcon />}
+            {!isStreaming &&
+              historyItem.read !== undefined &&
+              !historyItem.read && <DotFilledIcon />}
             <Text
               as="div"
               size="2"
