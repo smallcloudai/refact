@@ -3,7 +3,7 @@ import {
   configureStore,
   // createSlice,
 } from "@reduxjs/toolkit";
-import storage from "redux-persist/lib/storage";
+import { storage } from "./storage";
 import {
   FLUSH,
   PAUSE,
@@ -24,11 +24,8 @@ import {
 } from "../services/refact";
 import { smallCloudApi } from "../services/smallcloud";
 import { reducer as fimReducer } from "../features/FIM/reducer";
-import { saveTourToLocalStorage, tourReducer } from "../features/Tour";
-import {
-  saveTipOfTheDayToLocalStorage,
-  tipOfTheDayReducer,
-} from "../features/TipOfTheDay";
+import { tourReducer } from "../features/Tour";
+import { tipOfTheDayReducer } from "../features/TipOfTheDay";
 import { reducer as configReducer } from "../features/Config/configSlice";
 import { activeFileReducer } from "../features/Chat/activeFile";
 import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
@@ -41,6 +38,7 @@ import { errorSlice } from "../features/Errors/errorsSlice";
 import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
+import { parseOrElse } from "../utils";
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -69,8 +67,8 @@ const rootReducer = combineSlices(
 
 const persistConfig = {
   key: "root",
-  storage,
-  whitelist: [historySlice.reducerPath],
+  storage: storage(),
+  whitelist: [historySlice.reducerPath, "tour", "tipOfTheDay"],
   stateReconciler: mergeInitialState,
 };
 
@@ -116,17 +114,51 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
     },
   });
 
-  store.subscribe(() => {
-    saveTourToLocalStorage(store.getState());
-    saveTipOfTheDayToLocalStorage(store.getState());
-  });
-
   return store;
 }
 export const store = setUpStore();
 export type Store = typeof store;
 
 export const persistor = persistStore(store);
+
+window.onstorage = (event) => {
+  if (!event.key || !event.key.endsWith(persistConfig.key)) {
+    return;
+  }
+
+  if (event.oldValue === event.newValue) {
+    return;
+  }
+  if (event.newValue === null) {
+    return;
+  }
+
+  const statePartial = parseOrElse<Record<string, string>>(event.newValue, {});
+
+  const state = Object.keys(statePartial).reduce<Record<string, unknown>>(
+    (acc, reducerKey) => {
+      if (!persistConfig.whitelist.includes(reducerKey)) {
+        return acc;
+      }
+
+      if (!(reducerKey in statePartial)) {
+        return acc;
+      }
+
+      const itemAsString = statePartial[reducerKey];
+      acc[reducerKey] = JSON.parse(itemAsString);
+
+      return acc;
+    },
+    {},
+  );
+
+  store.dispatch({
+    type: REHYDRATE,
+    key: persistConfig.key,
+    payload: state,
+  });
+};
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
 // export type RootState = ReturnType<typeof store.getState>;

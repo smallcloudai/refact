@@ -49,16 +49,6 @@ export type TipOfTheDayState = {
   tip: string;
 };
 
-function isTipOfTheDayState(state: unknown): state is TipOfTheDayState {
-  if (!state) return false;
-  if (typeof state !== "object") return false;
-  if (!("next" in state)) return false;
-  if (typeof state.next !== "number") return false;
-  if (!("tip" in state)) return false;
-  if (typeof state.tip !== "string") return false;
-  return true;
-}
-
 const initialState: TipOfTheDayState = {
   next: 0,
   tip: "",
@@ -66,33 +56,8 @@ const initialState: TipOfTheDayState = {
 
 export const next = createAction<Config>("tipOfTheDay/next");
 
-function loadFromLocalStorage(): TipOfTheDayState {
-  try {
-    const serialisedState = localStorage.getItem("tipOfTheDay");
-    if (serialisedState === null) return initialState;
-    const parsedState: unknown = JSON.parse(serialisedState);
-    if (!isTipOfTheDayState(parsedState)) return initialState;
-    return parsedState;
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn(e);
-    return initialState;
-  }
-}
-
-export const saveTipOfTheDayToLocalStorage = (state: {
-  tipOfTheDay: TipOfTheDayState;
-}) => {
-  try {
-    localStorage.setItem("tipOfTheDay", JSON.stringify(state.tipOfTheDay));
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn(e);
-  }
-};
-
 export const tipOfTheDayReducer = createReducer<TipOfTheDayState>(
-  loadFromLocalStorage(),
+  initialState,
   (builder) => {
     builder.addCase(next, (state, action) => {
       const keyBindings = action.payload.keyBindings;
