@@ -236,8 +236,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
     if (state.streaming) {
       state.cache[state.thread.id] = { ...state.thread, read: false };
-      state.streaming = false;
     }
+    state.streaming = action.payload.id in state.cache;
     state.thread = mostUptoDateThread;
   });
 });
