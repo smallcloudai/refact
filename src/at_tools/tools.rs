@@ -33,7 +33,7 @@ pub trait Tool: Send + Sync {
 
 pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>
 {
-    let (ast_on, vecdb_on, experimental) = {
+    let (ast_on, vecdb_on, allow_experimental) = {
         let gcx_locked = gcx.read().await;
         let vecdb = gcx_locked.vec_db.lock().await;
         (gcx_locked.ast_module.is_some(), vecdb.is_some(), gcx_locked.cmdline.experimental)
@@ -58,19 +58,19 @@ pub async fn at_tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> I
         ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_ast_reference::AttAstReference{}) as Box<dyn Tool + Send>))),
         ("tree".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_tree::AttTree{}) as Box<dyn Tool + Send>))),
         ("patch".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_patch::tool::ToolPatch::new()) as Box<dyn Tool + Send>))),
-        ("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttGetKnowledge{}) as Box<dyn Tool + Send>))),
         ("web".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_web::AttWeb{}) as Box<dyn Tool + Send>))),
         ("cat".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_cat::AttCat{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_locate::AttLocate{}) as Box<dyn Tool + Send>))),
         ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_relevant_files::AttRelevantFiles{}) as Box<dyn Tool + Send>))),
     ]);
 
-    if experimental {
+    if allow_experimental {
         // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttSaveKnowledge{}) as Box<dyn Tool + Send>))),
         // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
         if let Some(github_tool) = crate::at_tools::tool_github::ToolGithub::new_if_configured(&integrations_value) {
             tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(github_tool) as Box<dyn Tool + Send>)));
         }
+        tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::at_tools::att_knowledge::AttGetKnowledge{}) as Box<dyn Tool + Send>)));
     }
 
     let mut filtered_tools = IndexMap::new();
@@ -165,12 +165,17 @@ tools:
 
   - name: "knowledge"
     description: "What kind of knowledge you will need to accomplish this task? Call each time you have a new task or topic."
+    experimental: true
     parameters:
-      - name: "im_going_to_do"
+      - name: "im_going_to_use_tools"
         type: "string"
-        description: "Put your intent there: 'debug file1.cpp', 'install project1', 'gather info about MyClass'"
+        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, github, gitlab, rust debugger, patch"
+      - name: "im_going_to_apply_to"
+        type: "string"
+        description: "What your future actions will be applied to? List all you can identify, starting from the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
     parameters_required:
-      - "im_going_to_do"
+      - "im_going_to_use_tools"
+      - "im_going_to_apply_to"
 
   - name: "cat"
     description: "Like cat in console, but better: it can read multiple files and skeletonize them. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full."
@@ -215,6 +220,7 @@ tools:
 
   - name: "github"
     description: "Access to gh command line command, to fetch issues, review PRs."
+    experimental: true
     parameters:
       - name: "project_dir"
         type: "string"
@@ -296,6 +302,8 @@ pub struct ToolDict {
     pub name: String,
     #[serde(default)]
     pub agentic: bool,
+    #[serde(default)]
+    pub experimental: bool,
     pub description: String,
     pub parameters: Vec<AtParamDict>,
     pub parameters_required: Vec<String>,
@@ -354,12 +362,17 @@ impl ToolDict {
     }
 }
 
-pub fn tool_description_list_from_yaml(turned_on: &Vec<String>) -> Result<Vec<ToolDict>, String> {
+pub fn tool_description_list_from_yaml(
+    turned_on: &Vec<String>,
+    allow_experimental: bool,
+) -> Result<Vec<ToolDict>, String> {
     let at_dict: ToolDictDeserialize = serde_yaml::from_str(BUILT_IN_TOOLS)
         .map_err(|e|format!("Failed to parse BUILT_IN_TOOLS: {}", e))?;
-    Ok(at_dict.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>())
+    Ok(at_dict.tools.iter()
+        .filter(|x| turned_on.contains(&x.name) && (allow_experimental || !x.experimental))
+        .cloned()
+        .collect::<Vec<_>>())
 }
-
 pub async fn tools_from_customization(gcx: Arc<ARwLock<GlobalContext>>, turned_on: &Vec<String>) -> Vec<ToolCustDict> {
     return match crate::toolbox::toolbox_config::load_customization(gcx.clone()).await {
         Ok(tconfig) => tconfig.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>(),

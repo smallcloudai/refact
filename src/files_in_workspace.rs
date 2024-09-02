@@ -267,13 +267,16 @@ pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf,
     if dir.is_file() {
         dir.pop();
     }
-    while dir.pop() {
+    loop {
         if dir.join(".git").is_dir() {
             return Some((dir.clone(), "git"));
         } else if dir.join(".svn").is_dir() {
             return Some((dir.clone(), "svn"));
         } else if dir.join(".hg").is_dir() {
             return Some((dir.clone(), "hg"));
+        }
+        if !dir.pop() {
+            break;
         }
     }
     None

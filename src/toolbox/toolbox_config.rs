@@ -5,6 +5,7 @@ use tokio::sync::RwLock as ARwLock;
 use crate::call_validation::{ChatMessage, SubchatParameters};
 use std::io::Write;
 use std::sync::Arc;
+use std::path::PathBuf;
 use tracing::{error, info};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
 use crate::at_tools::tools::{AtParamDict, make_openai_tool_value};
@@ -295,16 +296,21 @@ pub async fn get_default_system_prompt(
         if !workspace_dirs.is_empty() {
             info.push_str(format!("The current IDE workspace has these project directories:\n{}", workspace_dirs.join("\n")).as_str());
         }
-        if let Some(active_file) = active_file_path {
-            let cvs: Option<(std::path::PathBuf, &str)> = crate::files_in_workspace::detect_vcs_for_a_file_path(&active_file).await;
-            info.push_str(format!("\n\nThe active IDE file is:\n{}", active_file.display()).as_str());
+        let detect_vcs_at_option: Option<PathBuf> = active_file_path.clone().or_else(|| workspace_dirs.get(0).map(PathBuf::from));
+        if let Some(detect_vcs_at) = detect_vcs_at_option {
+            let cvs: Option<(PathBuf, &str)> = crate::files_in_workspace::detect_vcs_for_a_file_path(&detect_vcs_at).await;
+            if let Some(active_file) = active_file_path {
+                info.push_str(format!("\n\nThe active IDE file is:\n{}", active_file.display()).as_str());
+            } else {
+                info.push_str("\n\nThere is no active file currently open in the IDE.");
+            }
             if let Some((vcs_path, vcs_type)) = cvs {
-                info.push_str(format!("\nunder {} version control at project\n{}",
+                info.push_str(format!("\nThe project is under {} version control, located at:\n{}",
                     vcs_type,
                     vcs_path.display(),
                 ).as_str());
             } else {
-                info.push_str("\nbut there's no version control for this file, complain to user if they want to use anything git/hg/svn/etc.");
+                info.push_str("\nThere's no version control detected, complain to user if they want to use anything git/hg/svn/etc.");
             }
         } else {
             info.push_str(format!("\n\nThere is no active file with version control, complain to user if they want to use anything git/hg/svn/etc and ask to open a file in IDE for you to know which project is active.").as_str());
