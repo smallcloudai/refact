@@ -5,6 +5,7 @@ import {
 } from "@reduxjs/toolkit";
 import {
   backUpMessages,
+  chatAskedQuestion,
   ChatThread,
   doneStreaming,
   removeChatFromCache,
@@ -54,6 +55,11 @@ export const historySlice = createSlice({
       state[chat.id] = chat;
     },
 
+    markChatAsUnread: (state, action: PayloadAction<string>) => {
+      const chatId = action.payload;
+      state[chatId].read = false;
+    },
+
     markChatAsRead: (state, action: PayloadAction<string>) => {
       const chatId = action.payload;
       state[chatId].read = true;
@@ -82,7 +88,7 @@ export const historySlice = createSlice({
   },
 });
 
-export const { saveChat, deleteChatById, markChatAsRead } =
+export const { saveChat, deleteChatById, markChatAsUnread, markChatAsRead } =
   historySlice.actions;
 export const { getChatById, getHistory } = historySlice.selectors;
 
@@ -117,11 +123,20 @@ startHistoryListening({
 });
 
 startHistoryListening({
+  actionCreator: chatAskedQuestion,
+  effect: (action, listenerApi) => {
+    listenerApi.dispatch(markChatAsUnread(action.payload.id));
+  },
+});
+
+startHistoryListening({
   actionCreator: restoreChat,
   effect: (action, listenerApi) => {
     const chat = listenerApi.getState().chat;
+    console.log({ chat, action });
     if (chat.thread.id == action.payload.id && chat.streaming) return;
     if (action.payload.id in chat.cache) return;
+    console.log("read");
     listenerApi.dispatch(markChatAsRead(action.payload.id));
   },
 });

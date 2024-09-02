@@ -131,6 +131,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.send_immediately = false;
     state.waiting_for_response = true;
     state.streaming = true;
+    state.thread.read = false;
     state.prevent_send = false;
   });
 
@@ -162,8 +163,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (action.payload.id in state.cache) {
       const { [action.payload.id]: _, ...rest } = state.cache;
       state.cache = rest;
+      state.streaming = true;
+    } else {
+      state.streaming = false;
     }
-    state.streaming = action.payload.id in state.cache;
     state.thread = mostUptoDateThread;
   });
 });
