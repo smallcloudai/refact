@@ -36,6 +36,7 @@ describe("Restore Chat from history", () => {
               { role: "user", content: "test user message" },
               { role: "assistant", content: "👋" },
             ],
+            read: true,
           },
         },
         config: {

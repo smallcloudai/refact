@@ -16,6 +16,7 @@ describe("Delete a Chat form history", () => {
         model: "foo",
         createdAt: now,
         updatedAt: now,
+        read: true,
       },
     };
     const { user, store, ...app } = render(<InnerApp />, {
@@ -37,7 +38,7 @@ describe("Delete a Chat form history", () => {
     const restoreButtonText = await app.findByText(itemTitleToDelete);
 
     const deleteButton =
-      restoreButtonText.parentElement?.parentElement?.querySelector(
+      restoreButtonText.parentElement?.parentElement?.parentElement?.querySelector(
         '[title="delete chat"]',
       );
 

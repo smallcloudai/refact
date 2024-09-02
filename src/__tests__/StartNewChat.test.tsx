@@ -36,7 +36,7 @@ describe("Start a new chat", () => {
 
   // TODO: copy this for other tests done at a higher level
   test("open chat with New Chat Button", async () => {
-    const btn = app.getByText("Start a new chat");
+    const btn = app.getByText("New chat");
     await user.click(btn);
 
     const textarea = app.container.querySelector("textarea");
