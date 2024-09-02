@@ -54,6 +54,11 @@ export const historySlice = createSlice({
       state[chat.id] = chat;
     },
 
+    readChat: (state, action: PayloadAction<string>) => {
+      const chatId = action.payload;
+      state[chatId].read = true;
+    },
+
     deleteChatById: (state, action: PayloadAction<string>) => {
       return Object.entries(state).reduce<Record<string, ChatHistoryItem>>(
         (acc, [key, value]) => {
@@ -77,7 +82,7 @@ export const historySlice = createSlice({
   },
 });
 
-export const { saveChat, deleteChatById } = historySlice.actions;
+export const { saveChat, deleteChatById, readChat } = historySlice.actions;
 export const { getChatById, getHistory } = historySlice.selectors;
 
 // We could use this or reduce-reducers packages
@@ -113,10 +118,10 @@ startHistoryListening({
 startHistoryListening({
   actionCreator: restoreChat,
   effect: (action, listenerApi) => {
-    const thread = listenerApi.getState().chat.thread;
-    if (thread.id !== action.payload.id) return;
-    const toSave = { ...thread };
-    listenerApi.dispatch(saveChat(toSave));
+    const chat = listenerApi.getState().chat;
+    if (chat.thread.id == action.payload.id && chat.streaming) return;
+    if (action.payload.id in chat.cache) return;
+    listenerApi.dispatch(readChat(action.payload.id));
   },
 });
 
