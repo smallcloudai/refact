@@ -12,7 +12,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommandsContext};
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::at_commands::at_search::execute_at_search;
-use crate::files_correction::get_project_dirs;
+use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs};
 use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 
@@ -24,10 +24,16 @@ async fn execute_att_search(
     query: &String,
     scope: &String,
 ) -> Result<Vec<ContextFile>, String> {
-    fn is_scope_a_file(scope: &String) -> bool {
+    fn is_scope_a_file(scope: &String, candidates_file: &Vec<String>) -> bool {
+        if !candidates_file.is_empty() {
+            return true
+        }
         PathBuf::from(scope).extension().is_some()
     }
-    fn is_scope_a_dir(scope: &String) -> bool {
+    fn is_scope_a_dir(scope: &String, candidates_dir: &Vec<String>) -> bool {
+        if !candidates_dir.is_empty() {
+            return true
+        }
         let path = PathBuf::from(scope);
         match fs::metadata(&path) {
             Ok(metadata) => metadata.is_dir(),
@@ -35,25 +41,33 @@ async fn execute_att_search(
         }
     }
     let gcx = ccx.lock().await.global_context.clone();
+    let candidates_file = file_repair_candidates(gcx.clone(), scope, 10, false).await;
+    let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), scope, false, 10).await;
 
     return match scope.as_str() {
         "workspace" => {
             Ok(execute_at_search(ccx.clone(), &query, None).await?)
         }
-        _ if is_scope_a_file(scope) => {
-            let candidates = file_repair_candidates(gcx.clone(), scope, 10, false).await;
+        _ if is_scope_a_file(scope, &candidates_file) => {
             let file_path = return_one_candidate_or_a_good_error(
                 gcx.clone(),
                 scope,
-                &candidates,
+                &candidates_file,
                 &get_project_dirs(gcx.clone()
                 ).await, false).await?;
             let filter = Some(format!("(file_path = \"{}\")", file_path));
+            info!("att-search: filter: {:?}", filter);
             Ok(execute_at_search(ccx.clone(), &query, filter).await?)
         }
-        _ if is_scope_a_dir(scope) => {
-            // TODO: complete path
-            let filter = format!("(file_path LIKE '{}%')", scope);
+        _ if is_scope_a_dir(scope, &candidates_dir) => {
+            let dir = return_one_candidate_or_a_good_error(
+                gcx.clone(),
+                scope,
+                &candidates_dir,
+                &get_project_dirs(gcx.clone()
+                ).await, true).await?;
+            let filter = format!("(file_path LIKE '{}%')", dir);
+            info!("att-search: filter: {:?}", filter);
             Ok(execute_at_search(ccx.clone(), &query, Some(filter)).await?)
         }
         _ => Err(format!("scope {} is not supported", scope))
