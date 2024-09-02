@@ -129,8 +129,7 @@ export type TourRefs = {
   useModel: null | HTMLDivElement;
   chat: null | HTMLDivElement;
   openInNewTab: null | HTMLButtonElement;
-  newChatInside: null | HTMLButtonElement;
-  back: null | HTMLButtonElement;
+  back: null | HTMLAnchorElement;
   f1: null | HTMLButtonElement;
   more: null | HTMLButtonElement;
   setNewChat: (x: HTMLButtonElement | null) => void;
@@ -138,8 +137,7 @@ export type TourRefs = {
   setUseModel: (x: HTMLDivElement | null) => void;
   setChat: (x: HTMLDivElement | null) => void;
   setOpenInNewTab: (x: HTMLButtonElement | null) => void;
-  setNewChatInside: (x: HTMLButtonElement | null) => void;
-  setBack: (x: HTMLButtonElement | null) => void;
+  setBack: (x: HTMLAnchorElement | null) => void;
   setF1: (x: HTMLButtonElement | null) => void;
   setMore: (x: HTMLButtonElement | null) => void;
 };
@@ -159,10 +157,7 @@ export const TourProvider = ({ children }: TourContextProps) => {
   const [openInNewTab, setOpenInNewTab] = useState<null | HTMLButtonElement>(
     null,
   );
-  const [newChatInside, setNewChatInside] = useState<null | HTMLButtonElement>(
-    null,
-  );
-  const [back, setBack] = useState<null | HTMLButtonElement>(null);
+  const [back, setBack] = useState<null | HTMLAnchorElement>(null);
   const [f1, setF1] = useState<null | HTMLButtonElement>(null);
   const [more, setMore] = useState<null | HTMLButtonElement>(null);
 
@@ -174,7 +169,6 @@ export const TourProvider = ({ children }: TourContextProps) => {
         useModel,
         chat,
         openInNewTab,
-        newChatInside,
         back,
         f1,
         more,
@@ -183,7 +177,6 @@ export const TourProvider = ({ children }: TourContextProps) => {
         setUseModel,
         setChat,
         setOpenInNewTab,
-        setNewChatInside,
         setBack,
         setF1,
         setMore,

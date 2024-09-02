@@ -90,6 +90,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
       <TabNav.Root style={{ flex: 1, overflowX: "scroll" }}>
         <TabNav.Link
           active={isDashboardTab(activeTab)}
+          ref={(x) => refs.setBack(x)}
           onClick={() => goToTab({ type: "dashboard" })}
         >
           Dashboard
