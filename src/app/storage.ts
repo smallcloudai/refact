@@ -1,15 +1,14 @@
 import type { WebStorage } from "redux-persist";
-import type { TipOfTheDayState } from "../features/TipOfTheDay";
-import type { TourState } from "../features/Tour";
 import {
   ChatHistoryItem,
   HistoryState,
 } from "../features/History/historySlice";
+import { parseOrElse } from "../utils";
 
 type StoredState = {
-  tipOfTheDay: TipOfTheDayState;
-  tour: TourState;
-  history: HistoryState;
+  tipOfTheDay: string;
+  tour: string;
+  history: string;
 };
 
 function getOldest(history: HistoryState): ChatHistoryItem | null {
@@ -21,26 +20,28 @@ function getOldest(history: HistoryState): ChatHistoryItem | null {
 }
 
 function prune(key: string, stored: StoredState) {
-  const oldest = getOldest(stored.history);
+  const history = parseOrElse<HistoryState>(stored.history, {});
+  const oldest = getOldest(history);
+
   if (!oldest) return;
-  const history = Object.values(stored.history).reduce<HistoryState>(
+  const nextHistory = Object.values(history).reduce<HistoryState>(
     (acc, cur) => {
       if (cur.id === oldest.id) return acc;
       return { ...acc, [cur.id]: cur };
     },
     {},
   );
-  const nextStorage = { ...stored, history };
+  const nextStorage = { ...stored, history: JSON.stringify(nextHistory) };
   try {
-    const newHistory = JSON.stringify({ ...stored, history });
+    const newHistory = JSON.stringify(nextStorage);
     localStorage.setItem(key, newHistory);
   } catch (e) {
     prune(key, nextStorage);
   }
 }
 
-function pruneHistory(key: string) {
-  const storedString = localStorage.getItem(key);
+function pruneHistory(key: string, item: string) {
+  const storedString = item;
   if (!storedString) return;
   try {
     const stored = JSON.parse(storedString) as StoredState;
@@ -75,7 +76,7 @@ export function storage(): WebStorage {
         try {
           localStorage.setItem(key, item);
         } catch {
-          pruneHistory(key);
+          pruneHistory(key, item);
         }
         resolve();
       });
