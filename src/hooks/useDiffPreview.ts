@@ -18,5 +18,5 @@ export const useDiffPreview = (chunks: DiffChunk[]) => {
     [chunks, diffPreview, submitPreview],
   );
 
-  return { onPreview, result };
+  return { onPreview, previewResult: result };
 };

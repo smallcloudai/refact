@@ -200,7 +200,7 @@ export const DiffContent: React.FC<{
 
   const diffStateRequest = useDiffStateQuery({ chunks, toolCallId });
 
-  const { onPreview } = useDiffPreview(chunks);
+  const { onPreview, previewResult: _previewResult } = useDiffPreview(chunks);
 
   const { onSubmit, result: _result } = useDiffApplyMutation();
 
@@ -239,7 +239,7 @@ export const DiffContent: React.FC<{
               void onSubmit({ chunks, toApply, toolCallId });
             }}
             onPreview={onPreview}
-            loading={diffStateRequest.isFetching}
+            loading={diffStateRequest.isLoading}
             diffs={groupedDiffs}
             openFile={() => {
               // TODO:
@@ -343,10 +343,10 @@ export const DiffForm: React.FC<{
                 </Link>
               </TruncateLeft>
 
-              {host === "vscode" && (
-                <Text size="1" as="label">
-                  <Flex align="center" gap="2" pl="2">
-                    {errored && "error"}
+              <Text size="1" as="label">
+                <Flex align="center" gap="2" pl="2">
+                  {errored && "error"}
+                  {host === "vscode" && (
                     <Button
                       size="1"
                       disabled={loading}
@@ -354,13 +354,7 @@ export const DiffForm: React.FC<{
                     >
                       Preview
                     </Button>
-                  </Flex>
-                </Text>
-              )}
-
-              <Text size="1" as="label">
-                <Flex align="center" gap="2" pl="2">
-                  {errored && "error"}
+                  )}
                   <Button
                     size="1"
                     disabled={loading}
