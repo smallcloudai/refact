@@ -103,7 +103,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         {history
           .filter(
             (chat) =>
-              !chat.read ||
+              chat.read === false ||
               (activeTab.type === "chat" && activeTab.id == chat.id),
           )
           .map((chat) => {
