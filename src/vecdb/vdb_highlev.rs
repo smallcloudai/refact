@@ -19,6 +19,8 @@ use crate::vecdb::vdb_lance::VecDBHandler;
 use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, OngoingWork, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
 use crate::vecdb::vdb_thread::{vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
 
+const VECDB_DISTANCE_REJECT_COMPLETELY: f32 = 0.25;  // XXX: it's actually a constant per embedding model, not universal for all models
+
 
 pub struct VecDb {
     pub memdb: Arc<AMutex<MemoriesDatabase>>,
@@ -564,14 +566,21 @@ impl VecdbSearch for VecDb {
         };
         info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
         let mut dist0 = 0.0;
+        let mut filtered_results = Vec::new();
         for rec in results.iter_mut() {
             if dist0 == 0.0 {
                 dist0 = rec.distance.abs();
             }
             let last_35_chars = crate::nicer_logs::last_n_chars(&rec.file_path.display().to_string(), 35);
             rec.usefulness = 100.0 - 75.0 * ((rec.distance.abs() - dist0) / (dist0 + 0.01)).max(0.0).min(1.0);
-            info!("distance {:.3} -> useful {:.1}, found {}:{}-{}", rec.distance, rec.usefulness, last_35_chars, rec.start_line, rec.end_line);
+            if rec.distance.abs() >= VECDB_DISTANCE_REJECT_COMPLETELY {
+                info!("distance {:.3} -> dropped {}:{}-{}", rec.distance, last_35_chars, rec.start_line, rec.end_line);
+            } else {
+                info!("distance {:.3} -> useful {:.1}, found {}:{}-{}", rec.distance, rec.usefulness, last_35_chars, rec.start_line, rec.end_line);
+                filtered_results.push(rec.clone());
+            }
         }
+        results = filtered_results;
         Ok(
             SearchResult {
                 query_text: query,
@@ -580,3 +589,4 @@ impl VecdbSearch for VecDb {
         )
     }
 }
+

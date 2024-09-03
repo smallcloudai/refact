@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
+use crate::nicer_logs::last_n_chars;
 
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ContextEnum, ContextFile};
@@ -37,10 +38,14 @@ fn results2message(results: &Vec<vecdb::vdb_structs::VecdbRecord>) -> Vec<Contex
         let file_name = r.file_path.to_str().unwrap().to_string();
         let mut usefulness = r.usefulness;
         // diversifying results
-        let chunk_n =  vector_of_context_file.iter().map(|x|&x.file_name).filter(|x|**x == file_name).count();
-        usefulness *= 1. / (chunk_n as f32 * 0.1 + 1.);
-        // info!("file_name {}; usefulness {}", file_name, usefulness);
-
+        let same_file_again =  vector_of_context_file.iter().map(|x|&x.file_name).filter(|x|**x == file_name).count();
+        let same_file_discount = 1. / (same_file_again as f32 * 0.1 + 1.);
+        usefulness *= same_file_discount;
+        info!("results {} usefulness {:.2} after same-file discount {:.2}",
+            last_n_chars(&file_name, 30),
+            usefulness,
+            same_file_discount,
+        );
         vector_of_context_file.push(ContextFile {
             file_name,
             file_content: r.window_text.clone(),
@@ -64,13 +69,13 @@ pub async fn execute_at_search(
         let ccx_locked = ccx.lock().await;
         (ccx_locked.global_context.clone(), ccx_locked.top_n)
     };
-    
+
     let api_key = get_custom_embedding_api_key(gcx.clone()).await;
     if let Err(err) = api_key {
         return Err(err.message);
     }
     let api_key = api_key.unwrap();
-    
+
     let vec_db = gcx.read().await.vec_db.clone();
     let r = match *vec_db.lock().await {
         Some(ref db) => {
@@ -99,7 +104,7 @@ impl AtCommand for AtSearch {
     ) -> Result<(Vec<ContextEnum>, String), String> {
         let args1 = args.iter().map(|x|x.clone()).collect::<Vec<_>>();
         info!("execute @search {:?}", args1.iter().map(|x|x.text.clone()).collect::<Vec<_>>());
-        
+
         let query = args.iter().map(|x|x.text.clone()).collect::<Vec<_>>().join(" ");
         if query.trim().is_empty() {
             if ccx.lock().await.is_preview {
