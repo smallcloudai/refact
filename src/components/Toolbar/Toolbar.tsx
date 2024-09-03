@@ -7,7 +7,7 @@ import {
   Text,
 } from "@radix-ui/themes";
 import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
-import { DotFilledIcon, PlusIcon } from "@radix-ui/react-icons";
+import { DotFilledIcon, HomeIcon, PlusIcon } from "@radix-ui/react-icons";
 import { newChatAction } from "../../events";
 import { restart, useTourRefs } from "../../features/Tour";
 import { popBackTo, push } from "../../features/Pages/pagesSlice";
@@ -100,22 +100,8 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     if (!tabNav.current) {
       return;
     }
-
     setTabNavWidth(tabNav.current.offsetWidth);
-
-    const observer = new ResizeObserver(() => {
-      if (!tabNav.current) {
-        return;
-      }
-
-      setTabNavWidth(tabNav.current.offsetWidth);
-    });
-    observer.observe(tabNav.current);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [tabNav]);
+  }, [tabNav, windowWidth]);
 
   const tabs = useMemo(() => {
     return history.filter(
@@ -137,7 +123,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         style={{
           flex: 1,
           alignItems: "flex-start",
-          maxHeight: "36px",
+          maxHeight: "40px",
           overflowY: "hidden",
         }}
       >
@@ -147,7 +133,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
             ref={(x) => refs.setBack(x)}
             onClick={() => goToTab({ type: "dashboard" })}
           >
-            Dashboard
+            {windowWidth < 400 ? <HomeIcon /> : "Dashboard"}
           </TabNav.Link>
           {tabs.map((chat) => {
             const isStreamingThisTab =
@@ -178,7 +164,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           })}
         </TabNav.Root>
       </Flex>
-      {windowWidth < 350 ? (
+      {windowWidth < 400 ? (
         <IconButton
           variant="outline"
           ref={(x) => refs.setNewChat(x)}
