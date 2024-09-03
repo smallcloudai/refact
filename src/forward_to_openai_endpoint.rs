@@ -8,7 +8,7 @@ use reqwest_eventsource::EventSource;
 use serde::{Serialize, Deserialize};
 use serde_json::json;
 use tokio::sync::Mutex as AMutex;
-use tracing::info;
+use tracing::{info, warn};
 
 use std::fs::File;
 use std::io::Write;
@@ -205,8 +205,10 @@ pub async fn get_embedding_openai_style(
         .map_err(|e| format!("Failed to send a request: {:?}", e))?;
 
     if !response.status().is_success() {
-        info!("get_embedding_openai_style: {:?}", response);
-        return Err(format!("get_embedding_openai_style: bad status: {:?}", response.status()));
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        warn!("get_embedding_openai_style: {}\nERROR:\n{}", status, text);
+        return Err(format!("get_embedding_openai_style: bad status: {:?}", status));
     }
 
     let json = response.json::<serde_json::Value>()
