@@ -86,7 +86,7 @@ impl Tool for AttSearch {
             return Err("search has given no results. Adjust a query or try a different scope".to_string());
         }
 
-        let mut content = "Records found:\n".to_string();
+        let mut content = "Records found:\n\n".to_string();
         let mut file_results_to_reqs: HashMap<String, Vec<&ContextFile>> = HashMap::new();
         vector_of_context_file.iter().for_each(|rec| {
             file_results_to_reqs.entry(rec.file_name.clone()).or_insert(vec![]).push(rec)
@@ -97,7 +97,7 @@ impl Tool for AttSearch {
                 content.push_str(&format!("{}:\n", rec.file_name.clone()));
                 let file_recs = file_results_to_reqs.get(&rec.file_name).unwrap();
                 for file_req in file_recs.iter().sorted_by(|rec1, rec2| rec2.usefulness.total_cmp(&rec1.usefulness)) {
-                    content.push_str(&format!("    lines {}-{} match {}\n", file_req.line1, file_req.line2, file_req.usefulness));
+                    content.push_str(&format!("    lines {}-{} score {:.1}%\n", file_req.line1, file_req.line2, file_req.usefulness));
                 }
                 used_files.insert(rec.file_name.clone());
             }
