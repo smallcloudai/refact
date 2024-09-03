@@ -6,7 +6,6 @@ import styles from "./ChatForm.module.css";
 
 export const FilesPreview: React.FC<{
   files: ChatContextFile[];
-  // onRemovePreviewFile: (name: string) => void;
 }> = ({ files }) => {
   if (files.length === 0) return null;
   return (
