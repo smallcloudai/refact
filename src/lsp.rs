@@ -311,7 +311,7 @@ impl LanguageServer for Backend {
             info!("UNCLEAR LSP EVENT: did_change_workspace_folders/add {}", add_folder.name);
         }
         for delete_folder in params.event.removed {
-            info!("UNCLEAR LSP EVENT: did_change_workspace_folders/add {}", delete_folder.name);
+            info!("UNCLEAR LSP EVENT: did_change_workspace_folders/delete {}", delete_folder.name);
         }
     }
 

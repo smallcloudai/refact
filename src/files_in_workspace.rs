@@ -473,7 +473,7 @@ pub async fn on_did_open(
     let (_doc_arc, dirty_arc, mark_dirty) = overwrite_or_create_document(gcx.clone(), doc).await;
     if mark_dirty {
         (*dirty_arc.lock().await) = true;
-    };
+    }
     gcx.write().await.documents_state.active_file_path = Some(cpath.clone());
 }
 

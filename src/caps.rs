@@ -233,6 +233,7 @@ macro_rules! get_api_key {
     }};
 }
 
+#[allow(dead_code)]
 async fn get_custom_chat_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
     let caps = try_load_caps_quickly_if_not_present(
         gcx.clone(), 0,
@@ -261,6 +262,7 @@ pub async fn get_custom_embedding_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> R
     Ok(api_key)
 }
 
+#[allow(dead_code)]
 async fn get_custom_completion_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
     let caps = try_load_caps_quickly_if_not_present(
         gcx.clone(), 0,
