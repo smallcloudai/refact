@@ -43,7 +43,7 @@ export const HistoryItem: React.FC<{
           }}
         >
           <Flex style={{ alignItems: "center", gap: 2 }}>
-            {isStreaming && <Spinner />}
+            {isStreaming && <Spinner style={{ minWidth: 16, minHeight: 16 }} />}
             {!isStreaming && historyItem.read === false && (
               <DotFilledIcon style={{ minWidth: 16, minHeight: 16 }} />
             )}
