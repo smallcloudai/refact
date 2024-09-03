@@ -8,7 +8,11 @@ import { useCallback } from "react";
 import { getHistory } from "../../features/History/historySlice";
 import { restoreChat } from "../../features/Chat";
 import { TruncateLeft } from "../Text";
-import { useAppDispatch, useAppSelector } from "../../hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useEventsBusForIDE,
+} from "../../hooks";
 
 export type DashboardTab = {
   type: "dashboard";
@@ -43,6 +47,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   });
   const isStreaming = useAppSelector((app) => app.chat.streaming);
   const cache = useAppSelector((app) => app.chat.cache);
+  const { openSettings, openHotKeys } = useEventsBusForIDE();
 
   const handleNavigation = (to: DropdownNavigationOptions | "chat") => {
     if (to === "settings") {
@@ -134,11 +139,3 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     </Flex>
   );
 };
-
-function openSettings() {
-  throw new Error("Function not implemented.");
-}
-
-function openHotKeys() {
-  throw new Error("Function not implemented.");
-}
