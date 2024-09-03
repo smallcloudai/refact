@@ -7,6 +7,7 @@ export enum EVENT_NAMES_FROM_SETUP {
 export interface CloudHost {
   type: "cloud";
   apiKey: string;
+  userName: string;
   sendCorrectedCodeSnippets: boolean;
 }
 
