@@ -76,7 +76,7 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
       <Text size="3">Already have a Refact.ai account?</Text>
       <Button
         ref={loginButton}
-        onClick={() => onLogin("free")}
+        onClick={() => onLogin(selected)}
         color="gray"
         highContrast
         variant="solid"
