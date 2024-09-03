@@ -13,7 +13,7 @@ export const useLogout = () => {
   const logout = useCallback(() => {
     postMessage({ type: EVENT_NAMES_FROM_SETUP.LOG_OUT });
     dispatch(setApiKey(null));
-    return removeUser(undefined);
+    removeUser(undefined).catch(() => ({}));
   }, [dispatch, postMessage, removeUser]);
 
   return logout;
