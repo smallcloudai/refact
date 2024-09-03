@@ -133,7 +133,7 @@ pub async fn pp_ast_markup_files(
         let text = match get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await {
             Ok(text) => text,
             Err(e) => {
-                warn!("pp_ast_markup_files: cannot read file: {:?}\nERROR: {}", file_name, e);
+                warn!("pp_ast_markup_files: cannot read file {:?}, not a big deal, will just skip the file.\nThe problem was: {}", file_name, e);
                 continue;
             }
         };
@@ -194,13 +194,14 @@ pub async fn context_msgs_from_paths(
     global_context: Arc<ARwLock<GlobalContext>>,
     files_set: HashSet<String>
 ) -> Vec<ContextFile> {
+    // XXX: only used once in a test handler, maybe remove it from here?
     let mut messages = vec![];
     for file_name in files_set {
         let path = crate::files_correction::canonical_path(&file_name.clone());
         let text = match get_file_text_from_memory_or_disk(global_context.clone(), &path).await {
             Ok(text) => text,
             Err(e) => {
-                warn!("context_msgs_from_paths: cannot read file: {:?}\nERROR: {}", file_name, e);
+                warn!("context_msgs_from_paths: cannot read file {:?}, not a big deal, will just skip the file.\nThe problem was: {}", file_name, e);
                 continue;
             }
         };
