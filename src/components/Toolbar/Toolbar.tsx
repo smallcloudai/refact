@@ -124,42 +124,51 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
 
   return (
     <Flex style={{ alignItems: "center", margin: 4, gap: 4 }}>
-      <TabNav.Root style={{ flex: 1, overflowX: "scroll" }} ref={tabNav}>
-        <TabNav.Link
-          active={isDashboardTab(activeTab)}
-          ref={(x) => refs.setBack(x)}
-          onClick={() => goToTab({ type: "dashboard" })}
-        >
-          Dashboard
-        </TabNav.Link>
-        {tabs.map((chat) => {
-          const isStreamingThisTab =
-            chat.id in cache ||
-            (isChatTab(activeTab) && chat.id === activeTab.id && isStreaming);
-          const isActive = isChatTab(activeTab) && activeTab.id == chat.id;
-          return (
-            <TabNav.Link
-              active={isActive}
-              key={chat.id}
-              onClick={() => goToTab({ type: "chat", id: chat.id })}
-              style={{ minWidth: 0, maxWidth: "140px" }}
-            >
-              {isStreamingThisTab && <Spinner />}
-              {!isStreamingThisTab && chat.read !== undefined && !chat.read && (
-                <DotFilledIcon />
-              )}
-              <TruncateLeft
-                style={{
-                  maxWidth: "110px",
-                  display: shouldCollapse && !isActive ? "none" : undefined,
-                }}
+      <Flex
+        style={{
+          flex: 1,
+          alignItems: "flex-start",
+          maxHeight: "36px",
+          overflowY: "hidden",
+        }}
+      >
+        <TabNav.Root style={{ flex: 1, overflowX: "scroll" }} ref={tabNav}>
+          <TabNav.Link
+            active={isDashboardTab(activeTab)}
+            ref={(x) => refs.setBack(x)}
+            onClick={() => goToTab({ type: "dashboard" })}
+          >
+            Dashboard
+          </TabNav.Link>
+          {tabs.map((chat) => {
+            const isStreamingThisTab =
+              chat.id in cache ||
+              (isChatTab(activeTab) && chat.id === activeTab.id && isStreaming);
+            const isActive = isChatTab(activeTab) && activeTab.id == chat.id;
+            return (
+              <TabNav.Link
+                active={isActive}
+                key={chat.id}
+                onClick={() => goToTab({ type: "chat", id: chat.id })}
+                style={{ minWidth: 0, maxWidth: "140px" }}
               >
-                {chat.title}
-              </TruncateLeft>
-            </TabNav.Link>
-          );
-        })}
-      </TabNav.Root>
+                {isStreamingThisTab && <Spinner />}
+                {!isStreamingThisTab &&
+                  chat.read !== undefined &&
+                  !chat.read && <DotFilledIcon />}
+                <TruncateLeft
+                  style={{
+                    maxWidth: "110px",
+                    display: shouldCollapse && !isActive ? "none" : undefined,
+                  }}
+                >
+                  {chat.title}
+                </TruncateLeft>
+              </TabNav.Link>
+            );
+          })}
+        </TabNav.Root>
+      </Flex>
       <Button
         variant="outline"
         ref={(x) => refs.setNewChat(x)}
