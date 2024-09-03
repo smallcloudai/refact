@@ -1,10 +1,17 @@
-import { Button, Flex, Spinner, TabNav, Text } from "@radix-ui/themes";
+import {
+  Button,
+  Flex,
+  IconButton,
+  Spinner,
+  TabNav,
+  Text,
+} from "@radix-ui/themes";
 import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
-import { DotFilledIcon, PlusIcon } from "@radix-ui/react-icons";
+import { DotFilledIcon, HomeIcon, PlusIcon } from "@radix-ui/react-icons";
 import { newChatAction } from "../../events";
 import { restart, useTourRefs } from "../../features/Tour";
 import { popBackTo, push } from "../../features/Pages/pagesSlice";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getHistory } from "../../features/History/historySlice";
 import { restoreChat } from "../../features/Chat";
 import { TruncateLeft } from "../Text";
@@ -13,6 +20,7 @@ import {
   useAppSelector,
   useEventsBusForIDE,
 } from "../../hooks";
+import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 
 export type DashboardTab = {
   type: "dashboard";
@@ -39,6 +47,9 @@ export type ToolbarProps = {
 
 export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const dispatch = useAppDispatch();
+  const tabNav = useRef<HTMLElement | null>(null);
+  const [tabNavWidth, setTabNavWidth] = useState(0);
+  const { width: windowWidth } = useWindowDimensions();
 
   const refs = useTourRefs();
 
@@ -90,51 +101,85 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     [dispatch, history],
   );
 
+  useEffect(() => {
+    if (!tabNav.current) {
+      return;
+    }
+    setTabNavWidth(tabNav.current.offsetWidth);
+  }, [tabNav, windowWidth]);
+
+  const tabs = useMemo(() => {
+    return history.filter(
+      (chat) =>
+        chat.read === false ||
+        (activeTab.type === "chat" && activeTab.id == chat.id),
+    );
+  }, [history, activeTab]);
+
+  const shouldCollapse = useMemo(() => {
+    const dashboardWidth = 103; // todo: compute this
+    const totalWidth = dashboardWidth + 140 * tabs.length;
+    return tabNavWidth < totalWidth;
+  }, [tabNavWidth, tabs.length]);
+
   return (
-    <Flex style={{ alignItems: "center", margin: 4, gap: 4 }}>
-      <TabNav.Root style={{ flex: 1, overflowX: "scroll" }}>
-        <TabNav.Link
-          active={isDashboardTab(activeTab)}
-          ref={(x) => refs.setBack(x)}
-          onClick={() => goToTab({ type: "dashboard" })}
-        >
-          Dashboard
-        </TabNav.Link>
-        {history
-          .filter(
-            (chat) =>
-              chat.read === false ||
-              (activeTab.type === "chat" && activeTab.id == chat.id),
-          )
-          .map((chat) => {
+    <Flex align="center" m="4px" gap="4px">
+      <Flex flexGrow="1" align="start" maxHeight="40px" overflowY="hidden">
+        <TabNav.Root style={{ flex: 1, overflowX: "scroll" }} ref={tabNav}>
+          <TabNav.Link
+            active={isDashboardTab(activeTab)}
+            ref={(x) => refs.setBack(x)}
+            onClick={() => goToTab({ type: "dashboard" })}
+          >
+            {windowWidth < 400 ? <HomeIcon /> : "Dashboard"}
+          </TabNav.Link>
+          {tabs.map((chat) => {
             const isStreamingThisTab =
               chat.id in cache ||
               (isChatTab(activeTab) && chat.id === activeTab.id && isStreaming);
+            const isActive = isChatTab(activeTab) && activeTab.id == chat.id;
             return (
               <TabNav.Link
-                active={isChatTab(activeTab) && activeTab.id == chat.id}
+                active={isActive}
                 key={chat.id}
                 onClick={() => goToTab({ type: "chat", id: chat.id })}
+                style={{ minWidth: 0, maxWidth: "140px" }}
               >
                 {isStreamingThisTab && <Spinner />}
-                {!isStreamingThisTab &&
-                  chat.read !== undefined &&
-                  !chat.read && <DotFilledIcon />}
-                <TruncateLeft style={{ maxWidth: "140px" }}>
+                {!isStreamingThisTab && chat.read === false && (
+                  <DotFilledIcon />
+                )}
+                <TruncateLeft
+                  style={{
+                    maxWidth: "110px",
+                    display: shouldCollapse && !isActive ? "none" : undefined,
+                  }}
+                >
                   {chat.title}
                 </TruncateLeft>
               </TabNav.Link>
             );
           })}
-      </TabNav.Root>
-      <Button
-        variant="outline"
-        ref={(x) => refs.setNewChat(x)}
-        onClick={onCreateNewChat}
-      >
-        <PlusIcon />
-        <Text>New chat</Text>
-      </Button>
+        </TabNav.Root>
+      </Flex>
+      {windowWidth < 400 ? (
+        <IconButton
+          variant="outline"
+          ref={(x) => refs.setNewChat(x)}
+          onClick={onCreateNewChat}
+        >
+          <PlusIcon />
+        </IconButton>
+      ) : (
+        <Button
+          variant="outline"
+          ref={(x) => refs.setNewChat(x)}
+          onClick={onCreateNewChat}
+        >
+          <PlusIcon />
+          <Text>New chat</Text>
+        </Button>
+      )}
       <Dropdown handleNavigation={handleNavigation} />
     </Flex>
   );
