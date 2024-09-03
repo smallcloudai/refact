@@ -120,7 +120,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const tabs = useMemo(() => {
     return history.filter(
       (chat) =>
-        (chat.read !== undefined && !chat.read) ||
+        chat.read === false ||
         (activeTab.type === "chat" && activeTab.id == chat.id),
     );
   }, [history, activeTab]);
@@ -162,9 +162,9 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 style={{ minWidth: 0, maxWidth: "140px" }}
               >
                 {isStreamingThisTab && <Spinner />}
-                {!isStreamingThisTab &&
-                  chat.read !== undefined &&
-                  !chat.read && <DotFilledIcon />}
+                {!isStreamingThisTab && chat.read === false && (
+                  <DotFilledIcon />
+                )}
                 <TruncateLeft
                   style={{
                     maxWidth: "110px",
