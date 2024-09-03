@@ -32,7 +32,7 @@ export const tips: [TipHost, string][] = [
   ],
   [
     "all",
-    'You can manually combine @file @definition @references @search to collect a lot of context, and ask a complex question. Try it, the chat handles complex questions pretty well! If there is too much code to fit into model limits, context post-processing will start to skeletonize the code -- replace function bodies, comments, includes with "...".',
+    'You can manually combine @file @definition @references @search to collect a lot of context, and ask a complex question. Try it, the chat handles complex questions pretty well! If there is too much code to fit into model limits, context post-processing will start to skeletonize the code -- replace function bodies with "..."',
   ],
   [
     "all",
@@ -40,7 +40,7 @@ export const tips: [TipHost, string][] = [
   ],
   [
     "all",
-    "Use @web http://... to add a web page to the context. Or just give model the URL it will use the web() exploration tool to check it out.",
+    "Use @web http://link-to-somewherg/ to add a web page to the context. Or just give model the URL it will use the web() exploration tool to check it out.",
   ],
 ];
 
