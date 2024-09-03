@@ -8,12 +8,13 @@ import { smallCloudApi } from "../services/smallcloud";
 export const useLogout = () => {
   const postMessage = usePostMessage();
   const dispatch = useAppDispatch();
+  const [removeUser, _] = smallCloudApi.useRemoveUserFromCacheMutation();
 
   const logout = useCallback(() => {
     postMessage({ type: EVENT_NAMES_FROM_SETUP.LOG_OUT });
     dispatch(setApiKey(null));
-    dispatch(smallCloudApi.util.invalidateTags(["User", "Polling"]));
-  }, [dispatch, postMessage]);
+    removeUser(undefined).catch(() => ({}));
+  }, [dispatch, postMessage, removeUser]);
 
   return logout;
 };
