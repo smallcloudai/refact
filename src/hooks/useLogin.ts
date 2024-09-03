@@ -57,6 +57,7 @@ export const useLogin = () => {
       setupHost({
         type: "cloud",
         apiKey: loginPollingResult.data.secret_key,
+        userName: loginPollingResult.data.account,
         sendCorrectedCodeSnippets: false,
       });
     }
