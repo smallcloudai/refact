@@ -1,4 +1,11 @@
-import { Button, Flex, Spinner, TabNav, Text } from "@radix-ui/themes";
+import {
+  Button,
+  Flex,
+  IconButton,
+  Spinner,
+  TabNav,
+  Text,
+} from "@radix-ui/themes";
 import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
 import { DotFilledIcon, PlusIcon } from "@radix-ui/react-icons";
 import { newChatAction } from "../../events";
@@ -9,6 +16,7 @@ import { getHistory } from "../../features/History/historySlice";
 import { restoreChat } from "../../features/Chat";
 import { TruncateLeft } from "../Text";
 import { useAppDispatch, useAppSelector } from "../../hooks";
+import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 
 export type DashboardTab = {
   type: "dashboard";
@@ -37,6 +45,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const dispatch = useAppDispatch();
   const tabNav = useRef<HTMLElement | null>(null);
   const [tabNavWidth, setTabNavWidth] = useState(0);
+  const { width: windowWidth } = useWindowDimensions();
 
   const refs = useTourRefs();
 
@@ -169,14 +178,24 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           })}
         </TabNav.Root>
       </Flex>
-      <Button
-        variant="outline"
-        ref={(x) => refs.setNewChat(x)}
-        onClick={onCreateNewChat}
-      >
-        <PlusIcon />
-        <Text>New chat</Text>
-      </Button>
+      {windowWidth < 350 ? (
+        <IconButton
+          variant="outline"
+          ref={(x) => refs.setNewChat(x)}
+          onClick={onCreateNewChat}
+        >
+          <PlusIcon />
+        </IconButton>
+      ) : (
+        <Button
+          variant="outline"
+          ref={(x) => refs.setNewChat(x)}
+          onClick={onCreateNewChat}
+        >
+          <PlusIcon />
+          <Text>New chat</Text>
+        </Button>
+      )}
       <Dropdown handleNavigation={handleNavigation} />
     </Flex>
   );
