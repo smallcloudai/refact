@@ -4,7 +4,7 @@ import { DotFilledIcon, PlusIcon } from "@radix-ui/react-icons";
 import { newChatAction } from "../../events";
 import { restart, useTourRefs } from "../../features/Tour";
 import { popBackTo, push } from "../../features/Pages/pagesSlice";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getHistory } from "../../features/History/historySlice";
 import { restoreChat } from "../../features/Chat";
 import { TruncateLeft } from "../Text";
@@ -35,6 +35,8 @@ export type ToolbarProps = {
 
 export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const dispatch = useAppDispatch();
+  const tabNav = useRef<HTMLElement | null>(null);
+  const [tabNavWidth, setTabNavWidth] = useState(0);
 
   const refs = useTourRefs();
 
@@ -85,9 +87,44 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     [dispatch, history],
   );
 
+  useEffect(() => {
+    if (!tabNav.current) {
+      return;
+    }
+
+    setTabNavWidth(tabNav.current.offsetWidth);
+
+    const observer = new ResizeObserver(() => {
+      if (!tabNav.current) {
+        return;
+      }
+
+      setTabNavWidth(tabNav.current.offsetWidth);
+    });
+    observer.observe(tabNav.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [tabNav]);
+
+  const tabs = useMemo(() => {
+    return history.filter(
+      (chat) =>
+        (chat.read !== undefined && !chat.read) ||
+        (activeTab.type === "chat" && activeTab.id == chat.id),
+    );
+  }, [history, activeTab]);
+
+  const shouldCollapse = useMemo(() => {
+    const dashboardWidth = 103; // todo: compute this
+    const totalWidth = dashboardWidth + 140 * tabs.length;
+    return tabNavWidth < totalWidth;
+  }, [tabNavWidth, tabs.length]);
+
   return (
     <Flex style={{ alignItems: "center", margin: 4, gap: 4 }}>
-      <TabNav.Root style={{ flex: 1, overflowX: "scroll" }}>
+      <TabNav.Root style={{ flex: 1, overflowX: "scroll" }} ref={tabNav}>
         <TabNav.Link
           active={isDashboardTab(activeTab)}
           ref={(x) => refs.setBack(x)}
@@ -95,32 +132,33 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         >
           Dashboard
         </TabNav.Link>
-        {history
-          .filter(
-            (chat) =>
-              (chat.read !== undefined && !chat.read) ||
-              (activeTab.type === "chat" && activeTab.id == chat.id),
-          )
-          .map((chat) => {
-            const isStreamingThisTab =
-              chat.id in cache ||
-              (isChatTab(activeTab) && chat.id === activeTab.id && isStreaming);
-            return (
-              <TabNav.Link
-                active={isChatTab(activeTab) && activeTab.id == chat.id}
-                key={chat.id}
-                onClick={() => goToTab({ type: "chat", id: chat.id })}
+        {tabs.map((chat) => {
+          const isStreamingThisTab =
+            chat.id in cache ||
+            (isChatTab(activeTab) && chat.id === activeTab.id && isStreaming);
+          const isActive = isChatTab(activeTab) && activeTab.id == chat.id;
+          return (
+            <TabNav.Link
+              active={isActive}
+              key={chat.id}
+              onClick={() => goToTab({ type: "chat", id: chat.id })}
+              style={{ minWidth: 0, maxWidth: "140px" }}
+            >
+              {isStreamingThisTab && <Spinner />}
+              {!isStreamingThisTab && chat.read !== undefined && !chat.read && (
+                <DotFilledIcon />
+              )}
+              <TruncateLeft
+                style={{
+                  maxWidth: "110px",
+                  display: shouldCollapse && !isActive ? "none" : undefined,
+                }}
               >
-                {isStreamingThisTab && <Spinner />}
-                {!isStreamingThisTab &&
-                  chat.read !== undefined &&
-                  !chat.read && <DotFilledIcon />}
-                <TruncateLeft style={{ maxWidth: "140px" }}>
-                  {chat.title}
-                </TruncateLeft>
-              </TabNav.Link>
-            );
-          })}
+                {chat.title}
+              </TruncateLeft>
+            </TabNav.Link>
+          );
+        })}
       </TabNav.Root>
       <Button
         variant="outline"
