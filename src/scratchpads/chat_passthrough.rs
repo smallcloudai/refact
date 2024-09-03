@@ -15,9 +15,9 @@ use crate::call_validation::{ChatMessage, ChatPost, ContextFile, ContextMemory, 
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::scratchpads::chat_generic::apply_messages_patch;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::pp_utils::HasRagResults;
+use crate::toolbox::toolbox_config::system_prompt_add_workspace_info;
 
 
 const DEBUG: bool = true;
@@ -100,9 +100,10 @@ impl ScratchpadAbstract for ChatPassthrough {
         ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        info!("chat passthrough {} messages at start", &self.post.messages.len());
-
-        let n_ctx = ccx.lock().await.n_ctx;
+        let (n_ctx, gcx) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.n_ctx, ccx_locked.global_context.clone())
+        };
         let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
             run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.post.messages, &mut self.has_rag_results).await
         } else {
@@ -111,11 +112,15 @@ impl ScratchpadAbstract for ChatPassthrough {
         if self.supports_tools {
             (messages, _) = run_tools(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await;
         };
-        apply_messages_patch(self.global_context.clone(), &mut messages).await;
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message).unwrap_or_else(|e| {
+        let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
         });
+        if let Some(first_msg) = limited_msgs.first_mut() {
+            if first_msg.role == "system" {
+                first_msg.content = system_prompt_add_workspace_info(gcx.clone(), &first_msg.content).await;
+            }
+        }
         info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", messages.len(), limited_msgs.len());
         let mut filtered_msgs = vec![];
         for msg in &limited_msgs {

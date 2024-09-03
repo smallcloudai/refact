@@ -234,62 +234,52 @@ pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<Tool
     load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt).map_err(|e| e.to_string())
 }
 
-pub async fn postprocess_system_prompt(
-    global_context: Arc<ARwLock<GlobalContext>>,
-    system_prompt: &str
+pub async fn system_prompt_add_workspace_info(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    system_prompt: &String,
 ) -> String {
-    // if system_prompt.contains("%WORKSPACE_PROJECTS_INFO%") {
-    //     let (workspace_dirs, active_file_path) = {
-    //         let gcx_locked = gcx.read().await;
-    //         let documents_state = &gcx_locked.documents_state;
-    //         let dirs_locked = documents_state.workspace_folders.lock().unwrap();
-    //         let workspace_dirs = dirs_locked.clone().into_iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>();
-    //         let active_file_path = documents_state.active_file_path.clone();
-    //         (workspace_dirs, active_file_path)
-    //     };
-    //     let mut info = String::new();
-    //     if !workspace_dirs.is_empty() {
-    //         info.push_str(format!("The current IDE workspace has these project directories:\n{}", workspace_dirs.join("\n")).as_str());
-    //     }
-    //     let detect_vcs_at_option: Option<PathBuf> = active_file_path.clone().or_else(|| workspace_dirs.get(0).map(PathBuf::from));
-    //     if let Some(detect_vcs_at) = detect_vcs_at_option {
-    //         let cvs: Option<(PathBuf, &str)> = crate::files_in_workspace::detect_vcs_for_a_file_path(&detect_vcs_at).await;
-    //         if let Some(active_file) = active_file_path {
-    //             info.push_str(format!("\n\nThe active IDE file is:\n{}", active_file.display()).as_str());
-    //         } else {
-    //             info.push_str("\n\nThere is no active file currently open in the IDE.");
-    //         }
-    //         if let Some((vcs_path, vcs_type)) = cvs {
-    //             info.push_str(format!("\nThe project is under {} version control, located at:\n{}",
-    //                 vcs_type,
-    //                 vcs_path.display(),
-    //             ).as_str());
-    //         } else {
-    //             info.push_str("\nThere's no version control detected, complain to user if they want to use anything git/hg/svn/etc.");
-    //         }
-    //     } else {
-    //         info.push_str(format!("\n\nThere is no active file with version control, complain to user if they want to use anything git/hg/svn/etc and ask to open a file in IDE for you to know which project is active.").as_str());
-    //     }
-    //     system_prompt = system_prompt.replace("%WORKSPACE_PROJECTS_INFO%", &info);
-    // }
-    // info!("system_prompt\n{}", system_prompt);
+    // this function applied in-place makes token count slightly wrong, but not by much
+    let mut system_prompt = system_prompt.clone();
 
     // let mut additional_info = String::new();
     // let datetime = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     // let os = std::env::consts::OS;
-    // let username = std::env::var("USER")
-    //     .or_else(|_| std::env::var("USERNAME"))
-    //     .unwrap_or_else(|_| String::from("unknown"));
     // let additional_info += format!("ENVIRONMENT INFO:\nDATETIME: {}\nOS: {}\nUSER: {}\n", datetime, os, username);
 
-    let mut system_prompt = system_prompt.to_string();
-    let workspace_dirs = {
-        let workspace_dirs_arc = global_context.read().await.documents_state.workspace_folders.clone();
-        let dirs_lock = workspace_dirs_arc.lock().unwrap();
-        dirs_lock.clone().into_iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>()
-    };
-    if !workspace_dirs.is_empty() && system_prompt.contains("%WORKSPACE_PROJECTS_INFO%") {
-        system_prompt = system_prompt.replace("%WORKSPACE_PROJECTS_INFO%", &format!("The current IDE workspace has these project directories:\n{}\n", workspace_dirs.join("\n")).as_str());
+    if system_prompt.contains("%WORKSPACE_INFO%") {
+        let (workspace_dirs, active_file_path) = {
+            let gcx_locked = gcx.read().await;
+            let documents_state = &gcx_locked.documents_state;
+            let dirs_locked = documents_state.workspace_folders.lock().unwrap();
+            let workspace_dirs = dirs_locked.clone().into_iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>();
+            let active_file_path = documents_state.active_file_path.clone();
+            (workspace_dirs, active_file_path)
+        };
+        let mut info = String::new();
+        if !workspace_dirs.is_empty() {
+            info.push_str(format!("The current IDE workspace has these project directories:\n{}", workspace_dirs.join("\n")).as_str());
+        }
+        let detect_vcs_at_option: Option<PathBuf> = active_file_path.clone().or_else(|| workspace_dirs.get(0).map(PathBuf::from));
+        if let Some(detect_vcs_at) = detect_vcs_at_option {
+            let cvs: Option<(PathBuf, &str)> = crate::files_in_workspace::detect_vcs_for_a_file_path(&detect_vcs_at).await;
+            if let Some(active_file) = active_file_path {
+                info.push_str(format!("\n\nThe active IDE file is:\n{}", active_file.display()).as_str());
+            } else {
+                info.push_str("\n\nThere is no active file currently open in the IDE.");
+            }
+            if let Some((vcs_path, vcs_type)) = cvs {
+                info.push_str(format!("\nThe project is under {} version control, located at:\n{}",
+                    vcs_type,
+                    vcs_path.display(),
+                ).as_str());
+            } else {
+                info.push_str("\nThere's no version control detected, complain to user if they want to use anything git/hg/svn/etc.");
+            }
+        } else {
+            info.push_str(format!("\n\nThere is no active file with version control, complain to user if they want to use anything git/hg/svn/etc and ask to open a file in IDE for you to know which project is active.").as_str());
+        }
+        system_prompt = system_prompt.replace("%WORKSPACE_INFO%", &info);
+        info!("system prompt:\n{}", system_prompt);
     }
     system_prompt
 }
@@ -306,7 +296,7 @@ pub async fn get_default_system_prompt(
             return "".to_string()
         },
     };
-    let mut system_prompt = if have_agentic_tools {
+    let system_prompt = if have_agentic_tools {
         tconfig.system_prompts.get("agentic_tools")
             .map_or_else(
                 || {
@@ -334,8 +324,6 @@ pub async fn get_default_system_prompt(
                 |x| x.text.clone()
             )
     };
-
-    system_prompt = postprocess_system_prompt(gcx, &system_prompt).await;
     system_prompt
 }
 
