@@ -40,7 +40,7 @@ export const tips: [TipHost, string][] = [
   ],
   [
     "all",
-    "Use @web http://link-to-somewherg/ to add a web page to the context. Or just give model the URL it will use the web() exploration tool to check it out.",
+    "Use @web http://link-to-somewhere/ to add a web page to the context. Or just give model the URL it will use the web() exploration tool to check it out.",
   ],
 ];
 

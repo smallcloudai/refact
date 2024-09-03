@@ -21,7 +21,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
             color: appearance == "dark" ? "black" : "white",
           }}
         >
-          {"You're using the most customizable AI Coding Assistant."}
+          {"This is a product tour: helpful tips for you to start."}
         </Text>
         <TourButton title="Get Started" onClick={onPressNext} />
       </TourBox>

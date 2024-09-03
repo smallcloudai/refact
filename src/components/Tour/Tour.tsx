@@ -46,7 +46,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
   return (
     <>
       <TourBubble
-        text="When you write code, Refact already knows what comes next."
+        text="When you write code, Refact can predict what comes next. Accept code suggestions with Tab. Refact uses more than just the current file for code completion, check out how it works in Fill-in-the-middle Context in the menu."
         step={1}
         target={refs.newChat}
         down={true}
@@ -61,7 +61,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         />
       </TourBubble>
       <TourBubble
-        text="Ask questions in the Chat, it already knows your codebase."
+        text="Open a new chat using this button. Refact can stream several chats at the same time, this is most useful for agent functions that can run a long time. Chat that have unread responses will be marked with a small circle."
         step={2}
         target={refs.newChat}
         down={true}
@@ -72,7 +72,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
       />
       <TourBubble
         text={
-          "The model autonomously calls functions to gather the best context for answers. When you’re not asking about your codebase, you can turn it off. "
+          "The Big Switch allows you to choose between immediate answers (Quick), automatic exploration tools that model can use to collect the necessary context from your project (Explore), or slow agentic functions that can convert a lot of GPU cycles to useful work (Agent)."
         }
         step={3}
         down={false}
@@ -83,7 +83,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
       />
       <TourBubble
         text={
-          "Choose the latest LLMs for Chat. With the Pro plan, you get access to all the models."
+          "Choose the language model you like more, for example Anthropic-3-5-sonnet clearly works better for Rust. With the Refact PRO plan, you will see more models in the list: the largest models from OpenAI, Anthropic for a fixed price. But FREE is great too, well, it's free!"
         }
         step={4}
         down={false}
@@ -94,7 +94,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
       />
       <TourBubble
         text={
-          "There are @-commands to fill the context manually, for details type @help."
+          "Sometimes you want to tell the model exactly what to take in as context, and not rely on automatic context collection. There are @-commands for you to do just that, for details type @help."
         }
         step={5}
         down={false}
@@ -105,7 +105,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
       />
       <TourBubble
         text={
-          "Click ‘Dashboard’ to see your chat history and continue discussion."
+          "Here in ‘Dashboard’ you will see your chat history and some agentic functions soon."
         }
         step={6}
         down={true}
@@ -116,7 +116,9 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         onNext={openHistory}
       />
       <TourBubble
-        text={"Click here to discover more."}
+        text={
+          "Click here for settings, keyboard shortcuts, customization, integrations, etc. There's a link to discord, too, for you to complain something doesn't work or to happily report that it does!"
+        }
         step={7}
         down={true}
         containerWidth={chatWidth}

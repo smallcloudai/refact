@@ -19,7 +19,7 @@ const App = () => {
   );
 };
 
-describe("FIM debug page", () => {
+describe("Fill-in-the-middle Context", () => {
   beforeEach(() => {
     stubResizeObserver();
     vi.spyOn(window, "postMessage").mockImplementation(postMessage);
