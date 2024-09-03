@@ -123,15 +123,8 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   }, [tabNavWidth, tabs.length]);
 
   return (
-    <Flex style={{ alignItems: "center", margin: 4, gap: 4 }}>
-      <Flex
-        style={{
-          flex: 1,
-          alignItems: "flex-start",
-          maxHeight: "40px",
-          overflowY: "hidden",
-        }}
-      >
+    <Flex align="center" m="4px" gap="4px">
+      <Flex flexGrow="1" align="start" maxHeight="40px" overflowY="hidden">
         <TabNav.Root style={{ flex: 1, overflowX: "scroll" }} ref={tabNav}>
           <TabNav.Link
             active={isDashboardTab(activeTab)}

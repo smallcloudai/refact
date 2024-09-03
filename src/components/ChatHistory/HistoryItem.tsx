@@ -42,7 +42,7 @@ export const HistoryItem: React.FC<{
             onClick();
           }}
         >
-          <Flex style={{ alignItems: "center", gap: 2 }}>
+          <Flex gap="2px" align="center">
             {isStreaming && <Spinner style={{ minWidth: 16, minHeight: 16 }} />}
             {!isStreaming && historyItem.read === false && (
               <DotFilledIcon style={{ minWidth: 16, minHeight: 16 }} />
@@ -61,7 +61,7 @@ export const HistoryItem: React.FC<{
             </Text>
           </Flex>
 
-          <Flex justify="between" style={{ marginTop: "8px" }}>
+          <Flex justify="between" mt="8px">
             <Text
               size="1"
               style={{ display: "flex", gap: "4px", alignItems: "center" }}
@@ -76,11 +76,9 @@ export const HistoryItem: React.FC<{
       </Card>
 
       <Flex
-        style={{
-          position: "absolute",
-          right: "6px",
-          top: "6px",
-        }}
+        position="absolute"
+        top="6px"
+        right="6px"
         gap="1"
         justify="end"
         align="center"
