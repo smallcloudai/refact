@@ -131,7 +131,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
             ref={(x) => refs.setBack(x)}
             onClick={() => goToTab({ type: "dashboard" })}
           >
-            {windowWidth < 400 ? <HomeIcon /> : "Dashboard"}
+            {windowWidth < 400 || shouldCollapse ? <HomeIcon /> : "Dashboard"}
           </TabNav.Link>
           {tabs.map((chat) => {
             const isStreamingThisTab =
