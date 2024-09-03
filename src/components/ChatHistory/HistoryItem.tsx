@@ -46,7 +46,9 @@ export const HistoryItem: React.FC<{
             {isStreaming && <Spinner />}
             {!isStreaming &&
               historyItem.read !== undefined &&
-              !historyItem.read && <DotFilledIcon />}
+              !historyItem.read && (
+                <DotFilledIcon style={{ minWidth: 16, minHeight: 16 }} />
+              )}
             <Text
               as="div"
               size="2"
