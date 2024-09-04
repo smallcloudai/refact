@@ -128,7 +128,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   }, [history, activeTab]);
 
   const shouldCollapse = useMemo(() => {
-    const dashboardWidth = 103; // todo: compute this
+    const dashboardWidth = windowWidth < 400 ? 47 : 70; // todo: compute this
     const totalWidth = dashboardWidth + 140 * tabs.length;
     return tabNavWidth < totalWidth;
   }, [tabNavWidth, tabs.length]);
@@ -163,8 +163,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 )}
                 <TruncateLeft
                   style={{
-                    maxWidth: "110px",
-                    display: shouldCollapse && !isActive ? "none" : undefined,
+                    maxWidth: shouldCollapse ? "25px" : "110px",
                   }}
                 >
                   {chat.title}
