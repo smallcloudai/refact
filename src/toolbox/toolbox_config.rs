@@ -12,10 +12,12 @@ use crate::at_tools::tools::{AtParamDict, make_openai_tool_value};
 use crate::toolbox::toolbox_compiled_in::{COMPILED_IN_CUSTOMIZATION_YAML, COMPILED_IN_INITIAL_USER_YAML};
 
 
+// TODO: renames
+// TODO: remove, should be the same as CustomizationYaml
 #[derive(Deserialize)]
 pub struct ToolboxConfigDeserialize {
     #[serde(default)]
-    pub system_prompts: HashMap<String, SystemPrompt>,
+    pub system_prompts: HashMap<String, CustomizationSystemPrompt>,
     #[serde(default)]
     pub subchat_tool_parameters: HashMap<String, SubchatParameters>,
     #[serde(default)]
@@ -27,8 +29,8 @@ pub struct ToolboxConfigDeserialize {
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
-pub struct ToolboxConfig {
-    pub system_prompts: HashMap<String, SystemPrompt>,
+pub struct CustomizationYaml {
+    pub system_prompts: HashMap<String, CustomizationSystemPrompt>,
     pub subchat_tool_parameters: HashMap<String, SubchatParameters>,
     pub toolbox_commands: HashMap<String, ToolboxCommand>,
     pub tools: Vec<ToolCustDict>,
@@ -86,10 +88,12 @@ pub struct AtToolCustDictDeserialize {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SystemPrompt {
+pub struct CustomizationSystemPrompt {
     #[serde(default)]
     pub description: String,
     pub text: String,
+    #[serde(default)]
+    pub show: String,  // "always" (same as "") "never" "experimental"
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -115,7 +119,7 @@ fn extract_mapping_values(mapping: &Option<&serde_yaml::Mapping>, variables: &mu
     }
 }
 
-fn replace_variables_in_messages(config: &mut ToolboxConfig, variables: &HashMap<String, String>)
+fn replace_variables_in_messages(config: &mut CustomizationYaml, variables: &HashMap<String, String>)
 {
     for (_, command) in config.toolbox_commands.iter_mut() {
         for (_i, msg) in command.messages.iter_mut().enumerate() {
@@ -128,7 +132,7 @@ fn replace_variables_in_messages(config: &mut ToolboxConfig, variables: &HashMap
     }
 }
 
-fn replace_variables_in_system_prompts(config: &mut ToolboxConfig, variables: &HashMap<String, String>)
+fn replace_variables_in_system_prompts(config: &mut CustomizationYaml, variables: &HashMap<String, String>)
 {
     for (_, prompt) in config.system_prompts.iter_mut() {
         let mut tmp = prompt.text.clone();
@@ -139,7 +143,7 @@ fn replace_variables_in_system_prompts(config: &mut ToolboxConfig, variables: &H
     }
 }
 
-fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default_system_prompt: &str) -> Result<ToolboxConfig, String> {
+fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default_system_prompt: &str, allow_experimental: bool) -> Result<CustomizationYaml, String> {
     let default_unstructured: serde_yaml::Value = serde_yaml::from_str(COMPILED_IN_CUSTOMIZATION_YAML)
         .map_err(|e| format!("Error parsing default YAML: {}\n{}", e, COMPILED_IN_CUSTOMIZATION_YAML))?;
     let user_unstructured: serde_yaml::Value = serde_yaml::from_str(user_yaml)
@@ -155,7 +159,7 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
         .map(|x|ToolCustDict::new(x, &work_config_deserialize.tools_parameters))
         .collect::<Vec<ToolCustDict>>();
 
-    let mut work_config = ToolboxConfig {
+    let mut work_config = CustomizationYaml {
         system_prompts: work_config_deserialize.system_prompts,
         toolbox_commands: work_config_deserialize.toolbox_commands,
         subchat_tool_parameters: work_config_deserialize.subchat_tool_parameters,
@@ -168,7 +172,7 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
        .map(|x|ToolCustDict::new(x, &user_config_deserialize.tools_parameters))
        .collect::<Vec<ToolCustDict>>();
 
-    let mut user_config = ToolboxConfig {
+    let mut user_config = CustomizationYaml {
         system_prompts: user_config_deserialize.system_prompts,
         toolbox_commands: user_config_deserialize.toolbox_commands,
         tools: user_tools,
@@ -182,7 +186,8 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
 
     let caps_config_deserialize: ToolboxConfigDeserialize = serde_yaml::from_str(caps_yaml)
         .map_err(|e| format!("Error parsing default ToolboxConfig: {}\n{}", e, caps_yaml))?;
-    let caps_config = ToolboxConfig {
+
+    let caps_config = CustomizationYaml {
         system_prompts: caps_config_deserialize.system_prompts,
         toolbox_commands: caps_config_deserialize.toolbox_commands,
         tools: vec![],
@@ -196,15 +201,33 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
     work_config.toolbox_commands.extend(user_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.tools.extend(user_config.tools.iter().map(|x|x.clone()));
 
+    let filtered_system_prompts: HashMap<String, CustomizationSystemPrompt> = work_config.system_prompts
+        .iter()
+        .filter(|(_key, system_prompt_struct)| {
+            info!("{:?}", system_prompt_struct);
+            match system_prompt_struct.show.as_str() {
+                "always" => true,
+                "never" => false,
+                "experimental" => allow_experimental,
+                _ => true,
+            }
+        })
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+
+    work_config.system_prompts = filtered_system_prompts;
+
     if !caps_default_system_prompt.is_empty() && work_config.system_prompts.get(caps_default_system_prompt).is_some() {
         work_config.system_prompts.insert("default".to_string(), work_config.system_prompts.get(caps_default_system_prompt).map(|x|x.clone()).unwrap());
     }
-
     Ok(work_config)
 }
 
-pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolboxConfig, String> {
-    let cache_dir = gcx.read().await.cache_dir.clone();
+pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<CustomizationYaml, String> {
+    let (cache_dir, allow_experimental) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.experimental)
+    };
     let caps = try_load_caps_quickly_if_not_present(gcx, 0).await.map_err(|e|format!("error loading caps: {e}"))?;
 
     let (caps_config_text, caps_default_system_prompt) = {
@@ -231,7 +254,7 @@ pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<Tool
     }
 
     let user_config_text = std::fs::read_to_string(&user_config_path).map_err(|e| format!("Failed to read file: {}", e))?;
-    load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt).map_err(|e| e.to_string())
+    load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt, allow_experimental).map_err(|e| e.to_string())
 }
 
 pub async fn system_prompt_add_workspace_info(
@@ -333,6 +356,6 @@ mod tests {
 
     #[test]
     fn is_compiled_in_toolbox_valid_yaml() {
-        let _config = load_and_mix_with_users_config(COMPILED_IN_INITIAL_USER_YAML, "", "");
+        let _config = load_and_mix_with_users_config(COMPILED_IN_INITIAL_USER_YAML, "", "", true);
     }
 }
