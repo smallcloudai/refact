@@ -131,7 +131,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     const dashboardWidth = windowWidth < 400 ? 47 : 70; // todo: compute this
     const totalWidth = dashboardWidth + 140 * tabs.length;
     return tabNavWidth < totalWidth;
-  }, [tabNavWidth, tabs.length]);
+  }, [tabNavWidth, tabs.length, windowWidth]);
 
   return (
     <Flex align="center" m="4px" gap="4px">
