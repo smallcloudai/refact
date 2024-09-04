@@ -2,6 +2,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::hash::Hash;
 use axum::http::StatusCode;
+use indexmap::IndexMap;
 use ropey::Rope;
 use uuid::Uuid;
 use crate::custom_error::ScratchError;
@@ -333,7 +334,7 @@ pub struct ChatPost {
     #[serde(default)]
     pub only_deterministic_messages: bool,  // means don't sample from the model
     #[serde(default)]
-    pub subchat_tool_parameters: HashMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
+    pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
     #[serde(default="PostprocessSettings::new")]
     pub postprocess_parameters: PostprocessSettings,
     #[allow(dead_code)]

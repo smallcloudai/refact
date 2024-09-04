@@ -37,7 +37,7 @@ pub struct AtCommandsContext {
 
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
     pub at_tools: IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
-    pub subchat_tool_parameters: HashMap<String, SubchatParameters>,
+    pub subchat_tool_parameters: IndexMap<String, SubchatParameters>,
     pub postprocess_parameters: PostprocessSettings,
 
     pub subchat_tx: Arc<AMutex<mpsc::UnboundedSender<serde_json::Value>>>, // one and only supported format for now {"tool_call_id": xx, "subchat_id": xx, "add_message": {...}}
@@ -65,7 +65,7 @@ impl AtCommandsContext {
 
             at_commands: at_commands_dict(global_context.clone()).await,
             at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
-            subchat_tool_parameters: HashMap::new(),
+            subchat_tool_parameters: IndexMap::new(),
             postprocess_parameters: PostprocessSettings::new(),
 
             subchat_tx: Arc::new(AMutex::new(tx)),

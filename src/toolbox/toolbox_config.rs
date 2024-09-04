@@ -6,6 +6,7 @@ use crate::call_validation::{ChatMessage, SubchatParameters};
 use std::io::Write;
 use std::sync::Arc;
 use std::path::PathBuf;
+use indexmap::IndexMap;
 use tracing::{error, info};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
 use crate::at_tools::tools::{AtParamDict, make_openai_tool_value};
@@ -17,11 +18,11 @@ use crate::toolbox::toolbox_compiled_in::{COMPILED_IN_CUSTOMIZATION_YAML, COMPIL
 #[derive(Deserialize)]
 pub struct ToolboxConfigDeserialize {
     #[serde(default)]
-    pub system_prompts: HashMap<String, CustomizationSystemPrompt>,
+    pub system_prompts: IndexMap<String, CustomizationSystemPrompt>,
     #[serde(default)]
-    pub subchat_tool_parameters: HashMap<String, SubchatParameters>,
+    pub subchat_tool_parameters: IndexMap<String, SubchatParameters>,
     #[serde(default)]
-    pub toolbox_commands: HashMap<String, ToolboxCommand>,
+    pub toolbox_commands: IndexMap<String, ToolboxCommand>,
     #[serde(default)]
     pub tools: Vec<AtToolCustDictDeserialize>,
     #[serde(default)]
@@ -30,9 +31,9 @@ pub struct ToolboxConfigDeserialize {
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct CustomizationYaml {
-    pub system_prompts: HashMap<String, CustomizationSystemPrompt>,
-    pub subchat_tool_parameters: HashMap<String, SubchatParameters>,
-    pub toolbox_commands: HashMap<String, ToolboxCommand>,
+    pub system_prompts: IndexMap<String, CustomizationSystemPrompt>,
+    pub subchat_tool_parameters: IndexMap<String, SubchatParameters>,
+    pub toolbox_commands: IndexMap<String, ToolboxCommand>,
     pub tools: Vec<ToolCustDict>,
 }
 
@@ -201,7 +202,7 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
     work_config.toolbox_commands.extend(user_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.tools.extend(user_config.tools.iter().map(|x|x.clone()));
 
-    let filtered_system_prompts: HashMap<String, CustomizationSystemPrompt> = work_config.system_prompts
+    let filtered_system_prompts: IndexMap<String, CustomizationSystemPrompt> = work_config.system_prompts
         .iter()
         .filter(|(_key, system_prompt_struct)| {
             match system_prompt_struct.show.as_str() {
