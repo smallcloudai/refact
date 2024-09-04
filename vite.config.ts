@@ -57,7 +57,6 @@ function makeConfig(library: "browser" | "node") {
         modules: {},
       },
     };
-    // TODO: confirm this solves the issue with getRandomValues
 
     if (command !== "serve") {
       CONFIG.mode = "production";

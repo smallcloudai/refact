@@ -51,7 +51,6 @@ export const historySlice = createSlice({
         updatedAt: now,
       };
 
-      // TODO: handle storage overflow (in redux persist)
       state[chat.id] = chat;
     },
 

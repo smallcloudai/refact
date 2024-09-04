@@ -45,7 +45,6 @@ export type ThemeProps = {
 };
 
 const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
-  // TODO: use redux here
   const { isDarkMode, toggle } = useAppearance();
   const Icon = isDarkMode ? MoonIcon : SunIcon;
   return (
@@ -68,7 +67,6 @@ const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
 };
 
 export const Theme: React.FC<ThemeProps> = (props) => {
-  // TODO: use redux here
   const { host, themeProps } = useConfig();
   const { appearance } = useAppearance();
 

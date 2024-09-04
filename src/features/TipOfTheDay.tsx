@@ -28,7 +28,7 @@ export const tips: [TipHost, string][] = [
   ],
   [
     "all",
-    'Before hitting F1, you can select a bit of code and the chat will automatically tick the "Attach" checkboxes. After you get a modified version of the code from chat, you can paste it back, IDE will show diff for you to see the changes.',
+    'Before hitting F1, you can select a few lines of code and the chat will automatically tick the "Attach" checkboxes. After you get a modified version of the code from chat, you can paste it back, IDE will show diff for you to see the changes.',
   ],
   [
     "all",
@@ -40,7 +40,7 @@ export const tips: [TipHost, string][] = [
   ],
   [
     "all",
-    "Use @web http://link-to-somewherg/ to add a web page to the context. Or just give model the URL it will use the web() exploration tool to check it out.",
+    "Use @web http://link-to-somewhere/ to add a web page to the context. Or just give model the URL it will use the web() exploration tool to check it out.",
   ],
 ];
 
