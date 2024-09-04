@@ -155,7 +155,7 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
         scrollbars="vertical"
         onScroll={handleScroll}
       >
-        <Flex direction="column" className={styles.content} p="2" gap="2">
+        <Flex direction="column" className={styles.content} p="2" gap="1">
           {messages.length === 0 && <PlaceHolderText onClick={openSettings} />}
           {messages.map((message, index) => {
             if (isChatContextFileMessage(message)) {

@@ -69,7 +69,7 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
   const elements = processLines(lines);
 
   return (
-    <Container position="relative" pt="4">
+    <Container position="relative" pt="1">
       {showTextArea ? (
         <RetryForm
           onSubmit={handleSubmit}

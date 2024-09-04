@@ -146,7 +146,7 @@ export const ContextFiles: React.FC<{
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
-          <Flex gap="2" align="start" pb="2">
+          <Flex gap="2" align="start" py="2">
             <Text weight="light" size="1">
               📎 {fileNames.join(", ")}
             </Text>
