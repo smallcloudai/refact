@@ -5,7 +5,7 @@ import { close, next } from "../../features/Tour";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 import { TourBox } from "./TourBox";
 import { TourTitle } from "./TourTitle";
-import { ReactNode, useEffect, useState } from "react";
+import { CSSProperties, ReactNode, useEffect, useState } from "react";
 
 export type TourBubbleProps = {
   text: string;
@@ -19,6 +19,7 @@ export type TourBubbleProps = {
   deltaY?: number;
   children?: ReactNode;
   onNext?: () => void;
+  bubbleContainerStyles?: CSSProperties;
 };
 
 export function TourBubble({
@@ -33,6 +34,7 @@ export function TourBubble({
   deltaY,
   children,
   onNext,
+  bubbleContainerStyles,
 }: TourBubbleProps) {
   const dispatch = useAppDispatch();
   const state = useAppSelector((state: RootState) => state.tour);
@@ -130,7 +132,7 @@ export function TourBubble({
               }}
             />
           )}
-          <TourBox>
+          <TourBox style={bubbleContainerStyles}>
             <TourTitle title={text} />
             {children}
             <Link

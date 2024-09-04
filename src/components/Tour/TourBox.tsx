@@ -20,6 +20,7 @@ export function TourBox({ children, style }: TourBubbleProps) {
         justifyContent: "center",
         padding: "10px",
         alignSelf: "stretch",
+        maxWidth: 550,
         ...style,
       }}
     >

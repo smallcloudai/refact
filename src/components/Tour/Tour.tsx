@@ -69,6 +69,9 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         page={page}
         onNext={openChat}
         containerWidth={chatWidth}
+        bubbleContainerStyles={{
+          alignSelf: "flex-end",
+        }}
       />
       <TourBubble
         text={
@@ -80,6 +83,9 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         containerWidth={chatWidth}
         onPage={"chat"}
         page={page}
+        bubbleContainerStyles={{
+          alignSelf: "flex-start",
+        }}
       />
       <TourBubble
         text={
@@ -91,6 +97,9 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         containerWidth={chatWidth}
         onPage={"chat"}
         page={page}
+        bubbleContainerStyles={{
+          alignSelf: "flex-start",
+        }}
       />
       <TourBubble
         text={
@@ -102,6 +111,10 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         containerWidth={chatWidth}
         onPage={"chat"}
         page={page}
+        bubbleContainerStyles={{
+          maxWidth: 550,
+          alignSelf: "center",
+        }}
       />
       <TourBubble
         text={
@@ -114,6 +127,9 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         onPage={"chat"}
         page={page}
         onNext={openHistory}
+        bubbleContainerStyles={{
+          alignSelf: "flex-start",
+        }}
       />
       <TourBubble
         text={
@@ -125,6 +141,9 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         target={refs.more}
         onPage={"history"}
         page={page}
+        bubbleContainerStyles={{
+          alignSelf: "flex-end",
+        }}
       />
     </>
   );
