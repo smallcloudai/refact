@@ -136,7 +136,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
             const buff = new Uint8Array(value.length + (v?.length ?? 0));
             buff.set(value);
             if (v) {
-              buff.set(v, v.length);
+              buff.set(v, value.length);
             }
             return pump({ done, value: buff });
           });
