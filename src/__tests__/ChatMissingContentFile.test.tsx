@@ -37,7 +37,11 @@ describe("Content file issue", () => {
         }),
       );
 
-      const { user: _user, ...app } = render(<InnerApp />, {
+      const {
+        user: _user,
+        store: _store,
+        ...app
+      } = render(<InnerApp />, {
         preloadedState: {
           pages: [{ name: "history" }, { name: "chat" }],
           config: {
@@ -89,6 +93,12 @@ describe("Content file issue", () => {
         },
         { timeout: 10000 },
       );
+
+      // const state = store.getState();
+      // fs.writeFileSync(
+      //   path.resolve(__dirname, "context_file_state.json"),
+      //   JSON.stringify(state),
+      // );
     },
     { timeout: 10000 },
   );
