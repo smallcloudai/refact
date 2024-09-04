@@ -46,18 +46,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   const state = combobox.useState();
 
-  // const matches = useMemo(() => commands.completions, [commands.completions]);
-
-  const matches = useMemo(
-    () => commands.completions.filter((item) => item !== "@help"),
-    [commands.completions],
-  );
-
-  const allMatches = useMemo(() => {
-    return matches.length > 0 && matches[0].startsWith("@")
-      ? ["@help", ...matches]
-      : matches;
-  }, [matches]);
+  const matches = commands.completions;
 
   const hasMatches = useMemo(() => {
     return matches.length > 0;
@@ -74,11 +63,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
-  }, [combobox, hasMatches, allMatches]);
+  }, [combobox, hasMatches]);
 
   React.useEffect(() => {
     combobox.render();
-  }, [combobox, value, allMatches]);
+  }, [combobox, value]);
 
   React.useEffect(() => {
     if (!ref.current) return;
@@ -180,6 +169,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         event.preventDefault();
         event.stopPropagation();
         if (command === "@help") {
+          handleReplace(command);
           closeCombobox();
           onHelpClick();
         } else {
@@ -192,6 +182,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       }
     },
     [
+      onHelpClick,
       closeCombobox,
       combobox,
       handleReplace,
@@ -224,7 +215,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         handleReplace(item);
       }
     },
-    [handleReplace, onHelpClick],
+    [handleReplace, onHelpClick, closeCombobox],
   );
 
   const popoverWidth = ref.current
@@ -273,10 +264,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
           }}
           maxWidth={popoverWidth}
         >
-          {/* <Item value="@help" onClick={(e) => onItemClick("@help", e)}>
-            <TruncateLeft>@help</TruncateLeft>
-          </Item> */}
-          {allMatches.map((item, index) => (
+          {matches.map((item, index) => (
             <Item
               key={item + "-" + index}
               value={item}

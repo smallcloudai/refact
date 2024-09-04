@@ -40,7 +40,6 @@ export type ChatFormProps = {
   onSetSystemPrompt: (prompt: SystemPrompts) => void;
   selectedSystemPrompt: SystemPrompts;
   chatId: string;
-  onHelpClick: () => void;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -143,7 +142,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         handleHelpInfo(null);
       }
     },
-    [setInteracted],
+    [setInteracted, handleHelpInfo],
   );
 
   if (error) {
@@ -184,7 +183,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         }}
       >
         {helpInfo && (
-          <Flex mb="3" direction="column" className={styles.helpInfo}>
+          <Flex mb="3" direction="column">
             {helpInfo}
           </Flex>
         )}

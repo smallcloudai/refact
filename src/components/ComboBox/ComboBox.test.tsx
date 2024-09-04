@@ -172,6 +172,7 @@ const App = (props: Partial<ComboBoxProps>) => {
     onChange: setValue,
     placeholder: "Type @ for commands",
     render: (props: TextAreaProps) => <TextArea {...props} />,
+    onHelpClick: () => ({}),
     ...props,
   };
 

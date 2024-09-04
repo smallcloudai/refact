@@ -45,13 +45,26 @@ export const commandsApi = createApi({
           },
         });
 
+        const builtinCompletions =
+          "@help".startsWith(args.query) && args.query.length !== 0
+            ? ["@help"]
+            : [];
+
         if (response.error) return { error: response.error };
         if (isCommandCompletionResponse(response.data)) {
-          return { data: response.data };
+          return {
+            data: {
+              ...response.data,
+              completions: [
+                ...builtinCompletions,
+                ...response.data.completions,
+              ],
+            },
+          };
         } else if (isDetailMessage(response.data)) {
           return {
             data: {
-              completions: [],
+              completions: [...builtinCompletions],
               replace: [0, 0],
               is_cmd_executable: false,
             },
