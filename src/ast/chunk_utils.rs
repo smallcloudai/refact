@@ -51,7 +51,7 @@ pub fn get_chunks(text: &String,
                 });
                 current_line_accum.clear();
                 current_token_n = 0;
-                current_line_number = current_line_number + (line_idx as u64) - (intersection_lines as u64);
+                current_line_number = (current_line_number + line_idx as u64).saturating_sub(intersection_lines as u64);
                 line_idx = (previous_start + 1).max((line_idx as i64 - intersection_lines as i64).max(0) as usize);
                 previous_start = line_idx;
             } else {
@@ -102,7 +102,7 @@ pub fn get_chunks(text: &String,
         });
     }
 
-    chunks
+    chunks.into_iter().filter(|c|!c.window_text.is_empty()).collect()
 }
 
 #[cfg(test)]
