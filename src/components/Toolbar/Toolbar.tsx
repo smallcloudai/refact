@@ -110,7 +110,13 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   }, [tabNav, windowWidth]);
 
   useEffect(() => {
-    focus?.scrollIntoView();
+    if (focus === null) return;
+
+    // the function scrollIntoView doesn't always exist, and will crash on unit tests
+    // eslint-disable-next-line  @typescript-eslint/no-unnecessary-condition
+    if (focus.scrollIntoView) {
+      focus.scrollIntoView();
+    }
   }, [focus]);
 
   const tabs = useMemo(() => {
