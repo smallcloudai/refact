@@ -50,6 +50,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const tabNav = useRef<HTMLElement | null>(null);
   const [tabNavWidth, setTabNavWidth] = useState(0);
   const { width: windowWidth } = useWindowDimensions();
+  const [focus, setFocus] = useState<HTMLElement | null>(null);
 
   const refs = useTourRefs();
 
@@ -108,6 +109,10 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     setTabNavWidth(tabNav.current.offsetWidth);
   }, [tabNav, windowWidth]);
 
+  useEffect(() => {
+    focus?.scrollIntoView();
+  }, [focus]);
+
   const tabs = useMemo(() => {
     return history.filter(
       (chat) =>
@@ -144,6 +149,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 key={chat.id}
                 onClick={() => goToTab({ type: "chat", id: chat.id })}
                 style={{ minWidth: 0, maxWidth: "140px" }}
+                ref={isActive ? setFocus : undefined}
               >
                 {isStreamingThisTab && <Spinner />}
                 {!isStreamingThisTab && chat.read === false && (
