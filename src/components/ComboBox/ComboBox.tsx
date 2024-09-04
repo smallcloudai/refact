@@ -63,11 +63,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   React.useLayoutEffect(() => {
     combobox.setOpen(hasMatches);
-  }, [combobox, hasMatches]);
+  }, [combobox, hasMatches, matches]);
 
   React.useEffect(() => {
     combobox.render();
-  }, [combobox, value]);
+  }, [combobox, value, matches]);
 
   React.useEffect(() => {
     if (!ref.current) return;
