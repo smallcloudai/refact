@@ -6,7 +6,7 @@ import classnames from "classnames";
 export const TruncateLeft: React.FC<TextProps> = ({ children, ...props }) => {
   return (
     <Text {...props} className={classnames(styles.text_rtl, props.className)}>
-      <Text className={styles.text_ltr}>{children}</Text>&lrm;
+      <bdo dir="ltr">{children}</bdo>
     </Text>
   );
 };
