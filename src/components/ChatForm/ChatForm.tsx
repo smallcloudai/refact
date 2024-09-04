@@ -204,7 +204,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               handleEnter(event);
             }}
             placeholder={
-              commands.completions.length > 0 ? "Type @ for commands" : ""
+              commands.completions.length < 1 ? "Type @ for commands" : ""
             }
             render={(props) => (
               <TextArea
