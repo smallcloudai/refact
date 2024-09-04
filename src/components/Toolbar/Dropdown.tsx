@@ -124,7 +124,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
-          Statistics
+          Your Stats
         </DropdownMenu.Item>
 
         <DropdownMenu.Separator />
@@ -135,11 +135,15 @@ export const Dropdown: React.FC<DropdownProps> = ({
             openUrl(bugUrl);
           }}
         >
-          Report a bug
+          Report a bug...
+        </DropdownMenu.Item>
+
+        <DropdownMenu.Item onSelect={() => handleNavigation("restart tour")}>
+          Restart tour
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("fim")}>
-          FIM debug
+          Fill-in-the-middle Context
         </DropdownMenu.Item>
 
         <DropdownMenu.Separator />
@@ -169,15 +173,11 @@ export const Dropdown: React.FC<DropdownProps> = ({
         )}
 
         <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
-          Hot Keys
-        </DropdownMenu.Item>
-
-        <DropdownMenu.Item onSelect={() => handleNavigation("restart tour")}>
-          Restart tour
+          Hot Keys...
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
-          Settings
+          Settings...
         </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
