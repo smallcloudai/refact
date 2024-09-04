@@ -204,7 +204,6 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
     let filtered_system_prompts: HashMap<String, CustomizationSystemPrompt> = work_config.system_prompts
         .iter()
         .filter(|(_key, system_prompt_struct)| {
-            info!("{:?}", system_prompt_struct);
             match system_prompt_struct.show.as_str() {
                 "always" => true,
                 "never" => false,
