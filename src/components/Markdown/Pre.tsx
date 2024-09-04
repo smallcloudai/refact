@@ -47,7 +47,7 @@ const PreTagWithButtons: React.FC<
             </Button>
             {canPaste && (
               <Button variant="surface" size="1" onClick={onPasteClick}>
-                Paste
+                ➕ Diff
               </Button>
             )}
           </Flex>

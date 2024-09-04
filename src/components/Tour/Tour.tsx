@@ -72,7 +72,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
       />
       <TourBubble
         text={
-          "The Big Switch allows you to choose between immediate answers (Quick), automatic exploration tools that model can use to collect the necessary context from your project (Explore), or slow agentic functions that can convert a lot of GPU cycles to useful work (Agent)."
+          "The Big Switch allows you to choose between immediate answers (Quick), automatic exploration tools that the model can use to collect the necessary context from your project (Explore), or slow agentic functions that can convert a lot of GPU cycles to useful work (Agent)."
         }
         step={3}
         down={false}
@@ -105,7 +105,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
       />
       <TourBubble
         text={
-          "Here in ‘Dashboard’ you will see your chat history and some agentic functions soon."
+          "Here under Home button you will see your chat history and some agentic functions soon."
         }
         step={6}
         down={true}
@@ -117,7 +117,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
       />
       <TourBubble
         text={
-          "Click here for settings, keyboard shortcuts, customization, integrations, etc. There's a link to discord, too, for you to complain something doesn't work or to happily report that it does!"
+          "Click here for settings, keyboard shortcuts, customization, integrations, etc. There's a link to discord, too, for you to complain something isn't working or to happily report that it is!"
         }
         step={7}
         down={true}
