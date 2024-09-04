@@ -212,7 +212,7 @@ async def ask_using_http(
         "only_deterministic_messages": only_deterministic_messages,
     }
     if postprocess_parameters is not None:
-        post_me["postprocess_parameters"] = postprocess_parameters,
+        post_me["postprocess_parameters"] = postprocess_parameters
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:
         async with session.post(base_url + "/chat", json=post_me) as response:
