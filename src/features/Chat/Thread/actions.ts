@@ -71,6 +71,28 @@ const createAppAsyncThunk = createAsyncThunk.withTypes<{
   dispatch: AppDispatch;
 }>();
 
+function isValidBuffer(buffer: Uint8Array): boolean {
+  // Check if the buffer is long enough
+  if (buffer.length < 8) return false; // "data: " is 6 bytes + 2 bytes for "\n\n"
+
+  // Check the start for "data: "
+  const startsWithData =
+    buffer[0] === 100 && // 'd'
+    buffer[1] === 97 && // 'a'
+    buffer[2] === 116 && // 't'
+    buffer[3] === 97 && // 'a'
+    buffer[4] === 58 && // ':'
+    buffer[5] === 32; // ' '
+
+  // Check the end for "\n\n"
+  const endsWithNewline =
+    buffer[buffer.length - 2] === 10 && // '\n'
+    buffer[buffer.length - 1] === 10; // '\n'
+
+  // could be detail message
+  return startsWithData && endsWithNewline;
+}
+
 export const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
@@ -108,7 +130,24 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
           return Promise.resolve();
         }
 
+        // TODO: handle details
+        if (!isValidBuffer(value)) {
+          return reader.read().then(({ done, value: v }) => {
+            const buff = new Uint8Array(value.length + (v?.length ?? 0));
+            buff.set(value);
+            if (v) {
+              buff.set(v, v.length);
+            }
+            return pump({ done, value: buff });
+          });
+        }
+        // accumulate data in binary, buffer
+        // packet divided, incomplet unicode
         const streamAsString = decoder.decode(value);
+        // if string doesn't end with \n\n then it's not complete, maybe memotising it for the next call could work?
+        // if (streamAsString.endsWith("\n\n") === false) {
+        //   console.error("Stream was chunked badly");
+        // }
 
         const maybeError = checkForDetailMessage(streamAsString);
         if (maybeError) {
@@ -125,6 +164,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         // could be improved
         for (const delta of deltas) {
           // can have error here.
+          // incomplete delta ?
           if (!delta.startsWith("data: ")) {
             // eslint-disable-next-line no-console
             console.log("Unexpected data in streaming buf: " + delta);
