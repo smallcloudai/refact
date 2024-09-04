@@ -12,6 +12,7 @@ export const Chevron: React.FC<ChevronProps> = ({ open, className }) => {
   return (
     <ChevronDownIcon
       className={classNames(open ? styles.down : styles.right, className)}
+      style={{ minWidth: 16, minHeight: 16 }}
     />
   );
 };

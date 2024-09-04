@@ -50,6 +50,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const tabNav = useRef<HTMLElement | null>(null);
   const [tabNavWidth, setTabNavWidth] = useState(0);
   const { width: windowWidth } = useWindowDimensions();
+  const [focus, setFocus] = useState<HTMLElement | null>(null);
 
   const refs = useTourRefs();
 
@@ -108,6 +109,16 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     setTabNavWidth(tabNav.current.offsetWidth);
   }, [tabNav, windowWidth]);
 
+  useEffect(() => {
+    if (focus === null) return;
+
+    // the function scrollIntoView doesn't always exist, and will crash on unit tests
+    // eslint-disable-next-line  @typescript-eslint/no-unnecessary-condition
+    if (focus.scrollIntoView) {
+      focus.scrollIntoView();
+    }
+  }, [focus]);
+
   const tabs = useMemo(() => {
     return history.filter(
       (chat) =>
@@ -117,10 +128,10 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   }, [history, activeTab]);
 
   const shouldCollapse = useMemo(() => {
-    const dashboardWidth = 103; // todo: compute this
+    const dashboardWidth = windowWidth < 400 ? 47 : 70; // todo: compute this
     const totalWidth = dashboardWidth + 140 * tabs.length;
     return tabNavWidth < totalWidth;
-  }, [tabNavWidth, tabs.length]);
+  }, [tabNavWidth, tabs.length, windowWidth]);
 
   return (
     <Flex align="center" m="4px" gap="4px">
@@ -144,6 +155,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 key={chat.id}
                 onClick={() => goToTab({ type: "chat", id: chat.id })}
                 style={{ minWidth: 0, maxWidth: "140px" }}
+                ref={isActive ? setFocus : undefined}
               >
                 {isStreamingThisTab && <Spinner />}
                 {!isStreamingThisTab && chat.read === false && (
@@ -151,8 +163,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 )}
                 <TruncateLeft
                   style={{
-                    maxWidth: "110px",
-                    display: shouldCollapse && !isActive ? "none" : undefined,
+                    maxWidth: shouldCollapse ? "25px" : "110px",
                   }}
                 >
                   {chat.title}
