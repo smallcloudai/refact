@@ -129,7 +129,7 @@ describe("Chat", () => {
                     role: "user",
                     tool_call_id: "",
                     usage: null,
-                  })}`,
+                  })}\n\n`,
                 ),
               );
 
@@ -149,7 +149,7 @@ describe("Chat", () => {
                         logprobs: null,
                       },
                     ],
-                  })}`,
+                  })}\n\n`,
                 ),
               );
 
@@ -169,7 +169,7 @@ describe("Chat", () => {
                         logprobs: null,
                       },
                     ],
-                  })}`,
+                  })}\n\n`,
                 ),
               );
 
@@ -189,12 +189,12 @@ describe("Chat", () => {
                         logprobs: null,
                       },
                     ],
-                  })}`,
+                  })}\n\n`,
                 ),
               );
 
               controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify(["DONE"])}`),
+                encoder.encode(`data: ${JSON.stringify(["DONE"])}\n\n`),
               );
 
               controller.close();
@@ -374,7 +374,7 @@ describe("Chat", () => {
                 encoder.encode(
                   `data: ${JSON.stringify({
                     detail: "whoops",
-                  })}`,
+                  })}\n\n`,
                 ),
               );
             },
