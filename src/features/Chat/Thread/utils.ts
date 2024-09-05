@@ -26,6 +26,7 @@ import {
 } from "../../../services/refact";
 import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
+import { checkForDetailMessage } from "./types";
 
 // export const TAKE_NOTE_MESSAGE = [
 //   'How many times user has corrected or directed you? Write "Number of correction points N".',
@@ -292,4 +293,138 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
         : JSON.stringify(message.content);
     return [...acc, { role: message.role, content }];
   }, []);
+}
+
+function isValidBuffer(buffer: Uint8Array): boolean {
+  // Check if the buffer is long enough
+  if (buffer.length < 8) return false; // "data: " is 6 bytes + 2 bytes for "\n\n"
+
+  // Check the start for "data: "
+  const startsWithData =
+    buffer[0] === 100 && // 'd'
+    buffer[1] === 97 && // 'a'
+    buffer[2] === 116 && // 't'
+    buffer[3] === 97 && // 'a'
+    buffer[4] === 58 && // ':'
+    buffer[5] === 32; // ' '
+
+  // Check the end for "\n\n"
+  const endsWithNewline =
+    buffer[buffer.length - 2] === 10 && // '\n'
+    buffer[buffer.length - 1] === 10; // '\n'
+
+  return startsWithData && endsWithNewline;
+}
+
+function bufferStartsWithDetail(buffer: Uint8Array): boolean {
+  const startsWithDetail =
+    buffer[0] === 123 && // '{'
+    buffer[1] === 34 && // '"'
+    buffer[2] === 100 && // 'd'
+    buffer[3] === 101 && // 'e'
+    buffer[4] === 116 && // 't'
+    buffer[5] === 97 && // 'a'
+    buffer[6] === 105 && // 'i'
+    buffer[7] === 108 && // 'l'
+    buffer[8] === 34 && // '"'
+    buffer[9] === 58; // ':'
+
+  return startsWithDetail;
+}
+
+export function consumeStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal: AbortSignal,
+  onAbort: () => void,
+  onChunk: (chunk: Record<string, unknown>) => void,
+) {
+  const decoder = new TextDecoder();
+
+  function pump({
+    done,
+    value,
+  }: ReadableStreamReadResult<Uint8Array>): Promise<void> {
+    if (done) return Promise.resolve();
+    if (signal.aborted) {
+      // dispatch(setPreventSend({ id: chatId }));
+      onAbort();
+      return Promise.resolve();
+    }
+
+    if (bufferStartsWithDetail(value)) {
+      const str = decoder.decode(value);
+      const maybeError = checkForDetailMessage(str);
+      if (maybeError) {
+        const error = new Error(maybeError.detail);
+        throw error;
+      }
+    }
+
+    const combineBufferAndRetry = () => {
+      return reader.read().then((more) => {
+        if (more.done) return; // left with an invalid buffer
+        const buff = new Uint8Array(value.length + more.value.length);
+        buff.set(value);
+        buff.set(more.value, value.length);
+
+        return pump({ done, value: buff });
+      });
+    };
+
+    if (!isValidBuffer(value)) {
+      return combineBufferAndRetry();
+    }
+
+    const streamAsString = decoder.decode(value);
+
+    const deltas = streamAsString.split("\n\n").filter((str) => str.length > 0);
+
+    if (deltas.length === 0) return Promise.resolve();
+
+    for (const delta of deltas) {
+      if (!delta.startsWith("data: ")) {
+        // eslint-disable-next-line no-console
+        console.log("Unexpected data in streaming buf: " + delta);
+        continue;
+      }
+
+      const maybeJsonString = delta.substring(6);
+
+      if (maybeJsonString === "[DONE]") return Promise.resolve();
+
+      if (maybeJsonString === "[ERROR]") {
+        const errorMessage = "error from lsp";
+        const error = new Error(errorMessage);
+
+        return Promise.reject(error);
+      }
+
+      const maybeErrorData = checkForDetailMessage(maybeJsonString);
+      if (maybeErrorData) {
+        const errorMessage: string =
+          typeof maybeErrorData.detail === "string"
+            ? maybeErrorData.detail
+            : JSON.stringify(maybeErrorData.detail);
+        const error = new Error(errorMessage);
+        // eslint-disable-next-line no-console
+        console.error(error);
+        throw error;
+      }
+
+      const fallback = {};
+      const json = parseOrElse<Record<string, unknown>>(
+        maybeJsonString,
+        fallback,
+      );
+
+      if (json === fallback) {
+        return combineBufferAndRetry();
+      }
+
+      onChunk(json);
+    }
+    return reader.read().then(pump);
+  }
+
+  return reader.read().then(pump);
 }

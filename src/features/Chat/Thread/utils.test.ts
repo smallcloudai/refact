@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
   ChatMessages,
   PlainTextMessage,
@@ -7,7 +7,7 @@ import {
   UserMessageResponse,
   type ToolCall,
 } from "../../../services/refact";
-import { mergeToolCalls, formatChatResponse } from "./utils";
+import { mergeToolCalls, formatChatResponse, consumeStream } from "./utils";
 
 describe("formatChatResponse", () => {
   test("it should replace the last user message", () => {
@@ -165,6 +165,65 @@ describe("mergeToolCalls", () => {
     const result = mergeToolCalls(stored, toAdd);
 
     expect(result).toEqual(expected);
+  });
+});
+
+function stringToUint8Array(str: string): Uint8Array {
+  const encoder = new TextEncoder();
+  return encoder.encode(str);
+}
+
+describe("consumeStream", () => {
+  test("it should handle split packets", async () => {
+    const packet1 = stringToUint8Array('data: {"key": "test"}\n\n');
+    const packet2 = stringToUint8Array('data: {"key":');
+    const packet3 = stringToUint8Array('"value"}\n\n');
+
+    const reader = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(packet1);
+        controller.enqueue(packet2);
+        controller.enqueue(packet3);
+        controller.close();
+      },
+    }).getReader();
+
+    const onAbort = vi.fn();
+    const onChunk = vi.fn();
+    const abort = new AbortController();
+
+    await consumeStream(reader, abort.signal, onAbort, onChunk);
+
+    expect(onAbort).not.toBeCalled();
+    expect(onChunk).toBeCalledWith({ key: "test" });
+    expect(onChunk).toBeCalledWith({ key: "value" });
+  });
+
+  test("it only splits at \\n\\n", async () => {
+    const packet1 = stringToUint8Array(
+      'data: {"content":"```py\\nprint(\\"hello\\")\\n\\n',
+    );
+    const packet2 = stringToUint8Array('```\\n"}\n\n');
+
+    const reader = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(packet1);
+        controller.enqueue(packet2);
+        controller.close();
+      },
+    }).getReader();
+
+    const onAbort = vi.fn();
+    const onChunk = vi.fn();
+    const abort = new AbortController();
+
+    await consumeStream(reader, abort.signal, onAbort, onChunk);
+
+    expect(onAbort).not.toBeCalled();
+
+    expect(onChunk).toHaveBeenCalledWith({
+      content: '```py\nprint("hello")\n\n```\n',
+    });
   });
 });
 
