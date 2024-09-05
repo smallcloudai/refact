@@ -88,7 +88,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
     reducer: persistedReducer,
     preloadedState: initialState,
     devTools: {
-      maxAge: 100000,
+      maxAge: 1000,
     },
     middleware: (getDefaultMiddleware) => {
       return (
