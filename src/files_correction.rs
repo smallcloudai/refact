@@ -147,6 +147,8 @@ pub async fn correct_to_nearest_dir_path(
     fuzzy: bool,
     top_n: usize,
 ) -> Vec<String> {
+    // TODO: unnecessary time and memory complexity, remove this function, rethink, do something
+
     fn get_parent(p: &String) -> Option<String> {
         PathBuf::from(p).parent().map(PathBuf::from).map(|x|x.to_string_lossy().to_string())
     }
