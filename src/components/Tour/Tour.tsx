@@ -46,7 +46,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
   return (
     <>
       <TourBubble
-        text="When you write code, Refact can predict what comes next. Accept code suggestions with Tab. Refact uses more than just the current file for code completion, check out how it works in Fill-in-the-middle Context in the menu."
+        text="When you write code, Refact can predict what comes next. Accept code suggestions with Tab. Refact uses RAG, not just the current file for code completion, check out how it works in Fill-in-the-middle Context in the menu."
         step={1}
         target={refs.newChat}
         down={true}
