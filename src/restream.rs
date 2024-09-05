@@ -99,7 +99,8 @@ pub async fn scratchpad_interaction_not_stream_json(
     let gcx = ccx.lock().await.global_context.clone();
     let (client, caps, tele_storage, slowdown_arc) = {
         let gcx_locked = gcx.write().await;
-        let caps = gcx_locked.caps.clone().unwrap();
+        let caps = gcx_locked.caps.clone()
+            .ok_or(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "No caps available".to_string()))?;
         (
             gcx_locked.http_client.clone(),
             caps,
