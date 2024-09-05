@@ -199,12 +199,11 @@ describe("consumeStream", () => {
     expect(onChunk).toBeCalledWith({ key: "value" });
   });
 
-  test.skip("edge case where the streamed content ends in \\n\\n", async () => {
-    // This causes the split to split it in the wrong place :/
+  test("it only splits at \\n\\n", async () => {
     const packet1 = stringToUint8Array(
-      'data: {"content: "```py\nprint("hello")\n\n',
+      'data: {"content":"```py\\nprint(\\"hello\\")\\n\\n',
     );
-    const packet2 = stringToUint8Array('```\n"}\n\n');
+    const packet2 = stringToUint8Array('```\\n"}\n\n');
 
     const reader = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -225,7 +224,6 @@ describe("consumeStream", () => {
     expect(onChunk).toHaveBeenCalledWith({
       content: '```py\nprint("hello")\n\n```\n',
     });
-    // expect(onChunk).toHaveBeenCalled();
   });
 });
 
