@@ -206,16 +206,21 @@ tools:
 
   - name: "patch"
     agentic: true
-    description: "Make modifications to multiple source files. Can edit, rename, create, delete files. Calling this once for multiple files is better than multiple calls, because the changes will be consistent between the files."
+    description: |
+      Collect context first, then write the necessary changes using the 📍-notation before code blocks, then call this function to apply the changes.
+      To make this call correctly, you only need the tickets.
+      If you wrote changes for multiple files, call this tool in parallel for each file.
+      If you have several independent changes to a file, that are all necessary, pass tickets for them as a comma-separated list.
+      If you have several attempts to change a single thing, for example following a correction by the user, pass only the latest one.
     parameters:
-      - name: "paths"
+      - name: "path"
         type: "string"
-        description: "If there is a good locate() call above, use 'pick_locate_json_above' magic string. If there isn't, use comma separated files list: dir/file1.ext, dir/file2.ext"
+        description: "Path to the file to change."
       - name: "todo"
         type: "string"
-        description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words."
+        description: "Use one 3-digit ticket to refer to the changes, or several comma-separated tickets. No need to copy anything else. Additionaly, you can put DELETE here to delete the file."
     parameters_required:
-      - "paths"
+      - "path"
       - "todo"
 
   - name: "github"
