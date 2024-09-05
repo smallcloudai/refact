@@ -173,7 +173,7 @@ function stringToUint8Array(str: string): Uint8Array {
   return encoder.encode(str);
 }
 
-describe.only("consumeStream", () => {
+describe("consumeStream", () => {
   test("it should handle split packets", async () => {
     const packet1 = stringToUint8Array('data: {"key": "test"}\n\n');
     const packet2 = stringToUint8Array('data: {"key":');
