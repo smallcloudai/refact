@@ -199,7 +199,7 @@ describe("consumeStream", () => {
     expect(onChunk).toBeCalledWith({ key: "value" });
   });
 
-  test.only("edge case where the streamed content ends in \\n\\n", async () => {
+  test("edge case where the streamed content ends in \\n\\n", async () => {
     const packet1 = stringToUint8Array(
       'data: {"content: "```py\nprint("hello")\n\n',
     );
