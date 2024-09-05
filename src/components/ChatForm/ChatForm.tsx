@@ -107,23 +107,19 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       <Text size="2" weight="bold">
         Quick help for @-commands:
       </Text>
-      <Text size="2" style={{ whiteSpace: "nowrap" }}>
+      <Text size="2">
         @definition &lt;class_or_function_name&gt; — find the definition and
         attach it.
       </Text>
-      <Text size="2" style={{ whiteSpace: "nowrap" }}>
+      <Text size="2">
         @references &lt;class_or_function_name&gt; — find all references and
         attach them.
       </Text>
-      <Text size="2" style={{ whiteSpace: "nowrap" }}>
+      <Text size="2">
         @file &lt;dir/filename.ext&gt; — attaches a single file to the chat.
       </Text>
-      <Text size="2" style={{ whiteSpace: "nowrap" }}>
-        @tree — workspace directory and files tree.
-      </Text>
-      <Text size="2" style={{ whiteSpace: "nowrap" }}>
-        @web &lt;url&gt; — attach a webpage to the chat.
-      </Text>
+      <Text size="2">@tree — workspace directory and files tree.</Text>
+      <Text size="2">@web &lt;url&gt; — attach a webpage to the chat.</Text>
     </Flex>
   );
 
