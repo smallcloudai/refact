@@ -4,7 +4,7 @@ import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
 import { Flex } from "@radix-ui/themes";
-import { Chat } from "./Chat";
+import { Chat, newChatAction } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import { useEventsBusForIDE, useConfig } from "../hooks";
 
@@ -45,6 +45,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const { setupHost } = useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
+  const historyState = useAppSelector((state: RootState) => state.history);
   useEventBusForWeb();
   useEventBusForApp();
 
@@ -58,6 +59,10 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   if (config.apiKey && config.addressURL && !isLoggedIn) {
     if (tourState.type === "in_progress" && tourState.step === 1) {
       dispatch(push({ name: "welcome" }));
+    } else if (Object.keys(historyState).length === 0) {
+      dispatch(push({ name: "history" }));
+      dispatch(newChatAction());
+      dispatch(push({ name: "chat" }));
     } else {
       dispatch(push({ name: "history" }));
     }
