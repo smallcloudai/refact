@@ -1,7 +1,7 @@
 import React from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Container, Flex, Text, Box } from "@radix-ui/themes";
-import { ToolCall, ToolResult } from "../../services/refact";
+import { ToolCall, ToolResult, ToolUsage } from "../../services/refact";
 import styles from "./ChatContent.module.css";
 import { CommandMarkdown, ResultMarkdown } from "../Command";
 import { Chevron } from "../Collapsible";
@@ -54,6 +54,18 @@ const ToolMessage: React.FC<{
   );
 };
 
+const ToolUsageDisplay: React.FC<{
+  functionName: string;
+  amountOfCalls: number;
+}> = ({ functionName, amountOfCalls }) => {
+  return (
+    <>
+      {functionName}
+      {amountOfCalls > 1 ? ` (${amountOfCalls})` : ""}
+    </>
+  );
+};
+
 export const ToolContent: React.FC<{
   toolCalls: ToolCall[];
   results: Record<string, ToolResult>;
@@ -74,14 +86,36 @@ export const ToolContent: React.FC<{
     return [...acc, toolCall.function.name];
   }, []);
 
+  /* 
+    Calculates the usage amount of each tool by mapping over the unique tool names
+    and counting how many times each tool has been called in the toolCalls array.  
+  */
+  const toolUsageAmount = toolNames.map<ToolUsage>((toolName) => {
+    return {
+      functionName: toolName,
+      amountOfCalls: toolCalls.filter(
+        (toolCall) => toolCall.function.name === toolName,
+      ).length,
+    };
+  });
+
   return (
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
           <Flex gap="2" align="center">
             <Text weight="light" size="1">
-              🔨 {toolNames.join(", ")}{" "}
-              {toolCalls.length > 1 && "(" + toolCalls.length + ")"}
+              🔨{" "}
+              {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
+                <>
+                  <ToolUsageDisplay
+                    key={functionName}
+                    functionName={functionName}
+                    amountOfCalls={amountOfCalls}
+                  />
+                  {index === toolUsageAmount.length - 1 ? "" : ", "}
+                </>
+              ))}
             </Text>
             <Chevron open={open} />
           </Flex>

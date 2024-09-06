@@ -32,6 +32,11 @@ export type ToolCall = {
   id?: string;
 };
 
+export type ToolUsage = {
+  functionName: string;
+  amountOfCalls: number;
+};
+
 function isToolCall(call: unknown): call is ToolCall {
   if (!call) return false;
   if (typeof call !== "object") return false;
