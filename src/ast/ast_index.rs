@@ -869,6 +869,7 @@ impl AstIndex {
         )
     }
 
+    #[allow(dead_code)]
     pub(crate) fn decl_symbols_from_imports_by_file_path(
         &self,
         doc: &Document,
@@ -1007,6 +1008,7 @@ impl AstIndex {
         Ok(symbols)
     }
 
+    #[allow(dead_code)]
     pub fn get_symbols_names(
         &self,
         request_symbol_type: RequestSymbolType,

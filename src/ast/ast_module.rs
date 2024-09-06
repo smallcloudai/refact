@@ -428,6 +428,7 @@ impl AstModule {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn search_by_fullpath(
         &self,
         query: String,
@@ -679,6 +680,7 @@ impl AstModule {
         Ok(result)
     }
 
+    #[allow(dead_code)]
     pub async fn decl_symbols_from_imports_by_file_path(
         &self,
         doc: &Document,
@@ -770,6 +772,7 @@ impl AstModule {
         })
     }
 
+    #[allow(dead_code)]
     pub async fn get_symbols_names(&self, request_symbol_type: RequestSymbolType) -> Result<Vec<String>, String> {
         let ast_ref = match self.read_ast(Duration::from_millis(25)).await {
             Ok(ast) => ast,

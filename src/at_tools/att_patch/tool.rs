@@ -97,8 +97,8 @@ fn choose_correct_chunk(chunks: Vec<Result<String, String>>) -> Result<String, S
     let max_repeats = chunks_freq.iter().max_by_key(|(_, k)| *k).unwrap().1.clone();
     let chunks_max_repeats = chunks_freq
         .iter()
-        .filter(|(k, v)| **v == max_repeats)
-        .map(|x| x.0.clone())
+        .filter(|(_, v)| **v == max_repeats)
+        .map(|x| x.0)
         .collect::<Vec<_>>();
     Ok(chunks_max_repeats
         .iter()
