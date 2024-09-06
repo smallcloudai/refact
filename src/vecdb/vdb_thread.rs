@@ -1,7 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 use std::io::Write;
 use std::ops::Div;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::time::SystemTime;
 
@@ -216,7 +216,7 @@ async fn vectorize_thread(
     constants: VecdbConstants,
     api_key: String,
     tokenizer: Arc<StdRwLock<Tokenizer>>,
-    gcx_weak: Weak<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
 ) {
     let mut files_total: usize = 0;
     let mut reported_unprocessed: usize = 0;
@@ -347,7 +347,7 @@ async fn vectorize_thread(
         let last_30_chars = crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30);
 
         // Not from memory, vecdb works on files from disk
-        if let Err(err) = doc.update_text_from_disk().await {
+        if let Err(err) = doc.update_text_from_disk(gcx.clone()).await {
             info!("{}: {}", last_30_chars, err);
             continue;
         }
@@ -358,7 +358,7 @@ async fn vectorize_thread(
         }
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
-        let split_data = file_splitter.vectorization_split(&doc, tokenizer.clone(), gcx_weak.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
+        let split_data = file_splitter.vectorization_split(&doc, tokenizer.clone(), gcx.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
             info!("{}", err);
             vec![]
         });
@@ -463,7 +463,7 @@ impl FileVectorizerService {
                 constants,
                 self.api_key.clone(),
                 tokenizer,
-                Arc::downgrade(&gcx.clone()),
+                gcx.clone(),
             )
         );
         return vec![cooldown_queue_join_handle, retrieve_thread_handle];

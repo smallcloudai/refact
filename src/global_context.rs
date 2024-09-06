@@ -20,6 +20,7 @@ use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::DocumentsState;
+use crate::privacy::PrivacySettings;
 use crate::telemetry::telemetry_structs;
 use crate::vecdb::vdb_highlev::VecDb;
 
@@ -139,6 +140,7 @@ pub struct GlobalContext {
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
     pub at_commands_preview_cache: Arc<AMutex<AtCommandsPreviewCache>>,
+    pub privacy_settings: Arc<PrivacySettings>,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -312,6 +314,7 @@ pub async fn create_global_context(
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState::new(workspace_dirs).await,
         at_commands_preview_cache: Arc::new(AMutex::new(AtCommandsPreviewCache::new())),
+        privacy_settings: Arc::new(PrivacySettings::default()),
     };
     let gcx = Arc::new(ARwLock::new(cx));
     {
@@ -319,4 +322,79 @@ pub async fn create_global_context(
         gcx.write().await.documents_state.init_watcher(gcx_weak, tokio::runtime::Handle::current());
     }
     (gcx, ask_shutdown_receiver, shutdown_flag, cmdline)
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use tokio::sync::RwLock as ARwLock;
+    use tokio::sync::Mutex as AMutex;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::mpsc;
+    use reqwest::Client;
+    use tokio::sync::Semaphore;
+    use std::path::PathBuf;
+    use std::collections::HashMap;
+    use crate::completion_cache::CompletionCache;
+    use crate::telemetry::telemetry_structs;
+    use crate::privacy::PrivacySettings;
+    use crate::files_in_workspace::DocumentsState;
+
+    pub async fn create_mock_global_context() -> (Arc<ARwLock<GlobalContext>>, mpsc::Receiver<String>, Arc<AtomicBool>, CommandLine) {
+        let cmdline = CommandLine {
+            ping_message: "pong".to_string(),
+            logs_stderr: true,
+            address_url: "http://localhost".to_string(),
+            api_key: "".to_string(),
+            http_port: 0,
+            enduser_client_version: "".to_string(),
+            basic_telemetry: false,
+            snippet_telemetry: false,
+            lsp_port: 0,
+            lsp_stdin_stdout: 0,
+            insecure: false,
+            verbose: false,
+            ast: false,
+            ast_light_mode: false,
+            ast_max_files: 15000,
+            vecdb: false,
+            reset_memory: false,
+            vecdb_max_files: 15000,
+            files_jsonl_path: "".to_string(),
+            vecdb_force_path: "".to_string(),
+            workspace_folder: "".to_string(),
+            save_byok_file: false,
+            experimental: false,
+        };
+
+        let (ask_shutdown_sender, ask_shutdown_receiver) = mpsc::channel::<String>();
+        let shutdown_flag = Arc::new(AtomicBool::new(false));
+        let http_client = Client::builder().build().unwrap();
+
+        let cx = GlobalContext {
+            cmdline: cmdline.clone(),
+            http_client,
+            http_client_slowdown: Arc::new(Semaphore::new(2)),
+            cache_dir: PathBuf::new(),
+            caps: None,
+            caps_reading_lock: Arc::new(AMutex::<bool>::new(false)),
+            caps_last_error: String::new(),
+            caps_last_attempted_ts: 0,
+            tokenizer_map: HashMap::new(),
+            tokenizer_download_lock: Arc::new(AMutex::<bool>::new(false)),
+            completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
+            telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
+            vec_db: Arc::new(AMutex::new(None)),
+            ast_module: None,
+            vec_db_error: String::new(),
+            ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
+            documents_state: DocumentsState::new(vec![]).await,
+            at_commands_preview_cache: Arc::new(AMutex::new(AtCommandsPreviewCache::new())),
+            privacy_settings: Arc::new(PrivacySettings::default()),
+        };
+
+        let gcx = Arc::new(ARwLock::new(cx));
+        (gcx, ask_shutdown_receiver, shutdown_flag, cmdline)
+    }
 }

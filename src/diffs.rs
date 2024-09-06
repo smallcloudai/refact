@@ -10,6 +10,7 @@ use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_o
 use crate::call_validation::DiffChunk;
 use crate::files_correction::{get_project_dirs, correct_to_nearest_dir_path};
 use crate::global_context::GlobalContext;
+use crate::privacy::PrivacySettings;
 
 
 const DEBUG: usize = 0;
@@ -468,6 +469,7 @@ pub fn apply_diff_chunks_to_text(
 }
 
 pub fn read_files_n_apply_diff_chunks(
+    privacy: Arc<PrivacySettings>,
     chunks: &Vec<DiffChunk>,
     applied_state: &Vec<bool>,
     desired_state: &Vec<bool>,
@@ -485,6 +487,7 @@ pub fn read_files_n_apply_diff_chunks(
     let chunks_apply_other = chunks.iter().enumerate().filter(|(idx, c)|desired_state.get(*idx) == Some(&true) && other_actions.contains(&c.file_action.as_str())).collect::<Vec<_>>();
 
     fn process_chunks_edit(
+        privacy: Arc<PrivacySettings>,
         chunks_apply_edit: Vec<(usize, &DiffChunk)>,
         chunks_undo_edit: Vec<(usize, &DiffChunk)>,
         max_fuzzy_n: usize,
@@ -507,7 +510,7 @@ pub fn read_files_n_apply_diff_chunks(
             let chunks_apply = chunk_apply_groups.get(&file_name).unwrap_or(&vec![]).clone();
             let chunks_undo = chunk_undo_groups.get(&file_name).unwrap_or(&vec![]).clone();
 
-            let file_text = match crate::files_in_workspace::read_file_from_disk_sync(&PathBuf::from(&file_name)) {
+            let file_text = match crate::files_in_workspace::read_file_from_disk_sync(privacy.clone(), &PathBuf::from(&file_name)) {
                 Ok(t) => t.to_string(),
                 Err(_) => {
                     for (c, _) in chunks_apply.iter() {
@@ -533,7 +536,7 @@ pub fn read_files_n_apply_diff_chunks(
         outputs.extend(new_outputs);
     }
 
-    process_chunks_edit(chunks_apply_edit, chunks_undo_edit, max_fuzzy_n, &mut results, &mut outputs);
+    process_chunks_edit(privacy.clone(), chunks_apply_edit, chunks_undo_edit, max_fuzzy_n, &mut results, &mut outputs);
     process_chunks_other(chunks_apply_other, chunks_undo_other, &mut results, &mut outputs);
 
     (results, outputs)

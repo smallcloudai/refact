@@ -9,18 +9,20 @@ use crate::tools::patch::ast_interaction::{lint_and_get_error_messages, parse_an
 use crate::call_validation::DiffChunk;
 use crate::diffs::{apply_diff_chunks_to_text, correct_and_validate_chunks, unwrap_diff_apply_outputs};
 use crate::files_in_workspace::read_file_from_disk;
+use crate::privacy::load_privacy_if_needed;
 
 
 pub async fn postprocess_diff_chunks_from_message(
     ccx: Arc<AMutex<AtCommandsContext>>,
     chunks: &mut Vec<DiffChunk>,
 ) -> Result<String, String> {
+    let gcx = ccx.lock().await.global_context.clone();
+
     if chunks.is_empty() {
         return Err("No diff chunks were found".to_string());
     }
 
-    let gcx = ccx.lock().await.global_context.clone();
-    correct_and_validate_chunks(gcx, chunks).await?;
+    correct_and_validate_chunks(gcx.clone(), chunks).await?;
     let mut chunks_per_files = HashMap::new();
     for chunk in chunks.iter() {
         chunks_per_files.entry(chunk.file_name.clone()).or_insert(vec![]).push(chunk.clone());
@@ -39,7 +41,7 @@ pub async fn postprocess_diff_chunks_from_message(
         let text_before = if action == "add" {
             Rope::new()
         } else {
-            match read_file_from_disk(&path).await {
+            match read_file_from_disk(load_privacy_if_needed(gcx.clone()).await, &path).await {
                 Ok(text) => text,
                 Err(err) => {
                     let message = format!("Error reading file: {:?}", err);

@@ -71,10 +71,10 @@ async fn make_chat_history(
 
     let context_file = read_file(gcx.clone(), snippet.filename_before.clone()).await
         .map_err(|e| format!("Cannot read file to modify: {}.\nERROR: {}", snippet.filename_before, e))?;
-    
+
     let mut chat_messages = vec![];
     chat_messages.push(ChatMessage::new("system".to_string(), system_prompt.to_string()));
-    
+
     let code = format!(
         "File: {}\nContent:\n```\n{}\n```",
         context_file.file_name,
@@ -129,16 +129,17 @@ pub async fn execute_chat_model(
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-patch")),
     ).await?;
-    
+
     let last_messages = response.iter()
         .filter_map(|x| x.iter().last())
         .filter(|x| x.role == "assistant")
         .collect::<Vec<_>>();
-    
+
     // what does succ even mean?
     let mut succ_chunks = vec![];
+    let gcx = ccx.lock().await.global_context.clone();
     for m in last_messages {
-        match DefaultToolPatch::parse_message(&m.content).await {
+        match DefaultToolPatch::parse_message(&m, gcx.clone()).await {
             Ok(chunks) => {
                 succ_chunks.push(chunks);
             }

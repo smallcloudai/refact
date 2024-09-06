@@ -123,7 +123,7 @@ impl Backend {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
         let path = crate::files_correction::canonical_path(&params.text_document_position.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
         let txt = match self.gcx.read().await.documents_state.memory_document_map.get(&path) {
-            Some(doc) => doc.read().await.clone().get_text_or_read_from_disk().await.unwrap_or_default(),
+            Some(doc) => doc.read().await.clone().get_text_or_read_from_disk(self.gcx.clone()).await.unwrap_or_default(),
             None => return Err(internal_error("document not found"))
         };
         // url -> String method should be the same as in telemetry::snippets_collection::sources_changed

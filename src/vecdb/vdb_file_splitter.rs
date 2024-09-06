@@ -2,11 +2,13 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 
 use tokenizers::Tokenizer;
+use tokio::sync::RwLock as ARwLock;
 
 use crate::ast::chunk_utils::get_chunks;
 use crate::ast::count_tokens;
 use crate::ast::file_splitter::LINES_OVERLAP;
 use crate::files_in_workspace::Document;
+use crate::global_context::GlobalContext;
 use crate::vecdb::vdb_structs::SplitResult;
 
 pub struct FileSplitter {
@@ -24,9 +26,10 @@ impl FileSplitter {
     pub async fn vectorization_split(&self, doc: &Document,
                                      tokenizer: Arc<StdRwLock<Tokenizer>>,
                                      tokens_limit: usize,
+                                     global_context: Arc<ARwLock<GlobalContext>>
     ) -> Result<Vec<SplitResult>, String> {
         let path = doc.doc_path.clone();
-        let text = match doc.clone().get_text_or_read_from_disk().await {
+        let text = match doc.clone().get_text_or_read_from_disk(global_context.clone()).await {
             Ok(s) => s,
             Err(e) => return Err(e.to_string())
         };

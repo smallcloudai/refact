@@ -475,7 +475,6 @@ pub async fn ongoing_update_or_create(
     Ok(())
 }
 
-#[allow(dead_code)]
 pub async fn ongoing_find(
     vec_db: Arc<AMutex<Option<VecDb>>>,
     goal: String,

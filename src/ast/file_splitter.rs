@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use itertools::Itertools;
 use tokenizers::Tokenizer;
@@ -87,7 +87,7 @@ impl AstBasedFileSplitter {
         &self,
         doc: &Document,
         tokenizer: Arc<StdRwLock<Tokenizer>>,
-        _gcx_weak: Weak<RwLock<GlobalContext>>,
+        gcx: Arc<RwLock<GlobalContext>>,
         tokens_limit: usize,
     ) -> Result<Vec<SplitResult>, String> {
         assert!(doc.doc_text.is_some());
@@ -99,7 +99,7 @@ impl AstBasedFileSplitter {
             Ok(parser) => parser,
             Err(_e) => {
                 // info!("cannot find a parser for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e.message);
-                return self.fallback_file_splitter.vectorization_split(&doc, tokenizer.clone(), tokens_limit).await;
+                return self.fallback_file_splitter.vectorization_split( &doc, tokenizer.clone(), tokens_limit, gcx.clone()).await;
             }
         };
 
@@ -118,7 +118,7 @@ impl AstBasedFileSplitter {
             Ok(x) => x,
             Err(e) => {
                 info!("lowlevel_file_markup failed for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e);
-                return self.fallback_file_splitter.vectorization_split(&doc, tokenizer.clone(), tokens_limit).await;
+                return self.fallback_file_splitter.vectorization_split(&doc, tokenizer.clone(), tokens_limit, gcx.clone()).await;
             }
         };
 

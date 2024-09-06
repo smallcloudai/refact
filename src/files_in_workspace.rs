@@ -15,6 +15,7 @@ use crate::global_context::GlobalContext;
 use crate::telemetry;
 use crate::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
+use crate::privacy::PrivacySettings;
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
@@ -25,13 +26,16 @@ pub struct Document {
 
 pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<GlobalContext>>, file_path: &PathBuf) -> Result<String, String>
 {
+    check_file_privacy(load_privacy_if_needed(global_context.clone()).await, &file_path, &FilePrivacyLevel::AllowToSendEverywhere)?;
+
     if let Some(doc) = global_context.read().await.documents_state.memory_document_map.get(file_path) {
         let doc = doc.read().await;
         if doc.doc_text.is_some() {
             return Ok(doc.doc_text.as_ref().unwrap().to_string());
         }
     }
-    read_file_from_disk(&file_path).await.map(|x|x.to_string())
+    read_file_from_disk_after_privacy_check(&file_path)
+        .await.map(|x|x.to_string())
         .map_err(|e|format!("Failed to read file: not found in memory, not found on disk. Error:\n{}", e))
 }
 
@@ -40,8 +44,8 @@ impl Document {
         Self { doc_path: doc_path.clone(),  doc_text: None }
     }
 
-    pub async fn update_text_from_disk(&mut self) -> Result<(), String> {
-        match read_file_from_disk(&self.doc_path).await {
+    pub async fn update_text_from_disk(&mut self, global_context: Arc<ARwLock<GlobalContext>>) -> Result<(), String> {
+        match read_file_from_disk(load_privacy_if_needed(global_context.clone()).await, &self.doc_path).await {
             Ok(res) => {
                 self.doc_text = Some(res);
                 return Ok(());
@@ -52,11 +56,11 @@ impl Document {
         }
     }
 
-    pub async fn get_text_or_read_from_disk(&mut self) -> Result<String, String> {
+    pub async fn get_text_or_read_from_disk(&mut self, global_context: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
         if self.doc_text.is_some() {
             return Ok(self.doc_text.as_ref().unwrap().to_string());
         }
-        read_file_from_disk(&self.doc_path).await.map(|x|x.to_string())
+        read_file_from_disk(load_privacy_if_needed(global_context.clone()).await, &self.doc_path).await.map(|x|x.to_string())
     }
 
     pub fn update_text(&mut self, text: &String) {
@@ -160,7 +164,9 @@ impl DocumentsState {
     }
 }
 
-pub async fn read_file_from_disk(path: &PathBuf) -> Result<Rope, String> {
+async fn read_file_from_disk_after_privacy_check(
+    path: &PathBuf,
+) -> Result<Rope, String> {
     tokio::fs::read_to_string(path).await
         .map(|x|Rope::from_str(&x))
         .map_err(|e|
@@ -168,7 +174,19 @@ pub async fn read_file_from_disk(path: &PathBuf) -> Result<Rope, String> {
         )
 }
 
-pub fn read_file_from_disk_sync(path: &PathBuf) -> Result<Rope, String> {
+pub async fn read_file_from_disk(
+    privacy_settings: Arc<PrivacySettings>,
+    path: &PathBuf,
+) -> Result<Rope, String> {
+    check_file_privacy(privacy_settings, path, &FilePrivacyLevel::AllowToSendEverywhere)?;
+    read_file_from_disk_after_privacy_check(path).await
+}
+
+pub fn read_file_from_disk_sync(
+    privacy_settings: Arc<PrivacySettings>,
+    path: &PathBuf,
+) -> Result<Rope, String> {
+    check_file_privacy(privacy_settings, path, &FilePrivacyLevel::AllowToSendEverywhere)?;
     match std::fs::read_to_string(path) {
         Ok(content) => {
             let rope = Rope::from_str(&content);
