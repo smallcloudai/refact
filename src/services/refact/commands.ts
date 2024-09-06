@@ -11,10 +11,6 @@ export type CompletionArgs = {
   top_n?: number;
 };
 
-export type FilePathArg = {
-  path: string;
-};
-
 export const commandsApi = createApi({
   reducerPath: "commands",
   baseQuery: fetchBaseQuery({
