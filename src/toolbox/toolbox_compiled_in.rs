@@ -57,6 +57,10 @@ PROMPT_AGENTIC_TOOLS: |
   copy a lot, just copy word-for-word. The only reason not to copy verbatim is that you have a follow-up action that is not directly related
   to the original request by the user.
 
+  Just writing code blocks with 📍-notation is not sufficient to create or modify the files. You need to ask the user if they want to apply
+  your changes, and if they agree, then call patch() for the changes in parallel. Again: user cannot run the code with the changes you just wrote,
+  they need applying with patch() first.
+
   Thinking strategy for the answers:
 
   * Question unrelated to the project => just answer immediately.
