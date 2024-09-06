@@ -35,7 +35,7 @@ async fn create_chat_post_and_scratchpad(
         warn!("no caps: {:?}", e);
         "no caps".to_string()
     })?;
-    let tconfig = load_customization(global_context.clone()).await?;
+    let tconfig = load_customization(global_context.clone(), true).await?;
 
     let mut chat_post = ChatPost {
         messages: messages.iter().cloned().cloned().collect::<Vec<_>>(),

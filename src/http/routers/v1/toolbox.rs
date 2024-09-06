@@ -25,13 +25,11 @@ pub async fn handle_v1_config_path(
         .unwrap())
 }
 
-
-
 pub async fn handle_v1_customization(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-	let tconfig = match load_customization(global_context.clone()).await {
+	let tconfig = match load_customization(global_context.clone(), false).await {
 		Ok(config) => config,
 		Err(err) => {
 			error!("load_customization: {}", err);
@@ -52,7 +50,6 @@ pub async fn handle_v1_customization(
 struct SnippetAcceptedPostData {
     pub messages: Vec<ChatMessage>,
 }
-
 
 pub async fn handle_v1_rewrite_assistant_says_to_at_commands(
 	Extension(_global_context): Extension<Arc<ARwLock<GlobalContext>>>,

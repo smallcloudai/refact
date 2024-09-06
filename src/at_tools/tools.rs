@@ -373,8 +373,9 @@ pub fn tool_description_list_from_yaml(
         .cloned()
         .collect::<Vec<_>>())
 }
+
 pub async fn tools_from_customization(gcx: Arc<ARwLock<GlobalContext>>, turned_on: &Vec<String>) -> Vec<ToolCustDict> {
-    return match crate::toolbox::toolbox_config::load_customization(gcx.clone()).await {
+    return match crate::toolbox::toolbox_config::load_customization(gcx.clone(), false).await {
         Ok(tconfig) => tconfig.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>(),
         Err(e) => {
             tracing::error!("Error loading toolbox config: {:?}", e);

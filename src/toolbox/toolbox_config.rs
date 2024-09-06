@@ -144,7 +144,7 @@ fn replace_variables_in_system_prompts(config: &mut CustomizationYaml, variables
     }
 }
 
-fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default_system_prompt: &str, allow_experimental: bool) -> Result<CustomizationYaml, String> {
+fn _load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default_system_prompt: &str, skip_filtering: bool, allow_experimental: bool) -> Result<CustomizationYaml, String> {
     let default_unstructured: serde_yaml::Value = serde_yaml::from_str(COMPILED_IN_CUSTOMIZATION_YAML)
         .map_err(|e| format!("Error parsing default YAML: {}\n{}", e, COMPILED_IN_CUSTOMIZATION_YAML))?;
     let user_unstructured: serde_yaml::Value = serde_yaml::from_str(user_yaml)
@@ -205,7 +205,7 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
     let filtered_system_prompts: IndexMap<String, CustomizationSystemPrompt> = work_config.system_prompts
         .iter()
         .filter(|(_key, system_prompt_struct)| {
-            match system_prompt_struct.show.as_str() {
+            skip_filtering || match system_prompt_struct.show.as_str() {
                 "always" => true,
                 "never" => false,
                 "experimental" => allow_experimental,
@@ -223,7 +223,7 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
     Ok(work_config)
 }
 
-pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<CustomizationYaml, String> {
+pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>, skip_filtering: bool) -> Result<CustomizationYaml, String> {
     let (cache_dir, allow_experimental) = {
         let gcx_locked = gcx.read().await;
         (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.experimental)
@@ -254,7 +254,7 @@ pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>) -> Result<Cust
     }
 
     let user_config_text = std::fs::read_to_string(&user_config_path).map_err(|e| format!("Failed to read file: {}", e))?;
-    load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt, allow_experimental).map_err(|e| e.to_string())
+    _load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt, skip_filtering, allow_experimental).map_err(|e| e.to_string())
 }
 
 pub async fn system_prompt_add_workspace_info(
@@ -312,7 +312,7 @@ pub async fn get_default_system_prompt(
     have_exploration_tools: bool,
     have_agentic_tools: bool,
 ) -> String {
-    let tconfig = match load_customization(gcx.clone()).await {
+    let tconfig = match load_customization(gcx.clone(), true).await {
         Ok(tconfig) => tconfig,
         Err(e) => {
             error!("cannot load_customization: {e}");
@@ -356,6 +356,6 @@ mod tests {
 
     #[test]
     fn is_compiled_in_toolbox_valid_yaml() {
-        let _config = load_and_mix_with_users_config(COMPILED_IN_INITIAL_USER_YAML, "", "", true);
+        let _config = _load_and_mix_with_users_config(COMPILED_IN_INITIAL_USER_YAML, "", "", false, true);
     }
 }

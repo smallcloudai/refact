@@ -25,7 +25,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
     let params = match params_mb {
         Some(params) => params,
         None => {
-            let tconfig = load_customization(gcx.clone()).await?;
+            let tconfig = load_customization(gcx.clone(), true).await?;
             tconfig.subchat_tool_parameters.get(tool_name).cloned()
                 .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
         }
