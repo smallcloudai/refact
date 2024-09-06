@@ -242,15 +242,6 @@ pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>, skip_filtering
             .map_err(|e| format!("Failed to create file: {}", e))?;
         file.write_all(COMPILED_IN_INITIAL_USER_YAML.as_bytes())
             .map_err(|e| format!("Failed to write to file: {}", e))?;
-
-        let the_default = String::from(COMPILED_IN_CUSTOMIZATION_YAML);
-        for line in the_default.split('\n') {
-            let mut comment = String::from("# ");
-            comment.push_str(line);
-            comment.push('\n');
-            file.write_all(comment.as_bytes())
-                .map_err(|e| format!("Failed to write to file: {}", e))?;
-        }
     }
 
     let user_config_text = std::fs::read_to_string(&user_config_path).map_err(|e| format!("Failed to read file: {}", e))?;

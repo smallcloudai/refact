@@ -282,33 +282,20 @@ toolbox_commands:
 "#;
 
 
-pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# Customization will override the default config you can see at the bottom of this file, in the comments.
-# You can find the default config by searching for COMPILED_IN_CUSTOMIZATION_YAML in `refact-lsp` repo.
-# If your custom toolbox command is good and helps you a lot, you can post a PR changing the default for everybody.
+pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# You can find the compiled-in config by searching for COMPILED_IN_CUSTOMIZATION_YAML in the `refact-lsp` repo.
 #
-# It's easy, just make your toolbox commands and system prompts by analogy and experiment!
-#
+# This customization will override the default.
 
 system_prompts:
   write_pseudo_code:
     description: "User-defined: write pseudo code"
-    text: "You are a programming assistant. Use backquotes for code blocks, but write pseudo code in comments instead of code. Replace real code offered by the user with pseudo code when you rewrite it."
+    text: |
+      You are a programming assistant. Use backquotes for code blocks, but write pseudo code in comments instead of code.
+      Replace real code offered by the user with pseudo code when you rewrite it.
   insert_jokes:
     description: "User-defined: write funny comments"
-    text: "You are a programming assistant. Use backquotes for code blocks, but insert into comments inside code blocks funny remarks, a joke inspired by the code or play on words. For example ```\n// Hocus, pocus\ngetTheFocus();\n```."
+    text: |
+      You are a programming assistant. Use backquotes for code blocks, but insert into comments inside code blocks funny remarks,
+      a joke inspired by the code or play on words. For example ```\n// Hocus, pocus\ngetTheFocus();\n```.
 
-toolbox_commands:
-  user0:
-    description: "User-defined: translate to horrible code"
-    selection_needed: [1, 50]
-    messages:
-    - role: "system"
-      content: "%PROMPT_DEFAULT%"
-    - role: "user"
-      content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRewrite this specific code block into a very inefficient and cryptic one, but still correct. Rename variables to misleading gibberish. Add unnecessary complexity. Make O(N) worse. Don't forget about bad formatting and random spaces.\n\n```\n%CODE_SELECTION%```\n"
-
-
-
-# To help you write by analogy, the default config as was compiled-in at the time of the first run of refact-lsp:
-#
 "#;
