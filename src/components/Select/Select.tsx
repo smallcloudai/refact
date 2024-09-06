@@ -45,7 +45,7 @@ export const Select: React.FC<SelectProps> = ({
   return (
     <Root {...props} onValueChange={onChange} size="1">
       <Trigger title={title} />
-      <Content>
+      <Content position="popper">
         {options.map((option) => {
           return (
             <Item key={option} value={option}>
