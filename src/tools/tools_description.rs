@@ -210,18 +210,17 @@ tools:
       Collect context first, then write the necessary changes using the 📍-notation before code blocks, then call this function to apply the changes.
       To make this call correctly, you only need the tickets.
       If you wrote changes for multiple files, call this tool in parallel for each file.
-      If you have several independent changes to a file, that are all necessary, pass tickets for them as a comma-separated list.
-      If you have several attempts to change a single thing, for example following a correction by the user, pass only the latest one.
+      If you have several attempts to change a single thing, for example following a correction from the user, pass only the ticket for the latest one.
     parameters:
       - name: "path"
         type: "string"
         description: "Path to the file to change."
-      - name: "todo"
+      - name: "ticket"
         type: "string"
-        description: "Use one 3-digit ticket to refer to the changes, or several comma-separated tickets. No need to copy anything else. Additionaly, you can put DELETE here to delete the file."
+        description: "Use one 3-digit ticket to refer to the changes. No need to copy anything else. Additionaly, you can put DELETE here to delete the file."
     parameters_required:
       - "path"
-      - "todo"
+      - "ticket"
 
   - name: "github"
     description: "Access to gh command line command, to fetch issues, review PRs."
