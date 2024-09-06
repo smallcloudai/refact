@@ -4,5 +4,5 @@ import { useGetPing } from "./useGetPing";
 export const useGetStatisticDataQuery = () => {
   const ping = useGetPing();
   const skip = !ping.data;
-  return statisticsApi.useGetStatisticDataQuery(undefined), { skip };
+  return statisticsApi.useGetStatisticDataQuery(undefined, { skip });
 };
