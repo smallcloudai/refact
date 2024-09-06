@@ -84,27 +84,6 @@ export const commandsApi = createApi({
         }
       },
     }),
-    getFullPath: builder.query<unknown, FilePathArg>({
-      queryFn: async (args, api, _opts, baseQuery) => {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}/fullPath`;
-        const response = await baseQuery({
-          url,
-          method: "POST",
-          credentials: "same-origin",
-          redirect: "follow",
-          body: {
-            path: args.path,
-          },
-        });
-
-        if (response.error) return { error: response.error };
-        return {
-          data: response.data,
-        };
-      },
-    }),
     getCommandPreview: builder.query<ChatContextFile[], string>({
       queryFn: async (query, api, _opts, baseQuery) => {
         const state = api.getState() as RootState;
