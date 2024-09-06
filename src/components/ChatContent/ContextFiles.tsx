@@ -12,6 +12,9 @@ import ReactMarkDown from "react-markdown";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import { Chevron } from "../Collapsible";
 import { filename } from "../../utils";
+import { useAppSelector } from "../../hooks";
+import { selectLspPort } from "../../features/Config/configSlice";
+import { getFullpath } from "../../utils/fullPath";
 
 export const Markdown: React.FC<{
   children: string;
@@ -104,7 +107,10 @@ const ContextFilesContent: React.FC<{
   files: ChatContextFile[];
   onOpenFile: (file: { file_name: string; line?: number }) => void;
 }> = ({ files, onOpenFile }) => {
+  const port = useAppSelector(selectLspPort);
+
   if (files.length === 0) return null;
+
   return (
     <Container>
       <pre style={{ margin: 0 }}>
@@ -117,7 +123,12 @@ const ContextFilesContent: React.FC<{
               <ContextFile
                 onClick={(event) => {
                   event.preventDefault();
-                  onOpenFile({ file_name: file.file_name, line: file.line1 });
+                  const f = async () => {
+                    const res = await getFullpath(file.file_name, port);
+                    const file_name = res ?? file.file_name;
+                    onOpenFile({ file_name, line: file.line1 });
+                  };
+                  void f();
                 }}
                 key={key}
                 name={file.file_name + lineText}
