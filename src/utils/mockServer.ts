@@ -10,6 +10,7 @@ import {
   promptsApi,
   toolsApi,
   commandsApi,
+  pingApi,
 } from "../services/refact";
 
 export const resetApi = (store: Store) => {
@@ -18,6 +19,7 @@ export const resetApi = (store: Store) => {
   store.dispatch(promptsApi.util.resetApiState());
   store.dispatch(toolsApi.util.resetApiState());
   store.dispatch(commandsApi.util.resetApiState());
+  store.dispatch(pingApi.util.resetApiState());
 };
 export const server = setupServer();
 
@@ -35,6 +37,13 @@ afterAll(() => {
   // Clean up once the tests are done.
   server.close();
 });
+
+export const goodPing: HttpHandler = http.get(
+  "http://127.0.0.1:8001/v1/ping",
+  () => {
+    return HttpResponse.text("pong");
+  },
+);
 
 export const goodCaps: HttpHandler = http.get(
   "http://127.0.0.1:8001/v1/caps",

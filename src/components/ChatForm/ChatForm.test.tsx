@@ -11,6 +11,7 @@ import {
   noTools,
   noCommandPreview,
   noCompletions,
+  goodPing,
 } from "../../utils/mockServer";
 
 const handlers = [
@@ -19,6 +20,7 @@ const handlers = [
   noTools,
   noCommandPreview,
   noCompletions,
+  goodPing,
 ];
 
 server.use(...handlers);

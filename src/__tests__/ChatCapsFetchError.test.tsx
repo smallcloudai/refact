@@ -1,7 +1,13 @@
 import { render, waitFor } from "../utils/test-utils";
 import { describe, expect, test } from "vitest";
 import { HttpResponse, http } from "msw";
-import { server, goodPrompts, noTools, goodUser } from "../utils/mockServer";
+import {
+  server,
+  goodPrompts,
+  noTools,
+  goodUser,
+  goodPing,
+} from "../utils/mockServer";
 import { Chat } from "../features/Chat";
 
 describe("chat caps error", () => {
@@ -9,6 +15,7 @@ describe("chat caps error", () => {
     const errorMessage =
       "500 Internal Server Error caps fetch failed: failed to open file 'hren'";
     server.use(
+      goodPing,
       noTools,
       goodPrompts,
       goodUser,
