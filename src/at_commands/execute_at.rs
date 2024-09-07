@@ -249,14 +249,10 @@ pub fn parse_words_from_line(line: &String) -> Vec<(String, usize, usize)> {
         s.trim_end_matches(&['!', '.', ',', '?'][..]).to_string()
     }
 
-<<<<<<< HEAD
-    let word_regex = Regex::new(r#"(@?\S*)"#).expect("Invalid regex");
-=======
     // let word_regex = Regex::new(r#"(@?[^ !?@\n]*)"#).expect("Invalid regex");
     // let word_regex = Regex::new(r#"(@?[^ !?@\n]+|\n|@)"#).expect("Invalid regex");
     let word_regex = Regex::new(r#"(@?\S*)"#).expect("Invalid regex");         // fixed windows
 
->>>>>>> dev
     let mut results = vec![];
     for cap in word_regex.captures_iter(line) {
         if let Some(matched) = cap.get(1) {
