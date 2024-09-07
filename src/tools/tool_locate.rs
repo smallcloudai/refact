@@ -16,11 +16,11 @@ use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage, ContextEnum, ContextFile};
 
 
-pub struct AttLocate;
+pub struct ToolLocate;
 
 
 #[async_trait]
-impl Tool for AttLocate{
+impl Tool for ToolLocate{
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

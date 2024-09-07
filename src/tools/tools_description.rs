@@ -53,24 +53,24 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
     };
 
     let mut tools_all = IndexMap::from([
-        ("search".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_search::AttSearch{}) as Box<dyn Tool + Send>))),
-        ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_ast_definition::AttAstDefinition{}) as Box<dyn Tool + Send>))),
-        ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_ast_reference::AttAstReference{}) as Box<dyn Tool + Send>))),
-        ("tree".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_tree::AttTree{}) as Box<dyn Tool + Send>))),
-        ("patch".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_patch::tool::ToolPatch::new()) as Box<dyn Tool + Send>))),
-        ("web".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_web::AttWeb{}) as Box<dyn Tool + Send>))),
-        ("cat".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_cat::AttCat{}) as Box<dyn Tool + Send>))),
-        // ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_locate::AttLocate{}) as Box<dyn Tool + Send>))),
-        ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_relevant_files::AttRelevantFiles{}) as Box<dyn Tool + Send>))),
+        ("search".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>))),
+        ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>))),
+        ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>))),
+        ("tree".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>))),
+        ("patch".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::patch::tool_patch::ToolPatch::new()) as Box<dyn Tool + Send>))),
+        ("web".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>))),
+        ("cat".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>))),
+        // ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
+        ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
     ]);
 
     if allow_experimental {
-        // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_knowledge::AttSaveKnowledge{}) as Box<dyn Tool + Send>))),
+        // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_knowledge::ToolSaveKnowledge{}) as Box<dyn Tool + Send>))),
         // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
-        if let Some(github_tool) = crate::tools::tool_github::ToolGithub::new_if_configured(&integrations_value) {
+        if let Some(github_tool) = crate::integrations::integr_github::ToolGithub::new_if_configured(&integrations_value) {
             tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(github_tool) as Box<dyn Tool + Send>)));
         }
-        tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_knowledge::AttGetKnowledge{}) as Box<dyn Tool + Send>)));
+        tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
     }
 
     let mut filtered_tools = IndexMap::new();
@@ -93,7 +93,7 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
     //     for cust in tconfig_maybe.unwrap().tools {
     //         result.insert(
     //             cust.name.clone(),
-    //             Arc::new(AMutex::new(Box::new(crate::tools::att_execute_cmd::AttExecuteCommand {
+    //             Arc::new(AMutex::new(Box::new(crate::tools::att_execute_cmd::ToolExecuteCommand {
     //                 command: cust.command,
     //                 timeout: cust.timeout,
     //                 output_postprocess: cust.output_postprocess,

@@ -9,8 +9,8 @@ use tracing::warn;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, context_file_from_file_path};
-use crate::tools::att_patch::tool::{DefaultToolPatch, PatchArguments, N_CHOICES};
-use crate::tools::att_patch::ast_interaction::get_signatures_by_imports_traversal;
+use crate::tools::patch::tool_patch::{DefaultToolPatch, PatchArguments, N_CHOICES};
+use crate::tools::patch::ast_interaction::get_signatures_by_imports_traversal;
 use crate::subchat::subchat_single;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage, ContextFile};

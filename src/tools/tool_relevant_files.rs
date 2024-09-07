@@ -21,10 +21,10 @@ const RF_OUTPUT_FILES: usize = 6;
 const RF_ATTEMPTS: usize = 1;
 
 
-pub struct AttRelevantFiles;
+pub struct ToolRelevantFiles;
 
 #[async_trait]
-impl Tool for AttRelevantFiles {
+impl Tool for ToolRelevantFiles {
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -272,7 +272,7 @@ async fn find_relevant_files(
     let mut futures = vec![];
 
     let mut strategy_tree = strategy_messages.clone();
-    strategy_tree.push(crate::tools::att_locate::pretend_tool_call("tree", "{}", "I'll use TREEGUESS strategy, to do that I need to start with a tree() call.".to_string()));
+    strategy_tree.push(crate::tools::tool_locate::pretend_tool_call("tree", "{}", "I'll use TREEGUESS strategy, to do that I need to start with a tree() call.".to_string()));
     futures.push(subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),

@@ -13,11 +13,11 @@ use crate::vecdb::vdb_highlev::memories_search;
 // use crate::vecdb::vdb_highlev::ongoing_find;
 
 
-pub struct AttGetKnowledge;
+pub struct ToolGetKnowledge;
 
 
 #[async_trait]
-impl Tool for AttGetKnowledge {
+impl Tool for ToolGetKnowledge {
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -133,9 +133,9 @@ impl Tool for AttGetKnowledge {
 // }
 
 
-// pub struct AttSaveKnowledge;
+// pub struct ToolSaveKnowledge;
 // #[async_trait]
-// impl Tool for AttSaveKnowledge {
+// impl Tool for ToolSaveKnowledge {
 //     async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
 //         info!("run @save-knowledge {:?}", args);
 //         let memory_topic = match args.get("memory_topic") {

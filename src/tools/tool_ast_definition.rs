@@ -10,7 +10,7 @@ use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 
 
-pub struct AttAstDefinition;
+pub struct ToolAstDefinition;
 
 
 pub async fn results2message(
@@ -37,7 +37,7 @@ pub async fn results2message(
 
 
 #[async_trait]
-impl Tool for AttAstDefinition {
+impl Tool for ToolAstDefinition {
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

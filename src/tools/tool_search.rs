@@ -17,7 +17,7 @@ use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 
 
-pub struct AttSearch;
+pub struct ToolSearch;
 
 async fn execute_att_search(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -75,7 +75,7 @@ async fn execute_att_search(
 }
 
 #[async_trait]
-impl Tool for AttSearch {
+impl Tool for ToolSearch {
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

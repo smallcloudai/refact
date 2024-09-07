@@ -10,10 +10,10 @@ use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 
-pub struct AttWeb;
+pub struct ToolWeb;
 
 #[async_trait]
-impl Tool for AttWeb {
+impl Tool for ToolWeb {
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,

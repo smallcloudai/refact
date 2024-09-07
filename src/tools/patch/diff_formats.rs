@@ -5,8 +5,8 @@ use tokio::sync::Mutex as AMutex;
 use ropey::Rope;
 use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::att_patch::ast_interaction::{lint_and_get_error_messages, parse_and_get_error_symbols};
-use crate::tools::att_patch::tool::DefaultToolPatch;
+use crate::tools::patch::ast_interaction::{lint_and_get_error_messages, parse_and_get_error_symbols};
+use crate::tools::patch::tool_patch::DefaultToolPatch;
 use crate::diffs::{apply_diff_chunks_to_text, correct_and_validate_chunks, unwrap_diff_apply_outputs};
 use crate::files_in_workspace::read_file_from_disk;
 

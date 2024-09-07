@@ -15,11 +15,11 @@ use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, get
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 
 
-pub struct AttCat;
+pub struct ToolCat;
 
 
 #[async_trait]
-impl Tool for AttCat {
+impl Tool for ToolCat {
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

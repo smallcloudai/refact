@@ -11,10 +11,10 @@ use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 
-pub struct AttAstLookupSymbols;
+pub struct ToolAstLookupSymbols;
 
 #[async_trait]
-impl Tool for AttAstLookupSymbols {
+impl Tool for ToolAstLookupSymbols {
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

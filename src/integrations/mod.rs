@@ -4,6 +4,8 @@ use crate::global_context::GlobalContext;
 use tokio::fs;
 use tracing::error;
 
+pub mod integr_github;
+
 
 pub async fn load_integrations(gcx: Arc<ARwLock<GlobalContext>>) -> String {
     let cache_dir = gcx.read().await.cache_dir.clone();

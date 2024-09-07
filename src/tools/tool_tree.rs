@@ -14,14 +14,14 @@ use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, paths_from_anywhere};
 
 
-pub struct AttTree;
+pub struct ToolTree;
 
 fn preformat_path(path: &String) -> String {
     path.trim_end_matches(&['/', '\\'][..]).to_string()
 }
 
 #[async_trait]
-impl Tool for AttTree {
+impl Tool for ToolTree {
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
