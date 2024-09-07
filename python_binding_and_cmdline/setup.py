@@ -1,13 +1,15 @@
 from setuptools import setup, find_packages
+import re
 
 setup(
     name="refact",
-    version="0.8.2",
+    version="0.9.9",
     packages=find_packages(),
     install_requires=[
         "aiohttp",
         "termcolor",
         "pydantic",
+        "prompt_toolkit",
     ],
     author="Small Magellanic Cloud AI LTD",
     author_email="info@smallcloud.tech",
@@ -23,4 +25,15 @@ setup(
         "Environment :: Console",
     ],
     python_requires=">=3.6",
+    entry_points={
+        'console_scripts': [
+            'refact=refact.refact_cmdline:cmdline_main',
+        ],
+    },
 )
+
+
+# XXX: move to automatic build
+#   sync version from Cargo.toml
+#   python setup.py sdist
+#   twine upload --repository pypi dist/refact-0.9.7.tar.gz
