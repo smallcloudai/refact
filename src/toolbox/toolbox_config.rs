@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use indexmap::IndexMap;
 use tracing::{error, info};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
-use crate::at_tools::tools::{AtParamDict, make_openai_tool_value};
+use crate::tools::tools_description::{AtParamDict, make_openai_tool_value};
 use crate::toolbox::toolbox_compiled_in::{COMPILED_IN_CUSTOMIZATION_YAML, COMPILED_IN_INITIAL_USER_YAML};
 
 

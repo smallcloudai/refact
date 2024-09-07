@@ -11,8 +11,8 @@ use tokio::sync::RwLock as ARwLock;
 use futures_util::future::join_all;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::subchat::subchat;
-use crate::at_tools::tools::Tool;
+use crate::subchat::subchat;
+use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, SubchatParameters};
 use crate::global_context::GlobalContext;
 
@@ -37,7 +37,7 @@ impl Tool for AttRelevantFiles {
             None => return Err("Missing argument `problem_statement`".to_string())
         };
 
-        let params = crate::at_tools::execute_att::unwrap_subchat_params(ccx.clone(), "locate").await?;
+        let params = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "locate").await?;
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
             let mut t = AtCommandsContext::new(
@@ -272,7 +272,7 @@ async fn find_relevant_files(
     let mut futures = vec![];
 
     let mut strategy_tree = strategy_messages.clone();
-    strategy_tree.push(crate::at_tools::att_locate::pretend_tool_call("tree", "{}", "I'll use TREEGUESS strategy, to do that I need to start with a tree() call.".to_string()));
+    strategy_tree.push(crate::tools::att_locate::pretend_tool_call("tree", "{}", "I'll use TREEGUESS strategy, to do that I need to start with a tree() call.".to_string()));
     futures.push(subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),

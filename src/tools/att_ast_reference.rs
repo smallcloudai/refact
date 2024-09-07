@@ -7,9 +7,10 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::ast::structs::AstReferencesSearchResult;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::att_ast_definition::results2message;
-use crate::at_tools::tools::Tool;
+use crate::tools::att_ast_definition::results2message;
+use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
+
 
 pub struct AttAstReference;
 

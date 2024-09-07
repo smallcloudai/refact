@@ -11,8 +11,8 @@ use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::subchat::subchat_single;
-use crate::at_tools::tools::Tool;
+use crate::subchat::subchat_single;
+use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage, ContextEnum, ContextFile};
 
 
@@ -34,7 +34,7 @@ impl Tool for AttLocate{
             None => return Err("Missing argument `problem_statement`".to_string())
         };
 
-        let params = crate::at_tools::execute_att::unwrap_subchat_params(ccx.clone(), "locate").await?;
+        let params = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "locate").await?;
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
             Arc::new(AMutex::new(AtCommandsContext::new(

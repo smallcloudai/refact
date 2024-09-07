@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::at_tools::tools::Tool;
+use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextFile, ContextEnum, SubchatParameters, PostprocessSettings};
 use crate::global_context::GlobalContext;
 
@@ -64,7 +64,7 @@ impl AtCommandsContext {
             messages,
 
             at_commands: at_commands_dict(global_context.clone()).await,
-            at_tools: crate::at_tools::tools::at_tools_merged_and_filtered(global_context.clone()).await,
+            at_tools: crate::tools::tools_description::tools_merged_and_filtered(global_context.clone()).await,
             subchat_tool_parameters: IndexMap::new(),
             postprocess_parameters: PostprocessSettings::new(),
 

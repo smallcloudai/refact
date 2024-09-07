@@ -7,7 +7,7 @@ use tracing::info;
 
 use crate::at_commands::at_ast_lookup_symbols::{execute_at_ast_lookup_symbols, text_on_clip};
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
-use crate::at_tools::tools::Tool;
+use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 

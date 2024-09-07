@@ -814,7 +814,7 @@ mod tests {
 
     use itertools::Itertools;
 
-    use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
+    use crate::tools::att_patch::unified_diff_format::UnifiedDiffFormat;
     use crate::call_validation::DiffChunk;
     use crate::diffs::{apply_diff_chunks_to_text, unwrap_diff_apply_outputs};
 

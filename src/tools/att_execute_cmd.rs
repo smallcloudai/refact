@@ -6,7 +6,7 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_local_cmdline::execute_cmd;
-use crate::at_tools::tools::Tool;
+use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 

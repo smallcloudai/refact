@@ -4,7 +4,7 @@ use axum::http::{Response, StatusCode};
 use hyper::Body;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::at_tools::tools::{tool_description_list_from_yaml, tools_from_customization};
+use crate::tools::tools_description::{tool_description_list_from_yaml, tools_from_customization};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 
@@ -13,7 +13,7 @@ pub async fn handle_v1_tools(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     _: hyper::body::Bytes,
 )  -> axum::response::Result<Response<Body>, ScratchError> {
-    let turned_on = crate::at_tools::tools::at_tools_merged_and_filtered(gcx.clone()).await.keys().cloned().collect::<Vec<_>>();
+    let turned_on = crate::tools::tools_description::tools_merged_and_filtered(gcx.clone()).await.keys().cloned().collect::<Vec<_>>();
     let allow_experimental = gcx.read().await.cmdline.experimental;
 
     let tool_desclist = tool_description_list_from_yaml(&turned_on, allow_experimental).unwrap_or_else(|e|{

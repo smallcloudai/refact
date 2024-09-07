@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::ast::structs::{AstDeclarationSearchResult, SymbolsSearchResultStruct};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::tools::Tool;
+use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 use async_trait::async_trait;
 use serde_json::Value;

@@ -6,7 +6,7 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use serde_json::Value;
 use tracing::{error, info, warn};
-use crate::at_tools::tools::{at_tools_merged_and_filtered, tool_description_list_from_yaml};
+use crate::tools::tools_description::{tools_merged_and_filtered, tool_description_list_from_yaml};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ChatToolCall, ChatUsage, SamplingParameters, PostprocessSettings};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
@@ -274,7 +274,7 @@ pub async fn subchat_single(
     let gcx = ccx.lock().await.global_context.clone();
 
     // this ignores customized tools
-    let tools_turned_on_by_cmdline = at_tools_merged_and_filtered(gcx.clone()).await.keys().cloned().collect::<Vec<_>>();
+    let tools_turned_on_by_cmdline = tools_merged_and_filtered(gcx.clone()).await.keys().cloned().collect::<Vec<_>>();
     let tools_turn_on_set: HashSet<String> = tools_subset.iter().cloned().collect();
     let tools_turned_on_by_cmdline_set: HashSet<String> = tools_turned_on_by_cmdline.into_iter().collect();
     let tools_on_intersection: Vec<String> = tools_turn_on_set.intersection(&tools_turned_on_by_cmdline_set).cloned().collect();

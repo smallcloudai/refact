@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage};
 
-use crate::at_tools::tools::Tool;
+use crate::tools::tools_description::Tool;
 use serde_json::Value;
 
 

@@ -1,6 +1,6 @@
 mod att_ast_definition;
-pub mod tools;
-pub mod execute_att;
+pub mod tools_description;
+pub mod tools_execute;
 mod att_search;
 mod att_ast_reference;
 mod att_ast_lookup_symbols;
@@ -10,7 +10,6 @@ mod att_patch;
 mod att_web;
 mod att_tree;
 pub mod att_knowledge;
-pub mod subchat;
 mod att_relevant_files;
 mod att_cat;
 mod att_locate;

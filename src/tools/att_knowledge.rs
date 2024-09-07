@@ -7,7 +7,7 @@ use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::tools::Tool;
+use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::vecdb::vdb_highlev::memories_search;
 // use crate::vecdb::vdb_highlev::ongoing_find;
