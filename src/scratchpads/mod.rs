@@ -3,15 +3,13 @@ use std::sync::RwLock as StdRwLock;
 use tokio::sync::RwLock as ARwLock;
 use tokenizers::Tokenizer;
 
-pub mod completion_single_file_fim;
+pub mod fill_in_the_middle;
 pub mod chat_generic;
 pub mod chat_llama2;
 pub mod chat_passthrough;
 pub mod chat_utils_deltadelta;
 pub mod chat_utils_limit_history;
-pub mod pp_utils;
-pub mod pp_context_files;
-pub mod pp_plain_text;
+pub mod scratchpad_utils;
 
 use crate::ast::ast_module::AstModule;
 use crate::call_validation::CodeCompletionPost;
@@ -41,9 +39,9 @@ pub async fn create_code_completion_scratchpad(
     let mut result: Box<dyn ScratchpadAbstract>;
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
     if scratchpad_name == "FIM-PSM" {
-        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, &post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
+        result = Box::new(fill_in_the_middle::FillInTheMiddleScratchpad::new(tokenizer_arc, &post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
     } else if scratchpad_name == "FIM-SPM" {
-        result = Box::new(completion_single_file_fim::SingleFileFIM::new(tokenizer_arc, &post, "SPM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
+        result = Box::new(fill_in_the_middle::FillInTheMiddleScratchpad::new(tokenizer_arc, &post, "SPM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }

@@ -8,44 +8,52 @@ use tracing_appender;
 use backtrace;
 
 use crate::background_tasks::start_background_tasks;
-use crate::cmd_commands::exec_command_if_exists;
 use crate::lsp::spawn_lsp_task;
 use crate::telemetry::{basic_transmit, snippets_transmit};
 
+
+// mods roughly sorted by dependency ↓
+
 mod version;
-mod global_context;
-mod caps;
-mod call_validation;
-mod scratchpads;
-mod scratchpad_abstract;
-mod forward_to_hf_endpoint;
-mod forward_to_openai_endpoint;
-mod cached_tokenizers;
-mod restream;
 mod custom_error;
-mod completion_cache;
+mod nicer_logs;
+mod caps;
 mod telemetry;
-mod lsp;
-mod http;
+mod global_context;
 mod background_tasks;
-mod known_models;
-mod dashboard;
+mod toolbox; // XXX: rename to configs or something
+mod single_shot_commands;
+
+mod file_filter;
 mod files_in_workspace;
 mod files_in_jsonl;
 mod files_correction;
-mod file_filter;
 mod vecdb;
-mod fetch_embedding;
+mod ast;
+mod subchat;
+mod knowledge;
 mod at_commands;
 mod tools;
-mod subchat;
-mod nicer_logs;
-mod toolbox;
-mod ast;
 mod diffs;
-mod knowledge;
+mod postprocessing;
+mod completion_cache;
+mod cached_tokenizers;
+mod known_models;
+mod scratchpad_abstract;
+mod scratchpads;
+
+mod fetch_embedding;
+mod forward_to_hf_endpoint;
+mod forward_to_openai_endpoint;
+mod restream;
+
+mod call_validation;
+mod dashboard;
+mod lsp;
+mod http;
+
 mod integrations;
-mod cmd_commands;
+
 
 #[tokio::main]
 async fn main() {
@@ -53,7 +61,7 @@ async fn main() {
     rayon::ThreadPoolBuilder::new().num_threads(cpu_num / 2).build_global().unwrap();
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
     let cache_dir = home_dir.join(".cache/refact");
-    exec_command_if_exists(&cache_dir);
+    crate::single_shot_commands::exec_command_if_exists(&cache_dir);
     let (gcx, ask_shutdown_receiver, shutdown_flag, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
     let (logs_writer, _guard) = if cmdline.logs_stderr {
         tracing_appender::non_blocking(std::io::stderr())

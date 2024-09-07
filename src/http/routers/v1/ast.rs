@@ -12,8 +12,8 @@ use crate::ast::ast_index::RequestSymbolType;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 use crate::global_context::SharedGlobalContext;
-use crate::scratchpads::pp_context_files::pp_color_lines;
-use crate::scratchpads::pp_utils::{context_msgs_from_paths, pp_ast_markup_files};
+use crate::postprocessing::pp_context_files::pp_color_lines;
+use crate::postprocessing::pp_utils::{context_msgs_from_paths, pp_ast_markup_files};
 use crate::call_validation::PostprocessSettings;
 
 

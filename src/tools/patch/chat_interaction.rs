@@ -14,7 +14,7 @@ use crate::tools::patch::ast_interaction::get_signatures_by_imports_traversal;
 use crate::subchat::subchat_single;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatToolCall, ChatToolFunction, ChatUsage, ContextFile};
-use crate::scratchpads::pp_utils::count_tokens;
+use crate::scratchpads::scratchpad_utils::count_tokens;
 
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -23,7 +23,7 @@ use crate::completion_cache;
 use crate::files_in_workspace::Document;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::scratchpads::pp_context_files::postprocess_context_files;
+use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::telemetry::snippets_collection;
 use crate::telemetry::telemetry_structs;
 
@@ -31,7 +31,7 @@ use crate::telemetry::telemetry_structs;
 const DEBUG: bool = false;
 
 
-pub struct SingleFileFIM {
+pub struct FillInTheMiddleScratchpad {
     pub t: HasTokenizerAndEot,
     pub post: CodeCompletionPost,
     pub order: String,
@@ -45,7 +45,7 @@ pub struct SingleFileFIM {
     pub global_context: Arc<ARwLock<GlobalContext>>,
 }
 
-impl SingleFileFIM {
+impl FillInTheMiddleScratchpad {
     pub fn new(
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: &CodeCompletionPost,
@@ -57,7 +57,7 @@ impl SingleFileFIM {
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
         let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
-        SingleFileFIM {
+        FillInTheMiddleScratchpad {
             t: HasTokenizerAndEot::new(tokenizer),
             post: post.clone(),
             order,
@@ -128,7 +128,7 @@ fn add_context_to_prompt(
 }
 
 #[async_trait]
-impl ScratchpadAbstract for SingleFileFIM {
+impl ScratchpadAbstract for FillInTheMiddleScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,

@@ -16,7 +16,7 @@ use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
-use crate::scratchpads::pp_utils::HasRagResults;
+use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::toolbox::toolbox_config::system_prompt_add_workspace_info;
 
 

@@ -13,8 +13,8 @@ use crate::global_context::GlobalContext;
 use crate::ast::structs::FileASTMarkup;
 use crate::files_correction::{canonical_path, correct_to_nearest_filename};
 use crate::nicer_logs::{first_n_chars, last_n_chars};
-use crate::scratchpads::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, count_tokens, downgrade_lines_if_subsymbol, pp_ast_markup_files};
-
+use crate::postprocessing::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, downgrade_lines_if_subsymbol, pp_ast_markup_files};
+use crate::scratchpads::scratchpad_utils::count_tokens;
 
 pub const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
 pub const DEBUG: usize = 0;  // 0 nothing, 1 summary "N lines in K files => X tokens", 2 everything

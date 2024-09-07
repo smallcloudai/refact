@@ -3,7 +3,7 @@ use std::sync::RwLock;
 use tokenizers::Tokenizer;
 
 use crate::call_validation::ChatMessage;
-use crate::scratchpads::pp_utils::count_tokens;
+use crate::scratchpads::scratchpad_utils::count_tokens;
 
 
 pub async fn postprocess_plain_text(
