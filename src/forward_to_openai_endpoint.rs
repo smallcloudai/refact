@@ -8,7 +8,7 @@ use reqwest_eventsource::EventSource;
 use serde::{Serialize, Deserialize};
 use serde_json::json;
 use tokio::sync::Mutex as AMutex;
-use tracing::{info, warn};
+use tracing::info;
 
 use std::fs::File;
 use std::io::Write;
