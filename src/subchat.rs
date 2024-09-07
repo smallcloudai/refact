@@ -12,7 +12,8 @@ use crate::call_validation::{ChatMessage, ChatPost, ChatToolCall, ChatUsage, Sam
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
 use crate::http::routers::v1::chat::lookup_chat_scratchpad;
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::toolbox::toolbox_config::load_customization;
+use crate::yaml_configs::customization_loader::load_customization;
+
 
 const TEMPERATURE: f32 = 0.2;
 const MAX_NEW_TOKENS: usize = 4096;

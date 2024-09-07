@@ -123,22 +123,6 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         result.insert(key, value.clone());
     }
 
-    // Don't need custom at-commands?
-    // let tconfig_maybe = crate::toolbox::toolbox_config::load_customization(gcx.clone()).await;
-    // if tconfig_maybe.is_err() {
-    //     error!("Error loading toolbox config: {:?}", tconfig_maybe.err().unwrap());
-    // } else {
-    //     for cust in tconfig_maybe.unwrap().tools {
-    //         at_commands_dict.insert(
-    //             format!("@{}", cust.name.clone()),
-    //             Arc::new(AMutex::new(Box::new(AtExecuteCustCommand::new(
-    //                 cust.command.clone(),
-    //                 cust.timeout.clone(),
-    //                 cust.postprocess.clone(),
-    //             )) as Box<dyn AtCommand + Send>))
-    //         );
-    //     }
-    // }
     result
 }
 

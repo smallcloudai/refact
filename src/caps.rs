@@ -141,7 +141,7 @@ pub struct CodeAssistantCaps {
     pub code_chat_default_system_prompt: String,
 
     #[serde(default)]
-    pub customization: String,  // on self-hosting server, allows to customize toolbox & friends for all engineers
+    pub customization: String,  // on self-hosting server, allows to customize yaml_configs & friends for all engineers
 }
 
 fn load_caps_from_buf(

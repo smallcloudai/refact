@@ -17,7 +17,7 @@ use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
-use crate::toolbox::toolbox_config::system_prompt_add_workspace_info;
+use crate::yaml_configs::customization_loader::{get_default_system_prompt, system_prompt_add_workspace_info};
 
 
 const DEBUG: bool = true;
@@ -91,7 +91,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         exploration_tools: bool,
         agentic_tools: bool,
     ) -> Result<(), String> {
-        self.default_system_message = crate::toolbox::toolbox_config::get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await;
+        self.default_system_message = get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await;
         Ok(())
     }
 

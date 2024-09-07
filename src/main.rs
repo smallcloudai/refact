@@ -10,6 +10,7 @@ use backtrace;
 use crate::background_tasks::start_background_tasks;
 use crate::lsp::spawn_lsp_task;
 use crate::telemetry::{basic_transmit, snippets_transmit};
+use crate::yaml_configs::create_configs::try_create_all_yaml_configs;
 
 
 // mods roughly sorted by dependency ↓
@@ -21,7 +22,7 @@ mod caps;
 mod telemetry;
 mod global_context;
 mod background_tasks;
-mod toolbox; // XXX: rename to configs or something
+mod yaml_configs;
 mod single_shot_commands;
 
 mod file_filter;
@@ -61,7 +62,6 @@ async fn main() {
     rayon::ThreadPoolBuilder::new().num_threads(cpu_num / 2).build_global().unwrap();
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
     let cache_dir = home_dir.join(".cache/refact");
-    crate::single_shot_commands::exec_command_if_exists(&cache_dir);
     let (gcx, ask_shutdown_receiver, shutdown_flag, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
     let (logs_writer, _guard) = if cmdline.logs_stderr {
         tracing_appender::non_blocking(std::io::stderr())
@@ -98,6 +98,10 @@ async fn main() {
             info!("cmdline[{}]: {:?}", arg_n, if arg_n != api_key_at { arg_v.as_str() } else { "***" } );
             if arg_v == "--api-key" { api_key_at = arg_n + 1; }
         }
+    }
+    try_create_all_yaml_configs(gcx.clone()).await;
+    if cmdline.only_create_yaml_configs {
+        std::process::exit(0);
     }
     files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;
     files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, false).await;

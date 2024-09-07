@@ -6,11 +6,11 @@ use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
-
+use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
-use crate::toolbox::toolbox_config::ToolCustDict;
+use crate::yaml_configs::create_configs::read_integrations_yaml;
 
 
 #[async_trait]
@@ -39,17 +39,18 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         (gcx_locked.ast_module.is_some(), vecdb.is_some(), gcx_locked.cmdline.experimental)
     };
 
-    let integrations_yaml = crate::integrations::load_integrations(gcx).await;
+    let integrations_yaml = read_integrations_yaml(gcx).await.unwrap_or_else(|e| {
+        warn!("{}", e);
+        String::new()
+    });
+
     let integrations_value = if integrations_yaml.is_empty() {
         serde_yaml::Value::default()
     } else {
-        match serde_yaml::from_str(integrations_yaml.as_str()) {
-            Ok(value) => value,
-            Err(e) => {
-                tracing::error!("Failed to parse integrations.yaml: {}", e);
-                serde_yaml::Value::default()
-            }
-        }
+        serde_yaml::from_str(integrations_yaml.as_str()).unwrap_or_else(|e| {
+            warn!("Failed to parse integrations.yaml: {}", e);
+            serde_yaml::Value::default()
+        })
     };
 
     let mut tools_all = IndexMap::from([
@@ -85,21 +86,6 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         }
         filtered_tools.insert(tool_name, tool_arc.clone());
     }
-
-    // let tconfig_maybe = crate::toolbox::toolbox_config::load_customization(gcx.clone()).await;
-    // if tconfig_maybe.is_err() {
-    //     tracing::error!("Error loading toolbox config: {:?}", tconfig_maybe.err().unwrap());
-    // } else {
-    //     for cust in tconfig_maybe.unwrap().tools {
-    //         result.insert(
-    //             cust.name.clone(),
-    //             Arc::new(AMutex::new(Box::new(crate::tools::att_execute_cmd::ToolExecuteCommand {
-    //                 command: cust.command,
-    //                 timeout: cust.timeout,
-    //                 output_postprocess: cust.output_postprocess,
-    //             }) as Box<dyn Tool + Send>)));
-    //     }
-    // }
 
     filtered_tools
 }
@@ -376,14 +362,4 @@ pub fn tool_description_list_from_yaml(
         .filter(|x| turned_on.contains(&x.name) && (allow_experimental || !x.experimental))
         .cloned()
         .collect::<Vec<_>>())
-}
-
-pub async fn tools_from_customization(gcx: Arc<ARwLock<GlobalContext>>, turned_on: &Vec<String>) -> Vec<ToolCustDict> {
-    return match crate::toolbox::toolbox_config::load_customization(gcx.clone(), false).await {
-        Ok(tconfig) => tconfig.tools.iter().filter(|x|turned_on.contains(&x.name)).cloned().collect::<Vec<_>>(),
-        Err(e) => {
-            tracing::error!("Error loading toolbox config: {:?}", e);
-            vec![]
-        }
-    }
 }

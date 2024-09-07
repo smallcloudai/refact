@@ -11,7 +11,7 @@ use crate::call_validation::{ChatMessage, ContextEnum, SubchatParameters};
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
-use crate::toolbox::toolbox_config::load_customization;
+use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::get_model_record;
 
 
