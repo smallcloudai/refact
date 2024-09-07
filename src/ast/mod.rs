@@ -16,6 +16,9 @@ mod imports_resolver;
 pub mod chunk_utils;
 pub mod linters;
 
+pub mod alt_iface;
+pub mod alt_minimalistic;
+
 
 pub fn count_tokens(
     tokenizer: Arc<StdRwLock<Tokenizer>>,
