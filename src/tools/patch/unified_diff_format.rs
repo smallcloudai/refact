@@ -814,7 +814,7 @@ mod tests {
 
     use itertools::Itertools;
 
-    use crate::tools::att_patch::unified_diff_format::UnifiedDiffFormat;
+    use crate::tools::patch::unified_diff_format::UnifiedDiffFormat;
     use crate::call_validation::DiffChunk;
     use crate::diffs::{apply_diff_chunks_to_text, unwrap_diff_apply_outputs};
 
@@ -1464,7 +1464,7 @@ class Frog:
         # extra row 2
         # extra row 3
 "#;
-        let mut gt_changed_text = String::from(gt_changed_text);
+        let gt_changed_text = String::from(gt_changed_text);
         #[cfg(target_os = "windows")]
         {
             gt_changed_text = gt_changed_text.replace("\n", "\r\n");
