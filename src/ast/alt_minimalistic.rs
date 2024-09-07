@@ -1,4 +1,5 @@
 use std::sync::{Arc, Weak};
+use std::fmt;
 // use std::cell::RefCell;
 // use std::collections::HashSet;
 // use std::rc::Rc;
@@ -10,16 +11,7 @@ use crate::ast::treesitter::structs::{RangeDef, SymbolType};
 use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 
 
-pub struct AltStatus {
-    pub astate_notify: Arc<ANotify>,
-    pub astate: String,
-    pub files_unparsed: usize,
-    pub files_total: usize,
-    pub ast_index_files_total: usize,
-    pub ast_index_symbols_total: usize,
-}
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AltLink {
     // The idea behind these links:
     // * It's an empty guid when it's unresolved yet
@@ -29,7 +21,7 @@ pub struct AltLink {
     pub target_for_guesswork: Vec<String>
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AltDefinition {
     pub guid: Uuid,
     pub parent_guid: Uuid,
@@ -55,10 +47,48 @@ impl AltDefinition {
     }
 }
 
+impl fmt::Debug for AltDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let usages_paths: Vec<String> = self.usages.iter()
+            .map(|link| link.target_for_guesswork.join("::"))
+            .collect();
+        let derived_from_paths: Vec<String> = self.derived_from.iter()
+            .map(|link| link.target_for_guesswork.join("::"))
+            .collect();
+        write!(
+            f,
+            "AltDefinition {{ path: {:?}, usages: {:?}, derived_from: {:?} }}",
+            self.path_for_guesswork,
+            usages_paths,
+            derived_from_paths
+        )
+    }
+}
+impl fmt::Debug for AltLink {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "AltLink {{ path: {:?}{} }}",
+            self.target_for_guesswork,
+            if self.guid != Uuid::nil() { ", resolved" } else { "" }
+        )
+    }
+}
+
+
 // pub type AstSymbolInstanceRc = Rc<RefCell<Box<dyn AstSymbolInstance>>>;
 
 pub struct AltIndex {
     pub sleddb: sled::Db,
+}
+
+pub struct AltStatus {
+    pub astate_notify: Arc<ANotify>,
+    pub astate: String,
+    pub files_unparsed: usize,
+    pub files_total: usize,
+    pub ast_index_files_total: usize,
+    pub ast_index_symbols_total: usize,
 }
 
 pub struct AltState {
