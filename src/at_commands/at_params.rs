@@ -1,4 +1,4 @@
-use crate::ast::ast_index::RequestSymbolType;
+use crate::ast::ast_mem_db::RequestSymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
 use async_trait::async_trait;
 use itertools::Itertools;

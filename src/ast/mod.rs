@@ -4,8 +4,8 @@ use std::sync::RwLock as StdRwLock;
 use tokenizers::Tokenizer;
 
 pub mod treesitter;
-pub mod ast_index;
-pub mod ast_index_service;
+pub mod ast_mem_db;
+pub mod ast_indexing_thread;
 pub mod ast_module;
 pub mod ast_file_markup;
 pub mod structs;

@@ -14,8 +14,8 @@ use tracing::info;
 use tree_sitter::Point;
 use uuid::Uuid;
 
-use crate::ast::ast_index::{AstIndex, RequestSymbolType};
-use crate::ast::ast_index_service::{AstEvent, AstEventType, AstIndexService};
+use crate::ast::ast_mem_db::{AstIndex, RequestSymbolType};
+use crate::ast::ast_indexing_thread::{AstEvent, AstEventType, AstIndexService};
 use crate::ast::structs::{AstCursorSearchResult, AstDeclarationSearchResult, AstQuerySearchResult, AstReferencesSearchResult, FileASTMarkup, FileReferencesResult, SymbolsSearchResultStruct};
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceRc;
 use crate::ast::treesitter::structs::SymbolType;

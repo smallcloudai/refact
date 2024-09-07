@@ -10,7 +10,7 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::info;
 
-use crate::ast::ast_index::AstIndex;
+use crate::ast::ast_mem_db::AstIndex;
 use crate::ast::ast_module::AstIndexStatus;
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::files_in_workspace::Document;

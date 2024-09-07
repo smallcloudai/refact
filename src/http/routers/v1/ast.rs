@@ -8,7 +8,7 @@ use url::Url;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::ast::ast_index::RequestSymbolType;
+use crate::ast::ast_mem_db::RequestSymbolType;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 use crate::global_context::SharedGlobalContext;
