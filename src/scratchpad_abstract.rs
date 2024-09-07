@@ -1,10 +1,13 @@
 use serde_json;
 use std::sync::Arc;
 use std::sync::RwLock;
+use tokio::sync::Mutex as AMutex;
 use tokenizers::Tokenizer;
-use crate::call_validation::SamplingParameters;
 use async_trait::async_trait;
 use serde_json::Value;
+
+use crate::at_commands::at_commands::AtCommandsContext;
+use crate::call_validation::SamplingParameters;
 
 
 #[async_trait]
@@ -13,11 +16,12 @@ pub trait ScratchpadAbstract: Send {
         &mut self,
         patch: &Value,
         exploration_tools: bool,
+        agentic_tools: bool,
     ) -> Result<(), String>;
 
     async fn prompt(
         &mut self,
-        context_size: usize,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String>;
 

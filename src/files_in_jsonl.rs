@@ -27,7 +27,7 @@ pub async fn enqueue_all_docs_from_jsonl(
     }
     let mut docs: Vec<Document> = vec![];
     for d in paths.iter() {
-        docs.push(Document { path: d.clone(), text: None });
+        docs.push(Document { doc_path: d.clone(), doc_text: None });
     }
     let (vec_db_module, ast_module) = {
         let cx = gcx.write().await;

@@ -75,7 +75,7 @@ fn eq_symbols(symbol: &AstSymbolInstanceArc,
     let symbol = symbol.read();
     let _f = symbol.fields();
     let _ref_f = ref_symbol.fields();
-    
+
     let sym_type = symbol.symbol_type() == ref_symbol.symbol_type();
     let name = if ref_symbol.name().contains(ref_symbol.guid().to_string().as_str()) {
         symbol.name().contains(symbol.guid().to_string().as_str())
@@ -89,11 +89,11 @@ fn eq_symbols(symbol: &AstSymbolInstanceArc,
     let is_declaration = symbol.is_declaration() == ref_symbol.is_declaration();
     let namespace = symbol.namespace() == ref_symbol.namespace();
     let full_range = symbol.full_range() == ref_symbol.full_range();
-    
+
     let declaration_range = symbol.declaration_range() == ref_symbol.declaration_range();
     let definition_range = symbol.definition_range() == ref_symbol.definition_range();
     let is_error = symbol.is_error() == ref_symbol.is_error();
-    
+
     sym_type && name && lang && file_path && is_type && is_declaration &&
         namespace && full_range && declaration_range && definition_range && is_error
 }
@@ -215,8 +215,8 @@ pub(crate) fn base_skeletonizer_test(lang: &LanguageId,
     let symbols = parser.parse(code, &file);
     let symbols_struct = symbols.iter().map(|s| s.read().symbol_info_struct()).collect();
     let doc = Document {
-        path: file.clone(),
-        text: Some(Rope::from_str(code)),
+        doc_path: file.clone(),
+        doc_text: Some(Rope::from_str(code)),
     };
     let guid_to_children: HashMap<Uuid, Vec<Uuid>> = symbols.iter().map(|s| (s.read().guid().clone(), s.read().childs_guid().clone())).collect();
     let ast_markup: FileASTMarkup = crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
@@ -251,8 +251,8 @@ pub(crate) fn base_declaration_formatter_test(lang: &LanguageId,
     let symbols = parser.parse(code, &file);
     let symbols_struct = symbols.iter().map(|s| s.read().symbol_info_struct()).collect();
     let doc = Document {
-        path: file.clone(),
-        text: Some(Rope::from_str(code)),
+        doc_path: file.clone(),
+        doc_text: Some(Rope::from_str(code)),
     };
     let guid_to_children: HashMap<Uuid, Vec<Uuid>> = symbols.iter().map(|s| (s.read().guid().clone(), s.read().childs_guid().clone())).collect();
     let ast_markup: FileASTMarkup = crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols_struct).unwrap();

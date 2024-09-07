@@ -1,6 +1,14 @@
-import aiohttp, os, termcolor, copy, json
-from typing import Optional, List, Any, Tuple, Dict, Literal, Set
-from pydantic import BaseModel
+from __future__ import annotations
+import uuid
+import tabulate
+import textwrap
+import aiohttp, os, termcolor, copy, json, time
+from typing import Optional, List, Any, Tuple, DefaultDict, Dict, Literal, Set
+import collections
+
+from pydantic import BaseModel, Field, ConfigDict
+from rich.console import Console
+from rich.markdown import Markdown
 
 
 # Our version of chat protocol is very similar to OpenAI API, with these changes:
@@ -22,12 +30,20 @@ class ToolCallDict(BaseModel):
     type: str
 
 
+class Usage(BaseModel):
+    prompt_tokens: int
+    completion_tokens: int
+
+
 class Message(BaseModel):
-    role: Literal["system", "assistant", "user", "tool", "context_file", "context_memory"]
+    role: Literal["system", "assistant", "user", "tool", "diff", "plain_text", "context_file", "context_memory"]
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCallDict]] = None
     finish_reason: str = ""
     tool_call_id: str = ""
+    usage: Optional[Usage] = None
+    subchats: DefaultDict[str, List[Message]] = None
+    model_config = ConfigDict(exclude_none=True)
 
 
 def messages_to_dicts(
@@ -37,13 +53,13 @@ def messages_to_dicts(
     tools: Optional[List[Dict[str, Any]]],
     temperature: float,
     model_name: str,
-):
+) -> Tuple[List[Dict[str, Any]], str]:
     listofdict = []
-    if verbose:
-        tools_namesonly = [x["function"]["name"] for x in tools] if tools else []
-        print(termcolor.colored("------ call chat %s T=%0.2f tools=%s ------" % (model_name, temperature, tools_namesonly), "red"))
+    log = ""
+    tools_namesonly = [x["function"]["name"] for x in tools] if tools else []
+    log += termcolor.colored("------ call chat %s T=%0.2f tools=%s ------\n" % (model_name, temperature, tools_namesonly), "red")
     for x in messages:
-        if x.role in ["system", "user", "assistant", "tool", "context_file", "context_memory"]:
+        if x.role in ["system", "user", "assistant", "tool", "plain_text", "context_file", "context_memory", "diff"]:
             listofdict.append({
                 "role": x.role,
                 "content": x.content,
@@ -52,20 +68,21 @@ def messages_to_dicts(
             })
         else:
             assert 0, x.role
-        if not verbose:
-            continue
         if x.role == "system":
             continue
         if x.role == "tool" and x.content is not None:
-            print(termcolor.colored(x.role, "yellow"), "\n%s" % x.content.strip())
+            log += termcolor.colored(x.role, "yellow") + " " + "\n%s" % termcolor.colored(x.content.strip(), "magenta") + "\n"
             continue
         tool_calls = ""
         if x.tool_calls is not None:
             tool_calls += "call"
             for tcall in x.tool_calls:
                 tool_calls += " %s(%s)" % (tcall.function.name, tcall.function.arguments)
-        print(termcolor.colored(x.role, "yellow"), str(x.content).replace("\n", "\\n"), termcolor.colored(tool_calls, "red"))
-    return listofdict
+        # log += termcolor.colored(x.role, "yellow") + " " + str(x.content).replace("\n", "\\n") + " " + termcolor.colored(tool_calls, "red")
+        log += termcolor.colored(x.role, "yellow") + " " + str(x.content) + " " + termcolor.colored(tool_calls, "red") + "\n"
+    if verbose:
+        print(log)
+    return listofdict, log
 
 
 def join_messages_and_choices(
@@ -108,8 +125,9 @@ async def tools_fetch_and_filter(base_url: str, tools_turn_on: Optional[Set[str]
     async def get_tools():
         async with aiohttp.ClientSession() as session:
             async with session.get(base_url + "/tools", timeout=1) as response:
-                assert response.status == 200
-                return await response.json()
+                text = await response.text()
+                assert response.status == 200, f"unable to fetch tools: {response.status}, Text:\n{text}"
+                return json.loads(text)
     tools = None
     tools = await get_tools()
     if tools_turn_on is not None:
@@ -125,7 +143,10 @@ class ChoiceDeltaCollector:
     def add_deltas(self, j_choices: List[Dict[str, Any]]):
         assert len(j_choices) == self.n_answers
         for j_choice in j_choices:
-            choice: Message = self.choices[j_choice["index"]]
+            j_index = j_choice["index"]
+            if j_index < 0 or j_index >= self.n_answers:
+                raise ValueError(f"add_deltas(): invalid choice index {j_index} for choices")
+            choice: Message = self.choices[j_index]
             delta = j_choice["delta"]
             if (j_tool_calls := delta.get("tool_calls", None)) is not None:
                 for plus_tool in j_tool_calls:
@@ -173,12 +194,14 @@ async def ask_using_http(
     verbose: bool = True,
     max_tokens: int = 1000,
     only_deterministic_messages: bool = False,
+    postprocess_parameters: Optional[Dict[str, Any]] = None,
 ) -> List[List[Message]]:
     deterministic: List[Message] = []
+    subchats: DefaultDict[str, List[Message]] = collections.defaultdict(list)
     post_me = {
         "model": model_name,
         "n": n_answers,
-        "messages": messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name),
+        "messages": messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name)[0],
         "temperature": temperature,
         "top_p": 0.95,
         "stop": stop,
@@ -188,12 +211,15 @@ async def ask_using_http(
         "max_tokens": max_tokens,
         "only_deterministic_messages": only_deterministic_messages,
     }
+    if postprocess_parameters is not None:
+        post_me["postprocess_parameters"] = postprocess_parameters
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:
         async with session.post(base_url + "/chat", json=post_me) as response:
-            assert response.status == 200
             if not stream:
-                j = await response.json()
+                text = await response.text()
+                assert response.status == 200, f"/chat call failed: {response.status}\ntext: {text}"
+                j = json.loads(text)
                 deterministic = [Message(**x) for x in j.get("deterministic_messages", [])]
                 j_choices = j["choices"]
                 for i, ch in enumerate(j_choices):
@@ -204,29 +230,59 @@ async def ask_using_http(
                         content=ch["message"]["content"],
                         tool_calls=[ToolCallDict(**x) for x in tool_calls] if tool_calls is not None else None,
                         finish_reason=ch["finish_reason"],
+                        usage=j.get("usage") if i == 0 else None,  # NOTE: backend should send usage for each choice
                     )
                     choices[index] = msg
             else:
                 choice_collector = ChoiceDeltaCollector(n_answers)
-                async for line in response.content:
-                    line_str = line.decode('utf-8').strip()
+                buffer = b""
+                async for data, end_of_http_chunk in response.content.iter_chunks():
+                    buffer += data
+                    if not end_of_http_chunk:
+                        continue
+                    line_str = buffer.decode('utf-8').strip()
+                    buffer = b""
                     if not line_str:
                         continue
                     if not line_str.startswith("data: "):
                         print("unrecognized streaming data (1):", line_str)
                         continue
                     line_str = line_str[6:]
-                    # print(">>>", line_str)
                     if line_str == "[DONE]":
                         break
                     j = json.loads(line_str)
+                    # print(">>>", line_str)
                     if "choices" in j:
                         choice_collector.add_deltas(j["choices"])
                     elif "role" in j:
                         deterministic.append(Message(**j))
+                    elif "subchat_id" in j:
+                        map_key = j["tool_call_id"] + "__" + j["subchat_id"]
+                        subchats[map_key].append(Message(**j["add_message"]))
                     else:
                         print("unrecognized streaming data (2):", j)
-                choices = [(None if not x.content else x) for x in choice_collector.choices]
+                end_str = buffer.decode('utf-8').strip()
+                if end_str.startswith("{"):  # server whats to tell us something!
+                    something_from_server = json.loads(end_str)
+                    if "detail" in something_from_server:
+                        raise RuntimeError(something_from_server["detail"])
+                    print("SERVER SAYS:", end_str)
+                for x in choice_collector.choices:
+                    if x.content is not None and len(x.content) == 0:
+                        x.content = None
+                choices = [(x if x.content is not None or x.tool_calls is not None else None) for x in choice_collector.choices]
+                # when streaming, subchats are streamed too
+                has_home = set()
+                for d in deterministic:
+                    if d.tool_call_id is None:
+                        continue
+                    d.subchats = collections.defaultdict(list)
+                    for k, msglist in subchats.items():
+                        if k.startswith(d.tool_call_id + "__"):
+                            subchat_id = k[len(d.tool_call_id + "__"):]
+                            d.subchats[subchat_id] = msglist
+                            has_home.add(k)
+                assert set(has_home) == set(subchats.keys()), f"Whoops, not all subchats {subchats.keys()} are attached to a tool result."
     return join_messages_and_choices(messages, deterministic, choices, verbose)
 
 
@@ -252,7 +308,7 @@ async def ask_using_openai_client(
     chat_completion = await aclient.chat.completions.create(
         model=model_name,
         n=n_answers,
-        messages=messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name),
+        messages=messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name)[0],
         temperature=temperature,
         top_p=0.95,
         stop=stop,
@@ -275,3 +331,198 @@ async def ask_using_openai_client(
         choices[index] = msg
     choices_not_none: List[Message] = [msg for msg in choices if msg is not None]
     return join_messages_and_choices(messages, deterministic, choices_not_none, verbose)
+
+
+async def diff_apply(
+    base_url: str,
+    chunks: List[Dict[str, Any]],
+    apply: List[bool],
+) -> List[List[Message]]:
+    post_me = {
+        "apply": apply,
+        "chunks": chunks,
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(base_url + "/diff-apply", json=post_me) as response:
+            if response.status != 200:
+                raise Exception(f"unexpected response status {response.status}, response: {await response.text()}")
+            return await response.json(content_type=None)
+
+
+async def mem_add(base_url: str, mem_type: str, goal: str, project: str, payload: str) -> Dict[str, Any]:
+    url = f"{base_url}/mem-add"
+    data = {
+        "mem_type": mem_type,
+        "goal": goal,
+        "project": project,
+        "payload": payload
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data) as response:
+            return await response.json()
+
+
+async def mem_block_until_vectorized(base_url: str) -> Tuple[Dict[str, Any], float]:
+    url = f"{base_url}/mem-block-until-vectorized"
+    t0 = time.time()
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return (await response.json(), time.time() - t0)
+
+
+async def mem_update_used(base_url: str, memid: str, correct: float, relevant: float) -> Dict[str, Any]:
+    url = f"{base_url}/mem-update-used"
+    data = {
+        "memid": memid,
+        "correct": correct,
+        "relevant": relevant
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data) as response:
+            return await response.json()
+
+
+async def mem_erase(base_url: str, memid: str) -> Dict[str, Any]:
+    url = f"{base_url}/mem-erase"
+    data = {
+        "memid": memid
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data) as response:
+            return await response.json()
+
+
+async def mem_query(base_url: str, goal: str, project: str, top_n: Optional[int] = 5) -> Tuple[int, Dict[str, Any]]:
+    url = f"{base_url}/mem-query"
+    data = {
+        "goal": goal,
+        "project": project,
+        "top_n": top_n
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data) as response:
+            return response.status, await response.json()
+
+
+async def ongoing_update(base_url: str, goal: str, progress: Dict[str, Any], actseq: Dict[str, Any], output: Dict[str, Any]):
+    url = f"{base_url}/ongoing-update"
+    data = {
+        "goal": goal,
+        "ongoing_progress": progress,
+        "ongoing_action_new_sequence": actseq,
+        "ongoing_output": output,
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data) as response:
+            return await response.json()
+
+
+def gen_function_call_id():
+    return f"call_{uuid.uuid4()}".replace("-", "")
+
+
+def print_block(
+    name: str,
+    n: int,
+    width: int = 90,
+    also_print_to_console: bool = True,
+) -> str:
+    block_text = f"{name.upper()} {n}"
+    left_padding = " " * ((width - len(block_text)) // 2)
+    right_padding = " " * (width - len(block_text) - len(left_padding))
+    block_text = left_padding + block_text + right_padding
+
+    tabulate.PRESERVE_WHITESPACE = True
+    message = f"\n\n{tabulate.tabulate([[block_text]], tablefmt='double_grid')}\n\n"
+    tabulate.PRESERVE_WHITESPACE = False
+
+    if also_print_to_console:
+        console = Console()
+        console.print(message)
+
+    return message
+
+
+def print_messages(
+    messages: List[Message],
+    also_print_to_console: bool = True,
+) -> List[str]:
+    def con(x):
+        console = Console()
+        if also_print_to_console:
+            console.print(x)
+
+    def _is_tool_call(m: Message) -> bool:
+        return m.tool_calls is not None and len(m.tool_calls) > 0
+
+    def _wrap_color(s: str, color: str = "red") -> str:
+        return f"[bold {color}]{s}[/bold {color}]"
+
+    results = []
+    role_to_header = {
+        "system": "SYSTEM:",
+        "assistant": "ASSISTANT:",
+        "user": "USER:",
+        "tool": "TOOL ANSWER id={uid}:",
+        "context_file": "CONTEXT FILE:",
+        "diff": "DIFF:",
+    }
+    for m in messages:
+        message_str = []
+
+        header = role_to_header.get(m.role, m.role.upper())
+        if m.role == "tool":
+            header = header.format(uid=m.tool_call_id[:20])
+        message_str.append(header)
+        con(_wrap_color(header))
+
+        if m.role == "context_file":
+            message = "\n".join([
+                f"{file['file_name']}:{file['line1']}-{file['line2']}, len={len(file['file_content'])}"
+                for file in json.loads(m.content)
+            ])
+            message_str.append(message)
+            message_str.append("")
+            con(message)
+            con("")
+
+        elif m.role == "diff":
+            for chunk in json.loads(m.content):
+                message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
+                message_str.append(message)
+                con(message)
+                if len(chunk["lines_add"]) > 0:
+                    message = "\n".join([f"+{line}" for line in chunk['lines_add'].splitlines()])
+                    message_str.append(message)
+                    con(_wrap_color(message, "green"))
+                if len(chunk["lines_remove"]) > 0:
+                    message = "\n".join([f"-{line}" for line in chunk['lines_remove'].splitlines()])
+                    message_str.append(message)
+                    con(_wrap_color(message, "red"))
+
+        elif m.role in role_to_header and m.content:
+            if m.subchats:
+                for subchat_id, subchat_msgs in m.subchats.items():
+                    subchats_strs = print_messages(subchat_msgs)
+                    subchats_str = "\n".join(subchats_strs)
+                    subchats_str = "\n".join([f" - {subchat_id} -   {line}" for line in subchats_str.splitlines()])
+                    message_str.append(subchats_str)
+            message_str.append(m.content)
+            con(Markdown(m.content))
+
+        if not _is_tool_call(m):
+            results.append("\n".join(message_str))
+            continue
+
+        t = "\n".join([
+            f"{tool_call.function.name}({tool_call.function.arguments}) [id={tool_call.id[:20]}]"
+            for tool_call in m.tool_calls
+        ])
+        message_str.append(t)
+        con(t)
+        message_str.append("")
+        con("")
+
+        results.append("\n".join(message_str))
+
+    return results

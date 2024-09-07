@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
-
 use hyper::StatusCode;
 use structopt::StructOpt;
 use tokenizers::Tokenizer;
@@ -22,7 +21,7 @@ use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::DocumentsState;
 use crate::telemetry::telemetry_structs;
-use crate::vecdb::vecdb::VecDb;
+use crate::vecdb::vdb_highlev::VecDb;
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CommandLine {
@@ -30,7 +29,7 @@ pub struct CommandLine {
     pub ping_message: String,
     #[structopt(long, help="Send logs to stderr, as opposed to ~/.cache/refact/logs, so it's easier to debug.")]
     pub logs_stderr: bool,
-    #[structopt(long, short="u", help="URL to start working. The first step is to fetch refact-caps / coding_assistant_caps.json.")]
+    #[structopt(long, short="u", help="URL to start working. The first step is to fetch capabilities from $URL/refact-caps. You can supply your own caps in a local file, too, for the bring-your-own-key use case.")]
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
@@ -38,9 +37,9 @@ pub struct CommandLine {
     pub http_port: u16,
     #[structopt(long, default_value="", help="End-user client version, such as version of VS Code plugin.")]
     pub enduser_client_version: String,
-    #[structopt(long, short="b", help="Send basic telemetry (counters and errors)")]
+    #[structopt(long, short="b", help="Send basic telemetry (counters and errors).")]
     pub basic_telemetry: bool,
-    #[structopt(long, short="s", help="Send snippet telemetry (code snippets)")]
+    #[structopt(long, short="s", help="Send snippet telemetry (code snippets).")]
     pub snippet_telemetry: bool,
     #[structopt(long, default_value="0", help="Bind 127.0.0.1:<port> and act as an LSP server. This is compatible with having an HTTP server at the same time.")]
     pub lsp_port: u16,
@@ -48,25 +47,32 @@ pub struct CommandLine {
     pub lsp_stdin_stdout: u16,
     #[structopt(long, help="Trust self-signed SSL certificates")]
     pub insecure: bool,
-    #[structopt(long, short="v", help="Verbose logging, lots of output")]
+    #[structopt(long, short="v", help="Makes DEBUG log level visible, instead of the default INFO.")]
     pub verbose: bool,
-    #[structopt(long, help="Use AST. For it to start working, give it a jsonl files list or LSP workspace folders.")]
+    #[structopt(long, help="Use AST, for it to start working, give it a jsonl files list or LSP workspace folders.")]
     pub ast: bool,
-    #[structopt(long, help="Use AST light mode. Could be useful for large projects and weak systems. In this mode we don't parse variables")]
+    #[structopt(long, help="Use AST light mode, could be useful for large projects and little memory. Less information gets stored.")]
     pub ast_light_mode: bool,
     #[structopt(long, default_value="15000", help="Maximum files for AST index, to avoid OOM on large projects.")]
     pub ast_max_files: usize,
     #[structopt(long, help="Use vector database. Give it a jsonl files list or LSP workspace folders, and also caps need to have an embedding model.")]
     pub vecdb: bool,
+    #[structopt(long, help="Delete all memories, start with empty memory.")]
+    pub reset_memory: bool,
     #[structopt(long, default_value="15000", help="Maximum files count for VecDB index, to avoid OOM.")]
     pub vecdb_max_files: usize,
-    #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to vecdb and ast")]
+    #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to VecDB and AST.")]
     pub files_jsonl_path: String,
-    #[structopt(long, default_value="", help="Vecdb storage path")]
-    pub vecdb_forced_path: String,
-    #[structopt(long, short="w", default_value="", help="Workspace folder to find files for vecdb and AST. An LSP or HTTP request can override this later.")]
+    #[structopt(long, default_value="", help="Set VecDB storage path manually.")]
+    pub vecdb_force_path: String,
+    #[structopt(long, short="w", default_value="", help="Workspace folder to find files for VecDB and AST. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
+    #[structopt(long, help="Generate ~/.cache/refact/bring-your-own-key.yaml to manually specify models, endpoints, and keys.")]
+    pub save_byok_file: bool,
+    #[structopt(long, help="Enable experimental features, such as new integrations.")]
+    pub experimental: bool,
 }
+
 impl CommandLine {
     fn create_hash(msg: String) -> String {
         let mut hasher = DefaultHasher::new();
@@ -75,6 +81,31 @@ impl CommandLine {
     }
     pub fn get_prefix(&self) -> String {
         Self::create_hash(format!("{}:{}", self.address_url.clone(), self.api_key.clone()))[..6].to_string()
+    }
+}
+
+pub struct AtCommandsPreviewCache {
+    pub cache: HashMap<String, String>,
+}
+
+impl AtCommandsPreviewCache {
+    pub fn new() -> Self { Self { cache: HashMap::new() } }
+    pub fn get(&self, key: &str) -> Option<String> {
+        let val = self.cache.get(key).cloned();
+        if val.is_some() {
+            info!("AtCommandsPreviewCache: SOME: key={:?}", key);
+        } else {
+            info!("AtCommandsPreviewCache: NONE: key={:?}", key);
+        }
+        val
+    }
+    pub fn insert(&mut self, key: String, value: String) {
+        self.cache.insert(key.clone(), value);
+        info!("AtCommandsPreviewCache: insert: key={:?}. new_len: {:?}", key, self.cache.len());
+    }
+    pub fn clear(&mut self) {
+        self.cache.clear();
+        info!("AtCommandsPreviewCache: clear; new_len: {:?}", self.cache.len());
     }
 }
 
@@ -96,6 +127,7 @@ pub struct GlobalContext {
     pub vec_db_error: String,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
+    pub at_commands_preview_cache: Arc<AMutex<AtCommandsPreviewCache>>,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -113,23 +145,28 @@ pub async fn try_load_caps_quickly_if_not_present(
     {
         // global_context is not locked, but a specialized async mutex is, up until caps are saved
         let _caps_reading_locked = caps_reading_lock.lock().await;
-        let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
-        {
-            let mut cx_locked = global_context.write().await;
-            if cx_locked.caps_last_attempted_ts + max_age < now {
-                cx_locked.caps = None;
-                cx_locked.caps_last_attempted_ts = 0;
-                caps_last_attempted_ts = 0;
-            } else {
-                if let Some(caps_arc) = cx_locked.caps.clone() {
-                    return Ok(caps_arc.clone());
+        let cmdline = CommandLine::from_args();
+
+        let caps_url = cmdline.address_url.clone();
+        if caps_url.to_lowercase() == "refact" || caps_url.starts_with("http") {
+            let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
+            {
+                let mut cx_locked = global_context.write().await;
+                if cx_locked.caps_last_attempted_ts + max_age < now {
+                    cx_locked.caps = None;
+                    cx_locked.caps_last_attempted_ts = 0;
+                    caps_last_attempted_ts = 0;
+                } else {
+                    if let Some(caps_arc) = cx_locked.caps.clone() {
+                        return Ok(caps_arc.clone());
+                    }
+                    caps_last_attempted_ts = cx_locked.caps_last_attempted_ts;
                 }
-                caps_last_attempted_ts = cx_locked.caps_last_attempted_ts;
             }
-        }
-        if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
-            let global_context_locked = global_context.write().await;
-            return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, global_context_locked.caps_last_error.clone()));
+            if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
+                let global_context_locked = global_context.write().await;
+                return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, global_context_locked.caps_last_error.clone()));
+            }
         }
         let caps_result = crate::caps::load_caps(
             CommandLine::from_args(),
@@ -147,7 +184,7 @@ pub async fn try_load_caps_quickly_if_not_present(
                     Ok(caps)
                 },
                 Err(e) => {
-                    error!("caps fetch failed: \"{}\"", e);
+                    error!("caps fetch failed: {:?}", e);
                     global_context_locked.caps_last_error = format!("caps fetch failed: {}", e);
                     return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, global_context_locked.caps_last_error.clone()));
                 }
@@ -263,6 +300,7 @@ pub async fn create_global_context(
         vec_db_error: String::new(),
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState::new(workspace_dirs).await,
+        at_commands_preview_cache: Arc::new(AMutex::new(AtCommandsPreviewCache::new())),
     };
     let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {

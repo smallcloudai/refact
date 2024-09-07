@@ -42,6 +42,8 @@ pub struct AstIndex {
     type_guid_to_dependent_guids: HashMap<Uuid, HashSet<Uuid>>,
     declaration_guid_to_usage_names: StdHashMap<Uuid, HashSet<String>>,
     import_components_succ_solution_index: HashMap<String, ImportDeclaration>,
+    declaration_guid_to_dependent_symbols: HashMap<Uuid, HashSet<Uuid>>,
+    common_path_prefix: Option<String>,
     ast_max_files: usize,
     has_changes: bool,
     ast_light_mode: bool,
@@ -65,6 +67,24 @@ pub(crate) struct IndexingStats {
     pub(crate) non_found: usize,
 }
 
+fn common_prefix(s1: &str, s2: &str) -> String {
+    let mut prefix = String::new();
+    let chars1: Vec<char> = s1.chars().collect();
+    let chars2: Vec<char> = s2.chars().collect();
+
+    let min_length = std::cmp::min(chars1.len(), chars2.len());
+
+    for i in 0..min_length {
+        if chars1[i] == chars2[i] {
+            prefix.push(chars1[i]);
+        } else {
+            break;
+        }
+    }
+
+    prefix
+}
+
 impl AstIndex {
     pub fn init(
         ast_max_files: usize,
@@ -82,6 +102,8 @@ impl AstIndex {
             type_guid_to_dependent_guids: HashMap::new(),
             declaration_guid_to_usage_names: StdHashMap::new(),
             import_components_succ_solution_index: HashMap::new(),
+            declaration_guid_to_dependent_symbols: HashMap::new(),
+            common_path_prefix: None,
             ast_max_files,
             has_changes: false,
             ast_light_mode,
@@ -89,20 +111,20 @@ impl AstIndex {
     }
 
     pub fn parse(doc: &Document) -> Result<Vec<AstSymbolInstanceArc>, String> {
-        let mut parser = match get_ast_parser_by_filename(&doc.path) {
+        let mut parser = match get_ast_parser_by_filename(&doc.doc_path) {
             Ok(parser) => parser,
             Err(err) => {
                 return Err(err.message);
             }
         };
-        let text = doc.text.clone().unwrap().to_string();
+        let text = doc.doc_text.clone().unwrap().to_string();
         let t_ = std::time::Instant::now();
-        let symbol_instances = parser.parse(&text, &doc.path);
+        let symbol_instances = parser.parse(&text, &doc.doc_path);
         let t_elapsed = t_.elapsed();
         if symbol_instances.len() > TOO_MANY_SYMBOLS_IN_FILE {
             info!(
                 "parsed {}, {} symbols, took {:.3}s to parse, skip",
-                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30),
+                crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30),
                 symbol_instances.len(),
                 t_elapsed.as_secs_f32()
             );
@@ -110,7 +132,7 @@ impl AstIndex {
         } else {
             info!(
                 "parsed {}, {} symbols, took {:.3}s to parse",
-                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30),
+                crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30),
                 symbol_instances.len(),
                 t_elapsed.as_secs_f32()
             );
@@ -129,7 +151,7 @@ impl AstIndex {
                 "Too many files in the ast index ({} >= {}), skipping the {}",
                 self.path_by_symbols.len(),
                 self.ast_max_files,
-                crate::nicer_logs::last_n_chars(&doc.path.display().to_string(), 30)
+                crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30)
             );
             return Err("ast index too many files".to_string());
         }
@@ -180,7 +202,7 @@ impl AstIndex {
                 self.usage_symbols_by_name.entry(symbol_ref.name().to_string()).or_insert_with(Vec::new).push(symbol.clone());
             }
             self.symbols_by_guid.insert(symbol_ref.guid().clone(), symbol.clone());
-            self.path_by_symbols.entry(doc.path.clone()).or_insert_with(Vec::new).push(symbol.clone());
+            self.path_by_symbols.entry(doc.doc_path.clone()).or_insert_with(Vec::new).push(symbol.clone());
         }
 
         Ok(())
@@ -202,7 +224,7 @@ impl AstIndex {
         // - `dependent_guids` in the `type_guid_to_dependent_guids` index
         // - `linked_guids` in the all TypeDefs (inside all symbols)
 
-        let symbols = self.path_by_symbols.remove(&doc.path);
+        let symbols = self.path_by_symbols.remove(&doc.doc_path);
         let has_removed = symbols.is_some();
         if !has_removed {
             return false;
@@ -214,6 +236,7 @@ impl AstIndex {
             let guid = symbol.borrow().guid().clone();
             self.symbols_by_guid.remove(&guid);
             self.type_guid_to_dependent_guids.remove(&guid);
+            self.declaration_guid_to_dependent_symbols.remove(&guid);
             self.declaration_guid_to_usage_names.remove(&guid);
             removed_guids.insert(guid.clone());
         }
@@ -230,6 +253,7 @@ impl AstIndex {
         self.symbols_by_guid.clear();
         self.path_by_symbols.clear();
         self.type_guid_to_dependent_guids.clear();
+        self.declaration_guid_to_dependent_symbols.clear();
         self.declaration_guid_to_usage_names.clear();
         self.has_changes = true;
     }
@@ -303,7 +327,7 @@ impl AstIndex {
             .iter()
             .filter(|s| {
                 let s_ref = s.borrow();
-                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.path != *s_ref.file_path());
+                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.doc_path != *s_ref.file_path());
                 let correct_language = language.map_or(true, |l| l == *s_ref.language());
                 correct_doc && correct_language
             });
@@ -382,7 +406,7 @@ impl AstIndex {
                     None => return false,
                 };
                 let correct_language = language.map_or(true, |l| l == language_id);
-                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.path != **path);
+                let correct_doc = exception_doc.clone().map_or(true, |doc| doc.doc_path != **path);
                 correct_doc && correct_language
             })
             .filter_map(|(path, symbols)| {
@@ -448,7 +472,7 @@ impl AstIndex {
             .filter_map(|guid| self.symbols_by_guid.get(guid))
             .filter(|s| {
                 let s_ref = s.borrow();
-                exception_doc.clone().map_or(true, |doc| doc.path != *s_ref.file_path())
+                exception_doc.clone().map_or(true, |doc| doc.doc_path != *s_ref.file_path())
             })
             .cloned()
             .collect::<Vec<_>>())
@@ -476,17 +500,48 @@ impl AstIndex {
                     }
                 }
                 None => {
-                    return current_path;
+                    break;
+
                 }
             }
         }
+
+        if let Some(common_prefix) = &self.common_path_prefix {
+            match symbol.borrow().file_path().strip_prefix(
+                &common_prefix
+            ).ok() {
+                Some(x) => {
+                    let file_prefix = x.components()
+                        .map(|x| x.as_os_str().to_string_lossy())
+                        .map(|x| x.rsplit_once(".").map_or(x.to_string(), |x| x.0.to_string()))
+                        .join("::");
+                    current_path = format!("{file_prefix}::{current_path}");
+                }
+                None => {}
+            };
+        }
+
+        current_path
+    }
+
+    pub(crate) fn get_type_related_symbols(
+        &self,
+        declaration_guid: &Uuid,
+    ) -> Result<Vec<AstSymbolInstanceRc>, String> {
+        Ok(self.declaration_guid_to_dependent_symbols
+            .get(declaration_guid)
+            .unwrap_or(&HashSet::new())
+            .iter()
+            .filter_map(|x| self.symbols_by_guid.get(x))
+            .cloned()
+            .collect::<Vec<_>>())
     }
 
     fn get_declarations_by_parent(
         &self,
         symbol: &AstSymbolInstanceRc,
         base_usefulness: f32,
-        symbols_by_guid: &HashMap<Uuid, AstSymbolInstanceRc>
+        symbols_by_guid: &HashMap<Uuid, AstSymbolInstanceRc>,
     ) -> (Vec<AstSymbolInstanceRc>, HashMap<Uuid, f32>) {
         let mut current_symbol = symbol.clone();
         let mut parents_symbols: Vec<AstSymbolInstanceRc> = vec![];
@@ -541,7 +596,7 @@ impl AstIndex {
     ) {
         let t_parse_t0 = std::time::Instant::now();
         let file_symbols = self.parse_single_file(doc, code);
-        let language = get_language_id_by_filename(&doc.path);
+        let language = get_language_id_by_filename(&doc.doc_path);
         let t_parse_ms = t_parse_t0.elapsed().as_millis() as i32;
 
         let mut guid_to_usefulness: HashMap<Uuid, f32> = HashMap::new();
@@ -814,11 +869,68 @@ impl AstIndex {
         )
     }
 
-    pub(crate) fn decl_symbols_from_imports(
+    #[allow(dead_code)]
+    pub(crate) fn decl_symbols_from_imports_by_file_path(
+        &self,
+        doc: &Document,
+        imports_depth: usize
+    )-> Vec<AstSymbolInstanceRc> {
+        let symbols = self.path_by_symbols
+            .get(&doc.doc_path)
+            .map(|symbols| {
+                symbols
+                    .iter()
+                    .filter(|s| s.borrow().is_declaration())
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        self.decl_symbols_from_imports(&symbols, imports_depth)
+    }
+
+    pub(crate) fn paths_from_imports_by_file_path(
+        &self,
+        doc: &Document,
+        imports_depth: usize
+    )-> Vec<PathBuf> {
+        let symbols = self.path_by_symbols
+            .get(&doc.doc_path)
+            .map(|symbols| {
+                symbols
+                    .iter()
+                    .filter(|s| s.borrow().is_declaration())
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        self.paths_from_imports(&symbols, imports_depth)
+    }
+
+    fn decl_symbols_from_imports(
         &self,
         parsed_symbols: &Vec<AstSymbolInstanceRc>,
         imports_depth: usize,
     ) -> Vec<AstSymbolInstanceRc> {
+        self.paths_from_imports(parsed_symbols, imports_depth)
+            .iter()
+            .unique()
+            .filter_map(|p| self.path_by_symbols.get(p))
+            .flatten()
+            .cloned()
+            .filter(|s| {
+                let symbol_type = s.borrow().symbol_type();
+                symbol_type == SymbolType::StructDeclaration
+                    || symbol_type == SymbolType::TypeAlias
+                    || symbol_type == SymbolType::FunctionDeclaration
+            })
+            .collect::<Vec<_>>()
+    }
+
+    fn paths_from_imports(
+        &self,
+        parsed_symbols: &Vec<AstSymbolInstanceRc>,
+        imports_depth: usize,
+    ) -> Vec<PathBuf> {
         let mut paths: Vec<PathBuf> = vec![];
         let mut current_depth_symbols = parsed_symbols.clone();
         let mut current_depth = 0;
@@ -845,37 +957,25 @@ impl AstIndex {
         }
 
         paths
-            .iter()
-            .unique()
-            .filter_map(|p| self.path_by_symbols.get(p))
-            .flatten()
-            .cloned()
-            .filter(|s| {
-                let symbol_type = s.borrow().symbol_type();
-                symbol_type == SymbolType::StructDeclaration
-                    || symbol_type == SymbolType::TypeAlias
-                    || symbol_type == SymbolType::FunctionDeclaration
-            })
-            .collect::<Vec<_>>()
     }
 
     pub fn file_markup(
         &self,
         doc: &Document,
     ) -> Result<FileASTMarkup, String> {
-        assert!(doc.text.is_some());
-        let symbols = match self.path_by_symbols.get(&doc.path) {
+        assert!(doc.doc_text.is_some());
+        let symbols = match self.path_by_symbols.get(&doc.doc_path) {
             Some(x) => x.iter().map(|s| s.borrow().symbol_info_struct()).collect::<Vec<_>>(),
             None => {
-                info!("no symbols in index for {:?}, assuming it's a new file of some sort and parsing it", doc.path);
-                let mut parser = match get_ast_parser_by_filename(&doc.path) {
+                info!("no symbols in index for {:?}, assuming it's a new file of some sort and parsing it", doc.doc_path);
+                let mut parser = match get_ast_parser_by_filename(&doc.doc_path) {
                     Ok(parser) => parser,
                     Err(e) => {
-                        return Err(format!("no symbols in index for {:?}, and cannot find a parser this kind of file: {}", doc.path, e.message));
+                        return Err(format!("no symbols in index for {:?}, and cannot find a parser this kind of file: {}", doc.doc_path, e.message));
                     }
                 };
                 let t0 = std::time::Instant::now();
-                let symbols = parser.parse(doc.text.as_ref().unwrap().to_string().as_str(), &doc.path);
+                let symbols = parser.parse(doc.doc_text.as_ref().unwrap().to_string().as_str(), &doc.doc_path);
                 info!("/parse {}ms", t0.elapsed().as_millis());
                 symbols.iter().map(|s| s.read().symbol_info_struct()).collect::<Vec<_>>()
             }
@@ -889,7 +989,7 @@ impl AstIndex {
         doc: &Document,
     ) -> Result<Vec<SymbolInformation>, String> {
         let symbols = self.path_by_symbols
-            .get(&doc.path)
+            .get(&doc.doc_path)
             .map(|symbols| {
                 symbols
                     .iter()
@@ -908,6 +1008,7 @@ impl AstIndex {
         Ok(symbols)
     }
 
+    #[allow(dead_code)]
     pub fn get_symbols_names(
         &self,
         request_symbol_type: RequestSymbolType,
@@ -1386,10 +1487,30 @@ impl AstIndex {
             if self.type_guid_to_dependent_guids.contains_key(&guid) {
                 self.type_guid_to_dependent_guids.remove(&guid);
             }
+            if self.declaration_guid_to_dependent_symbols.contains_key(&guid) {
+                self.declaration_guid_to_dependent_symbols.remove(&guid);
+            }
             if self.declaration_guid_to_usage_names.contains_key(&guid) {
                 self.declaration_guid_to_usage_names.remove(&guid);
             }
         }
+        if symbols.is_empty() {
+            return;
+        }
+
+        let mut current_common_path_prefix = symbols
+            .first().expect("emptiness checked above")
+            .borrow()
+            .file_path()
+            .to_string_lossy()
+            .to_string();
+        for symbol in symbols.iter().skip(1) {
+            current_common_path_prefix = common_prefix(
+                &current_common_path_prefix,
+                &symbol.borrow().file_path().to_string_lossy()
+            );
+        }
+        self.common_path_prefix = Some(current_common_path_prefix);
 
         for symbol in symbols
             .iter()
@@ -1410,7 +1531,7 @@ impl AstIndex {
                 }
             }
             if symbol.borrow().is_type() {
-                continue
+                continue;
             }
 
             let (name, s_guid, mut types, is_declaration, symbol_type, parent_guid) = {
@@ -1433,6 +1554,10 @@ impl AstIndex {
                 .iter()
                 .filter_map(|t| t.guid.clone()) {
                 self.type_guid_to_dependent_guids.entry(guid).or_default().insert(s_guid.clone());
+                self.declaration_guid_to_dependent_symbols
+                    .entry(guid.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(s_guid.clone());
             }
 
             // for those symbols which doesn't have their own scope

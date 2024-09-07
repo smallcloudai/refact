@@ -12,7 +12,10 @@ use crate::ast::ast_index::RequestSymbolType;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 use crate::global_context::SharedGlobalContext;
-use crate::scratchpads::chat_utils_rag::{context_msgs_from_paths, postprocess_rag_load_ast_markup};
+use crate::scratchpads::pp_context_files::pp_color_lines;
+use crate::scratchpads::pp_utils::{context_msgs_from_paths, pp_ast_markup_files};
+use crate::call_validation::PostprocessSettings;
+
 
 #[derive(Serialize, Deserialize, Clone)]
 struct AstQuerySearchBy {
@@ -214,7 +217,12 @@ pub async fn handle_v1_ast_file_markup(
             Some(ast) => {
                 // corrected is already canonical path, so skip it here
                 let mut doc = Document::new(&PathBuf::from(&corrected[0]));
-                let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default(); // FIXME unwrap
+                let text = get_file_text_from_memory_or_disk(
+                    global_context.clone(),
+                    &doc.doc_path,
+                ).await.map_err(|e|{
+                    ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
+                })?;
                 doc.update_text(&text);
 
                 ast.read().await.file_markup(&doc).await
@@ -265,20 +273,20 @@ pub async fn handle_v1_ast_file_dump(
     let mut files_set: HashSet<String> = HashSet::new();
     files_set.insert(corrected[0].clone());
     let messages = context_msgs_from_paths(global_context.clone(), files_set).await;
-    let files_markup = postprocess_rag_load_ast_markup(global_context.clone(), &messages).await;
-    let mut settings = crate::scratchpads::chat_utils_rag::PostprocessSettings::new();
+    let files_markup = pp_ast_markup_files(global_context.clone(), &messages).await;
+    let mut settings = PostprocessSettings::new();
     settings.close_small_gaps = false;
-    let (lines_in_files, _) = crate::scratchpads::chat_utils_rag::postprocess_rag_stage_3_6(
+    let lines_in_files = pp_color_lines(
             global_context.clone(),
             &vec![],
-            &files_markup,
+            files_markup,
             &settings,
         ).await;
     let mut result = "".to_string();
     for linevec in lines_in_files.values() {
         for lineref in linevec {
             result.push_str(format!("{}:{:04} {:<43} {:>7.3} {}\n",
-                crate::nicer_logs::last_n_chars(&lineref.fref.cpath.to_string_lossy().to_string(), 30),
+                crate::nicer_logs::last_n_chars(&lineref.file_ref.cpath.to_string_lossy().to_string(), 30),
                 lineref.line_n,
                 crate::nicer_logs::first_n_chars(&lineref.line_content, 40),
                 lineref.useful,
@@ -301,7 +309,9 @@ pub async fn handle_v1_ast_file_symbols(
     })?;
     let cpath = crate::files_correction::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     let mut doc = Document::new(&cpath);
-    let file_text = get_file_text_from_memory_or_disk(global_context.clone(), &cpath).await.unwrap_or_default(); // FIXME unwrap
+    let file_text = get_file_text_from_memory_or_disk(global_context.clone(), &cpath).await.map_err(|e|
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
+    )?;
     doc.update_text(&file_text);
 
     let ast_module = global_context.read().await.ast_module.clone();
@@ -340,7 +350,9 @@ pub async fn handle_v1_ast_index_file(
     })?;
     let cpath = crate::files_correction::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     let mut doc = Document::new(&cpath);
-    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.path).await.unwrap_or_default(); // FIXME unwrap
+    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.doc_path).await.map_err(|e|
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
+    )?;
     doc.update_text(&text);
 
     let ast_module = global_context.read().await.ast_module.clone();

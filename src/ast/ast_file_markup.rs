@@ -12,7 +12,7 @@ pub fn lowlevel_file_markup(
     symbols: &Vec<SymbolInformation>,
 ) -> Result<FileASTMarkup, String> {
     let t0 = std::time::Instant::now();
-    assert!(doc.text.is_some());
+    assert!(doc.doc_text.is_some());
     let mut symbols4export: Vec<Arc<RefCell<SymbolInformation>>> = symbols.iter().map(|s| {
         Arc::new(RefCell::new(s.clone()))
     }).collect();
@@ -43,8 +43,8 @@ pub fn lowlevel_file_markup(
         a.borrow().symbol_path.len().cmp(&b.borrow().symbol_path.len())
     });
     let x = FileASTMarkup {
-        file_path: doc.path.clone(),
-        file_content: doc.text.as_ref().unwrap().to_string(),
+        file_path: doc.doc_path.clone(),
+        file_content: doc.doc_text.as_ref().unwrap().to_string(),
         symbols_sorted_by_path_len: symbols4export.iter().map(|s| {
             s.borrow().clone()
         }).collect(),
@@ -52,7 +52,7 @@ pub fn lowlevel_file_markup(
     tracing::info!("file_markup {:>4} symbols in {:.3}ms for {}",
         x.symbols_sorted_by_path_len.len(),
         t0.elapsed().as_secs_f32(),
-        crate::nicer_logs::last_n_chars(&doc.path.to_string_lossy().to_string(),
+        crate::nicer_logs::last_n_chars(&doc.doc_path.to_string_lossy().to_string(),
         30));
     Ok(x)
 }

@@ -1,21 +1,30 @@
 use std::collections::HashMap;
 use async_trait::async_trait;
+use std::sync::Arc;
 use serde_json::Value;
+use tokio::sync::Mutex as AMutex;
+
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_local_cmdline::execute_cmd;
-use crate::at_tools::tools::AtTool;
+use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 
 pub struct AttExecuteCommand {
     pub command: String,
     pub timeout: usize,
-    pub postprocess: String,
+    #[allow(dead_code)]
+    pub output_postprocess: String,
 }
 
 #[async_trait]
-impl AtTool for AttExecuteCommand {
-    async fn execute(&self, _ccx: &mut AtCommandsContext, tool_call_id: &String, _args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+impl Tool for AttExecuteCommand {
+    async fn tool_execute(
+        &mut self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        _args: &HashMap<String, Value>,
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
         let (stdout, stderr) = execute_cmd(&self.command, self.timeout).await?;
 
         let mut results = vec![];
@@ -24,7 +33,8 @@ impl AtTool for AttExecuteCommand {
             content: format!("Running compile:\n```{}{}```", stdout, stderr),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            ..Default::default()
         }));
-        Ok(results)
+        Ok((false, results))
     }
 }

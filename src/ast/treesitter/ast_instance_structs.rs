@@ -7,12 +7,10 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-
 use async_trait::async_trait;
 use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use similar::DiffableStr;
 use tokio::fs::read_to_string;
 use tree_sitter::{Point, Range};
 use uuid::Uuid;
@@ -142,6 +140,7 @@ pub struct SymbolInformation {
     pub language: LanguageId,
     pub file_path: PathBuf,
     pub namespace: String,
+    pub is_error: bool,
     #[serde(with = "RangeDef")]
     pub full_range: Range,
     #[serde(with = "RangeDef")]
@@ -157,7 +156,7 @@ impl SymbolInformation {
         let raw_content = content.get(self.full_range.start_byte..self.full_range.end_byte);
         if raw_content.is_none() {
             return Err(io::Error::other("Incorrect content range"));
-        } 
+        }
         let raw_content = raw_content.unwrap();
         if raw_content.ends_with("\n") {
             end_row -= 1;
@@ -258,6 +257,7 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
             language: self.language().clone(),
             file_path: self.file_path().clone(),
             namespace: self.namespace().to_string(),
+            is_error: self.is_error(),
             full_range: self.full_range().clone(),
             declaration_range: self.declaration_range().clone(),
             definition_range: self.definition_range().clone(),
@@ -666,7 +666,7 @@ impl AstSymbolInstance for ImportDeclaration {
         false
     }
 
-    fn is_declaration(&self) -> bool { true }
+    fn is_declaration(&self) -> bool { false }
 
     fn symbol_type(&self) -> SymbolType {
         SymbolType::ImportDeclaration

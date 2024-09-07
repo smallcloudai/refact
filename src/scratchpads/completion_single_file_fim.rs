@@ -2,27 +2,28 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::time::Instant;
 use std::vec;
-
+use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
-use log::warn;
 use ropey::Rope;
 use serde_json::{Value, json};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use tracing::{info, error};
 use tree_sitter::Point;
-use uuid::Uuid;
 
 use crate::ast::ast_module::AstModule;
 use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
+use crate::ast::structs::SymbolsSearchResultStruct;
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::at_commands::at_ast_lookup_symbols::results2message;
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{CodeCompletionPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::completion_cache;
 use crate::files_in_workspace::Document;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
+use crate::scratchpads::pp_context_files::postprocess_context_files;
 use crate::telemetry::snippets_collection;
 use crate::telemetry::telemetry_structs;
 
@@ -121,7 +122,7 @@ fn add_context_to_prompt(
         }
         return prompt.clone();
     } else {
-        warn!("context_format \"{}\" not recognized", context_format);
+        tracing::warn!("context_format \"{}\" not recognized", context_format);
         return prompt.clone();
     }
 }
@@ -131,7 +132,8 @@ impl ScratchpadAbstract for SingleFileFIM {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        exploration_tools: bool,
+        _exploration_tools: bool,
+        _agentic_tools: bool,
     ) -> Result<(), String> {
         // That will work for some models (starcoder) without patching
         self.fim_prefix = patch.get("fim_prefix").and_then(|x| x.as_str()).unwrap_or("<fim_prefix>").to_string();
@@ -153,28 +155,29 @@ impl ScratchpadAbstract for SingleFileFIM {
 
     async fn prompt(
         &mut self,
-        context_size: usize,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
+        let n_ctx = ccx.lock().await.n_ctx;
         let fim_t0 = Instant::now();
         let use_rag = !self.t.context_format.is_empty() && self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_module.is_some();
         let mut rag_tokens_n = if self.post.rag_tokens_n > 0 {
             self.post.rag_tokens_n.min(4096).max(50)
         } else {
-            ((context_size as f64 * self.t.rag_ratio) as usize).min(4096).max(50)
+            ((n_ctx as f64 * self.t.rag_ratio) as usize).min(4096).max(50)
         };
         if !use_rag {
             rag_tokens_n = 0;
         }
         if !use_rag && self.post.use_ast {
-            warn!("will not use ast because {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_module.is_some() as i32);
+            tracing::warn!("will not use ast because {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_module.is_some() as i32);
         }
 
-        let limit: i32 = (context_size as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32);
+        let limit: i32 = (n_ctx as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32);
         if limit < 512 {
-            let msg = format!("context_size={} - max_new_tokens={} - rag_tokens_n={} leaves too little {} space for completion to work",
-                context_size, self.post.parameters.max_new_tokens, rag_tokens_n, limit);
-            warn!("{}", msg);
+            let msg = format!("n_ctx={} - max_new_tokens={} - rag_tokens_n={} leaves too little {} space for completion to work",
+            n_ctx, self.post.parameters.max_new_tokens, rag_tokens_n, limit);
+            tracing::warn!("{}", msg);
             return Err(msg);
         }
 
@@ -311,7 +314,7 @@ impl ScratchpadAbstract for SingleFileFIM {
                     file_content: "".to_string(),
                     line1: (fim_line1 + 1) as usize,
                     line2: (fim_line2 + 1) as usize,
-                    symbol: Uuid::default(),
+                    symbols: vec![],
                     gradient_type: -1,
                     usefulness: -1.0,
                     is_body_important: false
@@ -321,14 +324,22 @@ impl ScratchpadAbstract for SingleFileFIM {
 
             info!(" -- post processing starts --");
             let post_t0 = Instant::now();
-            let max_files_n = 10;
-            let postprocessed_messages = crate::scratchpads::chat_utils_rag::postprocess_at_results2(
+
+            let mut pp_settings = {
+                let ccx_locked = ccx.lock().await;
+                ccx_locked.postprocess_parameters.clone()
+            };
+            if pp_settings.max_files_n == 0 {
+                pp_settings.max_files_n = 10;
+            }
+
+            let postprocessed_messages = postprocess_context_files(
                 self.global_context.clone(),
                 &ast_messages,
                 self.t.tokenizer.clone(),
                 rag_tokens_n,
                 false,
-                max_files_n,
+                &pp_settings,
             ).await;
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);
@@ -340,13 +351,13 @@ impl ScratchpadAbstract for SingleFileFIM {
             );
 
             if was_looking_for.is_some() {
-                self.context_used = crate::scratchpads::chat_utils_rag::context_to_fim_debug_page(
+                self.context_used = context_to_fim_debug_page(
                     &postprocessed_messages,
                     &was_looking_for.unwrap()
                 );
                 self.context_used["fim_ms"] = Value::from(fim_ms);
                 self.context_used["rag_ms"] = Value::from(rag_ms);
-                self.context_used["n_ctx".to_string()] = Value::from(context_size as i64);
+                self.context_used["n_ctx".to_string()] = Value::from(n_ctx as i64);
                 self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
             }
         }
@@ -473,3 +484,38 @@ fn cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
     return (ans.replace("\r", ""), true);
 }
 
+pub fn context_to_fim_debug_page(
+    postprocessed_messages: &[ContextFile],
+    search_traces: &crate::ast::structs::AstCursorSearchResult,
+) -> Value {
+    let mut context = json!({});
+    fn shorter_symbol(x: &SymbolsSearchResultStruct) -> Value {
+        let mut t: Value = json!({});
+        t["name"] = Value::String(x.symbol_declaration.name.clone());
+        t["file_path"] = Value::String(x.symbol_declaration.file_path.display().to_string());
+        t["line1"] = json!(x.symbol_declaration.full_range.start_point.row + 1);
+        t["line2"] = json!(x.symbol_declaration.full_range.end_point.row + 1);
+        t
+    }
+    context["cursor_symbols"] = Value::Array(search_traces.cursor_symbols.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_declarations"] = Value::Array(search_traces.bucket_declarations.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_usage_of_same_stuff"] = Value::Array(search_traces.bucket_usage_of_same_stuff.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_high_overlap"] = Value::Array(search_traces.bucket_high_overlap.iter()
+        .map(|x| shorter_symbol(x)).collect());
+    context["bucket_imports"] = Value::Array(search_traces.bucket_imports.iter()
+        .map(|x| shorter_symbol(x)).collect());
+
+    let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
+        json!({
+            "file_name": x.file_name,
+            "file_content": x.file_content,
+            "line1": x.line1,
+            "line2": x.line2,
+        })
+    }).collect();
+    context["attached_files"] = Value::Array(attached_files);
+    context
+}

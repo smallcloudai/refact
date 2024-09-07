@@ -16,10 +16,11 @@ use crate::ast::treesitter::skeletonizer::make_formatter;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
-use crate::vecdb::file_splitter::FileSplitter;
-use crate::vecdb::structs::SplitResult;
+use crate::vecdb::vdb_file_splitter::FileSplitter;
+use crate::vecdb::vdb_structs::SplitResult;
 
 pub(crate) const LINES_OVERLAP: usize = 3;
+
 
 pub struct AstBasedFileSplitter {
     fallback_file_splitter: FileSplitter,
@@ -39,11 +40,10 @@ impl AstBasedFileSplitter {
         _gcx_weak: Weak<RwLock<GlobalContext>>,
         tokens_limit: usize,
     ) -> Result<Vec<SplitResult>, String> {
-        assert!(doc.text.is_some());
+        assert!(doc.doc_text.is_some());
         let doc_text: String = doc.text_as_string().unwrap();
         let doc_lines: Vec<String> = doc_text.split("\n").map(|x| x.to_string()).collect();
-        let path = doc.path.clone();
-        let path_str = doc.path.to_str().unwrap();
+        let path = doc.doc_path.clone();
 
         let mut parser = match get_ast_parser_by_filename(&path) {
             Ok(parser) => parser,
@@ -72,8 +72,6 @@ impl AstBasedFileSplitter {
             }
         };
 
-        let mut files_markup: HashMap<String, Arc<crate::scratchpads::chat_utils_rag::File>> = HashMap::new();
-        files_markup.insert(path_str.to_string(), Arc::new(crate::scratchpads::chat_utils_rag::File { markup: ast_markup.clone(), cpath: path.clone(), cpath_symmetry_breaker: 0.0 }));
         let guid_to_info: HashMap<Uuid, &SymbolInformation> = ast_markup.symbols_sorted_by_path_len.iter().map(|s| (s.guid.clone(), s)).collect();
         let guids: Vec<_> = guid_to_info.iter()
             .sorted_by(|a, b| a.1.full_range.start_byte.cmp(&b.1.full_range.start_byte))

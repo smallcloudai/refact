@@ -78,7 +78,8 @@ When using Refact self-hosted server, telemetry goes to the self-hosted server, 
 
 The `--address-url` parameter controls the behavior of this program by a lot. The address is first used
 to construct `$URL/coding_assistant_caps.json` address to fetch the caps file. Furthermore, there are
-compiled-in caps you can use by magic addresses "Refact" and "HF".
+compiled-in caps you can use by magic addresses "Refact" or make your personal configuration for to use other services.
+Take a look examples in [bring_your_own_key](bring_your_own_key)
 
 The caps file describes which models are running, default models for completion and chat,
 where to send the telemetry, how to download a

@@ -5,17 +5,20 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 use tracing::{info, error};
 
 use crate::at_commands::execute_at::run_at_commands;
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
-use crate::scratchpads::chat_utils_rag::HasRagResults;
-use crate::toolbox::toolbox_config::get_default_system_prompt;
+use crate::scratchpads::pp_utils::HasRagResults;
+use crate::toolbox::toolbox_config::system_prompt_add_workspace_info;
+
 
 const DEBUG: bool = true;
 
@@ -65,12 +68,14 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         &mut self,
         patch: &Value,
         exploration_tools: bool,
+        agentic_tools: bool,
     ) -> Result<(), String> {
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.keyword_syst = patch.get("keyword_system").and_then(|x| x.as_str()).unwrap_or("SYSTEM:").to_string();
         self.keyword_user = patch.get("keyword_user").and_then(|x| x.as_str()).unwrap_or("USER:").to_string();
         self.keyword_asst = patch.get("keyword_assistant").and_then(|x| x.as_str()).unwrap_or("ASSISTANT:").to_string();
-        self.default_system_message = default_system_message_from_patch(patch, self.global_context.clone(), exploration_tools).await;
+        self.default_system_message = crate::toolbox::toolbox_config::get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await;
+
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
 
         self.dd.stop_list.clear();
@@ -92,16 +97,26 @@ impl ScratchpadAbstract for GenericChatScratchpad {
 
     async fn prompt(
         &mut self,
-        context_size: usize,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let top_n = 7;
+        let (n_ctx, gcx) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.n_ctx, ccx_locked.global_context.clone())
+        };
         let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
-            run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &self.post.messages, top_n, &mut self.has_rag_results).await
+            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.post.messages, &mut self.has_rag_results).await
         } else {
             (self.post.messages.clone(), self.post.messages.len(), false)
         };
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, context_size, &self.default_system_message)?;
+        let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, n_ctx, &self.default_system_message)?;
+        // if self.supports_tools {
+        // };
+        if let Some(first_msg) = limited_msgs.first_mut() {
+            if first_msg.role == "system" {
+                first_msg.content = system_prompt_add_workspace_info(gcx.clone(), &first_msg.content).await;
+            }
+        }
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();
@@ -164,20 +179,5 @@ impl ScratchpadAbstract for GenericChatScratchpad {
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String> {
         return self.has_rag_results.response_streaming();
-    }
-}
-
-pub async fn default_system_message_from_patch(
-    patch: &Value,
-    global_context: Arc<ARwLock<GlobalContext>>,
-    exploration_tools: bool,
-) -> String {
-    let default_system_message_mb = patch.get("default_system_message")
-        .and_then(|x| x.as_str())
-        .map(|x| x.to_string());
-    if let Some(msg) = default_system_message_mb {
-        msg
-    } else {
-        get_default_system_prompt(global_context, exploration_tools).await.unwrap_or_else(|_| "".to_string())
     }
 }

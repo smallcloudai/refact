@@ -6,12 +6,11 @@ from refact import chat_client
 
 DUMP_PREFIX = datetime.now().strftime("%Y%m%d-%H%M%S")
 
-# MODEL = "gpt-4-turbo"
-# MODEL = "gpt-4o"
+MODEL = "gpt-4o-mini"
 # MODEL = "gpt-3.5-turbo-1106"  # $1, multi call works
 # MODEL = "gpt-3.5-turbo-0125"    # $0.50
 # MODEL = "gpt-3.5-turbo"    # $0.50
-MODEL = "claude-3-sonnet"
+# MODEL = "claude-3-5-sonnet"     # XXX: will not work because need to remove 'agentic' attribute from each tool, anthropic complains about that
 print("model is %s" % MODEL)
 
 

@@ -8,9 +8,9 @@ use itertools::Itertools;
 use tokenizers::Tokenizer;
 
 use crate::ast::count_tokens;
-use crate::vecdb::structs::SplitResult;
+use crate::vecdb::vdb_structs::SplitResult;
 
-fn str_hash(s: &String) -> String {
+pub fn official_text_hashing_function(s: &String) -> String {
     let digest = md5::compute(s);
     format!("{:x}", digest)
 }
@@ -33,6 +33,7 @@ pub fn get_chunks(text: &String,
 
     {  // try to split chunks from top to bottom
         let mut line_idx: usize = 0;
+        let mut previous_start = line_idx;
         while line_idx < lines.len() {
             let line = lines[line_idx];
             let line_with_newline = if current_line_accum.is_empty() { line.to_string() } else { format!("{}\n", line) };
@@ -43,15 +44,16 @@ pub fn get_chunks(text: &String,
                 chunks.push(SplitResult {
                     file_path: file_path.clone(),
                     window_text: current_line.clone(),
-                    window_text_hash: str_hash(&current_line),
+                    window_text_hash: official_text_hashing_function(&current_line),
                     start_line: if use_symbol_range_always { top_row as u64 } else { current_line_number },
                     end_line: if use_symbol_range_always { bottom_row as u64 } else { max(top_row as i64, top_row as i64 + line_idx as i64 - 1) as u64 },
                     symbol_path: symbol_path.clone(),
                 });
                 current_line_accum.clear();
                 current_token_n = 0;
-                current_line_number = current_line_number + line_idx as u64 - intersection_lines as u64;
-                line_idx -= intersection_lines;
+                current_line_number = (current_line_number + line_idx as u64).saturating_sub(intersection_lines as u64);
+                line_idx = (previous_start + 1).max((line_idx as i64 - intersection_lines as i64).max(0) as usize);
+                previous_start = line_idx;
             } else {
                 current_token_n += text_orig_tok_n;
                 current_line_accum.push_back(line);
@@ -73,7 +75,7 @@ pub fn get_chunks(text: &String,
                 chunks.push(SplitResult {
                     file_path: file_path.clone(),
                     window_text: current_line.clone(),
-                    window_text_hash: str_hash(&current_line),
+                    window_text_hash: official_text_hashing_function(&current_line),
                     start_line: if use_symbol_range_always { top_row as u64 } else { top_row as u64 + line_idx as u64 + 1 },
                     end_line: if use_symbol_range_always { bottom_row as u64 } else { bottom_row as u64 },
                     symbol_path: symbol_path.clone(),
@@ -93,14 +95,14 @@ pub fn get_chunks(text: &String,
         chunks.push(SplitResult {
             file_path: file_path.clone(),
             window_text: current_line.clone(),
-            window_text_hash: str_hash(&current_line),
+            window_text_hash: official_text_hashing_function(&current_line),
             start_line: top_row as u64,
             end_line: bottom_row as u64,
             symbol_path: symbol_path.clone(),
         });
     }
 
-    chunks
+    chunks.into_iter().filter(|c|!c.window_text.is_empty()).collect()
 }
 
 #[cfg(test)]
@@ -111,7 +113,7 @@ mod tests {
 
     use crate::ast::chunk_utils::get_chunks;
     use crate::ast::count_tokens;
-    use crate::vecdb::structs::SplitResult;
+    use crate::vecdb::vdb_structs::SplitResult;
 
     const DUMMY_TOKENIZER: &str = include_str!("dummy_tokenizer.json");
     const PYTHON_CODE: &str = r#"def square_number(x):

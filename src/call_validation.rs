@@ -1,6 +1,8 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
+use std::hash::Hash;
 use axum::http::StatusCode;
+use indexmap::IndexMap;
 use ropey::Rope;
 use uuid::Uuid;
 use crate::custom_error::ScratchError;
@@ -28,6 +30,7 @@ pub struct SamplingParameters {
     pub top_p: Option<f32>,
     #[serde(default)]
     pub stop: Vec<String>,
+    pub n: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -45,6 +48,7 @@ pub struct CodeCompletionPost {
     pub no_cache: bool,
     #[serde(default)]
     pub use_ast: bool,
+    #[allow(dead_code)]
     #[serde(default)]
     pub use_vecdb: bool,
     #[serde(default)]
@@ -92,6 +96,7 @@ mod tests {
                 temperature: Some(0.1),
                 top_p: None,
                 stop: vec![],
+                n: None
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -121,6 +126,7 @@ mod tests {
                 temperature: Some(0.1),
                 top_p: None,
                 stop: vec![],
+                n: None,
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -150,6 +156,7 @@ mod tests {
                 temperature: Some(0.1),
                 top_p: None,
                 stop: vec![],
+                n: None,
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -179,6 +186,7 @@ mod tests {
                 temperature: Some(0.1),
                 top_p: None,
                 stop: vec![],
+                n: None,
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -199,10 +207,10 @@ pub struct ContextFile {
     pub line1: usize,   // starts from 1, zero means non-valid
     pub line2: usize,   // starts from 1
     #[serde(default, skip_serializing)]
-    pub symbol: Uuid,
+    pub symbols: Vec<Uuid>,
     #[serde(default = "default_gradient_type_value", skip_serializing)]
     pub gradient_type: i32,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub usefulness: f32,  // higher is better
     #[serde(default, skip_serializing)]
     pub is_body_important: bool
@@ -239,15 +247,49 @@ pub struct ChatToolCall {
     pub tool_type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ChatUsage {
+    pub prompt_tokens: usize,
+    pub completion_tokens: usize,
+    pub total_tokens: usize,   // TODO: remove (can produce self-contradictory data when prompt+completion != total)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ChatMessage {
     pub role: String,
     #[serde(default, deserialize_with="deserialize_content")]
     pub content: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<ChatToolCall>>,
     #[serde(default)]
     pub tool_call_id: String,
+    #[serde(default)]
+    pub usage: Option<ChatUsage>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct RealChatMessage {
+    pub role: String,
+    #[serde(default, deserialize_with="deserialize_content")]
+    pub content: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<ChatToolCall>>,
+    #[serde(default)]
+    pub tool_call_id: String,
+}
+
+impl ChatMessage {
+    pub fn new(role: String, content: String) -> Self {
+        ChatMessage { role, content, ..Default::default()}
+    }
+    pub fn into_real(&self) -> RealChatMessage {
+        RealChatMessage {
+            role: self.role.clone(),
+            content: self.content.clone(),
+            tool_calls: self.tool_calls.clone(),
+            tool_call_id: self.tool_call_id.clone(),
+        }
+    }
 }
 
 // this converts null to empty string
@@ -258,13 +300,19 @@ where
     Option::<String>::deserialize(deserializer).map(|opt| opt.unwrap_or_default())
 }
 
-impl ChatMessage {
-    pub fn new(role: String, content: String) -> Self {
-        ChatMessage { role, content, tool_calls: None, tool_call_id: "".to_string() }
-    }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SubchatParameters {
+    pub subchat_model: String,
+    pub subchat_n_ctx: usize,
+    #[serde(default)]
+    pub subchat_tokens_for_rag: usize,
+    #[serde(default)]
+    pub subchat_temperature: Option<f32>,
+    #[serde(default)]
+    pub subchat_max_new_tokens: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ChatPost {
     pub messages: Vec<ChatMessage>,
     #[serde(default)]
@@ -278,10 +326,71 @@ pub struct ChatPost {
     #[serde(default)]
     pub max_tokens: usize,
     #[serde(default)]
+    pub n: Option<usize>,
+    #[serde(default)]
     pub tools: Option<Vec<serde_json::Value>>,
-    // pub tool_choice: Option<String>,
+    #[serde(default)]
+    pub tool_choice: Option<String>,
     #[serde(default)]
     pub only_deterministic_messages: bool,  // means don't sample from the model
     #[serde(default)]
+    pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
+    #[serde(default="PostprocessSettings::new")]
+    pub postprocess_parameters: PostprocessSettings,
+    #[allow(dead_code)]
+    #[serde(default)]
     pub chat_id: String,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Serialize, Deserialize, Clone, Hash, Debug, Eq, PartialEq, Default)]
+pub struct DiffChunk {
+    pub file_name: String,
+    pub file_action: String, // edit, rename, add, remove
+    pub line1: usize,
+    pub line2: usize,
+    pub lines_remove: String,
+    pub lines_add: String,
+    #[serde(default)]
+    pub file_name_rename: Option<String>,
+    #[serde(default = "default_true")]
+    pub is_file: bool,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
+pub struct PostprocessSettings {
+    pub useful_background: f32,          // first, fill usefulness of all lines with this
+    pub useful_symbol_default: f32,      // when a symbol present, set usefulness higher
+    // search results fill usefulness as it passed from outside
+    pub downgrade_parent_coef: f32,      // goto parent from search results and mark it useful, with this coef
+    pub downgrade_body_coef: f32,        // multiply body usefulness by this, so it's less useful than the declaration
+    pub comments_propagate_up_coef: f32, // mark comments above a symbol as useful, with this coef
+    pub close_small_gaps: bool,
+    pub take_floor: f32,                 // take/dont value
+    pub max_files_n: usize,              // don't produce more than n files in output
+}
+
+impl Default for PostprocessSettings {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PostprocessSettings {
+    pub fn new() -> Self {
+        PostprocessSettings {
+            downgrade_body_coef: 0.8,
+            downgrade_parent_coef: 0.6,
+            useful_background: 5.0,
+            useful_symbol_default: 10.0,
+            close_small_gaps: true,
+            comments_propagate_up_coef: 0.99,
+            take_floor: 0.0,
+            max_files_n: 0,
+        }
+    }
 }

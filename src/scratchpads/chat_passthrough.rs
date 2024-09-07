@@ -5,17 +5,20 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 use tracing::{error, info, warn};
 
 use crate::at_commands::execute_at::run_at_commands;
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_tools::execute_att::run_tools;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, ContextMemory, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::scratchpads::chat_generic::default_system_message_from_patch;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
-use crate::scratchpads::chat_utils_rag::HasRagResults;
+use crate::scratchpads::pp_utils::HasRagResults;
+use crate::toolbox::toolbox_config::system_prompt_add_workspace_info;
+
 
 const DEBUG: bool = true;
 
@@ -84,50 +87,72 @@ impl ChatPassthrough {
 impl ScratchpadAbstract for ChatPassthrough {
     async fn apply_model_adaptation_patch(
         &mut self,
-        patch: &Value,
+        _patch: &Value,
         exploration_tools: bool,
+        agentic_tools: bool,
     ) -> Result<(), String> {
-        self.default_system_message = default_system_message_from_patch(&patch, self.global_context.clone(), exploration_tools).await;
+        self.default_system_message = crate::toolbox::toolbox_config::get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await;
         Ok(())
     }
 
     async fn prompt(
         &mut self,
-        context_size: usize,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        info!("chat passthrough {} messages at start", &self.post.messages.len());
-        let top_n: usize = 7;
-        let (mut messages, undroppable_msg_n, any_context_produced) = if self.allow_at {
-            run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &self.post.messages, top_n, &mut self.has_rag_results).await
+        let (n_ctx, gcx) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.n_ctx, ccx_locked.global_context.clone())
+        };
+        let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
+            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.post.messages, &mut self.has_rag_results).await
         } else {
             (self.post.messages.clone(), self.post.messages.len(), false)
         };
         if self.supports_tools {
-            (messages, _) = run_tools(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &messages, top_n, &mut self.has_rag_results).await;
+            (messages, _) = run_tools(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await;
         };
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message).unwrap_or_else(|e| {
+        let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
         });
+        if let Some(first_msg) = limited_msgs.first_mut() {
+            if first_msg.role == "system" {
+                first_msg.content = system_prompt_add_workspace_info(gcx.clone(), &first_msg.content).await;
+            }
+        }
         info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", messages.len(), limited_msgs.len());
-        let mut filtered_msgs: Vec<ChatMessage> = Vec::<ChatMessage>::new();
+        let mut filtered_msgs = vec![];
         for msg in &limited_msgs {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" || msg.role == "tool" {
-                filtered_msgs.push(msg.clone());
-            } else if msg.role == "context_file" {
-                match serde_json::from_str(&msg.content) {
-                    Ok(res) => {
-                        let vector_of_context_files: Vec<ContextFile> = res;
-                        for context_file in &vector_of_context_files {
+                filtered_msgs.push(msg.into_real());
+
+            } else if msg.role == "diff" {
+                let tool_msg = ChatMessage {
+                    role: "tool".to_string(),
+                    content: msg.content.clone(),
+                    tool_calls: None,
+                    tool_call_id: msg.tool_call_id.clone(),
+                    ..Default::default()
+                };
+                filtered_msgs.push(tool_msg.into_real());
+            } else if msg.role == "plain_text" {
+                filtered_msgs.push(ChatMessage::new(
+                    "user".to_string(),
+                    msg.content.clone(),
+                ).into_real());
+            }else if msg.role == "context_file" {
+                match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
+                    Ok(vector_of_context_files) => {
+                        for context_file in vector_of_context_files {
                             filtered_msgs.push(ChatMessage::new(
                                 "user".to_string(),
                                 format!("{}:{}-{}\n```\n{}```",
-                                    context_file.file_name,
-                                    context_file.line1,
-                                    context_file.line2,
-                                    context_file.file_content),
-                            ));
+                                        context_file.file_name,
+                                        context_file.line1,
+                                        context_file.line2,
+                                        context_file.file_content),
+                            ).into_real());
                         }
                     },
                     Err(e) => { error!("error parsing context file: {}", e); }
@@ -140,7 +165,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                             filtered_msgs.push(ChatMessage::new(
                                 "assistant".to_string(),
                                 format!("Note to self: {}", mem.memo_text.clone())
-                            ));
+                            ).into_real());
                         }
                     }
                     Err(e) => { error!("error parsing context memory: {}", e); }
@@ -154,8 +179,9 @@ impl ScratchpadAbstract for ChatPassthrough {
         });
         if self.supports_tools {
             let tools = if let Some(tools) = &self.post.tools {
-                if tools.is_empty() || any_context_produced {
-                    None
+                // if tools.is_empty() || any_context_produced {
+                if tools.is_empty() {
+                        None
                 } else {
                     Some(tools)
                 }
@@ -163,6 +189,10 @@ impl ScratchpadAbstract for ChatPassthrough {
                 None
             };
             big_json["tools"] = serde_json::json!(tools);
+            big_json["tool_choice"] = serde_json::json!(self.post.tool_choice);
+            info!("PASSTHROUGH TOOLS ENABLED CNT: {:?}", tools.unwrap_or(&vec![]).len());
+        } else {
+            info!("PASSTHROUGH TOOLS NOT SUPPORTED");
         }
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
         if DEBUG {

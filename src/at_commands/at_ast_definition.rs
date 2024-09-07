@@ -6,20 +6,19 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::ast::structs::AstQuerySearchResult;
+use crate::ast::structs::AstDeclarationSearchResult;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_params::AtParamSymbolPathQuery;
 use crate::call_validation::{ContextFile, ContextEnum};
 use tracing::info;
-use crate::ast::ast_index::RequestSymbolType;
 use crate::ast::ast_module::AstModule;
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 
 
-pub async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> {
+pub async fn results2message(result: &AstDeclarationSearchResult) -> Vec<ContextFile> {
     // info!("results2message {:?}", result);
     let mut symbols = vec![];
-    for res in &result.search_results {
+    for res in &result.exact_matches {
         let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
         let content = res.symbol_declaration.get_content_from_file().await.unwrap_or("".to_string());
         symbols.push(ContextFile {
@@ -27,7 +26,7 @@ pub async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> 
             file_content: content,
             line1: res.symbol_declaration.full_range.start_point.row + 1,
             line2: res.symbol_declaration.full_range.end_point.row + 1,
-            symbol: res.symbol_declaration.guid.clone(),
+            symbols: vec![res.symbol_declaration.guid.clone()],
             gradient_type: -1,
             usefulness: res.usefulness,
             is_body_important: false
@@ -36,16 +35,10 @@ pub async fn results2message(result: &AstQuerySearchResult) -> Vec<ContextFile> 
     symbols
 }
 
-async fn run_at_definition(ast: &Option<Arc<ARwLock<AstModule>>>, symbol: &String) -> Result<Vec<ContextFile>, String>
-{
-    return match &ast {
+async fn run_at_definition(ast: &Option<Arc<ARwLock<AstModule>>>, symbol: &String) -> Result<Vec<ContextFile>, String> {
+    match &ast {
         Some(ast) => {
-            match ast.read().await.search_by_fullpath(
-                symbol.clone(),
-                RequestSymbolType::Declaration,
-                false,
-                10
-            ).await {
+            match ast.read().await.search_declarations(symbol.clone()).await {
                 Ok(res) => {
                     Ok(results2message(&res).await)
                 },
@@ -57,7 +50,7 @@ async fn run_at_definition(ast: &Option<Arc<ARwLock<AstModule>>>, symbol: &Strin
         None => {
             Err("Ast module is not available".to_string())
         }
-    };
+    }
 }
 
 
@@ -81,22 +74,29 @@ impl AtCommand for AtAstDefinition {
         &self.params
     }
 
-    async fn execute(&self, ccx: &mut AtCommandsContext, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
         info!("execute @definition {:?}", args);
         let mut symbol = match args.get(0) {
             Some(x) => x.clone(),
             None => {
-                cmd.ok = false; cmd.reason = Some("symbol is missing".to_string());
+                cmd.ok = false;
+                cmd.reason = Some("parameter is missing".to_string());
                 args.clear();
-                return Err("symbol is missing".to_string());
+                return Err("parameter `symbol` is missing".to_string());
             },
         };
-        correct_at_arg(ccx, self.params[0].clone(), &mut symbol).await;
+
+        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut symbol).await;
         args.clear();
         args.push(symbol.clone());
 
-        let ast = ccx.global_context.read().await.ast_module.clone();
-        // TODO: don't produce files from fuzzy search, it's silly.
+        let gcx = ccx.lock().await.global_context.clone();
+        let ast = gcx.read().await.ast_module.clone();
         let results = run_at_definition(&ast, &symbol.text).await?;
         let file_paths = results.iter().map(|x| x.file_name.clone()).collect::<Vec<_>>();
         let text = if let Some(path0) = file_paths.get(0) {
@@ -117,4 +117,3 @@ impl AtCommand for AtAstDefinition {
         vec!["ast".to_string()]
     }
 }
-

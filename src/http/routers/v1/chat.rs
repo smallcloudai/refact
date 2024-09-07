@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use tokio::sync::Mutex as AMutex;
 
 use axum::Extension;
 use axum::response::Result;
@@ -7,13 +8,16 @@ use hyper::{Body, Response, StatusCode};
 use tracing::info;
 
 use crate::call_validation::ChatPost;
-use crate::caps;
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::global_context::SharedGlobalContext;
-use crate::scratchpads;
+use crate::{caps, scratchpads};
 
-async fn _lookup_chat_scratchpad(
+
+pub const CHAT_TOP_N: usize = 7;
+
+pub async fn lookup_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     chat_post: &ChatPost,
 ) -> Result<(String, String, serde_json::Value, usize, bool), String> {
@@ -58,7 +62,7 @@ async fn chat(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools) = _lookup_chat_scratchpad(
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools) = lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
     ).await.map_err(|e| {
@@ -70,13 +74,46 @@ async fn chat(
     if chat_post.parameters.max_new_tokens == 0 {
         chat_post.parameters.max_new_tokens = 1024;
     }
+    chat_post.parameters.n = chat_post.n;
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.2)));
     chat_post.model = model_name.clone();
+
+    // extra validation to catch {"query": "Frog", "scope": "workspace"}{"query": "Toad", "scope": "workspace"}
+    let re = regex::Regex::new(r"\{.*?\}").unwrap();
+    for message in &mut chat_post.messages {
+        if let Some(tool_calls) = &mut message.tool_calls {
+            for call in tool_calls {
+                let args_input = &call.function.arguments;
+                let will_it_work: Result<serde_json::Value, _> = serde_json::from_str(args_input);
+                if will_it_work.is_ok() {
+                    continue;
+                }
+                tracing::warn!("Failed to parse tool call arguments: {}", will_it_work.err().unwrap());
+                let args_corrected_json: serde_json::Value = if let Some(captures) = re.captures(args_input) {
+                    let corrected_arg = captures.get(0).unwrap().as_str();
+                    tracing::warn!("Invalid JSON found in tool call arguments; using corrected string: {}", corrected_arg);
+                    match serde_json::from_str(corrected_arg) {
+                        Ok(value) => value,
+                        Err(e) => {
+                            tracing::warn!("Failed to parse corrected tool call arguments: {}", e);
+                            continue;
+                        }
+                    }
+                } else {
+                    tracing::warn!("No valid JSON found in tool call arguments.");
+                    continue;
+                };
+                if let Ok(args_corrected) = serde_json::to_string(&args_corrected_json) {
+                    tracing::warn!("Correcting tool call arguments from {:?} to {:?}", args_input, args_corrected);
+                    call.function.arguments = args_corrected;  // <-------------------------------------------------- correction is saved here
+                } else {
+                    tracing::warn!("Failed to serialize corrected tool call arguments.");
+                }
+            }
+        }
+    }
+
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
-    let (client1, api_key) = {
-        let cx_locked = global_context.write().await;
-        (cx_locked.http_client.clone(), cx_locked.cmdline.api_key.clone())
-    };
     let mut scratchpad = scratchpads::create_chat_scratchpad(
         global_context.clone(),
         caps,
@@ -89,51 +126,47 @@ async fn chat(
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
-    let t1 = std::time::Instant::now();
-    let prompt = scratchpad.prompt(
+    // if !chat_post.chat_id.is_empty() {
+    //     let cache_dir = {
+    //         let gcx_locked = global_context.read().await;
+    //         gcx_locked.cache_dir.clone()
+    //     };
+    //     let notes_dir_path = cache_dir.join("chats");
+    //     let _ = std::fs::create_dir_all(&notes_dir_path);
+    //     let notes_path = notes_dir_path.join(format!("chat{}_{}.json",
+    //         chrono::Local::now().format("%Y%m%d"),
+    //         chat_post.chat_id,
+    //     ));
+    //     let _ = std::fs::write(&notes_path, serde_json::to_string_pretty(&chat_post.messages).unwrap());
+    // }
+    let mut ccx = AtCommandsContext::new(
+        global_context.clone(),
         n_ctx,
-        &mut chat_post.parameters,
-    ).await.map_err(|e|
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
-    )?;
-    info!("chat prompt {:?}", t1.elapsed());
-    if !chat_post.chat_id.is_empty() {
-        let cache_dir = {
-            let gcx_locked = global_context.read().await;
-            gcx_locked.cache_dir.clone()
-        };
-        let notes_dir_path = cache_dir.join("chats");
-        let _ = std::fs::create_dir_all(&notes_dir_path);
-        let notes_path = notes_dir_path.join(format!("chat{}_{}.json",
-            chrono::Local::now().format("%Y%m%d"),
-            chat_post.chat_id,
-        ));
-        let _ = std::fs::write(&notes_path, serde_json::to_string_pretty(&chat_post.messages).unwrap());
-    }
+        CHAT_TOP_N,
+        false,
+        chat_post.messages.clone(),
+    ).await;
+    ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
+    ccx.postprocess_parameters = chat_post.postprocess_parameters.clone();
+    let ccx_arc = Arc::new(AMutex::new(ccx));
+
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {
         crate::restream::scratchpad_interaction_not_stream(
-            global_context.clone(),
-            scratchpad,
+            ccx_arc.clone(),
+            &mut scratchpad,
             "chat".to_string(),
-            &prompt,
             model_name,
-            client1,
-            api_key,
-            &chat_post.parameters,
+            &mut chat_post.parameters,
             chat_post.only_deterministic_messages,
         ).await
     } else {
         crate::restream::scratchpad_interaction_stream(
-            global_context.clone(),
+            ccx_arc.clone(),
             scratchpad,
             "chat-stream".to_string(),
-            prompt,
             model_name,
-            client1,
-            api_key,
             chat_post.parameters.clone(),
             chat_post.only_deterministic_messages,
         ).await
     }
 }
-

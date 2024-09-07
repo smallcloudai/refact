@@ -1,9 +1,12 @@
+use std::sync::Arc;
 use std::collections::HashMap;
 use async_trait::async_trait;
 use serde_json::Value;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::Mutex as AMutex;
+
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::tools::AtTool;
+use crate::at_tools::tools::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
 
 
@@ -11,11 +14,16 @@ pub struct AtNoteToSelf {
 }
 
 #[async_trait]
-impl AtTool for AtNoteToSelf {
-    async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String>
-    {
+impl Tool for AtNoteToSelf {
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let gcx = ccx.lock().await.global_context.clone();
         let cache_dir = {
-            let gcx_locked = ccx.global_context.read().await;
+            let gcx_locked = gcx.read().await;
             gcx_locked.cache_dir.clone()
         };
         let notes_dir_path = cache_dir.join("notes");
@@ -69,7 +77,8 @@ impl AtTool for AtNoteToSelf {
             content: format!("Note saved"),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            ..Default::default()
         }));
-        Ok(results)
+        Ok((false, results))
     }
 }

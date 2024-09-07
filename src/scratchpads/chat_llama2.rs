@@ -1,21 +1,23 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-
 use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 use tracing::{info, error};
-use crate::at_commands::execute_at::run_at_commands;
 
+use crate::at_commands::execute_at::run_at_commands;
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::scratchpads::chat_generic::default_system_message_from_patch;
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
-use crate::scratchpads::chat_utils_rag::HasRagResults;
+use crate::scratchpads::pp_utils::HasRagResults;
+use crate::toolbox::toolbox_config::system_prompt_add_workspace_info;
+
 
 const DEBUG: bool = true;
 
@@ -61,10 +63,11 @@ impl ScratchpadAbstract for ChatLlama2 {
         &mut self,
         patch: &Value,
         exploration_tools: bool,
+        agentic_tools: bool,
     ) -> Result<(), String> {
         self.keyword_s = patch.get("s").and_then(|x| x.as_str()).unwrap_or("<s>").to_string();
         self.keyword_slash_s = patch.get("slash_s").and_then(|x| x.as_str()).unwrap_or("</s>").to_string();
-        self.default_system_message = default_system_message_from_patch(&patch, self.global_context.clone(), exploration_tools).await;
+        self.default_system_message = crate::toolbox::toolbox_config::get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await;
         self.t.eot = self.keyword_s.clone();
         info!("llama2 chat model adaptation patch applied {:?}", self.keyword_s);
         self.t.assert_one_token(&self.t.eot.as_str())?;
@@ -76,16 +79,24 @@ impl ScratchpadAbstract for ChatLlama2 {
 
     async fn prompt(
         &mut self,
-        context_size: usize,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let top_n: usize = 7;
+        let (n_ctx, gcx) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.n_ctx, ccx_locked.global_context.clone())
+        };
         let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
-            run_at_commands(self.global_context.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, context_size, &self.post.messages, top_n, &mut self.has_rag_results).await
+            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.post.messages, &mut self.has_rag_results).await
         } else {
             (self.post.messages.clone(), self.post.messages.len(), false)
         };
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, context_size, &self.default_system_message)?;
+        let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message)?;
+        if let Some(first_msg) = limited_msgs.first_mut() {
+            if first_msg.role == "system" {
+                first_msg.content = system_prompt_add_workspace_info(gcx.clone(), &first_msg.content).await;
+            }
+        }
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // loosely adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();

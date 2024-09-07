@@ -1,92 +1,124 @@
-use std::cmp::max;
 use std::collections::HashMap;
+use std::sync::Arc;
 
-use async_trait::async_trait;
-use itertools::Itertools;
-use serde_json::Value;
-
-use crate::ast::ast_index::RequestSymbolType;
-use crate::ast::structs::AstQuerySearchResult;
-use crate::at_commands::at_ast_definition::results2message;
+use crate::ast::structs::{AstDeclarationSearchResult, SymbolsSearchResultStruct};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::tools::AtTool;
-use crate::call_validation::{ChatMessage, ContextEnum};
+use crate::at_tools::tools::Tool;
+use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
+use async_trait::async_trait;
+use serde_json::Value;
+use tokio::sync::Mutex as AMutex;
+
 
 pub struct AttAstDefinition;
 
+
+pub async fn results2message(
+    search_results: &Vec<SymbolsSearchResultStruct>,
+    is_body_important: bool
+) -> Vec<ContextFile> {
+    let mut symbols = vec![];
+    for res in search_results {
+        let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
+        let content = res.symbol_declaration.get_content_from_file().await.unwrap_or("".to_string());
+        symbols.push(ContextFile {
+            file_name,
+            file_content: content,
+            line1: res.symbol_declaration.full_range.start_point.row + 1,
+            line2: res.symbol_declaration.full_range.end_point.row + 1,
+            symbols: vec![res.symbol_declaration.guid.clone()],
+            gradient_type: -1,
+            usefulness: res.usefulness,
+            is_body_important
+        });
+    }
+    symbols
+}
+
+
 #[async_trait]
-impl AtTool for AttAstDefinition {
-    async fn execute(&self, ccx: &mut AtCommandsContext, tool_call_id: &String, args: &HashMap<String, Value>) -> Result<Vec<ContextEnum>, String> {
+impl Tool for AttAstDefinition {
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let mut corrections = false;
         let mut symbol = match args.get("symbol") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => { return Err(format!("argument `symbol` is not a string: {:?}", v)) }
             None => { return Err("argument `symbol` is missing".to_string()) }
         };
+        let skeleton = match args.get("skeleton") {
+            Some(Value::Bool(s)) => *s,
+            Some(Value::String(s)) => {
+                if s == "true" {
+                    true
+                } else if s == "false" {
+                    false
+                } else {
+                    return Err(format!("argument `skeleton` is not a bool: {:?}", s));
+                }
+            }
+            Some(v) => return Err(format!("argument `skeleton` is not a bool: {:?}", v)),
+            None => false,
+        };
+        ccx.lock().await.pp_skeleton = skeleton;
 
         if let Some(dot_index) = symbol.find('.') {
             symbol = symbol[dot_index + 1..].to_string();
         }
 
-        let ast_mb = ccx.global_context.read().await.ast_module.clone();
+        let gcx = ccx.lock().await.global_context.clone();
+        let ast_mb = gcx.read().await.ast_module.clone();
         let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
-
-        let mut found_by_fuzzy_search: bool = false;
-        let mut res: AstQuerySearchResult = ast.read().await.search_by_fullpath(
-            symbol.clone(),
-            RequestSymbolType::Declaration,
-            false,
-            ccx.top_n,
-        ).await?;
-        res = if res.search_results.is_empty() {
-            found_by_fuzzy_search = true;
-            ast.read().await.search_by_fullpath(
-                symbol.clone(),
-                RequestSymbolType::Declaration,
-                true,
-                max(ccx.top_n, 6),
-            ).await?
-        } else {
-            res
-        };
-        if res.search_results.is_empty() {
-            return Err(format!("There is no `{}` in the syntax tree, and no similar names found :/", symbol).to_string());
+        let res: AstDeclarationSearchResult = ast.read().await.search_declarations(symbol.clone()).await?;
+        if (res.exact_matches.len() + res.fuzzy_matches.len()) == 0 {
+            return Err(format!("No definitions with the name `{}` or similar names were found in the workspace.", symbol).to_string());
         }
-
-        let (mut messages, tool_message) = if found_by_fuzzy_search {
-            let messages = results2message(&res)
-                .await
-                .into_iter()
-                .map(|x| ContextEnum::ContextFile(x))
-                .take(1)
-                .collect::<Vec<ContextEnum>>();
-            let found_path = res.search_results[0].symbol_declaration.symbol_path.clone();
-            let other_names = res.search_results
-                .iter()
-                .skip(1)
-                .map(|r| r.symbol_declaration.symbol_path.clone())
-                .sorted()
-                .unique()
-                .collect::<Vec<String>>();
-            let mut tool_message = format!(
-                "Definition of `{symbol}` haven't found by exact name, but found the close result `{found_path}`. \
-                You can call again with one of these other names:\n"
-            ).to_string();
-            for x in other_names.into_iter() {
-                tool_message.push_str(&format!("`{}`\n", x));
-            }
-            (messages, tool_message)
-        } else {
-            let messages = results2message(&res)
+        let (mut messages, tool_message) = if !res.exact_matches.is_empty() {
+            let messages = results2message(&res.exact_matches, false)
                 .await
                 .into_iter().map(|x| ContextEnum::ContextFile(x))
                 .collect::<Vec<ContextEnum>>();
-            let mut tool_message = format!("Definition of `{}` found at:\n", symbol).to_string();
-            for r in res.search_results.iter() {
+            let mut tool_message = format!("Definitions found:\n").to_string();
+            for r in res.exact_matches.iter() {
                 let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
                 let decl_range = &r.symbol_declaration.full_range;
-                tool_message.push_str(&format!("{}:{}-{}\n", file_path_str, decl_range.start_point.row + 1, decl_range.end_point.row + 1));
+                tool_message.push_str(&format!(
+                    "`{}` at {}:{}-{}\n",
+                    r.symbol_declaration.symbol_path,
+                    file_path_str,
+                    decl_range.start_point.row + 1,
+                    decl_range.end_point.row + 1
+                ));
             }
             (messages, tool_message)
+        } else {
+            corrections = true;
+            let mut tool_message = format!(
+                "No definitions with name `{}` found in the workspace.\nThere are definitions with similar names though:\n",
+                symbol
+            ).to_string();
+            for r in res.fuzzy_matches.iter().take(20) {
+                let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
+                let decl_range = &r.symbol_declaration.full_range;
+                tool_message.push_str(&format!(
+                    "`{}` at {}:{}-{}\n",
+                    r.symbol_declaration.symbol_path,
+                    file_path_str,
+                    decl_range.start_point.row + 1,
+                    decl_range.end_point.row + 1
+                ));
+            }
+            if res.fuzzy_matches.len() > 20 {
+                tool_message.push_str(&format!(
+                    "...and {} more...\n",
+                    res.fuzzy_matches.len() - 20
+                ));
+            }
+            (vec![], tool_message)
         };
 
         messages.push(ContextEnum::ChatMessage(ChatMessage {
@@ -94,11 +126,12 @@ impl AtTool for AttAstDefinition {
             content: tool_message.clone(),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            ..Default::default()
         }));
-        Ok(messages)
+        Ok((corrections, messages))
     }
 
-    fn depends_on(&self) -> Vec<String> {
+    fn tool_depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }
 }

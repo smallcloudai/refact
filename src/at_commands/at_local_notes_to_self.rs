@@ -8,23 +8,8 @@ use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextMemory};
 
 
-fn text_on_clip(from_tool_call: bool) -> String {
-    if !from_tool_call {
-        return "".to_string();
-    }
-    unimplemented!()
-}
-
 pub struct AtLocalNotesToSelf {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
-}
-
-impl AtLocalNotesToSelf {
-    pub fn new() -> Self {
-        AtLocalNotesToSelf {
-            params: vec![],
-        }
-    }
 }
 
 #[async_trait]
@@ -33,9 +18,15 @@ impl AtCommand for AtLocalNotesToSelf {
         &self.params
     }
 
-    async fn execute(&self, ccx: &mut AtCommandsContext, _cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String> {
+    async fn at_execute(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        _cmd: &mut AtCommandMember,
+        args: &mut Vec<AtCommandMember>,
+    ) -> Result<(Vec<ContextEnum>, String), String> {
+        let gcx = ccx.lock().await.global_context.clone();
         let cache_dir = {
-            let gcx_locked = ccx.global_context.read().await;
+            let gcx_locked = gcx.read().await;
             gcx_locked.cache_dir.clone()
         };
         let notes_dir_path = cache_dir.join("notes");
@@ -61,7 +52,7 @@ impl AtCommand for AtLocalNotesToSelf {
         );
         let mut result = vec![];
         result.push(ContextEnum::ChatMessage(chat_message));
-        let text = text_on_clip(false);
+        let text = "here be dragons".to_string();
         Ok((result, text))
     }
 }

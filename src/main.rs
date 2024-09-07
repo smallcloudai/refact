@@ -8,6 +8,7 @@ use tracing_appender;
 use backtrace;
 
 use crate::background_tasks::start_background_tasks;
+use crate::cmd_commands::exec_command_if_exists;
 use crate::lsp::spawn_lsp_task;
 use crate::telemetry::{basic_transmit, snippets_transmit};
 
@@ -32,6 +33,7 @@ mod dashboard;
 mod files_in_workspace;
 mod files_in_jsonl;
 mod files_correction;
+mod file_filter;
 mod vecdb;
 mod fetch_embedding;
 mod at_commands;
@@ -39,7 +41,10 @@ mod at_tools;
 mod nicer_logs;
 mod toolbox;
 mod ast;
-
+mod diffs;
+mod knowledge;
+mod integrations;
+mod cmd_commands;
 
 #[tokio::main]
 async fn main() {
@@ -47,6 +52,7 @@ async fn main() {
     rayon::ThreadPoolBuilder::new().num_threads(cpu_num / 2).build_global().unwrap();
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
     let cache_dir = home_dir.join(".cache/refact");
+    exec_command_if_exists(&cache_dir);
     let (gcx, ask_shutdown_receiver, shutdown_flag, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
     let (logs_writer, _guard) = if cmdline.logs_stderr {
         tracing_appender::non_blocking(std::io::stderr())
@@ -87,15 +93,15 @@ async fn main() {
     files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;
     files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, false).await;
 
+    // not really needed, but it's nice to have an error message sooner if there's one
+    let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
+
     let mut background_tasks = start_background_tasks(gcx.clone()).await;
     // vector db will spontaneously start if the downloaded caps and command line parameters are right
 
     let should_start_http = cmdline.http_port != 0;
     let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||
         (cmdline.lsp_port != 0 && cmdline.lsp_stdin_stdout == 0);
-
-    // not really needed, but it's nice to have an error message sooner if there's one
-    let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
 
     let mut main_handle: Option<JoinHandle<()>> = None;
     if should_start_http {

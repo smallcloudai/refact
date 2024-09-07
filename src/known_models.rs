@@ -28,9 +28,15 @@ pub const KNOWN_MODELS: &str = r####"
                 "starcoder2/3b/vllm",
                 "starcoder2/7b/vllm",
                 "starcoder2/15b/vllm",
+                "starcoder2/3b/neuron",
+                "starcoder2/7b/neuron",
+                "starcoder2/15b/neuron",
                 "starcoder2/3b",
                 "starcoder2/7b",
-                "starcoder2/15b"
+                "starcoder2/15b",
+                "bigcode/starcoder2-3b",
+                "bigcode/starcoder2-7b",
+                "bigcode/starcoder2-15b"
             ]
         },
         "smallcloudai/Refact-1_6B-fim": {
@@ -110,7 +116,10 @@ pub const KNOWN_MODELS: &str = r####"
                 "gpt-3.5-turbo-0125",
                 "gpt-4",
                 "gpt-4-turbo",
-                "gpt-4-turbo-2024-04-09"
+                "gpt-4-turbo-2024-04-09",
+                "openai/gpt-3.5-turbo",
+                "openai/gpt-4",
+                "openai/gpt-4-turbo"
             ]
         },
         "gpt-4o": {
@@ -121,7 +130,19 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "similar_models": [
-                "gpt-4o-2024-05-13"
+                "gpt-4o-2024-05-13",
+                "openai/gpt-4o"
+            ]
+        },
+        "gpt-4o-mini": {
+            "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            },
+            "similar_models": [
+                "gpt-4o-mini-2024-07-18"
             ]
         },
         "gpt-4o-mini": {
@@ -172,7 +193,9 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "similar_models": [
-                "llama3/8b/instruct/vllm"
+                "llama3/8b/instruct/vllm",
+                "llama3/8b/instruct/neuron",
+                "meta-llama/llama-3.1-8b-instruct"
             ]
         },
         "llama2/7b": {
@@ -270,6 +293,7 @@ pub const KNOWN_MODELS: &str = r####"
         "gpt-3.5-turbo":          "Xenova/gpt-3.5-turbo-16k",
         "gpt-3.5-turbo-1106":     "Xenova/gpt-3.5-turbo-16k",
         "gpt-3.5-turbo-0125":     "Xenova/gpt-3.5-turbo-16k",
+        "openai/gpt-3.5-turbo":   "Xenova/gpt-3.5-turbo-16k",
         "gpt-4":                  "Xenova/gpt-4",
         "gpt-4-turbo":            "Xenova/gpt-4",
         "gpt-4-turbo-2024-04-09": "Xenova/gpt-4",
@@ -277,6 +301,10 @@ pub const KNOWN_MODELS: &str = r####"
         "gpt-4o-2024-05-13":      "Xenova/gpt-4o",
         "gpt-4o-mini":            "Xenova/gpt-4o",
         "gpt-4o-mini-2024-07-18": "Xenova/gpt-4o",
+        "openai/gpt-4":           "Xenova/gpt-4",
+        "openai/gpt-4-turbo":     "Xenova/gpt-4",
+        "openai/gpt-4o":          "Xenova/gpt-4o",
+        "openai/gpt-4o-mini":     "Xenova/gpt-4o",
         "claude-3-5-sonnet":          "Xenova/claude-tokenizer",
         "claude-3-5-sonnet-20240620": "Xenova/claude-tokenizer"
     }

@@ -14,39 +14,36 @@ use walkdir::WalkDir;
 use which::which;
 
 use crate::telemetry;
-use crate::vecdb::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS};
+use crate::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS};
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
 pub struct Document {
-    pub path: PathBuf,
-    // #[allow(dead_code)]
-    // pub language_id: String,
-    pub text: Option<Rope>,
+    pub doc_path: PathBuf,
+    pub doc_text: Option<Rope>,
 }
 
-
-// FIXME: make sure error printed, not unwrap_or_default
 pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<GlobalContext>>, file_path: &PathBuf) -> Result<String, String>
 {
     if let Some(doc) = global_context.read().await.documents_state.memory_document_map.get(file_path) {
         let doc = doc.read().await;
-        if doc.text.is_some() {
-            return Ok(doc.text.as_ref().unwrap().to_string());
+        if doc.doc_text.is_some() {
+            return Ok(doc.doc_text.as_ref().unwrap().to_string());
         }
     }
     read_file_from_disk(&file_path).await.map(|x|x.to_string())
+        .map_err(|e|format!("Failed to read file: not found in memory, not found on disk. Error:\n{}", e))
 }
 
 impl Document {
-    pub fn new(path: &PathBuf) -> Self {
-        Self { path: path.clone(), text: None }
+    pub fn new(doc_path: &PathBuf) -> Self {
+        Self { doc_path: doc_path.clone(),  doc_text: None }
     }
 
     pub async fn update_text_from_disk(&mut self) -> Result<(), String> {
-        match read_file_from_disk(&self.path).await {
+        match read_file_from_disk(&self.doc_path).await {
             Ok(res) => {
-                self.text = Some(res);
+                self.doc_text = Some(res);
                 return Ok(());
             },
             Err(e) => {
@@ -56,27 +53,27 @@ impl Document {
     }
 
     pub async fn get_text_or_read_from_disk(&mut self) -> Result<String, String> {
-        if self.text.is_some() {
-            return Ok(self.text.as_ref().unwrap().to_string());
+        if self.doc_text.is_some() {
+            return Ok(self.doc_text.as_ref().unwrap().to_string());
         }
-        read_file_from_disk(&self.path).await.map(|x|x.to_string())
+        read_file_from_disk(&self.doc_path).await.map(|x|x.to_string())
     }
 
     pub fn update_text(&mut self, text: &String) {
-        self.text = Some(Rope::from_str(text));
+        self.doc_text = Some(Rope::from_str(text));
     }
 
     pub fn text_as_string(&self) -> Result<String, String> {
-        if let Some(r) = &self.text {
+        if let Some(r) = &self.doc_text {
             return Ok(r.to_string());
         }
-        return Err(format!("no text loaded in {}", self.path.display()));
+        return Err(format!("no text loaded in {}", self.doc_path.display()));
     }
 
     pub fn does_text_look_good(&self) -> Result<(), String> {
         // Some simple tests to find if the text is suitable to parse (not generated or compressed code)
-        assert!(self.text.is_some());
-        let r = self.text.as_ref().unwrap();
+        assert!(self.doc_text.is_some());
+        let r = self.doc_text.as_ref().unwrap();
 
         let total_chars = r.chars().count();
         let total_lines = r.lines().count();
@@ -99,16 +96,18 @@ impl Document {
 pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub workspace_files: Arc<StdMutex<Vec<PathBuf>>>,
+    pub active_file_path: Option<PathBuf>,
     pub jsonl_files: Arc<StdMutex<Vec<PathBuf>>>,
     // document_map on windows: c%3A/Users/user\Documents/file.ext
     // query on windows: C:/Users/user/Documents/file.ext
     pub memory_document_map: HashMap<PathBuf, Arc<ARwLock<Document>>>,   // if a file is open in IDE, and it's outside workspace dirs, it will be in this map and not in workspace_files
     pub cache_dirty: Arc<AMutex<bool>>,
     pub cache_correction: Arc<HashMap<String, HashSet<String>>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
-    pub cache_fuzzy: Arc<Vec<String>>,                   // slow linear search
+    pub cache_fuzzy: Arc<Vec<String>>,                            // slow linear search
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
     pub total_reset: bool,
     pub total_reset_ts: std::time::SystemTime,
+    pub diffs_applied_state: HashMap<u64, Vec<bool>>,
 }
 
 async fn overwrite_or_create_document(
@@ -117,11 +116,11 @@ async fn overwrite_or_create_document(
 ) -> (Arc<ARwLock<Document>>, Arc<AMutex<bool>>, bool) {
     let mut cx = global_context.write().await;
     let doc_map = &mut cx.documents_state.memory_document_map;
-    if let Some(existing_doc) = doc_map.get_mut(&document.path) {
+    if let Some(existing_doc) = doc_map.get_mut(&document.doc_path) {
         *existing_doc.write().await = document;
         (existing_doc.clone(), cx.documents_state.cache_dirty.clone(), false)
     } else {
-        let path = document.path.clone();
+        let path = document.doc_path.clone();
         let darc = Arc::new(ARwLock::new(document));
         doc_map.insert(path, darc.clone());
         (darc, cx.documents_state.cache_dirty.clone(), true)
@@ -136,6 +135,7 @@ impl DocumentsState {
         Self {
             workspace_folders: Arc::new(StdMutex::new(workspace_dirs)),
             workspace_files: Arc::new(StdMutex::new(Vec::new())),
+            active_file_path: None,
             jsonl_files: Arc::new(StdMutex::new(Vec::new())),
             memory_document_map: HashMap::new(),
             cache_dirty: Arc::new(AMutex::<bool>::new(false)),
@@ -144,6 +144,7 @@ impl DocumentsState {
             fs_watcher: Arc::new(ARwLock::new(watcher)),
             total_reset: false,
             total_reset_ts: std::time::SystemTime::now(),
+            diffs_applied_state: HashMap::new(),
         }
     }
 
@@ -214,6 +215,18 @@ pub async fn read_file_from_disk(path: &PathBuf) -> Result<Rope, String> {
         )
 }
 
+pub fn read_file_from_disk_sync(path: &PathBuf) -> Result<Rope, String> {
+    match std::fs::read_to_string(path) {
+        Ok(content) => {
+            let rope = Rope::from_str(&content);
+            Ok(rope)
+        },
+        Err(e) => {
+            Err(format!("failed to read file {}: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e))
+        }
+    }
+}
+
 async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<PathBuf>> {
     info!("{} EXEC {} {}", path.display(), cmd, args.join(" "));
     let output = async_process::Command::new(cmd)
@@ -246,6 +259,57 @@ async fn ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>> 
         None
     }
 }
+
+#[allow(dead_code)]
+pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf, &'static str)> {
+    let mut dir = file_path.clone();
+    if dir.is_file() {
+        dir.pop();
+    }
+    loop {
+        if dir.join(".git").is_dir() {
+            return Some((dir.clone(), "git"));
+        } else if dir.join(".svn").is_dir() {
+            return Some((dir.clone(), "svn"));
+        } else if dir.join(".hg").is_dir() {
+            return Some((dir.clone(), "hg"));
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+    None
+}
+
+// Slow version of version control detection:
+// async fn is_git_repo(directory: &PathBuf) -> bool {
+//     Command::new("git")
+//         .arg("rev-parse")
+//         .arg("--is-inside-work-tree")
+//         .current_dir(directory)
+//         .output()
+//         .await
+//         .map(|output| output.status.success())
+//         .unwrap_or(false)
+// }
+// async fn is_svn_repo(directory: &PathBuf) -> bool {
+//     Command::new("svn")
+//         .arg("info")
+//         .current_dir(directory)
+//         .output()
+//         .await
+//         .map(|output| output.status.success())
+//         .unwrap_or(false)
+// }
+// async fn is_hg_repo(directory: &PathBuf) -> bool {
+//     Command::new("hg")
+//         .arg("root")
+//         .current_dir(directory)
+//         .output()
+//         .await
+//         .map(|output| output.status.success())
+//         .unwrap_or(false)
+// }
 
 async fn ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = vec![];
@@ -306,7 +370,7 @@ async fn ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf>
     paths
 }
 
-async fn retrieve_files_by_proj_folders(proj_folders: Vec<PathBuf>) -> Vec<PathBuf> {
+async fn _retrieve_files_in_workspace_folders(proj_folders: Vec<PathBuf>) -> Vec<PathBuf> {
     let mut all_files: Vec<PathBuf> = Vec::new();
     for proj_folder in proj_folders {
         let files = ls_files_under_version_control_recursive(proj_folder.clone()).await;
@@ -322,7 +386,7 @@ async fn enqueue_some_docs(
 ) {
     info!("detected {} modified or added files", docs.len());
     for d in docs.iter().take(5) {
-        info!("    added/modified {}", crate::nicer_logs::last_n_chars(&d.path.display().to_string(), 30));
+        info!("    added/modified {}", crate::nicer_logs::last_n_chars(&d.doc_path.display().to_string(), 30));
     }
     if docs.len() > 5 {
         info!("    ...");
@@ -347,13 +411,13 @@ pub async fn enqueue_all_files_from_workspace_folders(
     let folders: Vec<PathBuf> = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
 
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
-    let paths = retrieve_files_by_proj_folders(folders).await;
+    let paths = _retrieve_files_in_workspace_folders(folders).await;
     info!("enqueue_all_files_from_workspace_folders found {} files => workspace_files", paths.len());
     let newset: HashSet<PathBuf> = paths.iter().cloned().collect();
 
     let mut documents: Vec<Document> = vec![];
     for d in paths.iter() {
-        documents.push(Document { path: d.clone(), text: None });
+        documents.push(Document { doc_path: d.clone(), doc_text: None });
     }
 
     let (vec_db_module, ast_module, removed_old) = {
@@ -409,6 +473,20 @@ pub async fn on_did_open(
     if mark_dirty {
         (*dirty_arc.lock().await) = true;
     }
+    gcx.write().await.documents_state.active_file_path = Some(cpath.clone());
+}
+
+pub async fn on_did_close(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    cpath: &PathBuf,
+) {
+    info!("on_did_close {}", crate::nicer_logs::last_n_chars(&cpath.display().to_string(), 30));
+    {
+        let mut cx = gcx.write().await;
+        if cx.documents_state.memory_document_map.remove(cpath).is_none() {
+            tracing::error!("on_did_close: failed to remove from memory_document_map {:?}", cpath.display());
+        }
+    }
 }
 
 pub async fn on_did_change(
@@ -428,6 +506,8 @@ pub async fn on_did_change(
         (*dirty_arc.lock().await) = true;
     }
 
+    gcx.write().await.documents_state.active_file_path = Some(path.clone());
+
     let mut go_ahead = true;
     {
         let is_it_good = is_valid_file(path);
@@ -437,7 +517,7 @@ pub async fn on_did_change(
         }
     }
 
-    let doc = Document { path: doc_arc.read().await.path.clone(), text: None };
+    let doc = Document { doc_path: doc_arc.read().await.doc_path.clone(), doc_text: None };
     if go_ahead {
         enqueue_some_docs(gcx.clone(), &vec![doc], false).await;
     }
@@ -491,8 +571,8 @@ pub async fn add_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         documents_state.workspace_folders.lock().unwrap().push(path.clone());
         let _ = documents_state.fs_watcher.write().await.watch(&path.clone(), RecursiveMode::Recursive);
     }
-    let paths = retrieve_files_by_proj_folders(vec![path.clone()]).await;
-    let docs: Vec<Document> = paths.into_iter().map(|p| Document { path: p, text: None }).collect();
+    let paths = _retrieve_files_in_workspace_folders(vec![path.clone()]).await;
+    let docs: Vec<Document> = paths.into_iter().map(|p| Document { doc_path: p, doc_text: None }).collect();
     enqueue_some_docs(gcx, &docs, false).await;
 }
 
@@ -526,7 +606,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 
             if go_ahead {
                 let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
-                docs.push(Document { path: cpath, text: None });
+                docs.push(Document { doc_path: cpath, doc_text: None });
             }
         }
         if docs.is_empty() {
