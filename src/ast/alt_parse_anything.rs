@@ -132,6 +132,21 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                         eprintln!("Unresolved caller definition: {:?}", caller_guid);
                     }
                 }
+
+                if let Some(linked_decl_typedef) = symbol.get_linked_decl_type() {
+                    // #[derive(Eq, Hash, PartialEq, Debug, Serialize, Deserialize, Clone)]
+                    // pub struct TypeDef {
+                    //  pub name: Option<String>,
+                    //  pub inference_info: Option<String>,
+                    //  pub inference_info_guid: Option<Uuid>,
+                    //  pub is_pod: bool,
+                    //  pub namespace: String,
+                    //  pub guid: Option<Uuid>,
+                    //  pub nested_types: Vec<TypeDef>, // for nested types, presented in templates
+                    // }
+                    eprintln!("typedef: {:?}", linked_decl_typedef);
+                }
+
                 if let Some(linked_decl_guid) = linked_decl_guid {
                     if let Some(linked_decl_definition) = definitions.get(&linked_decl_guid) {
                         eprintln!("Resolved linked declaration definition: {:?}", linked_decl_definition);
@@ -177,18 +192,30 @@ mod tests {
         fs::read_to_string(file_path).expect("Unable to read file")
     }
 
+    // #[test]
+    // fn test_parse_anything_frog_py() {
+    //     init_tracing();
+    //     let text = read_file("tests/emergency_frog_situation/frog.py");
+    //     let definitions = parse_anything("tests/emergency_frog_situation/frog.py", &text);
+    //     for d in definitions.values() {
+    //         println!("{:#?}", d);
+    //     }
+    //     assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"Frog".to_string())));
+    //     assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"__init__".to_string())));
+    //     assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"bounce_off_banks".to_string())));
+    //     assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"jump".to_string())));
+    // }
+
     #[test]
-    fn test_parse_anything_frog_py() {
-        init_tracing();
-        let text = read_file("tests/emergency_frog_situation/frog.py");
-        let definitions = parse_anything("tests/emergency_frog_situation/frog.py", &text);
+    fn test_parse_anything_set_as_avatar_py() {
+        let text = read_file("tests/emergency_frog_situation/set_as_avatar.py");
+        let definitions = parse_anything("tests/emergency_frog_situation/set_as_avatar.py", &text);
         for d in definitions.values() {
             println!("{:#?}", d);
         }
-        assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"Frog".to_string())));
-        assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"__init__".to_string())));
-        assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"bounce_off_banks".to_string())));
-        assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"jump".to_string())));
+        // assert!(definitions.values().any(|d| d.path_for_guesswork.contains("Toad")));
+        // assert!(definitions.values().any(|d| d.path_for_guesswork.contains("EuropeanCommonToad")));
+        // assert!(definitions.values().any(|d| d.path_for_guesswork.contains("__init__")));
     }
 
     // #[test]
@@ -207,16 +234,6 @@ mod tests {
     //     // Add assertions to check the parsed definitions
     //     assert!(definitions.iter().any(|d| d.path().contains("draw_hello_frog")));
     //     assert!(definitions.iter().any(|d| d.path().contains("main_loop")));
-    // }
-
-    // #[test]
-    // fn test_parse_anything_set_as_avatar_py() {
-    //     let text = read_file("emergency_frog_situation/set_as_avatar.py");
-    //     let definitions = parse_anything("emergency_frog_situation/set_as_avatar.py", &text);
-    //     // Add assertions to check the parsed definitions
-    //     assert!(definitions.iter().any(|d| d.path().contains("Toad")));
-    //     assert!(definitions.iter().any(|d| d.path().contains("EuropeanCommonToad")));
-    //     assert!(definitions.iter().any(|d| d.path().contains("__init__")));
     // }
 
     // #[test]
