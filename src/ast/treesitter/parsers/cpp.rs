@@ -56,6 +56,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             return Some(TypeDef {
                 name: Some(text),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: kind == "primitive_type",
                 namespace: "".to_string(),
                 guid: None,
@@ -71,6 +72,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             let mut type_ = TypeDef {
                 name: None,
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,

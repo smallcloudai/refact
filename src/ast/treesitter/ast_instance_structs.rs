@@ -1,4 +1,7 @@
-use std::{fs, io};
+use async_trait::async_trait;
+use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
+use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::cell::RefCell;
 use std::cmp::min;
@@ -7,10 +10,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use async_trait::async_trait;
-use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
-use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
+use std::{fs, io};
 use tokio::fs::read_to_string;
 use tree_sitter::{Point, Range};
 use uuid::Uuid;
@@ -22,6 +22,7 @@ use crate::ast::treesitter::structs::{RangeDef, SymbolType};
 pub struct TypeDef {
     pub name: Option<String>,
     pub inference_info: Option<String>,
+    pub inference_info_guid: Option<Uuid>,
     pub is_pod: bool,
     pub namespace: String,
     pub guid: Option<Uuid>,
@@ -33,6 +34,7 @@ impl Default for TypeDef {
         TypeDef {
             name: None,
             inference_info: None,
+            inference_info_guid: None,
             is_pod: false,
             namespace: String::from(""),
             guid: None,
@@ -67,8 +69,9 @@ impl TypeDef {
     }
 
     pub fn mutate_nested_types<F>(&mut self, mut f: F)
-        where
-            F: FnMut(&mut TypeDef) {
+    where
+        F: FnMut(&mut TypeDef),
+    {
         for nested in &mut self.nested_types {
             f(nested);
             nested.mutate_nested_types_ref(&mut f);
@@ -76,8 +79,9 @@ impl TypeDef {
     }
 
     fn mutate_nested_types_ref<F>(&mut self, f: &mut F)
-        where
-            F: FnMut(&mut TypeDef) {
+    where
+        F: FnMut(&mut TypeDef),
+    {
         for nested in &mut self.nested_types {
             f(nested);
             nested.mutate_nested_types_ref(f);
@@ -103,6 +107,7 @@ pub struct AstSymbolFields {
     pub definition_range: Range,
     // extra fields for usage structs to prevent multiple downcast operations
     pub linked_decl_guid: Option<Uuid>,
+    pub linked_decl_type: Option<TypeDef>,
     pub caller_guid: Option<Uuid>,
     pub is_error: bool,
     pub caller_depth: Option<usize>,
@@ -227,6 +232,7 @@ impl Default for AstSymbolFields {
                 end_point: Default::default(),
             },
             linked_decl_guid: None,
+            linked_decl_type: None,
             caller_guid: None,
             is_error: false,
             caller_depth: None,
@@ -286,6 +292,8 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
 
     fn set_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>);
 
+    fn set_inference_info_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>);
+
     fn namespace(&self) -> &str {
         &self.fields().namespace
     }
@@ -328,6 +336,14 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
 
     fn set_linked_decl_guid(&mut self, linked_decl_guid: Option<Uuid>) {
         self.fields_mut().linked_decl_guid = linked_decl_guid;
+    }
+
+    fn get_linked_decl_type(&self) -> &Option<TypeDef> {
+        &self.fields().linked_decl_type
+    }
+
+    fn set_linked_decl_type(&mut self, linked_decl_type: TypeDef) {
+        self.fields_mut().linked_decl_type = Some(linked_decl_type);
     }
 
     fn temporary_types_cleanup(&mut self);
@@ -443,6 +459,26 @@ impl AstSymbolInstance for StructDeclaration {
         }
     }
 
+    fn set_inference_info_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
+        let mut idx = 0;
+        for t in self.inherited_types.iter_mut() {
+            t.inference_info_guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.inference_info_guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+        for t in self.template_types.iter_mut() {
+            t.inference_info_guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.inference_info_guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+    }
+
     fn temporary_types_cleanup(&mut self) {
         for t in self.inherited_types.iter_mut() {
             t.inference_info = None;
@@ -522,6 +558,18 @@ impl AstSymbolInstance for TypeAlias {
         }
     }
 
+    fn set_inference_info_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
+        let mut idx = 0;
+        for t in self.types.iter_mut() {
+            t.inference_info_guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.inference_info_guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+    }
+
     fn temporary_types_cleanup(&mut self) {
         for t in self.types.iter_mut() {
             t.inference_info = None;
@@ -587,6 +635,16 @@ impl AstSymbolInstance for ClassFieldDeclaration {
         idx += 1;
         self.type_.mutate_nested_types(|t| {
             t.guid = guids[idx].clone();
+            idx += 1;
+        })
+    }
+
+    fn set_inference_info_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
+        let mut idx = 0;
+        self.type_.inference_info_guid = guids[idx].clone();
+        idx += 1;
+        self.type_.mutate_nested_types(|t| {
+            t.inference_info_guid = guids[idx].clone();
             idx += 1;
         })
     }
@@ -660,6 +718,8 @@ impl AstSymbolInstance for ImportDeclaration {
 
     fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) {}
 
+    fn set_inference_info_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) {}
+
     fn temporary_types_cleanup(&mut self) {}
 
     fn is_type(&self) -> bool {
@@ -718,6 +778,16 @@ impl AstSymbolInstance for VariableDefinition {
         idx += 1;
         self.type_.mutate_nested_types(|t| {
             t.guid = guids[idx].clone();
+            idx += 1;
+        })
+    }
+
+    fn set_inference_info_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
+        let mut idx = 0;
+        self.type_.inference_info_guid = guids[idx].clone();
+        idx += 1;
+        self.type_.mutate_nested_types(|t| {
+            t.inference_info_guid = guids[idx].clone();
             idx += 1;
         })
     }
@@ -838,6 +908,28 @@ impl AstSymbolInstance for FunctionDeclaration {
         }
     }
 
+    fn set_inference_info_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
+        let mut idx = 0;
+        if let Some(t) = &mut self.return_type {
+            t.inference_info_guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.inference_info_guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+        for t in self.args.iter_mut() {
+            if let Some(t) = &mut t.type_ {
+                t.inference_info_guid = guids[idx].clone();
+                idx += 1;
+                t.mutate_nested_types(|t| {
+                    t.inference_info_guid = guids[idx].clone();
+                    idx += 1;
+                })
+            }
+        }
+    }
+
     fn temporary_types_cleanup(&mut self) {
         if let Some(t) = &mut self.return_type {
             t.inference_info = None;
@@ -902,6 +994,8 @@ impl AstSymbolInstance for CommentDefinition {
 
     fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) {}
 
+    fn set_inference_info_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) {}
+
     fn temporary_types_cleanup(&mut self) {}
 
     fn is_declaration(&self) -> bool { true }
@@ -948,12 +1042,72 @@ impl AstSymbolInstance for FunctionCall {
     }
 
     fn types(&self) -> Vec<TypeDef> {
-        vec![]
+        let mut types = vec![];
+        if let Some(t) = self.ast_fields.linked_decl_type.clone() {
+            types.push(t.clone());
+            types.extend(t.get_nested_types());
+        }
+        for t in self.template_types.iter() {
+            types.push(t.clone());
+            types.extend(t.get_nested_types());
+        }
+        types
     }
 
-    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) {}
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
+        let mut idx = 0;
+        if let Some(t) = &mut self.ast_fields.linked_decl_type {
+            t.guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+        for t in self.template_types.iter_mut() {
+            t.guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+    }
 
-    fn temporary_types_cleanup(&mut self) {}
+    fn set_inference_info_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
+        let mut idx = 0;
+        if let Some(t) = &mut self.ast_fields.linked_decl_type {
+            t.inference_info_guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.inference_info_guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+        for t in self.template_types.iter_mut() {
+            t.inference_info_guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.inference_info_guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+    }
+
+    fn temporary_types_cleanup(&mut self) {
+        if let Some(t) = &mut self.ast_fields.linked_decl_type {
+            t.inference_info = None;
+            t.mutate_nested_types(|t| {
+                t.inference_info = None
+            });
+        }
+        for t in self.template_types.iter_mut() {
+            t.inference_info = None;
+            t.mutate_nested_types(|t| {
+                t.inference_info = None
+            });
+        }
+    }
 
     fn is_declaration(&self) -> bool { false }
 
@@ -997,12 +1151,46 @@ impl AstSymbolInstance for VariableUsage {
     }
 
     fn types(&self) -> Vec<TypeDef> {
-        vec![]
+        let mut types = vec![];
+        if let Some(t) = self.ast_fields.linked_decl_type.clone() {
+            types.push(t.clone());
+            types.extend(t.get_nested_types());
+        }
+        types
     }
 
-    fn set_guids_to_types(&mut self, _: &Vec<Option<Uuid>>) {}
+    fn set_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
+        let mut idx = 0;
+        if let Some(t) = &mut self.ast_fields.linked_decl_type {
+            t.guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+    }
 
-    fn temporary_types_cleanup(&mut self) {}
+    fn set_inference_info_guids_to_types(&mut self, guids: &Vec<Option<Uuid>>) {
+        let mut idx = 0;
+        if let Some(t) = &mut self.ast_fields.linked_decl_type {
+            t.inference_info_guid = guids[idx].clone();
+            idx += 1;
+            t.mutate_nested_types(|t| {
+                t.inference_info_guid = guids[idx].clone();
+                idx += 1;
+            })
+        }
+    }
+
+    fn temporary_types_cleanup(&mut self) {
+        if let Some(t) = &mut self.ast_fields.linked_decl_type {
+            t.inference_info = None;
+            t.mutate_nested_types(|t| {
+                t.inference_info = None
+            });
+        }
+    }
 
     fn is_declaration(&self) -> bool { false }
 

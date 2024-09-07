@@ -42,6 +42,7 @@ impl RustParser {
                 return Some(TypeDef {
                     name: Some(text),
                     inference_info: None,
+                    inference_info_guid: None,
                     is_pod: kind == "primitive_type",
                     namespace: "".to_string(),
                     guid: None,
@@ -61,6 +62,7 @@ impl RustParser {
                 return Some(TypeDef {
                     name: Some(name),
                     inference_info: None,
+                    inference_info_guid: None,
                     is_pod: false,
                     namespace,
                     guid: None,
@@ -78,6 +80,7 @@ impl RustParser {
                 return Some(TypeDef {
                     name: Some("tuple".to_string()),
                     inference_info: None,
+                    inference_info_guid: None,
                     is_pod: false,
                     namespace: "".to_string(),
                     guid: None,
@@ -106,6 +109,7 @@ impl RustParser {
                 return Some(TypeDef {
                     name: Some(name),
                     inference_info: None,
+                    inference_info_guid: None,
                     is_pod: false,
                     namespace: "".to_string(),
                     guid: None,

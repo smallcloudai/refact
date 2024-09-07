@@ -28,6 +28,7 @@ fn parse_type_from_value(parent: &Node, code: &str) -> Option<TypeDef> {
             Some(TypeDef {
                 name: None,
                 inference_info: Some(text),
+                inference_info_guid: None,
                 is_pod: true,
                 namespace: "".to_string(),
                 guid: None,
@@ -38,6 +39,7 @@ fn parse_type_from_value(parent: &Node, code: &str) -> Option<TypeDef> {
             Some(TypeDef {
                 name: None,
                 inference_info: Some(text),
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -55,6 +57,7 @@ fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             return Some(TypeDef {
                 name: Some(text),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: kind == "predefined_type",
                 namespace: "".to_string(),
                 guid: None,
@@ -65,6 +68,7 @@ fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             let mut dtype = TypeDef {
                 name: None,
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -88,6 +92,7 @@ fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             let mut dtype = TypeDef {
                 name: Some(kind[0..kind.len() - 5].to_string()),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -105,6 +110,7 @@ fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             let mut dtype = TypeDef {
                 name: Some("function".to_string()),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,

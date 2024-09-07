@@ -61,6 +61,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             return Some(TypeDef {
                 name: Some(text),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -71,6 +72,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             return Some(TypeDef {
                 name: None,
                 inference_info: Some(text),
+                inference_info_guid: None,
                 is_pod: true,
                 namespace: "".to_string(),
                 guid: None,
@@ -91,6 +93,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             return Some(TypeDef {
                 name: Some(name),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -111,6 +114,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             return Some(TypeDef {
                 name: Some(name),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -182,6 +186,7 @@ fn parse_function_arg(parent: &Node, code: &str) -> Vec<FunctionArg> {
                 arg.type_ = Some(TypeDef {
                     name: None,
                     inference_info: Some(value_text.clone()),
+                    inference_info_guid: None,
                     is_pod: false,
                     namespace: "".to_string(),
                     guid: None,
@@ -472,26 +477,32 @@ impl PythonParser {
             "attribute" => {
                 let attribute = info.node.child_by_field_name("attribute").unwrap();
                 let name = code.slice(attribute.byte_range()).to_string();
-                let mut usage = VariableUsage::default();
-                usage.ast_fields.name = name;
-                usage.ast_fields.language = info.ast_fields.language;
-                usage.ast_fields.full_range = info.node.range();
-                usage.ast_fields.file_path = info.ast_fields.file_path.clone();
-                usage.ast_fields.parent_guid = Some(info.parent_guid.clone());
-                usage.ast_fields.caller_guid = Some(get_guid());
-                usage.ast_fields.guid = get_guid();
+                let mut def = VariableDefinition::default();
+                def.type_ = info.node.parent()
+                    .map(|x| x.child_by_field_name("type"))
+                    .flatten()
+                    .map(|x| parse_type(&x, code))
+                    .flatten()
+                    .unwrap_or_default();
+                def.ast_fields.name = name;
+                def.ast_fields.language = info.ast_fields.language;
+                def.ast_fields.full_range = info.node.range();
+                def.ast_fields.file_path = info.ast_fields.file_path.clone();
+                def.ast_fields.parent_guid = Some(info.parent_guid.clone());
+                def.ast_fields.caller_guid = Some(get_guid());
+                def.ast_fields.guid = get_guid();
                 if let Some(caller_guid) = info.ast_fields.caller_guid.clone() {
-                    usage.ast_fields.guid = caller_guid;
+                    def.ast_fields.guid = caller_guid;
                 }
-                usage.ast_fields.is_error = info.ast_fields.is_error;
+                def.ast_fields.is_error = info.ast_fields.is_error;
 
                 let object_node = info.node.child_by_field_name("object").unwrap();
                 candidates.push_back(CandidateInfo {
-                    ast_fields: usage.ast_fields.clone(),
+                    ast_fields: def.ast_fields.clone(),
                     node: object_node,
                     parent_guid: info.parent_guid.clone(),
                 });
-                symbols.push(Arc::new(RwLock::new(Box::new(usage))));
+                symbols.push(Arc::new(RwLock::new(Box::new(def))));
             }
             "assignment" | "for_statement" => {
                 symbols.extend(self.parse_assignment(info, code, candidates));

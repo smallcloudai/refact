@@ -31,7 +31,7 @@ class C:
     a: int       # 'a' has no default value
     b: int = 0   # assign a default value for 'b'
     def __init__(self):
-        self.a = 23
+        self.a: 'Test' = 23
 
 class BabyClass:
     def __init__(self):

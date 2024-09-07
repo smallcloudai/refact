@@ -45,6 +45,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             return Some(TypeDef {
                 name: Some(text),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -55,6 +56,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             return Some(TypeDef {
                 name: None,
                 inference_info: Some(text),
+                inference_info_guid: None,
                 is_pod: true,
                 namespace: "".to_string(),
                 guid: None,
@@ -65,6 +67,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             let mut decl = TypeDef {
                 name: None,
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -94,6 +97,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             let mut decl = TypeDef {
                 name: Some("[]".to_string()),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -155,6 +159,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             let mut decl = TypeDef {
                 name: None,
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -189,6 +194,7 @@ fn parse_function_arg(parent: &Node, code: &str) -> FunctionArg {
         arg.type_ = Some(TypeDef {
             name: Some(code.slice(dimensions.byte_range()).to_string()),
             inference_info: None,
+            inference_info_guid: None,
             is_pod: false,
             namespace: "".to_string(),
             guid: None,
@@ -336,6 +342,7 @@ impl JavaParser {
                         decl.type_ = TypeDef {
                             name: Some(code.slice(dimensions.byte_range()).to_string()),
                             inference_info: None,
+                            inference_info_guid: None,
                             is_pod: false,
                             namespace: "".to_string(),
                             guid: None,
@@ -396,6 +403,7 @@ impl JavaParser {
                         decl.type_ = TypeDef {
                             name: Some(code.slice(dimensions.byte_range()).to_string()),
                             inference_info: None,
+                            inference_info_guid: None,
                             is_pod: false,
                             namespace: "".to_string(),
                             guid: None,

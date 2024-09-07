@@ -37,6 +37,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
                 return Some(TypeDef {
                     name: Some(code.slice(name.byte_range()).to_string()),
                     inference_info: None,
+                    inference_info_guid: None,
                     is_pod: false,
                     namespace: "".to_string(),
                     guid: None,
@@ -48,6 +49,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             return Some(TypeDef {
                 name: Some(text),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: kind == "predefined_type",
                 namespace: "".to_string(),
                 guid: None,
@@ -58,6 +60,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             let mut dtype = TypeDef {
                 name: None,
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -81,6 +84,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             let mut dtype = TypeDef {
                 name: Some(kind[0..kind.len() - 5].to_string()),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
@@ -98,6 +102,7 @@ pub fn parse_type(parent: &Node, code: &str) -> Option<TypeDef> {
             let mut dtype = TypeDef {
                 name: Some("function".to_string()),
                 inference_info: None,
+                inference_info_guid: None,
                 is_pod: false,
                 namespace: "".to_string(),
                 guid: None,
