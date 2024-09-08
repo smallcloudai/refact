@@ -95,7 +95,7 @@ impl fmt::Debug for AltLink {
 
 
 pub struct AltIndex {
-    pub sleddb: sled::Db,
+    pub sleddb: Arc<AMutex<sled::Db>>,
 }
 
 pub struct AltStatus {

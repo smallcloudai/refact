@@ -295,25 +295,6 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     (where_is_this, debug_hint)
 }
 
-fn _global_path_from_filesystem_path(cpath: &str) -> Vec<String> {
-    use std::path::Path;
-    let path = Path::new(cpath);
-    let mut components = vec![];
-    let silly_names_list = vec!["__init__.py", "mod.rs"];
-    if let Some(file_name) = path.file_stem() {
-        let file_name_str = file_name.to_string_lossy().to_string();
-        if !silly_names_list.contains(&file_name_str.as_str()) {
-            components.push(file_name_str);
-        }
-    }
-    if let Some(parent) = path.parent() {
-        if let Some(parent_name) = parent.file_name() {
-            components.push(parent_name.to_string_lossy().to_string());
-        }
-    }
-    components.iter().rev().take(2).cloned().collect::<Vec<_>>()
-}
-
 pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> {
     let path = PathBuf::from(cpath);
     let mut parser = match get_ast_parser_by_filename(&path) {
@@ -323,7 +304,6 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
             return IndexMap::new();
         }
     };
-    // let global_path = _global_path_from_file_path(cpath);
     let global_path = vec!["file".to_string()];
     eprintln!("global_path = {:?}", global_path);
 
@@ -439,6 +419,45 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
     let mut sorted_definitions: Vec<(Uuid, AltDefinition)> = definitions.clone().into_iter().collect();
     sorted_definitions.sort_by(|a, b| a.1.path_for_guesswork.cmp(&b.1.path_for_guesswork));
     IndexMap::from_iter(sorted_definitions)
+}
+
+fn _global_path_from_filesystem_path(cpath: &str) -> Vec<String> {
+    use std::path::Path;
+    let path = Path::new(cpath);
+    let mut components = vec![];
+    let silly_names_list = vec!["__init__.py", "mod.rs"];
+    if let Some(file_name) = path.file_stem() {
+        let file_name_str = file_name.to_string_lossy().to_string();
+        if !silly_names_list.contains(&file_name_str.as_str()) {
+            components.push(file_name_str);
+        }
+    }
+    if let Some(parent) = path.parent() {
+        if let Some(parent_name) = parent.file_name() {
+            components.push(parent_name.to_string_lossy().to_string());
+        }
+    }
+    components.iter().rev().take(2).cloned().collect::<Vec<_>>()
+}
+
+pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> {
+    let file_global_path = _global_path_from_filesystem_path(cpath);
+    let mut definitions = parse_anything(cpath, text);
+    for definition in definitions.values_mut() {
+        definition.path_for_guesswork = [
+            file_global_path.clone(),
+            definition.path_for_guesswork.clone()
+        ].concat();
+        for usage in &mut definition.usages {
+            if usage.target_for_guesswork.starts_with(&vec!["file".to_string()]) {
+                usage.target_for_guesswork = [
+                    file_global_path.clone(),
+                    usage.target_for_guesswork[1..].to_vec()
+                ].concat();
+            }
+        }
+    }
+    definitions
 }
 
 
