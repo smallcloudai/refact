@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 use uuid::Uuid;
 use crate::ast::alt_minimalistic::{AltDefinition, AltLink};
-use crate::ast::treesitter::parsers::{get_ast_parser_by_filename, AstLanguageParser};
+use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, FunctionCall, TypeDef};
-use std::any::Any;
+use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, TypeDef};
 
 
 fn _is_declaration(t: SymbolType) -> bool {
@@ -82,7 +81,7 @@ fn _find_top_level_nodes(
     map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
 ) -> Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> {
     //
-    // XXX UGLY: the only way to detect top level is to map.get(parent) if it's not found, then it's top level.
+    // XXX UGLY: the only way to detect top level is to map.get(parent) if it's not found => then it's top level.
     //
     let mut top_level: Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> = Vec::new();
     for (_, node_arc) in map.iter() {
@@ -116,12 +115,33 @@ fn _attempt_name2path(
         let node = node_option.unwrap().read();
         if _is_declaration(node.symbol_type()) {
             look_here.push(node_option.unwrap().clone());
-            if node.symbol_type() == SymbolType::StructDeclaration {
+
+            if let Some(function_declaration) = node.as_any().downcast_ref::<FunctionDeclaration>() {
+                for arg in &function_declaration.args {
+                    if arg.name == name_of_anything {
+                        eprintln!("{:?} is an argument in a function {:?} => ignore, no path at all, no link", name_of_anything, function_declaration.name());
+                        return vec![];
+                    }
+                }
+            }
+
+            if let Some(struct_declaration) = node.as_any().downcast_ref::<StructDeclaration>() {
                 // Add all children nodes (shallow)
-                for child_guid in node.childs_guid() {
+                for child_guid in struct_declaration.childs_guid() {
                     if let Some(child_node) = map.get(child_guid) {
                         look_here.push(child_node.clone());
                     }
+                }
+                for _base_class_guid in struct_declaration.inherited_types.iter() {
+                    // pub struct TypeDef {
+                    //     pub name: Option<String>,
+                    //     pub inference_info: Option<String>,
+                    //     pub inference_info_guid: Option<Uuid>,
+                    //     pub is_pod: bool,
+                    //     pub namespace: String,
+                    //     pub guid: Option<Uuid>,
+                    //     pub nested_types: Vec<TypeDef>, // for nested types, presented in templates
+                    // }
                 }
             }
         }
@@ -137,7 +157,9 @@ fn _attempt_name2path(
 
     for node_arc in look_here {
         let node = node_arc.read();
+
         if _is_declaration(node.symbol_type()) {
+            eprintln!("_attempt_name2path {:?} looking in {:?}", name_of_anything, node.name());
             if node.name() == name_of_anything {
                 return [
                     file_global_path.clone(),
@@ -234,8 +256,46 @@ fn _attempt_typeof_path(
     vec!["?".to_string()]
 }
 
+fn _usage_or_typeof_caller_colon_colon_usage(
+    caller_guid: Option<Uuid>,
+    orig_map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
+    global_path: &Vec<String>,
+    symbol: &dyn AstSymbolInstance,
+) -> (Vec<String>, String) {
+    // let mut where_is_this = vec!["?".to_string()];
+    // let mut debug_hint = "".to_string();
+    let where_is_this;
+    let debug_hint;
+    if let Some(caller) = caller_guid.and_then(|guid| orig_map.get(&guid)) {
+        let caller_node = caller.read();
+        let caller_name = caller_node.name();
+        eprintln!("Resolved caller: {:?}, Name: {:?}", caller_guid, caller_name); // Print the name
+        let typeof_caller = _attempt_typeof_path(&orig_map, &global_path, caller_node.guid().clone(), caller_node.name().to_string());
+        where_is_this = [
+            typeof_caller,
+            vec![symbol.name().to_string()]
+        ].concat();
+        debug_hint = caller_node.name().to_string();
+        eprintln!("where_is_this1: {:?}", where_is_this);
+    } else {
+        // Handle the case where caller_guid is None or not found in orig_map
+        // XXX UGLY: unfortunately, unresolved caller means no caller in C++, maybe in other languages
+        // caller is about caller.function_call(1, 2, 3), in this case means just function_call(1, 2, 3) without anything on the left
+        // just look for a name in function's parent and above
+        eprintln!("where_is_this2: looking for  {:?}", symbol.name().to_string());
+        where_is_this = _attempt_name2path(&orig_map, &global_path, symbol.parent_guid().clone(), symbol.name().to_string());
+        if where_is_this.is_empty() {
+            // empty means ignore it, unresolved will be ?::something
+            debug_hint = "ignore".to_string();
+        } else {
+            debug_hint = "up".to_string();
+        }
+        eprintln!("where_is_this2: {:?} hint={:?}", where_is_this, debug_hint);
+    }
+    (where_is_this, debug_hint)
+}
 
-fn _global_path_from_file_path(cpath: &str) -> Vec<String> {
+fn _global_path_from_filesystem_path(cpath: &str) -> Vec<String> {
     use std::path::Path;
     let path = Path::new(cpath);
     let mut components = vec![];
@@ -332,104 +392,45 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                 let function_call = symbol.as_any().downcast_ref::<FunctionCall>().expect("xxx1000");
                 let fields = function_call.fields();
                 let caller_guid = fields.caller_guid.clone();
-                let mut where_is_this = vec!["?".to_string()];
-                let mut debug_hint = "".to_string();
-
                 if function_call.name().is_empty() {
-                    tracing::error!("Error parsing {}:{}\nNo name in the call present", cpath, fields.full_range.start_point.row + 1);
+                    tracing::error!("Error parsing {}:{} no name in the call", cpath, fields.full_range.start_point.row + 1);
                     continue;
                 }
-
-                // caller_guid in this case refers to "self" in self.x
-                // we need to discover type of "caller", and parent.usages += type(caller)
-                if let Some(caller_guid) = caller_guid {
-                    if let Some(caller_node_arc) = orig_map.get(&caller_guid) {
-                        let caller_node = caller_node_arc.read();
-                        let caller_name = caller_node.name();
-                        eprintln!("Resolved caller: {:?}, Name: {:?}", caller_guid, caller_name); // Print the name
-                        let typeof_caller = _attempt_typeof_path(&orig_map, &global_path, caller_guid, caller_node.name().to_string());
-                        where_is_this = [
-                            typeof_caller,
-                            vec![function_call.name().to_string()]
-                        ].concat();
-                        debug_hint = caller_node.name().to_string();
-                        eprintln!("where_is_this1: {:?}\n", where_is_this);
-                    } else {
-                        // XXX UGLY: unfortunately, unresolved caller means no caller in C++, maybe in other languages
-                        // caller is about caller.function_call(1, 2, 3), in this case means just function_call(1, 2, 3) without anything on the left
-                        eprintln!("where_is_this2: looking for  {:?}\n", function_call.name().to_string());
-                        where_is_this = _attempt_name2path(&orig_map, &global_path, function_call.parent_guid().clone(), function_call.name().to_string());
-                        eprintln!("where_is_this2: {:?}\n", where_is_this);
-                    }
+                let (where_is_this, debug_hint) = _usage_or_typeof_caller_colon_colon_usage(caller_guid, &orig_map, &global_path, function_call);
+                eprintln!("function call name={} where_is_this={:?} debug_hint={:?}", function_call.name(), where_is_this, debug_hint);
+                if where_is_this.is_empty() {
+                    continue;
                 }
-
                 let parent_decl_guid = _go_to_parent_until_declaration(&orig_map, symbol.parent_guid().unwrap_or_default());
                 if let Some(definition) = definitions.get_mut(&parent_decl_guid) {
-                    // eprintln!("Parent definition found for function call: {:?}", definition);
                     definition.usages.push(AltLink {
                         guid: symbol.guid().clone(),
                         target_for_guesswork: where_is_this,
-                        debug_hint: debug_hint,
+                        debug_hint,
                     });
                 }
             }
             SymbolType::VariableUsage => {
-            //     let variable_usage = symbol.as_any().downcast_ref::<VariableUsage>().expect("xxx1001");
-            //     let fields = variable_usage.fields();
-            //     let guid = fields.guid.clone();
-            //     let parent_guid = fields.parent_guid.clone();
-            //     let name = fields.name.clone();
-            //     let full_range = fields.full_range.clone();
-            //     let childs_guid = fields.childs_guid.clone();
-            //     let caller_guid = fields.caller_guid.clone();
-            //     let linked_decl_guid = fields.linked_decl_guid.clone();
-            //     eprintln!(
-            //         "Variable usage found: guid: {:?}, parent_guid: {:?}, name: {:?}, full_range: {:?}, childs_guid: {:?}, caller_guid: {:?}, linked_decl_guid: {:?}",
-            //         guid, parent_guid, name, full_range, childs_guid, caller_guid, linked_decl_guid
-            //     );
-            //     // if let Some(parent_guid) = parent_guid {
-            //     //     if let Some(parent_definition) = definitions.get_mut(&parent_guid) {
-            //     //         eprintln!("Resolved parent definition: {:?}", parent_definition.path());
-            //     //         parent_definition.usages.push(AltLink {
-            //     //             guid: Uuid::nil(),
-            //     //             target_for_guesswork: vec![name],
-            //     //         });
-            //     //     } else {
-            //     //         eprintln!("Unresolved parent definition: {:?}", parent_guid);
-            //     //     }
-            //     // }
-
-            //     // caller logic
-
-            //     if let Some(linked_decl_typedef) = symbol.get_linked_decl_type() {
-            //         // #[derive(Eq, Hash, PartialEq, Debug, Serialize, Deserialize, Clone)]
-            //         // pub struct TypeDef {
-            //         //  pub name: Option<String>,
-            //         //  pub inference_info: Option<String>,
-            //         //  pub inference_info_guid: Option<Uuid>,
-            //         //  pub is_pod: bool,
-            //         //  pub namespace: String,
-            //         //  pub guid: Option<Uuid>,
-            //         //  pub nested_types: Vec<TypeDef>, // for nested types, presented in templates
-            //         // }
-            //         eprintln!("typedef: {:?}", linked_decl_typedef);
-            //     }
-
-            //     if let Some(linked_decl_guid) = linked_decl_guid {
-            //         if let Some(linked_decl_definition) = definitions.get(&linked_decl_guid) {
-            //             eprintln!("Resolved linked declaration definition: {:?}", linked_decl_definition);
-            //         } else {
-            //             eprintln!("Unresolved linked declaration definition: {:?}", linked_decl_guid);
-            //         }
-            //     }
-            //     for child_guid in &childs_guid {
-            //         if let Some(child_definition) = definitions.get(child_guid) {
-            //             eprintln!("Resolved child definition: {:?}", child_definition);
-            //         } else {
-            //             eprintln!("Unresolved child definition: {:?}", child_guid);
-            //         }
-            //     }
-            //     eprintln!("");
+                let variable_usage = symbol.as_any().downcast_ref::<VariableUsage>().expect("xxx1001");
+                let fields = variable_usage.fields();
+                let caller_guid = fields.caller_guid.clone();
+                if variable_usage.name().is_empty() {
+                    tracing::error!("Error parsing {}:{} no name in variable usage", cpath, fields.full_range.start_point.row + 1);
+                    continue;
+                }
+                let (where_is_this, debug_hint) = _usage_or_typeof_caller_colon_colon_usage(caller_guid, &orig_map, &global_path, variable_usage);
+                eprintln!("variable usage name={} where_is_this={:?} debug_hint={:?}", variable_usage.name(), where_is_this, debug_hint);
+                if where_is_this.is_empty() {
+                    continue;
+                }
+                let parent_decl_guid = _go_to_parent_until_declaration(&orig_map, symbol.parent_guid().unwrap_or_default());
+                if let Some(definition) = definitions.get_mut(&parent_decl_guid) {
+                    definition.usages.push(AltLink {
+                        guid: symbol.guid().clone(),
+                        target_for_guesswork: where_is_this,
+                        debug_hint,
+                    });
+                }
             }
         }
         eprintln!("");
@@ -439,14 +440,6 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
     sorted_definitions.sort_by(|a, b| a.1.path_for_guesswork.cmp(&b.1.path_for_guesswork));
     IndexMap::from_iter(sorted_definitions)
 }
-
-
-// emergency_frog_situation/
-//   frog.py (Frog, __init__, bounce_off_banks, jump)
-//   holiday.py
-//   jump_to_conclusions.py (draw_hello_frog, main_loop)
-//   set_as_avatar.py (Toad, EuropeanCommonToad, __init__, __init__)
-//   work_day.py (bring_your_own_frog_to_work_day)
 
 
 
@@ -472,6 +465,8 @@ mod tests {
 
     #[test]
     fn test_parse_anything_frog_py() {
+        // XXX python bugs:
+        // 1.  self.vx = np.abs(self.vx)   -- both definitions
         init_tracing();
         let absfn = std::fs::canonicalize("tests/emergency_frog_situation/frog.py").unwrap();
         let text = read_file(absfn.to_str().unwrap());
@@ -484,28 +479,28 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_anything_compiled_frog_cpp() {
+    fn test_parse_anything_frog_cpp() {
         init_tracing();
         let absfn = std::fs::canonicalize("tests/emergency_frog_situation/compiled_frog.cpp").unwrap();
         let text = read_file(absfn.to_str().unwrap());
         let definitions = parse_anything(absfn.to_str().unwrap(), &text);
         const EXPECTED_COMPILED_FROG_CPP: &str = r#"
             AltDefinition { Animal }
-            AltDefinition { Animal::Animal }
+            AltDefinition { Animal::Animal, usages: Link{ up file::Animal::age } }
             AltDefinition { Animal::age }
             AltDefinition { CompiledFrog }
             AltDefinition { CompiledFrog::CompiledFrog }
-            AltDefinition { CompiledFrog::say_hi, usages: Link{  ?::printf } }
+            AltDefinition { CompiledFrog::say_hi, usages: Link{ up ?::printf } }
             AltDefinition { HasMass }
             AltDefinition { HasMass::HasMass }
             AltDefinition { HasMass::mass }
             AltDefinition { global_frog }
-            AltDefinition { main, usages: Link{  file::some_fun } Link{  file::some_variable_usage } }
+            AltDefinition { main, usages: Link{ up file::some_fun } Link{ up file::some_variable_usage } Link{ up file::main::teh_frog } Link{ up file::main::teh_frog } Link{ up file::main::shared_frog } Link{ up file::main::teh_frog } Link{ up file::main::teh_frog } Link{ up file::main::shared_frog } Link{ up file::main::teh_frog } Link{ up file::main::teh_frog } Link{ up ?::make_shared } }
             AltDefinition { main::shared_frog }
             AltDefinition { main::teh_frog }
-            AltDefinition { some_fun, usages: Link{ f1 file::CompiledFrog::say_hi } Link{ f2 file::CompiledFrog::say_hi } Link{ f3 file::CompiledFrog::say_hi } Link{ f4 ?::say_hi } Link{ f_local_frog file::CompiledFrog::say_hi } Link{ global_frog file::CompiledFrog::say_hi } }
+            AltDefinition { some_fun, usages: Link{ f1 file::CompiledFrog::say_hi } Link{ f2 file::CompiledFrog::say_hi } Link{ f3 file::CompiledFrog::say_hi } Link{ f4 ?::say_hi } Link{ f_local_frog file::CompiledFrog::say_hi } Link{ global_frog file::CompiledFrog::say_hi } Link{ up file::some_fun::f_local_frog } Link{ up file::global_frog } }
             AltDefinition { some_fun::f_local_frog }
-            AltDefinition { some_variable_usage }
+            AltDefinition { some_variable_usage, usages: Link{ v1 file::CompiledFrog::mass } Link{ v2 file::CompiledFrog::mass } Link{ v3 file::CompiledFrog::mass } Link{ v4 ?::mass } Link{ v_local_frog file::CompiledFrog::mass } Link{ global_frog file::CompiledFrog::mass } Link{ up file::some_variable_usage::v_local_frog } Link{ up file::global_frog } }
             AltDefinition { some_variable_usage::v_local_frog }
         "#;
         let mut produced_output = String::new();
@@ -543,17 +538,18 @@ mod tests {
         assert!(missing_in_expected.is_empty() && missing_in_produced.is_empty());
     }
 
-    // #[test]
-    // fn test_parse_anything_set_as_avatar_py() {
-    //     let text = read_file("tests/emergency_frog_situation/set_as_avatar.py");
-    //     let definitions = parse_anything("tests/emergency_frog_situation/set_as_avatar.py", &text);
-    //     for d in definitions.values() {
-    //         println!("{:#?}", d);
-    //     }
-        // assert!(definitions.values().any(|d| d.path_for_guesswork.contains("Toad")));
-        // assert!(definitions.values().any(|d| d.path_for_guesswork.contains("EuropeanCommonToad")));
-        // assert!(definitions.values().any(|d| d.path_for_guesswork.contains("__init__")));
-    // }
+    #[test]
+    fn test_parse_anything_avatar_py() {
+        init_tracing();
+        let absfn = std::fs::canonicalize("tests/emergency_frog_situation/set_as_avatar.py").unwrap();
+        let text = read_file(absfn.to_str().unwrap());
+        let definitions = parse_anything(absfn.to_str().unwrap(), &text);
+        let mut produced_output = String::new();
+        for d in definitions.values() {
+            produced_output.push_str(&format!("{:?}\n", d));
+        }
+        println!("\n --- {:#?} ---\n{}", absfn, produced_output.clone());
+    }
 
     // #[test]
     // fn test_parse_anything_holiday_py() {
