@@ -1,0 +1,10 @@
+AltDefinition { Animal }
+AltDefinition { Animal::Animal, usages: Link{ up file::Animal::age } }
+AltDefinition { Animal::age }
+AltDefinition { Animal::self_review, usages: Link{ up ?::printf } Link{ up file::Animal::age } }
+AltDefinition { Goat }
+AltDefinition { Goat::Goat }
+AltDefinition { Goat::jump_around, usages: Link{ up ?::printf } Link{ up ?::self_review } Link{ up ?::age } Link{ up file::Goat::weight } }
+AltDefinition { Goat::weight }
+AltDefinition { animal_direct_access, usages: Link{ up ?::printf } Link{ v1 file::Animal::age } Link{ v2 file::Animal::age } Link{ v3 file::Animal::age } Link{ v4 ?::age } }
+AltDefinition { animal_function_calling, usages: Link{ f1 file::Animal::self_review } Link{ f2 file::Animal::self_review } Link{ f3 file::Animal::self_review } Link{ f4 ?::self_review } }

@@ -1,0 +1,22 @@
+AltDefinition { CosmicGoat }
+AltDefinition { CosmicGoat::CosmicGoat, usages: Link{ up ?::balance } }
+AltDefinition { CosmicGoat::say_hi, usages: Link{ up ?::printf } Link{ up ?::age } Link{ up ?::weight } Link{ up ?::balance } }
+AltDefinition { CosmicJustice }
+AltDefinition { CosmicJustice::CosmicJustice, usages: Link{ up file::CosmicJustice::balance } }
+AltDefinition { CosmicJustice::balance }
+AltDefinition { goat_generator1::a1 }
+AltDefinition { all_goats_review, usages: Link{ f1 file::CosmicGoat::self_review } Link{ f2 file::CosmicGoat::self_review } Link{ f3 file::CosmicGoat::self_review } Link{ f4 ?::self_review } Link{ f_local_goat file::CosmicGoat::self_review } Link{ global_goat file::CosmicGoat::self_review } Link{ up ?::f_local_goat } Link{ up file::global_goat } }
+AltDefinition { all_goats_review::f_local_goat }
+AltDefinition { all_goats_say_hi, usages: Link{ f1 file::CosmicGoat::say_hi } Link{ f2 file::CosmicGoat::say_hi } Link{ f3 file::CosmicGoat::say_hi } Link{ f4 ?::say_hi } Link{ f_local_frog file::CosmicGoat::say_hi } Link{ global_goat file::CosmicGoat::say_hi } Link{ up ?::f_local_frog } Link{ up file::global_goat } }
+AltDefinition { all_goats_say_hi::f_local_frog }
+AltDefinition { global_goat }
+AltDefinition { goat_balance_sum, usages: Link{ v_local_goat file::CosmicGoat::balance } Link{ global_goat file::CosmicGoat::balance } Link{ up ?::v_local_goat } Link{ v4 ?::balance } Link{ up file::global_goat } Link{ v3 file::CosmicGoat::balance } Link{ v1 file::CosmicGoat::balance } Link{ v2 file::CosmicGoat::balance } }
+AltDefinition { goat_balance_sum::v_local_goat }
+AltDefinition { goat_direct_access, usages: Link{ v_local_goat file::CosmicGoat::weight } Link{ global_goat file::CosmicGoat::weight } Link{ up ?::v_local_goat } Link{ v4 ?::weight } Link{ up file::global_goat } Link{ v3 file::CosmicGoat::weight } Link{ v1 file::CosmicGoat::weight } Link{ v2 file::CosmicGoat::weight } }
+AltDefinition { goat_direct_access::v_local_goat }
+AltDefinition { goat_generator2, usages: Link{ up file::CosmicGoat } }
+AltDefinition { goat_generator3, usages: Link{ up std::make_shared } }
+AltDefinition { main, usages: Link{ up ?::goat_generator1 } Link{ up file::goat_generator2 } Link{ up file::goat_generator3 } Link{ up file::all_goats_say_hi } Link{ up file::all_goats_review } Link{ up ?::printf } Link{ up ?::printf } Link{ up ?::goat1 } Link{ up ?::goat2 } Link{ up ?::goat2 } Link{ up ?::goat3 } Link{ up ?::goat1 } Link{ up ?::goat2 } Link{ up ?::goat2 } Link{ up ?::goat3 } Link{ up file::goat_direct_access } Link{ up file::goat_balance_sum } Link{ up ?::goat1 } Link{ up ?::goat1 } Link{ up ?::goat2 } Link{ up ?::goat2 } Link{ up ?::goat3 } Link{ up ?::goat1 } Link{ up ?::goat2 } Link{ up ?::goat2 } Link{ up ?::goat3 } }
+AltDefinition { main::goat1 }
+AltDefinition { main::goat2 }
+AltDefinition { main::goat3 }

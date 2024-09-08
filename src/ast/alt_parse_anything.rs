@@ -442,7 +442,6 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
 }
 
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -463,55 +462,7 @@ mod tests {
         fs::read_to_string(file_path).expect("Unable to read file")
     }
 
-    #[test]
-    fn test_parse_anything_frog_py() {
-        // XXX python bugs:
-        // 1.  self.vx = np.abs(self.vx)   -- both definitions
-        init_tracing();
-        let absfn = std::fs::canonicalize("tests/emergency_frog_situation/frog.py").unwrap();
-        let text = read_file(absfn.to_str().unwrap());
-        let definitions = parse_anything(absfn.to_str().unwrap(), &text);
-        let mut produced_output = String::new();
-        for d in definitions.values() {
-            produced_output.push_str(&format!("{:?}\n", d));
-        }
-        println!("\n --- {:#?} ---\n{}", absfn, produced_output.clone());
-    }
-
-    #[test]
-    fn test_parse_anything_frog_cpp() {
-        init_tracing();
-        let absfn = std::fs::canonicalize("tests/emergency_frog_situation/compiled_frog.cpp").unwrap();
-        let text = read_file(absfn.to_str().unwrap());
-        let definitions = parse_anything(absfn.to_str().unwrap(), &text);
-        const EXPECTED_COMPILED_FROG_CPP: &str = r#"
-            AltDefinition { Animal }
-            AltDefinition { Animal::Animal, usages: Link{ up file::Animal::age } }
-            AltDefinition { Animal::age }
-            AltDefinition { CompiledFrog }
-            AltDefinition { CompiledFrog::CompiledFrog }
-            AltDefinition { CompiledFrog::say_hi, usages: Link{ up ?::printf } }
-            AltDefinition { HasMass }
-            AltDefinition { HasMass::HasMass }
-            AltDefinition { HasMass::mass }
-            AltDefinition { global_frog }
-            AltDefinition { main, usages: Link{ up file::some_fun } Link{ up file::some_variable_usage } Link{ up file::main::teh_frog } Link{ up file::main::teh_frog } Link{ up file::main::shared_frog } Link{ up file::main::teh_frog } Link{ up file::main::teh_frog } Link{ up file::main::shared_frog } Link{ up file::main::teh_frog } Link{ up file::main::teh_frog } Link{ up ?::make_shared } }
-            AltDefinition { main::shared_frog }
-            AltDefinition { main::teh_frog }
-            AltDefinition { some_fun, usages: Link{ f1 file::CompiledFrog::say_hi } Link{ f2 file::CompiledFrog::say_hi } Link{ f3 file::CompiledFrog::say_hi } Link{ f4 ?::say_hi } Link{ f_local_frog file::CompiledFrog::say_hi } Link{ global_frog file::CompiledFrog::say_hi } Link{ up file::some_fun::f_local_frog } Link{ up file::global_frog } }
-            AltDefinition { some_fun::f_local_frog }
-            AltDefinition { some_variable_usage, usages: Link{ v1 file::CompiledFrog::mass } Link{ v2 file::CompiledFrog::mass } Link{ v3 file::CompiledFrog::mass } Link{ v4 ?::mass } Link{ v_local_frog file::CompiledFrog::mass } Link{ global_frog file::CompiledFrog::mass } Link{ up file::some_variable_usage::v_local_frog } Link{ up file::global_frog } }
-            AltDefinition { some_variable_usage::v_local_frog }
-        "#;
-        let mut produced_output = String::new();
-        for d in definitions.values() {
-            produced_output.push_str(&format!("{:?}\n", d));
-        }
-        println!("\n --- {:#?} ---\n{}", absfn, produced_output.clone());
-        must_be_no_diff(EXPECTED_COMPILED_FROG_CPP, &produced_output);
-    }
-
-    fn must_be_no_diff(expected: &str, produced: &str) {
+    fn must_be_no_diff(expected: &str, produced: &str) -> String {
         use std::collections::HashSet;
         let expected_lines: HashSet<_> = expected.lines()
             .map(|line| line.trim())
@@ -523,58 +474,54 @@ mod tests {
             .collect();
         let missing_in_produced: Vec<_> = expected_lines.difference(&produced_lines).collect();
         let missing_in_expected: Vec<_> = produced_lines.difference(&expected_lines).collect();
-        if !missing_in_produced.is_empty() {
-            println!("Missing in produced output:");
-            for line in missing_in_produced.iter() {
-                println!("{}", *line);
-            }
-        }
+        let mut mistakes = String::new();
+
         if !missing_in_expected.is_empty() {
-            println!("Missing in expected output:");
+            mistakes.push_str("bad output:\n");
             for line in missing_in_expected.iter() {
-                println!("{}", *line);
+                mistakes.push_str(&format!("  {}\n", *line));
             }
         }
-        assert!(missing_in_expected.is_empty() && missing_in_produced.is_empty());
+        if !missing_in_produced.is_empty() {
+            mistakes.push_str("should be:\n");
+            for line in missing_in_produced.iter() {
+                mistakes.push_str(&format!("  {}\n", *line));
+            }
+        }
+        mistakes
     }
 
-    #[test]
-    fn test_parse_anything_avatar_py() {
+    fn run_parse_test(input_file: &str, correct_file: &str) {
         init_tracing();
-        let absfn = std::fs::canonicalize("tests/emergency_frog_situation/set_as_avatar.py").unwrap();
-        let text = read_file(absfn.to_str().unwrap());
-        let definitions = parse_anything(absfn.to_str().unwrap(), &text);
+        let absfn1 = std::fs::canonicalize(input_file).unwrap();
+        let text = read_file(absfn1.to_str().unwrap());
+        let definitions = parse_anything(absfn1.to_str().unwrap(), &text);
         let mut produced_output = String::new();
         for d in definitions.values() {
             produced_output.push_str(&format!("{:?}\n", d));
         }
-        println!("\n --- {:#?} ---\n{}", absfn, produced_output.clone());
+        println!("\n --- {:#?} ---\n{} ---\n", absfn1, produced_output.clone());
+        let absfn2 = std::fs::canonicalize(correct_file).unwrap();
+        let errors = must_be_no_diff(read_file(absfn2.to_str().unwrap()).as_str(), &produced_output);
+        if !errors.is_empty() {
+            println!("PROBLEMS {:#?}:\n{}/PROBLEMS", absfn1, errors);
+        }
     }
 
-    // #[test]
-    // fn test_parse_anything_holiday_py() {
-    //     let text = read_file("emergency_frog_situation/holiday.py");
-    //     let definitions = parse_anything("emergency_frog_situation/holiday.py", &text);
-    //     // Add assertions to check the parsed definitions
-    //     // For example:
-    //     // assert!(definitions.iter().any(|d| d.path().contains("SomeClassOrFunction")));
-    // }
+    #[test]
+    fn test_parse_cpp_library() {
+        run_parse_test(
+            "src/ast/alt_testsuite/cpp_goat_library.h",
+            "src/ast/alt_testsuite/cpp_goat_library.correct"
+        );
+    }
 
-    // #[test]
-    // fn test_parse_anything_jump_to_conclusions_py() {
-    //     let text = read_file("emergency_frog_situation/jump_to_conclusions.py");
-    //     let definitions = parse_anything("emergency_frog_situation/jump_to_conclusions.py", &text);
-    //     // Add assertions to check the parsed definitions
-    //     assert!(definitions.iter().any(|d| d.path().contains("draw_hello_frog")));
-    //     assert!(definitions.iter().any(|d| d.path().contains("main_loop")));
-    // }
-
-    // #[test]
-    // fn test_parse_anything_work_day_py() {
-    //     let text = read_file("emergency_frog_situation/work_day.py");
-    //     let definitions = parse_anything("emergency_frog_situation/work_day.py", &text);
-    //     // Add assertions to check the parsed definitions
-    //     assert!(definitions.iter().any(|d| d.path().contains("bring_your_own_frog_to_work_day")));
-    // }
+    #[test]
+    fn test_parse_cpp_main() {
+        run_parse_test(
+            "src/ast/alt_testsuite/cpp_goat_main.cpp",
+            "src/ast/alt_testsuite/cpp_goat_main.correct"
+        );
+    }
 }
 
