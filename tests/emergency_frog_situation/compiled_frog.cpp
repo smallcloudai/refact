@@ -35,6 +35,8 @@ public:
     }
 };
 
+static CompiledFrog global_frog(8, 888.0);
+
 void some_fun(CompiledFrog* f1, CompiledFrog& f2, const CompiledFrog& f3, const std::shared_ptr<CompiledFrog>& f4)
 {
     CompiledFrog local_frog(7, 666.0);
@@ -43,6 +45,7 @@ void some_fun(CompiledFrog* f1, CompiledFrog& f2, const CompiledFrog& f3, const 
     f3.say_hi();
     f4->say_hi();
     local_frog.say_hi();
+    global_frog.say_hi();
 }
 
 int main()

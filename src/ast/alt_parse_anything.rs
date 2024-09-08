@@ -366,7 +366,7 @@ fn _go_to_parent_until_declaration(
             tracing::error!("find_parent_of_types: node not found");
             return Uuid::nil();
         }
-        let node = node_option.expect("xxx1003").read();
+        let node = node_option.unwrap().read();
         if _is_declaration(node.symbol_type()) {
             return node.guid().clone();
         } else {
@@ -384,41 +384,25 @@ fn _attempt_typeof(
     start_node_guid: Uuid,
     variable_or_param_name: String,
 ) -> Vec<String> {
-    let mut result = vec![];
     let mut node_guid = start_node_guid.clone();
+    let mut look_here: Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> = Vec::new();
+
     loop {
         let node_option = map.get(&node_guid);
         if node_option.is_none() {
             break;
         }
         let node = node_option.unwrap().read();
-        eprintln!("attempt_typeof: visiting {:?} {:?}", node.guid(), node.name());
 
-        // There we go, the logic
-
-        // 1. type[0].name if VariableDefinition and name matches
-        if let Some(variable_definition) = node.as_any().downcast_ref::<VariableDefinition>() {
-            eprintln!("variable_definition.name {:?} {:?}", variable_definition.name(), variable_or_param_name);
-            if variable_definition.name() == variable_or_param_name {
-                if let Some(first_type) = variable_definition.types().get(0) {
-                    result.insert(0, first_type.name.clone().unwrap_or_default());
+        if _is_declaration(node.symbol_type()) {
+            look_here.push(node_option.unwrap().clone());
+            // Add all children nodes (shallow)
+            for child_guid in node.childs_guid() {
+                if let Some(child_node) = map.get(child_guid) {
+                    look_here.push(child_node.clone());
                 }
             }
         }
-
-        // 2. Check for FunctionDeclaration and match argument names
-        if let Some(function_declaration) = node.as_any().downcast_ref::<FunctionDeclaration>() {
-            for arg in &function_declaration.args {
-                eprintln!("function_declaration.arg.name {:?} {:?}", arg.name, variable_or_param_name);
-                if arg.name == variable_or_param_name {
-                    if let Some(arg_type) = &arg.type_ {
-                        result.insert(0, arg_type.name.clone().unwrap_or_default());
-                    }
-                }
-            }
-        }
-
-        // logic over
 
         if let Some(parent_guid) = node.parent_guid() {
             node_guid = parent_guid.clone();
@@ -426,7 +410,46 @@ fn _attempt_typeof(
             break;
         }
     }
-    result
+
+    // XXX UGLY: the only way to detect top level is to map.get(parent) if it's not found, then it's top level.
+    for (_, node_arc) in map.iter() {
+        let node = node_arc.read();
+        assert!(node.parent_guid().is_some());  // parent always exists for some reason
+        if _is_declaration(node.symbol_type()) {
+            if !map.contains_key(&node.parent_guid().unwrap()) {
+                look_here.push(node_arc.clone());
+            }
+        }
+    }
+
+    for node_arc in look_here {
+        let node = node_arc.read();
+        eprintln!("attempt_typeof: look_here {:?} {:?}", node.guid(), node.name());
+
+        // Check for VariableDefinition and match name
+        if let Some(variable_definition) = node.as_any().downcast_ref::<VariableDefinition>() {
+            eprintln!("variable_definition.name {:?} {:?}", variable_definition.name(), variable_or_param_name);
+            if variable_definition.name() == variable_or_param_name {
+                if let Some(first_type) = variable_definition.types().get(0) {
+                    return vec![first_type.name.clone().unwrap_or_default()];
+                }
+            }
+        }
+
+        // Check for FunctionDeclaration and match argument names
+        if let Some(function_declaration) = node.as_any().downcast_ref::<FunctionDeclaration>() {
+            for arg in &function_declaration.args {
+                eprintln!("function_declaration.arg.name {:?} {:?}", arg.name, variable_or_param_name);
+                if arg.name == variable_or_param_name {
+                    if let Some(arg_type) = &arg.type_ {
+                        return vec![arg_type.name.clone().unwrap_or_default()];
+                    }
+                }
+            }
+        }
+    }
+
+    vec![]
 }
 
 
@@ -617,7 +640,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                         eprintln!("Resolved caller: {:?}", caller_guid);
                         prepend_to_path = _attempt_typeof(&orig_map, caller_guid, caller_node.name().to_string());
                         debug_hint = caller_node.name().to_string();
-                        eprintln!("xxx: {:?}", prepend_to_path);
+                        eprintln!("xxx: {:?}\n", prepend_to_path);
                     } else {
                         eprintln!("Unresolved caller: {:?}", caller_guid);
                     }
