@@ -113,7 +113,7 @@ impl CppParser {
         -> Vec<AstSymbolInstanceArc> {
         let mut symbols: Vec<AstSymbolInstanceArc> = Default::default();
         let mut decl = StructDeclaration::default();
-        
+
         decl.ast_fields.language = info.ast_fields.language;
         decl.ast_fields.file_path = info.ast_fields.file_path.clone();
         decl.ast_fields.is_error = info.ast_fields.is_error;
@@ -148,7 +148,7 @@ impl CppParser {
         } else {
             decl.ast_fields.name = format!("anon-{}", decl.ast_fields.guid);
         }
-        
+
         if let Some(template_parent) = template_parent_node {
             symbols.extend(self.find_error_usages(&template_parent, code, &info.ast_fields.file_path,
                                                   &decl.ast_fields.guid));
@@ -195,7 +195,7 @@ impl CppParser {
                 parent_guid: decl.ast_fields.guid.clone(),
             })
         }
-        
+
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
@@ -546,7 +546,7 @@ impl CppParser {
                         &_ => {}
                     }
                 }
-                
+
             }
         }
 
@@ -562,7 +562,7 @@ impl CppParser {
                 parent_guid: decl.ast_fields.guid.clone(),
             });
         }
-        
+
         for i in 0..info.node.child_count() {
             let child = info.node.child(i).unwrap();
             if let Some(body) = info.node.field_name_for_child(i as u32) {
@@ -577,7 +577,7 @@ impl CppParser {
                 end_point: child.end_position(),
             };
         }
-        
+
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
@@ -631,7 +631,7 @@ impl CppParser {
                                                   &info.parent_guid));
             let mut new_ast_fields = info.ast_fields.clone();
             new_ast_fields.caller_guid = None;
-            
+
             for i in 0..arguments.child_count() {
                 let child = arguments.child(i).unwrap();
                 candidates.push_back(CandidateInfo {
@@ -807,7 +807,7 @@ impl CppParser {
                             if SYSTEM_HEADERS.contains(&&name.as_str()) {
                                 def.import_type = ImportType::System;
                             }
-                            
+
                         }
                         &_ => {}
                     }
