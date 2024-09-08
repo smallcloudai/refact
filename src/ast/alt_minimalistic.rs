@@ -18,7 +18,8 @@ pub struct AltLink {
     // * Linking means trying to match target_for_guesswork against path_for_guesswork, the longer the matched path the more
     //   probability the linking was correct
     pub guid: Uuid,
-    pub target_for_guesswork: Vec<String>
+    pub target_for_guesswork: Vec<String>,
+    pub debug_hint: String,  // not serialized, might help debugging the parser
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -50,33 +51,48 @@ impl AltDefinition {
 impl fmt::Debug for AltDefinition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let usages_paths: Vec<String> = self.usages.iter()
-            .map(|link| link.target_for_guesswork.join("::"))
+            .map(|link| format!("{:?}", link))
             .collect();
         let derived_from_paths: Vec<String> = self.derived_from.iter()
-            .map(|link| link.target_for_guesswork.join("::"))
+            .map(|link| format!("{:?}", link))
             .collect();
+
+        let usages_str = if usages_paths.is_empty() {
+            String::new()
+        } else {
+            format!(", usages: {}", usages_paths.join(" "))
+        };
+
+        let derived_from_str = if derived_from_paths.is_empty() {
+            String::new()
+        } else {
+            format!(", derived_from: {}", derived_from_paths.join(" "))
+        };
+
         write!(
             f,
-            "AltDefinition {{ path: {:?}, usages: {:?}, derived_from: {:?} }}",
-            self.path_for_guesswork,
-            usages_paths,
-            derived_from_paths
+            "AltDefinition {{ {}{}{} }}",
+            self.path_for_guesswork.join("::"),
+            usages_str,
+            derived_from_str
         )
     }
 }
+
+
 impl fmt::Debug for AltLink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "AltLink {{ path: {:?}{} }}",
-            self.target_for_guesswork,
-            if self.guid != Uuid::nil() { ", resolved" } else { "" }
+            "Link{{ {} {}{} }}",
+            self.debug_hint,
+            self.target_for_guesswork.join("::"),
+            if self.guid != Uuid::nil() { "" } else { ", unresolved" }
         )
     }
 }
 
 
-// pub type AstSymbolInstanceRc = Rc<RefCell<Box<dyn AstSymbolInstance>>>;
 
 pub struct AltIndex {
     pub sleddb: sled::Db,
