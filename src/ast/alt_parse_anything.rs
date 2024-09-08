@@ -434,7 +434,10 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
         }
         eprintln!("");
     }
-    definitions
+
+    let mut sorted_definitions: Vec<(Uuid, AltDefinition)> = definitions.clone().into_iter().collect();
+    sorted_definitions.sort_by(|a, b| a.1.path_for_guesswork.cmp(&b.1.path_for_guesswork));
+    IndexMap::from_iter(sorted_definitions)
 }
 
 
@@ -457,9 +460,9 @@ mod tests {
 
     fn init_tracing() {
         let _ = tracing_subscriber::fmt()
-            .with_writer(stderr) // Log to standard error
-            .with_max_level(tracing::Level::INFO) // Set the max level to INFO
-            .event_format(format::Format::default()) // Use default format without timestamp
+            .with_writer(stderr)
+            .with_max_level(tracing::Level::INFO)
+            .event_format(format::Format::default())
             .try_init();
     }
 
@@ -467,32 +470,77 @@ mod tests {
         fs::read_to_string(file_path).expect("Unable to read file")
     }
 
-    // #[test]
-    // fn test_parse_anything_frog_py() {
-    //     init_tracing();
-    //     let text = read_file("tests/emergency_frog_situation/frog.py");
-    //     let definitions = parse_anything("tests/emergency_frog_situation/frog.py", &text);
-    //     for d in definitions.values() {
-    //         println!("{:#?}", d);
-    //     }
-    //     assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"Frog".to_string())));
-    //     assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"__init__".to_string())));
-    //     assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"bounce_off_banks".to_string())));
-    //     assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"jump".to_string())));
-    // }
-
     #[test]
     fn test_parse_anything_frog_py() {
         init_tracing();
-        let text = read_file("tests/emergency_frog_situation/compiled_frog.cpp");
-        let definitions = parse_anything("tests/emergency_frog_situation/compiled_frog.cpp", &text);
+        let absfn = std::fs::canonicalize("tests/emergency_frog_situation/frog.py").unwrap();
+        let text = read_file(absfn.to_str().unwrap());
+        let definitions = parse_anything(absfn.to_str().unwrap(), &text);
+        let mut produced_output = String::new();
         for d in definitions.values() {
-            println!("{:#?}", d);
+            produced_output.push_str(&format!("{:?}\n", d));
         }
-        // assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"Frog".to_string())));
-        // assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"__init__".to_string())));
-        // assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"bounce_off_banks".to_string())));
-        // assert!(definitions.values().any(|d| d.path_for_guesswork.contains(&"jump".to_string())));
+        println!("\n --- {:#?} ---\n{}", absfn, produced_output.clone());
+    }
+
+    #[test]
+    fn test_parse_anything_compiled_frog_cpp() {
+        init_tracing();
+        let absfn = std::fs::canonicalize("tests/emergency_frog_situation/compiled_frog.cpp").unwrap();
+        let text = read_file(absfn.to_str().unwrap());
+        let definitions = parse_anything(absfn.to_str().unwrap(), &text);
+        const EXPECTED_COMPILED_FROG_CPP: &str = r#"
+            AltDefinition { Animal }
+            AltDefinition { Animal::Animal }
+            AltDefinition { Animal::age }
+            AltDefinition { CompiledFrog }
+            AltDefinition { CompiledFrog::CompiledFrog }
+            AltDefinition { CompiledFrog::say_hi, usages: Link{  ?::printf } }
+            AltDefinition { HasMass }
+            AltDefinition { HasMass::HasMass }
+            AltDefinition { HasMass::mass }
+            AltDefinition { global_frog }
+            AltDefinition { main, usages: Link{  file::some_fun } Link{  file::some_variable_usage } }
+            AltDefinition { main::shared_frog }
+            AltDefinition { main::teh_frog }
+            AltDefinition { some_fun, usages: Link{ f1 file::CompiledFrog::say_hi } Link{ f2 file::CompiledFrog::say_hi } Link{ f3 file::CompiledFrog::say_hi } Link{ f4 ?::say_hi } Link{ f_local_frog file::CompiledFrog::say_hi } Link{ global_frog file::CompiledFrog::say_hi } }
+            AltDefinition { some_fun::f_local_frog }
+            AltDefinition { some_variable_usage }
+            AltDefinition { some_variable_usage::v_local_frog }
+        "#;
+        let mut produced_output = String::new();
+        for d in definitions.values() {
+            produced_output.push_str(&format!("{:?}\n", d));
+        }
+        println!("\n --- {:#?} ---\n{}", absfn, produced_output.clone());
+        must_be_no_diff(EXPECTED_COMPILED_FROG_CPP, &produced_output);
+    }
+
+    fn must_be_no_diff(expected: &str, produced: &str) {
+        use std::collections::HashSet;
+        let expected_lines: HashSet<_> = expected.lines()
+            .map(|line| line.trim())
+            .filter(|line| !line.is_empty())
+            .collect();
+        let produced_lines: HashSet<_> = produced.lines()
+            .map(|line| line.trim())
+            .filter(|line| !line.is_empty())
+            .collect();
+        let missing_in_produced: Vec<_> = expected_lines.difference(&produced_lines).collect();
+        let missing_in_expected: Vec<_> = produced_lines.difference(&expected_lines).collect();
+        if !missing_in_produced.is_empty() {
+            println!("Missing in produced output:");
+            for line in missing_in_produced.iter() {
+                println!("{}", *line);
+            }
+        }
+        if !missing_in_expected.is_empty() {
+            println!("Missing in expected output:");
+            for line in missing_in_expected.iter() {
+                println!("{}", *line);
+            }
+        }
+        assert!(missing_in_expected.is_empty() && missing_in_produced.is_empty());
     }
 
     // #[test]
