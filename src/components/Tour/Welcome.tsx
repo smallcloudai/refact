@@ -1,7 +1,8 @@
-import { Flex, Text, useThemeContext } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import { TourBox } from "./TourBox";
 import { TourTitle } from "./TourTitle";
 import { TourButton } from "./TourButton";
+import { useAppearance } from "../../hooks";
 
 export type WelcomeProps = {
   onPressNext: () => void;
@@ -10,7 +11,7 @@ export type WelcomeProps = {
 export const Welcome: React.FC<WelcomeProps> = ({
   onPressNext,
 }: WelcomeProps) => {
-  const appearance = useThemeContext().appearance;
+  const { appearance } = useAppearance();
 
   return (
     <Flex direction="column" gap="2" maxWidth="540px" m="8px">
@@ -18,7 +19,7 @@ export const Welcome: React.FC<WelcomeProps> = ({
         <TourTitle title="Welcome to Refact.ai!" />
         <Text
           style={{
-            color: appearance == "dark" ? "black" : "white",
+            color: appearance == "light" ? "white" : "black",
           }}
         >
           {"This is a product tour: helpful tips for you to start."}

@@ -1,5 +1,5 @@
-import { Flex, Link, useThemeContext } from "@radix-ui/themes";
-import { useAppSelector, useAppDispatch } from "../../hooks";
+import { Flex, Link } from "@radix-ui/themes";
+import { useAppSelector, useAppDispatch, useAppearance } from "../../hooks";
 import { RootState } from "../../app/store";
 import { close, next } from "../../features/Tour";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
@@ -40,7 +40,7 @@ export function TourBubble({
   const state = useAppSelector((state: RootState) => state.tour);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [pos, setPos] = useState<DOMRect | undefined>(undefined);
-  const appearance = useThemeContext().appearance;
+  const { appearance } = useAppearance();
 
   const isBubbleOpen = state.type === "in_progress" && state.step === step;
 
@@ -92,7 +92,7 @@ export function TourBubble({
   }
 
   const centX = (pos.left + pos.right) / 2 - windowWidth / 2;
-  const arrowColor = appearance == "dark" ? "white" : "black";
+  const arrowColor = appearance == "light" ? "black" : "white";
 
   return (
     isBubbleOpen && (
@@ -141,7 +141,7 @@ export function TourBubble({
                 position: "absolute",
                 right: "8px",
                 top: "1px",
-                color: appearance == "dark" ? "black" : "white",
+                color: appearance == "light" ? "white" : "black",
               }}
               onClick={() => {
                 dispatch(close());
@@ -158,7 +158,7 @@ export function TourBubble({
                 textTransform: "uppercase",
                 fontSize: "12px",
                 fontWeight: "bold",
-                color: appearance == "dark" ? "#004069" : "#54a1ff",
+                color: appearance == "light" ? "#54a1ff" : "#004069",
               }}
               onClick={() => {
                 dispatch(next());

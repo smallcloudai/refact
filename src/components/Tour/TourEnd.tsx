@@ -1,12 +1,12 @@
-import { Flex, Text, useThemeContext } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import { TourBox } from "./TourBox";
 import { TourTitle } from "./TourTitle";
 import { TourButton } from "./TourButton";
-import { useAppDispatch } from "../../hooks";
+import { useAppDispatch, useAppearance } from "../../hooks";
 import { finish } from "../../features/Tour";
 
 export const TourEnd = () => {
-  const appearance = useThemeContext().appearance;
+  const { appearance } = useAppearance();
 
   const dispatch = useAppDispatch();
   const onPressNext = () => {
@@ -19,7 +19,7 @@ export const TourEnd = () => {
         <TourTitle title="Your Refact product tour is finished!" />
         <Text
           style={{
-            color: appearance == "dark" ? "black" : "white",
+            color: appearance === "light" ? "white" : "black",
           }}
         >
           {

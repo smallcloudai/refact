@@ -1,12 +1,13 @@
-import { Flex, Text, useThemeContext } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
 import imgUrl from "../../../public/favicon.png";
+import { useAppearance } from "../../hooks";
 
 export type TourTitle = {
   title: string;
 };
 
 export function TourTitle({ title }: TourTitle) {
-  const appearance = useThemeContext().appearance;
+  const { appearance } = useAppearance();
 
   return (
     <Flex direction="row" style={{ alignItems: "flex-start" }}>
@@ -23,7 +24,7 @@ export function TourTitle({ title }: TourTitle) {
         mb="0"
         ml="2"
         style={{
-          color: appearance == "dark" ? "black" : "white",
+          color: appearance == "light" ? "white" : "black",
           // fontSize: 14,
           // margin: 4,
           // marginTop: 0,
