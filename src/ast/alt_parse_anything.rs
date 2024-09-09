@@ -330,9 +330,9 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
             SymbolType::Unknown => {
                 if !symbol.name().is_empty() {
                     let definition = AltDefinition {
-                        guid: symbol.guid().clone(),
-                        parent_guid: symbol.parent_guid().clone().unwrap_or_default(),
-                        path_for_guesswork: _path_of_node(&orig_map, Some(symbol.guid().clone())),
+                        // guid: symbol.guid().clone(),
+                        // parent_guid: symbol.parent_guid().clone().unwrap_or_default(),
+                        official_path: _path_of_node(&orig_map, Some(symbol.guid().clone())),
                         symbol_type: symbol.symbol_type().clone(),
                         derived_from: vec![],
                         usages: vec![],
@@ -340,7 +340,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                         declaration_range: symbol.declaration_range().clone(),
                         definition_range: symbol.definition_range().clone(),
                     };
-                    definitions.insert(definition.guid.clone(), definition);
+                    definitions.insert(symbol.guid().clone(), definition);
                 } else {
                     tracing::info!("No name decl {}:{}", cpath, symbol.full_range().start_point.row + 1);
                 }
@@ -417,11 +417,11 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
     }
 
     let mut sorted_definitions: Vec<(Uuid, AltDefinition)> = definitions.clone().into_iter().collect();
-    sorted_definitions.sort_by(|a, b| a.1.path_for_guesswork.cmp(&b.1.path_for_guesswork));
+    sorted_definitions.sort_by(|a, b| a.1.official_path.cmp(&b.1.official_path));
     IndexMap::from_iter(sorted_definitions)
 }
 
-fn _global_path_from_filesystem_path(cpath: &str) -> Vec<String> {
+pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
     use std::path::Path;
     let path = Path::new(cpath);
     let mut components = vec![];
@@ -441,12 +441,12 @@ fn _global_path_from_filesystem_path(cpath: &str) -> Vec<String> {
 }
 
 pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> {
-    let file_global_path = _global_path_from_filesystem_path(cpath);
+    let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let mut definitions = parse_anything(cpath, text);
     for definition in definitions.values_mut() {
-        definition.path_for_guesswork = [
+        definition.official_path = [
             file_global_path.clone(),
-            definition.path_for_guesswork.clone()
+            definition.official_path.clone()
         ].concat();
         for usage in &mut definition.usages {
             if usage.target_for_guesswork.starts_with(&vec!["file".to_string()]) {

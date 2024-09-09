@@ -15,18 +15,19 @@ use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 pub struct AltLink {
     // The idea behind these links:
     // * It's an empty guid when it's unresolved yet
-    // * Linking means trying to match target_for_guesswork against path_for_guesswork, the longer the matched path the more
+    // * Linking means trying to match target_for_guesswork against official_path, the longer the matched path the more
     //   probability the linking was correct
     pub guid: Uuid,
     pub target_for_guesswork: Vec<String>,
+    // #[serde(skip_serializing)]
     pub debug_hint: String,  // not serialized, might help debugging the parser
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AltDefinition {
-    pub guid: Uuid,
-    pub parent_guid: Uuid,
-    pub path_for_guesswork: Vec<String>,   // file::namespace::class::method becomes ["file", "namespace", "class", "method"]
+    // pub guid: Uuid,
+    // pub parent_guid_: Uuid,
+    pub official_path: Vec<String>,   // file::namespace::class::method becomes ["file", "namespace", "class", "method"]
     pub symbol_type: SymbolType,
     pub derived_from: Vec<AltLink>,
     pub usages: Vec<AltLink>,
@@ -40,11 +41,11 @@ pub struct AltDefinition {
 
 impl AltDefinition {
     pub fn path(&self) -> String {
-        self.path_for_guesswork.join("::")
+        self.official_path.join("::")
     }
 
     pub fn name(&self) -> String {
-        self.path_for_guesswork.last().cloned().unwrap_or_default()
+        self.official_path.last().cloned().unwrap_or_default()
     }
 }
 
@@ -72,7 +73,7 @@ impl fmt::Debug for AltDefinition {
         write!(
             f,
             "AltDefinition {{ {}{}{} }}",
-            self.path_for_guesswork.join("::"),
+            self.official_path.join("::"),
             usages_str,
             derived_from_str
         )
@@ -95,7 +96,7 @@ impl fmt::Debug for AltLink {
 
 
 pub struct AltIndex {
-    pub sleddb: Arc<AMutex<sled::Db>>,
+    pub sleddb: Arc<sled::Db>, // doesn't need a mutex
 }
 
 pub struct AltStatus {
