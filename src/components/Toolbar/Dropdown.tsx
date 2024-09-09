@@ -63,6 +63,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const { addressURL } = useConfig();
 
   const bugUrl = linkForBugReports(host);
+  const discordUrl = "https://www.smallcloud.ai/discord";
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
   const { openFile } = useEventsBusForIDE();
@@ -125,6 +126,15 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
         <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
           Your Stats
+        </DropdownMenu.Item>
+
+        <DropdownMenu.Item
+          onSelect={(event) => {
+            event.preventDefault();
+            openUrl(discordUrl);
+          }}
+        >
+          Discord Community
         </DropdownMenu.Item>
 
         <DropdownMenu.Separator />
