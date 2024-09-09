@@ -1,36 +1,29 @@
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 use std::fmt;
 // use std::cell::RefCell;
-// use std::collections::HashSet;
 // use std::rc::Rc;
 use serde::{Deserialize, Serialize};
-use tree_sitter::{Point, Range};
-use uuid::Uuid;
+use tree_sitter::Range;
 use crate::ast::treesitter::structs::{RangeDef, SymbolType};
 
 use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct AltLink {
-    // The idea behind these links:
-    // * It's an empty guid when it's unresolved yet
-    // * Linking means trying to match target_for_guesswork against official_path, the longer the matched path the more
-    //   probability the linking was correct
-    pub guid: Uuid,
-    pub target_for_guesswork: Vec<String>,
-    // #[serde(skip_serializing)]
-    pub debug_hint: String,  // not serialized, might help debugging the parser
+pub struct Usage {
+    // Linking means trying to match targets_for_guesswork against official_path, the longer
+    // the matched path the more probability the linking was correct
+    pub targets_for_guesswork: Vec<String>, // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
+    pub resolved_as: String,
+    pub debug_hint: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AltDefinition {
-    // pub guid: Uuid,
-    // pub parent_guid_: Uuid,
     pub official_path: Vec<String>,   // file::namespace::class::method becomes ["file", "namespace", "class", "method"]
     pub symbol_type: SymbolType,
-    pub derived_from: Vec<AltLink>,
-    pub usages: Vec<AltLink>,
+    pub derived_from: Vec<Usage>,
+    pub usages: Vec<Usage>,
     #[serde(with = "RangeDef")]
     pub full_range: Range,
     #[serde(with = "RangeDef")]
@@ -81,14 +74,14 @@ impl fmt::Debug for AltDefinition {
 }
 
 
-impl fmt::Debug for AltLink {
+impl fmt::Debug for Usage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // self.target_for_guesswork
         write!(
             f,
-            "Link{{ {} {}{} }}",
+            "Link{{ {} {} }}",
             self.debug_hint,
-            self.target_for_guesswork.join("::"),
-            if self.guid != Uuid::nil() { "" } else { ", unresolved" }
+            if self.resolved_as.len() > 0 { self.resolved_as.clone() } else { self.targets_for_guesswork.join(" ") + &", unresolved" }
         )
     }
 }

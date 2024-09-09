@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use indexmap::IndexMap;
 use uuid::Uuid;
-use crate::ast::alt_minimalistic::{AltDefinition, AltLink};
+use crate::ast::alt_minimalistic::{AltDefinition, Usage};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, TypeDef};
@@ -367,7 +367,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                 let fields = function_call.fields();
                 let caller_guid = fields.caller_guid.clone();
                 if function_call.name().is_empty() {
-                    tracing::error!("Error parsing {}:{} no name in the call", cpath, fields.full_range.start_point.row + 1);
+                    tracing::info!("Error parsing {}:{} nameless call", cpath, fields.full_range.start_point.row + 1);
                     continue;
                 }
                 let (where_is_this, debug_hint) = _usage_or_typeof_caller_colon_colon_usage(caller_guid, &orig_map, &global_path, function_call);
@@ -377,9 +377,10 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                 }
                 let parent_decl_guid = _go_to_parent_until_declaration(&orig_map, symbol.parent_guid().unwrap_or_default());
                 if let Some(definition) = definitions.get_mut(&parent_decl_guid) {
-                    definition.usages.push(AltLink {
-                        guid: symbol.guid().clone(),
-                        target_for_guesswork: where_is_this,
+                    definition.usages.push(Usage {
+                        // guid: symbol.guid().clone(),
+                        targets_for_guesswork: vec![where_is_this.join("::")],
+                        resolved_as: "".to_string(),
                         debug_hint,
                     });
                 }
@@ -399,9 +400,10 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                 }
                 let parent_decl_guid = _go_to_parent_until_declaration(&orig_map, symbol.parent_guid().unwrap_or_default());
                 if let Some(definition) = definitions.get_mut(&parent_decl_guid) {
-                    definition.usages.push(AltLink {
-                        guid: symbol.guid().clone(),
-                        target_for_guesswork: where_is_this,
+                    definition.usages.push(Usage {
+                        // guid: symbol.guid().clone(),
+                        targets_for_guesswork: vec![where_is_this.join("::")],
+                        resolved_as: "".to_string(),
                         debug_hint,
                     });
                 }
@@ -435,6 +437,7 @@ pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
 
 pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
+    let file_global_path_str = file_global_path.join("::");
     let mut definitions = parse_anything(cpath, text);
     for definition in definitions.values_mut() {
         definition.official_path = [
@@ -442,12 +445,20 @@ pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> IndexMap<Uui
             definition.official_path.clone()
         ].concat();
         for usage in &mut definition.usages {
-            if usage.target_for_guesswork.starts_with(&vec!["file".to_string()]) {
-                usage.target_for_guesswork = [
-                    file_global_path.clone(),
-                    usage.target_for_guesswork[1..].to_vec()
-                ].concat();
+            for t in &mut usage.targets_for_guesswork {
+                if t.starts_with("file::") {
+                    let path_within_file = t[4..].to_string();
+                    t.clear();
+                    t.push_str(file_global_path_str.as_str());
+                    t.push_str(path_within_file.as_str());
+                }
             }
+            // if usage.target_for_guesswork.starts_with(&vec!["file".to_string()]) {
+            //     usage.target_for_guesswork = [
+            //         file_global_path.clone(),
+            //         usage.target_for_guesswork[1..].to_vec()
+            //     ].concat();
+            // }
         }
     }
     definitions
