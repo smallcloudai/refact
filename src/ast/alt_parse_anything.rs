@@ -119,7 +119,7 @@ fn _attempt_name2path(
             if let Some(function_declaration) = node.as_any().downcast_ref::<FunctionDeclaration>() {
                 for arg in &function_declaration.args {
                     if arg.name == name_of_anything {
-                        eprintln!("{:?} is an argument in a function {:?} => ignore, no path at all, no link", name_of_anything, function_declaration.name());
+                        // eprintln!("{:?} is an argument in a function {:?} => ignore, no path at all, no link", name_of_anything, function_declaration.name());
                         return vec![];
                     }
                 }
@@ -132,7 +132,9 @@ fn _attempt_name2path(
                         look_here.push(child_node.clone());
                     }
                 }
+                let _base_class_guid: TypeDef;
                 for _base_class_guid in struct_declaration.inherited_types.iter() {
+                    // TODO: prepend name to paths
                     // pub struct TypeDef {
                     //     pub name: Option<String>,
                     //     pub inference_info: Option<String>,
@@ -159,7 +161,7 @@ fn _attempt_name2path(
         let node = node_arc.read();
 
         if _is_declaration(node.symbol_type()) {
-            eprintln!("_attempt_name2path {:?} looking in {:?}", name_of_anything, node.name());
+            // eprintln!("_attempt_name2path {:?} looking in {:?}", name_of_anything, node.name());
             if node.name() == name_of_anything {
                 return [
                     file_global_path.clone(),
@@ -220,11 +222,11 @@ fn _attempt_typeof_path(
 
     for node_arc in look_here {
         let node = node_arc.read();
-        eprintln!("attempt_typeof: look_here {:?} {:?}", node.guid(), node.name());
+        // eprintln!("attempt_typeof: look_here {:?} {:?}", node.guid(), node.name());
 
         // Check for VariableDefinition and match name
         if let Some(variable_definition) = node.as_any().downcast_ref::<VariableDefinition>() {
-            eprintln!("variable_definition.name {:?} {:?}", variable_definition.name(), variable_or_param_name);
+            // eprintln!("variable_definition.name {:?} {:?}", variable_definition.name(), variable_or_param_name);
             if variable_definition.name() == variable_or_param_name {
                 if let Some(first_type) = variable_definition.types().get(0) {
                     return [
@@ -239,7 +241,7 @@ fn _attempt_typeof_path(
         // Check for FunctionDeclaration and match argument names
         if let Some(function_declaration) = node.as_any().downcast_ref::<FunctionDeclaration>() {
             for arg in &function_declaration.args {
-                eprintln!("function_declaration.arg.name {:?} {:?}", arg.name, variable_or_param_name);
+                // eprintln!("function_declaration.arg.name {:?} {:?}", arg.name, variable_or_param_name);
                 if arg.name == variable_or_param_name {
                     if let Some(arg_type) = &arg.type_ {
                         return [
@@ -268,21 +270,19 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     let debug_hint;
     if let Some(caller) = caller_guid.and_then(|guid| orig_map.get(&guid)) {
         let caller_node = caller.read();
-        let caller_name = caller_node.name();
-        eprintln!("Resolved caller: {:?}, Name: {:?}", caller_guid, caller_name); // Print the name
         let typeof_caller = _attempt_typeof_path(&orig_map, &global_path, caller_node.guid().clone(), caller_node.name().to_string());
         where_is_this = [
             typeof_caller,
             vec![symbol.name().to_string()]
         ].concat();
         debug_hint = caller_node.name().to_string();
-        eprintln!("where_is_this1: {:?}", where_is_this);
     } else {
         // Handle the case where caller_guid is None or not found in orig_map
+        //
         // XXX UGLY: unfortunately, unresolved caller means no caller in C++, maybe in other languages
         // caller is about caller.function_call(1, 2, 3), in this case means just function_call(1, 2, 3) without anything on the left
         // just look for a name in function's parent and above
-        eprintln!("where_is_this2: looking for  {:?}", symbol.name().to_string());
+        //
         where_is_this = _attempt_name2path(&orig_map, &global_path, symbol.parent_guid().clone(), symbol.name().to_string());
         if where_is_this.is_empty() {
             // empty means ignore it, unresolved will be ?::something
@@ -290,7 +290,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
         } else {
             debug_hint = "up".to_string();
         }
-        eprintln!("where_is_this2: {:?} hint={:?}", where_is_this, debug_hint);
+        // eprintln!("where_is_this2: {:?} hint={:?}", where_is_this, debug_hint);
     }
     (where_is_this, debug_hint)
 }
@@ -305,7 +305,6 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
         }
     };
     let global_path = vec!["file".to_string()];
-    eprintln!("global_path = {:?}", global_path);
 
     let symbols = parser.parse(text, &path);
     let symbols2 = symbols.clone();
@@ -316,10 +315,6 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
         let symbol_arc_clone = symbol.clone();
         let symbol = symbol.read();
         orig_map.insert(symbol.guid().clone(), symbol_arc_clone);
-        for (i, t) in symbol.types().iter().enumerate() {
-            eprintln!("type[{}] = {:?}", i, t);
-        }
-        eprintln!("");
         match symbol.symbol_type() {
             SymbolType::StructDeclaration |
             SymbolType::TypeAlias |
@@ -355,7 +350,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
 
     for symbol in symbols2 {
         let symbol = symbol.read();
-        eprintln!("something: {:?}", symbol);
+        // eprintln!("pass2: {:?}", symbol);
         match symbol.symbol_type() {
             SymbolType::StructDeclaration |
             SymbolType::TypeAlias |
@@ -368,7 +363,6 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                 continue;
             }
             SymbolType::FunctionCall => {
-                // eprintln!("Function call usage: {:?}", symbol);
                 let function_call = symbol.as_any().downcast_ref::<FunctionCall>().expect("xxx1000");
                 let fields = function_call.fields();
                 let caller_guid = fields.caller_guid.clone();
@@ -377,7 +371,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                     continue;
                 }
                 let (where_is_this, debug_hint) = _usage_or_typeof_caller_colon_colon_usage(caller_guid, &orig_map, &global_path, function_call);
-                eprintln!("function call name={} where_is_this={:?} debug_hint={:?}", function_call.name(), where_is_this, debug_hint);
+                // eprintln!("function call name={} where_is_this={:?} debug_hint={:?}", function_call.name(), where_is_this, debug_hint);
                 if where_is_this.is_empty() {
                     continue;
                 }
@@ -399,7 +393,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                     continue;
                 }
                 let (where_is_this, debug_hint) = _usage_or_typeof_caller_colon_colon_usage(caller_guid, &orig_map, &global_path, variable_usage);
-                eprintln!("variable usage name={} where_is_this={:?} debug_hint={:?}", variable_usage.name(), where_is_this, debug_hint);
+                // eprintln!("variable usage name={} where_is_this={:?} debug_hint={:?}", variable_usage.name(), where_is_this, debug_hint);
                 if where_is_this.is_empty() {
                     continue;
                 }
@@ -413,7 +407,6 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
                 }
             }
         }
-        eprintln!("");
     }
 
     let mut sorted_definitions: Vec<(Uuid, AltDefinition)> = definitions.clone().into_iter().collect();

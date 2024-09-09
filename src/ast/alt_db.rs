@@ -1,11 +1,13 @@
 use sled::{Db, IVec};
-use uuid::Uuid;
+use std::collections::HashMap;
+// use uuid::Uuid;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::task;
 use crate::ast::alt_minimalistic::{AltIndex, AltState, AltDefinition};
 use crate::ast::alt_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
 use serde_cbor;
+
 
 async fn alt_index_init() -> Arc<AMutex<AltIndex>>
 {
@@ -125,14 +127,82 @@ async fn doc_symbols(altindex: Arc<AMutex<AltState>>, cpath: &String) -> Vec<Arc
     definitions
 }
 
-async fn connect_everything(altindex: Arc<AMutex<AltIndex>>)
+async fn connect_usages(altindex: Arc<AMutex<AltIndex>>)
 {
+}
+
+pub async fn usages(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &str) -> Vec<Arc<AltDefinition>>
+{
+    let db = altindex.lock().await.sleddb.clone();
+    let u_prefix = format!("u/{}", double_colon_path);
+    let mut usages = Vec::new();
+    println!("usages(u_prefix={:?})", u_prefix);
+    let mut iter = db.scan_prefix(&u_prefix);
+    while let Some(Ok((key, _))) = iter.next() {
+        let key_string = String::from_utf8(key.to_vec()).unwrap();
+        if key_string.contains(" ⚡ ") {
+            let parts: Vec<&str> = key_string.split(" ⚡ ").collect();
+            if parts.len() == 2 && parts[0] == u_prefix {
+                let full_path = parts[1].trim();
+                let d_key = format!("d/{}", full_path);
+                if let Ok(Some(d_value)) = db.get(d_key.as_bytes()) {
+                    match serde_cbor::from_slice::<AltDefinition>(&d_value) {
+                        Ok(definition) => usages.push(Arc::new(definition)),
+                        Err(e) => println!("Failed to deserialize value for {}: {:?}", d_key, e),
+                    }
+                }
+            } else {
+                tracing::error!("usage record has more than two ⚡ key was: {}", key_string);
+            }
+        } else {
+            tracing::error!("usage record doesn't have ⚡ key was: {}", key_string);
+        }
+    }
+    usages
+}
+
+pub async fn definitions(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &str) -> Vec<Arc<AltDefinition>>
+{
+    let db = altindex.lock().await.sleddb.clone();
+    let c_prefix = format!("c/{}", double_colon_path);
+    let mut path_groups: HashMap<usize, Vec<String>> = HashMap::new();
+    println!("definitions(c_prefix={:?})", c_prefix);
+    let mut iter = db.scan_prefix(&c_prefix);
+    while let Some(Ok((key, _))) = iter.next() {
+        let key_string = String::from_utf8(key.to_vec()).unwrap();
+        if key_string.contains(" ⚡ ") {
+            let parts: Vec<&str> = key_string.split(" ⚡ ").collect();
+            if parts.len() == 2 && parts[0] == c_prefix {
+                let full_path = parts[1].trim().to_string();
+                let colon_count = full_path.matches("::").count();
+                path_groups.entry(colon_count).or_insert_with(Vec::new).push(full_path);
+            } else {
+                tracing::error!("usage record has more than two ⚡ key was: {}", key_string);
+            }
+        } else {
+            tracing::error!("usage record doesn't have ⚡ key was: {}", key_string);
+        }
+    }
+    let min_colon_count = path_groups.keys().min().cloned().unwrap_or(usize::MAX);
+    let mut definitions = Vec::new();
+    if let Some(paths) = path_groups.get(&min_colon_count) {
+        for full_path in paths {
+            let d_key = format!("d/{}", full_path);
+            if let Ok(Some(d_value)) = db.get(d_key.as_bytes()) {
+                match serde_cbor::from_slice::<AltDefinition>(&d_value) {
+                    Ok(definition) => definitions.push(Arc::new(definition)),
+                    Err(e) => println!("Failed to deserialize value for {}: {:?}", d_key, e),
+                }
+            }
+        }
+    }
+    definitions
 }
 
 async fn dump_database(altindex: Arc<AMutex<AltIndex>>)
 {
     let db = altindex.lock().await.sleddb.clone();
-    println!("\nsled has {} reconds", db.len());
+    println!("\nsled has {} records", db.len());
     let iter = db.iter();
     for item in iter {
         let (key, value) = item.unwrap();
@@ -152,39 +222,6 @@ async fn dump_database(altindex: Arc<AMutex<AltIndex>>)
     }
 }
 
-// pub async fn usages(altindex: Arc<AMutex<AltIndex>>, double_colon_path: String) -> Vec<String>
-// {
-// }
-
-pub async fn definitions(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &str) -> Vec<Arc<AltDefinition>>
-{
-    let db = altindex.lock().await.sleddb.clone();
-    let c_prefix = format!("c/{}", double_colon_path);
-    let mut definitions = Vec::new();
-    println!("definitions(c_prefix={:?})", c_prefix);
-    let mut iter = db.scan_prefix(&c_prefix);
-    while let Some(Ok((key, _))) = iter.next() {
-        let key_string = String::from_utf8(key.to_vec()).unwrap();
-        if key_string.contains(" ⚡ ") {
-            let parts: Vec<&str> = key_string.split(" ⚡ ").collect();
-            if parts.len() == 2 && parts[0] == c_prefix {
-                let full_path = parts[1].trim();
-                let d_key = format!("d/{}", full_path);
-                if let Ok(Some(d_value)) = db.get(d_key.as_bytes()) {
-                    match serde_cbor::from_slice::<AltDefinition>(&d_value) {
-                        Ok(definition) => definitions.push(Arc::new(definition)),
-                        Err(e) => println!("Failed to deserialize value for {}: {:?}", d_key, e),
-                    }
-                }
-            } else {
-                tracing::error!("usage record has more than two ⚡ key was: {}", key_string);
-            }
-        } else {
-            tracing::error!("usage record doesn't have ⚡ key was: {}", key_string);
-        }
-    }
-    definitions
-}
 
 #[cfg(test)]
 mod tests {
@@ -207,19 +244,31 @@ mod tests {
         let cpp_main_text = read_file(cpp_main_path);
         doc_add(altindex.clone(), &cpp_main_path.to_string(), &cpp_main_text).await;
 
-        connect_everything(altindex.clone()).await;
+        connect_usages(altindex.clone()).await;
 
         dump_database(altindex.clone()).await;
-        let goat_def = definitions(altindex.clone(), "Goat").await;
-        let mut definitions_str = String::new();
-        for def in goat_def {
-            definitions_str.push_str(&format!("{:?}\n", def));
+
+        // Goat::Goat() is the constructor
+        let goat_def = definitions(altindex.clone(), "Goat::Goat").await;
+        let mut goat_def_str = String::new();
+        for def in goat_def.iter() {
+            goat_def_str.push_str(&format!("{:?}\n", def));
         }
-        println!("Definitions:\n{}", definitions_str);
+        println!("goat_def_str:\n{}", goat_def_str);
+        assert!(goat_def.len() == 1);
 
-        // doc_remove(altindex.clone(), &cpp_library_path.to_string()).await;
-        // doc_remove(altindex.clone(), &cpp_main_path.to_string()).await;
+        let animalage_usage = usages(altindex.clone(), "Animal::age").await;
+        let mut animalage_usage_str = String::new();
+        for usage in animalage_usage.iter() {
+            animalage_usage_str.push_str(&format!("{:?}\n", usage));
+        }
+        println!("animalage_usage_str:\n{}", animalage_usage_str);
+        assert!(animalage_usage.len() == 3);
+        // 3 is correct within one file, but there's another function CosmicGoat::say_hi in cpp_main_text
 
-        // dump_database(altindex.clone()).await;
+        doc_remove(altindex.clone(), &cpp_library_path.to_string()).await;
+        doc_remove(altindex.clone(), &cpp_main_path.to_string()).await;
+
+        dump_database(altindex.clone()).await;
     }
 }
