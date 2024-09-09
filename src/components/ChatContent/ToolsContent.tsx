@@ -107,14 +107,13 @@ export const ToolContent: React.FC<{
             <Text weight="light" size="1">
               🔨{" "}
               {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
-                <>
+                <span key={functionName}>
                   <ToolUsageDisplay
-                    key={functionName}
                     functionName={functionName}
                     amountOfCalls={amountOfCalls}
                   />
                   {index === toolUsageAmount.length - 1 ? "" : ", "}
-                </>
+                </span>
               ))}
             </Text>
             <Chevron open={open} />
