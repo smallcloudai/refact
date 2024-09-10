@@ -1,6 +1,7 @@
 import { Button, Flex, Text, TextField } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeftIcon } from "@radix-ui/react-icons";
+import { Link } from "../Link";
 
 export interface SelfHostingSetupProps {
   goBack: () => void;
@@ -41,9 +42,11 @@ export const SelfHostingSetup: React.FC<SelfHostingSetupProps> = ({
     <Flex direction="column" gap="2" maxWidth="540px" m="8px">
       <Text size="2">
         A great option for self-hosting is{" "}
-        <a href="https://github.com/smallcloudai/refact/">Refact docker</a>. It
-        can serve completion and chat models, has graphical user interface to
-        set it up, and it can fine-tune code on your codebase. A typical
+        <Link href="https://github.com/smallcloudai/refact/">
+          Refact docker
+        </Link>
+        . It can serve completion and chat models, has graphical user interface
+        to set it up, and it can fine-tune code on your codebase. A typical
         endpoint address is http://127.0.0.1:8008/
         <br />
         But this plugin might work with a variety of servers, report your
