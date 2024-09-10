@@ -15,15 +15,17 @@ import { promptsApi } from "../services/refact/prompts";
 import { toolsApi } from "../services/refact/tools";
 import { commandsApi } from "../services/refact/commands";
 import { diffApi } from "../services/refact/diffs";
+import { pingApi } from "../services/refact/ping";
 import { clearError, setError } from "../features/Errors/errorsSlice";
+import { updateConfig } from "../events";
 
 export const listenerMiddleware = createListenerMiddleware();
-const startErrorListening = listenerMiddleware.startListening.withTypes<
+const startListening = listenerMiddleware.startListening.withTypes<
   RootState,
   AppDispatch
 >();
 
-startErrorListening({
+startListening({
   // TODO: figure out why this breaks the tests when it's not a function :/
   matcher: isAnyOf(
     (d: unknown): d is ReturnType<typeof newChatAction> =>
@@ -44,7 +46,7 @@ startErrorListening({
   },
 });
 
-startErrorListening({
+startListening({
   // TODO: figure out why this breaks the tests when it's not a function :/
   matcher: isAnyOf(isRejected),
   effect: (action, listenerApi) => {
@@ -72,6 +74,20 @@ startErrorListening({
       typeof action.payload === "string"
     ) {
       listenerApi.dispatch(setError(action.payload));
+    }
+  },
+});
+
+startListening({
+  actionCreator: updateConfig,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    if (
+      action.payload.apiKey !== state.config.apiKey ||
+      action.payload.addressURL !== state.config.addressURL ||
+      action.payload.lspPort !== state.config.lspPort
+    ) {
+      pingApi.util.resetApiState();
     }
   },
 });

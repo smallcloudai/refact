@@ -8,11 +8,13 @@ import {
   noCommandPreview,
   noCompletions,
   goodUser,
+  goodPing,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 
 describe("Start a new chat", () => {
   server.use(
+    goodPing,
     goodCaps,
     goodPrompts,
     noTools,

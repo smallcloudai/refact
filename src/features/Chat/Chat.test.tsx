@@ -42,6 +42,7 @@ import {
   noCommandPreview,
   noCompletions,
   goodUser,
+  goodPing,
 } from "../../utils/mockServer";
 
 const handlers = [
@@ -51,6 +52,7 @@ const handlers = [
   noCommandPreview,
   noCompletions,
   goodUser,
+  goodPing,
 ];
 
 // const handlers = [
@@ -244,7 +246,14 @@ describe("Chat", () => {
   it.skip("when creating a new chat I can select which model to use", async () => {
     // Missing props in jsdom
     // window.PointerEvent = class PointerEvent extends Event {};
-    server.use(goodPrompts, noCommandPreview, noCompletions, noTools, goodCaps);
+    server.use(
+      goodPrompts,
+      noCommandPreview,
+      noCompletions,
+      noTools,
+      goodCaps,
+      goodPing,
+    );
     const chatSpy = vi.fn();
     server.use(
       http.post("http://127.0.0.1:8001/v1/chat", (req) => {
@@ -357,6 +366,7 @@ describe("Chat", () => {
   it("chat error streaming", async () => {
     const encoder = new TextEncoder();
     server.use(
+      goodPing,
       goodPrompts,
       noCommandPreview,
       goodCaps,
