@@ -198,7 +198,7 @@ pub const KNOWN_MODELS: &str = r####"
                 "meta-llama/llama-3.1-8b-instruct"
             ]
         },
-        "groq/llama-3.1-8b-instant": {
+        "groq-llama-3.1-8b": {
             "n_ctx": 128000,
             "supports_tools": true,
             "supports_scratchpads": {
@@ -206,7 +206,7 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "similar_models": [
-                "groq/llama-3.1-70b-versatile"
+                "groq-llama-3.1-70b"
             ]
         },
         "llama2/7b": {
