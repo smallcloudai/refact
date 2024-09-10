@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokenizers::Tokenizer;
@@ -8,12 +6,12 @@ use tracing::warn;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{context_file_from_file_path, file_repair_candidates};
-use crate::at_tools::att_patch::snippets::CodeSnippet;
-use crate::at_tools::att_patch::tool::{DefaultToolPatch, N_CHOICES};
-use crate::at_tools::subchat::subchat_single;
+use crate::tools::patch::snippets::CodeSnippet;
+use crate::tools::patch::tool_patch::{DefaultToolPatch, N_CHOICES};
+use crate::subchat::subchat_single;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatUsage, ContextFile, DiffChunk};
-use crate::scratchpads::pp_utils::count_tokens;
+use crate::scratchpads::scratchpad_utils::count_tokens;
 
 
 pub async fn read_file(

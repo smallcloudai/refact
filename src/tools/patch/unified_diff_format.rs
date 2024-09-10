@@ -602,8 +602,8 @@ impl UnifiedDiffFormat {
         first_workspace_project_dir: &str,
     ) -> String {
         let prompt = r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT.
-You will receive a file containing code, along with a modified section. 
-Your task is to generate a unified diff in a specified format, comparing the original file to the updated portion. 
+You will receive a file containing code, along with a modified section.
+Your task is to generate a unified diff in a specified format, comparing the original file to the updated portion.
 In the diff generation use following project directory:
 %WORKSPACE_PROJECTS_DIRS%
 
@@ -713,7 +713,7 @@ mod tests {
 
     use itertools::Itertools;
 
-    use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
+    use crate::tools::patch::unified_diff_format::UnifiedDiffFormat;
     use crate::call_validation::DiffChunk;
     use crate::diffs::{apply_diff_chunks_to_text, unwrap_diff_apply_outputs};
 

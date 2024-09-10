@@ -1,11 +1,12 @@
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::att_patch::chat_interaction::read_file;
-use crate::at_tools::att_patch::snippets::CodeSnippet;
-use crate::at_tools::att_patch::unified_diff_format::{diff_blocks_to_diff_chunks, DiffBlock, DiffLine, LineType};
+use crate::tools::patch::chat_interaction::read_file;
+use crate::tools::patch::snippets::CodeSnippet;
+use crate::tools::patch::unified_diff_format::{diff_blocks_to_diff_chunks, DiffBlock, DiffLine, LineType};
 use crate::call_validation::DiffChunk;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
+
 
 pub async fn full_rewrite_diff(
     ccx: Arc<AMutex<AtCommandsContext>>,

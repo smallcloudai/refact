@@ -7,14 +7,15 @@ use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::att_patch::chat_interaction::execute_chat_model;
-use crate::at_tools::att_patch::diff_formats::postprocess_diff_chunks_from_message;
-use crate::at_tools::att_patch::snippets::{get_code_snippets, Action};
-use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
-use crate::at_tools::att_patch::whole_file_diff::{full_rewrite_diff, new_file_diff};
-use crate::at_tools::execute_att::unwrap_subchat_params;
-use crate::at_tools::tools::Tool;
-use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, DiffChunk, SubchatParameters};
+use crate::tools::patch::chat_interaction::execute_chat_model;
+use crate::tools::patch::diff_formats::postprocess_diff_chunks_from_message;
+use crate::tools::patch::snippets::{get_code_snippets, Action};
+use crate::tools::patch::unified_diff_format::UnifiedDiffFormat;
+use crate::tools::patch::whole_file_diff::{full_rewrite_diff, new_file_diff};
+use crate::tools::tools_execute::unwrap_subchat_params;
+use crate::tools::tools_description::Tool;
+use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, SubchatParameters};
+
 
 pub const N_CHOICES: usize = 16;
 pub type DefaultToolPatch = UnifiedDiffFormat;

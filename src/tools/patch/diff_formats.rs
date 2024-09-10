@@ -5,8 +5,7 @@ use tokio::sync::Mutex as AMutex;
 use ropey::Rope;
 use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_tools::att_patch::ast_interaction::{lint_and_get_error_messages, parse_and_get_error_symbols};
-use crate::at_tools::att_patch::tool::DefaultToolPatch;
+use crate::tools::patch::ast_interaction::{lint_and_get_error_messages, parse_and_get_error_symbols};
 use crate::call_validation::DiffChunk;
 use crate::diffs::{apply_diff_chunks_to_text, correct_and_validate_chunks, unwrap_diff_apply_outputs};
 use crate::files_in_workspace::read_file_from_disk;
@@ -37,7 +36,7 @@ pub async fn postprocess_diff_chunks_from_message(
             warn!("The file `{:?}` has multiple `add` or `remove` or `rename` diff chunks, it's not supported now", path);
             return Err(format!("The file `{:?}` has multiple `add` or `remove` or `rename` diff chunks, it's not supported now", path));
         }
-        
+
         let text_before = if action == "add" {
             Rope::new()
         } else {
@@ -52,7 +51,7 @@ pub async fn postprocess_diff_chunks_from_message(
         let (results, outputs) = apply_diff_chunks_to_text(
             &text_before.to_string(),
             chunks.iter().enumerate().collect::<Vec<_>>(),
-            vec![], 
+            vec![],
             1
         );
         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, chunks.clone());
@@ -106,7 +105,7 @@ pub async fn postprocess_diff_chunks_from_message(
                 };
                 if before_error_symbols.len() < after_error_symbols.len() {
                     let message = format!(
-                        "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs", 
+                        "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs",
                         path, before_error_symbols.len(), after_error_symbols.len()
                     );
                     return Err(message);
