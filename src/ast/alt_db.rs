@@ -41,7 +41,7 @@ async fn alt_index_init() -> Arc<AMutex<AltIndex>>
 
 async fn doc_add(altindex: Arc<AMutex<AltIndex>>, cpath: &String, text: &String)
 {
-    let definitions = parse_anything_and_add_file_path(cpath, text);
+    let (definitions, _language) = parse_anything_and_add_file_path(cpath, text);
     let db = altindex.lock().await.sleddb.clone();
     let mut batch = sled::Batch::default();
     for definition in definitions.values() {
@@ -52,14 +52,19 @@ async fn doc_add(altindex: Arc<AMutex<AltIndex>>, cpath: &String, text: &String)
         let mut path_parts: Vec<&str> = definition.official_path.iter().map(|s| s.as_str()).collect();
         while !path_parts.is_empty() {
             let c_key = format!("c/{} ⚡ {}", path_parts.join("::"), official_path);
-            batch.insert(c_key.as_bytes(), b"huu");
+            batch.insert(c_key.as_bytes(), b"");
             path_parts.remove(0);
         }
         for usage in &definition.usages {
             if !usage.resolved_as.is_empty() {
                 let u_key = format!("u/{} ⚡ {}", usage.resolved_as, official_path);
-                batch.insert(u_key.as_bytes(), b"huu");
+                batch.insert(u_key.as_bytes(), b"");
             }
+        }
+        // AltDefinition { CosmicGoat, this_is_a_class: cpp/CosmicGoat, derived_from: "cpp/Goat" "cpp/CosmicJustice" }
+        for from in &definition.this_class_derived_from {
+            let t_key = format!("t/{} ⚡ {}", from, official_path);
+            batch.insert(t_key.as_bytes(), definition.this_is_a_class.as_bytes());
         }
     }
     if let Err(e) = db.apply_batch(batch) {
@@ -89,6 +94,10 @@ async fn doc_remove(altindex: Arc<AMutex<AltIndex>>, cpath: &String)
                     let u_key = format!("u/{} ⚡ {}", usage.resolved_as, official_path);
                     batch.remove(u_key.as_bytes());
                 }
+            }
+            for from in &definition.this_class_derived_from {
+                let t_key = format!("t/{} ⚡ {}", from, official_path);
+                batch.remove(t_key.as_bytes());
             }
         }
         batch.remove(&d_key_b);
@@ -185,6 +194,68 @@ pub async fn definitions(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &st
     definitions
 }
 
+pub async fn type_hierarchy(altindex: Arc<AMutex<AltIndex>>, language: String, subtree_of: String) -> String
+{
+    // Data example:
+    // t/cpp/Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp/Goat"
+    // t/cpp/CosmicJustice ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp/CosmicGoat"
+    // t/cpp/Goat ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp/CosmicGoat"
+    //
+    // Output for that data:
+    // type_hierarchy("cpp", "")
+    // cpp/Animal
+    //    cpp/Goat
+    //       cpp/CosmicGoat
+    // cpp/CosmicJustice
+    //    cpp/CosmicGoat
+    //
+    // Output for that data:
+    // type_hierarchy("cpp", "cpp/CosmicJustice")
+    // cpp/CosmicJustice
+    //    cpp/CosmicGoat
+    //
+    let db = altindex.lock().await.sleddb.clone();
+    let t_prefix = format!("t/{}/", language);
+    let mut iter = db.scan_prefix(&t_prefix);
+    let mut hierarchy_map: HashMap<String, Vec<String>> = HashMap::new();
+
+    while let Some(Ok((key, value))) = iter.next() {
+        let key_string = String::from_utf8(key.to_vec()).unwrap();
+        let value_string = String::from_utf8(value.to_vec()).unwrap();
+        if key_string.contains(" ⚡ ") {
+            let parts: Vec<&str> = key_string.split(" ⚡ ").collect();
+            if parts.len() == 2 {
+                let parent = parts[0].trim().strip_prefix("t/").unwrap_or(parts[0].trim()).to_string();
+                let child = value_string.trim().to_string();
+                hierarchy_map.entry(parent).or_insert_with(Vec::new).push(child);
+            }
+        }
+    }
+
+    fn build_hierarchy(hierarchy_map: &HashMap<String, Vec<String>>, node: &str, indent: usize) -> String {
+        let mut result = format!("{:indent$}{}\n", "", node, indent = indent);
+        if let Some(children) = hierarchy_map.get(node) {
+            for child in children {
+                result.push_str(&build_hierarchy(hierarchy_map, child, indent + 4));
+            }
+        }
+        result
+    }
+
+    let mut result = String::new();
+    if subtree_of.is_empty() {
+        for root in hierarchy_map.keys() {
+            if !hierarchy_map.values().any(|children| children.contains(root)) {
+                result.push_str(&build_hierarchy(&hierarchy_map, root, 0));
+            }
+        }
+    } else {
+        result.push_str(&build_hierarchy(&hierarchy_map, &subtree_of, 0));
+    }
+
+    result
+}
+
 async fn dump_database(altindex: Arc<AMutex<AltIndex>>)
 {
     let db = altindex.lock().await.sleddb.clone();
@@ -192,8 +263,8 @@ async fn dump_database(altindex: Arc<AMutex<AltIndex>>)
     let iter = db.iter();
     for item in iter {
         let (key, value) = item.unwrap();
-        let key_string = String::from_utf8(key.to_vec()).unwrap(); // Convert key to String
-        if key_string.starts_with("d/") { // Check if the key is a d_key
+        let key_string = String::from_utf8(key.to_vec()).unwrap();
+        if key_string.starts_with("d/") {
             match serde_cbor::from_slice::<AltDefinition>(&value) {
                 Ok(definition) => println!("{}\n{:?}", key_string, definition),
                 Err(e) => println!("Failed to deserialize value at {}: {:?}", key_string, e),
@@ -204,6 +275,10 @@ async fn dump_database(altindex: Arc<AMutex<AltIndex>>)
         }
         if key_string.starts_with("u/") {
             println!("{}", key_string);
+        }
+        if key_string.starts_with("t/") {
+            let value_string = String::from_utf8(value.to_vec()).unwrap();
+            println!("{} 👉 {:?}", key_string, value_string);
         }
     }
 }
@@ -229,6 +304,9 @@ mod tests {
         let cpp_main_path = "src/ast/alt_testsuite/cpp_goat_main.cpp";
         let cpp_main_text = read_file(cpp_main_path);
         doc_add(altindex.clone(), &cpp_main_path.to_string(), &cpp_main_text).await;
+
+        println!("Type hierachy:\n{}", type_hierarchy(altindex.clone(), "cpp".to_string(), "".to_string()).await);
+        println!("Type hierachy subtree_of=Animal:\n{}", type_hierarchy(altindex.clone(), "cpp".to_string(), "cpp/Animal".to_string()).await);
 
         connect_usages(altindex.clone()).await;
 

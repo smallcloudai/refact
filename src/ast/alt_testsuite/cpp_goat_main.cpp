@@ -22,6 +22,7 @@ public:
     void say_hi() const
     {
         printf("I am a CosmicGoat, age=%d weight=%d balance=%0.2f\n", age, weight, balance);
+        // should produce ?::cpp/CosmicGoat::age ?::age
     }
 };
 
@@ -68,14 +69,14 @@ void all_goats_review(CosmicGoat* f1, CosmicGoat& f2, const CosmicGoat& f3, cons
 
 int goat_direct_access(CosmicGoat* v1, CosmicGoat& v2, const CosmicGoat& v3, const std::shared_ptr<CosmicGoat>& v4)
 {
-    CosmicGoat v_local_goat(16, 26, 36.5);
-    return v1->weight + v2.weight + v3.weight + v4->weight + global_goat.weight + v_local_goat.weight;
+    CosmicGoat v_local_goat1(16, 26, 36.5);
+    return v1->weight + v2.weight + v3.weight + v4->weight + global_goat.weight + v_local_goat1.weight;
 }
 
 int goat_balance_sum(CosmicGoat* v1, CosmicGoat& v2, const CosmicGoat& v3, const std::shared_ptr<CosmicGoat>& v4)
 {
-    CosmicGoat v_local_goat(16, 26, 36.5);
-    return v1->balance + v2.balance + v3.balance + v4->balance + global_goat.balance + v_local_goat.balance;
+    CosmicGoat v_local_goat2(17, 27, 37.5);
+    return v1->balance + v2.balance + v3.balance + v4->balance + global_goat.balance + v_local_goat2.balance;
 }
 
 int main()

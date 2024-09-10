@@ -16,14 +16,16 @@ pub struct Usage {
     pub targets_for_guesswork: Vec<String>, // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
     pub resolved_as: String,
     pub debug_hint: String,
+    pub uline: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AltDefinition {
-    pub official_path: Vec<String>,   // file::namespace::class::method becomes ["file", "namespace", "class", "method"]
+    pub official_path: Vec<String>,  // file::namespace::class::method becomes ["file", "namespace", "class", "method"]
     pub symbol_type: SymbolType,
-    pub derived_from: Vec<Usage>,
     pub usages: Vec<Usage>,
+    pub this_is_a_class: String,              // cpp/Goat
+    pub this_class_derived_from: Vec<String>, // cpp/Animal, cpp/CosmicJustice
     #[serde(with = "RangeDef")]
     pub full_range: Range,
     #[serde(with = "RangeDef")]
@@ -47,7 +49,7 @@ impl fmt::Debug for AltDefinition {
         let usages_paths: Vec<String> = self.usages.iter()
             .map(|link| format!("{:?}", link))
             .collect();
-        let derived_from_paths: Vec<String> = self.derived_from.iter()
+        let derived_from_paths: Vec<String> = self.this_class_derived_from.iter()
             .map(|link| format!("{:?}", link))
             .collect();
 
@@ -55,6 +57,12 @@ impl fmt::Debug for AltDefinition {
             String::new()
         } else {
             format!(", usages: {}", usages_paths.join(" "))
+        };
+
+        let class_str = if self.this_is_a_class.is_empty() {
+            String::new()
+        } else {
+            format!(", this_is_a_class: {}", self.this_is_a_class)
         };
 
         let derived_from_str = if derived_from_paths.is_empty() {
@@ -65,23 +73,23 @@ impl fmt::Debug for AltDefinition {
 
         write!(
             f,
-            "AltDefinition {{ {}{}{} }}",
+            "AltDefinition {{ {}{}{}{} }}",
             self.official_path.join("::"),
             usages_str,
-            derived_from_str
+            class_str,
+            derived_from_str,
         )
     }
 }
-
 
 impl fmt::Debug for Usage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // self.target_for_guesswork
         write!(
             f,
-            "Link{{ {} {} }}",
+            "U{{ {} {} }}",
             self.debug_hint,
-            if self.resolved_as.len() > 0 { self.resolved_as.clone() } else { self.targets_for_guesswork.join(" ") + &", unresolved" }
+            if self.resolved_as.len() > 0 { self.resolved_as.clone() } else { self.targets_for_guesswork.join(" ") }
         )
     }
 }

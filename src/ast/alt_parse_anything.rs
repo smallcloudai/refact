@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::ast::alt_minimalistic::{AltDefinition, Usage};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
+use crate::ast::treesitter::language_id::LanguageId;
 use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, TypeDef};
 
 
@@ -99,6 +100,7 @@ fn _find_top_level_nodes(
 fn _attempt_name2path(
     map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
     file_global_path: &Vec<String>,
+    uline: usize,
     start_node_guid: Option<Uuid>,
     name_of_anything: String,
 ) -> Option<Usage> {
@@ -109,6 +111,7 @@ fn _attempt_name2path(
         targets_for_guesswork: vec![],
         resolved_as: "".to_string(),
         debug_hint: "shrug".to_string(),
+        uline: uline,
     };
     let mut node_guid = start_node_guid.unwrap();
     let mut look_here: Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> = Vec::new();
@@ -137,6 +140,7 @@ fn _attempt_name2path(
                         look_here.push(child_node.clone());
                     }
                 }
+                result.targets_for_guesswork.push(format!("?::class/{}::{}", struct_declaration.name(), name_of_anything));
                 let _base_class_guid: TypeDef;
                 for _base_class_guid in struct_declaration.inherited_types.iter() {
                     // TODO: prepend name to paths
@@ -257,7 +261,8 @@ fn _attempt_typeof_path(
 fn _usage_or_typeof_caller_colon_colon_usage(
     caller_guid: Option<Uuid>,
     orig_map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
-    global_path: &Vec<String>,
+    file_global_path: &Vec<String>,
+    uline: usize,
     symbol: &dyn AstSymbolInstance,
 ) -> Option<Usage> {
     if let Some(caller) = caller_guid.and_then(|guid| orig_map.get(&guid)) {
@@ -265,9 +270,10 @@ fn _usage_or_typeof_caller_colon_colon_usage(
             targets_for_guesswork: vec![],
             resolved_as: "".to_string(),
             debug_hint: "shrug".to_string(),
+            uline: uline,
         };
         let caller_node = caller.read();
-        let typeof_caller = _attempt_typeof_path(&orig_map, &global_path, caller_node.guid().clone(), caller_node.name().to_string());
+        let typeof_caller = _attempt_typeof_path(&orig_map, &file_global_path, caller_node.guid().clone(), caller_node.name().to_string());
         // typeof_caller will be "?" if nothing found, start with "file" if type found in the current file
         if typeof_caller.first() == Some(&"file".to_string()) {
             // actually fully resolved!
@@ -286,21 +292,22 @@ fn _usage_or_typeof_caller_colon_colon_usage(
         // caller is about caller.function_call(1, 2, 3), in this case means just function_call(1, 2, 3) without anything on the left
         // just look for a name in function's parent and above
         //
-        _attempt_name2path(&orig_map, &global_path, symbol.parent_guid().clone(), symbol.name().to_string())
+        _attempt_name2path(&orig_map, &file_global_path, uline, symbol.parent_guid().clone(), symbol.name().to_string())
         // eprintln!("where_is_this2: {:?} hint={:?}", where_is_this, debug_hint);
     }
 }
 
-pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> {
+pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>, String) {
     let path = PathBuf::from(cpath);
     let mut parser = match get_ast_parser_by_filename(&path) {
         Ok(x) => x,
         Err(err) => {
             tracing::error!("Error getting parser: {}", err.message);
-            return IndexMap::new();
+            return (IndexMap::new(), "".to_string());
         }
     };
-    let global_path = vec!["file".to_string()];
+    let mut language = "".to_string();
+    let file_global_path = vec!["file".to_string()];
 
     let symbols = parser.parse(text, &path);
     let symbols2 = symbols.clone();
@@ -319,13 +326,26 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
             SymbolType::FunctionDeclaration |
             SymbolType::CommentDefinition |
             SymbolType::Unknown => {
+                language = symbol.language().to_string();
+                let mut this_is_a_class = "".to_string();
+                let mut this_class_derived_from = vec![];
+                if let Some(struct_declaration) = symbol.as_any().downcast_ref::<StructDeclaration>() {
+                    this_is_a_class = format!("{}/{}", language, struct_declaration.name());
+                    for base_class in struct_declaration.inherited_types.iter() {
+                        if base_class.name.is_none() {
+                            tracing::info!("No name base class {}:{}", cpath, symbol.full_range().start_point.row + 1);
+                        }
+                        this_class_derived_from.push(format!("{}/{}", language, base_class.name.clone().unwrap()));
+                    }
+                }
                 if !symbol.name().is_empty() {
                     let definition = AltDefinition {
                         // guid: symbol.guid().clone(),
                         // parent_guid: symbol.parent_guid().clone().unwrap_or_default(),
                         official_path: _path_of_node(&orig_map, Some(symbol.guid().clone())),
                         symbol_type: symbol.symbol_type().clone(),
-                        derived_from: vec![],
+                        this_is_a_class,
+                        this_class_derived_from,
                         usages: vec![],
                         full_range: symbol.full_range().clone(),
                         declaration_range: symbol.declaration_range().clone(),
@@ -360,11 +380,12 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
             }
             SymbolType::FunctionCall => {
                 let function_call = symbol.as_any().downcast_ref::<FunctionCall>().expect("xxx1000");
+                let uline = function_call.full_range().start_point.row + 1;
                 if function_call.name().is_empty() {
-                    tracing::info!("Error parsing {}:{} nameless call", cpath, function_call.full_range().start_point.row + 1);
+                    tracing::info!("Error parsing {}:{} nameless call", cpath, uline);
                     continue;
                 }
-                let usage = _usage_or_typeof_caller_colon_colon_usage(function_call.get_caller_guid().clone(), &orig_map, &global_path, function_call);
+                let usage = _usage_or_typeof_caller_colon_colon_usage(function_call.get_caller_guid().clone(), &orig_map, &file_global_path, uline, function_call);
                 // eprintln!("function call name={} usage={:?} debug_hint={:?}", function_call.name(), usage, debug_hint);
                 if usage.is_none() {
                     continue;
@@ -376,11 +397,12 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
             }
             SymbolType::VariableUsage => {
                 let variable_usage = symbol.as_any().downcast_ref::<VariableUsage>().expect("xxx1001");
+                let uline = variable_usage.full_range().start_point.row + 1;
                 if variable_usage.name().is_empty() {
-                    tracing::error!("Error parsing {}:{} no name in variable usage", cpath, variable_usage.full_range().start_point.row + 1);
+                    tracing::error!("Error parsing {}:{} no name in variable usage", cpath, uline);
                     continue;
                 }
-                let usage = _usage_or_typeof_caller_colon_colon_usage(variable_usage.fields().caller_guid.clone(), &orig_map, &global_path, variable_usage);
+                let usage = _usage_or_typeof_caller_colon_colon_usage(variable_usage.fields().caller_guid.clone(), &orig_map, &file_global_path, uline, variable_usage);
                 // eprintln!("variable usage name={} usage={:?} debug_hint={:?}", variable_usage.name(), usage, debug_hint);
                 if usage.is_none() {
                     continue;
@@ -395,7 +417,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
 
     let mut sorted_definitions: Vec<(Uuid, AltDefinition)> = definitions.clone().into_iter().collect();
     sorted_definitions.sort_by(|a, b| a.1.official_path.cmp(&b.1.official_path));
-    IndexMap::from_iter(sorted_definitions)
+    (IndexMap::from_iter(sorted_definitions), language)
 }
 
 pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
@@ -417,10 +439,10 @@ pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
     components.iter().rev().take(2).cloned().collect::<Vec<_>>()
 }
 
-pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> {
+pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>, String) {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let file_global_path_str = file_global_path.join("::");
-    let mut definitions = parse_anything(cpath, text);
+    let (mut definitions, language) = parse_anything(cpath, text);
     for definition in definitions.values_mut() {
         definition.official_path = [
             file_global_path.clone(),
@@ -443,7 +465,7 @@ pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> IndexMap<Uui
             // }
         }
     }
-    definitions
+    (definitions, language)
 }
 
 
@@ -468,19 +490,11 @@ mod tests {
     }
 
     fn must_be_no_diff(expected: &str, produced: &str) -> String {
-        use std::collections::HashSet;
-        let expected_lines: HashSet<_> = expected.lines()
-            .map(|line| line.trim())
-            .filter(|line| !line.is_empty())
-            .collect();
-        let produced_lines: HashSet<_> = produced.lines()
-            .map(|line| line.trim())
-            .filter(|line| !line.is_empty())
-            .collect();
-        let missing_in_produced: Vec<_> = expected_lines.difference(&produced_lines).collect();
-        let missing_in_expected: Vec<_> = produced_lines.difference(&expected_lines).collect();
+        let expected_lines: Vec<_> = expected.lines().map(|line| line.trim()).filter(|line| !line.is_empty()).collect();
+        let produced_lines: Vec<_> = produced.lines().map(|line| line.trim()).filter(|line| !line.is_empty()).collect();
         let mut mistakes = String::new();
-
+        let missing_in_produced: Vec<_> = expected_lines.iter().filter(|line| !produced_lines.contains(line)).collect();
+        let missing_in_expected: Vec<_> = produced_lines.iter().filter(|line| !expected_lines.contains(line)).collect();
         if !missing_in_expected.is_empty() {
             mistakes.push_str("bad output:\n");
             for line in missing_in_expected.iter() {
@@ -500,7 +514,7 @@ mod tests {
         init_tracing();
         let absfn1 = std::fs::canonicalize(input_file).unwrap();
         let text = read_file(absfn1.to_str().unwrap());
-        let definitions = parse_anything(absfn1.to_str().unwrap(), &text);
+        let (definitions, _language) = parse_anything(absfn1.to_str().unwrap(), &text);
         let mut produced_output = String::new();
         for d in definitions.values() {
             produced_output.push_str(&format!("{:?}\n", d));
