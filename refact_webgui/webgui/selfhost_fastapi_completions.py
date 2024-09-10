@@ -545,7 +545,7 @@ class BaseCompletionsRouter(APIRouter):
                 # NOTE: DONE needed by refact-lsp server
                 yield prefix + "[DONE]" + postfix
             except BaseException as e:
-                err_msg = f"litellm error: {e}"
+                err_msg = f"litellm error (1): {e}"
                 log(err_msg)
                 yield prefix + json.dumps({"error": err_msg}) + postfix
 
@@ -575,7 +575,7 @@ class BaseCompletionsRouter(APIRouter):
                     data = {"choices": [{"finish_reason": finish_reason}]}
                 yield json.dumps(data)
             except BaseException as e:
-                err_msg = f"litellm error: {e}"
+                err_msg = f"litellm error (2): {e}"
                 log(err_msg)
                 yield json.dumps({"error": err_msg})
 
