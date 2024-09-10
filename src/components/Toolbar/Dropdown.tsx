@@ -16,7 +16,7 @@ import { useOpenUrl } from "../../hooks/useOpenUrl";
 import { CONFIG_PATH_URL } from "../../services/refact/consts";
 import { DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
 import { HamburgerMenuIcon } from "@radix-ui/react-icons";
-import { Coin } from "../../images";
+import { Coin, LinkIcon } from "../../images";
 
 export type DropdownNavigationOptions =
   | "fim"
@@ -134,7 +134,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
             openUrl(discordUrl);
           }}
         >
-          Discord Community
+          <Flex align="center" gap="3">
+            Discord Community <LinkIcon />
+          </Flex>
         </DropdownMenu.Item>
 
         <DropdownMenu.Separator />
