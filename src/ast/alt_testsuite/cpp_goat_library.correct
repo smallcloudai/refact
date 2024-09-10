@@ -1,10 +1,10 @@
-AltDefinition { Animal }
-AltDefinition { Animal::Animal, usages: Link{ up file::Animal::age } }
+AltDefinition { Animal, this_is_a_class: cpp/Animal }
+AltDefinition { Animal::Animal, usages: U{ up file::Animal::age } }
 AltDefinition { Animal::age }
-AltDefinition { Animal::self_review, usages: Link{ up ?::printf } Link{ up file::Animal::age } }
-AltDefinition { Goat }
+AltDefinition { Animal::self_review, usages: U{ n2p ?::cpp🔎Animal::printf ?::printf } U{ up file::Animal::age } }
+AltDefinition { Goat, this_is_a_class: cpp/Goat, derived_from: "cpp/Animal" }
 AltDefinition { Goat::Goat }
-AltDefinition { Goat::jump_around, usages: Link{ up ?::printf } Link{ up ?::self_review } Link{ up ?::age } Link{ up file::Goat::weight } }
+AltDefinition { Goat::jump_around, usages: U{ n2p ?::cpp🔎Goat::printf ?::printf } U{ n2p ?::cpp🔎Goat::self_review ?::self_review } U{ n2p ?::cpp🔎Goat::age ?::age } U{ up file::Goat::weight } }
 AltDefinition { Goat::weight }
-AltDefinition { animal_direct_access, usages: Link{ up ?::printf } Link{ v1 file::Animal::age } Link{ v2 file::Animal::age } Link{ v3 file::Animal::age } Link{ v4 ?::age } }
-AltDefinition { animal_function_calling, usages: Link{ f1 file::Animal::self_review } Link{ f2 file::Animal::self_review } Link{ f3 file::Animal::self_review } Link{ f4 ?::self_review } }
+AltDefinition { animal_direct_access, usages: U{ n2p ?::printf } U{ v1 ?::cpp🔎Animal::age } U{ v2 ?::cpp🔎Animal::age } U{ v3 ?::cpp🔎Animal::age } U{ v4 ?::age } }
+AltDefinition { animal_function_calling, usages: U{ f1 ?::cpp🔎Animal::self_review } U{ f2 ?::cpp🔎Animal::self_review } U{ f3 ?::cpp🔎Animal::self_review } U{ f4 ?::self_review } }

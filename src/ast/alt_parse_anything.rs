@@ -110,8 +110,8 @@ fn _attempt_name2path(
     let mut result = Usage {
         targets_for_guesswork: vec![],
         resolved_as: "".to_string(),
-        debug_hint: "shrug".to_string(),
-        uline: uline,
+        debug_hint: "n2p".to_string(),
+        uline,
     };
     let mut node_guid = start_node_guid.unwrap();
     let mut look_here: Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> = Vec::new();
@@ -131,28 +131,25 @@ fn _attempt_name2path(
                         return None;
                     }
                 }
+                // Add all children nodes (shallow)
+                for child_guid in function_declaration.childs_guid() {
+                    if let Some(child_node) = map.get(child_guid) {
+                        if _is_declaration(child_node.read().symbol_type()) {
+                            look_here.push(child_node.clone());
+                        }
+                    }
+                }
             }
 
             if let Some(struct_declaration) = node.as_any().downcast_ref::<StructDeclaration>() {
+                result.targets_for_guesswork.push(format!("?::{}🔎{}::{}", node.language().to_string(), struct_declaration.name(), name_of_anything));
                 // Add all children nodes (shallow)
                 for child_guid in struct_declaration.childs_guid() {
                     if let Some(child_node) = map.get(child_guid) {
-                        look_here.push(child_node.clone());
+                        if _is_declaration(child_node.read().symbol_type()) {
+                            look_here.push(child_node.clone());
+                        }
                     }
-                }
-                result.targets_for_guesswork.push(format!("?::class/{}::{}", struct_declaration.name(), name_of_anything));
-                let _base_class_guid: TypeDef;
-                for _base_class_guid in struct_declaration.inherited_types.iter() {
-                    // TODO: prepend name to paths
-                    // pub struct TypeDef {
-                    //     pub name: Option<String>,
-                    //     pub inference_info: Option<String>,
-                    //     pub inference_info_guid: Option<Uuid>,
-                    //     pub is_pod: bool,
-                    //     pub namespace: String,
-                    //     pub guid: Option<Uuid>,
-                    //     pub nested_types: Vec<TypeDef>, // for nested types, presented in templates
-                    // }
                 }
             }
         }
@@ -229,11 +226,12 @@ fn _attempt_typeof_path(
             // eprintln!("variable_definition.name {:?} {:?}", variable_definition.name(), variable_or_param_name);
             if variable_definition.name() == variable_or_param_name {
                 if let Some(first_type) = variable_definition.types().get(0) {
-                    return [
-                        // file_global_path.clone(),
-                        vec!["?".to_string()],
-                        vec![first_type.name.clone().unwrap_or_default()],
-                    ].concat();
+                    let type_name = first_type.name.clone().unwrap_or_default();
+                    if type_name.is_empty() {
+                        tracing::info!("nameless type for variable definition line {}", /*cpath,*/ node.full_range().start_point.row + 1);
+                    } else {
+                        return vec!["?".to_string(), format!("{}🔎{}", node.language().to_string(), type_name)];
+                    }
                 }
             }
         }
@@ -244,11 +242,11 @@ fn _attempt_typeof_path(
                 // eprintln!("function_declaration.arg.name {:?} {:?}", arg.name, variable_or_param_name);
                 if arg.name == variable_or_param_name {
                     if let Some(arg_type) = &arg.type_ {
-                        return [
-                            // file_global_path.clone(),
-                            vec!["?".to_string()],
-                            vec![arg_type.name.clone().unwrap_or_default()]
-                        ].concat();
+                        if arg_type.name.is_none() || arg_type.name.clone().unwrap().is_empty() {
+                            tracing::info!("nameless type for variable definition line {}", /*cpath,*/ node.full_range().start_point.row + 1);
+                        } else {
+                            return vec!["?".to_string(), format!("{}🔎{}", node.language().to_string(), arg_type.name.clone().unwrap())];
+                        }
                     }
                 }
             }
@@ -269,8 +267,8 @@ fn _usage_or_typeof_caller_colon_colon_usage(
         let mut result = Usage {
             targets_for_guesswork: vec![],
             resolved_as: "".to_string(),
-            debug_hint: "shrug".to_string(),
-            uline: uline,
+            debug_hint: "caller".to_string(),
+            uline,
         };
         let caller_node = caller.read();
         let typeof_caller = _attempt_typeof_path(&orig_map, &file_global_path, caller_node.guid().clone(), caller_node.name().to_string());
@@ -292,8 +290,9 @@ fn _usage_or_typeof_caller_colon_colon_usage(
         // caller is about caller.function_call(1, 2, 3), in this case means just function_call(1, 2, 3) without anything on the left
         // just look for a name in function's parent and above
         //
-        _attempt_name2path(&orig_map, &file_global_path, uline, symbol.parent_guid().clone(), symbol.name().to_string())
-        // eprintln!("where_is_this2: {:?} hint={:?}", where_is_this, debug_hint);
+        let tmp = _attempt_name2path(&orig_map, &file_global_path, uline, symbol.parent_guid().clone(), symbol.name().to_string());
+        // eprintln!("    _usage_or_typeof_caller_colon_colon_usage {} attempt_name2path={:?}", symbol.name().to_string(), tmp);
+        tmp
     }
 }
 
@@ -324,18 +323,18 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>
             SymbolType::ClassFieldDeclaration |
             SymbolType::VariableDefinition |
             SymbolType::FunctionDeclaration |
-            SymbolType::CommentDefinition |
             SymbolType::Unknown => {
                 language = symbol.language().to_string();
                 let mut this_is_a_class = "".to_string();
                 let mut this_class_derived_from = vec![];
                 if let Some(struct_declaration) = symbol.as_any().downcast_ref::<StructDeclaration>() {
-                    this_is_a_class = format!("{}/{}", language, struct_declaration.name());
+                    this_is_a_class = format!("{}🔎{}", language, struct_declaration.name());
                     for base_class in struct_declaration.inherited_types.iter() {
                         if base_class.name.is_none() {
-                            tracing::info!("No name base class {}:{}", cpath, symbol.full_range().start_point.row + 1);
+                            tracing::info!("nameless base class {}:{}", cpath, symbol.full_range().start_point.row + 1);
+                            continue;
                         }
-                        this_class_derived_from.push(format!("{}/{}", language, base_class.name.clone().unwrap()));
+                        this_class_derived_from.push(format!("{}🔎{}", language, base_class.name.clone().unwrap()));
                     }
                 }
                 if !symbol.name().is_empty() {
@@ -353,9 +352,10 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>
                     };
                     definitions.insert(symbol.guid().clone(), definition);
                 } else {
-                    tracing::info!("No name decl {}:{}", cpath, symbol.full_range().start_point.row + 1);
+                    tracing::info!("nameless decl {}:{}", cpath, symbol.full_range().start_point.row + 1);
                 }
             }
+            SymbolType::CommentDefinition |
             SymbolType::ImportDeclaration |
             SymbolType::FunctionCall |
             SymbolType::VariableUsage => {
@@ -382,7 +382,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>
                 let function_call = symbol.as_any().downcast_ref::<FunctionCall>().expect("xxx1000");
                 let uline = function_call.full_range().start_point.row + 1;
                 if function_call.name().is_empty() {
-                    tracing::info!("Error parsing {}:{} nameless call", cpath, uline);
+                    tracing::info!("nameless call {}:{}", cpath, uline);
                     continue;
                 }
                 let usage = _usage_or_typeof_caller_colon_colon_usage(function_call.get_caller_guid().clone(), &orig_map, &file_global_path, uline, function_call);
@@ -399,11 +399,11 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>
                 let variable_usage = symbol.as_any().downcast_ref::<VariableUsage>().expect("xxx1001");
                 let uline = variable_usage.full_range().start_point.row + 1;
                 if variable_usage.name().is_empty() {
-                    tracing::error!("Error parsing {}:{} no name in variable usage", cpath, uline);
+                    tracing::error!("nameless variable usage {}:{} ", cpath, uline);
                     continue;
                 }
                 let usage = _usage_or_typeof_caller_colon_colon_usage(variable_usage.fields().caller_guid.clone(), &orig_map, &file_global_path, uline, variable_usage);
-                // eprintln!("variable usage name={} usage={:?} debug_hint={:?}", variable_usage.name(), usage, debug_hint);
+                // eprintln!("variable usage name={} usage={:?}", variable_usage.name(), usage);
                 if usage.is_none() {
                     continue;
                 }

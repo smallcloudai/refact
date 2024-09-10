@@ -24,8 +24,8 @@ pub struct AltDefinition {
     pub official_path: Vec<String>,  // file::namespace::class::method becomes ["file", "namespace", "class", "method"]
     pub symbol_type: SymbolType,
     pub usages: Vec<Usage>,
-    pub this_is_a_class: String,              // cpp/Goat
-    pub this_class_derived_from: Vec<String>, // cpp/Animal, cpp/CosmicJustice
+    pub this_is_a_class: String,              // cpp🔎Goat
+    pub this_class_derived_from: Vec<String>, // cpp🔎Animal, cpp🔎CosmicJustice
     #[serde(with = "RangeDef")]
     pub full_range: Range,
     #[serde(with = "RangeDef")]

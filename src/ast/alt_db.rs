@@ -61,7 +61,7 @@ async fn doc_add(altindex: Arc<AMutex<AltIndex>>, cpath: &String, text: &String)
                 batch.insert(u_key.as_bytes(), b"");
             }
         }
-        // AltDefinition { CosmicGoat, this_is_a_class: cpp/CosmicGoat, derived_from: "cpp/Goat" "cpp/CosmicJustice" }
+        // AltDefinition { CosmicGoat, this_is_a_class: cpp🔎CosmicGoat, derived_from: "cpp🔎Goat" "cpp🔎CosmicJustice" }
         for from in &definition.this_class_derived_from {
             let t_key = format!("t/{} ⚡ {}", from, official_path);
             batch.insert(t_key.as_bytes(), definition.this_is_a_class.as_bytes());
@@ -197,25 +197,25 @@ pub async fn definitions(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &st
 pub async fn type_hierarchy(altindex: Arc<AMutex<AltIndex>>, language: String, subtree_of: String) -> String
 {
     // Data example:
-    // t/cpp/Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp/Goat"
-    // t/cpp/CosmicJustice ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp/CosmicGoat"
-    // t/cpp/Goat ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp/CosmicGoat"
+    // t/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
+    // t/cpp🔎CosmicJustice ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp🔎CosmicGoat"
+    // t/cpp🔎Goat ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp🔎CosmicGoat"
     //
     // Output for that data:
     // type_hierarchy("cpp", "")
-    // cpp/Animal
-    //    cpp/Goat
-    //       cpp/CosmicGoat
-    // cpp/CosmicJustice
-    //    cpp/CosmicGoat
+    // cpp🔎Animal
+    //    cpp🔎Goat
+    //       cpp🔎CosmicGoat
+    // cpp🔎CosmicJustice
+    //    cpp🔎CosmicGoat
     //
     // Output for that data:
-    // type_hierarchy("cpp", "cpp/CosmicJustice")
-    // cpp/CosmicJustice
-    //    cpp/CosmicGoat
+    // type_hierarchy("cpp", "cpp🔎CosmicJustice")
+    // cpp🔎CosmicJustice
+    //    cpp🔎CosmicGoat
     //
     let db = altindex.lock().await.sleddb.clone();
-    let t_prefix = format!("t/{}/", language);
+    let t_prefix = format!("t/{}", language);
     let mut iter = db.scan_prefix(&t_prefix);
     let mut hierarchy_map: HashMap<String, Vec<String>> = HashMap::new();
 
@@ -306,7 +306,7 @@ mod tests {
         doc_add(altindex.clone(), &cpp_main_path.to_string(), &cpp_main_text).await;
 
         println!("Type hierachy:\n{}", type_hierarchy(altindex.clone(), "cpp".to_string(), "".to_string()).await);
-        println!("Type hierachy subtree_of=Animal:\n{}", type_hierarchy(altindex.clone(), "cpp".to_string(), "cpp/Animal".to_string()).await);
+        println!("Type hierachy subtree_of=Animal:\n{}", type_hierarchy(altindex.clone(), "cpp".to_string(), "cpp🔎Animal".to_string()).await);
 
         connect_usages(altindex.clone()).await;
 
