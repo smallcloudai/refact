@@ -10,8 +10,8 @@ import styles from "./Markdown.module.css";
 import type { Element } from "hast";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 import { trimIndent } from "../../utils";
-import { DiffChunk } from "../../services/refact/types";
 import { useDiffPreview } from "../../hooks";
+import { convertMarkdownToDiffChunk } from "./convertMarkdownToDiffChunk";
 
 export type MarkdownControls = {
   onCopyClick: (str: string) => void;
@@ -19,45 +19,6 @@ export type MarkdownControls = {
   onPasteClick: (str: string) => void;
   canPaste: boolean;
 };
-
-function convertMarkdownToDiffChunk(markdown: string): DiffChunk {
-  const lines = markdown.split("\n");
-  let fileName = "";
-  let fileAction = ""; // file_action must be one of `edit, add, rename, remove`
-  let line1 = 0;
-  let line2 = 0;
-  let linesRemove = "";
-  let linesAdd = "";
-
-  lines.forEach((line) => {
-    if (line.startsWith("--- ")) {
-      fileName = line.substring(4).trim(); // Extract file name from the line
-      fileAction = "remove"; // Action for the original file
-    } else if (line.startsWith("+++ ")) {
-      fileName = line.substring(4).trim(); // Extract file name from the line
-      fileAction = fileAction === "remove" ? "edit" : "add"; // Action for the new file
-    } else if (line.startsWith("@@ ")) {
-      const parts = line.match(/@@ -(\d+),\d+ \+(\d+),\d+ @@/);
-      if (parts) {
-        line1 = parseInt(parts[1], 10); // Starting line number for the original file
-        line2 = parseInt(parts[2], 10); // Starting line number for the new file
-      }
-    } else if (line.startsWith("-")) {
-      linesRemove += line.substring(1).trim() + "\n"; // Lines removed
-    } else if (line.startsWith("+")) {
-      linesAdd += line.substring(1).trim() + "\n"; // Lines added
-    }
-  });
-
-  return {
-    file_name: fileName,
-    file_action: fileAction,
-    line1: line1,
-    line2: line2,
-    lines_remove: linesRemove.trim(),
-    lines_add: linesAdd.trim(),
-  };
-}
 
 function useDiff(language: string, markdown: string) {
   const isDiff = language === "language-diff";
