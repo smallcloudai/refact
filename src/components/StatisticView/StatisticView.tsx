@@ -11,7 +11,7 @@ export const StatisticView: React.FC<{
   isLoading: boolean;
   error?: string;
 }> = ({ statisticData, isLoading, error }) => {
-  if (isLoading) {
+  if (isLoading || !statisticData) {
     return <Spinner />;
   }
 
