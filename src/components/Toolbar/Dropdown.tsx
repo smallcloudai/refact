@@ -15,7 +15,7 @@ import {
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import { CONFIG_PATH_URL } from "../../services/refact/consts";
 import { DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
-import { HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { HamburgerMenuIcon, DiscordLogoIcon } from "@radix-ui/react-icons";
 import { Coin } from "../../images";
 
 export type DropdownNavigationOptions =
@@ -63,6 +63,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const { addressURL } = useConfig();
 
   const bugUrl = linkForBugReports(host);
+  const discordUrl = "https://www.smallcloud.ai/discord";
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
   const { openFile } = useEventsBusForIDE();
@@ -125,6 +126,18 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
         <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
           Your Stats
+        </DropdownMenu.Item>
+
+        <DropdownMenu.Item
+          onSelect={(event) => {
+            event.preventDefault();
+            openUrl(discordUrl);
+          }}
+        >
+          <Flex align="center" gap="3">
+            Discord Community{" "}
+            <DiscordLogoIcon width="20" height="20" color="var(--accent-11)" />
+          </Flex>
         </DropdownMenu.Item>
 
         <DropdownMenu.Separator />
