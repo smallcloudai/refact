@@ -17,7 +17,7 @@ struct Edit {
 }
 
 #[derive(Clone, Eq, PartialEq)]
-enum LineType {
+pub enum LineType {
     Plus,
     Minus,
     Space,
@@ -36,25 +36,24 @@ impl fmt::Display for LineType {
 
 
 #[derive(Clone, Eq, PartialEq)]
-struct DiffLine {
-    line: String,
-    line_type: LineType,
-    file_line_num_idx: Option<usize>,
-    correct_spaces_offset: Option<i64>,
+pub struct DiffLine {
+    pub line: String,
+    pub line_type: LineType,
+    pub file_line_num_idx: Option<usize>,
+    pub correct_spaces_offset: Option<i64>,
 }
 
 #[derive(Clone, Eq, PartialEq)]
-struct DiffBlock {
-    file_name_before: PathBuf,
-    file_name_after: PathBuf,
-    action: String,
-    diff_lines: Vec<DiffLine>,
-    hunk_idx: usize,
-    file_lines: Arc<Vec<String>>,
+pub struct DiffBlock {
+    pub file_name_before: PathBuf,
+    pub file_name_after: PathBuf,
+    pub action: String,
+    pub diff_lines: Vec<DiffLine>,
+    pub hunk_idx: usize,
+    pub file_lines: Arc<Vec<String>>,
 }
 
 impl DiffBlock {
-    #[allow(dead_code)]
     pub fn display(&self) -> String {
         let mut output = format!(
             "--- {:?}\n+++ {:?}\n@@ ... @@\n",
@@ -533,7 +532,7 @@ fn normalize_diff_block(diff_block: &mut DiffBlock) -> Result<(), String> {
     Ok(())
 }
 
-fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
+pub fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
     diff_blocks
         .iter()
         .filter_map(|block| {
@@ -603,54 +602,40 @@ impl UnifiedDiffFormat {
         first_workspace_project_dir: &str,
     ) -> String {
         let prompt = r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT.
-You will be given a problem statement and a list of files.
-Your objective is to create a unified diff with a specific format output based on the provided task and files.
-In the diff generation use following project directories:
+You will receive a file containing code, along with a modified section. 
+Your task is to generate a unified diff in a specified format, comparing the original file to the updated portion. 
+In the diff generation use following project directory:
 %WORKSPACE_PROJECTS_DIRS%
 
-### STEPS TO FOLLOW for generating the correct diff
-1. Review the provided tasks and files.
-2. Use extra context if it's given to make changes as correct as possible, but don't change files in the extra context.
-3. Before generating the diff, write code snippets in a free form which solve the given task. Those snippets then are going to be translated to the diff format.
-4. Translate generated solution to the unified diff format, which is given below.
-
 ### UNIFIED DIFF FORMATTING RULES
-There are 4 possible actions can be expressed as the unified diff: editing, adding, renaming and removing files.
 
-## Common rules to generate correct diffs:
+## Rules to generate correct diffs:
 - Fence the diff with "```diff" and "```".
 - Make changes for every given file.
 - Return edits similar to unified diffs that `diff -U2` would produce.
 - Don't include line numbers like `diff -U2` does. The user's patch tool doesn't need them.
 - Copy a few lines from the original file and paste them before the `-` and `+` lines, otherwise the diff will be incorrect.
 - Don't include timestamps with the file paths.
-- There are two types of hunk: `@@ -+ block @@` and `@@ file_replace_block @@`.
-- `@@ -+ block @@` hunk MUST contain `-` or `+` types of lines.
-- `@@ file_replace_block @@` hunk MUST replace the whole file with a new content.
+- `@@ ... block @@` hunk MUST contain `-` or `+` types of lines.
 - The user's patch tool needs CORRECT patches that apply cleanly against the current contents of the file.
-- When using the `@@ -+ block @@`, make sure you mark all new or modified lines with `+`.
-- When using the `@@ -+ block @@`, make sure you include and mark all lines that need to be removed or changed as `-` lines.
-- When using the `@@ file_replace_block @@` there is no need to use `-` or `+` markings for lines.
-- Use `@@ file_replace_block @@` if it's needed to fix syntax errors in the file.
+- When using the `@@ ... block @@`, make sure you mark all new or modified lines with `+`.
+- When using the `@@ ... block @@`, make sure you include and mark all lines that need to be removed or changed as `-` lines.
 - Output hunks in whatever order makes the most sense.
 - Rewrite the whole blocks of code instead of making multiple small changes.
 - Use filenames from the user as given, don't change them.
 - Include / import symbols which are used in the diff.
-
-## Rules for `edit` action to generate correct diffs:
 - When editing a function, method, loop, etc. use a hunk to replace the *entire* code block.
-- When using the `@@ -+ block @@`, delete the entire existing version with `-` lines and then add a new, updated version with `+` lines. This will help you generate correct code and correct diffs.
-- When using the `@@ -+ block @@`, only output hunks that specify changes with `+` or `-` lines.
-- When using the `@@ -+ block @@`, copy a few lines from the original file and paste them before the `-` and `+` lines.
-- When using the `@@ file_replace_block @@`, only output the hunks which rewrites the whole file without using `+` or `-`.
-- @@ -+ block @@ format example for the task: "Replace is_prime with a call to sympy"
+- When using the `@@ ... @@`, delete the entire existing version with `-` lines and then add a new, updated version with `+` lines. This will help you generate correct code and correct diffs.
+- When using the `@@ ... @@`, only output hunks that specify changes with `+` or `-` lines.
+- When using the `@@ ... @@`, copy a few lines from the original file and paste them before the `-` and `+` lines.
+- @@ ... @@ format example for the task: "Replace is_prime with a call to sympy"
 ```diff
 --- %FIRST_WORKSPACE_PROJECT_DIR%/test.py
 +++ %FIRST_WORKSPACE_PROJECT_DIR%/test.py
-@@ -+ block @@
+@@ ... @@
 +import sympy
 +
-@@ -+ block @@
+@@ ... @@
 -def is_prime(x):
 -    if x < 2:
 -        return False
@@ -659,7 +644,7 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 -        if x % i == 0:
 -            return False
 -    return True
-@@ -+ block @@
+@@ ... @@
 -@app.route('/prime/<int:n>')
 -def nth_prime(n):
 -    count = 0
@@ -678,100 +663,14 @@ There are 4 possible actions can be expressed as the unified diff: editing, addi
 +        if sympy.isprime(num):
 +            count += 1
 +    return str(num)
-@@ -+ block @@
+@@ ... @@
 +
 +def nth_prime_test(n):
 +    pass
 ```
-- If the file is small ot it's needed to make a lot of changes - just use `@@ file_replace_block @@` without using `-` or `+` lines.
-- When use `@@ file_replace_block @@` hunk, you must replace the whole file with the new code.
-- `@@ file_replace_block @@` format example for the task: "Replace is_prime with a call to sympy": "Replace is_prime with a call to sympy":
-```diff
---- %FIRST_WORKSPACE_PROJECT_DIR%/test.py
-+++ %FIRST_WORKSPACE_PROJECT_DIR%/test.py
-@@ file_replace_block @@
- import sympy
 
- @app.route('/prime/<int:n>')
- def nth_prime(n):
-     count = 0
-     num = 1
-     while count < n:
-         num += 1
-         if sympy.isprime(num):
-             count += 1
-     return str(num)
-
- def nth_prime_test(n):
-     pass
-```
-- In the example above, the whole file is going to be replaced with the new code and the new hunk header is used: `@@ file_replace_block @@`
-- Only `@@ file_replace_block @@` hunk type can be generated without `+` and `-` lines.
-
-## Rules for `add` action to generate correct diffs:
-- To add a new file, make sure that you output a correct filename (an absolute path is preferable).
-- The filename needs to be taken from the given task.
-- Include all lines to the hunk which must be appeared in the file.
-- Do not skip any lines.
-- Mark all lines with `+` sign.
-- Format example for the task: "Add a new file `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py` with a quick sort function in it".
-```diff
---- /dev/null
-+++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
-@@ file_replace_block @@
- def quicksort(arr):
-     if len(arr) <= 1:
-         return arr
-     pivot = arr[len(arr) // 2]
-     left = [x for x in arr if x < pivot]
-     middle = [x for x in arr if x == pivot]
-     right = [x for x in arr if x > pivot]
-     return quicksort(left) + middle + quicksort(right)
-
- # Example usage
- arr = [3, 6, 8, 10, 1, 2, 1]
- sorted_arr = quicksort(arr)
- print(sorted_arr)
-```
-## Rules for `rename` action to generate correct diffs:
-- To rename a file 2 filenames need to be used: an old filename and a new filename (the absolute path is preferable).
-- Both filenames need to be taken from the given task description.
-- The file can be edited at the same time, the same `edit` rules must be used
-- Format example for the task: "Rename the file `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py` to `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py` with the function inside it".
-```diff
---- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
-+++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py
-@@ -+ block @@
--def quicksort(arr):
-+def quicksort_old(arr):
-     middle = [x for x in arr if x == pivot]
-     right = [x for x in arr if x > pivot]
--    return quicksort(left) + middle + quicksort(right)
-+    return quicksort_old(left) + middle + quicksort_old(right)
- # Example usage
- arr = [3, 6, 8, 10, 1, 2, 1]
--sorted_arr = quicksort(arr)
-+sorted_arr = quicksort_old(arr)
-```
-- If you need just to rename a file, follow this format:
-```diff
---- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
-+++ %FIRST_WORKSPACE_PROJECT_DIR%/quicksort_old.py
-@@ file_replace_block @@
-<file_content>
-```
-## Rules for `delete` action to generate correct diffs:
-- To remove a file, make sure that you output a correct filename (the absolute path is preferable)
-- Instead of copying the whole file, just print `<file_content>` after the `@@ file_replace_block @@` line
-- Format example for the task: "Remove the file `%FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py`".
-```diff
---- %FIRST_WORKSPACE_PROJECT_DIR%/quicksort.py
-+++ /dev/null
-@@ file_replace_block @@
-<file_content>
-```
-USING `+` and `-` markings IS MANDATORY in `@@ -+ block @@`!!!
-DO NOT FORGET TO FOLLOW STEPS AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string();
+USING `+` and `-` markings IS MANDATORY!!!
+DO NOT FORGET TO FOLLOW THE REULES AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string();
         prompt
             .replace("%WORKSPACE_PROJECTS_DIRS%", workspace_projects_dirs)
             .replace("%FIRST_WORKSPACE_PROJECT_DIR%", first_workspace_project_dir)
@@ -814,7 +713,7 @@ mod tests {
 
     use itertools::Itertools;
 
-    use crate::tools::patch::unified_diff_format::UnifiedDiffFormat;
+    use crate::at_tools::att_patch::unified_diff_format::UnifiedDiffFormat;
     use crate::call_validation::DiffChunk;
     use crate::diffs::{apply_diff_chunks_to_text, unwrap_diff_apply_outputs};
 
@@ -1464,7 +1363,6 @@ class Frog:
         # extra row 2
         # extra row 3
 "#;
-        #[allow(unused_mut)]
         let mut gt_changed_text = String::from(gt_changed_text);
         #[cfg(target_os = "windows")]
         {
