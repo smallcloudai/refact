@@ -2,7 +2,12 @@ from __future__ import annotations
 import uuid
 import tabulate
 import textwrap
-import aiohttp, os, termcolor, copy, json, time
+import aiohttp
+import os
+import termcolor
+import copy
+import json
+import time
 from typing import Optional, List, Any, Tuple, DefaultDict, Dict, Literal, Set
 import collections
 
@@ -36,7 +41,8 @@ class Usage(BaseModel):
 
 
 class Message(BaseModel):
-    role: Literal["system", "assistant", "user", "tool", "diff", "plain_text", "context_file", "context_memory"]
+    role: Literal["system", "assistant", "user", "tool",
+                  "diff", "plain_text", "context_file", "context_memory"]
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCallDict]] = None
     finish_reason: str = ""
@@ -57,7 +63,8 @@ def messages_to_dicts(
     listofdict = []
     log = ""
     tools_namesonly = [x["function"]["name"] for x in tools] if tools else []
-    log += termcolor.colored("------ call chat %s T=%0.2f tools=%s ------\n" % (model_name, temperature, tools_namesonly), "red")
+    log += termcolor.colored("------ call chat %s T=%0.2f tools=%s ------\n" %
+                             (model_name, temperature, tools_namesonly), "red")
     for x in messages:
         if x.role in ["system", "user", "assistant", "tool", "plain_text", "context_file", "context_memory", "diff"]:
             listofdict.append({
@@ -71,15 +78,18 @@ def messages_to_dicts(
         if x.role == "system":
             continue
         if x.role == "tool" and x.content is not None:
-            log += termcolor.colored(x.role, "yellow") + " " + "\n%s" % termcolor.colored(x.content.strip(), "magenta") + "\n"
+            log += termcolor.colored(x.role, "yellow") + " " + \
+                "\n%s" % termcolor.colored(x.content.strip(), "magenta") + "\n"
             continue
         tool_calls = ""
         if x.tool_calls is not None:
             tool_calls += "call"
             for tcall in x.tool_calls:
-                tool_calls += " %s(%s)" % (tcall.function.name, tcall.function.arguments)
+                tool_calls += " %s(%s)" % (tcall.function.name,
+                                           tcall.function.arguments)
         # log += termcolor.colored(x.role, "yellow") + " " + str(x.content).replace("\n", "\\n") + " " + termcolor.colored(tool_calls, "red")
-        log += termcolor.colored(x.role, "yellow") + " " + str(x.content) + " " + termcolor.colored(tool_calls, "red") + "\n"
+        log += termcolor.colored(x.role, "yellow") + " " + str(x.content) + \
+            " " + termcolor.colored(tool_calls, "red") + "\n"
     if verbose:
         print(log)
     return listofdict, log
@@ -98,9 +108,9 @@ def join_messages_and_choices(
     if verbose:
         for msg in deterministic_messages:
             print("deterministic",
-                termcolor.colored(str(msg.role), "yellow"),
-                str(msg.content),
-                termcolor.colored(str(msg.finish_reason), "red"))
+                  termcolor.colored(str(msg.role), "yellow"),
+                  str(msg.content),
+                  termcolor.colored(str(msg.finish_reason), "red"))
     output = [copy.deepcopy(messages) for _ in range(len(choices))]
     for i, msg in enumerate(choices):
         if msg is None:
@@ -108,13 +118,14 @@ def join_messages_and_choices(
         msg: Message
         if verbose and isinstance(msg.content, str):
             print("result[%d]" % i,
-                termcolor.colored(msg.content, "yellow"),
-                termcolor.colored(msg.finish_reason, "red"))
+                  termcolor.colored(msg.content, "yellow"),
+                  termcolor.colored(msg.finish_reason, "red"))
         if verbose and isinstance(msg.tool_calls, list):
             for tcall in msg.tool_calls:
                 print("result[%d]" % i,
-                    termcolor.colored("%s(%s)" % (tcall.function.name, tcall.function.arguments), "red"),
-                )
+                      termcolor.colored("%s(%s)" % (
+                          tcall.function.name, tcall.function.arguments), "red"),
+                      )
         if isinstance(msg.tool_calls, list) and len(msg.tool_calls) == 0:
             msg.tool_calls = None
         output[i].append(msg)
@@ -126,26 +137,30 @@ async def tools_fetch_and_filter(base_url: str, tools_turn_on: Optional[Set[str]
         async with aiohttp.ClientSession() as session:
             async with session.get(base_url + "/tools", timeout=1) as response:
                 text = await response.text()
-                assert response.status == 200, f"unable to fetch tools: {response.status}, Text:\n{text}"
+                assert response.status == 200, f"unable to fetch tools: {
+                    response.status}, Text:\n{text}"
                 return json.loads(text)
     tools = None
     tools = await get_tools()
     if tools_turn_on is not None:
-        tools = [x for x in tools if x["type"] == "function" and x["function"]["name"] in tools_turn_on]
+        tools = [x for x in tools if x["type"] ==
+                 "function" and x["function"]["name"] in tools_turn_on]
     return tools
 
 
 class ChoiceDeltaCollector:
     def __init__(self, n_answers: int):
         self.n_answers = n_answers
-        self.choices = [Message(role="assistant", content="") for _ in range(n_answers)]
+        self.choices = [Message(role="assistant", content="")
+                        for _ in range(n_answers)]
 
     def add_deltas(self, j_choices: List[Dict[str, Any]]):
         assert len(j_choices) == self.n_answers
         for j_choice in j_choices:
             j_index = j_choice["index"]
             if j_index < 0 or j_index >= self.n_answers:
-                raise ValueError(f"add_deltas(): invalid choice index {j_index} for choices")
+                raise ValueError(f"add_deltas(): invalid choice index {
+                                 j_index} for choices")
             choice: Message = self.choices[j_index]
             delta = j_choice["delta"]
             if (j_tool_calls := delta.get("tool_calls", None)) is not None:
@@ -159,7 +174,8 @@ class ChoiceDeltaCollector:
                     if choice.tool_calls is None:
                         choice.tool_calls = []
                     while len(choice.tool_calls) <= tool_idx:
-                        choice.tool_calls.append(ToolCallDict(id="", function=FunctionDict(arguments="", name=""), type=""))
+                        choice.tool_calls.append(ToolCallDict(
+                            id="", function=FunctionDict(arguments="", name=""), type=""))
                     tool = choice.tool_calls[tool_idx]
                     if (i := plus_tool.get("id", None)) is not None and isinstance(i, str):
                         tool.id = i
@@ -195,6 +211,7 @@ async def ask_using_http(
     max_tokens: int = 1000,
     only_deterministic_messages: bool = False,
     postprocess_parameters: Optional[Dict[str, Any]] = None,
+    callback: Optional[Callable] = None,
 ) -> List[List[Message]]:
     deterministic: List[Message] = []
     subchats: DefaultDict[str, List[Message]] = collections.defaultdict(list)
@@ -218,9 +235,11 @@ async def ask_using_http(
         async with session.post(base_url + "/chat", json=post_me) as response:
             if not stream:
                 text = await response.text()
-                assert response.status == 200, f"/chat call failed: {response.status}\ntext: {text}"
+                assert response.status == 200, f"/chat call failed: {
+                    response.status}\ntext: {text}"
                 j = json.loads(text)
-                deterministic = [Message(**x) for x in j.get("deterministic_messages", [])]
+                deterministic = [Message(**x)
+                                 for x in j.get("deterministic_messages", [])]
                 j_choices = j["choices"]
                 for i, ch in enumerate(j_choices):
                     index = ch["index"]
@@ -228,9 +247,11 @@ async def ask_using_http(
                     msg = Message(
                         role=ch["message"]["role"],
                         content=ch["message"]["content"],
-                        tool_calls=[ToolCallDict(**x) for x in tool_calls] if tool_calls is not None else None,
+                        tool_calls=[ToolCallDict(
+                            **x) for x in tool_calls] if tool_calls is not None else None,
                         finish_reason=ch["finish_reason"],
-                        usage=j.get("usage") if i == 0 else None,  # NOTE: backend should send usage for each choice
+                        # NOTE: backend should send usage for each choice
+                        usage=j.get("usage") if i == 0 else None,
                     )
                     choices[index] = msg
             else:
@@ -252,6 +273,8 @@ async def ask_using_http(
                         break
                     j = json.loads(line_str)
                     # print(">>>", line_str)
+                    if callback is not None:
+                        callback(j)
                     if "choices" in j:
                         choice_collector.add_deltas(j["choices"])
                     elif "role" in j:
@@ -270,7 +293,8 @@ async def ask_using_http(
                 for x in choice_collector.choices:
                     if x.content is not None and len(x.content) == 0:
                         x.content = None
-                choices = [(x if x.content is not None or x.tool_calls is not None else None) for x in choice_collector.choices]
+                choices = [(x if x.content is not None or x.tool_calls is not None else None)
+                           for x in choice_collector.choices]
                 # when streaming, subchats are streamed too
                 has_home = set()
                 for d in deterministic:
@@ -282,7 +306,8 @@ async def ask_using_http(
                             subchat_id = k[len(d.tool_call_id + "__"):]
                             d.subchats[subchat_id] = msglist
                             has_home.add(k)
-                assert set(has_home) == set(subchats.keys()), f"Whoops, not all subchats {subchats.keys()} are attached to a tool result."
+                assert set(has_home) == set(subchats.keys()), f"Whoops, not all subchats {
+                    subchats.keys()} are attached to a tool result."
     return join_messages_and_choices(messages, deterministic, choices, verbose)
 
 
@@ -308,7 +333,8 @@ async def ask_using_openai_client(
     chat_completion = await aclient.chat.completions.create(
         model=model_name,
         n=n_answers,
-        messages=messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name)[0],
+        messages=messages_to_dicts(
+            messages, verbose, tools=tools, temperature=temperature, model_name=model_name)[0],
         temperature=temperature,
         top_p=0.95,
         stop=stop,
@@ -316,7 +342,8 @@ async def ask_using_openai_client(
         tools=tools,
         max_tokens=max_tokens
     )
-    assert isinstance(chat_completion, openai.types.chat.chat_completion.ChatCompletion)
+    assert isinstance(
+        chat_completion, openai.types.chat.chat_completion.ChatCompletion)
     # TODO: chat_completion.deterministic_messages
     deterministic: List[Message] = []
     choices: List[Optional[Message]] = [None] * len(chat_completion.choices)
@@ -325,11 +352,13 @@ async def ask_using_openai_client(
         msg = Message(
             role=ch.message.role,
             content=ch.message.content,
-            tool_calls=[ToolCallDict(**x.dict()) for x in ch.message.tool_calls] if ch.message.tool_calls is not None else None,
+            tool_calls=[ToolCallDict(
+                **x.dict()) for x in ch.message.tool_calls] if ch.message.tool_calls is not None else None,
             finish_reason=ch.finish_reason
         )
         choices[index] = msg
-    choices_not_none: List[Message] = [msg for msg in choices if msg is not None]
+    choices_not_none: List[Message] = [
+        msg for msg in choices if msg is not None]
     return join_messages_and_choices(messages, deterministic, choices_not_none, verbose)
 
 
@@ -446,7 +475,8 @@ def print_block(
     block_text = left_padding + block_text + right_padding
 
     tabulate.PRESERVE_WHITESPACE = True
-    message = f"\n\n{tabulate.tabulate([[block_text]], tablefmt='double_grid')}\n\n"
+    message = f"\n\n{tabulate.tabulate(
+        [[block_text]], tablefmt='double_grid')}\n\n"
     tabulate.PRESERVE_WHITESPACE = False
 
     if also_print_to_console:
@@ -491,7 +521,8 @@ def print_messages(
 
         if m.role == "context_file":
             message = "\n".join([
-                f"{file['file_name']}:{file['line1']}-{file['line2']}, len={len(file['file_content'])}"
+                f"{file['file_name']}:{file['line1']}-{file['line2']
+                                                       }, len={len(file['file_content'])}"
                 for file in json.loads(m.content)
             ])
             message_str.append(message)
@@ -501,15 +532,18 @@ def print_messages(
 
         elif m.role == "diff":
             for chunk in json.loads(m.content):
-                message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
+                message = f"{chunk['file_name']}:{
+                    chunk['line1']}-{chunk['line2']}"
                 message_str.append(message)
                 con(message)
                 if len(chunk["lines_add"]) > 0:
-                    message = "\n".join([f"+{line}" for line in chunk['lines_add'].splitlines()])
+                    message = "\n".join(
+                        [f"+{line}" for line in chunk['lines_add'].splitlines()])
                     message_str.append(message)
                     con(_wrap_color(message, "green"))
                 if len(chunk["lines_remove"]) > 0:
-                    message = "\n".join([f"-{line}" for line in chunk['lines_remove'].splitlines()])
+                    message = "\n".join(
+                        [f"-{line}" for line in chunk['lines_remove'].splitlines()])
                     message_str.append(message)
                     con(_wrap_color(message, "red"))
 
@@ -518,7 +552,8 @@ def print_messages(
                 for subchat_id, subchat_msgs in m.subchats.items():
                     subchats_strs = print_messages(subchat_msgs)
                     subchats_str = "\n".join(subchats_strs)
-                    subchats_str = "\n".join([f" - {subchat_id} -   {line}" for line in subchats_str.splitlines()])
+                    subchats_str = "\n".join(
+                        [f" - {subchat_id} -   {line}" for line in subchats_str.splitlines()])
                     message_str.append(subchats_str)
             message_str.append(m.content)
             con(Markdown(m.content))
@@ -528,7 +563,8 @@ def print_messages(
             continue
 
         t = "\n".join([
-            f"{tool_call.function.name}({tool_call.function.arguments}) [id={tool_call.id[:20]}]"
+            f"{tool_call.function.name}({tool_call.function.arguments}) [id={
+                tool_call.id[:20]}]"
             for tool_call in m.tool_calls
         ])
         message_str.append(t)

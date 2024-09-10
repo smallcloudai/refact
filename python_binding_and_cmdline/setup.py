@@ -10,6 +10,7 @@ setup(
         "termcolor",
         "pydantic",
         "prompt_toolkit",
+        "requests"
     ],
     author="Small Magellanic Cloud AI LTD",
     author_email="info@smallcloud.tech",
