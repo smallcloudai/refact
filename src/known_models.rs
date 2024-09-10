@@ -198,6 +198,17 @@ pub const KNOWN_MODELS: &str = r####"
                 "meta-llama/llama-3.1-8b-instruct"
             ]
         },
+        "groq/llama-3.1-8b-instant": {
+            "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            },
+            "similar_models": [
+                "groq/llama-3.1-70b-versatile"
+            ]
+        },
         "llama2/7b": {
             "n_ctx": 4096,
             "supports_scratchpads": {
@@ -306,7 +317,9 @@ pub const KNOWN_MODELS: &str = r####"
         "openai/gpt-4o":          "Xenova/gpt-4o",
         "openai/gpt-4o-mini":     "Xenova/gpt-4o",
         "claude-3-5-sonnet":          "Xenova/claude-tokenizer",
-        "claude-3-5-sonnet-20240620": "Xenova/claude-tokenizer"
+        "claude-3-5-sonnet-20240620": "Xenova/claude-tokenizer",
+        "groq/llama-3.1-8b-instant":    "Xenova/Meta-Llama-3.1-Tokenizer",
+        "groq/llama-3.1-70b-versatile": "Xenova/Meta-Llama-3.1-Tokenizer"
     }
 }
 "####;
