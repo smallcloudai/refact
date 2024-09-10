@@ -1,10 +1,9 @@
 use sled::{Db, IVec};
 use std::collections::HashMap;
-// use uuid::Uuid;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::task;
-use crate::ast::alt_minimalistic::{AltIndex, AltState, AltDefinition};
+use crate::ast::alt_minimalistic::{AltIndex, AltDefinition};
 use crate::ast::alt_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
 use serde_cbor;
 
@@ -99,11 +98,11 @@ async fn doc_remove(altindex: Arc<AMutex<AltIndex>>, cpath: &String)
     }
 }
 
-async fn doc_symbols(altindex: Arc<AMutex<AltState>>, cpath: &String) -> Vec<Arc<AltDefinition>>
+async fn doc_symbols(altindex: Arc<AMutex<AltIndex>>, cpath: &String) -> Vec<Arc<AltDefinition>>
 {
     let to_search_prefix = filesystem_path_to_double_colon_path(cpath);
     let d_prefix = format!("d/{}", to_search_prefix.join("::"));
-    let db = altindex.lock().await.alt_index.lock().await.sleddb.clone();
+    let db = altindex.lock().await.sleddb.clone();
     let mut definitions = Vec::new();
     let mut iter = db.scan_prefix(d_prefix);
     while let Some(Ok((_, value))) = iter.next() {

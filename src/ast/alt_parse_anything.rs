@@ -101,10 +101,15 @@ fn _attempt_name2path(
     file_global_path: &Vec<String>,
     start_node_guid: Option<Uuid>,
     name_of_anything: String,
-) -> Vec<String> {
+) -> Option<Usage> {
     if start_node_guid.is_none() {
-        return vec![];
+        return None;
     }
+    let mut result = Usage {
+        targets_for_guesswork: vec![],
+        resolved_as: "".to_string(),
+        debug_hint: "shrug".to_string(),
+    };
     let mut node_guid = start_node_guid.unwrap();
     let mut look_here: Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> = Vec::new();
     loop {
@@ -120,7 +125,7 @@ fn _attempt_name2path(
                 for arg in &function_declaration.args {
                     if arg.name == name_of_anything {
                         // eprintln!("{:?} is an argument in a function {:?} => ignore, no path at all, no link", name_of_anything, function_declaration.name());
-                        return vec![];
+                        return None;
                     }
                 }
             }
@@ -163,33 +168,33 @@ fn _attempt_name2path(
         if _is_declaration(node.symbol_type()) {
             // eprintln!("_attempt_name2path {:?} looking in {:?}", name_of_anything, node.name());
             if node.name() == name_of_anything {
-                return [
-                    file_global_path.clone(),
-                    _path_of_node(map, Some(node.guid().clone()))
-                ].concat();
+                result.resolved_as = [file_global_path.clone(), _path_of_node(map, Some(node.guid().clone()))].concat().join("::");
+                result.debug_hint = "up".to_string();
             }
         }
     }
 
-    vec!["?".to_string(), name_of_anything]
+    // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
+    result.targets_for_guesswork.push(format!("?::{}", name_of_anything));
+    Some(result)
 }
 
 fn _attempt_typeof_path(
     map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
-    file_global_path: &Vec<String>,
+    _file_global_path: &Vec<String>,
     start_node_guid: Uuid,
     variable_or_param_name: String,
 ) -> Vec<String> {
     let mut node_guid = start_node_guid.clone();
     let mut look_here: Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> = Vec::new();
 
+    // collect look_here by going higher
     loop {
         let node_option = map.get(&node_guid);
         if node_option.is_none() {
             break;
         }
         let node = node_option.unwrap().read();
-
         if _is_declaration(node.symbol_type()) {
             look_here.push(node_option.unwrap().clone());
             // Add all children nodes (shallow)
@@ -199,7 +204,6 @@ fn _attempt_typeof_path(
                 }
             }
         }
-
         if let Some(parent_guid) = node.parent_guid() {
             node_guid = parent_guid.clone();
         } else {
@@ -207,19 +211,11 @@ fn _attempt_typeof_path(
         }
     }
 
+    // add top level
     let top_level_nodes = _find_top_level_nodes(map);
     look_here.extend(top_level_nodes);
 
-    for (_, node_arc) in map.iter() {
-        let node = node_arc.read();
-        assert!(node.parent_guid().is_some());  // parent always exists for some reason
-        if _is_declaration(node.symbol_type()) {
-            if !map.contains_key(&node.parent_guid().unwrap()) {
-                look_here.push(node_arc.clone());
-            }
-        }
-    }
-
+    // now uniform code to look in each
     for node_arc in look_here {
         let node = node_arc.read();
         // eprintln!("attempt_typeof: look_here {:?} {:?}", node.guid(), node.name());
@@ -230,8 +226,8 @@ fn _attempt_typeof_path(
             if variable_definition.name() == variable_or_param_name {
                 if let Some(first_type) = variable_definition.types().get(0) {
                     return [
-                        file_global_path.clone(),
-                        // vec!["<type-of-vardef>".to_string()],
+                        // file_global_path.clone(),
+                        vec!["?".to_string()],
                         vec![first_type.name.clone().unwrap_or_default()],
                     ].concat();
                 }
@@ -245,8 +241,8 @@ fn _attempt_typeof_path(
                 if arg.name == variable_or_param_name {
                     if let Some(arg_type) = &arg.type_ {
                         return [
-                            file_global_path.clone(),
-                            // vec!["<type-of-arg>".to_string()],
+                            // file_global_path.clone(),
+                            vec!["?".to_string()],
                             vec![arg_type.name.clone().unwrap_or_default()]
                         ].concat();
                     }
@@ -263,19 +259,26 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     orig_map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
     global_path: &Vec<String>,
     symbol: &dyn AstSymbolInstance,
-) -> (Vec<String>, String) {
-    // let mut where_is_this = vec!["?".to_string()];
-    // let mut debug_hint = "".to_string();
-    let where_is_this;
-    let debug_hint;
+) -> Option<Usage> {
     if let Some(caller) = caller_guid.and_then(|guid| orig_map.get(&guid)) {
+        let mut result = Usage {
+            targets_for_guesswork: vec![],
+            resolved_as: "".to_string(),
+            debug_hint: "shrug".to_string(),
+        };
         let caller_node = caller.read();
         let typeof_caller = _attempt_typeof_path(&orig_map, &global_path, caller_node.guid().clone(), caller_node.name().to_string());
-        where_is_this = [
-            typeof_caller,
-            vec![symbol.name().to_string()]
-        ].concat();
-        debug_hint = caller_node.name().to_string();
+        // typeof_caller will be "?" if nothing found, start with "file" if type found in the current file
+        if typeof_caller.first() == Some(&"file".to_string()) {
+            // actually fully resolved!
+            result.resolved_as = [typeof_caller, vec![symbol.name().to_string()]].concat().join("::");
+            result.debug_hint = caller_node.name().to_string();
+        } else {
+            // not fully resolved
+            result.targets_for_guesswork.push([typeof_caller, vec![symbol.name().to_string()]].concat().join("::"));
+            result.debug_hint = caller_node.name().to_string();
+        }
+        Some(result)
     } else {
         // Handle the case where caller_guid is None or not found in orig_map
         //
@@ -283,16 +286,9 @@ fn _usage_or_typeof_caller_colon_colon_usage(
         // caller is about caller.function_call(1, 2, 3), in this case means just function_call(1, 2, 3) without anything on the left
         // just look for a name in function's parent and above
         //
-        where_is_this = _attempt_name2path(&orig_map, &global_path, symbol.parent_guid().clone(), symbol.name().to_string());
-        if where_is_this.is_empty() {
-            // empty means ignore it, unresolved will be ?::something
-            debug_hint = "ignore".to_string();
-        } else {
-            debug_hint = "up".to_string();
-        }
+        _attempt_name2path(&orig_map, &global_path, symbol.parent_guid().clone(), symbol.name().to_string())
         // eprintln!("where_is_this2: {:?} hint={:?}", where_is_this, debug_hint);
     }
-    (where_is_this, debug_hint)
 }
 
 pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> {
@@ -364,48 +360,34 @@ pub fn parse_anything(cpath: &str, text: &str) -> IndexMap<Uuid, AltDefinition> 
             }
             SymbolType::FunctionCall => {
                 let function_call = symbol.as_any().downcast_ref::<FunctionCall>().expect("xxx1000");
-                let fields = function_call.fields();
-                let caller_guid = fields.caller_guid.clone();
                 if function_call.name().is_empty() {
-                    tracing::info!("Error parsing {}:{} nameless call", cpath, fields.full_range.start_point.row + 1);
+                    tracing::info!("Error parsing {}:{} nameless call", cpath, function_call.full_range().start_point.row + 1);
                     continue;
                 }
-                let (where_is_this, debug_hint) = _usage_or_typeof_caller_colon_colon_usage(caller_guid, &orig_map, &global_path, function_call);
-                // eprintln!("function call name={} where_is_this={:?} debug_hint={:?}", function_call.name(), where_is_this, debug_hint);
-                if where_is_this.is_empty() {
+                let usage = _usage_or_typeof_caller_colon_colon_usage(function_call.get_caller_guid().clone(), &orig_map, &global_path, function_call);
+                // eprintln!("function call name={} usage={:?} debug_hint={:?}", function_call.name(), usage, debug_hint);
+                if usage.is_none() {
                     continue;
                 }
-                let parent_decl_guid = _go_to_parent_until_declaration(&orig_map, symbol.parent_guid().unwrap_or_default());
-                if let Some(definition) = definitions.get_mut(&parent_decl_guid) {
-                    definition.usages.push(Usage {
-                        // guid: symbol.guid().clone(),
-                        targets_for_guesswork: vec![where_is_this.join("::")],
-                        resolved_as: "".to_string(),
-                        debug_hint,
-                    });
+                let my_parent = _go_to_parent_until_declaration(&orig_map, symbol.parent_guid().unwrap_or_default());
+                if let Some(my_parent_def) = definitions.get_mut(&my_parent) {
+                    my_parent_def.usages.push(usage.unwrap());
                 }
             }
             SymbolType::VariableUsage => {
                 let variable_usage = symbol.as_any().downcast_ref::<VariableUsage>().expect("xxx1001");
-                let fields = variable_usage.fields();
-                let caller_guid = fields.caller_guid.clone();
                 if variable_usage.name().is_empty() {
-                    tracing::error!("Error parsing {}:{} no name in variable usage", cpath, fields.full_range.start_point.row + 1);
+                    tracing::error!("Error parsing {}:{} no name in variable usage", cpath, variable_usage.full_range().start_point.row + 1);
                     continue;
                 }
-                let (where_is_this, debug_hint) = _usage_or_typeof_caller_colon_colon_usage(caller_guid, &orig_map, &global_path, variable_usage);
-                // eprintln!("variable usage name={} where_is_this={:?} debug_hint={:?}", variable_usage.name(), where_is_this, debug_hint);
-                if where_is_this.is_empty() {
+                let usage = _usage_or_typeof_caller_colon_colon_usage(variable_usage.fields().caller_guid.clone(), &orig_map, &global_path, variable_usage);
+                // eprintln!("variable usage name={} usage={:?} debug_hint={:?}", variable_usage.name(), usage, debug_hint);
+                if usage.is_none() {
                     continue;
                 }
-                let parent_decl_guid = _go_to_parent_until_declaration(&orig_map, symbol.parent_guid().unwrap_or_default());
-                if let Some(definition) = definitions.get_mut(&parent_decl_guid) {
-                    definition.usages.push(Usage {
-                        // guid: symbol.guid().clone(),
-                        targets_for_guesswork: vec![where_is_this.join("::")],
-                        resolved_as: "".to_string(),
-                        debug_hint,
-                    });
+                let my_parent = _go_to_parent_until_declaration(&orig_map, symbol.parent_guid().unwrap_or_default());
+                if let Some(my_parent_def) = definitions.get_mut(&my_parent) {
+                    my_parent_def.usages.push(usage.unwrap());
                 }
             }
         }
