@@ -114,6 +114,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
           </DropdownMenu.Label>
         )}
 
+        <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
+          Your Stats
+        </DropdownMenu.Item>
+
         <DropdownMenu.Item
           onSelect={(event) => {
             event.preventDefault();
@@ -122,10 +126,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
           }}
         >
           Logout
-        </DropdownMenu.Item>
-
-        <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
-          Your Stats
         </DropdownMenu.Item>
 
         <DropdownMenu.Item
