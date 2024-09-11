@@ -337,31 +337,27 @@ async fn _derived_from(db: &sled::Db) -> HashMap<String, Vec<String>> {
     all_derived_from
 }
 
-pub async fn usages(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &str) -> Vec<Arc<AltDefinition>>
+pub async fn usages(altindex: Arc<AMutex<AltIndex>>, full_official_path: String) -> Vec<Arc<AltDefinition>>
 {
+    // The best way to get full_official_path is to call definitions() first
     let db = altindex.lock().await.sleddb.clone();
-    let u_prefix = format!("u/{}", double_colon_path);
     let mut usages = Vec::new();
-    println!("usages(u_prefix={:?})", u_prefix);
+    let u_prefix = format!("u/{}", full_official_path);
     let mut iter = db.scan_prefix(&u_prefix);
     while let Some(Ok((key, _))) = iter.next() {
         let key_string = String::from_utf8(key.to_vec()).unwrap();
-        if key_string.contains(" ⚡ ") {
-            let parts: Vec<&str> = key_string.split(" ⚡ ").collect();
-            if parts.len() == 2 && parts[0] == u_prefix {
-                let full_path = parts[1].trim();
-                let d_key = format!("d/{}", full_path);
-                if let Ok(Some(d_value)) = db.get(d_key.as_bytes()) {
-                    match serde_cbor::from_slice::<AltDefinition>(&d_value) {
-                        Ok(definition) => usages.push(Arc::new(definition)),
-                        Err(e) => println!("Failed to deserialize value for {}: {:?}", d_key, e),
-                    }
+        let parts: Vec<&str> = key_string.split(" ⚡ ").collect();
+        if parts.len() == 2 && parts[0] == u_prefix {
+            let full_path = parts[1].trim();
+            let d_key = format!("d/{}", full_path);
+            if let Ok(Some(d_value)) = db.get(d_key.as_bytes()) {
+                match serde_cbor::from_slice::<AltDefinition>(&d_value) {
+                    Ok(definition) => usages.push(Arc::new(definition)),
+                    Err(e) => println!("Failed to deserialize value for {}: {:?}", d_key, e),
                 }
-            } else {
-                tracing::error!("usage record has more than two ⚡ key was: {}", key_string);
             }
         } else {
-            tracing::error!("usage record doesn't have ⚡ key was: {}", key_string);
+            tracing::error!("usage record has more than two ⚡ key was: {}", key_string);
         }
     }
     usages
@@ -372,7 +368,7 @@ pub async fn definitions(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &st
     let db = altindex.lock().await.sleddb.clone();
     let c_prefix = format!("c/{}", double_colon_path);
     let mut path_groups: HashMap<usize, Vec<String>> = HashMap::new();
-    println!("definitions(c_prefix={:?})", c_prefix);
+    // println!("definitions(c_prefix={:?})", c_prefix);
     let mut iter = db.scan_prefix(&c_prefix);
     while let Some(Ok((key, _))) = iter.next() {
         let key_string = String::from_utf8(key.to_vec()).unwrap();
@@ -520,7 +516,7 @@ mod tests {
 
         dump_database(altindex.clone()).await;
 
-        // Goat::Goat() is the constructor
+        // Goat::Goat() is a C++ constructor
         let goat_def = definitions(altindex.clone(), "Goat::Goat").await;
         let mut goat_def_str = String::new();
         for def in goat_def.iter() {
@@ -529,7 +525,9 @@ mod tests {
         println!("goat_def_str:\n{}", goat_def_str);
         assert!(goat_def.len() == 1);
 
-        let animalage_usage = usages(altindex.clone(), "Animal::age").await;
+        let animalage_defs = definitions(altindex.clone(), "Animal::age").await;
+        let animalage_def0 = animalage_defs.first().unwrap();
+        let animalage_usage = usages(altindex.clone(), animalage_def0.path()).await;
         let mut animalage_usage_str = String::new();
         for usage in animalage_usage.iter() {
             animalage_usage_str.push_str(&format!("{:?}\n", usage));
