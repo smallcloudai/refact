@@ -457,12 +457,12 @@ pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> (IndexMap<Uu
                     t.push_str(path_within_file.as_str());
                 }
             }
-            // if usage.target_for_guesswork.starts_with(&vec!["file".to_string()]) {
-            //     usage.target_for_guesswork = [
-            //         file_global_path.clone(),
-            //         usage.target_for_guesswork[1..].to_vec()
-            //     ].concat();
-            // }
+            if usage.resolved_as.starts_with("file::") {
+                let path_within_file = usage.resolved_as[4..].to_string();
+                usage.resolved_as.clear();
+                usage.resolved_as.push_str(file_global_path_str.as_str());
+                usage.resolved_as.push_str(path_within_file.as_str());
+            }
         }
     }
     (definitions, language)

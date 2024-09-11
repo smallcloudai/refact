@@ -1,5 +1,5 @@
 use sled::{Db, IVec};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::task;
@@ -99,6 +99,17 @@ async fn doc_remove(altindex: Arc<AMutex<AltIndex>>, cpath: &String)
                 let t_key = format!("t/{} ⚡ {}", from, official_path);
                 batch.remove(t_key.as_bytes());
             }
+            let cleanup_key = format!("resolve-cleanup/{}", definition.official_path.join("::"));
+            if let Ok(Some(cleanup_value)) = db.get(cleanup_key.as_bytes()) {
+                if let Ok(all_saved_ulinks) = serde_cbor::from_slice::<Vec<String>>(&cleanup_value) {
+                    for ulink in all_saved_ulinks {
+                        batch.remove(ulink.as_bytes());
+                    }
+                } else {
+                    tracing::error!("failed to deserialize cleanup_value for key: {}", cleanup_key);
+                }
+                batch.remove(cleanup_key.as_bytes());
+            }
         }
         batch.remove(&d_key_b);
     }
@@ -124,6 +135,206 @@ async fn doc_symbols(altindex: Arc<AMutex<AltIndex>>, cpath: &String) -> Vec<Arc
 
 async fn connect_usages(altindex: Arc<AMutex<AltIndex>>)
 {
+    let db = altindex.lock().await.sleddb.clone();
+    let mut iter = db.scan_prefix("d/");
+    let mut batch = sled::Batch::default();
+
+    let derived_from_map = _derived_from(&db).await;
+    println!("derived_from_map {:?}", derived_from_map);
+
+    while let Some(Ok((key, value))) = iter.next() {
+        if let Ok(definition) = serde_cbor::from_slice::<AltDefinition>(&value) {
+            _connect_usages_helper(&db, &derived_from_map, &definition, &mut batch).await;
+        }
+    }
+
+    if let Err(e) = db.apply_batch(batch) {
+        tracing::error!("connect_usages() failed to apply batch: {:?}", e);
+    }
+}
+
+async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &HashMap<String, Vec<String>>, definition: &AltDefinition, batch: &mut sled::Batch)
+{
+    // Data example:
+    // (1) c/Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
+    // (2) c/cpp_goat_library::Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
+    // (3) c/self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
+    // (4) d/alt_testsuite::cpp_goat_library::Animal::self_review
+    //   AltDefinition { alt_testsuite::cpp_goat_library::Animal::self_review, usages: U{ up file::Animal::age } }
+    // (5) d/alt_testsuite::cpp_goat_library::Goat::jump_around
+    //   AltDefinition { alt_testsuite::cpp_goat_library::Goat::jump_around, usages: U{ n2p ?::cpp🔎Goat::self_review ?::self_review } U{ n2p ?::cpp🔎Goat::age ?::age } U{ up file::Goat::weight } }
+    //
+    // Example of usage to resolve:
+    // U{ n2p ?::cpp🔎Goat::self_review ?::self_review }
+    // first, try ?::cpp🔎Goat::self_review, according to type hierarchy Goat is derived from Animal, therefore full list to try:
+    //   Goat::self_review
+    //   Animal::self_review -- matches (1)
+    //   self_review -- matches (3)
+    //
+    // The longer the matched path, the more reliable it is. The `targets_for_guesswork` field is constructed in such a way that it starts
+    // with longer paths.
+    //
+    // Usage data:
+    //   u/file::Animal::age ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
+    // means `age` was used in self_review(). Only key is set, value doesn't matter.
+    //
+    // Saved data by this function:
+    //   u/RESOLVED ⚡ official_path        -- value doesn't matter
+    //   resolve-cleanup/official_path     -- value contains all the "u/RESOLVED ⚡ official_path" in a list
+    //
+    let official_path = definition.official_path.join("::");
+    let magnifying_glass_re = regex::Regex::new(r"(\w+)🔎(\w+)").unwrap();
+    let mut all_saved_ulinks = Vec::<String>::new();
+    for usage in &definition.usages {
+        if !usage.resolved_as.is_empty() {
+            continue;
+        }
+        for to_resolve_unstripped in &usage.targets_for_guesswork {
+            assert!(to_resolve_unstripped.starts_with("?::"), "Target does not start with '?::': {}", to_resolve_unstripped);
+            let to_resolve = to_resolve_unstripped.strip_prefix("?::").unwrap();
+            println!("to_resolve_unstripped {:?}", to_resolve_unstripped);
+
+            // Extract all LANGUAGE🔎CLASS from to_resolve
+            let mut magnifying_glass_pairs = Vec::new();
+            let mut template = to_resolve.to_string();
+            for (i, cap) in magnifying_glass_re.captures_iter(to_resolve).enumerate() {
+                let language = cap.get(1).unwrap().as_str().to_string();
+                let klass = cap.get(2).unwrap().as_str().to_string();
+                let placeholder = format!("%%PAIR{}%%", i);
+                template = template.replacen(&format!("{}🔎{}", language, klass), &placeholder, 1);
+                magnifying_glass_pairs.push((language, klass));
+            }
+            let mut variants = Vec::<String>::new();
+            if magnifying_glass_pairs.len() == 0 {
+                variants.push(to_resolve.to_string());
+            } else {
+                let substitutions_of_each_pair: Vec<Vec<String>> = magnifying_glass_pairs.iter().map(|(language, klass)| {
+                    let mut substitutions = derived_from_map.get(format!("{}🔎{}", language, klass).as_str()).cloned().unwrap_or_else(|| vec![]);
+                    substitutions.insert(0, klass.clone());
+                    substitutions.iter().map(|s| s.strip_prefix(&format!("{}🔎", language)).unwrap_or(s).to_string()).collect()
+                }).collect();
+
+                fn generate_combinations(substitutions: &[Vec<String>], index: usize, current: Vec<String>) -> Vec<Vec<String>> {
+                    if index == substitutions.len() {
+                        return vec![current];
+                    }
+                    let mut result = Vec::new();
+                    for substitution in &substitutions[index] {
+                        let mut new_current = current.clone();
+                        new_current.push(substitution.clone());
+                        result.extend(generate_combinations(substitutions, index + 1, new_current));
+                    }
+                    result
+                }
+                let intermediate_results = generate_combinations(&substitutions_of_each_pair, 0, Vec::new());
+                // Transform each something::LANGUAGE🔎CLASS::something into something::class::something
+                for intermediate_result in intermediate_results {
+                    let mut variant = template.clone();
+                    for (i, substitution) in intermediate_result.iter().enumerate() {
+                        let placeholder = format!("%%PAIR{}%%", i);
+                        variant = variant.replacen(&placeholder, substitution, 1);
+                    }
+                    variants.push(variant);
+                }
+                // ?::cpp🔎Goat::self_review magnifying_glass_pairs [("cpp", "Goat")]
+                //   substitutions_of_each_pair [["Goat", "Animal"]]
+                //   intermediate_results [["Goat"], ["Animal"]]
+                //   variants possible ["Goat::self_review", "Animal::self_review"]
+            }
+
+            let mut found = Vec::new();
+            for v in variants {
+                let c_prefix = format!("c/{}", v);
+                // println!("    c_prefix {:?} because v={:?}", c_prefix, v);
+                let mut c_iter = db.scan_prefix(&c_prefix);
+                while let Some(Ok((c_key, _))) = c_iter.next() {
+                    let c_key_string = String::from_utf8(c_key.to_vec()).unwrap();
+                    let parts: Vec<&str> = c_key_string.split(" ⚡ ").collect();
+                    if parts.len() == 2 {
+                        let resolved_target = parts[1].trim();
+                        found.push(resolved_target.to_string());
+                    }
+                }
+                if found.len() > 0 {
+                    break;
+                }
+            }
+            println!("   found {:?}", found);
+            if found.len() == 0 {
+                continue;
+            }
+            if found.len() > 1 {
+                tracing::info!("Link {} is ambiguous, can mean multiple things: {:?}", to_resolve, found);
+                found.truncate(1);
+            }
+            let single_thing_found = found.into_iter().next().unwrap();
+            let u_key = format!("u/{} ⚡ {}", single_thing_found, official_path);
+            batch.insert(u_key.as_bytes(), b"");
+            all_saved_ulinks.push(u_key);
+            break;  // the next thing from targets_for_guesswork is a worse query, keep this one and exit
+        }
+    } // for usages
+    let cleanup_key = format!("resolve-cleanup/{}", definition.official_path.join("::"));
+    let cleanup_value = serde_cbor::to_vec(&all_saved_ulinks).unwrap();
+    batch.insert(cleanup_key.as_bytes(), cleanup_value.as_slice());
+}
+
+async fn _derived_from(db: &sled::Db) -> HashMap<String, Vec<String>> {
+    // Data example:
+    // t/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
+    let mut derived_map: HashMap<String, Vec<String>> = HashMap::new();
+    let t_prefix = "t/";
+    let mut iter = db.scan_prefix(t_prefix);
+    while let Some(Ok((key, value))) = iter.next() {
+        let key_string = String::from_utf8(key.to_vec()).unwrap();
+        let value_string = String::from_utf8(value.to_vec()).unwrap();
+        let parts: Vec<&str> = key_string.split(" ⚡ ").collect();
+        if parts.len() == 2 {
+            let parent = parts[0].trim().strip_prefix(t_prefix).unwrap_or(parts[0].trim()).to_string();
+            let child = value_string.trim().to_string();
+            let entry = derived_map.entry(child).or_insert_with(Vec::new);
+            if !entry.contains(&parent) {
+                entry.push(parent);
+            }
+        } else {
+            tracing::warn!("bad key {}", key_string);
+        }
+    }
+    // Have perfectly good [child, [parent1, parent2, ..]]
+    // derived_map {"cpp🔎Goat": ["cpp🔎Animal"], "cpp🔎CosmicGoat": ["cpp🔎CosmicJustice", "cpp🔎Goat"]}
+    // Now we need to post-process this into [child, [parent1, parent_of_parent1, parent2, parent_of_parent2, ...]]
+    fn build_all_derived_from(
+        klass: &str,
+        derived_map: &HashMap<String, Vec<String>>,
+        all_derived_from: &mut HashMap<String, Vec<String>>,
+        visited: &mut HashSet<String>,
+    ) -> Vec<String> {
+        if visited.contains(klass) {
+            return all_derived_from.get(klass).cloned().unwrap_or_default();
+        }
+        visited.insert(klass.to_string());
+        let mut all_parents = Vec::new();
+        if let Some(parents) = derived_map.get(klass) {
+            for parent in parents {
+                all_parents.push(parent.clone());
+                let ancestors = build_all_derived_from(parent, derived_map, all_derived_from, visited);
+                for ancestor in ancestors {
+                    if !all_parents.contains(&ancestor) {
+                        all_parents.push(ancestor);
+                    }
+                }
+            }
+        }
+        all_derived_from.insert(klass.to_string(), all_parents.clone());
+        all_parents
+    }
+    let mut all_derived_from: HashMap<String, Vec<String>> = HashMap::new();
+    for klass in derived_map.keys() {
+        let mut visited: HashSet<String> = HashSet::new();
+        build_all_derived_from(klass, &derived_map, &mut all_derived_from, &mut visited);
+    }
+    // now have all_derived_from {"cpp🔎CosmicGoat": ["cpp🔎CosmicJustice", "cpp🔎Goat", "cpp🔎Animal"], "cpp🔎CosmicJustice": [], "cpp🔎Goat": ["cpp🔎Animal"], "cpp🔎Animal": []}
+    all_derived_from
 }
 
 pub async fn usages(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &str) -> Vec<Arc<AltDefinition>>
@@ -203,16 +414,16 @@ pub async fn type_hierarchy(altindex: Arc<AMutex<AltIndex>>, language: String, s
     //
     // Output for that data:
     // type_hierarchy("cpp", "")
-    // cpp🔎Animal
-    //    cpp🔎Goat
-    //       cpp🔎CosmicGoat
-    // cpp🔎CosmicJustice
-    //    cpp🔎CosmicGoat
+    // Animal
+    //    Goat
+    //       CosmicGoat
+    // CosmicJustice
+    //    CosmicGoat
     //
     // Output for that data:
-    // type_hierarchy("cpp", "cpp🔎CosmicJustice")
-    // cpp🔎CosmicJustice
-    //    cpp🔎CosmicGoat
+    // type_hierarchy("cpp", "CosmicJustice")
+    // CosmicJustice
+    //    CosmicGoat
     //
     let db = altindex.lock().await.sleddb.clone();
     let t_prefix = format!("t/{}", language);
@@ -232,11 +443,13 @@ pub async fn type_hierarchy(altindex: Arc<AMutex<AltIndex>>, language: String, s
         }
     }
 
-    fn build_hierarchy(hierarchy_map: &HashMap<String, Vec<String>>, node: &str, indent: usize) -> String {
-        let mut result = format!("{:indent$}{}\n", "", node, indent = indent);
+    fn build_hierarchy(hierarchy_map: &HashMap<String, Vec<String>>, node: &str, indent: usize, language: &str) -> String {
+        let prefix = format!("{}🔎", language);
+        let node_stripped = node.strip_prefix(&prefix).unwrap_or(node);
+        let mut result = format!("{:indent$}{}\n", "", node_stripped, indent = indent);
         if let Some(children) = hierarchy_map.get(node) {
             for child in children {
-                result.push_str(&build_hierarchy(hierarchy_map, child, indent + 4));
+                result.push_str(&build_hierarchy(hierarchy_map, child, indent + 2, language));
             }
         }
         result
@@ -246,11 +459,11 @@ pub async fn type_hierarchy(altindex: Arc<AMutex<AltIndex>>, language: String, s
     if subtree_of.is_empty() {
         for root in hierarchy_map.keys() {
             if !hierarchy_map.values().any(|children| children.contains(root)) {
-                result.push_str(&build_hierarchy(&hierarchy_map, root, 0));
+                result.push_str(&build_hierarchy(&hierarchy_map, root, 0, &language));
             }
         }
     } else {
-        result.push_str(&build_hierarchy(&hierarchy_map, &subtree_of, 0));
+        result.push_str(&build_hierarchy(&hierarchy_map, &subtree_of, 0, &language));
     }
 
     result
@@ -269,16 +482,11 @@ async fn dump_database(altindex: Arc<AMutex<AltIndex>>)
                 Ok(definition) => println!("{}\n{:?}", key_string, definition),
                 Err(e) => println!("Failed to deserialize value at {}: {:?}", key_string, e),
             }
-        }
-        if key_string.starts_with("c/") {
-            println!("{}", key_string);
-        }
-        if key_string.starts_with("u/") {
-            println!("{}", key_string);
-        }
-        if key_string.starts_with("t/") {
+        } else if key_string.starts_with("t/") {
             let value_string = String::from_utf8(value.to_vec()).unwrap();
             println!("{} 👉 {:?}", key_string, value_string);
+        } else {
+            println!("{}", key_string);
         }
     }
 }
