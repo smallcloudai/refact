@@ -98,13 +98,6 @@ pub const KNOWN_MODELS: &str = r####"
         }
     },
     "code_chat_models": {
-        "meta-llama/Llama-2-70b-chat-hf": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-LLAMA2": {
-                }
-            }
-        },
         "gpt-3.5-turbo": {
             "n_ctx": 16384,
             "supports_tools": true,
@@ -207,16 +200,6 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "groq-llama-3.1-70b"
-            ]
-        },
-        "llama2/7b": {
-            "n_ctx": 4096,
-            "supports_scratchpads": {
-                "CHAT-LLAMA2": {
-                }
-            },
-            "similar_models": [
-                "llama2/13b"
             ]
         },
         "wizardlm/7b": {
