@@ -12,15 +12,12 @@ pub async fn full_rewrite_diff(
     ccx: Arc<AMutex<AtCommandsContext>>,
     snippet: &CodeSnippet,
 ) -> Result<Vec<DiffChunk>, String> {
-    let file_info = match read_file(ccx.clone(), snippet.filename_before.clone()).await {
-        Some(text) => text,
-        None => {
-            return Err(format!("file to modify not found: {}", snippet.filename_before));
-        }
-    };
-    let file_name = PathBuf::from(&file_info.file_name);
+    let gcx = ccx.lock().await.global_context.clone();
+    let context_file = read_file(gcx.clone(), snippet.filename_before.clone()).await
+        .map_err(|e|format!("cannot read file to modify: {}.\nError: {e}", snippet.filename_before))?;
+    let file_name = PathBuf::from(&context_file.file_name);
 
-    let diffs = diff::lines(&file_info.file_content, &snippet.code);
+    let diffs = diff::lines(&context_file.file_content, &snippet.code);
     let mut line_num: usize = 0;
     let mut blocks: Vec<DiffBlock> = vec![];
     let mut diff_lines = vec![];

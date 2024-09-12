@@ -9,7 +9,7 @@ use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::patch::chat_interaction::execute_chat_model;
 use crate::tools::patch::diff_formats::postprocess_diff_chunks_from_message;
-use crate::tools::patch::snippets::{get_code_snippets, Action};
+use crate::tools::patch::snippets::{get_code_snippets, PatchAction};
 use crate::tools::patch::unified_diff_format::UnifiedDiffFormat;
 use crate::tools::patch::whole_file_diff::{full_rewrite_diff, new_file_diff};
 use crate::tools::tools_execute::unwrap_subchat_params;
@@ -68,8 +68,8 @@ fn choose_correct_chunk(chunks: Vec<Result<String, String>>) -> Result<String, S
     let max_repeats = chunks_freq.iter().max_by_key(|(_, k)| *k).unwrap().1.clone();
     let chunks_max_repeats = chunks_freq
         .iter()
-        .filter(|(k, v)| **v == max_repeats)
-        .map(|x| x.0.clone())
+        .filter(|(_, v)| **v == max_repeats)
+        .map(|x| *x.0)
         .collect::<Vec<_>>();
     Ok(chunks_max_repeats
         .iter()
@@ -94,7 +94,7 @@ async fn snippets2diff(
         }
     };
     match active_snippet.action {
-        Action::PartialEdit => {
+        PatchAction::PartialEdit => {
             let mut all_chunks = match execute_chat_model(
                 ccx_subchat.clone(),
                 &active_snippet,
@@ -116,11 +116,11 @@ async fn snippets2diff(
             }
             choose_correct_chunk(chunks_for_answers)
         }
-        Action::FullRewrite => {
+        PatchAction::FullRewrite => {
             let mut chunks = full_rewrite_diff(ccx.clone(), &active_snippet).await?;
             postprocess_diff_chunks_from_message(ccx_subchat.clone(), &mut chunks).await
         }
-        Action::NewFile => {
+        PatchAction::NewFile => {
             let mut chunks = new_file_diff(&active_snippet);
             postprocess_diff_chunks_from_message(ccx_subchat.clone(), &mut chunks).await
         }

@@ -240,7 +240,7 @@ impl AtParam for AtParamFilePath {
 }
 
 pub async fn context_file_from_file_path(
-    ccx: Arc<AMutex<AtCommandsContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     candidates: Vec<String>,
     file_path: String,
 ) -> Result<ContextFile, String> {
@@ -250,7 +250,6 @@ pub async fn context_file_from_file_path(
     let colon_kind_mb = colon_lines_range_from_arg(&mut file_path_from_c);
     let gradient_type = gradient_type_from_range_kind(&colon_kind_mb);
 
-    let gcx = ccx.lock().await.global_context.clone();
     let file_content = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(&file_path_from_c)).await?;
 
     if let Some(colon) = &colon_kind_mb {
@@ -283,13 +282,13 @@ pub async fn execute_at_file(
         (ccx_lock.global_context.clone(), ccx_lock.top_n)
     };
     let candidates = file_repair_candidates(gcx.clone(), &file_path, top_n, false).await;
-    match context_file_from_file_path(ccx.clone(), candidates, file_path.clone()).await {
+    match context_file_from_file_path(gcx.clone(), candidates, file_path.clone()).await {
         Ok(x) => { return Ok(x) },
         Err(e) => { info!("non-fuzzy at file has failed to get file_path: {:?}", e); }
     }
 
     let candidates_fuzzy = file_repair_candidates(gcx.clone(), &file_path, top_n, true).await;
-    context_file_from_file_path(ccx.clone(), candidates_fuzzy, file_path).await
+    context_file_from_file_path(gcx.clone(), candidates_fuzzy, file_path).await
 }
 
 #[async_trait]

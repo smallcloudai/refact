@@ -6,7 +6,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use tokio::sync::Mutex as AMutex;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
-pub enum Action {
+pub enum PatchAction {
     #[default]
     PartialEdit,
     FullRewrite,
@@ -14,13 +14,13 @@ pub enum Action {
     Other,
 }
 
-impl Action {
-    pub fn from_string(action: &str) -> Result<Action, String> {
+impl PatchAction {
+    pub fn from_string(action: &str) -> Result<PatchAction, String> {
         match action {
-            "📍PARTIAL_EDIT" => Ok(Action::PartialEdit),
-            "📍FULL_REWRITE" => Ok(Action::FullRewrite),
-            "📍NEW_FILE" => Ok(Action::NewFile),
-            "📍OTHER" => Ok(Action::Other),
+            "📍PARTIAL_EDIT" => Ok(PatchAction::PartialEdit),
+            "📍FULL_REWRITE" => Ok(PatchAction::FullRewrite),
+            "📍NEW_FILE" => Ok(PatchAction::NewFile),
+            "📍OTHER" => Ok(PatchAction::Other),
             _ => Err(format!("invalid action: {}", action)),
         }
     }
@@ -28,7 +28,7 @@ impl Action {
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
 pub struct CodeSnippet {
-    pub action: Action,
+    pub action: PatchAction,
     pub ticket: String,
     pub filename_before: String,
     pub filename_after: String,
@@ -43,7 +43,7 @@ fn parse_snippets(content: &str) -> Vec<CodeSnippet> {
         if info_elements.len() < 3 {
             return Err("failed to parse snippet, invalid command line: {}".to_string());
         }
-        snippet.action = match Action::from_string(info_elements[0]) {
+        snippet.action = match PatchAction::from_string(info_elements[0]) {
             Ok(a) => a,
             Err(e) => {
                 return Err(format!("failed to parse snippet, {e}"));

@@ -54,6 +54,7 @@ pub struct DiffBlock {
 }
 
 impl DiffBlock {
+    #[allow(dead_code)]
     pub fn display(&self) -> String {
         let mut output = format!(
             "--- {:?}\n+++ {:?}\n@@ ... @@\n",
@@ -598,9 +599,9 @@ pub struct UnifiedDiffFormat {}
 
 impl UnifiedDiffFormat {
     pub fn prompt(
-        workspace_projects_dirs: &str,
-        first_workspace_project_dir: &str,
+        workspace_projects_dirs: Vec<String>
     ) -> String {
+        assert_eq!(workspace_projects_dirs.is_empty(), false);
         let prompt = r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT.
 You will receive a file containing code, along with a modified section.
 Your task is to generate a unified diff in a specified format, comparing the original file to the updated portion.
@@ -672,8 +673,8 @@ In the diff generation use following project directory:
 USING `+` and `-` markings IS MANDATORY!!!
 DO NOT FORGET TO FOLLOW THE REULES AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string();
         prompt
-            .replace("%WORKSPACE_PROJECTS_DIRS%", workspace_projects_dirs)
-            .replace("%FIRST_WORKSPACE_PROJECT_DIR%", first_workspace_project_dir)
+            .replace("%WORKSPACE_PROJECTS_DIRS%", &workspace_projects_dirs.join("\n"))
+            .replace("%FIRST_WORKSPACE_PROJECT_DIR%", &workspace_projects_dirs[0])
     }
 
     pub async fn parse_message(
