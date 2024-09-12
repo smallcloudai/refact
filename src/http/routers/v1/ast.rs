@@ -8,7 +8,7 @@ use url::Url;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::ast::ast_mem_db::RequestSymbolType;
+use crate::ast::alt_minimalistic::SymbolType;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 use crate::global_context::SharedGlobalContext;
@@ -53,9 +53,9 @@ pub async fn handle_v1_ast_search_by_name(
     let search_res = match &ast_module {
         Some(ast) => {
             let symbol_type = if post.is_declaration {
-                RequestSymbolType::Declaration
+                SymbolType::Declaration
             } else {
-                RequestSymbolType::Usage
+                SymbolType::Usage
             };
             ast.read().await.search_by_name(post.query, symbol_type, post.use_fuzzy_search, post.top_n).await
         }

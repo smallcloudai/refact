@@ -5,8 +5,7 @@ use uuid::Uuid;
 use crate::ast::alt_minimalistic::{AltDefinition, Usage};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::treesitter::language_id::LanguageId;
-use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, TypeDef};
+use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, AstSymbolInstanceArc};
 
 
 fn _is_declaration(t: SymbolType) -> bool {
@@ -29,7 +28,7 @@ fn _is_declaration(t: SymbolType) -> bool {
 }
 
 fn _go_to_parent_until_declaration(
-    map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
+    map: &HashMap<Uuid, AstSymbolInstanceArc>,
     start_node_guid: Uuid,
 ) -> Uuid {
     let mut node_guid = start_node_guid;
@@ -53,7 +52,7 @@ fn _go_to_parent_until_declaration(
 }
 
 fn _path_of_node(
-    map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
+    map: &HashMap<Uuid, AstSymbolInstanceArc>,
     start_node_guid: Option<Uuid>,
 ) -> Vec<String> {
     let mut path = vec![];
@@ -79,12 +78,12 @@ fn _path_of_node(
 }
 
 fn _find_top_level_nodes(
-    map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
-) -> Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> {
+    map: &HashMap<Uuid, AstSymbolInstanceArc>,
+) -> Vec<AstSymbolInstanceArc> {
     //
     // XXX UGLY: the only way to detect top level is to map.get(parent) if it's not found => then it's top level.
     //
-    let mut top_level: Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> = Vec::new();
+    let mut top_level: Vec<AstSymbolInstanceArc> = Vec::new();
     for (_, node_arc) in map.iter() {
         let node = node_arc.read();
         assert!(node.parent_guid().is_some());  // parent always exists for some reason :/
@@ -97,8 +96,8 @@ fn _find_top_level_nodes(
     top_level
 }
 
-fn _attempt_name2path(
-    map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
+fn _name2path(
+    map: &HashMap<Uuid, AstSymbolInstanceArc>,
     file_global_path: &Vec<String>,
     uline: usize,
     start_node_guid: Option<Uuid>,
@@ -114,7 +113,7 @@ fn _attempt_name2path(
         uline,
     };
     let mut node_guid = start_node_guid.unwrap();
-    let mut look_here: Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> = Vec::new();
+    let mut look_here: Vec<AstSymbolInstanceArc> = Vec::new();
     loop {
         let node_option = map.get(&node_guid);
         if node_option.is_none() {
@@ -167,7 +166,7 @@ fn _attempt_name2path(
         let node = node_arc.read();
 
         if _is_declaration(node.symbol_type()) {
-            // eprintln!("_attempt_name2path {:?} looking in {:?}", name_of_anything, node.name());
+            // eprintln!("_name2path {:?} looking in {:?}", name_of_anything, node.name());
             if node.name() == name_of_anything {
                 result.resolved_as = [file_global_path.clone(), _path_of_node(map, Some(node.guid().clone()))].concat().join("::");
                 result.debug_hint = "up".to_string();
@@ -180,14 +179,14 @@ fn _attempt_name2path(
     Some(result)
 }
 
-fn _attempt_typeof_path(
-    map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
+fn _typeof_path(
+    map: &HashMap<Uuid, AstSymbolInstanceArc>,
     _file_global_path: &Vec<String>,
     start_node_guid: Uuid,
     variable_or_param_name: String,
 ) -> Vec<String> {
     let mut node_guid = start_node_guid.clone();
-    let mut look_here: Vec<std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> = Vec::new();
+    let mut look_here: Vec<AstSymbolInstanceArc> = Vec::new();
 
     // collect look_here by going higher
     loop {
@@ -258,7 +257,7 @@ fn _attempt_typeof_path(
 
 fn _usage_or_typeof_caller_colon_colon_usage(
     caller_guid: Option<Uuid>,
-    orig_map: &HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>>,
+    orig_map: &HashMap<Uuid, AstSymbolInstanceArc>,
     file_global_path: &Vec<String>,
     uline: usize,
     symbol: &dyn AstSymbolInstance,
@@ -271,7 +270,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
             uline,
         };
         let caller_node = caller.read();
-        let typeof_caller = _attempt_typeof_path(&orig_map, &file_global_path, caller_node.guid().clone(), caller_node.name().to_string());
+        let typeof_caller = _typeof_path(&orig_map, &file_global_path, caller_node.guid().clone(), caller_node.name().to_string());
         // typeof_caller will be "?" if nothing found, start with "file" if type found in the current file
         if typeof_caller.first() == Some(&"file".to_string()) {
             // actually fully resolved!
@@ -290,7 +289,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
         // caller is about caller.function_call(1, 2, 3), in this case means just function_call(1, 2, 3) without anything on the left
         // just look for a name in function's parent and above
         //
-        let tmp = _attempt_name2path(&orig_map, &file_global_path, uline, symbol.parent_guid().clone(), symbol.name().to_string());
+        let tmp = _name2path(&orig_map, &file_global_path, uline, symbol.parent_guid().clone(), symbol.name().to_string());
         // eprintln!("    _usage_or_typeof_caller_colon_colon_usage {} attempt_name2path={:?}", symbol.name().to_string(), tmp);
         tmp
     }
@@ -311,7 +310,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>
     let symbols = parser.parse(text, &path);
     let symbols2 = symbols.clone();
     let mut definitions = IndexMap::new();
-    let mut orig_map: HashMap<Uuid, std::sync::Arc<parking_lot::lock_api::RwLock<parking_lot::RawRwLock, Box<dyn AstSymbolInstance>>>> = HashMap::new();
+    let mut orig_map: HashMap<Uuid, AstSymbolInstanceArc> = HashMap::new();
 
     for symbol in symbols {
         let symbol_arc_clone = symbol.clone();

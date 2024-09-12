@@ -10,8 +10,8 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::info;
 
-use crate::ast::ast_mem_db::AstIndex;
-use crate::ast::ast_module::AstIndexStatus;
+use crate::ast::alt_minimalistic::AstIndex;
+use crate::ast::alt_minimalistic::AstIndexStatus;
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
@@ -38,11 +38,11 @@ impl AstEvent {
 
 #[derive(Debug)]
 pub struct AstIndexService {
+    pub alt_index: Arc<AMutex<AltIndex>>,
+    pub alt_status: Arc<AMutex<AltStatus>>,
+    pub ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
     ast_delayed_requests_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
     ast_immediate_q: Arc<AMutex<VecDeque<Arc<AstEvent>>>>,
-    pub ast_hold_off_indexes_rebuild_notify: Arc<Notify>,
-    ast_index: Arc<AMutex<AstIndex>>,
-    status: Arc<AMutex<AstIndexStatus>>
 }
 
 async fn cooldown_queue_thread(

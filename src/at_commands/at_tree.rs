@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use tokio::sync::{Mutex as AMutex, MutexGuard};
 use tracing::warn;
 
-use crate::ast::ast_mem_db::{AstIndex, RequestSymbolType};
+use crate::ast::alt_minimalistic::{AstIndex, SymbolType};
 use crate::ast::treesitter::structs::SymbolType;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;

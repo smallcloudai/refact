@@ -1,4 +1,4 @@
-use crate::ast::ast_mem_db::RequestSymbolType;
+use crate::ast::alt_minimalistic::SymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam};
 use async_trait::async_trait;
 use itertools::Itertools;
@@ -25,7 +25,7 @@ fn full_path_score(path: &str, query: &str) -> f32 {
     for query_comp in query.split("::") {
         for (idx, p) in path.split("::").collect::<Vec<_>>().into_iter().rev().enumerate() {
             let current_score = jaro_winkler(&query_comp, &p) as f32;
-            // preliminary exit if we have a full match in the name
+            // quick exit if we have a full match in the name
             if current_score >= 0.99 {
                 return score;
             }
@@ -61,6 +61,8 @@ impl AtParam for AtParamSymbolPathQuery {
         };
         let ast = gcx.read().await.ast_module.clone();
         let names = match &ast {
+            // Some(ast) => ast.read().await.get_symbols_paths(RequestSymbolType::Declaration).await.unwrap_or_default(),
+            // AST_FIX
             Some(ast) => ast.read().await.get_symbols_paths(RequestSymbolType::Declaration).await.unwrap_or_default(),
             None => vec![]
         };

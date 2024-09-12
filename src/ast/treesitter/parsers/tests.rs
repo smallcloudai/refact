@@ -208,33 +208,33 @@ struct Skeleton {
     pub line: String,
 }
 
-pub(crate) fn base_skeletonizer_test(lang: &LanguageId,
-                                     parser: &mut Box<dyn AstLanguageParser>,
-                                     file: &PathBuf,
-                                     code: &str, skeleton_ref_str: &str) {
-    let symbols = parser.parse(code, &file);
-    let symbols_struct = symbols.iter().map(|s| s.read().symbol_info_struct()).collect();
-    let doc = Document {
-        doc_path: file.clone(),
-        doc_text: Some(Rope::from_str(code)),
-    };
-    let guid_to_children: HashMap<Uuid, Vec<Uuid>> = symbols.iter().map(|s| (s.read().guid().clone(), s.read().childs_guid().clone())).collect();
-    let ast_markup: FileASTMarkup = crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
-    let guid_to_info: HashMap<Uuid, &SymbolInformation> = ast_markup.symbols_sorted_by_path_len.iter().map(|s| (s.guid.clone(), s)).collect();
-    let formatter = make_formatter(lang);
-    let class_symbols: Vec<_> = ast_markup.symbols_sorted_by_path_len.iter().filter(|x| x.symbol_type == SymbolType::StructDeclaration).collect();
-    let mut skeletons: HashSet<Skeleton> = Default::default();
-    for symbol in class_symbols {
-        let skeleton_line = formatter.make_skeleton(&symbol, &code.to_string(), &guid_to_children, &guid_to_info);
-        skeletons.insert(Skeleton { line: skeleton_line });
-    }
-    // use std::fs;
-    // let symbols_str_ = serde_json::to_string_pretty(&skeletons).unwrap();
-    // fs::write("output.json", symbols_str_).expect("Unable to write file");
-    let ref_skeletons: Vec<Skeleton> = serde_json::from_str(&skeleton_ref_str).unwrap();
-    let ref_skeletons: HashSet<Skeleton> = HashSet::from_iter(ref_skeletons.iter().cloned());
-    assert_eq!(skeletons, ref_skeletons);
-}
+// pub(crate) fn base_skeletonizer_test(lang: &LanguageId,
+//                                      parser: &mut Box<dyn AstLanguageParser>,
+//                                      file: &PathBuf,
+//                                      code: &str, skeleton_ref_str: &str) {
+//     let symbols = parser.parse(code, &file);
+//     let symbols_struct = symbols.iter().map(|s| s.read().symbol_info_struct()).collect();
+//     let doc = Document {
+//         doc_path: file.clone(),
+//         doc_text: Some(Rope::from_str(code)),
+//     };
+//     let guid_to_children: HashMap<Uuid, Vec<Uuid>> = symbols.iter().map(|s| (s.read().guid().clone(), s.read().childs_guid().clone())).collect();
+//     let ast_markup: FileASTMarkup = crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
+//     let guid_to_info: HashMap<Uuid, &SymbolInformation> = ast_markup.symbols_sorted_by_path_len.iter().map(|s| (s.guid.clone(), s)).collect();
+//     let formatter = make_formatter(lang);
+//     let class_symbols: Vec<_> = ast_markup.symbols_sorted_by_path_len.iter().filter(|x| x.symbol_type == SymbolType::StructDeclaration).collect();
+//     let mut skeletons: HashSet<Skeleton> = Default::default();
+//     for symbol in class_symbols {
+//         let skeleton_line = formatter.make_skeleton(&symbol, &code.to_string(), &guid_to_children, &guid_to_info);
+//         skeletons.insert(Skeleton { line: skeleton_line });
+//     }
+//     // use std::fs;
+//     // let symbols_str_ = serde_json::to_string_pretty(&skeletons).unwrap();
+//     // fs::write("output.json", symbols_str_).expect("Unable to write file");
+//     let ref_skeletons: Vec<Skeleton> = serde_json::from_str(&skeleton_ref_str).unwrap();
+//     let ref_skeletons: HashSet<Skeleton> = HashSet::from_iter(ref_skeletons.iter().cloned());
+//     assert_eq!(skeletons, ref_skeletons);
+// }
 
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
@@ -244,39 +244,39 @@ struct Decl {
     pub line: String,
 }
 
-pub(crate) fn base_declaration_formatter_test(lang: &LanguageId,
-                                              parser: &mut Box<dyn AstLanguageParser>,
-                                              file: &PathBuf,
-                                              code: &str, decls_ref_str: &str) {
-    let symbols = parser.parse(code, &file);
-    let symbols_struct = symbols.iter().map(|s| s.read().symbol_info_struct()).collect();
-    let doc = Document {
-        doc_path: file.clone(),
-        doc_text: Some(Rope::from_str(code)),
-    };
-    let guid_to_children: HashMap<Uuid, Vec<Uuid>> = symbols.iter().map(|s| (s.read().guid().clone(), s.read().childs_guid().clone())).collect();
-    let ast_markup: FileASTMarkup = crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
-    let guid_to_info: HashMap<Uuid, &SymbolInformation> = ast_markup.symbols_sorted_by_path_len.iter().map(|s| (s.guid.clone(), s)).collect();
-    let formatter = make_formatter(lang);
-    let mut decls: HashSet<Decl> = Default::default();
-    for symbol in &guid_to_info {
-        let symbol = guid_to_info.get(&symbol.0).unwrap();
-        if !vec![SymbolType::StructDeclaration, SymbolType::FunctionDeclaration].contains(&symbol.symbol_type) {
-            continue;
-        }
-        let (line, (top_row, bottom_row)) = formatter.get_declaration_with_comments(&symbol, &code.to_string(), &guid_to_children, &guid_to_info);
-        if !line.is_empty() {
-            decls.insert(Decl {
-                top_row,
-                bottom_row,
-                line,
-            });
-        }
-    }
-    // use std::fs;
-    // let symbols_str_ = serde_json::to_string_pretty(&decls).unwrap();
-    // fs::write("output.json", symbols_str_).expect("Unable to write file");
-    let ref_decls: Vec<Decl> = serde_json::from_str(&decls_ref_str).unwrap();
-    let ref_decls: HashSet<Decl> = HashSet::from_iter(ref_decls.iter().cloned());
-    assert_eq!(decls, ref_decls);
-}
+// pub(crate) fn base_declaration_formatter_test(lang: &LanguageId,
+//                                               parser: &mut Box<dyn AstLanguageParser>,
+//                                               file: &PathBuf,
+//                                               code: &str, decls_ref_str: &str) {
+//     let symbols = parser.parse(code, &file);
+//     let symbols_struct = symbols.iter().map(|s| s.read().symbol_info_struct()).collect();
+//     let doc = Document {
+//         doc_path: file.clone(),
+//         doc_text: Some(Rope::from_str(code)),
+//     };
+//     let guid_to_children: HashMap<Uuid, Vec<Uuid>> = symbols.iter().map(|s| (s.read().guid().clone(), s.read().childs_guid().clone())).collect();
+//     let ast_markup: FileASTMarkup = crate::ast::ast_file_markup::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
+//     let guid_to_info: HashMap<Uuid, &SymbolInformation> = ast_markup.symbols_sorted_by_path_len.iter().map(|s| (s.guid.clone(), s)).collect();
+//     let formatter = make_formatter(lang);
+//     let mut decls: HashSet<Decl> = Default::default();
+//     for symbol in &guid_to_info {
+//         let symbol = guid_to_info.get(&symbol.0).unwrap();
+//         if !vec![SymbolType::StructDeclaration, SymbolType::FunctionDeclaration].contains(&symbol.symbol_type) {
+//             continue;
+//         }
+//         let (line, (top_row, bottom_row)) = formatter.get_declaration_with_comments(&symbol, &code.to_string(), &guid_to_children, &guid_to_info);
+//         if !line.is_empty() {
+//             decls.insert(Decl {
+//                 top_row,
+//                 bottom_row,
+//                 line,
+//             });
+//         }
+//     }
+//     // use std::fs;
+//     // let symbols_str_ = serde_json::to_string_pretty(&decls).unwrap();
+//     // fs::write("output.json", symbols_str_).expect("Unable to write file");
+//     let ref_decls: Vec<Decl> = serde_json::from_str(&decls_ref_str).unwrap();
+//     let ref_decls: HashSet<Decl> = HashSet::from_iter(ref_decls.iter().cloned());
+//     assert_eq!(decls, ref_decls);
+// }

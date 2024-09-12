@@ -22,7 +22,7 @@ pub const DEBUG: usize = 0;  // 0 nothing, 1 summary "N lines in K files => X to
 
 #[derive(Debug)]
 pub struct PPFile {
-    pub markup: FileASTMarkup,
+    pub markup: Vec<Arc<AltDefinition>>,
     pub cpath: PathBuf,
     pub cpath_symmetry_breaker: f32,
     pub shorter_path: String,

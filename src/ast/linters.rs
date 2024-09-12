@@ -1,4 +1,4 @@
-use crate::ast::comments_wrapper::get_language_id_by_filename;
+use crate::ast::alt_minimalistic::get_language_id_by_filename;
 use crate::ast::treesitter::language_id::LanguageId;
 use crate::files_in_workspace::Document;
 use std::collections::HashMap;

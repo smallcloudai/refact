@@ -1,12 +1,10 @@
 use std::sync::Arc;
 use std::fmt;
-// use std::cell::RefCell;
-// use std::rc::Rc;
 use serde::{Deserialize, Serialize};
 use tree_sitter::Range;
-use crate::ast::treesitter::structs::{RangeDef, SymbolType};
-
 use tokio::sync::{Mutex as AMutex, Notify as ANotify};
+pub use crate::ast::treesitter::structs::SymbolType;
+use crate::ast::treesitter::structs::RangeDef;
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -42,6 +40,19 @@ impl AltDefinition {
     pub fn name(&self) -> String {
         self.official_path.last().cloned().unwrap_or_default()
     }
+}
+
+pub struct AltIndex {
+    pub sleddb: Arc<sled::Db>,
+}
+
+pub struct AltStatus {
+    pub astate_notify: Arc<ANotify>,
+    pub astate: String,
+    pub files_unparsed: usize,
+    pub files_total: usize,
+    pub ast_index_files_total: usize,
+    pub ast_index_symbols_total: usize,
 }
 
 impl fmt::Debug for AltDefinition {
@@ -92,24 +103,4 @@ impl fmt::Debug for Usage {
             if self.resolved_as.len() > 0 { self.resolved_as.clone() } else { self.targets_for_guesswork.join(" ") }
         )
     }
-}
-
-
-
-pub struct AltIndex {
-    pub sleddb: Arc<sled::Db>, // doesn't need a mutex
-}
-
-pub struct AltStatus {
-    pub astate_notify: Arc<ANotify>,
-    pub astate: String,
-    pub files_unparsed: usize,
-    pub files_total: usize,
-    pub ast_index_files_total: usize,
-    pub ast_index_symbols_total: usize,
-}
-
-pub struct AltState {
-    pub alt_index: Arc<AMutex<AltIndex>>,
-    pub alt_status: Arc<AMutex<AltStatus>>,
 }

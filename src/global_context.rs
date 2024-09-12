@@ -15,7 +15,7 @@ use tokio::sync::{Mutex as AMutex, Semaphore};
 use tokio::sync::RwLock as ARwLock;
 use tracing::{error, info};
 
-use crate::ast::ast_module::AstModule;
+use crate::ast::alt_minimalistic::AltState;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
@@ -123,7 +123,7 @@ pub struct GlobalContext {
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
-    pub ast_module: Option<Arc<ARwLock<AstModule>>>,
+    pub ast_module: Option<Arc<AMutex<AltState>>>,
     pub vec_db_error: String,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,

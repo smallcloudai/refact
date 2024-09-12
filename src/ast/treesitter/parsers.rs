@@ -3,9 +3,9 @@ use std::path::PathBuf;
 
 use tracing::error;
 
-use crate::ast::comments_wrapper::get_language_id_by_filename;
 use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
 use crate::ast::treesitter::language_id::LanguageId;
+
 
 pub(crate) mod python;
 pub(crate) mod rust;
@@ -74,6 +74,21 @@ pub fn get_ast_parser_by_filename(filename: &PathBuf) -> Result<Box<dyn AstLangu
     match maybe_language_id {
         Some(language_id) => get_ast_parser(language_id),
         None => Err(ParserError { message: suffix.to_string() }),
+    }
+}
+
+pub fn get_language_id_by_filename(filename: &PathBuf) -> Option<LanguageId> {
+    let suffix = filename.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    match suffix.as_str() {
+        "cpp" | "cc" | "cxx" | "c++" | "c" | "h" | "hpp" | "hxx" | "hh" => Some(LanguageId::Cpp),
+        "inl" | "inc" | "tpp" | "tpl" => Some(LanguageId::Cpp),
+        "py" | "py3" | "pyx" => Some(LanguageId::Python),
+        "java" => Some(LanguageId::Java),
+        "js" | "jsx" => Some(LanguageId::JavaScript),
+        "rs" => Some(LanguageId::Rust),
+        "ts" => Some(LanguageId::TypeScript),
+        "tsx" => Some(LanguageId::TypeScriptReact),
+        _ => None
     }
 }
 

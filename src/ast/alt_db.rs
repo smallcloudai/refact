@@ -1,4 +1,4 @@
-use sled::{Db, IVec};
+use sled::Db;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
@@ -140,9 +140,9 @@ async fn connect_usages(altindex: Arc<AMutex<AltIndex>>)
     let mut batch = sled::Batch::default();
 
     let derived_from_map = _derived_from(&db).await;
-    println!("derived_from_map {:?}", derived_from_map);
+    // println!("derived_from_map {:?}", derived_from_map);
 
-    while let Some(Ok((key, value))) = iter.next() {
+    while let Some(Ok((_key, value))) = iter.next() {
         if let Ok(definition) = serde_cbor::from_slice::<AltDefinition>(&value) {
             _connect_usages_helper(&db, &derived_from_map, &definition, &mut batch).await;
         }

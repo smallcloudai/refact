@@ -108,11 +108,7 @@ pub async fn pp_ast_markup_files(
         match f {
             None => {
                 f = Some(Arc::new(PPFile {
-                    markup: FileASTMarkup {
-                        file_path: doc.doc_path.clone(),
-                        file_content: text,
-                        symbols_sorted_by_path_len: Vec::new(),
-                    },
+                    markup: ast.  xxx,
                     cpath: doc.doc_path.clone(),
                     cpath_symmetry_breaker,
                     shorter_path: shortified_paths[i].clone(),
