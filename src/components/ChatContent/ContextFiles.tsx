@@ -101,7 +101,7 @@ export const ContextFile: React.FC<{
 
 const ContextFilesContent: React.FC<{
   files: ChatContextFile[];
-  onOpenFile: (file: { file_name: string; line?: number }) => void;
+  onOpenFile: (file: { file_name: string; line?: number }) => Promise<void>;
 }> = ({ files, onOpenFile }) => {
   if (files.length === 0) return null;
 
@@ -117,7 +117,7 @@ const ContextFilesContent: React.FC<{
               <ContextFile
                 onClick={(event) => {
                   event.preventDefault();
-                  onOpenFile(file);
+                  void onOpenFile(file);
                 }}
                 key={key}
                 name={file.file_name + lineText}

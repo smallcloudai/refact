@@ -87,15 +87,11 @@ export const useEventsBusForIDE = () => {
   const [getFullPath, _] = pathApi.useLazyGetFullPathQuery();
 
   const queryPathThenOpenFile = useCallback(
-    (file: OpenFilePayload) => {
-      getFullPath(file.file_name)
-        .unwrap()
-        .then((res) => {
-          const file_name = res ?? file.file_name;
-          const action = ideOpenFile({ file_name, line: file.line });
-          postMessage(action);
-        })
-        .catch(() => ({}));
+    async (file: OpenFilePayload) => {
+      const res = await getFullPath(file.file_name).unwrap();
+      const file_name = res ?? file.file_name;
+      const action = ideOpenFile({ file_name, line: file.line });
+      postMessage(action);
     },
     [getFullPath, postMessage],
   );
