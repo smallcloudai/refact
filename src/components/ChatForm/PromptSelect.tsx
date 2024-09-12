@@ -8,6 +8,7 @@ export type PromptSelectProps = {
   onChange: (value: SystemPrompts) => void;
   prompts: SystemPrompts;
   disabled?: boolean;
+  contentPosition?: "item-aligned" | "popper";
 };
 
 export const PromptSelect: React.FC<PromptSelectProps> = ({
@@ -15,6 +16,7 @@ export const PromptSelect: React.FC<PromptSelectProps> = ({
   prompts,
   onChange,
   disabled,
+  contentPosition,
 }) => {
   // TODO: just use the hooks here
   const promptKeysAndValues = Object.entries(prompts);
@@ -41,7 +43,7 @@ export const PromptSelect: React.FC<PromptSelectProps> = ({
         size="1"
       >
         <Trigger title={val} />
-        <Content>
+        <Content position={contentPosition ? contentPosition : "popper"}>
           {Object.entries(prompts).map(([key, value]) => {
             return (
               <Item

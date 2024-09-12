@@ -45,7 +45,7 @@ export const historySlice = createSlice({
         ...action.payload,
         title: action.payload.title
           ? action.payload.title
-          : userMessage.content.replace(/^\W*/, "") || "New Chat",
+          : userMessage.content.replace(/^\s*/, "") || "New Chat",
         createdAt: action.payload.createdAt ?? now,
 
         updatedAt: now,

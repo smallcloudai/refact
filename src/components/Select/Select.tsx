@@ -7,6 +7,7 @@ export type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   onChange: (value: string) => void;
   options: string[];
   title?: string;
+  contentPosition?: "item-aligned" | "popper";
 };
 
 export type SelectRootProps = React.ComponentProps<typeof RadixSelect.Root>;
@@ -40,12 +41,13 @@ export const Select: React.FC<SelectProps> = ({
   title,
   options,
   onChange,
+  contentPosition,
   ...props
 }) => {
   return (
     <Root {...props} onValueChange={onChange} size="1">
       <Trigger title={title} />
-      <Content>
+      <Content position={contentPosition ? contentPosition : "popper"}>
         {options.map((option) => {
           return (
             <Item key={option} value={option}>
