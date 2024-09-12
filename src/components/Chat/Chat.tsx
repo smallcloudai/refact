@@ -73,7 +73,6 @@ export const Chat: React.FC<ChatProps> = ({
     diffPasteBack,
     newFile,
     openSettings,
-    openFile,
     // openChatInNewTab: _openChatInNewTab,
   } = useEventsBusForIDE();
 
@@ -126,7 +125,6 @@ export const Chat: React.FC<ChatProps> = ({
         canPaste={canPaste}
         ref={chatContentRef}
         openSettings={openSettings}
-        onOpenFile={openFile}
       />
       {!isStreaming && preventSend && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>

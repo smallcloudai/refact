@@ -12,9 +12,7 @@ import ReactMarkDown from "react-markdown";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import { Chevron } from "../Collapsible";
 import { filename } from "../../utils";
-import { useAppSelector } from "../../hooks";
-import { selectLspPort } from "../../features/Config/configSlice";
-import { getFullpath } from "../../services/refact/fullpath";
+import { useEventsBusForIDE } from "../../hooks";
 
 export const Markdown: React.FC<{
   children: string;
@@ -81,9 +79,7 @@ export const ContextFile: React.FC<{
             <Small className={classnames(styles.file, props.className)}>
               &nbsp;&nbsp;&nbsp;&nbsp;
               <TruncateLeft>
-                <Link href="#" onClick={onClick}>
-                  {name}
-                </Link>
+                <Link onClick={onClick}>{name}</Link>
               </TruncateLeft>
             </Small>
           </Box>
@@ -107,8 +103,6 @@ const ContextFilesContent: React.FC<{
   files: ChatContextFile[];
   onOpenFile: (file: { file_name: string; line?: number }) => void;
 }> = ({ files, onOpenFile }) => {
-  const port = useAppSelector(selectLspPort);
-
   if (files.length === 0) return null;
 
   return (
@@ -123,12 +117,7 @@ const ContextFilesContent: React.FC<{
               <ContextFile
                 onClick={(event) => {
                   event.preventDefault();
-                  const f = async () => {
-                    const res = await getFullpath(file.file_name, port);
-                    const file_name = res ?? file.file_name;
-                    onOpenFile({ file_name, line: file.line1 });
-                  };
-                  void f();
+                  onOpenFile(file);
                 }}
                 key={key}
                 name={file.file_name + lineText}
@@ -145,9 +134,9 @@ const ContextFilesContent: React.FC<{
 
 export const ContextFiles: React.FC<{
   files: ChatContextFile[];
-  onOpenFile: (file: { file_name: string; line?: number }) => void;
-}> = ({ files, onOpenFile }) => {
+}> = ({ files }) => {
   const [open, setOpen] = React.useState(false);
+  const { queryPathThenOpenFile } = useEventsBusForIDE();
 
   if (files.length === 0) return null;
 
@@ -165,7 +154,10 @@ export const ContextFiles: React.FC<{
           </Flex>
         </Collapsible.Trigger>
         <Collapsible.Content>
-          <ContextFilesContent files={files} onOpenFile={onOpenFile} />
+          <ContextFilesContent
+            files={files}
+            onOpenFile={queryPathThenOpenFile}
+          />
         </Collapsible.Content>
       </Collapsible.Root>
     </Container>
