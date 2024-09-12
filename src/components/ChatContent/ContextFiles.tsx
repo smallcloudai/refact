@@ -14,7 +14,7 @@ import { Chevron } from "../Collapsible";
 import { filename } from "../../utils";
 import { useAppSelector } from "../../hooks";
 import { selectLspPort } from "../../features/Config/configSlice";
-import { getFullpath } from "../../utils/fullPath";
+import { getFullpath } from "../../services/refact/fullpath";
 
 export const Markdown: React.FC<{
   children: string;
