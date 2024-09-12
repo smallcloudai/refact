@@ -3,12 +3,11 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::task;
-use crate::ast::alt_minimalistic::{AltIndex, AltDefinition};
+use crate::ast::alt_minimalistic::{AltIndex, AltDefinition, AltIndexCounters};
 use crate::ast::alt_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
 use serde_cbor;
 
-
-async fn alt_index_init() -> Arc<AMutex<AltIndex>>
+pub async fn alt_index_init() -> Arc<AMutex<AltIndex>>
 {
     let db: Arc<Db> = Arc::new(task::spawn_blocking(|| sled::open("/tmp/my_db.sled").unwrap()).await.unwrap());
     db.clear().unwrap();
@@ -39,12 +38,40 @@ async fn alt_index_init() -> Arc<AMutex<AltIndex>>
 // Read tests below, the show what this index can do!
 //
 
-async fn doc_add(altindex: Arc<AMutex<AltIndex>>, cpath: &String, text: &String)
+pub async fn fetch_counters(altindex: Arc<AMutex<AltIndex>>) -> AltIndexCounters
 {
-    let (definitions, _language) = parse_anything_and_add_file_path(cpath, text);
+    let db = altindex.lock().await.sleddb.clone();
+    let counter_defs = db.get(b"counters/defs").unwrap().map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0);
+    let counter_usages = db.get(b"counters/usages").unwrap().map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0);
+    AltIndexCounters {
+        counter_defs,
+        counter_usages,
+    }
+}
+
+fn _increase_counter(db: &sled::Db, counter_key: &[u8], adjustment: i32) {
+    if adjustment == 0 {
+        return;
+    }
+    match db.update_and_fetch(counter_key, |counter| {
+        let counter = counter.map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0) + adjustment;
+        Some(serde_cbor::to_vec(&counter).unwrap())
+    }) {
+        Ok(_) => {},
+        Err(e) => tracing::error!("failed to update and fetch counter: {:?}", e),
+    }
+
+}
+
+pub async fn doc_add(altindex: Arc<AMutex<AltIndex>>, cpath: &String, text: &String) -> Vec<Arc<AltDefinition>>
+{
+    let file_global_path = filesystem_path_to_double_colon_path(cpath);
+    let (defs, _language) = parse_anything_and_add_file_path(&cpath, text);
     let db = altindex.lock().await.sleddb.clone();
     let mut batch = sled::Batch::default();
-    for definition in definitions.values() {
+    let mut added_defs: i32 = 0;
+    let mut added_usages: i32 = 0;
+    for definition in defs.values() {
         let serialized = serde_cbor::to_vec(&definition).unwrap();
         let official_path = definition.official_path.join("::");
         let d_key = format!("d/{}", official_path);
@@ -60,25 +87,37 @@ async fn doc_add(altindex: Arc<AMutex<AltIndex>>, cpath: &String, text: &String)
                 let u_key = format!("u/{} ⚡ {}", usage.resolved_as, official_path);
                 batch.insert(u_key.as_bytes(), b"");
             }
+            added_usages += 1;
         }
         // AltDefinition { CosmicGoat, this_is_a_class: cpp🔎CosmicGoat, derived_from: "cpp🔎Goat" "cpp🔎CosmicJustice" }
         for from in &definition.this_class_derived_from {
             let t_key = format!("t/{} ⚡ {}", from, official_path);
             batch.insert(t_key.as_bytes(), definition.this_is_a_class.as_bytes());
         }
+        added_defs += 1;
     }
     if let Err(e) = db.apply_batch(batch) {
         tracing::error!("doc_add() failed to apply batch: {:?}", e);
     }
+    let doc_key = format!("doc/{}", file_global_path.join("::"));
+    if db.get(doc_key.as_bytes()).unwrap().is_none() {
+        _increase_counter(&db, b"counters/doc", 1);
+        db.insert(doc_key.as_bytes(), cpath.as_bytes()).unwrap();
+    }
+    _increase_counter(&db, b"counters/defs", added_defs);
+    _increase_counter(&db, b"counters/usages", added_usages);
+    defs.values().cloned().map(Arc::new).collect()
 }
 
-async fn doc_remove(altindex: Arc<AMutex<AltIndex>>, cpath: &String)
+pub async fn doc_remove(altindex: Arc<AMutex<AltIndex>>, cpath: &String)
 {
-    let to_delete_prefix = filesystem_path_to_double_colon_path(cpath);
-    let d_prefix = format!("d/{}", to_delete_prefix.join("::"));
+    let file_global_path = filesystem_path_to_double_colon_path(cpath);
+    let d_prefix = format!("d/{}", file_global_path.join("::"));
     let db = altindex.lock().await.sleddb.clone();
     let mut batch = sled::Batch::default();
     let mut iter = db.scan_prefix(d_prefix);
+    let mut deleted_defs: i32 = 0;
+    let mut deleted_usages: i32 = 0;
     while let Some(Ok((key, value))) = iter.next() {
         let d_key_b = key.clone();
         if let Ok(definition) = serde_cbor::from_slice::<AltDefinition>(&value) {
@@ -94,6 +133,7 @@ async fn doc_remove(altindex: Arc<AMutex<AltIndex>>, cpath: &String)
                     let u_key = format!("u/{} ⚡ {}", usage.resolved_as, official_path);
                     batch.remove(u_key.as_bytes());
                 }
+                deleted_usages += 1;
             }
             for from in &definition.this_class_derived_from {
                 let t_key = format!("t/{} ⚡ {}", from, official_path);
@@ -110,27 +150,35 @@ async fn doc_remove(altindex: Arc<AMutex<AltIndex>>, cpath: &String)
                 }
                 batch.remove(cleanup_key.as_bytes());
             }
+            deleted_defs += 1;
         }
         batch.remove(&d_key_b);
     }
     if let Err(e) = db.apply_batch(batch) {
         tracing::error!("doc_remove() failed to apply batch: {:?}", e);
     }
+    let doc_key = format!("doc/{}", file_global_path.join("::"));
+    if db.get(doc_key.as_bytes()).unwrap().is_some() {
+        _increase_counter(&db, b"counters/doc", -1);
+        db.remove(doc_key.as_bytes()).unwrap();
+    }
+    _increase_counter(&db, b"counters/defs", -deleted_defs);
+    _increase_counter(&db, b"counters/usages", -deleted_usages);
 }
 
-async fn doc_symbols(altindex: Arc<AMutex<AltIndex>>, cpath: &String) -> Vec<Arc<AltDefinition>>
+pub async fn doc_symbols(altindex: Arc<AMutex<AltIndex>>, cpath: &String) -> Vec<Arc<AltDefinition>>
 {
     let to_search_prefix = filesystem_path_to_double_colon_path(cpath);
     let d_prefix = format!("d/{}", to_search_prefix.join("::"));
     let db = altindex.lock().await.sleddb.clone();
-    let mut definitions = Vec::new();
+    let mut defs = Vec::new();
     let mut iter = db.scan_prefix(d_prefix);
     while let Some(Ok((_, value))) = iter.next() {
         if let Ok(definition) = serde_cbor::from_slice::<AltDefinition>(&value) {
-            definitions.push(Arc::new(definition));
+            defs.push(Arc::new(definition));
         }
     }
-    definitions
+    defs
 }
 
 async fn connect_usages(altindex: Arc<AMutex<AltIndex>>)
@@ -192,7 +240,7 @@ async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &HashMap<String
         for to_resolve_unstripped in &usage.targets_for_guesswork {
             assert!(to_resolve_unstripped.starts_with("?::"), "Target does not start with '?::': {}", to_resolve_unstripped);
             let to_resolve = to_resolve_unstripped.strip_prefix("?::").unwrap();
-            println!("to_resolve_unstripped {:?}", to_resolve_unstripped);
+            // println!("to_resolve_unstripped {:?}", to_resolve_unstripped);
 
             // Extract all LANGUAGE🔎CLASS from to_resolve
             let mut magnifying_glass_pairs = Vec::new();
@@ -259,7 +307,7 @@ async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &HashMap<String
                     break;
                 }
             }
-            println!("   found {:?}", found);
+            // println!("   found {:?}", found);
             if found.len() == 0 {
                 continue;
             }
@@ -386,19 +434,19 @@ pub async fn definitions(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &st
         }
     }
     let min_colon_count = path_groups.keys().min().cloned().unwrap_or(usize::MAX);
-    let mut definitions = Vec::new();
+    let mut defs = Vec::new();
     if let Some(paths) = path_groups.get(&min_colon_count) {
         for full_path in paths {
             let d_key = format!("d/{}", full_path);
             if let Ok(Some(d_value)) = db.get(d_key.as_bytes()) {
                 match serde_cbor::from_slice::<AltDefinition>(&d_value) {
-                    Ok(definition) => definitions.push(Arc::new(definition)),
+                    Ok(definition) => defs.push(Arc::new(definition)),
                     Err(e) => println!("Failed to deserialize value for {}: {:?}", d_key, e),
                 }
             }
         }
     }
-    definitions
+    defs
 }
 
 pub async fn type_hierarchy(altindex: Arc<AMutex<AltIndex>>, language: String, subtree_of: String) -> String

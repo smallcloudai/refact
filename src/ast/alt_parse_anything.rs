@@ -96,7 +96,7 @@ fn _find_top_level_nodes(
     top_level
 }
 
-fn _name2path(
+fn _name_to_usage(
     map: &HashMap<Uuid, AstSymbolInstanceArc>,
     file_global_path: &Vec<String>,
     uline: usize,
@@ -166,7 +166,7 @@ fn _name2path(
         let node = node_arc.read();
 
         if _is_declaration(node.symbol_type()) {
-            // eprintln!("_name2path {:?} looking in {:?}", name_of_anything, node.name());
+            // eprintln!("_name_to_usage {:?} looking in {:?}", name_of_anything, node.name());
             if node.name() == name_of_anything {
                 result.resolved_as = [file_global_path.clone(), _path_of_node(map, Some(node.guid().clone()))].concat().join("::");
                 result.debug_hint = "up".to_string();
@@ -179,7 +179,7 @@ fn _name2path(
     Some(result)
 }
 
-fn _typeof_path(
+fn _typeof(
     map: &HashMap<Uuid, AstSymbolInstanceArc>,
     _file_global_path: &Vec<String>,
     start_node_guid: Uuid,
@@ -262,6 +262,9 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     uline: usize,
     symbol: &dyn AstSymbolInstance,
 ) -> Option<Usage> {
+    // my_object.something_inside
+    // ^^^^^^^^^ caller (can be None)
+    //           ^^^^^^^^^^^^^^^^ symbol
     if let Some(caller) = caller_guid.and_then(|guid| orig_map.get(&guid)) {
         let mut result = Usage {
             targets_for_guesswork: vec![],
@@ -270,7 +273,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
             uline,
         };
         let caller_node = caller.read();
-        let typeof_caller = _typeof_path(&orig_map, &file_global_path, caller_node.guid().clone(), caller_node.name().to_string());
+        let typeof_caller = _typeof(&orig_map, &file_global_path, caller_node.guid().clone(), caller_node.name().to_string());
         // typeof_caller will be "?" if nothing found, start with "file" if type found in the current file
         if typeof_caller.first() == Some(&"file".to_string()) {
             // actually fully resolved!
@@ -289,8 +292,8 @@ fn _usage_or_typeof_caller_colon_colon_usage(
         // caller is about caller.function_call(1, 2, 3), in this case means just function_call(1, 2, 3) without anything on the left
         // just look for a name in function's parent and above
         //
-        let tmp = _name2path(&orig_map, &file_global_path, uline, symbol.parent_guid().clone(), symbol.name().to_string());
-        // eprintln!("    _usage_or_typeof_caller_colon_colon_usage {} attempt_name2path={:?}", symbol.name().to_string(), tmp);
+        let tmp = _name_to_usage(&orig_map, &file_global_path, uline, symbol.parent_guid().clone(), symbol.name().to_string());
+        // eprintln!("    _usage_or_typeof_caller_colon_colon_usage {} _name_to_usage={:?}", symbol.name().to_string(), tmp);
         tmp
     }
 }
@@ -438,7 +441,8 @@ pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
     components.iter().rev().take(2).cloned().collect::<Vec<_>>()
 }
 
-pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>, String) {
+pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>, String)
+{
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let file_global_path_str = file_global_path.join("::");
     let (mut definitions, language) = parse_anything(cpath, text);

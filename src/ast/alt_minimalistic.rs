@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::fmt;
 use serde::{Deserialize, Serialize};
 use tree_sitter::Range;
-use tokio::sync::{Mutex as AMutex, Notify as ANotify};
+use tokio::sync::Notify as ANotify;
 pub use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::structs::RangeDef;
 
@@ -46,13 +46,18 @@ pub struct AltIndex {
     pub sleddb: Arc<sled::Db>,
 }
 
-pub struct AltStatus {
+pub struct AltIndexStatus {
     pub astate_notify: Arc<ANotify>,
     pub astate: String,
     pub files_unparsed: usize,
     pub files_total: usize,
-    pub ast_index_files_total: usize,
-    pub ast_index_symbols_total: usize,
+    pub ast_index_files_total: i32,
+    pub ast_index_symbols_total: i32,
+}
+
+pub struct AltIndexCounters {
+    pub counter_defs: i32,
+    pub counter_usages: i32,
 }
 
 impl fmt::Debug for AltDefinition {
