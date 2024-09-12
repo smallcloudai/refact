@@ -9,22 +9,22 @@ use crate::global_context::GlobalContext;
 use crate::yaml_configs::customization_compiled_in::COMPILED_IN_INITIAL_USER_YAML;
 
 
-pub async fn try_create_all_yaml_configs(gcx: Arc<ARwLock<GlobalContext>>) {
-    match exists_or_create_bring_your_own_key_yaml(gcx.clone()).await {
+pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) {
+    match yaml_bring_your_own_key_exists_or_create(gcx.clone()).await {
         Ok(_) => (),
         Err(e) => warn!("{}", e)
     }
-    match exists_or_create_integrations_yaml(gcx.clone()).await {
+    match yaml_integrations_exists_or_create(gcx.clone()).await {
         Ok(_) => (),
         Err(e) => warn!("{}", e)
     }
-    match exists_or_create_customization_yaml(gcx.clone()).await {
+    match yaml_customization_exists_or_create(gcx.clone()).await {
         Ok(_) => (),
         Err(e) => warn!("{}", e)
     }
 }
 
-pub async fn exists_or_create_bring_your_own_key_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> Result<PathBuf, String> {
+pub async fn yaml_bring_your_own_key_exists_or_create(gcx: Arc<ARwLock<GlobalContext>>) -> Result<PathBuf, String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let path = cache_dir.join("bring-your-own-key.yaml");
     if !path.exists() {
@@ -37,12 +37,12 @@ pub async fn exists_or_create_bring_your_own_key_yaml(gcx: Arc<ARwLock<GlobalCon
     Ok(path)
 }
 
-pub async fn read_integrations_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
-    let integrations_yaml = exists_or_create_integrations_yaml(gcx).await?;
+pub async fn yaml_integrations_read(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
+    let integrations_yaml = yaml_integrations_exists_or_create(gcx).await?;
     fs::read_to_string(&integrations_yaml).await.map_err(|e|format!("Failed to read integrations.yaml: {}", e))
 }
 
-async fn exists_or_create_integrations_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> Result<PathBuf, String> {
+async fn yaml_integrations_exists_or_create(gcx: Arc<ARwLock<GlobalContext>>) -> Result<PathBuf, String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let path = cache_dir.join("integrations.yaml");
     if !path.exists() {
@@ -53,7 +53,7 @@ async fn exists_or_create_integrations_yaml(gcx: Arc<ARwLock<GlobalContext>>) ->
     Ok(path)
 }
 
-pub async fn exists_or_create_customization_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> Result<PathBuf, String> {
+pub async fn yaml_customization_exists_or_create(gcx: Arc<ARwLock<GlobalContext>>) -> Result<PathBuf, String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let user_config_path = cache_dir.join("customization.yaml");
     if !user_config_path.exists() {

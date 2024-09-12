@@ -10,7 +10,8 @@ use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
-use crate::yaml_configs::create_configs::read_integrations_yaml;
+use crate::integrations::integr_github::ToolGithub;
+use crate::yaml_configs::create_configs::yaml_integrations_read;
 
 
 #[async_trait]
@@ -39,7 +40,7 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         (gcx_locked.ast_module.is_some(), vecdb.is_some(), gcx_locked.cmdline.experimental)
     };
 
-    let integrations_yaml = read_integrations_yaml(gcx).await.unwrap_or_else(|e| {
+    let integrations_yaml = yaml_integrations_read(gcx).await.unwrap_or_else(|e| {
         warn!("{}", e);
         String::new()
     });
@@ -68,7 +69,7 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
     if allow_experimental {
         // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_knowledge::ToolSaveKnowledge{}) as Box<dyn Tool + Send>))),
         // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
-        if let Some(github_tool) = crate::integrations::integr_github::ToolGithub::new_if_configured(&integrations_value) {
+        if let Some(github_tool) = ToolGithub::new_if_configured(&integrations_value) {
             tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(github_tool) as Box<dyn Tool + Send>)));
         }
         tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));

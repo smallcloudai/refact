@@ -10,7 +10,7 @@ use backtrace;
 use crate::background_tasks::start_background_tasks;
 use crate::lsp::spawn_lsp_task;
 use crate::telemetry::{basic_transmit, snippets_transmit};
-use crate::yaml_configs::create_configs::try_create_all_yaml_configs;
+use crate::yaml_configs::create_configs::yaml_configs_try_create_all;
 
 
 // mods roughly sorted by dependency ↓
@@ -99,7 +99,7 @@ async fn main() {
             if arg_v == "--api-key" { api_key_at = arg_n + 1; }
         }
     }
-    try_create_all_yaml_configs(gcx.clone()).await;
+    yaml_configs_try_create_all(gcx.clone()).await;
     if cmdline.only_create_yaml_configs {
         std::process::exit(0);
     }

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use tokio::sync::Mutex as AMutex;
 use tokio::process::Command;
 use async_trait::async_trait;
-use tracing::info;
+use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -26,14 +26,16 @@ pub struct ToolGithub {
 
 impl ToolGithub {
     pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
-        let my_stuff_maybe: Option<IntegrationGitHub> = integrations_value
-            .get("github")
-            .and_then(|v| serde_yaml::from_value(v.clone()).ok());
-        if let Some(my_stuff) = my_stuff_maybe {
-            info!("parsed GitHub: {:?}", my_stuff);
-            return Some(Self { integration_github: my_stuff });
-        }
-        None
+        let integration_github_value = integrations_value.get("github").or_else(|| {
+            info!("No integration github found in integrations.yaml");
+            None
+        })?;
+
+        let integration_github = serde_yaml::from_value::<IntegrationGitHub>(integration_github_value.clone()).or_else(|e| {
+            error!("Failed to parse integration github: {:?}", e);
+            Err(e)
+        }).ok()?;
+        Some(Self { integration_github })
     }
 }
 

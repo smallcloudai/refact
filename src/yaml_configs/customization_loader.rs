@@ -1,14 +1,16 @@
 use serde_yaml;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
-use tokio::sync::RwLock as ARwLock;
-use crate::call_validation::{ChatMessage, SubchatParameters};
 use std::sync::Arc;
 use std::path::PathBuf;
-use indexmap::IndexMap;
 use tracing::{error, info};
+
+use indexmap::IndexMap;
+use tokio::sync::RwLock as ARwLock;
+
+use crate::call_validation::{ChatMessage, SubchatParameters};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
-use crate::yaml_configs::create_configs::exists_or_create_customization_yaml;
+use crate::yaml_configs::create_configs::yaml_customization_exists_or_create;
 use crate::yaml_configs::customization_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML;
 
 
@@ -73,7 +75,13 @@ fn replace_variables_in_system_prompts(config: &mut CustomizationYaml, variables
     }
 }
 
-fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default_system_prompt: &str, skip_filtering: bool, allow_experimental: bool) -> Result<CustomizationYaml, String> {
+fn load_and_mix_with_users_config(
+    user_yaml: &str, 
+    caps_yaml: &str, 
+    caps_default_system_prompt: &str, 
+    skip_filtering: bool, 
+    allow_experimental: bool
+) -> Result<CustomizationYaml, String> {
     let default_unstructured: serde_yaml::Value = serde_yaml::from_str(COMPILED_IN_CUSTOMIZATION_YAML)
         .map_err(|e| format!("Error parsing default YAML: {}\n{}", e, COMPILED_IN_CUSTOMIZATION_YAML))?;
     let user_unstructured: serde_yaml::Value = serde_yaml::from_str(user_yaml)
@@ -116,8 +124,8 @@ fn load_and_mix_with_users_config(user_yaml: &str, caps_yaml: &str, caps_default
 
     work_config.system_prompts = filtered_system_prompts;
 
-    if !caps_default_system_prompt.is_empty() && work_config.system_prompts.get(caps_default_system_prompt).is_some() {
-        work_config.system_prompts.insert("default".to_string(), work_config.system_prompts.get(caps_default_system_prompt).map(|x|x.clone()).unwrap());
+    if let Some(default_system_prompt) = work_config.system_prompts.get(caps_default_system_prompt) {
+        work_config.system_prompts.insert("default".to_string(), default_system_prompt.clone());
     }
     Ok(work_config)
 }
@@ -131,7 +139,7 @@ pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>, skip_filtering
         (caps_locked.customization.clone(), caps_locked.code_chat_default_system_prompt.clone())
     };
 
-    let user_config_path = exists_or_create_customization_yaml(gcx.clone()).await?;
+    let user_config_path = yaml_customization_exists_or_create(gcx.clone()).await?;
     
     let user_config_text = std::fs::read_to_string(&user_config_path).map_err(|e| format!("Failed to read file: {}", e))?;
     load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt, skip_filtering, allow_experimental).map_err(|e| e.to_string())
@@ -223,5 +231,18 @@ mod tests {
     #[test]
     fn is_compiled_in_toolbox_valid_yaml() {
         let _config = load_and_mix_with_users_config(COMPILED_IN_INITIAL_USER_YAML, "", "", false, true);
+    }
+    #[test]
+    fn are_all_system_prompts_present() {
+        let config = load_and_mix_with_users_config(
+            COMPILED_IN_INITIAL_USER_YAML, "", "", true, true
+        );
+        assert_eq!(config.is_ok(), true);
+        let config = config.unwrap();
+        
+        assert_eq!(config.system_prompts.get("default").is_some(), true);
+        assert_eq!(config.system_prompts.get("exploration_tools").is_some(), true);
+        assert_eq!(config.system_prompts.get("agentic_tools").is_some(), true);
+        assert_eq!(config.system_prompts.get("agentic_experimental_knowledge").is_some(), true);
     }
 }

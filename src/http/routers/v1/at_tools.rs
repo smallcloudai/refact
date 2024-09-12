@@ -4,7 +4,7 @@ use axum::http::{Response, StatusCode};
 use hyper::Body;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::tools::tools_description::{tool_description_list_from_yaml, tools_from_customization};
+use crate::tools::tools_description::tool_description_list_from_yaml;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 
