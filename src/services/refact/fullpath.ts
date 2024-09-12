@@ -35,10 +35,7 @@ export const pathApi = createApi({
           return { error: result.error };
         }
 
-        console.log({ result, path });
-
         if (!isFullPathResponse(result.data)) {
-          console.log("Invalid");
           return {
             meta: result.meta,
             error: {
@@ -50,12 +47,8 @@ export const pathApi = createApi({
         }
 
         if (result.data.is_directory) {
-          console.log("isDirectory");
           return { data: null };
         }
-
-        console.log("Got data");
-        console.log(result.data);
 
         return { data: result.data.fullpath };
       },
