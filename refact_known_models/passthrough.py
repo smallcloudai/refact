@@ -89,4 +89,37 @@ passthrough_mini_db = {
         "pp1000t_generated": 15_000,
         "filter_caps": ["chat", "tools"],
     },
+    "gpt-4o-2024-05-13": {
+        "backend": "litellm",
+        "provider": "openai",
+        "tokenizer_path": "Xenova/gpt-4o",
+        "resolve_as": "gpt-4o-2024-05-13",
+        "T": 128_000,
+        "T_out": 4096,
+        "pp1000t_prompt": 5_000,
+        "pp1000t_generated": 15_000,  # $15.00 / 1M tokens
+        "filter_caps": ["chat", "tools"],
+    },
+    "gpt-4o-2024-08-06": {
+        "backend": "litellm",
+        "provider": "openai",
+        "tokenizer_path": "Xenova/gpt-4o",
+        "resolve_as": "gpt-4o-2024-08-06",
+        "T": 128_000,
+        "T_out": 4096,
+        "pp1000t_prompt": 2_500,
+        "pp1000t_generated": 10_000,  # $15.00 / 1M tokens
+        "filter_caps": ["chat", "tools"]
+    },
+    "gpt-4o-mini": {
+        "backend": "litellm",
+        "provider": "openai",
+        "tokenizer_path": "Xenova/gpt-4o",
+        "resolve_as": "gpt-4o-mini-2024-07-18",
+        "T": 128_000,
+        "T_out": 4096,
+        "pp1000t_prompt": 150,
+        "pp1000t_generated": 600,  # $0.60 / 1M tokens
+        "filter_caps": ["chat", "tools"],
+    },
 }
