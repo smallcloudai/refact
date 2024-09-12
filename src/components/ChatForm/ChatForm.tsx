@@ -6,7 +6,12 @@ import styles from "./ChatForm.module.css";
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
 import { TextArea, TextAreaProps } from "../TextArea";
 import { Form } from "./Form";
-import { useOnPressedEnter, useIsOnline, useConfig } from "../../hooks";
+import {
+  useOnPressedEnter,
+  useIsOnline,
+  useConfig,
+  // useSendChatRequest,
+} from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { Button } from "@radix-ui/themes";
 import { ComboBox } from "../ComboBox";
@@ -19,6 +24,7 @@ import { useAppSelector, useAppDispatch } from "../../hooks";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useCheckboxes } from "./useCheckBoxes";
+// import { selectMessages } from "../../features/Chat";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -66,6 +72,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const { checkboxes, onToggleCheckbox, setInteracted, unCheckAll } =
     useCheckboxes();
+
+  // const { submit } = useSendChatRequest(); // used to generate a chat title
+  // const messages = useAppSelector(selectMessages);
 
   const { previewFiles, commands, requestCompletion } =
     useCommandCompletionAndPreviewFiles(checkboxes);
@@ -140,6 +149,18 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     },
     [setInteracted, handleHelpInfo],
   );
+
+  // useEffect(() => {
+  //   // TODO ask for a chat title here and update the title in the chat panel
+  //   // Also, make sure it happens only once and only when it has only one message.
+  //   console.log(`[DEBUG]: messages.length: ${messages.length}`);
+  //   if (messages.length === 2 && !isStreaming) {
+  //     const hiddenMessage =
+  //       "Generate a nice 2-3 word title for current chat. As a response, give only a chat title, nothing else.";
+  //     submit(hiddenMessage);
+  //     console.log(`[DEBUG]: message sent!`);
+  //   }
+  // }, [submit, messages.length, isStreaming]);
 
   if (error) {
     return (

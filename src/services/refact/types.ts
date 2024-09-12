@@ -1,3 +1,5 @@
+import { GetChatTitleResponse } from "./chat";
+
 export type ChatRole =
   | "user"
   | "assistant"
@@ -254,6 +256,13 @@ export function isChatUserMessageResponse(
 export type UserMessageResponse = ChatUserMessageResponse & {
   role: "user";
 };
+
+export function isChatGetTitleResponse(
+  json: unknown,
+): json is GetChatTitleResponse {
+  if (!isChatUserMessageResponse(json)) return false;
+  return true;
+}
 
 export function isUserResponse(json: unknown): json is UserMessageResponse {
   if (!isChatUserMessageResponse(json)) return false;
