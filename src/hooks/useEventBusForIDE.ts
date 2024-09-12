@@ -92,14 +92,12 @@ export const useEventsBusForIDE = () => {
         .unwrap()
         .then((res) => {
           const file_name = res ?? file.file_name;
-          console.log({ res, _, file, file_name });
           const action = ideOpenFile({ file_name, line: file.line });
-          console.log({ action });
           postMessage(action);
         })
         .catch(() => ({}));
     },
-    [_, getFullPath, postMessage],
+    [getFullPath, postMessage],
   );
 
   const openChatInNewTab = useCallback(
