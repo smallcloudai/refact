@@ -23,6 +23,8 @@ export const ideOpenChatInNewTab = createAction<ChatThread>(
   "ide/openChatInNewTab",
 );
 
+import { pathApi } from "../services/refact/fullpath";
+
 export const useEventsBusForIDE = () => {
   const postMessage = usePostMessage();
   // const canPaste = useAppSelector((state) => state.active_file.can_paste);
@@ -82,6 +84,18 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const [getFullPath, _] = pathApi.useLazyGetFullPathQuery();
+
+  const queryPathThenOpenFile = useCallback(
+    async (file: OpenFilePayload) => {
+      const res = await getFullPath(file.file_name).unwrap();
+      const file_name = res ?? file.file_name;
+      const action = ideOpenFile({ file_name, line: file.line });
+      postMessage(action);
+    },
+    [getFullPath, postMessage],
+  );
+
   const openChatInNewTab = useCallback(
     (thread: ChatThread) => {
       const action = ideOpenChatInNewTab(thread);
@@ -99,6 +113,7 @@ export const useEventsBusForIDE = () => {
     openChatInNewTab,
     setupHost,
     diffPreview,
+    queryPathThenOpenFile,
     // canPaste,
   };
 };
