@@ -44,6 +44,7 @@ RUN cd /tmp/refact-lsp \
 COPY . /tmp/app
 RUN echo "refact $(git -C /tmp/app rev-parse HEAD)" >> /refact-build-info.txt
 RUN pip install ninja
+RUN pip install -U cython
 RUN pip install /tmp/app -v --no-build-isolation && rm -rf /tmp/app
 
 ENV REFACT_PERM_DIR "/perm_storage"
