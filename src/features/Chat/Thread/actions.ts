@@ -1,6 +1,7 @@
 import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { type ChatThread, type PayloadWithId, type ToolUse } from "./types";
 import {
+  isAssistantMessage,
   isChatGetTitleResponse,
   type ChatMessages,
   type ChatResponse,
@@ -10,7 +11,6 @@ import type { SystemPrompts } from "../../../services/refact/prompts";
 import { formatMessagesForLsp, consumeStream } from "./utils";
 import { generateChatTitle, sendChat } from "../../../services/refact/chat";
 import { ToolCommand } from "../../../services/refact/tools";
-// import { saveChat } from "../../History/historySlice";
 
 export const newChatAction = createAction("chatThread/new");
 
@@ -99,20 +99,17 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
       if (!response.ok) {
         return Promise.reject(new Error(response.statusText));
       }
-      console.log(`[DEBUG]: response: `, response);
       return response.json();
     })
     .then((data) => {
       if (!isChatGetTitleResponse(data)) {
-        console.log(`return nothing`);
         return;
       }
 
       const title = data.choices[0].message.content;
+      const cleanedTitle = title.replace(/"/g, "");
 
-      console.log(`[DEBUG]: title: ${title}`);
-      // return title;
-      // thunkAPI.dispatch(saveChat({...state.chat.thread, title})) // shitty place where everything breaks
+      return { title: cleanedTitle, chatId: state.chat.thread.id };
     })
     .catch((err: Error) => {
       // console.log("Catch called");
@@ -164,5 +161,20 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     })
     .finally(() => {
       thunkAPI.dispatch(doneStreaming({ id: chatId }));
+      if (state.chat.thread.messages.filter(isAssistantMessage).length === 1) {
+        thunkAPI
+          .dispatch(
+            chatGenerateTitleThunk({
+              messages: state.chat.thread.messages,
+              chatId,
+            }),
+          )
+          .then(() => {
+            return;
+          })
+          .catch(() => {
+            return;
+          });
+      }
     });
 });

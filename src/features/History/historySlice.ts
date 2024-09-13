@@ -12,7 +12,7 @@ import {
   removeChatFromCache,
   restoreChat,
 } from "../Chat/Thread";
-import { isAssistantMessage, isUserMessage } from "../../services/refact";
+import { isChatGetTitleActionPayload } from "../../services/refact";
 import { AppDispatch, RootState } from "../../app/store";
 
 export type ChatHistoryItem = ChatThread & {
@@ -36,16 +36,6 @@ export const historySlice = createSlice({
   reducers: {
     saveChat: (state, action: PayloadAction<ChatThread>) => {
       if (action.payload.messages.length === 0) return state;
-
-      console.log(
-        `[DEBUG]: action.payload.messages: `,
-        action.payload.messages,
-      );
-      console.log(
-        `[DEBUG]: action.payload.messages.length (UserMessage): `,
-        action.payload.messages.filter(isUserMessage).length,
-      );
-      console.log(`[DEBUG]: action.payload.title: ${action.payload.title}`);
 
       const now = new Date().toISOString();
       const chat: ChatHistoryItem = {
@@ -90,6 +80,13 @@ export const historySlice = createSlice({
         b.updatedAt.localeCompare(a.updatedAt),
       ),
   },
+  extraReducers(builder) {
+    builder.addCase(chatGenerateTitleThunk.fulfilled, (state, action) => {
+      // making a logic on fulfilled status of thunk and updating title of a chat thread
+      if (!isChatGetTitleActionPayload(action.payload)) return state;
+      state[action.payload.chatId].title = action.payload.title;
+    });
+  },
 });
 
 export const { saveChat, deleteChatById, markChatAsUnread, markChatAsRead } =
@@ -112,24 +109,6 @@ startHistoryListening({
     } else if (action.payload.id in state.chat.cache) {
       listenerApi.dispatch(saveChat(state.chat.cache[action.payload.id]));
       listenerApi.dispatch(removeChatFromCache({ id: action.payload.id }));
-    }
-
-    if (state.chat.thread.messages.filter(isAssistantMessage).length === 1) {
-      setTimeout(() => {
-        listenerApi
-          .dispatch(
-            chatGenerateTitleThunk({
-              messages: state.chat.thread.messages,
-              chatId: action.payload.id,
-            }),
-          )
-          .then((title) => {
-            console.log(`[DEBUG]: title (then chain of thunk): `, title);
-          })
-          .catch((error) => {
-            console.error(error);
-          });
-      }, 3000);
     }
   },
 });

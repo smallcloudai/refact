@@ -51,6 +51,11 @@ export type GetChatTitleResponse = {
   usage: Usage;
 };
 
+export type GetChatTitleActionPayload = {
+  chatId: string;
+  title: string;
+};
+
 export type Choice = {
   finish_reason: string;
   index: number;
@@ -136,8 +141,6 @@ export async function generateChatTitle({
   messages,
   model,
   stream,
-  // lspUrl,
-  // takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
   chatId: chat_id,
   port = 8001,
@@ -155,7 +158,6 @@ export async function generateChatTitle({
     chat_id,
   });
 
-  //   const apiKey = getApiKey();
   const headers = {
     "Content-Type": "application/json",
     ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),

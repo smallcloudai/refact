@@ -1,4 +1,4 @@
-import { GetChatTitleResponse } from "./chat";
+import { GetChatTitleActionPayload, GetChatTitleResponse } from "./chat";
 
 export type ChatRole =
   | "user"
@@ -260,8 +260,31 @@ export type UserMessageResponse = ChatUserMessageResponse & {
 export function isChatGetTitleResponse(
   json: unknown,
 ): json is GetChatTitleResponse {
-  if (!isChatUserMessageResponse(json)) return false;
-  return true;
+  if (!json || typeof json !== "object") return false;
+
+  const requiredKeys = [
+    "id",
+    "choices",
+    "metering_balance",
+    "model",
+    "object",
+    "system_fingerprint",
+    "usage",
+    "created",
+    "deterministic_messages",
+  ];
+
+  return requiredKeys.every((key) => key in json);
+}
+
+export function isChatGetTitleActionPayload(
+  json: unknown,
+): json is GetChatTitleActionPayload {
+  if (!json || typeof json !== "object") return false;
+
+  const requiredKeys = ["title", "chatId"];
+
+  return requiredKeys.every((key) => key in json);
 }
 
 export function isUserResponse(json: unknown): json is UserMessageResponse {

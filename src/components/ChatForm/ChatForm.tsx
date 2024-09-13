@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 
 import { Flex, Card, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
@@ -15,7 +15,12 @@ import {
 import { ErrorCallout, Callout } from "../Callout";
 import { Button } from "@radix-ui/themes";
 import { ComboBox } from "../ComboBox";
-import { CodeChatModel, SystemPrompts } from "../../services/refact";
+import {
+  CodeChatModel,
+  isAssistantMessage,
+  isUserMessage,
+  SystemPrompts,
+} from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
@@ -24,7 +29,12 @@ import { useAppSelector, useAppDispatch } from "../../hooks";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useCheckboxes } from "./useCheckBoxes";
-// import { selectMessages } from "../../features/Chat";
+import {
+  chatGenerateTitleThunk,
+  selectChatId,
+  selectMessages,
+  selectThreadTitle,
+} from "../../features/Chat";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -73,8 +83,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const { checkboxes, onToggleCheckbox, setInteracted, unCheckAll } =
     useCheckboxes();
 
-  // const { submit } = useSendChatRequest(); // used to generate a chat title
-  // const messages = useAppSelector(selectMessages);
+  const messages = useAppSelector(selectMessages);
+  const chatId = useAppSelector(selectChatId);
+  const threadTitle = useAppSelector(selectThreadTitle);
 
   const { previewFiles, commands, requestCompletion } =
     useCommandCompletionAndPreviewFiles(checkboxes);
@@ -150,17 +161,24 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [setInteracted, handleHelpInfo],
   );
 
-  // useEffect(() => {
-  //   // TODO ask for a chat title here and update the title in the chat panel
-  //   // Also, make sure it happens only once and only when it has only one message.
-  //   console.log(`[DEBUG]: messages.length: ${messages.length}`);
-  //   if (messages.length === 2 && !isStreaming) {
-  //     const hiddenMessage =
-  //       "Generate a nice 2-3 word title for current chat. As a response, give only a chat title, nothing else.";
-  //     submit(hiddenMessage);
-  //     console.log(`[DEBUG]: message sent!`);
-  //   }
-  // }, [submit, messages.length, isStreaming]);
+  useEffect(() => {
+    // TODO ask for a chat title here and update the title in the chat panel
+    // Also, make sure it happens only once and only when it has only one message.
+    if (
+      messages.filter(isUserMessage).length === 1 &&
+      messages.filter(isAssistantMessage).length === 1 &&
+      !isStreaming &&
+      threadTitle === ""
+    ) {
+      dispatch(chatGenerateTitleThunk({ messages, chatId }))
+        .then(() => {
+          return;
+        })
+        .catch(() => {
+          return;
+        });
+    }
+  }, [dispatch, isStreaming, chatId, messages, threadTitle]);
 
   if (error) {
     return (
