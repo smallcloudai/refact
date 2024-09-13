@@ -15,7 +15,7 @@ use tokio::sync::{Mutex as AMutex, Semaphore};
 use tokio::sync::RwLock as ARwLock;
 use tracing::{error, info};
 
-use crate::ast::alt_minimalistic::AltState;
+use crate::ast::ast_indexing_thread::{AstIndexService, ast_service_init};
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
@@ -123,7 +123,7 @@ pub struct GlobalContext {
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<VecDb>>>,
-    pub ast_module: Option<Arc<AMutex<AltState>>>,
+    pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub vec_db_error: String,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
@@ -282,7 +282,7 @@ pub async fn create_global_context(
         let path = crate::files_correction::canonical_path(&cmdline.workspace_folder);
         workspace_dirs = vec![path];
     }
-    let cx = GlobalContext {
+    let mut cx = GlobalContext {
         cmdline: cmdline.clone(),
         http_client,
         http_client_slowdown: Arc::new(Semaphore::new(2)),
@@ -296,23 +296,16 @@ pub async fn create_global_context(
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vec_db: Arc::new(AMutex::new(None)),
-        ast_module: None,
+        ast_service: None,
         vec_db_error: String::new(),
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState::new(workspace_dirs).await,
         at_commands_preview_cache: Arc::new(AMutex::new(AtCommandsPreviewCache::new())),
     };
-    let gcx = Arc::new(ARwLock::new(cx));
     if cmdline.ast {
-        let ast_module = Arc::new(ARwLock::new(
-            AstModule::ast_indexer_init(
-                cmdline.ast_max_files,
-                shutdown_flag.clone(),
-                cmdline.ast_light_mode
-            ).await.expect("Failed to initialize ast module")
-        ));
-        gcx.write().await.ast_module = Some(ast_module);
+        cx.ast_service = Some(ast_service_init().await);
     }
+    let gcx = Arc::new(ARwLock::new(cx));
     {
         let gcx_weak = Arc::downgrade(&gcx);
         gcx.write().await.documents_state.init_watcher(gcx_weak, tokio::runtime::Handle::current());

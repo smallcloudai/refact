@@ -1,9 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use futures::{
-    channel::mpsc::{channel, Receiver},
-    SinkExt, StreamExt,
-};
+use futures::channel::mpsc::{channel, Receiver};
+use futures::{SinkExt, StreamExt};
 use tracing::{info, error};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde_json::Value;
@@ -11,9 +9,10 @@ use tokio::fs::File;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
 use tokio::sync::RwLock as ARwLock;
-use crate::files_in_workspace::Document;
 
+use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
+use crate::ast::ast_indexing_thread::ast_indexer_enqueue_files;
 
 
 pub async fn enqueue_all_docs_from_jsonl(
@@ -29,19 +28,18 @@ pub async fn enqueue_all_docs_from_jsonl(
     for d in paths.iter() {
         docs.push(Document { doc_path: d.clone(), doc_text: None });
     }
-    let (vec_db_module, ast_module) = {
-        let cx = gcx.write().await;
-        *cx.documents_state.cache_dirty.lock().await = true;
-        let jsonl_files = &mut cx.documents_state.jsonl_files.lock().unwrap();
+    let (vec_db_module, ast_service) = {
+        let gcx_locked = gcx.write().await;
+        *gcx_locked.documents_state.cache_dirty.lock().await = true;
+        let jsonl_files = &mut gcx_locked.documents_state.jsonl_files.lock().unwrap();
         jsonl_files.clear();
         jsonl_files.extend(paths);
-        (cx.vec_db.clone(), cx.ast_module.clone())
+        (gcx_locked.vec_db.clone(), gcx_locked.ast_service.clone())
     };
-    if let Some(ast) = &ast_module {
+    if let Some(ast) = &ast_service {
         if !vecdb_only {
-            let x = ast.read().await;
-            x.ast_reset_index(force).await;
-            x.ast_indexer_enqueue_files(&docs, force).await;
+            let cpaths: Vec<String> = docs.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
+            ast_indexer_enqueue_files(ast.clone(), cpaths, force).await;
         }
     }
     match *vec_db_module.lock().await {

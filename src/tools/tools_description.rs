@@ -37,7 +37,7 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
     let (ast_on, vecdb_on, allow_experimental) = {
         let gcx_locked = gcx.read().await;
         let vecdb = gcx_locked.vec_db.lock().await;
-        (gcx_locked.ast_module.is_some(), vecdb.is_some(), gcx_locked.cmdline.experimental)
+        (gcx_locked.ast_service.is_some(), vecdb.is_some(), gcx_locked.cmdline.experimental)
     };
 
     let integrations_yaml = yaml_integrations_read(gcx).await.unwrap_or_else(|e| {

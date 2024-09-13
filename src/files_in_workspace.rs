@@ -3,18 +3,18 @@ use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::{Arc, Weak, Mutex as StdMutex};
 use std::time::Instant;
-use crate::global_context::GlobalContext;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use notify::event::{CreateKind, DataChange, ModifyKind, RemoveKind};
 use ropey::Rope;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
-
-use tracing::info;
 use walkdir::WalkDir;
 use which::which;
+use tracing::info;
 
+use crate::global_context::GlobalContext;
 use crate::telemetry;
 use crate::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS};
+use crate::ast::ast_indexing_thread::ast_indexer_enqueue_files;
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
@@ -391,15 +391,16 @@ async fn enqueue_some_docs(
     if docs.len() > 5 {
         info!("    ...");
     }
-    let (vec_db_module, ast_module) = {
+    let (vec_db_module, ast_service) = {
         let cx = gcx.write().await;
-        (cx.vec_db.clone(), cx.ast_module.clone())
+        (cx.vec_db.clone(), cx.ast_service.clone())
     };
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&docs, force).await;
     }
-    if let Some(ast) = &ast_module {
-        ast.read().await.ast_indexer_enqueue_files(&docs, force).await;
+    if let Some(ast) = &ast_service {
+        let cpaths: Vec<String> = docs.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
+        ast_indexer_enqueue_files(ast.clone(), cpaths, force).await;
     }
 }
 
@@ -413,21 +414,20 @@ pub async fn enqueue_all_files_from_workspace_folders(
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
     let paths = _retrieve_files_in_workspace_folders(folders).await;
     info!("enqueue_all_files_from_workspace_folders found {} files => workspace_files", paths.len());
-    let newset: HashSet<PathBuf> = paths.iter().cloned().collect();
 
     let mut documents: Vec<Document> = vec![];
     for d in paths.iter() {
         documents.push(Document { doc_path: d.clone(), doc_text: None });
     }
 
-    let (vec_db_module, ast_module, removed_old) = {
+    let (vec_db_module, ast_service, removed_old) = {
         let cx = gcx.write().await;
         *cx.documents_state.cache_dirty.lock().await = true;
-        let workspace_files = &mut cx.documents_state.workspace_files.lock().unwrap();
-        let removed_old: HashSet<PathBuf> = workspace_files.iter().filter(|p|!newset.contains(*p)).cloned().collect();
-        workspace_files.clear();
+        let mut workspace_files = cx.documents_state.workspace_files.lock().unwrap();
+        let mut old_workspace_files = Vec::new();
+        std::mem::swap(&mut *workspace_files, &mut old_workspace_files);
         workspace_files.extend(paths);
-        (cx.vec_db.clone(), cx.ast_module.clone(), removed_old)
+        (cx.vec_db.clone(), cx.ast_service.clone(), old_workspace_files)
     };
     info!("detected {} deleted files", removed_old.len());
     for p in removed_old.iter().take(5) {
@@ -436,18 +436,16 @@ pub async fn enqueue_all_files_from_workspace_folders(
     if removed_old.len() > 5 {
         info!("    ...");
     }
-    let full_rebuild = removed_old.len() > 0;
 
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&documents, force).await;
     }
-    if let Some(ast) = &ast_module {
+    if let Some(ast) = ast_service {
         if !vecdb_only {
-            let x = ast.read().await;
-            if full_rebuild {
-                x.ast_reset_index(force).await;
-            }
-            x.ast_indexer_enqueue_files(&documents, force).await;
+            let cpaths1: Vec<String> = documents.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
+            let cpaths2: Vec<String> = removed_old.iter().map(|p| p.to_string_lossy().to_string()).collect();
+            ast_indexer_enqueue_files(ast.clone(), cpaths1, force).await;
+            ast_indexer_enqueue_files(ast.clone(), cpaths2, force).await;
         }
     }
     documents.len() as i32
@@ -535,10 +533,10 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
 {
     info!("on_did_delete {}", crate::nicer_logs::last_n_chars(&path.to_string_lossy().to_string(), 30));
 
-    let (vec_db_module, ast_module, dirty_arc) = {
+    let (vec_db_module, ast_service, dirty_arc) = {
         let mut cx = gcx.write().await;
         cx.documents_state.memory_document_map.remove(path);
-        (cx.vec_db.clone(), cx.ast_module.clone(), cx.documents_state.cache_dirty.clone())
+        (cx.vec_db.clone(), cx.ast_service.clone(), cx.documents_state.cache_dirty.clone())
     };
 
     (*dirty_arc.lock().await) = true;
@@ -547,21 +545,10 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         Some(ref mut db) => db.remove_file(path).await,
         None => {}
     }
-    match &ast_module {
-        Some(ast) => {
-            match ast.write().await.ast_remove_file(path).await {
-                Ok(_) => {}
-                Err(err) => {
-                    info!(
-                        "cannot remove file {}, {}",
-                        crate::nicer_logs::last_n_chars(&path.to_string_lossy().to_string(), 30),
-                        err
-                    );
-                }
-            }
-        },
-        None => {}
-    };
+    if let Some(ast) = &ast_service {
+        let cpath = path.to_string_lossy().to_string();
+        ast_indexer_enqueue_files(ast.clone(), vec![cpath], false).await;
+    }
 }
 
 pub async fn add_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
