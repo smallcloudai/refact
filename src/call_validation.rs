@@ -4,7 +4,6 @@ use std::hash::Hash;
 use axum::http::StatusCode;
 use indexmap::IndexMap;
 use ropey::Rope;
-use uuid::Uuid;
 use crate::custom_error::ScratchError;
 
 
@@ -207,7 +206,7 @@ pub struct ContextFile {
     pub line1: usize,   // starts from 1, zero means non-valid
     pub line2: usize,   // starts from 1
     #[serde(default, skip_serializing)]
-    pub symbols: Vec<Uuid>,
+    pub symbols: Vec<String>,
     #[serde(default = "default_gradient_type_value", skip_serializing)]
     pub gradient_type: i32,
     #[serde(default, skip_serializing)]

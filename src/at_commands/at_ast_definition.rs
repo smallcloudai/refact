@@ -3,53 +3,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
-use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_params::AtParamSymbolPathQuery;
 use crate::call_validation::{ContextFile, ContextEnum};
-use crate::ast::ast_module::AstModule;
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
-
-
-pub async fn results2message(result: &AstDeclarationSearchResult) -> Vec<ContextFile> {
-    // info!("results2message {:?}", result);
-    let mut symbols = vec![];
-    for res in &result.exact_matches {
-        let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
-        let content = res.symbol_declaration.get_content_from_file().await.unwrap_or("".to_string());
-        symbols.push(ContextFile {
-            file_name,
-            file_content: content,
-            line1: res.symbol_declaration.full_range.start_point.row + 1,
-            line2: res.symbol_declaration.full_range.end_point.row + 1,
-            symbols: vec![res.symbol_declaration.guid.clone()],
-            gradient_type: -1,
-            usefulness: res.usefulness,
-            is_body_important: false
-        });
-    }
-    symbols
-}
-
-async fn run_at_definition(ast: &Option<Arc<ARwLock<AstModule>>>, symbol: &String) -> Result<Vec<ContextFile>, String> {
-    match &ast {
-        Some(ast) => {
-            match ast.read().await.search_declarations(symbol.clone()).await {
-                Ok(res) => {
-                    Ok(results2message(&res).await)
-                },
-                Err(err) => {
-                    Err(err)
-                }
-            }
-        }
-        None => {
-            Err("Ast module is not available".to_string())
-        }
-    }
-}
 
 
 pub struct AtAstDefinition {
@@ -94,21 +53,41 @@ impl AtCommand for AtAstDefinition {
         args.push(symbol.clone());
 
         let gcx = ccx.lock().await.global_context.clone();
-        let ast = gcx.read().await.ast_module.clone();
-        let results = run_at_definition(&ast, &symbol.text).await?;
-        let file_paths = results.iter().map(|x| x.file_name.clone()).collect::<Vec<_>>();
-        let text = if let Some(path0) = file_paths.get(0) {
-            let path = PathBuf::from(path0);
-            let file_name = path.file_name().unwrap_or(OsStr::new(path0)).to_string_lossy();
-            if file_paths.len() > 1 {
-                format!("`{}` (defined in {} and other files)", &symbol.text, file_name)
+        let ast_service_opt = gcx.read().await.ast_service.clone();
+        if let Some(ast_service) = ast_service_opt {
+            let alt_index = ast_service.lock().await.alt_index;
+            let defs = crate::ast::alt_db::definitions(alt_index, symbol.text.as_str()).await;
+            let file_paths = defs.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
+            let text = if let Some(path0) = file_paths.get(0) {
+                let path = PathBuf::from(path0);
+                let file_name = path.file_name().unwrap_or(OsStr::new(path0)).to_string_lossy();
+                if file_paths.len() > 1 {
+                    format!("`{}` (defined in {} and other files)", &symbol.text, file_name)
+                } else {
+                    format!("`{}` (defined in {})", &symbol.text, file_name)
+                }
             } else {
-                format!("`{}` (defined in {})", &symbol.text, file_name)
+                format!("`{}` (definition not found in the AST tree)", &symbol.text)
+            };
+            let mut result = vec![];
+            for res in &defs {
+                let file_name = res.cpath.clone();
+                let content = res.get_content_from_file().await.unwrap_or("".to_string());
+                result.push(ContextFile {
+                    file_name,
+                    file_content: content,
+                    line1: res.full_range.start_point.row + 1,
+                    line2: res.full_range.end_point.row + 1,
+                    symbols: vec![res.path()],
+                    gradient_type: -1,
+                    usefulness: 100.0,
+                    is_body_important: false
+                });
             }
+            Ok((result.into_iter().map(|x| ContextEnum::ContextFile(x)).collect::<Vec<ContextEnum>>(), text))
         } else {
-            format!("`{}` (definition not found in AST tree)", &symbol.text)
-        };
-        Ok((results.into_iter().map(|x| ContextEnum::ContextFile(x)).collect::<Vec<ContextEnum>>(), text))
+            Err("attempt to use @definition with no ast turned on".to_string())
+        }
     }
 
     fn depends_on(&self) -> Vec<String> {

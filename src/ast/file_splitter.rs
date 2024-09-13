@@ -7,13 +7,13 @@ use tokio::sync::RwLock;
 use tracing::info;
 use std::cell::RefCell;
 use uuid::Uuid;
-use std::path::PathBuf;
 
 use crate::ast::chunk_utils::get_chunks;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::skeletonizer::make_formatter;
 use crate::ast::treesitter::structs::SymbolType;
+use crate::ast::treesitter::file_ast_markup::FileASTMarkup;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 use crate::vecdb::vdb_file_splitter::FileSplitter;
@@ -24,12 +24,6 @@ pub(crate) const LINES_OVERLAP: usize = 3;
 
 pub struct AstBasedFileSplitter {
     fallback_file_splitter: FileSplitter,
-}
-
-pub struct FileASTMarkup {
-    pub file_path: PathBuf,
-    pub file_content: String,
-    pub symbols_sorted_by_path_len: Vec<SymbolInformation>,
 }
 
 pub fn lowlevel_file_markup(

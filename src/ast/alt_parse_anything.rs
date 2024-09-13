@@ -348,6 +348,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>
                         this_is_a_class,
                         this_class_derived_from,
                         usages: vec![],
+                        cpath: cpath.as_string(),
                         full_range: symbol.full_range().clone(),
                         declaration_range: symbol.declaration_range().clone(),
                         definition_range: symbol.definition_range().clone(),

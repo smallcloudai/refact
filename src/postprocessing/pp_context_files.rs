@@ -10,7 +10,6 @@ use crate::ast::treesitter::structs::SymbolType;
 
 use crate::call_validation::{ContextFile, PostprocessSettings};
 use crate::global_context::GlobalContext;
-use crate::ast::structs::FileASTMarkup;
 use crate::files_correction::{canonical_path, correct_to_nearest_filename};
 use crate::nicer_logs::{first_n_chars, last_n_chars};
 use crate::postprocessing::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, downgrade_lines_if_subsymbol, pp_ast_markup_files};

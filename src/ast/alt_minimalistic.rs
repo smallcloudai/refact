@@ -24,6 +24,7 @@ pub struct AltDefinition {
     pub usages: Vec<Usage>,
     pub this_is_a_class: String,              // cpp🔎Goat
     pub this_class_derived_from: Vec<String>, // cpp🔎Animal, cpp🔎CosmicJustice
+    pub cpath: String,
     #[serde(with = "RangeDef")]
     pub full_range: Range,
     #[serde(with = "RangeDef")]
