@@ -20,7 +20,6 @@ pub async fn postprocess_diff_chunks_from_message(
     }
 
     let gcx = ccx.lock().await.global_context.clone();
-    let maybe_ast_module = gcx.read().await.ast_module.clone();
     correct_and_validate_chunks(gcx, chunks).await?;
     let mut chunks_per_files = HashMap::new();
     for chunk in chunks.iter() {
@@ -79,57 +78,48 @@ pub async fn postprocess_diff_chunks_from_message(
             warn!("Diff application error: text_after is missing for the filename:\n{:?}", file_name);
             return Err(format!("Diff application error: text_after is missing for the filename:\n{:?}", file_name));
         };
-        match &maybe_ast_module {
-            Some(ast_module) => {
-                let before_error_symbols = match parse_and_get_error_symbols(
-                    ast_module.clone(),
-                    &path,
-                    &text_before,
-                ).await {
-                    Ok(symbols) => symbols,
-                    Err(err) => {
-                        warn!("Error getting symbols from file: {:?}, skipping ast assessment", err);
-                        continue;
-                    }
-                };
-                let after_error_symbols = match parse_and_get_error_symbols(
-                    ast_module.clone(),
-                    &path,
-                    &Rope::from_str(&text_after),
-                ).await {
-                    Ok(symbols) => symbols,
-                    Err(err) => {
-                        warn!("Error getting symbols from file: {:?}, skipping ast assessment", err);
-                        continue;
-                    }
-                };
-                if before_error_symbols.len() < after_error_symbols.len() {
-                    let message = format!(
-                        "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs",
-                        path, before_error_symbols.len(), after_error_symbols.len()
-                    );
-                    return Err(message);
-                }
+        let before_error_symbols = match parse_and_get_error_symbols(
+            &path,
+            &text_before,
+        ).await {
+            Ok(symbols) => symbols,
+            Err(err) => {
+                warn!("Error getting symbols from file: {:?}, skipping ast assessment", err);
+                continue;
+            }
+        };
+        let after_error_symbols = match parse_and_get_error_symbols(
+            &path,
+            &Rope::from_str(&text_after),
+        ).await {
+            Ok(symbols) => symbols,
+            Err(err) => {
+                warn!("Error getting symbols from file: {:?}, skipping ast assessment", err);
+                continue;
+            }
+        };
+        if before_error_symbols.len() < after_error_symbols.len() {
+            let message = format!(
+                "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs",
+                path, before_error_symbols.len(), after_error_symbols.len()
+            );
+            return Err(message);
+        }
 
-                let before_lint_errors = lint_and_get_error_messages(
-                    &path,
-                    &Rope::from_str(&text_after),
-                );
-                let after_lint_errors = lint_and_get_error_messages(
-                    &path,
-                    &Rope::from_str(&text_after),
-                );
-                if before_lint_errors.len() < after_lint_errors.len() {
-                    let message = format!(
-                        "Linting has failed: the generated diff had introduced lint issues into the file `{:?}`: {} before errs < {} after errs",
-                        path, before_lint_errors.len(), after_lint_errors.len()
-                    );
-                    return Err(message);
-                }
-            }
-            None => {
-                warn!("AST module is disabled, the diff assessment is skipping");
-            }
+        let before_lint_errors = lint_and_get_error_messages(
+            &path,
+            &Rope::from_str(&text_after),
+        );
+        let after_lint_errors = lint_and_get_error_messages(
+            &path,
+            &Rope::from_str(&text_after),
+        );
+        if before_lint_errors.len() < after_lint_errors.len() {
+            let message = format!(
+                "Linting has failed: the generated diff had introduced lint issues into the file `{:?}`: {} before errs < {} after errs",
+                path, before_lint_errors.len(), after_lint_errors.len()
+            );
+            return Err(message);
         }
     }
 

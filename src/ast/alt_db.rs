@@ -4,19 +4,19 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::task;
-use crate::ast::alt_minimalistic::{AltIndex, AltDefinition, AltIndexCounters};
+use crate::ast::alt_minimalistic::{AstDB, AstDefinition, AstCounters};
 use crate::ast::alt_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
 
 
-pub async fn alt_index_init() -> Arc<AMutex<AltIndex>>
+pub async fn alt_index_init() -> Arc<AMutex<AstDB>>
 {
     let db: Arc<Db> = Arc::new(task::spawn_blocking(|| sled::open("/tmp/my_db.sled").unwrap()).await.unwrap());
     db.clear().unwrap();
     // db.open_tree(b"unprocessed items").unwrap();
-    let altindex = AltIndex {
+    let ast_index = AstDB {
         sleddb: db,
     };
-    Arc::new(AMutex::new(altindex))
+    Arc::new(AMutex::new(ast_index))
 }
 
 // ## How the database works ##
@@ -25,7 +25,7 @@ pub async fn alt_index_init() -> Arc<AMutex<AltIndex>>
 //
 // All the definitions are serialized under d/ like this:
 //   d/alt_testsuite::cpp_goat_main::CosmicJustice::CosmicJustice
-//   AltDefinition { alt_testsuite::cpp_goat_main::CosmicJustice::CosmicJustice, usages: Link{ up alt_testsuite::cpp_goat_main::CosmicJustice::balance } }
+//   AstDefinition { alt_testsuite::cpp_goat_main::CosmicJustice::CosmicJustice, usages: Link{ up alt_testsuite::cpp_goat_main::CosmicJustice::balance } }
 //
 // You can look up a shorter path than the full path, by using c/ records:
 //   c/main::goat1 ⚡ alt_testsuite::cpp_goat_main::main::goat1
@@ -39,12 +39,12 @@ pub async fn alt_index_init() -> Arc<AMutex<AltIndex>>
 // Read tests below, the show what this index can do!
 //
 
-pub async fn fetch_counters(altindex: Arc<AMutex<AltIndex>>) -> AltIndexCounters
+pub async fn fetch_counters(ast_index: Arc<AMutex<AstDB>>) -> AstCounters
 {
-    let db = altindex.lock().await.sleddb.clone();
+    let db = ast_index.lock().await.sleddb.clone();
     let counter_defs = db.get(b"counters/defs").unwrap().map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0);
     let counter_usages = db.get(b"counters/usages").unwrap().map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0);
-    AltIndexCounters {
+    AstCounters {
         counter_defs,
         counter_usages,
     }
@@ -64,11 +64,11 @@ fn _increase_counter(db: &sled::Db, counter_key: &[u8], adjustment: i32) {
 
 }
 
-pub async fn doc_add(altindex: Arc<AMutex<AltIndex>>, cpath: &String, text: &String) -> Vec<Arc<AltDefinition>>
+pub async fn doc_add(ast_index: Arc<AMutex<AstDB>>, cpath: &String, text: &String) -> Vec<Arc<AstDefinition>>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let (defs, _language) = parse_anything_and_add_file_path(&cpath, text);
-    let db = altindex.lock().await.sleddb.clone();
+    let db = ast_index.lock().await.sleddb.clone();
     let mut batch = sled::Batch::default();
     let mut added_defs: i32 = 0;
     let mut added_usages: i32 = 0;
@@ -90,7 +90,7 @@ pub async fn doc_add(altindex: Arc<AMutex<AltIndex>>, cpath: &String, text: &Str
             }
             added_usages += 1;
         }
-        // AltDefinition { CosmicGoat, this_is_a_class: cpp🔎CosmicGoat, derived_from: "cpp🔎Goat" "cpp🔎CosmicJustice" }
+        // AstDefinition { CosmicGoat, this_is_a_class: cpp🔎CosmicGoat, derived_from: "cpp🔎Goat" "cpp🔎CosmicJustice" }
         for from in &definition.this_class_derived_from {
             let t_key = format!("t/{} ⚡ {}", from, official_path);
             batch.insert(t_key.as_bytes(), definition.this_is_a_class.as_bytes());
@@ -107,21 +107,21 @@ pub async fn doc_add(altindex: Arc<AMutex<AltIndex>>, cpath: &String, text: &Str
     }
     _increase_counter(&db, b"counters/defs", added_defs);
     _increase_counter(&db, b"counters/usages", added_usages);
-    defs.values().cloned().map(Arc::new).collect()
+    defs.into_values().map(Arc::new).collect()
 }
 
-pub async fn doc_remove(altindex: Arc<AMutex<AltIndex>>, cpath: &String)
+pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let d_prefix = format!("d/{}", file_global_path.join("::"));
-    let db = altindex.lock().await.sleddb.clone();
+    let db = ast_index.lock().await.sleddb.clone();
     let mut batch = sled::Batch::default();
     let mut iter = db.scan_prefix(d_prefix);
     let mut deleted_defs: i32 = 0;
     let mut deleted_usages: i32 = 0;
     while let Some(Ok((key, value))) = iter.next() {
         let d_key_b = key.clone();
-        if let Ok(definition) = serde_cbor::from_slice::<AltDefinition>(&value) {
+        if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
             let mut path_parts: Vec<&str> = definition.official_path.iter().map(|s| s.as_str()).collect();
             let official_path = definition.official_path.join("::");
             while !path_parts.is_empty() {
@@ -167,24 +167,24 @@ pub async fn doc_remove(altindex: Arc<AMutex<AltIndex>>, cpath: &String)
     _increase_counter(&db, b"counters/usages", -deleted_usages);
 }
 
-pub async fn doc_symbols(altindex: Arc<AMutex<AltIndex>>, cpath: &String) -> Vec<Arc<AltDefinition>>
+pub async fn doc_symbols(ast_index: Arc<AMutex<AstDB>>, cpath: &String) -> Vec<Arc<AstDefinition>>
 {
     let to_search_prefix = filesystem_path_to_double_colon_path(cpath);
     let d_prefix = format!("d/{}", to_search_prefix.join("::"));
-    let db = altindex.lock().await.sleddb.clone();
+    let db = ast_index.lock().await.sleddb.clone();
     let mut defs = Vec::new();
     let mut iter = db.scan_prefix(d_prefix);
     while let Some(Ok((_, value))) = iter.next() {
-        if let Ok(definition) = serde_cbor::from_slice::<AltDefinition>(&value) {
+        if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
             defs.push(Arc::new(definition));
         }
     }
     defs
 }
 
-async fn connect_usages(altindex: Arc<AMutex<AltIndex>>)
+async fn connect_usages(ast_index: Arc<AMutex<AstDB>>)
 {
-    let db = altindex.lock().await.sleddb.clone();
+    let db = ast_index.lock().await.sleddb.clone();
     let mut iter = db.scan_prefix("d/");
     let mut batch = sled::Batch::default();
 
@@ -192,7 +192,7 @@ async fn connect_usages(altindex: Arc<AMutex<AltIndex>>)
     // println!("derived_from_map {:?}", derived_from_map);
 
     while let Some(Ok((_key, value))) = iter.next() {
-        if let Ok(definition) = serde_cbor::from_slice::<AltDefinition>(&value) {
+        if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
             _connect_usages_helper(&db, &derived_from_map, &definition, &mut batch).await;
         }
     }
@@ -202,16 +202,16 @@ async fn connect_usages(altindex: Arc<AMutex<AltIndex>>)
     }
 }
 
-async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &HashMap<String, Vec<String>>, definition: &AltDefinition, batch: &mut sled::Batch)
+async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &HashMap<String, Vec<String>>, definition: &AstDefinition, batch: &mut sled::Batch)
 {
     // Data example:
     // (1) c/Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
     // (2) c/cpp_goat_library::Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
     // (3) c/self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
     // (4) d/alt_testsuite::cpp_goat_library::Animal::self_review
-    //   AltDefinition { alt_testsuite::cpp_goat_library::Animal::self_review, usages: U{ up file::Animal::age } }
+    //   AstDefinition { alt_testsuite::cpp_goat_library::Animal::self_review, usages: U{ up file::Animal::age } }
     // (5) d/alt_testsuite::cpp_goat_library::Goat::jump_around
-    //   AltDefinition { alt_testsuite::cpp_goat_library::Goat::jump_around, usages: U{ n2p ?::cpp🔎Goat::self_review ?::self_review } U{ n2p ?::cpp🔎Goat::age ?::age } U{ up file::Goat::weight } }
+    //   AstDefinition { alt_testsuite::cpp_goat_library::Goat::jump_around, usages: U{ n2p ?::cpp🔎Goat::self_review ?::self_review } U{ n2p ?::cpp🔎Goat::age ?::age } U{ up file::Goat::weight } }
     //
     // Example of usage to resolve:
     // U{ n2p ?::cpp🔎Goat::self_review ?::self_review }
@@ -386,10 +386,10 @@ async fn _derived_from(db: &sled::Db) -> HashMap<String, Vec<String>> {
     all_derived_from
 }
 
-pub async fn usages(altindex: Arc<AMutex<AltIndex>>, full_official_path: String) -> Vec<Arc<AltDefinition>>
+pub async fn usages(ast_index: Arc<AMutex<AstDB>>, full_official_path: String) -> Vec<Arc<AstDefinition>>
 {
     // The best way to get full_official_path is to call definitions() first
-    let db = altindex.lock().await.sleddb.clone();
+    let db = ast_index.lock().await.sleddb.clone();
     let mut usages = Vec::new();
     let u_prefix = format!("u/{}", full_official_path);
     let mut iter = db.scan_prefix(&u_prefix);
@@ -400,7 +400,7 @@ pub async fn usages(altindex: Arc<AMutex<AltIndex>>, full_official_path: String)
             let full_path = parts[1].trim();
             let d_key = format!("d/{}", full_path);
             if let Ok(Some(d_value)) = db.get(d_key.as_bytes()) {
-                match serde_cbor::from_slice::<AltDefinition>(&d_value) {
+                match serde_cbor::from_slice::<AstDefinition>(&d_value) {
                     Ok(definition) => usages.push(Arc::new(definition)),
                     Err(e) => println!("Failed to deserialize value for {}: {:?}", d_key, e),
                 }
@@ -412,9 +412,9 @@ pub async fn usages(altindex: Arc<AMutex<AltIndex>>, full_official_path: String)
     usages
 }
 
-pub async fn definitions(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &str) -> Vec<Arc<AltDefinition>>
+pub async fn definitions(ast_index: Arc<AMutex<AstDB>>, double_colon_path: &str) -> Vec<Arc<AstDefinition>>
 {
-    let db = altindex.lock().await.sleddb.clone();
+    let db = ast_index.lock().await.sleddb.clone();
     let c_prefix = format!("c/{}", double_colon_path);
     let mut path_groups: HashMap<usize, Vec<String>> = HashMap::new();
     // println!("definitions(c_prefix={:?})", c_prefix);
@@ -440,7 +440,7 @@ pub async fn definitions(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &st
         for full_path in paths {
             let d_key = format!("d/{}", full_path);
             if let Ok(Some(d_value)) = db.get(d_key.as_bytes()) {
-                match serde_cbor::from_slice::<AltDefinition>(&d_value) {
+                match serde_cbor::from_slice::<AstDefinition>(&d_value) {
                     Ok(definition) => defs.push(Arc::new(definition)),
                     Err(e) => println!("Failed to deserialize value for {}: {:?}", d_key, e),
                 }
@@ -450,7 +450,7 @@ pub async fn definitions(altindex: Arc<AMutex<AltIndex>>, double_colon_path: &st
     defs
 }
 
-pub async fn type_hierarchy(altindex: Arc<AMutex<AltIndex>>, language: String, subtree_of: String) -> String
+pub async fn type_hierarchy(ast_index: Arc<AMutex<AstDB>>, language: String, subtree_of: String) -> String
 {
     // Data example:
     // t/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
@@ -470,7 +470,7 @@ pub async fn type_hierarchy(altindex: Arc<AMutex<AltIndex>>, language: String, s
     // CosmicJustice
     //    CosmicGoat
     //
-    let db = altindex.lock().await.sleddb.clone();
+    let db = ast_index.lock().await.sleddb.clone();
     let t_prefix = format!("t/{}", language);
     let mut iter = db.scan_prefix(&t_prefix);
     let mut hierarchy_map: HashMap<String, Vec<String>> = HashMap::new();
@@ -514,16 +514,32 @@ pub async fn type_hierarchy(altindex: Arc<AMutex<AltIndex>>, language: String, s
     result
 }
 
-async fn dump_database(altindex: Arc<AMutex<AltIndex>>)
+pub async fn definition_paths_fuzzy(ast_index: Arc<AMutex<AstDB>>, symbol: &str) -> Vec<String>
 {
-    let db = altindex.lock().await.sleddb.clone();
+    let db = ast_index.lock().await.sleddb.clone();
+    let mut matches = Vec::new();
+    let d_prefix = format!("d/{}", symbol);
+    let mut iter = db.scan_prefix(d_prefix);
+    while let Some(Ok((key, _))) = iter.next() {
+        let key_string = String::from_utf8(key.to_vec()).unwrap();
+        matches.push(key_string);
+        if matches.len() >= 100 {
+            break;
+        }
+    }
+    matches
+}
+
+pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>)
+{
+    let db = ast_index.lock().await.sleddb.clone();
     println!("\nsled has {} records", db.len());
     let iter = db.iter();
     for item in iter {
         let (key, value) = item.unwrap();
         let key_string = String::from_utf8(key.to_vec()).unwrap();
         if key_string.starts_with("d/") {
-            match serde_cbor::from_slice::<AltDefinition>(&value) {
+            match serde_cbor::from_slice::<AstDefinition>(&value) {
                 Ok(definition) => println!("{}\n{:?}", key_string, definition),
                 Err(e) => println!("Failed to deserialize value at {}: {:?}", key_string, e),
             }
@@ -548,25 +564,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_alt_db() {
-        let altindex = alt_index_init().await;
+        let ast_index = alt_index_init().await;
 
         let cpp_library_path = "src/ast/alt_testsuite/cpp_goat_library.h";
         let cpp_library_text = read_file(cpp_library_path);
-        doc_add(altindex.clone(), &cpp_library_path.to_string(), &cpp_library_text).await;
+        doc_add(ast_index.clone(), &cpp_library_path.to_string(), &cpp_library_text).await;
 
         let cpp_main_path = "src/ast/alt_testsuite/cpp_goat_main.cpp";
         let cpp_main_text = read_file(cpp_main_path);
-        doc_add(altindex.clone(), &cpp_main_path.to_string(), &cpp_main_text).await;
+        doc_add(ast_index.clone(), &cpp_main_path.to_string(), &cpp_main_text).await;
 
-        println!("Type hierachy:\n{}", type_hierarchy(altindex.clone(), "cpp".to_string(), "".to_string()).await);
-        println!("Type hierachy subtree_of=Animal:\n{}", type_hierarchy(altindex.clone(), "cpp".to_string(), "cpp🔎Animal".to_string()).await);
+        println!("Type hierachy:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "".to_string()).await);
+        println!("Type hierachy subtree_of=Animal:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "cpp🔎Animal".to_string()).await);
 
-        connect_usages(altindex.clone()).await;
+        connect_usages(ast_index.clone()).await;
 
-        dump_database(altindex.clone()).await;
+        dump_database(ast_index.clone()).await;
 
         // Goat::Goat() is a C++ constructor
-        let goat_def = definitions(altindex.clone(), "Goat::Goat").await;
+        let goat_def = definitions(ast_index.clone(), "Goat::Goat").await;
         let mut goat_def_str = String::new();
         for def in goat_def.iter() {
             goat_def_str.push_str(&format!("{:?}\n", def));
@@ -574,9 +590,9 @@ mod tests {
         println!("goat_def_str:\n{}", goat_def_str);
         assert!(goat_def.len() == 1);
 
-        let animalage_defs = definitions(altindex.clone(), "Animal::age").await;
+        let animalage_defs = definitions(ast_index.clone(), "Animal::age").await;
         let animalage_def0 = animalage_defs.first().unwrap();
-        let animalage_usage = usages(altindex.clone(), animalage_def0.path()).await;
+        let animalage_usage = usages(ast_index.clone(), animalage_def0.path()).await;
         let mut animalage_usage_str = String::new();
         for usage in animalage_usage.iter() {
             animalage_usage_str.push_str(&format!("{:?}\n", usage));
@@ -585,9 +601,9 @@ mod tests {
         // assert!(animalage_usage.len() == 3);
         // 3 is correct within one file, but there's another function CosmicGoat::say_hi in cpp_main_text
 
-        doc_remove(altindex.clone(), &cpp_library_path.to_string()).await;
-        doc_remove(altindex.clone(), &cpp_main_path.to_string()).await;
+        doc_remove(ast_index.clone(), &cpp_library_path.to_string()).await;
+        doc_remove(ast_index.clone(), &cpp_main_path.to_string()).await;
 
-        dump_database(altindex.clone()).await;
+        dump_database(ast_index.clone()).await;
     }
 }

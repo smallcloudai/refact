@@ -7,7 +7,7 @@ pub use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::structs::RangeDef;
 
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct Usage {
     // Linking means trying to match targets_for_guesswork against official_path, the longer
     // the matched path the more probability the linking was correct
@@ -17,8 +17,8 @@ pub struct Usage {
     pub uline: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct AltDefinition {
+#[derive(Serialize, Deserialize)]
+pub struct AstDefinition {
     pub official_path: Vec<String>,  // file::namespace::class::method becomes ["file", "namespace", "class", "method"]
     pub symbol_type: SymbolType,
     pub usages: Vec<Usage>,
@@ -33,7 +33,7 @@ pub struct AltDefinition {
     pub definition_range: Range,
 }
 
-impl AltDefinition {
+impl AstDefinition {
     pub fn path(&self) -> String {
         self.official_path.join("::")
     }
@@ -43,12 +43,15 @@ impl AltDefinition {
     }
 }
 
-pub struct AltIndex {
+pub struct AstDB {
     pub sleddb: Arc<sled::Db>,
 }
 
-pub struct AltIndexStatus {
+#[derive(Serialize, Clone)]
+pub struct AstStatus {
+    #[serde(skip)]
     pub astate_notify: Arc<ANotify>,
+    #[serde(rename = "state")]
     pub astate: String,
     pub files_unparsed: usize,
     pub files_total: usize,
@@ -56,12 +59,12 @@ pub struct AltIndexStatus {
     pub ast_index_symbols_total: i32,
 }
 
-pub struct AltIndexCounters {
+pub struct AstCounters {
     pub counter_defs: i32,
     pub counter_usages: i32,
 }
 
-impl fmt::Debug for AltDefinition {
+impl fmt::Debug for AstDefinition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let usages_paths: Vec<String> = self.usages.iter()
             .map(|link| format!("{:?}", link))
@@ -90,7 +93,7 @@ impl fmt::Debug for AltDefinition {
 
         write!(
             f,
-            "AltDefinition {{ {}{}{}{} }}",
+            "AstDefinition {{ {}{}{}{} }}",
             self.official_path.join("::"),
             usages_str,
             class_str,

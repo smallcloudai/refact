@@ -151,20 +151,19 @@ fn validate_post(post: &DiffPost) -> Result<(), ScratchError> {
     Ok(())
 }
 
-async fn sync_documents_ast_vecdb(global_context: Arc<ARwLock<GlobalContext>>, docs: Vec<Document>) -> Result<(), ScratchError> {
-    if let Some(ast) = global_context.write().await.ast_module.clone() {
-        let mut ast_write = ast.write().await;
-        for doc in docs.iter() {
-            let _ = ast_write.ast_add_file_no_queue(doc, true).await.map_err(|e| {
-                let e_text = format!("Failed to sync doc {:?} with AST. Error:\n{}", doc.doc_path, e);
-                warn!(e_text);
-            });
-        }
+#[allow(dead_code)]
+async fn _sync_documents_ast_vecdb(gcx: Arc<ARwLock<GlobalContext>>, docs: Vec<Document>) -> Result<(), ScratchError>
+{
+    // XXX: blocking should happen before any tool calls, not after applying diffs
+
+    let ast_service_opt = gcx.read().await.ast_service.clone();
+    if let Some(ast_service) = ast_service_opt {
+        crate::ast::ast_indexing_thread::ast_indexer_block_until_finished(ast_service.clone());
     }
 
     let vecdb_enqueued = if let Some(vservice) = {
-        let cx = global_context.write().await;
-        let vec_db_guard = cx.vec_db.lock().await;
+        let gcx_locked = gcx.write().await;
+        let vec_db_guard = gcx_locked.vec_db.lock().await;
         vec_db_guard.as_ref().map(|v| v.vectorizer_service.clone())
     } {
         vectorizer_enqueue_files(vservice, &docs, true).await;
@@ -174,7 +173,7 @@ async fn sync_documents_ast_vecdb(global_context: Arc<ARwLock<GlobalContext>>, d
     };
 
     if vecdb_enqueued {
-        let vecdb = global_context.write().await.vec_db.clone();
+        let vecdb = gcx.write().await.vec_db.clone();
         memories_block_until_vectorized(vecdb).await.map_err(|e|
             ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
         )?;
@@ -199,11 +198,11 @@ pub async fn handle_v1_diff_apply(
         diff_state.get(&post.id).map(|x| x.clone()).unwrap_or_default()
     };
     let desired_state = post.apply.clone();
-    let (results, outputs) = read_files_n_apply_diff_chunks(&post.chunks, &applied_state, &desired_state, MAX_FUZZY_N);
+    let (_results, outputs) = read_files_n_apply_diff_chunks(&post.chunks, &applied_state, &desired_state, MAX_FUZZY_N);
 
-    let docs2index = write_results_on_disk(results.clone()).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
-
-    sync_documents_ast_vecdb(global_context.clone(), docs2index).await?;
+    // XXX: blocking should happen before any tool calls, not after applying diffs
+    // let docs2index = write_results_on_disk(results.clone()).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
+    // sync_documents_ast_vecdb(global_context.clone(), docs2index).await?;
 
     let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, post.chunks);
 

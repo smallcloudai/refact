@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use indexmap::IndexMap;
 use uuid::Uuid;
-use crate::ast::alt_minimalistic::{AltDefinition, Usage};
+use crate::ast::alt_minimalistic::{AstDefinition, Usage};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, AstSymbolInstanceArc};
@@ -298,7 +298,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     }
 }
 
-pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>, String) {
+pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AstDefinition>, String) {
     let path = PathBuf::from(cpath);
     let mut parser = match get_ast_parser_by_filename(&path) {
         Ok(x) => x,
@@ -340,7 +340,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>
                     }
                 }
                 if !symbol.name().is_empty() {
-                    let definition = AltDefinition {
+                    let definition = AstDefinition {
                         // guid: symbol.guid().clone(),
                         // parent_guid: symbol.parent_guid().clone().unwrap_or_default(),
                         official_path: _path_of_node(&orig_map, Some(symbol.guid().clone())),
@@ -348,7 +348,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>
                         this_is_a_class,
                         this_class_derived_from,
                         usages: vec![],
-                        cpath: cpath.as_string(),
+                        cpath: cpath.to_string(),
                         full_range: symbol.full_range().clone(),
                         declaration_range: symbol.declaration_range().clone(),
                         definition_range: symbol.definition_range().clone(),
@@ -418,9 +418,10 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>
         }
     }
 
-    let mut sorted_definitions: Vec<(Uuid, AltDefinition)> = definitions.clone().into_iter().collect();
+    let mut sorted_definitions: Vec<(Uuid, AstDefinition)> = definitions.into_iter().collect();
     sorted_definitions.sort_by(|a, b| a.1.official_path.cmp(&b.1.official_path));
-    (IndexMap::from_iter(sorted_definitions), language)
+    let definitions = IndexMap::from_iter(sorted_definitions);
+    (definitions, language)
 }
 
 pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
@@ -442,7 +443,7 @@ pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
     components.iter().rev().take(2).cloned().collect::<Vec<_>>()
 }
 
-pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> (IndexMap<Uuid, AltDefinition>, String)
+pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> (IndexMap<Uuid, AstDefinition>, String)
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let file_global_path_str = file_global_path.join("::");

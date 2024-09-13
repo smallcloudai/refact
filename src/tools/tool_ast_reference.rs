@@ -5,12 +5,9 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 
-use crate::ast::structs::AstReferencesSearchResult;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tool_ast_definition::results2message;
 use crate::tools::tools_description::Tool;
-use crate::call_validation::{ChatMessage, ContextEnum};
-
+use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 
 pub struct ToolAstReference;
 
@@ -23,11 +20,12 @@ impl Tool for ToolAstReference {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let mut corrections = false;
-        let mut symbol = match args.get("symbol") {
+        let symbol = match args.get("symbol") {
             Some(Value::String(s)) => s.clone(),
-            Some(v) => { return Err(format!("argument `symbol` is not a string: {:?}", v)) }
-            None => { return Err("argument `symbol` is missing".to_string()) }
+            Some(v) => return Err(format!("argument `symbol` is not a string: {:?}", v)),
+            None => return Err("argument `symbol` is missing".to_string()),
         };
+
         let skeleton = match args.get("skeleton") {
             Some(Value::Bool(s)) => *s,
             Some(Value::String(s)) => {
@@ -44,109 +42,90 @@ impl Tool for ToolAstReference {
         };
         ccx.lock().await.pp_skeleton = skeleton;
 
-        if let Some(dot_index) = symbol.find('.') {
-            symbol = symbol[dot_index + 1..].to_string();
-        }
+        let gcx = ccx.lock().await.global_context.clone();
+        let ast_service_opt = gcx.read().await.ast_service.clone();
+        if let Some(ast_service) = ast_service_opt {
+            let ast_index = ast_service.lock().await.ast_index.clone();
+            let defs = crate::ast::alt_db::definitions(ast_index.clone(), &symbol).await;
+            let mut all_results = vec![];
+            let mut messages = vec![];
 
-        let (gcx, _top_n) = {
-            let ccx_locked = ccx.lock().await;
-            (ccx_locked.global_context.clone(), ccx_locked.top_n)
-        };
+            const USAGES_LIMIT: usize = 20;
+            const DEFS_LIMIT: usize = 5;
 
-        let ast_mb = gcx.read().await.ast_module.clone();
-        let ast = ast_mb.ok_or_else(|| "AST support is turned off".to_string())?;
-        let res: AstReferencesSearchResult = ast.read().await.search_references(symbol.clone()).await?;
-        if (res.declaration_exact_matches.len() + res.declaration_fuzzy_matches.len()) == 0 {
-            // corrections = true;
-            // TODO: not a error!
-            return Err(format!("No definitions with the name `{}` or similar names were found in the project.", symbol).to_string());
-        }
-        let (mut messages, tool_message) = if !res.declaration_exact_matches.is_empty() {
-            let mut tool_message = format!("Definitions found:\n").to_string();
-            for r in res.declaration_exact_matches.iter() {
-                let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
-                let decl_range = &r.symbol_declaration.full_range;
-                tool_message.push_str(&format!(
-                    "`{}` at {}:{}-{}\n",
-                    r.symbol_declaration.symbol_path,
-                    file_path_str,
-                    decl_range.start_point.row + 1,
-                    decl_range.end_point.row + 1
-                ));
-            }
-            tool_message.push_str("\n");
-            if res.references_for_exact_matches.is_empty() {
-                tool_message.push_str("There are 0 references found in workspace for those definitions.");
-                (vec![], tool_message)
-            } else {
-                tool_message.push_str(format!("Found {} references in the workspace for those definitions:\n", res.references_for_exact_matches.len()).as_str());
-                let max_display = 20;
-                for (i, r) in res.references_for_exact_matches.iter().enumerate() {
-                    if i >= max_display {
-                        let remaining = res.references_for_exact_matches.len() - max_display;
-                        tool_message.push_str(&format!("...and {} more...\n", remaining));
-                        break;
-                    }
-                    let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
-                    let decl_range = &r.symbol_declaration.full_range;
-                    if decl_range.start_point.row == decl_range.end_point.row {
-                        tool_message.push_str(&format!(
-                            "`{}` at {}:{}\n",
-                            r.symbol_declaration.symbol_path,
-                            file_path_str,
-                            decl_range.start_point.row + 1
-                        ));
+            for (_i, def) in defs.iter().take(DEFS_LIMIT).enumerate() {
+                let usages = crate::ast::alt_db::usages(ast_index.clone(), def.path()).await;
+                let file_paths = usages.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
+                let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), file_paths.clone()).await;
+
+                let def_file_path = vec![def.cpath.clone()];
+                let short_def_file_path = crate::files_correction::shortify_paths(gcx.clone(), def_file_path.clone()).await;
+
+                let text = {
+                    let usage_count = usages.len();
+                    let usage_lines = usages.iter().zip(short_file_paths.iter()).take(USAGES_LIMIT).map(|(u, short_path)| format!("{}:{}", short_path, u.full_range.start_point.row + 1)).collect::<Vec<_>>();
+                    let more_usages = if usage_count > USAGES_LIMIT {
+                        format!("...and {} more", usage_count - USAGES_LIMIT)
                     } else {
-                        tool_message.push_str(&format!(
-                            "`{}` at {}:{}-{}\n",
-                            r.symbol_declaration.symbol_path,
-                            file_path_str,
-                            decl_range.start_point.row + 1,
-                            decl_range.end_point.row + 1
-                        ));
-                    }
-                }
-                let messages = results2message(&res.references_for_exact_matches, true)
-                    .await
-                    .into_iter().map(|x| ContextEnum::ContextFile(x))
-                    .collect::<Vec<ContextEnum>>();
-                (messages, tool_message)
-            }
-        } else {
-            corrections = true;
-            let mut tool_message = format!(
-                "No definition with name `{}` found in the workspace.\nThere are definitions with similar names though:\n",
-                symbol
-            ).to_string();
-            for r in res.declaration_fuzzy_matches.iter().take(20) {
-                let file_path_str = r.symbol_declaration.file_path.to_string_lossy();
-                let decl_range = &r.symbol_declaration.full_range;
-                tool_message.push_str(&format!(
-                    "`{}` at {}:{}-{}\n",
-                    r.symbol_declaration.symbol_path,
-                    file_path_str,
-                    decl_range.start_point.row + 1,
-                    decl_range.end_point.row + 1
-                ));
-            }
-            if res.declaration_fuzzy_matches.len() > 20 {
-                tool_message.push_str(&format!(
-                    "...and {} more...\n",
-                    res.declaration_fuzzy_matches.len() - 20
-                ));
-            }
-            // tool_message.push_str("You can call the `reference` tool one more time with one of those names.");
-            (vec![], tool_message)
-        };
+                        String::new()
+                    };
 
-        messages.push(ContextEnum::ChatMessage(ChatMessage {
-            role: "tool".to_string(),
-            content: tool_message.clone(),
-            tool_calls: None,
-            tool_call_id: tool_call_id.clone(),
-            ..Default::default()
-        }));
-        Ok((corrections, messages))
+                    format!(
+                        "For definition `{}` at {}:{}-{} there are {} usages:\n{}\n{}\n",
+                        symbol,
+                        short_def_file_path.get(0).unwrap_or(&def.path().to_string()),
+                        def.full_range.start_point.row + 1,
+                        def.full_range.end_point.row + 1,
+                        usage_count,
+                        usage_lines.join("\n"),
+                        more_usages
+                    )
+                };
+                messages.push(text);
+
+                for (res, short_path) in usages.iter().zip(short_file_paths.iter()).take(USAGES_LIMIT) {
+                    all_results.push(ContextFile {
+                        file_name: short_path.clone(),
+                        file_content: "".to_string(),
+                        line1: res.full_range.start_point.row + 1,
+                        line2: res.full_range.end_point.row + 1,
+                        symbols: vec![res.path()],
+                        gradient_type: -1,
+                        usefulness: 100.0,
+                        is_body_important: false
+                    });
+                }
+            }
+
+            if defs.len() > DEFS_LIMIT {
+                messages.push(format!("There are {} more symbol definitions that match the query, skipped", defs.len() - DEFS_LIMIT));
+            }
+
+            if defs.is_empty() {
+                corrections = true;
+                let fuzzy_matches: Vec<String> = crate::ast::alt_db::definition_paths_fuzzy(ast_index, &symbol).await.into_iter().take(20).collect();
+                let mut tool_message = format!(
+                    "No definitions with name `{}` found in the workspace, there are definitions with similar names though:\n",
+                    symbol
+                ).to_string();
+                for line in fuzzy_matches {
+                    tool_message.push_str(&format!("{}\n", line));
+                }
+                messages.push(tool_message);
+            }
+
+            let mut result_messages = all_results.into_iter().map(|x| ContextEnum::ContextFile(x)).collect::<Vec<ContextEnum>>();
+            result_messages.push(ContextEnum::ChatMessage(ChatMessage {
+                role: "tool".to_string(),
+                content: messages.join("\n"),
+                tool_calls: None,
+                tool_call_id: tool_call_id.clone(),
+                ..Default::default()
+            }));
+            Ok((corrections, result_messages))
+        } else {
+            Err("attempt to use @reference with no ast turned on".to_string())
+        }
     }
 
     fn tool_depends_on(&self) -> Vec<String> {

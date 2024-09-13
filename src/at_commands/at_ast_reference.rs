@@ -3,33 +3,11 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
-use crate::ast::structs::AstReferencesSearchResult;
-use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam, vec_context_file_to_context_tools};
-use crate::at_commands::at_params::AtParamSymbolPathQuery;
+use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::call_validation::{ContextFile, ContextEnum};
-use tracing::info;
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
+use crate::at_commands::at_ast_definition::AtParamSymbolPathQuery;
 
-
-async fn results2message(result: &AstReferencesSearchResult) -> Vec<ContextFile> {
-    // info!("results2message {:?}", result);
-    let mut symbols = vec![];
-    for res in &result.references_for_exact_matches {
-        let file_name = res.symbol_declaration.file_path.to_string_lossy().to_string();
-        let content = res.symbol_declaration.get_content_from_file().await.unwrap_or("".to_string());
-        symbols.push(ContextFile {
-            file_name,
-            file_content: content,
-            line1: res.symbol_declaration.full_range.start_point.row + 1,
-            line2: res.symbol_declaration.full_range.end_point.row + 1,
-            symbols: vec![res.symbol_declaration.guid.clone()],
-            gradient_type: -1,
-            usefulness: 0.5 * res.usefulness,
-            is_body_important: true
-        });
-    }
-    symbols
-}
 
 pub struct AtAstReference {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
@@ -45,23 +23,6 @@ impl AtAstReference {
     }
 }
 
-pub async fn execute_at_ast_reference(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-    symbol_path: &String,
-) -> Result<Vec<ContextFile>, String> {
-    let gcx = ccx.lock().await.global_context.clone();
-    let ast = gcx.read().await.ast_module.clone();
-    let x = match &ast {
-        Some(ast) => {
-            match ast.read().await.search_references(symbol_path.clone()).await {
-                Ok(res) => Ok(results2message(&res).await),
-                Err(err) => Err(err)
-            }
-        }
-        None => Err("Ast module is not available".to_string())
-    };
-    x
-}
 
 #[async_trait]
 impl AtCommand for AtAstReference {
@@ -75,25 +36,70 @@ impl AtCommand for AtAstReference {
         cmd: &mut AtCommandMember,
         args: &mut Vec<AtCommandMember>,
     ) -> Result<(Vec<ContextEnum>, String), String> {
-        info!("execute @references {:?}", args);
-        let mut symbol = match args.get(0) {
+        let mut arg_symbol = match args.get(0) {
             Some(x) => x.clone(),
             None => {
-                cmd.ok = false; cmd.reason = Some("no symbol path".to_string());
+                cmd.ok = false;
+                cmd.reason = Some("no symbol path".to_string());
                 args.clear();
                 return Err("no symbol path".to_string());
             },
         };
 
-        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut symbol).await;
+        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut arg_symbol).await;
         args.clear();
-        args.push(symbol.clone());
+        args.push(arg_symbol.clone());
 
-        let query_result = execute_at_ast_reference(ccx.clone(), &symbol.text).await?;
-        let results = vec_context_file_to_context_tools(query_result);
-        let text = format!("`{}` (found {} usages)", symbol.text, results.len());
+        let gcx = ccx.lock().await.global_context.clone();
+        let ast_service_opt = gcx.read().await.ast_service.clone();
 
-        Ok((results, text))
+        const USAGES_LIMIT: usize = 20;
+        const DEFS_LIMIT: usize = 5;
+
+        if let Some(ast_service) = ast_service_opt {
+            let ast_index = ast_service.lock().await.ast_index.clone();
+            let defs = crate::ast::alt_db::definitions(ast_index.clone(), arg_symbol.text.as_str()).await;
+            let mut all_results = vec![];
+            let mut messages = vec![];
+
+            const USAGES_LIMIT: usize = 20;
+
+            if let Some(def) = defs.get(0) {
+                let usages = crate::ast::alt_db::usages(ast_index.clone(), def.path()).await;
+                let usage_count = usages.len();
+                let file_paths = usages.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
+
+                let text = format!(
+                    "symbol `{}` has {} usages",
+                    arg_symbol.text,
+                    usage_count
+                );
+                messages.push(text);
+
+                for (res, short_path) in usages.iter().zip(file_paths.iter()).take(USAGES_LIMIT) {
+                    all_results.push(ContextFile {
+                        file_name: short_path.clone(),
+                        file_content: "".to_string(),
+                        line1: res.full_range.start_point.row + 1,
+                        line2: res.full_range.end_point.row + 1,
+                        symbols: vec![res.path()],
+                        gradient_type: -1,
+                        usefulness: 100.0,
+                        is_body_important: false
+                    });
+                }
+
+                if usage_count > USAGES_LIMIT {
+                    messages.push(format!("...and {} more usages", usage_count - USAGES_LIMIT));
+                }
+            } else {
+                messages.push("No definitions found for the symbol".to_string());
+            }
+
+            Ok((all_results.into_iter().map(|x| ContextEnum::ContextFile(x)).collect::<Vec<ContextEnum>>(), messages.join("\n")))
+        } else {
+            Err("attempt to use @references with no ast turned on".to_string())
+        }
     }
 
     fn depends_on(&self) -> Vec<String> {

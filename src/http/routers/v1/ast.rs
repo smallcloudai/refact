@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::path::PathBuf;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
@@ -8,7 +7,6 @@ use url::Url;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::ast::alt_minimalistic::SymbolType;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
 use crate::global_context::SharedGlobalContext;
@@ -41,215 +39,6 @@ struct FileNameOnlyPost {
     file_name: String,
 }
 
-
-pub async fn handle_v1_ast_search_by_name(
-    Extension(global_context): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<AstQuerySearchBy>(&body_bytes).map_err(|e| {
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-    let ast_module = global_context.read().await.ast_module.clone();
-    let search_res = match &ast_module {
-        Some(ast) => {
-            let symbol_type = if post.is_declaration {
-                SymbolType::Declaration
-            } else {
-                SymbolType::Usage
-            };
-            ast.read().await.search_by_name(post.query, symbol_type, post.use_fuzzy_search, post.top_n).await
-        }
-        None => {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
-            ));
-        }
-    };
-    match search_res {
-        Ok(search_res) => {
-            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
-                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
-            })?;
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .body(Body::from(json_string))
-                .unwrap())
-        }
-        Err(e) => {
-            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
-        }
-    }
-}
-
-pub async fn handle_v1_ast_search_by_content(
-    Extension(global_context): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<AstQuerySearchBy>(&body_bytes).map_err(|e| {
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-
-    let ast_module = global_context.read().await.ast_module.clone();
-    let search_res = match &ast_module {
-        Some(ast) => {
-            let symbol_type = if post.is_declaration {
-                RequestSymbolType::Declaration
-            } else {
-                RequestSymbolType::Usage
-            };
-            ast.read().await.search_by_content(post.query, symbol_type, post.top_n).await
-        }
-        None => {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
-            ));
-        }
-    };
-    match search_res {
-        Ok(search_res) => {
-            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
-                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
-            })?;
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .body(Body::from(json_string))
-                .unwrap())
-        }
-        Err(e) => {
-            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
-        }
-    }
-}
-
-pub async fn handle_v1_ast_search_related_declarations(
-    Extension(global_context): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<AstQuerySearchByGuid>(&body_bytes).map_err(|e| {
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-
-    let ast_module = global_context.read().await.ast_module.clone();
-    let search_res = match &ast_module {
-        Some(ast) => {
-            ast.read().await.search_related_declarations(&post.guid).await
-        }
-        None => {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
-            ));
-        }
-    };
-    match search_res {
-        Ok(search_res) => {
-            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
-                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
-            })?;
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .body(Body::from(json_string))
-                .unwrap())
-        }
-        Err(e) => {
-            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
-        }
-    }
-}
-
-pub async fn handle_v1_ast_search_usages_by_declarations(
-    Extension(global_context): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<AstQuerySearchByGuid>(&body_bytes).map_err(|e| {
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-
-    let ast_module = global_context.read().await.ast_module.clone();
-    let search_res = match &ast_module {
-        Some(ast) => {
-            ast.read().await.search_usages_by_declarations(&post.guid).await
-        }
-        None => {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
-            ));
-        }
-    };
-    match search_res {
-        Ok(search_res) => {
-            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
-                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
-            })?;
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .body(Body::from(json_string))
-                .unwrap())
-        }
-        Err(e) => {
-            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
-        }
-    }
-}
-
-pub async fn handle_v1_ast_file_markup(
-    Extension(global_context): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<FileNameOnlyPost>(&body_bytes).map_err(|e| {
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-    let corrected = crate::files_correction::correct_to_nearest_filename(
-        global_context.clone(),
-        &post.file_name,
-        false,
-        1,
-    ).await;
-    if corrected.len() == 0 {
-        return Ok(Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Body::from(serde_json::to_string_pretty(&json!({"detail": "File not found"})).unwrap()))
-            .unwrap());
-    }
-
-    let search_res = {
-        let ast_module = global_context.read().await.ast_module.clone();
-        let x = match &ast_module {
-            Some(ast) => {
-                // corrected is already canonical path, so skip it here
-                let mut doc = Document::new(&PathBuf::from(&corrected[0]));
-                let text = get_file_text_from_memory_or_disk(
-                    global_context.clone(),
-                    &doc.doc_path,
-                ).await.map_err(|e|{
-                    ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
-                })?;
-                doc.update_text(&text);
-
-                ast.read().await.file_markup(&doc).await
-            }
-            None => {
-                return Err(ScratchError::new(
-                    StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
-                ));
-            }
-        };
-        x
-    };
-    match search_res {
-        Ok(search_res) => {
-            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
-                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
-            })?;
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .body(Body::from(json_string))
-                .unwrap())
-        }
-        Err(e) => {
-            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
-        }
-    }
-}
 
 pub async fn handle_v1_ast_file_dump(
     Extension(global_context): Extension<SharedGlobalContext>,
@@ -307,17 +96,33 @@ pub async fn handle_v1_ast_file_symbols(
     let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let cpath = crate::files_correction::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
-    let mut doc = Document::new(&cpath);
-    let file_text = get_file_text_from_memory_or_disk(global_context.clone(), &cpath).await.map_err(|e|
+
+    let corrected = crate::files_correction::correct_to_nearest_filename(
+        global_context.clone(),
+        &post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string(),
+        false,
+        1,
+    ).await;
+
+    if corrected.len() == 0 {
+        return Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::from(serde_json::to_string_pretty(&json!({"detail": "File not found"})).unwrap()))
+            .unwrap());
+    }
+
+    let cpath = corrected[0].clone();
+    let mut doc = Document::new(&cpath.into());
+    let file_text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.doc_path).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
     )?;
     doc.update_text(&file_text);
 
-    let ast_module = global_context.read().await.ast_module.clone();
-    let search_res = match &ast_module {
-        Some(ast) => {
-            ast.read().await.get_file_symbols(RequestSymbolType::All, &doc).await
+    let ast_service_opt = global_context.read().await.ast_service.clone();
+    let search_res = match &ast_service_opt {
+        Some(ast_service) => {
+            let ast_index = ast_service.lock().await.ast_index.clone();
+            crate::ast::alt_db::doc_symbols(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
         }
         None => {
             return Err(ScratchError::new(
@@ -325,127 +130,24 @@ pub async fn handle_v1_ast_file_symbols(
             ));
         }
     };
-    match search_res {
-        Ok(search_res) => {
-            let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
-                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
-            })?;
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .body(Body::from(json_string))
-                .unwrap())
-        }
-        Err(e) => {
-            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
-        }
-    }
-}
-
-pub async fn handle_v1_ast_index_file(
-    Extension(global_context): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<AstFileUrlPost>(&body_bytes).map_err(|e| {
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
     })?;
-    let cpath = crate::files_correction::canonical_path(&post.file_url.to_file_path().unwrap_or_default().to_string_lossy().to_string());
-    let mut doc = Document::new(&cpath);
-    let text = get_file_text_from_memory_or_disk(global_context.clone(), &doc.doc_path).await.map_err(|e|
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
-    )?;
-    doc.update_text(&text);
-
-    let ast_module = global_context.read().await.ast_module.clone();
-    let add_res = match &ast_module {
-        Some(ast) => {
-            ast.write().await.ast_add_file_no_queue(&doc, false).await
-        }
-        None => {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
-            ));
-        }
-    };
-
-    match add_res {
-        Ok(_) => {
-            Ok(Response::builder().status(StatusCode::OK)
-                .body(Body::from("{}"))
-                .unwrap())
-        }
-        Err(e) => {
-            Err(ScratchError::new(StatusCode::BAD_REQUEST, e))
-        }
-    }
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from(json_string))
+        .unwrap())
 }
-
-pub async fn handle_v1_ast_force_reindex(
-    Extension(global_context): Extension<SharedGlobalContext>,
-    _: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let ast_module = global_context.read().await.ast_module.clone();
-    match &ast_module {
-        Some(ast) => {
-            match ast.write().await.ast_force_reindex().await {
-                Ok(_) => {
-                    Ok(Response::builder().status(StatusCode::OK)
-                        .body(Body::from("{}"))
-                        .unwrap())
-                }
-                Err(err) => {
-                    Err(ScratchError::new(
-                        StatusCode::INTERNAL_SERVER_ERROR, err,
-                    ))
-                }
-            }
-        }
-        None => {
-            Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
-            ))
-        }
-    }
-}
-
-pub async fn handle_v1_ast_clear_index(
-    Extension(global_context): Extension<SharedGlobalContext>,
-    _: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let ast_module = global_context.read().await.ast_module.clone();
-    let x = match &ast_module {
-        Some(ast) => {
-            match ast.write().await.clear_index().await {
-                Ok(_) => {
-                    Ok(Response::builder().status(StatusCode::OK)
-                        .body(Body::from("{}"))
-                        .unwrap())
-                }
-                Err(err) => {
-                    return Err(ScratchError::new(
-                        StatusCode::INTERNAL_SERVER_ERROR, err,
-                    ));
-                }
-            }
-        }
-        None => {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
-            ));
-        }
-    };
-    x
-}
-
 
 pub async fn handle_v1_ast_status(
     Extension(global_context): Extension<SharedGlobalContext>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let ast_module = global_context.read().await.ast_module.clone();
-    match &ast_module {
-        Some(ast) => {
-            let status = ast.read().await.ast_index_status().await;
-            let json_string = serde_json::to_string_pretty(&status).map_err(|e| {
+    let ast_service_opt = global_context.read().await.ast_service.clone();
+    match &ast_service_opt {
+        Some(ast_service) => {
+            let alt_status: std::sync::Arc<tokio::sync::Mutex<crate::ast::alt_minimalistic::AstStatus>> = ast_service.lock().await.alt_status.clone();
+            let json_string = serde_json::to_string_pretty(&*alt_status.lock().await).map_err(|e| {
                 ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
             })?;
             Ok(Response::builder()
@@ -455,7 +157,7 @@ pub async fn handle_v1_ast_status(
         }
         None => {
             Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, "Ast module is not available".to_string(),
+                StatusCode::INTERNAL_SERVER_ERROR, "ast module is turned off".to_string(),
             ))
         }
     }

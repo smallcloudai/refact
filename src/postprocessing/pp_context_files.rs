@@ -5,10 +5,10 @@ use std::path::PathBuf;
 use tracing::{info, warn};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
-use uuid::Uuid;
 use crate::ast::treesitter::structs::SymbolType;
 
 use crate::call_validation::{ContextFile, PostprocessSettings};
+use crate::ast::alt_minimalistic::AstDefinition;
 use crate::global_context::GlobalContext;
 use crate::files_correction::{canonical_path, correct_to_nearest_filename};
 use crate::nicer_logs::{first_n_chars, last_n_chars};
@@ -21,7 +21,8 @@ pub const DEBUG: usize = 0;  // 0 nothing, 1 summary "N lines in K files => X to
 
 #[derive(Debug)]
 pub struct PPFile {
-    pub markup: Vec<Arc<AltDefinition>>,
+    pub symbols_sorted_by_path_len: Vec<Arc<AstDefinition>>,
+    pub file_content: String,
     pub cpath: PathBuf,
     pub cpath_symmetry_breaker: f32,
     pub shorter_path: String,
@@ -41,7 +42,7 @@ pub struct FileLine {
 fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSettings) -> HashMap<PathBuf, Vec<FileLine>> {
     let mut lines_in_files = HashMap::new();
     for file_ref in files {
-        for (line_n, line) in file_ref.markup.file_content.lines().enumerate() {
+        for (line_n, line) in file_ref.file_content.lines().enumerate() {
             let a = FileLine {
                 file_ref: file_ref.clone(),
                 line_n,
@@ -57,18 +58,18 @@ fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSetti
     for lines in lines_in_files.values_mut().filter(|x|!x.is_empty()) {
         let file = lines.first().unwrap().file_ref.clone();
         if DEBUG >= 2 {
-            info!("file_ref {:?} has {} bytes, {} symbols", file.cpath, file.markup.file_content.len(), file.markup.symbols_sorted_by_path_len.len());
+            info!("file_ref {:?} has {} bytes, {} symbols", file.cpath, file.file_content.len(), file.symbols_sorted_by_path_len.len());
         }
-        for s in file.markup.symbols_sorted_by_path_len.iter() {
+        for s in file.symbols_sorted_by_path_len.iter() {
             if DEBUG >= 2 {
-                info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+                info!("    {} {:?} {}-{}", s.path(), s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
             }
             if s.symbol_type == SymbolType::CommentDefinition {
                 let useful = settings.useful_symbol_default;
                 colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, "comment".to_string(), useful);
             } else {
                 let useful = settings.useful_symbol_default;  // depends on symbol type?
-                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.symbol_path), useful);
+                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.path()), useful);
             }
         }
         colorize_if_more_useful(lines, 0, lines.len(), "empty".to_string(), settings.useful_background);
@@ -109,31 +110,29 @@ async fn set_lines_usefulness(
         let file_ref = lines.first().unwrap().file_ref.clone();
 
         let mut symbols_to_color = vec![];
-        if !msg.symbols.is_empty() && !(msg.symbols.len() == 1 && msg.symbols.first().unwrap_or(&Uuid::default()).is_nil()) {
-            for sym in msg.symbols.iter() {
-                if sym.is_nil() {
-                    continue;
-                }
+        if !msg.symbols.is_empty() && !(msg.symbols.len() == 1 && msg.symbols.first().unwrap_or(&String::new()).is_empty()) {
+            for sympath in msg.symbols.iter() {
                 let init_len = symbols_to_color.len();
-                for x in file_ref.markup.symbols_sorted_by_path_len.iter() {
-                    if x.guid == *sym {
+                for x in file_ref.symbols_sorted_by_path_len.iter() {
+                    if x.path() == *sympath {
                         symbols_to_color.push(x);
                         break;
                     }
                 }
                 if init_len == symbols_to_color.len() {
-                    warn!("- cannot find symbol {} in file {}:{}-{}", sym, msg.file_name, msg.line1, msg.line2);
+                    warn!("- cannot find symbol {} in file {}:{}-{}", sympath, msg.file_name, msg.line1, msg.line2);
                 }
             }
         }
 
+        // XXX: rethink is_body_important
         if !msg.is_body_important && !symbols_to_color.is_empty() {
             for s in symbols_to_color {
                 if DEBUG >= 1 {
-                    info!("+ search result {} {:?} {:.2}", s.symbol_path, s.symbol_type, msg.usefulness);
+                    info!("+ search result {} {:?} {:.2}", s.path(), s.symbol_type, msg.usefulness);
                 }
-                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.symbol_path), msg.usefulness);
-                let mut parent_path = s.symbol_path.split("::").collect::<Vec<_>>();
+                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.path()), msg.usefulness);
+                let mut parent_path = s.official_path.clone();
                 if parent_path.len() > 1 {
                     // MyClass::f  ->  MyClass
                     // make parent stand out from background as well, to make it clearer to the model where the symbol is
@@ -150,6 +149,7 @@ async fn set_lines_usefulness(
             }
             colorize_if_more_useful(lines, msg.line1.saturating_sub(1), msg.line2.saturating_sub(1), "nosymb".to_string(), msg.usefulness);
         }
+
         // example: see comment in class Toad
         colorize_comments_up(lines, settings);
     }
@@ -161,10 +161,10 @@ fn downgrade_sub_symbols(lines_in_files: &mut HashMap<PathBuf, Vec<FileLine>>, s
         if DEBUG >= 2 {
             info!("downgrading body of symbols in {:?}", file_ref.cpath);
         }
-        for s in file_ref.markup.symbols_sorted_by_path_len.iter() {
+        for s in file_ref.symbols_sorted_by_path_len.iter() {
             if s.definition_range.end_byte != 0 {
                 if DEBUG >= 2 {
-                    info!("    {} {:?} {}-{}", s.symbol_path, s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+                    info!("    {} {:?} {}-{}", s.path(), s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
                 }
                 // decl  void f() {
                 // def      int x = 5;
@@ -174,7 +174,7 @@ fn downgrade_sub_symbols(lines_in_files: &mut HashMap<PathBuf, Vec<FileLine>>, s
                     s.definition_range.end_point.row + 1
                 );
                 if def1 > def0 {
-                    downgrade_lines_if_subsymbol(lines, def0, def1, &format!("{}::body", s.symbol_path), settings.downgrade_body_coef);
+                    downgrade_lines_if_subsymbol(lines, def0, def1, &format!("{}::body", s.path()), settings.downgrade_body_coef);
                     // NOTE: this will not downgrade function body of a function that is a search result, because it's not a subsymbol it's the symbol itself (equal path)
                 }
             }

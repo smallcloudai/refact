@@ -7,13 +7,13 @@ use tracing::info;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
-use crate::ast::alt_minimalistic::{AltIndex, AltIndexStatus, AltIndexCounters};
+use crate::ast::alt_minimalistic::{AstDB, AstStatus, AstCounters};
 use crate::ast::alt_db::{alt_index_init, fetch_counters, doc_add, doc_remove};
 
 
 pub struct AstIndexService {
-    pub alt_index: Arc<AMutex<AltIndex>>,
-    pub alt_status: Arc<AMutex<AltIndexStatus>>,
+    pub ast_index: Arc<AMutex<AstDB>>,
+    pub alt_status: Arc<AMutex<AstStatus>>,
     pub ast_sleeping_point: Arc<ANotify>,
     pub ast_todo: IndexSet<String>,
 }
@@ -27,10 +27,10 @@ async fn ast_indexing_thread(
     let mut stats_symbols_cnt = 0;
     let mut stats_t0 = std::time::Instant::now();
     let mut stats_update_ts = std::time::Instant::now() - std::time::Duration::from_millis(200);
-    let (alt_index, alt_status, ast_sleeping_point) = {
+    let (ast_index, alt_status, ast_sleeping_point) = {
         let ast_service_locked = ast_service.lock().await;
         (
-            ast_service_locked.alt_index.clone(),
+            ast_service_locked.ast_index.clone(),
             ast_service_locked.alt_status.clone(),
             ast_service_locked.ast_sleeping_point.clone(),
         )
@@ -56,14 +56,14 @@ async fn ast_indexing_thread(
             };
             let mut doc = Document { doc_path: cpath.clone().into(), doc_text: None };
 
-            doc_remove(alt_index.clone(), &cpath).await;
+            doc_remove(ast_index.clone(), &cpath).await;
 
             match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await {
                 Ok(file_text) => {
                     doc.update_text(&file_text);
                     let start_time = std::time::Instant::now();
 
-                    let defs = doc_add(alt_index.clone(), &cpath, &file_text).await;
+                    let defs = doc_add(ast_index.clone(), &cpath, &file_text).await;
 
                     tracing::info!("doc_add {:.3?}s {}", start_time.elapsed().as_secs_f32(), crate::nicer_logs::last_n_chars(&cpath, 30));
                     stats_parsed_cnt += 1;
@@ -77,7 +77,7 @@ async fn ast_indexing_thread(
             }
 
             if stats_update_ts.elapsed() >= std::time::Duration::from_millis(200) {
-                let counters: AltIndexCounters = fetch_counters(alt_index.clone()).await;
+                let counters: AstCounters = fetch_counters(ast_index.clone()).await;
                 {
                     let mut status_locked = alt_status.lock().await;
                     status_locked.files_unparsed = left_todo_count;
@@ -102,7 +102,7 @@ async fn ast_indexing_thread(
             stats_parsed_cnt = 0;
             stats_symbols_cnt = 0;
             reported_idle = true;
-            let counters: AltIndexCounters = fetch_counters(alt_index.clone()).await;
+            let counters: AstCounters = fetch_counters(ast_index.clone()).await;
             {
                 let mut status_locked = alt_status.lock().await;
                 status_locked.files_unparsed = 0;
@@ -120,8 +120,8 @@ async fn ast_indexing_thread(
 
 
 pub async fn ast_service_init() -> Arc<AMutex<AstIndexService>> {
-    let alt_index = alt_index_init().await;
-    let alt_status = Arc::new(AMutex::new(AltIndexStatus {
+    let ast_index = alt_index_init().await;
+    let alt_status = Arc::new(AMutex::new(AstStatus {
         astate_notify: Arc::new(ANotify::new()),
         astate: String::from("starting"),
         files_unparsed: 0,
@@ -131,7 +131,7 @@ pub async fn ast_service_init() -> Arc<AMutex<AstIndexService>> {
     }));
     let ast_service = AstIndexService {
         ast_sleeping_point: Arc::new(ANotify::new()),
-        alt_index,
+        ast_index,
         alt_status,
         ast_todo: IndexSet::new(),
     };
@@ -162,3 +162,9 @@ pub async fn ast_indexer_enqueue_files(ast_service: Arc<AMutex<AstIndexService>>
         ast_service_locked.ast_sleeping_point.notify_one();
     }
 }
+
+pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexService>>)
+{
+    let _x = ast_service;
+}
+

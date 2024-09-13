@@ -87,7 +87,7 @@ pub async fn handle_v1_code_completion(
         }
     }
 
-    let ast_module = gcx.read().await.ast_module.clone();
+    let ast_service_opt = gcx.read().await.ast_service.clone();
     let mut scratchpad = scratchpads::create_code_completion_scratchpad(
         gcx.clone(),
         caps,
@@ -97,7 +97,7 @@ pub async fn handle_v1_code_completion(
         &scratchpad_patch,
         cache_arc.clone(),
         tele_storage.clone(),
-        ast_module
+        ast_service_opt
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
@@ -147,7 +147,7 @@ pub async fn handle_v1_code_completion_prompt(
         (cx_locked.completions_cache.clone(), cx_locked.telemetry.clone())
     };
 
-    let ast_module = gcx.read().await.ast_module.clone();
+    let ast_service_opt = gcx.read().await.ast_service.clone();
     let mut scratchpad = scratchpads::create_code_completion_scratchpad(
         gcx.clone(),
         caps,
@@ -157,7 +157,7 @@ pub async fn handle_v1_code_completion_prompt(
         &scratchpad_patch,
         cache_arc.clone(),
         tele_storage.clone(),
-        ast_module
+        ast_service_opt
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;

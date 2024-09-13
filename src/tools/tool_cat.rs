@@ -6,13 +6,12 @@ use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 
-use crate::ast::ast_mem_db::RequestSymbolType;
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, get_files_in_dir};
-use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
+use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 
 
 pub struct ToolCat;
@@ -95,31 +94,34 @@ impl Tool for ToolCat {
         let mut symbols_found = vec![];
 
         if !symbols_str.is_empty() {
-            let ast_arc = gcx.read().await.ast_module.clone().unwrap();
-            let ast_lock = ast_arc.read().await;
-            for p in corrected_paths.iter() {
-                let mut doc = Document::new(&PathBuf::from(p));
-                let text = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await?.to_string();
-                doc.update_text(&text);
-
-                let doc_syms = ast_lock.get_file_symbols(RequestSymbolType::All, &doc).await?.symbols;
-                let syms_intersection = doc_syms.into_iter().filter(|s|symbols_str.contains(&s.name)).collect::<Vec<_>>();
-                for sym in syms_intersection {
-                    symbols_found.push(sym.name.clone());
-                    let cf = ContextFile {
-                        file_name: p.clone(),
-                        file_content: "".to_string(),
-                        line1: sym.full_range.start_point.row + 1,
-                        line2: sym.full_range.end_point.row + 1,
-                        symbols: vec![sym.guid.clone()],
-                        gradient_type: -1,
-                        usefulness: 100.,
-                        is_body_important: false,
-                    };
-                    context_files_in.push(cf);
+            let gcx = ccx.lock().await.global_context.clone();
+            let ast_service_opt = gcx.read().await.ast_service.clone();
+            if let Some(ast_service) = ast_service_opt {
+                let ast_index = ast_service.lock().await.ast_index.clone();
+                for p in corrected_paths.iter() {
+                    // XXX verify if it still works
+                    let doc_syms = crate::ast::alt_db::doc_symbols(ast_index.clone(), &p).await;
+                    let syms_intersection = doc_syms.into_iter().filter(|s|symbols_str.contains(&s.name())).collect::<Vec<_>>();
+                    for sym in syms_intersection {
+                        symbols_found.push(sym.path().clone());
+                        let cf = ContextFile {
+                            file_name: p.clone(),
+                            file_content: "".to_string(),
+                            line1: sym.full_range.start_point.row + 1,
+                            line2: sym.full_range.end_point.row + 1,
+                            symbols: vec![sym.path()],
+                            gradient_type: -1,
+                            usefulness: 100.0,
+                            is_body_important: false,
+                        };
+                        context_files_in.push(cf);
+                    }
                 }
+            } else {
+                return Err("AST service is not available".to_string());
             }
         }
+
         let filenames_present = context_files_in.iter().map(|x|x.file_name.clone()).collect::<Vec<_>>();
         for p in corrected_paths.iter().filter(|x|!filenames_present.contains(x)) {
             let text = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await?.to_string();

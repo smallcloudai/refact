@@ -1,15 +1,40 @@
-use std::ffi::OsStr;
-use std::path::PathBuf;
 use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
-use tracing::info;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
-use crate::at_commands::at_params::AtParamSymbolPathQuery;
 use crate::call_validation::{ContextFile, ContextEnum};
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
+use strsim::jaro_winkler;
 
+
+#[derive(Debug)]
+pub struct AtParamSymbolPathQuery;
+
+impl AtParamSymbolPathQuery {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+fn full_path_score(path: &str, query: &str) -> f32 {
+    if jaro_winkler(&path, &query) <= 0.0 {
+        return 0.0;
+    }
+
+    let mut score = 1.0;
+    for query_comp in query.split("::") {
+        for (idx, p) in path.split("::").collect::<Vec<_>>().into_iter().rev().enumerate() {
+            let current_score = jaro_winkler(&query_comp, &p) as f32;
+            // quick exit if we have a full match in the name
+            if current_score >= 0.99 {
+                return score;
+            }
+            score *= current_score * (1.0 / (idx + 1) as f32);
+        }
+    }
+    score
+}
 
 pub struct AtAstDefinition {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
@@ -26,6 +51,55 @@ impl AtAstDefinition {
 }
 
 #[async_trait]
+impl AtParam for AtParamSymbolPathQuery {
+    async fn is_value_valid(
+        &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
+        value: &String,
+    ) -> bool {
+        !value.is_empty()
+    }
+
+    async fn param_completion(
+        &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        value: &String,
+    ) -> Vec<String> {
+        if value.is_empty() {
+            return vec![];
+        }
+        let (gcx, top_n) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.global_context.clone(), ccx_locked.top_n)
+        };
+        let ast = gcx.read().await.ast_module.clone();
+        let names = match &ast {
+            // Some(ast) => ast.read().await.get_symbols_paths(RequestSymbolType::Declaration).await.unwrap_or_default(),
+            // AST_FIX
+            Some(ast) => ast.read().await.get_symbols_paths(RequestSymbolType::Declaration).await.unwrap_or_default(),
+            None => vec![]
+        };
+
+        let value_lower = value.to_lowercase();
+        let mapped_paths = names
+            .iter()
+            .filter(|x| x.to_lowercase().contains(&value_lower) && !x.is_empty())
+            .map(|f| (f, full_path_score(&f, &value.to_string())));
+        let sorted_paths = mapped_paths
+            .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
+            .rev()
+            .map(|(s, _)| s.clone())
+            .take(top_n)
+            .collect::<Vec<String>>();
+        return sorted_paths;
+    }
+
+    fn param_completion_valid(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
 impl AtCommand for AtAstDefinition {
     fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
         &self.params
@@ -37,8 +111,7 @@ impl AtCommand for AtAstDefinition {
         cmd: &mut AtCommandMember,
         args: &mut Vec<AtCommandMember>,
     ) -> Result<(Vec<ContextEnum>, String), String> {
-        info!("execute @definition {:?}", args);
-        let mut symbol = match args.get(0) {
+        let mut arg_symbol = match args.get(0) {
             Some(x) => x.clone(),
             None => {
                 cmd.ok = false;
@@ -48,34 +121,33 @@ impl AtCommand for AtAstDefinition {
             },
         };
 
-        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut symbol).await;
+        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut arg_symbol).await;
         args.clear();
-        args.push(symbol.clone());
+        args.push(arg_symbol.clone());
 
         let gcx = ccx.lock().await.global_context.clone();
         let ast_service_opt = gcx.read().await.ast_service.clone();
         if let Some(ast_service) = ast_service_opt {
-            let alt_index = ast_service.lock().await.alt_index;
-            let defs = crate::ast::alt_db::definitions(alt_index, symbol.text.as_str()).await;
+            let ast_index = ast_service.lock().await.ast_index.clone();
+            let defs = crate::ast::alt_db::definitions(ast_index, arg_symbol.text.as_str()).await;
             let file_paths = defs.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
-            let text = if let Some(path0) = file_paths.get(0) {
-                let path = PathBuf::from(path0);
-                let file_name = path.file_name().unwrap_or(OsStr::new(path0)).to_string_lossy();
-                if file_paths.len() > 1 {
-                    format!("`{}` (defined in {} and other files)", &symbol.text, file_name)
+            let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), file_paths.clone()).await;
+
+            let text = if let Some(path0) = short_file_paths.get(0) {
+                if short_file_paths.len() > 1 {
+                    format!("`{}` (defined in {} and other files)", &arg_symbol.text, path0)
                 } else {
-                    format!("`{}` (defined in {})", &symbol.text, file_name)
+                    format!("`{}` (defined in {})", &arg_symbol.text, path0)
                 }
             } else {
-                format!("`{}` (definition not found in the AST tree)", &symbol.text)
+                format!("`{}` (definition not found in the AST tree)", &arg_symbol.text)
             };
+
             let mut result = vec![];
-            for res in &defs {
-                let file_name = res.cpath.clone();
-                let content = res.get_content_from_file().await.unwrap_or("".to_string());
+            for (res, short_path) in defs.iter().zip(short_file_paths.iter()) {
                 result.push(ContextFile {
-                    file_name,
-                    file_content: content,
+                    file_name: short_path.clone(),
+                    file_content: "".to_string(),
                     line1: res.full_range.start_point.row + 1,
                     line2: res.full_range.end_point.row + 1,
                     symbols: vec![res.path()],
