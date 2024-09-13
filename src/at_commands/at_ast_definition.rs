@@ -72,26 +72,22 @@ impl AtParam for AtParamSymbolPathQuery {
             let ccx_locked = ccx.lock().await;
             (ccx_locked.global_context.clone(), ccx_locked.top_n)
         };
-        let ast = gcx.read().await.ast_module.clone();
-        let names = match &ast {
-            // Some(ast) => ast.read().await.get_symbols_paths(RequestSymbolType::Declaration).await.unwrap_or_default(),
-            // AST_FIX
-            Some(ast) => ast.read().await.get_symbols_paths(RequestSymbolType::Declaration).await.unwrap_or_default(),
-            None => vec![]
-        };
 
-        let value_lower = value.to_lowercase();
-        let mapped_paths = names
+        let ast_service_opt = gcx.read().await.ast_service.clone();
+        if ast_service_opt.is_none() {
+            return vec![];
+        }
+        let ast_index = ast_service_opt.unwrap().lock().await.ast_index.clone();
+
+        let names = crate::ast::alt_db::definition_paths_fuzzy(ast_index, value).await;
+
+        let filtered_paths = names
             .iter()
-            .filter(|x| x.to_lowercase().contains(&value_lower) && !x.is_empty())
-            .map(|f| (f, full_path_score(&f, &value.to_string())));
-        let sorted_paths = mapped_paths
-            .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
-            .rev()
-            .map(|(s, _)| s.clone())
             .take(top_n)
+            .cloned()
             .collect::<Vec<String>>();
-        return sorted_paths;
+
+        filtered_paths
     }
 
     fn param_completion_valid(&self) -> bool {

@@ -3,17 +3,18 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
-use tokio::sync::{Mutex as AMutex, MutexGuard};
+use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 
-use crate::ast::alt_minimalistic::{AstIndex, SymbolType};
-use crate::ast::treesitter::structs::SymbolType;
+use crate::ast::alt_minimalistic::AstDB;
+// use crate::ast::ast_indexing_thread::AstIndexService;
+// use crate::ast::treesitter::structs::SymbolType;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, paths_from_anywhere};
-use crate::files_in_workspace::Document;
+// use crate::files_in_workspace::Document;
 
 
 pub struct AtTree {
@@ -70,7 +71,7 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
             let node = nodes_map.entry(current_path.clone()).or_insert_with(|| {
                 PathsHolderNodeArc(Arc::new(RwLock::new(
                     PathsHolderNode {
-                        path: current_path.clone(),
+                        path: current_path.clone(),   // XXX: make sure it's cpath
                         is_dir: !is_last,
                         child_paths: Vec::new(),
                         depth,
@@ -98,35 +99,36 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
     root_nodes
 }
 
-fn _print_symbols(ast_index_maybe: Option<&AstIndex>, entry: &PathsHolderNode) -> String
+fn _print_symbols(entry: &PathsHolderNode) -> String
 {
-    if let Some(ast) = ast_index_maybe {
-        let doc = Document { doc_path: entry.path.clone(), doc_text: None };
-        match ast.get_by_file_path(RequestSymbolType::Declaration, &doc) {
-            Ok(symbols) => {
-                let symbols_list = symbols
-                    .iter()
-                    .filter(|x| x.symbol_type == SymbolType::StructDeclaration
-                        || x.symbol_type == SymbolType::FunctionDeclaration)
-                    .filter(|x| !x.name.is_empty() && !x.name.starts_with("anon-"))
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<String>>()
-                    .join(", ");
-                if !symbols_list.is_empty() { format!(" ({symbols_list})") } else { "".to_string() }
-            }
-            Err(_) => "".to_string()
-        }
-    } else {
+    // XXX fix tree
+    // if let Some(ast) = ast_index_maybe {
+    //     let doc = Document { doc_path: entry.path.clone(), doc_text: None };
+    //     match ast.get_by_file_path(RequestSymbolType::Declaration, &doc) {
+    //         Ok(symbols) => {
+    //             let symbols_list = symbols
+    //                 .iter()
+    //                 .filter(|x| x.symbol_type == SymbolType::StructDeclaration
+    //                     || x.symbol_type == SymbolType::FunctionDeclaration)
+    //                 .filter(|x| !x.name.is_empty() && !x.name.starts_with("anon-"))
+    //                 .map(|x| x.name.clone())
+    //                 .collect::<Vec<String>>()
+    //                 .join(", ");
+    //             if !symbols_list.is_empty() { format!(" ({symbols_list})") } else { "".to_string() }
+    //         }
+    //         Err(_) => "".to_string()
+    //     }
+    // } else {
         "".to_string()
-    }
+    // }
 }
 
 fn _print_files_tree(
     tree: &Vec<PathsHolderNodeArc>,
-    ast_index_maybe: Option<&AstIndex>,
+    ast_db: Option<Arc<AMutex<AstDB>>>,
     maxdepth: usize,
 ) -> String {
-    fn traverse(node: &PathsHolderNodeArc, depth: usize, maxdepth: usize, ast_index: Option<&AstIndex>) -> Option<String> {
+    fn traverse(node: &PathsHolderNodeArc, depth: usize, maxdepth: usize, ast_db: Option<Arc<AMutex<AstDB>>>) -> Option<String> {
         if depth > maxdepth {
             return None;
         }
@@ -135,14 +137,14 @@ fn _print_files_tree(
         let indent = "  ".repeat(depth);
         let name = if node.is_dir { format!("{}/", node.file_name()) } else { node.file_name() };
         if !node.is_dir {
-            output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(ast_index, &node)));
+            output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(&node)));
             return Some(output);
         }
         output.push_str(&format!("{}{}\n", indent, name));
         let (mut dirs, mut files) = (0, 0);
         let mut child_output = String::new();
         for child in &node.child_paths {
-            if let Some(child_str) = traverse(child, depth + 1, maxdepth, ast_index) {
+            if let Some(child_str) = traverse(child, depth + 1, maxdepth, ast_db.clone()) {
                 child_output.push_str(&child_str);
             } else {
                 dirs += child.0.read().unwrap().is_dir as usize;
@@ -159,7 +161,7 @@ fn _print_files_tree(
 
     let mut result = String::new();
     for node in tree {
-        if let Some(output) = traverse(&node, 0, maxdepth, ast_index_maybe) {
+        if let Some(output) = traverse(&node, 0, maxdepth, ast_db.clone()) {
             result.push_str(&output);
         } else {
             break;
@@ -171,11 +173,11 @@ fn _print_files_tree(
 fn _print_files_tree_with_budget(
     tree: Vec<PathsHolderNodeArc>,
     char_limit: usize,
-    ast_index_maybe: Option<&AstIndex>,
+    ast_db: Option<Arc<AMutex<AstDB>>>,
 ) -> String {
     let mut good_enough = String::new();
     for maxdepth in 1..20 {
-        let bigger_tree_str = _print_files_tree(&tree, ast_index_maybe, maxdepth);
+        let bigger_tree_str = _print_files_tree(&tree, ast_db.clone(), maxdepth);
         if bigger_tree_str.len() > char_limit {
             break;
         }
@@ -196,16 +198,14 @@ pub async fn print_files_tree_with_budget(
     tracing::info!("tree() tokens_for_rag={}", tokens_for_rag);
     const SYMBOLS_PER_TOKEN: f32 = 3.5;
     let char_limit = tokens_for_rag * SYMBOLS_PER_TOKEN as usize;
-    let mut ast_module_option = gcx.read().await.ast_module.clone();
+    let mut ast_module_option = gcx.read().await.ast_service.clone();
     if !use_ast {
         ast_module_option = None;
     }
-    // These locks suck and there's no way to fix it
     match ast_module_option {
         Some(ast_module) => {
-            let ast_index: Arc<AMutex<AstIndex>> = ast_module.read().await.ast_index.clone();
-            let ast_index_guard: MutexGuard<AstIndex> = ast_index.lock().await;
-            Ok(_print_files_tree_with_budget(tree, char_limit, Some(&*ast_index_guard)))
+            let ast_db: Option<Arc<AMutex<AstDB>>> = Some(ast_module.lock().await.ast_index.clone());
+            Ok(_print_files_tree_with_budget(tree, char_limit, ast_db.clone()))
         }
         None => Ok(_print_files_tree_with_budget(tree, char_limit, None)),
     }

@@ -8,19 +8,14 @@ use ropey::Rope;
 use serde_json::{Value, json};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
-use tracing::{info, error};
-use tree_sitter::Point;
+use tracing::info;
 
-use crate::ast::ast_module::AstModule;
-use crate::ast::comments_wrapper::{get_language_id_by_filename, wrap_comments};
-use crate::ast::structs::SymbolsSearchResultStruct;
-use crate::ast::treesitter::language_id::LanguageId;
-use crate::at_commands::at_ast_lookup_symbols::results2message;
+use crate::ast::ast_indexing_thread::AstIndexService;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{CodeCompletionPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::completion_cache;
-use crate::files_in_workspace::Document;
+// use crate::files_in_workspace::Document;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
@@ -41,7 +36,7 @@ pub struct FillInTheMiddleScratchpad {
     pub context_used: Value,
     pub data4cache: completion_cache::CompletionSaveToCache,
     pub data4snippet: snippets_collection::SaveSnippet,
-    pub ast_module: Option<Arc<ARwLock<AstModule>>>,
+    pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub global_context: Arc<ARwLock<GlobalContext>>,
 }
 
@@ -52,7 +47,7 @@ impl FillInTheMiddleScratchpad {
         order: String,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
         tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
-        ast_module: Option<Arc<ARwLock<AstModule>>>,
+        ast_service: Option<Arc<AMutex<AstIndexService>>>,
         global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
@@ -66,7 +61,7 @@ impl FillInTheMiddleScratchpad {
             context_used: json!({}),
             data4cache,
             data4snippet,
-            ast_module,
+            ast_service,
             global_context,
         }
     }
@@ -85,7 +80,6 @@ fn add_context_to_prompt(
     prompt: &String,
     fim_prefix: &String,
     postprocessed_messages: &Vec<ContextFile>,
-    language_id: &LanguageId
 ) -> String {
     let mut context_files = vec![];
     if context_format == "starcoder" {
@@ -108,19 +102,19 @@ fn add_context_to_prompt(
             context_files.join(""),
             prompt,
         )
-    } else if context_format == "default" {
-        for m in postprocessed_messages {
-            context_files.push(wrap_comments(&format!(
-                "{}\n{}\n",
-                m.file_name,
-                m.file_content
-            ), language_id));
-        }
-        if let Some(fim_prefix_idx) = prompt.find(fim_prefix) {
-            let split_at = fim_prefix_idx + fim_prefix.len();
-            return prompt.split_at(split_at).0.to_string() + &context_files.join("\n") + prompt.split_at(split_at).1;
-        }
-        return prompt.clone();
+    // } else if context_format == "default" {
+    //     for m in postprocessed_messages {
+    //         context_files.push(wrap_comments(&format!(
+    //             "{}\n{}\n",
+    //             m.file_name,
+    //             m.file_content
+    //         ), language_id));
+    //     }
+    //     if let Some(fim_prefix_idx) = prompt.find(fim_prefix) {
+    //         let split_at = fim_prefix_idx + fim_prefix.len();
+    //         return prompt.split_at(split_at).0.to_string() + &context_files.join("\n") + prompt.split_at(split_at).1;
+    //     }
+    //     return prompt.clone();
     } else {
         tracing::warn!("context_format \"{}\" not recognized", context_format);
         return prompt.clone();
@@ -160,7 +154,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
     ) -> Result<String, String> {
         let n_ctx = ccx.lock().await.n_ctx;
         let fim_t0 = Instant::now();
-        let use_rag = !self.t.context_format.is_empty() && self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_module.is_some();
+        let use_rag = !self.t.context_format.is_empty() && self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_service.is_some();
         let mut rag_tokens_n = if self.post.rag_tokens_n > 0 {
             self.post.rag_tokens_n.min(4096).max(50)
         } else {
@@ -170,7 +164,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             rag_tokens_n = 0;
         }
         if !use_rag && self.post.use_ast {
-            tracing::warn!("will not use ast because {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_module.is_some() as i32);
+            tracing::warn!("will not use ast because {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_service.is_some() as i32);
         }
 
         let limit: i32 = (n_ctx as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32);
@@ -290,37 +284,38 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         if use_rag && rag_tokens_n > 0 {
             info!(" -- rag search starts --");
             let rag_t0 = Instant::now();
-            let language_id = get_language_id_by_filename(&cpath).unwrap_or(LanguageId::Unknown);
-            let (mut ast_messages, was_looking_for) = {
-                let doc = Document::new(&cpath);
-                match self.ast_module.clone().unwrap().read().await.symbols_near_cursor_to_buckets(
-                    &doc, &source, Point { row: pos.line as usize, column: pos.character as usize },
-                    10, 3
-                ).await {
-                    Ok(res) => {
-                        (results2message(&res).await, Some(res))
-                    },
-                    Err(err) => {
-                        error!("can't fetch ast results: {}", err);
-                        (vec![], None)
-                    }
-                }
-            };
+            let mut ast_messages: Vec<ContextFile> = vec![];
+            // let (mut ast_messages, was_looking_for) = {
+                // XXX restore buckets
+                // let doc = Document::new(&cpath);
+                // match self.ast_module.clone().unwrap().read().await.symbols_near_cursor_to_buckets(
+                //     &doc, &source, Point { row: pos.line as usize, column: pos.character as usize },
+                //     10, 3
+                // ).await {
+                //     Ok(res) => {
+                //         (results2message(&res).await, Some(res))
+                //     },
+                //     Err(err) => {
+                //         error!("can't fetch ast results: {}", err);
+                        // (vec![], None)
+                //     }
+                // }
+            // };
             let to_buckets_ms = rag_t0.elapsed().as_millis() as i32;
 
-            if fim_line1 != i32::MAX && fim_line2 != i32::MIN {
-                let fim_ban = ContextFile {
-                    file_name: cpath.to_string_lossy().to_string(),
-                    file_content: "".to_string(),
-                    line1: (fim_line1 + 1) as usize,
-                    line2: (fim_line2 + 1) as usize,
-                    symbols: vec![],
-                    gradient_type: -1,
-                    usefulness: -1.0,
-                    is_body_important: false
-                };
-                ast_messages.push(fim_ban);
-            }
+            // if fim_line1 != i32::MAX && fim_line2 != i32::MIN {
+            //     let fim_ban = ContextFile {
+            //         file_name: cpath.to_string_lossy().to_string(),
+            //         file_content: "".to_string(),
+            //         line1: (fim_line1 + 1) as usize,
+            //         line2: (fim_line2 + 1) as usize,
+            //         symbols: vec![],
+            //         gradient_type: -1,
+            //         usefulness: -1.0,
+            //         is_body_important: false
+            //     };
+            //     ast_messages.push(fim_ban);
+            // }
 
             info!(" -- post processing starts --");
             let post_t0 = Instant::now();
@@ -342,7 +337,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
                 &pp_settings,
             ).await;
 
-            prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages, &language_id);
+            prompt = add_context_to_prompt(&self.t.context_format, &prompt, &self.fim_prefix, &postprocessed_messages);
             let rag_ms = rag_t0.elapsed().as_millis() as i32;
             let post_ms = post_t0.elapsed().as_millis() as i32;
             info!("fim {}ms, buckets {}ms, post {}ms",
@@ -350,16 +345,16 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
                 to_buckets_ms, post_ms
             );
 
-            if was_looking_for.is_some() {
-                self.context_used = context_to_fim_debug_page(
-                    &postprocessed_messages,
-                    &was_looking_for.unwrap()
-                );
-                self.context_used["fim_ms"] = Value::from(fim_ms);
-                self.context_used["rag_ms"] = Value::from(rag_ms);
-                self.context_used["n_ctx".to_string()] = Value::from(n_ctx as i64);
-                self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
-            }
+            // if was_looking_for.is_some() {
+                // self.context_used = context_to_fim_debug_page(
+                //     &postprocessed_messages,
+                //     // &was_looking_for.unwrap()
+                // );
+            //     self.context_used["fim_ms"] = Value::from(fim_ms);
+            //     self.context_used["rag_ms"] = Value::from(rag_ms);
+            //     self.context_used["n_ctx".to_string()] = Value::from(n_ctx as i64);
+            //     self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
+            // }
         }
 
         if DEBUG {
@@ -486,36 +481,38 @@ fn cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
 
 pub fn context_to_fim_debug_page(
     postprocessed_messages: &[ContextFile],
-    search_traces: &crate::ast::structs::AstCursorSearchResult,
+    // search_traces: &crate::ast::structs::AstCursorSearchResult,
 ) -> Value {
     let mut context = json!({});
-    fn shorter_symbol(x: &SymbolsSearchResultStruct) -> Value {
-        let mut t: Value = json!({});
-        t["name"] = Value::String(x.symbol_declaration.name.clone());
-        t["file_path"] = Value::String(x.symbol_declaration.file_path.display().to_string());
-        t["line1"] = json!(x.symbol_declaration.full_range.start_point.row + 1);
-        t["line2"] = json!(x.symbol_declaration.full_range.end_point.row + 1);
-        t
-    }
-    context["cursor_symbols"] = Value::Array(search_traces.cursor_symbols.iter()
-        .map(|x| shorter_symbol(x)).collect());
-    context["bucket_declarations"] = Value::Array(search_traces.bucket_declarations.iter()
-        .map(|x| shorter_symbol(x)).collect());
-    context["bucket_usage_of_same_stuff"] = Value::Array(search_traces.bucket_usage_of_same_stuff.iter()
-        .map(|x| shorter_symbol(x)).collect());
-    context["bucket_high_overlap"] = Value::Array(search_traces.bucket_high_overlap.iter()
-        .map(|x| shorter_symbol(x)).collect());
-    context["bucket_imports"] = Value::Array(search_traces.bucket_imports.iter()
-        .map(|x| shorter_symbol(x)).collect());
+    return context;
+    // XXX fix buckets
+    // fn shorter_symbol(x: &SymbolsSearchResultStruct) -> Value {
+    //     let mut t: Value = json!({});
+    //     t["name"] = Value::String(x.symbol_declaration.name.clone());
+    //     t["file_path"] = Value::String(x.symbol_declaration.file_path.display().to_string());
+    //     t["line1"] = json!(x.symbol_declaration.full_range.start_point.row + 1);
+    //     t["line2"] = json!(x.symbol_declaration.full_range.end_point.row + 1);
+    //     t
+    // }
+    // context["cursor_symbols"] = Value::Array(search_traces.cursor_symbols.iter()
+    //     .map(|x| shorter_symbol(x)).collect());
+    // context["bucket_declarations"] = Value::Array(search_traces.bucket_declarations.iter()
+    //     .map(|x| shorter_symbol(x)).collect());
+    // context["bucket_usage_of_same_stuff"] = Value::Array(search_traces.bucket_usage_of_same_stuff.iter()
+    //     .map(|x| shorter_symbol(x)).collect());
+    // context["bucket_high_overlap"] = Value::Array(search_traces.bucket_high_overlap.iter()
+    //     .map(|x| shorter_symbol(x)).collect());
+    // context["bucket_imports"] = Value::Array(search_traces.bucket_imports.iter()
+    //     .map(|x| shorter_symbol(x)).collect());
 
-    let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
-        json!({
-            "file_name": x.file_name,
-            "file_content": x.file_content,
-            "line1": x.line1,
-            "line2": x.line2,
-        })
-    }).collect();
-    context["attached_files"] = Value::Array(attached_files);
-    context
+    // let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
+    //     json!({
+    //         "file_name": x.file_name,
+    //         "file_content": x.file_content,
+    //         "line1": x.line1,
+    //         "line2": x.line2,
+    //     })
+    // }).collect();
+    // context["attached_files"] = Value::Array(attached_files);
+    // context
 }
