@@ -1,13 +1,14 @@
-use sled::Db;
-use serde_cbor;
+use std::time::Instant;
 use std::collections::{HashMap, HashSet};
-use indexmap::IndexMap;
 use std::sync::Arc;
+use indexmap::IndexMap;
 use tokio::sync::Mutex as AMutex;
 use tokio::task;
+use serde_cbor;
+use sled::Db;
 
-use crate::ast::ast_minimalistic::{AstDB, AstDefinition, AstCounters};
-use crate::ast::ast_parse_anything::{ParsingError, parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
+use crate::ast::ast_minimalistic::{AstDB, AstDefinition, AstCounters, ErrorStats};
+use crate::ast::ast_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
 
 
 pub async fn ast_index_init() -> Arc<AMutex<AstDB>>
@@ -70,7 +71,7 @@ pub async fn doc_add(
     ast_index: Arc<AMutex<AstDB>>,
     cpath: &String,
     text: &String,
-    errors: &mut Vec<ParsingError>,
+    errors: &mut ErrorStats,
 ) -> Result<(Vec<Arc<AstDefinition>>, String), String>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
@@ -200,6 +201,11 @@ pub async fn doc_symbols(ast_index: Arc<AMutex<AstDB>>, cpath: &String) -> Vec<A
 
 pub struct ConnectUsageContext {
     pub derived_from_map: IndexMap<String, Vec<String>>,
+    pub errstats: ErrorStats,
+    pub usages_connected: usize,
+    pub usages_not_found: usize,
+    pub usages_ambiguous: usize,
+    pub t0: Instant,
 }
 
 pub async fn connect_usages(ast_index: Arc<AMutex<AstDB>>, ucx: &mut ConnectUsageContext) -> bool
@@ -209,19 +215,19 @@ pub async fn connect_usages(ast_index: Arc<AMutex<AstDB>>, ucx: &mut ConnectUsag
 
     if let Some(Ok((todo_key, _))) = iter.next() {
         let key_string = String::from_utf8(todo_key.to_vec()).unwrap();
-        let file_global_path = key_string.strip_prefix("resolve-todo/").unwrap();
+        let def_official_path = key_string.strip_prefix("resolve-todo/").unwrap();
 
         // delete immediately, to make sure connect_usages() does not continue forever, even if there are errors and stuff
         if let Err(e) = db.remove(&todo_key) {
             tracing::error!("connect_usages() failed to remove resolve-todo key: {:?}", e);
         }
 
-        let d_key = format!("d/{}", file_global_path);
+        let d_key = format!("d/{}", def_official_path);
         if let Ok(Some(value)) = db.get(&d_key) {
             let mut batch = sled::Batch::default();
 
             if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
-                _connect_usages_helper(&db, &ucx.derived_from_map, &definition, &mut batch).await;
+                _connect_usages_helper(&db, ucx, &definition, &mut batch).await;
             }
 
             if let Err(e) = db.apply_batch(batch) {
@@ -276,11 +282,20 @@ pub async fn connect_usages_look_if_full_reset_needed(ast_index: Arc<AMutex<AstD
 
     ConnectUsageContext {
         derived_from_map: new_derived_from_map,
+        errstats: ErrorStats::default(),
+        usages_connected: 0,
+        usages_not_found: 0,
+        usages_ambiguous: 0,
+        t0: Instant::now(),
     }
 }
 
-async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &IndexMap<String, Vec<String>>, definition: &AstDefinition, batch: &mut sled::Batch)
-{
+async fn _connect_usages_helper(
+    db: &sled::Db,
+    ucx: &mut ConnectUsageContext,
+    definition: &AstDefinition,
+    batch: &mut sled::Batch
+) {
     // Data example:
     // (1) c/Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
     // (2) c/cpp_goat_library::Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
@@ -313,6 +328,7 @@ async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &IndexMap<Strin
     let mut all_saved_ulinks = Vec::<String>::new();
     for usage in &definition.usages {
         if !usage.resolved_as.is_empty() {
+            ucx.usages_connected += 1;
             continue;
         }
         for to_resolve_unstripped in &usage.targets_for_guesswork {
@@ -335,7 +351,7 @@ async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &IndexMap<Strin
                 variants.push(to_resolve.to_string());
             } else {
                 let substitutions_of_each_pair: Vec<Vec<String>> = magnifying_glass_pairs.iter().map(|(language, klass)| {
-                    let mut substitutions = derived_from_map.get(format!("{}🔎{}", language, klass).as_str()).cloned().unwrap_or_else(|| vec![]);
+                    let mut substitutions = ucx.derived_from_map.get(format!("{}🔎{}", language, klass).as_str()).cloned().unwrap_or_else(|| vec![]);
                     substitutions.insert(0, klass.clone());
                     substitutions.iter().map(|s| s.strip_prefix(&format!("{}🔎", language)).unwrap_or(s).to_string()).collect()
                 }).collect();
@@ -387,16 +403,19 @@ async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &IndexMap<Strin
             }
             // println!("   found {:?}", found);
             if found.len() == 0 {
+                ucx.usages_not_found += 1;
                 continue;
             }
             if found.len() > 1 {
-                tracing::info!("Link {} is ambiguous, can mean multiple things: {:?}", to_resolve, found);
+                ucx.errstats.add_error(&format!("link {} is ambiguous, can mean: {:?}", to_resolve, found), 0);
+                ucx.usages_ambiguous += 1;
                 found.truncate(1);
             }
             let single_thing_found = found.into_iter().next().unwrap();
             let u_key = format!("u/{} ⚡ {}", single_thing_found, official_path);
             batch.insert(u_key.as_bytes(), b"");
             all_saved_ulinks.push(u_key);
+            ucx.usages_connected += 1;
             break;  // the next thing from targets_for_guesswork is a worse query, keep this one and exit
         }
     } // for usages
@@ -659,17 +678,17 @@ mod tests {
     async fn test_ast_db() {
         init_tracing();
         let ast_index = ast_index_init().await;
-        let mut errors: Vec<ParsingError> = Vec::new();
+        let mut errstats: ErrorStats = ErrorStats::default();
 
         let cpp_library_path = "src/ast/alt_testsuite/cpp_goat_library.h";
         let cpp_library_text = read_file(cpp_library_path);
-        doc_add(ast_index.clone(), &cpp_library_path.to_string(), &cpp_library_text, &mut errors).await.unwrap();
+        doc_add(ast_index.clone(), &cpp_library_path.to_string(), &cpp_library_text, &mut errstats).await.unwrap();
 
         let cpp_main_path = "src/ast/alt_testsuite/cpp_goat_main.cpp";
         let cpp_main_text = read_file(cpp_main_path);
-        doc_add(ast_index.clone(), &cpp_main_path.to_string(), &cpp_main_text, &mut errors).await.unwrap();
+        doc_add(ast_index.clone(), &cpp_main_path.to_string(), &cpp_main_text, &mut errstats).await.unwrap();
 
-        for error in errors {
+        for error in errstats.errors {
             println!("(E) {}:{} {}", error.cpath, error.err_line, error.err_message);
         }
 

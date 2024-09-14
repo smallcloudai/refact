@@ -2,33 +2,11 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use indexmap::IndexMap;
 use uuid::Uuid;
-use crate::ast::ast_minimalistic::{AstDefinition, Usage};
+use crate::ast::ast_minimalistic::{AstDefinition, Usage, ErrorStats};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, AstSymbolInstanceArc};
 
-
-const TOO_MANY_ERRORS: usize = 100;
-
-pub struct ParsingError {
-    pub cpath: String,
-    pub err_message: String,
-    pub err_line: usize,
-}
-
-fn _add_error(
-    errors: &mut Vec<ParsingError>,
-    err_message: &str,
-    err_line: usize,
-) {
-    if errors.len() < TOO_MANY_ERRORS {
-        errors.push(ParsingError {
-            cpath: String::new(),
-            err_message: err_message.to_string(),
-            err_line,
-        });
-    }
-}
 
 fn _is_declaration(t: SymbolType) -> bool {
     match t {
@@ -52,14 +30,14 @@ fn _is_declaration(t: SymbolType) -> bool {
 fn _go_to_parent_until_declaration(
     map: &HashMap<Uuid, AstSymbolInstanceArc>,
     start_node: AstSymbolInstanceArc,
-    errors: &mut Vec<ParsingError>,
+    errors: &mut ErrorStats,
 ) -> Uuid {
     let start_node_read = start_node.read();
     let mut node_guid = start_node_read.parent_guid().unwrap_or_default();
     loop {
         let node_option = map.get(&node_guid);
         if node_option.is_none() {
-            _add_error(errors, "find_parent_of_types: parent node not found", start_node_read.full_range().start_point.row + 1);
+            errors.add_error("find_parent_of_types: parent node not found", start_node_read.full_range().start_point.row + 1);
             return Uuid::nil();
         }
         let node = node_option.unwrap().read();
@@ -208,7 +186,7 @@ fn _typeof(
     _file_global_path: &Vec<String>,
     start_node_guid: Uuid,
     variable_or_param_name: String,
-    errors: &mut Vec<ParsingError>,
+    errors: &mut ErrorStats,
 ) -> Vec<String> {
     let mut node_guid = start_node_guid.clone();
     let mut look_here: Vec<AstSymbolInstanceArc> = Vec::new();
@@ -252,7 +230,7 @@ fn _typeof(
                 if let Some(first_type) = variable_definition.types().get(0) {
                     let type_name = first_type.name.clone().unwrap_or_default();
                     if type_name.is_empty() {
-                        _add_error(errors, "nameless type for variable definition", node.full_range().start_point.row + 1);
+                        errors.add_error("nameless type for variable definition", node.full_range().start_point.row + 1);
                     } else {
                         return vec!["?".to_string(), format!("{}🔎{}", node.language().to_string(), type_name)];
                     }
@@ -267,7 +245,7 @@ fn _typeof(
                 if arg.name == variable_or_param_name {
                     if let Some(arg_type) = &arg.type_ {
                         if arg_type.name.is_none() || arg_type.name.clone().unwrap().is_empty() {
-                            _add_error(errors, "nameless type for function argument", node.full_range().start_point.row + 1);
+                            errors.add_error("nameless type for function argument", node.full_range().start_point.row + 1);
                         } else {
                             return vec!["?".to_string(), format!("{}🔎{}", node.language().to_string(), arg_type.name.clone().unwrap())];
                         }
@@ -286,7 +264,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     file_global_path: &Vec<String>,
     uline: usize,
     symbol: &dyn AstSymbolInstance,
-    errors: &mut Vec<ParsingError>,
+    errors: &mut ErrorStats,
 ) -> Option<Usage> {
     // my_object.something_inside
     // ^^^^^^^^^ caller (can be None)
@@ -327,7 +305,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
 pub fn parse_anything(
     cpath: &str,
     text: &str,
-    errors: &mut Vec<ParsingError>,
+    errors: &mut ErrorStats,
 ) -> Result<(IndexMap<Uuid, AstDefinition>, String), String>
 {
     let path = PathBuf::from(cpath);
@@ -357,7 +335,7 @@ pub fn parse_anything(
                     this_is_a_class = format!("{}🔎{}", language, struct_declaration.name());
                     for base_class in struct_declaration.inherited_types.iter() {
                         if base_class.name.is_none() {
-                            _add_error(errors, "nameless base class", symbol.full_range().start_point.row + 1);
+                            errors.add_error("nameless base class", symbol.full_range().start_point.row + 1);
                             continue;
                         }
                         this_class_derived_from.push(format!("{}🔎{}", language, base_class.name.clone().unwrap()));
@@ -379,7 +357,7 @@ pub fn parse_anything(
                     };
                     definitions.insert(symbol.guid().clone(), definition);
                 } else {
-                    _add_error(errors, "nameless decl", symbol.full_range().start_point.row + 1);
+                    errors.add_error("nameless decl", symbol.full_range().start_point.row + 1);
                 }
             }
             SymbolType::CommentDefinition |
@@ -409,7 +387,7 @@ pub fn parse_anything(
                 let function_call = symbol.as_any().downcast_ref::<FunctionCall>().expect("xxx1000");
                 let uline = function_call.full_range().start_point.row + 1;
                 if function_call.name().is_empty() {
-                    _add_error(errors, "nameless call", function_call.full_range().start_point.row + 1);
+                    errors.add_error("nameless call", function_call.full_range().start_point.row + 1);
                     continue;
                 }
                 let usage = _usage_or_typeof_caller_colon_colon_usage(function_call.get_caller_guid().clone(), &orig_map, &file_global_path, uline, function_call, errors);
@@ -426,7 +404,7 @@ pub fn parse_anything(
                 let variable_usage = symbol.as_any().downcast_ref::<VariableUsage>().expect("xxx1001");
                 let uline = variable_usage.full_range().start_point.row + 1;
                 if variable_usage.name().is_empty() {
-                    _add_error(errors, "nameless variable usage", variable_usage.full_range().start_point.row + 1);
+                    errors.add_error("nameless variable usage", variable_usage.full_range().start_point.row + 1);
                     continue;
                 }
                 let usage = _usage_or_typeof_caller_colon_colon_usage(variable_usage.fields().caller_guid.clone(), &orig_map, &file_global_path, uline, variable_usage, errors);
@@ -470,14 +448,14 @@ pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
 pub fn parse_anything_and_add_file_path(
     cpath: &str,
     text: &str,
-    errors: &mut Vec<ParsingError>,
+    errstats: &mut ErrorStats,
 ) -> Result<(IndexMap<Uuid, AstDefinition>, String), String>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let file_global_path_str = file_global_path.join("::");
-    let errors_count_before = errors.len();
-    let (mut definitions, language) = parse_anything(cpath, text, errors)?;
-    for error in errors.iter_mut().skip(errors_count_before) {
+    let errors_count_before = errstats.errors.len();
+    let (mut definitions, language) = parse_anything(cpath, text, errstats)?;
+    for error in errstats.errors.iter_mut().skip(errors_count_before) {
         error.cpath = cpath.to_string();
     }
 
@@ -550,10 +528,10 @@ mod tests {
 
     fn run_parse_test(input_file: &str, correct_file: &str) {
         init_tracing();
-        let mut errors: Vec<ParsingError> = Vec::new();
+        let mut errstats = ErrorStats::default();
         let absfn1 = std::fs::canonicalize(input_file).unwrap();
         let text = read_file(absfn1.to_str().unwrap());
-        let (definitions, _language) = parse_anything(absfn1.to_str().unwrap(), &text, &mut errors).unwrap();
+        let (definitions, _language) = parse_anything(absfn1.to_str().unwrap(), &text, &mut errstats).unwrap();
         let mut defs_str = String::new();
         for d in definitions.values() {
             defs_str.push_str(&format!("{:?}\n", d));
@@ -564,7 +542,7 @@ mod tests {
         if !oops.is_empty() {
             println!("PROBLEMS {:#?}:\n{}/PROBLEMS", absfn1, oops);
         }
-        for error in errors {
+        for error in errstats.errors {
             println!("(E) {}:{} {}", error.cpath, error.err_line, error.err_message);
         }
     }

@@ -6,6 +6,8 @@ use tokio::sync::Notify as ANotify;
 pub use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::structs::RangeDef;
 
+const TOO_MANY_ERRORS: usize = 1000;
+
 
 #[derive(Serialize, Deserialize)]
 pub struct Usage {
@@ -63,6 +65,44 @@ pub struct AstCounters {
     pub counter_defs: i32,
     pub counter_usages: i32,
 }
+
+pub struct AstError {
+    pub cpath: String,
+    pub err_message: String,
+    pub err_line: usize,
+}
+
+pub struct ErrorStats {
+    pub errors: Vec<AstError>,
+    pub errors_counter: usize,
+}
+
+impl ErrorStats {
+    pub fn add_error(
+        self: &mut ErrorStats,
+        err_message: &str,
+        err_line: usize,
+    ) {
+        if self.errors.len() < TOO_MANY_ERRORS {
+            self.errors.push(AstError {
+                cpath: String::new(),
+                err_message: err_message.to_string(),
+                err_line,
+            });
+        }
+        self.errors_counter += 1;
+    }
+}
+
+impl Default for ErrorStats {
+    fn default() -> Self {
+        ErrorStats {
+            errors: Vec::new(),
+            errors_counter: 0,
+        }
+    }
+}
+
 
 impl fmt::Debug for AstDefinition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
