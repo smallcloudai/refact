@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use indexmap::IndexMap;
 use uuid::Uuid;
-use crate::ast::alt_minimalistic::{AstDefinition, Usage};
+use crate::ast::ast_minimalistic::{AstDefinition, Usage};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, AstSymbolInstanceArc};

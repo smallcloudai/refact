@@ -8,7 +8,7 @@ use tokio::sync::RwLock as ARwLock;
 use crate::ast::treesitter::structs::SymbolType;
 
 use crate::call_validation::{ContextFile, PostprocessSettings};
-use crate::ast::alt_minimalistic::AstDefinition;
+use crate::ast::ast_minimalistic::AstDefinition;
 use crate::global_context::GlobalContext;
 use crate::files_correction::{canonical_path, correct_to_nearest_filename};
 use crate::nicer_logs::{first_n_chars, last_n_chars};

@@ -62,8 +62,8 @@ pub fn lowlevel_file_markup(
         a.borrow().symbol_path.len().cmp(&b.borrow().symbol_path.len())
     });
     let x = FileASTMarkup {
-        file_path: doc.doc_path.clone(),
-        file_content: doc.doc_text.as_ref().unwrap().to_string(),
+        // file_path: doc.doc_path.clone(),
+        // file_content: doc.doc_text.as_ref().unwrap().to_string(),
         symbols_sorted_by_path_len: symbols4export.iter().map(|s| {
             s.borrow().clone()
         }).collect(),

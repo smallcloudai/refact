@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 
-use crate::ast::alt_minimalistic::AstDB;
+use crate::ast::ast_minimalistic::AstDB;
 // use crate::ast::ast_indexing_thread::AstIndexService;
 // use crate::ast::treesitter::structs::SymbolType;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
@@ -99,7 +99,7 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
     root_nodes
 }
 
-fn _print_symbols(entry: &PathsHolderNode) -> String
+fn _print_symbols(_entry: &PathsHolderNode) -> String
 {
     // XXX fix tree
     // if let Some(ast) = ast_index_maybe {

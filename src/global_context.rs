@@ -52,10 +52,10 @@ pub struct CommandLine {
     #[structopt(long, help="Use AST, for it to start working, give it a jsonl files list or LSP workspace folders.")]
     pub ast: bool,
     #[structopt(long, help="Use AST light mode, could be useful for large projects and little memory. Less information gets stored.")]
-    pub ast_light_mode: bool,
-    #[structopt(long, default_value="15000", help="Maximum files for AST index, to avoid OOM on large projects.")]
-    pub ast_max_files: usize,
-    #[structopt(long, help="Use vector database. Give it a jsonl files list or LSP workspace folders, and also caps need to have an embedding model.")]
+    // pub ast_light_mode: bool,
+    // #[structopt(long, default_value="15000", help="Maximum files for AST index, to avoid OOM on large projects.")]
+    // pub ast_max_files: usize,
+    // #[structopt(long, help="Use vector database. Give it a jsonl files list or LSP workspace folders, and also caps need to have an embedding model.")]
     pub vecdb: bool,
     #[structopt(long, help="Delete all memories, start with empty memory.")]
     pub reset_memory: bool,

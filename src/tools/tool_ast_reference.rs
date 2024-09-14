@@ -46,7 +46,7 @@ impl Tool for ToolAstReference {
         let ast_service_opt = gcx.read().await.ast_service.clone();
         if let Some(ast_service) = ast_service_opt {
             let ast_index = ast_service.lock().await.ast_index.clone();
-            let defs = crate::ast::alt_db::definitions(ast_index.clone(), &symbol).await;
+            let defs = crate::ast::ast_db::definitions(ast_index.clone(), &symbol).await;
             let mut all_results = vec![];
             let mut messages = vec![];
 
@@ -54,7 +54,7 @@ impl Tool for ToolAstReference {
             const DEFS_LIMIT: usize = 5;
 
             for (_i, def) in defs.iter().take(DEFS_LIMIT).enumerate() {
-                let usages = crate::ast::alt_db::usages(ast_index.clone(), def.path()).await;
+                let usages = crate::ast::ast_db::usages(ast_index.clone(), def.path()).await;
                 let file_paths = usages.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
                 let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), file_paths.clone()).await;
 
@@ -103,7 +103,7 @@ impl Tool for ToolAstReference {
 
             if defs.is_empty() {
                 corrections = true;
-                let fuzzy_matches: Vec<String> = crate::ast::alt_db::definition_paths_fuzzy(ast_index, &symbol).await.into_iter().take(20).collect();
+                let fuzzy_matches: Vec<String> = crate::ast::ast_db::definition_paths_fuzzy(ast_index, &symbol).await.into_iter().take(20).collect();
                 let mut tool_message = format!(
                     "No definitions with name `{}` found in the workspace, there are definitions with similar names though:\n",
                     symbol

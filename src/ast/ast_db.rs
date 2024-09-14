@@ -4,11 +4,12 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::task;
-use crate::ast::alt_minimalistic::{AstDB, AstDefinition, AstCounters};
-use crate::ast::alt_parse_anything::{ParsingError, parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
+
+use crate::ast::ast_minimalistic::{AstDB, AstDefinition, AstCounters};
+use crate::ast::ast_parse_anything::{ParsingError, parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
 
 
-pub async fn alt_index_init() -> Arc<AMutex<AstDB>>
+pub async fn ast_index_init() -> Arc<AMutex<AstDB>>
 {
     let db: Arc<Db> = Arc::new(task::spawn_blocking(|| sled::open("/tmp/my_db.sled").unwrap()).await.unwrap());
     db.clear().unwrap();
@@ -568,8 +569,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_alt_db() {
-        let ast_index = alt_index_init().await;
+    async fn test_ast_db() {
+        let ast_index = ast_index_init().await;
         let mut errors: Vec<ParsingError> = Vec::new();
 
         let cpp_library_path = "src/ast/alt_testsuite/cpp_goat_library.h";

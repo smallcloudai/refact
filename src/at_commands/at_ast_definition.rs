@@ -5,7 +5,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::call_validation::{ContextFile, ContextEnum};
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
-use strsim::jaro_winkler;
+// use strsim::jaro_winkler;
 
 
 #[derive(Debug)]
@@ -17,24 +17,23 @@ impl AtParamSymbolPathQuery {
     }
 }
 
-fn full_path_score(path: &str, query: &str) -> f32 {
-    if jaro_winkler(&path, &query) <= 0.0 {
-        return 0.0;
-    }
-
-    let mut score = 1.0;
-    for query_comp in query.split("::") {
-        for (idx, p) in path.split("::").collect::<Vec<_>>().into_iter().rev().enumerate() {
-            let current_score = jaro_winkler(&query_comp, &p) as f32;
-            // quick exit if we have a full match in the name
-            if current_score >= 0.99 {
-                return score;
-            }
-            score *= current_score * (1.0 / (idx + 1) as f32);
-        }
-    }
-    score
-}
+// fn full_path_score(path: &str, query: &str) -> f32 {
+//     if jaro_winkler(&path, &query) <= 0.0 {
+//         return 0.0;
+//     }
+//     let mut score = 1.0;
+//     for query_comp in query.split("::") {
+//         for (idx, p) in path.split("::").collect::<Vec<_>>().into_iter().rev().enumerate() {
+//             let current_score = jaro_winkler(&query_comp, &p) as f32;
+//             // quick exit if we have a full match in the name
+//             if current_score >= 0.99 {
+//                 return score;
+//             }
+//             score *= current_score * (1.0 / (idx + 1) as f32);
+//         }
+//     }
+//     score
+// }
 
 pub struct AtAstDefinition {
     pub params: Vec<Arc<AMutex<dyn AtParam>>>,
@@ -79,7 +78,7 @@ impl AtParam for AtParamSymbolPathQuery {
         }
         let ast_index = ast_service_opt.unwrap().lock().await.ast_index.clone();
 
-        let names = crate::ast::alt_db::definition_paths_fuzzy(ast_index, value).await;
+        let names = crate::ast::ast_db::definition_paths_fuzzy(ast_index, value).await;
 
         let filtered_paths = names
             .iter()
@@ -125,7 +124,7 @@ impl AtCommand for AtAstDefinition {
         let ast_service_opt = gcx.read().await.ast_service.clone();
         if let Some(ast_service) = ast_service_opt {
             let ast_index = ast_service.lock().await.ast_index.clone();
-            let defs = crate::ast::alt_db::definitions(ast_index, arg_symbol.text.as_str()).await;
+            let defs: Vec<Arc<crate::ast::ast_minimalistic::AstDefinition>> = crate::ast::ast_db::definitions(ast_index, arg_symbol.text.as_str()).await;
             let file_paths = defs.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
             let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), file_paths.clone()).await;
 

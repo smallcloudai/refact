@@ -3,12 +3,10 @@ use dyn_partial_eq::{dyn_partial_eq, DynPartialEq};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
-use std::cell::RefCell;
 use std::cmp::min;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::{fs, io};
 use tokio::fs::read_to_string;
@@ -388,7 +386,7 @@ pub trait AstSymbolInstance: Debug + Send + Sync + Any {
     }
 }
 
-pub type AstSymbolInstanceRc = Rc<RefCell<Box<dyn AstSymbolInstance>>>;
+// pub type AstSymbolInstanceRc = Rc<RefCell<Box<dyn AstSymbolInstance>>>;
 pub type AstSymbolInstanceArc = Arc<RwLock<Box<dyn AstSymbolInstance>>>;
 
 

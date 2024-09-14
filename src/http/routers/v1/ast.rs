@@ -122,7 +122,7 @@ pub async fn handle_v1_ast_file_symbols(
     let search_res = match &ast_service_opt {
         Some(ast_service) => {
             let ast_index = ast_service.lock().await.ast_index.clone();
-            crate::ast::alt_db::doc_symbols(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
+            crate::ast::ast_db::doc_symbols(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
         }
         None => {
             return Err(ScratchError::new(
@@ -146,7 +146,7 @@ pub async fn handle_v1_ast_status(
     let ast_service_opt = global_context.read().await.ast_service.clone();
     match &ast_service_opt {
         Some(ast_service) => {
-            let alt_status: std::sync::Arc<tokio::sync::Mutex<crate::ast::alt_minimalistic::AstStatus>> = ast_service.lock().await.alt_status.clone();
+            let alt_status: std::sync::Arc<tokio::sync::Mutex<crate::ast::ast_minimalistic::AstStatus>> = ast_service.lock().await.alt_status.clone();
             let json_string = serde_json::to_string_pretty(&*alt_status.lock().await).map_err(|e| {
                 ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))
             })?;

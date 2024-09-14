@@ -53,19 +53,16 @@ impl AtCommand for AtAstReference {
         let gcx = ccx.lock().await.global_context.clone();
         let ast_service_opt = gcx.read().await.ast_service.clone();
 
-        const USAGES_LIMIT: usize = 20;
-        const DEFS_LIMIT: usize = 5;
-
         if let Some(ast_service) = ast_service_opt {
             let ast_index = ast_service.lock().await.ast_index.clone();
-            let defs = crate::ast::alt_db::definitions(ast_index.clone(), arg_symbol.text.as_str()).await;
+            let defs = crate::ast::ast_db::definitions(ast_index.clone(), arg_symbol.text.as_str()).await;
             let mut all_results = vec![];
             let mut messages = vec![];
 
             const USAGES_LIMIT: usize = 20;
 
             if let Some(def) = defs.get(0) {
-                let usages = crate::ast::alt_db::usages(ast_index.clone(), def.path()).await;
+                let usages = crate::ast::ast_db::usages(ast_index.clone(), def.path()).await;
                 let usage_count = usages.len();
                 let file_paths = usages.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
 

@@ -7,9 +7,9 @@ use tracing::info;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
-use crate::ast::alt_minimalistic::{AstDB, AstStatus, AstCounters};
-use crate::ast::alt_db::{alt_index_init, fetch_counters, doc_add, doc_remove};
-use crate::ast::alt_parse_anything::ParsingError;
+use crate::ast::ast_minimalistic::{AstDB, AstStatus, AstCounters};
+use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove};
+use crate::ast::ast_parse_anything::ParsingError;
 
 
 pub struct AstIndexService {
@@ -161,7 +161,7 @@ async fn ast_indexing_thread(
 
 
 pub async fn ast_service_init() -> Arc<AMutex<AstIndexService>> {
-    let ast_index = alt_index_init().await;
+    let ast_index = ast_index_init().await;
     let alt_status = Arc::new(AMutex::new(AstStatus {
         astate_notify: Arc::new(ANotify::new()),
         astate: String::from("starting"),

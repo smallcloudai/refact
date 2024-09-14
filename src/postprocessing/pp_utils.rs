@@ -96,7 +96,7 @@ pub async fn pp_ast_markup_files(
         let mut f: Option<Arc<PPFile>> = None;
         let defs = if let Some(ast) = &ast_service {
             let ast_index = ast.lock().await.ast_index.clone();
-            crate::ast::alt_db::doc_symbols(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
+            crate::ast::ast_db::doc_symbols(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
         } else {
             vec![]
         };

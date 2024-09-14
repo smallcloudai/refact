@@ -100,7 +100,7 @@ impl Tool for ToolCat {
                 let ast_index = ast_service.lock().await.ast_index.clone();
                 for p in corrected_paths.iter() {
                     // XXX verify if it still works
-                    let doc_syms = crate::ast::alt_db::doc_symbols(ast_index.clone(), &p).await;
+                    let doc_syms = crate::ast::ast_db::doc_symbols(ast_index.clone(), &p).await;
                     let syms_intersection = doc_syms.into_iter().filter(|s|symbols_str.contains(&s.name())).collect::<Vec<_>>();
                     for sym in syms_intersection {
                         symbols_found.push(sym.path().clone());

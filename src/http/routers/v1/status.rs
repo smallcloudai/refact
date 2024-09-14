@@ -3,7 +3,7 @@ use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde::Serialize;
 
-use crate::ast::alt_minimalistic::AstStatus;
+use crate::ast::ast_minimalistic::AstStatus;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 use crate::vecdb::vdb_structs::VecDbStatus;
