@@ -765,8 +765,7 @@ mod tests {
             animalage_usage_str.push_str(&format!("{:}:{}\n", used_at_def.cpath, used_at_uline));
         }
         println!("animalage_usage_str:\n{}", animalage_usage_str);
-        // assert!(animalage_usage.len() == 3);
-        // 3 is correct within one file, but there's another function CosmicGoat::say_hi in cpp_main_text
+        assert!(animalage_usage.len() == 5);
 
         doc_remove(ast_index.clone(), &cpp_library_path.to_string()).await;
         doc_remove(ast_index.clone(), &cpp_main_path.to_string()).await;
