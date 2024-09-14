@@ -1,4 +1,4 @@
-use indexmap::IndexSet;
+use indexmap::{IndexSet, IndexMap};
 use std::sync::{Arc, Weak};
 use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 use tokio::sync::RwLock as ARwLock;
@@ -27,6 +27,8 @@ async fn ast_indexing_thread(
     let mut stats_symbols_cnt = 0;
     let mut stats_t0 = std::time::Instant::now();
     let mut stats_update_ts = std::time::Instant::now() - std::time::Duration::from_millis(200);
+    let mut stats_failure_reasons: IndexMap<String, usize> = IndexMap::new();
+    let mut stats_success_languages: IndexMap<String, usize> = IndexMap::new();
     let (ast_index, alt_status, ast_sleeping_point) = {
         let ast_service_locked = ast_service.lock().await;
         (
@@ -63,13 +65,17 @@ async fn ast_indexing_thread(
                     doc.update_text(&file_text);
                     let start_time = std::time::Instant::now();
 
-                    let defs = doc_add(ast_index.clone(), &cpath, &file_text).await;
-
-                    tracing::info!("doc_add {:.3?}s {}", start_time.elapsed().as_secs_f32(), crate::nicer_logs::last_n_chars(&cpath, 30));
-                    stats_parsed_cnt += 1;
-                    stats_symbols_cnt += defs.len();
-                    stats_parsed_cnt += 1;
-                    stats_symbols_cnt += defs.len();
+                    match doc_add(ast_index.clone(), &cpath, &file_text).await {
+                        Ok((defs, language)) => {
+                            tracing::info!("doc_add {:.3?}s {}", start_time.elapsed().as_secs_f32(), crate::nicer_logs::last_n_chars(&cpath, 30));
+                            stats_parsed_cnt += 1;
+                            stats_symbols_cnt += defs.len();
+                            *stats_success_languages.entry(language).or_insert(0) += 1;
+                        }
+                        Err(reason) => {
+                            *stats_failure_reasons.entry(reason).or_insert(0) += 1;
+                        }
+                    }
                 }
                 Err(e) => {
                     tracing::info!("cannot read file {}: {}", crate::nicer_logs::last_n_chars(&cpath, 30), e);
@@ -99,6 +105,26 @@ async fn ast_indexing_thread(
                 stats_parsed_cnt,
                 stats_t0.elapsed().as_secs_f64()
             );
+            let language_stats: String = if stats_success_languages.is_empty() {
+                "no files".to_string()
+            } else {
+                stats_success_languages.iter()
+                    .map(|(lang, count)| format!("{:>30} {}", lang, count))
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            };
+            let problem_stats: String = if stats_failure_reasons.is_empty() {
+                "no errors".to_string()
+            } else {
+                stats_failure_reasons.iter()
+                    .map(|(reason, count)| format!("{:>30} {}", reason, count))
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            };
+            info!("error stats:\n{}", problem_stats);
+            info!("language stats:\n{}", language_stats);
+            stats_success_languages.clear();
+            stats_failure_reasons.clear();
             stats_parsed_cnt = 0;
             stats_symbols_cnt = 0;
             reported_idle = true;

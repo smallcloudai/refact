@@ -64,10 +64,10 @@ fn _increase_counter(db: &sled::Db, counter_key: &[u8], adjustment: i32) {
 
 }
 
-pub async fn doc_add(ast_index: Arc<AMutex<AstDB>>, cpath: &String, text: &String) -> Vec<Arc<AstDefinition>>
+pub async fn doc_add(ast_index: Arc<AMutex<AstDB>>, cpath: &String, text: &String) -> Result<(Vec<Arc<AstDefinition>>, String), String>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
-    let (defs, _language) = parse_anything_and_add_file_path(&cpath, text);
+    let (defs, language) = parse_anything_and_add_file_path(&cpath, text)?;
     let db = ast_index.lock().await.sleddb.clone();
     let mut batch = sled::Batch::default();
     let mut added_defs: i32 = 0;
@@ -107,7 +107,7 @@ pub async fn doc_add(ast_index: Arc<AMutex<AstDB>>, cpath: &String, text: &Strin
     }
     _increase_counter(&db, b"counters/defs", added_defs);
     _increase_counter(&db, b"counters/usages", added_usages);
-    defs.into_values().map(Arc::new).collect()
+    Ok((defs.into_values().map(Arc::new).collect(), language))
 }
 
 pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)

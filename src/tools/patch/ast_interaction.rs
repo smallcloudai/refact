@@ -16,7 +16,7 @@ pub async fn parse_and_get_error_symbols(
     path: &PathBuf,
     file_text: &Rope,
 ) -> Result<Vec<SymbolInformation>, String> {
-    let mut parser = match get_ast_parser_by_filename(&path) {
+    let (mut parser, _language) = match get_ast_parser_by_filename(&path) {
         Ok(x) => x,
         Err(err) => {
             tracing::error!("Error getting parser: {}", err.message);

@@ -298,16 +298,10 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     }
 }
 
-pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AstDefinition>, String) {
+pub fn parse_anything(cpath: &str, text: &str) -> Result<(IndexMap<Uuid, AstDefinition>, String), String> {
     let path = PathBuf::from(cpath);
-    let mut parser = match get_ast_parser_by_filename(&path) {
-        Ok(x) => x,
-        Err(err) => {
-            tracing::error!("Error getting parser: {}", err.message);
-            return (IndexMap::new(), "".to_string());
-        }
-    };
-    let mut language = "".to_string();
+    let (mut parser, language_id) = get_ast_parser_by_filename(&path).map_err(|err| err.message)?;
+    let language = language_id.to_string();
     let file_global_path = vec!["file".to_string()];
 
     let symbols = parser.parse(text, &path);
@@ -326,7 +320,6 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AstDefinition>
             SymbolType::VariableDefinition |
             SymbolType::FunctionDeclaration |
             SymbolType::Unknown => {
-                language = symbol.language().to_string();
                 let mut this_is_a_class = "".to_string();
                 let mut this_class_derived_from = vec![];
                 if let Some(struct_declaration) = symbol.as_any().downcast_ref::<StructDeclaration>() {
@@ -421,7 +414,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> (IndexMap<Uuid, AstDefinition>
     let mut sorted_definitions: Vec<(Uuid, AstDefinition)> = definitions.into_iter().collect();
     sorted_definitions.sort_by(|a, b| a.1.official_path.cmp(&b.1.official_path));
     let definitions = IndexMap::from_iter(sorted_definitions);
-    (definitions, language)
+    Ok((definitions, language))
 }
 
 pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
@@ -443,11 +436,12 @@ pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
     components.iter().rev().take(2).cloned().collect::<Vec<_>>()
 }
 
-pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> (IndexMap<Uuid, AstDefinition>, String)
+pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> Result<(IndexMap<Uuid, AstDefinition>, String), String>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let file_global_path_str = file_global_path.join("::");
-    let (mut definitions, language) = parse_anything(cpath, text);
+    let (mut definitions, language) = parse_anything(cpath, text)?;
+
     for definition in definitions.values_mut() {
         definition.official_path = [
             file_global_path.clone(),
@@ -470,7 +464,7 @@ pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> (IndexMap<Uu
             }
         }
     }
-    (definitions, language)
+    Ok((definitions, language))
 }
 
 
@@ -519,7 +513,7 @@ mod tests {
         init_tracing();
         let absfn1 = std::fs::canonicalize(input_file).unwrap();
         let text = read_file(absfn1.to_str().unwrap());
-        let (definitions, _language) = parse_anything(absfn1.to_str().unwrap(), &text);
+        let (definitions, _language) = parse_anything(absfn1.to_str().unwrap(), &text).unwrap();
         let mut produced_output = String::new();
         for d in definitions.values() {
             produced_output.push_str(&format!("{:?}\n", d));

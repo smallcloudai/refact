@@ -95,7 +95,7 @@ impl AstBasedFileSplitter {
         let doc_lines: Vec<String> = doc_text.split("\n").map(|x| x.to_string()).collect();
         let path = doc.doc_path.clone();
 
-        let mut parser = match get_ast_parser_by_filename(&path) {
+        let (mut parser, language) = match get_ast_parser_by_filename(&path) {
             Ok(parser) => parser,
             Err(_e) => {
                 // info!("cannot find a parser for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e.message);
@@ -172,7 +172,7 @@ impl AstBasedFileSplitter {
             }
             flush_accumulator(&mut unused_symbols_cluster_accumulator, &mut chunks);
 
-            let formatter = make_formatter(&symbol.language);
+            let formatter = make_formatter(&language);
             if symbol.symbol_type == SymbolType::StructDeclaration {
                 if let Some(children) = guid_to_children.get(&symbol.guid) {
                     if !children.is_empty() {
