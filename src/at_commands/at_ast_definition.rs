@@ -139,9 +139,9 @@ impl AtCommand for AtAstDefinition {
             };
 
             let mut result = vec![];
-            for (res, short_path) in defs.iter().zip(short_file_paths.iter()) {
+            for (res, cpath) in defs.iter().zip(file_paths.iter()) {
                 result.push(ContextFile {
-                    file_name: short_path.clone(),
+                    file_name: cpath.clone(),
                     file_content: "".to_string(),
                     line1: res.full_range.start_point.row + 1,
                     line2: res.full_range.end_point.row + 1,

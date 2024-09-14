@@ -73,9 +73,9 @@ impl AtCommand for AtAstReference {
                 );
                 messages.push(text);
 
-                for (res, short_path) in usages.iter().zip(file_paths.iter()).take(USAGES_LIMIT) {
+                for (res, cpath) in usages.iter().zip(file_paths.iter()).take(USAGES_LIMIT) {
                     all_results.push(ContextFile {
-                        file_name: short_path.clone(),
+                        file_name: cpath.clone(),
                         file_content: "".to_string(),
                         line1: res.full_range.start_point.row + 1,
                         line2: res.full_range.end_point.row + 1,

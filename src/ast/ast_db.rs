@@ -613,20 +613,51 @@ pub async fn type_hierarchy(ast_index: Arc<AMutex<AstDB>>, language: String, sub
     result
 }
 
-pub async fn definition_paths_fuzzy(ast_index: Arc<AMutex<AstDB>>, symbol: &str) -> Vec<String>
+pub async fn definition_paths_fuzzy(ast_index: Arc<AMutex<AstDB>>, pattern: &str) -> Vec<String>
 {
     let db = ast_index.lock().await.sleddb.clone();
-    let mut matches = Vec::new();
-    let d_prefix = format!("d/{}", symbol);
-    let mut iter = db.scan_prefix(d_prefix);
+    let c_prefix = format!("c/{}", pattern);
+    let mut iter = db.scan_prefix(c_prefix);
+    let mut found: IndexMap<String, Vec<String>> = IndexMap::new();
+
     while let Some(Ok((key, _))) = iter.next() {
         let key_string = String::from_utf8(key.to_vec()).unwrap();
-        matches.push(key_string);
-        if matches.len() >= 100 {
+        if let Some((cmatch, dest)) = key_string.split_once(" ⚡ ") {
+            let cmatch_stripped = cmatch.strip_prefix("c/").unwrap();
+            found.entry(cmatch_stripped.to_string()).or_default().push(dest.to_string());
+        }
+        if found.len() >= 100 {
             break;
         }
     }
-    matches
+
+    let mut unique_found = Vec::new();
+    let mut ambiguity = false;
+    for (mat, destinations) in &found {
+        unique_found.push(mat.clone());
+        if destinations.len() > 1 {
+            ambiguity = true;
+            break;
+        }
+    }
+
+    if ambiguity {
+        unique_found.clear();
+        let colons_pattern_already_has = pattern.matches("::").count();
+        let cut_colons_at = colons_pattern_already_has + 2;
+        // Dest always has pattern somewhere in the middle aaaa::bbbb::{pattern}cc
+        for destinations in found.values() {
+            for dest in destinations {
+                let parts: Vec<&str> = dest.split("::").collect();
+                if parts.len() >= cut_colons_at {
+                    let more_colons_match = parts[parts.len() - cut_colons_at..].join("::");
+                    unique_found.push(more_colons_match);
+                }
+            }
+        }
+    }
+
+    unique_found.into_iter().collect()
 }
 
 pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>)
