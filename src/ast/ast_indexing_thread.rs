@@ -9,6 +9,7 @@ use crate::global_context::GlobalContext;
 
 use crate::ast::alt_minimalistic::{AstDB, AstStatus, AstCounters};
 use crate::ast::alt_db::{alt_index_init, fetch_counters, doc_add, doc_remove};
+use crate::ast::alt_parse_anything::ParsingError;
 
 
 pub struct AstIndexService {
@@ -29,6 +30,7 @@ async fn ast_indexing_thread(
     let mut stats_update_ts = std::time::Instant::now() - std::time::Duration::from_millis(200);
     let mut stats_failure_reasons: IndexMap<String, usize> = IndexMap::new();
     let mut stats_success_languages: IndexMap<String, usize> = IndexMap::new();
+    let mut stats_parsing_errors: Vec<ParsingError> = Vec::new();
     let (ast_index, alt_status, ast_sleeping_point) = {
         let ast_service_locked = ast_service.lock().await;
         (
@@ -65,7 +67,7 @@ async fn ast_indexing_thread(
                     doc.update_text(&file_text);
                     let start_time = std::time::Instant::now();
 
-                    match doc_add(ast_index.clone(), &cpath, &file_text).await {
+                    match doc_add(ast_index.clone(), &cpath, &file_text, &mut stats_parsing_errors).await {
                         Ok((defs, language)) => {
                             tracing::info!("doc_add {:.3?}s {}", start_time.elapsed().as_secs_f32(), crate::nicer_logs::last_n_chars(&cpath, 30));
                             stats_parsed_cnt += 1;
@@ -100,6 +102,19 @@ async fn ast_indexing_thread(
         }
 
         if !reported_idle {
+            if !stats_parsing_errors.is_empty() {
+                let error_count = stats_parsing_errors.len();
+                let display_count = std::cmp::min(5, error_count);
+                let mut error_messages = String::new();
+                for error in &stats_parsing_errors[..display_count] {
+                    error_messages.push_str(&format!("(E) {}:{} {}\n", error.cpath, error.err_line, error.err_message));
+                }
+                if error_count > 5 {
+                    error_messages.push_str(&format!("...and {} more", error_count - 5));
+                }
+                info!("parsing errors, this would be a mixture of real code problems and our language-specific parser problems:\n{}", error_messages);
+                stats_parsing_errors.clear();
+            }
             info!("finished parsing, got {} symbols by processing {} files in {:>.3}s",
                 stats_symbols_cnt,
                 stats_parsed_cnt,

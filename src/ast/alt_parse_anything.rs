@@ -8,6 +8,28 @@ use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, AstSymbolInstanceArc};
 
 
+const TOO_MANY_ERRORS: usize = 100;
+
+pub struct ParsingError {
+    pub cpath: String,
+    pub err_message: String,
+    pub err_line: usize,
+}
+
+fn _add_error(
+    errors: &mut Vec<ParsingError>,
+    err_message: &str,
+    err_line: usize,
+) {
+    if errors.len() < TOO_MANY_ERRORS {
+        errors.push(ParsingError {
+            cpath: String::new(),
+            err_message: err_message.to_string(),
+            err_line,
+        });
+    }
+}
+
 fn _is_declaration(t: SymbolType) -> bool {
     match t {
         SymbolType::StructDeclaration |
@@ -29,13 +51,15 @@ fn _is_declaration(t: SymbolType) -> bool {
 
 fn _go_to_parent_until_declaration(
     map: &HashMap<Uuid, AstSymbolInstanceArc>,
-    start_node_guid: Uuid,
+    start_node: AstSymbolInstanceArc,
+    errors: &mut Vec<ParsingError>,
 ) -> Uuid {
-    let mut node_guid = start_node_guid;
+    let start_node_read = start_node.read();
+    let mut node_guid = start_node_read.parent_guid().unwrap_or_default();
     loop {
         let node_option = map.get(&node_guid);
         if node_option.is_none() {
-            tracing::error!("find_parent_of_types: node not found");
+            _add_error(errors, "find_parent_of_types: parent node not found", start_node_read.full_range().start_point.row + 1);
             return Uuid::nil();
         }
         let node = node_option.unwrap().read();
@@ -184,6 +208,7 @@ fn _typeof(
     _file_global_path: &Vec<String>,
     start_node_guid: Uuid,
     variable_or_param_name: String,
+    errors: &mut Vec<ParsingError>,
 ) -> Vec<String> {
     let mut node_guid = start_node_guid.clone();
     let mut look_here: Vec<AstSymbolInstanceArc> = Vec::new();
@@ -227,7 +252,7 @@ fn _typeof(
                 if let Some(first_type) = variable_definition.types().get(0) {
                     let type_name = first_type.name.clone().unwrap_or_default();
                     if type_name.is_empty() {
-                        tracing::info!("nameless type for variable definition line {}", /*cpath,*/ node.full_range().start_point.row + 1);
+                        _add_error(errors, "nameless type for variable definition", node.full_range().start_point.row + 1);
                     } else {
                         return vec!["?".to_string(), format!("{}🔎{}", node.language().to_string(), type_name)];
                     }
@@ -242,7 +267,7 @@ fn _typeof(
                 if arg.name == variable_or_param_name {
                     if let Some(arg_type) = &arg.type_ {
                         if arg_type.name.is_none() || arg_type.name.clone().unwrap().is_empty() {
-                            tracing::info!("nameless type for variable definition line {}", /*cpath,*/ node.full_range().start_point.row + 1);
+                            _add_error(errors, "nameless type for function argument", node.full_range().start_point.row + 1);
                         } else {
                             return vec!["?".to_string(), format!("{}🔎{}", node.language().to_string(), arg_type.name.clone().unwrap())];
                         }
@@ -261,6 +286,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     file_global_path: &Vec<String>,
     uline: usize,
     symbol: &dyn AstSymbolInstance,
+    errors: &mut Vec<ParsingError>,
 ) -> Option<Usage> {
     // my_object.something_inside
     // ^^^^^^^^^ caller (can be None)
@@ -273,7 +299,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
             uline,
         };
         let caller_node = caller.read();
-        let typeof_caller = _typeof(&orig_map, &file_global_path, caller_node.guid().clone(), caller_node.name().to_string());
+        let typeof_caller = _typeof(&orig_map, &file_global_path, caller_node.guid().clone(), caller_node.name().to_string(), errors);
         // typeof_caller will be "?" if nothing found, start with "file" if type found in the current file
         if typeof_caller.first() == Some(&"file".to_string()) {
             // actually fully resolved!
@@ -298,7 +324,12 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     }
 }
 
-pub fn parse_anything(cpath: &str, text: &str) -> Result<(IndexMap<Uuid, AstDefinition>, String), String> {
+pub fn parse_anything(
+    cpath: &str,
+    text: &str,
+    errors: &mut Vec<ParsingError>,
+) -> Result<(IndexMap<Uuid, AstDefinition>, String), String>
+{
     let path = PathBuf::from(cpath);
     let (mut parser, language_id) = get_ast_parser_by_filename(&path).map_err(|err| err.message)?;
     let language = language_id.to_string();
@@ -326,7 +357,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> Result<(IndexMap<Uuid, AstDefi
                     this_is_a_class = format!("{}🔎{}", language, struct_declaration.name());
                     for base_class in struct_declaration.inherited_types.iter() {
                         if base_class.name.is_none() {
-                            tracing::info!("nameless base class {}:{}", cpath, symbol.full_range().start_point.row + 1);
+                            _add_error(errors, "nameless base class", symbol.full_range().start_point.row + 1);
                             continue;
                         }
                         this_class_derived_from.push(format!("{}🔎{}", language, base_class.name.clone().unwrap()));
@@ -348,7 +379,7 @@ pub fn parse_anything(cpath: &str, text: &str) -> Result<(IndexMap<Uuid, AstDefi
                     };
                     definitions.insert(symbol.guid().clone(), definition);
                 } else {
-                    tracing::info!("nameless decl {}:{}", cpath, symbol.full_range().start_point.row + 1);
+                    _add_error(errors, "nameless decl", symbol.full_range().start_point.row + 1);
                 }
             }
             SymbolType::CommentDefinition |
@@ -360,8 +391,8 @@ pub fn parse_anything(cpath: &str, text: &str) -> Result<(IndexMap<Uuid, AstDefi
         }
     }
 
-    for symbol in symbols2 {
-        let symbol = symbol.read();
+    for symbol_arc in symbols2 {
+        let symbol = symbol_arc.read();
         // eprintln!("pass2: {:?}", symbol);
         match symbol.symbol_type() {
             SymbolType::StructDeclaration |
@@ -378,15 +409,15 @@ pub fn parse_anything(cpath: &str, text: &str) -> Result<(IndexMap<Uuid, AstDefi
                 let function_call = symbol.as_any().downcast_ref::<FunctionCall>().expect("xxx1000");
                 let uline = function_call.full_range().start_point.row + 1;
                 if function_call.name().is_empty() {
-                    tracing::info!("nameless call {}:{}", cpath, uline);
+                    _add_error(errors, "nameless call", function_call.full_range().start_point.row + 1);
                     continue;
                 }
-                let usage = _usage_or_typeof_caller_colon_colon_usage(function_call.get_caller_guid().clone(), &orig_map, &file_global_path, uline, function_call);
+                let usage = _usage_or_typeof_caller_colon_colon_usage(function_call.get_caller_guid().clone(), &orig_map, &file_global_path, uline, function_call, errors);
                 // eprintln!("function call name={} usage={:?} debug_hint={:?}", function_call.name(), usage, debug_hint);
                 if usage.is_none() {
                     continue;
                 }
-                let my_parent = _go_to_parent_until_declaration(&orig_map, symbol.parent_guid().unwrap_or_default());
+                let my_parent = _go_to_parent_until_declaration(&orig_map, symbol_arc.clone(), errors);
                 if let Some(my_parent_def) = definitions.get_mut(&my_parent) {
                     my_parent_def.usages.push(usage.unwrap());
                 }
@@ -395,15 +426,15 @@ pub fn parse_anything(cpath: &str, text: &str) -> Result<(IndexMap<Uuid, AstDefi
                 let variable_usage = symbol.as_any().downcast_ref::<VariableUsage>().expect("xxx1001");
                 let uline = variable_usage.full_range().start_point.row + 1;
                 if variable_usage.name().is_empty() {
-                    tracing::error!("nameless variable usage {}:{} ", cpath, uline);
+                    _add_error(errors, "nameless variable usage", variable_usage.full_range().start_point.row + 1);
                     continue;
                 }
-                let usage = _usage_or_typeof_caller_colon_colon_usage(variable_usage.fields().caller_guid.clone(), &orig_map, &file_global_path, uline, variable_usage);
+                let usage = _usage_or_typeof_caller_colon_colon_usage(variable_usage.fields().caller_guid.clone(), &orig_map, &file_global_path, uline, variable_usage, errors);
                 // eprintln!("variable usage name={} usage={:?}", variable_usage.name(), usage);
                 if usage.is_none() {
                     continue;
                 }
-                let my_parent = _go_to_parent_until_declaration(&orig_map, symbol.parent_guid().unwrap_or_default());
+                let my_parent = _go_to_parent_until_declaration(&orig_map, symbol_arc.clone(), errors);
                 if let Some(my_parent_def) = definitions.get_mut(&my_parent) {
                     my_parent_def.usages.push(usage.unwrap());
                 }
@@ -436,11 +467,19 @@ pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
     components.iter().rev().take(2).cloned().collect::<Vec<_>>()
 }
 
-pub fn parse_anything_and_add_file_path(cpath: &str, text: &str) -> Result<(IndexMap<Uuid, AstDefinition>, String), String>
+pub fn parse_anything_and_add_file_path(
+    cpath: &str,
+    text: &str,
+    errors: &mut Vec<ParsingError>,
+) -> Result<(IndexMap<Uuid, AstDefinition>, String), String>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let file_global_path_str = file_global_path.join("::");
-    let (mut definitions, language) = parse_anything(cpath, text)?;
+    let errors_count_before = errors.len();
+    let (mut definitions, language) = parse_anything(cpath, text, errors)?;
+    for error in errors.iter_mut().skip(errors_count_before) {
+        error.cpath = cpath.to_string();
+    }
 
     for definition in definitions.values_mut() {
         definition.official_path = [
@@ -511,18 +550,22 @@ mod tests {
 
     fn run_parse_test(input_file: &str, correct_file: &str) {
         init_tracing();
+        let mut errors: Vec<ParsingError> = Vec::new();
         let absfn1 = std::fs::canonicalize(input_file).unwrap();
         let text = read_file(absfn1.to_str().unwrap());
-        let (definitions, _language) = parse_anything(absfn1.to_str().unwrap(), &text).unwrap();
-        let mut produced_output = String::new();
+        let (definitions, _language) = parse_anything(absfn1.to_str().unwrap(), &text, &mut errors).unwrap();
+        let mut defs_str = String::new();
         for d in definitions.values() {
-            produced_output.push_str(&format!("{:?}\n", d));
+            defs_str.push_str(&format!("{:?}\n", d));
         }
-        println!("\n --- {:#?} ---\n{} ---\n", absfn1, produced_output.clone());
+        println!("\n --- {:#?} ---\n{} ---\n", absfn1, defs_str.clone());
         let absfn2 = std::fs::canonicalize(correct_file).unwrap();
-        let errors = must_be_no_diff(read_file(absfn2.to_str().unwrap()).as_str(), &produced_output);
-        if !errors.is_empty() {
-            println!("PROBLEMS {:#?}:\n{}/PROBLEMS", absfn1, errors);
+        let oops = must_be_no_diff(read_file(absfn2.to_str().unwrap()).as_str(), &defs_str);
+        if !oops.is_empty() {
+            println!("PROBLEMS {:#?}:\n{}/PROBLEMS", absfn1, oops);
+        }
+        for error in errors {
+            println!("(E) {}:{} {}", error.cpath, error.err_line, error.err_message);
         }
     }
 

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::task;
 use crate::ast::alt_minimalistic::{AstDB, AstDefinition, AstCounters};
-use crate::ast::alt_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
+use crate::ast::alt_parse_anything::{ParsingError, parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
 
 
 pub async fn alt_index_init() -> Arc<AMutex<AstDB>>
@@ -64,10 +64,15 @@ fn _increase_counter(db: &sled::Db, counter_key: &[u8], adjustment: i32) {
 
 }
 
-pub async fn doc_add(ast_index: Arc<AMutex<AstDB>>, cpath: &String, text: &String) -> Result<(Vec<Arc<AstDefinition>>, String), String>
+pub async fn doc_add(
+    ast_index: Arc<AMutex<AstDB>>,
+    cpath: &String,
+    text: &String,
+    errors: &mut Vec<ParsingError>,
+) -> Result<(Vec<Arc<AstDefinition>>, String), String>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
-    let (defs, language) = parse_anything_and_add_file_path(&cpath, text)?;
+    let (defs, language) = parse_anything_and_add_file_path(&cpath, text, errors)?;
     let db = ast_index.lock().await.sleddb.clone();
     let mut batch = sled::Batch::default();
     let mut added_defs: i32 = 0;
@@ -565,14 +570,19 @@ mod tests {
     #[tokio::test]
     async fn test_alt_db() {
         let ast_index = alt_index_init().await;
+        let mut errors: Vec<ParsingError> = Vec::new();
 
         let cpp_library_path = "src/ast/alt_testsuite/cpp_goat_library.h";
         let cpp_library_text = read_file(cpp_library_path);
-        doc_add(ast_index.clone(), &cpp_library_path.to_string(), &cpp_library_text).await;
+        doc_add(ast_index.clone(), &cpp_library_path.to_string(), &cpp_library_text, &mut errors).await.unwrap();
 
         let cpp_main_path = "src/ast/alt_testsuite/cpp_goat_main.cpp";
         let cpp_main_text = read_file(cpp_main_path);
-        doc_add(ast_index.clone(), &cpp_main_path.to_string(), &cpp_main_text).await;
+        doc_add(ast_index.clone(), &cpp_main_path.to_string(), &cpp_main_text, &mut errors).await.unwrap();
+
+        for error in errors {
+            println!("(E) {}:{} {}", error.cpath, error.err_line, error.err_message);
+        }
 
         println!("Type hierachy:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "".to_string()).await);
         println!("Type hierachy subtree_of=Animal:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "cpp🔎Animal".to_string()).await);
