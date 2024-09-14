@@ -108,7 +108,7 @@ pub async fn doc_add(
     }
     let doc_key = format!("doc/{}", file_global_path.join("::"));
     if db.get(doc_key.as_bytes()).unwrap().is_none() {
-        _increase_counter(&db, b"counters/doc", 1);
+        _increase_counter(&db, b"counters/docs", 1);
         db.insert(doc_key.as_bytes(), cpath.as_bytes()).unwrap();
     }
     _increase_counter(&db, b"counters/defs", added_defs);
@@ -166,7 +166,7 @@ pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
     }
     let doc_key = format!("doc/{}", file_global_path.join("::"));
     if db.get(doc_key.as_bytes()).unwrap().is_some() {
-        _increase_counter(&db, b"counters/doc", -1);
+        _increase_counter(&db, b"counters/docs", -1);
         db.remove(doc_key.as_bytes()).unwrap();
     }
     _increase_counter(&db, b"counters/defs", -deleted_defs);
@@ -552,12 +552,15 @@ pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>)
         } else if key_string.starts_with("t/") {
             let value_string = String::from_utf8(value.to_vec()).unwrap();
             println!("{} 👉 {:?}", key_string, value_string);
+        } else if key_string.starts_with("counters/") {
+            let counter_value: i32 = serde_cbor::from_slice(&value).unwrap();
+            println!("{}: {}", key_string, counter_value);
         } else {
             println!("{}", key_string);
         }
     }
+    println!("dump_database over");
 }
-
 
 #[cfg(test)]
 mod tests {
