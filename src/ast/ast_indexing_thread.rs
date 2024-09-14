@@ -8,7 +8,7 @@ use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
 use crate::ast::ast_minimalistic::{AstDB, AstStatus, AstCounters};
-use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove};
+use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove, ConnectUsageContext, connect_usages, connect_usages_look_if_full_reset_needed};
 use crate::ast::ast_parse_anything::ParsingError;
 
 
@@ -155,7 +155,27 @@ async fn ast_indexing_thread(
             ast_sleeping_point.notify_one();
         }
 
-        tokio::time::timeout(tokio::time::Duration::from_secs(10), ast_sleeping_point.notified()).await.ok();
+        // Connect usages, unless we have files in the todo
+        let mut todo_count = ast_service.lock().await.ast_todo.len();
+        if todo_count > 0 {
+            continue;
+        }
+
+        let mut ucx: ConnectUsageContext = connect_usages_look_if_full_reset_needed(ast_index.clone()).await;
+        loop {
+            todo_count = ast_service.lock().await.ast_todo.len();
+            if todo_count > 0 {
+                break;
+            }
+            let did_anything = connect_usages(ast_index.clone(), &mut ucx).await;
+            if !did_anything {
+                break;
+            }
+        }
+
+        if todo_count == 0 {
+            tokio::time::timeout(tokio::time::Duration::from_secs(10), ast_sleeping_point.notified()).await.ok();
+        }
     }
 }
 

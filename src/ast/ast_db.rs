@@ -1,6 +1,7 @@
 use sled::Db;
 use serde_cbor;
 use std::collections::{HashMap, HashSet};
+use indexmap::IndexMap;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::task;
@@ -89,23 +90,32 @@ pub async fn doc_add(
             batch.insert(c_key.as_bytes(), b"");
             path_parts.remove(0);
         }
+        let mut unresolved_usages: i32 = 0;
         for usage in &definition.usages {
             if !usage.resolved_as.is_empty() {
                 let u_key = format!("u/{} ⚡ {}", usage.resolved_as, official_path);
                 batch.insert(u_key.as_bytes(), b"");
+            } else {
+                unresolved_usages += 1;
             }
             added_usages += 1;
         }
-        // AstDefinition { CosmicGoat, this_is_a_class: cpp🔎CosmicGoat, derived_from: "cpp🔎Goat" "cpp🔎CosmicJustice" }
+        // this_is_a_class: cpp🔎CosmicGoat, derived_from: "cpp🔎Goat" "cpp🔎CosmicJustice"
         for from in &definition.this_class_derived_from {
-            let t_key = format!("t/{} ⚡ {}", from, official_path);
+            let t_key = format!("classes/{} ⚡ {}", from, official_path);
             batch.insert(t_key.as_bytes(), definition.this_is_a_class.as_bytes());
+        }
+        if unresolved_usages > 0 {
+            let resolve_todo_key = format!("resolve-todo/{}", official_path);
+            batch.insert(resolve_todo_key.as_bytes(), b"");
         }
         added_defs += 1;
     }
+
     if let Err(e) = db.apply_batch(batch) {
         tracing::error!("doc_add() failed to apply batch: {:?}", e);
     }
+
     let doc_key = format!("doc/{}", file_global_path.join("::"));
     if db.get(doc_key.as_bytes()).unwrap().is_none() {
         _increase_counter(&db, b"counters/docs", 1);
@@ -143,7 +153,7 @@ pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
                 deleted_usages += 1;
             }
             for from in &definition.this_class_derived_from {
-                let t_key = format!("t/{} ⚡ {}", from, official_path);
+                let t_key = format!("classes/{} ⚡ {}", from, official_path);
                 batch.remove(t_key.as_bytes());
             }
             let cleanup_key = format!("resolve-cleanup/{}", definition.official_path.join("::"));
@@ -188,27 +198,88 @@ pub async fn doc_symbols(ast_index: Arc<AMutex<AstDB>>, cpath: &String) -> Vec<A
     defs
 }
 
-async fn connect_usages(ast_index: Arc<AMutex<AstDB>>)
+pub struct ConnectUsageContext {
+    pub derived_from_map: IndexMap<String, Vec<String>>,
+}
+
+pub async fn connect_usages(ast_index: Arc<AMutex<AstDB>>, ucx: &mut ConnectUsageContext) -> bool
 {
     let db = ast_index.lock().await.sleddb.clone();
-    let mut iter = db.scan_prefix("d/");
+    let mut iter = db.scan_prefix("resolve-todo/").take(1);
+
+    if let Some(Ok((todo_key, _))) = iter.next() {
+        let key_string = String::from_utf8(todo_key.to_vec()).unwrap();
+        let file_global_path = key_string.strip_prefix("resolve-todo/").unwrap();
+
+        // delete immediately, to make sure connect_usages() does not continue forever, even if there are errors and stuff
+        if let Err(e) = db.remove(&todo_key) {
+            tracing::error!("connect_usages() failed to remove resolve-todo key: {:?}", e);
+        }
+
+        let d_key = format!("d/{}", file_global_path);
+        if let Ok(Some(value)) = db.get(&d_key) {
+            let mut batch = sled::Batch::default();
+
+            if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
+                _connect_usages_helper(&db, &ucx.derived_from_map, &definition, &mut batch).await;
+            }
+
+            if let Err(e) = db.apply_batch(batch) {
+                tracing::error!("connect_usages() failed to apply batch: {:?}", e);
+            }
+        } else {
+            tracing::error!("connect_usages() failed to get d/{}", d_key);
+        }
+
+        return true;
+    }
+
+    false
+}
+
+pub async fn connect_usages_look_if_full_reset_needed(ast_index: Arc<AMutex<AstDB>>) -> ConnectUsageContext
+{
+    let db = ast_index.lock().await.sleddb.clone();
+    let class_hierarchy_key = b"class-hierarchy/";
+    let existing_hierarchy: IndexMap<String, Vec<String>> = match db.get(class_hierarchy_key) {
+        Ok(Some(value)) => serde_cbor::from_slice(&value).unwrap_or_default(),
+        _ => IndexMap::new(),
+    };
+
+    let new_derived_from_map = _derived_from(&db).await;
     let mut batch = sled::Batch::default();
 
-    let derived_from_map = _derived_from(&db).await;
-    // println!("derived_from_map {:?}", derived_from_map);
+    if existing_hierarchy.is_empty() {
+        let serialized_hierarchy = serde_cbor::to_vec(&new_derived_from_map).unwrap();
+        batch.insert(class_hierarchy_key, serialized_hierarchy.as_slice());
+        // first run, do nothing because all the definitions are already in the todo list
 
-    while let Some(Ok((_key, value))) = iter.next() {
-        if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
-            _connect_usages_helper(&db, &derived_from_map, &definition, &mut batch).await;
+    } else if new_derived_from_map != existing_hierarchy {
+        tracing::info!(" * * * class hierarchy changed, all usages need to be reconnected * * *");
+        let serialized_hierarchy = serde_cbor::to_vec(&new_derived_from_map).unwrap();
+        batch.insert(class_hierarchy_key, serialized_hierarchy.as_slice());
+
+        let mut iter = db.scan_prefix("d/");
+        let mut cnt = 0;
+        while let Some(Ok((key, _))) = iter.next() {
+            let key_string = String::from_utf8(key.to_vec()).unwrap();
+            let resolve_todo_key = format!("resolve-todo/{}", key_string.strip_prefix("d/").unwrap());
+            batch.insert(resolve_todo_key.as_bytes(), b"");
+            cnt += 1;
         }
+        tracing::info!("added {} items to resolve-todo.", cnt);
     }
 
     if let Err(e) = db.apply_batch(batch) {
-        tracing::error!("connect_usages() failed to apply batch: {:?}", e);
+        tracing::error!("connect_usages_look_if_full_reset_needed() failed to apply batch: {:?}", e);
+    }
+
+    ConnectUsageContext {
+        derived_from_map: new_derived_from_map,
     }
 }
 
-async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &HashMap<String, Vec<String>>, definition: &AstDefinition, batch: &mut sled::Batch)
+async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &IndexMap<String, Vec<String>>, definition: &AstDefinition, batch: &mut sled::Batch)
 {
     // Data example:
     // (1) c/Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
@@ -334,11 +405,11 @@ async fn _connect_usages_helper(db: &sled::Db, derived_from_map: &HashMap<String
     batch.insert(cleanup_key.as_bytes(), cleanup_value.as_slice());
 }
 
-async fn _derived_from(db: &sled::Db) -> HashMap<String, Vec<String>> {
+async fn _derived_from(db: &sled::Db) -> IndexMap<String, Vec<String>> {
     // Data example:
-    // t/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
-    let mut derived_map: HashMap<String, Vec<String>> = HashMap::new();
-    let t_prefix = "t/";
+    // classes/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
+    let mut derived_map: IndexMap<String, Vec<String>> = IndexMap::new();
+    let t_prefix = "classes/";
     let mut iter = db.scan_prefix(t_prefix);
     while let Some(Ok((key, value))) = iter.next() {
         let key_string = String::from_utf8(key.to_vec()).unwrap();
@@ -360,8 +431,8 @@ async fn _derived_from(db: &sled::Db) -> HashMap<String, Vec<String>> {
     // Now we need to post-process this into [child, [parent1, parent_of_parent1, parent2, parent_of_parent2, ...]]
     fn build_all_derived_from(
         klass: &str,
-        derived_map: &HashMap<String, Vec<String>>,
-        all_derived_from: &mut HashMap<String, Vec<String>>,
+        derived_map: &IndexMap<String, Vec<String>>,
+        all_derived_from: &mut IndexMap<String, Vec<String>>,
         visited: &mut HashSet<String>,
     ) -> Vec<String> {
         if visited.contains(klass) {
@@ -383,7 +454,7 @@ async fn _derived_from(db: &sled::Db) -> HashMap<String, Vec<String>> {
         all_derived_from.insert(klass.to_string(), all_parents.clone());
         all_parents
     }
-    let mut all_derived_from: HashMap<String, Vec<String>> = HashMap::new();
+    let mut all_derived_from: IndexMap<String, Vec<String>> = IndexMap::new();
     for klass in derived_map.keys() {
         let mut visited: HashSet<String> = HashSet::new();
         build_all_derived_from(klass, &derived_map, &mut all_derived_from, &mut visited);
@@ -459,9 +530,9 @@ pub async fn definitions(ast_index: Arc<AMutex<AstDB>>, double_colon_path: &str)
 pub async fn type_hierarchy(ast_index: Arc<AMutex<AstDB>>, language: String, subtree_of: String) -> String
 {
     // Data example:
-    // t/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
-    // t/cpp🔎CosmicJustice ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp🔎CosmicGoat"
-    // t/cpp🔎Goat ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp🔎CosmicGoat"
+    // classes/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
+    // classes/cpp🔎CosmicJustice ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp🔎CosmicGoat"
+    // classes/cpp🔎Goat ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp🔎CosmicGoat"
     //
     // Output for that data:
     // type_hierarchy("cpp", "")
@@ -477,9 +548,9 @@ pub async fn type_hierarchy(ast_index: Arc<AMutex<AstDB>>, language: String, sub
     //    CosmicGoat
     //
     let db = ast_index.lock().await.sleddb.clone();
-    let t_prefix = format!("t/{}", language);
+    let t_prefix = format!("classes/{}", language);
     let mut iter = db.scan_prefix(&t_prefix);
-    let mut hierarchy_map: HashMap<String, Vec<String>> = HashMap::new();
+    let mut hierarchy_map: IndexMap<String, Vec<String>> = IndexMap::new();
 
     while let Some(Ok((key, value))) = iter.next() {
         let key_string = String::from_utf8(key.to_vec()).unwrap();
@@ -487,14 +558,14 @@ pub async fn type_hierarchy(ast_index: Arc<AMutex<AstDB>>, language: String, sub
         if key_string.contains(" ⚡ ") {
             let parts: Vec<&str> = key_string.split(" ⚡ ").collect();
             if parts.len() == 2 {
-                let parent = parts[0].trim().strip_prefix("t/").unwrap_or(parts[0].trim()).to_string();
+                let parent = parts[0].trim().strip_prefix("classes/").unwrap_or(parts[0].trim()).to_string();
                 let child = value_string.trim().to_string();
                 hierarchy_map.entry(parent).or_insert_with(Vec::new).push(child);
             }
         }
     }
 
-    fn build_hierarchy(hierarchy_map: &HashMap<String, Vec<String>>, node: &str, indent: usize, language: &str) -> String {
+    fn build_hierarchy(hierarchy_map: &IndexMap<String, Vec<String>>, node: &str, indent: usize, language: &str) -> String {
         let prefix = format!("{}🔎", language);
         let node_stripped = node.strip_prefix(&prefix).unwrap_or(node);
         let mut result = format!("{:indent$}{}\n", "", node_stripped, indent = indent);
@@ -549,12 +620,14 @@ pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>)
                 Ok(definition) => println!("{}\n{:?}", key_string, definition),
                 Err(e) => println!("Failed to deserialize value at {}: {:?}", key_string, e),
             }
-        } else if key_string.starts_with("t/") {
+        } else if key_string.starts_with("classes/") {
             let value_string = String::from_utf8(value.to_vec()).unwrap();
             println!("{} 👉 {:?}", key_string, value_string);
         } else if key_string.starts_with("counters/") {
             let counter_value: i32 = serde_cbor::from_slice(&value).unwrap();
             println!("{}: {}", key_string, counter_value);
+        } else if value.len() > 0 {
+            println!("{} ({} bytes)", key_string, value.len());
         } else {
             println!("{}", key_string);
         }
@@ -566,6 +639,17 @@ pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>)
 mod tests {
     use super::*;
     use std::fs;
+    use tracing_subscriber;
+    use std::io::stderr;
+    use tracing_subscriber::fmt::format;
+
+    fn init_tracing() {
+        let _ = tracing_subscriber::fmt()
+            .with_writer(stderr)
+            .with_max_level(tracing::Level::INFO)
+            .event_format(format::Format::default())
+            .try_init();
+    }
 
     fn read_file(file_path: &str) -> String {
         fs::read_to_string(file_path).expect("Unable to read file")
@@ -573,6 +657,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_ast_db() {
+        init_tracing();
         let ast_index = ast_index_init().await;
         let mut errors: Vec<ParsingError> = Vec::new();
 
@@ -591,7 +676,13 @@ mod tests {
         println!("Type hierachy:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "".to_string()).await);
         println!("Type hierachy subtree_of=Animal:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "cpp🔎Animal".to_string()).await);
 
-        connect_usages(ast_index.clone()).await;
+        let mut ucx: ConnectUsageContext = connect_usages_look_if_full_reset_needed(ast_index.clone()).await;
+        loop {
+            let did_anything = connect_usages(ast_index.clone(), &mut ucx).await;
+            if !did_anything {
+                break;
+            }
+        }
 
         dump_database(ast_index.clone()).await;
 
