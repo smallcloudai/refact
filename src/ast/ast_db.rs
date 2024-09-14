@@ -95,7 +95,7 @@ pub async fn doc_add(
         for usage in &definition.usages {
             if !usage.resolved_as.is_empty() {
                 let u_key = format!("u/{} ⚡ {}", usage.resolved_as, official_path);
-                batch.insert(u_key.as_bytes(), b"");
+                batch.insert(u_key.as_bytes(), serde_cbor::to_vec(&usage.uline).unwrap());
             } else {
                 unresolved_usages += 1;
             }
@@ -131,7 +131,7 @@ pub async fn doc_add(
 pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
-    let d_prefix = format!("d/{}", file_global_path.join("::"));
+    let d_prefix = format!("d/{}::", file_global_path.join("::"));
     let db = ast_index.lock().await.sleddb.clone();
     let mut batch = sled::Batch::default();
     let mut iter = db.scan_prefix(d_prefix);
@@ -188,7 +188,7 @@ pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
 pub async fn doc_symbols(ast_index: Arc<AMutex<AstDB>>, cpath: &String) -> Vec<Arc<AstDefinition>>
 {
     let to_search_prefix = filesystem_path_to_double_colon_path(cpath);
-    let d_prefix = format!("d/{}", to_search_prefix.join("::"));
+    let d_prefix = format!("d/{}::", to_search_prefix.join("::"));
     let db = ast_index.lock().await.sleddb.clone();
     let mut defs = Vec::new();
     let mut iter = db.scan_prefix(d_prefix);
@@ -410,14 +410,15 @@ async fn _connect_usages_helper(
                 continue;
             }
             if found.len() > 1 {
-                ucx.errstats.add_error(&format!("link {} is ambiguous, can mean: {:?}", to_resolve, found), 0);
+                ucx.errstats.add_error(definition.cpath.clone(), usage.uline, &format!("link {} is ambiguous, can mean: {:?}", to_resolve, found));
                 ucx.usages_ambiguous += 1;
                 found.truncate(1);
             }
             let single_thing_found = found.into_iter().next().unwrap();
             let u_key = format!("u/{} ⚡ {}", single_thing_found, official_path);
-            batch.insert(u_key.as_bytes(), b"");
+            batch.insert(u_key.as_bytes(), serde_cbor::to_vec(&usage.uline).unwrap());
             all_saved_ulinks.push(u_key);
+            tracing::info!("resolved {} to {} line {}", single_thing_found, official_path, usage.uline);
             ucx.usages_connected += 1;
             break;  // the next thing from targets_for_guesswork is a worse query, keep this one and exit
         }
@@ -485,22 +486,29 @@ async fn _derived_from(db: &sled::Db) -> IndexMap<String, Vec<String>> {
     all_derived_from
 }
 
-pub async fn usages(ast_index: Arc<AMutex<AstDB>>, full_official_path: String) -> Vec<Arc<AstDefinition>>
+pub async fn usages(ast_index: Arc<AMutex<AstDB>>, full_official_path: String, limit_n: usize) -> Vec<(Arc<AstDefinition>, usize)>
 {
     // The best way to get full_official_path is to call definitions() first
     let db = ast_index.lock().await.sleddb.clone();
     let mut usages = Vec::new();
-    let u_prefix = format!("u/{}", full_official_path);
-    let mut iter = db.scan_prefix(&u_prefix);
-    while let Some(Ok((key, _))) = iter.next() {
-        let key_string = String::from_utf8(key.to_vec()).unwrap();
+    let u_prefix1 = format!("u/{} ", full_official_path); // this one has space
+    let u_prefix2 = format!("u/{}", full_official_path);
+    let mut iter = db.scan_prefix(&u_prefix1);
+    while let Some(Ok((u_key, u_value))) = iter.next() {
+        if usages.len() >= limit_n {
+            break;
+        }
+        let key_string = String::from_utf8(u_key.to_vec()).unwrap();
+        let uline: usize = serde_cbor::from_slice(&u_value).unwrap_or(0); // Assuming `uline` is stored in the value
         let parts: Vec<&str> = key_string.split(" ⚡ ").collect();
-        if parts.len() == 2 && parts[0] == u_prefix {
+        if parts.len() == 2 && parts[0] == u_prefix2 {
             let full_path = parts[1].trim();
             let d_key = format!("d/{}", full_path);
             if let Ok(Some(d_value)) = db.get(d_key.as_bytes()) {
                 match serde_cbor::from_slice::<AstDefinition>(&d_value) {
-                    Ok(definition) => usages.push(Arc::new(definition)),
+                    Ok(definition) => {
+                        usages.push((Arc::new(definition), uline));
+                    },
                     Err(e) => println!("Failed to deserialize value for {}: {:?}", d_key, e),
                 }
             }
@@ -514,15 +522,16 @@ pub async fn usages(ast_index: Arc<AMutex<AstDB>>, full_official_path: String) -
 pub async fn definitions(ast_index: Arc<AMutex<AstDB>>, double_colon_path: &str) -> Vec<Arc<AstDefinition>>
 {
     let db = ast_index.lock().await.sleddb.clone();
-    let c_prefix = format!("c/{}", double_colon_path);
+    let c_prefix1 = format!("c/{} ", double_colon_path); // has space
+    let c_prefix2 = format!("c/{}", double_colon_path);
     let mut path_groups: HashMap<usize, Vec<String>> = HashMap::new();
     // println!("definitions(c_prefix={:?})", c_prefix);
-    let mut iter = db.scan_prefix(&c_prefix);
+    let mut iter = db.scan_prefix(&c_prefix1);
     while let Some(Ok((key, _))) = iter.next() {
         let key_string = String::from_utf8(key.to_vec()).unwrap();
         if key_string.contains(" ⚡ ") {
             let parts: Vec<&str> = key_string.split(" ⚡ ").collect();
-            if parts.len() == 2 && parts[0] == c_prefix {
+            if parts.len() == 2 && parts[0] == c_prefix2 {
                 let full_path = parts[1].trim().to_string();
                 let colon_count = full_path.matches("::").count();
                 path_groups.entry(colon_count).or_insert_with(Vec::new).push(full_path);
@@ -723,7 +732,7 @@ mod tests {
         doc_add(ast_index.clone(), &cpp_main_path.to_string(), &cpp_main_text, &mut errstats).await.unwrap();
 
         for error in errstats.errors {
-            println!("(E) {}:{} {}", error.cpath, error.err_line, error.err_message);
+            println!("(E) {}:{} {}", error.err_cpath, error.err_line, error.err_message);
         }
 
         println!("Type hierachy:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "".to_string()).await);
@@ -750,10 +759,10 @@ mod tests {
 
         let animalage_defs = definitions(ast_index.clone(), "Animal::age").await;
         let animalage_def0 = animalage_defs.first().unwrap();
-        let animalage_usage = usages(ast_index.clone(), animalage_def0.path()).await;
+        let animalage_usage = usages(ast_index.clone(), animalage_def0.path(), 100).await;
         let mut animalage_usage_str = String::new();
-        for usage in animalage_usage.iter() {
-            animalage_usage_str.push_str(&format!("{:?}\n", usage));
+        for (used_at_def, used_at_uline) in animalage_usage.iter() {
+            animalage_usage_str.push_str(&format!("{:}:{}\n", used_at_def.cpath, used_at_uline));
         }
         println!("animalage_usage_str:\n{}", animalage_usage_str);
         // assert!(animalage_usage.len() == 3);

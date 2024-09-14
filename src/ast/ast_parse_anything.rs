@@ -37,7 +37,10 @@ fn _go_to_parent_until_declaration(
     loop {
         let node_option = map.get(&node_guid);
         if node_option.is_none() {
-            errors.add_error("find_parent_of_types: parent node not found", start_node_read.full_range().start_point.row + 1);
+            // XXX: legit in Python (assignment at top level, function call at top level)
+            errors.add_error(
+                "".to_string(), start_node_read.full_range().start_point.row + 1,
+                "go_to_parent: parent decl not found");
             return Uuid::nil();
         }
         let node = node_option.unwrap().read();
@@ -230,7 +233,7 @@ fn _typeof(
                 if let Some(first_type) = variable_definition.types().get(0) {
                     let type_name = first_type.name.clone().unwrap_or_default();
                     if type_name.is_empty() {
-                        errors.add_error("nameless type for variable definition", node.full_range().start_point.row + 1);
+                        errors.add_error("".to_string(), node.full_range().start_point.row + 1, "nameless type for variable definition");
                     } else {
                         return vec!["?".to_string(), format!("{}🔎{}", node.language().to_string(), type_name)];
                     }
@@ -245,7 +248,7 @@ fn _typeof(
                 if arg.name == variable_or_param_name {
                     if let Some(arg_type) = &arg.type_ {
                         if arg_type.name.is_none() || arg_type.name.clone().unwrap().is_empty() {
-                            errors.add_error("nameless type for function argument", node.full_range().start_point.row + 1);
+                            errors.add_error("".to_string(), node.full_range().start_point.row + 1, "nameless type for function argument");
                         } else {
                             return vec!["?".to_string(), format!("{}🔎{}", node.language().to_string(), arg_type.name.clone().unwrap())];
                         }
@@ -331,14 +334,16 @@ pub fn parse_anything(
             SymbolType::Unknown => {
                 let mut this_is_a_class = "".to_string();
                 let mut this_class_derived_from = vec![];
+                let mut usages = vec![];
                 if let Some(struct_declaration) = symbol.as_any().downcast_ref::<StructDeclaration>() {
                     this_is_a_class = format!("{}🔎{}", language, struct_declaration.name());
                     for base_class in struct_declaration.inherited_types.iter() {
                         if base_class.name.is_none() {
-                            errors.add_error("nameless base class", symbol.full_range().start_point.row + 1);
+                            errors.add_error("".to_string(), struct_declaration.full_range().start_point.row + 1, "nameless base class");
                             continue;
                         }
                         this_class_derived_from.push(format!("{}🔎{}", language, base_class.name.clone().unwrap()));
+                        usages.push(_name_to_usage(&orig_map, &file_global_path, symbol.full_range().start_point.row + 1, Some(symbol.guid().clone()), base_class.name.clone().unwrap()).unwrap());
                     }
                 }
                 if !symbol.name().is_empty() {
@@ -349,7 +354,7 @@ pub fn parse_anything(
                         symbol_type: symbol.symbol_type().clone(),
                         this_is_a_class,
                         this_class_derived_from,
-                        usages: vec![],
+                        usages,
                         cpath: cpath.to_string(),
                         full_range: symbol.full_range().clone(),
                         declaration_range: symbol.declaration_range().clone(),
@@ -357,7 +362,7 @@ pub fn parse_anything(
                     };
                     definitions.insert(symbol.guid().clone(), definition);
                 } else {
-                    errors.add_error("nameless decl", symbol.full_range().start_point.row + 1);
+                    errors.add_error("".to_string(), symbol.full_range().start_point.row + 1, "nameless decl");
                 }
             }
             SymbolType::CommentDefinition |
@@ -387,7 +392,7 @@ pub fn parse_anything(
                 let function_call = symbol.as_any().downcast_ref::<FunctionCall>().expect("xxx1000");
                 let uline = function_call.full_range().start_point.row + 1;
                 if function_call.name().is_empty() {
-                    errors.add_error("nameless call", function_call.full_range().start_point.row + 1);
+                    errors.add_error("".to_string(), uline, "nameless call");
                     continue;
                 }
                 let usage = _usage_or_typeof_caller_colon_colon_usage(function_call.get_caller_guid().clone(), &orig_map, &file_global_path, uline, function_call, errors);
@@ -404,7 +409,7 @@ pub fn parse_anything(
                 let variable_usage = symbol.as_any().downcast_ref::<VariableUsage>().expect("xxx1001");
                 let uline = variable_usage.full_range().start_point.row + 1;
                 if variable_usage.name().is_empty() {
-                    errors.add_error("nameless variable usage", variable_usage.full_range().start_point.row + 1);
+                    errors.add_error("".to_string(), uline, "nameless variable usage");
                     continue;
                 }
                 let usage = _usage_or_typeof_caller_colon_colon_usage(variable_usage.fields().caller_guid.clone(), &orig_map, &file_global_path, uline, variable_usage, errors);
@@ -456,7 +461,7 @@ pub fn parse_anything_and_add_file_path(
     let errors_count_before = errstats.errors.len();
     let (mut definitions, language) = parse_anything(cpath, text, errstats)?;
     for error in errstats.errors.iter_mut().skip(errors_count_before) {
-        error.cpath = cpath.to_string();
+        error.err_cpath = cpath.to_string();
     }
 
     for definition in definitions.values_mut() {
@@ -493,7 +498,7 @@ mod tests {
     use std::io::stderr;
     use tracing_subscriber::fmt::format;
 
-    fn init_tracing() {
+    fn _init_tracing() {
         let _ = tracing_subscriber::fmt()
             .with_writer(stderr)
             .with_max_level(tracing::Level::INFO)
@@ -501,11 +506,11 @@ mod tests {
             .try_init();
     }
 
-    fn read_file(file_path: &str) -> String {
+    fn _read_file(file_path: &str) -> String {
         fs::read_to_string(file_path).expect("Unable to read file")
     }
 
-    fn must_be_no_diff(expected: &str, produced: &str) -> String {
+    fn _must_be_no_diff(expected: &str, produced: &str) -> String {
         let expected_lines: Vec<_> = expected.lines().map(|line| line.trim()).filter(|line| !line.is_empty()).collect();
         let produced_lines: Vec<_> = produced.lines().map(|line| line.trim()).filter(|line| !line.is_empty()).collect();
         let mut mistakes = String::new();
@@ -526,11 +531,11 @@ mod tests {
         mistakes
     }
 
-    fn run_parse_test(input_file: &str, correct_file: &str) {
-        init_tracing();
+    fn _run_parse_test(input_file: &str, correct_file: &str) {
+        _init_tracing();
         let mut errstats = ErrorStats::default();
         let absfn1 = std::fs::canonicalize(input_file).unwrap();
-        let text = read_file(absfn1.to_str().unwrap());
+        let text = _read_file(absfn1.to_str().unwrap());
         let (definitions, _language) = parse_anything(absfn1.to_str().unwrap(), &text, &mut errstats).unwrap();
         let mut defs_str = String::new();
         for d in definitions.values() {
@@ -538,26 +543,26 @@ mod tests {
         }
         println!("\n --- {:#?} ---\n{} ---\n", absfn1, defs_str.clone());
         let absfn2 = std::fs::canonicalize(correct_file).unwrap();
-        let oops = must_be_no_diff(read_file(absfn2.to_str().unwrap()).as_str(), &defs_str);
+        let oops = _must_be_no_diff(_read_file(absfn2.to_str().unwrap()).as_str(), &defs_str);
         if !oops.is_empty() {
             println!("PROBLEMS {:#?}:\n{}/PROBLEMS", absfn1, oops);
         }
         for error in errstats.errors {
-            println!("(E) {}:{} {}", error.cpath, error.err_line, error.err_message);
+            println!("(E) {}:{} {}", error.err_cpath, error.err_line, error.err_message);
         }
     }
 
     #[test]
-    fn test_parse_cpp_library() {
-        run_parse_test(
+    fn test_ast_parse_cpp_library() {
+        _run_parse_test(
             "src/ast/alt_testsuite/cpp_goat_library.h",
             "src/ast/alt_testsuite/cpp_goat_library.correct"
         );
     }
 
     #[test]
-    fn test_parse_cpp_main() {
-        run_parse_test(
+    fn test_ast_parse_cpp_main() {
+        _run_parse_test(
             "src/ast/alt_testsuite/cpp_goat_main.cpp",
             "src/ast/alt_testsuite/cpp_goat_main.correct"
         );

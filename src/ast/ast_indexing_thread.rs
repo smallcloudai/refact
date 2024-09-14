@@ -46,6 +46,7 @@ async fn ast_indexing_thread(
             let left_todo_count = ast_service_locked.ast_todo.len();
             (cpath, left_todo_count)
         };
+
         if let Some(cpath) = cpath {
             reported_idle = false;
             if stats_parsed_cnt == 0 {
@@ -60,7 +61,11 @@ async fn ast_indexing_thread(
             };
             let mut doc = Document { doc_path: cpath.clone().into(), doc_text: None };
 
-            doc_remove(ast_index.clone(), &cpath).await;
+            {
+                let start_time = std::time::Instant::now();
+                doc_remove(ast_index.clone(), &cpath).await;
+                tracing::info!("doc_remove {:.3?}s {}", start_time.elapsed().as_secs_f32(), crate::nicer_logs::last_n_chars(&cpath, 30));
+            }
 
             match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await {
                 Ok(file_text) => {
@@ -107,7 +112,7 @@ async fn ast_indexing_thread(
                 let display_count = std::cmp::min(5, error_count);
                 let mut error_messages = String::new();
                 for error in &stats_parsing_errors.errors[..display_count] {
-                    error_messages.push_str(&format!("(E) {}:{} {}\n", error.cpath, error.err_line, error.err_message));
+                    error_messages.push_str(&format!("(E) {}:{} {}\n", error.err_cpath, error.err_line, error.err_message));
                 }
                 if error_count > 5 {
                     error_messages.push_str(&format!("...and {} more", error_count - 5));
@@ -178,7 +183,7 @@ async fn ast_indexing_thread(
             let display_count = std::cmp::min(5, error_count);
             let mut error_messages = String::new();
             for error in &usagecx.errstats.errors[..display_count] {
-                error_messages.push_str(&format!("(U) {}:{} {}\n", error.cpath, error.err_line, error.err_message));
+                error_messages.push_str(&format!("(U) {}:{} {}\n", error.err_cpath, error.err_line, error.err_message));
             }
             if error_count > 5 {
                 error_messages.push_str(&format!("...and {} more", error_count - 5));

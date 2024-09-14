@@ -54,16 +54,19 @@ impl Tool for ToolAstReference {
             const DEFS_LIMIT: usize = 5;
 
             for (_i, def) in defs.iter().take(DEFS_LIMIT).enumerate() {
-                let usages = crate::ast::ast_db::usages(ast_index.clone(), def.path()).await;
-                let file_paths = usages.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
+                let usedin_and_uline = crate::ast::ast_db::usages(ast_index.clone(), def.path(), 100).await;
+                let file_paths = usedin_and_uline.iter().map(|(usedin, _)| usedin.cpath.clone()).collect::<Vec<_>>();
                 let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), file_paths.clone()).await;
 
                 let def_file_path = vec![def.cpath.clone()];
                 let short_def_file_path = crate::files_correction::shortify_paths(gcx.clone(), def_file_path.clone()).await;
 
                 let text = {
-                    let usage_count = usages.len();
-                    let usage_lines = usages.iter().zip(short_file_paths.iter()).take(USAGES_LIMIT).map(|(u, short_path)| format!("{}:{}", short_path, u.full_range.start_point.row + 1)).collect::<Vec<_>>();
+                    let usage_count = usedin_and_uline.len();
+                    let mut usage_lines = Vec::new();
+                    for ((_usedin, uline), short_path) in usedin_and_uline.iter().zip(short_file_paths.iter()).take(USAGES_LIMIT) {
+                        usage_lines.push(format!("{}:{}", short_path, uline));
+                    }
                     let more_usages = if usage_count > USAGES_LIMIT {
                         format!("...and {} more", usage_count - USAGES_LIMIT)
                     } else {
@@ -83,13 +86,13 @@ impl Tool for ToolAstReference {
                 };
                 messages.push(text);
 
-                for (res, short_path) in usages.iter().zip(short_file_paths.iter()).take(USAGES_LIMIT) {
+                for (usedin, uline) in usedin_and_uline.iter().take(USAGES_LIMIT) {
                     all_results.push(ContextFile {
-                        file_name: short_path.clone(),
+                        file_name: usedin.cpath.clone(),
                         file_content: "".to_string(),
-                        line1: res.full_range.start_point.row + 1,
-                        line2: res.full_range.end_point.row + 1,
-                        symbols: vec![res.path()],
+                        line1: *uline,
+                        line2: *uline,
+                        symbols: vec![usedin.path()],
                         gradient_type: -1,
                         usefulness: 100.0,
                         is_body_important: false

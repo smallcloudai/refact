@@ -62,9 +62,8 @@ impl AtCommand for AtAstReference {
             const USAGES_LIMIT: usize = 20;
 
             if let Some(def) = defs.get(0) {
-                let usages = crate::ast::ast_db::usages(ast_index.clone(), def.path()).await;
+                let usages: Vec<(Arc<crate::ast::ast_minimalistic::AstDefinition>, usize)> = crate::ast::ast_db::usages(ast_index.clone(), def.path(), 100).await;
                 let usage_count = usages.len();
-                let file_paths = usages.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
 
                 let text = format!(
                     "symbol `{}` has {} usages",
@@ -73,19 +72,18 @@ impl AtCommand for AtAstReference {
                 );
                 messages.push(text);
 
-                for (res, cpath) in usages.iter().zip(file_paths.iter()).take(USAGES_LIMIT) {
+                for (usedin, uline) in usages.iter().take(USAGES_LIMIT) {
                     all_results.push(ContextFile {
-                        file_name: cpath.clone(),
+                        file_name: usedin.cpath.clone(),
                         file_content: "".to_string(),
-                        line1: res.full_range.start_point.row + 1,
-                        line2: res.full_range.end_point.row + 1,
-                        symbols: vec![res.path()],
+                        line1: *uline,
+                        line2: *uline,
+                        symbols: vec![usedin.path()],
                         gradient_type: -1,
                         usefulness: 100.0,
                         is_body_important: false
                     });
                 }
-
                 if usage_count > USAGES_LIMIT {
                     messages.push(format!("...and {} more usages", usage_count - USAGES_LIMIT));
                 }

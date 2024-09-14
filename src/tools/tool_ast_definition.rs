@@ -62,7 +62,7 @@ impl Tool for ToolAstDefinition {
                         res.full_range.end_point.row + 1
                     ));
                     ContextEnum::ContextFile(ContextFile {
-                        file_name: short_path.clone(),
+                        file_name: res.cpath.clone(),
                         file_content: "".to_string(),
                         line1: res.full_range.start_point.row + 1,
                         line2: res.full_range.end_point.row + 1,

@@ -67,7 +67,7 @@ pub struct AstCounters {
 }
 
 pub struct AstError {
-    pub cpath: String,
+    pub err_cpath: String,
     pub err_message: String,
     pub err_line: usize,
 }
@@ -80,12 +80,13 @@ pub struct ErrorStats {
 impl ErrorStats {
     pub fn add_error(
         self: &mut ErrorStats,
-        err_message: &str,
+        err_cpath: String,
         err_line: usize,
+        err_message: &str,
     ) {
         if self.errors.len() < TOO_MANY_ERRORS {
             self.errors.push(AstError {
-                cpath: String::new(),
+                err_cpath,
                 err_message: err_message.to_string(),
                 err_line,
             });
