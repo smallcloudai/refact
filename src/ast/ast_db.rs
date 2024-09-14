@@ -227,15 +227,14 @@ pub async fn connect_usages(ast_index: Arc<AMutex<AstDB>>, ucx: &mut ConnectUsag
         if let Ok(Some(value)) = db.get(&d_key) {
             let mut batch = sled::Batch::default();
 
-            if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
-                _connect_usages_helper(&db, ucx, &definition, &mut batch).await;
-            }
+            let def = serde_cbor::from_slice::<AstDefinition>(&value).unwrap();
+            _connect_usages_helper(&db, ucx, &def, &mut batch).await;
 
             if let Err(e) = db.apply_batch(batch) {
                 tracing::error!("connect_usages() failed to apply batch: {:?}", e);
             }
         } else {
-            tracing::error!("connect_usages() failed to get d#{}", d_key);
+            tracing::error!("connect_usages() failed to get {}", d_key);
         }
 
         return true;
@@ -410,7 +409,7 @@ async fn _connect_usages_helper(
                 continue;
             }
             if found.len() > 1 {
-                ucx.errstats.add_error(definition.cpath.clone(), usage.uline, &format!("link {} is ambiguous, can mean: {:?}", to_resolve, found));
+                ucx.errstats.add_error(definition.cpath.clone(), usage.uline, &format!("usage `{}` is ambiguous, can mean: {:?}", to_resolve, found));
                 ucx.usages_ambiguous += 1;
                 found.truncate(1);
             }
@@ -418,7 +417,6 @@ async fn _connect_usages_helper(
             let u_key = format!("u#{} ⚡ {}", single_thing_found, official_path);
             batch.insert(u_key.as_bytes(), serde_cbor::to_vec(&usage.uline).unwrap());
             all_saved_ulinks.push(u_key);
-            tracing::info!("resolved {} to {} line {}", single_thing_found, official_path, usage.uline);
             ucx.usages_connected += 1;
             break;  // the next thing from targets_for_guesswork is a worse query, keep this one and exit
         }

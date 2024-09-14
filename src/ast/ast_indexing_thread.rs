@@ -61,11 +61,7 @@ async fn ast_indexing_thread(
             };
             let mut doc = Document { doc_path: cpath.clone().into(), doc_text: None };
 
-            {
-                let start_time = std::time::Instant::now();
-                doc_remove(ast_index.clone(), &cpath).await;
-                tracing::info!("doc_remove {:.3?}s {}", start_time.elapsed().as_secs_f32(), crate::nicer_logs::last_n_chars(&cpath, 30));
-            }
+            doc_remove(ast_index.clone(), &cpath).await;
 
             match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await {
                 Ok(file_text) => {
@@ -74,7 +70,10 @@ async fn ast_indexing_thread(
 
                     match doc_add(ast_index.clone(), &cpath, &file_text, &mut stats_parsing_errors).await {
                         Ok((defs, language)) => {
-                            tracing::info!("doc_add {:.3?}s {}", start_time.elapsed().as_secs_f32(), crate::nicer_logs::last_n_chars(&cpath, 30));
+                            let elapsed = start_time.elapsed().as_secs_f32();
+                            if elapsed > 0.1 {
+                                tracing::info!("doc_add {:.3?}s {}", elapsed, crate::nicer_logs::last_n_chars(&cpath, 40));
+                            }
                             stats_parsed_cnt += 1;
                             stats_symbols_cnt += defs.len();
                             *stats_success_languages.entry(language).or_insert(0) += 1;
@@ -188,10 +187,10 @@ async fn ast_indexing_thread(
             if error_count > 5 {
                 error_messages.push_str(&format!("...and {} more", error_count - 5));
             }
-            info!("usage connection errors:\n{}", error_messages);
+            info!("AST connection graph errors:\n{}", error_messages);
         }
         if usagecx.usages_connected + usagecx.usages_not_found + usagecx.usages_ambiguous > 0 {
-            info!("usage connection stats: connected={}, not found={}, ambiguous={} in {:.3}s",
+            info!("AST connection graph stats: connected={}, not_found={}, ambiguous={} in {:.3}s",
                 usagecx.usages_connected,
                 usagecx.usages_not_found,
                 usagecx.usages_ambiguous,
