@@ -148,7 +148,8 @@ impl DocumentsState {
         }
     }
 
-    pub fn init_watcher(&mut self, gcx_weak: Weak<ARwLock<GlobalContext>>, rt: tokio::runtime::Handle) {
+    pub fn init_watcher(&mut self, gcx_weak: Weak<ARwLock<GlobalContext>>) {
+        let rt = tokio::runtime::Handle::current();
         let event_callback = move |res| {
             rt.block_on(async {
                 if let Ok(event) = res {
@@ -158,6 +159,7 @@ impl DocumentsState {
         };
         let mut watcher = RecommendedWatcher::new(event_callback, Config::default()).unwrap();
         for folder in self.workspace_folders.lock().unwrap().iter() {
+            info!("ADD WATCHER: {}", folder.display());
             watcher.watch(folder, RecursiveMode::Recursive).unwrap();
         }
         self.fs_watcher = Arc::new(ARwLock::new(watcher));
@@ -426,6 +428,11 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
 {
     // Called from lsp and lsp_like
     // Not called from main.rs as part of initialization
+    {
+        let gcx_weak = Arc::downgrade(&gcx);
+        let mut gcx_lock = gcx.write().await;
+        gcx_lock.documents_state.init_watcher(gcx_weak);
+    }
     enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await
 }
 

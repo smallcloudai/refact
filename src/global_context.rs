@@ -319,7 +319,7 @@ pub async fn create_global_context(
     let gcx = Arc::new(ARwLock::new(cx));
     {
         let gcx_weak = Arc::downgrade(&gcx);
-        gcx.write().await.documents_state.init_watcher(gcx_weak, tokio::runtime::Handle::current());
+        gcx.write().await.documents_state.init_watcher(gcx_weak);
     }
     (gcx, ask_shutdown_receiver, shutdown_flag, cmdline)
 }
