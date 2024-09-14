@@ -124,6 +124,7 @@ pub async fn doc_add(
     }
     _increase_counter(&db, b"counters/defs", added_defs);
     _increase_counter(&db, b"counters/usages", added_usages);
+
     Ok((defs.into_values().map(Arc::new).collect(), language))
 }
 
@@ -393,8 +394,10 @@ async fn _connect_usages_helper(
                     let c_key_string = String::from_utf8(c_key.to_vec()).unwrap();
                     let parts: Vec<&str> = c_key_string.split(" ⚡ ").collect();
                     if parts.len() == 2 {
-                        let resolved_target = parts[1].trim();
-                        found.push(resolved_target.to_string());
+                        if parts[0] == c_prefix {
+                            let resolved_target = parts[1].trim();
+                            found.push(resolved_target.to_string());
+                        }
                     }
                 }
                 if found.len() > 0 {
@@ -501,7 +504,7 @@ pub async fn usages(ast_index: Arc<AMutex<AstDB>>, full_official_path: String) -
                     Err(e) => println!("Failed to deserialize value for {}: {:?}", d_key, e),
                 }
             }
-        } else {
+        } else if parts.len() != 2  {
             tracing::error!("usage record has more than two ⚡ key was: {}", key_string);
         }
     }
@@ -523,11 +526,11 @@ pub async fn definitions(ast_index: Arc<AMutex<AstDB>>, double_colon_path: &str)
                 let full_path = parts[1].trim().to_string();
                 let colon_count = full_path.matches("::").count();
                 path_groups.entry(colon_count).or_insert_with(Vec::new).push(full_path);
-            } else {
-                tracing::error!("usage record has more than two ⚡ key was: {}", key_string);
+            } else if parts.len() != 2 {
+                tracing::error!("c-record has more than two ⚡ key was: {}", key_string);
             }
         } else {
-            tracing::error!("usage record doesn't have ⚡ key was: {}", key_string);
+            tracing::error!("c-record doesn't have ⚡ key: {}", key_string);
         }
     }
     let min_colon_count = path_groups.keys().min().cloned().unwrap_or(usize::MAX);
