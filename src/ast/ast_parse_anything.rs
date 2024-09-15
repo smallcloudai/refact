@@ -84,28 +84,36 @@ fn _path_of_node(
     path.into_iter().rev().collect()
 }
 
-fn _find_top_level_nodes(
-    map: &HashMap<Uuid, AstSymbolInstanceArc>,
-) -> Vec<AstSymbolInstanceArc> {
+struct ParseContext {
+    pub top_level: Vec<AstSymbolInstanceArc>,
+    pub map: HashMap<Uuid, AstSymbolInstanceArc>,
+    pub definitions: IndexMap<Uuid, AstDefinition>,
+    pub file_global_path: Vec<String>,
+    pub language: String,
+}
+
+fn _find_top_level_nodes(pcx: &mut ParseContext) -> &Vec<AstSymbolInstanceArc> {
     //
     // XXX UGLY: the only way to detect top level is to map.get(parent) if it's not found => then it's top level.
     //
-    let mut top_level: Vec<AstSymbolInstanceArc> = Vec::new();
-    for (_, node_arc) in map.iter() {
-        let node = node_arc.read();
-        assert!(node.parent_guid().is_some());  // parent always exists for some reason :/
-        if _is_declaration(node.symbol_type()) {
-            if !map.contains_key(&node.parent_guid().unwrap()) {
-                top_level.push(node_arc.clone());
+    if pcx.top_level.is_empty() {
+        let mut top_level: Vec<AstSymbolInstanceArc> = Vec::new();
+        for (_, node_arc) in pcx.map.iter() {
+            let node = node_arc.read();
+            assert!(node.parent_guid().is_some());  // parent always exists for some reason :/
+            if _is_declaration(node.symbol_type()) {
+                if !pcx.map.contains_key(&node.parent_guid().unwrap()) {
+                    top_level.push(node_arc.clone());
+                }
             }
         }
+        pcx.top_level = top_level;
     }
-    top_level
+    &pcx.top_level
 }
 
 fn _name_to_usage(
-    map: &HashMap<Uuid, AstSymbolInstanceArc>,
-    file_global_path: &Vec<String>,
+    pcx: &mut ParseContext,
     uline: usize,
     start_node_guid: Option<Uuid>,
     name_of_anything: String,
@@ -122,7 +130,7 @@ fn _name_to_usage(
     let mut node_guid = start_node_guid.unwrap();
     let mut look_here: Vec<AstSymbolInstanceArc> = Vec::new();
     loop {
-        let node_option = map.get(&node_guid);
+        let node_option = pcx.map.get(&node_guid);
         if node_option.is_none() {
             break;
         }
@@ -139,7 +147,7 @@ fn _name_to_usage(
                 }
                 // Add all children nodes (shallow)
                 for child_guid in function_declaration.childs_guid() {
-                    if let Some(child_node) = map.get(child_guid) {
+                    if let Some(child_node) = pcx.map.get(child_guid) {
                         if _is_declaration(child_node.read().symbol_type()) {
                             look_here.push(child_node.clone());
                         }
@@ -151,7 +159,7 @@ fn _name_to_usage(
                 result.targets_for_guesswork.push(format!("?::{}🔎{}::{}", node.language().to_string(), struct_declaration.name(), name_of_anything));
                 // Add all children nodes (shallow)
                 for child_guid in struct_declaration.childs_guid() {
-                    if let Some(child_node) = map.get(child_guid) {
+                    if let Some(child_node) = pcx.map.get(child_guid) {
                         if _is_declaration(child_node.read().symbol_type()) {
                             look_here.push(child_node.clone());
                         }
@@ -166,8 +174,8 @@ fn _name_to_usage(
         }
     }
 
-    let top_level_nodes = _find_top_level_nodes(map);
-    look_here.extend(top_level_nodes);
+    let top_level_nodes = _find_top_level_nodes(pcx);
+    look_here.extend(top_level_nodes.clone());
 
     for node_arc in look_here {
         let node = node_arc.read();
@@ -175,7 +183,7 @@ fn _name_to_usage(
         if _is_declaration(node.symbol_type()) {
             // eprintln!("_name_to_usage {:?} looking in {:?}", name_of_anything, node.name());
             if node.name() == name_of_anything {
-                result.resolved_as = [file_global_path.clone(), _path_of_node(map, Some(node.guid().clone()))].concat().join("::");
+                result.resolved_as = [pcx.file_global_path.clone(), _path_of_node(&pcx.map, Some(node.guid().clone()))].concat().join("::");
                 result.debug_hint = "up".to_string();
             }
         }
@@ -187,8 +195,7 @@ fn _name_to_usage(
 }
 
 fn _typeof(
-    map: &HashMap<Uuid, AstSymbolInstanceArc>,
-    _file_global_path: &Vec<String>,
+    pcx: &mut ParseContext,
     start_node_guid: Uuid,
     variable_or_param_name: String,
     errors: &mut ErrorStats,
@@ -198,7 +205,7 @@ fn _typeof(
 
     // collect look_here by going higher
     loop {
-        let node_option = map.get(&node_guid);
+        let node_option = pcx.map.get(&node_guid);
         if node_option.is_none() {
             break;
         }
@@ -207,7 +214,7 @@ fn _typeof(
             look_here.push(node_option.unwrap().clone());
             // Add all children nodes (shallow)
             for child_guid in node.childs_guid() {
-                if let Some(child_node) = map.get(child_guid) {
+                if let Some(child_node) = pcx.map.get(child_guid) {
                     look_here.push(child_node.clone());
                 }
             }
@@ -220,8 +227,8 @@ fn _typeof(
     }
 
     // add top level
-    let top_level_nodes = _find_top_level_nodes(map);
-    look_here.extend(top_level_nodes);
+    let top_level_nodes = _find_top_level_nodes(pcx);
+    look_here.extend(top_level_nodes.clone());
 
     // now uniform code to look in each
     for node_arc in look_here {
@@ -266,9 +273,8 @@ fn _typeof(
 }
 
 fn _usage_or_typeof_caller_colon_colon_usage(
+    pcx: &mut ParseContext,
     caller_guid: Option<Uuid>,
-    orig_map: &HashMap<Uuid, AstSymbolInstanceArc>,
-    file_global_path: &Vec<String>,
     uline: usize,
     symbol: &dyn AstSymbolInstance,
     errors: &mut ErrorStats,
@@ -276,7 +282,12 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     // my_object.something_inside
     // ^^^^^^^^^ caller (can be None)
     //           ^^^^^^^^^^^^^^^^ symbol
-    if let Some(caller) = caller_guid.and_then(|guid| orig_map.get(&guid)) {
+    let caller_option = if let Some(guid) = caller_guid {
+        pcx.map.get(&guid).cloned()
+    } else {
+        None
+    };
+    if let Some(caller) = caller_option {
         let mut result = Usage {
             targets_for_guesswork: vec![],
             resolved_as: "".to_string(),
@@ -284,7 +295,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
             uline,
         };
         let caller_node = caller.read();
-        let typeof_caller = _typeof(&orig_map, &file_global_path, caller_node.guid().clone(), caller_node.name().to_string(), errors);
+        let typeof_caller = _typeof(pcx, caller_node.guid().clone(), caller_node.name().to_string(), errors);
         // typeof_caller will be "?" if nothing found, start with "file" if type found in the current file
         if typeof_caller.first() == Some(&"file".to_string()) {
             // actually fully resolved!
@@ -297,13 +308,13 @@ fn _usage_or_typeof_caller_colon_colon_usage(
         }
         Some(result)
     } else {
-        // Handle the case where caller_guid is None or not found in orig_map
+        // Handle the case where caller_guid is None or not found in pcx.map
         //
         // XXX UGLY: unfortunately, unresolved caller means no caller in C++, maybe in other languages
         // caller is about caller.function_call(1, 2, 3), in this case means just function_call(1, 2, 3) without anything on the left
         // just look for a name in function's parent and above
         //
-        let tmp = _name_to_usage(&orig_map, &file_global_path, uline, symbol.parent_guid().clone(), symbol.name().to_string());
+        let tmp = _name_to_usage(pcx, uline, symbol.parent_guid().clone(), symbol.name().to_string());
         // eprintln!("    _usage_or_typeof_caller_colon_colon_usage {} _name_to_usage={:?}", symbol.name().to_string(), tmp);
         tmp
     }
@@ -322,13 +333,19 @@ pub fn parse_anything(
 
     let symbols = parser.parse(text, &path);
     let symbols2 = symbols.clone();
-    let mut definitions = IndexMap::new();
-    let mut orig_map: HashMap<Uuid, AstSymbolInstanceArc> = HashMap::new();
+
+    let mut pcx = ParseContext {
+        top_level: Vec::new(),
+        map: HashMap::new(),
+        definitions: IndexMap::new(),
+        file_global_path,
+        language,
+    };
 
     for symbol in symbols {
         let symbol_arc_clone = symbol.clone();
         let symbol = symbol.read();
-        orig_map.insert(symbol.guid().clone(), symbol_arc_clone);
+        pcx.map.insert(symbol.guid().clone(), symbol_arc_clone);
         match symbol.symbol_type() {
             SymbolType::StructDeclaration |
             SymbolType::TypeAlias |
@@ -340,21 +357,19 @@ pub fn parse_anything(
                 let mut this_class_derived_from = vec![];
                 let mut usages = vec![];
                 if let Some(struct_declaration) = symbol.as_any().downcast_ref::<StructDeclaration>() {
-                    this_is_a_class = format!("{}🔎{}", language, struct_declaration.name());
+                    this_is_a_class = format!("{}🔎{}", pcx.language, struct_declaration.name());
                     for base_class in struct_declaration.inherited_types.iter() {
                         if base_class.name.is_none() {
                             errors.add_error("".to_string(), struct_declaration.full_range().start_point.row + 1, "nameless base class");
                             continue;
                         }
-                        this_class_derived_from.push(format!("{}🔎{}", language, base_class.name.clone().unwrap()));
-                        usages.push(_name_to_usage(&orig_map, &file_global_path, symbol.full_range().start_point.row + 1, Some(symbol.guid().clone()), base_class.name.clone().unwrap()).unwrap());
+                        this_class_derived_from.push(format!("{}🔎{}", pcx.language, base_class.name.clone().unwrap()));
+                        usages.push(_name_to_usage(&mut pcx, symbol.full_range().start_point.row + 1, Some(symbol.guid().clone()), base_class.name.clone().unwrap()).unwrap());
                     }
                 }
                 if !symbol.name().is_empty() {
                     let definition = AstDefinition {
-                        // guid: symbol.guid().clone(),
-                        // parent_guid: symbol.parent_guid().clone().unwrap_or_default(),
-                        official_path: _path_of_node(&orig_map, Some(symbol.guid().clone())),
+                        official_path: _path_of_node(&pcx.map, Some(symbol.guid().clone())),
                         symbol_type: symbol.symbol_type().clone(),
                         this_is_a_class,
                         this_class_derived_from,
@@ -364,7 +379,7 @@ pub fn parse_anything(
                         declaration_range: symbol.declaration_range().clone(),
                         definition_range: symbol.definition_range().clone(),
                     };
-                    definitions.insert(symbol.guid().clone(), definition);
+                    pcx.definitions.insert(symbol.guid().clone(), definition);
                 } else {
                     errors.add_error("".to_string(), symbol.full_range().start_point.row + 1, "nameless decl");
                 }
@@ -399,13 +414,13 @@ pub fn parse_anything(
                     errors.add_error("".to_string(), uline, "nameless call");
                     continue;
                 }
-                let usage = _usage_or_typeof_caller_colon_colon_usage(function_call.get_caller_guid().clone(), &orig_map, &file_global_path, uline, function_call, errors);
+                let usage = _usage_or_typeof_caller_colon_colon_usage(&mut pcx, function_call.get_caller_guid().clone(), uline, function_call, errors);
                 // eprintln!("function call name={} usage={:?} debug_hint={:?}", function_call.name(), usage, debug_hint);
                 if usage.is_none() {
                     continue;
                 }
-                let my_parent = _go_to_parent_until_declaration(&orig_map, symbol_arc.clone(), errors);
-                if let Some(my_parent_def) = definitions.get_mut(&my_parent) {
+                let my_parent = _go_to_parent_until_declaration(&pcx.map, symbol_arc.clone(), errors);
+                if let Some(my_parent_def) = pcx.definitions.get_mut(&my_parent) {
                     my_parent_def.usages.push(usage.unwrap());
                 }
             }
@@ -416,23 +431,23 @@ pub fn parse_anything(
                     errors.add_error("".to_string(), uline, "nameless variable usage");
                     continue;
                 }
-                let usage = _usage_or_typeof_caller_colon_colon_usage(variable_usage.fields().caller_guid.clone(), &orig_map, &file_global_path, uline, variable_usage, errors);
+                let usage = _usage_or_typeof_caller_colon_colon_usage(&mut pcx, variable_usage.fields().caller_guid.clone(), uline, variable_usage, errors);
                 // eprintln!("variable usage name={} usage={:?}", variable_usage.name(), usage);
                 if usage.is_none() {
                     continue;
                 }
-                let my_parent = _go_to_parent_until_declaration(&orig_map, symbol_arc.clone(), errors);
-                if let Some(my_parent_def) = definitions.get_mut(&my_parent) {
+                let my_parent = _go_to_parent_until_declaration(&pcx.map, symbol_arc.clone(), errors);
+                if let Some(my_parent_def) = pcx.definitions.get_mut(&my_parent) {
                     my_parent_def.usages.push(usage.unwrap());
                 }
             }
         }
     }
 
-    let mut sorted_definitions: Vec<(Uuid, AstDefinition)> = definitions.into_iter().collect();
+    let mut sorted_definitions: Vec<(Uuid, AstDefinition)> = pcx.definitions.into_iter().collect();
     sorted_definitions.sort_by(|a, b| a.1.official_path.cmp(&b.1.official_path));
     let definitions = IndexMap::from_iter(sorted_definitions);
-    Ok((definitions, language))
+    Ok((definitions, pcx.language))
 }
 
 pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
