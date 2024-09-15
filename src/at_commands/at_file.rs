@@ -144,7 +144,7 @@ pub async fn return_one_candidate_or_a_good_error(
         };
         if f_path.is_absolute() {
             if !project_paths.iter().any(|x|f_path.starts_with(x)) {
-                return Err(format!("Path {:?} is outside of project directories:\n\n{:?}\n\nThere are paths with similar names:\n{}", f_path, project_paths, similar_paths_str));
+                return Err(format!("Path {:?} is outside of project directories:\n{:?}\nThere are paths with similar names:\n{}", f_path, project_paths, similar_paths_str));
             }
             return if similar_paths_str.is_empty() {
                 Err(format!("The path {:?} does not exist. There are no similar names either.", f_path))
@@ -156,7 +156,7 @@ pub async fn return_one_candidate_or_a_good_error(
             let projpath_options = project_paths.iter().map(|x|x.join(&f_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
             if projpath_options.len() > 1 {
                 let projpath_options_str = projpath_options.iter().map(|x|x.to_string_lossy().to_string()).collect::<Vec<_>>().join("\n");
-                return Err(format!("The path {:?} is ambiguous.\n\nAdding project path, it might be:\n{:?}\n\nAlso, there are similar filepaths:\n{}", f_path, projpath_options_str, similar_paths_str));
+                return Err(format!("The path {:?} is ambiguous. Adding project path, it might be:\n{:?}\nAlso, there are similar filepaths:\n{}", f_path, projpath_options_str, similar_paths_str));
             }
             return if projpath_options.is_empty() {
                 if similar_paths_str.is_empty() {
@@ -172,7 +172,7 @@ pub async fn return_one_candidate_or_a_good_error(
     }
 
     if candidates.len() > 1 {
-        return Err(format!("The path {:?} is ambiguous.\n\nIt could be interpreted as:\n{}", file_path, candidates.join("\n")));
+        return Err(format!("The path {:?} is ambiguous. It could be interpreted as:\n{}", file_path, candidates.join("\n")));
     }
 
     let candidate = candidates.get(0).unwrap_or(&"".to_string()).clone();

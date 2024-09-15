@@ -150,7 +150,7 @@ impl Tool for ToolCat {
             }
         }
         if !files_not_found_errs.is_empty() {
-            content.push_str(&format!("Paths not found:\n{}\n\n", files_not_found_errs.join("\n\n")));
+            content.push_str(&format!("Path problems:\n\n{}\n\n", files_not_found_errs.join("\n\n")));
             corrections = true;
         }
 
