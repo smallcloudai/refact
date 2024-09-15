@@ -189,8 +189,9 @@ async fn ast_indexing_thread(
             }
             info!("AST connection graph errors:\n{}", error_messages);
         }
-        if usagecx.usages_connected + usagecx.usages_not_found + usagecx.usages_ambiguous > 0 {
-            info!("AST connection graph stats: connected={}, not_found={}, ambiguous={} in {:.3}s",
+        if usagecx.usages_connected + usagecx.usages_not_found + usagecx.usages_ambiguous + usagecx.usages_homeless > 0 {
+            info!("AST connection graph stats: homeless={}, connected={}, not_found={}, ambiguous={} in {:.3}s",
+                usagecx.usages_homeless,
                 usagecx.usages_connected,
                 usagecx.usages_not_found,
                 usagecx.usages_ambiguous,

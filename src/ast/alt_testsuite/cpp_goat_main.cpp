@@ -47,12 +47,12 @@ static CosmicGoat global_goat(13, 23, 33.5);
 
 void all_goats_say_hi(CosmicGoat* f1, CosmicGoat& f2, const CosmicGoat& f3, const std::shared_ptr<CosmicGoat>& f4)
 {
-    CosmicGoat f_local_frog(14, 24, 34.5);
+    CosmicGoat f_local_goat(14, 24, 34.5);
     f1->say_hi();
     f2.say_hi();
     f3.say_hi();
     f4->say_hi();
-    f_local_frog.say_hi();
+    f_local_goat.say_hi();
     global_goat.say_hi();
 }
 

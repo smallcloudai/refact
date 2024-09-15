@@ -6,6 +6,8 @@ use crate::ast::ast_minimalistic::{AstDefinition, Usage, ErrorStats};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, AstSymbolInstanceArc};
+use std::path::Path;
+use sha2::{Sha256, Digest};
 
 
 fn _is_declaration(t: SymbolType) -> bool {
@@ -179,8 +181,8 @@ fn _name_to_usage(
         }
     }
 
-    // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
-    result.targets_for_guesswork.push(format!("?::{}", name_of_anything));
+    // ?::DerivedFrom1::f ?::DerivedFrom2::f f
+    result.targets_for_guesswork.push(format!("{}", name_of_anything));
     Some(result)
 }
 
@@ -432,7 +434,6 @@ pub fn parse_anything(
 }
 
 pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
-    use std::path::Path;
     let path = Path::new(cpath);
     let mut components = vec![];
     let silly_names_list = vec!["__init__.py", "mod.rs"];
@@ -447,7 +448,24 @@ pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
             components.push(parent_name.to_string_lossy().to_string());
         }
     }
-    components.iter().rev().take(2).cloned().collect::<Vec<_>>()
+    let mut hasher = Sha256::new();
+    hasher.update(cpath);
+    let result = hasher.finalize();
+
+    const ALPHANUM: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+    let mut x = 0usize;
+    let short_alphanum: String = result.iter()
+        .map(|&byte| {
+            x += byte as usize;
+            x %= ALPHANUM.len();
+            ALPHANUM[x] as char
+        })
+        .take(6)
+        .collect();
+
+    components.push(format!("${}", short_alphanum));
+    components.iter().rev().take(3).cloned().collect::<Vec<_>>()
 }
 
 pub fn parse_anything_and_add_file_path(
