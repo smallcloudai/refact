@@ -6,6 +6,8 @@ use tokio::sync::Mutex as AMutex;
 use tokio::task;
 use serde_cbor;
 use sled::Db;
+use lazy_static::lazy_static;
+use regex::Regex;
 
 use crate::ast::ast_minimalistic::{AstDB, AstDefinition, AstCounters, ErrorStats};
 use crate::ast::ast_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
@@ -69,7 +71,6 @@ pub async fn ast_index_init(want_perf_report: bool) -> Arc<AMutex<AstDB>>
     };
     Arc::new(AMutex::new(ast_index))
 }
-
 
 pub async fn fetch_counters(ast_index: Arc<AMutex<AstDB>>) -> AstCounters
 {
@@ -329,6 +330,10 @@ pub async fn connect_usages_look_if_full_reset_needed(ast_index: Arc<AMutex<AstD
     }
 }
 
+lazy_static! {
+    static ref MAGNIFYING_GLASS_RE: Regex = Regex::new(r"(\w+)🔎(\w+)").unwrap();
+}
+
 async fn _connect_usages_helper(
     db: &sled::Db,
     ucx: &mut ConnectUsageContext,
@@ -363,7 +368,6 @@ async fn _connect_usages_helper(
     //   resolve-cleanup/official_path     -- value contains all the "u|RESOLVED ⚡ official_path" in a list
     //
     let official_path = definition.official_path.join("::");
-    let magnifying_glass_re = regex::Regex::new(r"(\w+)🔎(\w+)").unwrap();
     let mut all_saved_ulinks = Vec::<String>::new();
     for (uindex, usage) in definition.usages.iter().enumerate() {
         debug_print!("    resolving {}.usage[{}] == {:?}", official_path, uindex, usage);
@@ -383,7 +387,7 @@ async fn _connect_usages_helper(
             // Extract all LANGUAGE🔎CLASS from to_resolve
             let mut magnifying_glass_pairs = Vec::new();
             let mut template = to_resolve.to_string();
-            for (i, cap) in magnifying_glass_re.captures_iter(to_resolve).enumerate() {
+            for (i, cap) in MAGNIFYING_GLASS_RE.captures_iter(to_resolve).enumerate() {
                 let language = cap.get(1).unwrap().as_str().to_string();
                 let klass = cap.get(2).unwrap().as_str().to_string();
                 let placeholder = format!("%%PAIR{}%%", i);
