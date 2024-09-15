@@ -10,6 +10,8 @@ use std::path::Path;
 use sha2::{Sha256, Digest};
 
 
+const TOO_MANY_SYMBOLS_IN_FILE: usize = 10000;
+
 fn _is_declaration(t: SymbolType) -> bool {
     match t {
         SymbolType::StructDeclaration |
@@ -332,6 +334,9 @@ pub fn parse_anything(
     let file_global_path = vec!["file".to_string()];
 
     let symbols = parser.parse(text, &path);
+    if symbols.len() > TOO_MANY_SYMBOLS_IN_FILE {
+        return Err(format!("more than {} symbols, generated?", TOO_MANY_SYMBOLS_IN_FILE));
+    }
     let symbols2 = symbols.clone();
 
     let mut pcx = ParseContext {
