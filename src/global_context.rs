@@ -29,6 +29,8 @@ pub struct CommandLine {
     pub ping_message: String,
     #[structopt(long, help="Send logs to stderr, as opposed to ~/.cache/refact/logs, so it's easier to debug.")]
     pub logs_stderr: bool,
+    #[structopt(long, default_value="", help="Send logs to a file.")]
+    pub logs_to_file: String,
     #[structopt(long, short="u", help="URL to start working. The first step is to fetch capabilities from $URL/refact-caps. You can supply your own caps in a local file, too, for the bring-your-own-key use case.")]
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
@@ -282,7 +284,7 @@ pub async fn create_global_context(
         let path = crate::files_correction::canonical_path(&cmdline.workspace_folder);
         workspace_dirs = vec![path];
     }
-    let mut cx = GlobalContext {
+    let cx = GlobalContext {
         cmdline: cmdline.clone(),
         http_client,
         http_client_slowdown: Arc::new(Semaphore::new(2)),
@@ -302,9 +304,6 @@ pub async fn create_global_context(
         documents_state: DocumentsState::new(workspace_dirs).await,
         at_commands_preview_cache: Arc::new(AMutex::new(AtCommandsPreviewCache::new())),
     };
-    if cmdline.ast {
-        cx.ast_service = Some(ast_service_init().await);
-    }
     let gcx = Arc::new(ARwLock::new(cx));
     {
         let gcx_weak = Arc::downgrade(&gcx);

@@ -65,6 +65,12 @@ async fn main() {
     let (gcx, ask_shutdown_receiver, shutdown_flag, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
     let (logs_writer, _guard) = if cmdline.logs_stderr {
         tracing_appender::non_blocking(std::io::stderr())
+    } else if !cmdline.logs_to_file.is_empty() {
+        tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::new(
+            tracing_appender::rolling::Rotation::NEVER,
+            std::path::Path::new(&cmdline.logs_to_file).parent().unwrap(),
+            std::path::Path::new(&cmdline.logs_to_file).file_name().unwrap()
+        ))
     } else {
         let _ = write!(std::io::stderr(), "This rust binary keeps logs as files, rotated daily. Try\ntail -f {}/logs/\nor use --logs-stderr for debugging.\n\n", cache_dir.display());
         tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::builder()
@@ -99,10 +105,18 @@ async fn main() {
             if arg_v == "--api-key" { api_key_at = arg_n + 1; }
         }
     }
+
     yaml_configs_try_create_all(gcx.clone()).await;
     if cmdline.only_create_yaml_configs {
         std::process::exit(0);
     }
+
+    if cmdline.ast {
+        let tmp = Some(crate::ast::ast_indexing_thread::ast_service_init().await);
+        let mut gcx_locked = gcx.write().await;
+        gcx_locked.ast_service = tmp;
+    }
+
     files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;
     files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, false).await;
 
