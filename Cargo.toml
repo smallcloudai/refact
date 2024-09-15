@@ -1,4 +1,5 @@
 [profile.release]
+#debug = true
 strip = true
 opt-level = "z"
 lto = true
@@ -82,7 +83,8 @@ notify = { version = "6.1.1", features = ["serde"] }
 parking_lot = { version = "0.12.1", features = ["serde"] }
 rusqlite = { version = "0.30.0", features = ["bundled"] }
 tempfile = "3.8.1"
-time = "0.3.30"
+time = "0.3.20"
+#time = "0.3.30"
 tokio-rusqlite = "0.5.0"
 vectordb = "=0.4.0"
 walkdir = "2.3"

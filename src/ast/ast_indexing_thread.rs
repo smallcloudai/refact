@@ -72,7 +72,7 @@ async fn ast_indexing_thread(
                         Ok((defs, language)) => {
                             let elapsed = start_time.elapsed().as_secs_f32();
                             if elapsed > 0.1 {
-                                tracing::info!("doc_add {:.3?}s {} {}/{}", elapsed, crate::nicer_logs::last_n_chars(&cpath, 40), stats_parsed_cnt, left_todo_count);
+                                tracing::info!("{}/{} doc_add {:.3?}s {}", stats_parsed_cnt, (stats_parsed_cnt+left_todo_count), elapsed, crate::nicer_logs::last_n_chars(&cpath, 40));
                             }
                             stats_parsed_cnt += 1;
                             stats_symbols_cnt += defs.len();
