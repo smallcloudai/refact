@@ -10,18 +10,6 @@ use sled::Db;
 use crate::ast::ast_minimalistic::{AstDB, AstDefinition, AstCounters, ErrorStats};
 use crate::ast::ast_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
 
-
-pub async fn ast_index_init() -> Arc<AMutex<AstDB>>
-{
-    let db: Arc<Db> = Arc::new(task::spawn_blocking(|| sled::open("/tmp/my_db.sled").unwrap()).await.unwrap());
-    db.clear().unwrap();
-    // db.open_tree(b"unprocessed items").unwrap();
-    let ast_index = AstDB {
-        sleddb: db,
-    };
-    Arc::new(AMutex::new(ast_index))
-}
-
 // ## How the database works ##
 //
 // Database `sled` used here is a key-value storage, everything is stored as keys and values. Try dump_database() below.
@@ -41,6 +29,42 @@ pub async fn ast_index_init() -> Arc<AMutex<AstDB>>
 //
 // Read tests below, the show what this index can do!
 //
+
+
+const A_LOT_OF_PRINTS: bool = false;
+
+macro_rules! debug_print {
+    ($($arg:tt)*) => {
+        if A_LOT_OF_PRINTS {
+            tracing::info!($($arg)*);
+        }
+    };
+}
+
+pub async fn ast_index_init(want_perf_report: bool) -> Arc<AMutex<AstDB>>
+{
+    let db_fn = "/tmp/my_db2.sled".to_string();
+    tracing::info!("starting AST db at {}", db_fn);
+    let config = sled::Config::default()
+        .path(db_fn.clone())
+        .cache_capacity(512 * 1024 * 1024) // 1 GB cache
+        .use_compression(false)
+        .print_profile_on_drop(want_perf_report)
+        .mode(sled::Mode::HighThroughput)
+        .flush_every_ms(Some(5000));
+
+    let db: Arc<Db> = Arc::new(task::spawn_blocking(
+        move || config.open().unwrap()
+    ).await.unwrap());
+    db.clear().unwrap();
+    // db.open_tree(b"unprocessed items").unwrap();
+    tracing::info!("/starting AST");
+    let ast_index = AstDB {
+        sleddb: db,
+    };
+    Arc::new(AMutex::new(ast_index))
+}
+
 
 pub async fn fetch_counters(ast_index: Arc<AMutex<AstDB>>) -> AstCounters
 {
@@ -84,6 +108,7 @@ pub async fn doc_add(
         let serialized = serde_cbor::to_vec(&definition).unwrap();
         let official_path = definition.official_path.join("::");
         let d_key = format!("d#{}", official_path);
+        debug_print!("writing {}", d_key);
         batch.insert(d_key.as_bytes(), serialized);
         let mut path_parts: Vec<&str> = definition.official_path.iter().map(|s| s.as_str()).collect();
         while !path_parts.is_empty() {
@@ -138,7 +163,7 @@ pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
     let mut deleted_defs: i32 = 0;
     let mut deleted_usages: i32 = 0;
     while let Some(Ok((key, value))) = iter.next() {
-        let d_key_b = key.clone();
+        let d_key = key.clone();
         if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
             let mut path_parts: Vec<&str> = definition.official_path.iter().map(|s| s.as_str()).collect();
             let official_path = definition.official_path.join("::");
@@ -171,7 +196,8 @@ pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
             }
             deleted_defs += 1;
         }
-        batch.remove(&d_key_b);
+        debug_print!("removing {}", String::from_utf8_lossy(&d_key));
+        batch.remove(&d_key);
     }
     if let Err(e) = db.apply_batch(batch) {
         tracing::error!("doc_remove() failed to apply batch: {:?}", e);
@@ -224,6 +250,7 @@ pub async fn connect_usages(ast_index: Arc<AMutex<AstDB>>, ucx: &mut ConnectUsag
         }
 
         let d_key = format!("d#{}", def_official_path);
+        debug_print!("resolving {}", d_key);
         if let Ok(Some(value)) = db.get(&d_key) {
             let mut batch = sled::Batch::default();
 
@@ -326,7 +353,7 @@ async fn _connect_usages_helper(
     let official_path = definition.official_path.join("::");
     let magnifying_glass_re = regex::Regex::new(r"(\w+)🔎(\w+)").unwrap();
     let mut all_saved_ulinks = Vec::<String>::new();
-    for usage in &definition.usages {
+    for (uindex, usage) in definition.usages.iter().enumerate() {
         if !usage.resolved_as.is_empty() {
             ucx.usages_connected += 1;
             continue;
@@ -335,6 +362,7 @@ async fn _connect_usages_helper(
             assert!(to_resolve_unstripped.starts_with("?::"), "Target does not start with '?::': {}", to_resolve_unstripped);
             let to_resolve = to_resolve_unstripped.strip_prefix("?::").unwrap();
             // println!("to_resolve_unstripped {:?}", to_resolve_unstripped);
+            debug_print!("resolving {}.usage[{}] == {}", official_path, uindex, to_resolve);
 
             // Extract all LANGUAGE🔎CLASS from to_resolve
             let mut magnifying_glass_pairs = Vec::new();
@@ -387,6 +415,7 @@ async fn _connect_usages_helper(
             let mut found = Vec::new();
             for v in variants {
                 let c_prefix = format!("c#{}", v);
+                debug_print!("    scanning {}", c_prefix);
                 // println!("    c_prefix {:?} because v={:?}", c_prefix, v);
                 let mut c_iter = db.scan_prefix(&c_prefix);
                 while let Some(Ok((c_key, _))) = c_iter.next() {
@@ -403,7 +432,8 @@ async fn _connect_usages_helper(
                     break;
                 }
             }
-            // println!("   found {:?}", found);
+            debug_print!("    found {:?}", found);
+
             if found.len() == 0 {
                 ucx.usages_not_found += 1;
                 continue;
@@ -416,6 +446,7 @@ async fn _connect_usages_helper(
             let single_thing_found = found.into_iter().next().unwrap();
             let u_key = format!("u#{} ⚡ {}", single_thing_found, official_path);
             batch.insert(u_key.as_bytes(), serde_cbor::to_vec(&usage.uline).unwrap());
+            debug_print!("    insert {:?} <= {}", u_key, usage.uline);
             all_saved_ulinks.push(u_key);
             ucx.usages_connected += 1;
             break;  // the next thing from targets_for_guesswork is a worse query, keep this one and exit
@@ -718,7 +749,7 @@ mod tests {
     #[tokio::test]
     async fn test_ast_db() {
         init_tracing();
-        let ast_index = ast_index_init().await;
+        let ast_index = ast_index_init(false).await;
         let mut errstats: ErrorStats = ErrorStats::default();
 
         let cpp_library_path = "src/ast/alt_testsuite/cpp_goat_library.h";
@@ -769,5 +800,14 @@ mod tests {
         doc_remove(ast_index.clone(), &cpp_main_path.to_string()).await;
 
         dump_database(ast_index.clone()).await;
+
+        let db = ast_index.lock().await.sleddb.clone();
+        drop(ast_index);
+        assert!(Arc::strong_count(&db) == 1);
+        println!("flush");
+        let x = db.flush().unwrap();
+        println!("flush returned {}, drop", x);
+        drop(db);
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 }

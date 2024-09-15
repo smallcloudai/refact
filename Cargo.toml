@@ -14,7 +14,8 @@ build = "build.rs"
 shadow-rs = "0.25.0"
 
 [dependencies]
-sled = "0.34"
+sled = { version = "0.34", default-features = false, features = ["event_log"] }
+# all features = ["compression", "docs", "event_log", "failpoints", "io_uring", "lock_free_delays", "measure_allocs", "miri_optimizations", "mutex", "no_inline", "no_logs", "pretty_backtrace", "testing"]
 shadow-rs = { version = "0.25.0", features = [], default-features = false }
 hyper = { version = "0.14", features = ["server", "stream"] }
 reqwest = { version = "0.11", features = ["json", "stream"] }

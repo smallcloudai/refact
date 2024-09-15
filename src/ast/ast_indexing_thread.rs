@@ -213,7 +213,7 @@ pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexSe
 }
 
 pub async fn ast_service_init() -> Arc<AMutex<AstIndexService>> {
-    let ast_index = ast_index_init().await;
+    let ast_index = ast_index_init(true).await;
     let alt_status = Arc::new(AMutex::new(AstStatus {
         astate_notify: Arc::new(ANotify::new()),
         astate: String::from("starting"),
