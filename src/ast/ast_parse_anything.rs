@@ -367,7 +367,18 @@ pub fn parse_anything(
                         usages.push(_name_to_usage(&mut pcx, symbol.full_range().start_point.row + 1, Some(symbol.guid().clone()), base_class.name.clone().unwrap()).unwrap());
                     }
                 }
-                if !symbol.name().is_empty() {
+                let mut skip_var_because_parent_is_function = false;
+                if let Some(_) = symbol.as_any().downcast_ref::<VariableDefinition>() {
+                    if let Some(parent_guid) = symbol.parent_guid() {
+                        if let Some(parent_symbol) = pcx.map.get(&parent_guid) {
+                            let parent_symbol = parent_symbol.read();
+                            if parent_symbol.as_any().downcast_ref::<FunctionDeclaration>().is_some() {
+                                skip_var_because_parent_is_function = true;
+                            }
+                        }
+                    }
+                }
+                if !symbol.name().is_empty() && !skip_var_because_parent_is_function {
                     let definition = AstDefinition {
                         official_path: _path_of_node(&pcx.map, Some(symbol.guid().clone())),
                         symbol_type: symbol.symbol_type().clone(),

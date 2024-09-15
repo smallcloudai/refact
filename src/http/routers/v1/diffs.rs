@@ -158,7 +158,7 @@ async fn _sync_documents_ast_vecdb(gcx: Arc<ARwLock<GlobalContext>>, docs: Vec<D
 
     let ast_service_opt = gcx.read().await.ast_service.clone();
     if let Some(ast_service) = ast_service_opt {
-        crate::ast::ast_indexing_thread::ast_indexer_block_until_finished(ast_service.clone());
+        crate::ast::ast_indexing_thread::ast_indexer_block_until_finished(ast_service.clone()).await;
     }
 
     let vecdb_enqueued = if let Some(vservice) = {

@@ -1,22 +1,15 @@
-AstDefinition { CosmicGoat, usages: U{ n2p ?::cpp🔎CosmicGoat::Goat ?::Goat } U{ up file::CosmicJustice }, this_is_a_class: cpp🔎CosmicGoat, derived_from: "cpp🔎Goat" "cpp🔎CosmicJustice" }
-AstDefinition { CosmicGoat::CosmicGoat, usages: U{ n2p ?::cpp🔎CosmicGoat::balance ?::balance } }
-AstDefinition { CosmicGoat::say_hi, usages: U{ n2p ?::cpp🔎CosmicGoat::printf ?::printf } U{ n2p ?::cpp🔎CosmicGoat::age ?::age } U{ n2p ?::cpp🔎CosmicGoat::weight ?::weight } U{ n2p ?::cpp🔎CosmicGoat::balance ?::balance } }
+AstDefinition { CosmicGoat, usages: U{ n2p ?::cpp🔎CosmicGoat::Goat Goat } U{ up file::CosmicJustice }, this_is_a_class: cpp🔎CosmicGoat, derived_from: "cpp🔎Goat" "cpp🔎CosmicJustice" }
+AstDefinition { CosmicGoat::CosmicGoat, usages: U{ n2p ?::cpp🔎CosmicGoat::balance balance } }
+AstDefinition { CosmicGoat::say_hi, usages: U{ n2p ?::cpp🔎CosmicGoat::printf printf } U{ n2p ?::cpp🔎CosmicGoat::age age } U{ n2p ?::cpp🔎CosmicGoat::weight weight } U{ n2p ?::cpp🔎CosmicGoat::balance balance } }
 AstDefinition { CosmicJustice, this_is_a_class: cpp🔎CosmicJustice }
 AstDefinition { CosmicJustice::CosmicJustice, usages: U{ up file::CosmicJustice::balance } }
 AstDefinition { CosmicJustice::balance }
-AstDefinition { all_goats_review, usages: U{ f1 ?::cpp🔎CosmicGoat::self_review } U{ f2 ?::cpp🔎CosmicGoat::self_review } U{ f3 ?::cpp🔎CosmicGoat::self_review } U{ f4 ?::self_review } U{ f_local_goat ?::cpp🔎CosmicGoat::self_review } U{ global_goat ?::cpp🔎CosmicGoat::self_review } U{ up file::all_goats_review::f_local_goat } U{ up file::global_goat } }
-AstDefinition { all_goats_review::f_local_goat }
-AstDefinition { all_goats_say_hi, usages: U{ f1 ?::cpp🔎CosmicGoat::say_hi } U{ f2 ?::cpp🔎CosmicGoat::say_hi } U{ f3 ?::cpp🔎CosmicGoat::say_hi } U{ f4 ?::say_hi } U{ f_local_frog ?::cpp🔎CosmicGoat::say_hi } U{ global_goat ?::cpp🔎CosmicGoat::say_hi } U{ up file::all_goats_say_hi::f_local_frog } U{ up file::global_goat } }
-AstDefinition { all_goats_say_hi::f_local_frog }
-AltDefinition { goat_generator1::a1 }
+AstDefinition { all_goats_review, usages: U{ f1 ?::cpp🔎CosmicGoat::self_review } U{ f2 ?::cpp🔎CosmicGoat::self_review } U{ f3 ?::cpp🔎CosmicGoat::self_review } U{ f4 self_review } U{ f_local_goat ?::cpp🔎CosmicGoat::self_review } U{ global_goat self_review } U{ up file::all_goats_review::f_local_goat } U{ n2p global_goat } }
+AstDefinition { all_goats_say_hi, usages: U{ f1 ?::cpp🔎CosmicGoat::say_hi } U{ f2 ?::cpp🔎CosmicGoat::say_hi } U{ f3 ?::cpp🔎CosmicGoat::say_hi } U{ f4 say_hi } U{ f_local_goat ?::cpp🔎CosmicGoat::say_hi } U{ global_goat say_hi } U{ up file::all_goats_say_hi::f_local_goat } U{ n2p global_goat } }
 AstDefinition { global_goat }
-AstDefinition { goat_balance_sum, usages: U{ v_local_goat2 ?::cpp🔎CosmicGoat::balance } U{ global_goat ?::cpp🔎CosmicGoat::balance } U{ up file::goat_balance_sum::v_local_goat2 } U{ v4 ?::balance } U{ up file::global_goat } U{ v3 ?::cpp🔎CosmicGoat::balance } U{ v1 ?::cpp🔎CosmicGoat::balance } U{ v2 ?::cpp🔎CosmicGoat::balance } }
-AstDefinition { goat_balance_sum::v_local_goat2 }
-AstDefinition { goat_direct_access, usages: U{ v_local_goat1 ?::cpp🔎CosmicGoat::weight } U{ global_goat ?::cpp🔎CosmicGoat::weight } U{ up file::goat_direct_access::v_local_goat1 } U{ v4 ?::weight } U{ up file::global_goat } U{ v3 ?::cpp🔎CosmicGoat::weight } U{ v1 ?::cpp🔎CosmicGoat::weight } U{ v2 ?::cpp🔎CosmicGoat::weight } }
-AstDefinition { goat_direct_access::v_local_goat1 }
-AstDefinition { goat_generator2, usages: U{ up file::CosmicGoat } }
-AstDefinition { goat_generator3, usages: U{ n2p ?::make_shared } }
-AstDefinition { main, usages: U{ n2p ?::goat_generator1 } U{ up file::goat_generator2 } U{ up file::goat_generator3 } U{ up file::all_goats_say_hi } U{ up file::all_goats_review } U{ n2p ?::printf } U{ n2p ?::printf } U{ up file::main::goat1 } U{ up file::main::goat2 } U{ up file::main::goat2 } U{ up file::main::goat3 } U{ up file::main::goat1 } U{ up file::main::goat2 } U{ up file::main::goat2 } U{ up file::main::goat3 } U{ up file::goat_direct_access } U{ up file::goat_balance_sum } U{ up file::main::goat1 } U{ up file::main::goat1 } U{ up file::main::goat2 } U{ up file::main::goat2 } U{ up file::main::goat3 } U{ up file::main::goat1 } U{ up file::main::goat2 } U{ up file::main::goat2 } U{ up file::main::goat3 } }
-AstDefinition { main::goat1 }
-AstDefinition { main::goat2 }
-AstDefinition { main::goat3 }
+AstDefinition { goat_balance_sum, usages: U{ v_local_goat2 ?::cpp🔎CosmicGoat::balance } U{ global_goat balance } U{ up file::goat_balance_sum::v_local_goat2 } U{ v4 balance } U{ n2p global_goat } U{ v3 ?::cpp🔎CosmicGoat::balance } U{ v1 ?::cpp🔎CosmicGoat::balance } U{ v2 ?::cpp🔎CosmicGoat::balance } }
+AstDefinition { goat_direct_access, usages: U{ v_local_goat1 ?::cpp🔎CosmicGoat::weight } U{ global_goat weight } U{ up file::goat_direct_access::v_local_goat1 } U{ v4 weight } U{ n2p global_goat } U{ v3 ?::cpp🔎CosmicGoat::weight } U{ v1 ?::cpp🔎CosmicGoat::weight } U{ v2 ?::cpp🔎CosmicGoat::weight } }
+AstDefinition { goat_generator1, usages: U{ up file::CosmicGoat } U{ up file::CosmicGoat } }
+AstDefinition { goat_generator2, usages: U{ up file::CosmicGoat } U{ up file::CosmicGoat } }
+AstDefinition { goat_generator3, usages: U{ n2p make_shared } U{ up file::CosmicGoat } }
+AstDefinition { main, usages: U{ n2p goat_generator1 } U{ n2p goat_generator2 } U{ n2p goat_generator3 } U{ n2p all_goats_say_hi } U{ n2p all_goats_review } U{ n2p printf } U{ n2p printf } U{ up file::main::goat1 } U{ up file::main::goat2 } U{ up file::main::goat2 } U{ up file::main::goat3 } U{ up file::main::goat1 } U{ up file::main::goat2 } U{ up file::main::goat2 } U{ up file::main::goat3 } U{ n2p goat_direct_access } U{ n2p goat_balance_sum } U{ up file::main::goat1 } U{ up file::main::goat1 } U{ up file::main::goat2 } U{ up file::main::goat2 } U{ up file::main::goat3 } U{ up file::main::goat1 } U{ up file::main::goat2 } U{ up file::main::goat2 } U{ up file::main::goat3 } }
