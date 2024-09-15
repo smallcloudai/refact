@@ -260,7 +260,9 @@ fn _typeof(
         }
     }
 
-    vec!["?".to_string()]
+    // vec!["?".to_string()]    -- don't produce resolvable links, produce homeless links instead
+    // XXX: the "?" is still valid for C++, because there's no way to know if a symbol legitimately top level
+    vec![]
 }
 
 fn _usage_or_typeof_caller_colon_colon_usage(
