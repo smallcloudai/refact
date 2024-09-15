@@ -8,7 +8,7 @@ use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
 use crate::ast::ast_minimalistic::{AstDB, AstStatus, AstCounters, ErrorStats};
-use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove, ConnectUsageContext, connect_usages, connect_usages_look_if_full_reset_needed};
+use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove, flush_sled_batch, ConnectUsageContext, connect_usages, connect_usages_look_if_full_reset_needed};
 
 
 pub struct AstIndexService {
@@ -42,7 +42,7 @@ async fn ast_indexing_thread(
     loop {
         let (cpath, left_todo_count) = {
             let mut ast_service_locked = ast_service.lock().await;
-            let cpath = ast_service_locked.ast_todo.shift_remove_index(0);
+            let cpath = ast_service_locked.ast_todo.pop();
             let left_todo_count = ast_service_locked.ast_todo.len();
             (cpath, left_todo_count)
         };
@@ -72,7 +72,7 @@ async fn ast_indexing_thread(
                         Ok((defs, language)) => {
                             let elapsed = start_time.elapsed().as_secs_f32();
                             if elapsed > 0.1 {
-                                tracing::info!("doc_add {:.3?}s {}", elapsed, crate::nicer_logs::last_n_chars(&cpath, 40));
+                                tracing::info!("doc_add {:.3?}s {} {}/{}", elapsed, crate::nicer_logs::last_n_chars(&cpath, 40), stats_parsed_cnt, left_todo_count);
                             }
                             stats_parsed_cnt += 1;
                             stats_symbols_cnt += defs.len();
@@ -88,7 +88,7 @@ async fn ast_indexing_thread(
                 }
             }
 
-            if stats_update_ts.elapsed() >= std::time::Duration::from_millis(200) {
+            if stats_update_ts.elapsed() >= std::time::Duration::from_millis(1000) { // can't be lower, because flush_sled_batch() happens not very often at all
                 let counters: AstCounters = fetch_counters(ast_index.clone()).await;
                 {
                     let mut status_locked = alt_status.lock().await;
@@ -176,6 +176,8 @@ async fn ast_indexing_thread(
                 break;
             }
         }
+
+        flush_sled_batch(ast_index.clone(), 0).await;
 
         if !usagecx.errstats.errors.is_empty() {
             let error_count = usagecx.errstats.errors_counter;

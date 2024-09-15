@@ -54,7 +54,7 @@ pub async fn ast_index_init(want_perf_report: bool) -> Arc<AMutex<AstDB>>
     tracing::info!("Starting AST db at {}", db_fn);
     let config = sled::Config::default()
         .path(db_fn.clone())
-        .cache_capacity(512 * 1024 * 1024) // 1 GB cache
+        .cache_capacity(256 * 1024 * 1024) // 256M cache
         .use_compression(false)
         .print_profile_on_drop(want_perf_report)
         .mode(sled::Mode::HighThroughput)
@@ -68,6 +68,9 @@ pub async fn ast_index_init(want_perf_report: bool) -> Arc<AMutex<AstDB>>
     tracing::info!("/Starting AST");
     let ast_index = AstDB {
         sleddb: db,
+        sledbatch: Arc::new(AMutex::new(sled::Batch::default())),
+        batch_counter: 0,
+        counters_increase: HashMap::new(),
     };
     Arc::new(AMutex::new(ast_index))
 }
@@ -83,7 +86,7 @@ pub async fn fetch_counters(ast_index: Arc<AMutex<AstDB>>) -> AstCounters
     }
 }
 
-fn _increase_counter(db: &sled::Db, counter_key: &[u8], adjustment: i32) {
+fn _increase_counter_commit(db: &sled::Db, counter_key: &[u8], adjustment: i32) {
     if adjustment == 0 {
         return;
     }
@@ -94,7 +97,44 @@ fn _increase_counter(db: &sled::Db, counter_key: &[u8], adjustment: i32) {
         Ok(_) => {},
         Err(e) => tracing::error!("failed to update and fetch counter: {:?}", e),
     }
+}
 
+async fn _increase_counter(ast_index: Arc<AMutex<AstDB>>, counter_key: &str, adjustment: i32) {
+    if adjustment == 0 {
+        return;
+    }
+    let mut ast_index_locked = ast_index.lock().await;
+    let counter = ast_index_locked.counters_increase.entry(counter_key.to_string()).or_insert(0);
+    *counter += adjustment;
+}
+
+pub async fn flush_sled_batch(
+    ast_db: Arc<AMutex<AstDB>>,
+    threshold: usize,   // if zero, flush everything including counters
+) -> Arc<AMutex<sled::Batch>> {
+    let mut ast_index_locked = ast_db.lock().await;
+    if ast_index_locked.batch_counter >= threshold {
+        let sleddb = ast_index_locked.sleddb.clone();
+        let batch_arc = std::mem::replace(&mut ast_index_locked.sledbatch, Arc::new(AMutex::new(sled::Batch::default())));
+        let was_counter = std::mem::replace(&mut ast_index_locked.batch_counter, 0);
+        let counters_increase = std::mem::replace(&mut ast_index_locked.counters_increase, HashMap::new());
+        drop(ast_index_locked);
+        if was_counter > 0 {
+            // tracing::info!("flushing {} sled batches", was_counter);
+            let mut batch = batch_arc.lock().await;
+            let batch_to_apply = std::mem::replace(&mut *batch, sled::Batch::default());
+            if let Err(e) = sleddb.apply_batch(batch_to_apply) {
+                tracing::error!("failed to apply batch: {:?}", e);
+            }
+        }
+        for (counter_key, adjustment) in counters_increase {
+            _increase_counter_commit(&sleddb, counter_key.as_bytes(), adjustment);
+        }
+        let ast_index_locked2 = ast_db.lock().await;
+        return ast_index_locked2.sledbatch.clone();
+    }
+    ast_index_locked.batch_counter += 1;
+    ast_index_locked.sledbatch.clone()
 }
 
 pub async fn doc_add(
@@ -105,9 +145,10 @@ pub async fn doc_add(
 ) -> Result<(Vec<Arc<AstDefinition>>, String), String>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
-    let (defs, language) = parse_anything_and_add_file_path(&cpath, text, errors)?;
+    let (defs, language) = parse_anything_and_add_file_path(&cpath, text, errors)?;   // errors mostly "no such parser" here
     let db = ast_index.lock().await.sleddb.clone();
-    let mut batch = sled::Batch::default();
+    let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
+    let mut batch = batch_arc.lock().await;
     let mut added_defs: i32 = 0;
     let mut added_usages: i32 = 0;
     for definition in defs.values() {
@@ -149,17 +190,13 @@ pub async fn doc_add(
         added_defs += 1;
     }
 
-    if let Err(e) = db.apply_batch(batch) {
-        tracing::error!("doc_add() failed to apply batch: {:?}", e);
-    }
-
     let doc_key = format!("doc|{}", file_global_path.join("::"));
     if db.get(doc_key.as_bytes()).unwrap().is_none() {
-        _increase_counter(&db, b"counters|docs", 1);
+        _increase_counter(ast_index.clone(), "counters|docs", 1).await;
         db.insert(doc_key.as_bytes(), cpath.as_bytes()).unwrap();
     }
-    _increase_counter(&db, b"counters|defs", added_defs);
-    _increase_counter(&db, b"counters|usages", added_usages);
+    _increase_counter(ast_index.clone(), "counters|defs", added_defs).await;
+    _increase_counter(ast_index.clone(), "counters|usages", added_usages).await;
 
     Ok((defs.into_values().map(Arc::new).collect(), language))
 }
@@ -169,7 +206,8 @@ pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let d_prefix = format!("d|{}::", file_global_path.join("::"));
     let db = ast_index.lock().await.sleddb.clone();
-    let mut batch = sled::Batch::default();
+    let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
+    let mut batch = batch_arc.lock().await;
     let mut iter = db.scan_prefix(d_prefix);
     let mut deleted_defs: i32 = 0;
     let mut deleted_usages: i32 = 0;
@@ -210,16 +248,13 @@ pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
         debug_print!("removing {}", String::from_utf8_lossy(&d_key));
         batch.remove(&d_key);
     }
-    if let Err(e) = db.apply_batch(batch) {
-        tracing::error!("doc_remove() failed to apply batch: {:?}", e);
-    }
     let doc_key = format!("doc|{}", file_global_path.join("::"));
     if db.get(doc_key.as_bytes()).unwrap().is_some() {
-        _increase_counter(&db, b"counters|docs", -1);
+        _increase_counter(ast_index.clone(), "counters|docs", -1).await;
         db.remove(doc_key.as_bytes()).unwrap();
     }
-    _increase_counter(&db, b"counters|defs", -deleted_defs);
-    _increase_counter(&db, b"counters|usages", -deleted_usages);
+    _increase_counter(ast_index.clone(), "counters|defs", -deleted_defs).await;
+    _increase_counter(ast_index.clone(), "counters|usages", -deleted_usages).await;
 }
 
 pub async fn doc_symbols(ast_index: Arc<AMutex<AstDB>>, cpath: &String) -> Vec<Arc<AstDefinition>>
@@ -264,14 +299,11 @@ pub async fn connect_usages(ast_index: Arc<AMutex<AstDB>>, ucx: &mut ConnectUsag
         let d_key = format!("d|{}", def_official_path);
         debug_print!("resolving {}", d_key);
         if let Ok(Some(value)) = db.get(&d_key) {
-            let mut batch = sled::Batch::default();
+            let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
+            let mut batch = batch_arc.lock().await;
 
             let def = serde_cbor::from_slice::<AstDefinition>(&value).unwrap();
             _connect_usages_helper(&db, ucx, &def, &mut batch).await;
-
-            if let Err(e) = db.apply_batch(batch) {
-                tracing::error!("connect_usages() failed to apply batch: {:?}", e);
-            }
         } else {
             tracing::error!("connect_usages() failed to get {}", d_key);
         }
@@ -284,6 +316,7 @@ pub async fn connect_usages(ast_index: Arc<AMutex<AstDB>>, ucx: &mut ConnectUsag
 
 pub async fn connect_usages_look_if_full_reset_needed(ast_index: Arc<AMutex<AstDB>>) -> ConnectUsageContext
 {
+    flush_sled_batch(ast_index.clone(), 0).await;
     let db = ast_index.lock().await.sleddb.clone();
     let class_hierarchy_key = b"class-hierarchy|";
     let existing_hierarchy: IndexMap<String, Vec<String>> = match db.get(class_hierarchy_key) {
@@ -795,6 +828,7 @@ mod tests {
             }
         }
 
+        flush_sled_batch(ast_index.clone(), 0).await;
         dump_database(ast_index.clone()).await;
 
         // Goat::Goat() is a C++ constructor

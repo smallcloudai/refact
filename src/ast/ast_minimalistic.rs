@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::fmt;
 use serde::{Deserialize, Serialize};
 use tree_sitter::Range;
-use tokio::sync::Notify as ANotify;
+use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 pub use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::structs::RangeDef;
 
@@ -47,6 +48,9 @@ impl AstDefinition {
 
 pub struct AstDB {
     pub sleddb: Arc<sled::Db>,
+    pub sledbatch: Arc<AMutex<sled::Batch>>,
+    pub batch_counter: usize,
+    pub counters_increase: HashMap<String, i32>,
 }
 
 #[derive(Serialize, Clone)]
