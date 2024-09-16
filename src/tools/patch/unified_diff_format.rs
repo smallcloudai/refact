@@ -746,7 +746,7 @@ mod tests {
 @@ ... @@
 ```
 Another text"#;
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert!(result.is_empty());
@@ -756,7 +756,7 @@ Another text"#;
     async fn test_empty_2() {
         let input = r#""#;
 
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert!(result.is_empty());
@@ -768,7 +768,7 @@ Another text"#;
 ```diff
 Another text"#;
 
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await;
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await;
         assert!(result.is_err());
     }
 
@@ -777,7 +777,7 @@ Another text"#;
         let input = r#"Initial text
 ```"#;
 
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert!(result.is_empty());
@@ -792,7 +792,7 @@ some invalid text
 ```
 ```diff"#;
 
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await;
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await;
         assert!(result.is_err());
     }
 
@@ -804,7 +804,7 @@ some invalid text
 ```
 Another text"#;
 
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await;
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().starts_with("cannot get a correct 'before' file name from the diff chunk:"));
     }
@@ -820,7 +820,7 @@ Another text"#;
 ```
 Another text"#;
 
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await;
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await;
         assert!(result.is_ok());
     }
 
@@ -835,7 +835,7 @@ Another text"#;
 ```
 Another text"#;
 
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await;
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await;
         assert!(result.is_ok());
     }
 
@@ -870,7 +870,7 @@ class AnotherFrog:
                 ..Default::default()
             }
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -916,7 +916,7 @@ DT = 0.01
                 ..Default::default()
             }
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -964,7 +964,7 @@ class Frog:
                 ..Default::default()
             }
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -1006,7 +1006,7 @@ DT = 0.01"#;
                 ..Default::default()
             }
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -1067,7 +1067,7 @@ class Frog:
                 ..Default::default()
             }
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -1129,7 +1129,7 @@ class Frog:
                 ..Default::default()
             }
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -1212,7 +1212,7 @@ class Frog:
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -1275,7 +1275,7 @@ Another text"#;
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -1333,7 +1333,7 @@ Another text"#;
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -1427,7 +1427,7 @@ class Frog:
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -1498,7 +1498,7 @@ class EuropeanCommonToad(frog.Frog):
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -1562,7 +1562,7 @@ if __name__ == __main__:
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -1669,7 +1669,7 @@ if __name__ == __main__:
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -1747,7 +1747,7 @@ if __name__ == __main__:
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -1810,7 +1810,7 @@ if __name__ == __main__:
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -1873,7 +1873,7 @@ if __name__ == __main__:
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -1935,7 +1935,7 @@ if __name__ == __main__:
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -1999,7 +1999,7 @@ if __name__ == __main__:
                 ..Default::default()
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         let (_, changed_text) = apply_diff(
@@ -2037,7 +2037,7 @@ Another text"#;
                 is_file: false
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -2069,7 +2069,7 @@ Another text"#;
                 is_file: false
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -2105,7 +2105,7 @@ Another text"#;
                 is_file: true
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -2137,7 +2137,7 @@ Another text"#;
                 is_file: true
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -2169,7 +2169,7 @@ Another text"#;
                 is_file: true
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -2226,7 +2226,7 @@ if __name__ == __main__:
                 is_file: true
             },
         ];
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         assert_eq!(result, gt_result);
@@ -2359,7 +2359,7 @@ gameLoop();
 
 
 
-        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::default())).await.expect(
+        let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
             "Failed to parse diff message"
         );
         print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
