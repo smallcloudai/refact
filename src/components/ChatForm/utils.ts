@@ -17,6 +17,7 @@ export function addCheckboxValuesToInput(
     result = `${checkboxes.selected_lines.value ?? ""}\n` + result;
   }
 
+  // TODO: remove these if it's no longer a feature
   // if (checkboxes.use_memory.checked && checkboxes.use_memory.hide !== true) {
   //   result = `@local-notes-to-self\n` + result;
   // }

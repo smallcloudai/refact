@@ -43,6 +43,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
 
   const chatWidth = "calc(100% - 20px)";
 
+  // TODO: Did the Popover or HoverCard components not work for this?
   return (
     <>
       <TourBubble

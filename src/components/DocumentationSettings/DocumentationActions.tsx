@@ -63,6 +63,7 @@ export const DocumentationActions: React.FC<DocumentationActionsProps> = ({
         <Dialog.Content maxWidth="450px">
           <Dialog.Title>{`Edit ${source.url}`}</Dialog.Title>
           <Flex direction="column" gap="3">
+            {/**TODO: text can be have `as="label"` and wrap the TextField  */}
             <label>
               <Text as="div" size="2" mb="1" weight="bold">
                 Max depth

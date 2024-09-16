@@ -69,6 +69,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const { openFile } = useEventsBusForIDE();
 
   const port = useAppSelector(selectLspPort);
+  // TODO: move this to services
   const getCustomizationPath = useCallback(async () => {
     const previewEndpoint = `http://127.0.0.1:${port}${CONFIG_PATH_URL}`;
 

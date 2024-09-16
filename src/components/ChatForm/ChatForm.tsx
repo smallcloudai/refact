@@ -172,6 +172,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       <Flex
         ref={(x) => refs.setChat(x)}
         style={{
+          // TODO: direction can be done with prop `direction`
           flexDirection: "column",
           alignSelf: "stretch",
           flex: 1,

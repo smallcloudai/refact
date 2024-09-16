@@ -115,38 +115,6 @@ export type DiffChunkWithTypeAndApply = DiffChunk & {
   apply: boolean;
 };
 
-// const DiffsWithoutForm: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
-//   diffs,
-// }) => {
-//   return (
-//     <Flex direction="column" maxWidth="100%" gap="2">
-//       {Object.entries(diffs).map(([fullFilePath, diffsForfile]) => {
-//         return (
-//           <Box key={fullFilePath}>
-//             <Text size="1" wrap="wrap">
-//               {fullFilePath}
-//             </Text>
-//             <ScrollArea scrollbars="horizontal" asChild>
-//               <Box
-//                 style={{
-//                   background: "rgb(51, 51, 51)",
-//                   // backgroundOverflow: "visible",
-//                 }}
-//               >
-//                 {diffsForfile.map((diff, index) => {
-//                   return (
-//                     <Diff diff={diff} key={diff.file_name + "-" + index} />
-//                   );
-//                 })}
-//               </Box>
-//             </ScrollArea>
-//           </Box>
-//         );
-//       })}
-//     </Flex>
-//   );
-// };
-
 export const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
   diffs,
 }): React.ReactNode[] => {

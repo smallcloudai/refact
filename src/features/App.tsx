@@ -174,6 +174,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   );
 };
 
+// TODO: move this to the `app` directory.
 export const App = () => {
   return (
     <Provider store={store}>
