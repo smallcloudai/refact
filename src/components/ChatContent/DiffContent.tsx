@@ -231,6 +231,7 @@ export const DiffForm: React.FC<{
   loading: boolean;
   onSubmit: (toApply: boolean[]) => void;
   onPreview: (toApply: boolean[]) => void | Promise<void>;
+  // TODO: is in useEventBusForIde
   openFile: (file: { file_name: string; line?: number }) => void;
 }> = ({ diffs, loading, onSubmit, onPreview, openFile }) => {
   const { host } = useConfig();
@@ -238,28 +239,28 @@ export const DiffForm: React.FC<{
     return Object.values(diffs).reduce((acc, curr) => acc.concat(curr), []);
   }, [diffs]);
 
-  const disableApplyAll = React.useMemo(() => {
-    if (loading) return true;
-    const start = values[0]?.applied ?? false;
-    const allTheSame = values.every((diff) => diff.applied === start);
-    const allCanApply = values.every((diff) => diff.can_apply);
-    return !(allTheSame && allCanApply);
-  }, [loading, values]);
+  // const disableApplyAll = React.useMemo(() => {
+  //   if (loading) return true;
+  //   const start = values[0]?.applied ?? false;
+  //   const allTheSame = values.every((diff) => diff.applied === start);
+  //   const allCanApply = values.every((diff) => diff.can_apply);
+  //   return !(allTheSame && allCanApply);
+  // }, [loading, values]);
 
-  const action = React.useMemo(() => {
-    const canApply = values.map((diff) => diff.applied);
-    const allApplied = canApply.every((diff) => diff);
-    if (allApplied) return "Unapply All";
-    return "Apply All";
-  }, [values]);
+  // const action = React.useMemo(() => {
+  //   const canApply = values.map((diff) => diff.applied);
+  //   const allApplied = canApply.every((diff) => diff);
+  //   if (allApplied) return "Unapply All";
+  //   return "Apply All";
+  // }, [values]);
 
-  const applyAll = React.useCallback(() => {
-    const ops = Object.values(diffs).reduce<boolean[]>((acc, diffs) => {
-      const canApply = diffs.map((diff) => !diff.applied);
-      return acc.concat(canApply);
-    }, []);
-    onSubmit(ops);
-  }, [diffs, onSubmit]);
+  // const applyAll = React.useCallback(() => {
+  //   const ops = Object.values(diffs).reduce<boolean[]>((acc, diffs) => {
+  //     const canApply = diffs.map((diff) => !diff.applied);
+  //     return acc.concat(canApply);
+  //   }, []);
+  //   onSubmit(ops);
+  // }, [diffs, onSubmit]);
 
   const handleToggle = React.useCallback(
     (value: boolean, indices: number[]) => {
@@ -295,7 +296,8 @@ export const DiffForm: React.FC<{
             <Flex justify="between" align="center" p="1">
               <TruncateLeft size="1">
                 <Link
-                  href="#"
+                  // TODO: check how ides treat this being "", undefined, or "#"
+                  href=""
                   onClick={(event) => {
                     event.preventDefault();
                     const startLine = Math.min(
@@ -351,11 +353,11 @@ export const DiffForm: React.FC<{
         );
       })}
 
-      <Flex gap="2" py="2">
+      {/* <Flex gap="2" py="2">
         <Button disabled={disableApplyAll || loading} onClick={applyAll}>
           {action}
         </Button>
-      </Flex>
+      </Flex> */}
     </Flex>
   );
 };

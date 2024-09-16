@@ -1,4 +1,3 @@
-export type { ChatContentProps } from "./ChatContent";
 import { memo } from "react";
 import { ChatContent as _ChatContent } from "./ChatContent";
 

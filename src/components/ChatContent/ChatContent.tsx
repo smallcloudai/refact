@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect } from "react";
 import {
+  ChatMessage,
   ChatMessages,
-  ToolResult,
+  DiffMessage,
   isChatContextFileMessage,
   isDiffMessage,
-  isToolMessage,
 } from "../../services/refact";
-import type { MarkdownProps } from "../Markdown";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
@@ -18,11 +17,16 @@ import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
 import { DiffContent } from "./DiffContent";
 import { PlainText } from "./PlainText";
-import { useConfig } from "../../hooks";
+import { useConfig, useEventsBusForIDE } from "../../hooks";
 import { useAppSelector, useAppDispatch } from "../../hooks";
 import { RootState } from "../../app/store";
 import { next } from "../../features/TipOfTheDay";
-import { selectMessages } from "../../features/Chat/Thread/selectors";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+  selectMessages,
+} from "../../features/Chat/Thread/selectors";
+import { takeWhile } from "../../utils";
 
 export const TipOfTheDay: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -41,17 +45,19 @@ export const TipOfTheDay: React.FC = () => {
   );
 };
 
-const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+// TODO: turn this into a component
+const PlaceHolderText: React.FC = () => {
   const config = useConfig();
   const hasVecDB = config.features?.vecdb ?? false;
   const hasAst = config.features?.ast ?? false;
+  const { openSettings } = useEventsBusForIDE();
 
-  const openSettings = useCallback(
+  const handleOpenSettings = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
-      onClick();
+      openSettings();
     },
-    [onClick],
+    [openSettings],
   );
 
   if (config.host === "web") {
@@ -67,7 +73,7 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
         <Text>Welcome to Refact chat!</Text>
         <Text>
           💡 You can turn on VecDB and AST in{" "}
-          <Link onClick={openSettings}>settings</Link>.
+          <Link onClick={handleOpenSettings}>settings</Link>.
         </Text>
         <TipOfTheDay />
       </Flex>
@@ -78,7 +84,7 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
         <Text>Welcome to Refact chat!</Text>
         <Text>
           💡 You can turn on VecDB in{" "}
-          <Link onClick={openSettings}>settings</Link>.
+          <Link onClick={handleOpenSettings}>settings</Link>.
         </Text>
         <TipOfTheDay />
       </Flex>
@@ -88,8 +94,8 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
       <Flex direction="column" gap="4">
         <Text>Welcome to Refact chat!</Text>
         <Text>
-          💡 You can turn on AST in <Link onClick={openSettings}>settings</Link>
-          .
+          💡 You can turn on AST in{" "}
+          <Link onClick={handleOpenSettings}>settings</Link>.
         </Text>
         <TipOfTheDay />
       </Flex>
@@ -104,129 +110,125 @@ const PlaceHolderText: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   );
 };
 
-export type ChatContentProps = {
-  // messages: ChatMessages;
-  onRetry: (question: ChatMessages) => void;
-  isWaiting: boolean;
-  canPaste: boolean;
-  isStreaming: boolean;
-  openSettings: () => void;
-  chatKey: string;
-} & Pick<MarkdownProps, "onNewFileClick" | "onPasteClick">;
+export const ChatContent = React.forwardRef<HTMLDivElement>((_props, ref) => {
+  const messages = useAppSelector(selectMessages);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
 
-export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
-  (props, ref) => {
-    const {
-      // messages,
-      onRetry,
-      isWaiting,
-      onNewFileClick,
-      onPasteClick,
-      canPaste,
-      isStreaming,
-      openSettings,
-      chatKey,
-    } = props;
+  const { innerRef, handleScroll } = useAutoScroll({
+    ref,
+    messages,
+    isStreaming,
+  });
 
-    const messages = useAppSelector(selectMessages);
-
-    const { innerRef, handleScroll } = useAutoScroll({
-      ref,
-      messages,
-      isStreaming,
-    });
-
-    const toolResultsMap = React.useMemo(() => {
-      return messages.reduce<Record<string, ToolResult>>((acc, message) => {
-        if (!isToolMessage(message)) return acc;
-        const result = message.content;
-        return {
-          ...acc,
-          [result.tool_call_id]: result,
-        };
-      }, {});
-    }, [messages]);
-
-    return (
-      <ScrollArea
-        style={{ flexGrow: 1, height: "auto" }}
-        scrollbars="vertical"
-        onScroll={handleScroll}
-      >
-        <Flex direction="column" className={styles.content} p="2" gap="1">
-          {messages.length === 0 && <PlaceHolderText onClick={openSettings} />}
-          {messages.map((message, index) => {
-            if (isChatContextFileMessage(message)) {
-              const key = chatKey + "context-file-" + index;
-              return <ContextFiles key={key} files={message.content} />;
-            }
-
-            if (isDiffMessage(message)) {
-              const key = `diff-${message.tool_call_id}-${index}`;
-              return (
-                <DiffContent
-                  key={key}
-                  chunks={message.content}
-                  toolCallId={message.tool_call_id}
-                />
-              );
-            }
-
-            // const [role, text] = message;
-
-            if (message.role === "user") {
-              const key = chatKey + "user-input-" + index;
-              const handleRetry = (question: string) => {
-                const toSend = messages
-                  .slice(0, index)
-                  .concat([{ role: "user", content: question }]);
-                onRetry(toSend);
-              };
-              return (
-                <UserInput
-                  onRetry={handleRetry}
-                  key={key}
-                  disableRetry={isStreaming || isWaiting}
-                >
-                  {message.content}
-                </UserInput>
-              );
-            } else if (message.role === "assistant") {
-              const key = chatKey + "assistant-input-" + index;
-              return (
-                <AssistantInput
-                  onNewFileClick={onNewFileClick}
-                  onPasteClick={onPasteClick}
-                  canPaste={canPaste}
-                  key={key}
-                  message={message.content}
-                  toolCalls={message.tool_calls}
-                  toolResults={toolResultsMap}
-                />
-              );
-            } else if (message.role === "tool") {
-              return null;
-            } else if (message.role === "context_memory") {
-              const key = chatKey + "context-memory-" + index;
-              return <MemoryContent key={key} items={message.content} />;
-            } else if (message.role === "plain_text") {
-              const key = chatKey + "plain-text-" + index;
-              return <PlainText key={key}>{message.content}</PlainText>;
-            } else {
-              return null;
-              // return <Markdown key={index}>{text}</Markdown>;
-            }
-          })}
-          {isWaiting && (
-            <Container py="4">
-              <Spinner />
-            </Container>
-          )}
-          <div ref={innerRef} />
-        </Flex>
-      </ScrollArea>
-    );
-  },
-);
+  return (
+    <ScrollArea
+      style={{ flexGrow: 1, height: "auto" }}
+      scrollbars="vertical"
+      onScroll={handleScroll}
+    >
+      <Flex direction="column" className={styles.content} p="2" gap="1">
+        {messages.length === 0 && <PlaceHolderText />}
+        {renderMessages(messages)}
+        {isWaiting && (
+          <Container py="4">
+            <Spinner />
+          </Container>
+        )}
+        <div ref={innerRef} />
+      </Flex>
+    </ScrollArea>
+  );
+});
 
 ChatContent.displayName = "ChatContent";
+
+function renderMessages(
+  messages: ChatMessages,
+  memo: React.ReactNode[] = [],
+  index = 0,
+) {
+  if (messages.length === 0) return memo;
+  const [head, ...tail] = messages;
+  if (head.role === "tool") {
+    return renderMessages(tail, memo, index + 1);
+  }
+
+  if (head.role === "context_memory") {
+    const key = "context-memory-" + index;
+    const nextMemo = [
+      ...memo,
+      <MemoryContent key={key} items={head.content} />,
+    ];
+    return renderMessages(tail, nextMemo, index + 1);
+  }
+
+  if (head.role === "plain_text") {
+    const key = "plain-text-" + index;
+    const nextMemo = [...memo, <PlainText key={key}>{head.content}</PlainText>];
+    return renderMessages(tail, nextMemo, index + 1);
+  }
+
+  if (head.role === "assistant") {
+    const key = "assistant-input-" + index;
+    const nextMemo = [
+      ...memo,
+      <AssistantInput
+        key={key}
+        message={head.content}
+        toolCalls={head.tool_calls}
+      />,
+    ];
+
+    return renderMessages(tail, nextMemo, index + 1);
+  }
+
+  if (head.role === "user") {
+    const key = "user-input-" + index;
+    const nextMemo = [
+      ...memo,
+      <UserInput key={key} messageIndex={index}>
+        {head.content}
+      </UserInput>,
+    ];
+    return renderMessages(tail, nextMemo, index + 1);
+  }
+
+  if (isChatContextFileMessage(head)) {
+    const key = "context-file-" + head.content.length;
+    const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
+    return renderMessages(tail, nextMemo, index + 1);
+  }
+
+  if (isDiffMessage(head)) {
+    const restInTail = takeWhile<ChatMessage, DiffMessage>(tail, isDiffMessage);
+    const nextTail = tail.slice(restInTail.length);
+    const diffs = [head, ...restInTail];
+    console.log({ restInTail, diffs });
+    const key = "diffs-" + index;
+
+    const nextMemo = [...memo, <GroupedDiffs key={key} diffs={diffs} />];
+
+    return renderMessages(nextTail, nextMemo, index + diffs.length);
+  }
+
+  return renderMessages(tail, memo, index + 1);
+}
+
+type GroupedDiffsProps = {
+  diffs: DiffMessage[];
+};
+const GroupedDiffs: React.FC<GroupedDiffsProps> = ({ diffs }) => {
+  return (
+    <Flex direction="column" gap="2">
+      {diffs.map((diff) => (
+        <DiffContent
+          key={diff.tool_call_id}
+          chunks={diff.content}
+          toolCallId={diff.tool_call_id}
+        />
+      ))}
+      <div>TODO: new apply all button</div>
+    </Flex>
+  );
+};

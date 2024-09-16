@@ -1,4 +1,6 @@
 import { RootState } from "../../../app/store";
+import { createSelector } from "@reduxjs/toolkit";
+import { isToolMessage } from "../../../services/refact/types";
 
 export const selectThread = (state: RootState) => state.chat.thread;
 export const selectChatId = (state: RootState) => state.chat.thread.id;
@@ -14,3 +16,18 @@ export const selectSendImmediately = (state: RootState) =>
   state.chat.send_immediately;
 export const getSelectedSystemPrompt = (state: RootState) =>
   state.chat.system_prompt;
+
+export const toolMessagesSelector = createSelector(
+  selectMessages,
+  (messages) => {
+    return messages.filter(isToolMessage);
+  },
+);
+
+export const selectToolResultById = createSelector(
+  [toolMessagesSelector, (_, id?: string) => id],
+  (messages, id) => {
+    return messages.find((message) => message.content.tool_call_id === id)
+      ?.content;
+  },
+);

@@ -126,9 +126,19 @@ export const useSendChatRequest = () => {
     sendMessages(messages);
   };
 
+  const retryFromIndex = (index: number, question: string) => {
+    abort();
+    const messagesToKeep = currentMessages.slice(0, index);
+    const messagesToSend = messagesToKeep.concat([
+      { role: "user", content: question },
+    ]);
+    sendMessages(messagesToSend);
+  };
+
   return {
     submit,
     abort,
     retry,
+    retryFromIndex,
   };
 };
