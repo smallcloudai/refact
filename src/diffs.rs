@@ -261,10 +261,10 @@ fn undo_chunks(
 fn check_add(c: &DiffChunk) -> ApplyDiffOutput {
     let path = PathBuf::from(&c.file_name);
     if path.exists() {
-        return ApplyDiffOutput::Err(format!("cannot create a path: path `{}` already exists", &c.file_name));
+        return ApplyDiffOutput::Err(format!("Failed to Add path '{}'\nReason: path already exists", c.file_name));
     }
     if !path.is_absolute() {
-        return ApplyDiffOutput::Err(format!("cannot create a path: path `{}` must be an absolute path", &c.file_name));
+        return ApplyDiffOutput::Err(format!("Failed to Add path '{}'\nReason: path must be absolute", c.file_name));
     }
     return ApplyDiffOutput::Ok();
 }
@@ -273,20 +273,20 @@ fn check_remove(c: &DiffChunk) -> ApplyDiffOutput {
     let path = PathBuf::from(&c.file_name);
     if c.is_file {
         if !path.is_file() {
-            return ApplyDiffOutput::Err(format!("cannot remove file: file `{}` does not exist", &c.file_name));
+            return ApplyDiffOutput::Err(format!("Failed to Remove file '{}'\nReason: path does not exist", c.file_name));
         }
     } else {
         if !path.is_dir() {
-            return ApplyDiffOutput::Err(format!("cannot remove dir: dir `{}` does not exist", &c.file_name));
+            return ApplyDiffOutput::Err(format!("Failed to Remove dir '{}'\nReason: dir does not exist", c.file_name));
         }
         match path.read_dir() {
             Ok(mut dir) => {
                 if dir.next().is_some() {
-                    return ApplyDiffOutput::Err(format!("cannot remove dir `{}`: dir is not empty", &c.file_name));
+                    return ApplyDiffOutput::Err(format!("Failed to Remove dir '{}'\nReason: dir is not empty", c.file_name));
                 }
             }
             Err(_) => {
-                return ApplyDiffOutput::Err(format!("cannot remove dir `{}`: cannot list content to check if it is empty", &c.file_name));
+                return ApplyDiffOutput::Err(format!("Failed to Remove dir '{}'\nReason: failed to read dir to check if it's empty", &c.file_name));
             }
         }
     }
@@ -294,21 +294,21 @@ fn check_remove(c: &DiffChunk) -> ApplyDiffOutput {
 }
 
 fn check_rename(c: &DiffChunk) -> ApplyDiffOutput {
-    let path = PathBuf::from(&c.file_name);
-    let path_rename = PathBuf::from(c.file_name_rename.clone().unwrap_or_default());
-    if let Some(parent) = path_rename.parent() {
+    let path_rename_from = PathBuf::from(&c.file_name);
+    let path_rename_into = PathBuf::from(c.file_name_rename.clone().unwrap_or_default());
+    if let Some(parent) = path_rename_into.parent() {
         if !parent.is_dir() {
-            return ApplyDiffOutput::Err(format!("cannot rename file: parent dir `{:?}` does not exist or is not a dir", &parent));
+            return ApplyDiffOutput::Err(format!("Failed to Rename file '{:?}'\nReason: its parent dir '{:?}' does not exist or is not a dir", path_rename_into, parent));
         }
-        if !path_rename.exists() {
-            return ApplyDiffOutput::Err(format!("cannot rename file: file `{:?}` doesn't exist", &c.file_name_rename));
+        if !path_rename_into.exists() {
+            return ApplyDiffOutput::Err(format!("Failed to Rename file '{:?}'\nReason: file doesn't exist", path_rename_into));
         }
-        if path.exists() {
-            return ApplyDiffOutput::Err(format!("cannot rename file: file `{}` already exists", &c.file_name));
+        if path_rename_from.exists() {
+            return ApplyDiffOutput::Err(format!("Failed to Rename file: '{:?}'\nReason: path '{:?}' (rename into) file already exists", path_rename_into, c.file_name));
         }
         ApplyDiffOutput::Ok()
     } else {
-        ApplyDiffOutput::Err(format!("cannot rename file: file `{}` doesn't have a parent (probably path is relative)", &c.file_name))
+        ApplyDiffOutput::Err(format!("Failed to Rename file: file '{:?}'\nReason: path '{:?}' (rename into) doesn't have a parent. Make it absolute", path_rename_into, c.file_name))
     }
 }
 
