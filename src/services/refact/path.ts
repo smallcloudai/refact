@@ -54,7 +54,9 @@ export const pathApi = createApi({
       },
     }),
     customizationPath: builder.query<string, undefined>({
-      queryFn: async (_arg, _api, extraOptions, baseQuery) => {
+      queryFn: async (_arg, api, extraOptions, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
         const previewEndpoint = `http://127.0.0.1:${port}${CONFIG_PATH_URL}`;
         const response = await baseQuery({
           url: previewEndpoint,
