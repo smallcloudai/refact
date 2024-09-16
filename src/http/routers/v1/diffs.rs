@@ -46,28 +46,19 @@ async fn write_results_on_disk(
     results: Vec<ApplyDiffResult>
 ) -> Result<Vec<Document>, String> {
     async fn write_to_file(path: &String, text: &str) -> Result<(), String> {
-        let mut file = OpenOptions::new()
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(path)
-            .await
-            .map_err(|e| {
-                format!("Failed to open file: {}", e)
-            })?;
-
-        file.write_all(text.as_bytes()).await.map_err(|e| {
-            format!("Failed to write to file: {}", e)
-        })?;
+        let mut file = OpenOptions::new().create(true).truncate(true).write(true).open(path).await
+            .map_err(|e| format!("Failed to open file {}\nERROR: {}", path, e))?;
+        file.write_all(text.as_bytes()).await
+            .map_err(|e|format!("Failed to write into file {}\nERROR: {}", path, e))?;
         Ok(())
     }
 
     fn apply_add_action(path_str: &String, file_text: &String) -> Result<(), String> {
         let path = PathBuf::from(path_str);
-        let parent = path.parent().ok_or(format!("Failed to create path: {}; Parent is absent", path_str))?;
+        let parent = path.parent().ok_or(format!("Failed to Add: {}. Path is invalid.\nReason: path must have had a parent directory", path_str))?;
         if !parent.exists() {
             fs::create_dir_all(&parent).map_err(|e| {
-                let err= format!("Failed to create path: {:?}; Parent {:?} does not exist and failed to create.\nERROR: {}", path, parent, e);
+                let err= format!("Failed to Add: {:?}; Its parent dir {:?} did not exist and attempt to create it failed.\nERROR: {}", path, parent, e);
                 warn!("{err}");
                 err
             })?;
@@ -92,31 +83,37 @@ async fn write_results_on_disk(
         let path = PathBuf::from(path_str);
         return if path.is_file() {
             fs::remove_file(&path).map_err(|e| {
-                warn!("Failed to remove file: {}", e);
-                format!("Failed to remove file: {}", e)
+                let err = format!("Failed to Remove file: {:?}\nERROR: {}", path, e);
+                warn!("{err}");
+                err
             })
         }
         else if path.is_dir() {
             fs::remove_dir(&path).map_err(|e| {
-                warn!("Failed to remove dir: {}", e);
-                format!("Failed to remove dir: {}", e)
+                let err = format!("Failed to Remove dir: {:?}\nERROR: {}", path, e);
+                warn!("{err}");
+                err
             })
         } else {
-            return Err(format!("Failed to Remove: Path `{}` does not exist", path_str))
+            return Err(format!("Failed to Remove: path '{}' does not exist", path_str))
         }
     }
 
     fn apply_rename_action(rename_from: &String, rename_into: &String) -> Result<(), String> {
         if PathBuf::from(rename_into).exists() {
-            return Err(format!("Path `{}` (rename into) already exists", &rename_into));
+            let err = format!("Failed to Rename: path '{}' (rename into) already exists", rename_into);
+            warn!("{err}");
+            return Err(err)
         }
         if PathBuf::from(rename_from).exists() {
             fs::rename(rename_from, rename_into).map_err(|e| {
-                warn!("Failed to rename path: {}", e);
-                format!("Failed to rename path: {}", e)
+                let err = format!("Failed to Rename: path '{}' (rename from) does not exist.\nERROR: {}", rename_from, e);
+                warn!("{err}");
+                err
             })
         } else {
-            Err(format!("Path `{}` does not exist", &rename_from))
+            let err = format!("Failed to Rename: path '{}' (rename from) does not exist", rename_from);
+            Err(err)
         }
     }
 
