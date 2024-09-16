@@ -155,43 +155,11 @@ def test2():
     print(colored("test2 PASSED", "green"))
 
 
-def test3():
-    # applying and un-applying a random amount of chunks 100 times
-
-    payload = copy(payload1)
-    with test_file.open("w") as f:
-        f.write(file_text)
-
-    for iter_idx in range(100):
-        chunks_n_to_apply = random.randint(1, len(payload["chunks"]))
-        chunks_ids_to_apply = random.sample(list(range(len(payload['chunks']))), chunks_n_to_apply)
-        chunks_ids_to_apply.sort()
-
-        vec = [i in chunks_ids_to_apply for i in range(len(payload["chunks"]))]
-        payload["apply"] = vec
-        err_msg = f"iter_idx={iter_idx}, chunks_ids_to_apply={chunks_ids_to_apply}, vec={vec}"
-
-        resp = diff_apply(payload)
-        if 3 not in chunks_ids_to_apply:
-            assert resp["state"] == vec, err_msg
-        else:
-            assert resp["state"] == [*vec[:-1], 2], err_msg
-
-        payload["apply"] = [False] * len(payload["chunks"])
-        resp = diff_apply(payload)
-        assert resp['state'] == [0, 0, 0, 0]
-
-        assert test_file.read_text() == file_text
-
-    print(colored("test3 PASSED", "green"))
-
-
 def test4():
     payload = copy(payload1)
     del payload["apply"]
 
     state = diff_state(payload)
-    print(state)
     assert state["can_apply"] == [True, True, True, False]
 
     print(colored("test4 PASSED", "green"))
@@ -241,8 +209,7 @@ def test5():
     with test_file.open("w") as f:
         f.write(file_text1)
 
-    resp = diff_apply(payload)
-    print(resp)
+    _resp = diff_apply(payload)
 
     assert test_file.read_text() == file_text1_must_be
     print(colored("test5 PASSED", "green"))
@@ -317,11 +284,26 @@ def test6():
 
 
 payload_test_other1 = {
-    "apply": [True, True, True],
+    "apply": [True, True, True, True, True],
     "chunks": [
-        # TP
         {
             "file_name": str(test_file) + ".1.test",
+            "file_action": "add",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST"
+        },
+        {
+            "file_name": str(test_file.parent / "dir1" / ".1.test"),
+            "file_action": "add",
+            "line1": 1,
+            "line2": 1,
+            "lines_remove": "",
+            "lines_add": "TEST"
+        },
+        {
+            "file_name": str(test_file.parent / "dir1" / "dir2" / ".1.test"),
             "file_action": "add",
             "line1": 1,
             "line2": 1,
@@ -350,11 +332,17 @@ payload_test_other1 = {
 
 
 def test7():
-    safe_remove(str(test_file) + ".1.test")
-    safe_remove(str(test_file) + ".2.test")
-    safe_remove(str(test_file) + ".3.test")
-    safe_remove(str(test_file) + '.3.test_rename')
+    def init():
+        safe_remove(str(test_file) + ".1.test")
+        safe_remove(str(test_file.parent / "dir1" / "dir2" / ".1.test"))
+        safe_remove(str(test_file.parent / "dir1" / "dir2"))
+        safe_remove(str(test_file.parent / "dir1" / ".1.test"))
+        safe_remove(str(test_file.parent / "dir1"))
+        safe_remove(str(test_file) + ".2.test")
+        safe_remove(str(test_file) + ".3.test")
+        safe_remove(str(test_file) + '.3.test_rename')
 
+    init()
     # create files
     with open(str(test_file) + ".2.test", "w") as f:
         f.write("TEST")
@@ -365,19 +353,19 @@ def test7():
 
     res = diff_apply(payload)
 
-    assert [r['applied'] for r in res] == [True, True, True], res
-    assert [r['success'] for r in res] == [True, True, True], res
+    assert (test_file.parent / "dir1" / "dir2" / ".1.test").name in os.listdir(test_file.parent / "dir1" / "dir2")
+    assert (test_file.parent / "dir1" / ".1.test").name in os.listdir(test_file.parent / "dir1")
 
-    safe_remove(str(test_file) + ".1.test")
-    safe_remove(str(test_file) + ".2.test")
-    safe_remove(str(test_file) + ".3.test")
-    safe_remove(str(test_file) + '.3.test_rename')
+    assert [r['applied'] for r in res] == [True, True, True, True, True], res
+    assert [r['success'] for r in res] == [True, True, True, True, True], res
+
+    init()
 
     print(colored("test7 PASSED", "green"))
 
 
 payload_test_dirs_TP = {
-    "apply": [True, True, True],
+    "apply": [True, True, True, True],
     "chunks": [
         {
             "file_name": str(current_dir / "test_dir1"),
@@ -388,30 +376,7 @@ payload_test_dirs_TP = {
             "lines_add": ""
         },
         {
-            "file_name": str(current_dir / "test_dir2"),
-            "file_action": "remove",
-            "line1": 1,
-            "line2": 1,
-            "lines_remove": "",
-            "lines_add": ""
-        },
-        {
-            "file_name": str(current_dir / "test_dir3"),
-            "file_action": "rename",
-            "line1": 1,
-            "line2": 1,
-            "lines_remove": "",
-            "lines_add": "",
-            "file_name_rename": str(current_dir / "test_dir4")
-        },
-    ]
-}
-
-payload_test_dirs_TN = {
-    "apply": [True, True, True],
-    "chunks": [
-        {
-            "file_name": str(current_dir / "test_dir3"),
+            "file_name": str(current_dir / "test_dir11" / "test_dir12"),
             "file_action": "add",
             "line1": 1,
             "line2": 1,
@@ -444,6 +409,8 @@ def test8():
         safe_remove(current_dir / "test_dir1")
         safe_create(current_dir / "test_dir2")
         safe_remove(current_dir / "test_dir3")
+        safe_remove(current_dir / "test_dir11" / "test_dir12")
+        safe_remove(current_dir / "test_dir11")
         safe_create(current_dir / "test_dir4")
 
     init()
@@ -453,23 +420,18 @@ def test8():
 
     resp = diff_state(payload)
 
-    assert resp['can_apply'] == [True, True, True], resp
+    assert resp['can_apply'] == [True, True, True, True], resp
 
     payload1 = copy(payload_test_dirs_TP)
 
     resp = diff_apply(payload1)
-    assert [r['applied'] for r in resp] == [True, True, True], resp
+    assert [r['applied'] for r in resp] == [True, True, True, True], resp
 
     assert (current_dir / "test_dir1").name in os.listdir(current_dir), os.listdir(current_dir)
+    assert (current_dir / "test_dir11" / "test_dir12").name in os.listdir((current_dir / "test_dir11"))
     assert (current_dir / "test_dir2").name not in os.listdir(current_dir)
     assert (current_dir / "test_dir3").name in os.listdir(current_dir)
     assert (current_dir / "test_dir4").name not in os.listdir(current_dir)
-    #
-    # payload2 = copy(payload_test_dirs_TN)
-    #
-    # resp = diff_apply(payload2)
-    # assert [r['applied'] for r in resp] == [False, False, False], resp
-    # assert [r['success'] for r in resp] == [False, False, False], resp
 
     print(colored("test8 PASSED", "green"))
 
@@ -578,7 +540,6 @@ def test9():
 def main():
     test1()
     test2()
-    # # test3()
     test4()
     test5()
     test6()

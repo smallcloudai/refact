@@ -59,8 +59,8 @@ pub async fn postprocess_diff_chunks_from_message(
         let all_applied = outputs_unwrapped.iter().all(|x|x.applied);
         if !all_applied {
             let mut message = format!("Couldn't apply the generated diff, the chunks for the file `{file_name}` are broken:\n").to_string();
-            for apply_out in outputs_unwrapped.iter().filter(|x| x.applied)  {
-                message.push_str(&format!("{:?}\n", apply_out.detail));
+            for detail in outputs_unwrapped.iter().filter_map(|x| x.detail.clone())  {
+                message.push_str(&format!("{detail}\n"));
             }
             warn!(message);
             return Err(message);

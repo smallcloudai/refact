@@ -260,17 +260,13 @@ fn undo_chunks(
 
 fn check_add(c: &DiffChunk) -> ApplyDiffOutput {
     let path = PathBuf::from(&c.file_name);
-    if let Some(parent) = path.parent() {
-        if !parent.is_dir() {
-            return ApplyDiffOutput::Err(format!("cannot create a path: parent dir `{:?}` does not exist or is not a dir", &parent));
-        }
-        if path.exists() {
-            return ApplyDiffOutput::Err(format!("cannot create a path: path `{}` already exists", &c.file_name));
-        }
-        return ApplyDiffOutput::Ok();
-    } else {
-        ApplyDiffOutput::Err(format!("cannot create a path: path `{}` doesn't have a parent (probably it is relative)", &c.file_name))
+    if path.exists() {
+        return ApplyDiffOutput::Err(format!("cannot create a path: path `{}` already exists", &c.file_name));
     }
+    if !path.is_absolute() {
+        return ApplyDiffOutput::Err(format!("cannot create a path: path `{}` must be an absolute path", &c.file_name));
+    }
+    return ApplyDiffOutput::Ok();
 }
 
 fn check_remove(c: &DiffChunk) -> ApplyDiffOutput {
