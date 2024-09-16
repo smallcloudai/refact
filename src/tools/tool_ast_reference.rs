@@ -8,6 +8,8 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
+use crate::tools::tool_ast_definition::there_are_definitions_with_similar_names_though;
+
 
 pub struct ToolAstReference;
 
@@ -106,15 +108,8 @@ impl Tool for ToolAstReference {
 
             if defs.is_empty() {
                 corrections = true;
-                let fuzzy_matches: Vec<String> = crate::ast::ast_db::definition_paths_fuzzy(ast_index, &symbol).await.into_iter().take(20).collect();
-                let mut tool_message = format!(
-                    "No definitions with name `{}` found in the workspace, there are definitions with similar names though:\n",
-                    symbol
-                ).to_string();
-                for line in fuzzy_matches {
-                    tool_message.push_str(&format!("{}\n", line));
-                }
-                messages.push(tool_message);
+                let fuzzy_message = there_are_definitions_with_similar_names_though(ast_index, &symbol).await;
+                messages.push(fuzzy_message);
             }
 
             let mut result_messages = all_results.into_iter().map(|x| ContextEnum::ContextFile(x)).collect::<Vec<ContextEnum>>();

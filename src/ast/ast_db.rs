@@ -35,6 +35,22 @@ use crate::ast::ast_parse_anything::{parse_anything_and_add_file_path, filesyste
 //            ^^^^^^ something unknown                              ^^^^^^^ uline
 //                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ full path to where the usage is
 //
+// Resolve todo:
+//   resolve-todo|alt_testsuite::cpp_goat_library::Animal::self_review
+//                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ full path the class
+//   resolve-cleanup|alt_testsuite::cpp_goat_library::Animal::self_review
+//
+// Class hierarchy:
+//   classes|cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
+//           ^^^^^^^^^^^ derived from                               ^^^^^^^^^^ serialized value, klass
+//                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ full path of klass, makes those keys additive
+//
+// Other keys:
+//   doc|alt_testsuite::cpp_goat_library::Animal: src/ast/alt_testsuite/cpp_goat_library.h
+//   counters|defs: 42
+//   counters|usages: 100
+//
+//
 // Read tests below, the show what this index can do!
 
 

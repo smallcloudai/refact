@@ -5,6 +5,8 @@ use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::ast::ast_minimalistic::AstDB;
+use crate::ast::ast_db::fetch_counters;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
 
@@ -78,14 +80,7 @@ impl Tool for ToolAstDefinition {
                 (messages, tool_message)
             } else {
                 corrections = true;
-                let fuzzy_matches: Vec<String> = crate::ast::ast_db::definition_paths_fuzzy(ast_index, &symbol).await.into_iter().take(20).collect();
-                let mut tool_message = format!(
-                    "No definitions with name `{}` found in the workspace, there are definitions with similar names though:\n",
-                    symbol
-                ).to_string();
-                for line in fuzzy_matches {
-                    tool_message.push_str(&format!("{}\n", line));
-                }
+                let tool_message = there_are_definitions_with_similar_names_though(ast_index, &symbol).await;
                 (vec![], tool_message)
             };
 
@@ -106,4 +101,31 @@ impl Tool for ToolAstDefinition {
     fn tool_depends_on(&self) -> Vec<String> {
         vec!["ast".to_string()]
     }
+}
+
+pub async fn there_are_definitions_with_similar_names_though(
+    ast_index: Arc<AMutex<AstDB>>,
+    symbol: &str,
+) -> String {
+    let fuzzy_matches: Vec<String> = crate::ast::ast_db::definition_paths_fuzzy(ast_index.clone(), symbol)
+        .await
+        .into_iter()
+        .take(20)
+        .collect();
+
+    let tool_message = if fuzzy_matches.is_empty() {
+        let counters = fetch_counters(ast_index).await;
+        format!("No definitions with name `{}` found in the workspace, and no similar names were found among {} definitions in the AST tree.\n", symbol, counters.counter_defs)
+    } else {
+        let mut msg = format!(
+            "No definitions with name `{}` found in the workspace, there are definitions with similar names though:\n",
+            symbol
+        );
+        for line in fuzzy_matches {
+            msg.push_str(&format!("{}\n", line));
+        }
+        msg
+    };
+
+    tool_message
 }

@@ -8,5 +8,5 @@ X,Y = 50, 50
 W = 100
 H = 100
 
-def bring_your_own_frog_to_work_day(f):
+def bring_your_own_frog_to_work_day(f: frog.Frog):
     f.jump(W, H)
