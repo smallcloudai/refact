@@ -32,7 +32,7 @@ pub struct CommandLine {
     pub logs_stderr: bool,
     #[structopt(long, default_value="", help="Send logs to a file.")]
     pub logs_to_file: String,
-    #[structopt(long, short="u", help="URL to start working. The first step is to fetch capabilities from $URL/refact-caps. You can supply your own caps in a local file, too, for the bring-your-own-key use case.")]
+    #[structopt(long, short="u", default_value="", help="URL to start working. The first step is to fetch capabilities from $URL/refact-caps. You can supply your own caps in a local file, too, for the bring-your-own-key use case.")]
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,

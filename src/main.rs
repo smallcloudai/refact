@@ -111,6 +111,10 @@ async fn main() {
     if cmdline.only_create_yaml_configs {
         std::process::exit(0);
     }
+    if cmdline.address_url == "" {
+        info!("pass --address-url or try --help");
+        std::process::exit(0);
+    }
 
     if cmdline.ast {
         let tmp = Some(crate::ast::ast_indexer_thread::ast_service_init(cmdline.ast_permanent.clone(), cmdline.ast_max_files).await);

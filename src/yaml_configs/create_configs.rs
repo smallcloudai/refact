@@ -2,11 +2,15 @@ use std::path::PathBuf;
 use std::io::Write;
 use std::sync::Arc;
 use tokio::fs;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock as ARwLock;
 use tracing::{info, warn};
+
 use crate::caps::SIMPLE_CAPS;
 use crate::global_context::GlobalContext;
 use crate::yaml_configs::customization_compiled_in::COMPILED_IN_INITIAL_USER_YAML;
+use crate::privacy_compiled_in::COMPILED_IN_INITIAL_PRIVACY_YAML;
 
 
 pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) {
@@ -19,6 +23,10 @@ pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) {
         Err(e) => warn!("{}", e)
     }
     match yaml_customization_exists_or_create(gcx.clone()).await {
+        Ok(_) => (),
+        Err(e) => warn!("{}", e)
+    }
+    match yaml_privacy_exists_or_create(gcx.clone()).await {
         Ok(_) => (),
         Err(e) => warn!("{}", e)
     }
@@ -64,4 +72,19 @@ pub async fn yaml_customization_exists_or_create(gcx: Arc<ARwLock<GlobalContext>
         info!("Created customization.yaml: {}", user_config_path.display());
     }
     Ok(user_config_path)
+}
+
+pub async fn yaml_privacy_exists_or_create(gcx: Arc<ARwLock<GlobalContext>>) -> Result<PathBuf, String> {
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    let path = cache_dir.join("privacy.yaml");
+    if !path.exists() {
+        let mut file = File::create(&path)
+            .await
+            .map_err(|e| format!("Failed to create privacy.yaml: {}", e))?;
+        file.write_all(COMPILED_IN_INITIAL_PRIVACY_YAML.as_bytes())
+            .await
+            .map_err(|e| format!("Failed to write to privacy.yaml: {}", e))?;
+        info!("Created privacy.yaml: {}", path.display());
+    }
+    Ok(path)
 }

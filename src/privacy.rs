@@ -4,13 +4,11 @@ use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
 use tokio::time::Duration;
 use tokio::fs;
-use tracing::{error, info};
+use tracing::error;
 use glob::Pattern;
 use std::time::SystemTime;
-use tokio::io::AsyncWriteExt;
 
 use crate::global_context::GlobalContext;
-use crate::privacy_compiled_in::COMPILED_IN_INITIAL_PRIVACY_YAML;
 
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -23,8 +21,8 @@ pub enum FilePrivacyLevel {
 #[derive(Debug, Deserialize)]
 pub struct PrivacySettings {
     pub privacy_rules: FilePrivacySettings,
-    #[serde(default = "default_expiry_time", skip)]
-    pub expiry_time: u64,
+    #[serde(default)]
+    pub loaded_ts: u64,
 }
 
 #[allow(non_snake_case)]
@@ -41,16 +39,12 @@ impl Default for PrivacySettings {
                 blocked: vec!["*".to_string()],
                 only_send_to_servers_I_control: vec![],
             },
-            expiry_time: default_expiry_time(),
+            loaded_ts: 0,
         }
     }
 }
 
-const PRIVACY_RELOAD_EACH_N_SECONDS: Duration = Duration::from_secs(10);
-fn default_expiry_time() -> u64 {
-    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() + PRIVACY_RELOAD_EACH_N_SECONDS.as_secs()
-}
-
+const PRIVACY_TOO_OLD: Duration = Duration::from_secs(3);
 
 async fn read_privacy_yaml(path: &Path) -> PrivacySettings
 {
@@ -58,49 +52,35 @@ async fn read_privacy_yaml(path: &Path) -> PrivacySettings
         Ok(content) => {
             match serde_yaml::from_str(&content) {
                 Ok(privacy_settings) => {
-                    info!("Successfully loaded privacy settings from {}", path.display());
                     privacy_settings
                 }
                 Err(e) => {
-                    error!("deserialization of YAML from {} failed: {}, terminating process", path.display(), e);
+                    error!("parsing {} failed\n{}", path.display(), e);
                     return PrivacySettings::default();
                 }
             }
         }
         Err(e) => {
-            error!("unable to read content from {}: {}, terminating process", path.display(), e);
+            error!("unable to read content from {}\n{}", path.display(), e);
             return PrivacySettings::default();
         }
     }
 }
 
-// TODO: Move to other yaml files handling once that part is finished
 pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<PrivacySettings>
 {
+    let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
     let path = {
         let gcx_locked = gcx.read().await;
-        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-        let should_reload = gcx_locked.privacy_settings.expiry_time <= current_time;
+        let should_reload = gcx_locked.privacy_settings.loaded_ts + PRIVACY_TOO_OLD.as_secs() <= current_time;
         if !should_reload {
             return gcx_locked.privacy_settings.clone();
         }
         gcx_locked.cache_dir.join("privacy.yaml")
     };
 
-    if !path.exists() {
-        match fs::File::create(&path).await {
-            Ok(mut file) => {
-                if let Err(e) = file.write_all(COMPILED_IN_INITIAL_PRIVACY_YAML.as_bytes()).await {
-                    error!("Failed to write to file: {}", e);
-                }
-            }
-            Err(e) => {
-                error!("Failed to create file: {}", e);
-            }
-        }
-    }
-
-    let new_privacy_settings = read_privacy_yaml(&path).await;
+    let mut new_privacy_settings = read_privacy_yaml(&path).await;
+    new_privacy_settings.loaded_ts = current_time;
 
     {
         let mut gcx_locked = gcx.write().await;
@@ -150,7 +130,7 @@ mod tests {
                 only_send_to_servers_I_control: vec!["*.pem".to_string(), "*/semi_private_dir/*.md".to_string()],
                 blocked: vec!["*.pem".to_string(), "*/secret_dir/*".to_string(), "secret_passwords.txt".to_string()],
             },
-            expiry_time: default_expiry_time(),
+            loaded_ts: 0,
         });
 
         let current_dir = std::env::current_dir().unwrap();
@@ -189,7 +169,7 @@ mod tests {
                 only_send_to_servers_I_control: vec!["*.cat.txt".to_string(), "*.md".to_string(), "*/.venv/*".to_string(), "**/tests_dir/**/*".to_string()],
                 blocked: vec!["*/make.png".to_string(), "*.txt".to_string()],
             },
-            expiry_time: default_expiry_time(),
+            loaded_ts: 0,
         });
 
         let current_dir = std::env::current_dir().unwrap();
