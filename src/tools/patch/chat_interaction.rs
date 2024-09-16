@@ -139,7 +139,7 @@ pub async fn execute_chat_model(
     // what does succ even mean?
     let mut succ_chunks = vec![];
     let gcx = ccx.lock().await.global_context.clone();
-    let privacy_settings = load_privacy_if_needed(ccx.lock().await.global_context.clone()).await;
+    let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
     for m in last_messages {
         match DefaultToolPatch::parse_message(m.content.as_str(), privacy_settings.clone()).await {
             Ok(chunks) => {

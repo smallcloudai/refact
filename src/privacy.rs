@@ -131,9 +131,8 @@ pub fn check_file_privacy(privacy_settings: Arc<PrivacySettings>, path: &Path, m
 {
     let file_privacy_level = get_file_privacy_level(privacy_settings.clone(), path);
     if file_privacy_level < *min_allowed_privacy_level {
-        return Err(format!("access to {} is restricted level={:?}", path.display(), file_privacy_level));
+        return Err(format!("privacy level {:?}", file_privacy_level));
     }
-
     Ok(())
 }
 

@@ -124,18 +124,24 @@ impl Tool for ToolCat {
 
         let filenames_present = context_files_in.iter().map(|x|x.file_name.clone()).collect::<Vec<_>>();
         for p in corrected_paths.iter().filter(|x|!filenames_present.contains(x)) {
-            let text = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await?.to_string();
-            let cf = ContextFile {
-                file_name: p.clone(),
-                file_content: "".to_string(),
-                line1: 0,
-                line2: text.lines().count(),
-                symbols: vec![],
-                gradient_type: -1,
-                usefulness: 0.,
-                is_body_important: false,
-            };
-            context_files_in.push(cf);
+            match get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await {
+                Ok(text) => {
+                    let cf = ContextFile {
+                        file_name: p.clone(),
+                        file_content: "".to_string(),
+                        line1: 0,
+                        line2: text.lines().count(),
+                        symbols: vec![],
+                        gradient_type: -1,
+                        usefulness: 0.,
+                        is_body_important: false,
+                    };
+                    context_files_in.push(cf);
+                },
+                Err(e) => {
+                    files_not_found_errs.push(format!("{}: {}", p, e));
+                }
+            }
         }
         let filenames_present = context_files_in.iter().map(|x|x.file_name.clone()).collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
 
