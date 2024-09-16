@@ -113,7 +113,6 @@ fn any_glob_matches_path(globs: &Vec<String>, path: &Path) -> bool {
     globs.iter().any(|glob| {
         let pattern = Pattern::new(glob).unwrap();
         let matches = pattern.matches_path(path);
-        println!("Checking pattern: {}, Path: {}, Matches: {}", glob, path.display(), matches); // Debugging print
         matches
     })
 }
