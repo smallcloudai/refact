@@ -112,7 +112,7 @@ async fn main() {
     }
 
     if cmdline.ast {
-        let tmp = Some(crate::ast::ast_indexer_thread::ast_service_init().await);
+        let tmp = Some(crate::ast::ast_indexer_thread::ast_service_init(cmdline.ast_permanent.clone(), cmdline.ast_max_files).await);
         let mut gcx_locked = gcx.write().await;
         gcx_locked.ast_service = tmp;
     }

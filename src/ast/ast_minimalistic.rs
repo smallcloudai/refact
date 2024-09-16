@@ -51,6 +51,7 @@ pub struct AstDB {
     pub sledbatch: Arc<AMutex<sled::Batch>>,
     pub batch_counter: usize,
     pub counters_increase: HashMap<String, i32>,
+    pub ast_max_files: usize,
 }
 
 #[derive(Serialize, Clone)]
@@ -63,6 +64,7 @@ pub struct AstStatus {
     pub files_total: usize,
     pub ast_index_files_total: i32,
     pub ast_index_symbols_total: i32,
+    pub ast_max_files_hit: bool,
 }
 
 pub struct AstCounters {

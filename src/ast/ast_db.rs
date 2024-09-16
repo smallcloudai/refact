@@ -64,29 +64,35 @@ macro_rules! debug_print {
     };
 }
 
-pub async fn ast_index_init(want_perf_report: bool) -> Arc<AMutex<AstDB>>
+const CACHE_CAPACITY_BYTES: u64 = 256 * 1024 * 1024;  // 256M cache
+
+pub async fn ast_index_init(ast_permanent: String, ast_max_files: usize, want_perf_report: bool) -> Arc<AMutex<AstDB>>
 {
-    let db_fn = "/tmp/my_db2.sled".to_string();
-    tracing::info!("Starting AST db at {}", db_fn);
-    let config = sled::Config::default()
-        .path(db_fn.clone())
-        .cache_capacity(256 * 1024 * 1024) // 256M cache
+    let mut config = sled::Config::default()
+        .cache_capacity(CACHE_CAPACITY_BYTES)
         .use_compression(false)
         .print_profile_on_drop(want_perf_report)
         .mode(sled::Mode::HighThroughput)
         .flush_every_ms(Some(5000));
 
+    if ast_permanent.is_empty() {
+        config = config.temporary(true).create_new(true);
+    } else {
+        config = config.path(ast_permanent.clone());
+    }
+
+    tracing::info!("starting AST db, ast_permanent={:?}", ast_permanent);
     let db: Arc<Db> = Arc::new(task::spawn_blocking(
         move || config.open().unwrap()
     ).await.unwrap());
     db.clear().unwrap();
-    // db.open_tree(b"unprocessed items").unwrap();
-    tracing::info!("/Starting AST");
+    tracing::info!("/starting AST");
     let ast_index = AstDB {
         sleddb: db,
         sledbatch: Arc::new(AMutex::new(sled::Batch::default())),
         batch_counter: 0,
         counters_increase: HashMap::new(),
+        ast_max_files,
     };
     Arc::new(AMutex::new(ast_index))
 }
@@ -820,7 +826,7 @@ mod tests {
     #[tokio::test]
     async fn test_ast_db() {
         init_tracing();
-        let ast_index = ast_index_init(false).await;
+        let ast_index = ast_index_init("".to_string(), 10, false).await;
         let mut errstats: ErrorStats = ErrorStats::default();
 
         let cpp_library_path = "src/ast/alt_testsuite/cpp_goat_library.h";

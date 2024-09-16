@@ -35,42 +35,51 @@ pub struct CommandLine {
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
+    #[structopt(long, help="Trust self-signed SSL certificates")]
+    pub insecure: bool,
+
     #[structopt(long, short="p", default_value="0", help="Bind 127.0.0.1:<port> to listen for HTTP requests, such as /v1/code-completion, /v1/chat, /v1/caps.")]
     pub http_port: u16,
+    #[structopt(long, default_value="0", help="Bind 127.0.0.1:<port> and act as an LSP server. This is compatible with having an HTTP server at the same time.")]
+    pub lsp_port: u16,
+    #[structopt(long, default_value="0", help="Act as an LSP server, use stdin stdout for communication. This is compatible with having an HTTP server at the same time. But it's not compatible with LSP port.")]
+    pub lsp_stdin_stdout: u16,
+
     #[structopt(long, default_value="", help="End-user client version, such as version of VS Code plugin.")]
     pub enduser_client_version: String,
     #[structopt(long, short="b", help="Send basic telemetry (counters and errors).")]
     pub basic_telemetry: bool,
     #[structopt(long, short="s", help="Send snippet telemetry (code snippets).")]
     pub snippet_telemetry: bool,
-    #[structopt(long, default_value="0", help="Bind 127.0.0.1:<port> and act as an LSP server. This is compatible with having an HTTP server at the same time.")]
-    pub lsp_port: u16,
-    #[structopt(long, default_value="0", help="Act as an LSP server, use stdin stdout for communication. This is compatible with having an HTTP server at the same time. But it's not compatible with LSP port.")]
-    pub lsp_stdin_stdout: u16,
-    #[structopt(long, help="Trust self-signed SSL certificates")]
-    pub insecure: bool,
     #[structopt(long, short="v", help="Makes DEBUG log level visible, instead of the default INFO.")]
     pub verbose: bool,
+
     #[structopt(long, help="Use AST, for it to start working, give it a jsonl files list or LSP workspace folders.")]
     pub ast: bool,
-    #[structopt(long, help="Use AST light mode, could be useful for large projects and little memory. Less information gets stored.")]
+    // #[structopt(long, help="Use AST light mode, could be useful for large projects and little memory. Less information gets stored.")]
     // pub ast_light_mode: bool,
-    // #[structopt(long, default_value="15000", help="Maximum files for AST index, to avoid OOM on large projects.")]
-    // pub ast_max_files: usize,
-    // #[structopt(long, help="Use vector database. Give it a jsonl files list or LSP workspace folders, and also caps need to have an embedding model.")]
+    #[structopt(long, default_value="50000", help="Maximum files for AST index, to avoid OOM on large projects.")]
+    pub ast_max_files: usize,
+    #[structopt(long, default_value="", help="Give it a path for AST database to make it permanent, if there is the database already, process starts without parsing all the files (careful). This quick start is helpful for automated solution search.")]
+    pub ast_permanent: String,
+
+    #[structopt(long, help="Use vector database. Give it LSP workspace folders or a jsonl, it also needs an embedding model.")]
     pub vecdb: bool,
     #[structopt(long, help="Delete all memories, start with empty memory.")]
     pub reset_memory: bool,
     #[structopt(long, default_value="15000", help="Maximum files count for VecDB index, to avoid OOM.")]
     pub vecdb_max_files: usize,
-    #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to VecDB and AST.")]
-    pub files_jsonl_path: String,
     #[structopt(long, default_value="", help="Set VecDB storage path manually.")]
     pub vecdb_force_path: String,
-    #[structopt(long, short="w", default_value="", help="Workspace folder to find files for VecDB and AST. An LSP or HTTP request can override this later.")]
+
+    #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to VecDB and AST.")]
+    pub files_jsonl_path: String,
+    #[structopt(long, short="w", default_value="", help="Workspace folder to find all the files. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
+
     #[structopt(long, help="create manually bring-your-own-key.yaml, integrations.yaml, customization.yaml and privacy.yaml and EXIT")]
     pub only_create_yaml_configs: bool,
+
     #[structopt(long, help="Enable experimental features, such as new integrations.")]
     pub experimental: bool,
 }
