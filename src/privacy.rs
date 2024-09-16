@@ -16,7 +16,7 @@ use crate::privacy_compiled_in::COMPILED_IN_INITIAL_PRIVACY_YAML;
 pub enum FilePrivacyLevel {
     Blocked = 0,
     OnlySendToServersIControl = 1,
-    AllowToSendEverywhere = 2,
+    AllowToSendAnywhere = 2,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -40,30 +40,31 @@ pub struct FilePrivacySettings {
     pub blocked: Vec<String>,
 }
 
-// TODO: Move to other yaml files handling once that part is finished
-async fn read_privacy_yaml(path: &Path) -> PrivacySettings {
+async fn read_privacy_yaml(path: &Path) -> PrivacySettings
+{
     match fs::read_to_string(&path).await {
         Ok(content) => {
             match serde_yaml::from_str(&content) {
                 Ok(privacy_settings) => {
-                    info!("privacy settings loaded from {}", path.display());
+                    info!("Successfully loaded privacy settings from {}", path.display());
                     privacy_settings
                 }
                 Err(e) => {
-                    error!("failed to deserialize YAML from {}: {}, no privacy settings will be used", path.display(), e);
-                    PrivacySettings::default()
+                    error!("deserialization of YAML from {} failed: {}, terminating process", path.display(), e);
+                    panic!("Failed to deserialize YAML from {}: {}", path.display(), e);
                 }
             }
         }
         Err(e) => {
-            error!("failed to read content from {}: {}, no privacy settings will be used", path.display(), e);
-            PrivacySettings::default()
+            error!("unable to read content from {}: {}, terminating process", path.display(), e);
+            panic!("Failed to read content from {}: {}", path.display(), e);
         }
     }
 }
 
 // TODO: Move to other yaml files handling once that part is finished
-pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<PrivacySettings> {
+pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<PrivacySettings>
+{
     let path = {
         let gcx_locked = gcx.read().await;
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
@@ -110,7 +111,7 @@ fn get_file_privacy_level(privacy_settings: Arc<PrivacySettings>, path: &Path) -
     } else if any_glob_matches_path(&privacy_settings.file_privacy.only_send_to_servers_I_control, path) {
         FilePrivacyLevel::OnlySendToServersIControl
     } else {
-        FilePrivacyLevel::AllowToSendEverywhere
+        FilePrivacyLevel::AllowToSendAnywhere
     }
 }
 
@@ -131,7 +132,7 @@ mod tests {
     use std::{path::PathBuf, sync::Arc};
 
     #[test]
-    fn test_get_file_privacy_level() {
+    fn test_privacy_patterns() {
         // Arrange
         let privacy_settings = Arc::new(PrivacySettings {
             file_privacy: FilePrivacySettings {
@@ -143,7 +144,6 @@ mod tests {
 
         let current_dir = std::env::current_dir().unwrap();
 
-        // Cases to test
         let cases: Vec<(PathBuf, FilePrivacyLevel)> = vec![
             (current_dir.join("test.txt"), FilePrivacyLevel::Blocked),
             (current_dir.join("test.cat.txt"), FilePrivacyLevel::Blocked),
@@ -151,17 +151,16 @@ mod tests {
             (current_dir.join("build/rename.md"), FilePrivacyLevel::OnlySendToServersIControl),
             (current_dir.join(".venv/bin/activate"), FilePrivacyLevel::OnlySendToServersIControl),
             (PathBuf::from("/home/user/.venv/bin/activate"), FilePrivacyLevel::OnlySendToServersIControl),
-            (PathBuf::from("/home/user/venv/bin/activate"), FilePrivacyLevel::AllowToSendEverywhere),
-            (current_dir.join("car/steps/load.make.png"), FilePrivacyLevel::AllowToSendEverywhere),
-            (current_dir.join("test.cat.txt.zip"), FilePrivacyLevel::AllowToSendEverywhere),
-            (current_dir.join("car/steps/make.pngs"), FilePrivacyLevel::AllowToSendEverywhere),
+            (PathBuf::from("/home/user/venv/bin/activate"), FilePrivacyLevel::AllowToSendAnywhere),
+            (current_dir.join("car/steps/load.make.png"), FilePrivacyLevel::AllowToSendAnywhere),
+            (current_dir.join("test.cat.txt.zip"), FilePrivacyLevel::AllowToSendAnywhere),
+            (current_dir.join("car/steps/make.pngs"), FilePrivacyLevel::AllowToSendAnywhere),
             (current_dir.join("car/tests_dir/cars.rs"), FilePrivacyLevel::OnlySendToServersIControl),
             (current_dir.join("car/tests_dir/bul/tar/gip.rs"), FilePrivacyLevel::OnlySendToServersIControl),
             (current_dir.join("tests_dir/.hidden"), FilePrivacyLevel::OnlySendToServersIControl),
             (current_dir.join("/tests_dir/.hidden"), FilePrivacyLevel::OnlySendToServersIControl),
         ];
 
-        // Act and assert
         for (path, expected_privacy_level) in cases {
             let actual_privacy_level = get_file_privacy_level(privacy_settings.clone(), &path);
             assert_eq!(
@@ -176,8 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn test_check_file_privacy() {
-        // Arrange
+    fn test_privacy_minimum() {
         let privacy_settings = Arc::new(PrivacySettings {
             file_privacy: FilePrivacySettings {
                 only_send_to_servers_I_control: vec!["*.cat.txt".to_string(), "*.md".to_string(), "*/.venv/*".to_string(), "**/tests_dir/**/*".to_string()],
@@ -188,15 +186,13 @@ mod tests {
 
         let current_dir = std::env::current_dir().unwrap();
 
-        // Cases to test
         let cases: Vec<(PathBuf, FilePrivacyLevel, bool)> = vec![
-            (current_dir.join("test.zip"), FilePrivacyLevel::AllowToSendEverywhere, true),
-            (current_dir.join("test.md"), FilePrivacyLevel::AllowToSendEverywhere, false),
+            (current_dir.join("test.zip"), FilePrivacyLevel::AllowToSendAnywhere, true),
+            (current_dir.join("test.md"), FilePrivacyLevel::AllowToSendAnywhere, false),
             (current_dir.join("test.md"), FilePrivacyLevel::OnlySendToServersIControl, true),
             (current_dir.join("test.cat.txt"), FilePrivacyLevel::OnlySendToServersIControl, false),
         ];
 
-        // Act and assert: check_file_privacy
         for (path, expected_privacy_level, expected_result) in &cases {
             let result = check_file_privacy(privacy_settings.clone(), path, expected_privacy_level);
             if *expected_result {
