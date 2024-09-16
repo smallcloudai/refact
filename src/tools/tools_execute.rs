@@ -76,7 +76,6 @@ pub async fn run_tools(
 
     for t_call in ass_msg.tool_calls.as_ref().unwrap_or(&vec![]).iter() {
         if let Some(cmd) = at_tools.get(&t_call.function.name) {
-            info!("tool use: trying to run {:?}", &t_call.function.name);
 
             let args_maybe = serde_json::from_str::<HashMap<String, Value>>(&t_call.function.arguments);
             if let Err(e) = args_maybe {
@@ -91,7 +90,7 @@ pub async fn run_tools(
                 continue;
             }
             let args = args_maybe.unwrap();
-            info!("tool use: args={:?}", args);
+            info!("tool use {}({:?})", &t_call.function.name, args);
             let tool_msg_and_maybe_more_mb = cmd.lock().await.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await;
             if let Err(e) = tool_msg_and_maybe_more_mb {
                 let mut tool_failed_message = ChatMessage {

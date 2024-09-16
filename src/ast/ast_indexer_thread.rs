@@ -137,11 +137,13 @@ async fn ast_indexer_thread(
                 info!("parsing errors, this would be a mixture of real code problems and our language-specific parser problems:\n{}", error_messages);
                 stats_parsing_errors = ErrorStats::default();
             }
-            info!("AST finished parsing, got {} symbols by processing {} files in {:>.3}s",
-                stats_symbols_cnt,
-                stats_parsed_cnt,
-                stats_t0.elapsed().as_secs_f64()
-            );
+            if stats_parsed_cnt + stats_symbols_cnt > 0 {
+                info!("AST finished parsing, got {} symbols by processing {} files in {:>.3}s",
+                    stats_symbols_cnt,
+                    stats_parsed_cnt,
+                    stats_t0.elapsed().as_secs_f64()
+                );
+            }
             let language_stats: String = if stats_success_languages.is_empty() {
                 "no files".to_string()
             } else {

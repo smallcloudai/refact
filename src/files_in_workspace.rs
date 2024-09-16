@@ -148,9 +148,7 @@ impl DocumentsState {
         let event_callback = move |res| {
             rt.block_on(async {
                 if let Ok(event) = res {
-                    if let Some(gcx) = gcx_weak.upgrade() {
-                        file_watcher_event(event, gcx_weak.clone()).await;
-                    }
+                    file_watcher_event(event, gcx_weak.clone()).await;
                 }
             });
         };

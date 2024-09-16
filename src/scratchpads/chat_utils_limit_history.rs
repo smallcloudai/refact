@@ -36,20 +36,28 @@ pub fn limit_messages_history(
         let tcnt = t.count_tokens(default_system_message.as_str())? as i32;
         tokens_used += tcnt;
     }
+    let mut log_buffer = Vec::new();
+    let mut dropped = false;
+
     for i in (0..messages.len()).rev() {
         let tcnt = 3 + message_token_count[i];
         if !message_take[i] {
             if tokens_used + tcnt < tokens_limit {
                 message_take[i] = true;
                 tokens_used += tcnt;
-                tracing::info!("take {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tokens_used, tokens_limit);
+                log_buffer.push(format!("take {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tokens_used, tokens_limit));
             } else {
-                tracing::info!("drop {:?} with {} tokens, quit", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tcnt);
+                log_buffer.push(format!("DROP {:?} with {} tokens, quit", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tcnt));
+                dropped = true;
                 break;
             }
         } else {
-            tracing::info!("not allowed to drop {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tokens_used, tokens_limit);
+            log_buffer.push(format!("not allowed to drop {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tokens_used, tokens_limit));
         }
+    }
+
+    if dropped {
+        tracing::info!("\n{}", log_buffer.join("\n"));
     }
 
     // additinally, drop tool results if we drop the calls

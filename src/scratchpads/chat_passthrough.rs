@@ -20,7 +20,7 @@ use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::yaml_configs::customization_loader::{get_default_system_prompt, system_prompt_add_workspace_info};
 
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 
 pub struct DeltaSender {
@@ -121,7 +121,9 @@ impl ScratchpadAbstract for ChatPassthrough {
                 first_msg.content = system_prompt_add_workspace_info(gcx.clone(), &first_msg.content).await;
             }
         }
-        info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", messages.len(), limited_msgs.len());
+        if DEBUG {
+            info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", messages.len(), limited_msgs.len());
+        }
         let mut filtered_msgs = vec![];
         for msg in &limited_msgs {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" || msg.role == "tool" {
@@ -190,9 +192,13 @@ impl ScratchpadAbstract for ChatPassthrough {
             };
             big_json["tools"] = serde_json::json!(tools);
             big_json["tool_choice"] = serde_json::json!(self.post.tool_choice);
-            info!("PASSTHROUGH TOOLS ENABLED CNT: {:?}", tools.unwrap_or(&vec![]).len());
+            if DEBUG {
+                info!("PASSTHROUGH TOOLS ENABLED CNT: {:?}", tools.unwrap_or(&vec![]).len());
+            }
         } else {
-            info!("PASSTHROUGH TOOLS NOT SUPPORTED");
+            if DEBUG {
+                info!("PASSTHROUGH TOOLS NOT SUPPORTED");
+            }
         }
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
         if DEBUG {
