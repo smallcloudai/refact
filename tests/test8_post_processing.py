@@ -7,19 +7,6 @@ from pygments.formatters import TerminalFormatter
 from typing import Any, Dict
 
 
-def generate_tool_call(tool_name, tool_arguments):
-    random_hex = ''.join(random.choices('0123456789abcdef', k=6))
-    tool_call = {
-        "id": f"{tool_name}_{random_hex}",
-        "function": {
-            "arguments": json.dumps(tool_arguments),
-            "name": tool_name
-        },
-        "type": "function"
-    }
-    return tool_call
-
-
 async def ask_chat(messages):
     tools_turn_on = {"definition", "references", "search", "cat"}
     tools = await chat_client.tools_fetch_and_filter(base_url="http://127.0.0.1:8001/v1", tools_turn_on=tools_turn_on)
@@ -62,11 +49,12 @@ def sort_out_messages(response_messages):
             print(hl.rstrip())
     return tool_call_message, context_file_message
 
+
 async def test_tool_call(tool_name: str, symbol: str, this_number_of_lines_should_have: Dict[str, int] = None, should_present_in_context_file: str = None) -> None:
     print(f"\ntesting {tool_name}({symbol!r})")
     initial_messages = [
         chat_client.Message(role="user", content=f"Call {tool_name}() for {symbol}"),
-        chat_client.Message(role="assistant", content="Alright, here we go", tool_calls=[generate_tool_call(tool_name, {"symbol": symbol})]),
+        chat_client.Message(role="assistant", content="Alright, here we go", tool_calls=[chat_client.pretend_function_call(tool_name, {"symbol": symbol})]),
     ]
     assistant_choices = await ask_chat(initial_messages)
     tool_call_message, context_file_message = sort_out_messages(assistant_choices[0][2:])

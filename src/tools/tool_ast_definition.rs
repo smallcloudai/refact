@@ -48,7 +48,10 @@ impl Tool for ToolAstDefinition {
         let ast_service_opt = gcx.read().await.ast_service.clone();
         if let Some(ast_service) = ast_service_opt {
             let ast_index = ast_service.lock().await.ast_index.clone();
+
+            crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_service.clone(), 20_000, true).await;
             let defs = crate::ast::ast_db::definitions(ast_index.clone(), &symbol).await;
+
             let file_paths = defs.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
             let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), file_paths.clone()).await;
 

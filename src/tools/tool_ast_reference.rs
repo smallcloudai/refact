@@ -48,7 +48,10 @@ impl Tool for ToolAstReference {
         let ast_service_opt = gcx.read().await.ast_service.clone();
         if let Some(ast_service) = ast_service_opt {
             let ast_index = ast_service.lock().await.ast_index.clone();
+
+            crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_service.clone(), 20_000, true).await;
             let defs = crate::ast::ast_db::definitions(ast_index.clone(), &symbol).await;
+
             let mut all_results = vec![];
             let mut messages = vec![];
 

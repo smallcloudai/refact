@@ -421,6 +421,19 @@ def gen_function_call_id():
     return f"call_{uuid.uuid4()}".replace("-", "")
 
 
+def pretend_function_call(tool_name, tool_arguments):
+    tool_call_id = gen_function_call_id()
+    tool_call = {
+        "id": tool_call_id,
+        "function": {
+            "arguments": json.dumps(tool_arguments),
+            "name": tool_name
+        },
+        "type": "function"
+    }
+    return tool_call
+
+
 def print_block(
     name: str,
     n: int,

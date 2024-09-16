@@ -803,6 +803,7 @@ pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>)
     println!("dump_database over");
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;

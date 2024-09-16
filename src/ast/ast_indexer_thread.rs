@@ -108,7 +108,6 @@ async fn ast_indexer_thread(
                     status_locked.ast_index_symbols_total = counters.counter_usages;
                     status_locked.ast_max_files_hit = ast_max_files_hit;
                     status_locked.astate = "indexing".to_string();
-                    info!("AST state is now {}", status_locked.astate);
                     status_locked.astate_notify.notify_waiters();
                 }
                 stats_update_ts = std::time::Instant::now();
@@ -138,7 +137,7 @@ async fn ast_indexer_thread(
                 info!("parsing errors, this would be a mixture of real code problems and our language-specific parser problems:\n{}", error_messages);
                 stats_parsing_errors = ErrorStats::default();
             }
-            info!("finished parsing, got {} symbols by processing {} files in {:>.3}s",
+            info!("AST finished parsing, got {} symbols by processing {} files in {:>.3}s",
                 stats_symbols_cnt,
                 stats_parsed_cnt,
                 stats_t0.elapsed().as_secs_f64()
@@ -159,8 +158,14 @@ async fn ast_indexer_thread(
                     .collect::<Vec<String>>()
                     .join("\n")
             };
-            info!("error stats:\n{}", problem_stats);
-            info!("language stats:\n{}", language_stats);
+            let sum_of_successes = stats_success_languages.values().sum::<usize>();
+            let sum_of_errors = stats_failure_reasons.values().sum::<usize>();
+            if sum_of_errors > 0 {
+                info!("error stats:\n{}", problem_stats);
+            }
+            if sum_of_successes > 1 {
+                info!("language stats:\n{}", language_stats);
+            }
             stats_success_languages.clear();
             stats_failure_reasons.clear();
             stats_parsed_cnt = 0;
@@ -175,7 +180,6 @@ async fn ast_indexer_thread(
                 status_locked.ast_index_symbols_total = counters.counter_defs;
                 status_locked.ast_max_files_hit = ast_max_files_hit;
                 status_locked.astate = "done".to_string();
-                info!("AST state is now {}", status_locked.astate);
             }
             ast_sleeping_point.notify_waiters();
         }
@@ -226,23 +230,26 @@ async fn ast_indexer_thread(
     }
 }
 
-pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexService>>, max_blocking_time_ms: usize, wake_up_indexer: bool) {
+pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexService>>, max_blocking_time_ms: usize, wake_up_indexer: bool)
+{
     let max_blocking_duration = tokio::time::Duration::from_millis(max_blocking_time_ms as u64);
     let start_time = std::time::Instant::now();
     let ast_sleeping_point = {
         let ast_service_locked = ast_service.lock().await;
         ast_service_locked.ast_sleeping_point.clone()
     };
-    if wake_up_indexer {
-        ast_sleeping_point.notify_waiters();
-    }
+    let mut wake_up_indexer = wake_up_indexer;
 
     loop {
         let future: tokio::sync::futures::Notified = ast_sleeping_point.notified();
+        if wake_up_indexer {
+            ast_sleeping_point.notify_waiters();
+            wake_up_indexer = false;
+        }
         {
             let ast_service_locked = ast_service.lock().await;
             let ast_status_locked = ast_service_locked.ast_status.lock().await;
-            if ast_status_locked.astate == "idle" || start_time.elapsed() >= max_blocking_duration {
+            if ast_status_locked.astate == "done" || start_time.elapsed() >= max_blocking_duration {
                 break;
             }
         }
@@ -260,7 +267,8 @@ pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexSe
     }
 }
 
-pub async fn ast_service_init(ast_permanent: String, ast_max_files: usize) -> Arc<AMutex<AstIndexService>> {
+pub async fn ast_service_init(ast_permanent: String, ast_max_files: usize) -> Arc<AMutex<AstIndexService>>
+{
     let ast_index = ast_index_init(ast_permanent, ast_max_files, false).await;
     let ast_status = Arc::new(AMutex::new(AstStatus {
         astate_notify: Arc::new(ANotify::new()),
@@ -307,7 +315,6 @@ pub async fn ast_indexer_enqueue_files(ast_service: Arc<AMutex<AstIndexService>>
     {
         let mut status_locked = ast_status.lock().await;
         status_locked.astate = "indexing".to_string();
-        info!("AST state is now {}", status_locked.astate);
         status_locked.astate_notify.notify_waiters();
     }
     if wake_up_indexer {

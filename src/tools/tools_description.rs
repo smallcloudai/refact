@@ -210,8 +210,9 @@ tools:
       - "ticket"
 
   - name: "github"
-    description: "Access to gh command line command, to fetch issues, review PRs."
+    agentic: true
     experimental: true
+    description: "Access to gh command line command, to fetch issues, review PRs."
     parameters:
       - name: "project_dir"
         type: "string"

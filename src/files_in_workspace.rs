@@ -105,8 +105,6 @@ pub struct DocumentsState {
     pub cache_correction: Arc<HashMap<String, HashSet<String>>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
     pub cache_fuzzy: Arc<Vec<String>>,                            // slow linear search
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
-    pub total_reset: bool,
-    pub total_reset_ts: std::time::SystemTime,
     pub diffs_applied_state: HashMap<u64, Vec<bool>>,
 }
 
@@ -142,8 +140,6 @@ impl DocumentsState {
             cache_correction: Arc::new(HashMap::<String, HashSet<String>>::new()),
             cache_fuzzy: Arc::new(Vec::<String>::new()),
             fs_watcher: Arc::new(ARwLock::new(watcher)),
-            total_reset: false,
-            total_reset_ts: std::time::SystemTime::now(),
             diffs_applied_state: HashMap::new(),
         }
     }
@@ -151,26 +147,10 @@ impl DocumentsState {
     pub fn init_watcher(&mut self, gcx_weak: Weak<ARwLock<GlobalContext>>, rt: tokio::runtime::Handle) {
         let event_callback = move |res| {
             rt.block_on(async {
-                let mut new_total_reset = false;
                 if let Ok(event) = res {
                     if let Some(gcx) = gcx_weak.upgrade() {
-                        let have_already_total_reset = gcx.read().await.documents_state.total_reset;
-                        if !have_already_total_reset {
-                            new_total_reset = file_watcher_event(event, gcx_weak.clone()).await;
-                        } else {
-                            info!("more events about files, ignored because total index reset is planned");
-                            gcx.write().await.documents_state.total_reset_ts = std::time::SystemTime::now() + std::time::Duration::from_secs(10);
-                        }
+                        file_watcher_event(event, gcx_weak.clone()).await;
                     }
-                }
-                if new_total_reset {
-                    if let Some(gcx) = gcx_weak.upgrade() {
-                        info!("total index rebuild\n");
-                        let mut gcx_locked = gcx.write().await;
-                        gcx_locked.documents_state.total_reset = true;
-                        gcx_locked.documents_state.total_reset_ts = std::time::SystemTime::now() + std::time::Duration::from_secs(10);
-                    }
-                    rt.spawn(file_watcher_total_reset(gcx_weak.clone()));
                 }
             });
         };
@@ -179,31 +159,6 @@ impl DocumentsState {
             watcher.watch(folder, RecursiveMode::Recursive).unwrap();
         }
         self.fs_watcher = Arc::new(ARwLock::new(watcher));
-    }
-}
-
-pub async fn file_watcher_total_reset(gcx_weak: Weak<ARwLock<GlobalContext>>) {
-    loop {
-        info!("waiting for a good moment for total index reset...");
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        let now = std::time::SystemTime::now();
-        let gcx_maybe = gcx_weak.clone().upgrade();
-        if gcx_maybe.is_none() {
-            return;
-        }
-        let gcx = gcx_maybe.unwrap();
-        let mut cx_locked = gcx.write().await;
-        if cx_locked.documents_state.total_reset_ts < now {
-            cx_locked.documents_state.total_reset = false;
-            info!("done waiting, go!");
-            break;
-        }
-    }
-    if let Some(gcx) = gcx_weak.upgrade() {
-        // We don't tell enqueue_all_files_from_workspace_folders that we want to rebuild the whole thing.
-        // But it has inside another detector for deleted files, by comparing lists. If it decides we don't need a
-        // rebuild really, so be it.
-        enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
     }
 }
 
@@ -384,9 +339,9 @@ async fn enqueue_some_docs(
     docs: &Vec<Document>,
     force: bool,
 ) {
-    info!("detected {} modified or added files", docs.len());
+    info!("detected {} modified/added/removed files", docs.len());
     for d in docs.iter().take(5) {
-        info!("    added/modified {}", crate::nicer_logs::last_n_chars(&d.doc_path.display().to_string(), 30));
+        info!("    {}", crate::nicer_logs::last_n_chars(&d.doc_path.display().to_string(), 30));
     }
     if docs.len() > 5 {
         info!("    ...");
@@ -573,7 +528,7 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
     enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 }
 
-pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalContext>>) -> bool
+pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalContext>>)
 {
     async fn on_create_modify(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         let mut docs = vec![];
@@ -599,55 +554,42 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         if docs.is_empty() {
             return;
         }
-        info!("EventKind::Create/Modify {} paths", event.paths.len());
+        // info!("EventKind::Create/Modify {} paths", event.paths.len());
         if let Some(gcx) = gcx_weak.clone().upgrade() {
             enqueue_some_docs(gcx, &docs, false).await;
         }
     }
 
-    async fn on_remove(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) -> bool {
+    async fn on_remove(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         let mut never_mind = true;
         for p in &event.paths {
             never_mind &= is_this_inside_blacklisted_dir(&p);
         }
+        let mut docs = vec![];
         if !never_mind {
-            info!("EventKind::Remove {:?}", event.paths);
-            if let Some(gcx) = gcx_weak.clone().upgrade() {
-                let wf_arc = gcx.read().await.documents_state.workspace_files.clone();
-                if let Ok(wf_locked) = wf_arc.lock() {
-                    for p in &event.paths {
-                        let mut a_known_file = false;
-                        if is_this_inside_blacklisted_dir(&p) {
-                            continue;
-                        }
-                        let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
-                        for p in wf_locked.iter() {
-                            if *p == cpath {
-                                a_known_file = true;
-                                break;
-                            }
-                        }
-                        if a_known_file {
-                            info!("    found {} was indexed previously => rebuild index", crate::nicer_logs::last_n_chars(&cpath.to_string_lossy().to_string(), 30));
-                            return true;
-                        } else {
-                            info!("    deleted file {} wasn't in the index, ignore", crate::nicer_logs::last_n_chars(&cpath.to_string_lossy().to_string(), 30));
-                        }
-                    }
+            for p in &event.paths {
+                if is_this_inside_blacklisted_dir(&p) {
+                    continue;
                 }
-                drop(wf_arc);
+                let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
+                docs.push(Document { doc_path: cpath, doc_text: None });
             }
         }
-        return false;
+        if docs.is_empty() {
+            return;
+        }
+        if let Some(gcx) = gcx_weak.clone().upgrade() {
+            enqueue_some_docs(gcx, &docs, false).await;
+        }
     }
 
     match event.kind {
         EventKind::Any => {},
         EventKind::Access(_) => {},
-        EventKind::Create(CreateKind::File) | EventKind::Modify(ModifyKind::Data(DataChange::Content)) => on_create_modify(gcx_weak.clone(), event).await,
-        EventKind::Remove(RemoveKind::File) => return on_remove(gcx_weak.clone(), event).await,
+        EventKind::Create(CreateKind::File) => on_create_modify(gcx_weak.clone(), event).await,
+        EventKind::Remove(RemoveKind::File) => on_remove(gcx_weak.clone(), event).await,
+        EventKind::Modify(ModifyKind::Data(DataChange::Content)) => on_create_modify(gcx_weak.clone(), event).await,
         EventKind::Other => {}
         _ => {}
     }
-    return false;
 }
