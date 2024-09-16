@@ -44,7 +44,8 @@ fn _go_to_parent_until_declaration(
             // XXX: legit in Python (assignment at top level, function call at top level)
             errors.add_error(
                 "".to_string(), start_node_read.full_range().start_point.row + 1,
-                "go_to_parent: parent decl not found");
+                format!("go_to_parent: parent decl not found for {:?}", start_node_read.name()).as_str(),
+            );
             return Uuid::nil();
         }
         let node = node_option.unwrap().read();
@@ -396,7 +397,7 @@ pub fn parse_anything(
                         definition_range: symbol.definition_range().clone(),
                     };
                     pcx.definitions.insert(symbol.guid().clone(), definition);
-                } else {
+                } else if symbol.name().is_empty() {
                     errors.add_error("".to_string(), symbol.full_range().start_point.row + 1, "nameless decl");
                 }
             }

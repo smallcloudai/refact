@@ -46,7 +46,7 @@ pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>) -> Backgro
     ]);
     let ast = gcx.clone().read().await.ast_service.clone();
     if let Some(ast_service) = ast {
-        bg.extend(crate::ast::ast_indexing_thread::ast_start_background_tasks(ast_service, gcx.clone()).await);
+        bg.extend(crate::ast::ast_indexer_thread::ast_indexer_start(ast_service, gcx.clone()).await);
     }
     let files_jsonl_path = gcx.clone().read().await.cmdline.files_jsonl_path.clone();
     if !files_jsonl_path.is_empty() {

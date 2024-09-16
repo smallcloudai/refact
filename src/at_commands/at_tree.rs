@@ -7,7 +7,7 @@ use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 
 use crate::ast::ast_minimalistic::AstDB;
-// use crate::ast::ast_indexing_thread::AstIndexService;
+// use crate::ast::ast_indexer_thread::AstIndexService;
 // use crate::ast::treesitter::structs::SymbolType;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;

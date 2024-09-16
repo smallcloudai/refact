@@ -14,7 +14,7 @@ use tracing::info;
 use crate::global_context::GlobalContext;
 use crate::telemetry;
 use crate::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS};
-use crate::ast::ast_indexing_thread::ast_indexer_enqueue_files;
+use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]

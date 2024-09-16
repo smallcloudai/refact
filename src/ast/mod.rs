@@ -7,7 +7,7 @@ pub mod ast_db;
 pub mod ast_parse_anything;
 
 pub mod treesitter;
-pub mod ast_indexing_thread;
+pub mod ast_indexer_thread;
 pub mod file_splitter;
 pub mod chunk_utils;
 pub mod linters;

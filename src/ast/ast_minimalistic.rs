@@ -68,6 +68,7 @@ pub struct AstStatus {
 pub struct AstCounters {
     pub counter_defs: i32,
     pub counter_usages: i32,
+    pub counter_docs: i32,
 }
 
 pub struct AstError {

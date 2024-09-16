@@ -15,7 +15,7 @@ use tokio::sync::{Mutex as AMutex, Semaphore};
 use tokio::sync::RwLock as ARwLock;
 use tracing::{error, info};
 
-use crate::ast::ast_indexing_thread::AstIndexService;
+use crate::ast::ast_indexer_thread::AstIndexService;
 use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;

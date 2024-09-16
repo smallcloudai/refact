@@ -96,9 +96,11 @@ pub async fn fetch_counters(ast_index: Arc<AMutex<AstDB>>) -> AstCounters
     let db = ast_index.lock().await.sleddb.clone();
     let counter_defs = db.get(b"counters|defs").unwrap().map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0);
     let counter_usages = db.get(b"counters|usages").unwrap().map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0);
+    let counter_docs = db.get(b"counters|docs").unwrap().map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0);
     AstCounters {
         counter_defs,
         counter_usages,
+        counter_docs,
     }
 }
 

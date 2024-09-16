@@ -10,7 +10,7 @@ use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
-use crate::ast::ast_indexing_thread::AstIndexService;
+use crate::ast::ast_indexer_thread::AstIndexService;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{CodeCompletionPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;

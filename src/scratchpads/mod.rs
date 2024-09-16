@@ -11,7 +11,7 @@ pub mod chat_utils_deltadelta;
 pub mod chat_utils_limit_history;
 pub mod scratchpad_utils;
 
-use crate::ast::ast_indexing_thread::AstIndexService;
+use crate::ast::ast_indexer_thread::AstIndexService;
 use crate::call_validation::CodeCompletionPost;
 use crate::call_validation::ChatPost;
 use crate::global_context::GlobalContext;

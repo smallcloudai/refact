@@ -35,8 +35,8 @@ pub async fn handle_v1_rag_status(
 
     let (maybe_ast_status, ast_message) = match &ast_module {
         Some(ast_service) => {
-            let alt_status = ast_service.lock().await.alt_status.clone();
-            let status = alt_status.lock().await.clone();
+            let ast_status = ast_service.lock().await.ast_status.clone();
+            let status = ast_status.lock().await.clone();
             (Some(status), "working".to_string())
         }
         None => (None, "turned_off".to_string())

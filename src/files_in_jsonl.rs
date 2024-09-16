@@ -12,7 +12,7 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
-use crate::ast::ast_indexing_thread::ast_indexer_enqueue_files;
+use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
 
 
 pub async fn enqueue_all_docs_from_jsonl(

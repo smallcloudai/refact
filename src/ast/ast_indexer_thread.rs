@@ -13,12 +13,12 @@ use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove, fl
 
 pub struct AstIndexService {
     pub ast_index: Arc<AMutex<AstDB>>,
-    pub alt_status: Arc<AMutex<AstStatus>>,
+    pub ast_status: Arc<AMutex<AstStatus>>,
     pub ast_sleeping_point: Arc<ANotify>,
     pub ast_todo: IndexSet<String>,
 }
 
-async fn ast_indexing_thread(
+async fn ast_indexer_thread(
     gcx_weak: Weak<ARwLock<GlobalContext>>,
     ast_service: Arc<AMutex<AstIndexService>>,
 ) {
@@ -30,11 +30,11 @@ async fn ast_indexing_thread(
     let mut stats_failure_reasons: IndexMap<String, usize> = IndexMap::new();
     let mut stats_success_languages: IndexMap<String, usize> = IndexMap::new();
     let mut stats_parsing_errors = ErrorStats::default();
-    let (ast_index, alt_status, ast_sleeping_point) = {
+    let (ast_index, ast_status, ast_sleeping_point) = {
         let ast_service_locked = ast_service.lock().await;
         (
             ast_service_locked.ast_index.clone(),
-            ast_service_locked.alt_status.clone(),
+            ast_service_locked.ast_status.clone(),
             ast_service_locked.ast_sleeping_point.clone(),
         )
     };
@@ -91,17 +91,22 @@ async fn ast_indexing_thread(
             if stats_update_ts.elapsed() >= std::time::Duration::from_millis(1000) { // can't be lower, because flush_sled_batch() happens not very often at all
                 let counters: AstCounters = fetch_counters(ast_index.clone()).await;
                 {
-                    let mut status_locked = alt_status.lock().await;
+                    let mut status_locked = ast_status.lock().await;
                     status_locked.files_unparsed = left_todo_count;
                     status_locked.files_total = stats_parsed_cnt;
                     status_locked.ast_index_files_total = counters.counter_defs;
                     status_locked.ast_index_symbols_total = counters.counter_usages;
                     status_locked.astate = "parsing".to_string();
-                    status_locked.astate_notify.notify_one();
+                    status_locked.astate_notify.notify_waiters();
                 }
                 stats_update_ts = std::time::Instant::now();
             }
 
+            continue;
+        }
+
+        let mut todo_count = ast_service.lock().await.ast_todo.len();
+        if todo_count > 0 {
             continue;
         }
 
@@ -149,22 +154,17 @@ async fn ast_indexing_thread(
             reported_idle = true;
             let counters: AstCounters = fetch_counters(ast_index.clone()).await;
             {
-                let mut status_locked = alt_status.lock().await;
+                let mut status_locked = ast_status.lock().await;
                 status_locked.files_unparsed = 0;
                 status_locked.files_total = 0;
-                status_locked.ast_index_files_total = counters.counter_defs;
-                status_locked.ast_index_symbols_total = counters.counter_usages;
+                status_locked.ast_index_files_total = counters.counter_docs;
+                status_locked.ast_index_symbols_total = counters.counter_defs;
                 status_locked.astate = "idle".to_string();
             }
-            ast_sleeping_point.notify_one();
+            ast_sleeping_point.notify_waiters();
         }
 
         // Connect usages, unless we have files in the todo
-        let mut todo_count = ast_service.lock().await.ast_todo.len();
-        if todo_count > 0 {
-            continue;
-        }
-
         let mut usagecx: ConnectUsageContext = connect_usages_look_if_full_reset_needed(ast_index.clone()).await;
         loop {
             todo_count = ast_service.lock().await.ast_todo.len();
@@ -210,14 +210,43 @@ async fn ast_indexing_thread(
     }
 }
 
-pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexService>>)
-{
-    let _x = ast_service;
+pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexService>>, max_blocking_time_ms: usize, wake_up_indexer: bool) {
+    let max_blocking_duration = tokio::time::Duration::from_millis(max_blocking_time_ms as u64);
+    let start_time = std::time::Instant::now();
+    let ast_sleeping_point = {
+        let ast_service_locked = ast_service.lock().await;
+        ast_service_locked.ast_sleeping_point.clone()
+    };
+    if wake_up_indexer {
+        ast_sleeping_point.notify_waiters();
+    }
+
+    loop {
+        let future: tokio::sync::futures::Notified = ast_sleeping_point.notified();
+        {
+            let ast_service_locked = ast_service.lock().await;
+            let ast_status_locked = ast_service_locked.ast_status.lock().await;
+            if ast_status_locked.astate == "idle" || start_time.elapsed() >= max_blocking_duration {
+                break;
+            }
+        }
+        let remaining_time = max_blocking_duration
+            .checked_sub(start_time.elapsed())
+            .unwrap_or_else(|| tokio::time::Duration::from_millis(0));
+        let sleep_duration = remaining_time
+            .checked_add(tokio::time::Duration::from_millis(50))
+            .unwrap_or_else(|| tokio::time::Duration::from_millis(50))
+            .max(tokio::time::Duration::from_millis(1));
+        tokio::select! {
+            _ = future => {},
+            _ = tokio::time::sleep(sleep_duration) => {},
+        }
+    }
 }
 
 pub async fn ast_service_init() -> Arc<AMutex<AstIndexService>> {
     let ast_index = ast_index_init(true).await;
-    let alt_status = Arc::new(AMutex::new(AstStatus {
+    let ast_status = Arc::new(AMutex::new(AstStatus {
         astate_notify: Arc::new(ANotify::new()),
         astate: String::from("starting"),
         files_unparsed: 0,
@@ -228,19 +257,19 @@ pub async fn ast_service_init() -> Arc<AMutex<AstIndexService>> {
     let ast_service = AstIndexService {
         ast_sleeping_point: Arc::new(ANotify::new()),
         ast_index,
-        alt_status,
+        ast_status,
         ast_todo: IndexSet::new(),
     };
     Arc::new(AMutex::new(ast_service))
 }
 
-pub async fn ast_start_background_tasks(
+pub async fn ast_indexer_start(
     ast_service: Arc<AMutex<AstIndexService>>,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Vec<JoinHandle<()>>
 {
     let indexer_handle = tokio::spawn(
-        ast_indexing_thread(
+        ast_indexer_thread(
             Arc::downgrade(&gcx),
             ast_service.clone(),
         )
@@ -250,12 +279,21 @@ pub async fn ast_start_background_tasks(
 
 pub async fn ast_indexer_enqueue_files(ast_service: Arc<AMutex<AstIndexService>>, cpaths: Vec<String>, wake_up_indexer: bool)
 {
-    let mut ast_service_locked = ast_service.lock().await;
-    for cpath in cpaths {
-        ast_service_locked.ast_todo.insert(cpath);
+    let ast_status;
+    {
+        let mut ast_service_locked = ast_service.lock().await;
+        ast_status = ast_service_locked.ast_status.clone();
+        for cpath in cpaths {
+            ast_service_locked.ast_todo.insert(cpath);
+        }
+    }
+    {
+        let mut status_locked = ast_status.lock().await;
+        status_locked.astate = "parsing".to_string();
+        status_locked.astate_notify.notify_waiters();
     }
     if wake_up_indexer {
-        ast_service_locked.ast_sleeping_point.notify_one();
+        let ast_service_locked = ast_service.lock().await;
+        ast_service_locked.ast_sleeping_point.notify_waiters();
     }
 }
-
