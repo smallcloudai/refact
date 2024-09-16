@@ -104,7 +104,7 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
-  const [getCustomizationPath, _] = pathApi.useLazyCustomizationPathQuery();
+  const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
 
   const openCustomizationFile = useCallback(async () => {
     const res = await getCustomizationPath(undefined).unwrap();
