@@ -138,16 +138,6 @@ export const diffApi = createApi({
       },
     }),
 
-    // diffApplyMany: builder.mutation<DiffOperationResponse[], DiffApplyManyArgs>(
-    //   {
-    //     queryFn: (diffs, api, extraOptions, baseQuery) => {
-    //       const status = diffs.map((diff) =>
-    //         api.dispatch(diffApi.endpoints.diffState.initiate(diff)),
-    //       );
-    //     },
-    //   },
-    // ),
-
     diffPreview: builder.query<DiffPreviewResponse, DiffPreviewArgs>({
       queryFn: async (args, api, _extraOptions, baseQuery) => {
         const state = api.getState() as RootState;
@@ -177,7 +167,6 @@ export const diffApi = createApi({
       //   });
       // },
     }),
-    // endpoints
   }),
   refetchOnMountOrArgChange: true,
 });

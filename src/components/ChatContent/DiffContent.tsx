@@ -2,7 +2,6 @@ import React from "react";
 import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
 import {
   DiffMessage,
-  DiffOperationArgs,
   DiffStateResponse,
   type DiffChunk,
 } from "../../services/refact";
@@ -18,6 +17,7 @@ import {
   useDiffStateQuery,
   useConfig,
   useDiffPreview,
+  useEventsBusForIDE,
 } from "../../hooks";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
@@ -172,46 +172,9 @@ export const DiffTitle: React.FC<{
 };
 
 export const DiffContent: React.FC<{
-  // chunks: DiffChunk[];
-  // toolCallId: string;
   diffs: Record<string, DiffStateResponse[]>;
-}> = ({
-  // chunks,
-  // toolCallId,
-  diffs,
-}) => {
+}> = ({ diffs }) => {
   const [open, setOpen] = React.useState(false);
-
-  const chunks = Object.values(diffs).reduce<DiffChunk[]>((acc, cur) => {
-    const diffChunks = cur.map((d) => d.chunk);
-    return [...acc, ...diffChunks];
-    // [...acc, diff.chunk]
-  }, []);
-
-  const diffStateRequest = useDiffStateQuery({ chunks });
-
-  const { onPreview, previewResult: _previewResult } = useDiffPreview(chunks);
-
-  const { onSubmit, result: _result } = useDiffApplyMutation();
-
-  // TODO: move this up
-  // const groupedDiffs: Record<string, DiffWithStatus[]> = React.useMemo(() => {
-  //   const diffWithStatus = chunks.map((diff, index) => {
-  //     return {
-  //       ...diff,
-  //       // state: result.data?.state[index] ?? 0,
-  //       can_apply: diffStateRequest.data?.can_apply[index] ?? false,
-  //       applied: diffStateRequest.data?.state[index] ?? false,
-  //       index,
-  //     };
-  //   });
-
-  //   return groupBy(diffWithStatus, (diff) => diff.file_name);
-  // }, [chunks, diffStateRequest]);
-
-  // if (diffStateRequest.isFetching) return null;
-  // if (diffStateRequest.isError) return null;
-  // if (!diffStateRequest.data) return null;
 
   return (
     <Container>
@@ -225,17 +188,7 @@ export const DiffContent: React.FC<{
           </Flex>
         </Collapsible.Trigger>
         <Collapsible.Content>
-          <DiffForm
-            onSubmit={(toApply: boolean[]) => {
-              void onSubmit({ chunks, toApply });
-            }}
-            onPreview={onPreview}
-            loading={diffStateRequest.isLoading}
-            diffs={diffs}
-            openFile={() => {
-              // TODO:
-            }}
-          />
+          <DiffForm diffs={diffs} />
         </Collapsible.Content>
       </Collapsible.Root>
     </Container>
@@ -251,47 +204,38 @@ export type DiffWithStatus = DiffChunk & {
 
 export const DiffForm: React.FC<{
   diffs: Record<string, DiffStateResponse[]>;
-  loading: boolean;
-  onSubmit: (toApply: boolean[]) => void;
-  onPreview: (toApply: boolean[]) => void | Promise<void>;
-  // TODO: is in useEventBusForIde
-  openFile: (file: { file_name: string; line?: number }) => void;
-}> = ({ diffs, loading, onSubmit, onPreview, openFile }) => {
+}> = ({ diffs }) => {
+  const { onSubmit, result: _result } = useDiffApplyMutation();
+  const { onPreview, previewResult: _previewResult } = useDiffPreview();
+  const { openFile } = useEventsBusForIDE();
   const { host } = useConfig();
-  const values = React.useMemo(() => {
-    return Object.values(diffs).reduce((acc, curr) => acc.concat(curr), []);
-  }, [diffs]);
 
   const handleToggle = React.useCallback(
-    (value: boolean, indices: number[]) => {
-      const toApply = values.map((diff, index) => {
-        if (indices.includes(index)) return value;
-        return diff.state;
-      });
-      onSubmit(toApply);
+    (diffs: DiffStateResponse[]) => {
+      const chunks = diffs.map((diff) => diff.chunk);
+      const toApply = diffs.map((diff) => diff.can_apply && !diff.state);
+      void onSubmit({ chunks, toApply });
     },
-    [onSubmit, values],
+    [onSubmit],
   );
 
   const handlePreview = React.useCallback(
-    (value: boolean, indices: number[]) => {
-      const toApply = values.map((diff, index) => {
-        if (indices.includes(index)) return value;
-        return diff.state;
-      });
-      void onPreview(toApply);
+    (diffs: DiffStateResponse[]) => {
+      const chunks = diffs.map((diff) => diff.chunk);
+      const toApply = diffs.map((diff) => diff.can_apply && !diff.state);
+      void onPreview(chunks, toApply);
     },
-    [values, onPreview],
+    [onPreview],
   );
 
   return (
     <Flex direction="column" maxWidth="100%" py="2" gap="2">
       {Object.entries(diffs).map(([fullFileName, diffsForFile], index) => {
         const key = fullFileName + "-" + index;
-        // const errored = diffsForFile.some((diff) => diff.state);
-        const applied = diffsForFile.every((diff) => diff.state);
-        // const indices = diffsForFile.map((diff) => diff.index);
-        const indices = [0, 1];
+        const applied = diffsForFile.every(
+          (diff) => !diff.can_apply && !diff.state,
+        );
+
         return (
           <Box key={key} my="2">
             <Flex justify="between" align="center" p="1">
@@ -317,20 +261,16 @@ export const DiffForm: React.FC<{
               <Text size="1" as="label">
                 <Flex align="center" gap="2" pl="2">
                   {/* {errored && "error"} */}
+                  {/* TODO: does this only work in vscode? */}
                   {host === "vscode" && (
                     <Button
                       size="1"
-                      disabled={loading}
-                      onClick={() => handlePreview(!applied, indices)}
+                      onClick={() => handlePreview(diffsForFile)}
                     >
                       Preview
                     </Button>
                   )}
-                  <Button
-                    size="1"
-                    disabled={loading}
-                    onClick={() => handleToggle(!applied, indices)}
-                  >
+                  <Button size="1" onClick={() => handleToggle(diffsForFile)}>
                     {applied ? "Unapply" : "Apply"}
                   </Button>
                 </Flex>
@@ -356,12 +296,6 @@ export const DiffForm: React.FC<{
           </Box>
         );
       })}
-
-      {/* <Flex gap="2" py="2">
-        <Button disabled={disableApplyAll || loading} onClick={applyAll}>
-          {action}
-        </Button>
-      </Flex> */}
     </Flex>
   );
 };
@@ -383,67 +317,36 @@ export const GroupedDiffs: React.FC<GroupedDiffsProps> = ({ diffs }) => {
     (diff) => diff.chunk.file_name,
   );
 
+  // TODO: try with partially applied diffs
+
   const onApplyAll = React.useCallback(() => {
     const data = status.data ?? [];
-    const chunksWithApply = data
-      .filter((d) => d.can_apply)
-      .map((diff) => {
-        if (!diff.state) {
-          return { chunk: diff.chunk, apply: true };
-        } else {
-          return { chunk: diff.chunk, apply: false };
-        }
-      });
-    const ops = chunksWithApply.reduce<DiffOperationArgs>(
-      (acc, op) => {
-        const toApply = acc.toApply.concat(op.apply);
-        const chunks = acc.chunks.concat(op.chunk);
-        return { toApply, chunks };
-      },
-      {
-        toApply: [],
-        chunks: [],
-      },
-    );
-
-    void onSubmit(ops);
+    const chunks = data.map((diff) => diff.chunk);
+    const toApply = data.map((_diff) => true);
+    void onSubmit({ chunks, toApply });
   }, [onSubmit, status.data]);
 
   // TODO: find a good project chat to test this on
   const onUnApplyAll = () => {
     const data = status.data ?? [];
-    const chunksWithApply = data
-      .filter((d) => d.can_apply)
-      .map((diff) => {
-        if (!diff.state) {
-          return { chunk: diff.chunk, apply: false };
-        } else {
-          return { chunk: diff.chunk, apply: true };
-        }
-      });
-    const ops = chunksWithApply.reduce<DiffOperationArgs>(
-      (acc, op) => {
-        const toApply = acc.toApply.concat(op.apply);
-        const chunks = acc.chunks.concat(op.chunk);
-        return { toApply, chunks };
-      },
-      {
-        toApply: [],
-        chunks: [],
-      },
-    );
-
-    void onSubmit(ops);
+    const chunks = data.map((diff) => diff.chunk);
+    const toApply = data.map((_diff) => false);
+    void onSubmit({ chunks, toApply });
   };
 
   const disableApplyAll =
-    status.data?.length === 0 || status.data?.every((diff) => !diff.can_apply);
+    status.data?.length === 0 || status.data?.every((diff) => diff.state);
+
+  const disableUnApplyAll =
+    status.data?.length === 0 || status.data?.every((diff) => !diff.state);
 
   return (
-    <Flex direction="column" gap="2">
+    <Flex direction="column" gap="4" py="4">
       <DiffContent diffs={groupedByFileName} />
       <Flex gap="2">
-        <Button onClick={onUnApplyAll}>Unapply All</Button>
+        <Button onClick={onUnApplyAll} disabled={disableUnApplyAll}>
+          Unapply All
+        </Button>
         <Button onClick={onApplyAll} disabled={disableApplyAll}>
           Apply All
         </Button>
