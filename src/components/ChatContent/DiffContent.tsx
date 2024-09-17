@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
-import { type DiffChunk } from "../../services/refact";
+import { isDiffErrorResponseData, type DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
 import styles from "./ChatContent.module.css";
 import { filename } from "../../utils";
@@ -13,7 +13,11 @@ import {
   useDiffStateQuery,
   useConfig,
   useDiffPreview,
+  useAppDispatch,
 } from "../../hooks";
+
+// import { setError, clearError } from "../../features/Errors/errorsSlice";
+import { setWarning } from "../../features/Errors/warningSlice";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -171,6 +175,7 @@ export const DiffContent: React.FC<{
   const { onPreview, previewResult: _previewResult } = useDiffPreview(chunks);
 
   const { onSubmit, result: _result } = useDiffApplyMutation();
+  const dispatch = useAppDispatch();
 
   const groupedDiffs: Record<string, DiffWithStatus[]> = React.useMemo(() => {
     const diffWithStatus = chunks.map((diff, index) => {
@@ -185,6 +190,51 @@ export const DiffContent: React.FC<{
 
     return groupBy(diffWithStatus, (diff) => diff.file_name);
   }, [chunks, diffStateRequest]);
+
+  useEffect(() => {
+    // let data = null;
+    // if (!Array.isArray(_result.data)) {
+    //   return
+    // }
+    // data = _result.data[0]
+    // let dispatchClearErrorTimeoutId: NodeJS.Timeout;
+    // if (isDiffErrorResponseData(data)) {
+    //   if (data.detail) {
+    //     dispatch(setError(data.detail));
+    //     dispatchClearErrorTimeoutId = setTimeout(() => {
+    //       dispatch(clearError());
+    //     }, 3000)
+    //   }
+    // }
+    // return () => {
+    //   clearTimeout(dispatchClearErrorTimeoutId);
+    // }
+  }, [_result, dispatch]);
+
+  const handleDiffApplySubmit = (toApply: boolean[]) => {
+    onSubmit({ chunks, toApply, toolCallId })
+      .unwrap()
+      .then((payload) => {
+        console.log(`[DEBUG]: fulfilled, data:`, payload);
+        let data = null;
+        if (!Array.isArray(payload)) {
+          return;
+        }
+        data = payload[0];
+        // let dispatchClearErrorTimeoutId: NodeJS.Timeout;
+
+        if (isDiffErrorResponseData(data)) {
+          if (data.detail) {
+            dispatch(setWarning(data.detail));
+            // dispatchClearErrorTimeoutId = setTimeout(() => {
+            //   dispatch(clearError());
+            //   clearTimeout(dispatchClearErrorTimeoutId);
+            // }, 3000)
+          }
+        }
+      })
+      .catch((error) => dispatch(setWarning(error as string)));
+  };
 
   // if (diffStateRequest.isFetching) return null;
   // if (diffStateRequest.isError) return null;
@@ -203,9 +253,7 @@ export const DiffContent: React.FC<{
         </Collapsible.Trigger>
         <Collapsible.Content>
           <DiffForm
-            onSubmit={(toApply: boolean[]) => {
-              void onSubmit({ chunks, toApply, toolCallId });
-            }}
+            onSubmit={handleDiffApplySubmit}
             onPreview={onPreview}
             loading={diffStateRequest.isLoading}
             diffs={groupedDiffs}

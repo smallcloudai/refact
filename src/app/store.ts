@@ -37,6 +37,7 @@ import {
   historyMiddleware,
 } from "../features/History/historySlice";
 import { errorSlice } from "../features/Errors/errorsSlice";
+import { warningSlice } from "../features/Errors/warningSlice";
 import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
@@ -65,6 +66,7 @@ const rootReducer = combineSlices(
   },
   historySlice,
   errorSlice,
+  warningSlice,
   pagesSlice,
 );
 
