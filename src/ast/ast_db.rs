@@ -179,6 +179,7 @@ pub async fn doc_add(
     let mut batch = batch_arc.lock().await;
     let mut added_defs: i32 = 0;
     let mut added_usages: i32 = 0;
+    let mut unresolved_usages: i32 = 0;
     for definition in defs.values() {
         let serialized = serde_cbor::to_vec(&definition).unwrap();
         let official_path = definition.official_path.join("::");
@@ -191,7 +192,6 @@ pub async fn doc_add(
             batch.insert(c_key.as_bytes(), b"");
             path_parts.remove(0);
         }
-        let mut unresolved_usages: i32 = 0;
         for usage in &definition.usages {
             if !usage.resolved_as.is_empty() {
                 let u_key = format!("u|{} ⚡ {}", usage.resolved_as, official_path);
@@ -211,13 +211,12 @@ pub async fn doc_add(
             let t_key = format!("classes|{} ⚡ {}", from, official_path);
             batch.insert(t_key.as_bytes(), definition.this_is_a_class.as_bytes());
         }
-        if unresolved_usages > 0 {
-            let resolve_todo_key = format!("resolve-todo|{}", official_path);
-            batch.insert(resolve_todo_key.as_bytes(), b"");
-        }
         added_defs += 1;
     }
-
+    if unresolved_usages > 0 {
+        let resolve_todo_key = format!("resolve-todo|{}", file_global_path.join("::"));
+        batch.insert(resolve_todo_key.as_bytes(), cpath.as_bytes());
+    }
     let doc_key = format!("doc|{}", file_global_path.join("::"));
     if db.get(doc_key.as_bytes()).unwrap().is_none() {
         _increase_counter(ast_index.clone(), "counters|docs", 1).await;
@@ -315,30 +314,25 @@ pub struct ConnectUsageContext {
     pub t0: Instant,
 }
 
-pub async fn connect_usages(ast_index: Arc<AMutex<AstDB>>, ucx: &mut ConnectUsageContext) -> bool
-{
+pub async fn connect_usages(ast_index: Arc<AMutex<AstDB>>, ucx: &mut ConnectUsageContext) -> bool {
     let db = ast_index.lock().await.sleddb.clone();
     let mut iter = db.scan_prefix("resolve-todo|").take(1);
 
-    if let Some(Ok((todo_key, _))) = iter.next() {
-        let key_string = String::from_utf8(todo_key.to_vec()).unwrap();
-        let def_official_path = key_string.strip_prefix("resolve-todo|").unwrap();
+    if let Some(Ok((todo_key, todo_value))) = iter.next() {
+        let cpath = String::from_utf8(todo_value.to_vec()).unwrap();
+        debug_print!("resolving {}", cpath);
 
         // delete immediately, to make sure connect_usages() does not continue forever, even if there are errors and stuff
         if let Err(e) = db.remove(&todo_key) {
             tracing::error!("connect_usages() failed to remove resolve-todo key: {:?}", e);
         }
 
-        let d_key = format!("d|{}", def_official_path);
-        debug_print!("resolving {}", d_key);
-        if let Ok(Some(value)) = db.get(&d_key) {
-            let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
-            let mut batch = batch_arc.lock().await;
+        let definitions = doc_symbols(ast_index.clone(), &cpath.to_string()).await;
+        let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
+        let mut batch = batch_arc.lock().await;
 
-            let def = serde_cbor::from_slice::<AstDefinition>(&value).unwrap();
+        for def in definitions {
             _connect_usages_helper(&db, ucx, &def, &mut batch).await;
-        } else {
-            tracing::error!("connect_usages() failed to get {}", d_key);
         }
 
         return true;
@@ -366,19 +360,23 @@ pub async fn connect_usages_look_if_full_reset_needed(ast_index: Arc<AMutex<AstD
         // first run, do nothing because all the definitions are already in the todo list
 
     } else if new_derived_from_map != existing_hierarchy {
-        tracing::info!(" * * * class hierarchy changed, all usages need to be reconnected * * *");
+        // XXX first branch is not covered by tests (simple enough to work and not break?)
+        tracing::info!(" * * * class hierarchy changed {} classes => {} classes, all usages need to be reconnected * * *", existing_hierarchy.len(), new_derived_from_map.len());
         let serialized_hierarchy = serde_cbor::to_vec(&new_derived_from_map).unwrap();
         batch.insert(class_hierarchy_key, serialized_hierarchy.as_slice());
 
-        let mut iter = db.scan_prefix("d|");
+        let mut iter = db.scan_prefix("doc|");
         let mut cnt = 0;
-        while let Some(Ok((key, _))) = iter.next() {
+        while let Some(Ok((key, value))) = iter.next() {
             let key_string = String::from_utf8(key.to_vec()).unwrap();
-            let resolve_todo_key = format!("resolve-todo|{}", key_string.strip_prefix("d|").unwrap());
-            batch.insert(resolve_todo_key.as_bytes(), b"");
-            cnt += 1;
+            if let Some(file_global_path) = key_string.strip_prefix("doc|") {
+                let cpath = String::from_utf8(value.to_vec()).unwrap();
+                let resolve_todo_key = format!("resolve-todo|{}", file_global_path);
+                batch.insert(resolve_todo_key.as_bytes(), cpath.as_bytes());
+                cnt += 1;
+            }
         }
-        tracing::info!("added {} items to resolve-todo.", cnt);
+        tracing::info!("added {} items to resolve-todo", cnt);
     }
 
     if let Err(e) = db.apply_batch(batch) {
