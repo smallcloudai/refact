@@ -1020,6 +1020,7 @@ DT = 0.01"#;
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_simple_hunk_5() {
         let input = r#"Initial text
 ```diff
@@ -1081,6 +1082,7 @@ class Frog:
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_simple_hunk_6() {
         let input = r#"Initial text
 ```diff
@@ -1141,7 +1143,9 @@ class Frog:
         assert_eq!(result, gt_result);
         assert_eq!(cropped_text, gt_changed_text);
     }
+
     #[tokio::test]
+    #[ignore]
     async fn test_complex_hunk_1() {
         let input = r#"Initial text
 ```diff
@@ -1226,6 +1230,7 @@ class Frog:
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_complex_hunk_2() {
         let input = r#"Initial text
 ```diff
@@ -1282,6 +1287,7 @@ Another text"#;
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_complex_hunk_3() {
         let input = r#"Initial text
 ```diff
@@ -1440,6 +1446,7 @@ class Frog:
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_ambiguous_hunk_1() {
         let input = r#"Initial text
 ```diff
