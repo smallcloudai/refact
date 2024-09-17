@@ -23,8 +23,9 @@ export type MarkdownControls = {
 function useDiff(language: string, markdown: string) {
   const isDiff = language === "language-diff";
   const chunk = convertMarkdownToDiffChunk(markdown);
-  const { onPreview } = useDiffPreview([chunk]);
-  return { onPreview, isDiff };
+  const { onPreview } = useDiffPreview();
+  const handlePreview = () => onPreview([chunk], [true]);
+  return { onPreview: handlePreview, isDiff };
 }
 
 export type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] &
@@ -68,7 +69,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
           },
           onPasteClick: () => {
             if (isDiff) {
-              void onPreview([true]);
+              void onPreview();
             } else if (codeRef.current?.textContent) {
               onPasteClick(codeRef.current.textContent);
             }
