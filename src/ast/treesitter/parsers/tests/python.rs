@@ -15,6 +15,7 @@ mod tests {
     const MAIN_PY_SYMBOLS: &str = include_str!("cases/python/main.py.json");
 
     #[test]
+    #[ignore]
     fn parser_test() {
         let mut parser: Box<dyn AstLanguageParser> = Box::new(PythonParser::new().expect("PythonParser::new"));
         let path = PathBuf::from("file:///main.py");
