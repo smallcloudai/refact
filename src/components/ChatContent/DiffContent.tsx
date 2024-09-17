@@ -31,10 +31,6 @@ function toDiff(str: string): string {
   return replaceEscapedEOL;
 }
 
-function isApplied(diff: DiffStateResponse) {
-  return diff.state === diff.can_apply;
-}
-
 const DiffLine: React.FC<{
   lineNumber?: number;
   sign: string;
@@ -236,7 +232,9 @@ export const DiffForm: React.FC<{
     <Flex direction="column" maxWidth="100%" py="2" gap="2">
       {Object.entries(diffs).map(([fullFileName, diffsForFile], index) => {
         const key = fullFileName + "-" + index;
-        const applied = diffsForFile.some(isApplied);
+        const applied = diffsForFile.some(
+          (diff) => !diff.state && !diff.can_apply,
+        );
 
         return (
           <Box key={key} my="2">
