@@ -122,7 +122,7 @@ pub async fn handle_v1_ast_file_symbols(
     let search_res = match &ast_service_opt {
         Some(ast_service) => {
             let ast_index = ast_service.lock().await.ast_index.clone();
-            crate::ast::ast_db::doc_symbols(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
+            crate::ast::ast_db::doc_defs(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
         }
         None => {
             return Err(ScratchError::new(

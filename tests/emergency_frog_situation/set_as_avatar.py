@@ -4,6 +4,10 @@
 
 import frog
 
+X, Y = 50, 50
+W = 100
+H = 100
+
 
 # This this a comment for the Toad class, above the class
 class Toad(frog.Frog):
@@ -50,5 +54,5 @@ def a_bigger_test():
 
 if __name__ == "__main__":
     toad = EuropeanCommonToad(100, 100, 200, -200)
-    toad.jump(3, 4)
+    toad.jump(W, H)
     print(toad.known_as, toad.x, toad.y)
