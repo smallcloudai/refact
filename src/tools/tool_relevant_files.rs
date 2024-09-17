@@ -101,8 +101,8 @@ impl Tool for ToolRelevantFiles {
                 ast_symbols = doc_symbols.into_iter().filter(|s| symbols.contains(&s.name())).collect::<Vec<_>>();
             }
 
-            // relevancy 1..5, normalized to 0..1 and then multiplied by 90. (90 is max usefulness)
-            let usefulness = (file_info.relevancy as f32) / 5. * 90.;
+            // relevancy 1..5, normalized to 0..1 and then multiplied by 100 for usefulness
+            let usefulness = (file_info.relevancy as f32) / 5. * 100.;
             results.push(ContextEnum::ContextFile(ContextFile {
                 file_name: file_path.clone(),
                 file_content: text.clone(),
