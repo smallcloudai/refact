@@ -101,19 +101,18 @@ impl Tool for ToolRelevantFiles {
                 ast_symbols = doc_symbols.into_iter().filter(|s| symbols.contains(&s.name())).collect::<Vec<_>>();
             }
 
-            if ast_symbols.is_empty() {
-                let usefulness = (file_info.relevancy as f32) / 5. * 100.;
-                results.push(ContextEnum::ContextFile(ContextFile {
-                    file_name: file_path.clone(),
-                    file_content: text.clone(),
-                    line1: 0,
-                    line2: text.lines().count(),
-                    symbols: vec![],
-                    gradient_type: -1,
-                    usefulness: usefulness,
-                    is_body_important: false,
-                }));
-            }
+            // relevancy 1..5, normalized to 0..1 and then multiplied by 90. (90 is max usefulness)
+            let usefulness = (file_info.relevancy as f32) / 5. * 90.;
+            results.push(ContextEnum::ContextFile(ContextFile {
+                file_name: file_path.clone(),
+                file_content: text.clone(),
+                line1: 0,
+                line2: text.lines().count(),
+                symbols: vec![],
+                gradient_type: -1,
+                usefulness: usefulness,
+                is_body_important: false,
+            }));
 
             for symbol in ast_symbols {
                 results.push(ContextEnum::ContextFile(ContextFile {
