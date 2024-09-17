@@ -232,9 +232,10 @@ export const DiffForm: React.FC<{
     <Flex direction="column" maxWidth="100%" py="2" gap="2">
       {Object.entries(diffs).map(([fullFileName, diffsForFile], index) => {
         const key = fullFileName + "-" + index;
-        const applied = diffsForFile.some(
-          (diff) => !diff.state && !diff.can_apply,
+        const applied = diffsForFile.every(
+          (diff) => diff.state || !diff.can_apply,
         );
+        console.log({ fullFileName, diffsForFile, applied });
 
         return (
           <Box key={key} my="2">
