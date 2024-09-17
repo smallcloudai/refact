@@ -45,8 +45,12 @@ use crate::ast::ast_parse_anything::{parse_anything_and_add_file_path, filesyste
 //           ^^^^^^^^^^^ derived from                               ^^^^^^^^^^ serialized value, klass
 //                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ full path of klass, makes those keys additive
 //
+// Per doc records:
+//   doc|alt_testsuite::cpp_goat_library 👉 src/ast/alt_testsuite/cpp_goat_library.h
+//       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ file_global_path (means path up to the global scope of the file)
+//                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ file filesystem path
+//
 // Other keys:
-//   doc|alt_testsuite::cpp_goat_library::Animal: src/ast/alt_testsuite/cpp_goat_library.h
 //   counters|defs: 42
 //   counters|usages: 100
 //
@@ -249,6 +253,11 @@ pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
                 if !usage.resolved_as.is_empty() {
                     let u_key = format!("u|{} ⚡ {}", usage.resolved_as, official_path);
                     batch.remove(u_key.as_bytes());
+                } else if usage.targets_for_guesswork.len() == 1 && !usage.targets_for_guesswork[0].starts_with("?::") {
+                    let homeless_key = format!("homeless|{} ⚡ {}", usage.targets_for_guesswork[0], official_path);
+                    batch.remove(homeless_key.as_bytes());
+                    debug_print!("        homeless {}", homeless_key);
+                    continue;
                 }
                 deleted_usages += 1;
             }
@@ -775,7 +784,7 @@ pub async fn definition_paths_fuzzy(ast_index: Arc<AMutex<AstDB>>, pattern: &str
     unique_found.into_iter().collect()
 }
 
-pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>)
+pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>) -> usize
 {
     let db = ast_index.lock().await.sleddb.clone();
     println!("\nsled has {} records", db.len());
@@ -785,7 +794,7 @@ pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>)
         let key_string = String::from_utf8(key.to_vec()).unwrap();
         if key_string.starts_with("d|") {
             match serde_cbor::from_slice::<AstDefinition>(&value) {
-                Ok(definition) => println!("{}\n{:?}", key_string, definition),
+                Ok(definition) => println!("{} 👉 {:.50}", key_string, format!("{:?}", definition)),
                 Err(e) => println!("Failed to deserialize value at {}: {:?}", key_string, e),
             }
         } else if key_string.starts_with("classes|") {
@@ -801,6 +810,7 @@ pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>)
         }
     }
     println!("dump_database over");
+    db.len()
 }
 
 
@@ -877,15 +887,21 @@ mod tests {
 
         doc_remove(ast_index.clone(), &cpp_library_path.to_string()).await;
         doc_remove(ast_index.clone(), &cpp_main_path.to_string()).await;
+        flush_sled_batch(ast_index.clone(), 0).await;
 
-        dump_database(ast_index.clone()).await;
+        let dblen = dump_database(ast_index.clone()).await;
+        let counters = fetch_counters(ast_index.clone()).await;
+        assert_eq!(counters.counter_defs, 0);
+        assert_eq!(counters.counter_usages, 0);
+        assert_eq!(counters.counter_docs, 0);
+        assert_eq!(dblen, 3+1); // 3 counters and 1 class hierarchy
 
         let db = ast_index.lock().await.sleddb.clone();
         drop(ast_index);
         assert!(Arc::strong_count(&db) == 1);
-        println!("flush");
+        println!("db.flush");
         let x = db.flush().unwrap();
-        println!("flush returned {}, drop", x);
+        println!("db.flush returned {}, drop", x);
         drop(db);
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
