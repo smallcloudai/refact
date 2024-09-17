@@ -200,15 +200,12 @@ tools:
       To make this call correctly, you only need the tickets.
       If you wrote changes for multiple files, call this tool in parallel for each file.
       If you have several attempts to change a single thing, for example following a correction from the user, pass only the ticket for the latest one.
+      Multiple tickets is allowed only for PARTIAL_EDIT, otherwise only one ticket must be provided.
     parameters:
-      - name: "path"
+      - name: "tickets"
         type: "string"
-        description: "Path to the file to change."
-      - name: "ticket"
-        type: "string"
-        description: "Use one 3-digit ticket to refer to the changes. No need to copy anything else. Additionaly, you can put DELETE here to delete the file."
+        description: "Use 3-digit tickets comma separated to refer to the changes within ONE file. No need to copy anything else. Additionaly, you can put DELETE here to delete the file."
     parameters_required:
-      - "path"
       - "ticket"
 
   - name: "github"

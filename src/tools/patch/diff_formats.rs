@@ -125,8 +125,6 @@ pub async fn postprocess_diff_chunks_from_message(
         }
     }
 
-    match serde_json::to_string_pretty(&chunks) {
-        Ok(json_chunks) => Ok(json_chunks),
-        Err(err) => Err(format!("Error diff chunks serializing: {:?}", err))
-    }
+    serde_json::to_string_pretty(&chunks)
+        .map_err(|e| format!("Error diff chunks serializing: {:?}", e))
 }

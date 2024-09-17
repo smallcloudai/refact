@@ -217,11 +217,21 @@ pub async fn handle_v1_diff_apply(
     // let docs2index = write_results_on_disk(results.clone()).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
     // sync_documents_ast_vecdb(global_context.clone(), docs2index).await?;
     
-    write_results_on_disk(global_context.clone(), results.clone()).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
+    let new_documents = write_results_on_disk(global_context.clone(), results.clone()).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
     
     let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, post.chunks);
 
-    global_context.write().await.documents_state.diffs_applied_state.insert(post.id, outputs_unwrapped.iter().map(|x|x.applied == true).collect::<Vec<_>>());
+    {
+        let mut gcx_lock = global_context.write().await;
+        gcx_lock.documents_state.diffs_applied_state.insert(post.id, outputs_unwrapped.iter().map(|x|x.applied == true).collect::<Vec<_>>());
+
+        let cache_dirty = gcx_lock.documents_state.cache_dirty.clone();
+        *cache_dirty.lock().await = true;
+        
+        for doc in new_documents {
+            gcx_lock.documents_state.memory_document_map.insert(doc.doc_path.clone(), Arc::new(ARwLock::new(doc)));
+        }
+    }
 
     Ok(Response::builder()
         .status(StatusCode::OK)

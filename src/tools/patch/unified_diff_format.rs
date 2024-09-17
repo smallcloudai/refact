@@ -605,7 +605,7 @@ impl UnifiedDiffFormat {
     ) -> String {
         assert_eq!(workspace_projects_dirs.is_empty(), false);
         let prompt = r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT.
-You will receive a file containing code, along with a modified section.
+You will receive a file containing code, along with one or several modified sections.
 Your task is to generate a unified diff in a specified format, comparing the original file to the updated portion.
 In the diff generation use following project directory:
 %WORKSPACE_PROJECTS_DIRS%

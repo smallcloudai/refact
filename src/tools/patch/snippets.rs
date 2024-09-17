@@ -1,11 +1,15 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
+use crate::files_correction::get_project_dirs;
+use crate::global_context::GlobalContext;
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum PatchAction {
     #[default]
     PartialEdit,
@@ -33,6 +37,37 @@ pub struct CodeSnippet {
     pub filename_before: String,
     pub filename_after: String,
     pub code: String,
+}
+
+pub async fn correct_and_validate_code_snippet(gcx: Arc<ARwLock<GlobalContext>>, snippet: &mut CodeSnippet) -> Result<(), String> {
+    fn good_error_text(reason: &str, snippet: &CodeSnippet) -> String {
+        format!("Failed to validate TICKET '{}': {}", snippet.ticket, reason)
+    }
+    async fn resolve_path(gcx: Arc<ARwLock<GlobalContext>>, path_str: &String) -> Result<String, String> {
+        let candidates = file_repair_candidates(gcx.clone(), path_str, 10, false).await;
+        return_one_candidate_or_a_good_error(gcx.clone(), path_str, &candidates, &get_project_dirs(gcx.clone()).await, false).await
+    }
+
+    let path_before = PathBuf::from(snippet.filename_before.as_str());
+    let _path_after = PathBuf::from(snippet.filename_after.as_str());
+
+    match snippet.action {
+        PatchAction::PartialEdit => {
+            snippet.filename_before = resolve_path(gcx.clone(), &snippet.filename_before).await
+                .map_err(|e| good_error_text(&format!("failed to resolve filename_before: '{}'. Error:\n{}", snippet.filename_before, e), snippet))?;
+        },
+        PatchAction::FullRewrite => {
+            snippet.filename_before = resolve_path(gcx.clone(), &snippet.filename_before).await
+                .map_err(|e| good_error_text(&format!("failed to resolve filename_before: '{}'. Error:\n{}", snippet.filename_before, e), snippet))?;
+        },
+        PatchAction::NewFile => {
+            if path_before.is_relative() {
+                return Err(good_error_text(&format!("filename_before: '{}' must be absolute.", snippet.filename_before), snippet));
+            }
+        },
+        PatchAction::Other => {}
+    }
+    Ok(())
 }
 
 fn parse_snippets(content: &str) -> Vec<CodeSnippet> {

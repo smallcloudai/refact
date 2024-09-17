@@ -58,7 +58,7 @@ async fn make_chat_history(
     model: &str,
     max_tokens: usize,
     max_new_tokens: usize,
-    snippet: &CodeSnippet
+    snippets: Vec<CodeSnippet>,
 ) -> Result<Vec<ChatMessage>, String> {
     let gcx = ccx.lock().await.global_context.clone();
     let tokenizer = {
@@ -69,41 +69,46 @@ async fn make_chat_history(
     let mut tokens = 0;
     let max_tokens = max_tokens.saturating_sub(max_new_tokens);
     let system_prompt = format_diff_prompt(gcx.clone()).await;
-
-    let context_file = read_file(gcx.clone(), snippet.filename_before.clone()).await
-        .map_err(|e| format!("Cannot read file to modify: {}.\nERROR: {}", snippet.filename_before, e))?;
+    
+    let snippet0 = snippets.get(0).expect("no snippet provided");
+    let context_file = read_file(gcx.clone(), snippet0.filename_before.clone()).await
+        .map_err(|e| format!("Cannot read file to modify: {}.\nERROR: {}", snippet0.filename_before, e))?;
 
     let mut chat_messages = vec![];
-    chat_messages.push(ChatMessage::new("system".to_string(), system_prompt.to_string()));
+
+    tokens += 3 + count_tokens(&tokenizer, &system_prompt);
+    chat_messages.push(ChatMessage::new("system".to_string(), system_prompt));
 
     let code = format!(
         "File: {}\nContent:\n```\n{}\n```",
         context_file.file_name,
         context_file.file_content
     ).to_string();
-    let section = format!(
-        "Modified section:\n```\n{}\n```",
-        snippet.code
-    );
-
-    tokens += 3 + count_tokens(&tokenizer, &system_prompt);
     tokens += 3 + count_tokens(&tokenizer, &code);
-    tokens += 3 + count_tokens(&tokenizer, &section);
+    chat_messages.push(ChatMessage::new("user".to_string(), code));
+
+    for snippet in snippets {
+        let section = format!(
+            "Modified section:\n```\n{}\n```",
+            snippet.code
+        );
+        tokens += 3 + count_tokens(&tokenizer, &section);
+        chat_messages.push(ChatMessage::new("user".to_string(), section));
+    }
+    
     if tokens > max_tokens {
         return Err(format!(
             "the provided file {} is too large for the patch tool: {tokens} > {max_tokens}",
             context_file.file_name,
         ));
     }
-
-    chat_messages.push(ChatMessage::new("user".to_string(), code));
-    chat_messages.push(ChatMessage::new("user".to_string(), section));
+    
     Ok(chat_messages)
 }
 
 pub async fn execute_chat_model(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    snippet: &CodeSnippet,
+    snippets: Vec<CodeSnippet>,
     model: &str,
     max_tokens: usize,
     temperature: Option<f32>,
@@ -112,7 +117,7 @@ pub async fn execute_chat_model(
     usage: &mut ChatUsage,
 ) -> Result<Vec<Vec<DiffChunk>>, String> {
     let messages = make_chat_history(
-        ccx.clone(), model, max_tokens, max_new_tokens, snippet,
+        ccx.clone(), model, max_tokens, max_new_tokens, snippets,
     ).await?;
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let response = subchat_single(
