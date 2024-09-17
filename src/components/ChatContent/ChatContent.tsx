@@ -15,7 +15,6 @@ import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
-import { DiffContent } from "./DiffContent";
 import { PlainText } from "./PlainText";
 import { useConfig, useEventsBusForIDE } from "../../hooks";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -27,6 +26,7 @@ import {
   selectMessages,
 } from "../../features/Chat/Thread/selectors";
 import { takeWhile } from "../../utils";
+import { GroupedDiffs } from "./DiffContent";
 
 export const TipOfTheDay: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -195,7 +195,7 @@ function renderMessages(
   }
 
   if (isChatContextFileMessage(head)) {
-    const key = "context-file-" + head.content.length;
+    const key = "context-file-" + index;
     const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
     return renderMessages(tail, nextMemo, index + 1);
   }
@@ -203,32 +203,13 @@ function renderMessages(
   if (isDiffMessage(head)) {
     const restInTail = takeWhile<ChatMessage, DiffMessage>(tail, isDiffMessage);
     const nextTail = tail.slice(restInTail.length);
-    const diffs = [head, ...restInTail];
-    console.log({ restInTail, diffs });
+    const diffMessages = [head, ...restInTail];
     const key = "diffs-" + index;
 
-    const nextMemo = [...memo, <GroupedDiffs key={key} diffs={diffs} />];
+    const nextMemo = [...memo, <GroupedDiffs key={key} diffs={diffMessages} />];
 
-    return renderMessages(nextTail, nextMemo, index + diffs.length);
+    return renderMessages(nextTail, nextMemo, index + diffMessages.length);
   }
 
   return renderMessages(tail, memo, index + 1);
 }
-
-type GroupedDiffsProps = {
-  diffs: DiffMessage[];
-};
-const GroupedDiffs: React.FC<GroupedDiffsProps> = ({ diffs }) => {
-  return (
-    <Flex direction="column" gap="2">
-      {diffs.map((diff) => (
-        <DiffContent
-          key={diff.tool_call_id}
-          chunks={diff.content}
-          toolCallId={diff.tool_call_id}
-        />
-      ))}
-      <div>TODO: new apply all button</div>
-    </Flex>
-  );
-};
