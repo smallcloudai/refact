@@ -116,7 +116,7 @@ pub async fn run_at_commands(
             };
             pp_settings.max_files_n = top_n;
             if pp_skeleton {
-                pp_settings.take_floor = 9.;
+                pp_settings.take_floor = 50.0;
             }
             let post_processed = postprocess_context_files(
                 gcx.clone(),

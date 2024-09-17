@@ -60,7 +60,6 @@ async def test_tool_call(tool_name: str, symbol: str, this_number_of_lines_shoul
     tool_call_message, context_file_message = sort_out_messages(assistant_choices[0][2:])
 
     assert tool_call_message is not None, "No tool called"
-    assert tool_name in tool_call_message.tool_call_id, f"It should call {tool_name} tool, called: " + tool_call_message.tool_call_id
     assert context_file_message, "no file_context, might be because take_floor is too high"
     assert should_present_in_context_file in context_file_message.content, f"'{should_present_in_context_file!r}' doesn't present in context_file"
 

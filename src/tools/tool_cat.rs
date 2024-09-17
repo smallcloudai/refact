@@ -99,7 +99,6 @@ impl Tool for ToolCat {
             if let Some(ast_service) = ast_service_opt {
                 let ast_index = ast_service.lock().await.ast_index.clone();
                 for p in corrected_paths.iter() {
-                    // XXX verify if it still works
                     let doc_syms = crate::ast::ast_db::doc_defs(ast_index.clone(), &p).await;
                     let syms_intersection = doc_syms.into_iter().filter(|s|symbols_str.contains(&s.name())).collect::<Vec<_>>();
                     for sym in syms_intersection {
@@ -149,7 +148,9 @@ impl Tool for ToolCat {
         if !filenames_present.is_empty() {
             content.push_str(&format!("Paths found:\n{}\n\n", filenames_present.join("\n")));
 
-            let symbols_not_found = symbols_str.iter().filter(|x|!symbols_found.contains(x)).cloned().collect::<Vec<_>>();
+            let symbols_not_found = symbols_str.iter().filter(|symbol| {
+                !symbols_found.iter().any(|path| path.contains(&symbol[..]))
+            }).cloned().collect::<Vec<_>>();
             if !symbols_not_found.is_empty() {
                 content.push_str(&format!("Symbols not found in the {} files:\n{}\n\n", filenames_present.len(), symbols_not_found.join("\n")));
                 corrections = true;
