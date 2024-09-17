@@ -31,3 +31,13 @@ class Frog:
 
     def croak(self):
         print("croak")
+
+
+class AlternativeFrog:
+    def alternative_jump(self):
+        pass
+
+
+def standalone_jumping_function():
+    print("I'm a frog! Jump! Jump! Really!")
+

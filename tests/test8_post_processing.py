@@ -50,7 +50,7 @@ def sort_out_messages(response_messages):
     return tool_call_message, context_file_message
 
 
-async def test_tool_call(tool_name: str, symbol: str, this_number_of_lines_should_have: Dict[str, int] = None, should_present_in_context_file: str = None) -> None:
+async def test_tool_call(tool_name: str, symbol: str, should_be_in_tool: Dict[str, int], should_present_in_context_file: str, should_not_present_in_context_file: str = "mayskip") -> None:
     print(f"\ntesting {tool_name}({symbol!r})")
     initial_messages = [
         chat_client.Message(role="user", content=f"Call {tool_name}() for {symbol}"),
@@ -62,9 +62,9 @@ async def test_tool_call(tool_name: str, symbol: str, this_number_of_lines_shoul
     assert tool_call_message is not None, "No tool called"
     assert context_file_message, "no file_context, might be because take_floor is too high"
     assert should_present_in_context_file in context_file_message.content, f"'{should_present_in_context_file!r}' doesn't present in context_file"
+    assert should_not_present_in_context_file not in context_file_message.content, f"'{should_not_present_in_context_file!r}' should not be present in context_file"
 
-    for substring, count in this_number_of_lines_should_have.items():
-        print(f"Checking if tool has {count} of {substring!r}...")
+    for substring, count in should_be_in_tool.items():
         real = tool_call_message.content.count(substring)
         assert real == count, real
     assert "..." in context_file_message.content, "It should not give entire file"
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     asyncio.run(test_tool_call(
         tool_name="definition",
         symbol="bounce_off_banks",
-        this_number_of_lines_should_have={
+        should_be_in_tool={
             "Frog::bounce_off_banks": 1
         },
         should_present_in_context_file="self.vy = -np.abs(self.vy)"
@@ -84,15 +84,33 @@ if __name__ == '__main__':
     asyncio.run(test_tool_call(
         tool_name="definition",
         symbol="draw_hello_frog",
-        this_number_of_lines_should_have={
+        should_be_in_tool={
             "jump_to_conclusions::draw_hello_frog": 1
         },
         should_present_in_context_file="text_rect = text.get_rect()"
     ))
     asyncio.run(test_tool_call(
+        tool_name="definition",
+        symbol="frog::Frog",
+        should_be_in_tool={
+            "frog::Frog`": 1
+        },
+        should_present_in_context_file="pond_width, pond_height",
+        should_not_present_in_context_file="DT = ",
+    ))
+    asyncio.run(test_tool_call(
+        tool_name="definition",
+        symbol="frog::AlternativeFrog",
+        should_be_in_tool={
+            "frog::AlternativeFrog`": 1
+        },
+        should_present_in_context_file="def jump",    # in Frog, because it should be a skeleton
+        should_not_present_in_context_file="np.clip", # no Frog method body in the skeleton
+    ))
+    asyncio.run(test_tool_call(
         tool_name="references",
         symbol="cpp_goat_library::Animal::self_review",
-        this_number_of_lines_should_have={
+        should_be_in_tool={
             "src/ast/alt_testsuite/cpp_goat_main.cpp": 1,
             "src/ast/alt_testsuite/cpp_goat_library.h": 3,
         },
@@ -101,7 +119,7 @@ if __name__ == '__main__':
     asyncio.run(test_tool_call(
         tool_name="references",
         symbol="Frog::jump",
-        this_number_of_lines_should_have={
+        should_be_in_tool={
             # PYTHON PARSER BROKEN
             # "emergency_frog_situation/holiday.py": 8,
             "emergency_frog_situation/jump_to_conclusions.py": 1,

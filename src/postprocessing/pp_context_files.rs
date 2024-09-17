@@ -68,7 +68,13 @@ fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSetti
                 let useful = settings.useful_symbol_default;
                 colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, "comment".to_string(), useful);
             } else {
-                let useful = settings.useful_symbol_default;  // depends on symbol type?
+                let mut useful = settings.useful_symbol_default;
+                if s.symbol_type == SymbolType::StructDeclaration {
+                    useful = 65.0;
+                }
+                if s.symbol_type == SymbolType::FunctionDeclaration {
+                    useful = 55.0;
+                }
                 colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.path()), useful);
             }
         }
@@ -77,7 +83,7 @@ fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSetti
     lines_in_files
 }
 
-async fn set_lines_usefulness(
+async fn convert_input_into_usefullness(
     global_context: Arc<ARwLock<GlobalContext>>,
     messages: &Vec<ContextFile>,
     lines_in_files: &mut HashMap<PathBuf, Vec<FileLine>>,
@@ -212,7 +218,7 @@ pub async fn pp_color_lines(
     let mut lines_in_files = collect_lines_from_files(files, settings);
 
     // Fill in usefulness from search results
-    set_lines_usefulness(global_context.clone(), messages, &mut lines_in_files, settings).await;
+    convert_input_into_usefullness(global_context.clone(), messages, &mut lines_in_files, settings).await;
 
     // Downgrade sub-symbols and uninteresting regions
     downgrade_sub_symbols(&mut lines_in_files, settings);
