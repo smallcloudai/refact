@@ -1,14 +1,11 @@
 use axum::response::Result;
 use axum::Extension;
 use serde_json::json;
-use serde::{Serialize, Deserialize};
 use hyper::{Body, Response, StatusCode};
 use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
-use std::collections::HashMap;
 use tracing::error;
 
-use crate::call_validation::ChatMessage;
 use crate::global_context::GlobalContext;
 use crate::custom_error::ScratchError;
 use crate::yaml_configs::customization_loader::load_customization;

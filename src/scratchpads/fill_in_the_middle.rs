@@ -476,7 +476,7 @@ async fn _cursor_position_to_context_file(
     distances.sort_by_key(|&(distance, _, _)| distance);
     let nearest_usages: Vec<(usize, String)> = distances.into_iter().take(TAKE_USAGES_AROUND_CURSOR).map(|(_, usage, line)| (line, usage)).collect();
 
-    info!("nearest_usages={:?}", nearest_usages);
+    // info!("nearest_usages={:?}", nearest_usages);
     let unique_paths: HashSet<_> = nearest_usages.into_iter().map(|(_line, double_colon_path)| double_colon_path).collect();
     let mut output = vec![];
     for double_colon_path in unique_paths {

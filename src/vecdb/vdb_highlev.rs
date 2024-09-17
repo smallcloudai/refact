@@ -475,22 +475,22 @@ pub async fn ongoing_update_or_create(
     Ok(())
 }
 
-pub async fn ongoing_find(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    goal: String,
-) -> Result<Option<OngoingWork>, String> {
-    let ongoing_map_arc = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.mem_ongoing.clone()
-    };
-    let ongoing_map = ongoing_map_arc.lock().unwrap();
-    if let Some(ongoing_work) = ongoing_map.get(&goal) {
-        Ok(Some(ongoing_work.clone()))
-    } else {
-        Ok(None)
-    }
-}
+// pub async fn ongoing_find(
+//     vec_db: Arc<AMutex<Option<VecDb>>>,
+//     goal: String,
+// ) -> Result<Option<OngoingWork>, String> {
+//     let ongoing_map_arc = {
+//         let vec_db_guard = vec_db.lock().await;
+//         let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
+//         vec_db.mem_ongoing.clone()
+//     };
+//     let ongoing_map = ongoing_map_arc.lock().unwrap();
+//     if let Some(ongoing_work) = ongoing_map.get(&goal) {
+//         Ok(Some(ongoing_work.clone()))
+//     } else {
+//         Ok(None)
+//     }
+// }
 
 pub async fn ongoing_dump(
     vec_db: Arc<AMutex<Option<VecDb>>>,
