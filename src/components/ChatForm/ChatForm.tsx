@@ -17,10 +17,6 @@ import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
-import {
-  getWarningMessage,
-  clearWarning,
-} from "../../features/Errors/warningSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useCheckboxes } from "./useCheckBoxes";
 
@@ -64,13 +60,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const dispatch = useAppDispatch();
   const config = useConfig();
   const error = useAppSelector(getErrorMessage);
-  const warning = useAppSelector(getWarningMessage);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
-  const onClearWarning = useCallback(
-    () => dispatch(clearWarning()),
-    [dispatch],
-  );
   const [value, setValue] = React.useState("");
 
   const { checkboxes, onToggleCheckbox, setInteracted, unCheckAll } =
@@ -152,25 +143,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (error) {
     return (
-      <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
-        {error}
-        <Text size="1" as="div" mt="1">
-          Click to retry
-        </Text>
-      </ErrorCallout>
-    );
-  }
-
-  if (warning) {
-    console.log(`[DEBUG]: warning: ${warning}`);
-    return (
       <ErrorCallout
         mt="2"
-        onClick={onClearWarning}
+        onClick={onClearError}
         timeout={null}
-        itemType="warning"
+        message={error}
       >
-        {warning}
         <Text size="1" as="div" mt="1">
           Click to retry
         </Text>
@@ -182,7 +160,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   return (
     <Card mt="1" style={{ flexShrink: 0, position: "static" }}>
-      {!isOnline && <Callout type="info">Offline</Callout>}
+      {!isOnline && <Callout type="info" message="Offline" />}
 
       {isStreaming && (
         <Button

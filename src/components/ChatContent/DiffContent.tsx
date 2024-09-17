@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
 import { isDiffErrorResponseData, type DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
@@ -14,10 +14,16 @@ import {
   useConfig,
   useDiffPreview,
   useAppDispatch,
+  useAppSelector,
 } from "../../hooks";
 
 // import { setError, clearError } from "../../features/Errors/errorsSlice";
-import { setWarning } from "../../features/Errors/warningSlice";
+import {
+  clearWarning,
+  getWarningMessage,
+  setWarning,
+} from "../../features/Errors/warningSlice";
+import { ErrorCallout } from "../Callout";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -191,49 +197,29 @@ export const DiffContent: React.FC<{
     return groupBy(diffWithStatus, (diff) => diff.file_name);
   }, [chunks, diffStateRequest]);
 
-  useEffect(() => {
-    // let data = null;
-    // if (!Array.isArray(_result.data)) {
-    //   return
-    // }
-    // data = _result.data[0]
-    // let dispatchClearErrorTimeoutId: NodeJS.Timeout;
-    // if (isDiffErrorResponseData(data)) {
-    //   if (data.detail) {
-    //     dispatch(setError(data.detail));
-    //     dispatchClearErrorTimeoutId = setTimeout(() => {
-    //       dispatch(clearError());
-    //     }, 3000)
-    //   }
-    // }
-    // return () => {
-    //   clearTimeout(dispatchClearErrorTimeoutId);
-    // }
-  }, [_result, dispatch]);
-
   const handleDiffApplySubmit = (toApply: boolean[]) => {
     onSubmit({ chunks, toApply, toolCallId })
       .unwrap()
       .then((payload) => {
-        console.log(`[DEBUG]: fulfilled, data:`, payload);
         let data = null;
         if (!Array.isArray(payload)) {
           return;
         }
         data = payload[0];
-        // let dispatchClearErrorTimeoutId: NodeJS.Timeout;
 
         if (isDiffErrorResponseData(data)) {
           if (data.detail) {
-            dispatch(setWarning(data.detail));
-            // dispatchClearErrorTimeoutId = setTimeout(() => {
-            //   dispatch(clearError());
-            //   clearTimeout(dispatchClearErrorTimeoutId);
-            // }, 3000)
+            const [warning, filePath] = data.detail.split("\n")[0].split("'");
+            const normalizedPath = filePath.startsWith("\\\\?\\")
+              ? filePath.substring(4).replace(/\\/g, "/")
+              : filePath;
+
+            const reason = data.detail.split("\n")[1];
+            dispatch(setWarning([[warning, normalizedPath].join(" "), reason]));
           }
         }
       })
-      .catch((error) => dispatch(setWarning(error as string)));
+      .catch((error) => dispatch(setWarning(error as string[])));
   };
 
   // if (diffStateRequest.isFetching) return null;
@@ -281,6 +267,13 @@ export const DiffForm: React.FC<{
   onPreview: (toApply: boolean[]) => void | Promise<void>;
   openFile: (file: { file_name: string; line?: number }) => void;
 }> = ({ diffs, loading, onSubmit, onPreview, openFile }) => {
+  const dispatch = useAppDispatch();
+  const warning = useAppSelector(getWarningMessage);
+  const onClearWarning = React.useCallback(
+    () => dispatch(clearWarning()),
+    [dispatch],
+  );
+
   const { host } = useConfig();
   const values = React.useMemo(() => {
     return Object.values(diffs).reduce((acc, curr) => acc.concat(curr), []);
@@ -382,7 +375,20 @@ export const DiffForm: React.FC<{
               </Text>
             </Flex>
             <ScrollArea scrollbars="horizontal" asChild>
-              <Box style={{ minWidth: "100%" }}>
+              <Box style={{ minWidth: "100%", position: "relative" }}>
+                {warning && warning.length !== 0 && (
+                  <ErrorCallout
+                    onClick={onClearWarning}
+                    timeout={null}
+                    itemType="warning"
+                    my="4"
+                    message={warning}
+                  >
+                    <Text size="1" as="div" mt="1">
+                      Click to retry
+                    </Text>
+                  </ErrorCallout>
+                )}
                 <Box
                   style={{
                     background: "rgb(51, 51, 51)",

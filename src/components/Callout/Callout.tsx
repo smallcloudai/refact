@@ -14,6 +14,8 @@ export type CalloutProps = Omit<RadixCalloutProps, "onClick"> & {
   type: "info" | "error";
   onClick?: () => void;
   timeout?: number | null;
+  hex?: string;
+  message: string | string[] | null;
 };
 
 export const Callout: React.FC<CalloutProps> = ({
@@ -29,7 +31,7 @@ export const Callout: React.FC<CalloutProps> = ({
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setIsOpened(true);
-    }, 10);
+    }, 150);
 
     return () => {
       clearTimeout(timeoutId);
@@ -41,12 +43,12 @@ export const Callout: React.FC<CalloutProps> = ({
     const timeoutId = setTimeout(() => {
       onClick();
       clearTimeout(timeoutId);
-    }, 100);
+    }, 300);
   };
 
   return (
     <RadixCallout.Root
-      mx="2"
+      mx={props.mx ?? "2"}
       onClick={handleRetryClick}
       {...props}
       className={classNames(styles.callout_box, {
@@ -57,9 +59,9 @@ export const Callout: React.FC<CalloutProps> = ({
         <RadixCallout.Icon>
           {type === "error" ? <ExclamationTriangleIcon /> : <InfoCircledIcon />}
         </RadixCallout.Icon>
-        <RadixCallout.Text className={styles.callout_text} wrap="wrap">
+        <Flex direction="column" align="start" gap="1">
           {children}
-        </RadixCallout.Text>
+        </Flex>
       </Flex>
     </RadixCallout.Root>
   );
@@ -68,18 +70,44 @@ export const Callout: React.FC<CalloutProps> = ({
 export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
   timeout = null,
   onClick,
+  message,
   children,
   ...props
 }) => {
+  const returningElement = message ? (
+    Array.isArray(message) ? (
+      <>
+        {message.map((el, index) => (
+          <RadixCallout.Text
+            key={el}
+            className={styles.callout_text}
+            wrap="wrap"
+          >
+            {index === 0 && props.itemType === "warning" && "Warning: "}
+            {index === 0 && props.itemType !== "warning" && "Error: "}
+            {el}
+          </RadixCallout.Text>
+        ))}
+      </>
+    ) : (
+      <RadixCallout.Text className={styles.callout_text} wrap="wrap">
+        {props.itemType === "warning" ? "Warning: " : "Error: "}
+        {message}
+      </RadixCallout.Text>
+    )
+  ) : null;
+
   return (
     <Callout
       type="error"
-      color={props.itemType === "warning" ? "orange" : "red"}
+      color={props.itemType === "warning" ? "amber" : "red"}
       onClick={onClick}
       timeout={timeout}
+      message={message}
       {...props}
     >
-      Warning: {children}
+      {returningElement}
+      {children}
     </Callout>
   );
 };
