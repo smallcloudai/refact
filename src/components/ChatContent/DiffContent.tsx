@@ -233,7 +233,7 @@ export const DiffForm: React.FC<{
       {Object.entries(diffs).map(([fullFileName, diffsForFile], index) => {
         const key = fullFileName + "-" + index;
         const applied = diffsForFile.every(
-          (diff) => !diff.can_apply && !diff.state,
+          (diff) => diff.state === diff.can_apply,
         );
 
         return (

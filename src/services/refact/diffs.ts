@@ -49,9 +49,9 @@ export type DiffApplyManyArgs = {
   toApply: boolean;
 }[];
 
-function cacheIdForChunk(chunk: DiffChunk) {
-  return `${chunk.file_name}-${chunk.line1}-${chunk.line2}`;
-}
+// function cacheIdForChunk(chunk: DiffChunk) {
+//   return `${chunk.file_name}-${chunk.line1}-${chunk.line2}`;
+// }
 
 export const diffApi = createApi({
   reducerPath: "diffs",
@@ -103,12 +103,9 @@ export const diffApi = createApi({
         });
         return { data: merged };
       },
-      providesTags: (result, _error, _args) => {
-        if (!result) return [{ type: "DIFF_STATE" }];
-        return result.map(({ chunk }) => ({
-          type: "DIFF_STATE",
-          id: cacheIdForChunk(chunk),
-        }));
+      providesTags: (_result, _error, _args) => {
+        // TODO: this could be more efficient
+        return [{ type: "DIFF_STATE" }];
       },
     }),
 
@@ -131,10 +128,9 @@ export const diffApi = createApi({
 
         return { data: result.data as DiffOperationResponse };
       },
-      invalidatesTags: (_result, _error, args) => {
-        return args.chunks.map((chunk) => {
-          return { type: "DIFF_STATE", id: cacheIdForChunk(chunk) };
-        });
+      invalidatesTags: (_result, _error, _args) => {
+        // TODO: this could be more efficient
+        return [{ type: "DIFF_STATE" }];
       },
     }),
 
