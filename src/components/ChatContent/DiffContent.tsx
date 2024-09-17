@@ -235,7 +235,6 @@ export const DiffForm: React.FC<{
         const applied = diffsForFile.every(
           (diff) => diff.state || !diff.can_apply,
         );
-        console.log({ fullFileName, diffsForFile, applied });
 
         return (
           <Box key={key} my="2">
