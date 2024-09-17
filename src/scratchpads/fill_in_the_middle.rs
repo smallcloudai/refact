@@ -482,7 +482,7 @@ async fn _cursor_position_to_context_file(
     for double_colon_path in unique_paths {
         let defs: Vec<Arc<AstDefinition>> = crate::ast::ast_db::definitions(ast_index.clone(), double_colon_path.as_str()).await;
         if defs.len() != 1 {
-            tracing::warn!("hmm, number of definitions for {} is not one", double_colon_path);
+            tracing::warn!("hmm, number of definitions for {} is not one {}", double_colon_path, defs.len());
         }
         for def in defs {
             output.push(ContextFile {

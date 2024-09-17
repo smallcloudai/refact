@@ -325,16 +325,8 @@ pub async fn doc_usages(ast_index: Arc<AMutex<AstDB>>, cpath: &String) -> Vec<(u
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let doc_resolved_key = format!("doc-resolved|{}", file_global_path.join("::"));
     if let Ok(Some(resolved_usages)) = db.get(doc_resolved_key.as_bytes()) {
-        if let Ok(resolved_usages_vec) = serde_cbor::from_slice::<Vec<String>>(&resolved_usages) {
-            for resolved_usage in resolved_usages_vec {
-                let u_key = format!("u|{}", resolved_usage);
-                if let Ok(Some(u_value)) = db.get(u_key.as_bytes()) {
-                    if let Ok(uline) = serde_cbor::from_slice::<usize>(&u_value) {
-                        usages.push((uline, resolved_usage));
-                    }
-                }
-            }
-        }
+        let resolved_usages_vec = serde_cbor::from_slice::<Vec<(usize, String)>>(&resolved_usages).unwrap();
+        usages.extend(resolved_usages_vec);
     }
 
     usages
@@ -370,7 +362,7 @@ pub async fn connect_usages(ast_index: Arc<AMutex<AstDB>>, ucx: &mut ConnectUsag
         let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
         let mut batch = batch_arc.lock().await;
 
-        let mut resolved_usages: Vec<String> = vec![];
+        let mut resolved_usages: Vec<(usize, String)> = vec![];
         for def in definitions {
             let tmp = _connect_usages_helper(&db, ucx, &def, &mut batch).await;
             resolved_usages.extend(tmp);
@@ -447,7 +439,7 @@ async fn _connect_usages_helper(
     ucx: &mut ConnectUsageContext,
     definition: &AstDefinition,
     batch: &mut sled::Batch
-) -> Vec<String> {
+) -> Vec<(usize, String)> {
     // Data example:
     // (1) c/Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
     // (2) c/cpp_goat_library::Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
@@ -476,7 +468,7 @@ async fn _connect_usages_helper(
     //   resolve-cleanup/official_path     -- value contains all the "u|RESOLVED ⚡ official_path" in a list
     //
     let official_path = definition.official_path.join("::");
-    let mut all_saved_ulinks = Vec::<String>::new();
+    let mut all_saved_ulinks = Vec::<(usize, String)>::new();
     for (uindex, usage) in definition.usages.iter().enumerate() {
         debug_print!("    resolving {}.usage[{}] == {:?}", official_path, uindex, usage);
         if !usage.resolved_as.is_empty() {
@@ -575,7 +567,7 @@ async fn _connect_usages_helper(
             let u_key = format!("u|{} ⚡ {}", single_thing_found, official_path);
             batch.insert(u_key.as_bytes(), serde_cbor::to_vec(&usage.uline).unwrap());
             debug_print!("        add {:?} <= {}", u_key, usage.uline);
-            all_saved_ulinks.push(u_key);
+            all_saved_ulinks.push((usage.uline, single_thing_found));
             ucx.usages_connected += 1;
             break;  // the next thing from targets_for_guesswork is a worse query, keep this one and exit
         }
@@ -717,6 +709,7 @@ pub async fn definitions(ast_index: Arc<AMutex<AstDB>>, double_colon_path: &str)
     defs
 }
 
+#[allow(dead_code)]
 pub async fn type_hierarchy(ast_index: Arc<AMutex<AstDB>>, language: String, subtree_of: String) -> String
 {
     // Data example:
@@ -828,6 +821,7 @@ pub async fn definition_paths_fuzzy(ast_index: Arc<AMutex<AstDB>>, pattern: &str
     unique_found.into_iter().collect()
 }
 
+#[allow(dead_code)]
 pub async fn dump_database(ast_index: Arc<AMutex<AstDB>>) -> usize
 {
     let db = ast_index.lock().await.sleddb.clone();
