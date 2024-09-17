@@ -49,6 +49,12 @@ impl Tool for ToolRelevantFiles {
             None => return Err("Missing argument `problem_statement`".to_string())
         };
 
+        let expand_depth = match args.get("expand_depth") {
+            Some(Value::Number(n)) => n.as_u64().unwrap() as usize,
+            Some(v) => return Err(format!("argument `expand_depth` is not a number: {:?}", v)),
+            None => 0,
+        };
+
         let params = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "locate").await?;
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
@@ -69,6 +75,7 @@ impl Tool for ToolRelevantFiles {
             params,
             tool_call_id.clone(),
             problem_statement,
+            expand_depth,
         ).await?;
 
         let gcx = ccx.lock().await.global_context.clone();
@@ -218,7 +225,7 @@ Experts can make mistakes. Your role is to reduce their noisy output into a sing
 
 1. Write down a couple of interpretations of the original task, something like "Interpretation 1: user wants to do this, and the best place to start this change is at file1.ext, near my_function1, in my_function2".
 2. Decide which interpretation is most likely correct.
-3. Decide which one or two files will receive the most meaningful updates if the user was to change the code in that interpretation. You'll need to label them TOCHANGE later.
+3. Decide which files (at least one) will receive the most meaningful updates if the user was to change the code in that interpretation. You'll need to label them TOCHANGE later.
 4. Write down which files might support the change, some of them contain high-level logic, some have definitions, some similar code.
 5. All the files cannot have relevancy 5; most of them are likely 3, "might provide good insight into the logic behind the program but not directly relevant", but you can
 write 1 or 2 if you accidentally wrote a file name and changed your mind about how useful it is, not a problem.
@@ -228,7 +235,7 @@ REDUCE_OUTPUT
 ```
 {
     "dir/dir/file.ext": {
-        "SYMBOLS": "symbol1,symbol2",     // Comma-separated list of symbols defined within this file that are actually relevant. Use your own judgement, don't copy from experts.
+        "SYMBOLS": "symbol1,symbol2",     // Comma-separated list of symbols defined within this file that are actually relevant for initial problem. Use your own judgement, don't copy from experts.
         "WHY_CODE": "string",             // Write down the reason to include this file in output, pick one of: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE, SIMILAR.
         "WHY_DESC": "string",             // Describe why this file matters wrt the task, what's going on inside? Describe the file in general in a sentense or two, and then describe what specifically is the relation to the task.
         "RELEVANCY": 0                    // Critically evaluate how is this file really relevant to your interpretation of the task. Rate from 1 to 5. 1 = has TBD, role is unclear, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
@@ -305,6 +312,7 @@ async fn find_relevant_files(
     subchat_params: SubchatParameters,
     tool_call_id: String,
     user_query: String,
+    expand_depth: usize,
 ) -> Result<(HashMap<String, ReduceFileOutput>, ChatUsage, String), String> {
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
     let (vecdb_on, workspace_files) = {
@@ -431,7 +439,7 @@ async fn find_relevant_files(
         subchat_params.subchat_model.as_str(),
         messages,
         expand_reduce_tools.iter().map(|x|x.to_string()).collect::<Vec<_>>(),
-        1,  // the most controversial one: the chat generates a lot of ref def search tools at STEP2_EXPAND
+        expand_depth + 1,  // expand_depth parameter slows down execution
         subchat_params.subchat_max_new_tokens,
         RF_REDUCE_WRAP_UP,
         1,
