@@ -4,21 +4,33 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use regex::Regex;
+use std::path::PathBuf;
 
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use futures_util::future::join_all;
-
-use crate::at_commands::at_commands::AtCommandsContext;
+use hashbrown::HashSet;
 use crate::subchat::subchat;
 use crate::tools::tools_description::Tool;
-use crate::call_validation::{ChatMessage, ContextEnum, SubchatParameters};
+
+use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, SubchatParameters, ContextFile};
 use crate::global_context::GlobalContext;
 
+use crate::files_in_workspace::get_file_text_from_memory_or_disk;
+use crate::files_correction::{get_project_dirs, shortify_paths};
+use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
+use crate::at_commands::at_commands::AtCommandsContext;
 
-const RF_OUTPUT_FILES: usize = 6;
-const RF_ATTEMPTS: usize = 1;
+
+async fn result_to_json(gcx: Arc<ARwLock<GlobalContext>>, result: HashMap<String, ReduceFileOutput>) -> String {
+    let mut shortified = HashMap::new();
+    for (file_name, file_output) in result {
+        let shortified_file_name = shortify_paths(gcx.clone(), vec![file_name]).await.get(0).unwrap().clone();
+        shortified.insert(shortified_file_name, file_output);
+    }
+    return serde_json::to_string_pretty(&serde_json::json!(shortified)).unwrap();
+}
 
 
 pub struct ToolRelevantFiles;
@@ -52,21 +64,63 @@ impl Tool for ToolRelevantFiles {
             Arc::new(AMutex::new(t))
         };
 
-        let res = find_relevant_files(
+        let (res, usage, tool_message) = find_relevant_files(
             ccx_subchat,
             params,
             tool_call_id.clone(),
             problem_statement,
         ).await?;
 
+        let gcx = ccx.lock().await.global_context.clone();
+        let tool_result = result_to_json(gcx.clone(), res.clone()).await;
+
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: format!("{}", serde_json::to_string_pretty(&res).unwrap()),
+            content: format!("{}\n\n💿 {}", tool_result, tool_message),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            usage: Some(usage),
             ..Default::default()
         }));
+
+        for (file_path, file_info) in res {
+            let text = get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(&file_path)).await?.to_string();
+            let mut ast_symbols = vec![];
+            if let Some(ast_service) = gcx.read().await.ast_service.clone() {
+                let ast_index = ast_service.lock().await.ast_index.clone();
+                let doc_symbols = crate::ast::ast_db::doc_defs(ast_index.clone(), &file_path).await;
+                let symbols = file_info.symbols.split(",").map(|x|x.to_string()).collect::<Vec<_>>();
+                ast_symbols = doc_symbols.into_iter().filter(|s| symbols.contains(&s.name())).collect::<Vec<_>>();
+            }
+
+            if ast_symbols.is_empty() {
+                let usefulness = (file_info.relevancy as f32) / 5. * 100.;
+                results.push(ContextEnum::ContextFile(ContextFile {
+                    file_name: file_path.clone(),
+                    file_content: text.clone(),
+                    line1: 0,
+                    line2: text.lines().count(),
+                    symbols: vec![],
+                    gradient_type: -1,
+                    usefulness: usefulness,
+                    is_body_important: false,
+                }));
+            }
+
+            for symbol in ast_symbols {
+                results.push(ContextEnum::ContextFile(ContextFile {
+                    file_name: file_path.clone(),
+                    file_content: "".to_string(),
+                    line1: symbol.full_range.start_point.row + 1,
+                    line2: symbol.full_range.end_point.row + 1,
+                    symbols: vec![symbol.path()],
+                    gradient_type: -1,
+                    usefulness: 100.,
+                    is_body_important: false,
+                }));
+            }
+        }
 
         Ok((false, results))
     }
@@ -103,22 +157,22 @@ You'll receive additional instructions that start with 💿. Those are not comin
 well between chat restarts and they are always in English. Answer in the language the user prefers.
 "###;
 
-const RF_EXPERT_PLEASE_WRAP_UP: &str = r###"You are out of turns or tokens for this chat. Now you need to save your progress, such that a new chat can pick up from there. Use this structure:
+const RF_EXPERT_PLEASE_WRAP_UP: &str = r###"Save your progress, using the following structure:
 {
-    "OUTPUT": {                           // The output is dict<filename, info_dict>.
-        "dir/dir/file.ext": {             // Here you need a strict absolute path with no ambiguity at all.
-            "SYMBOLS": "symbol1,symbol2", // Comma-separated list of functions/classes/types/variables/etc defined within this file that are actually relevant, for example "MyClass::my_function". List all symbols that are relevant, not just some of them. Write "*" to indicate the whole file is necessary. Write "TBD" to indicate you didn't look inside yet.
+    "OUTPUT": [
+        "dir/dir/file.ext": {             // A relative path with no ambiguity at all.
+            "SYMBOLS": "symbol1,symbol2", // Comma-separated list of functions/classes/types/variables/etc defined or used within this file that are relevant to given problem. Write "*" to indicate the whole file is necessary. Write "TBD" to indicate you didn't look inside yet.
         }
     ],
 }
 "###;
 
-const RF_REDUCE_SYSTEM_PROMPT: &str = r###"You will receive output generated by experts using different strategies. They will give you this format:
+const RF_REDUCE_SYSTEM_PROMPT: &str = r###"You will receive outputs generated by experts using different strategies in the following format:
 
 {
   "OUTPUT": {
       "dir/dir/file.ext": {
-          "SYMBOLS": "symbol1,symbol2", // Comma-separated list of functions/classes/types/variables/etc defined within this file that are actually relevant. "*" might indicate the whole file is necessary. "TBD" might indicate the expert didn't look into the file.
+          "SYMBOLS": "symbol1,symbol2", // Comma-separated list of symbols defined within this file that are actually relevant. "*" might indicate the whole file is necessary.
       }
   ],
   ...
@@ -126,11 +180,9 @@ const RF_REDUCE_SYSTEM_PROMPT: &str = r###"You will receive output generated by 
 
 Steps you need to follow:
 
-STEP1_CAT: on your first turn, call cat() once with all the files and symbols coming from experts. You have enough tokens for one big
-call. Don't call anything else. Pass skeleton=True to the cat() call.
+STEP1_CAT: call exact one cat() using given files and symbols. Pass skeleton=True to the cat() call.
 
-STEP2_EXPAND: on the second turn, after you see all the files coming from the cat() call, your job is to expand the visible scope by
-looking up everything necessary to complete the task.
+STEP2_EXPAND: expand the visible scope by looking up everything necessary to complete the task.
 
 * definitions: which classes and functions are necessary to understand the task? Don't ask about any well-known library functions
 or classes like String and Arc in rust, librarires like re, os, subprocess in python, because they are are already well-known and including them
@@ -165,23 +217,18 @@ const RF_REDUCE_WRAP_UP: &str = r###"
 Experts can make mistakes. Your role is to reduce their noisy output into a single more reliable output. Think step by step. Follow this plan:
 
 1. Write down a couple of interpretations of the original task, something like "Interpretation 1: user wants to do this, and the best place to start this change is at file1.ext, near my_function1, in my_function2".
-
 2. Decide which interpretation is most likely correct.
-
 3. Decide which one or two files will receive the most meaningful updates if the user was to change the code in that interpretation. You'll need to label them TOCHANGE later.
-
 4. Write down which files might support the change, some of them contain high-level logic, some have definitions, some similar code.
-
 5. All the files cannot have relevancy 5; most of them are likely 3, "might provide good insight into the logic behind the program but not directly relevant", but you can
 write 1 or 2 if you accidentally wrote a file name and changed your mind about how useful it is, not a problem.
-
 6. After you have completed 1-5, go ahead and formalize your best interpretation in the following JSON format, write "REDUCE_OUTPUT", and continue with triple backquotes.
 
 REDUCE_OUTPUT
 ```
 {
     "dir/dir/file.ext": {
-        "SYMBOLS": "symbol1,symbol2",     // Comma-separated list of functions/classes/types/variables/etc defined within this file that are actually relevant. List all symbols that are relevant, not just some of them. Use your own judgement, don't copy from experts.
+        "SYMBOLS": "symbol1,symbol2",     // Comma-separated list of symbols defined within this file that are actually relevant. Use your own judgement, don't copy from experts.
         "WHY_CODE": "string",             // Write down the reason to include this file in output, pick one of: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE, SIMILAR.
         "WHY_DESC": "string",             // Describe why this file matters wrt the task, what's going on inside? Describe the file in general in a sentense or two, and then describe what specifically is the relation to the task.
         "RELEVANCY": 0                    // Critically evaluate how is this file really relevant to your interpretation of the task. Rate from 1 to 5. 1 = has TBD, role is unclear, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
@@ -214,7 +261,7 @@ REDUCE_OUTPUT
 // "WHY_DESC": "string",         // Describe why this file matters wrt the task, what's going on inside? Put TBD if you didn't look inside.
 // "RELEVANCY": 0                // Critically evaluate how is this file really relevant to the task. Rate from 1 to 5. 1 = no evidence this file even exists, 2 = file exists but you didn't look inside, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
 
-fn parse_reduce_output(content: &str) -> Result<Value, String> {
+fn parse_reduce_output(content: &str) -> Result<HashMap<String, ReduceFileOutput>, String> {
     let re = Regex::new(r"(?s)REDUCE_OUTPUT\s*```(?:json)?\s*(.+?)\s*```").unwrap();
     let json_str = re.captures(content)
         .and_then(|cap| cap.get(1))
@@ -223,7 +270,7 @@ fn parse_reduce_output(content: &str) -> Result<Value, String> {
             tracing::warn!("Unable to find REDUCE_OUTPUT section:\n{}", content);
             "Unable to find REDUCE_OUTPUT section".to_string()
         })?;
-    let output: Value = serde_json::from_str(json_str).map_err(|e| {
+    let output = serde_json::from_str::<HashMap<String, ReduceFileOutput>>(json_str).map_err(|e| {
             tracing::warn!("Unable to parse JSON:\n{}({})", json_str, e);
             format!("Unable to parse JSON: {:?}", e)
         })?;
@@ -231,10 +278,17 @@ fn parse_reduce_output(content: &str) -> Result<Value, String> {
 }
 
 
-#[derive(Serialize, Deserialize, Debug)]
-struct ReduceFileItem {
-    #[serde(rename = "FILE_PATH")]
-    file_path: String,
+fn update_usage_from_message(usage: &mut ChatUsage, message: &ChatMessage) {
+    if let Some(u) = message.usage.as_ref() {
+        usage.total_tokens += u.total_tokens;
+        usage.completion_tokens += u.completion_tokens;
+        usage.prompt_tokens += u.prompt_tokens;
+    }
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct ReduceFileOutput {
     #[serde(rename = "SYMBOLS")]
     symbols: String,
     #[serde(rename = "WHY_CODE")]
@@ -251,83 +305,118 @@ async fn find_relevant_files(
     subchat_params: SubchatParameters,
     tool_call_id: String,
     user_query: String,
-) -> Result<Value, String> {
+) -> Result<(HashMap<String, ReduceFileOutput>, ChatUsage, String), String> {
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
-    let vecdb_on = {
+    let (vecdb_on, workspace_files) = {
         let gcx = gcx.read().await;
         let vecdb = gcx.vec_db.lock().await;
-        vecdb.is_some()
+        (vecdb.is_some(), gcx.documents_state.workspace_files.clone())
     };
 
-    let sys = RF_SYSTEM_PROMPT
-        .replace("{ATTEMPTS}", &format!("{RF_ATTEMPTS}"))
-        .replace("{RF_OUTPUT_FILES}", &format!("{RF_OUTPUT_FILES}"));
+    let mut usage = ChatUsage { ..Default::default() };
+    let mut refined_files = HashMap::new();
+    let mut inspected_context_files = HashSet::new();
+    let total_files_in_project = workspace_files.lock().unwrap().len();
+
+    if total_files_in_project == 0 {
+        let tool_message = format!("Used {} experts, inspected {} files, project has {} files", 0, 0, 0);
+        return Ok((refined_files, usage, tool_message))
+    }
+
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
 
+    // STEP experts
     let mut strategy_messages = vec![];
-    strategy_messages.push(ChatMessage::new("system".to_string(), sys.to_string()));
+    strategy_messages.push(ChatMessage::new("system".to_string(), RF_SYSTEM_PROMPT.to_string()));
     strategy_messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
 
-    let tools_subset = vec!["definition", "references", "tree", "cat"].iter().map(|x|x.to_string()).collect::<Vec<_>>();
     let mut futures = vec![];
 
     let mut strategy_tree = strategy_messages.clone();
-    strategy_tree.push(crate::tools::tool_locate::pretend_tool_call("tree", "{}", "I'll use TREEGUESS strategy, to do that I need to start with a tree() call.".to_string()));
+    strategy_tree.push(
+        crate::tools::tool_locate::pretend_tool_call(
+            "tree", "{}",
+            "💿 I'll use TREEGUESS strategy, to do that I need to start with a tree() call.".to_string()
+        )
+    );
     futures.push(subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
         strategy_tree,
-        tools_subset.clone(),
+        vec![],  // tree strategy doesn't use any tools for now
         0,
         subchat_params.subchat_max_new_tokens,
         RF_EXPERT_PLEASE_WRAP_UP,
-        4,
-        Some(0.8),
+        2,
+        Some(0.4),
         Some(format!("{log_prefix}-rf-step1-treeguess")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step1-treeguess")),
     ));
 
+    let mut strategy_search_tools = vec!["definition", "references"];
     let mut strategy_search = strategy_messages.clone();
-    strategy_search.push(ChatMessage::new("user".to_string(), if vecdb_on {
-            "💿 Use VECDBSEARCH strategy.".to_string()
-        } else {
-            "💿 Use GOTODEF strategy.".to_string()
-        }
-    ));
+    if vecdb_on {
+        strategy_search_tools.push("search");
+        strategy_search.push(ChatMessage::new("user".to_string(), "💿 Use VECDBSEARCH strategy.".to_string()));
+    } else {
+        strategy_search.push(ChatMessage::new("user".to_string(), "💿 Use GOTODEF strategy.".to_string()));
+    }
+
     futures.push(subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
         strategy_search,
-        vec!["definition", "references", "search"].iter().map(|x|x.to_string()).collect::<Vec<_>>(),
+        strategy_search_tools.iter().map(|x|x.to_string()).collect::<Vec<_>>(),
         1,
         subchat_params.subchat_max_new_tokens,
         RF_EXPERT_PLEASE_WRAP_UP,
-        1,
-        Some(0.2),
+        2,
+        Some(0.4),
         Some(format!("{log_prefix}-rf-step1-gotodef")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step1-gotodef")),
     ));
 
     let results: Vec<Vec<Vec<ChatMessage>>> = join_all(futures).await.into_iter().filter_map(|x| x.ok()).collect();
-    let only_last_messages: Vec<ChatMessage> = results.into_iter()
-        .flat_map(|choices| {
-            choices.into_iter().filter_map(|mut messages| {
-                messages.pop().filter(|msg| msg.role == "assistant")
-            })
-        })
-        .collect();
+
+    let mut expert_results = Vec::new();
+    for choices in results.iter() {
+        for messages in choices.iter() {
+            // collect last assistant messages to get expert results
+            if let Some(assistant_msg) = messages.iter().rfind(|msg| msg.role == "assistant").cloned() {
+                expert_results.push(assistant_msg);
+            }
+            // collect all context_file messages to get opened file names
+            for context_file_msg in messages.iter().filter(|msg| msg.role == "context_file").cloned().collect::<Vec<ChatMessage>>() {
+                if let Ok(context_files) = serde_json::from_str::<Vec<ContextFile>>(&context_file_msg.content) {
+                    for context_file in context_files {
+                        inspected_context_files.insert(context_file.file_name.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    // collect usages from experts
+    for message in &expert_results {
+        update_usage_from_message(&mut usage, &message);
+    }
 
     // | tree() -TREEGUESS-> files x4
     // | search() -VECDBSEARCH-> files and symbols
     // cat(files, symbols, skeleton=True) --EXPAND--> definition() usage() search() calls -REDUCE-> json files/symbols/RELEVANCY
 
-    // expand/reduce
+    // STEP expand/reduce
+    let mut expand_reduce_tools = vec!["cat", "definition", "references"];
+    if vecdb_on {
+        expand_reduce_tools.push("search");
+    }
+
     let mut messages = vec![];
     messages.push(ChatMessage::new("system".to_string(), RF_REDUCE_SYSTEM_PROMPT.to_string()));
     messages.push(ChatMessage::new("user".to_string(), format!("User provided task:\n\n{}", user_query)));
-    for (i, expert_message) in only_last_messages.into_iter().enumerate() {
+    for (i, expert_message) in expert_results.clone().into_iter().enumerate() {
         messages.push(ChatMessage::new("user".to_string(), format!("Expert {} says:\n\n{}", i + 1, expert_message.content)));
     }
     messages.push(ChatMessage::new("user".to_string(), "Start your answer with STEP1_CAT".to_string()));
@@ -341,8 +430,8 @@ async fn find_relevant_files(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
         messages,
-        vec!["cat", "definition", "references", "search"].iter().map(|x|x.to_string()).collect::<Vec<_>>(),
-        2,
+        expand_reduce_tools.iter().map(|x|x.to_string()).collect::<Vec<_>>(),
+        1,  // the most controversial one: the chat generates a lot of ref def search tools at STEP2_EXPAND
         subchat_params.subchat_max_new_tokens,
         RF_REDUCE_WRAP_UP,
         1,
@@ -352,6 +441,73 @@ async fn find_relevant_files(
         Some(format!("{log_prefix}-rf-step2-reduce")),
     ).await?[0].clone();
 
-    let answer = parse_reduce_output(&result.last().unwrap().content)?;
-    Ok(answer)
+    // collect all context_file of expand/reduce step to get opened file names
+    for context_file_msg in result.iter().filter(|msg| msg.role == "context_file").cloned().collect::<Vec<ChatMessage>>() {
+        if let Ok(context_files) = serde_json::from_str::<Vec<ContextFile>>(&context_file_msg.content) {
+            for context_file in context_files {
+                inspected_context_files.insert(context_file.file_name.clone());
+            }
+        }
+    }
+
+    let last_message = result.last().unwrap();
+    update_usage_from_message(&mut usage, &last_message);
+
+    let reduced_files = parse_reduce_output(&last_message.content)?;
+
+    // refine reduced files according ot ast
+    let (gcx, top_n) = {
+        let ccx_lock = ccx.lock().await;
+        (ccx_lock.global_context.clone(), ccx_lock.top_n)
+    };
+
+    let mut refine_log = vec![];
+    for (file_path, file_output) in reduced_files {
+        // parse symbols str
+        let mut symbols = vec![];
+        if !vec!["", "*"].contains(&file_output.symbols.as_str()) {
+            symbols = file_output.symbols.split(",").map(|x|x.trim().to_string()).collect::<Vec<_>>()
+        };
+
+        // try to find single normalized file path
+        let candidates_file = file_repair_candidates(gcx.clone(), &file_path, top_n, false).await;
+        let refined_file_path = match return_one_candidate_or_a_good_error(gcx.clone(), &file_path, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
+            Ok(f) => f,
+            Err(e) => { refine_log.push(e); continue; }
+        };
+        // TODO: I'm not sure that refined_files is "normalized"
+        if refined_files.contains_key(&refined_file_path) {
+            // NOTE: idk what should we say in tool message about this situation
+            continue;
+        }
+
+        // refine symbols according to ast
+        let mut symbols_intersection = vec![];
+        let gcx = ccx.lock().await.global_context.clone();
+        if let Some(ast_service) = gcx.read().await.ast_service.clone() {
+            let ast_index = ast_service.lock().await.ast_index.clone();
+            let doc_syms = crate::ast::ast_db::doc_defs(ast_index.clone(), &refined_file_path).await;
+            symbols_intersection = doc_syms.into_iter().filter(|s| symbols.contains(&s.name())).collect::<Vec<_>>();
+        }
+        let mut refined_file_output = file_output.clone();
+        // NOTE: for now we are simply skipping non-existing symbols, but it can be presented in tool message
+        refined_file_output.symbols = symbols_intersection.iter().map(|x|x.name()).collect::<Vec<_>>().join(",");
+        refined_files.insert(refined_file_path, refined_file_output);
+    }
+
+    let mut tool_message = format!("Used {} experts, inspected {} files, project has {} files",
+        expert_results.len(),
+        inspected_context_files.len(),  // TODO: probably we need to show some of these files
+        total_files_in_project
+    );
+    if !inspected_context_files.is_empty() {
+        tool_message = format!("{}\n\nInspected context files:\n{}",
+            tool_message,
+            inspected_context_files.into_iter().collect::<Vec<_>>().join("\n"));
+    }
+    if !refine_log.is_empty() {
+        tool_message = format!("{}\n\nExpert's output refine log:\n{}", tool_message, refine_log.join("\n"));
+    }
+
+    Ok((refined_files, usage, tool_message))
 }
