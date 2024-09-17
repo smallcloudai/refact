@@ -13,6 +13,10 @@
     opacity 0.3s ease-in-out;
 }
 
+.callout_box_background {
+  background-color: #30200f !important;
+}
+
 .callout_box_opened {
   transform: translateY(0);
   opacity: 1;

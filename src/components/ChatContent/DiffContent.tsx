@@ -379,15 +379,16 @@ export const DiffForm: React.FC<{
                 {warning && warning.length !== 0 && (
                   <ErrorCallout
                     onClick={onClearWarning}
-                    timeout={null}
+                    timeout={3000}
                     itemType="warning"
                     my="4"
                     message={warning}
-                  >
-                    <Text size="1" as="div" mt="1">
-                      Click to retry
-                    </Text>
-                  </ErrorCallout>
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      left: 10,
+                    }}
+                  />
                 )}
                 <Box
                   style={{

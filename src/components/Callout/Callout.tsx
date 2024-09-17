@@ -25,7 +25,6 @@ export const Callout: React.FC<CalloutProps> = ({
   onClick = () => void 0,
   ...props
 }) => {
-  useTimeout(onClick, timeout);
   const [isOpened, setIsOpened] = useState(false);
 
   useEffect(() => {
@@ -46,6 +45,8 @@ export const Callout: React.FC<CalloutProps> = ({
     }, 300);
   };
 
+  useTimeout(handleRetryClick, timeout);
+
   return (
     <RadixCallout.Root
       mx={props.mx ?? "2"}
@@ -53,6 +54,7 @@ export const Callout: React.FC<CalloutProps> = ({
       {...props}
       className={classNames(styles.callout_box, {
         [styles.callout_box_opened]: isOpened,
+        [styles.callout_box_background]: props.itemType === "warning",
       })}
     >
       <Flex direction="row" align="center" gap="4">
@@ -104,6 +106,7 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
       onClick={onClick}
       timeout={timeout}
       message={message}
+      itemType={props.itemType}
       {...props}
     >
       {returningElement}
