@@ -1,22 +1,15 @@
-function iter<A, T extends A>(
-  items: A[],
-  fun: (a: A) => a is T,
-  acc: T[] = [],
-): T[] {
+function iter<A>(items: A[], fun: (a: A) => boolean, acc: A[] = []): A[] {
   if (items.length === 0) {
     return acc;
   }
   const [head, ...tail] = items;
   if (fun(head)) {
-    return iter(tail, fun, [...acc, head]);
+    return iter<A>(tail, fun, [...acc, head]);
   }
 
   return acc;
 }
 
-export function takeWhile<A, T extends A>(
-  arr: A[],
-  predicate: (a: A) => a is T,
-): T[] {
-  return iter<A, T>(arr, predicate);
+export function takeWhile<A>(arr: A[], predicate: (a: A) => boolean): A[] {
+  return iter<A>(arr, predicate);
 }

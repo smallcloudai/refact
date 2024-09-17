@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect } from "react";
 import {
-  ChatMessage,
   ChatMessages,
-  DiffMessage,
+  isAssistantMessage,
   isChatContextFileMessage,
   isDiffMessage,
+  isToolMessage,
 } from "../../services/refact";
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
@@ -201,9 +201,18 @@ function renderMessages(
   }
 
   if (isDiffMessage(head)) {
-    const restInTail = takeWhile<ChatMessage, DiffMessage>(tail, isDiffMessage);
+    const restInTail = takeWhile(tail, (message) => {
+      const isEmptyAssistantMessage =
+        isAssistantMessage(message) && !message.content;
+      return (
+        isDiffMessage(message) ||
+        isToolMessage(message) ||
+        isEmptyAssistantMessage
+      );
+    });
+
     const nextTail = tail.slice(restInTail.length);
-    const diffMessages = [head, ...restInTail];
+    const diffMessages = [head, ...restInTail.filter(isDiffMessage)];
     const key = "diffs-" + index;
 
     const nextMemo = [...memo, <GroupedDiffs key={key} diffs={diffMessages} />];
