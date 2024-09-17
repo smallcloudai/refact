@@ -468,7 +468,8 @@ async fn _connect_usages_helper(
     //   resolve-cleanup/official_path     -- value contains all the "u|RESOLVED ⚡ official_path" in a list
     //
     let official_path = definition.official_path.join("::");
-    let mut all_saved_ulinks = Vec::<(usize, String)>::new();
+    let mut result = Vec::<(usize, String)>::new();
+    let mut all_saved_ulinks = Vec::<String>::new();
     for (uindex, usage) in definition.usages.iter().enumerate() {
         debug_print!("    resolving {}.usage[{}] == {:?}", official_path, uindex, usage);
         if !usage.resolved_as.is_empty() {
@@ -567,7 +568,8 @@ async fn _connect_usages_helper(
             let u_key = format!("u|{} ⚡ {}", single_thing_found, official_path);
             batch.insert(u_key.as_bytes(), serde_cbor::to_vec(&usage.uline).unwrap());
             debug_print!("        add {:?} <= {}", u_key, usage.uline);
-            all_saved_ulinks.push((usage.uline, single_thing_found));
+            all_saved_ulinks.push(u_key);
+            result.push((usage.uline, single_thing_found));
             ucx.usages_connected += 1;
             break;  // the next thing from targets_for_guesswork is a worse query, keep this one and exit
         }
@@ -575,7 +577,7 @@ async fn _connect_usages_helper(
     let cleanup_key = format!("resolve-cleanup|{}", definition.official_path.join("::"));
     let cleanup_value = serde_cbor::to_vec(&all_saved_ulinks).unwrap();
     batch.insert(cleanup_key.as_bytes(), cleanup_value.as_slice());
-    all_saved_ulinks
+    result
 }
 
 async fn _derived_from(db: &sled::Db) -> IndexMap<String, Vec<String>>
