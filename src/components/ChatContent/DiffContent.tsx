@@ -18,12 +18,26 @@ import {
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
 function toDiff(str: string): string {
-  const replaceEscapedEOL = str
-    .split("\n")
-    .filter((_) => _)
-    .join("\n");
+  const lines = str.split("\n");
+  const result: string[] = [];
 
-  return replaceEscapedEOL;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (line.endsWith("\\")) {
+      const nextLine = lines[i + 1] || "";
+      result.push(line.slice(0, -1) + nextLine);
+      i++;
+    } else {
+      result.push(line);
+    }
+  }
+
+  if (result[result.length - 1] === "") {
+    result.pop();
+  }
+
+  return result.join("\n");
 }
 
 const DiffLine: React.FC<{
