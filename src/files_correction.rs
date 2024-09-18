@@ -74,8 +74,7 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
         let paths_from_anywhere = paths_from_anywhere(global_context.clone()).await;
         let (cache_correction, cache_fuzzy, cnt) = make_cache(paths_from_anywhere);
 
-        info!("rebuild completed in {}s, {} URLs => cache_correction.len is now {}", start_time.elapsed().as_secs(), cnt, cache_correction.len());
-
+        info!("rebuild completed in {:.3}s, {} URLs => cache_correction.len is now {}", start_time.elapsed().as_secs_f64(), cnt, cache_correction.len());
         cache_correction_arc = Arc::new(cache_correction);
         cache_fuzzy_arc = Arc::new(cache_fuzzy);
         {

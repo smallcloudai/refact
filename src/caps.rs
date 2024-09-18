@@ -280,7 +280,7 @@ async fn get_custom_completion_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Resu
 
 async fn load_caps_buf_from_file(
     cmdline: crate::global_context::CommandLine,
-    _global_context: Arc<ARwLock<GlobalContext>>,
+    _gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(String, String), String> {
     let caps_url = cmdline.address_url.clone();
     let mut buffer = String::new();
@@ -291,7 +291,7 @@ async fn load_caps_buf_from_file(
 
 async fn load_caps_buf_from_url(
     cmdline: crate::global_context::CommandLine,
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(String, String), String> {
     let mut buffer = String::new();
     let mut caps_urls: Vec<String> = Vec::new();
@@ -305,7 +305,7 @@ async fn load_caps_buf_from_url(
         caps_urls.push(joined_url_fallback.to_string());
     }
 
-    let http_client = global_context.read().await.http_client.clone();
+    let http_client = gcx.read().await.http_client.clone();
     let api_key = cmdline.api_key.clone();
     let mut headers = reqwest::header::HeaderMap::new();
     if !api_key.is_empty() {
@@ -352,14 +352,14 @@ async fn load_caps_buf_from_url(
 
 pub async fn load_caps(
     cmdline: crate::global_context::CommandLine,
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let mut caps_url = cmdline.address_url.clone();
     let buf: String;
     if caps_url.to_lowercase() == "refact" || caps_url.starts_with("http") {
-        (buf, caps_url) = load_caps_buf_from_url(cmdline, global_context).await?
+        (buf, caps_url) = load_caps_buf_from_url(cmdline, gcx).await?
     } else {
-        (buf, caps_url) = load_caps_buf_from_file(cmdline, global_context).await?
+        (buf, caps_url) = load_caps_buf_from_file(cmdline, gcx).await?
     }
     load_caps_from_buf(&buf, &caps_url)
 }
@@ -507,7 +507,7 @@ pub async fn get_model_record(
 }
 
 
-pub const SIMPLE_CAPS: &str = r#"
+pub const BRING_YOUR_OWN_KEY_SAMPLE: &str = r#"
 cloud_name: My own mix of clouds!
 
 chat_endpoint: "https://api.openai.com/v1/chat/completions"

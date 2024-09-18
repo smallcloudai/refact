@@ -7,7 +7,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock as ARwLock;
 use tracing::{info, warn};
 
-use crate::caps::SIMPLE_CAPS;
 use crate::global_context::GlobalContext;
 use crate::yaml_configs::customization_compiled_in::COMPILED_IN_INITIAL_USER_YAML;
 use crate::privacy_compiled_in::COMPILED_IN_INITIAL_PRIVACY_YAML;
@@ -38,7 +37,7 @@ pub async fn yaml_bring_your_own_key_exists_or_create(gcx: Arc<ARwLock<GlobalCon
     if !path.exists() {
         let mut file = std::fs::File::create(&path)
             .map_err(|e| format!("Failed to create bring-your-own-key.yaml: {}", e))?;
-        file.write_all(SIMPLE_CAPS.as_bytes())
+        file.write_all(crate::caps::BRING_YOUR_OWN_KEY_SAMPLE.as_bytes())
             .map_err(|e| format!("Failed to write into bring-your-own-key.yaml: {}", e))?;
         info!("Created bring-your-own-key.yaml: {}", path.display());
     }
