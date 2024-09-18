@@ -14,7 +14,7 @@
 }
 
 .callout_box_background {
-  background-color: #30200f !important;
+  background-color: var(--orange-3) !important;
   position: absolute;
   top: 0;
   left: -15px;
