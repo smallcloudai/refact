@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { DIFF_STATE_URL, DIFF_APPLY_URL, DIFF_PREVIEW_URL } from "./consts";
-import { DiffChunk } from "./types";
+import { DiffChunk, isDiffErrorResponseData } from "./types";
 import { RootState } from "../../app/store";
 
 export type DiffAppliedStateArgs = {
@@ -108,8 +108,10 @@ export const diffApi = createApi({
         return [{ type: "DIFF_STATE" }];
       },
     }),
-
-    diffApply: builder.mutation<DiffOperationResponse, DiffOperationArgs>({
+    diffApply: builder.mutation<
+      DiffOperationResponse | DiffApplyErrorResponse[],
+      DiffOperationArgs
+    >({
       queryFn: async (args, api, _extraOptions, baseQuery) => {
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;
@@ -124,6 +126,13 @@ export const diffApi = createApi({
 
         if (result.error) {
           return { error: result.error };
+        }
+
+        if (Array.isArray(result.data)) {
+          const maybeErrorChunks = result.data.filter(isDiffErrorResponseData);
+          if (maybeErrorChunks.length > 0) {
+            return { data: maybeErrorChunks };
+          }
         }
 
         return { data: result.data as DiffOperationResponse };
@@ -183,6 +192,14 @@ export type DiffApplyResponse = {
   success: boolean;
   detail: null | string;
 }[];
+
+export type DiffApplyErrorResponse = {
+  chunk_id: number;
+  applied: false;
+  can_unapply: false;
+  success: false;
+  detail: null | string;
+};
 
 export interface DiffPreviewResponse {
   state: DiffApplyResponse;

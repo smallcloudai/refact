@@ -3,6 +3,7 @@ import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
 import {
   DiffMessage,
   DiffStateResponse,
+  isDiffErrorResponseData,
   type DiffChunk,
 } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
@@ -18,7 +19,16 @@ import {
   useConfig,
   useDiffPreview,
   useEventsBusForIDE,
+  useAppDispatch,
+  useAppSelector,
 } from "../../hooks";
+import {
+  clearWarning,
+  getWarningMessage,
+  setWarning,
+} from "../../features/Errors/warningSlice";
+import { DiffWarningCallout } from "../Callout";
+import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -206,15 +216,61 @@ export const DiffForm: React.FC<{
   const { onSubmit, result: _result } = useDiffApplyMutation();
   const { onPreview, previewResult: _previewResult } = useDiffPreview();
   const { openFile } = useEventsBusForIDE();
+  const dispatch = useAppDispatch();
+  const warning = useAppSelector(getWarningMessage);
+  const onClearWarning = React.useCallback(
+    () => dispatch(clearWarning()),
+    [dispatch],
+  );
+
   const { host } = useConfig();
+
+  const handleDiffApplySubmit = React.useCallback(
+    (chunks: DiffChunk[], toApply: boolean[]) => {
+      onSubmit({ chunks, toApply })
+        .unwrap()
+        .then((payload) => {
+          let data = null;
+          if (!Array.isArray(payload)) {
+            return;
+          }
+          data = payload[0];
+
+          if (isDiffErrorResponseData(data)) {
+            if (data.detail) {
+              const [warning, filePath] = data.detail.split("\n")[0].split("'");
+              const normalizedPath = filePath.startsWith("\\\\?\\")
+                ? filePath.substring(4).replace(/\\/g, "/")
+                : filePath;
+
+              const reason = data.detail.split("\n")[1];
+              dispatch(
+                setWarning([[warning, normalizedPath].join(" "), reason]),
+              );
+            }
+          }
+        })
+        .catch((error: FetchBaseQueryError) => {
+          if (error.status === "FETCH_ERROR") {
+            dispatch(
+              setWarning([
+                "Failed to apply diff chunk",
+                "Reason: Connection lost with LSP server",
+              ]),
+            );
+          }
+        });
+    },
+    [dispatch, onSubmit],
+  );
 
   const handleToggle = React.useCallback(
     (diffs: DiffStateResponse[], apply: boolean) => {
       const chunks = diffs.map((diff) => diff.chunk);
       const toApply = diffs.map((_diff) => apply);
-      void onSubmit({ chunks, toApply });
+      handleDiffApplySubmit(chunks, toApply);
     },
-    [onSubmit],
+    [handleDiffApplySubmit],
   );
 
   const handlePreview = React.useCallback(
@@ -278,7 +334,20 @@ export const DiffForm: React.FC<{
               </Text>
             </Flex>
             <ScrollArea scrollbars="horizontal" asChild>
-              <Box style={{ minWidth: "100%" }}>
+              <Box style={{ minWidth: "100%", position: "relative" }}>
+                {warning && warning.length !== 0 && (
+                  <DiffWarningCallout
+                    onClick={onClearWarning}
+                    timeout={3000}
+                    itemType="warning"
+                    message={warning}
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      right: 0,
+                    }}
+                  />
+                )}
                 <Box
                   style={{
                     background: "rgb(51, 51, 51)",

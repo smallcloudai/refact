@@ -5,9 +5,10 @@ import styles from "./Link.module.css";
 import classNames from "classnames";
 
 interface LinkProps {
-  href: string;
+  href?: string;
   children: React.ReactNode;
   className?: string;
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 }
 
 export const Link: FC<LinkProps> = (props) => {
@@ -15,11 +16,12 @@ export const Link: FC<LinkProps> = (props) => {
 
   return (
     <RadixLink
-      {...props}
       className={classNames(
+        styles.link,
         { [styles.jetbrains]: config.host === "jetbrains" },
         props.className,
       )}
+      {...props}
     />
   );
 };
