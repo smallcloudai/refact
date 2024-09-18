@@ -102,71 +102,24 @@ export const DiffWarningCallout: React.FC<Omit<CalloutProps, "type">> = ({
   children,
   ...props
 }) => {
-  if (!message) {
-    console.log(`[DEBUG]: message is not specified`);
-    return (
-      <Callout
-        type="warning"
-        message="Some error occured"
-        color="amber"
-        className={
-          props.itemType === "warning"
-            ? styles.callout_box_background
-            : undefined
-        }
-        onClick={onClick}
-        timeout={timeout}
-        // highContrast
-        variant="surface"
-        {...props}
-      >
-        Error: {children}
-      </Callout>
-    );
-  }
-
-  if (!Array.isArray(message)) {
-    console.log(`[DEBUG]: message is not array`);
-    return (
-      <Callout
-        type="warning"
-        color="amber"
-        className={
-          props.itemType === "warning"
-            ? styles.callout_box_background
-            : undefined
-        }
-        onClick={onClick}
-        timeout={timeout}
-        // highContrast
-        variant="surface"
-        {...props}
-      >
-        Warning: {message} {children}
-      </Callout>
-    );
-  }
-
-  console.log(`[DEBUG]: message is array`);
+  const warningMessages = !message
+    ? ["Some error occurred"]
+    : Array.isArray(message)
+      ? message
+      : [message];
 
   return (
     <Callout
       type="warning"
-      color="orange"
-      // className={
-      //   props.itemType === "warning" ? styles.callout_box_background : undefined
-      // }
+      color={Array.isArray(message) ? "orange" : "amber"}
       onClick={onClick}
       timeout={timeout}
       {...props}
     >
       <Flex direction="column" gap="1">
-        {message.map((msg, i) => {
-          if (i === 0) {
-            return <span key={msg}>Warning: {msg}</span>;
-          }
-          return <span key={msg}>{msg}</span>;
-        })}
+        {warningMessages.map((msg, i) => (
+          <span key={msg}>{i === 0 ? `Warning: ${msg}` : msg}</span>
+        ))}
         {children}
       </Flex>
     </Callout>
