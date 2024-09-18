@@ -6,11 +6,13 @@ import { Item } from "./Item";
 import { Portal } from "../Portal";
 import { Popover } from "./Popover";
 import { TruncateLeft } from "../Text";
-import { ChatState } from "../../hooks";
 import { type DebouncedState } from "usehooks-ts";
+import { CommandCompletionResponse } from "../../services/refact";
+import { useAppSelector } from "../../hooks";
+import { selectSubmitOption } from "../../features/Config/configSlice";
 
 export type ComboBoxProps = {
-  commands: ChatState["commands"];
+  commands: CommandCompletionResponse;
   onChange: (value: string) => void;
   value: string;
   onSubmit: React.KeyboardEventHandler<HTMLTextAreaElement>;
@@ -19,6 +21,7 @@ export type ComboBoxProps = {
   requestCommandsCompletion: DebouncedState<
     (query: string, cursor: number) => void
   >;
+  onHelpClick: () => void;
 };
 
 export const ComboBox: React.FC<ComboBoxProps> = ({
@@ -29,9 +32,11 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
   value,
   render,
   requestCommandsCompletion,
+  onHelpClick,
 }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [moveCursorTo, setMoveCursorTo] = React.useState<number | null>(null);
+  const shiftEnterToSubmit = useAppSelector(selectSubmitOption);
 
   const combobox = useComboboxStore({
     defaultOpen: false,
@@ -41,7 +46,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   const state = combobox.useState();
 
-  const matches = useMemo(() => commands.completions, [commands.completions]);
+  const matches = commands.completions;
 
   const hasMatches = useMemo(() => {
     return matches.length > 0;
@@ -106,19 +111,42 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     },
     [combobox],
   );
-
+  // TODO: filter matches
   const onKeyUp = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (!ref.current) return;
 
-      if (event.key === "Enter" && !event.shiftKey && !hasMatches) {
+      if (
+        !shiftEnterToSubmit &&
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        !hasMatches
+      ) {
+        event.stopPropagation();
+        onSubmit(event);
+        setMoveCursorTo(null);
+        return;
+      } else if (
+        shiftEnterToSubmit &&
+        event.key === "Enter" &&
+        event.shiftKey &&
+        !hasMatches
+      ) {
         event.stopPropagation();
         onSubmit(event);
         setMoveCursorTo(null);
         return;
       }
 
-      if (event.key === "Enter" && event.shiftKey) {
+      if (!shiftEnterToSubmit && event.key === "Enter" && event.shiftKey) {
+        return;
+      } else if (
+        shiftEnterToSubmit &&
+        event.key === "Enter" &&
+        !event.shiftKey
+      ) {
+        onChange(value + "\n");
+
         return;
       }
 
@@ -140,7 +168,13 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       if (state.open && tabOrEnterOrSpace && command) {
         event.preventDefault();
         event.stopPropagation();
-        handleReplace(command);
+        if (command === "@help") {
+          handleReplace(command);
+          closeCombobox();
+          onHelpClick();
+        } else {
+          handleReplace(command);
+        }
       }
 
       if (event.key === "Escape") {
@@ -148,14 +182,18 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       }
     },
     [
+      onHelpClick,
       closeCombobox,
       combobox,
       handleReplace,
       hasMatches,
+      onChange,
       onSubmit,
+      shiftEnterToSubmit,
       state.activeId,
       state.activeValue,
       state.open,
+      value,
     ],
   );
 
@@ -170,9 +208,14 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
     (item: string, event: React.MouseEvent<HTMLDivElement>) => {
       event.stopPropagation();
       event.preventDefault();
-      handleReplace(item);
+      if (item === "@help") {
+        onHelpClick();
+        closeCombobox();
+      } else {
+        handleReplace(item);
+      }
     },
-    [handleReplace],
+    [handleReplace, onHelpClick, closeCombobox],
   );
 
   const popoverWidth = ref.current
@@ -223,7 +266,6 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         >
           {matches.map((item, index) => (
             <Item
-              store={combobox}
               key={item + "-" + index}
               value={item}
               onClick={(e) => onItemClick(item, e)}
@@ -231,6 +273,15 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
               <TruncateLeft>{item}</TruncateLeft>
             </Item>
           ))}
+          {/* {matches.map((item, index) => (
+            <Item
+              key={item + "-" + index}
+              value={item}
+              onClick={(e) => onItemClick(item, e)}
+            >
+              <TruncateLeft>{item}</TruncateLeft>
+            </Item>
+          ))} */}
         </Popover>
       </Portal>
     </>

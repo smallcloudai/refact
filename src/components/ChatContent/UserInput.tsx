@@ -69,7 +69,7 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
   const elements = processLines(lines);
 
   return (
-    <Container position="relative" pt="4">
+    <Container position="relative" pt="1">
       {showTextArea ? (
         <RetryForm
           onSubmit={handleSubmit}
@@ -83,7 +83,7 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
           size="4"
           onClick={handleEditClick}
           className={styles.userInput}
-          my="4"
+          my="1"
           asChild
         >
           <div>{elements}</div>

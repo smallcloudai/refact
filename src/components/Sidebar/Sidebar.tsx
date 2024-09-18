@@ -1,84 +1,63 @@
-import React, { useState } from "react";
-import { Box, Flex, Button, IconButton } from "@radix-ui/themes";
-import { BarChartIcon } from "@radix-ui/react-icons";
-import styles from "./sidebar.module.css";
+import React, { useCallback } from "react";
+import { Box, Flex } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
-import { Settings } from "./Settings";
-import { Statistic } from "../../features/Statistic";
-import { useConfig } from "../../contexts/config-context";
 import { Spinner } from "@radix-ui/themes";
+import { useAppSelector, useAppDispatch } from "../../hooks";
+import {
+  getHistory,
+  deleteChatById,
+} from "../../features/History/historySlice";
+import { Toolbar } from "../Toolbar";
+import { push } from "../../features/Pages/pagesSlice";
+import { PageWrapper } from "../PageWrapper";
+import { useConfig } from "../../hooks";
+import { restoreChat, type ChatThread } from "../../features/Chat/Thread";
 
-export const Sidebar: React.FC<
-  {
-    onCreateNewChat: () => void;
-    takingNotes: boolean;
-    currentChatId: string;
-  } & ChatHistoryProps
-> = ({
-  history,
-  onHistoryItemClick,
-  onCreateNewChat,
-  onDeleteHistoryItem,
-  currentChatId,
-  takingNotes,
-}) => {
-  const [isOpenedStatistic, setIsOpenedStatistic] = useState(false);
-  const handleCloseStatistic = () => {
-    setIsOpenedStatistic(false);
-  };
-  const { features } = useConfig();
+export type SidebarProps = {
+  takingNotes: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+} & Omit<
+  ChatHistoryProps,
+  | "history"
+  | "onDeleteHistoryItem"
+  | "onCreateNewChat"
+  | "onHistoryItemClick"
+  | "currentChatId"
+>;
 
-  // const [currentItem, setItem] = useState("")
+export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
+  // TODO: these can be lowered.
+  const dispatch = useAppDispatch();
+  const history = useAppSelector(getHistory, {
+    // TODO: selector issue here
+    devModeChecks: { stabilityCheck: "never" },
+  });
+
+  const onDeleteHistoryItem = (id: string) => dispatch(deleteChatById(id));
+  const onHistoryItemClick = useCallback(
+    (thread: ChatThread) => {
+      dispatch(restoreChat(thread));
+      dispatch(push({ name: "chat" }));
+    },
+    [dispatch],
+  );
+
+  const { host } = useConfig();
 
   return (
-    <Box className={styles.sidebar}>
-      {isOpenedStatistic ? (
-        <Statistic onCloseStatistic={handleCloseStatistic} />
-      ) : (
-        <Flex
-          direction="column"
-          position="fixed"
-          left="0"
-          bottom="0"
-          top="0"
-          style={{
-            width: "inherit",
-          }}
-        >
-          <Flex mt="4" mb="4">
-            <Box position="absolute" ml="5" mt="2">
-              <Spinner loading={takingNotes} title="taking notes" />
-            </Box>
-            <Button
-              variant="outline"
-              ml="auto"
-              mr="auto"
-              onClick={onCreateNewChat}
-              // loading={takingNotes}
-            >
-              Start a new chat
-            </Button>
-          </Flex>
-          <ChatHistory
-            history={history}
-            onHistoryItemClick={onHistoryItemClick}
-            onDeleteHistoryItem={onDeleteHistoryItem}
-            currentChatId={currentChatId}
-          />
-          <Flex p="2" gap="1">
-            <Settings />
-            {features?.statistics && (
-              <IconButton
-                variant="outline"
-                title="Bar Chart"
-                onClick={() => setIsOpenedStatistic(true)}
-              >
-                <BarChartIcon />
-              </IconButton>
-            )}
-          </Flex>
-        </Flex>
-      )}
-    </Box>
+    <PageWrapper host={host} style={style}>
+      <Toolbar activeTab={{ type: "dashboard" }} />
+      <Flex mt="4">
+        <Box position="absolute" ml="5" mt="2">
+          <Spinner loading={takingNotes} title="taking notes" />
+        </Box>
+      </Flex>
+      <ChatHistory
+        history={history}
+        onHistoryItemClick={onHistoryItemClick}
+        onDeleteHistoryItem={onDeleteHistoryItem}
+      />
+    </PageWrapper>
   );
 };

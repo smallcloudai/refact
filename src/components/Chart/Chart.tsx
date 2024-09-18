@@ -13,6 +13,8 @@ import {
 import { CanvasRenderer } from "echarts/renderers";
 
 import { Spinner } from "../Spinner";
+import { useAppearance } from "../../hooks";
+
 echarts.use([
   TitleComponent,
   TooltipComponent,
@@ -25,6 +27,8 @@ echarts.use([
 export const Chart: React.FC<{
   refactImpactDatesWeekly: Record<string, RefactTableImpactDateObj> | null;
 }> = ({ refactImpactDatesWeekly }) => {
+  const { isDarkMode } = useAppearance();
+
   if (refactImpactDatesWeekly === null) {
     return <Spinner />;
   }
@@ -61,6 +65,11 @@ export const Chart: React.FC<{
       {
         type: "category",
         data: dates,
+        axisLine: {
+          lineStyle: {
+            color: isDarkMode ? "#ffffff" : "#646464",
+          },
+        },
       },
     ],
     yAxis: [
@@ -69,6 +78,11 @@ export const Chart: React.FC<{
         name: "char.",
         nameTextStyle: {
           align: "right",
+        },
+        axisLine: {
+          lineStyle: {
+            color: isDarkMode ? "#ffffff" : "#646464",
+          },
         },
       },
     ],

@@ -1,5 +1,50 @@
-import { getApiKey } from "../../utils/ApiKey";
+import { RootState } from "../../app/store";
 import { CUSTOM_PROMPTS_URL } from "./consts";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+export const promptsApi = createApi({
+  reducerPath: "prompts",
+  baseQuery: fetchBaseQuery({
+    prepareHeaders: (headers, api) => {
+      const getState = api.getState as () => RootState;
+      const state = getState();
+      const token = state.config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  endpoints: (builder) => ({
+    getPrompts: builder.query<SystemPrompts, undefined>({
+      queryFn: async (_args, api, _opts, baseQuery) => {
+        const getState = api.getState as () => RootState;
+        const state = getState();
+        const port = state.config.lspPort;
+        const url = `http://127.0.0.1:${port}${CUSTOM_PROMPTS_URL}`;
+        const result = await baseQuery({
+          url,
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+        if (result.error) return { error: result.error };
+        if (!isCustomPromptsResponse(result.data)) {
+          return {
+            error: {
+              data: result.data,
+              error: "Invalid response from server",
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+        return { data: result.data.system_prompts };
+      },
+    }),
+  }),
+  refetchOnMountOrArgChange: true,
+});
+
+export const promptsEndpoints = promptsApi.endpoints;
 
 export type SystemPrompt = {
   text: string;
@@ -39,36 +84,4 @@ export function isCustomPromptsResponse(
   if (typeof json.system_prompts !== "object") return false;
   if (json.system_prompts === null) return false;
   return isSystemPrompts(json.system_prompts);
-}
-
-export async function getPrompts(lspUrl?: string): Promise<SystemPrompts> {
-  const customPromptsUrl = lspUrl
-    ? `${lspUrl.replace(/\/*$/, "")}${CUSTOM_PROMPTS_URL}`
-    : CUSTOM_PROMPTS_URL;
-
-  const apiKey = getApiKey();
-
-  const response = await fetch(customPromptsUrl, {
-    method: "GET",
-    credentials: "same-origin",
-    redirect: "follow",
-    cache: "no-cache",
-    referrer: "no-referrer",
-    headers: {
-      accept: "application/json",
-      ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
-
-  const json: unknown = await response.json();
-
-  if (!isCustomPromptsResponse(json)) {
-    return {};
-  }
-
-  return json.system_prompts;
 }

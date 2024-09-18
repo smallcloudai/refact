@@ -1,4 +1,4 @@
-import { ChatContextFile } from "../events";
+import type { ChatContextFile } from "../services/refact";
 
 const some_text = `import { CapsResponse } from "../services/refact";
 

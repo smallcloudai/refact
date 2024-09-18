@@ -1,127 +1,118 @@
 import React from "react";
 import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
-import { type DiffChunk } from "../../events";
+import { type DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import classNames from "classnames";
-
 import styles from "./ChatContent.module.css";
-import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
-import { type DiffChunkStatus } from "../../hooks";
 import { filename } from "../../utils";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
+import {
+  useDiffApplyMutation,
+  useDiffStateQuery,
+  useConfig,
+  useDiffPreview,
+} from "../../hooks";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
-function toDiff(str: string, type: "add" | "remove"): string {
-  const sign = type === "add" ? "+" : "-";
-
+function toDiff(str: string): string {
   const replaceEscapedEOL = str
     .split("\n")
     .filter((_) => _)
-    .join("\n" + sign);
+    .join("\n");
 
-  return sign + replaceEscapedEOL;
+  return replaceEscapedEOL;
 }
 
-const _Highlight: React.FC<{
-  children: string;
-  showLineNumbers?: boolean;
-  startingLineNumber?: number;
-  className: string;
-}> = ({ children, className, ...rest }) => {
+const DiffLine: React.FC<{
+  lineNumber?: number;
+  sign: string;
+  line: string;
+}> = ({ lineNumber, sign, line }) => {
+  const backgroundColorLeft = sign === "-" ? "#592e30" : "#3b5840";
+  const backgroundColor = sign === "-" ? "#3e2628" : "#2c3e33";
   return (
-    <SyntaxHighlighter
-      style={hljsStyle}
-      PreTag={(props) => (
-        <pre {...props} className={classNames(styles.diff_pre, className)} />
-      )}
-      language="diff"
-      {...rest}
-    >
-      {children}
-    </SyntaxHighlighter>
+    <Flex className={styles.diff_line} style={{ minWidth: "min-content" }}>
+      <Text
+        size="2"
+        className={styles.diff_line_number}
+        style={{ backgroundColor: backgroundColorLeft }}
+      >
+        {lineNumber ?? ""}
+      </Text>
+      <Text size="2" className={styles.diff_sign} style={{ backgroundColor }}>
+        {sign}
+      </Text>
+      <Text
+        size="2"
+        className={styles.diff_line_content}
+        style={{
+          backgroundColor,
+          whiteSpace: "pre",
+          whiteSpaceTrim: "none",
+          minWidth: "min-content",
+        }}
+      >
+        {line}
+      </Text>
+    </Flex>
   );
 };
 
-const Highlight = React.memo(_Highlight);
+const DiffHighlight: React.FC<{
+  startLine?: number;
+  sign: string;
+  text: string;
+}> = ({ startLine, sign, text }) => {
+  const lines = text.split("\n");
+  return (
+    <Flex
+      direction="column"
+      style={{ minWidth: "min-content", alignSelf: "stretch", width: "100%" }}
+    >
+      {lines.map((line, index) => {
+        return (
+          <DiffLine
+            key={index}
+            line={line}
+            sign={sign}
+            lineNumber={startLine ? index + startLine : undefined}
+          />
+        );
+      })}
+    </Flex>
+  );
+};
 
 type DiffProps = {
   diff: DiffChunk;
 };
 
 export const Diff: React.FC<DiffProps> = ({ diff }) => {
-  const removeString = diff.lines_remove && toDiff(diff.lines_remove, "remove");
-  const addString = diff.lines_add && toDiff(diff.lines_add, "add");
+  const removeString = diff.lines_remove && toDiff(diff.lines_remove);
+  const addString = diff.lines_add && toDiff(diff.lines_add);
   return (
-    <Flex className={styles.diff} py="2" direction="column">
+    <Flex
+      className={styles.diff}
+      py="2"
+      direction="column"
+      style={{ minWidth: "min-content" }}
+    >
       {removeString && (
-        <Highlight
-          className={styles.diff_first}
-          showLineNumbers={!!diff.line1}
-          startingLineNumber={diff.line1}
-        >
-          {removeString}
-        </Highlight>
+        <DiffHighlight startLine={diff.line1} sign={"-"} text={removeString} />
       )}
       {addString && (
-        <Highlight
-          className={styles.diff_second}
-          showLineNumbers={!!diff.line1}
-          startingLineNumber={diff.line1}
-        >
-          {addString}
-        </Highlight>
+        <DiffHighlight startLine={diff.line1} sign={"+"} text={addString} />
       )}
     </Flex>
   );
-};
-
-export type DiffContentProps = {
-  diffs: DiffChunk[];
-  appliedChunks: DiffChunkStatus | null;
-  onSubmit: (toApply: boolean[]) => void;
-  openFile: (file: { file_name: string; line?: number }) => void;
 };
 
 export type DiffChunkWithTypeAndApply = DiffChunk & {
   type: DiffType;
   apply: boolean;
-};
-
-const DiffsWithoutForm: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
-  diffs,
-}) => {
-  return (
-    <Flex direction="column" maxWidth="100%" gap="2">
-      {Object.entries(diffs).map(([fullFilePath, diffsForfile]) => {
-        return (
-          <Box key={fullFilePath}>
-            <Text size="1" wrap="wrap">
-              {fullFilePath}
-            </Text>
-            <ScrollArea scrollbars="horizontal" asChild>
-              <Box
-                style={{
-                  background: "rgb(51, 51, 51)",
-                  // backgroundOverflow: "visible",
-                }}
-              >
-                {diffsForfile.map((diff, index) => {
-                  return (
-                    <Diff diff={diff} key={diff.file_name + "-" + index} />
-                  );
-                })}
-              </Box>
-            </ScrollArea>
-          </Box>
-        );
-      })}
-    </Flex>
-  );
 };
 
 export const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
@@ -152,8 +143,13 @@ export const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
         style={{ display: "inline-block" }}
         key={fullPath + "-" + diffForFile.length}
       >
-        {name} <Text color="red">{removes}</Text>
-        <Text color="green">{adds}</Text>
+        {name}{" "}
+        <Text color="red" wrap="wrap">
+          {removes}
+        </Text>
+        <Text color="green" wrap="wrap">
+          {adds}
+        </Text>
       </Text>
     );
     const nextMemo = memo.length > 0 ? [...memo, ", ", element] : [element];
@@ -164,32 +160,35 @@ export const DiffTitle: React.FC<{ diffs: Record<string, DiffChunk[]> }> = ({
   return process(entries);
 };
 
-export const DiffContent: React.FC<DiffContentProps> = ({
-  diffs,
-  appliedChunks,
-  onSubmit,
-  openFile,
-}) => {
+export const DiffContent: React.FC<{
+  chunks: DiffChunk[];
+  toolCallId: string;
+}> = ({ chunks, toolCallId }) => {
   const [open, setOpen] = React.useState(false);
 
+  const diffStateRequest = useDiffStateQuery({ chunks, toolCallId });
+
+  const { onPreview, previewResult: _previewResult } = useDiffPreview(chunks);
+
+  const { onSubmit, result: _result } = useDiffApplyMutation();
+
   const groupedDiffs: Record<string, DiffWithStatus[]> = React.useMemo(() => {
-    const diffWithStatus = diffs.map((diff, index) => {
+    const diffWithStatus = chunks.map((diff, index) => {
       return {
         ...diff,
-        state: appliedChunks?.state[index] ?? 0,
-        can_apply: appliedChunks?.can_apply[index] ?? false,
-        applied: appliedChunks?.applied_chunks[index] ?? false,
+        // state: result.data?.state[index] ?? 0,
+        can_apply: diffStateRequest.data?.can_apply[index] ?? false,
+        applied: diffStateRequest.data?.state[index] ?? false,
         index,
       };
     });
 
     return groupBy(diffWithStatus, (diff) => diff.file_name);
-  }, [
-    appliedChunks?.applied_chunks,
-    appliedChunks?.can_apply,
-    appliedChunks?.state,
-    diffs,
-  ]);
+  }, [chunks, diffStateRequest]);
+
+  // if (diffStateRequest.isFetching) return null;
+  // if (diffStateRequest.isError) return null;
+  // if (!diffStateRequest.data) return null;
 
   return (
     <Container>
@@ -203,16 +202,17 @@ export const DiffContent: React.FC<DiffContentProps> = ({
           </Flex>
         </Collapsible.Trigger>
         <Collapsible.Content>
-          {!appliedChunks?.state ? (
-            <DiffsWithoutForm diffs={groupedDiffs} />
-          ) : (
-            <DiffForm
-              onSubmit={onSubmit}
-              loading={appliedChunks.fetching}
-              diffs={groupedDiffs}
-              openFile={openFile}
-            />
-          )}
+          <DiffForm
+            onSubmit={(toApply: boolean[]) => {
+              void onSubmit({ chunks, toApply, toolCallId });
+            }}
+            onPreview={onPreview}
+            loading={diffStateRequest.isLoading}
+            diffs={groupedDiffs}
+            openFile={() => {
+              // TODO:
+            }}
+          />
         </Collapsible.Content>
       </Collapsible.Root>
     </Container>
@@ -220,7 +220,7 @@ export const DiffContent: React.FC<DiffContentProps> = ({
 };
 
 export type DiffWithStatus = DiffChunk & {
-  state: 0 | 1 | 2;
+  state?: 0 | 1 | 2;
   can_apply: boolean;
   applied: boolean;
   index: number;
@@ -230,8 +230,10 @@ export const DiffForm: React.FC<{
   diffs: Record<string, DiffWithStatus[]>;
   loading: boolean;
   onSubmit: (toApply: boolean[]) => void;
+  onPreview: (toApply: boolean[]) => void | Promise<void>;
   openFile: (file: { file_name: string; line?: number }) => void;
-}> = ({ diffs, loading, onSubmit, openFile }) => {
+}> = ({ diffs, loading, onSubmit, onPreview, openFile }) => {
+  const { host } = useConfig();
   const values = React.useMemo(() => {
     return Object.values(diffs).reduce((acc, curr) => acc.concat(curr), []);
   }, [diffs]);
@@ -260,14 +262,25 @@ export const DiffForm: React.FC<{
   }, [diffs, onSubmit]);
 
   const handleToggle = React.useCallback(
-    (value: boolean, indeices: number[]) => {
+    (value: boolean, indices: number[]) => {
       const toApply = values.map((diff, index) => {
-        if (indeices.includes(index)) return value;
+        if (indices.includes(index)) return value;
         return diff.applied;
       });
       onSubmit(toApply);
     },
     [onSubmit, values],
+  );
+
+  const handlePreview = React.useCallback(
+    (value: boolean, indices: number[]) => {
+      const toApply = values.map((diff, index) => {
+        if (indices.includes(index)) return value;
+        return diff.applied;
+      });
+      void onPreview(toApply);
+    },
+    [values, onPreview],
   );
 
   return (
@@ -276,7 +289,7 @@ export const DiffForm: React.FC<{
         const key = fullFileName + "-" + index;
         const errored = diffsForFile.some((diff) => diff.state === 2);
         const applied = diffsForFile.every((diff) => diff.applied);
-        const indeices = diffsForFile.map((diff) => diff.index);
+        const indices = diffsForFile.map((diff) => diff.index);
         return (
           <Box key={key} my="2">
             <Flex justify="between" align="center" p="1">
@@ -301,10 +314,19 @@ export const DiffForm: React.FC<{
               <Text size="1" as="label">
                 <Flex align="center" gap="2" pl="2">
                   {errored && "error"}
+                  {host === "vscode" && (
+                    <Button
+                      size="1"
+                      disabled={loading}
+                      onClick={() => handlePreview(!applied, indices)}
+                    >
+                      Preview
+                    </Button>
+                  )}
                   <Button
                     size="1"
                     disabled={loading}
-                    onClick={() => handleToggle(!applied, indeices)}
+                    onClick={() => handleToggle(!applied, indices)}
                   >
                     {applied ? "Unapply" : "Apply"}
                   </Button>
@@ -312,10 +334,17 @@ export const DiffForm: React.FC<{
               </Text>
             </Flex>
             <ScrollArea scrollbars="horizontal" asChild>
-              <Box style={{ background: "rgb(51, 51, 51)" }}>
-                {diffsForFile.map((diff, i) => (
-                  <Diff key={`${fullFileName}-${index}-${i}`} diff={diff} />
-                ))}
+              <Box style={{ minWidth: "100%" }}>
+                <Box
+                  style={{
+                    background: "rgb(51, 51, 51)",
+                    minWidth: "min-content",
+                  }}
+                >
+                  {diffsForFile.map((diff, i) => (
+                    <Diff key={`${fullFileName}-${index}-${i}`} diff={diff} />
+                  ))}
+                </Box>
               </Box>
             </ScrollArea>
           </Box>

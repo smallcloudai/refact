@@ -1,5 +1,5 @@
 import React from "react";
-import { ContextMemory } from "../../events";
+import type { ContextMemory } from "../../services/refact";
 import { Badge, Flex, Text } from "@radix-ui/themes";
 import { CardStackIcon } from "@radix-ui/react-icons";
 import { HoverCard, Container } from "@radix-ui/themes";

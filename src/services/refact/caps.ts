@@ -1,4 +1,51 @@
+import { RootState } from "../../app/store";
 import { CAPS_URL } from "./consts";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+export const capsApi = createApi({
+  reducerPath: "caps",
+  baseQuery: fetchBaseQuery({
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as RootState).config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  endpoints: (builder) => ({
+    getCaps: builder.query<CapsResponse, undefined>({
+      queryFn: async (_args, api, _opts, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${CAPS_URL}`;
+        // return baseQuery(url);
+        const result = await baseQuery({
+          url,
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+        if (result.error) {
+          return { error: result.error };
+        }
+        if (!isCapsResponse(result.data)) {
+          return {
+            meta: result.meta,
+            error: {
+              error: "Invalid response from caps",
+              data: result.data,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+  }),
+});
+
+export const capsEndpoints = capsApi.endpoints;
 
 export type CodeChatModel = {
   default_scratchpad: string;
@@ -47,28 +94,14 @@ export function isCapsResponse(json: unknown): json is CapsResponse {
   return true;
 }
 
-export async function getCaps(lspUrl?: string): Promise<CapsResponse> {
-  const capsEndpoint = lspUrl
-    ? `${lspUrl.replace(/\/*$/, "")}${CAPS_URL}`
-    : CAPS_URL;
+type CapsErrorResponse = {
+  detail: string;
+};
 
-  const response = await fetch(capsEndpoint, {
-    method: "GET",
-    credentials: "same-origin",
-    headers: {
-      accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
-
-  const json: unknown = await response.json();
-
-  if (!isCapsResponse(json)) {
-    throw new Error("Invalid response from caps");
-  }
-
-  return json;
+export function isCapsErrorResponse(json: unknown): json is CapsErrorResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("detail" in json)) return false;
+  if (typeof json.detail !== "string") return false;
+  return true;
 }

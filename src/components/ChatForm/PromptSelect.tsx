@@ -1,13 +1,14 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { Flex, Text } from "@radix-ui/themes";
 import { Root, Trigger, Content, Item } from "../Select";
 import type { SystemPrompts } from "../../services/refact";
 
 export type PromptSelectProps = {
-  value: string;
-  onChange: (value: string) => void;
+  value: SystemPrompts;
+  onChange: (value: SystemPrompts) => void;
   prompts: SystemPrompts;
   disabled?: boolean;
+  contentPosition?: "item-aligned" | "popper";
 };
 
 export const PromptSelect: React.FC<PromptSelectProps> = ({
@@ -15,21 +16,34 @@ export const PromptSelect: React.FC<PromptSelectProps> = ({
   prompts,
   onChange,
   disabled,
+  contentPosition,
 }) => {
+  // TODO: just use the hooks here
   const promptKeysAndValues = Object.entries(prompts);
+  const handleChange = useCallback(
+    (key: string) => {
+      const item = promptKeysAndValues.find((p) => p[0] === key);
+      if (!item) return;
+      const prompt = { [item[0]]: item[1] };
+      onChange(prompt);
+    },
+    [onChange, promptKeysAndValues],
+  );
+  const val = useMemo(() => Object.keys(value)[0] ?? "default", [value]);
   if (promptKeysAndValues.length === 0) return null;
+
   return (
     <Flex gap="2" align="center" wrap="wrap">
       <Text size="2">System Prompt:</Text>
       <Root
         name="system prompt"
         disabled={disabled}
-        onValueChange={onChange}
-        value={value}
+        onValueChange={handleChange}
+        value={val}
         size="1"
       >
-        <Trigger title={value} />
-        <Content>
+        <Trigger title={val} />
+        <Content position={contentPosition ? contentPosition : "popper"}>
           {Object.entries(prompts).map(([key, value]) => {
             return (
               <Item

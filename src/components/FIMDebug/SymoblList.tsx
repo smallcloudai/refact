@@ -1,6 +1,6 @@
 import React from "react";
 import { Flex, Text, Box } from "@radix-ui/themes";
-import { Buckets } from "../../events";
+import type { Buckets } from "../../services/refact";
 import { TruncateLeft } from "../Text";
 import { Collapsible } from "../Collapsible";
 import styles from "./fim.module.css";

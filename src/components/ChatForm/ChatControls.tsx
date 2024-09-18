@@ -1,13 +1,18 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { Text, Flex, HoverCard, Link } from "@radix-ui/themes";
 import { Select } from "../Select";
-import { type Config } from "../../contexts/config-context";
+import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
 import classNames from "classnames";
 import { PromptSelect, PromptSelectProps } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import { useTourRefs } from "../../features/Tour";
+import { ToolUseSwitch } from "./ToolUseSwitch";
+import { ToolUse, selectToolUse, setToolUse } from "../../features/Chat/Thread";
+import { useCanUseTools } from "../../hooks/useCanUseTools";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 
 type CapsSelectProps = {
   value: string;
@@ -22,8 +27,16 @@ const CapsSelect: React.FC<CapsSelectProps> = ({
   onChange,
   disabled,
 }) => {
+  const refs = useTourRefs();
+
   return (
-    <Flex gap="2" align="center" wrap="wrap">
+    <Flex
+      gap="2"
+      align="center"
+      wrap="wrap"
+      ref={(x) => refs.setUseModel(x)}
+      style={{ alignSelf: "flex-start" }}
+    >
       <Text size="2">Use model:</Text>
       <Select
         disabled={disabled}
@@ -55,17 +68,17 @@ export type Checkbox = {
 
 export type ChatControlsProps = {
   checkboxes: Record<string, Checkbox>;
-  onCheckedChange: (name: string, checked: boolean | string) => void;
+  onCheckedChange: (
+    name: keyof ChatControlsProps["checkboxes"],
+    checked: boolean | string,
+  ) => void;
   selectProps: CapsSelectProps;
   promptsProps: PromptSelectProps;
   host: Config["host"];
   showControls: boolean;
-  useTools: boolean;
-  canUseTools: boolean;
-  setUseTools: (value: boolean) => void;
 };
 
-const ChatContolCheckBox: React.FC<{
+const ChatControlCheckBox: React.FC<{
   name: string;
   checked: boolean;
   disabled?: boolean;
@@ -95,14 +108,18 @@ const ChatContolCheckBox: React.FC<{
         disabled={disabled}
         onCheckedChange={onCheckChange}
       >
-        {" "}
         {label}
-        <TruncateLeft>{fileName}</TruncateLeft>
+        {fileName && (
+          // TODO: negative margin ?
+          <Flex ml="-3px">
+            <TruncateLeft>{fileName}</TruncateLeft>
+          </Flex>
+        )}
       </Checkbox>
       {infoText && (
         <HoverCard.Root>
           <HoverCard.Trigger>
-            <QuestionMarkCircledIcon />
+            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
           </HoverCard.Trigger>
           <HoverCard.Content maxWidth="240px" size="1">
             <Flex direction="column" gap="4">
@@ -133,10 +150,16 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   promptsProps,
   host,
   showControls,
-  canUseTools,
-  useTools,
-  setUseTools,
 }) => {
+  const refs = useTourRefs();
+  const canUseTools = useCanUseTools();
+  const dispatch = useAppDispatch();
+  const toolUse = useAppSelector(selectToolUse);
+  const onSetToolUse = useCallback(
+    (value: ToolUse) => dispatch(setToolUse(value)),
+    [dispatch],
+  );
+
   return (
     <Flex
       pt="2"
@@ -145,18 +168,6 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
       direction="column"
       className={classNames(styles.controls)}
     >
-      {canUseTools && (
-        <ChatContolCheckBox
-          name="use_tools"
-          checked={useTools}
-          onCheckChange={(value) => setUseTools(!!value)}
-          label="Allow model to use tools"
-          infoText="Turn on when asking about your codebase. When tuned on the model can autonomously call functions to gather the best context."
-          href="https://docs.refact.ai/features/ai-chat/"
-          linkText="documentation"
-        />
-      )}
-
       {Object.entries(checkboxes).map(([key, checkbox]) => {
         if (host === "web" && checkbox.name === "file_upload") {
           return null;
@@ -165,22 +176,46 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           return null;
         }
         return (
-          <ChatContolCheckBox
+          <Flex
+            style={{
+              // TODO: lots of `align` self
+              alignSelf: "flex-start",
+            }}
             key={key}
-            name={checkbox.name}
-            label={checkbox.label}
-            checked={checkbox.checked}
-            disabled={checkbox.disabled}
-            onCheckChange={(value) => onCheckedChange(key, value)}
-            infoText={checkbox.info?.text}
-            href={checkbox.info?.link}
-            linkText={checkbox.info?.linkText}
-            fileName={checkbox.fileName}
-          />
+          >
+            <ChatControlCheckBox
+              name={checkbox.name}
+              label={checkbox.label}
+              checked={checkbox.checked}
+              disabled={checkbox.disabled}
+              onCheckChange={(value) => onCheckedChange(key, value)}
+              infoText={checkbox.info?.text}
+              href={checkbox.info?.link}
+              linkText={checkbox.info?.linkText}
+              fileName={checkbox.fileName}
+            />
+          </Flex>
         );
       })}
-      {showControls && <CapsSelect {...selectProps} />}
-      {showControls && <PromptSelect {...promptsProps} />}
+      {canUseTools && showControls && (
+        <Flex
+          ref={(x) => refs.setUseTools(x)}
+          style={{ alignSelf: "flex-start" }}
+        >
+          <ToolUseSwitch toolUse={toolUse} setToolUse={onSetToolUse} />
+        </Flex>
+      )}
+
+      {showControls && (
+        <Flex style={{ alignSelf: "flex-start" }}>
+          <CapsSelect {...selectProps} />
+        </Flex>
+      )}
+      {showControls && (
+        <Flex style={{ alignSelf: "flex-start" }}>
+          <PromptSelect {...promptsProps} />
+        </Flex>
+      )}
     </Flex>
   );
 };

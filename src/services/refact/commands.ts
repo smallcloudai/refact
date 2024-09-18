@@ -1,5 +1,131 @@
+import { RootState } from "../../app/store";
+import { parseOrElse } from "../../utils";
 import { AT_COMMAND_COMPLETION, AT_COMMAND_PREVIEW } from "./consts";
-import { type ChatContextFile, type ChatContextFileMessage } from "./types";
+import { type ChatContextFile } from "./types";
+
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+export type CompletionArgs = {
+  query: string;
+  cursor: number;
+  top_n?: number;
+};
+
+export const commandsApi = createApi({
+  reducerPath: "commands",
+  baseQuery: fetchBaseQuery({
+    prepareHeaders: (headers, api) => {
+      const getState = api.getState as () => RootState;
+      const state = getState();
+      const token = state.config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  endpoints: (builder) => ({
+    getCommandCompletion: builder.query<
+      CommandCompletionResponse,
+      CompletionArgs
+    >({
+      queryFn: async (args, api, _opts, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${AT_COMMAND_COMPLETION}`;
+        const response = await baseQuery({
+          url,
+          method: "POST",
+          credentials: "same-origin",
+          redirect: "follow",
+          body: {
+            query: args.query,
+            cursor: args.cursor,
+            top_n: args.top_n ?? 5,
+          },
+        });
+
+        const builtinCompletions =
+          "@help".startsWith(args.query) && args.query.length !== 0
+            ? ["@help"]
+            : [];
+
+        if (response.error) return { error: response.error };
+        if (isCommandCompletionResponse(response.data)) {
+          return {
+            data: {
+              ...response.data,
+              completions: [
+                ...builtinCompletions,
+                ...response.data.completions,
+              ],
+            },
+          };
+        } else if (isDetailMessage(response.data)) {
+          return {
+            data: {
+              completions: [...builtinCompletions],
+              replace: [0, 0],
+              is_cmd_executable: false,
+            },
+          };
+        } else {
+          return {
+            error: {
+              error: "Invalid response from command completion",
+              data: response.data,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+      },
+    }),
+    getCommandPreview: builder.query<ChatContextFile[], string>({
+      queryFn: async (query, api, _opts, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${AT_COMMAND_PREVIEW}`;
+        const response = await baseQuery({
+          url,
+          method: "POST",
+          credentials: "same-origin",
+          redirect: "follow",
+          body: { query },
+        });
+
+        if (response.error) return { error: response.error };
+
+        if (
+          !isCommandPreviewResponse(response.data) &&
+          !isDetailMessage(response.data)
+        ) {
+          return {
+            error: {
+              data: response.data,
+              status: "CUSTOM_ERROR",
+              error: "Invalid response from command preview",
+            },
+          };
+        }
+
+        if (isDetailMessage(response.data)) {
+          return { data: [] };
+        }
+
+        const files = response.data.messages.reduce<ChatContextFile[]>(
+          (acc, { content }) => {
+            const fileData = parseOrElse<ChatContextFile[]>(content, []);
+            return [...acc, ...fileData];
+          },
+          [],
+        );
+
+        return { data: files };
+      },
+    }),
+  }),
+  refetchOnMountOrArgChange: true,
+});
 
 export type CommandCompletionResponse = {
   completions: string[];
@@ -25,44 +151,6 @@ export function isDetailMessage(json: unknown): json is DetailMessage {
   if (typeof json !== "object") return false;
   if (!("detail" in json)) return false;
   return true;
-}
-
-export async function getAtCommandCompletion(
-  query: string,
-  cursor: number,
-  number: number,
-  lspUrl?: string,
-): Promise<CommandCompletionResponse> {
-  const completionEndpoint = lspUrl
-    ? `${lspUrl.replace(/\/*$/, "")}${AT_COMMAND_COMPLETION}`
-    : AT_COMMAND_COMPLETION;
-
-  const response = await fetch(completionEndpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query, cursor, top_n: number }),
-  });
-
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
-
-  const json: unknown = await response.json();
-  if (!isCommandCompletionResponse(json) && !isDetailMessage(json)) {
-    throw new Error("Invalid response from completion");
-  }
-
-  if (isDetailMessage(json)) {
-    return {
-      completions: [],
-      replace: [0, 0],
-      is_cmd_executable: false,
-    };
-  }
-
-  return json;
 }
 
 export type CommandPreviewContent = {
@@ -92,49 +180,4 @@ export function isCommandPreviewResponse(
   if (typeof firstMessage.content !== "string") return false;
 
   return true;
-}
-
-export async function getAtCommandPreview(
-  query: string,
-  lspUrl?: string,
-): Promise<ChatContextFileMessage[]> {
-  // check this
-  const previewEndpoint = lspUrl
-    ? `${lspUrl.replace(/\/*$/, "")}${AT_COMMAND_PREVIEW}`
-    : AT_COMMAND_PREVIEW;
-
-  const response = await fetch(previewEndpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    redirect: "follow",
-    cache: "no-cache",
-    referrer: "no-referrer",
-    credentials: "same-origin",
-    body: JSON.stringify({ query }),
-  });
-
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
-
-  const json: unknown = await response.json();
-
-  if (!isCommandPreviewResponse(json) && !isDetailMessage(json)) {
-    throw new Error("Invalid response from command preview");
-  }
-
-  if (isDetailMessage(json)) {
-    return [];
-  }
-
-  const jsonMessages = json.messages.map<ChatContextFileMessage>(
-    ({ role, content }) => {
-      const fileData = JSON.parse(content) as ChatContextFile[];
-      return [role, fileData];
-    },
-  );
-
-  return jsonMessages;
 }

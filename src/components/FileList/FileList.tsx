@@ -1,7 +1,7 @@
 import React from "react";
 import { Flex } from "@radix-ui/themes";
 import { TruncateLeft, Text } from "../Text";
-import type { ChatContextFile } from "../../events";
+import type { ChatContextFile } from "../../services/refact";
 import styles from "./file-list.module.css";
 
 export type FileListProps = { files: ChatContextFile[] };

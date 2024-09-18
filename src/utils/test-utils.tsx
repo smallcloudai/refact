@@ -1,19 +1,51 @@
-import { ReactElement } from "react";
+import { PropsWithChildren, ReactElement } from "react";
 import { vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { render, RenderOptions } from "@testing-library/react";
-import userEvent, { UserEvent } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 import { Theme } from "@radix-ui/themes";
-import { EVENT_NAMES_TO_CHAT, ReceivePrompts } from "../events";
-import { STUB_CAPS_RESPONSE, SYSTEM_PROMPTS } from "../__fixtures__";
+import { Provider } from "react-redux";
+import { AppStore, RootState, setUpStore } from "../app/store";
+import { TourProvider } from "../features/Tour";
+
+// This type interface extends the default options for render from RTL, as well
+// as allows the user to specify other things such as initialState, store.
+interface ExtendedRenderOptions
+  extends Omit<RenderOptions, "queries" | "wrapper"> {
+  preloadedState?: Partial<RootState>;
+  store?: AppStore;
+}
 
 const customRender = (
   ui: ReactElement,
-  options?: Omit<RenderOptions, "wrapper">,
-): ReturnType<typeof render> & { user: UserEvent } => {
+  options: ExtendedRenderOptions = {},
+) => {
   const user = userEvent.setup();
+  const {
+    preloadedState,
+    // Automatically create a store instance if no store was passed in
+    store = setUpStore({
+      // @ts-expect-error finished
+      tour: { type: "finished", step: 0 },
+      ...preloadedState,
+    }),
+    ...renderOptions
+  } = options;
+
+  const Wrapper = ({ children }: PropsWithChildren) => (
+    <Provider store={store}>
+      <Theme>
+        <TourProvider>{children}</TourProvider>
+      </Theme>
+    </Provider>
+  );
+
   return {
-    ...render(ui, { wrapper: Theme, ...options }),
+    ...render(ui, {
+      wrapper: Wrapper,
+      ...renderOptions,
+    }),
+    store,
     user,
   };
 };
@@ -33,26 +65,26 @@ export function postMessage(data: unknown) {
   );
 }
 
-export function setUpCapsForChat(chatId = "") {
-  postMessage({
-    type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS,
-    payload: {
-      id: chatId,
-      caps: STUB_CAPS_RESPONSE,
-    },
-  });
-}
+// export function setUpCapsForChat(chatId = "") {
+//   postMessage({
+//     type: EVENT_NAMES_TO_CHAT.RECEIVE_CAPS,
+//     payload: {
+//       id: chatId,
+//       caps: STUB_CAPS_RESPONSE,
+//     },
+//   });
+// }
 
-export function setUpSystemPromptsForChat(chatId = "") {
-  const systemPromptsMessage: ReceivePrompts = {
-    type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS,
-    payload: {
-      id: chatId,
-      prompts: SYSTEM_PROMPTS,
-    },
-  };
-  postMessage(systemPromptsMessage);
-}
+// export function setUpSystemPromptsForChat(chatId = "") {
+//   const systemPromptsMessage: ReceivePrompts = {
+//     type: EVENT_NAMES_TO_CHAT.RECEIVE_PROMPTS,
+//     payload: {
+//       id: chatId,
+//       prompts: SYSTEM_PROMPTS,
+//     },
+//   };
+//   postMessage(systemPromptsMessage);
+// }
 
 export function stubResizeObserver() {
   const ResizeObserverMock = vi.fn(() => ({

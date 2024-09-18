@@ -1,5 +1,5 @@
 import { useImperativeHandle, useEffect, useRef, useState } from "react";
-import { type ChatMessages } from "../../events";
+import { type ChatMessages } from "../../services/refact";
 
 type useAutoScrollProps = {
   ref: React.ForwardedRef<HTMLDivElement>;

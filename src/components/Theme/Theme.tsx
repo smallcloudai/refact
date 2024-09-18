@@ -1,15 +1,9 @@
-import React, { useCallback, useEffect } from "react";
-import {
-  Theme as RadixTheme,
-  IconButton,
-  // ThemePanel
-} from "@radix-ui/themes";
+import React from "react";
+import { Theme as RadixTheme, IconButton } from "@radix-ui/themes";
 import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
-import { useDarkMode } from "usehooks-ts";
 import "@radix-ui/themes/styles.css";
 import "./theme-config.css";
-import { useConfig } from "../../contexts/config-context";
-import { useMutationObserver } from "../../hooks";
+import { useAppearance, useConfig } from "../../hooks";
 
 export type ThemeProps = {
   children: JSX.Element;
@@ -47,10 +41,11 @@ export type ThemeProps = {
   panelBackground?: "solid" | "translucent";
   radius?: "none" | "small" | "medium" | "large" | "full";
   scaling?: "90%" | "95%" | "100%" | "105%" | "110%";
+  hasBackground?: boolean;
 };
 
 const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
-  const { isDarkMode, toggle } = useDarkMode();
+  const { isDarkMode, toggle } = useAppearance();
   const Icon = isDarkMode ? MoonIcon : SunIcon;
   return (
     <RadixTheme {...props} appearance={isDarkMode ? "dark" : "light"}>
@@ -73,38 +68,12 @@ const ThemeWithDarkMode: React.FC<ThemeProps> = ({ children, ...props }) => {
 
 export const Theme: React.FC<ThemeProps> = (props) => {
   const { host, themeProps } = useConfig();
-  const [appearance, setAppearance] = React.useState<
-    "dark" | "light" | "inherit"
-  >("inherit");
-
-  const handleChange = useCallback(() => {
-    const maybeDark =
-      document.body.classList.contains("vscode-dark") ||
-      document.body.classList.contains("vscode-high-contrast");
-    const maybeLight =
-      document.body.classList.contains("vscode-light") ||
-      document.body.classList.contains("vscode-high-contrast-light");
-
-    if (maybeLight) {
-      setAppearance("light");
-    } else if (maybeDark) {
-      setAppearance("dark");
-    } else {
-      setAppearance("inherit");
-    }
-  }, [setAppearance]);
-
-  useEffect(handleChange, [handleChange]);
-
-  useMutationObserver(document.body, handleChange, {
-    attributes: true,
-    characterData: false,
-    childList: false,
-    subtree: false,
-  });
+  const { appearance } = useAppearance();
 
   if (host === "web") {
-    return <ThemeWithDarkMode {...themeProps} {...props} />;
+    return (
+      <ThemeWithDarkMode {...themeProps} {...props} appearance={appearance} />
+    );
   }
 
   return <RadixTheme {...themeProps} {...props} appearance={appearance} />;

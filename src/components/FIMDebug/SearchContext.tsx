@@ -3,7 +3,7 @@ import { Flex, Container, Text } from "@radix-ui/themes";
 import { FileList } from "../FileList";
 import { SymbolList } from "./SymoblList";
 
-import type { FIMContext } from "../../events";
+import type { FIMContext } from "../../services/refact";
 
 export type SearchContextProps = {
   data: FIMContext;

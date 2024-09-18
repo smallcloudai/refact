@@ -1,22 +1,36 @@
 import { render } from "../../utils/test-utils";
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ChatForm, ChatFormProps } from "./ChatForm";
-import { ConfigProvider, type Config } from "../../contexts/config-context";
 import React from "react";
 import { SYSTEM_PROMPTS } from "../../__fixtures__";
-import { useDebounceCallback } from "usehooks-ts";
+
+import {
+  server,
+  goodCaps,
+  goodPrompts,
+  noTools,
+  noCommandPreview,
+  noCompletions,
+  goodPing,
+} from "../../utils/mockServer";
+
+const handlers = [
+  goodCaps,
+  goodPrompts,
+  noTools,
+  noCommandPreview,
+  noCompletions,
+  goodPing,
+];
+
+server.use(...handlers);
 
 const noop = () => ({});
 
-const App: React.FC<Partial<ChatFormProps & { host?: Config["host"] }>> = ({
-  host,
-  ...props
-}) => {
+const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
-    removePreviewFileByName: noop,
     chatId: "chatId",
-    selectedSnippet: { code: "", language: "", path: "", basename: "" },
-    onSubmit: noop,
+    onSubmit: (_str: string) => ({}),
     isStreaming: false,
     onStopStreaming: noop,
     onSetChatModel: noop,
@@ -27,55 +41,22 @@ const App: React.FC<Partial<ChatFormProps & { host?: Config["host"] }>> = ({
       available_caps: {},
       error: "",
     },
-    error: "",
-    clearError: noop,
     showControls: true,
-    hasContextFile: false,
-    commands: {
-      completions: [],
-      replace: [-1, -1],
-      is_cmd_executable: false,
-    },
-    requestCommandsCompletion: useDebounceCallback(noop, 0),
-    requestPreviewFiles: noop,
-    attachFile: {
-      name: "",
-      line1: null,
-      line2: null,
-      can_paste: false,
-      attach: false,
-      path: "",
-      cursor: null,
-    },
-    setSelectedCommand: noop,
-    filesInPreview: [],
     onTextAreaHeightChange: noop,
-    requestCaps: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
-    selectedSystemPrompt: null,
-    canUseTools: false,
-    setUseTools: noop,
-    useTools: false,
+    selectedSystemPrompt: {},
     ...props,
   };
 
-  return (
-    <ConfigProvider
-      config={{
-        host: host ?? "web",
-        features: {
-          vecdb: true,
-          ast: true,
-        },
-      }}
-    >
-      <ChatForm {...defaultProps} />
-    </ConfigProvider>
-  );
+  return <ChatForm {...defaultProps} />;
 };
 
 describe("ChatForm", () => {
+  beforeEach(() => {
+    server.use(...handlers);
+  });
+
   test("when I push enter it should call onSubmit", async () => {
     const fakeOnSubmit = vi.fn();
 
@@ -133,9 +114,9 @@ describe("ChatForm", () => {
       path: "path/to/foo.txt",
       cursor: 2,
     };
-    const { user, ...app } = render(
-      <App onSubmit={fakeOnSubmit} attachFile={activeFile} />,
-    );
+    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />, {
+      preloadedState: { active_file: activeFile },
+    });
 
     const label = app.queryByText(/Lookup symbols/);
     expect(label).not.toBeNull();
@@ -152,7 +133,6 @@ describe("ChatForm", () => {
   });
 
   test("checkbox snippet", async () => {
-    // skipped because if the snippet is there on the first render it's automatically appened
     const fakeOnSubmit = vi.fn();
     const snippet = {
       language: "python",
@@ -160,21 +140,32 @@ describe("ChatForm", () => {
       path: "/Users/refact/projects/print1.py",
       basename: "print1.py",
     };
-    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} host="ide" />);
-
-    app.rerender(
-      <App onSubmit={fakeOnSubmit} selectedSnippet={snippet} host="ide" />,
+    const { user, ...app } = render(
+      <App chatId="test-3" onSubmit={fakeOnSubmit} />,
+      {
+        preloadedState: {
+          selected_snippet: snippet,
+          active_file: {
+            name: "foo.txt",
+            cursor: 1,
+            path: "foo.txt",
+            line1: 0,
+            line2: 0,
+            can_paste: true,
+          },
+          config: { host: "vscode", themeProps: {}, lspPort: 8001 },
+        },
+      },
     );
 
     const label = app.queryByText(/Selected \d* lines/);
-    // app.debug();
     expect(label).not.toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const textarea = app.container.querySelector("textarea")!;
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     const markdown = "```python\nprint(1)\n```\n";
-    const expected = `${markdown}\nfoo\n`;
+    const expected = `@file foo.txt:0-0\n${markdown}\nfoo\n`;
     expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
   });
 });

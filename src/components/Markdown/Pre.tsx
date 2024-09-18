@@ -2,7 +2,7 @@ import React from "react";
 import { Button, Flex } from "@radix-ui/themes";
 import { RightButton, RightButtonGroup } from "../Buttons/";
 import "./highlightjs.css";
-import { useConfig } from "../../contexts/config-context";
+import { useConfig } from "../../hooks";
 
 const PreTagWithButtons: React.FC<
   React.PropsWithChildren<{
@@ -24,7 +24,23 @@ const PreTagWithButtons: React.FC<
   return (
     <pre {...props}>
       {config.host === "web" ? (
-        <RightButton onClick={onCopyClick}>Copy</RightButton>
+        <RightButtonGroup
+          direction="column"
+          style={{
+            position: "static",
+            minHeight: "var(--space-6)",
+          }}
+        >
+          <Flex
+            gap="1"
+            justify="end"
+            style={{ position: "absolute", right: "0" }}
+            pr="2"
+            pt="1"
+          >
+            <RightButton onClick={onCopyClick}>Copy</RightButton>
+          </Flex>
+        </RightButtonGroup>
       ) : (
         <RightButtonGroup
           direction="column"
@@ -47,7 +63,7 @@ const PreTagWithButtons: React.FC<
             </Button>
             {canPaste && (
               <Button variant="surface" size="1" onClick={onPasteClick}>
-                Paste
+                ➕ Diff
               </Button>
             )}
           </Flex>

@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { Markdown, MarkdownProps } from "../Markdown";
 
 import { Container, Box } from "@radix-ui/themes";
-import { ToolCall, ToolResult } from "../../events";
+import { ToolCall, ToolResult } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 
 type ChatInputProps = Pick<
