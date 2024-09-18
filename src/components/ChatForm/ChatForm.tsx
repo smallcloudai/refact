@@ -18,7 +18,6 @@ import { ComboBox } from "../ComboBox";
 import {
   CodeChatModel,
   isAssistantMessage,
-  isUserMessage,
   SystemPrompts,
 } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
@@ -165,10 +164,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     // TODO ask for a chat title here and update the title in the chat panel
     // Also, make sure it happens only once and only when it has only one message.
     if (
-      messages.filter(isUserMessage).length === 1 &&
-      messages.filter(isAssistantMessage).length === 1 &&
-      !isStreaming &&
-      threadTitle === ""
+      messages.filter(isAssistantMessage).find((msg) => msg.content !== "") &&
+      !isStreaming
     ) {
       dispatch(chatGenerateTitleThunk({ messages, chatId }))
         .then(() => {
