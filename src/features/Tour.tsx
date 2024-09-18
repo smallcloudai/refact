@@ -84,7 +84,7 @@ const TourContext = createContext<TourRefs>(null!);
 type TourContextProps = {
   children: React.ReactNode;
 };
-
+// TODO: having a component here causes the linter warnings, Tour a directory, with separate files should for the component and actions fix this
 export const TourProvider = ({ children }: TourContextProps) => {
   const [newChat, setNewChat] = useState<null | HTMLButtonElement>(null);
   const [useTools, setUseTools] = useState<null | HTMLDivElement>(null);

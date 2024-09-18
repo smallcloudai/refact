@@ -110,6 +110,7 @@ const ChatControlCheckBox: React.FC<{
       >
         {label}
         {fileName && (
+          // TODO: negative margin ?
           <Flex ml="-3px">
             <TruncateLeft>{fileName}</TruncateLeft>
           </Flex>
@@ -175,7 +176,13 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           return null;
         }
         return (
-          <Flex style={{ alignSelf: "flex-start" }} key={key}>
+          <Flex
+            style={{
+              // TODO: lots of `align` self
+              alignSelf: "flex-start",
+            }}
+            key={key}
+          >
             <ChatControlCheckBox
               name={checkbox.name}
               label={checkbox.label}

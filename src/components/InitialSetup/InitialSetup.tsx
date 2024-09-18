@@ -12,6 +12,7 @@ export type InitialSetupProps = {
   onPressNext: (host: Host) => void;
 };
 
+// TODO: duplicated code from another setup, this could be a component
 const bulletStyle = {
   marginRight: "5px",
   verticalAlign: "middle",

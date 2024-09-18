@@ -19,7 +19,9 @@ export function TourBox({ children, style }: TourBubbleProps) {
         backgroundColor: backgroundColorForTourBox,
         borderRadius: "5px",
         minHeight: "60px",
+        //TODO: justify prop
         justifyContent: "center",
+        // TODO: padding prop
         padding: "10px",
         alignSelf: "stretch",
         maxWidth: 550,

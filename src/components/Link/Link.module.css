@@ -1,0 +1,10 @@
+.link {
+  &:hover {
+    text-decoration: underline !important;
+    cursor: pointer !important;
+  }
+}
+
+.jetbrains {
+  filter: brightness(80%) !important;
+}

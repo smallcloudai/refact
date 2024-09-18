@@ -1,5 +1,5 @@
 import React from "react";
-import { Flex, Container, Box, HoverCard, Text, Link } from "@radix-ui/themes";
+import { Flex, Container, Box, HoverCard, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ChatContextFile } from "../../services/refact";
 import classnames from "classnames";
@@ -7,11 +7,13 @@ import { TruncateLeft, Small } from "../Text";
 import * as Collapsible from "@radix-ui/react-collapsible";
 
 import { ScrollArea } from "../ScrollArea";
+import { Link } from "../Link";
 import ReactMarkDown from "react-markdown";
 
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import { Chevron } from "../Collapsible";
 import { filename } from "../../utils";
+import { useEventsBusForIDE } from "../../hooks";
 
 export const Markdown: React.FC<{
   children: string;
@@ -78,9 +80,7 @@ export const ContextFile: React.FC<{
             <Small className={classnames(styles.file, props.className)}>
               &nbsp;&nbsp;&nbsp;&nbsp;
               <TruncateLeft>
-                <Link href="#" onClick={onClick}>
-                  {name}
-                </Link>
+                <Link onClick={onClick}>{name}</Link>
               </TruncateLeft>
             </Small>
           </Box>
@@ -102,9 +102,10 @@ export const ContextFile: React.FC<{
 
 const ContextFilesContent: React.FC<{
   files: ChatContextFile[];
-  onOpenFile: (file: { file_name: string; line?: number }) => void;
+  onOpenFile: (file: { file_name: string; line?: number }) => Promise<void>;
 }> = ({ files, onOpenFile }) => {
   if (files.length === 0) return null;
+
   return (
     <Container>
       <pre style={{ margin: 0 }}>
@@ -117,7 +118,7 @@ const ContextFilesContent: React.FC<{
               <ContextFile
                 onClick={(event) => {
                   event.preventDefault();
-                  onOpenFile({ file_name: file.file_name, line: file.line1 });
+                  void onOpenFile(file);
                 }}
                 key={key}
                 name={file.file_name + lineText}
@@ -134,9 +135,9 @@ const ContextFilesContent: React.FC<{
 
 export const ContextFiles: React.FC<{
   files: ChatContextFile[];
-  onOpenFile: (file: { file_name: string; line?: number }) => void;
-}> = ({ files, onOpenFile }) => {
+}> = ({ files }) => {
   const [open, setOpen] = React.useState(false);
+  const { queryPathThenOpenFile } = useEventsBusForIDE();
 
   if (files.length === 0) return null;
 
@@ -154,7 +155,10 @@ export const ContextFiles: React.FC<{
           </Flex>
         </Collapsible.Trigger>
         <Collapsible.Content>
-          <ContextFilesContent files={files} onOpenFile={onOpenFile} />
+          <ContextFilesContent
+            files={files}
+            onOpenFile={queryPathThenOpenFile}
+          />
         </Collapsible.Content>
       </Collapsible.Root>
     </Container>

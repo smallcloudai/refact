@@ -1,9 +1,5 @@
-import React, { useCallback } from "react";
-import {
-  selectHost,
-  type Config,
-  selectLspPort,
-} from "../../features/Config/configSlice";
+import React from "react";
+import { selectHost, type Config } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
   useConfig,
@@ -13,7 +9,6 @@ import {
   useAppSelector,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
-import { CONFIG_PATH_URL } from "../../services/refact/consts";
 import { DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
 import { HamburgerMenuIcon, DiscordLogoIcon } from "@radix-ui/react-icons";
 import { Coin } from "../../images";
@@ -66,18 +61,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const discordUrl = "https://www.smallcloud.ai/discord";
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
-  const { openFile } = useEventsBusForIDE();
-
-  const port = useAppSelector(selectLspPort);
-  const getCustomizationPath = useCallback(async () => {
-    const previewEndpoint = `http://127.0.0.1:${port}${CONFIG_PATH_URL}`;
-
-    const response = await fetch(previewEndpoint, {
-      method: "GET",
-    });
-    const configPath = await response.text();
-    return configPath + "/customization.yaml";
-  }, [port]);
+  const { openFile, openCustomizationFile } = useEventsBusForIDE();
 
   return (
     <DropdownMenu.Root>
@@ -163,12 +147,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
         <DropdownMenu.Item
           onSelect={(event) => {
-            const f = async () => {
-              event.preventDefault();
-              const file_name = await getCustomizationPath();
-              openFile({ file_name });
-            };
-            void f();
+            event.preventDefault();
+            void openCustomizationFile();
           }}
         >
           Edit customization.yaml

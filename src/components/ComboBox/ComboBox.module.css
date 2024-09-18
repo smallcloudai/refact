@@ -26,6 +26,7 @@
 .item {
   display: flex;
   cursor: default;
+  /* TODO: negative margin ? */
   margin: 0 -4px !important;
   padding: 2px 4px !important;
 }

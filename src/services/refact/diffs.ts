@@ -5,7 +5,7 @@ import { RootState } from "../../app/store";
 
 export type DiffAppliedStateArgs = {
   chunks: DiffChunk[];
-  toolCallId: string;
+  toolCallId?: string;
 };
 
 export type DiffOperationArgs = {
@@ -59,7 +59,10 @@ export const diffApi = createApi({
         return { data: result.data as DiffAppliedStateResponse };
       },
       providesTags: (_result, _error, args) => {
-        return [{ type: "DIFF_STATE", id: args.toolCallId }];
+        if (args.toolCallId) {
+          return [{ type: "DIFF_STATE", id: args.toolCallId }];
+        }
+        return [{ type: "DIFF_STATE" }];
       },
     }),
     diffApply: builder.mutation<DiffOperationResponse, DiffOperationArgs>({

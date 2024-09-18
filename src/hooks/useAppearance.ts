@@ -22,8 +22,10 @@ export const useAppearance = () => {
       dispatch(setThemeMode("light"));
     } else if (maybeDark && appearance !== "dark") {
       dispatch(setThemeMode("dark"));
+    } else if (!maybeDark && !maybeLight) {
+      dispatch(setThemeMode(config.themeProps.appearance ?? "dark"));
     }
-  }, [appearance, dispatch]);
+  }, [appearance, dispatch, config.themeProps.appearance]);
 
   useMutationObserver(document.body, handleChange, {
     attributes: true,

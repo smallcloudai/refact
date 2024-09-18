@@ -23,6 +23,8 @@ export const ideOpenChatInNewTab = createAction<ChatThread>(
   "ide/openChatInNewTab",
 );
 
+import { pathApi } from "../services/refact/path";
+
 export const useEventsBusForIDE = () => {
   const postMessage = usePostMessage();
   // const canPaste = useAppSelector((state) => state.active_file.can_paste);
@@ -82,6 +84,18 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const [getFullPath, _] = pathApi.useLazyGetFullPathQuery();
+
+  const queryPathThenOpenFile = useCallback(
+    async (file: OpenFilePayload) => {
+      const res = await getFullPath(file.file_name).unwrap();
+      const file_name = res ?? file.file_name;
+      const action = ideOpenFile({ file_name, line: file.line });
+      postMessage(action);
+    },
+    [getFullPath, postMessage],
+  );
+
   const openChatInNewTab = useCallback(
     (thread: ChatThread) => {
       const action = ideOpenChatInNewTab(thread);
@@ -89,6 +103,16 @@ export const useEventsBusForIDE = () => {
     },
     [postMessage],
   );
+
+  const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
+
+  const openCustomizationFile = useCallback(async () => {
+    const res = await getCustomizationPath(undefined).unwrap();
+    if (res) {
+      const action = ideOpenFile({ file_name: res });
+      postMessage(action);
+    }
+  }, [getCustomizationPath, postMessage]);
 
   return {
     diffPasteBack,
@@ -99,6 +123,8 @@ export const useEventsBusForIDE = () => {
     openChatInNewTab,
     setupHost,
     diffPreview,
+    queryPathThenOpenFile,
+    openCustomizationFile,
     // canPaste,
   };
 };

@@ -16,15 +16,12 @@ const meta = {
   title: "Chat Content",
   component: ChatContent,
   args: {
-    // messages: MARS_ROVER_CHAT.messages,
     onRetry: noop,
     isWaiting: false,
     isStreaming: false,
     canPaste: true,
     onNewFileClick: noop,
     onPasteClick: noop,
-    // addOrRemoveDiff: noop,
-    // getDiffByIndex: () => null,
     chatKey: "test",
   },
 } satisfies Meta<typeof ChatContent>;

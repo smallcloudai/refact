@@ -1,5 +1,6 @@
 import { Button, Flex, Text } from "@radix-ui/themes";
 import { ChevronLeftIcon } from "@radix-ui/react-icons";
+import { Link } from "../Link";
 
 export interface BringYourOwnKeyProps {
   goBack: () => void;
@@ -27,11 +28,11 @@ export const BringYourOwnKey: React.FC<BringYourOwnKeyProps> = ({
       </Text>
       <Text size="2">
         Please report any problems to the{" "}
-        <a href="https://github.com/smallcloudai/refact-lsp/issues">
+        <Link href="https://github.com/smallcloudai/refact-lsp/issues">
           refact-lsp issues
-        </a>{" "}
+        </Link>{" "}
         page. Also, report positive experience to{" "}
-        <a href="https://www.smallcloud.ai/discord">discord</a>!
+        <Link href="https://www.smallcloud.ai/discord">discord</Link>!
       </Text>
       <Text size="2">
         The button below opens bring-your-own-key.yaml in the IDE.
