@@ -7,15 +7,22 @@ import random
 import termcolor
 import aiohttp
 from pydantic import BaseModel
-from typing import Dict, Any, Optional, List
-from prompt_toolkit import PromptSession
+from typing import Dict, Any, Optional, List, Union, Tuple
+
+from prompt_toolkit import PromptSession, Application
 from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.shortcuts import print_formatted_text
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.completion import Completer, Completion
+from prompt_toolkit.layout import Layout
+from prompt_toolkit.layout.containers import HSplit, Window
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.formatted_text import PygmentsTokens
+
 import refact.chat_client as chat_client
 from refact.chat_client import Message, FunctionDict
-from refact.printing import create_box, indent, print_header, get_terminal_width, print_lines, tokens_len
+from refact.printing import create_box, indent, print_header, get_terminal_width, tokens_len, Lines
 from refact.status_bar import bottom_status_bar, update_vecdb_status_background_task
 from refact.lsp_runner import LSPServerRunner
 
@@ -54,6 +61,8 @@ class CmdlineSettings:
     def n_ctx(self):
         return self.caps.code_chat_models[self.model].n_ctx
 
+settings = None
+
 
 def find_tool_call(messages: List[Message], id: str) -> Optional[FunctionDict]:
     for message in messages:
@@ -64,6 +73,30 @@ def find_tool_call(messages: List[Message], id: str) -> Optional[FunctionDict]:
                 continue
             return tool_call.function
     return None
+
+
+def print_response(to_print: Union[str, List[Tuple[str, str]]]):
+    if type(to_print) == str:
+        response_box.text.append(("", to_print))
+        app.invalidate()
+        return
+
+    for section in to_print:
+        response_box.text.append(section)
+    app.invalidate()
+
+
+def print_lines(lines: Lines):
+    global response_box
+    
+    for line in lines:
+        number_of_children = len(hsplit.children)
+        text_control = FormattedTextControl(text=PygmentsTokens(line))
+        hsplit.children.insert(number_of_children - 1, Window(height=1, content=text_control))
+
+    number_of_children = len(hsplit.children)
+    response_box = FormattedTextControl(text=[])
+    hsplit.children.insert(number_of_children - 1, Window(dont_extend_height=True, content=response_box))
 
 
 def print_context_file(json_str: str):
@@ -77,13 +110,14 @@ def print_context_file(json_str: str):
     box = create_box(content, terminal_width - 4, max_height=20,
                      title=file_name, file_name=file_name)
     indented = indent(box, 2)
-    print_formatted_text()
+    print_response("\n")
     print_lines(indented)
 
 
 streaming_messages = []
 tools = []
 lsp = None
+response_box = None
 
 
 def process_streaming_data(data):
@@ -95,17 +129,17 @@ def process_streaming_data(data):
         if content is None:
             finish_reason = choices[0]['finish_reason']
             if finish_reason == 'stop':
-                print("")
+                print_response("\n")
             return
         if len(streaming_messages) == 0 or streaming_messages[-1].role != "assistant":
-            print_formatted_text("\n  ", end="")
+            print_response("\n  ")
             streaming_messages.append(
                 Message(role="assistant", content=content))
         else:
             streaming_messages[-1].content += content
 
         content = content.replace("\n", "\n  ")
-        print_formatted_text(content, end="")
+        print_response(content)
     elif "role" in data:
         role = data["role"]
         if role == "user":
@@ -122,10 +156,10 @@ def process_streaming_data(data):
         box = create_box(content, terminal_width - 4, max_height=26)
         indented = indent(box, 2)
         tool_call_id = data["tool_call_id"]
-        print_formatted_text()
+        print_response("\n")
         function = find_tool_call(streaming_messages, tool_call_id)
         if function is not None:
-            print_formatted_text(f"  {function.name}({function.arguments})")
+            print_response(f"  {function.name}({function.arguments})")
         print_lines(indented)
 
 
@@ -198,6 +232,11 @@ def _(event):
     event.current_buffer.reset()
 
 
+@kb.add('c-d')
+def exit_(event):
+    event.app.exit()
+
+
 class ToolsCompleter(Completer):
     def __init__(self):
         pass
@@ -224,10 +263,36 @@ def get_at_command_completion(base_url: str, query: str, cursor_pos: int) -> Any
     return result.json()
 
 
+def on_submit(buffer):
+    global response_box
+
+    user_input = buffer.text
+    if user_input.strip() == '':
+        return
+    if user_input.lower() in ('exit', 'quit'):
+        app.exit()
+        return
+
+    number_of_children = len(hsplit.children)
+    text_control = FormattedTextControl(text=[])
+    response_box = text_control
+    hsplit.children.insert(number_of_children - 1, Window(dont_extend_height=True, content=text_control))
+
+    streaming_messages.append(Message(role="user", content=user_input))
+
+    async def asyncfunc():
+        await ask_chat(settings.model)
+
+    loop = asyncio.get_event_loop()
+    loop.create_task(asyncfunc())
+
+
+
 async def chat_main():
     global tools
     global streaming_messages
     global lsp
+    global settings
     streaming_messages = []
 
     args = sys.argv[1:]
@@ -284,6 +349,8 @@ async def chat_main():
         await welcome_message(settings, random.choice(tips_of_the_day))
         asyncio.create_task(update_vecdb_status_background_task())
 
+        result = await app.run_async()
+
         with patch_stdout():
             while True:
                 try:
@@ -308,6 +375,12 @@ async def chat_main():
                 except EOFError:
                     print("\nclean exit")
                     break
+
+tool_completer = ToolsCompleter()
+buffer1 = Buffer(multiline=True, accept_handler=on_submit, completer=tool_completer)
+hsplit = HSplit([Window(height=10, content=BufferControl(buffer=buffer1))])
+layout = Layout(hsplit)
+app = Application(key_bindings=kb, layout=layout)
 
 
 def cmdline_main():

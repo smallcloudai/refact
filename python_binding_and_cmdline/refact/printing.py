@@ -81,11 +81,6 @@ def to_tokens(text: str) -> Tokens:
     return [(Token.Text, text)]
 
 
-def print_lines(lines: Lines):
-    for line in lines:
-        print_formatted_text(PygmentsTokens(line))
-
-
 def tokens_len(tokens: Tokens) -> int:
     return sum([len(x[1]) for x in tokens])
 
