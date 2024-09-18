@@ -165,7 +165,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     // Also, make sure it happens only once and only when it has only one message.
     if (
       messages.filter(isAssistantMessage).find((msg) => msg.content !== "") &&
-      !isStreaming
+      !isStreaming &&
+      !threadTitle
     ) {
       dispatch(chatGenerateTitleThunk({ messages, chatId }))
         .then(() => {
