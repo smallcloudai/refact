@@ -7,7 +7,7 @@ use tracing::info;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
-use crate::ast::ast_minimalistic::{AstDB, AstStatus, AstCounters, ErrorStats};
+use crate::ast::ast_structs::{AstDB, AstStatus, AstCounters, AstErrorStats};
 use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove, flush_sled_batch, ConnectUsageContext, connect_usages, connect_usages_look_if_full_reset_needed};
 
 
@@ -29,7 +29,7 @@ async fn ast_indexer_thread(
     let mut stats_update_ts = std::time::Instant::now() - std::time::Duration::from_millis(1000);
     let mut stats_failure_reasons: IndexMap<String, usize> = IndexMap::new();
     let mut stats_success_languages: IndexMap<String, usize> = IndexMap::new();
-    let mut stats_parsing_errors = ErrorStats::default();
+    let mut stats_parsing_errors = AstErrorStats::default();
     let mut ast_max_files_hit = false;
     let (ast_index, ast_status, ast_sleeping_point) = {
         let ast_service_locked = ast_service.lock().await;
@@ -135,7 +135,7 @@ async fn ast_indexer_thread(
                     error_messages.push_str(&format!("...and {} more", error_count - 5));
                 }
                 info!("parsing errors, this would be a mixture of real code problems and our language-specific parser problems:\n{}", error_messages);
-                stats_parsing_errors = ErrorStats::default();
+                stats_parsing_errors = AstErrorStats::default();
             }
             if stats_parsed_cnt + stats_symbols_cnt > 0 {
                 info!("AST finished parsing, got {} symbols by processing {} files in {:>.3}s",

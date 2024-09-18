@@ -7,11 +7,9 @@ use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 pub use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::structs::RangeDef;
 
-const TOO_MANY_ERRORS: usize = 1000;
-
 
 #[derive(Serialize, Deserialize)]
-pub struct Usage {
+pub struct AstUsage {
     // Linking means trying to match targets_for_guesswork against official_path, the longer
     // the matched path the more probability the linking was correct
     pub targets_for_guesswork: Vec<String>, // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
@@ -24,7 +22,7 @@ pub struct Usage {
 pub struct AstDefinition {
     pub official_path: Vec<String>,  // file::namespace::class::method becomes ["file", "namespace", "class", "method"]
     pub symbol_type: SymbolType,
-    pub usages: Vec<Usage>,
+    pub usages: Vec<AstUsage>,
     pub this_is_a_class: String,              // cpp🔎Goat
     pub this_class_derived_from: Vec<String>, // cpp🔎Animal, cpp🔎CosmicJustice
     pub cpath: String,
@@ -73,20 +71,23 @@ pub struct AstCounters {
     pub counter_docs: i32,
 }
 
+
+const TOO_MANY_ERRORS: usize = 1000;
+
 pub struct AstError {
     pub err_cpath: String,
     pub err_message: String,
     pub err_line: usize,
 }
 
-pub struct ErrorStats {
+pub struct AstErrorStats {
     pub errors: Vec<AstError>,
     pub errors_counter: usize,
 }
 
-impl ErrorStats {
+impl AstErrorStats {
     pub fn add_error(
-        self: &mut ErrorStats,
+        self: &mut AstErrorStats,
         err_cpath: String,
         err_line: usize,
         err_message: &str,
@@ -102,9 +103,9 @@ impl ErrorStats {
     }
 }
 
-impl Default for ErrorStats {
+impl Default for AstErrorStats {
     fn default() -> Self {
-        ErrorStats {
+        AstErrorStats {
             errors: Vec::new(),
             errors_counter: 0,
         }
@@ -150,7 +151,7 @@ impl fmt::Debug for AstDefinition {
     }
 }
 
-impl fmt::Debug for Usage {
+impl fmt::Debug for AstUsage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // self.target_for_guesswork
         write!(

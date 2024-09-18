@@ -124,7 +124,7 @@ impl AtCommand for AtAstDefinition {
         let ast_service_opt = gcx.read().await.ast_service.clone();
         if let Some(ast_service) = ast_service_opt {
             let ast_index = ast_service.lock().await.ast_index.clone();
-            let defs: Vec<Arc<crate::ast::ast_minimalistic::AstDefinition>> = crate::ast::ast_db::definitions(ast_index, arg_symbol.text.as_str()).await;
+            let defs: Vec<Arc<crate::ast::ast_structs::AstDefinition>> = crate::ast::ast_db::definitions(ast_index, arg_symbol.text.as_str()).await;
             let file_paths = defs.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
             let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), file_paths.clone()).await;
 

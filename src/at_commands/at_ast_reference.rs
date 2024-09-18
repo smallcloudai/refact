@@ -62,7 +62,7 @@ impl AtCommand for AtAstReference {
             const USAGES_LIMIT: usize = 20;
 
             if let Some(def) = defs.get(0) {
-                let usages: Vec<(Arc<crate::ast::ast_minimalistic::AstDefinition>, usize)> = crate::ast::ast_db::usages(ast_index.clone(), def.path(), 100).await;
+                let usages: Vec<(Arc<crate::ast::ast_structs::AstDefinition>, usize)> = crate::ast::ast_db::usages(ast_index.clone(), def.path(), 100).await;
                 let usage_count = usages.len();
 
                 let text = format!(

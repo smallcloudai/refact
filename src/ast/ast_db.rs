@@ -9,7 +9,7 @@ use sled::Db;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::ast::ast_minimalistic::{AstDB, AstDefinition, AstCounters, ErrorStats};
+use crate::ast::ast_structs::{AstDB, AstDefinition, AstCounters, AstErrorStats};
 use crate::ast::ast_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
 
 // ## How the database works ##
@@ -169,7 +169,7 @@ pub async fn doc_add(
     ast_index: Arc<AMutex<AstDB>>,
     cpath: &String,
     text: &String,
-    errors: &mut ErrorStats,
+    errors: &mut AstErrorStats,
 ) -> Result<(Vec<Arc<AstDefinition>>, String), String>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
@@ -334,7 +334,7 @@ pub async fn doc_usages(ast_index: Arc<AMutex<AstDB>>, cpath: &String) -> Vec<(u
 
 pub struct ConnectUsageContext {
     pub derived_from_map: IndexMap<String, Vec<String>>,
-    pub errstats: ErrorStats,
+    pub errstats: AstErrorStats,
     pub usages_homeless: usize,
     pub usages_connected: usize,
     pub usages_not_found: usize,
@@ -421,7 +421,7 @@ pub async fn connect_usages_look_if_full_reset_needed(ast_index: Arc<AMutex<AstD
 
     ConnectUsageContext {
         derived_from_map: new_derived_from_map,
-        errstats: ErrorStats::default(),
+        errstats: AstErrorStats::default(),
         usages_homeless: 0,
         usages_connected: 0,
         usages_not_found: 0,
@@ -878,7 +878,7 @@ mod tests {
     async fn test_ast_db() {
         init_tracing();
         let ast_index = ast_index_init("".to_string(), 10, false).await;
-        let mut errstats: ErrorStats = ErrorStats::default();
+        let mut errstats: AstErrorStats = AstErrorStats::default();
 
         let cpp_library_path = "src/ast/alt_testsuite/cpp_goat_library.h";
         let cpp_library_text = read_file(cpp_library_path);

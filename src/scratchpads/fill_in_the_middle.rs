@@ -12,7 +12,7 @@ use tracing::info;
 use std::collections::HashSet;
 
 use crate::ast::ast_indexer_thread::AstIndexService;
-use crate::ast::ast_minimalistic::{AstDB, AstDefinition};
+use crate::ast::ast_structs::{AstDB, AstDefinition};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{CodeCompletionPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use indexmap::IndexMap;
 use uuid::Uuid;
-use crate::ast::ast_minimalistic::{AstDefinition, Usage, ErrorStats};
+use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, AstSymbolInstanceArc};
@@ -34,7 +34,7 @@ fn _is_declaration(t: SymbolType) -> bool {
 fn _go_to_parent_until_declaration(
     map: &HashMap<Uuid, AstSymbolInstanceArc>,
     start_node: AstSymbolInstanceArc,
-    errors: &mut ErrorStats,
+    errors: &mut AstErrorStats,
 ) -> Uuid {
     let start_node_read = start_node.read();
     let mut node_guid = start_node_read.parent_guid().unwrap_or_default();
@@ -120,11 +120,11 @@ fn _name_to_usage(
     uline: usize,
     start_node_guid: Option<Uuid>,
     name_of_anything: String,
-) -> Option<Usage> {
+) -> Option<AstUsage> {
     if start_node_guid.is_none() {
         return None;
     }
-    let mut result = Usage {
+    let mut result = AstUsage {
         targets_for_guesswork: vec![],
         resolved_as: "".to_string(),
         debug_hint: "n2p".to_string(),
@@ -201,7 +201,7 @@ fn _typeof(
     pcx: &mut ParseContext,
     start_node_guid: Uuid,
     variable_or_param_name: String,
-    errors: &mut ErrorStats,
+    errors: &mut AstErrorStats,
 ) -> Vec<String> {
     let mut node_guid = start_node_guid.clone();
     let mut look_here: Vec<AstSymbolInstanceArc> = Vec::new();
@@ -280,8 +280,8 @@ fn _usage_or_typeof_caller_colon_colon_usage(
     caller_guid: Option<Uuid>,
     uline: usize,
     symbol: &dyn AstSymbolInstance,
-    errors: &mut ErrorStats,
-) -> Option<Usage> {
+    errors: &mut AstErrorStats,
+) -> Option<AstUsage> {
     // my_object.something_inside
     // ^^^^^^^^^ caller (can be None)
     //           ^^^^^^^^^^^^^^^^ symbol
@@ -291,7 +291,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
         None
     };
     if let Some(caller) = caller_option {
-        let mut result = Usage {
+        let mut result = AstUsage {
             targets_for_guesswork: vec![],
             resolved_as: "".to_string(),
             debug_hint: "caller".to_string(),
@@ -326,7 +326,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
 pub fn parse_anything(
     cpath: &str,
     text: &str,
-    errors: &mut ErrorStats,
+    errors: &mut AstErrorStats,
 ) -> Result<(IndexMap<Uuid, AstDefinition>, String), String>
 {
     let path = PathBuf::from(cpath);
@@ -510,7 +510,7 @@ pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
 pub fn parse_anything_and_add_file_path(
     cpath: &str,
     text: &str,
-    errstats: &mut ErrorStats,
+    errstats: &mut AstErrorStats,
 ) -> Result<(IndexMap<Uuid, AstDefinition>, String), String>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
@@ -590,7 +590,7 @@ mod tests {
 
     fn _run_parse_test(input_file: &str, correct_file: &str) {
         _init_tracing();
-        let mut errstats = ErrorStats::default();
+        let mut errstats = AstErrorStats::default();
         let absfn1 = std::fs::canonicalize(input_file).unwrap();
         let text = _read_file(absfn1.to_str().unwrap());
         let (definitions, _language) = parse_anything(absfn1.to_str().unwrap(), &text, &mut errstats).unwrap();

@@ -5,7 +5,7 @@ use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::ast::ast_minimalistic::AstDB;
+use crate::ast::ast_structs::AstDB;
 use crate::ast::ast_db::fetch_counters;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};

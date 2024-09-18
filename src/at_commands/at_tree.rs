@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 
-use crate::ast::ast_minimalistic::AstDB;
+use crate::ast::ast_structs::AstDB;
 // use crate::ast::ast_indexer_thread::AstIndexService;
 // use crate::ast::treesitter::structs::SymbolType;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};

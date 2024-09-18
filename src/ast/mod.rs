@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokenizers::Tokenizer;
 
-pub mod ast_minimalistic;
+pub mod ast_structs;
 pub mod ast_db;
 pub mod ast_parse_anything;
 
