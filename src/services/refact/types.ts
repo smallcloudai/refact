@@ -1,4 +1,6 @@
+
 import { GetChatTitleActionPayload, GetChatTitleResponse } from "./chat";
+import { DiffApplyErrorResponse } from "./diffs";
 
 export type ChatRole =
   | "user"
@@ -370,3 +372,16 @@ export type ChatResponse =
   | ChatUserMessageResponse
   | ToolResponse
   | PlainTextResponse;
+
+export function isDiffErrorResponseData(
+  json: unknown,
+): json is DiffApplyErrorResponse {
+  if (!json || typeof json !== "object") return false;
+  if (!("chunk_id" in json)) return false;
+  if (!("applied" in json)) return false;
+  if (!("can_unapply" in json)) return false;
+  if (!("success" in json)) return false;
+  if (!("detail" in json)) return false;
+  if (json.success === true) return false;
+  return true;
+}
