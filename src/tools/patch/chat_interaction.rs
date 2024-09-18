@@ -115,10 +115,10 @@ pub async fn execute_chat_model(
     max_new_tokens: usize,
     tool_call_id: &String,
     usage: &mut ChatUsage,
-) -> Result<Vec<Vec<DiffChunk>>, String> {
+) -> Result<Vec<Vec<DiffChunk>>, (String, Option<String>)> {
     let messages = make_chat_history(
         ccx.clone(), model, max_tokens, max_new_tokens, snippets,
-    ).await?;
+    ).await.map_err(|e|(e, None))?;
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let response = subchat_single(
         ccx.clone(),
@@ -134,7 +134,7 @@ pub async fn execute_chat_model(
         Some(format!("{log_prefix}-patch")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-patch")),
-    ).await?;
+    ).await.map_err(|e|(e, None))?;
 
     let last_messages = response.iter()
         .filter_map(|x| x.iter().last())
@@ -151,7 +151,10 @@ pub async fn execute_chat_model(
                 succ_chunks.push(chunks);
             }
             Err(err) => {
-                return Err(format!("Error while diff parsing: {:?}", err));
+                return Err((
+                    format!("diff parsing error: {err}"), 
+                    Some("tickets are invalid. Create new tickets from scratch".to_string())
+                ));
             }
         };
     }

@@ -527,8 +527,8 @@ fn normalize_diff_block(diff_block: &mut DiffBlock) -> Result<(), String> {
         .collect::<Vec<_>>();
     if !non_found_lines.is_empty() {
         return Err(format!(
-            "some diff block lines weren't found in the file:\n{:?}",
-            non_found_lines
+            "blocks of code signed with '-' weren't found in a file\n{}\n",
+            non_found_lines.join("\n")
         ));
     }
 

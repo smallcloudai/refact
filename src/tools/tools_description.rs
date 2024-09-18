@@ -205,8 +205,12 @@ tools:
       - name: "tickets"
         type: "string"
         description: "Use 3-digit tickets comma separated to refer to the changes within ONE file. No need to copy anything else. Additionaly, you can put DELETE here to delete the file."
+      - name: "path"
+        type: "string"
+        description: "Path to the file to change."
     parameters_required:
-      - "ticket"
+      - "tickets"
+      - "path"
 
   - name: "github"
     agentic: true

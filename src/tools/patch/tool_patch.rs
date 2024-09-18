@@ -84,7 +84,7 @@ async fn partial_edit_snippets_to_diffs(
     params: &SubchatParameters,
     tool_call_id: &String,
     usage: &mut ChatUsage,
-) -> Result<String, String>{
+) -> Result<String, (String, Option<String>)>{
     let mut all_chunks = execute_chat_model(
         ccx_subchat.clone(),
         snippets,
@@ -94,18 +94,19 @@ async fn partial_edit_snippets_to_diffs(
         params.subchat_max_new_tokens,
         tool_call_id,
         usage,
-    ).await.map_err(|e|format!("Failed to execute patch. Reason: failed communicate with the chat model.\nERROR: {e}"))?;
+    ).await?;
     
     let mut chunks_for_answers = vec![];
     for chunks in all_chunks.iter_mut() {
         let diffs = postprocess_diff_chunks_from_message(ccx_subchat.clone(), chunks).await;
         chunks_for_answers.push(diffs);
     }
-    choose_correct_chunk(chunks_for_answers)
+    choose_correct_chunk(chunks_for_answers).map_err(|e|(e, None))
 }
 
 async fn snippets2diff(
     ccx_subchat: Arc<AMutex<AtCommandsContext>>,
+    path_from_call: String,
     snippets: HashMap<String, CodeSnippet>,
     tickets: Vec<String>,
     params: &SubchatParameters,
@@ -114,38 +115,58 @@ async fn snippets2diff(
 ) -> Result<String, String> {
     let gcx = ccx_subchat.lock().await.global_context.clone();
 
-    fn good_error_text(reason: &str, snippets: Option<&Vec<CodeSnippet>>) -> String {
-        let mut text = format!("Failed to execute patch. Reason: {reason}");
-        if let Some (snippets) = snippets{
-            let snippets_printed = snippets.iter().map(|s|format!("TICKET {}; ACTION: {:?}", s.ticket, s.action)).collect::<Vec<_>>().join("\n");
-            text.push_str(&format!("\nTickets provided:\n{}", snippets_printed));
+    fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> String {
+        let mut text = format!("Couldn't create patch for tickets: '{}'.\nReason: {reason}", tickets.join(", "));
+        if let Some(resolution) = resolution {
+            text.push_str(&format!("\nResolution: {}", resolution));
         }
         text
     }
     let mut active_snippets = tickets.iter().map(|t|snippets.get(t).cloned()
-        .ok_or(good_error_text("No code block found for the ticket {:?} did you forget to write one using 📍-notation?", None))
+        .ok_or(good_error_text(&format!("No code block found for the ticket {:?} did you forget to write one using 📍-notation?", t), &tickets, None))
     ).collect::<Result<Vec<_>, _>>()?;
     drop(snippets);
-    for snippet in active_snippets.iter_mut() {
-        correct_and_validate_code_snippet(gcx.clone(), snippet).await.map_err(|e|good_error_text(&e, None))?;
-    }
 
+    if active_snippets.iter().map(|x|x.filename_before.clone()).unique().count() > 1 {
+        return Err(good_error_text(
+            "all tickets must have the same filename_before.",
+            &tickets, Some("split the tickets into multiple patch calls".to_string())
+        ));
+    }
+    if active_snippets[0].filename_before != path_from_call {
+        return Err(good_error_text(
+            &format!("ticket(s) have different filename from what you provided: '{}'!='{}'.", active_snippets[0].filename_before, path_from_call),
+            &tickets, None
+        ));
+    }
     if active_snippets.is_empty() {
-        return Err(good_error_text("no snippets that are referred by tickets were found.", Some(&active_snippets)));
+        return Err(good_error_text("no snippets that are referred by tickets were found.", &tickets, None));
     }
     if active_snippets.len() > 1 && !active_snippets.iter().all(|s|PatchAction::PartialEdit == s.action) {
-        return Err(good_error_text("multiple tickets is allowed only for action==PARTIAL_EDIT.", Some(&active_snippets)));
+        return Err(good_error_text(
+            "multiple tickets is allowed only for action==PARTIAL_EDIT.",
+            &tickets, Some("split the tickets into multiple patch calls".to_string())
+        ));
     }
     if active_snippets.iter().map(|s|s.action.clone()).unique().count() > 1 {
-        return Err(good_error_text("tickets must have the same action.", Some(&active_snippets)));
+        return Err(good_error_text(
+            "tickets must have the same action.",
+            &tickets, Some("split the tickets into multiple patch calls".to_string())
+        ));
     }
-    
+
+    for snippet in active_snippets.iter_mut() {
+        correct_and_validate_code_snippet(gcx.clone(), snippet).await.map_err(|e|good_error_text(&e, &tickets, None))?;
+    }
+
     let action = active_snippets[0].action.clone();
     let result = match action {
-        PatchAction::PartialEdit => partial_edit_snippets_to_diffs(
-            ccx_subchat.clone(), active_snippets, params, tool_call_id, usage
-        ).await,
-        PatchAction::FullRewrite => {
+        PatchAction::PartialEdit => {
+            partial_edit_snippets_to_diffs(
+                ccx_subchat.clone(), active_snippets.clone(), params, tool_call_id, usage
+            ).await.map_err(|(e, r)| good_error_text(e.as_str(), &tickets, r))
+        },
+            PatchAction::FullRewrite => {
             let mut chunks = full_rewrite_diff(ccx_subchat.clone(), &active_snippets[0]).await?;
             postprocess_diff_chunks_from_message(ccx_subchat.clone(), &mut chunks).await
         },
@@ -153,7 +174,7 @@ async fn snippets2diff(
             let mut chunks = new_file_diff(&active_snippets[0]);
             postprocess_diff_chunks_from_message(ccx_subchat.clone(), &mut chunks).await
         },
-        _ => Err(good_error_text(&format!("unknown action provided: '{:?}'.", action), Some(&active_snippets)))
+        _ => Err(good_error_text(&format!("unknown action provided: '{:?}'.", action), &tickets, None))
     }?;
     
     Ok(result)
@@ -171,6 +192,11 @@ impl Tool for ToolPatch {
             Some(Value::String(s)) => s.split(",").map(|s|s.trim().to_string()).collect::<Vec<_>>(),
             Some(v) => { return Err(format!("argument 'ticket' should be a string: {:?}", v)) }
             None => { vec![] }
+        };
+        let path = match args.get("path") {
+            Some(Value::String(s)) => s.trim().to_string(),
+            Some(v) => { return Err(format!("argument 'path' should be a string: {:?}", v)) }
+            None => { return Err("argument 'path' is required".to_string()) }
         };
         if tickets.is_empty() {
             return Err("`tickets` shouldn't be empty".to_string());
@@ -192,22 +218,25 @@ impl Tool for ToolPatch {
         let snippets = get_code_snippets(ccx.clone()).await;
         let diff = snippets2diff(
             ccx_subchat,
+            path,
             snippets,
             tickets,
             &params,
             tool_call_id,
             &mut usage,
         ).await?;
+        
+        let mut results = vec![];
+        results.push(ChatMessage {
+            role: "diff".to_string(),
+            content: diff,
+            tool_calls: None,
+            tool_call_id: tool_call_id.clone(),
+            usage: Some(usage),
+        });
 
-        Ok((false, vec![
-            ContextEnum::ChatMessage(ChatMessage {
-                role: "diff".to_string(),
-                content: diff,
-                tool_calls: None,
-                tool_call_id: tool_call_id.clone(),
-                usage: Some(usage),
-            })
-        ]))
+        let results = results.into_iter().map(|x|ContextEnum::ChatMessage(x)).collect::<Vec<_>>();
+        Ok((false, results))
     }
 
     fn usage(&mut self) -> &mut Option<ChatUsage> {
