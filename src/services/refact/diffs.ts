@@ -81,6 +81,10 @@ export const diffApi = createApi({
           body: { chunks: args.chunks, apply: args.toApply },
         });
 
+        if (result.error) {
+          return { error: result.error };
+        }
+
         if (Array.isArray(result.data)) {
           const maybeErrorChunks = result.data.filter(isDiffErrorResponseData);
           if (maybeErrorChunks.length > 0) {

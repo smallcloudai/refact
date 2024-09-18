@@ -22,6 +22,7 @@ import {
   setWarning,
 } from "../../features/Errors/warningSlice";
 import { DiffWarningCallout } from "../Callout";
+import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -217,7 +218,16 @@ export const DiffContent: React.FC<{
           }
         }
       })
-      .catch((error) => dispatch(setWarning(error as string[])));
+      .catch((error: FetchBaseQueryError) => {
+        if (error.status === "FETCH_ERROR") {
+          dispatch(
+            setWarning([
+              "Failed to apply diff chunk",
+              "Reason: Connection lost with LSP server",
+            ]),
+          );
+        }
+      });
   };
 
   // if (diffStateRequest.isFetching) return null;
