@@ -1,3 +1,4 @@
+use std::io::Write;
 use indexmap::{IndexSet, IndexMap};
 use std::sync::{Arc, Weak};
 use tokio::sync::{Mutex as AMutex, Notify as ANotify};
@@ -22,7 +23,8 @@ async fn ast_indexer_thread(
     gcx_weak: Weak<ARwLock<GlobalContext>>,
     ast_service: Arc<AMutex<AstIndexService>>,
 ) {
-    let mut reported_idle = true;
+    let mut reported_parse_stats = true;
+    let mut reported_connect_stats = true;
     let mut stats_parsed_cnt = 0;
     let mut stats_symbols_cnt = 0;
     let mut stats_t0 = std::time::Instant::now();
@@ -58,7 +60,8 @@ async fn ast_indexer_thread(
         };
 
         if let Some(cpath) = cpath {
-            reported_idle = false;
+            reported_parse_stats = false;
+            reported_connect_stats = false;
             if stats_parsed_cnt == 0 {
                 stats_t0 = std::time::Instant::now();
             }
@@ -93,8 +96,8 @@ async fn ast_indexer_thread(
                         }
                     }
                 }
-                Err(e) => {
-                    tracing::info!("cannot read file {}: {}", crate::nicer_logs::last_n_chars(&cpath, 30), e);
+                Err(_e) => {
+                    tracing::info!("deleting from index {} because cannot read it", crate::nicer_logs::last_n_chars(&cpath, 30));
                 }
             }
 
@@ -123,7 +126,7 @@ async fn ast_indexer_thread(
 
         flush_sled_batch(ast_index.clone(), 0).await;  // otherwise bad stats
 
-        if !reported_idle {
+        if !reported_parse_stats {
             if !stats_parsing_errors.errors.is_empty() {
                 let error_count = stats_parsing_errors.errors_counter;
                 let display_count = std::cmp::min(5, error_count);
@@ -172,7 +175,7 @@ async fn ast_indexer_thread(
             stats_failure_reasons.clear();
             stats_parsed_cnt = 0;
             stats_symbols_cnt = 0;
-            reported_idle = true;
+            reported_parse_stats = true;
             let counters: AstCounters = fetch_counters(ast_index.clone()).await;
             {
                 let mut status_locked = ast_status.lock().await;
@@ -181,7 +184,6 @@ async fn ast_indexer_thread(
                 status_locked.ast_index_files_total = counters.counter_docs;
                 status_locked.ast_index_symbols_total = counters.counter_defs;
                 status_locked.ast_max_files_hit = ast_max_files_hit;
-                status_locked.astate = "done".to_string();
             }
             ast_sleeping_point.notify_waiters();
         }
@@ -226,6 +228,24 @@ async fn ast_indexer_thread(
         if todo_count > 0 {
             info!("stopped processing links because there's a file to parse");
             continue;
+        }
+
+        if !reported_connect_stats {
+            let counters: AstCounters = fetch_counters(ast_index.clone()).await;
+            {
+                let mut status_locked = ast_status.lock().await;
+                status_locked.files_unparsed = 0;
+                status_locked.files_total = 0;
+                status_locked.ast_index_files_total = counters.counter_docs;
+                status_locked.ast_index_symbols_total = counters.counter_defs;
+                status_locked.ast_index_usages_total = counters.counter_usages;
+                status_locked.ast_max_files_hit = ast_max_files_hit;
+                status_locked.astate = "done".to_string();
+            }
+            ast_sleeping_point.notify_waiters();
+            let _ = write!(std::io::stderr(), "AST COMPLETE\n");
+            info!("AST COMPLETE"); // you can see stderr sometimes faster vs logs
+            reported_connect_stats = true;
         }
 
         tokio::time::timeout(tokio::time::Duration::from_secs(10), ast_sleeping_point.notified()).await.ok();
@@ -279,6 +299,7 @@ pub async fn ast_service_init(ast_permanent: String, ast_max_files: usize) -> Ar
         files_total: 0,
         ast_index_files_total: 0,
         ast_index_symbols_total: 0,
+        ast_index_usages_total: 0,
         ast_max_files_hit: false
     }));
     let ast_service = AstIndexService {

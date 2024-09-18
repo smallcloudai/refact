@@ -62,6 +62,7 @@ pub struct AstStatus {
     pub files_total: usize,
     pub ast_index_files_total: i32,
     pub ast_index_symbols_total: i32,
+    pub ast_index_usages_total: i32,
     pub ast_max_files_hit: bool,
 }
 
