@@ -186,7 +186,7 @@ async def ask_chat(model):
             break
 
 
-async def answer_question_in_arguments(session: PromptSession, settings, arg_question):
+async def answer_question_in_arguments(settings, arg_question):
     global streaming_messages
     streaming_messages.append(Message(role="user", content=arg_question))
     await ask_chat(settings.model)
@@ -315,7 +315,6 @@ async def chat_main():
         tools_turn_on = {"definition", "references", "file",
                          "search", "cat", "tree", "web"}
 
-        session = PromptSession()
         asyncio.create_task(update_vecdb_status_background_task())
 
         tools = await chat_client.tools_fetch_and_filter(base_url=lsp.base_url, tools_turn_on=tools_turn_on)
@@ -329,11 +328,9 @@ async def chat_main():
                   sorted(caps.code_chat_models.keys())}")
             return
 
-        session = PromptSession()
-
         if arg_question:
             print(arg_question)
-            await answer_question_in_arguments(session, settings, arg_question)
+            await answer_question_in_arguments(settings, arg_question)
             return
 
         await welcome_message(settings, random.choice(tips_of_the_day))
