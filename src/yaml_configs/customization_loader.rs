@@ -10,7 +10,6 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, SubchatParameters};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
-use crate::yaml_configs::create_configs::yaml_customization_exists_or_create;
 use crate::yaml_configs::customization_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML;
 
 
@@ -76,10 +75,10 @@ fn replace_variables_in_system_prompts(config: &mut CustomizationYaml, variables
 }
 
 fn load_and_mix_with_users_config(
-    user_yaml: &str, 
-    caps_yaml: &str, 
-    caps_default_system_prompt: &str, 
-    skip_filtering: bool, 
+    user_yaml: &str,
+    caps_yaml: &str,
+    caps_default_system_prompt: &str,
+    skip_filtering: bool,
     allow_experimental: bool
 ) -> Result<CustomizationYaml, String> {
     let default_unstructured: serde_yaml::Value = serde_yaml::from_str(COMPILED_IN_CUSTOMIZATION_YAML)
@@ -102,7 +101,7 @@ fn load_and_mix_with_users_config(
     replace_variables_in_messages(&mut user_config, &variables);
     replace_variables_in_system_prompts(&mut work_config, &variables);
     replace_variables_in_system_prompts(&mut user_config, &variables);
-    
+
     work_config.system_prompts.extend(caps_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.toolbox_commands.extend(caps_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
 
@@ -139,9 +138,10 @@ pub async fn load_customization(gcx: Arc<ARwLock<GlobalContext>>, skip_filtering
         (caps_locked.customization.clone(), caps_locked.code_chat_default_system_prompt.clone())
     };
 
-    let user_config_path = yaml_customization_exists_or_create(gcx.clone()).await?;
-    
-    let user_config_text = std::fs::read_to_string(&user_config_path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    let customization_yaml_path = cache_dir.join("customization.yaml");
+
+    let user_config_text = std::fs::read_to_string(&customization_yaml_path).map_err(|e| format!("Failed to read file: {}", e))?;
     load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt, skip_filtering, allow_experimental).map_err(|e| e.to_string())
 }
 
@@ -239,7 +239,7 @@ mod tests {
         );
         assert_eq!(config.is_ok(), true);
         let config = config.unwrap();
-        
+
         assert_eq!(config.system_prompts.get("default").is_some(), true);
         assert_eq!(config.system_prompts.get("exploration_tools").is_some(), true);
         assert_eq!(config.system_prompts.get("agentic_tools").is_some(), true);

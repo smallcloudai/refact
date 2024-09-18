@@ -11,7 +11,6 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_github::ToolGithub;
-use crate::yaml_configs::create_configs::yaml_integrations_read;
 
 
 #[async_trait]
@@ -40,8 +39,11 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         (gcx_locked.ast_service.is_some(), vecdb.is_some(), gcx_locked.cmdline.experimental)
     };
 
-    let integrations_yaml = yaml_integrations_read(gcx).await.unwrap_or_else(|e| {
-        warn!("{}", e);
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    let customization_yaml_path = cache_dir.join("integrations.yaml");
+
+    let integrations_yaml = tokio::fs::read_to_string(&customization_yaml_path).await.unwrap_or_else(|e| {
+        warn!("Failed to read integrations.yaml: {}", e);
         String::new()
     });
 

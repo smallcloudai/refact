@@ -530,7 +530,7 @@ running_models:   # all models mentioned in *_model are automatically running, b
 
 # More examples https://github.com/smallcloudai/refact-lsp/tree/dev/bring_your_own_key
 
-# Refact sends basic telemetry (counters), you can send it to a different address (a Refact self-hosting server is especially useful) or set to an empty string for no telemetry.
+# Refact sends basic telemetry (counters and errors), you can send it to a different address (a Refact self-hosting server is especially useful) or set to an empty string for no telemetry.
 # telemetry_basic_dest: <your-telemetry-address>             # default: https://www.smallcloud.ai/v1/telemetry-basic
 # telemetry_basic_retrieve_my_own: <your-telemetry-address>  # default: https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats
 "#;

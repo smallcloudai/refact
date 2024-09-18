@@ -243,7 +243,7 @@ toolbox_commands:
 
 pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# You can find the compiled-in config by searching for COMPILED_IN_CUSTOMIZATION_YAML in the `refact-lsp` repo.
 #
-# This customization will override the default.
+# This customization will override any defaults.
 
 system_prompts:
   write_pseudo_code:
