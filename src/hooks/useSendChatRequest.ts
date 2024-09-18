@@ -93,14 +93,14 @@ export const useSendChatRequest = () => {
 
   const submit = useCallback(
     async (question: string) => {
-      const message: ChatMessage = { role: "user", content: question };
-
       const lastDiffs = takeFromLast(
         messagesWithSystemPrompt,
         isUserMessage,
       ).filter(isDiffMessage);
 
       if (lastDiffs.length === 0) {
+        const message: ChatMessage = { role: "user", content: question };
+
         const messages = messagesWithSystemPrompt.concat(message);
         sendMessages(messages);
         return;
@@ -127,13 +127,12 @@ export const useSendChatRequest = () => {
 
       const diffMessage =
         appliedChunks.length === 0 ? notAppliedMessage : appliedMessage;
-      const messages = messagesWithSystemPrompt.concat([
-        {
-          role: "assistant",
-          content: diffMessage,
-        },
-        message,
-      ]);
+
+      const message: ChatMessage = {
+        role: "user",
+        content: diffMessage + "\n\n" + question,
+      };
+      const messages = messagesWithSystemPrompt.concat(message);
       sendMessages(messages);
     },
     [getDiffState, messagesWithSystemPrompt, sendMessages],
