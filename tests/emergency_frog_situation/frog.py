@@ -29,8 +29,9 @@ class Frog:
         self.x = np.clip(self.x, 0, pond_width)
         self.y = np.clip(self.y, 0, pond_height)
 
-    def croak(self):
-        print("croak")
+    def croak(self, n_times):
+        for n in range(n_times):
+            print("croak")
 
 
 class AlternativeFrog:
