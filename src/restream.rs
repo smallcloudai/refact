@@ -420,7 +420,7 @@ pub async fn scratchpad_interaction_stream(
                             &mut was_correct_output_even_if_error,
                         );
                         if let Ok(mut value) = value_maybe {
-                            finished = try_insert_usage(&mut value);
+                            try_insert_usage(&mut value);
                             value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
                             let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
                             let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);
@@ -523,6 +523,7 @@ pub fn try_insert_usage(msg_value: &mut serde_json::Value) -> bool {
     }
     return false;
 }
+
 fn _push_streaming_json_into_scratchpad(
     scratch: &mut Box<dyn ScratchpadAbstract>,
     json: &serde_json::Value,
