@@ -1,5 +1,5 @@
 import React from "react";
-import { Flex, Container, Box, HoverCard, Text, Link } from "@radix-ui/themes";
+import { Flex, Container, Box, HoverCard, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ChatContextFile } from "../../services/refact";
 import classnames from "classnames";
@@ -7,6 +7,7 @@ import { TruncateLeft, Small } from "../Text";
 import * as Collapsible from "@radix-ui/react-collapsible";
 
 import { ScrollArea } from "../ScrollArea";
+import { Link } from "../Link";
 import ReactMarkDown from "react-markdown";
 
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";

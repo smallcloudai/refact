@@ -23,7 +23,7 @@ export const ideOpenChatInNewTab = createAction<ChatThread>(
   "ide/openChatInNewTab",
 );
 
-import { pathApi } from "../services/refact/fullpath";
+import { pathApi } from "../services/refact/path";
 
 export const useEventsBusForIDE = () => {
   const postMessage = usePostMessage();
@@ -104,6 +104,16 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
+
+  const openCustomizationFile = useCallback(async () => {
+    const res = await getCustomizationPath(undefined).unwrap();
+    if (res) {
+      const action = ideOpenFile({ file_name: res });
+      postMessage(action);
+    }
+  }, [getCustomizationPath, postMessage]);
+
   return {
     diffPasteBack,
     openSettings,
@@ -114,6 +124,7 @@ export const useEventsBusForIDE = () => {
     setupHost,
     diffPreview,
     queryPathThenOpenFile,
+    openCustomizationFile,
     // canPaste,
   };
 };
