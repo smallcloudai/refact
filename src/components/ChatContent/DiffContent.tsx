@@ -16,14 +16,12 @@ import {
   useAppDispatch,
   useAppSelector,
 } from "../../hooks";
-
-// import { setError, clearError } from "../../features/Errors/errorsSlice";
 import {
   clearWarning,
   getWarningMessage,
   setWarning,
 } from "../../features/Errors/warningSlice";
-import { ErrorCallout } from "../Callout";
+import { DiffWarningCallout } from "../Callout";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -377,16 +375,15 @@ export const DiffForm: React.FC<{
             <ScrollArea scrollbars="horizontal" asChild>
               <Box style={{ minWidth: "100%", position: "relative" }}>
                 {warning && warning.length !== 0 && (
-                  <ErrorCallout
+                  <DiffWarningCallout
                     onClick={onClearWarning}
                     timeout={3000}
                     itemType="warning"
-                    my="4"
                     message={warning}
                     style={{
                       position: "absolute",
                       top: 10,
-                      left: 10,
+                      right: 0,
                     }}
                   />
                 )}

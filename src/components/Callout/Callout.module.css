@@ -15,6 +15,13 @@
 
 .callout_box_background {
   background-color: #30200f !important;
+  position: absolute;
+  top: 0;
+  left: -15px;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  border-radius: 10px;
 }
 
 .callout_box_opened {

@@ -143,13 +143,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (error) {
     return (
-      <ErrorCallout
-        mt="2"
-        onClick={onClearError}
-        timeout={null}
-        message={error}
-      >
-        <Text size="1" as="div" mt="1">
+      <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
+        {error}
+        <Text size="1" as="div">
           Click to retry
         </Text>
       </ErrorCallout>
