@@ -9,22 +9,22 @@ import aiohttp
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List, Union, Tuple
 
-from prompt_toolkit import PromptSession, Application
+from prompt_toolkit import PromptSession, Application, print_formatted_text
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.completion import Completer, Completion
-from prompt_toolkit.layout import Layout, CompletionsMenu, Float
-from prompt_toolkit.layout.containers import HSplit, Window, FloatContainer
+from prompt_toolkit.layout import Layout, CompletionsMenu, Float, ScrollablePane
+from prompt_toolkit.layout.containers import HSplit, VSplit, Window, FloatContainer
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.formatted_text import PygmentsTokens
+from prompt_toolkit.formatted_text import PygmentsTokens, FormattedText
 from prompt_toolkit.widgets import TextArea
 
 import refact.chat_client as chat_client
 from refact.chat_client import Message, FunctionDict
 from refact.printing import create_box, indent, print_header, get_terminal_width, tokens_len, Lines
-from refact.status_bar import bottom_status_bar, update_vecdb_status_background_task
+from refact.status_bar import bottom_status_bar, update_vecdb_status_background_task, StatusBar
 from refact.lsp_runner import LSPServerRunner
 
 
@@ -76,28 +76,23 @@ def find_tool_call(messages: List[Message], id: str) -> Optional[FunctionDict]:
     return None
 
 
-def print_response(to_print: Union[str, List[Tuple[str, str]]]):
-    if type(to_print) == str:
-        response_box.text.append(("", to_print))
-        app.invalidate()
-        return
+def flush_response():
+    print_formatted_text(FormattedText(response_box.text), end="")
+    response_box.text = []
 
-    for section in to_print:
-        response_box.text.append(section)
+
+def print_response(to_print: str):
+    for line in to_print.splitlines(True):
+        response_box.text.append(("", line))
+        if line[-1] == "\n":
+           flush_response()
     app.invalidate()
 
 
 def print_lines(lines: Lines):
-    global response_box
-    
+    flush_response()
     for line in lines:
-        number_of_children = len(hsplit.children)
-        text_control = FormattedTextControl(text=PygmentsTokens(line))
-        hsplit.children.insert(number_of_children - 1, Window(height=1, content=text_control))
-
-    number_of_children = len(hsplit.children)
-    response_box = FormattedTextControl(text=[])
-    hsplit.children.insert(number_of_children - 1, Window(dont_extend_height=True, content=response_box))
+        print_formatted_text(PygmentsTokens(line))
 
 
 def print_context_file(json_str: str):
@@ -118,7 +113,6 @@ def print_context_file(json_str: str):
 streaming_messages = []
 tools = []
 lsp = None
-response_box = None
 
 
 def process_streaming_data(data):
@@ -274,11 +268,6 @@ def on_submit(buffer):
         app.exit()
         return
 
-    number_of_children = len(hsplit.children)
-    text_control = FormattedTextControl(text=[])
-    response_box = text_control
-    hsplit.children.insert(number_of_children - 1, Window(dont_extend_height=True, content=text_control))
-
     streaming_messages.append(Message(role="user", content=user_input))
 
     async def asyncfunc():
@@ -352,36 +341,21 @@ async def chat_main():
 
         result = await app.run_async()
 
-        with patch_stdout():
-            while True:
-                try:
-                    user_input = await session.prompt_async(
-                        "Chat> ",
-                        key_bindings=kb,
-                        bottom_toolbar=bottom_status_bar,
-                        multiline=True,
-                        refresh_interval=0.1,
-                        completer=tool_completer,
-                    )
-                    if user_input.strip() == '':
-                        continue
-                    if user_input.lower() in ('exit', 'quit'):
-                        break
-
-                    streaming_messages.append(
-                        Message(role="user", content=user_input))
-
-                    await ask_chat(settings.model)
-                    print()
-                except EOFError:
-                    print("\nclean exit")
-                    break
 
 tool_completer = ToolsCompleter()
-text_area = TextArea(height=10, multiline=True, accept_handler=on_submit, completer=tool_completer)
-hsplit = HSplit([FloatContainer(content=text_area, floats=[
-    Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
-)])
+response_box = FormattedTextControl(text=[])
+text_area = TextArea(height=10, multiline=True, accept_handler=on_submit, completer=tool_completer, focusable=True, focus_on_click=True)
+vsplit = VSplit([
+    Window(content=FormattedTextControl(text="Chat> "), width=6),
+    text_area,
+])
+hsplit = HSplit([
+    Window(content=response_box),
+    FloatContainer(content=vsplit, floats=[
+        Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
+    ),
+    StatusBar(),
+])
 layout = Layout(hsplit)
 app = Application(key_bindings=kb, layout=layout)
 

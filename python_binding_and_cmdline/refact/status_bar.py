@@ -3,6 +3,8 @@ import aiohttp
 from typing import Optional, List, Tuple
 from refact.printing import get_terminal_width, tokens_len
 import refact.refact_cmdline as refact_cmdline
+from prompt_toolkit.layout.containers import Window, Container
+from prompt_toolkit.layout.controls import FormattedTextControl
 
 vecdb_ast_status = {
     "detail": "trying to connect..."
@@ -33,6 +35,7 @@ async def update_vecdb_status_background_task():
             continue
 
         vecdb = vecdb_ast_status.get("vecdb", None)
+        refact_cmdline.app.invalidate()
         if vecdb is not None and vecdb.get("state") == "done":
             await asyncio.sleep(2)
         else:
@@ -104,15 +107,15 @@ def create_status_bar(sections: List[Tuple[str, str, str]]) -> List[Tuple[str, s
 
     for (c1, c2, text) in sections:
         if previous_colour is not None:
-            result.append((f'{c1} bg:{previous_colour}', ''))
-        result.append((f'{c1} bg:{c2}', f" {text} "))
+            result.append((f'{previous_colour} bg:{c1}', ''))
+        result.append((f'{c2} bg:{c1}', f" {text} "))
         previous_colour = c1
 
     # add spaces to the end so the remaining part of the line is filled
     width = get_terminal_width()
     len = tokens_len(result)
     space_len = width - len
-    result.append((previous_colour, " " * space_len))
+    result.append((f"bg:{previous_colour}", " " * space_len))
 
     return result
 
@@ -130,3 +133,11 @@ def bottom_status_bar():
     result = create_status_bar([s for s in sections if s is not None])
 
     return result
+
+class StatusBar:
+    def __init__(self):
+        self.formatted_text_control = FormattedTextControl(text=bottom_status_bar)
+        self.window = Window(content=self.formatted_text_control, height=1)
+        
+    def __pt_container__(self) -> Container:
+        return self.window
