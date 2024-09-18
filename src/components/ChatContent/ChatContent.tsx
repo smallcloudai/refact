@@ -110,48 +110,55 @@ const PlaceHolderText: React.FC = () => {
   );
 };
 
-export const ChatContent = React.forwardRef<HTMLDivElement>((_props, ref) => {
-  const messages = useAppSelector(selectMessages);
-  const isStreaming = useAppSelector(selectIsStreaming);
-  const isWaiting = useAppSelector(selectIsWaiting);
+export type ChatContentProps = {
+  onRetry: (index: number, question: string) => void;
+};
 
-  const { innerRef, handleScroll } = useAutoScroll({
-    ref,
-    messages,
-    isStreaming,
-  });
+export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
+  (props, ref) => {
+    const messages = useAppSelector(selectMessages);
+    const isStreaming = useAppSelector(selectIsStreaming);
+    const isWaiting = useAppSelector(selectIsWaiting);
 
-  return (
-    <ScrollArea
-      style={{ flexGrow: 1, height: "auto" }}
-      scrollbars="vertical"
-      onScroll={handleScroll}
-    >
-      <Flex direction="column" className={styles.content} p="2" gap="1">
-        {messages.length === 0 && <PlaceHolderText />}
-        {renderMessages(messages)}
-        {isWaiting && (
-          <Container py="4">
-            <Spinner />
-          </Container>
-        )}
-        <div ref={innerRef} />
-      </Flex>
-    </ScrollArea>
-  );
-});
+    const { innerRef, handleScroll } = useAutoScroll({
+      ref,
+      messages,
+      isStreaming,
+    });
+
+    return (
+      <ScrollArea
+        style={{ flexGrow: 1, height: "auto" }}
+        scrollbars="vertical"
+        onScroll={handleScroll}
+      >
+        <Flex direction="column" className={styles.content} p="2" gap="1">
+          {messages.length === 0 && <PlaceHolderText />}
+          {renderMessages(messages, props.onRetry)}
+          {isWaiting && (
+            <Container py="4">
+              <Spinner />
+            </Container>
+          )}
+          <div ref={innerRef} />
+        </Flex>
+      </ScrollArea>
+    );
+  },
+);
 
 ChatContent.displayName = "ChatContent";
 
 function renderMessages(
   messages: ChatMessages,
+  onRetry: (index: number, question: string) => void,
   memo: React.ReactNode[] = [],
   index = 0,
 ) {
   if (messages.length === 0) return memo;
   const [head, ...tail] = messages;
   if (head.role === "tool") {
-    return renderMessages(tail, memo, index + 1);
+    return renderMessages(tail, onRetry, memo, index + 1);
   }
 
   if (head.role === "context_memory") {
@@ -160,13 +167,13 @@ function renderMessages(
       ...memo,
       <MemoryContent key={key} items={head.content} />,
     ];
-    return renderMessages(tail, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (head.role === "plain_text") {
     const key = "plain-text-" + index;
     const nextMemo = [...memo, <PlainText key={key}>{head.content}</PlainText>];
-    return renderMessages(tail, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (head.role === "assistant") {
@@ -180,24 +187,24 @@ function renderMessages(
       />,
     ];
 
-    return renderMessages(tail, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (head.role === "user") {
     const key = "user-input-" + index;
     const nextMemo = [
       ...memo,
-      <UserInput key={key} messageIndex={index}>
+      <UserInput onRetry={onRetry} key={key} messageIndex={index}>
         {head.content}
       </UserInput>,
     ];
-    return renderMessages(tail, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (isChatContextFileMessage(head)) {
     const key = "context-file-" + index;
     const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
-    return renderMessages(tail, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (isDiffMessage(head)) {
@@ -217,8 +224,13 @@ function renderMessages(
 
     const nextMemo = [...memo, <GroupedDiffs key={key} diffs={diffMessages} />];
 
-    return renderMessages(nextTail, nextMemo, index + diffMessages.length);
+    return renderMessages(
+      nextTail,
+      onRetry,
+      nextMemo,
+      index + diffMessages.length,
+    );
   }
 
-  return renderMessages(tail, memo, index + 1);
+  return renderMessages(tail, onRetry, memo, index + 1);
 }

@@ -3,7 +3,6 @@ import { Text, Container, Button } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
 import styles from "./ChatContent.module.css";
-import { useSendChatRequest } from "../../hooks";
 
 function processLines(
   lines: string[],
@@ -44,22 +43,24 @@ function processLines(
 export type UserInputProps = {
   children: string;
   messageIndex: number;
+  onRetry: (index: number, question: string) => void;
   // disableRetry?: boolean;
 };
 
 export const UserInput: React.FC<UserInputProps> = ({
   messageIndex,
   children,
+  onRetry,
 }) => {
-  const { retryFromIndex } = useSendChatRequest();
+  // const { retryFromIndex } = useSendChatRequest();
   const [showTextArea, setShowTextArea] = useState(false);
   const ref = React.useRef<HTMLButtonElement>(null);
   const handleSubmit = useCallback(
     (value: string) => {
-      retryFromIndex(messageIndex, value);
+      onRetry(messageIndex, value);
       setShowTextArea(false);
     },
-    [messageIndex, retryFromIndex],
+    [messageIndex, onRetry],
   );
 
   const handleShowTextArea = (value: boolean) => {

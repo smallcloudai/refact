@@ -51,7 +51,7 @@ export const Chat: React.FC<ChatProps> = ({
   const isWaiting = useAppSelector(selectIsWaiting);
 
   const chatId = useAppSelector(selectChatId);
-  const { submit, abort } = useSendChatRequest();
+  const { submit, abort, retryFromIndex } = useSendChatRequest();
   const chatModel = useAppSelector(getSelectedChatModel);
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectMessages);
@@ -102,7 +102,11 @@ export const Chat: React.FC<ChatProps> = ({
     <PageWrapper host={host} style={style}>
       <Toolbar activeTab={{ type: "chat", id: chatId }} />
 
-      <ChatContent key={`chat-content-${chatId}`} ref={chatContentRef} />
+      <ChatContent
+        key={`chat-content-${chatId}`}
+        ref={chatContentRef}
+        onRetry={retryFromIndex}
+      />
 
       {!isStreaming && preventSend && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
