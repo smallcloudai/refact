@@ -67,7 +67,7 @@ export const Chat: React.FC<ChatProps> = ({
 
   const handleSummit = useCallback(
     (value: string) => {
-      submit(value);
+      void submit(value);
     },
     [submit],
   );
