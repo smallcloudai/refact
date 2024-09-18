@@ -13,12 +13,13 @@ from prompt_toolkit import PromptSession, Application
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.completion import Completer, Completion
-from prompt_toolkit.layout import Layout
-from prompt_toolkit.layout.containers import HSplit, Window
+from prompt_toolkit.layout import Layout, CompletionsMenu, Float
+from prompt_toolkit.layout.containers import HSplit, Window, FloatContainer
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.formatted_text import PygmentsTokens
+from prompt_toolkit.widgets import TextArea
 
 import refact.chat_client as chat_client
 from refact.chat_client import Message, FunctionDict
@@ -377,8 +378,10 @@ async def chat_main():
                     break
 
 tool_completer = ToolsCompleter()
-buffer1 = Buffer(multiline=True, accept_handler=on_submit, completer=tool_completer)
-hsplit = HSplit([Window(height=10, content=BufferControl(buffer=buffer1))])
+text_area = TextArea(height=10, multiline=True, accept_handler=on_submit, completer=tool_completer)
+hsplit = HSplit([FloatContainer(content=text_area, floats=[
+    Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
+)])
 layout = Layout(hsplit)
 app = Application(key_bindings=kb, layout=layout)
 
