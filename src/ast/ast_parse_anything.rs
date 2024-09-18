@@ -365,12 +365,17 @@ pub fn parse_anything(
                 if let Some(struct_declaration) = symbol.as_any().downcast_ref::<StructDeclaration>() {
                     this_is_a_class = format!("{}🔎{}", pcx.language, struct_declaration.name());
                     for base_class in struct_declaration.inherited_types.iter() {
-                        if base_class.name.is_none() {
+                        let base_class_name = base_class.name.clone().unwrap_or_default();
+                        if base_class_name.is_empty() {
                             errors.add_error("".to_string(), struct_declaration.full_range().start_point.row + 1, "nameless base class");
                             continue;
                         }
-                        this_class_derived_from.push(format!("{}🔎{}", pcx.language, base_class.name.clone().unwrap()));
-                        usages.push(_name_to_usage(&mut pcx, symbol.full_range().start_point.row + 1, Some(symbol.guid().clone()), base_class.name.clone().unwrap()).unwrap());
+                        this_class_derived_from.push(format!("{}🔎{}", pcx.language, base_class_name));
+                        if let Some(usage) = _name_to_usage(&mut pcx, symbol.full_range().start_point.row + 1, Some(symbol.guid().clone()), base_class_name) {
+                            usages.push(usage);
+                        } else {
+                            errors.add_error("".to_string(), struct_declaration.full_range().start_point.row + 1, "unable to create base class usage");
+                        }
                     }
                 }
                 let mut skip_var_because_parent_is_function = false;
