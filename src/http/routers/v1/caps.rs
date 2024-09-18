@@ -8,7 +8,6 @@ use hyper::{Body, Response, StatusCode};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 
-const MAX_CAPS_AGE: u64 = 10;
 
 pub async fn handle_v1_ping(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
@@ -28,7 +27,7 @@ pub async fn handle_v1_caps(
 ) -> Result<Response<Body>, ScratchError> {
     let caps_result = crate::global_context::try_load_caps_quickly_if_not_present(
         global_context.clone(),
-        MAX_CAPS_AGE,
+        0,
     ).await;
     let caps_arc = match caps_result {
         Ok(x) => x,
