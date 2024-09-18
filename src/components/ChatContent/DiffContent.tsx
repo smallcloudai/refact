@@ -177,21 +177,19 @@ export const DiffContent: React.FC<{
   const [open, setOpen] = React.useState(false);
 
   return (
-    <Container>
-      <Collapsible.Root open={open} onOpenChange={setOpen}>
-        <Collapsible.Trigger asChild>
-          <Flex gap="2" align="center">
-            <Text weight="light" size="1">
-              <DiffTitle diffs={diffs} />
-            </Text>
-            <Chevron open={open} />
-          </Flex>
-        </Collapsible.Trigger>
-        <Collapsible.Content>
-          <DiffForm diffs={diffs} />
-        </Collapsible.Content>
-      </Collapsible.Root>
-    </Container>
+    <Collapsible.Root open={open} onOpenChange={setOpen}>
+      <Collapsible.Trigger asChild>
+        <Flex gap="2" align="center">
+          <Text weight="light" size="1">
+            <DiffTitle diffs={diffs} />
+          </Text>
+          <Chevron open={open} />
+        </Flex>
+      </Collapsible.Trigger>
+      <Collapsible.Content>
+        <DiffForm diffs={diffs} />
+      </Collapsible.Content>
+    </Collapsible.Root>
   );
 };
 
@@ -344,16 +342,18 @@ export const GroupedDiffs: React.FC<GroupedDiffsProps> = ({ diffs }) => {
     status.data?.length === 0 || status.data?.every((diff) => !diff.state);
 
   return (
-    <Flex direction="column" gap="4" py="4">
-      <DiffContent diffs={groupedByFileName} />
-      <Flex gap="2">
-        <Button onClick={onUnApplyAll} disabled={disableUnApplyAll}>
-          Unapply All
-        </Button>
-        <Button onClick={onApplyAll} disabled={disableApplyAll}>
-          Apply All
-        </Button>
+    <Container>
+      <Flex direction="column" gap="4" py="4">
+        <DiffContent diffs={groupedByFileName} />
+        <Flex gap="2">
+          <Button onClick={onUnApplyAll} disabled={disableUnApplyAll}>
+            Unapply All
+          </Button>
+          <Button onClick={onApplyAll} disabled={disableApplyAll}>
+            Apply All
+          </Button>
+        </Flex>
       </Flex>
-    </Flex>
+    </Container>
   );
 };
