@@ -124,6 +124,7 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "gpt-4o-2024-05-13",
+                "gpt-4o-2024-08-06",
                 "openai/gpt-4o"
             ]
         },
@@ -293,6 +294,7 @@ pub const KNOWN_MODELS: &str = r####"
         "gpt-4-turbo-2024-04-09": "Xenova/gpt-4",
         "gpt-4o":                 "Xenova/gpt-4o",
         "gpt-4o-2024-05-13":      "Xenova/gpt-4o",
+        "gpt-4o-2024-08-06":      "Xenova/gpt-4o",
         "gpt-4o-mini":            "Xenova/gpt-4o",
         "gpt-4o-mini-2024-07-18": "Xenova/gpt-4o",
         "openai/gpt-4":           "Xenova/gpt-4",
