@@ -1,6 +1,6 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::patch::chat_interaction::read_file;
-use crate::tools::patch::snippets::CodeSnippet;
+use crate::tools::patch::snippets::TicketToApply;
 use crate::tools::patch::unified_diff_format::{diff_blocks_to_diff_chunks, DiffBlock, DiffLine, LineType};
 use crate::call_validation::DiffChunk;
 use std::path::PathBuf;
@@ -10,7 +10,7 @@ use tokio::sync::Mutex as AMutex;
 
 pub async fn full_rewrite_diff(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    snippet: &CodeSnippet,
+    snippet: &TicketToApply,
 ) -> Result<Vec<DiffChunk>, String> {
     let gcx = ccx.lock().await.global_context.clone();
     let context_file = read_file(gcx.clone(), snippet.filename_before.clone()).await
@@ -72,7 +72,7 @@ pub async fn full_rewrite_diff(
 }
 
 pub fn new_file_diff(
-    snippet: &CodeSnippet,
+    snippet: &TicketToApply,
 ) -> Vec<DiffChunk> {
     vec![
         DiffChunk {

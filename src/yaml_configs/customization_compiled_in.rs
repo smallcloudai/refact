@@ -37,15 +37,15 @@ PROMPT_AGENTIC_TOOLS: |
   identical to the input indent, ready to paste back into the file.
 
   Before any code block, you need to write one of: 📍PARTIAL_EDIT, 📍FULL_REWRITE, 📍NEW_FILE, 📍OTHER followed by a unique ticket (3-digit
-  number that you need to start from 000 and increase by one each code block) and the path to the file the changes apply to,
+  number that you need to start from 000 and increase by one each code block) and the absolute path to the file the changes apply to,
   optional rename section, then write the code block. Explanation:
-  📍PARTIAL_EDIT <ticket> <dir/existing_file.ext> [RENAME <dir/new_name.ext>]   -- edit doesn't start at the top and end at the bottom, rename is optional
-  📍FULL_REWRITE <ticket> <dir/existing_file.ext> [RENAME <dir/new_name.ext>]   -- when you need to rewrite the whole file with a new version, rename is optional
-  📍NEW_FILE <ticket> <dir/new_file.ext>                                        -- create a new file
+  📍PARTIAL_EDIT <ticket> </dir/dir/existing_file.ext> [RENAME </dir/dir/new_name.ext>]   -- edit doesn't start at the top and end at the bottom, rename is optional
+  📍FULL_REWRITE <ticket> </dir/dir/existing_file.ext> [RENAME </dir/dir/new_name.ext>]   -- when you need to rewrite the whole file with a new version, rename is optional
+  📍NEW_FILE <ticket> </dir/dir/new_file.ext>                                   -- create a new file
   📍OTHER <ticket>                                                              -- command line, pseudo code, examples, answers to questions unrelated to the project
 
   Example:
-  📍PARTIAL_EDIT 000 my_file.py
+  📍PARTIAL_EDIT 000 /home/user/code/my_project/my_file.py
   ```python
   def f(): pass
   ```

@@ -9,7 +9,7 @@ use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::patch::chat_interaction::execute_chat_model;
 use crate::tools::patch::diff_formats::postprocess_diff_chunks_from_message;
-use crate::tools::patch::snippets::{CodeSnippet, correct_and_validate_code_snippet, get_code_snippets, PatchAction};
+use crate::tools::patch::snippets::{TicketToApply, correct_and_validate_code_snippet, get_code_snippets, PatchAction};
 use crate::tools::patch::unified_diff_format::UnifiedDiffFormat;
 use crate::tools::patch::whole_file_diff::{full_rewrite_diff, new_file_diff};
 use crate::tools::tools_execute::unwrap_subchat_params;
@@ -80,7 +80,7 @@ fn choose_correct_chunk(chunks: Vec<Result<String, String>>) -> Result<String, S
 
 async fn partial_edit_snippets_to_diffs(
     ccx_subchat: Arc<AMutex<AtCommandsContext>>,
-    snippets: Vec<CodeSnippet>,
+    snippets: Vec<TicketToApply>,
     params: &SubchatParameters,
     tool_call_id: &String,
     usage: &mut ChatUsage,
@@ -95,7 +95,7 @@ async fn partial_edit_snippets_to_diffs(
         tool_call_id,
         usage,
     ).await?;
-    
+
     let mut chunks_for_answers = vec![];
     for chunks in all_chunks.iter_mut() {
         let diffs = postprocess_diff_chunks_from_message(ccx_subchat.clone(), chunks).await;
@@ -107,7 +107,7 @@ async fn partial_edit_snippets_to_diffs(
 async fn snippets2diff(
     ccx_subchat: Arc<AMutex<AtCommandsContext>>,
     path_from_call: String,
-    snippets: HashMap<String, CodeSnippet>,
+    all_tickets_from_above: HashMap<String, TicketToApply>,
     tickets: Vec<String>,
     params: &SubchatParameters,
     tool_call_id: &String,
@@ -122,10 +122,10 @@ async fn snippets2diff(
         }
         text
     }
-    let mut active_snippets = tickets.iter().map(|t|snippets.get(t).cloned()
+    let mut active_snippets = tickets.iter().map(|t|all_tickets_from_above.get(t).cloned()
         .ok_or(good_error_text(&format!("No code block found for the ticket {:?} did you forget to write one using 📍-notation?", t), &tickets, None))
     ).collect::<Result<Vec<_>, _>>()?;
-    drop(snippets);
+    drop(all_tickets_from_above);
 
     if active_snippets.iter().map(|x|x.filename_before.clone()).unique().count() > 1 {
         return Err(good_error_text(
@@ -176,7 +176,7 @@ async fn snippets2diff(
         },
         _ => Err(good_error_text(&format!("unknown action provided: '{:?}'.", action), &tickets, None))
     }?;
-    
+
     Ok(result)
 }
 
@@ -225,7 +225,7 @@ impl Tool for ToolPatch {
             tool_call_id,
             &mut usage,
         ).await?;
-        
+
         let mut results = vec![];
         results.push(ChatMessage {
             role: "diff".to_string(),

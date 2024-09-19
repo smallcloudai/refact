@@ -31,7 +31,7 @@ impl PatchAction {
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
-pub struct CodeSnippet {
+pub struct TicketToApply {
     pub action: PatchAction,
     pub ticket: String,
     pub filename_before: String,
@@ -39,8 +39,8 @@ pub struct CodeSnippet {
     pub code: String,
 }
 
-pub async fn correct_and_validate_code_snippet(gcx: Arc<ARwLock<GlobalContext>>, snippet: &mut CodeSnippet) -> Result<(), String> {
-    fn good_error_text(reason: &str, snippet: &CodeSnippet) -> String {
+pub async fn correct_and_validate_code_snippet(gcx: Arc<ARwLock<GlobalContext>>, snippet: &mut TicketToApply) -> Result<(), String> {
+    fn good_error_text(reason: &str, snippet: &TicketToApply) -> String {
         format!("Failed to validate TICKET '{}': {}", snippet.ticket, reason)
     }
     async fn resolve_path(gcx: Arc<ARwLock<GlobalContext>>, path_str: &String) -> Result<String, String> {
@@ -70,9 +70,9 @@ pub async fn correct_and_validate_code_snippet(gcx: Arc<ARwLock<GlobalContext>>,
     Ok(())
 }
 
-fn parse_snippets(content: &str) -> Vec<CodeSnippet> {
-    fn process_snippet(lines: &[&str], line_num: usize) -> Result<(usize, CodeSnippet), String> {
-        let mut snippet = CodeSnippet::default();
+fn parse_snippets(content: &str) -> Vec<TicketToApply> {
+    fn process_snippet(lines: &[&str], line_num: usize) -> Result<(usize, TicketToApply), String> {
+        let mut snippet = TicketToApply::default();
         let command_line = lines[line_num];
         let info_elements = command_line.trim().split(" ").collect::<Vec<&str>>();
         if info_elements.len() < 3 {
@@ -105,7 +105,7 @@ fn parse_snippets(content: &str) -> Vec<CodeSnippet> {
 
     let lines: Vec<&str> = content.lines().collect();
     let mut line_num = 0;
-    let mut blocks: Vec<CodeSnippet> = vec![];
+    let mut blocks: Vec<TicketToApply> = vec![];
     while line_num < lines.len() {
         let line = lines[line_num];
         if line.contains("📍") {
@@ -129,9 +129,9 @@ fn parse_snippets(content: &str) -> Vec<CodeSnippet> {
 
 pub async fn get_code_snippets(
     ccx: Arc<AMutex<AtCommandsContext>>,
-) -> HashMap<String, CodeSnippet> {
+) -> HashMap<String, TicketToApply> {
     let messages = ccx.lock().await.messages.clone();
-    let mut code_snippets: HashMap<String, CodeSnippet> = HashMap::new();
+    let mut code_snippets: HashMap<String, TicketToApply> = HashMap::new();
     for message in messages
         .iter()
         .filter(|x| x.role == "assistant") {
