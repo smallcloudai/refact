@@ -6,18 +6,14 @@ import styles from "./ChatForm.module.css";
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
 import { TextArea, TextAreaProps } from "../TextArea";
 import { Form } from "./Form";
-import {
-  useOnPressedEnter,
-  useIsOnline,
-  useConfig,
-  // useSendChatRequest,
-} from "../../hooks";
+import { useOnPressedEnter, useIsOnline, useConfig } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { Button } from "@radix-ui/themes";
 import { ComboBox } from "../ComboBox";
 import {
   CodeChatModel,
   isAssistantMessage,
+  isChatGetTitleActionPayload,
   SystemPrompts,
 } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
@@ -32,8 +28,10 @@ import {
   chatGenerateTitleThunk,
   selectChatId,
   selectMessages,
+  selectThread,
   selectThreadTitle,
 } from "../../features/Chat";
+import { saveChat } from "../../features/History/historySlice";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -83,6 +81,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     useCheckboxes();
 
   const messages = useAppSelector(selectMessages);
+  const thread = useAppSelector(selectThread);
   const chatId = useAppSelector(selectChatId);
   const threadTitle = useAppSelector(selectThreadTitle);
 
@@ -161,22 +160,31 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   );
 
   useEffect(() => {
-    // TODO ask for a chat title here and update the title in the chat panel
-    // Also, make sure it happens only once and only when it has only one message.
     if (
       messages.filter(isAssistantMessage).find((msg) => msg.content !== "") &&
       !isStreaming &&
       !threadTitle
     ) {
-      dispatch(chatGenerateTitleThunk({ messages, chatId }))
-        .then(() => {
-          return;
+      dispatch(
+        chatGenerateTitleThunk({
+          messages,
+          chatId,
+        }),
+      )
+        .then((response) => {
+          const data = response.payload;
+          if (isChatGetTitleActionPayload(data)) {
+            dispatch(saveChat({ ...thread, title: data.title }));
+          }
         })
         .catch(() => {
           return;
+          // if (typeof response.payload?.title === "string") {
+          // dispatch(saveChat({ ...thread, title: response.payload.title }));
+          // }
         });
     }
-  }, [dispatch, isStreaming, chatId, messages, threadTitle]);
+  }, [dispatch, isStreaming, chatId, messages, thread, threadTitle]);
 
   if (error) {
     return (

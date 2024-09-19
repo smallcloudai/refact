@@ -3,6 +3,7 @@ import { type ChatThread, type PayloadWithId, type ToolUse } from "./types";
 import {
   isAssistantMessage,
   isChatGetTitleResponse,
+  isToolMessage,
   type ChatMessages,
   type ChatResponse,
 } from "../../../services/refact/types";
@@ -78,12 +79,24 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
 >("chatThread/generateTitle", ({ messages, chatId }, thunkAPI) => {
   const state = thunkAPI.getState();
 
+  const messagesToSend = messages
+    .filter((msg) => !isToolMessage(msg) && msg.content !== "")
+    .map((msg) => {
+      if (isAssistantMessage(msg)) {
+        return {
+          role: msg.role,
+          content: msg.content,
+        };
+      }
+      return msg;
+    });
+
   const messagesForLsp = formatMessagesForLsp([
-    ...messages,
+    ...messagesToSend,
     {
       role: "user",
       content:
-        "Generate a short 2-3 word title for current chat based on its context",
+        "Generate a short 2-3 word title for current chat based on its context. Answer should be strictly 2-3 words. Not paragraphs of text.",
     },
   ]);
 
