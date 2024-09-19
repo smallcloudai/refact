@@ -9,7 +9,7 @@ import aiohttp
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List, Union, Tuple
 
-from prompt_toolkit import PromptSession, Application, print_formatted_text
+from prompt_toolkit import PromptSession, Application, ANSI, print_formatted_text
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.completion import Completer, Completion
@@ -20,13 +20,14 @@ from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.formatted_text import PygmentsTokens, FormattedText
 from prompt_toolkit.widgets import TextArea
+from prompt_toolkit.styles import Style
 
 import refact.chat_client as chat_client
 from refact.chat_client import Message, FunctionDict
-from refact.printing import create_box, indent, print_header, get_terminal_width, tokens_len, Lines
+from refact.printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
+from refact.printing import set_background_color
 from refact.status_bar import bottom_status_bar, update_vecdb_status_background_task, StatusBar
 from refact.lsp_runner import LSPServerRunner
-
 
 class CapsModel(BaseModel):
     n_ctx: int
@@ -92,7 +93,7 @@ def print_response(to_print: str):
 def print_lines(lines: Lines):
     flush_response()
     for line in lines:
-        print_formatted_text(PygmentsTokens(line))
+        print_formatted_text(FormattedText(line))
 
 
 def print_context_file(json_str: str):
@@ -102,12 +103,22 @@ def print_context_file(json_str: str):
     # line1 = file["line1"]
     # line2 = file["line2"]
 
+    bg_color = "#252b37"
+    tab_color = "#3e4957"
+
     terminal_width = get_terminal_width()
-    box = create_box(content, terminal_width - 4, max_height=20,
-                     title=file_name, file_name=file_name)
-    indented = indent(box, 2)
+    content = highlight_text(content, file_name)
+    wrapped = wrap_tokens(content, terminal_width - 2)
+    limited = limit_lines(wrapped, 15)
+    colored = set_background_color(limited, bg_color)
     print_response("\n")
-    print_lines(indented)
+    flush_response()
+    print_formatted_text(FormattedText([
+        (tab_color, " "),
+        (f"bg:{tab_color}", f" {file_name} "),
+        (tab_color, ""),
+    ]))
+    print_lines(colored)
 
 
 streaming_messages = []

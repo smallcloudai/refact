@@ -8,9 +8,8 @@ from pygments.lexers import guess_lexer_for_filename
 import pygments
 import shutil
 
-Tokens = List[Tuple[Any, str]]
+Tokens = List[Tuple[str, str]]
 Lines = List[Tokens]
-
 
 def get_terminal_width() -> int:
     return shutil.get_terminal_size((80, 20))[0]
@@ -78,11 +77,35 @@ def indent(lines: Lines, amount: int) -> List[str]:
 
 
 def to_tokens(text: str) -> Tokens:
-    return [(Token.Text, text)]
+    return [("", text)]
 
 
 def tokens_len(tokens: Tokens) -> int:
     return sum([len(x[1]) for x in tokens])
+
+
+def highlight_text(text: str, file_name: str) -> Tokens:
+    lexer = guess_lexer_for_filename(file_name, text)
+    tokens = list(pygments.lex(text, lexer=lexer))
+    return PygmentsTokens(tokens).__pt_formatted_text__()
+
+
+def set_tokens_background_color(tokens: Tokens, color: str) -> Tokens:
+    return [(x[0] + f" bg:{color}", x[1]) for x in tokens]
+
+
+def set_background_color(lines: Lines, color: str) -> Lines:
+    terminal_width = get_terminal_width()
+    return [
+        set_tokens_background_color(line, color) + [(f"bg:{color}", " " * (terminal_width - tokens_len(line)))]
+        for line in lines
+    ]
+
+
+def limit_lines(lines: Lines, max_height: int) -> Lines:
+    if len(lines) > max_height:
+        return lines[0:max_height - 1] + [to_tokens(f"... {len(lines) - max_height} lines hidden ...")]
+    return lines
 
 
 def create_box(
@@ -93,9 +116,9 @@ def create_box(
     file_name: Optional[str] = None
 ) -> Lines:
     if file_name is not None:
-        lexer = guess_lexer_for_filename(file_name, text)
-        tokens = list(pygments.lex(text, lexer=lexer))
+        tokens = highlight_text(text, file_name)
         lines = wrap_tokens(tokens, max_width - 2)
+        lines = [PygmentsTokens(line).__pt_formatted_text__() for line in lines]
     else:
         lines = wrap_text(text, max_width - 2)
 
