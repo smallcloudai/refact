@@ -122,6 +122,7 @@ def print_context_file(json_str: str):
 
 
 streaming_messages = []
+is_streaming = False
 tools = []
 lsp = None
 
@@ -171,10 +172,13 @@ def process_streaming_data(data):
 
 async def ask_chat(model):
     global streaming_messages
+    global is_streaming
+
     N = 1
     for step_n in range(4):
         def callback(data):
-            process_streaming_data(data)
+            if is_streaming:
+                process_streaming_data(data)
 
         messages = list(streaming_messages)
 
@@ -193,8 +197,11 @@ async def ask_chat(model):
         )
         streaming_messages = new_messages[0]
 
+        if not is_streaming:
+            break
         if not streaming_messages[-1].tool_calls:
             break
+    is_streaming = False
 
 
 async def answer_question_in_arguments(settings, arg_question):
@@ -235,6 +242,8 @@ def _(event):
 
 @kb.add('c-c')
 def _(event):
+    global is_streaming
+    is_streaming = False
     event.current_buffer.reset()
 
 
@@ -271,6 +280,7 @@ def get_at_command_completion(base_url: str, query: str, cursor_pos: int) -> Any
 
 def on_submit(buffer):
     global response_box
+    global is_streaming
 
     user_input = buffer.text
     if user_input.strip() == '':
@@ -278,6 +288,10 @@ def on_submit(buffer):
     if user_input.lower() in ('exit', 'quit'):
         app.exit()
         return
+    if is_streaming:
+        return
+
+    is_streaming = True
 
     streaming_messages.append(Message(role="user", content=user_input))
 
