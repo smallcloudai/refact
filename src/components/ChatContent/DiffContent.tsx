@@ -1,6 +1,6 @@
 import React from "react";
 import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
-import { type DiffChunk } from "../../services/refact";
+import { isDiffErrorResponseData, type DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
 import styles from "./ChatContent.module.css";
 import { filename } from "../../utils";
@@ -13,7 +13,16 @@ import {
   useDiffStateQuery,
   useConfig,
   useDiffPreview,
+  useAppDispatch,
+  useAppSelector,
 } from "../../hooks";
+import {
+  clearWarning,
+  getWarningMessage,
+  setWarning,
+} from "../../features/Errors/warningSlice";
+import { DiffWarningCallout } from "../Callout";
+import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -186,6 +195,7 @@ export const DiffContent: React.FC<{
   const { onPreview, previewResult: _previewResult } = useDiffPreview(chunks);
 
   const { onSubmit, result: _result } = useDiffApplyMutation();
+  const dispatch = useAppDispatch();
 
   const groupedDiffs: Record<string, DiffWithStatus[]> = React.useMemo(() => {
     const diffWithStatus = chunks.map((diff, index) => {
@@ -200,6 +210,40 @@ export const DiffContent: React.FC<{
 
     return groupBy(diffWithStatus, (diff) => diff.file_name);
   }, [chunks, diffStateRequest]);
+
+  const handleDiffApplySubmit = (toApply: boolean[]) => {
+    onSubmit({ chunks, toApply, toolCallId })
+      .unwrap()
+      .then((payload) => {
+        let data = null;
+        if (!Array.isArray(payload)) {
+          return;
+        }
+        data = payload[0];
+
+        if (isDiffErrorResponseData(data)) {
+          if (data.detail) {
+            const [warning, filePath] = data.detail.split("\n")[0].split("'");
+            const normalizedPath = filePath.startsWith("\\\\?\\")
+              ? filePath.substring(4).replace(/\\/g, "/")
+              : filePath;
+
+            const reason = data.detail.split("\n")[1];
+            dispatch(setWarning([[warning, normalizedPath].join(" "), reason]));
+          }
+        }
+      })
+      .catch((error: FetchBaseQueryError) => {
+        if (error.status === "FETCH_ERROR") {
+          dispatch(
+            setWarning([
+              "Failed to apply diff chunk",
+              "Reason: Connection lost with LSP server",
+            ]),
+          );
+        }
+      });
+  };
 
   // if (diffStateRequest.isFetching) return null;
   // if (diffStateRequest.isError) return null;
@@ -218,9 +262,7 @@ export const DiffContent: React.FC<{
         </Collapsible.Trigger>
         <Collapsible.Content>
           <DiffForm
-            onSubmit={(toApply: boolean[]) => {
-              void onSubmit({ chunks, toApply, toolCallId });
-            }}
+            onSubmit={handleDiffApplySubmit}
             onPreview={onPreview}
             loading={diffStateRequest.isLoading}
             diffs={groupedDiffs}
@@ -248,6 +290,13 @@ export const DiffForm: React.FC<{
   onPreview: (toApply: boolean[]) => void | Promise<void>;
   openFile: (file: { file_name: string; line?: number }) => void;
 }> = ({ diffs, loading, onSubmit, onPreview, openFile }) => {
+  const dispatch = useAppDispatch();
+  const warning = useAppSelector(getWarningMessage);
+  const onClearWarning = React.useCallback(
+    () => dispatch(clearWarning()),
+    [dispatch],
+  );
+
   const { host } = useConfig();
   const values = React.useMemo(() => {
     return Object.values(diffs).reduce((acc, curr) => acc.concat(curr), []);
@@ -349,7 +398,20 @@ export const DiffForm: React.FC<{
               </Text>
             </Flex>
             <ScrollArea scrollbars="horizontal" asChild>
-              <Box style={{ minWidth: "100%" }}>
+              <Box style={{ minWidth: "100%", position: "relative" }}>
+                {warning && warning.length !== 0 && (
+                  <DiffWarningCallout
+                    onClick={onClearWarning}
+                    timeout={3000}
+                    itemType="warning"
+                    message={warning}
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      right: 0,
+                    }}
+                  />
+                )}
                 <Box
                   style={{
                     background: "rgb(51, 51, 51)",
