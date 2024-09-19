@@ -357,6 +357,7 @@ hsplit = HSplit([
     FloatContainer(content=vsplit, floats=[
         Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
     ),
+    Window(),
     StatusBar(),
 ])
 layout = Layout(hsplit)
