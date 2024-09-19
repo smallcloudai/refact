@@ -27,27 +27,30 @@ import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
 function toDiff(str: string): string {
-  // const lines = str.split("\n");
-  // const result: string[] = [];
+  const lines = str.split("\n");
+  const result: string[] = [];
 
-  // for (let i = 0; i < lines.length; i++) {
-  //   const line = lines[i];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
 
-  //   if (line.endsWith("\\")) {
-  //     const nextLine = lines[i + 1] || "";
-  //     result.push(line.slice(0, -1) + nextLine);
-  //     i++;
-  //   } else {
-  //     result.push(line);
-  //   }
-  // }
+    // Check for escaped end-of-line characters
+    if (line.endsWith("\\") || line.endsWith("\\n")) {
+      // Remove the escape character(s) and combine with the next line if it exists
+      const nextLine = lines[i + 1] || ""; // Get the next line or an empty string if it doesn't exist
+      const cleanedLine = line.slice(0, line.endsWith("\\n") ? -2 : -1);
+      result.push(cleanedLine + nextLine); // Add the current line without the escape character(s) and the next line
+      i++; // Skip the next line since it's already combined
+    } else {
+      result.push(line); // Add the current line as is
+    }
+  }
 
-  // if (result[result.length - 1] === "") {
-  //   result.pop();
-  // }
+  // Remove the last line if it is empty
+  if (result[result.length - 1] === "") {
+    result.pop();
+  }
 
-  // return result.join("\n");
-  return str;
+  return result.join("\n"); // Join the processed lines back into a single string
 }
 
 const DiffLine: React.FC<{
