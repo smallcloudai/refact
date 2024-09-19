@@ -2,7 +2,7 @@ from typing import Optional, List, Tuple, Any
 from prompt_toolkit import HTML
 from prompt_toolkit.shortcuts import print_formatted_text
 from prompt_toolkit.styles import Style
-from prompt_toolkit.formatted_text import PygmentsTokens
+from prompt_toolkit.formatted_text import PygmentsTokens, FormattedText
 from pygments.token import Token
 from pygments.lexers import guess_lexer_for_filename
 import pygments
@@ -143,6 +143,28 @@ def create_box(
         result.append(new_line)
     result.append(to_tokens("└" + "─" * (max_width - 2) + "┘"))
     return result
+
+
+def print_lines(lines: Lines):
+    for line in lines:
+        print_formatted_text(FormattedText(line))
+
+
+def print_file(content: str, file_name: str):
+    bg_color = "#252b37"
+    tab_color = "#3e4957"
+
+    terminal_width = get_terminal_width()
+    content = highlight_text(content, file_name)
+    wrapped = wrap_tokens(content, terminal_width - 2)
+    limited = limit_lines(wrapped, 15)
+    colored = set_background_color(limited, bg_color)
+    print_formatted_text(FormattedText([
+        (tab_color, " "),
+        (f"bg:{tab_color}", f" {file_name} "),
+        (tab_color, ""),
+    ]))
+    print_lines(colored)
 
 
 def print_header(text: str, width: int) -> str:
