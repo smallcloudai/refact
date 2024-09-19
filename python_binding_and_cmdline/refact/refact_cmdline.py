@@ -25,7 +25,7 @@ from prompt_toolkit.styles import Style
 import refact.chat_client as chat_client
 from refact.chat_client import Message, FunctionDict
 from refact.printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
-from refact.printing import set_background_color, print_file
+from refact.printing import set_background_color, print_file, print_lines
 from refact.status_bar import bottom_status_bar, update_vecdb_status_background_task, StatusBar
 from refact.lsp_runner import LSPServerRunner
 
