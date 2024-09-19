@@ -29,6 +29,7 @@ from refact.printing import create_box, indent, wrap_tokens, print_header, highl
 from refact.printing import set_background_color, print_file, print_lines
 from refact.status_bar import bottom_status_bar, update_vecdb_status_background_task, StatusBar
 from refact.lsp_runner import LSPServerRunner
+from refact.markdown import to_markdown
 
 class CapsModel(BaseModel):
     n_ctx: int
@@ -78,13 +79,21 @@ def find_tool_call(messages: List[Message], id: str) -> Optional[FunctionDict]:
     return None
 
 
+response_text = ""
+
+
 def flush_response():
-    print_formatted_text(FormattedText(response_box.text), end="")
+    global response_text
+    width = get_terminal_width()
+    print_formatted_text(FormattedText(to_markdown(response_text, width)), end="")
     response_box.text = []
+    response_text = ""
 
 
 def print_response(to_print: str):
+    global response_text
     for line in to_print.splitlines(True):
+        response_text += line
         response_box.text.append(("", line))
         if line[-1] == "\n":
            flush_response()
