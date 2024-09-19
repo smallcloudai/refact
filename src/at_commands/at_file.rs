@@ -147,6 +147,7 @@ pub async fn return_one_candidate_or_a_good_error(
                 return Err(format!("Path {:?} is outside of project directories:\n{:?}\nThere are paths with similar names:\n{}", f_path, project_paths, similar_paths_str));
             }
             return if similar_paths_str.is_empty() {
+                // TODO: return shortified paths
                 Err(format!("The path {:?} does not exist. There are no similar names either.", f_path))
             } else {
                 Err(format!("The path {:?} does not exist. There are paths with similar names however:\n{}", f_path, similar_paths_str))

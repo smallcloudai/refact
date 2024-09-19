@@ -36,7 +36,7 @@ impl Tool for ToolTree {
                 let s = preformat_path(s);
                 let p = PathBuf::from(&s);
                 if p.extension().is_some() {
-                    return Err(format!("`path` is a file, not a directory: {:?}", s));
+                    return Err(format!("{:?} is a file, not a directory, you can use cat() to open it", s));
                 }
                 Some(s)
             },

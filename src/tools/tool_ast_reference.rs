@@ -22,11 +22,13 @@ impl Tool for ToolAstReference {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let mut corrections = false;
-        let symbol = match args.get("symbol") {
+        let mut symbol = match args.get("symbol") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `symbol` is not a string: {:?}", v)),
             None => return Err("argument `symbol` is missing".to_string()),
         };
+
+        symbol = symbol.replace('.', "::");
 
         let skeleton = match args.get("skeleton") {
             Some(Value::Bool(s)) => *s,
@@ -80,7 +82,7 @@ impl Tool for ToolAstReference {
 
                     format!(
                         "For definition `{}` at {}:{}-{} there are {} usages:\n{}\n{}\n",
-                        symbol,
+                        def.path_drop0(),
                         short_def_file_path.get(0).unwrap_or(&def.path().to_string()),
                         def.full_range.start_point.row + 1,
                         def.full_range.end_point.row + 1,

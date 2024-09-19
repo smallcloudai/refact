@@ -39,6 +39,10 @@ impl AstDefinition {
         self.official_path.join("::")
     }
 
+    pub fn path_drop0(&self) -> String {
+        self.official_path.iter().skip(1).cloned().collect::<Vec<String>>().join("::")
+    }
+
     pub fn name(&self) -> String {
         self.official_path.last().cloned().unwrap_or_default()
     }

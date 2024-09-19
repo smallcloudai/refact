@@ -22,11 +22,13 @@ impl Tool for ToolAstDefinition {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let mut corrections = false;
-        let symbol = match args.get("symbol") {
+        let mut symbol = match args.get("symbol") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `symbol` is not a string: {:?}", v)),
             None => return Err("argument `symbol` is missing".to_string()),
         };
+
+        symbol = symbol.replace('.', "::");
 
         let skeleton = match args.get("skeleton") {
             Some(Value::Bool(s)) => *s,
@@ -61,7 +63,7 @@ impl Tool for ToolAstDefinition {
                 let messages = defs.iter().zip(short_file_paths.iter()).take(DEFS_LIMIT).map(|(res, short_path)| {
                     tool_message.push_str(&format!(
                         "`{}` at {}:{}-{}\n",
-                        res.path(),
+                        res.path_drop0(),
                         short_path,
                         res.full_range.start_point.row + 1,
                         res.full_range.end_point.row + 1
@@ -71,7 +73,7 @@ impl Tool for ToolAstDefinition {
                         file_content: "".to_string(),
                         line1: res.full_range.start_point.row + 1,
                         line2: res.full_range.end_point.row + 1,
-                        symbols: vec![res.path()],
+                        symbols: vec![res.path_drop0()],
                         gradient_type: -1,
                         usefulness: 100.0,
                         is_body_important: false,
