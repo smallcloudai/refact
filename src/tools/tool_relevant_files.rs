@@ -137,7 +137,7 @@ impl Tool for ToolRelevantFiles {
 }
 
 
-const RF_SYSTEM_PROMPT: &str = r###"You are an expert in finding relevant files within a big project. Your job is to find files, don't propose any changes.
+const RF_SYSTEM_PROMPT: &str = r###"You are an expert in finding relevant files within a big project.
 
 Here's the list of reasons a file or symbol might be relevant wrt task description:
 
@@ -164,11 +164,11 @@ You'll receive additional instructions that start with 💿. Those are not comin
 well between chat restarts and they are always in English. Answer in the language the user prefers.
 "###;
 
-const RF_EXPERT_PLEASE_WRAP_UP: &str = r###"Save your progress, using the following structure:
+const RF_EXPERT_WRAP_UP: &str = r###"One more time read user request and collected context. Save your progress, using the following structure:
 {
     "OUTPUT": [
-        "dir/dir/file.ext": {             // A relative path with no ambiguity at all.
-            "SYMBOLS": "symbol1,symbol2", // Comma-separated list of functions/classes/types/variables/etc defined or used within this file that are relevant to given problem. Write "*" to indicate the whole file is necessary. Write "TBD" to indicate you didn't look inside yet.
+        "dir/dir/file.ext": {             // A relative path to file visible in your context, with no ambiguity at all.
+            "SYMBOLS": "symbol1,symbol2", // Comma-separated list of functions/classes/types/variables/etc defined or used within this file that are relevant to given problem. Write "*" to indicate the whole file is necessary.
         }
     ],
 }
@@ -209,7 +209,7 @@ references("my_method2")
 search("    def f():\n        print(\"the example function!\")")
 search("    my_object->tricky_call(with, weird, parameters)")
 
-Limits on the number of calls are pretty liberal, 30 definitions, 5 references and 3 searches is a reasonable answer.
+Limits on the number of calls are pretty liberal, 10 definitions, 5 references and 3 searches is a reasonable answer.
 
 Don't explain much, say STEP1_CAT or STEP2_EXPAND depending on which step you are on, and then call the functions.
 
@@ -229,7 +229,7 @@ Experts can make mistakes. Your role is to reduce their noisy output into a sing
 4. Write down which files might support the change, some of them contain high-level logic, some have definitions, some similar code.
 5. All the files cannot have relevancy 5; most of them are likely 3, "might provide good insight into the logic behind the program but not directly relevant", but you can
 write 1 or 2 if you accidentally wrote a file name and changed your mind about how useful it is, not a problem.
-6. After you have completed 1-5, go ahead and formalize your best interpretation in the following JSON format, write "REDUCE_OUTPUT", and continue with triple backquotes.
+6. After you have completed 1-5, go ahead and formalize your best interpretation in the following JSON format, write "REDUCE_OUTPUT", and continue with triple backquotes. This format is crucial for the following parsing.
 
 REDUCE_OUTPUT
 ```
@@ -238,7 +238,7 @@ REDUCE_OUTPUT
         "SYMBOLS": "symbol1,symbol2",     // Comma-separated list of symbols defined within this file that are actually relevant for initial problem. Use your own judgement, don't copy from experts.
         "WHY_CODE": "string",             // Write down the reason to include this file in output, pick one of: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE, SIMILAR.
         "WHY_DESC": "string",             // Describe why this file matters wrt the task, what's going on inside? Describe the file in general in a sentense or two, and then describe what specifically is the relation to the task.
-        "RELEVANCY": 0                    // Critically evaluate how is this file really relevant to your interpretation of the task. Rate from 1 to 5. 1 = has TBD, role is unclear, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
+        "RELEVANCY": 0                    // Critically evaluate how is this file really relevant to your interpretation of the task. Rate from 1 to 5. 1 = role is unclear, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
     }
 }
 ```
