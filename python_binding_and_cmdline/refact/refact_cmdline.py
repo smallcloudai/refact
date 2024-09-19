@@ -129,12 +129,11 @@ def process_streaming_data(data):
                 print_response("\n")
             return
         if len(streaming_messages) == 0 or streaming_messages[-1].role != "assistant":
-            print_response("\n  ")
+            print_response("\n")
             streaming_messages.append(Message(role="assistant", content=content))
         else:
             streaming_messages[-1].content += content
 
-        content = content.replace("\n", "\n  ")
         print_response(content)
     elif "role" in data:
         role = data["role"]
@@ -337,8 +336,7 @@ async def chat_main():
                           )
 
     async with lsp:
-        tools_turn_on = {"definition", "references", "file",
-                         "search", "cat", "tree", "web"}
+        tools_turn_on = {"definition", "references", "file", "search", "cat", "tree", "web"}
 
         asyncio.create_task(update_vecdb_status_background_task())
 
