@@ -120,6 +120,7 @@ fn _name_to_usage(
     uline: usize,
     start_node_guid: Option<Uuid>,
     name_of_anything: String,
+    allow_global_ref: bool,
 ) -> Option<AstUsage> {
     if start_node_guid.is_none() {
         return None;
@@ -192,9 +193,14 @@ fn _name_to_usage(
         }
     }
 
-    // ?::DerivedFrom1::f ?::DerivedFrom2::f f
-    result.targets_for_guesswork.push(format!("{}", name_of_anything));
-    Some(result)
+    if allow_global_ref {
+        result.targets_for_guesswork.push(format!("?::{}", name_of_anything));
+        Some(result)
+    } else {
+        // ?::DerivedFrom1::f ?::DerivedFrom2::f f
+        result.targets_for_guesswork.push(format!("{}", name_of_anything));
+        Some(result)
+    }
 }
 
 fn _typeof(
@@ -317,7 +323,7 @@ fn _usage_or_typeof_caller_colon_colon_usage(
         // caller is about caller.function_call(1, 2, 3), in this case means just function_call(1, 2, 3) without anything on the left
         // just look for a name in function's parent and above
         //
-        let tmp = _name_to_usage(pcx, uline, symbol.parent_guid().clone(), symbol.name().to_string());
+        let tmp = _name_to_usage(pcx, uline, symbol.parent_guid().clone(), symbol.name().to_string(), false);
         // eprintln!("    _usage_or_typeof_caller_colon_colon_usage {} _name_to_usage={:?}", symbol.name().to_string(), tmp);
         tmp
     }
@@ -371,7 +377,7 @@ pub fn parse_anything(
                             continue;
                         }
                         this_class_derived_from.push(format!("{}🔎{}", pcx.language, base_class_name));
-                        if let Some(usage) = _name_to_usage(&mut pcx, symbol.full_range().start_point.row + 1, Some(symbol.guid().clone()), base_class_name) {
+                        if let Some(usage) = _name_to_usage(&mut pcx, symbol.full_range().start_point.row + 1, symbol.parent_guid().clone(), base_class_name, true) {
                             usages.push(usage);
                         } else {
                             errors.add_error("".to_string(), struct_declaration.full_range().start_point.row + 1, "unable to create base class usage");

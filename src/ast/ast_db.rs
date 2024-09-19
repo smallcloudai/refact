@@ -478,6 +478,7 @@ async fn _connect_usages_helper(
         }
         for to_resolve_unstripped in &usage.targets_for_guesswork {
             if !to_resolve_unstripped.starts_with("?::") {
+                debug_print!("    homeless {}", to_resolve_unstripped);
                 ucx.usages_homeless += 1;
                 continue;
             }
@@ -892,9 +893,6 @@ mod tests {
             println!("(E) {}:{} {}", error.err_cpath, error.err_line, error.err_message);
         }
 
-        println!("Type hierachy:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "".to_string()).await);
-        println!("Type hierachy subtree_of=Animal:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "cpp🔎Animal".to_string()).await);
-
         let mut ucx: ConnectUsageContext = connect_usages_look_if_full_reset_needed(ast_index.clone()).await;
         loop {
             let did_anything = connect_usages(ast_index.clone(), &mut ucx).await;
@@ -904,6 +902,11 @@ mod tests {
         }
 
         flush_sled_batch(ast_index.clone(), 0).await;
+        let hierarchy = type_hierarchy(ast_index.clone(), "cpp".to_string(), "".to_string()).await;
+        println!("Type hierarchy:\n{}", hierarchy);
+        let expected_hierarchy = "Animal\n  Goat\n    CosmicGoat\nCosmicJustice\n  CosmicGoat\n";
+        assert_eq!(hierarchy, expected_hierarchy, "Type hierarchy does not match expected output");
+        println!("Type hierachy subtree_of=Animal:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "cpp🔎Animal".to_string()).await);
         dump_database(ast_index.clone()).await;
 
         // Goat::Goat() is a C++ constructor
@@ -924,6 +927,16 @@ mod tests {
         }
         println!("animalage_usage_str:\n{}", animalage_usage_str);
         assert!(animalage_usage.len() == 5);
+
+        let goat_defs = definitions(ast_index.clone(), "cpp_goat_library::Goat").await;
+        let goat_def0 = goat_defs.first().unwrap();
+        let goat_usage = usages(ast_index.clone(), goat_def0.path(), 100).await;
+        let mut goat_usage_str = String::new();
+        for (used_at_def, used_at_uline) in goat_usage.iter() {
+            goat_usage_str.push_str(&format!("{:}:{}\n", used_at_def.cpath, used_at_uline));
+        }
+        println!("goat_usage:\n{}", goat_usage_str);
+        assert!(goat_usage.len() == 1);
 
         doc_remove(ast_index.clone(), &cpp_library_path.to_string()).await;
         doc_remove(ast_index.clone(), &cpp_main_path.to_string()).await;
