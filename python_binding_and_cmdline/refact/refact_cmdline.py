@@ -121,8 +121,7 @@ def process_streaming_data(data):
             return
         if len(streaming_messages) == 0 or streaming_messages[-1].role != "assistant":
             print_response("\n  ")
-            streaming_messages.append(
-                Message(role="assistant", content=content))
+            streaming_messages.append(Message(role="assistant", content=content))
         else:
             streaming_messages[-1].content += content
 
@@ -141,14 +140,16 @@ def process_streaming_data(data):
             return
 
         terminal_width = get_terminal_width()
-        box = create_box(content, terminal_width - 4, max_height=26)
+        box = create_box(content, terminal_width - 4, max_height=10)
         indented = indent(box, 2)
         tool_call_id = data["tool_call_id"]
         print_response("\n")
+        flush_response()
         function = find_tool_call(streaming_messages, tool_call_id)
         if function is not None:
-            print_response(f"  {function.name}({function.arguments})")
-        flush_response()
+            print_formatted_text(f"  {function.name}({function.arguments})")
+        else:
+            print_formatted_text(f"  function is none")
         print_lines(indented)
 
 
