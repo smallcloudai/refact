@@ -150,7 +150,8 @@ SIMILAR = has code that might provide an example of how to write things similar 
 
 Potential strategies:
 
-TREEGUESS = call tree(), spot up to 20 suspicious files just by looking at file names.
+TREEGUESS = first of all call tree(); look at names in a tree, pick up to 10 files that can be related
+to the user's query and call one cat() tool on them to see whatćs inside; pass skeleton=True to the cat() call.
 
 GOTODEF = call definition("xxx", skeleton=true) in parallel for symbols either visible in task description, or symbols you can guess; don't call definition() for symbols
 from standard libraries, only symbols within the project are indexed.
@@ -339,6 +340,7 @@ async fn find_relevant_files(
 
     let mut futures = vec![];
 
+    let strategy_tree_tools = vec!["tree", "cat"];
     let mut strategy_tree = strategy_messages.clone();
     strategy_tree.push(
         crate::tools::tool_locate::pretend_tool_call(
@@ -346,15 +348,16 @@ async fn find_relevant_files(
             "💿 I'll use TREEGUESS strategy, to do that I need to start with a tree() call.".to_string()
         )
     );
+
     futures.push(subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
         strategy_tree,
-        vec![],  // tree strategy doesn't use any tools for now
-        0,
+        strategy_tree_tools.iter().map(|x|x.to_string()).collect::<Vec<_>>(),
+        1,
         subchat_params.subchat_max_new_tokens,
-        RF_EXPERT_PLEASE_WRAP_UP,
-        2,
+        RF_EXPERT_WRAP_UP,  // NOTE: I can't pass here str with reminder because it's future
+        1,
         Some(0.4),
         Some(format!("{log_prefix}-rf-step1-treeguess")),
         Some(tool_call_id.clone()),
