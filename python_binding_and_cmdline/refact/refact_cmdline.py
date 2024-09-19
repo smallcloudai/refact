@@ -335,8 +335,7 @@ async def chat_main():
 
         settings = CmdlineSettings(caps, args)
         if settings.model not in caps.code_chat_models:
-            print(f"model {settings.model} is unknown, pick one of {
-                  sorted(caps.code_chat_models.keys())}")
+            print(f"model {settings.model} is unknown, pick one of {sorted(caps.code_chat_models.keys())}")
             return
 
         if arg_question:

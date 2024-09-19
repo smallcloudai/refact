@@ -69,8 +69,7 @@ class LSPServerRunner:
         t0 = time.time()
         if self._verbose:
             print("REFACT LSP start", " ".join(self._command))
-        self._lsp_server = await asyncio.create_subprocess_exec(
-            *self._command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        self._lsp_server = await asyncio.create_subprocess_exec(*self._command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         ast_ok, vecdb_ok, http_listening = False, False, False
         while True:
             while True:

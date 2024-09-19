@@ -152,5 +152,4 @@ def print_header(text: str, width: int) -> str:
     text_width = len(text)
     left = (width - text_width - 2) // 2
     right = width - text_width - 2 - left
-    print_formatted_text(HTML("─" * left + "<block> " +
-                         text + " </block>" + "─" * right), style=style)
+    print_formatted_text(HTML("─" * left + "<block> " + text + " </block>" + "─" * right), style=style)
