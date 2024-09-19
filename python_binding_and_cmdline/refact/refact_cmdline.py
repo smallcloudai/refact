@@ -14,13 +14,14 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.layout import Layout, CompletionsMenu, Float, ScrollablePane
-from prompt_toolkit.layout.containers import HSplit, VSplit, Window, FloatContainer
+from prompt_toolkit.layout.containers import HSplit, VSplit, Window, FloatContainer, ConditionalContainer
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.formatted_text import PygmentsTokens, FormattedText
 from prompt_toolkit.widgets import TextArea
 from prompt_toolkit.styles import Style
+from prompt_toolkit.filters import Condition
 
 import refact.chat_client as chat_client
 from refact.chat_client import Message, FunctionDict
@@ -147,6 +148,7 @@ def process_streaming_data(data):
         function = find_tool_call(streaming_messages, tool_call_id)
         if function is not None:
             print_response(f"  {function.name}({function.arguments})")
+        flush_response()
         print_lines(indented)
 
 
@@ -231,6 +233,9 @@ def _(event):
 def exit_(event):
     event.app.exit()
 
+@Condition
+def is_not_streaming_condition():
+    return not is_streaming
 
 class ToolsCompleter(Completer):
     def __init__(self):
@@ -357,8 +362,11 @@ vsplit = VSplit([
 ])
 hsplit = HSplit([
     Window(content=response_box, dont_extend_height=True),
-    FloatContainer(content=vsplit, floats=[
-        Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
+    ConditionalContainer(
+        content=FloatContainer(content=vsplit, floats=[
+            Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
+        ),
+        filter=is_not_streaming_condition,
     ),
     Window(),
     StatusBar(),
