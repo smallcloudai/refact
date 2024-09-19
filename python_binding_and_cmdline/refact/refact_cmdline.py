@@ -263,18 +263,21 @@ def on_submit(buffer):
     global is_streaming
 
     user_input = buffer.text
-    if user_input.strip() == '':
-        return
     if user_input.lower() in ('exit', 'quit'):
         app.exit()
         return
+
+    print_response(f"\nChat> {user_input}")
+
+    if user_input.strip() == '':
+        return
+
     if is_streaming:
         return
 
     is_streaming = True
 
-    print_response(f"\nChat> {user_input}\n")
-
+    print_response(f"\n")
     streaming_messages.append(Message(role="user", content=user_input))
 
     async def asyncfunc():
