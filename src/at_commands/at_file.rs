@@ -140,7 +140,9 @@ pub async fn return_one_candidate_or_a_good_error(
             correct_to_nearest_dir_path(gcx.clone(), file_path, true, 10).await.join("\n")
         } else {
             let file_name = f_path.file_name().ok_or(format!("unable to get file name from path: {:?}", f_path))?.to_string_lossy().to_string();
-            file_repair_candidates(gcx.clone(), &file_name, 10, true).await.iter().take(10).cloned().collect::<Vec<_>>().join("\n")
+            let x = file_repair_candidates(gcx.clone(), &file_name, 10, true).await.iter().cloned().take(10).collect();
+            let shortified_file_names = shortify_paths(gcx.clone(), x).await;
+            shortified_file_names.join("\n")
         };
         if f_path.is_absolute() {
             if !project_paths.iter().any(|x|f_path.starts_with(x)) {

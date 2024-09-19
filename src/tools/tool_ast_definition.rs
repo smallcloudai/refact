@@ -62,7 +62,7 @@ impl Tool for ToolAstDefinition {
                 let mut tool_message = format!("Definitions found:\n").to_string();
                 let messages = defs.iter().zip(short_file_paths.iter()).take(DEFS_LIMIT).map(|(res, short_path)| {
                     tool_message.push_str(&format!(
-                        "`{}` at {}:{}-{}\n",
+                        "{} defined at {}:{}-{}\n",
                         res.path_drop0(),
                         short_path,
                         res.full_range.start_point.row + 1,

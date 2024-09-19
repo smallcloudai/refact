@@ -81,7 +81,7 @@ impl Tool for ToolAstReference {
                     };
 
                     format!(
-                        "For definition `{}` at {}:{}-{} there are {} usages:\n{}\n{}\n",
+                        "For {} defined at {}:{}-{} there are {} usages:\n{}\n{}\n",
                         def.path_drop0(),
                         short_def_file_path.get(0).unwrap_or(&def.path().to_string()),
                         def.full_range.start_point.row + 1,

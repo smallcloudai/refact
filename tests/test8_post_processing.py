@@ -66,7 +66,7 @@ async def test_tool_call(tool_name: str, symbol: str, should_be_in_tool: Dict[st
 
     for substring, count in should_be_in_tool.items():
         real = tool_call_message.content.count(substring)
-        assert real == count, real
+        assert real == count, f"{substring}, {real}, {count}, {tool_call_message}"
     assert "..." in context_file_message.content, "It should not give entire file"
 
     print(termcolor.colored("PASS", "green"))
@@ -93,7 +93,7 @@ if __name__ == '__main__':
         tool_name="definition",
         symbol="frog::Frog",
         should_be_in_tool={
-            "frog::Frog`": 1
+            "emergency_frog_situation::frog::Frog": 1
         },
         should_present_in_context_file="pond_width, pond_height",
         should_not_present_in_context_file="DT = ",
@@ -102,7 +102,7 @@ if __name__ == '__main__':
         tool_name="definition",
         symbol="frog::AlternativeFrog",
         should_be_in_tool={
-            "frog::AlternativeFrog`": 1
+            "emergency_frog_situation::frog::AlternativeFrog": 1
         },
         should_present_in_context_file="def jump",    # in Frog, because it should be a skeleton
         should_not_present_in_context_file="np.clip", # no Frog method body in the skeleton
