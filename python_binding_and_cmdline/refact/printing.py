@@ -132,9 +132,9 @@ def create_box(
         result.append(
             to_tokens("┌─ " + title[:title_len] + " " + "─" * bar_len + "┐"))
 
-    if max_height is not None and len(lines) > max_height:
-        lines = lines[0:max_height - 1]
-        lines.append(to_tokens("..."))
+    
+    if max_height is not None:
+        lines = limit_lines(lines, max_height)
 
     for line in lines:
         line_len = tokens_len(line)
