@@ -80,6 +80,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     }
     next.tool_use = state.tool_use;
     next.thread.model = state.thread.model;
+    next.system_prompt = state.system_prompt;
     return next;
   });
 
