@@ -52,7 +52,7 @@ impl Tool for ToolRelevantFiles {
         let expand_depth = match args.get("expand_depth") {
             Some(Value::Number(n)) => n.as_u64().unwrap() as usize,
             Some(v) => return Err(format!("argument `expand_depth` is not a number: {:?}", v)),
-            None => 0,
+            None => 2,
         };
 
         let params = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "locate").await?;
