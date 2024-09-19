@@ -433,9 +433,10 @@ async fn find_relevant_files(
 
     {
         let mut ccx_locked = ccx.lock().await;
-        ccx_locked.correction_only_up_to_step = messages.len() + 1;
+        ccx_locked.correction_only_up_to_step = 0;  // NOTE: don't do unnecessary steps
     }
 
+    let reduce_reminder_wrap_up = vec!["User request reminder:", user_query.as_str(), RF_REDUCE_WRAP_UP].join("\n\n");
     let result = subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
@@ -443,7 +444,7 @@ async fn find_relevant_files(
         expand_reduce_tools.iter().map(|x|x.to_string()).collect::<Vec<_>>(),
         expand_depth + 1,  // expand_depth parameter slows down execution
         subchat_params.subchat_max_new_tokens,
-        RF_REDUCE_WRAP_UP,
+        reduce_reminder_wrap_up.as_str(),
         1,
         Some(0.0),
         Some(format!("{log_prefix}-rf-step2-reduce")),
