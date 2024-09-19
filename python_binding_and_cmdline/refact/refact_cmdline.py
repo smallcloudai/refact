@@ -112,7 +112,7 @@ def process_streaming_data(data):
     if "choices" in data:
         choices = data['choices']
         delta = choices[0]['delta']
-        content = delta['content']
+        content = delta.get('content', None)
         if content is None:
             finish_reason = choices[0]['finish_reason']
             if finish_reason == 'stop':
