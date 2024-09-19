@@ -293,6 +293,8 @@ def on_submit(buffer):
 
     is_streaming = True
 
+    print_response(f"\nChat> {user_input}\n")
+
     streaming_messages.append(Message(role="user", content=user_input))
 
     async def asyncfunc():
