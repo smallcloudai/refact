@@ -371,7 +371,7 @@ vsplit = VSplit([
     text_area,
 ])
 hsplit = HSplit([
-    Window(content=response_box),
+    Window(content=response_box, dont_extend_height=True),
     FloatContainer(content=vsplit, floats=[
         Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
     ),
