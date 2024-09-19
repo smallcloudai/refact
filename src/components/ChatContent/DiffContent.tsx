@@ -18,26 +18,27 @@ import {
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
 function toDiff(str: string): string {
-  const lines = str.split("\n");
-  const result: string[] = [];
+  // const lines = str.split("\n");
+  // const result: string[] = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  // for (let i = 0; i < lines.length; i++) {
+  //   const line = lines[i];
 
-    if (line.endsWith("\\")) {
-      const nextLine = lines[i + 1] || "";
-      result.push(line.slice(0, -1) + nextLine);
-      i++;
-    } else {
-      result.push(line);
-    }
-  }
+  //   if (line.endsWith("\\")) {
+  //     const nextLine = lines[i + 1] || "";
+  //     result.push(line.slice(0, -1) + nextLine);
+  //     i++;
+  //   } else {
+  //     result.push(line);
+  //   }
+  // }
 
-  if (result[result.length - 1] === "") {
-    result.pop();
-  }
+  // if (result[result.length - 1] === "") {
+  //   result.pop();
+  // }
 
-  return result.join("\n");
+  // return result.join("\n");
+  return str;
 }
 
 const DiffLine: React.FC<{
