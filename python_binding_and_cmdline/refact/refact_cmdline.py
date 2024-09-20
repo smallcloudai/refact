@@ -108,6 +108,7 @@ def print_context_file(json_str: str):
     flush_response()
     print_file(content, file_name)
 
+
 streaming_messages = []
 is_streaming = False
 tools = []
@@ -239,9 +240,11 @@ def _(event):
 def exit_(event):
     event.app.exit()
 
+
 @Condition
 def is_not_streaming_condition():
     return not is_streaming
+
 
 class ToolsCompleter(Completer):
     def __init__(self):
@@ -288,7 +291,7 @@ def on_submit(buffer):
 
     is_streaming = True
 
-    print_response(f"\n")
+    print_response("\n")
     streaming_messages.append(Message(role="user", content=user_input))
 
     async def asyncfunc():
@@ -296,7 +299,6 @@ def on_submit(buffer):
 
     loop = asyncio.get_event_loop()
     loop.create_task(asyncfunc())
-
 
 
 async def chat_main():
@@ -315,13 +317,11 @@ async def chat_main():
         before_minus_minus = args
         after_minus_minus = []
 
-    parser = argparse.ArgumentParser(
-        description='Refact Agent access using command-line interface')
-    parser.add_argument('path_to_project', type=str, nargs='?',
-                        help="Path to the project", default=None)
+    description = 'Refact Agent access using command-line interface'
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('path_to_project', type=str, nargs='?', help="Path to the project", default=None)
     parser.add_argument('--model', type=str, help="Specify the model to use")
-    parser.add_argument('question', nargs=argparse.REMAINDER,
-                        help="You can continue your question in the command line after --")
+    parser.add_argument('question', nargs=argparse.REMAINDER, help="You can continue your question in the command line after --")
     args = parser.parse_args(before_minus_minus)
 
     arg_question = " ".join(after_minus_minus)
@@ -332,19 +332,19 @@ async def chat_main():
                           verbose=False
                           )
 
-    async with lsp:
-        tools_turn_on = {"definition", "references", "file", "search", "cat", "tree", "web"}
+    tools_turn_on = {"definition", "references", "file", "search", "cat", "tree", "web"}
 
+    async with lsp:
         asyncio.create_task(update_vecdb_status_background_task())
 
         tools = await chat_client.tools_fetch_and_filter(base_url=lsp.base_url, tools_turn_on=tools_turn_on)
-        tool_completer = ToolsCompleter()
 
         caps = await fetch_caps(lsp.base_url)
 
         settings = CmdlineSettings(caps, args)
         if settings.model not in caps.code_chat_models:
-            print(f"model {settings.model} is unknown, pick one of {sorted(caps.code_chat_models.keys())}")
+            sorted_keys = sorted(caps.code_chat_models.keys())
+            print(f"model {settings.model} is unknown, pick one of {sorted_keys}")
             return
 
         if arg_question:
@@ -355,7 +355,7 @@ async def chat_main():
         await welcome_message(settings, random.choice(tips_of_the_day))
         asyncio.create_task(update_vecdb_status_background_task())
 
-        result = await app.run_async()
+        await app.run_async()
 
 
 tool_completer = ToolsCompleter()
