@@ -3,10 +3,7 @@ import { Box, Flex } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Spinner } from "@radix-ui/themes";
 import { useAppSelector, useAppDispatch } from "../../hooks";
-import {
-  getHistory,
-  deleteChatById,
-} from "../../features/History/historySlice";
+import { deleteChatById } from "../../features/History/historySlice";
 import { Toolbar } from "../Toolbar";
 import { push } from "../../features/Pages/pagesSlice";
 import { PageWrapper } from "../PageWrapper";
@@ -29,12 +26,13 @@ export type SidebarProps = {
 export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
-  const history = useAppSelector(getHistory, {
-    // TODO: selector issue here
-    devModeChecks: { stabilityCheck: "never" },
-  });
+  const history = useAppSelector((app) => app.history);
 
-  const onDeleteHistoryItem = (id: string) => dispatch(deleteChatById(id));
+  const onDeleteHistoryItem = useCallback(
+    (id: string) => dispatch(deleteChatById(id)),
+    [dispatch],
+  );
+
   const onHistoryItemClick = useCallback(
     (thread: ChatThread) => {
       dispatch(restoreChat(thread));
