@@ -22,7 +22,7 @@ from prompt_toolkit.filters import Condition
 import refact.chat_client as chat_client
 from refact.chat_client import Message, FunctionDict
 from refact.printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
-from refact.printing import print_file, print_lines
+from refact.printing import print_file, print_lines, highlight_text_by_language, set_background_color
 from refact.status_bar import bottom_status_bar, update_vecdb_status_background_task, StatusBar
 from refact.lsp_runner import LSPServerRunner
 from refact.markdown import to_markdown
@@ -62,6 +62,7 @@ class CmdlineSettings:
     def n_ctx(self):
         return self.caps.code_chat_models[self.model].n_ctx
 
+
 settings = None
 
 
@@ -77,12 +78,36 @@ def find_tool_call(messages: List[Message], id: str) -> Optional[FunctionDict]:
 
 
 response_text = ""
+language_printing = None
 
 
 def flush_response():
     global response_text
+    global language_printing
     width = get_terminal_width()
-    print_formatted_text(FormattedText(to_markdown(response_text, width)), end="")
+    if response_text[:3] == "```":
+        if language_printing is None:
+            language_printing = response_text[3:]
+            if language_printing.strip() != "":
+                tab_color = "#3e4957"
+                print_formatted_text(FormattedText([
+                    (tab_color, " "),
+                    (f"bg:{tab_color}", f" {language_printing.strip()} "),
+                    (tab_color, ""),
+                ]))
+        else:
+            language_printing = None
+    elif language_printing is None:
+        print_formatted_text(FormattedText(to_markdown(response_text, width)), end="")
+    else:
+        bg_color = "#252b37"
+
+        highlighted = highlight_text_by_language(response_text, language_printing.strip())
+        wrapped = wrap_tokens(highlighted, width - 2)
+        with_background = set_background_color(wrapped, bg_color)
+
+        print_lines(with_background)
+
     response_box.text = []
     response_text = ""
 

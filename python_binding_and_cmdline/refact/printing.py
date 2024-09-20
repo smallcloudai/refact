@@ -3,7 +3,7 @@ from prompt_toolkit import HTML
 from prompt_toolkit.shortcuts import print_formatted_text
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import PygmentsTokens, FormattedText
-from pygments.lexers import guess_lexer_for_filename
+from pygments.lexers import guess_lexer_for_filename, get_lexer_by_name, guess_lexer
 import pygments
 import shutil
 
@@ -81,6 +81,17 @@ def to_tokens(text: str) -> Tokens:
 
 def tokens_len(tokens: Tokens) -> int:
     return sum([len(x[1]) for x in tokens])
+
+
+def highlight_text_by_language(text: str, language: str) -> Tokens:
+    try:
+        lexer = get_lexer_by_name(language)
+        tokens = list(pygments.lex(text, lexer=lexer))
+        return PygmentsTokens(tokens).__pt_formatted_text__()
+    except:
+        lexer = guess_lexer(language)
+        tokens = list(pygments.lex(text, lexer=lexer))
+        return PygmentsTokens(tokens).__pt_formatted_text__()
 
 
 def highlight_text(text: str, file_name: str) -> Tokens:
