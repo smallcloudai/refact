@@ -7,6 +7,8 @@ use regex::Regex;
 use std::path::PathBuf;
 
 use async_trait::async_trait;
+
+use indexmap::IndexMap;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use futures_util::future::join_all;
@@ -23,13 +25,13 @@ use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_o
 use crate::at_commands::at_commands::AtCommandsContext;
 
 
-async fn result_to_json(gcx: Arc<ARwLock<GlobalContext>>, result: HashMap<String, ReduceFileOutput>) -> String {
-    let mut shortified = HashMap::new();
+async fn result_to_json(gcx: Arc<ARwLock<GlobalContext>>, result: IndexMap<String, ReduceFileOutput>) -> String {
+    let mut shortified = IndexMap::new();
     for (file_name, file_output) in result {
         let shortified_file_name = shortify_paths(gcx.clone(), vec![file_name]).await.get(0).unwrap().clone();
         shortified.insert(shortified_file_name, file_output);
     }
-    return serde_json::to_string_pretty(&serde_json::json!(shortified)).unwrap();
+    serde_json::to_string_pretty(&serde_json::json!(shortified)).unwrap()
 }
 
 
@@ -101,8 +103,9 @@ impl Tool for ToolRelevantFiles {
                 ast_symbols = doc_symbols.into_iter().filter(|s| symbols.contains(&s.name())).collect::<Vec<_>>();
             }
 
-            // relevancy 1..5, normalized to 0..1 and then multiplied by 100 for usefulness
-            let usefulness = (file_info.relevancy as f32) / 5. * 100.;
+            // relevancy 1..5, normalized to 0..1 (because of skeleton param behavior) and then multiplied by 80 for usefulness
+            // NOTE: 80 usefulness is the most controversial, probably we need to use some non-linear mapping from relevancy into usefulness
+            let usefulness = file_info.relevancy as f32 / 5. * 80.;
             results.push(ContextEnum::ContextFile(ContextFile {
                 file_name: file_path.clone(),
                 file_content: text.clone(),
@@ -127,6 +130,8 @@ impl Tool for ToolRelevantFiles {
                 }));
             }
         }
+
+        ccx.lock().await.pp_skeleton = true;
 
         Ok((false, results))
     }
@@ -268,7 +273,7 @@ REDUCE_OUTPUT
 // "WHY_DESC": "string",         // Describe why this file matters wrt the task, what's going on inside? Put TBD if you didn't look inside.
 // "RELEVANCY": 0                // Critically evaluate how is this file really relevant to the task. Rate from 1 to 5. 1 = no evidence this file even exists, 2 = file exists but you didn't look inside, 3 = might provide good insight into the logic behind the program but not directly relevant, 5 = exactly what is needed.
 
-fn parse_reduce_output(content: &str) -> Result<HashMap<String, ReduceFileOutput>, String> {
+fn parse_reduce_output(content: &str) -> Result<IndexMap<String, ReduceFileOutput>, String> {
     let re = Regex::new(r"(?s)REDUCE_OUTPUT\s*```(?:json)?\s*(.+?)\s*```").unwrap();
     let json_str = re.captures(content)
         .and_then(|cap| cap.get(1))
@@ -277,11 +282,17 @@ fn parse_reduce_output(content: &str) -> Result<HashMap<String, ReduceFileOutput
             tracing::warn!("Unable to find REDUCE_OUTPUT section:\n{}", content);
             "Unable to find REDUCE_OUTPUT section".to_string()
         })?;
-    let output = serde_json::from_str::<HashMap<String, ReduceFileOutput>>(json_str).map_err(|e| {
+    let output = serde_json::from_str::<IndexMap<String, ReduceFileOutput>>(json_str).map_err(|e| {
             tracing::warn!("Unable to parse JSON:\n{}({})", json_str, e);
             format!("Unable to parse JSON: {:?}", e)
         })?;
-    Ok(output)
+
+    // sort output by relevancy
+    let mut output_vec: Vec<(String, ReduceFileOutput)> = output.into_iter().collect();
+    output_vec.sort_by(|a, b| b.1.relevancy.cmp(&a.1.relevancy));
+    let sorted_output = output_vec.into_iter().collect::<IndexMap<String, ReduceFileOutput>>();
+
+    Ok(sorted_output)
 }
 
 
@@ -313,7 +324,7 @@ async fn find_relevant_files(
     tool_call_id: String,
     user_query: String,
     expand_depth: usize,
-) -> Result<(HashMap<String, ReduceFileOutput>, ChatUsage, String), String> {
+) -> Result<(IndexMap<String, ReduceFileOutput>, ChatUsage, String), String> {
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
     let (vecdb_on, workspace_files) = {
         let gcx = gcx.read().await;
@@ -322,7 +333,7 @@ async fn find_relevant_files(
     };
 
     let mut usage = ChatUsage { ..Default::default() };
-    let mut refined_files = HashMap::new();
+    let mut refined_files = IndexMap::new();
     let mut inspected_context_files = HashSet::new();
     let total_files_in_project = workspace_files.lock().unwrap().len();
 
@@ -486,7 +497,6 @@ async fn find_relevant_files(
             Ok(f) => f,
             Err(e) => { refine_log.push(e); continue; }
         };
-        // TODO: I'm not sure that refined_files is "normalized"
         if refined_files.contains_key(&refined_file_path) {
             // NOTE: idk what should we say in tool message about this situation
             continue;
