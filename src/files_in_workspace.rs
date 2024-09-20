@@ -107,7 +107,7 @@ pub struct DocumentsState {
     pub memory_document_map: HashMap<PathBuf, Arc<ARwLock<Document>>>,   // if a file is open in IDE, and it's outside workspace dirs, it will be in this map and not in workspace_files
     pub cache_dirty: Arc<AMutex<bool>>,
     pub cache_correction: Arc<HashMap<String, HashSet<String>>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
-    pub cache_fuzzy: Arc<Vec<String>>,                            // slow linear search
+    pub cache_shortened: Arc<HashSet<String>>,
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
     pub diffs_applied_state: HashMap<u64, Vec<bool>>,
 }
@@ -142,7 +142,7 @@ impl DocumentsState {
             memory_document_map: HashMap::new(),
             cache_dirty: Arc::new(AMutex::<bool>::new(false)),
             cache_correction: Arc::new(HashMap::<String, HashSet<String>>::new()),
-            cache_fuzzy: Arc::new(Vec::<String>::new()),
+            cache_shortened: Arc::new(HashSet::<String>::new()),
             fs_watcher: Arc::new(ARwLock::new(watcher)),
             diffs_applied_state: HashMap::new(),
         }
@@ -343,7 +343,7 @@ async fn ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf>
     paths
 }
 
-async fn _retrieve_files_in_workspace_folders(proj_folders: Vec<PathBuf>) -> Vec<PathBuf> {
+pub async fn retrieve_files_in_workspace_folders(proj_folders: Vec<PathBuf>) -> Vec<PathBuf> {
     let mut all_files: Vec<PathBuf> = Vec::new();
     for proj_folder in proj_folders {
         let files = ls_files_under_version_control_recursive(proj_folder.clone()).await;
@@ -385,7 +385,7 @@ pub async fn enqueue_all_files_from_workspace_folders(
     let folders: Vec<PathBuf> = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
 
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
-    let paths = _retrieve_files_in_workspace_folders(folders).await;
+    let paths = retrieve_files_in_workspace_folders(folders).await;
     info!("enqueue_all_files_from_workspace_folders found {} files => workspace_files", paths.len());
 
     let mut documents: Vec<Document> = vec![];
@@ -536,7 +536,7 @@ pub async fn add_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         documents_state.workspace_folders.lock().unwrap().push(path.clone());
         let _ = documents_state.fs_watcher.write().await.watch(&path.clone(), RecursiveMode::Recursive);
     }
-    let paths = _retrieve_files_in_workspace_folders(vec![path.clone()]).await;
+    let paths = retrieve_files_in_workspace_folders(vec![path.clone()]).await;
     let docs: Vec<Document> = paths.into_iter().map(|p| Document { doc_path: p, doc_text: None }).collect();
     enqueue_some_docs(gcx, &docs, false).await;
 }
