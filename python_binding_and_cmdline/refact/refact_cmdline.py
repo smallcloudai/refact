@@ -7,29 +7,26 @@ import random
 import termcolor
 import aiohttp
 from pydantic import BaseModel
-from typing import Dict, Any, Optional, List, Union, Tuple
+from typing import Dict, Any, Optional, List
 
 from prompt_toolkit import PromptSession, Application, ANSI, print_formatted_text
-from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.layout import Layout, CompletionsMenu, Float, ScrollablePane
 from prompt_toolkit.layout.containers import HSplit, VSplit, Window, FloatContainer, ConditionalContainer
-from prompt_toolkit.buffer import Buffer
-from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
-from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.formatted_text import PygmentsTokens, FormattedText
+from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.widgets import TextArea
-from prompt_toolkit.styles import Style
 from prompt_toolkit.filters import Condition
 
 import refact.chat_client as chat_client
 from refact.chat_client import Message, FunctionDict
 from refact.printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
-from refact.printing import set_background_color, print_file, print_lines
+from refact.printing import print_file, print_lines
 from refact.status_bar import bottom_status_bar, update_vecdb_status_background_task, StatusBar
 from refact.lsp_runner import LSPServerRunner
 from refact.markdown import to_markdown
+
 
 class CapsModel(BaseModel):
     n_ctx: int

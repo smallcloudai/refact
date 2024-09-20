@@ -1,9 +1,8 @@
-from typing import Optional, List, Tuple, Any
+from typing import Optional, List, Tuple
 from prompt_toolkit import HTML
 from prompt_toolkit.shortcuts import print_formatted_text
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import PygmentsTokens, FormattedText
-from pygments.token import Token
 from pygments.lexers import guess_lexer_for_filename
 import pygments
 import shutil

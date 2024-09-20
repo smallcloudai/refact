@@ -134,6 +134,7 @@ def bottom_status_bar():
 
     return result
 
+
 class StatusBar:
     def __init__(self):
         self.formatted_text_control = FormattedTextControl(text=bottom_status_bar)

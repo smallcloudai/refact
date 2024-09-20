@@ -1,7 +1,6 @@
 from __future__ import annotations
 import uuid
 import tabulate
-import textwrap
 import aiohttp
 import os
 import termcolor
@@ -11,7 +10,7 @@ import time
 from typing import Optional, List, Any, Tuple, DefaultDict, Dict, Literal, Set
 import collections
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict
 from rich.console import Console
 from rich.markdown import Markdown
 

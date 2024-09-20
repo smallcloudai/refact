@@ -1,10 +1,12 @@
-from refact.printing import Tokens, Lines
+from refact.printing import Tokens
 
 gray = "#252b37"
 green = "#6ac496"
 
+
 def is_special_boundary(char: str) -> bool:
     return char in "*_[](){}:.,;!?-"
+
 
 def is_word_boundary(text: str, i: int, after: bool = False, l: int = 1) -> bool:
     if after:
@@ -12,8 +14,10 @@ def is_word_boundary(text: str, i: int, after: bool = False, l: int = 1) -> bool
     else:
         return i - l < 0 or text[i-1].isspace() or is_special_boundary(text[i-1])
 
+
 def is_beginning_of_line(text: str, i: int) -> bool:
     return i == 0 or text[i-1] == "\n"
+
 
 def to_markdown(text: str, width: int) -> Tokens:
     result = []
@@ -106,4 +110,3 @@ def to_markdown(text: str, width: int) -> Tokens:
 
     result.append(("", text[last + 1:]))
     return result
-
