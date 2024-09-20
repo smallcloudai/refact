@@ -34,7 +34,7 @@ def to_markdown(text: str, width: int) -> Tokens:
         if is_inline_code:
             res.append(f"bg:{gray}")
         if header_level > 0:
-            res.append(f"bold {green}")
+            res.append(f"reverse bold")
         return " ".join(res)
 
 
