@@ -1,5 +1,10 @@
 import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
-import { type ChatThread, type PayloadWithId, type ToolUse } from "./types";
+import {
+  type PayloadWithIdAndTitle,
+  type ChatThread,
+  type PayloadWithId,
+  type ToolUse,
+} from "./types";
 import {
   isAssistantMessage,
   isChatGetTitleResponse,
@@ -61,8 +66,8 @@ export const setPreventSend = createAction<PayloadWithId>(
 );
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
-export const getChatTitle = createAction<PayloadWithId>(
-  "chatThread/getChatTitle",
+export const saveTitle = createAction<PayloadWithIdAndTitle>(
+  "chatThread/saveTitle",
 );
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
@@ -96,7 +101,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
     {
       role: "user",
       content:
-        "Generate a short 2-3 word title for current chat based on its context. Answer should be strictly 2-3 words. Not paragraphs of text.",
+        "Generate a short 2-3 word title for the current chat that reflects the context of the user's query. The title should be specific, avoiding generic terms, and should relate to relevant files, symbols, or objects. If user message contains filename, please make sure that filename remains inside of a generated title. Please ensure the answer is strictly 2-3 words, not paragraphs of text.",
     },
   ]);
 
@@ -122,6 +127,8 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
       const title = data.choices[0].message.content;
       const cleanedTitle = title.replace(/"/g, "");
 
+      // Dispatching saveTitle action for a chatThread
+      thunkAPI.dispatch(saveTitle({ id: chatId, title: cleanedTitle }));
       return { title: cleanedTitle, chatId: state.chat.thread.id };
     })
     .catch((err: Error) => {
@@ -174,20 +181,5 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     })
     .finally(() => {
       thunkAPI.dispatch(doneStreaming({ id: chatId }));
-      if (state.chat.thread.messages.filter(isAssistantMessage).length === 1) {
-        thunkAPI
-          .dispatch(
-            chatGenerateTitleThunk({
-              messages: state.chat.thread.messages,
-              chatId,
-            }),
-          )
-          .then(() => {
-            return;
-          })
-          .catch(() => {
-            return;
-          });
-      }
     });
 });

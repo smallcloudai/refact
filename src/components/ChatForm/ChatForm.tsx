@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 
 import { Flex, Card, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
@@ -10,12 +10,7 @@ import { useOnPressedEnter, useIsOnline, useConfig } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { Button } from "@radix-ui/themes";
 import { ComboBox } from "../ComboBox";
-import {
-  CodeChatModel,
-  isAssistantMessage,
-  isChatGetTitleActionPayload,
-  SystemPrompts,
-} from "../../services/refact";
+import { CodeChatModel, SystemPrompts } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
@@ -24,14 +19,6 @@ import { useAppSelector, useAppDispatch } from "../../hooks";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useCheckboxes } from "./useCheckBoxes";
-import {
-  chatGenerateTitleThunk,
-  selectChatId,
-  selectMessages,
-  selectThread,
-  selectThreadTitle,
-} from "../../features/Chat";
-import { saveChat } from "../../features/History/historySlice";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -79,11 +66,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const { checkboxes, onToggleCheckbox, setInteracted, unCheckAll } =
     useCheckboxes();
-
-  const messages = useAppSelector(selectMessages);
-  const thread = useAppSelector(selectThread);
-  const chatId = useAppSelector(selectChatId);
-  const threadTitle = useAppSelector(selectThreadTitle);
 
   const { previewFiles, commands, requestCompletion } =
     useCommandCompletionAndPreviewFiles(checkboxes);
@@ -158,33 +140,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     },
     [setInteracted, handleHelpInfo],
   );
-
-  useEffect(() => {
-    if (
-      messages.filter(isAssistantMessage).find((msg) => msg.content !== "") &&
-      !isStreaming &&
-      !threadTitle
-    ) {
-      dispatch(
-        chatGenerateTitleThunk({
-          messages,
-          chatId,
-        }),
-      )
-        .then((response) => {
-          const data = response.payload;
-          if (isChatGetTitleActionPayload(data)) {
-            dispatch(saveChat({ ...thread, title: data.title }));
-          }
-        })
-        .catch(() => {
-          return;
-          // if (typeof response.payload?.title === "string") {
-          // dispatch(saveChat({ ...thread, title: response.payload.title }));
-          // }
-        });
-    }
-  }, [dispatch, isStreaming, chatId, messages, thread, threadTitle]);
 
   if (error) {
     return (

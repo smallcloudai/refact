@@ -12,7 +12,11 @@ import {
   removeChatFromCache,
   restoreChat,
 } from "../Chat/Thread";
-import { isChatGetTitleActionPayload } from "../../services/refact";
+import {
+  isAssistantMessage,
+  isChatGetTitleActionPayload,
+  isUserMessage,
+} from "../../services/refact";
 import { AppDispatch, RootState } from "../../app/store";
 
 export type ChatHistoryItem = ChatThread & {
@@ -36,13 +40,16 @@ export const historySlice = createSlice({
   reducers: {
     saveChat: (state, action: PayloadAction<ChatThread>) => {
       if (action.payload.messages.length === 0) return state;
-
       const now = new Date().toISOString();
+
       const chat: ChatHistoryItem = {
         ...action.payload,
-        title: action.payload.title ? action.payload.title : "New Chat",
+        title: action.payload.title
+          ? action.payload.title
+          : action.payload.messages
+              .find(isUserMessage)
+              ?.content.replace(/^\s+/, "") ?? "New Chat",
         createdAt: action.payload.createdAt ?? now,
-
         updatedAt: now,
       };
 
@@ -80,13 +87,6 @@ export const historySlice = createSlice({
         b.updatedAt.localeCompare(a.updatedAt),
       ),
   },
-  extraReducers(builder) {
-    builder.addCase(chatGenerateTitleThunk.fulfilled, (state, action) => {
-      // making a logic on fulfilled status of thunk and updating title of a chat thread
-      if (!isChatGetTitleActionPayload(action.payload)) return state;
-      state[action.payload.chatId].title = action.payload.title;
-    });
-  },
 });
 
 export const { saveChat, deleteChatById, markChatAsUnread, markChatAsRead } =
@@ -104,6 +104,46 @@ startHistoryListening({
   actionCreator: doneStreaming,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
+    const lastMessage = state.chat.thread.messages.slice(-1)[0];
+
+    // Checking for reliable chat pause
+    if (isAssistantMessage(lastMessage) && !lastMessage.tool_calls) {
+      // Getting user message
+      const firstUserMessage = state.chat.thread.messages.find(isUserMessage);
+      if (firstUserMessage) {
+        // Checking if chat title is already generated, if not - generating it
+        if (
+          state.history[state.chat.thread.id].title === firstUserMessage.content
+        ) {
+          listenerApi
+            .dispatch(
+              chatGenerateTitleThunk({
+                messages: [firstUserMessage],
+                chatId: state.chat.thread.id,
+              }),
+            )
+            .unwrap()
+            .then((response) => {
+              if (isChatGetTitleActionPayload(response)) {
+                if (typeof response.title === "string") {
+                  listenerApi.dispatch(
+                    saveChat({ ...state.chat.thread, title: response.title }),
+                  );
+                }
+              }
+            })
+            .catch(() => {
+              // TODO: handle error in case if not generated, now returning user message as a title
+              listenerApi.dispatch(
+                saveChat({
+                  ...state.chat.thread,
+                  title: firstUserMessage.content,
+                }),
+              );
+            });
+        }
+      }
+    }
     if (state.chat.thread.id === action.payload.id) {
       listenerApi.dispatch(saveChat(state.chat.thread));
     } else if (action.payload.id in state.chat.cache) {
