@@ -19,51 +19,13 @@ from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.widgets import TextArea
 from prompt_toolkit.filters import Condition
 
-import refact.chat_client as chat_client
-from refact.chat_client import Message, FunctionDict
-from refact.printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
-from refact.printing import print_file, print_lines, highlight_text_by_language, set_background_color
-from refact.status_bar import bottom_status_bar, update_vecdb_status_background_task, StatusBar
+from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetch_and_filter
+from refact.cmdline_printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
+from refact.cmdline_printing import print_file, print_lines, highlight_text_by_language, set_background_color
+from refact.cmdline_statusbar import update_vecdb_status_background_task, StatusBar
+from refact.cmdline_markdown import to_markdown
 from refact.lsp_runner import LSPServerRunner
-from refact.markdown import to_markdown
-
-
-class CapsModel(BaseModel):
-    n_ctx: int
-    similar_models: List[str]
-    supports_tools: bool
-
-
-class Caps(BaseModel):
-    cloud_name: str
-    code_chat_models: Dict[str, CapsModel]
-    code_chat_default_model: str
-    embedding_model: str
-
-
-async def fetch_caps(base_url: str) -> Caps:
-    url = f"{base_url}/caps"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status == 200:
-                data = await response.json()
-                return Caps(**data)  # Parse the JSON data into the Caps model
-            else:
-                print(f"cannot fetch {url}\n{response.status}")
-                return None
-
-
-class CmdlineSettings:
-    def __init__(self, caps, args):
-        self.caps = caps
-        self.model = args.model or caps.code_chat_default_model
-        self.project_path = args.path_to_project
-
-    def n_ctx(self):
-        return self.caps.code_chat_models[self.model].n_ctx
-
-
-settings = None
+from refact import cmdline_settings
 
 
 def find_tool_call(messages: List[Message], id: str) -> Optional[FunctionDict]:
@@ -196,8 +158,8 @@ async def ask_chat(model):
 
         messages = list(streaming_messages)
 
-        new_messages = await chat_client.ask_using_http(
-            lsp.base_url,
+        new_messages = await ask_using_http(
+            lsp.base_url(),
             messages,
             N,
             model,
@@ -231,7 +193,7 @@ Refact Agent is essentially its tools, ask: "what tools do you have?"
 '''.strip().split('\n')
 
 
-async def welcome_message(settings: CmdlineSettings, tip: str):
+async def welcome_message(settings: cmdline_settings.CmdlineSettings, tip: str):
     text = f"""
 ~/.cache/refact/bring-your-own-key.yaml -- set up models you want to use
 ~/.cache/refact/integrations.yaml       -- set up github, jira, make, gdb, and other tools, including which actions require confirmation
@@ -320,7 +282,7 @@ def on_submit(buffer):
     streaming_messages.append(Message(role="user", content=user_input))
 
     async def asyncfunc():
-        await ask_chat(settings.model)
+        await ask_chat(cmdline_settings.settings.model)
 
     loop = asyncio.get_event_loop()
     loop.create_task(asyncfunc())
@@ -330,7 +292,7 @@ async def chat_main():
     global tools
     global streaming_messages
     global lsp
-    global settings
+    # global settings
     streaming_messages = []
 
     args = sys.argv[1:]
@@ -351,35 +313,38 @@ async def chat_main():
 
     arg_question = " ".join(after_minus_minus)
 
-    lsp = LSPServerRunner("./", "logs.txt", True, True,
-                          wait_for_ast=False,
-                          wait_for_vecdb=False,
-                          verbose=False
-                          )
+    cmdline_settings.cli_yaml = cmdline_settings.load_cli_or_auto_configure()
+
+    lsp = LSPServerRunner(
+        [
+            "/Users/kot/code/refact-lsp/target/release/refact-lsp",
+            "--address-url", cmdline_settings.cli_yaml.address_url,
+        ],
+        wait_for_ast_vecdb=False,
+        refact_lsp_log=None,
+        verbose=True
+    )
 
     tools_turn_on = {"definition", "references", "file", "search", "cat", "tree", "web"}
-
     async with lsp:
-        asyncio.create_task(update_vecdb_status_background_task())
+        f1 = tools_fetch_and_filter(base_url=lsp.base_url(), tools_turn_on=tools_turn_on)
+        f2 = cmdline_settings.fetch_caps(lsp.base_url())
+        tools, caps = await f1, await f2
+        cmdline_settings.settings = cmdline_settings.CmdlineSettings(caps, args)
 
-        tools = await chat_client.tools_fetch_and_filter(base_url=lsp.base_url, tools_turn_on=tools_turn_on)
-
-        caps = await fetch_caps(lsp.base_url)
-
-        settings = CmdlineSettings(caps, args)
-        if settings.model not in caps.code_chat_models:
-            sorted_keys = sorted(caps.code_chat_models.keys())
-            print(f"model {settings.model} is unknown, pick one of {sorted_keys}")
+        if cmdline_settings.settings.model not in caps.code_chat_models:
+            known_models = list(caps.code_chat_models.keys())
+            print(f"model {cmdline_settings.settings.model} is unknown, pick one of {known_models}")
             return
+
+        await welcome_message(cmdline_settings.settings, random.choice(tips_of_the_day))
 
         if arg_question:
             print(arg_question)
-            await answer_question_in_arguments(settings, arg_question)
+            await answer_question_in_arguments(cmdline_settings.settings, arg_question)
             return
 
-        await welcome_message(settings, random.choice(tips_of_the_day))
-        asyncio.create_task(update_vecdb_status_background_task())
-
+        # asyncio.create_task(update_vecdb_status_background_task())
         await app.run_async()
 
 
@@ -405,7 +370,10 @@ layout = Layout(hsplit)
 app = Application(key_bindings=kb, layout=layout)
 
 
-def cmdline_main():
+def entrypoint():
+    """
+    `refact` in console runs this function.
+    """
     asyncio.run(chat_main())
 
 

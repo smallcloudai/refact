@@ -1,8 +1,8 @@
 import asyncio
 import aiohttp
 from typing import Optional, List, Tuple
-from refact.printing import get_terminal_width, tokens_len
-import refact.refact_cmdline as refact_cmdline
+from refact.cmdline_printing import get_terminal_width, tokens_len
+import refact.cmdline_main as cmdline_main
 from prompt_toolkit.layout.containers import Window, Container
 from prompt_toolkit.layout.controls import FormattedTextControl
 
@@ -25,7 +25,7 @@ async def update_vecdb_status_background_task():
     while True:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{refact_cmdline.lsp.base_url}/rag-status") as response:
+                async with session.get(f"{cmdline_main.lsp.base_url()}/rag-status") as response:
                     vecdb_ast_status = await response.json(content_type=None)
         except Exception as e:
             print(e)
@@ -35,7 +35,7 @@ async def update_vecdb_status_background_task():
             continue
 
         vecdb = vecdb_ast_status.get("vecdb", None)
-        refact_cmdline.app.invalidate()
+        cmdline_main.app.invalidate()
         if vecdb is not None and vecdb.get("state") == "done":
             await asyncio.sleep(2)
         else:
@@ -139,6 +139,6 @@ class StatusBar:
     def __init__(self):
         self.formatted_text_control = FormattedTextControl(text=bottom_status_bar)
         self.window = Window(content=self.formatted_text_control, height=1)
-        
+
     def __pt_container__(self) -> Container:
         return self.window

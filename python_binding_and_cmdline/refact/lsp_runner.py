@@ -3,142 +3,135 @@ import time
 import asyncio
 import random
 import subprocess
-
-from typing import Optional
-
-
-__all__ = ["LSPServerRunner"]
-
-
-def localhost_port_not_in_use(start: int, stop: int):
-    def _is_port_in_use(port: int) -> bool:
-        import socket
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            return s.connect_ex(('localhost', port)) == 0
-
-    ports_range = list(range(start, stop))
-    random.shuffle(ports_range)
-    for port in ports_range:
-        if not _is_port_in_use(port):
-            return port
-
-    raise RuntimeError(f"cannot find port in range [{start}, {stop})")
+from typing import Optional, List
 
 
 class LSPServerRunner:
     def __init__(
         self,
-        repo_path: str,
-        lsp_log_fn: str,
-        use_ast: bool,
-        use_vecdb: bool,
-        wait_for_ast: bool = True,
-        wait_for_vecdb: bool = True,
-        verbose: bool = True,
+        refact_lsp_command: List[str],  # all parameters except --logs-stderr and --http-port that will be added mandatory for this class to work
+        wait_for_ast_vecdb: bool,
+        refact_lsp_log: Optional[str],
+        verbose: bool,
     ):
-        base_command = os.environ["REFACT_LSP_BASE_COMMAND"]
-        # /Users/valaises/RustroverProjects/refact-lsp/target/debug/refact-lsp --address-url http://localhost:8008 -k MYKEY
-        assert base_command, "env REFACT_LSP_BASE_COMMAND must be specified"
-        port = localhost_port_not_in_use(8100, 9000)
-        self._command = [
-            *base_command.split(" "),
-            "--logs-stderr", f"--http-port={port}",
-            f"--workspace-folder={repo_path}",
-        ]
-        if use_ast:
-            self._command.append("--ast")
-        if use_vecdb:
-            self._command.append("--vecdb")
-
-        self.lsp_log_fn = lsp_log_fn
-        self._wait_for_ast = wait_for_ast
-        self._wait_for_vecdb = wait_for_vecdb
-        self._port: int = port
-        self._lsp_server: Optional[asyncio.subprocess.Process] = None
+        self._refact_lsp_command = refact_lsp_command
+        self._refact_lsp_log = refact_lsp_log
+        self._refact_lsp_process: Optional[asyncio.subprocess.Process] = None
+        self._port: int = 0
+        self._wait_for_ast_vecdb = wait_for_ast_vecdb
         self._verbose = verbose
 
-    @property
-    def _is_lsp_server_running(self) -> bool:
-        return self._lsp_server is not None and self._lsp_server.returncode is None
+    def check_if_still_running(self) -> bool:
+        return self._refact_lsp_process is not None and self._refact_lsp_process.returncode is None
 
-    @property
     def base_url(self):
         return f"http://127.0.0.1:{self._port}/v1"
 
-    async def _start(self):
-        t0 = time.time()
-        if self._verbose:
-            print("REFACT LSP start", " ".join(self._command))
-        self._lsp_server = await asyncio.create_subprocess_exec(*self._command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        ast_ok, vecdb_ok, http_listening = False, False, False
-        while True:
+    async def start(self):
+        assert self._refact_lsp_process is None
+        ports_tried = []
+        for maybe_port_busy in range(5):
+            self._port = random.randint(8100, 9100)
+            program = self._refact_lsp_command[0]
+            args = [
+                *self._refact_lsp_command[1:],
+                "--logs-stderr",
+                f"--http-port={self._port}",
+            ]
+            ports_tried.append(self._port)
+            wait_ast = ("--ast" in args) and self._wait_for_ast_vecdb
+            wait_vecdb = ("--vecdb" in args) and self._wait_for_ast_vecdb
+
+            t0 = time.time()
+            if self._verbose:
+                print("REFACT LSP start", program, " ".join(args))
+            self._refact_lsp_process = await asyncio.create_subprocess_exec(program, *args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            ast_ok, vecdb_ok, post_listening, post_busy = False, False, False, False
             while True:
-                stderr_line = await self._query_stderr()
-                if stderr_line is None:
+                while True:
+                    stderr_line = await self._query_stderr()
+                    if stderr_line is None:
+                        break
+                    if "HTTP server listening" in stderr_line:
+                        post_listening = True
+                    if "AST COMPLETE" in stderr_line:
+                        ast_ok = True
+                    if "VECDB COMPLETE" in stderr_line:
+                        vecdb_ok = True
+                    if "PORT_BUSY" in stderr_line:
+                        post_busy = True
+                if (not wait_ast or ast_ok) and (not wait_vecdb or vecdb_ok) and post_listening:
                     break
-                if "HTTP server listening" in stderr_line:
-                    http_listening = True
-                if "AST COMPLETE" in stderr_line:
-                    if self._verbose:
-                        print("AST initialized")
-                    ast_ok = True
-                if "VECDB COMPLETE" in stderr_line:
-                    if self._verbose:
-                        print("VECDB initialized")
-                    vecdb_ok = True
-            if (not self._wait_for_ast or ast_ok) and (not self._wait_for_vecdb or vecdb_ok) and http_listening:
-                break
-            if not self._is_lsp_server_running:
-                raise RuntimeError(f"LSP server unexpectedly exited, bb")
-            await asyncio.sleep(0.1)
-        if self._verbose:
-            print("REFACT LSP /start in %0.2fs" % (time.time() - t0))
-        self._stderr_task = asyncio.create_task(
-            self._stderr_background_reader())
-        assert self._is_lsp_server_running
+                if post_busy:
+                    break
+                if not self.check_if_still_running():
+                    print(self._refact_lsp_process)
+                    print(self._refact_lsp_process.returncode)
+                    raise RuntimeError(f"LSP server exited unexpectedly :/")
+                await asyncio.sleep(0.1)  # waiting for start up
+            if post_busy:
+                await self._stop_real()
+                if self._verbose:
+                    print("REFACT LSP port %d busy" % (self._port))
+                continue
+            if self._verbose:
+                print("REFACT LSP /start in %0.2fs" % (time.time() - t0))
+            self._stderr_task = asyncio.create_task(self._stderr_background_reader())
+            break
+        else:
+            raise RuntimeError(f"After several attempts, couldn't start refact-lsp because it cannot open http port, tried ports {ports_tried}")
 
     async def _stderr_background_reader(self):
-        while self._is_lsp_server_running:
+        while self.check_if_still_running():
             while True:
                 line = await self._query_stderr()
                 if line is None:
                     break
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)  # waiting for messages, in normal operation
 
     async def _query_stderr(self):
-        if not self._is_lsp_server_running or self._lsp_server.stderr.at_eof():
+        if self._refact_lsp_process.stderr.at_eof():
             return None
         try:
-            line = await asyncio.wait_for(self._lsp_server.stderr.readline(), timeout=0.1)
+            line = await asyncio.wait_for(self._refact_lsp_process.stderr.readline(), timeout=0.1)
             line = line.decode()
-            with open(self.lsp_log_fn, "a") as f:
-                f.write(line)
+            if "ERR" in line and self._verbose:  # hmm maybe user is interested in errors even without verbose?
+                print("REFACT LSP", line.rstrip())
+            if self._refact_lsp_log is not None:
+                with open(self._refact_lsp_log, "a") as f:
+                    f.write(line)
             return line
         except asyncio.TimeoutError:
             return None
 
-    async def _stop(self):
-        if self._lsp_server is not None:
-            if self._verbose:
-                print("REFACT LSP STOP")
+    async def _stop_real(self):
+        assert self._refact_lsp_process is not None
+        try:
+            self._refact_lsp_process.terminate()
             try:
-                self._lsp_server.terminate()
-                try:
-                    await asyncio.wait_for(self._lsp_server.wait(), timeout=5.0)
-                except asyncio.TimeoutError:
-                    print("LSP server did not terminate in time, forcefully killing")
-                    self._lsp_server.kill()
-                    await self._lsp_server.wait()
-            except Exception as e:
-                print(f"Error stopping LSP server: {e}")
-            finally:
-                self._lsp_server = None
-            if self._verbose:
-                print("REFACT LSP /STOP")
+                await asyncio.wait_for(self._refact_lsp_process.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                print("LSP server did not terminate in time, forcefully killing")
+                self._refact_lsp_process.kill()
+                await self._refact_lsp_process.wait()
+        except Exception as e:
+            print(f"Error stopping LSP server: {e}")
+        finally:
+            self._refact_lsp_process = None
+            self._port = 0
+
+    async def stop(self):
+        if self._refact_lsp_process is None:
+            return
+        if self._verbose:
+            print("REFACT LSP stop")
+        await self._stop_real()
+        if self._verbose:
+            print("REFACT LSP /stop")
 
     async def __aenter__(self):
-        await self._start()
+        await self.start()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self._stop()
+        await self.stop()

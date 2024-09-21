@@ -1,4 +1,4 @@
-from refact.printing import Tokens
+from refact.cmdline_printing import Tokens
 
 gray = "#252b37"
 green = "#6ac496"

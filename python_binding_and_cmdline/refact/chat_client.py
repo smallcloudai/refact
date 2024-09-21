@@ -7,7 +7,7 @@ import termcolor
 import copy
 import json
 import time
-from typing import Optional, List, Any, Tuple, DefaultDict, Dict, Literal, Set
+from typing import Optional, List, Any, Tuple, DefaultDict, Dict, Literal, Set, Callable
 import collections
 
 from pydantic import BaseModel, ConfigDict

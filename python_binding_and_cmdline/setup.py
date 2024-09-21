@@ -28,7 +28,7 @@ setup(
     python_requires=">=3.6",
     entry_points={
         'console_scripts': [
-            'refact=refact.refact_cmdline:cmdline_main',
+            'refact=refact.cmdline_main:entrypoint',
         ],
     },
 )
