@@ -1,11 +1,11 @@
 import asyncio
 import json
+import os
 import sys
 import argparse
 import requests
 import random
 import termcolor
-import aiohttp
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 
@@ -240,7 +240,7 @@ class ToolsCompleter(Completer):
     def get_completions(self, document, complete_event):
         text = document.text
         position = document.cursor_position
-        response = get_at_command_completion(lsp.base_url, text, position)
+        response = get_at_command_completion(lsp.base_url(), text, position)
 
         completions = response["completions"]
         replace = response["replace"]
@@ -268,7 +268,7 @@ def on_submit(buffer):
         app.exit()
         return
 
-    print_response(f"\nChat> {user_input}")
+    print_response(f"\nchat> {user_input}")
 
     if user_input.strip() == '':
         return
@@ -308,6 +308,7 @@ async def chat_main():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('path_to_project', type=str, nargs='?', help="Path to the project", default=None)
     parser.add_argument('--model', type=str, help="Specify the model to use")
+    parser.add_argument('--experimental', type=bool, default=False, help="Enable experimental features, such as new integrations")
     parser.add_argument('question', nargs=argparse.REMAINDER, help="You can continue your question in the command line after --")
     args = parser.parse_args(before_minus_minus)
 
@@ -315,11 +316,30 @@ async def chat_main():
 
     cmdline_settings.cli_yaml = cmdline_settings.load_cli_or_auto_configure()
 
+    refact_args = [
+        os.path.expanduser("~/code/refact-lsp/target/release/refact-lsp"),
+        "--address-url", cmdline_settings.cli_yaml.address_url,
+        "--api-key", cmdline_settings.cli_yaml.api_key,
+    ]
+    if cmdline_settings.cli_yaml.insecure_ssl:
+        refact_args.append("--insecure-ssl")
+    if cmdline_settings.cli_yaml.basic_telemetry:
+        refact_args.append("--basic-telemetry")
+    if cmdline_settings.cli_yaml.experimental:
+        refact_args.append("--experimental")
+    if cmdline_settings.cli_yaml.ast:
+        refact_args.append("--ast")
+        refact_args.append("--ast-max-files")
+        refact_args.append(str(cmdline_settings.cli_yaml.ast_max_files))
+    if cmdline_settings.cli_yaml.vecdb:
+        refact_args.append("--vecdb")
+        refact_args.append("--vecdb-max-files")
+        refact_args.append(str(cmdline_settings.cli_yaml.vecdb_max_files))
+    if args.path_to_project:
+        refact_args.append("--workspace-folder")
+        refact_args.append(args.path_to_project)
     lsp = LSPServerRunner(
-        [
-            "/Users/kot/code/refact-lsp/target/release/refact-lsp",
-            "--address-url", cmdline_settings.cli_yaml.address_url,
-        ],
+        refact_args,
         wait_for_ast_vecdb=False,
         refact_lsp_log=None,
         verbose=True
@@ -344,7 +364,7 @@ async def chat_main():
             await answer_question_in_arguments(cmdline_settings.settings, arg_question)
             return
 
-        # asyncio.create_task(update_vecdb_status_background_task())
+        asyncio.create_task(update_vecdb_status_background_task())
         await app.run_async()
 
 
@@ -352,7 +372,7 @@ tool_completer = ToolsCompleter()
 response_box = FormattedTextControl(text=[])
 text_area = TextArea(height=10, multiline=True, accept_handler=on_submit, completer=tool_completer, focusable=True, focus_on_click=True)
 vsplit = VSplit([
-    Window(content=FormattedTextControl(text="Chat> "), width=6),
+    Window(content=FormattedTextControl(text="chat> "), width=6),
     text_area,
 ])
 hsplit = HSplit([

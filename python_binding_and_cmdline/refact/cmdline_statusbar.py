@@ -55,16 +55,6 @@ def status_bar_section_1() -> Tuple[str, str, str]:
     ast = vecdb_ast_status.get("ast", None)
     vecdb = vecdb_ast_status.get("vecdb", None)
 
-    if vecdb is not None:
-        if vecdb_state := vecdb.get("state", None):
-            if vecdb_state == "parsing":
-                percentage = get_percentage(
-                    vecdb["files_unprocessed"], vecdb["files_total"])
-                if percentage is not None:
-                    return (red, text_gray, f"VecDb: {percentage}")
-            if vecdb_state != "done":
-                return (red, text_gray, f"VecDb: {vecdb_state}")
-
     if ast is not None:
         if ast_state := ast.get("state", None):
             if ast_state == "indexing":
@@ -74,6 +64,16 @@ def status_bar_section_1() -> Tuple[str, str, str]:
                     return (red, text_gray, f" Ast: {percentage}")
             if ast_state != "done" and ast_state != "idle":
                 return (red, text_gray, f"Ast: {ast_state}")
+
+    if vecdb is not None:
+        if vecdb_state := vecdb.get("state", None):
+            if vecdb_state == "parsing":
+                percentage = get_percentage(
+                    vecdb["files_unprocessed"], vecdb["files_total"])
+                if percentage is not None:
+                    return (red, text_gray, f"VecDb: {percentage}")
+            if vecdb_state != "done":
+                return (red, text_gray, f"VecDb: {vecdb_state}")
 
     return (green, text_gray, "Done")
 
@@ -85,7 +85,7 @@ def status_bar_section_2() -> Optional[Tuple[str, str, str]]:
 
     db_size = vecdb.get("db_size", None)
     db_cache_size = vecdb.get("db_cache_size", None)
-    text = f"⛁ VecDB Size: {db_size}   VecDB Cache: {db_cache_size}"
+    text = f"⛁ VecDB Size: {db_size} AAAAAAA VecDB Cache: {db_cache_size}"
     return (light_gray, white, text)
 
 
@@ -96,18 +96,17 @@ def status_bar_section_3() -> Optional[Tuple[str, str, str]]:
 
     ast_files = ast.get("ast_index_files_total", None)
     ast_symbols = ast.get("ast_index_symbols_total", None)
-    text = f"⛁ AST files {ast_files}   AST symbols {ast_symbols}"
+    text = f"⛁ AST files {ast_files} BBBBBB AST symbols {ast_symbols}"
     return (gray, white, text)
 
 
 def create_status_bar(sections: List[Tuple[str, str, str]]) -> List[Tuple[str, str]]:
     result = []
-
     previous_colour = None
 
     for (c1, c2, text) in sections:
-        if previous_colour is not None:
-            result.append((f'{previous_colour} bg:{c1}', ''))
+        # if previous_colour is not None:
+        #     result.append((f'{previous_colour} bg:{c1}', '|'))
         result.append((f'{c2} bg:{c1}', f" {text} "))
         previous_colour = c1
 

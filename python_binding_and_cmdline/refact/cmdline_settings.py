@@ -24,9 +24,9 @@ class SettingsCLI(BaseModel):
     api_key: str
     insecure_ssl: bool = False
     ast: bool = True
-    ast_file_limit: int = 20000
+    ast_max_files: int = 20000
     vecdb: bool = True
-    vecdb_file_limit: int = 5000
+    vecdb_max_files: int = 5000
     experimental: bool = False
     basic_telemetry: bool = True
 
