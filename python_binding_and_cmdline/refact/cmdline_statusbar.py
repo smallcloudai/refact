@@ -34,6 +34,9 @@ async def statusbar_background_task():
         if ast := vecdb_ast_status.get("ast", None):
             if ast.get("state") == "indexing":
                 fast_sleep = True
+        if ast := vecdb_ast_status.get("vecdb", None):
+            if ast.get("state") == "parsing":
+                fast_sleep = True
         if fast_sleep:
             await asyncio.sleep(0.1)
         else:
@@ -50,11 +53,9 @@ def bottom_status_bar():
     vdb_color = "#fac496"
 
     if ast := vecdb_ast_status.get("ast", None):
-        if ast["state"] == "parsing":
+        if ast["state"] == "indexing":
             ast_parsed_qty = ast["files_total"] - ast["files_unparsed"]
             ast_text = "⛁ AST parsing %4d/%d" % (ast_parsed_qty, ast["files_total"])
-        elif ast["state"] == "indexing":
-            ast_text = "⛁ AST indexing"
         elif ast["state"] == "starting":
             ast_text = "⛁ AST starting"
         elif ast["state"] == "done":
@@ -64,7 +65,7 @@ def bottom_status_bar():
     if vecdb := vecdb_ast_status.get("vecdb", None):
         if vecdb["state"] not in ["done", "idle"]:
             vecdb_parsed_qty = vecdb["files_total"] - vecdb["files_unprocessed"];
-            vdb_text = "⛁ VecDB %4d/%d" % (vecdb_parsed_qty, vecdb["files_total"]);
+            vdb_text = "⛁ VecDB vectorizing %4d/%d files" % (vecdb_parsed_qty, vecdb["files_total"]);
         else:
             vdb_text = "⛁ VecDB %d records" % (vecdb["db_size"])
             vdb_color = "#A0FFA0"

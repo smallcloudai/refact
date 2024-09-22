@@ -106,7 +106,7 @@ async fn ast_indexer_thread(
                 {
                     let mut status_locked = ast_status.lock().await;
                     status_locked.files_unparsed = left_todo_count;
-                    status_locked.files_total = stats_parsed_cnt;
+                    status_locked.files_total = stats_parsed_cnt + left_todo_count;
                     status_locked.ast_index_files_total = counters.counter_defs;
                     status_locked.ast_index_symbols_total = counters.counter_usages;
                     status_locked.ast_max_files_hit = ast_max_files_hit;
