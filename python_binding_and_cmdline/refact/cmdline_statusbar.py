@@ -81,7 +81,7 @@ def bottom_status_bar():
 
     for (c1, c2, text) in sections:
         if previous_colour is not None:
-            result.append((f'{previous_colour} bg:#101010', '|'))
+            result.append((f'{previous_colour} bg:#101010', '║'))
         result.append((f'{c2} bg:{c1}', f" {text} "))
         previous_colour = c1
 

@@ -94,14 +94,14 @@ def messages_to_dicts(
 def join_messages_and_choices(
     orig_messages: List[Message],
     deterministic_messages: List[Message],
-    choices: List[Message],
+    choices: List[Optional[Message]],
     verbose: bool
 ) -> List[List[Message]]:
     messages = list(orig_messages)
     while len(messages) > 0 and messages[-1].role == "user":
         messages.pop()
     messages.extend(deterministic_messages)
-    msg: Message
+    msg: Optional[Message]
     if verbose:
         for msg in deterministic_messages:
             print("deterministic",
@@ -291,8 +291,7 @@ async def ask_using_http(
                             d.subchats[subchat_id] = msglist
                             has_home.add(k)
                 assert set(has_home) == set(subchats.keys()), f"Whoops, not all subchats {subchats.keys()} are attached to a tool result."
-    choices_not_none: List[Message] = [x for x in choices if x is not None]
-    return join_messages_and_choices(messages, deterministic, choices_not_none, verbose)
+    return join_messages_and_choices(messages, deterministic, choices, verbose)
 
 
 async def ask_using_openai_client(
