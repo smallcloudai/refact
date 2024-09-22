@@ -70,9 +70,9 @@ class LSPServerRunner:
                     raise RuntimeError(f"LSP server exited unexpectedly :/")
                 await asyncio.sleep(0.1)  # waiting for start up
             if post_busy:
-                await self._stop_real()
                 if self._verbose:
                     print("REFACT LSP port %d busy" % (self._port))
+                await self._stop_real()
                 continue
             if self._verbose:
                 print("REFACT LSP /start in %0.2fs" % (time.time() - t0))

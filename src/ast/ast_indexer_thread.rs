@@ -328,6 +328,7 @@ pub async fn ast_indexer_start(
 pub async fn ast_indexer_enqueue_files(ast_service: Arc<AMutex<AstIndexService>>, cpaths: Vec<String>, wake_up_indexer: bool)
 {
     let ast_status;
+    let nonzero = cpaths.len() > 0;
     {
         let mut ast_service_locked = ast_service.lock().await;
         ast_status = ast_service_locked.ast_status.clone();
@@ -337,7 +338,11 @@ pub async fn ast_indexer_enqueue_files(ast_service: Arc<AMutex<AstIndexService>>
     }
     {
         let mut status_locked = ast_status.lock().await;
-        status_locked.astate = "indexing".to_string();
+        if nonzero {
+            status_locked.astate = "indexing".to_string();
+        } else if status_locked.astate == "starting" {
+            status_locked.astate = "done".to_string();
+        }
         status_locked.astate_notify.notify_waiters();
     }
     if wake_up_indexer {

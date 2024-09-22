@@ -28,7 +28,7 @@ class SettingsCLI(BaseModel):
     vecdb: bool = True
     vecdb_max_files: int = 5000
     experimental: bool = False
-    basic_telemetry: bool = True
+    basic_telemetry: bool = False
 
 
 class CmdlineSettings:

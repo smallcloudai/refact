@@ -22,9 +22,9 @@ from prompt_toolkit.filters import Condition
 from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetch_and_filter
 from refact.cmdline_printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
 from refact.cmdline_printing import print_file, print_lines, highlight_text_by_language, set_background_color
-from refact.cmdline_statusbar import update_vecdb_status_background_task, StatusBar
 from refact.cmdline_markdown import to_markdown
 from refact.lsp_runner import LSPServerRunner
+from refact import cmdline_statusbar
 from refact import cmdline_settings
 
 
@@ -195,10 +195,11 @@ Refact Agent is essentially its tools, ask: "what tools do you have?"
 
 async def welcome_message(settings: cmdline_settings.CmdlineSettings, tip: str):
     text = f"""
+~/.cache/refact/cli.yaml                -- set up this program
 ~/.cache/refact/bring-your-own-key.yaml -- set up models you want to use
 ~/.cache/refact/integrations.yaml       -- set up github, jira, make, gdb, and other tools, including which actions require confirmation
 ~/.cache/refact/privacy.yaml            -- which files should never leave your computer
-Project path: {settings.project_path}     Model: {settings.model} context={settings.n_ctx()}
+Project: {settings.project_path}
 To exit, type 'exit' or Ctrl+D. {tip}.
 """
     print(termcolor.colored(text.strip(), "white", None, ["dark"]))
@@ -358,13 +359,14 @@ async def chat_main():
             return
 
         await welcome_message(cmdline_settings.settings, random.choice(tips_of_the_day))
+        cmdline_statusbar.model_section = f"model {cmdline_settings.settings.model} context {cmdline_settings.settings.n_ctx()}"
 
         if arg_question:
             print(arg_question)
             await answer_question_in_arguments(cmdline_settings.settings, arg_question)
             return
 
-        asyncio.create_task(update_vecdb_status_background_task())
+        asyncio.create_task(cmdline_statusbar.statusbar_background_task())
         await app.run_async()
 
 
@@ -384,7 +386,7 @@ hsplit = HSplit([
         filter=is_not_streaming_condition,
     ),
     Window(),
-    StatusBar(),
+    cmdline_statusbar.StatusBar(),
 ])
 layout = Layout(hsplit)
 app = Application(key_bindings=kb, layout=layout)
