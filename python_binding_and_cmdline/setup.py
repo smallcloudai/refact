@@ -49,3 +49,7 @@ setup(
 #   sync version from Cargo.toml
 #   python setup.py sdist
 #   twine upload --repository pypi dist/refact-0.9.7.tar.gz
+
+# XXX: installing per platform, unclear so far
+# export CIBW_SKIP="cp27-manylinux_* cp34-manylinux_* cp35-manylinux_* cp36-manylinux_* cp37-manylinux_* cp38-manylinux_* cp39-manylinux_* cp310-manylinux_* cp311-manylinux_* cp27-macosx_* cp34-macosx_* cp35-macosx_* cp36-macosx_* cp37-macosx_* cp39-macosx_* cp310-macosx_* cp311-macosx_* cp27-win_* cp34-win_* cp35-win_* cp36-win_* cp37-win_* cp38-win_* cp39-win_* cp310-win_* cp311-win_* cp312-maxosx_* cp312-macosx_* cp313-macosx_* pp*"
+# cibuildwheel --output-dir wheelhouse
