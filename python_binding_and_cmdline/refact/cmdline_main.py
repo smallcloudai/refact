@@ -96,7 +96,7 @@ def print_context_file(json_str: str):
     print_file(content, file_name)
 
 
-streaming_messages = []
+streaming_messages: List[Message] = []
 is_streaming = False
 lsp = None
 
@@ -369,7 +369,7 @@ async def chat_main():
 
 
 history_fn = os.path.expanduser("~/.cache/refact/cli_history")
-session = PromptSession(history=FileHistory(history_fn))
+session: PromptSession = PromptSession(history=FileHistory(history_fn))
 
 tool_completer = ToolsCompleter()
 response_box = FormattedTextControl(text=[])
@@ -398,7 +398,7 @@ hsplit = HSplit([
     cmdline_statusbar.StatusBar(),
 ])
 layout = Layout(hsplit)
-app = Application(key_bindings=kb, layout=layout)
+app: Application = Application(key_bindings=kb, layout=layout)
 
 
 def entrypoint():

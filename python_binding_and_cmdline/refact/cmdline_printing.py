@@ -14,7 +14,7 @@ def get_terminal_width() -> int:
     return shutil.get_terminal_size((80, 20))[0]
 
 
-def split_newline_tokens(tokens: Tokens) -> List[Tokens]:
+def split_newline_tokens(tokens: Tokens) -> Tokens:
     result = []
     for token in tokens:
         first = True
@@ -28,7 +28,7 @@ def split_newline_tokens(tokens: Tokens) -> List[Tokens]:
 
 
 def wrap_tokens(tokens: Tokens, max_width: int) -> Lines:
-    tokens = split_newline_tokens(tokens)
+    tokens: Tokens = split_newline_tokens(tokens)
     result = []
     current_line = []
     line_length = 0
@@ -142,7 +142,7 @@ def create_box(
         result.append(
             to_tokens("┌─ " + title[:title_len] + " " + "─" * bar_len + "┐"))
 
-    
+
     if max_height is not None:
         lines = limit_lines(lines, max_height)
 

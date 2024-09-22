@@ -53,8 +53,7 @@ async def fetch_caps(base_url: str) -> Caps:
                 data = await response.json()
                 return Caps(**data)  # Parse the JSON data into the Caps model
             else:
-                print(f"cannot fetch {url}\n{response.status}")
-                return None
+                raise RuntimeError(f"cannot fetch {url}\n{response.status}")
 
 
 def load_cli_or_auto_configure():

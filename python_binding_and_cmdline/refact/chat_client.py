@@ -47,7 +47,7 @@ class Message(BaseModel):
     finish_reason: str = ""
     tool_call_id: str = ""
     usage: Optional[Usage] = None
-    subchats: DefaultDict[str, List[Message]] = None
+    subchats: Optional[DefaultDict[str, List[Message]]] = None
     model_config = ConfigDict(exclude_none=True)
 
 
@@ -94,13 +94,14 @@ def messages_to_dicts(
 def join_messages_and_choices(
     orig_messages: List[Message],
     deterministic_messages: List[Message],
-    choices: List[Optional[Message]],
+    choices: List[Message],
     verbose: bool
 ) -> List[List[Message]]:
     messages = list(orig_messages)
     while len(messages) > 0 and messages[-1].role == "user":
         messages.pop()
     messages.extend(deterministic_messages)
+    msg: Message
     if verbose:
         for msg in deterministic_messages:
             print("deterministic",
@@ -111,7 +112,6 @@ def join_messages_and_choices(
     for i, msg in enumerate(choices):
         if msg is None:
             continue
-        msg: Message
         if verbose and isinstance(msg.content, str):
             print("result[%d]" % i,
                   termcolor.colored(msg.content, "yellow"),
@@ -291,7 +291,8 @@ async def ask_using_http(
                             d.subchats[subchat_id] = msglist
                             has_home.add(k)
                 assert set(has_home) == set(subchats.keys()), f"Whoops, not all subchats {subchats.keys()} are attached to a tool result."
-    return join_messages_and_choices(messages, deterministic, choices, verbose)
+    choices_not_none: List[Message] = [x for x in choices if x is not None]
+    return join_messages_and_choices(messages, deterministic, choices_not_none, verbose)
 
 
 async def ask_using_openai_client(
@@ -338,8 +339,7 @@ async def ask_using_openai_client(
             finish_reason=ch.finish_reason
         )
         choices[index] = msg
-    choices_not_none: List[Message] = [
-        msg for msg in choices if msg is not None]
+    choices_not_none: List[Message] = [x for x in choices if x is not None]
     return join_messages_and_choices(messages, deterministic, choices_not_none, verbose)
 
 
@@ -499,7 +499,7 @@ def print_messages(
         message_str.append(header)
         con(_wrap_color(header))
 
-        if m.role == "context_file":
+        if m.role == "context_file" and m.content is not None:
             message = "\n".join([
                 f"{file['file_name']}:{file['line1']}-{file['line2']}, len={len(file['file_content'])}"
                 for file in json.loads(m.content)
@@ -509,7 +509,7 @@ def print_messages(
             con(message)
             con("")
 
-        elif m.role == "diff":
+        elif m.role == "diff" and m.content is not None:
             for chunk in json.loads(m.content):
                 message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
                 message_str.append(message)
@@ -533,16 +533,20 @@ def print_messages(
             message_str.append(m.content)
             con(Markdown(m.content))
 
-        if not _is_tool_call(m):
-            results.append("\n".join(message_str))
-            continue
+        else:
+            con("unknown message role=\"%s\"" % m.role)
 
-        t = "\n".join([
-            f"{tool_call.function.name}({tool_call.function.arguments}) [id={tool_call.id[:20]}]"
-            for tool_call in m.tool_calls
-        ])
-        message_str.append(t)
-        con(t)
+        if m.tool_calls is not None:
+            if not _is_tool_call(m):
+                results.append("\n".join(message_str))
+                continue
+            t = "\n".join([
+                f"{tool_call.function.name}({tool_call.function.arguments}) [id={tool_call.id[:20]}]"
+                for tool_call in m.tool_calls
+            ])
+            message_str.append(t)
+            con(t)
+
         message_str.append("")
         con("")
 
