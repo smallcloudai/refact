@@ -6,13 +6,13 @@ import argparse
 import requests
 import random
 import termcolor
-from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 
-from prompt_toolkit import PromptSession, Application, ANSI, print_formatted_text
+from prompt_toolkit import PromptSession, Application, print_formatted_text
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.history import FileHistory
 from prompt_toolkit.completion import Completer, Completion
-from prompt_toolkit.layout import Layout, CompletionsMenu, Float, ScrollablePane
+from prompt_toolkit.layout import Layout, CompletionsMenu, Float
 from prompt_toolkit.layout.containers import HSplit, VSplit, Window, FloatContainer, ConditionalContainer
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.formatted_text import FormattedText
@@ -98,7 +98,6 @@ def print_context_file(json_str: str):
 
 streaming_messages = []
 is_streaming = False
-tools = []
 lsp = None
 
 
@@ -118,20 +117,17 @@ def process_streaming_data(data):
             streaming_messages.append(Message(role="assistant", content=content))
         else:
             streaming_messages[-1].content += content
-
         print_response(content)
+
     elif "role" in data:
         role = data["role"]
         if role == "user":
             return
-
         content = data["content"]
         streaming_messages.append(Message(role=role, content=content))
-
         if role == "context_file":
             print_context_file(content)
             return
-
         terminal_width = get_terminal_width()
         box = create_box(content, terminal_width - 4, max_height=10)
         indented = indent(box, 2)
@@ -145,6 +141,12 @@ def process_streaming_data(data):
             print_formatted_text(f"  function is none")
         print_lines(indented)
 
+    elif "subchat_id" in data:
+        pass
+
+    else:
+        print_response("unknown streaming data:\n%s" % data)
+
 
 async def ask_chat(model):
     global streaming_messages
@@ -157,7 +159,7 @@ async def ask_chat(model):
                 process_streaming_data(data)
 
         messages = list(streaming_messages)
-
+        tools = await tools_fetch_and_filter(base_url=lsp.base_url(), tools_turn_on=None)
         new_messages = await ask_using_http(
             lsp.base_url(),
             messages,
@@ -290,7 +292,6 @@ def on_submit(buffer):
 
 
 async def chat_main():
-    global tools
     global streaming_messages
     global lsp
     # global settings
@@ -346,11 +347,8 @@ async def chat_main():
         verbose=True
     )
 
-    tools_turn_on = {"definition", "references", "file", "search", "cat", "tree", "web"}
     async with lsp:
-        f1 = tools_fetch_and_filter(base_url=lsp.base_url(), tools_turn_on=tools_turn_on)
-        f2 = cmdline_settings.fetch_caps(lsp.base_url())
-        tools, caps = await f1, await f2
+        caps = await cmdline_settings.fetch_caps(lsp.base_url())
         cmdline_settings.settings = cmdline_settings.CmdlineSettings(caps, args)
 
         if cmdline_settings.settings.model not in caps.code_chat_models:
@@ -370,9 +368,20 @@ async def chat_main():
         await app.run_async()
 
 
+history_fn = os.path.expanduser("~/.cache/refact/cli_history")
+session = PromptSession(history=FileHistory(history_fn))
+
 tool_completer = ToolsCompleter()
 response_box = FormattedTextControl(text=[])
-text_area = TextArea(height=10, multiline=True, accept_handler=on_submit, completer=tool_completer, focusable=True, focus_on_click=True)
+text_area = TextArea(
+    height=10,
+    multiline=True,
+    accept_handler=on_submit,
+    completer=tool_completer,
+    focusable=True,
+    focus_on_click=True,
+    history=session.history,
+)
 vsplit = VSplit([
     Window(content=FormattedTextControl(text="chat> "), width=6),
     text_area,

@@ -90,7 +90,7 @@ class LSPServerRunner:
             await asyncio.sleep(0.1)  # waiting for messages, in normal operation
 
     async def _query_stderr(self):
-        if self._refact_lsp_process.stderr.at_eof():
+        if self._refact_lsp_process is None or self._refact_lsp_process.stderr.at_eof():
             return None
         try:
             line = await asyncio.wait_for(self._refact_lsp_process.stderr.readline(), timeout=0.1)
