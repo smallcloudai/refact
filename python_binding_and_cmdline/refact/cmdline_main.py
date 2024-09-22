@@ -319,7 +319,7 @@ async def chat_main():
     cmdline_settings.cli_yaml = cmdline_settings.load_cli_or_auto_configure()
 
     refact_args = [
-        os.path.expanduser("~/code/refact-lsp/target/release/refact-lsp"),
+        os.path.join(os.path.dirname(__file__), "bin", "refact-lsp"),
         "--address-url", cmdline_settings.cli_yaml.address_url,
         "--api-key", cmdline_settings.cli_yaml.api_key,
     ]

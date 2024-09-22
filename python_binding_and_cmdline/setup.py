@@ -1,5 +1,14 @@
 from setuptools import setup, find_packages
 import re
+from typing import List
+import platform
+
+
+def refact_lsp_binary() -> List[str]:
+    if platform.system() == "Windows":
+        return ["refact/bin/refact-lsp.exe"]
+    else:
+        return ["refact/bin/refact-lsp"]
 
 setup(
     name="refact",
@@ -31,6 +40,8 @@ setup(
             'refact=refact.cmdline_main:entrypoint',
         ],
     },
+    include_package_data=True,
+    data_files=[('bin', refact_lsp_binary())]
 )
 
 
