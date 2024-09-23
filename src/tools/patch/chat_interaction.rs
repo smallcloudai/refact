@@ -26,7 +26,7 @@ pub async fn read_file(
     let candidate = return_one_candidate_or_a_good_error(
         gcx.clone(), &file_path, &candidates, &get_project_dirs(gcx.clone()).await, false
     ).await?;
-    context_file_from_file_path(gcx.clone(), vec![candidate], file_path.clone()).await
+    context_file_from_file_path(gcx.clone(), candidate).await
 }
 
 async fn load_tokenizer(
