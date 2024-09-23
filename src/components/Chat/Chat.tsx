@@ -2,7 +2,6 @@ import React, { useCallback, useRef, useEffect } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
-import { PageWrapper } from "../PageWrapper";
 import {
   useAppSelector,
   useAppDispatch,
@@ -22,7 +21,6 @@ import {
   selectMessages,
 } from "../../features/Chat/Thread";
 import { selectActiveFile } from "../../features/Chat/activeFile";
-import { Toolbar } from "../Toolbar";
 
 export type ChatProps = {
   host: Config["host"];
@@ -40,7 +38,6 @@ export type ChatProps = {
 
 export const Chat: React.FC<ChatProps> = ({
   style,
-  host,
   unCalledTools,
   caps,
   maybeSendToSidebar,
@@ -110,8 +107,7 @@ export const Chat: React.FC<ChatProps> = ({
   }, [isWaiting, isStreaming, focusTextarea]);
 
   return (
-    <PageWrapper host={host} style={style}>
-      <Toolbar activeTab={{ type: "chat", id: chatId }} />
+    <Flex style={style} direction="column" flexGrow="1">
       <ChatContent
         key={`chat-content-${chatId}`}
         chatKey={chatId}
@@ -159,6 +155,6 @@ export const Chat: React.FC<ChatProps> = ({
           <Text size="1">model: {chatModel || caps.default_cap} </Text>
         )}
       </Flex>
-    </PageWrapper>
+    </Flex>
   );
 };

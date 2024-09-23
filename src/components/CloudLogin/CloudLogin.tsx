@@ -82,7 +82,13 @@ export const CloudLogin: React.FC<CloudLoginProps> = ({
   };
 
   return (
-    <Flex direction="column" gap="2" maxWidth="540px" m="8px">
+    <Flex
+      direction="column"
+      gap="2"
+      maxWidth="540px"
+      m="8px"
+      style={{ alignSelf: "center" }}
+    >
       <Text size="3">Already have a Refact.ai account?</Text>
       <Button
         ref={loginButton}

@@ -1,10 +1,10 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Host, InitialSetup } from "../components/InitialSetup";
 import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
 import { Flex } from "@radix-ui/themes";
-import { Chat, newChatAction } from "./Chat";
+import { Chat, newChatAction, selectChatId } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import { useEventsBusForIDE, useConfig } from "../hooks";
 
@@ -28,6 +28,9 @@ import { Tour } from "../components/Tour";
 import { TourEnd } from "../components/Tour/TourEnd";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
 import { BringYourOwnKey } from "../components/BringYourOwnKey/BringYourOwnKey";
+import { Toolbar } from "../components/Toolbar";
+import { Tab } from "../components/Toolbar/Toolbar";
+import { PageWrapper } from "../components/PageWrapper";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -46,6 +49,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const { setupHost } = useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
   const historyState = useAppSelector((state: RootState) => state.history);
+  const chatId = useAppSelector(selectChatId);
   useEventBusForWeb();
   useEventBusForApp();
 
@@ -105,6 +109,20 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 
   const page = pages[pages.length - 1];
 
+  const activeTab: Tab | undefined = useMemo(() => {
+    if (page.name === "chat") {
+      return {
+        type: "chat",
+        id: chatId,
+      };
+    }
+    if (page.name === "history") {
+      return {
+        type: "dashboard",
+      };
+    }
+  }, [page]);
+
   return (
     <Flex
       style={{
@@ -114,13 +132,8 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         ...style,
       }}
     >
-      <Flex
-        style={{
-          flexDirection: "row",
-          height: "100%",
-          justifyContent: "center",
-        }}
-      >
+      <PageWrapper host={config.host}>
+        {activeTab && <Toolbar activeTab={activeTab} />}
         {page.name === "initial setup" && (
           <InitialSetup onPressNext={onPressNext} />
         )}
@@ -141,7 +154,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             takingNotes={false}
             onOpenChatInTab={undefined}
             style={{
-              flex: 1,
+              alignSelf: "stretch",
               height: "100%",
             }}
           />
@@ -164,7 +177,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             onCloseStatistic={goBack}
           />
         )}
-      </Flex>
+      </PageWrapper>
       <Tour page={pages[pages.length - 1].name} />
     </Flex>
   );

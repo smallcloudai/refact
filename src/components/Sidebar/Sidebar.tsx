@@ -4,10 +4,7 @@ import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Spinner } from "@radix-ui/themes";
 import { useAppSelector, useAppDispatch } from "../../hooks";
 import { deleteChatById } from "../../features/History/historySlice";
-import { Toolbar } from "../Toolbar";
 import { push } from "../../features/Pages/pagesSlice";
-import { PageWrapper } from "../PageWrapper";
-import { useConfig } from "../../hooks";
 import { restoreChat, type ChatThread } from "../../features/Chat/Thread";
 
 export type SidebarProps = {
@@ -41,11 +38,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
     [dispatch],
   );
 
-  const { host } = useConfig();
-
   return (
-    <PageWrapper host={host} style={style}>
-      <Toolbar activeTab={{ type: "dashboard" }} />
+    <Flex style={style}>
       <Flex mt="4">
         <Box position="absolute" ml="5" mt="2">
           <Spinner loading={takingNotes} title="taking notes" />
@@ -56,6 +50,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
         onHistoryItemClick={onHistoryItemClick}
         onDeleteHistoryItem={onDeleteHistoryItem}
       />
-    </PageWrapper>
+    </Flex>
   );
 };
