@@ -61,28 +61,43 @@ fn _extract_mapping_values(mapping: &Option<&serde_yaml::Mapping>, variables: &m
     }
 }
 
-fn _replace_variables_in_text(text: &mut String, variables: &HashMap<String, String>) {
+fn _replace_variables_in_text(text: &mut String, variables: &HashMap<String, String>) -> bool {
+    let mut replaced = false;
     for (vname, vtext) in variables.iter() {
-        *text = text.replace(&format!("%{}%", vname), vtext);
+        let placeholder = format!("%{}%", vname);
+        if text.contains(&placeholder) {
+            *text = text.replace(&placeholder, vtext);
+            replaced = true;
+        }
     }
+    replaced
 }
 
 fn _replace_variables_in_messages(config: &mut CustomizationYaml, variables: &HashMap<String, String>) {
     for command in config.toolbox_commands.values_mut() {
         for msg in command.messages.iter_mut() {
-            _replace_variables_in_text(&mut msg.content, variables);
+            let mut replaced = true;
+            while replaced {
+                replaced = _replace_variables_in_text(&mut msg.content, variables);
+            }
         }
     }
     for command in config.code_lens.values_mut() {
         for msg in command.messages.iter_mut() {
-            _replace_variables_in_text(&mut msg.content, variables);
+            let mut replaced = true;
+            while replaced {
+                replaced = _replace_variables_in_text(&mut msg.content, variables);
+            }
         }
     }
 }
 
 fn _replace_variables_in_system_prompts(config: &mut CustomizationYaml, variables: &HashMap<String, String>) {
     for prompt in config.system_prompts.values_mut() {
-        _replace_variables_in_text(&mut prompt.text, variables);
+        let mut replaced = true;
+        while replaced {
+            replaced = _replace_variables_in_text(&mut prompt.text, variables);
+        }
     }
 }
 
