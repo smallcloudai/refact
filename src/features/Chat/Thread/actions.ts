@@ -58,6 +58,7 @@ export const setPreventSend = createAction<PayloadWithId>(
 );
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
+export const getSelectedToolUse = (state: RootState) => state.chat.tool_use;
 
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
