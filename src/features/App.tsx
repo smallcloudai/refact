@@ -103,6 +103,8 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     dispatch(pop());
   };
 
+  const page = pages[pages.length - 1];
+
   return (
     <Flex
       style={{
@@ -112,63 +114,57 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         ...style,
       }}
     >
-      {pages.map((page, i) => {
-        return (
-          <Flex
-            key={i}
-            display={i === pages.length - 1 ? "flex" : "none"}
+      <Flex
+        style={{
+          flexDirection: "row",
+          height: "100%",
+          justifyContent: "center",
+        }}
+      >
+        {page.name === "initial setup" && (
+          <InitialSetup onPressNext={onPressNext} />
+        )}
+        {page.name === "cloud login" && <CloudLogin goBack={goBack} />}
+        {page.name === "enterprise setup" && (
+          <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
+        )}
+        {page.name === "self hosting setup" && (
+          <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
+        )}
+        {page.name === "bring your own key" && (
+          <BringYourOwnKey goBack={goBack} next={bringYourOwnKeySetup} />
+        )}
+        {page.name === "welcome" && <Welcome onPressNext={startTour} />}
+        {page.name === "tour end" && <TourEnd />}
+        {page.name === "history" && (
+          <Sidebar
+            takingNotes={false}
+            onOpenChatInTab={undefined}
             style={{
-              flexDirection: "row",
+              flex: 1,
               height: "100%",
-              justifyContent: "center",
             }}
-          >
-            {page.name === "initial setup" && (
-              <InitialSetup onPressNext={onPressNext} />
-            )}
-            {page.name === "cloud login" && <CloudLogin goBack={goBack} />}
-            {page.name === "enterprise setup" && (
-              <EnterpriseSetup goBack={goBack} next={enterpriseSetup} />
-            )}
-            {page.name === "self hosting setup" && (
-              <SelfHostingSetup goBack={goBack} next={selfHostingSetup} />
-            )}
-            {page.name === "bring your own key" && (
-              <BringYourOwnKey goBack={goBack} next={bringYourOwnKeySetup} />
-            )}
-            {page.name === "welcome" && <Welcome onPressNext={startTour} />}
-            {page.name === "tour end" && <TourEnd />}
-            {page.name === "history" && (
-              <Sidebar
-                takingNotes={false}
-                onOpenChatInTab={undefined}
-                style={{
-                  flex: 1,
-                  height: "100%",
-                }}
-              />
-            )}
-            {page.name === "chat" && (
-              <Chat
-                host={config.host}
-                tabbed={config.tabbed}
-                backFromChat={goBack}
-              />
-            )}
-            {page.name === "fill in the middle debug page" && (
-              <FIMDebug host={config.host} tabbed={config.tabbed} />
-            )}
-            {page.name === "statistics page" && (
-              <Statistics
-                backFromStatistic={goBack}
-                tabbed={config.tabbed}
-                host={config.host}
-                onCloseStatistic={goBack}
-              />
-            )}
-          </Flex>
-        );
-      })}
+          />
+        )}
+        {page.name === "chat" && (
+          <Chat
+            host={config.host}
+            tabbed={config.tabbed}
+            backFromChat={goBack}
+          />
+        )}
+        {page.name === "fill in the middle debug page" && (
+          <FIMDebug host={config.host} tabbed={config.tabbed} />
+        )}
+        {page.name === "statistics page" && (
+          <Statistics
+            backFromStatistic={goBack}
+            tabbed={config.tabbed}
+            host={config.host}
+            onCloseStatistic={goBack}
+          />
+        )}
+      </Flex>
       <Tour page={pages[pages.length - 1].name} />
     </Flex>
   );
