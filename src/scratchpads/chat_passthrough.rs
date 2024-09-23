@@ -17,7 +17,7 @@ use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
-use crate::yaml_configs::customization_loader::{get_default_system_prompt, system_prompt_add_workspace_info};
+use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, system_prompt_add_workspace_info};
 
 
 const DEBUG: bool = false;

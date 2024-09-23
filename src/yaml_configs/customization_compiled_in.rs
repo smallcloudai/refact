@@ -140,6 +140,40 @@ subchat_tool_parameters:
     subchat_max_new_tokens: 8000
 
 
+code_lens:
+  open_chat:
+    label: Open Chat
+    auto_submit: false
+  problems:
+    label: Find Problems
+    auto_submit: true
+    messages:
+    - role: "user"
+      content: |
+        ```
+        %CODE_SELECTION%
+        ```
+        Don't call any tools this time.
+        Your task is to find potential problems. Locks, initialization, security, type safety, interaction with other parts of the program.
+        If there are no serious problems, tell briefly there are no problems, a variation of "Looks good."
+        If you found a problem, offer a replacement for code above, don't rewrite the whole file.
+        If you still want to rewrite the whole file, tell the user what the problem is, ask if they want to rewrite the whole file.
+        Don't solve all problems at once, fix just one.
+  explain:
+    label: Explain
+    auto_submit: true
+    messages:
+    - role: "user"
+      content: |
+        ```
+        %CODE_SELECTION%
+        ```
+        Look at the code above, look up usages of things defined in this code, lookup definitions of notable types used in this code.
+        Explain: one paragraph on why this code exists, one paragraph about the code, maybe a paragraph about
+        any tricky parts in the code. Be concise, wait for a more specific follow-up question from the user.
+
+
+# DEPRECATED
 toolbox_commands:
   shorter:
     selection_needed: [1, 50]
@@ -245,16 +279,23 @@ pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# You can find the compiled-
 #
 # This customization will override any defaults.
 
-system_prompts:
-  write_pseudo_code:
-    description: "User-defined: write pseudo code"
-    text: |
-      You are a programming assistant. Use backquotes for code blocks, but write pseudo code in comments instead of code.
-      Replace real code offered by the user with pseudo code when you rewrite it.
-  insert_jokes:
-    description: "User-defined: write funny comments"
-    text: |
-      You are a programming assistant. Use backquotes for code blocks, but insert into comments inside code blocks funny remarks,
-      a joke inspired by the code or play on words. For example ```\n// Hocus, pocus\ngetTheFocus();\n```.
+#system_prompts:
+#  insert_jokes:
+#    description: "User-defined: write funny comments"
+#    text: |
+#      You are a programming assistant. Use backquotes for code blocks, but insert into comments inside code blocks funny remarks,
+#      a joke inspired by the code or play on words. For example ```\n// Hocus, pocus\ngetTheFocus();\n```.
+
+#code_lens:
+#  my_custom:
+#    label: My Custom
+#    auto_submit: true
+#    messages:
+#    - role: "user"
+#      content: |
+#        ```
+#        %CODE_SELECTION%
+#        ```
+#        Replace all variables with animal names, such that they lose any original meaning.
 
 "#;

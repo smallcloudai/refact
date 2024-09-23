@@ -13,13 +13,14 @@ use tower_http::cors::CorsLayer;
 use crate::{telemetry_get, telemetry_post};
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
+use crate::http::routers::v1::code_completion::{handle_v1_code_completion_web, handle_v1_code_completion_prompt};
+use crate::http::routers::v1::code_lens::handle_v1_code_lens;
 use crate::http::routers::v1::ast::{handle_v1_ast_file_dump, handle_v1_ast_file_symbols, handle_v1_ast_status};
 use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview};
 use crate::http::routers::v1::at_tools::handle_v1_tools;
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions};
-use crate::http::routers::v1::code_completion::{handle_v1_code_completion_web, handle_v1_code_completion_prompt};
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
 use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
@@ -33,9 +34,11 @@ use crate::http::routers::v1::diffs::{handle_v1_diff_apply, handle_v1_diff_previ
 use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
 use crate::http::routers::v1::handlers_memdb::{handle_mem_query, handle_mem_add, handle_mem_erase, handle_mem_update_used, handle_mem_block_until_vectorized, handle_mem_list, handle_ongoing_update_or_create, handle_ongoing_dump};
 use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_single};
+
 use crate::http::utils::telemetry_wrapper;
 
 pub mod code_completion;
+pub mod code_lens;
 pub mod chat;
 pub mod telemetry_network;
 pub mod snippet_accepted;
@@ -59,6 +62,8 @@ pub fn make_v1_router() -> Router {
         .route("/ping", telemetry_get!(handle_v1_ping))
 
         .route("/code-completion", telemetry_post!(handle_v1_code_completion_web))
+        .route("/code-lens", telemetry_post!(handle_v1_code_lens))
+
         .route("/chat", telemetry_post!(handle_v1_chat))
         .route("/chat/completions", telemetry_post!(handle_v1_chat_completions))  // standard
         .route("/telemetry-network", telemetry_post!(handle_v1_telemetry_network))
