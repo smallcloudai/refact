@@ -42,14 +42,35 @@ import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
 
+const tourPersistConfig = {
+  key: "tour",
+  storage: storage(),
+  stateReconciler: mergeInitialState,
+};
+
+const tipOfTheDayPersistConfig = {
+  key: "totd",
+  storage: storage(),
+  stateReconciler: mergeInitialState,
+};
+
+const persistedTourReducer = persistReducer<ReturnType<typeof tourReducer>>(
+  tourPersistConfig,
+  tourReducer,
+);
+
+const persistedTipOfTheDayReducer = persistReducer<
+  ReturnType<typeof tipOfTheDayReducer>
+>(tipOfTheDayPersistConfig, tipOfTheDayReducer);
+
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
 // their `reducerPath`s, therefore we no longer need to call `combineReducers`.
 const rootReducer = combineSlices(
   {
     fim: fimReducer,
-    tour: tourReducer,
-    tipOfTheDay: tipOfTheDayReducer,
+    tour: persistedTourReducer,
+    tipOfTheDay: persistedTipOfTheDayReducer,
     config: configReducer,
     active_file: activeFileReducer,
     selected_snippet: selectedSnippetReducer,
@@ -70,15 +91,15 @@ const rootReducer = combineSlices(
   pagesSlice,
 );
 
-const persistConfig = {
+const historyPersistConfig = {
   key: "root",
   storage: storage(),
-  whitelist: [historySlice.reducerPath, "tour", "tipOfTheDay"],
+  whitelist: [historySlice.reducerPath],
   stateReconciler: mergeInitialState,
 };
 
 const persistedReducer = persistReducer<ReturnType<typeof rootReducer>>(
-  persistConfig,
+  historyPersistConfig,
   rootReducer,
 );
 
