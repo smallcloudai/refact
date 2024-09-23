@@ -97,12 +97,30 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
       maxAge: 1000,
     },
     middleware: (getDefaultMiddleware) => {
+      const production = true;
+
+      // eslint-disable-next-line
+      const middelware = production
+        ? getDefaultMiddleware({
+            thunk: true,
+            serializableCheck: false,
+            immutableCheck: false,
+          })
+        : getDefaultMiddleware({
+            serializableCheck: {
+              ignoredActions: [
+                FLUSH,
+                REHYDRATE,
+                PAUSE,
+                PERSIST,
+                PURGE,
+                REGISTER,
+              ],
+            },
+          });
+
       return (
-        getDefaultMiddleware({
-          serializableCheck: {
-            ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-          },
-        })
+        middelware
           .concat(
             pingApi.middleware,
             statisticsApi.middleware,
