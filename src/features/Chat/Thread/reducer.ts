@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { Chat, ChatThread } from "./types";
+import { Chat, ChatThread, ToolUse } from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { chatResponse, chatAskedQuestion } from ".";
 import {
@@ -24,6 +24,7 @@ const createChatThread = (): ChatThread => {
     messages: [],
     title: "",
     model: "",
+    tool_use: "" as ToolUse,
   };
   return chat;
 };
@@ -46,6 +47,7 @@ const initialState = createInitialState();
 
 export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(setToolUse, (state, action) => {
+    state.thread.tool_use = action.payload;
     state.tool_use = action.payload;
   });
 
