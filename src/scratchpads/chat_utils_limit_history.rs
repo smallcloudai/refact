@@ -52,6 +52,7 @@ pub fn limit_messages_history(
                 break;
             }
         } else {
+            message_take[i] = true;
             log_buffer.push(format!("not allowed to drop {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tokens_used, tokens_limit));
         }
     }
