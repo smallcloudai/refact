@@ -27,6 +27,7 @@ export type Chat = {
 };
 
 export type PayloadWithId = { id: string };
+export type PayloadWithIdAndTitle = { title: string } & PayloadWithId;
 
 export type DetailMessage = { detail: string };
 

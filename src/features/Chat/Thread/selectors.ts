@@ -1,6 +1,7 @@
 import { RootState } from "../../../app/store";
 
 export const selectThread = (state: RootState) => state.chat.thread;
+export const selectThreadTitle = (state: RootState) => state.chat.thread.title;
 export const selectChatId = (state: RootState) => state.chat.thread.id;
 export const selectModel = (state: RootState) => state.chat.thread.model;
 export const selectMessages = (state: RootState) => state.chat.thread.messages;

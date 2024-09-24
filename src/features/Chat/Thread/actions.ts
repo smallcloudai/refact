@@ -1,13 +1,21 @@
 import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
-import { type ChatThread, type PayloadWithId, type ToolUse } from "./types";
-import type {
-  ChatMessages,
-  ChatResponse,
+import {
+  type PayloadWithIdAndTitle,
+  type ChatThread,
+  type PayloadWithId,
+  type ToolUse,
+} from "./types";
+import {
+  isAssistantMessage,
+  isChatGetTitleResponse,
+  isToolMessage,
+  type ChatMessages,
+  type ChatResponse,
 } from "../../../services/refact/types";
 import type { AppDispatch, RootState } from "../../../app/store";
 import type { SystemPrompts } from "../../../services/refact/prompts";
 import { formatMessagesForLsp, consumeStream } from "./utils";
-import { sendChat } from "../../../services/refact/chat";
+import { generateChatTitle, sendChat } from "../../../services/refact/chat";
 import { ToolCommand } from "../../../services/refact/tools";
 
 export const newChatAction = createAction("chatThread/new");
@@ -58,12 +66,77 @@ export const setPreventSend = createAction<PayloadWithId>(
 );
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
-
+export const saveTitle = createAction<PayloadWithIdAndTitle>(
+  "chatThread/saveTitle",
+);
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;
   dispatch: AppDispatch;
 }>();
+
+export const chatGenerateTitleThunk = createAppAsyncThunk<
+  unknown,
+  {
+    messages: ChatMessages;
+    chatId: string;
+  }
+>("chatThread/generateTitle", ({ messages, chatId }, thunkAPI) => {
+  const state = thunkAPI.getState();
+
+  const messagesToSend = messages
+    .filter((msg) => !isToolMessage(msg) && msg.content !== "")
+    .map((msg) => {
+      if (isAssistantMessage(msg)) {
+        return {
+          role: msg.role,
+          content: msg.content,
+        };
+      }
+      return msg;
+    });
+
+  const messagesForLsp = formatMessagesForLsp([
+    ...messagesToSend,
+    {
+      role: "user",
+      content:
+        "Generate a short 2-3 word title for the current chat that reflects the context of the user's query. The title should be specific, avoiding generic terms, and should relate to relevant files, symbols, or objects. If user message contains filename, please make sure that filename remains inside of a generated title. Please ensure the answer is strictly 2-3 words, not paragraphs of text.",
+    },
+  ]);
+
+  return generateChatTitle({
+    messages: messagesForLsp,
+    model: state.chat.thread.model,
+    stream: false,
+    chatId,
+    apiKey: state.config.apiKey,
+    port: state.config.lspPort,
+  })
+    .then((response) => {
+      if (!response.ok) {
+        return Promise.reject(new Error(response.statusText));
+      }
+      return response.json();
+    })
+    .then((data) => {
+      if (!isChatGetTitleResponse(data)) {
+        return;
+      }
+
+      const title = data.choices[0].message.content;
+      const cleanedTitle = title.replace(/"/g, "");
+
+      // Dispatching saveTitle action for a chatThread
+      thunkAPI.dispatch(saveTitle({ id: chatId, title: cleanedTitle }));
+      return { title: cleanedTitle, chatId: state.chat.thread.id };
+    })
+    .catch((err: Error) => {
+      // console.log("Catch called");
+      thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
+      return thunkAPI.rejectWithValue(err.message);
+    });
+});
 
 export const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
