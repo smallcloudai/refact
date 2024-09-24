@@ -15,3 +15,6 @@ export const selectSendImmediately = (state: RootState) =>
   state.chat.send_immediately;
 export const getSelectedSystemPrompt = (state: RootState) =>
   state.chat.system_prompt;
+
+export const getSelectedToolUse = (state: RootState) =>
+  state.chat.thread.tool_use;

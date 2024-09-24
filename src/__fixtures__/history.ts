@@ -29,6 +29,7 @@ export const HISTORY: ChatHistoryItem[] = [
     model: "",
     createdAt: "2024-07-02T10:43:13.401Z",
     updatedAt: "2024-07-02T10:44:38.325Z",
+    tool_use: "explore",
   },
   {
     id: "31f3bb3d-df6e-4f0f-b701-6b1e6e4a352b",
@@ -114,5 +115,6 @@ export const HISTORY: ChatHistoryItem[] = [
     model: "",
     createdAt: "2024-07-02T10:40:27.354Z",
     updatedAt: "2024-07-02T10:40:32.341Z",
+    tool_use: "explore",
   },
 ];

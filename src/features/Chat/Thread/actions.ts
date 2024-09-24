@@ -66,6 +66,7 @@ export const setPreventSend = createAction<PayloadWithId>(
 );
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
+
 export const saveTitle = createAction<PayloadWithIdAndTitle>(
   "chatThread/saveTitle",
 );

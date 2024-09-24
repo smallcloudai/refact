@@ -20,6 +20,7 @@ import {
   selectPreventSend,
   selectChatId,
   selectMessages,
+  getSelectedToolUse,
 } from "../../features/Chat/Thread";
 import { selectActiveFile } from "../../features/Chat/activeFile";
 import { Toolbar } from "../Toolbar";
@@ -57,6 +58,7 @@ export const Chat: React.FC<ChatProps> = ({
   const chatId = useAppSelector(selectChatId);
   const { submit, abort, retry } = useSendChatRequest();
   const chatModel = useAppSelector(getSelectedChatModel);
+  const chatToolUse = useAppSelector(getSelectedToolUse);
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectMessages);
   const onSetChatModel = useCallback(
@@ -156,7 +158,10 @@ export const Chat: React.FC<ChatProps> = ({
       />
       <Flex justify="between" pl="1" pr="1" pt="1">
         {messages.length > 0 && (
-          <Text size="1">model: {chatModel || caps.default_cap} </Text>
+          <Flex align="center" gap="1">
+            <Text size="1">model: {chatModel || caps.default_cap} </Text> •{" "}
+            <Text size="1">mode: {chatToolUse} </Text>
+          </Flex>
         )}
       </Flex>
     </PageWrapper>
