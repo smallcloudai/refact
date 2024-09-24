@@ -93,21 +93,23 @@ pub async fn run_tools(
         };
         info!("tool use {}({:?})", &t_call.function.name, args);
 
-        let (corrections, tool_execute_results) = match cmd.lock().await.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {
-            Ok(msg_and_maybe_more) => msg_and_maybe_more,
-            Err(e) => {
-                let mut tool_failed_message = tool_answer(e, t_call.id.to_string());
-                {
-                    let mut cmd_lock = cmd.lock().await;
-                    if let Some(usage) = cmd_lock.usage() {
-                        tool_failed_message.usage = Some(usage.clone());
-                    }
+        let (corrections, tool_execute_results) = {
+            let mut cmd_lock = cmd.lock().await;
+            match cmd_lock.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {
+                Ok(msg_and_maybe_more) => msg_and_maybe_more,
+                Err(e) => {
+                    info!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
+                    let mut tool_failed_message = tool_answer(e, t_call.id.to_string());
+                    
+                    tool_failed_message.usage = cmd_lock.usage().clone();
                     *cmd_lock.usage() = None;
+                    
+                    generated_tool.push(tool_failed_message.clone());
+                    continue;
                 }
-                generated_tool.push(tool_failed_message.clone());
-                continue;
             }
         };
+        
         any_corrections |= corrections;
 
         let mut have_answer = false;
