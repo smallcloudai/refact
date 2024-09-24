@@ -3,6 +3,7 @@ import { Text, Container, Box, Flex, Button, Link } from "@radix-ui/themes";
 import {
   DiffMessage,
   DiffStateResponse,
+  isDiffErrorResponseData,
   type DiffChunk,
 } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
@@ -18,17 +19,45 @@ import {
   useConfig,
   useDiffPreview,
   useEventsBusForIDE,
+  useAppDispatch,
+  useAppSelector,
 } from "../../hooks";
+import {
+  clearWarning,
+  getWarningMessage,
+  setWarning,
+} from "../../features/Errors/warningSlice";
+import { DiffWarningCallout } from "../Callout";
+import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
 function toDiff(str: string): string {
-  const replaceEscapedEOL = str
-    .split("\n")
-    .filter((_) => _)
-    .join("\n");
+  // const lines = str.split("\n");
+  // const result: string[] = [];
 
-  return replaceEscapedEOL;
+  // for (let i = 0; i < lines.length; i++) {
+  //   const line = lines[i];
+
+  //   // Check for escaped end-of-line characters
+  //   if (line.endsWith("\\") || line.endsWith("\\n")) {
+  //     // Remove the escape character(s) and combine with the next line if it exists
+  //     const nextLine = lines[i + 1] || ""; // Get the next line or an empty string if it doesn't exist
+  //     const cleanedLine = line.slice(0, line.endsWith("\\n") ? -2 : -1);
+  //     result.push(cleanedLine + nextLine); // Add the current line without the escape character(s) and the next line
+  //     i++; // Skip the next line since it's already combined
+  //   } else {
+  //     result.push(line); // Add the current line as is
+  //   }
+  // }
+
+  // // Remove the last line if it is empty
+  // if (result[result.length - 1] === "") {
+  //   result.pop();
+  // }
+
+  // return result.join("\n"); // Join the processed lines back into a single string
+  return str;
 }
 
 const DiffLine: React.FC<{
@@ -177,21 +206,19 @@ export const DiffContent: React.FC<{
   const [open, setOpen] = React.useState(false);
 
   return (
-    <Container>
-      <Collapsible.Root open={open} onOpenChange={setOpen}>
-        <Collapsible.Trigger asChild>
-          <Flex gap="2" align="center">
-            <Text weight="light" size="1">
-              <DiffTitle diffs={diffs} />
-            </Text>
-            <Chevron open={open} />
-          </Flex>
-        </Collapsible.Trigger>
-        <Collapsible.Content>
-          <DiffForm diffs={diffs} />
-        </Collapsible.Content>
-      </Collapsible.Root>
-    </Container>
+    <Collapsible.Root open={open} onOpenChange={setOpen}>
+      <Collapsible.Trigger asChild>
+        <Flex gap="2" align="center">
+          <Text weight="light" size="1">
+            <DiffTitle diffs={diffs} />
+          </Text>
+          <Chevron open={open} />
+        </Flex>
+      </Collapsible.Trigger>
+      <Collapsible.Content>
+        <DiffForm diffs={diffs} />
+      </Collapsible.Content>
+    </Collapsible.Root>
   );
 };
 
@@ -208,15 +235,61 @@ export const DiffForm: React.FC<{
   const { onSubmit, result: _result } = useDiffApplyMutation();
   const { onPreview, previewResult: _previewResult } = useDiffPreview();
   const { openFile } = useEventsBusForIDE();
+  const dispatch = useAppDispatch();
+  const warning = useAppSelector(getWarningMessage);
+  const onClearWarning = React.useCallback(
+    () => dispatch(clearWarning()),
+    [dispatch],
+  );
+
   const { host } = useConfig();
+
+  const handleDiffApplySubmit = React.useCallback(
+    (chunks: DiffChunk[], toApply: boolean[]) => {
+      onSubmit({ chunks, toApply })
+        .unwrap()
+        .then((payload) => {
+          let data = null;
+          if (!Array.isArray(payload)) {
+            return;
+          }
+          data = payload[0];
+
+          if (isDiffErrorResponseData(data)) {
+            if (data.detail) {
+              const [warning, filePath] = data.detail.split("\n")[0].split("'");
+              const normalizedPath = filePath.startsWith("\\\\?\\")
+                ? filePath.substring(4).replace(/\\/g, "/")
+                : filePath;
+
+              const reason = data.detail.split("\n")[1];
+              dispatch(
+                setWarning([[warning, normalizedPath].join(" "), reason]),
+              );
+            }
+          }
+        })
+        .catch((error: FetchBaseQueryError) => {
+          if (error.status === "FETCH_ERROR") {
+            dispatch(
+              setWarning([
+                "Failed to apply diff chunk",
+                "Reason: Connection lost with LSP server",
+              ]),
+            );
+          }
+        });
+    },
+    [dispatch, onSubmit],
+  );
 
   const handleToggle = React.useCallback(
     (diffs: DiffStateResponse[], apply: boolean) => {
       const chunks = diffs.map((diff) => diff.chunk);
       const toApply = diffs.map((_diff) => apply);
-      void onSubmit({ chunks, toApply });
+      handleDiffApplySubmit(chunks, toApply);
     },
-    [onSubmit],
+    [handleDiffApplySubmit],
   );
 
   const handlePreview = React.useCallback(
@@ -280,7 +353,20 @@ export const DiffForm: React.FC<{
               </Text>
             </Flex>
             <ScrollArea scrollbars="horizontal" asChild>
-              <Box style={{ minWidth: "100%" }}>
+              <Box style={{ minWidth: "100%", position: "relative" }}>
+                {warning && warning.length !== 0 && (
+                  <DiffWarningCallout
+                    onClick={onClearWarning}
+                    timeout={3000}
+                    itemType="warning"
+                    message={warning}
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      right: 0,
+                    }}
+                  />
+                )}
                 <Box
                   style={{
                     background: "rgb(51, 51, 51)",
@@ -344,16 +430,18 @@ export const GroupedDiffs: React.FC<GroupedDiffsProps> = ({ diffs }) => {
     status.data?.length === 0 || status.data?.every((diff) => !diff.state);
 
   return (
-    <Flex direction="column" gap="4" py="4">
-      <DiffContent diffs={groupedByFileName} />
-      <Flex gap="2">
-        <Button onClick={onUnApplyAll} disabled={disableUnApplyAll}>
-          Unapply All
-        </Button>
-        <Button onClick={onApplyAll} disabled={disableApplyAll}>
-          Apply All
-        </Button>
+    <Container>
+      <Flex direction="column" gap="4" py="4">
+        <DiffContent diffs={groupedByFileName} />
+        <Flex gap="2">
+          <Button onClick={onUnApplyAll} disabled={disableUnApplyAll}>
+            Unapply All
+          </Button>
+          <Button onClick={onApplyAll} disabled={disableApplyAll}>
+            Apply All
+          </Button>
+        </Flex>
       </Flex>
-    </Flex>
+    </Container>
   );
 };
