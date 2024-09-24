@@ -3,6 +3,7 @@ pub mod integr_gitlab;
 pub mod integr_pdb;
 pub mod integr_chrome;
 pub mod sessions;
+pub mod integr_docker;
 pub mod process_io_utils;
 pub mod integr_postgres;
 
