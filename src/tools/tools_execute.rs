@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use glob::Pattern;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -11,6 +12,7 @@ use crate::call_validation::{ChatMessage, ContextEnum, ContextFile, SubchatParam
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
+use crate::tools::tools_description::load_generic_tool_config;
 use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::get_model_record;
 
@@ -67,6 +69,7 @@ pub async fn run_tools(
     let mut generated_tool = vec![];  // tool results must go first
     let mut generated_other = vec![];
     let mut any_corrections = false;
+    let mut generic_tool_config = None;
 
     for t_call in last_msg_tool_calls {
         let cmd = match at_tools.get(&t_call.function.name) {
@@ -87,11 +90,50 @@ pub async fn run_tools(
                 let tool_failed_message = tool_answer(
                     format!("Tool use: couldn't parse arguments: {}. Error:\n{}", t_call.function.arguments, e), t_call.id.to_string()
                 );
-                generated_tool.push(tool_failed_message.clone());
+                generated_tool.push(tool_failed_message);
                 continue;
             }
         };
         info!("tool use {}({:?})", &t_call.function.name, args);
+
+        let command_to_match = match {
+            let cmd_lock = cmd.lock().await;
+            cmd_lock.command_to_match_against_confirm_deny(&args)
+        } {
+            Ok(command_to_match) => command_to_match,
+            Err(e) => {
+                let tool_failed_message = tool_answer(
+                    format!("tool use: {}", e), t_call.id.to_string()
+                );
+                generated_tool.push(tool_failed_message);
+                continue;
+            }
+        };
+
+        if !command_to_match.is_empty() {
+            let gcx = ccx.lock().await.global_context.clone();
+            if generic_tool_config.is_none() {
+                generic_tool_config = match load_generic_tool_config(gcx.clone()).await {
+                    Ok(g) => Some(g),
+                    Err(e) => {
+                        let tool_failed_message = tool_answer(format!("tool use: {}", e), t_call.id.to_string());
+                        generated_tool.push(tool_failed_message);
+                        continue;
+                    }
+                };
+            }
+
+            if let Some(generic_tool_cfg) = &generic_tool_config {
+                let (is_denied, reason) = command_should_be_denied(&command_to_match, &generic_tool_cfg.commands_deny, false);
+                if is_denied {
+                    let tool_failed_message = tool_answer(
+                        format!("tool use: {}", reason), t_call.id.to_string()
+                    );
+                    generated_tool.push(tool_failed_message);
+                    continue;
+                }
+            }
+        }
 
         let (corrections, tool_execute_results) = {
             let mut cmd_lock = cmd.lock().await;
@@ -276,4 +318,37 @@ fn tool_answer(content: String, tool_call_id: String) -> ChatMessage {
         tool_call_id,
         ..Default::default()
     }
+}
+
+pub fn command_should_be_confirmed_by_user(
+    command: &String,
+    commands_need_confirmation_rules: &Vec<String>,
+) -> (bool, String) {
+    if let Some(rule) = commands_need_confirmation_rules.iter().find(|glob| {
+        let pattern = Pattern::new(glob).unwrap();
+        pattern.matches(&command)
+    }) {
+        return (true, format!("Command {} needs confirmation due to rule {}", command, rule));
+    }
+    (false, "".to_string())
+}
+
+pub fn command_should_be_denied(
+    command: &String,
+    commands_deny_rules: &Vec<String>,
+    detailed: bool,
+) -> (bool, String) {
+    if let Some(rule) = commands_deny_rules.iter().find(|glob| {
+        let pattern = Pattern::new(glob).unwrap();
+        pattern.matches(&command)
+    }) {
+        let message = if detailed {
+            format!("Command {} is denied due to rule {}", command, rule)
+        } else {
+            format!("Command {} is denied", command)
+        };
+        return (true, message);
+    }
+
+    (false, "".to_string())
 }
