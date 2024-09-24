@@ -42,22 +42,11 @@ import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
 
-const tourPersistConfig = {
-  key: "tour",
-  storage: storage(),
-  stateReconciler: mergeInitialState,
-};
-
 const tipOfTheDayPersistConfig = {
   key: "totd",
   storage: storage(),
   stateReconciler: mergeInitialState,
 };
-
-const persistedTourReducer = persistReducer<ReturnType<typeof tourReducer>>(
-  tourPersistConfig,
-  tourReducer,
-);
 
 const persistedTipOfTheDayReducer = persistReducer<
   ReturnType<typeof tipOfTheDayReducer>
@@ -69,7 +58,7 @@ const persistedTipOfTheDayReducer = persistReducer<
 const rootReducer = combineSlices(
   {
     fim: fimReducer,
-    tour: persistedTourReducer,
+    tour: tourReducer,
     tipOfTheDay: persistedTipOfTheDayReducer,
     config: configReducer,
     active_file: activeFileReducer,
@@ -91,15 +80,15 @@ const rootReducer = combineSlices(
   pagesSlice,
 );
 
-const historyPersistConfig = {
+const rootPersistConfig = {
   key: "root",
   storage: storage(),
-  whitelist: [historySlice.reducerPath],
+  whitelist: [historySlice.reducerPath, "tour"],
   stateReconciler: mergeInitialState,
 };
 
 const persistedReducer = persistReducer<ReturnType<typeof rootReducer>>(
-  historyPersistConfig,
+  rootPersistConfig,
   rootReducer,
 );
 
