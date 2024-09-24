@@ -10,6 +10,7 @@ def refact_lsp_binary() -> List[str]:
     else:
         return ["refact/bin/refact-lsp"]
 
+
 setup(
     name="refact",
     version="0.9.9",
@@ -19,7 +20,8 @@ setup(
         "termcolor",
         "pydantic",
         "prompt_toolkit",
-        "requests"
+        "requests",
+        "pyyaml"
     ],
     author="Small Magellanic Cloud AI LTD",
     author_email="info@smallcloud.tech",
