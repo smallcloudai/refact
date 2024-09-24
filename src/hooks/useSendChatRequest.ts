@@ -106,7 +106,8 @@ export const useSendChatRequest = () => {
     }
   }, [sendImmediately, sendMessages, messagesWithSystemPrompt]);
 
-  // Automatically calls tool calls.
+  // TODO: Automatically calls tool calls. This means that this hook can only be used once :/
+  // making this middle ware may solve the issue
   useEffect(() => {
     if (!streaming && currentMessages.length > 0 && !errored && !preventSend) {
       const lastMessage = currentMessages.slice(-1)[0];
@@ -131,9 +132,18 @@ export const useSendChatRequest = () => {
     sendMessages(messages);
   };
 
+  const retryFromIndex = (index: number, question: string) => {
+    const messagesToKeep = currentMessages.slice(0, index);
+    const messagesToSend = messagesToKeep.concat([
+      { role: "user", content: question },
+    ]);
+    retry(messagesToSend);
+  };
+
   return {
     submit,
     abort,
     retry,
+    retryFromIndex,
   };
 };

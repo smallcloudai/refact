@@ -9,7 +9,6 @@ import {
   useSendChatRequest,
 } from "../../hooks";
 import type { Config } from "../../features/Config/configSlice";
-import { useEventsBusForIDE } from "../../hooks";
 import {
   enableSend,
   getSelectedChatModel,
@@ -22,7 +21,6 @@ import {
   selectMessages,
   getSelectedToolUse,
 } from "../../features/Chat/Thread";
-import { selectActiveFile } from "../../features/Chat/activeFile";
 import { Toolbar } from "../Toolbar";
 
 export type ChatProps = {
@@ -50,13 +48,11 @@ export const Chat: React.FC<ChatProps> = ({
   selectedSystemPrompt,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
-  const activeFile = useAppSelector(selectActiveFile);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
 
-  const canPaste = activeFile.can_paste;
   const chatId = useAppSelector(selectChatId);
-  const { submit, abort, retry } = useSendChatRequest();
+  const { submit, abort, retryFromIndex } = useSendChatRequest();
   const chatModel = useAppSelector(getSelectedChatModel);
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const dispatch = useAppDispatch();
@@ -70,13 +66,6 @@ export const Chat: React.FC<ChatProps> = ({
   );
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
-
-  const {
-    diffPasteBack,
-    newFile,
-    openSettings,
-    // openChatInNewTab: _openChatInNewTab,
-  } = useEventsBusForIDE();
 
   const handleSummit = useCallback(
     (value: string) => {
@@ -114,20 +103,13 @@ export const Chat: React.FC<ChatProps> = ({
   return (
     <PageWrapper host={host} style={style}>
       <Toolbar activeTab={{ type: "chat", id: chatId }} />
+
       <ChatContent
         key={`chat-content-${chatId}`}
-        chatKey={chatId}
-        // messages={chat.messages}
-        // could be moved down
-        onRetry={retry}
-        isWaiting={isWaiting}
-        isStreaming={isStreaming}
-        onNewFileClick={newFile}
-        onPasteClick={diffPasteBack}
-        canPaste={canPaste}
         ref={chatContentRef}
-        openSettings={openSettings}
+        onRetry={retryFromIndex}
       />
+
       {!isStreaming && preventSend && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
           <Card>
@@ -138,10 +120,8 @@ export const Chat: React.FC<ChatProps> = ({
           </Card>
         </Container>
       )}
+
       <ChatForm
-        // todo: find a way to not have to stringify the whole caps object
-        // the reason is that otherwise the tour bubbles will be in the wrong position due to layout shifts
-        // key={`chat-form-${chatId}-${JSON.stringify(caps)}`}
         chatId={chatId}
         isStreaming={isStreaming}
         showControls={messages.length === 0 && !isStreaming}
