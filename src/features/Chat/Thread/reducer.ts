@@ -15,6 +15,7 @@ import {
   removeChatFromCache,
   restoreChat,
   setPreventSend,
+  saveTitle,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 
@@ -171,5 +172,11 @@ export const chatReducer = createReducer(initialState, (builder) => {
       state.streaming = false;
     }
     state.thread = mostUptoDateThread;
+  });
+
+  // New builder to save chat title within the current thread and not only inside of a history thread
+  builder.addCase(saveTitle, (state, action) => {
+    if (state.thread.id !== action.payload.id) return state;
+    state.thread.title = action.payload.title;
   });
 });
