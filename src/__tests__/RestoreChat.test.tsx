@@ -34,6 +34,7 @@ describe("Restore Chat from history", () => {
             createdAt: "0",
             updatedAt: "0",
             model: "test",
+            tool_use: "explore",
             messages: [
               { role: "user", content: "test user message" },
               { role: "assistant", content: "👋" },

@@ -22,7 +22,9 @@ import {
   backUpMessages,
   chatAskQuestionThunk,
   chatAskedQuestion,
+  setToolUse,
 } from "../features/Chat/Thread/actions";
+import { isToolUse } from "../features/Chat";
 
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
@@ -59,6 +61,9 @@ export const useSendChatRequest = () => {
   const sendMessages = useCallback(
     (messages: ChatMessages) => {
       let tools = toolsRequest.data ?? null;
+      if (isToolUse(toolUse)) {
+        dispatch(setToolUse(toolUse));
+      }
       if (toolUse === "quick") {
         tools = [];
       } else if (toolUse === "explore") {
