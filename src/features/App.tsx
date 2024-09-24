@@ -121,7 +121,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         type: "dashboard",
       };
     }
-  }, [page]);
+  }, [page, chatId]);
 
   return (
     <Flex
