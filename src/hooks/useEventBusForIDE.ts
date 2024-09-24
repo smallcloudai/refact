@@ -7,7 +7,7 @@ import {
   HostSettings,
   SetupHost,
 } from "../events/setup";
-import { DiffPreviewResponse } from "../events";
+import type { DiffPreviewResponse } from "../services/refact";
 export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
 export const ideDiffPreviewAction =
   createAction<DiffPreviewResponse>("ide/diffPreview");
