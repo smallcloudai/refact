@@ -469,9 +469,10 @@ def print_messages(
     messages: List[Message],
     also_print_to_console: bool = True,
 ) -> List[str]:
+    console: Optional[Console] = Console() if also_print_to_console else None
+
     def con(x):
-        console = Console()
-        if also_print_to_console:
+        if console:
             console.print(x)
 
     def _is_tool_call(m: Message) -> bool:
@@ -499,14 +500,12 @@ def print_messages(
         con(_wrap_color(header))
 
         if m.role == "context_file" and m.content is not None:
-            message = "\n".join([
-                f"{file['file_name']}:{file['line1']}-{file['line2']}, len={len(file['file_content'])}"
-                for file in json.loads(m.content)
-            ])
-            message_str.append(message)
-            message_str.append("")
-            con(message)
-            con("")
+            context_file = json.loads(m.content)
+            for fdict in context_file:
+                t = f"{fdict['file_name']}:{fdict['line1']}-{fdict['line2']}, len={len(fdict['file_content'])}\n"
+                t += fdict['file_content']
+                message_str.append(t)
+                con(t)
 
         elif m.role == "diff" and m.content is not None:
             for chunk in json.loads(m.content):
@@ -522,18 +521,24 @@ def print_messages(
                     message_str.append(message)
                     con(_wrap_color(message, "red"))
 
-        elif m.role in role_to_header and m.content:
-            if m.subchats:
+        elif m.role in ["tool", "user", "assistant", "system"]:
+            if m.subchats:  # actually subchats can only appear in role="tool", but code is the same anyway
                 for subchat_id, subchat_msgs in m.subchats.items():
-                    subchats_strs = print_messages(subchat_msgs)
+                    subchats_strs = print_messages(subchat_msgs, also_print_to_console=also_print_to_console)
                     subchats_str = "\n".join(subchats_strs)
                     subchats_str = "\n".join([f" - {subchat_id} -   {line}" for line in subchats_str.splitlines()])
                     message_str.append(subchats_str)
-            message_str.append(m.content)
-            con(Markdown(m.content))
+            if m.content is not None:
+                message_str.append(m.content)
+                if m.content.startswith("[") or m.content.startswith("{"):
+                    con(m.content)
+                else:
+                    con(Markdown(m.content))
 
         else:
-            con("unknown message role=\"%s\"" % m.role)
+            t = "unknown message role=\"%s\"" % m.role
+            message_str.append(t)
+            con(t)
 
         if m.tool_calls is not None:
             if not _is_tool_call(m):

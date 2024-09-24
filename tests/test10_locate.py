@@ -44,52 +44,77 @@ def sort_out_messages(response_messages):
     return tool_call_message
 
 
-xxx = """
-{
-  "src/ast/alt_testsuite/cpp_goat_library.h": {
-    "SYMBOLS": "Goat,Goat",
-    "WHY_CODE": "TOCHANGE",
-    "WHY_DESC": "This file defines the class Goat, which needs to be renamed to Iguana. It is essential for the task as it contains the class that is being replaced.",
-    "RELEVANCY": 5
-  },
-  "src/ast/alt_testsuite/cpp_goat_main.cpp": {
-    "SYMBOLS": "CosmicGoat,CosmicGoat",
-    "WHY_CODE": "TOCHANGE",
-    "WHY_DESC": "This file uses the Goat class in the definition of CosmicGoat. It needs to be updated to reflect the new class name Iguana.",
-    "RELEVANCY": 5
-  },
-  "src/ast/ast_db.rs": {
-    "SYMBOLS": "",
-    "WHY_CODE": "HIGHLEV",
-    "WHY_DESC": "This file may provide insight into how the Goat class is used in the broader context of the application.",
-    "RELEVANCY": 3
-  },
-  "src/ast/ast_indexer_thread.rs": {
-    "SYMBOLS": "",
-    "WHY_CODE": "HIGHLEV",
-    "WHY_DESC": "This file could contain references to the Goat class or related logic.",
-    "RELEVANCY": 3
-  },
-  "src/ast/ast_parse_anything.rs": {
-    "SYMBOLS": "",
-    "WHY_CODE": "HIGHLEV",
-    "WHY_DESC": "This file may have parsing logic that involves the Goat class.",
-    "RELEVANCY": 3
-  },
-  "src/ast/ast_structs.rs": {
-    "SYMBOLS": "",
-    "WHY_CODE": "HIGHLEV",
-    "WHY_DESC": "This file could define structures that interact with the Goat class.",
-    "RELEVANCY": 3
-  },
-  "src/ast/treesitter/ast_instance_structs.rs": {
-    "SYMBOLS": "",
-    "WHY_CODE": "HIGHLEV",
-    "WHY_DESC": "This file might have instances or structures related to Goat.",
-    "RELEVANCY": 3
-  }
-}
 
+# {
+#   "Message": [
+#     {
+#       "role": "user",
+#       "content": "find Goat in this project and replace it with Iguana",
+#       "tool_calls": null,
+#       "finish_reason": "",
+#       "tool_call_id": "",
+#       "usage": null,
+#       "subchats": null
+#     },
+#     {
+#       "role": "assistant",
+#       "content": "Alright, here we go:",
+#       "tool_calls": [
+#         {
+#           "id": "call_d25e46b92b004619ab459d0a253d44d3",
+#           "function": {
+#             "arguments": "{\"problem_statement\": \"find Goat in this project and replace it with Iguana\"}",
+#             "name": "locate"
+#           },
+#           "type": "function"
+#         }
+#       ],
+#       "finish_reason": "",
+#       "tool_call_id": "",
+#       "usage": null,
+#       "subchats": null
+#     },
+#     {
+#       "role": "tool",
+#       "content": "{...}",  // Output from the locate function
+#       "tool_calls": null,
+#       "finish_reason": "",
+#       "tool_call_id": "call_d25e46b92b004619ab459d0a253d44d3",
+#       "usage": {
+#         "prompt_tokens": 9910,
+#         "completion_tokens": 1339
+#       },
+#       "subchats": {
+#         "20240924-084700-rf-step1-gotodef": [
+#           {
+#             "role": "assistant",
+#             "content": "",
+#             "tool_calls": [
+#               {
+#                 "id": "call_PwE4sxYSkE7fuByVxdArkAl2",
+#                 "function": {
+#                   "arguments": "{\"symbol\":\"Goat\",\"skeleton\":true}",
+#                   "name": "references"
+#                 },
+#                 "type": "function"
+#               }
+#             ],
+#             "finish_reason": "",
+#             "tool_call_id": "",
+#             "usage": {
+#               "prompt_tokens": 522,
+#               "completion_tokens": 19
+#             },
+#             "subchats": null
+#           },
+#         ]
+#       }
+#     }
+#   ]
+# }
+
+
+tool_example = """
 💿 Used 2 experts, inspected 2 files, project has 218 files
 
 Inspected context files:
@@ -106,12 +131,16 @@ async def test_if_located_right(
         chat_client.Message(role="user", content=f"{question}"),
         chat_client.Message(role="assistant", content="Alright, here we go:", tool_calls=[chat_client.pretend_function_call("locate", {"problem_statement": question})]),
     ]
-    # assistant_choices = await ask_chat(initial_messages)
-    # tool_call_message = sort_out_messages(assistant_choices[0][2:])
-    tool_call_message = xxx
-    print(termcolor.colored(xxx, "blue"))
+    assistant_choices = await ask_chat(initial_messages)
+    messages = assistant_choices[0]
+    # tool_call_message = sort_out_messages(messages[2:])  # this also prints
+    # tool_call_message = xxx
+    # print(termcolor.colored(xxx, "blue"))
+    hist = chat_client.print_messages(messages)
+    open("aaa2.txt", "w").write("\n".join(hist))
+    quit()
 
-    tool_json_split = xxx.split("💿")
+    tool_json_split = tool_call_message.split("💿")
     assert len(tool_json_split) == 2
     tool_json = json.loads(tool_json_split[0])
     for fn, d in tool_json.items():
