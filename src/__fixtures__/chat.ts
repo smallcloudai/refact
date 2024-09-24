@@ -1,5 +1,5 @@
 import type { RootState } from "../app/store";
-import { ChatHistoryItem } from "../events";
+import { ChatHistoryItem } from "../features/History/historySlice";
 
 type ChatThread = RootState["chat"]["thread"];
 type ChatMessages = ChatThread["messages"];

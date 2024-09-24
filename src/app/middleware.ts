@@ -17,7 +17,7 @@ import { commandsApi } from "../services/refact/commands";
 import { diffApi } from "../services/refact/diffs";
 import { pingApi } from "../services/refact/ping";
 import { clearError, setError } from "../features/Errors/errorsSlice";
-import { updateConfig } from "../events";
+import { updateConfig } from "../features/Config/configSlice";
 
 export const listenerMiddleware = createListenerMiddleware();
 const startListening = listenerMiddleware.startListening.withTypes<

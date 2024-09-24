@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { diffApi } from "../services/refact/diffs";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
-import { DiffChunk } from "../events";
+import type { DiffChunk } from "../services/refact";
 
 export const useDiffPreview = () => {
   const { diffPreview } = useEventsBusForIDE();

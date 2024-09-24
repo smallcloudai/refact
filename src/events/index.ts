@@ -7,7 +7,7 @@ import { type Chat } from "../features/Chat/Thread/types";
 import type { Snippet } from "../features/Chat/selectedSnippet";
 import type { Config } from "../features/Config/configSlice";
 import type { ErrorSliceState } from "../features/Errors/errorsSlice";
-import { request, ready, receive, error } from "../features/FIM";
+import { request, ready, receive, error } from "../features/FIM/actions";
 import type { HistoryState } from "../features/History/historySlice";
 import type { TipOfTheDayState } from "../features/TipOfTheDay";
 import type { PageSliceState } from "../features/Pages/pagesSlice";
