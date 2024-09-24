@@ -31,6 +31,18 @@ class SettingsCLI(BaseModel):
     basic_telemetry: bool = False
 
 
+default_config = """
+#address_url: Refact
+#api_key: <take-from-website>
+#insecure_ssl: true
+ast: true
+ast_max_files: 20000
+vecdb: true
+vecdb_max_files: 5000
+#experimental: false
+#basic_telemetry: false
+"""
+
 class CmdlineSettings:
     def __init__(self, caps: Caps, args):
         self.caps = caps
@@ -61,7 +73,8 @@ def load_cli_or_auto_configure():
     if not os.path.exists(cli_yaml_path):
         # No config, autodetect
         print("First run. Welcome, I'll try to set up a reasonable config.")
+        with open(cli_yaml_path, 'w') as file:
+            file.write(default_config)
     with open(cli_yaml_path, 'r') as file:
         data = yaml.safe_load(file)
         return SettingsCLI.model_validate(data)
-
