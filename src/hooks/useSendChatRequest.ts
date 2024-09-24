@@ -16,7 +16,10 @@ import { useGetToolsQuery } from "./useGetToolsQuery";
 import {
   ChatMessage,
   ChatMessages,
+  DiffChunk,
   isAssistantMessage,
+  isDiffMessage,
+  isUserMessage,
 } from "../services/refact/types";
 import {
   backUpMessages,
@@ -24,12 +27,16 @@ import {
   chatAskedQuestion,
   setToolUse,
 } from "../features/Chat/Thread/actions";
+import { takeFromLast } from "../utils/takeFromLast";
+import { diffApi, DiffStateResponse } from "../services/refact/diffs";
 import { isToolUse } from "../features/Chat";
 
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
   const abortRef = useRef<null | ((reason?: string | undefined) => void)>(null);
   const hasError = useAppSelector(selectChatError);
+
+  const [getDiffState] = diffApi.useLazyDiffStateQuery();
 
   const toolsRequest = useGetToolsQuery();
 
@@ -90,14 +97,50 @@ export const useSendChatRequest = () => {
   );
 
   const submit = useCallback(
-    (question: string) => {
-      // const tools = toolsRequest.data ?? null;
-      const message: ChatMessage = { role: "user", content: question };
-      // This may cause duplicated messages
+    async (question: string) => {
+      const lastDiffs = takeFromLast(
+        messagesWithSystemPrompt,
+        isUserMessage,
+      ).filter(isDiffMessage);
+
+      if (lastDiffs.length === 0) {
+        const message: ChatMessage = { role: "user", content: question };
+
+        const messages = messagesWithSystemPrompt.concat(message);
+        sendMessages(messages);
+        return;
+      }
+
+      const chunks = lastDiffs.reduce<DiffChunk[]>((acc, cur) => {
+        return [...acc, ...cur.content];
+      }, []);
+
+      const status = await getDiffState({ chunks }, true)
+        .unwrap()
+        .catch(() => [] as DiffStateResponse[]);
+
+      const appliedChunks = status.filter((chunk) => chunk.state);
+
+      const diffInfo = appliedChunks.map((diff) => {
+        return `Preformed ${diff.chunk.file_action} on ${diff.chunk.file_name} at line ${diff.chunk.line1} to line ${diff.chunk.line2}.`;
+      });
+
+      const notAppliedMessage = "💿 user didn't accept the changes in the UI.";
+      const appliedMessage =
+        "💿 user accepted the following changes in the UI.\n" +
+        diffInfo.join("\n");
+
+      const diffMessage =
+        appliedChunks.length === 0 ? notAppliedMessage : appliedMessage;
+
+      const message: ChatMessage = {
+        role: "user",
+        content: diffMessage + "\n\n" + question,
+      };
       const messages = messagesWithSystemPrompt.concat(message);
       sendMessages(messages);
     },
-    [messagesWithSystemPrompt, sendMessages],
+    [getDiffState, messagesWithSystemPrompt, sendMessages],
   );
 
   useEffect(() => {
