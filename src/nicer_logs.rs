@@ -78,7 +78,7 @@ where
             already_have_in_stderr = true;
         }
 
-        if (!already_have_in_stderr && self.writer_is_stderr) && event.metadata().level() <= &self.writer_max_level {
+        if (!already_have_in_stderr || !self.writer_is_stderr) && event.metadata().level() <= &self.writer_max_level {
             let mut writer = self.writer.make_writer();
             let _ = writeln!(writer, "{} {}{} {}", timestamp, ev_level, location, visitor.message);
         }
