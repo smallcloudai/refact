@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Checkboxes } from "./useCheckBoxes";
-import { useAppSelector } from "../../hooks";
+import { useHasCaps, useAppSelector } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import { selectVecdb } from "../../features/Config/configSlice";
 import {
@@ -15,9 +15,10 @@ function useGetCommandCompletionQuery(
   cursor: number,
   skip = false,
 ): CommandCompletionResponse {
+  const hasCaps = useHasCaps();
   const { data } = commandsApi.useGetCommandCompletionQuery(
     { query, cursor },
-    { skip },
+    { skip: !hasCaps || skip },
   );
 
   if (!data) {
@@ -53,6 +54,7 @@ function useCommandCompletion() {
   const commandCompletionResponse = useGetCommandCompletionQuery(
     command?.query ?? "",
     command?.cursor ?? 0,
+    command === null,
   );
 
   return {
@@ -63,7 +65,10 @@ function useCommandCompletion() {
 }
 
 function useGetCommandPreviewQuery(query: string): ChatContextFile[] {
-  const { data } = commandsApi.useGetCommandPreviewQuery(query);
+  const hasCaps = useHasCaps();
+  const { data } = commandsApi.useGetCommandPreviewQuery(query, {
+    skip: !hasCaps,
+  });
   if (!data) return [];
   return data;
 }

@@ -1,5 +1,7 @@
 import { toolsApi } from "../services/refact/tools";
+import { useHasCaps } from "./useHasCaps";
 
 export const useGetToolsQuery = () => {
-  return toolsApi.useGetToolsQuery(undefined);
+  const hasCaps = useHasCaps();
+  return toolsApi.useGetToolsQuery(undefined, { skip: !hasCaps });
 };
