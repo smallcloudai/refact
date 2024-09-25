@@ -1,29 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { ChatContent } from ".";
-// import {
-//   MARS_ROVER_CHAT,
-//   CHAT_FUNCTIONS_MESSAGES,
-//   FROG_CHAT,
-//   CHAT_WITH_DIFFS,
-//   CHAT_WITH_DIFF_ACTIONS,
-//   LARGE_DIFF,
-// } from "../../__fixtures__";
-// import { ConfigProvider } from "../../contexts/config-context";
-
-const noop = () => ({});
 
 const meta = {
   title: "Chat Content",
   component: ChatContent,
-  args: {
-    onRetry: noop,
-    isWaiting: false,
-    isStreaming: false,
-    canPaste: true,
-    onNewFileClick: noop,
-    onPasteClick: noop,
-    chatKey: "test",
-  },
+  args: {},
 } satisfies Meta<typeof ChatContent>;
 
 export default meta;

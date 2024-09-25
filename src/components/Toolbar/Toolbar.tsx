@@ -156,6 +156,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 onClick={() => goToTab({ type: "chat", id: chat.id })}
                 style={{ minWidth: 0, maxWidth: "140px" }}
                 ref={isActive ? setFocus : undefined}
+                title={chat.title}
               >
                 {isStreamingThisTab && <Spinner />}
                 {!isStreamingThisTab && chat.read === false && (

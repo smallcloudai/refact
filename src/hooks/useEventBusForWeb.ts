@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocalStorage } from "usehooks-ts";
-import { isLogOut, isOpenExternalUrl, isSetupHost } from "../events";
+import { isLogOut, isOpenExternalUrl, isSetupHost } from "../events/setup";
 import { useAppDispatch } from "./useAppDispatch";
 import { useConfig } from "./useConfig";
 import { updateConfig } from "../features/Config/configSlice";

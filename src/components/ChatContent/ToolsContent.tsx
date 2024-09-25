@@ -1,11 +1,13 @@
 import React from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import { Container, Flex, Text, Box } from "@radix-ui/themes";
-import { ToolCall, ToolResult, ToolUsage } from "../../services/refact";
+import { ToolCall, ToolUsage } from "../../services/refact";
 import styles from "./ChatContent.module.css";
 import { CommandMarkdown, ResultMarkdown } from "../Command";
 import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
+import { useAppSelector } from "../../hooks";
+import { selectToolResultById } from "../../features/Chat/Thread/selectors";
 
 const Result: React.FC<{ children: string }> = ({ children }) => {
   const lines = children.split("\n");
@@ -18,10 +20,16 @@ const Result: React.FC<{ children: string }> = ({ children }) => {
 
 const ToolMessage: React.FC<{
   toolCall: ToolCall;
-  result?: ToolResult;
-}> = ({ toolCall, result }) => {
-  const results = result?.content ?? "";
+}> = ({ toolCall }) => {
+  // const results = result?.content ?? "";
   const name = toolCall.function.name ?? "";
+
+  // add a selector for tool result
+  const maybeResult = useAppSelector((state) =>
+    selectToolResultById(state, toolCall.id),
+  );
+
+  const results = maybeResult?.content ?? "";
 
   const argsString = React.useMemo(() => {
     try {
@@ -68,8 +76,7 @@ const ToolUsageDisplay: React.FC<{
 
 export const ToolContent: React.FC<{
   toolCalls: ToolCall[];
-  results: Record<string, ToolResult>;
-}> = ({ toolCalls, results }) => {
+}> = ({ toolCalls }) => {
   const [open, setOpen] = React.useState(false);
 
   if (toolCalls.length === 0) return null;
@@ -128,11 +135,10 @@ export const ToolContent: React.FC<{
               return;
             }
             if (toolCall.id === undefined) return;
-            const result = results[toolCall.id];
             const key = `${toolCall.id}-${toolCall.index}`;
             return (
               <Box key={key} py="2">
-                <ToolMessage toolCall={toolCall} result={result} />
+                <ToolMessage toolCall={toolCall} />
               </Box>
             );
           })}

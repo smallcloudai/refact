@@ -8,7 +8,6 @@ import {
   useSendChatRequest,
 } from "../../hooks";
 import type { Config } from "../../features/Config/configSlice";
-import { useEventsBusForIDE } from "../../hooks";
 import {
   enableSend,
   getSelectedChatModel,
@@ -19,8 +18,8 @@ import {
   selectPreventSend,
   selectChatId,
   selectMessages,
+  getSelectedToolUse,
 } from "../../features/Chat/Thread";
-import { selectActiveFile } from "../../features/Chat/activeFile";
 
 export type ChatProps = {
   host: Config["host"];
@@ -46,14 +45,13 @@ export const Chat: React.FC<ChatProps> = ({
   selectedSystemPrompt,
 }) => {
   const chatContentRef = useRef<HTMLDivElement>(null);
-  const activeFile = useAppSelector(selectActiveFile);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
 
-  const canPaste = activeFile.can_paste;
   const chatId = useAppSelector(selectChatId);
-  const { submit, abort, retry } = useSendChatRequest();
+  const { submit, abort, retryFromIndex } = useSendChatRequest();
   const chatModel = useAppSelector(getSelectedChatModel);
+  const chatToolUse = useAppSelector(getSelectedToolUse);
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectMessages);
   const onSetChatModel = useCallback(
@@ -66,16 +64,9 @@ export const Chat: React.FC<ChatProps> = ({
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
-  const {
-    diffPasteBack,
-    newFile,
-    openSettings,
-    // openChatInNewTab: _openChatInNewTab,
-  } = useEventsBusForIDE();
-
   const handleSummit = useCallback(
     (value: string) => {
-      submit(value);
+      void submit(value);
     },
     [submit],
   );
@@ -110,18 +101,10 @@ export const Chat: React.FC<ChatProps> = ({
     <Flex style={style} direction="column" flexGrow="1">
       <ChatContent
         key={`chat-content-${chatId}`}
-        chatKey={chatId}
-        // messages={chat.messages}
-        // could be moved down
-        onRetry={retry}
-        isWaiting={isWaiting}
-        isStreaming={isStreaming}
-        onNewFileClick={newFile}
-        onPasteClick={diffPasteBack}
-        canPaste={canPaste}
         ref={chatContentRef}
-        openSettings={openSettings}
+        onRetry={retryFromIndex}
       />
+
       {!isStreaming && preventSend && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
           <Card>
@@ -132,10 +115,8 @@ export const Chat: React.FC<ChatProps> = ({
           </Card>
         </Container>
       )}
+
       <ChatForm
-        // todo: find a way to not have to stringify the whole caps object
-        // the reason is that otherwise the tour bubbles will be in the wrong position due to layout shifts
-        // key={`chat-form-${chatId}-${JSON.stringify(caps)}`}
         chatId={chatId}
         isStreaming={isStreaming}
         showControls={messages.length === 0 && !isStreaming}
@@ -152,7 +133,10 @@ export const Chat: React.FC<ChatProps> = ({
       />
       <Flex justify="between" pl="1" pr="1" pt="1">
         {messages.length > 0 && (
-          <Text size="1">model: {chatModel || caps.default_cap} </Text>
+          <Flex align="center" gap="1">
+            <Text size="1">model: {chatModel || caps.default_cap} </Text> •{" "}
+            <Text size="1">mode: {chatToolUse} </Text>
+          </Flex>
         )}
       </Flex>
     </Flex>

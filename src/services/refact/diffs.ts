@@ -5,13 +5,12 @@ import { RootState } from "../../app/store";
 
 export type DiffAppliedStateArgs = {
   chunks: DiffChunk[];
-  toolCallId?: string;
 };
 
 export type DiffOperationArgs = {
   chunks: DiffChunk[];
   toApply: boolean[];
-  toolCallId: string;
+  toolCallId?: string;
 };
 
 export type DiffPreviewArgs = {
@@ -24,6 +23,35 @@ export interface DiffAppliedStateResponse {
   state: boolean[];
   can_apply: boolean[];
 }
+
+function isDiffAppliedStateResponse(
+  json: unknown,
+): json is DiffAppliedStateResponse {
+  if (json === null) return false;
+  if (typeof json !== "object") return false;
+  if (!("id" in json)) return false;
+  if (!("state" in json)) return false;
+  if (!("can_apply" in json)) return false;
+  return true;
+}
+
+export interface DiffStateResponse {
+  state: boolean;
+  can_apply: boolean;
+  chunk: DiffChunk;
+}
+
+export type DiffApplyManyArgs = {
+  diffs: {
+    tool_call_id: string;
+    chunks: DiffChunk[];
+  };
+  toApply: boolean;
+}[];
+
+// function cacheIdForChunk(chunk: DiffChunk) {
+//   return `${chunk.file_name}-${chunk.line1}-${chunk.line2}`;
+// }
 
 export const diffApi = createApi({
   reducerPath: "diffs",
@@ -40,7 +68,7 @@ export const diffApi = createApi({
   }),
   tagTypes: ["DIFF_STATE", "DIFF_PREVIEW"],
   endpoints: (builder) => ({
-    diffState: builder.query<DiffAppliedStateResponse, DiffAppliedStateArgs>({
+    diffState: builder.query<DiffStateResponse[], DiffAppliedStateArgs>({
       queryFn: async (args, api, _extraOptions, baseQuery) => {
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;
@@ -55,13 +83,28 @@ export const diffApi = createApi({
         });
 
         if (result.error) return { error: result.error };
-        // TODO: type check
-        return { data: result.data as DiffAppliedStateResponse };
-      },
-      providesTags: (_result, _error, args) => {
-        if (args.toolCallId) {
-          return [{ type: "DIFF_STATE", id: args.toolCallId }];
+        const { data } = result;
+        if (!isDiffAppliedStateResponse(data)) {
+          return {
+            error: {
+              error: "invalid response for diff state",
+              status: "CUSTOM_ERROR",
+              data,
+            },
+          };
         }
+
+        const merged = args.chunks.map<DiffStateResponse>((chunk, index) => {
+          return {
+            chunk,
+            state: data.state[index] ?? false,
+            can_apply: data.can_apply[index] ?? false,
+          };
+        });
+        return { data: merged };
+      },
+      providesTags: (_result, _error, _args) => {
+        // TODO: this could be more efficient
         return [{ type: "DIFF_STATE" }];
       },
     }),
@@ -94,11 +137,9 @@ export const diffApi = createApi({
 
         return { data: result.data as DiffOperationResponse };
       },
-      invalidatesTags: (_result, _error, args) => {
-        return [
-          { type: "DIFF_STATE", id: args.toolCallId },
-          { type: "DIFF_PREVIEW", id: args.toolCallId },
-        ];
+      invalidatesTags: (_result, _error, _args) => {
+        // TODO: this could be more efficient
+        return [{ type: "DIFF_STATE" }];
       },
     }),
 

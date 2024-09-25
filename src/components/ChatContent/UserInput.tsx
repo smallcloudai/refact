@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Text, Container, Button } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
@@ -42,17 +42,26 @@ function processLines(
 
 export type UserInputProps = {
   children: string;
-  onRetry: (value: string) => void;
-  disableRetry?: boolean;
+  messageIndex: number;
+  onRetry: (index: number, question: string) => void;
+  // disableRetry?: boolean;
 };
 
-export const UserInput: React.FC<UserInputProps> = (props) => {
+export const UserInput: React.FC<UserInputProps> = ({
+  messageIndex,
+  children,
+  onRetry,
+}) => {
+  // const { retryFromIndex } = useSendChatRequest();
   const [showTextArea, setShowTextArea] = useState(false);
   const ref = React.useRef<HTMLButtonElement>(null);
-  const handleSubmit = (value: string) => {
-    props.onRetry(value);
-    setShowTextArea(false);
-  };
+  const handleSubmit = useCallback(
+    (value: string) => {
+      onRetry(messageIndex, value);
+      setShowTextArea(false);
+    },
+    [messageIndex, onRetry],
+  );
 
   const handleShowTextArea = (value: boolean) => {
     setShowTextArea(value);
@@ -65,7 +74,7 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
     }
   };
 
-  const lines = props.children.split("\n");
+  const lines = children.split("\n");
   const elements = processLines(lines);
 
   return (
@@ -73,7 +82,7 @@ export const UserInput: React.FC<UserInputProps> = (props) => {
       {showTextArea ? (
         <RetryForm
           onSubmit={handleSubmit}
-          value={props.children}
+          value={children}
           onClose={() => handleShowTextArea(false)}
         />
       ) : (
