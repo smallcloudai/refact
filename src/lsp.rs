@@ -35,8 +35,7 @@ impl Display for APIError {
 }
 
 
-// #[derive(Debug)]  GlobalContext does not implement Debug
-pub struct Backend {
+pub struct LspBackend {
     pub gcx: Arc<ARwLock<GlobalContext>>,
     pub client: tower_lsp::Client,
 }
@@ -119,7 +118,7 @@ pub struct SuccessRes {
     pub success: bool,
 }
 
-impl Backend {
+impl LspBackend {
     async fn flat_params_to_code_completion_post(&self, params: &CompletionParams1) -> Result<CodeCompletionPost> {
         let path = crate::files_correction::canonical_path(&params.text_document_position.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
         let txt = match self.gcx.read().await.documents_state.memory_document_map.get(&path) {
@@ -184,7 +183,7 @@ impl Backend {
 
 
 #[tower_lsp::async_trait]
-impl LanguageServer for Backend {
+impl LanguageServer for LspBackend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         info!("LSP client_info {:?}", params.client_info);
         let mut folders: Vec<PathBuf> = vec![];
@@ -333,14 +332,14 @@ impl LanguageServer for Backend {
 
 async fn build_lsp_service(
     gcx: Arc<ARwLock<GlobalContext>>,
-) -> (LspService::<Backend>, ClientSocket) {
-    let (lsp_service, socket) = LspService::build(|client| Backend {
+) -> (LspService::<LspBackend>, ClientSocket) {
+    let (lsp_service, socket) = LspService::build(|client| LspBackend {
         gcx,
         client,
     })
-        .custom_method("refact/getCompletions", Backend::get_completions)
-        .custom_method("refact/acceptCompletion", Backend::accept_snippet)
-        .custom_method("refact/setActiveDocument", Backend::set_active_document)
+        .custom_method("refact/getCompletions", LspBackend::get_completions)
+        .custom_method("refact/acceptCompletion", LspBackend::accept_snippet)
+        .custom_method("refact/setActiveDocument", LspBackend::set_active_document)
         .finish();
     (lsp_service, socket)
 }

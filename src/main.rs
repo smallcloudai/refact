@@ -6,12 +6,13 @@ use tokio::task::JoinHandle;
 use tracing::{info, Level};
 use tracing_appender;
 use backtrace;
+use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::background_tasks::start_background_tasks;
 use crate::lsp::spawn_lsp_task;
 use crate::telemetry::{basic_transmit, snippets_transmit};
 use crate::yaml_configs::create_configs::yaml_configs_try_create_all;
-
 
 // mods roughly sorted by dependency ↓
 
@@ -57,6 +58,7 @@ mod integrations;
 mod privacy;
 mod privacy_compiled_in;
 
+
 #[tokio::main]
 async fn main() {
     let cpu_num = std::thread::available_parallelism().unwrap().get();
@@ -64,7 +66,9 @@ async fn main() {
     let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
     let cache_dir = home_dir.join(".cache/refact");
     let (gcx, ask_shutdown_receiver, shutdown_flag, cmdline) = global_context::create_global_context(cache_dir.clone()).await;
+    let mut writer_is_stderr = false;
     let (logs_writer, _guard) = if cmdline.logs_stderr {
+        writer_is_stderr = true;
         tracing_appender::non_blocking(std::io::stderr())
     } else if !cmdline.logs_to_file.is_empty() {
         tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::new(
@@ -73,7 +77,7 @@ async fn main() {
             std::path::Path::new(&cmdline.logs_to_file).file_name().unwrap()
         ))
     } else {
-        let _ = write!(std::io::stderr(), "This rust binary keeps logs as files, rotated daily. Try\ntail -f {}/logs/\nor use --logs-stderr for debugging.\n\n", cache_dir.display());
+        let _ = write!(std::io::stderr(), "This rust binary keeps logs as files, rotated daily. Try\ntail -f {}/logs/\nor use --logs-stderr for debugging. Any errors will duplicate here in stderr.\n\n", cache_dir.display());
         tracing_appender::non_blocking(tracing_appender::rolling::RollingFileAppender::builder()
             .rotation(tracing_appender::rolling::Rotation::DAILY)
             .filename_prefix("rustbinary")
@@ -81,14 +85,17 @@ async fn main() {
             .build(cache_dir.join("logs")).unwrap()
         )
     };
-    let _tracing = tracing_subscriber::fmt()
-        .with_max_level(if cmdline.verbose { Level::DEBUG } else { Level::INFO })
-        .with_writer(logs_writer)
-        .with_target(true)
-        .with_line_number(true)
-        .compact()
-        .with_ansi(false)
+    let my_layer = nicer_logs::CustomLayer::new(
+        logs_writer.clone(),
+        writer_is_stderr,
+        if cmdline.verbose { Level::DEBUG } else { Level::INFO },
+        Level::ERROR,
+        cmdline.lsp_stdin_stdout == 0
+    );
+    let _tracing = tracing_subscriber::registry()
+        .with(my_layer)
         .init();
+
     panic::set_hook(Box::new(|panic_info| {
         let backtrace = backtrace::Backtrace::new();
         tracing::error!("Panic occurred: {:?}\n{:?}", panic_info, backtrace);
