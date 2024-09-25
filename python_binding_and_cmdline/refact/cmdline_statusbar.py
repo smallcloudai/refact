@@ -5,6 +5,7 @@ from refact.cmdline_printing import get_terminal_width, tokens_len
 import refact.cmdline_main as cmdline_main
 from prompt_toolkit.layout.containers import Window, Container
 from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.application import get_app_or_none
 
 
 vecdb_ast_status = {
@@ -16,18 +17,21 @@ model_section = ""
 
 async def statusbar_background_task():
     global vecdb_ast_status
-    while True:
+    while get_app_or_none() is not None:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(f"{cmdline_main.lsp.base_url()}/rag-status") as response:
                     vecdb_ast_status = await response.json(content_type=None)
         except Exception as e:
-            print(e)
+            if get_app_or_none() is not None:
+                print(e)
 
         if vecdb_ast_status is None:
             await asyncio.sleep(2)
             continue
 
+        if get_app_or_none() is None:
+            return
         cmdline_main.app.invalidate()
 
         fast_sleep = False
