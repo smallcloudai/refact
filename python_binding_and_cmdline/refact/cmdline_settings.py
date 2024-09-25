@@ -29,6 +29,7 @@ class SettingsCLI(BaseModel):
     vecdb_max_files: int = 5000
     experimental: bool = False
     basic_telemetry: bool = False
+    nerd_font: bool = False
 
 
 default_config = """
@@ -41,6 +42,7 @@ vecdb: true
 vecdb_max_files: 5000
 #experimental: false
 #basic_telemetry: false
+#nerd_font: true
 """
 
 class CmdlineSettings:

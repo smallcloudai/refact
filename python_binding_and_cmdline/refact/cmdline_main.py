@@ -74,14 +74,41 @@ def flush_response():
     response_text = ""
 
 
+def update_response_box():
+    nerd_font = cmdline_settings.cli_yaml.nerd_font
+    response_box.text = [("", response_text)]
+    for tool_call in tool_calls.values():
+        function = tool_call["function"]
+        response_box.text.append(("", f"\n  {function["name"]}({function["arguments"]})"))
+        if "context_files" in tool_call:
+            context_files = tool_call["context_files"]
+            if len(context_files) > 4:
+                if nerd_font:
+                    response_box.text.append(("", f"\n  󰏢"))
+                else:
+                    response_box.text.append(("", f"\n  📎"))
+                response_box.text.append(("", f" <{len(context_files) - 4} more files>"))
+            for context_file in context_files[-4:]:
+                if nerd_font:
+                    response_box.text.append(("", f"\n  󰏢"))
+                else:
+                    response_box.text.append(("", f"\n  📎"))
+                response_box.text.append(("", f" {context_file}"))
+        if "subchat_id" in tool_call:
+            if nerd_font:
+                response_box.text.append(("", f"\n   Subchat {tool_call['subchat_id']}"))
+            else:
+                response_box.text.append(("", f"\n  ⏳ Subchat {tool_call['subchat_id']}"))
+    app.invalidate()
+
+
 def print_response(to_print: str):
     global response_text
     for line in to_print.splitlines(True):
         response_text += line
-        response_box.text.append(("", line))
         if line[-1] == "\n":
            flush_response()
-    app.invalidate()
+    update_response_box()
 
 
 def print_context_file(json_str: str):
@@ -97,20 +124,39 @@ def print_context_file(json_str: str):
 
 
 streaming_messages: List[Message] = []
+tool_calls: Dict[str, FunctionDict] = {}
+streaming_toolcall: Optional[FunctionDict] = None
 is_streaming = False
 lsp = None
 
 
 def process_streaming_data(data):
     global streaming_messages
+    global streaming_toolcall
+    global tool_calls
     if "choices" in data:
         choices = data['choices']
         delta = choices[0]['delta']
         content = delta.get('content', None)
+
+        # streaming tool calls
+        if delta["tool_calls"] is not None:
+            for tool_call in delta["tool_calls"]:
+                id = tool_call["id"]
+                if id is not None:
+                    streaming_toolcall = tool_call
+                else:
+                    streaming_toolcall["function"]["arguments"] += tool_call["function"]["arguments"]
+                    app.invalidate()
+
         if content is None:
             finish_reason = choices[0]['finish_reason']
             if finish_reason == 'stop':
                 print_response("\n")
+            if finish_reason == 'tool_calls':
+                tool_calls[streaming_toolcall["id"]] = streaming_toolcall
+                streaming_toolcall = None
+                update_response_box()
             return
         if len(streaming_messages) == 0 or streaming_messages[-1].role != "assistant":
             print_response("\n")
@@ -134,14 +180,37 @@ def process_streaming_data(data):
         tool_call_id = data["tool_call_id"]
         print_response("\n")
         flush_response()
-        function = find_tool_call(streaming_messages, tool_call_id)
-        if function is not None:
-            print_formatted_text(f"  {function.name}({function.arguments})")
+        if tool_call_id in tool_calls:
+            tool_call = tool_calls.pop(tool_call_id)
+            function = tool_call["function"]
+            print_formatted_text(f"  {function["name"]}({function["arguments"]})")
         else:
-            print_formatted_text(f"  function is none")
+            print_formatted_text(f"  <Unknown tool call>")
         print_lines(indented)
 
     elif "subchat_id" in data:
+        # print_formatted_text(json.dumps(data, indent=2))
+
+        subchat_id = data["subchat_id"]
+        tool_call_id = data["tool_call_id"]
+        if tool_call_id not in tool_calls:
+            return
+
+        tool_call = tool_calls[tool_call_id]
+        tool_call["subchat_id"] = subchat_id
+
+        add_message = data["add_message"]
+        role = add_message["role"]
+        content = add_message["content"]
+        if role == "context_file":
+            if "context_files" not in tool_call:
+                tool_call["context_files"] = []
+            content = json.loads(content)
+            for file in content:
+                tool_call["context_files"].append(file["file_name"])
+
+
+        update_response_box()
         pass
 
     else:
@@ -344,7 +413,7 @@ async def chat_main():
         refact_args,
         wait_for_ast_vecdb=False,
         refact_lsp_log=None,
-        verbose=True
+        verbose=False
     )
 
     async with lsp:
