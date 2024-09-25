@@ -10,7 +10,7 @@ use std::path::Path;
 use crate::global_context::GlobalContext;
 
 
-const DEFAULT_CHECKSUM_FILE: &str = "_default_checksums.yaml";
+const DEFAULT_CHECKSUM_FILE: &str = "default-checksums.yaml";
 
 pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>)
 {
@@ -82,7 +82,10 @@ async fn update_checksum(cache_dir: &Path, config_name: String, checksum: &str) 
     let checksum_path = cache_dir.join(DEFAULT_CHECKSUM_FILE);
     let mut checksums = read_checksums(&cache_dir).await?;
     checksums.insert(config_name.to_string(), checksum.to_string());
-    let content = serde_yaml::to_string(&checksums).unwrap();
+    let content = format!(
+        "# This file allows to determine whether a config file still has the default text, so we can upgrade it.\n#\n{}",
+        serde_yaml::to_string(&checksums).unwrap()
+    );
     tokio::fs::write(&checksum_path, content).await
         .map_err(|e| format!("failed to write {}: {}", DEFAULT_CHECKSUM_FILE, e))?;
     Ok(())
