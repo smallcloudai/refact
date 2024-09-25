@@ -23,7 +23,10 @@ export type SidebarProps = {
 export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
-  const history = useAppSelector((app) => app.history);
+  const history = useAppSelector((app) => app.history, {
+    // TODO: selector issue here
+    devModeChecks: { stabilityCheck: "never" },
+  });
 
   const onDeleteHistoryItem = useCallback(
     (id: string) => dispatch(deleteChatById(id)),

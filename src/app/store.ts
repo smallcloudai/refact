@@ -107,7 +107,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
       maxAge: 1000,
     },
     middleware: (getDefaultMiddleware) => {
-      const production = true;
+      const production = process.env.NODE_ENV === "production";
 
       // eslint-disable-next-line
       const middelware = production
