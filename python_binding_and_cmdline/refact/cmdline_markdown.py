@@ -49,20 +49,22 @@ def to_markdown(text: str, width: int) -> Tokens:
         # `text`
         if text[i] == "`" and text[i+1] != "`":
             result.append((get_format(), text[last + 1:i]))
-            if nerd_font:
-                result.append((gray, ""))
-            else:
-                result.append((f"bg:{gray}", " "))
+            if header_level == 0:
+                if nerd_font:
+                    result.append((gray, ""))
+                else:
+                    result.append((f"bg:{gray}", " "))
             last = i
             i += 1
             is_inline_code = True
             while i < len(text) and text[i] != "`":
                 i += 1
             result.append((get_format(), text[last + 1:i]))
-            if nerd_font:
-                result.append((gray, ""))
-            else:
-                result.append((f"bg:{gray}", " "))
+            if header_level == 0:
+                if nerd_font:
+                    result.append((gray, ""))
+                else:
+                    result.append((f"bg:{gray}", " "))
             is_inline_code = False
             last = i
 
