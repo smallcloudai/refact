@@ -1,4 +1,5 @@
 from refact.cmdline_printing import Tokens
+from refact import cmdline_settings
 
 gray = "#252b37"
 green = "#6ac496"
@@ -20,6 +21,7 @@ def is_beginning_of_line(text: str, i: int) -> bool:
 
 
 def to_markdown(text: str, width: int) -> Tokens:
+    nerd_font = cmdline_settings.cli_yaml.nerd_font
     result = []
     last = -1
     i = 0
@@ -47,14 +49,20 @@ def to_markdown(text: str, width: int) -> Tokens:
         # `text`
         if text[i] == "`" and text[i+1] != "`":
             result.append((get_format(), text[last + 1:i]))
-            result.append((gray, ""))
+            if nerd_font:
+                result.append((gray, ""))
+            else:
+                result.append((f"bg:{gray}", " "))
             last = i
             i += 1
             is_inline_code = True
             while i < len(text) and text[i] != "`":
                 i += 1
             result.append((get_format(), text[last + 1:i]))
-            result.append((gray, ""))
+            if nerd_font:
+                result.append((gray, ""))
+            else:
+                result.append((f"bg:{gray}", " "))
             is_inline_code = False
             last = i
 

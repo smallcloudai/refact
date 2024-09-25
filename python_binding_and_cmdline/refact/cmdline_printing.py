@@ -7,6 +7,8 @@ from pygments.lexers import guess_lexer_for_filename, get_lexer_by_name, guess_l
 import pygments
 import shutil
 
+from refact import cmdline_settings
+
 Tokens = List[Tuple[str, str]]
 Lines = List[Tokens]
 
@@ -160,20 +162,30 @@ def print_lines(lines: Lines):
         print_formatted_text(FormattedText(line))
 
 
+def print_file_name(file_name: str):
+    nerd_font = cmdline_settings.cli_yaml.nerd_font
+    tab_color = "#3e4957"
+    if nerd_font:
+        print_formatted_text(FormattedText([
+            (tab_color, " "),
+            (f"bg:{tab_color}", f" {file_name} "),
+            (tab_color, ""),
+        ]))
+    else:
+        print_formatted_text(FormattedText([
+            ("", " "),
+            (f"bg:{tab_color}", f"  {file_name}  "),
+        ]))
+
 def print_file(content: str, file_name: str):
     bg_color = "#252b37"
-    tab_color = "#3e4957"
 
     terminal_width = get_terminal_width()
     content = highlight_text(content, file_name)
     wrapped = wrap_tokens(content, terminal_width - 2)
     limited = limit_lines(wrapped, 15)
     colored = set_background_color(limited, bg_color)
-    print_formatted_text(FormattedText([
-        (tab_color, " "),
-        (f"bg:{tab_color}", f" {file_name} "),
-        (tab_color, ""),
-    ]))
+    print_file_name(file_name)
     print_lines(colored)
 
 

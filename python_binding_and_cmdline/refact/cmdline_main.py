@@ -21,7 +21,7 @@ from prompt_toolkit.filters import Condition
 
 from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetch_and_filter
 from refact.cmdline_printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
-from refact.cmdline_printing import print_file, print_lines, highlight_text_by_language, set_background_color
+from refact.cmdline_printing import print_file, print_lines, highlight_text_by_language, set_background_color, print_file_name
 from refact.cmdline_markdown import to_markdown
 from refact.lsp_runner import LSPServerRunner
 from refact import cmdline_statusbar
@@ -51,12 +51,7 @@ def flush_response():
         if language_printing is None:
             language_printing = response_text[3:]
             if language_printing.strip() != "":
-                tab_color = "#3e4957"
-                print_formatted_text(FormattedText([
-                    (tab_color, " "),
-                    (f"bg:{tab_color}", f" {language_printing.strip()} "),
-                    (tab_color, ""),
-                ]))
+                print_file_name(language_printing.strip())
         else:
             language_printing = None
     elif language_printing is None:
