@@ -29,6 +29,7 @@ mod single_shot_commands;
 mod file_filter;
 mod files_in_workspace;
 mod files_in_jsonl;
+mod fuzzy_search;
 mod files_correction;
 mod vecdb;
 mod ast;
