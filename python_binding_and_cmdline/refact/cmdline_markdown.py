@@ -86,7 +86,7 @@ def to_markdown(text: str, width: int) -> Tokens:
         # end of headers
         elif text[i] == "\n":
             if header_level > 0:
-                result.append((get_format(), text[last + 1:i+1]))
+                result.append((get_format(), text[last + 1:i] + " \n"))
                 header_level = 0
                 last = i
 
