@@ -381,6 +381,7 @@ async def chat_main():
     arg_question = " ".join(after_minus_minus)
 
     cmdline_settings.cli_yaml = cmdline_settings.load_cli_or_auto_configure()
+    app.editing_mode = cmdline_settings.cli_yaml.get_editing_mode()
 
     refact_args = [
         os.path.join(os.path.dirname(__file__), "bin", "refact-lsp"),

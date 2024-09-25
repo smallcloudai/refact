@@ -3,6 +3,7 @@ import yaml
 from pydantic import BaseModel
 from pydantic import BaseModel, ValidationError
 from typing import Optional, Dict, List
+from prompt_toolkit.enums import EditingMode
 import aiohttp
 
 
@@ -30,6 +31,14 @@ class SettingsCLI(BaseModel):
     experimental: bool = False
     basic_telemetry: bool = False
     nerd_font: bool = False
+    editing_mode: str = "default"
+
+    
+    def get_editing_mode(self):
+        if self.editing_mode.lower() in ["vim", "vi"]:
+            return EditingMode.VI
+        else:
+            return EditingMode.EMACS
 
 
 default_config = """
@@ -43,6 +52,8 @@ vecdb_max_files: 5000
 #experimental: false
 #basic_telemetry: false
 #nerd_font: true
+#editing_mode: vim
+#editing_mode: emacs
 """
 
 class CmdlineSettings:
