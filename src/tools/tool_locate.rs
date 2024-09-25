@@ -141,7 +141,6 @@ async fn strategy_tree(
         None,
         1,
         Some(usage),
-        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step1-tree")),
     ).await?.get(0).ok_or("relevant_files: tree deterministic message was empty. Try again later".to_string())?.clone();
@@ -159,7 +158,6 @@ async fn strategy_tree(
         None,
         5,
         Some(usage),
-        Some(format!("{log_prefix}-locate-step1-tree-result")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step1-tree-result")),
     ).await?;
@@ -211,7 +209,6 @@ async fn strategy_definitions_references(
         None,
         5,
         Some(usage),
-        Some(format!("{log_prefix}-locate-step2-defs-refs")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step2-defs-refs")),
     ).await?;
@@ -238,7 +235,6 @@ async fn strategy_definitions_references(
             None,
             1,
             Some(usage),
-            Some(format!("{log_prefix}-locate-step2-defs-refs-result")),
             Some(tool_call_id.clone()),
             Some(format!("{log_prefix}-locate-step2-defs-refs-result")),
         ).await?.get(0).ok_or("relevant_files: no context files found (strategy_definitions_references). Try again later".to_string())?.clone();
@@ -298,7 +294,6 @@ async fn supercat_extract_symbols(
         None,
         1,
         Some(usage),
-        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step3-cat")),
     ).await?.get(0).ok_or("relevant_files: cat message was empty.".to_string())?.clone();
@@ -316,7 +311,6 @@ async fn supercat_extract_symbols(
         None,
         5,
         Some(usage),
-        Some(format!("{log_prefix}-locate-step3-cat-result")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step3-cat-result")),
     ).await?;
@@ -377,7 +371,6 @@ async fn supercat_decider(
         None,
         1,
         Some(usage),
-        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step4-det")),
     ).await?.get(0).ok_or("relevant_files: supercat message was empty.".to_string())?.clone();
@@ -395,7 +388,6 @@ async fn supercat_decider(
         None,
         5,
         Some(usage),
-        Some(format!("{log_prefix}-locate-step4-det-result")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-step4-det-result")),
     ).await?;

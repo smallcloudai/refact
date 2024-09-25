@@ -131,7 +131,6 @@ pub async fn execute_chat_model(
         Some(max_new_tokens),
         N_CHOICES,
         Some(usage),
-        Some(format!("{log_prefix}-patch")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-patch")),
     ).await.map_err(|e|(e, None))?;

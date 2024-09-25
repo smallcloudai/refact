@@ -1,7 +1,5 @@
 use std::sync::Arc;
 use std::collections::HashSet;
-use std::fs::{self};
-use textwrap::wrap;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use serde_json::Value;
@@ -201,49 +199,6 @@ async fn chat_interaction(
     }
 }
 
-async fn write_dumps(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    logfn: String,
-    content: &str,
-) {
-    let cache_dir = {
-        let gcx_locked = gcx.read().await;
-        gcx_locked.cache_dir.clone()
-    };
-    let dump_dir = cache_dir.join("dumps");
-    let _ = fs::create_dir_all(&dump_dir);
-    let pathbuf = dump_dir.join(logfn);
-    let _ = fs::write(&pathbuf, content);
-}
-
-fn format_messages_as_markdown(messages: &[ChatMessage]) -> String {
-    const MAX_WIDTH: usize = 100;
-    let mut formatted = String::new();
-
-    for message in messages {
-        formatted.push_str(&format!("\n\n --------- {} ---------\n\n", message.role.to_uppercase()));
-        if message.content.len() > 10*MAX_WIDTH && message.content.matches('\n').count() < 2 {
-            formatted.push_str(&message.content.chars().take(100).collect::<String>());
-            formatted.push_str(&"...\n".to_string());
-        } else {
-            let content = message.content.clone();
-            let wrapped_content = wrap(&content, MAX_WIDTH);
-            for line in wrapped_content {
-                formatted.push_str(&line);
-                formatted.push('\n');
-            }
-        }
-
-        if let Some(tool_calls) = &message.tool_calls {
-            for tool_call in tool_calls {
-                formatted.push_str(&format!("\n $ {}({})", tool_call.function.name, tool_call.function.arguments));
-            }
-        }
-    }
-
-    formatted
-}
-
 fn update_usage_from_messages(usage: &mut ChatUsage, messages: &Vec<Vec<ChatMessage>>) {
     // even if n_choices > 1, usage is identical in each Vec<ChatMessage>, so we could take the first one
     if let Some(message_0) = messages.get(0) {
@@ -268,7 +223,6 @@ pub async fn subchat_single(
     max_new_tokens: Option<usize>,
     n: usize,
     usage_collector_mb: Option<&mut ChatUsage>,
-    logfn_mb: Option<String>,
     tx_toolid_mb: Option<String>,
     tx_chatid_mb: Option<String>,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
@@ -318,24 +272,6 @@ pub async fn subchat_single(
         update_usage_from_messages(usage_collector, &results);
     }
 
-    if let Some(logfn) = logfn_mb {
-        if results.len() > 1 {
-            for (i, choice) in results.iter().enumerate() {
-                let choice_logfn_json = format!("{}_choice{}.json", logfn, i);
-                write_dumps(gcx.clone(), choice_logfn_json, serde_json::to_string_pretty(&choice).unwrap().as_str()).await;
-                let choice_logfn_md = format!("{}_choice{}.log", logfn, i);
-                let formatted_md = format_messages_as_markdown(&choice);
-                write_dumps(gcx.clone(), choice_logfn_md, &formatted_md).await;
-            }
-        } else if results.len() == 1 {
-            let choice0_logfn_json = format!("{}.json", logfn);
-            write_dumps(gcx.clone(), choice0_logfn_json, serde_json::to_string_pretty(&results[0]).unwrap().as_str()).await;
-            let choice0_logfn_md = format!("{}.log", logfn);
-            let formatted_md = format_messages_as_markdown(&results[0]);
-            write_dumps(gcx.clone(), choice0_logfn_md, &formatted_md).await;
-        }
-    }
-
     if let Some(tx_chatid) = tx_chatid_mb {
         assert!(tx_toolid_mb.is_some());
         let tx_toolid = tx_toolid_mb.unwrap();
@@ -367,7 +303,6 @@ pub async fn subchat(
     wrap_up_prompt: &str,
     wrap_up_n: usize,
     temperature: Option<f32>,
-    logfn_mb: Option<String>,
     tx_toolid_mb: Option<String>,
     tx_chatid_mb: Option<String>,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
@@ -405,7 +340,6 @@ pub async fn subchat(
                 None,
                 1,
                 Some(&mut usage_collector),
-                logfn_mb.clone(),
                 tx_toolid_mb.clone(),
                 tx_chatid_mb.clone(),
             ).await?[0].clone();
@@ -427,7 +361,6 @@ pub async fn subchat(
                 None,
                 1,
                 Some(&mut usage_collector),
-                logfn_mb.clone(),
                 tx_toolid_mb.clone(),
                 tx_chatid_mb.clone(),
             ).await?[0].clone();
@@ -445,7 +378,6 @@ pub async fn subchat(
         None,
         wrap_up_n,
         Some(&mut usage_collector),
-        logfn_mb.clone(),
         tx_toolid_mb.clone(),
         tx_chatid_mb.clone(),
     ).await?;

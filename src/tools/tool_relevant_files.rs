@@ -370,7 +370,6 @@ async fn find_relevant_files(
         RF_EXPERT_WRAP_UP,  // NOTE: I can't pass here str with reminder because it's future
         1,
         Some(0.4),
-        Some(format!("{log_prefix}-rf-step1-treeguess")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step1-treeguess")),
     ));
@@ -394,7 +393,6 @@ async fn find_relevant_files(
         RF_EXPERT_WRAP_UP,
         1,
         Some(0.4),
-        Some(format!("{log_prefix}-rf-step1-gotodef")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step1-gotodef")),
     ));
@@ -458,7 +456,6 @@ async fn find_relevant_files(
         reduce_reminder_wrap_up.as_str(),
         1,
         Some(0.0),
-        Some(format!("{log_prefix}-rf-step2-reduce")),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step2-reduce")),
     ).await?[0].clone();

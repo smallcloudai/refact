@@ -28,7 +28,6 @@ pub async fn handle_v1_subchat(
 ) -> axum::response::Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<SubChatPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-    let logfn = chrono::Local::now().format("subchat-handler-%Y%m%d-%H%M%S.log").to_string();
 
     let top_n = 7;
     let fake_n_ctx = 4096;
@@ -46,7 +45,6 @@ pub async fn handle_v1_subchat(
         post.wrap_up_prompt.as_str(),
         1,
         None,
-        Some(logfn),
         None,
         None,
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
@@ -81,7 +79,6 @@ pub async fn handle_v1_subchat_single(
 ) -> axum::response::Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<SubChatSinglePost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-    let logfn = chrono::Local::now().format("subchat-single-handler-%Y%m%d-%H%M%S").to_string();
 
     let top_n = 7;
     let fake_n_ctx = 4096;
@@ -100,7 +97,6 @@ pub async fn handle_v1_subchat_single(
         None,
         post.n,
         None,
-        Some(logfn),
         None,
         None,
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
