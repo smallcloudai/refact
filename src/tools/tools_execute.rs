@@ -85,7 +85,7 @@ pub async fn run_tools(
             Ok(args) => args,
             Err(e) => {
                 let tool_failed_message = tool_answer(
-                    format!("tool use: couldn't parse arguments: {}. Error:\n{}\nTry again following JSON format", t_call.function.arguments, e), t_call.id.to_string()
+                    format!("Tool use: couldn't parse arguments: {}. Error:\n{}", t_call.function.arguments, e), t_call.id.to_string()
                 );
                 generated_tool.push(tool_failed_message.clone());
                 continue;
@@ -100,16 +100,16 @@ pub async fn run_tools(
                 Err(e) => {
                     info!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
                     let mut tool_failed_message = tool_answer(e, t_call.id.to_string());
-                    
+
                     tool_failed_message.usage = cmd_lock.usage().clone();
                     *cmd_lock.usage() = None;
-                    
+
                     generated_tool.push(tool_failed_message.clone());
                     continue;
                 }
             }
         };
-        
+
         any_corrections |= corrections;
 
         let mut have_answer = false;
@@ -166,7 +166,7 @@ async fn pp_run_tools(
 ) -> (Vec<ChatMessage>, Vec<ChatMessage>) {
     let mut generated_tool = generated_tool.to_vec();
     let mut generated_other = generated_other.to_vec();
-    
+
     let (top_n, correction_only_up_to_step) = {
         let ccx_locked = ccx.lock().await;
         (ccx_locked.top_n, ccx_locked.correction_only_up_to_step)
@@ -232,9 +232,25 @@ async fn pp_run_tools(
                 "context_file".to_string(),
                 serde_json::to_string(&json_vec).unwrap()
             );
-            generated_other.push(message.clone());
+            let mut found_exact_same_message = false;
+            for original_msg in original_messages.iter().rev() {
+                if original_msg.role == "user" {
+                    break;
+                }
+                if original_msg.content == message.content {
+                    found_exact_same_message = true;
+                    break;
+                }
+            }
+            if !found_exact_same_message {
+                generated_other.push(message.clone());
+            } else {
+                generated_other.push(ChatMessage::new(
+                    "cd_instruction".to_string(),
+                    "💿 Whoops, you are running in circles. You already have those files. Answer the question with what you have. Answer in the language user prefers. Follow the system prompt.".to_string(),
+                ));
+            }
         }
-
     } else {
         warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.")
     }

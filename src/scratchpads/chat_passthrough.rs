@@ -11,7 +11,7 @@ use tracing::{error, info, warn};
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_execute::run_tools;
-use crate::call_validation::{ChatMessage, ChatPost, ContextFile, ContextMemory, SamplingParameters};
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
@@ -138,12 +138,20 @@ impl ScratchpadAbstract for ChatPassthrough {
                     ..Default::default()
                 };
                 filtered_msgs.push(tool_msg.into_real());
+
+            } else if msg.role == "plain_text" || msg.role == "cd_instruction" {
+                filtered_msgs.push(ChatMessage::new(
+                    "user".to_string(),
+                    msg.content.clone(),
+                ).into_real());
+
             } else if msg.role == "plain_text" {
                 filtered_msgs.push(ChatMessage::new(
                     "user".to_string(),
                     msg.content.clone(),
                 ).into_real());
-            }else if msg.role == "context_file" {
+
+            } else if msg.role == "context_file" {
                 match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
                     Ok(vector_of_context_files) => {
                         for context_file in vector_of_context_files {
@@ -158,19 +166,6 @@ impl ScratchpadAbstract for ChatPassthrough {
                         }
                     },
                     Err(e) => { error!("error parsing context file: {}", e); }
-                }
-            } else if msg.role == "context_memory" {
-                match serde_json::from_str(&msg.content) {
-                    Ok(res) => {
-                        let mems: Vec<ContextMemory> = res;
-                        for mem in mems.iter() {
-                            filtered_msgs.push(ChatMessage::new(
-                                "assistant".to_string(),
-                                format!("Note to self: {}", mem.memo_text.clone())
-                            ).into_real());
-                        }
-                    }
-                    Err(e) => { error!("error parsing context memory: {}", e); }
                 }
             } else {
                 warn!("unknown role: {}", msg.role);

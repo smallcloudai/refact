@@ -119,12 +119,17 @@ impl ScratchpadAbstract for ChatLlama2 {
                     prompt.push_str(format!("{}\n```\n{}```\n\n", context_file.file_name, context_file.file_content).as_str());
                 }
             }
+            if msg.role == "cd_instruction" {
+                prompt.push_str(msg.content.trim());
+                prompt.push_str("");
+            }
             if msg.role == "user" {
                 let user_input = if do_strip { msg.content.trim().to_string() } else { msg.content.clone() };
                 prompt.push_str(user_input.as_str());
                 prompt.push_str(" [/INST]");
                 do_strip = true;
             }
+
             if msg.role == "assistant" {
                 prompt.push_str(msg.content.trim());
                 prompt.push_str(" ");

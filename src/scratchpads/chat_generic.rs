@@ -131,6 +131,10 @@ impl ScratchpadAbstract for GenericChatScratchpad {
                 prompt.push_str(self.keyword_user.as_str());
                 prompt.push_str(msg.content.as_str());
                 prompt.push_str("\n");
+            } else if msg.role == "cd_instruction" {
+                prompt.push_str(self.keyword_user.as_str());
+                prompt.push_str(msg.content.as_str());
+                prompt.push_str("\n");
             } else if msg.role == "assistant" {
                 prompt.push_str(self.keyword_asst.as_str());
                 prompt.push_str(msg.content.as_str());

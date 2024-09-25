@@ -216,13 +216,6 @@ pub struct ContextFile {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ContextMemory {
-    pub memo_id: String,
-    pub memo_text: String,
-}
-
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ContextEnum {
     ContextFile(ContextFile),
     ChatMessage(ChatMessage),

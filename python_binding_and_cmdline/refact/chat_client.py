@@ -40,8 +40,7 @@ class Usage(BaseModel):
 
 
 class Message(BaseModel):
-    role: Literal["system", "assistant", "user", "tool",
-                  "diff", "plain_text", "context_file", "context_memory"]
+    role: Literal["system", "assistant", "user", "tool", "context_file", "diff", "plain_text", "cd_instruction"]
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCallDict]] = None
     finish_reason: str = ""
@@ -64,7 +63,7 @@ def messages_to_dicts(
     tools_namesonly = [x["function"]["name"] for x in tools] if tools else []
     log += termcolor.colored("------ call chat %s T=%0.2f tools=%s ------\n" % (model_name, temperature, tools_namesonly), "red")
     for x in messages:
-        if x.role in ["system", "user", "assistant", "tool", "plain_text", "context_file", "context_memory", "diff"]:
+        if x.role in ["system", "user", "assistant", "tool", "context_file", "diff", "plain_text", "cd_instruction"]:
             listofdict.append({
                 "role": x.role,
                 "content": x.content,
