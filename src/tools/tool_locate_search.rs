@@ -26,6 +26,7 @@ Here's the list of reasons a file or symbol might be relevant wrt task descripti
 
 TOCHANGE = the main changes go there
 MORE_TOCHANGE = likely to change as well, as a consequence of completing the task
+ADD_NEARBY = good place to add new code
 DEFINITIONS = classes/functions/types involved, but no changes needed
 HIGHLEV = crucial to understand the logic, such as a database scheme, high level script
 USERCODE = code that uses the things the task description is about
@@ -67,15 +68,44 @@ If not sure, drop the file, compact output is better.
 Use the following structure:
 
 {
-    "dir/dir/file.ext": {             // A relative path to file visible in your context, with no ambiguity at all.
-        "symbols": "symbol1,symbol2", // Comma-separated list of functions/classes/types/variables/etc within this file that are relevant to the task. Write "*" to indicate the whole file is necessary.
-        "why_code": "string",         // Reason to include the file: TOCHANGE, DEFINITIONS, HIGHLEV, USERCODE, SIMILAR
+    "TOCHANGE": {                                   // one or two files, start with the best place to start making changes
+        "dir/dir/file1.ext": "symbol1,symbol2",     // comma-separated symbols found in this file that need to be changed
+        "dir/dir/file2.ext": "symbol1,symbol2",
+    },
+    "MORE_TOCHANGE": {                              // follow max values for number of files
+        ...more files and symbols to change...
+    },
+    "ADD_NEARBY": {                                 // not necessarily you need to add any new things to complete the task, maybe the dict should be empty
+        "dir/dir/file3.ext": "symbol1,symbol2",     // but if you need to, find a good place
+    },
+    "DEFINITIONS": {                                // don't list the same things again, if they are already in TOCHANGE
+        ...files that have relevant definitions...
+    },
+    "HIGHLEV": {                                    // don't list the same things again
+        ...
+    },
+    "USERCODE": {
+        ...
+    },
+    "SIMILAR": {                                    // don't list the same things again
+        ...
     }
-    ...all relevant files...
 }
 
 Don't write backquotes, json format only.
 "###;
+
+// {
+//     "dir/dir/file.ext": {                    // A path to file visible in your context, with no ambiguity at all
+//         "TOCHANGE": "symbol1,symbol2",       // symbols that w
+//         "MORE_TOCHANGE": "symbol1,symbol2",
+//         "DEFINITIONS": "symbol1,symbol2",
+//         "HIGHLEV": "symbol1,symbol2",
+//         "USERCODE": "symbol1,symbol2",
+//         "SIMILAR": "symbol1,symbol2",
+//     }
+//     ...all relevant files...
+// }
 
 
 #[derive(Serialize, Deserialize, Debug)]
