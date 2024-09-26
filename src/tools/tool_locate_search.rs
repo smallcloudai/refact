@@ -138,7 +138,7 @@ async fn find_relevant_files_with_search(
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
 
     let mut strategy_messages = vec![];
-    strategy_messages.push(ChatMessage::new("system".to_string(), RF_SYSTEM_PROMPT.to_string()));
+    strategy_messages.push(ChatMessage::new("system".to_string(), LS_SYSTEM_PROMPT.to_string()));
     strategy_messages.push(ChatMessage::new("user".to_string(), user_query.to_string()));
     strategy_messages.push(ChatMessage::new("user".to_string(), "💿 Use SEARCH strategy.".to_string()));
 
@@ -149,22 +149,22 @@ async fn find_relevant_files_with_search(
         vec!["search".to_string()],
         1,
         subchat_params.subchat_max_new_tokens,
-        RF_EXPERT_WRAP_UP,
+        "",
         1,
         Some(0.4),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-search")),
     ).await?[0].clone();
 
-    check_for_inspected_files(&mut inspected_files, &result);
+    // check_for_inspected_files(&mut inspected_files, &result);
 
-    let last_message = result.last().unwrap();
-    update_usage_from_message(&mut usage, &last_message);
+    // let last_message = result.last().unwrap();
+    // update_usage_from_message(&mut usage, &last_message);
 
-    let reduced_files = parse_reduce_output(&last_message.content)?;
+    // let reduced_files = parse_reduce_output(&last_message.content)?;
 
-    let error_log: String;
-    (real_files, error_log) = _reduced_files_to_reality(reduced_files, ccx.clone()).await;
+    // let error_log: String;
+    // (real_files, error_log) = _reduced_files_to_reality(reduced_files, ccx.clone()).await;
 
     let mut tool_message = format!("Used 1 expert, inspected {} files, project has {} files",
         inspected_files.len(),
@@ -190,47 +190,3 @@ async fn result_to_json(gcx: Arc<ARwLock<GlobalContext>>, result: IndexMap<Strin
     }
     serde_json::to_string_pretty(&serde_json::json!(shortified)).unwrap()
 }
-
-fn check_for_inspected_files(inspected_files: &mut HashSet<String>, messages: &[ChatMessage]) {
-    for context_file_msg in messages.iter().filter(|msg| msg.role == "context_file").cloned().collect::<Vec<ChatMessage>>() {
-        if let Ok(context_files) = serde_json::from_str::<Vec<ContextFile>>(&context_file_msg.content) {
-            for context_file in context_files {
-                inspected_files.insert(context_file.file_name.clone());
-            }
-        }
-    }
-}
-
-fn update_usage_from_message(usage: &mut ChatUsage, message: &ChatMessage) {
-    if let Some(u) = message.usage.as_ref() {
-        usage.total_tokens += u.total_tokens;
-        usage.completion_tokens += u.completion_tokens;
-        usage.prompt_tokens += u.prompt_tokens;
-    }
-}
-
-fn parse_reduce_output(content: &str) -> Result<IndexMap<String, ReduceFileOutput>, String> {
-    let re = regex::Regex::new(r"(?s)REDUCE_OUTPUT\s*```(?:json)?\s*(.+?)\s*```").unwrap();
-    let json_str = re.captures(content)
-        .and_then(|cap| cap.get(1))
-        .map(|m| m.as_str().trim())
-        .ok_or_else(|| {
-            tracing::warn!("Unable to find REDUCE_OUTPUT section:\n{}", content);
-            "Unable to find REDUCE_OUTPUT section".to_string()
-        })?;
-    let output = serde_json::from_str::<IndexMap<String, ReduceFileOutput>>(json_str).map_err(|e| {
-            tracing::warn!("Unable to parse JSON:\n{}({})", json_str, e);
-            format!("Unable to parse JSON: {:?}", e)
-        })?;
-
-    // sort output by relevancy
-    let mut output_vec: Vec<(String, ReduceFileOutput)> = output.into_iter().collect();
-    output_vec.sort_by(|a, b| b.1.relevancy.cmp(&a.1.relevancy));
-    let sorted_output = output_vec.into_iter().collect::<IndexMap<String, ReduceFileOutput>>();
-
-    Ok(sorted_output)
-}
-
-async fn _reduced_files_to_reality(
-    reduced_files: IndexMap<String, ReduceFileOutput>,
-    ccx: Arc<AMutex<AtCommandsContext
