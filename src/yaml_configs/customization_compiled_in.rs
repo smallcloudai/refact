@@ -156,6 +156,11 @@ subchat_tool_parameters:
     subchat_tokens_for_rag: 30000
     subchat_n_ctx: 32000
     subchat_max_new_tokens: 8000
+  locate_search:
+    subchat_model: "gpt-4o-mini"
+    subchat_tokens_for_rag: 10000
+    subchat_n_ctx: 16000
+    subchat_max_new_tokens: 2000
 
 
 code_lens:

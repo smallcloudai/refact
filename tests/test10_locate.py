@@ -113,14 +113,6 @@ def sort_out_messages(response_messages):
 # }
 
 
-tool_example = """
-💿 Used 2 experts, inspected 2 files, project has 218 files
-
-Inspected context files:
-src/ast/alt_testsuite/cpp_goat_library.h
-src/ast/alt_testsuite/cpp_goat_main.cpp
-"""
-
 async def test_if_located_right(
     question: str,
     expected_roles: Dict[str, str],

@@ -5,24 +5,22 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use regex::Regex;
 use std::path::PathBuf;
-
+use rand::prelude::SliceRandom;
 use async_trait::async_trait;
-
 use indexmap::IndexMap;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use futures_util::future::join_all;
 use hashbrown::HashSet;
-use crate::subchat::subchat;
-use crate::tools::tools_description::Tool;
 
-use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, SubchatParameters, ContextFile};
 use crate::global_context::GlobalContext;
-
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::files_correction::{get_project_dirs, shortify_paths};
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, SubchatParameters, ContextFile, ChatToolCall, ChatToolFunction};
+use crate::subchat::subchat;
+use crate::tools::tools_description::Tool;
 
 
 async fn result_to_json(gcx: Arc<ARwLock<GlobalContext>>, result: IndexMap<String, ReduceFileOutput>) -> String {
@@ -33,6 +31,30 @@ async fn result_to_json(gcx: Arc<ARwLock<GlobalContext>>, result: IndexMap<Strin
     }
     serde_json::to_string_pretty(&serde_json::json!(shortified)).unwrap()
 }
+
+pub fn pretend_tool_call(tool_name: &str, tool_arguments: &str, content: String) -> ChatMessage {
+    let mut rng = rand::thread_rng();
+    let hex_chars: Vec<char> = "0123456789abcdef".chars().collect();
+    let random_hex: String = (0..6)
+        .map(|_| *hex_chars.choose(&mut rng).unwrap())
+        .collect();
+    let tool_call = ChatToolCall {
+        id: format!("{tool_name}_{random_hex}"),
+        function: ChatToolFunction {
+            arguments: tool_arguments.to_string(),
+            name: tool_name.to_string()
+        },
+        tool_type: "function".to_string(),
+    };
+    ChatMessage {
+        role: "assistant".to_string(),
+        content: content,
+        tool_calls: Some(vec![tool_call]),
+        tool_call_id: "".to_string(),
+        ..Default::default()
+    }
+}
+
 
 
 pub struct ToolRelevantFiles;
@@ -294,7 +316,7 @@ fn parse_reduce_output(content: &str) -> Result<IndexMap<String, ReduceFileOutpu
 }
 
 
-fn update_usage_from_message(usage: &mut ChatUsage, message: &ChatMessage) {
+pub fn update_usage_from_message(usage: &mut ChatUsage, message: &ChatMessage) {
     if let Some(u) = message.usage.as_ref() {
         usage.total_tokens += u.total_tokens;
         usage.completion_tokens += u.completion_tokens;
@@ -352,7 +374,7 @@ async fn find_relevant_files(
     let strategy_tree_tools = vec!["tree", "cat"];
     let mut strategy_tree = strategy_messages.clone();
     strategy_tree.push(
-        crate::tools::tool_locate::pretend_tool_call(
+        pretend_tool_call(
             "tree", "{}",
             "💿 I'll use TREEGUESS strategy, to do that I need to start with a tree() call.".to_string()
         )
@@ -467,7 +489,7 @@ async fn find_relevant_files(
 }
 
 
-fn check_for_inspected_files(inspected_files: &mut HashSet<String>, messages: &[ChatMessage]) {
+pub fn check_for_inspected_files(inspected_files: &mut HashSet<String>, messages: &[ChatMessage]) {
     for context_file_msg in messages.iter().filter(|msg| msg.role == "context_file").cloned().collect::<Vec<ChatMessage>>() {
         if let Ok(context_files) = serde_json::from_str::<Vec<ContextFile>>(&context_file_msg.content) {
             for context_file in context_files {

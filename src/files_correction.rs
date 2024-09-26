@@ -4,9 +4,9 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
-use crate::files_in_workspace::ls_files;
 use crate::global_context::GlobalContext;
 use crate::fuzzy_search::fuzzy_search;
+
 
 pub async fn paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
     let file_paths_from_memory = global_context.read().await.documents_state.memory_document_map.keys().map(|x|x.clone()).collect::<Vec<_>>();

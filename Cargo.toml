@@ -34,7 +34,7 @@ tower-layer = "0.3.2"
 tracing = "0.1"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tokenizers = "0.13"
+tokenizers = "0.20"
 ropey = "1.6"
 home = "0.5"
 structopt = "0.3"
