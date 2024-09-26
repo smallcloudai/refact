@@ -15,8 +15,7 @@ tools = None
 async def ask_chat(messages):
     global tools
     if tools is None:
-        tools_turn_on = {"definition"}
-        tools = await chat_client.tools_fetch_and_filter(base_url="http://127.0.0.1:8001/v1", tools_turn_on=tools_turn_on)
+        tools = await chat_client.tools_fetch_and_filter(base_url="http://127.0.0.1:8001/v1", tools_turn_on=None)
     assistant_choices = await chat_client.ask_using_http(
         "http://127.0.0.1:8001/v1",
         messages,
