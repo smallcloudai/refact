@@ -74,7 +74,7 @@ def update_response_box():
     response_box.text = [("", response_text)]
     for tool_call in tool_calls.values():
         function = tool_call["function"]
-        response_box.text.append(("", f"\n  {function["name"]}({function["arguments"]})"))
+        response_box.text.append(("", f"\n  {function['name']}({function['arguments']})"))
         if "context_files" in tool_call:
             context_files = tool_call["context_files"]
             if len(context_files) > 4:
@@ -178,7 +178,7 @@ def process_streaming_data(data):
         if tool_call_id in tool_calls:
             tool_call = tool_calls.pop(tool_call_id)
             function = tool_call["function"]
-            print_formatted_text(f"  {function["name"]}({function["arguments"]})")
+            print_formatted_text(f"  {function['name']}({function['arguments']})")
         else:
             print_formatted_text(f"  <Unknown tool call>")
         print_lines(indented)
