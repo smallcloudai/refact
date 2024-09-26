@@ -5,13 +5,12 @@ use serde_json::Value;
 
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
-
 use crate::at_commands::at_commands::{AtCommandsContext, vec_context_file_to_context_tools};
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
-use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, get_files_in_dir};
-use crate::files_in_workspace::get_file_text_from_memory_or_disk;
+use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs};
+use crate::files_in_workspace::{get_file_text_from_memory_or_disk, ls_files};
 
 
 pub struct ToolCat;
@@ -71,7 +70,7 @@ impl Tool for ToolCat {
             let candidates_file = file_repair_candidates(gcx.clone(), &p, top_n, false).await;
             let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &p, false, top_n).await;
 
-            if PathBuf::from(&p).extension().is_some() || candidates_dir.is_empty() {
+            if !candidates_file.is_empty() || candidates_dir.is_empty() {
                 let file_path = match return_one_candidate_or_a_good_error(gcx.clone(), &p, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
                     Ok(f) => f,
                     Err(e) => { files_not_found_errs.push(e); continue;}
@@ -82,7 +81,7 @@ impl Tool for ToolCat {
                     Ok(f) => f,
                     Err(e) => { files_not_found_errs.push(e); continue;}
                 };
-                let files_in_dir = get_files_in_dir(gcx.clone(), &PathBuf::from(candidate)).await;
+                let files_in_dir = ls_files(&PathBuf::from(candidate), false).unwrap_or(vec![]);
                 corrected_paths.extend(files_in_dir.into_iter().map(|x|x.to_string_lossy().to_string()));
             }
         }

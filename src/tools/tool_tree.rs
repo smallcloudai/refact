@@ -11,7 +11,8 @@ use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::at_commands::at_tree::{construct_tree_out_of_flat_list_of_paths, print_files_tree_with_budget};
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextEnum};
-use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, paths_from_anywhere};
+use crate::files_correction::{correct_to_nearest_dir_path, correct_to_nearest_filename, get_project_dirs, paths_from_anywhere};
+use crate::files_in_workspace::ls_files;
 
 
 pub struct ToolTree;
@@ -32,14 +33,7 @@ impl Tool for ToolTree {
         let paths_from_anywhere = paths_from_anywhere(gcx.clone()).await;
 
         let path_mb = match args.get("path") {
-            Some(Value::String(s)) => {
-                let s = preformat_path(s);
-                let p = PathBuf::from(&s);
-                if p.extension().is_some() {
-                    return Err(format!("{:?} is a file, not a directory, you can use cat() to open it", s));
-                }
-                Some(s)
-            },
+            Some(Value::String(s)) => Some(preformat_path(s)),
             Some(v) => return Err(format!("argument `path` is not a string: {:?}", v)),
             None => None,
         };
@@ -48,14 +42,22 @@ impl Tool for ToolTree {
             Some(v) => return Err(format!("argument `use_ast` is not a boolean: {:?}", v)),
             None => false,
         };
+        
 
         let tree = match path_mb {
             Some(path) => {
-                let candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
-                let candidate = return_one_candidate_or_a_good_error(gcx.clone(), &path, &candidates, &get_project_dirs(gcx.clone()).await, true).await?;
+                let file_candidates = correct_to_nearest_filename(gcx.clone(), &path, false, 10).await;
+                let dir_candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
+                if dir_candidates.is_empty() && !file_candidates.is_empty() {
+                    return Err("cannot execute tree().\nReason: 'path' provided probably refers to a file, not a directory.\nResolution: use 'path' that refers to a directory".to_string());
+                }
+
+                let candidate = return_one_candidate_or_a_good_error(
+                    gcx.clone(), &path, &dir_candidates, &get_project_dirs(gcx.clone()).await, true
+                ).await?;
                 let true_path = PathBuf::from(candidate);
-                let filtered_paths_from_anywhere = paths_from_anywhere.iter().filter(|f|f.starts_with(&true_path)).cloned().collect();
-                construct_tree_out_of_flat_list_of_paths(&filtered_paths_from_anywhere)
+                let paths_in_dir = ls_files(&true_path, true).unwrap_or(vec![]);
+                construct_tree_out_of_flat_list_of_paths(&paths_in_dir)
             },
             None => construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere)
         };

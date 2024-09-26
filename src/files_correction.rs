@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
-
+use crate::files_in_workspace::ls_files;
 use crate::global_context::GlobalContext;
 use crate::fuzzy_search::fuzzy_search;
 
@@ -74,16 +74,6 @@ fn make_cache(paths: &Vec<PathBuf>, workspace_folders: &Vec<PathBuf>) -> (
     (cache_correction, cache_shortened, cnt)
 }
 
-pub async fn get_files_in_dir(
-    global_context: Arc<ARwLock<GlobalContext>>,
-    dir: &PathBuf,
-) -> Vec<PathBuf> {
-    let paths = paths_from_anywhere(global_context.clone()).await;
-    paths.into_iter()
-        .filter(|path| path.parent() == Some(dir))
-        .collect()
-}
-
 pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, HashSet<String>>>, Arc<HashSet<String>>) {
     let (cache_dirty_arc, mut cache_correction_arc, mut cache_shortened_arc) = {
         let cx = global_context.read().await;
@@ -117,13 +107,43 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
     return (cache_correction_arc, cache_shortened_arc);
 }
 
+async fn complete_path_with_project_dir(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    correction_candidate: &String,
+    is_dir: bool,
+) -> Option<PathBuf> {
+    fn path_exists(path: &PathBuf, is_dir: bool) -> bool {
+        return if (is_dir && path.is_dir()) || (!is_dir && path.is_file()) {
+            true
+        } else {
+            false
+        }
+    }
+    let candidate_path = PathBuf::from(correction_candidate);
+    let project_dirs = get_project_dirs(gcx.clone()).await;
+    for p in project_dirs {
+        if path_exists(&candidate_path, is_dir) && candidate_path.starts_with(&p) {
+            return Some(candidate_path);
+        }
+        let j_path = p.join(&candidate_path);
+        if path_exists(&j_path, is_dir) {
+            return Some(j_path);
+        }
+    }
+    None
+}
+
 pub async fn correct_to_nearest_filename(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     correction_candidate: &String,
     fuzzy: bool,
     top_n: usize,
 ) -> Vec<String> {
-    let (cache_correction_arc, cache_fuzzy_arc) = files_cache_rebuild_as_needed(global_context.clone()).await;
+    if let Some(fixed) = complete_path_with_project_dir(gcx.clone(), correction_candidate, false).await {
+        return vec![fixed.to_string_lossy().to_string()];
+    }
+
+    let (cache_correction_arc, cache_fuzzy_arc) = files_cache_rebuild_as_needed(gcx.clone()).await;
     // it's dangerous to use cache_correction_arc without a mutex, but should be fine as long as it's read-only
     // (another thread never writes to the map itself, it can only replace the arc with a different map)
 
@@ -148,6 +168,10 @@ pub async fn correct_to_nearest_dir_path(
     fuzzy: bool,
     top_n: usize,
 ) -> Vec<String> {
+    if let Some(fixed) = complete_path_with_project_dir(gcx.clone(), correction_candidate, true).await {
+        return vec![fixed.to_string_lossy().to_string()];
+    }
+
     fn get_parent(p: &String) -> Option<String> {
         PathBuf::from(p).parent().map(PathBuf::from).map(|x|x.to_string_lossy().to_string())
     }
