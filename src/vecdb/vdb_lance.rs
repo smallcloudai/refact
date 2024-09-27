@@ -1,9 +1,8 @@
 use std::any::Any;
-use std::collections::HashSet;
+use itertools::Itertools;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
-
 use arrow::array::ArrayData;
 use arrow::buffer::Buffer;
 use arrow::compute::concat_batches;
@@ -12,10 +11,8 @@ use arrow_array::cast::{as_fixed_size_list_array, as_primitive_array, as_string_
 use arrow_array::types::{Float32Type, UInt64Type};
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use futures_util::TryStreamExt;
-use itertools::Itertools;
 use lance::dataset::{WriteMode, WriteParams};
 use tempfile::{tempdir, TempDir};
-use tracing::info;
 use vectordb::database::Database;
 use vectordb::table::Table;
 
@@ -32,7 +29,7 @@ pub struct VecDBHandler {
     _data_database_temp_dir: TempDir,
     data_table: Table,
     schema: SchemaRef,
-    data_table_hashes: HashSet<String>,
+    // data_table_hashes: HashSet<String>,
     embedding_size: i32,
 }
 
@@ -66,9 +63,9 @@ impl VecDBHandler {
         let vec_trait = Arc::new(Field::new("item", DataType::Float32, true));
         let schema = Arc::new(Schema::new(vec![
             Field::new("vector", DataType::FixedSizeList(vec_trait, embedding_size), true),
-            Field::new("window_text", DataType::Utf8, true),
-            Field::new("window_text_hash", DataType::Utf8, true),
-            Field::new("file_path", DataType::Utf8, true),
+            // Field::new("window_text", DataType::Utf8, true),
+            // Field::new("window_text_hash", DataType::Utf8, true),
+            Field::new("scope", DataType::Utf8, true),
             Field::new("start_line", DataType::UInt64, true),
             Field::new("end_line", DataType::UInt64, true),
         ]));
@@ -83,7 +80,7 @@ impl VecDBHandler {
             _data_database_temp_dir: data_database_temp_dir,
             schema,
             data_table,
-            data_table_hashes: HashSet::new(),
+            // data_table_hashes: HashSet::new(),
             embedding_size,
         })
     }
@@ -95,7 +92,8 @@ impl VecDBHandler {
         }
     }
 
-    pub async fn add_or_update(&mut self, records: &Vec<VecdbRecord>) -> Result<(), String> {
+    pub async fn vecdb_records_add(&mut self, records: &Vec<VecdbRecord>)
+    {
         fn make_emb_data(records: &Vec<VecdbRecord>, embedding_size: i32) -> Result<ArrayData, String> {
             let vec_trait = Arc::new(Field::new("item", DataType::Float32, true));
             let mut emb_builder: Vec<f32> = vec![];
@@ -124,16 +122,17 @@ impl VecDBHandler {
         }
 
         if records.is_empty() {
-            return Ok(());
+            return;
         }
 
         let vectors: ArrayData = match make_emb_data(&records, self.embedding_size) {
             Ok(res) => res,
-            Err(err) => return Err(format!("{:?}", err))
+            Err(err) => {
+                tracing::error!("{:?}", err);
+                return;
+            }
         };
-        let window_texts: Vec<String> = records.iter().map(|x| x.window_text.clone()).collect();
-        let window_text_hashes: Vec<String> = records.iter().map(|x| x.window_text_hash.clone()).collect();
-        let file_paths: Vec<String> = records.iter().map(|x| x.file_path.to_str().unwrap_or("No filename").to_string()).collect();
+        let scopes: Vec<String> = records.iter().map(|x| x.file_path.to_str().unwrap_or("No filename").to_string()).collect();
         let start_lines: Vec<u64> = records.iter().map(|x| x.start_line).collect();
         let end_lines: Vec<u64> = records.iter().map(|x| x.end_line).collect();
         let data_batches_iter = RecordBatchIterator::new(
@@ -141,45 +140,51 @@ impl VecDBHandler {
                 self.schema.clone(),
                 vec![
                     Arc::new(FixedSizeListArray::from(vectors.clone())),
-                    Arc::new(StringArray::from(window_texts.clone())),
-                    Arc::new(StringArray::from(window_text_hashes.clone())),
-                    Arc::new(StringArray::from(file_paths.clone())),
+                    Arc::new(StringArray::from(scopes.clone())),
                     Arc::new(UInt64Array::from(start_lines.clone())),
                     Arc::new(UInt64Array::from(end_lines.clone())),
                 ],
             )],
             self.schema.clone(),
         );
-        let data_res = self.data_table.add(
+
+        tracing::info!("vecdb_records_add: adding {} records", records.len());
+        if let Err(err) = self.data_table.add(
             data_batches_iter, Option::from(WriteParams {
                 mode: WriteMode::Append,
                 ..Default::default()
             }),
-        );
-        self.data_table_hashes.extend(window_text_hashes);
-        match data_res.await {
-            Ok(_) => Ok(()),
-            Err(err) => return Err(format!("{:?}", err))
+        ).await {
+            tracing::error!("{}", err);
         }
     }
 
-    pub async fn remove(&mut self, file_path: &PathBuf) {
-        let file_path_str = match file_path.to_str() {
-            None => {
-                info!("File path is not a string");
-                return;
-            }
-            Some(res) => res
-        };
+    pub async fn vecdb_records_remove(
+        &mut self,
+        scopes_to_remove: Vec<String>
+    ) {
+        let mut delete_queries = Vec::new();
 
-        // valerii: In documentation I found no way to preprocess strings to prevent SQL injections
-        match self.data_table.delete(
-            format!("(file_path = \"{}\")", file_path_str).as_str()  // TODO: Prevent a possible sql injection here
-        ).await {
-            Ok(_) => {}
-            Err(err) => {
-                info!("Error while deleting from data table: {:?}", err);
+        for chunk in &scopes_to_remove.iter().chunks(100) {
+            let paths_to_remove: Vec<&String> = chunk.collect();
+            let formatted_scopes: String = paths_to_remove
+                .iter()
+                .map(|scope| format!("'{}'", scope.replace("'", "''")))
+                .join(", ");
+            let delete_query = format!("scope IN ({})", formatted_scopes);
+            delete_queries.push(delete_query);
+        }
+
+        for delete_query in delete_queries {
+            tracing::info!("delete: {}", delete_query.as_str());
+            match self.data_table.delete(delete_query.as_str()).await {
+                Ok(_) => {}
+                Err(err) => {
+                    tracing::error!("Error deleting from vecdb: {:?}", err);
+                }
             }
+            let cnt = self.data_table.count_deleted_rows().await.unwrap();
+            tracing::info!("deleted {} records", cnt);
         }
     }
 
@@ -226,16 +231,8 @@ impl VecDBHandler {
 
             Ok(VecdbRecord {
                 vector: embedding,
-                window_text: as_string_array(record_batch.column_by_name("window_text")
-                    .expect("Missing column 'window_text'"))
-                    .value(idx)
-                    .to_string(),
-                window_text_hash: as_string_array(record_batch.column_by_name("window_text_hash")
-                    .expect("Missing column 'window_text_hash'"))
-                    .value(idx)
-                    .to_string(),
-                file_path: PathBuf::from(as_string_array(record_batch.column_by_name("file_path")
-                    .expect("Missing column 'file_path'"))
+                file_path: PathBuf::from(as_string_array(record_batch.column_by_name("scope")
+                    .expect("Missing column 'scope'"))
                     .value(idx)
                     .to_string()),
                 start_line: as_primitive_array::<UInt64Type>(record_batch.column_by_name("start_line")
@@ -250,7 +247,7 @@ impl VecDBHandler {
         }).collect()
     }
 
-    pub async fn search(
+    pub async fn vecdb_search(
         &mut self,
         embedding: &Vec<f32>,
         top_n: usize,

@@ -268,7 +268,9 @@ impl VecDb {
     }
 
     pub async fn remove_file(&self, file_path: &PathBuf) {
-        self.vecdb_handler.lock().await.remove(file_path).await;
+        let mut handler_locked = self.vecdb_handler.lock().await;
+        let file_path_str = file_path.to_string_lossy().to_string();
+        handler_locked.vecdb_records_remove(vec![file_path_str]).await;
     }
 }
 
@@ -542,7 +544,7 @@ impl VecdbSearch for VecDb {
         vecdb_scope_filter_mb: Option<String>,
         api_key: &String,
     ) -> Result<SearchResult, String> {
-        // TODO: move away from struct, replace self with Arc, make locks shorter
+        // TODO: move out of struct, replace self with Arc
         let t0 = std::time::Instant::now();
         let embedding_mb = fetch_embedding::get_embedding_with_retry(
             self.vecdb_emb_client.clone(),
@@ -560,7 +562,7 @@ impl VecdbSearch for VecDb {
 
         let mut handler_locked = self.vecdb_handler.lock().await;
         let t1 = std::time::Instant::now();
-        let mut results = match handler_locked.search(&embedding_mb.unwrap()[0], top_n, vecdb_scope_filter_mb).await {
+        let mut results = match handler_locked.vecdb_search(&embedding_mb.unwrap()[0], top_n, vecdb_scope_filter_mb).await {
             Ok(res) => res,
             Err(err) => { return Err(err.to_string()) }
         };

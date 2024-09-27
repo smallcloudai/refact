@@ -55,7 +55,7 @@ async fn execute_att_search(
                 &candidates_file,
                 &get_project_dirs(gcx.clone()
                 ).await, false).await?;
-            let filter = Some(format!("(file_path = \"{}\")", file_path));
+            let filter = Some(format!("(scope = \"{}\")", file_path));
             info!("att-search: filter: {:?}", filter);
             Ok(execute_at_search(ccx.clone(), &query, filter).await?)
         }
@@ -66,7 +66,7 @@ async fn execute_att_search(
                 &candidates_dir,
                 &get_project_dirs(gcx.clone()
                 ).await, true).await?;
-            let filter = format!("(file_path LIKE '{}%')", dir);
+            let filter = format!("(scope LIKE '{}%')", dir);
             info!("att-search: filter: {:?}", filter);
             Ok(execute_at_search(ccx.clone(), &query, Some(filter)).await?)
         }

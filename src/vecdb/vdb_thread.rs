@@ -4,12 +4,11 @@ use std::ops::Div;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::time::SystemTime;
-
-use tokenizers::Tokenizer;
+use std::collections::HashSet;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock, Notify as ANotify};
 use tokio::task::JoinHandle;
-use tokio::time::Instant;
 use tracing::{info, warn};
+use tokenizers::Tokenizer;
 
 use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::get_embedding_with_retry;
@@ -87,19 +86,18 @@ async fn cooldown_queue_thread(
 }
 
 async fn vectorize_batch_from_q(
-    embed_q: &mut Vec<SplitResult>,
+    run_actual_model_on_these: &mut Vec<SplitResult>,
+    ready_to_vecdb: &mut Vec<VecdbRecord>,
     vstatus: Arc<AMutex<VecDbStatus>>,
     client: Arc<AMutex<reqwest::Client>>,
     constants: &VecdbConstants,
     api_key: &String,
-    vecdb_handler_arc: Arc<AMutex<VecDBHandler>>,
     vecdb_cache_arc: Arc<AMutex<VecDBCache>>,
     #[allow(non_snake_case)]
     B: usize,
 ) -> Result<(), String> {
-    let batch = embed_q.drain(..B.min(embed_q.len())).collect::<Vec<_>>();
+    let batch = run_actual_model_on_these.drain(..B.min(run_actual_model_on_these.len())).collect::<Vec<_>>();
     assert!(batch.len() > 0);
-    let t0 = Instant::now();
 
     let batch_result = get_embedding_with_retry(
         client.clone(),
@@ -121,18 +119,17 @@ async fn vectorize_batch_from_q(
         vstatus_locked.vectors_made_since_start += batch_result.len();
     }
 
-    let mut vecdb_records = vec![];
-    let mut cache_records = vec![];
+    let mut send_to_cache = vec![];
     for (i, data_res) in batch.iter().enumerate() {
         if batch_result[i].is_empty() {
             info!("skipping an empty embedding split");
             continue;
         }
-        vecdb_records.push(
+        ready_to_vecdb.push(
             VecdbRecord {
                 vector: Some(batch_result[i].clone()),
-                window_text: data_res.window_text.clone(),
-                window_text_hash: data_res.window_text_hash.clone(),
+                // window_text: data_res.window_text.clone(),
+                // window_text_hash: data_res.window_text_hash.clone(),
                 file_path: data_res.file_path.clone(),
                 start_line: data_res.start_line,
                 end_line: data_res.end_line,
@@ -140,7 +137,7 @@ async fn vectorize_batch_from_q(
                 usefulness: 0.0,
             }
         );
-        cache_records.push(
+        send_to_cache.push(
             SimpleTextHashVector {
                 vector: Some(batch_result[i].clone()),
                 window_text: data_res.window_text.clone(),
@@ -149,60 +146,50 @@ async fn vectorize_batch_from_q(
         );
     }
 
-    if vecdb_records.len() > 0 {
-        info!("embeddings got {} records in {}ms", vecdb_records.len(), t0.elapsed().as_millis());
-        match vecdb_handler_arc.lock().await.add_or_update(&vecdb_records).await {
-            Err(e) => {
-                warn!("Error adding/updating records in VecDB: {}", e);
-            }
-            _ => {}
-        }
-    }
-
-    if cache_records.len() > 0 {
-        match vecdb_cache_arc.lock().await.cache_add_new_records(cache_records).await {
+    if send_to_cache.len() > 0 {
+        match vecdb_cache_arc.lock().await.cache_add_new_records(send_to_cache).await {
             Err(e) => {
                 warn!("Error adding records to the cacheDB: {}", e);
             }
             _ => {}
         }
     }
+
     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;  // be nice to the server: up to 60 requests per minute
 
     Ok(())
 }
 
-async fn add_from_cache_to_vec_db(
-    delayed_cached_splits_q: &mut Vec<SplitResult>,
-    vecdb_handler_arc: Arc<AMutex<VecDBHandler>>,
+async fn from_splits_to_vecdb_records_applying_cache(
+    splits: &mut Vec<SplitResult>,
+    ready_to_vecdb: &mut Vec<VecdbRecord>,
     vecdb_cache_arc: Arc<AMutex<VecDBCache>>,
     group_size: usize,
 ) {
-    info!("add_from_cache_to_vec_db: {} delayed cached splits in queue", delayed_cached_splits_q.len());
-    while !delayed_cached_splits_q.is_empty() {
-        let batch = delayed_cached_splits_q
-            .drain(..group_size.min(delayed_cached_splits_q.len()))
+    while !splits.is_empty() {
+        let batch: Vec<SplitResult> = splits
+            .drain(..group_size.min(splits.len()))
             .collect::<Vec<_>>();
-        let t0 = std::time::Instant::now();
-        let records: Vec<VecdbRecord> = match vecdb_cache_arc.lock().await.get_records_by_splits(&batch).await {
-            Ok((records, non_found_splits)) => {
-                assert!(non_found_splits.is_empty());
-                records
+        // let t0 = std::time::Instant::now();
+        if let Ok(vectors) = vecdb_cache_arc.lock().await.fetch_vectors_from_cache(&batch).await {
+            // info!("query cache {} records {:.3}s", batch.len(), t0.elapsed().as_secs_f32());
+            for (split, maybe_vector) in batch.iter().zip(vectors.iter()) {
+                if maybe_vector.is_none() {
+                    continue;
+                }
+                ready_to_vecdb.push(VecdbRecord {
+                    vector: maybe_vector.clone(),
+                    file_path: split.file_path.clone(),
+                    start_line: split.start_line,
+                    end_line: split.end_line,
+                    distance: -1.0,
+                    usefulness: 0.0,
+                });
             }
-            Err(err) => {
-                info!("Error getting records from cache: {}", err);
-                vec![]
-            }
-        };
-        info!("read {} delayed cached splits from cache db took {:.3}s", batch.len(), t0.elapsed().as_secs_f32());
-        match vecdb_handler_arc.lock().await.add_or_update(&records).await {
-            Err(e) => {
-                warn!("Error adding/updating records in VecDB: {}", e);
-            }
-            _ => {}
+        } else if let Err(err) = vecdb_cache_arc.lock().await.fetch_vectors_from_cache(&batch).await {
+            tracing::error!("{}", err);
         }
     }
-    info!("add_from_cache_to_vec_db: done");
 }
 
 async fn vectorize_thread(
@@ -215,13 +202,14 @@ async fn vectorize_thread(
     vstatus_notify: Arc<ANotify>,
     constants: VecdbConstants,
     api_key: String,
-    tokenizer: Arc<StdRwLock<Tokenizer>>,
+    _tokenizer: Arc<StdRwLock<Tokenizer>>,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) {
     let mut files_total: usize = 0;
     let mut reported_unprocessed: usize = 0;
-    let mut embed_q: Vec<SplitResult> = vec![];
-    let mut delayed_cached_splits_q: Vec<SplitResult> = vec![];
+    let mut run_actual_model_on_these: Vec<SplitResult> = vec![];
+    let mut ready_to_vecdb: Vec<VecdbRecord> = vec![];
+    // let mut delayed_cached_splits_q: Vec<SplitResult> = vec![];
 
     loop {
         let (msg_to_me, files_unprocessed, vstatus_changed) = {
@@ -251,19 +239,20 @@ async fn vectorize_thread(
         }
 
         loop {
-            if embed_q.len() >= constants.embedding_batch || (!embed_q.is_empty() && files_unprocessed == 0) {
-                vectorize_batch_from_q(
-                    &mut embed_q,
+            if run_actual_model_on_these.len() >= constants.embedding_batch || (!run_actual_model_on_these.is_empty() && files_unprocessed == 0) {
+                if let Err(err) = vectorize_batch_from_q(
+                    &mut run_actual_model_on_these,
+                    &mut ready_to_vecdb,
                     vstatus.clone(),
                     client.clone(),
                     &constants,
                     &api_key,
-                    vecdb_handler_arc.clone(),
                     vecdb_cache_arc.clone(),
                     constants.embedding_batch,
-                ).await.unwrap_or_else(|err| {
-                    warn!("Error vectorizing: {}", err);
-                });
+                ).await {
+                    tracing::error!("{}", err);
+                    continue;
+                }
             } else {
                 break;
             }
@@ -302,15 +291,7 @@ async fn vectorize_thread(
                     continue;
                 }
                 None => {
-                    // No files left to process
-                    if delayed_cached_splits_q.len() > 0 {
-                        add_from_cache_to_vec_db( // leftover splits
-                            &mut delayed_cached_splits_q,
-                            vecdb_handler_arc.clone(),
-                            vecdb_cache_arc.clone(),
-                            1024,
-                        ).await;
-                    }
+                    _send_to_vecdb(vecdb_handler_arc.clone(), &mut ready_to_vecdb).await;
                     let reported_vecdb_complete = {
                         let mut vstatus_locked = vstatus.lock().await;
                         let done = vstatus_locked.state == "done";
@@ -358,7 +339,7 @@ async fn vectorize_thread(
         }
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
-        let split_data = file_splitter.vectorization_split(&doc, None, gcx.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
+        let mut splits = file_splitter.vectorization_split(&doc, None, gcx.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
             info!("{}", err);
             vec![]
         });
@@ -367,7 +348,7 @@ async fn vectorize_thread(
             let path_vecdb = doc.doc_path.with_extension("vecdb");
             if let Ok(mut file) = std::fs::File::create(path_vecdb) {
                 let mut writer = std::io::BufWriter::new(&mut file);
-                for chunk in split_data.iter() {
+                for chunk in splits.iter() {
                     let beautiful_line = format!("\n\n------- {:?} {}-{} -------\n", chunk.symbol_path, chunk.start_line, chunk.end_line);
                     let _ = writer.write_all(beautiful_line.as_bytes());
                     let _ = writer.write_all(chunk.window_text.as_bytes());
@@ -376,28 +357,36 @@ async fn vectorize_thread(
             }
         }
 
-        {
-            let vecdb_cache = vecdb_cache_arc.lock().await;
-            for split_item in split_data.into_iter() {
-                if vecdb_cache.contains(&split_item.window_text_hash) {
-                    delayed_cached_splits_q.push(split_item);
-                } else {
-                    embed_q.push(split_item);
-                }
-            }
-        }
-        // Do not keep too many
-        if delayed_cached_splits_q.len() > 1024 {
-            add_from_cache_to_vec_db(
-                &mut delayed_cached_splits_q,
-                vecdb_handler_arc.clone(),
-                vecdb_cache_arc.clone(),
-                1024,
-            ).await;
+        from_splits_to_vecdb_records_applying_cache(
+            &mut splits,
+            &mut ready_to_vecdb,
+            vecdb_cache_arc.clone(),
+            1024,
+        ).await;
+
+        if ready_to_vecdb.len() > 100 {
+            _send_to_vecdb(vecdb_handler_arc.clone(), &mut ready_to_vecdb).await;
         }
     }
 }
 
+async fn _send_to_vecdb(
+    vecdb_handler_arc: Arc<AMutex<VecDBHandler>>,
+    ready_to_vecdb: &mut Vec<VecdbRecord>,
+) {
+    while !ready_to_vecdb.is_empty() {
+        let unique_file_paths: HashSet<String> = ready_to_vecdb.iter()
+            .map(|x| x.file_path.to_str().unwrap_or("No filename").to_string())
+            .collect();
+        let unique_file_paths_vec: Vec<String> = unique_file_paths.into_iter().collect();
+        vecdb_handler_arc.lock().await.vecdb_records_remove(unique_file_paths_vec).await;
+
+        let batch: Vec<VecdbRecord> = ready_to_vecdb.drain(..).collect();
+        if !batch.is_empty() {
+            vecdb_handler_arc.lock().await.vecdb_records_add(&batch).await;
+        }
+    }
+}
 
 impl FileVectorizerService {
     pub async fn new(

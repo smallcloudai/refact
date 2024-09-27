@@ -48,7 +48,7 @@ fn results2message(results: &Vec<vecdb::vdb_structs::VecdbRecord>) -> Vec<Contex
         );
         vector_of_context_file.push(ContextFile {
             file_name,
-            file_content: r.window_text.clone(),
+            file_content: "".to_string(),
             line1: r.start_line as usize + 1,
             line2: r.end_line as usize + 1,
             symbols: vec![],

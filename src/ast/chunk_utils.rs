@@ -1,4 +1,3 @@
-use std::cmp::max;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -9,6 +8,7 @@ use tokenizers::Tokenizer;
 
 use crate::ast::count_tokens;
 use crate::vecdb::vdb_structs::SplitResult;
+
 
 pub fn official_text_hashing_function(s: &String) -> String {
     let digest = md5::compute(s);

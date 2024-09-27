@@ -2,14 +2,12 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
-
-use hashbrown::HashSet;
-use rusqlite::{OpenFlags, params, Result};
 use tokio::fs;
 use tokio_rusqlite::Connection;
 use tracing::info;
+use rusqlite::{OpenFlags, params, Result};
 
-use crate::vecdb::vdb_structs::{VecdbRecord, SplitResult, SimpleTextHashVector};
+use crate::vecdb::vdb_structs::{SplitResult, SimpleTextHashVector};
 
 
 impl Debug for VecDBCache {
@@ -20,7 +18,6 @@ impl Debug for VecDBCache {
 
 pub struct VecDBCache {
     cache_database: Connection,
-    cached_window_text_hashes: HashSet<String>,
 }
 
 const EMB_TABLE_NAME: &str = "embeddings";
@@ -74,25 +71,6 @@ async fn check_and_recreate_embeddings_table(db: &Connection) -> tokio_rusqlite:
     }).await
 }
 
-async fn select_window_text_hashes(db: &Connection) -> HashSet<String> {
-    let query = format!("SELECT window_text_hash FROM {EMB_TABLE_NAME}");
-    let result = db.call(move |connection| {
-        let mut statement = connection.prepare(&query)?;
-        let mut rows = statement.query([])?;
-        let mut hashes = HashSet::new();
-        while let Some(row) = rows.next()? {
-            let hash: String = row.get(0)?;
-            hashes.insert(hash);
-        }
-        Ok(hashes)
-    }).await;
-
-    result.unwrap_or_else(|err| {
-        info!("Error while selecting window_text_hashes: {:?}", err);
-        HashSet::new()
-    })
-}
-
 impl VecDBCache {
     pub async fn init(cache_dir: &PathBuf, model_name: &String, embedding_size: i32) -> Result<VecDBCache, String> {
         let cache_dir_str = match cache_dir.join("refact_vecdb_cache")
@@ -127,18 +105,15 @@ impl VecDBCache {
             Err(err) => return Err(format!("{:?}", err))
         }
 
-        info!("building window_text_hashes index");
-        let cached_window_text_hashes = select_window_text_hashes(&cache_database).await;
         info!("building window_text_hashes complete");
 
-        Ok(VecDBCache { cache_database, cached_window_text_hashes })
+        Ok(VecDBCache { cache_database  })
     }
 
-    pub fn contains(&self, window_text_hash: &String) -> bool {
-        self.cached_window_text_hashes.contains(window_text_hash)
-    }
-
-    pub async fn process_simple_hash_text_vector(&mut self, v: &mut Vec<SimpleTextHashVector>) -> Result<(), String> {
+    pub async fn process_simple_hash_text_vector(
+        &mut self,
+        v: &mut Vec<SimpleTextHashVector>
+    ) -> Result<(), String> {
         let placeholders: String = v.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
         let query = format!("SELECT vector, window_text_hash FROM {EMB_TABLE_NAME} WHERE window_text_hash IN ({placeholders})");
         let vclone = v.clone();
@@ -167,7 +142,7 @@ impl VecDBCache {
         Ok(())
     }
 
-    pub async fn get_records_by_splits(&mut self, splits: &Vec<SplitResult>) -> Result<(Vec<VecdbRecord>, Vec<SplitResult>), String> {
+    pub async fn fetch_vectors_from_cache(&mut self, splits: &Vec<SplitResult>) -> Result<Vec<Option<Vec<f32>>>, String> {
         let placeholders: String = splits.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
         let query = format!("SELECT * FROM {EMB_TABLE_NAME} WHERE window_text_hash IN ({placeholders})");
         let splits_clone = splits.clone();
@@ -196,25 +171,15 @@ impl VecDBCache {
             Ok(records) => records,
             Err(err) => return Err(format!("{:?}", err))
         };
-        let mut records = vec![];
-        let mut non_found_splits = vec![];
+        let mut records: Vec<Option<Vec<f32>>> = vec![];
         for split in splits.iter() {
             if let Some(query_data) = found_hashes.get(&split.window_text_hash) {
-                records.push(VecdbRecord {
-                    vector: Some(query_data.0.clone()),
-                    window_text: split.window_text.clone(),
-                    window_text_hash: split.window_text_hash.clone(),
-                    file_path: split.file_path.clone(),
-                    start_line: split.start_line,
-                    end_line: split.end_line,
-                    distance: -1.0,
-                    usefulness: 0.0,
-                })
+                records.push(Some(query_data.0.clone()));
             } else {
-                non_found_splits.push(split.clone());
+                records.push(None);
             }
         }
-        Ok((records, non_found_splits))
+        Ok(records)
     }
 
     pub async fn cache_add_new_records(&mut self, records: Vec<SimpleTextHashVector>) -> Result<(), String> {
@@ -259,7 +224,7 @@ impl VecDBCache {
     pub async fn size(&self) -> Result<usize, String> {
         self.cache_database.call(move |connection| {
             let mut stmt = connection.prepare(
-                &format!("SELECT COUNT(*) FROM {EMB_TABLE_NAME}")
+                &format!("SELECT COUNT(1) FROM {EMB_TABLE_NAME}")
             )?;
             let count: usize = stmt.query_row([], |row| row.get(0))?;
             Ok(count)
