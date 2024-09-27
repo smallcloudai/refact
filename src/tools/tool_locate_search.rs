@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
@@ -13,7 +12,6 @@ use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, SubchatParameters, ContextFile};
 use crate::global_context::GlobalContext;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
-use crate::files_correction::{shortify_paths};
 use crate::at_commands::at_commands::AtCommandsContext;
 
 
@@ -27,7 +25,7 @@ Here's the list of reasons a file or symbol might be relevant wrt task descripti
 TOCHANGE = the main changes go there
 MORE_TOCHANGE = likely to change as well, as a consequence of completing the task
 ADD_NEARBY = good place to add new code
-DEFINITIONS = classes/functions/types involved, but no changes needed
+DEFINITIONS = classes/functions/types involved in the code that has to be changed
 HIGHLEV = crucial to understand the logic, such as a database scheme, high level script
 USERCODE = code that uses the things the task description is about
 SIMILAR = code that might provide an example of how to write similar things
@@ -95,27 +93,6 @@ Use the following structure:
 Don't write backquotes, json format only.
 "###;
 
-// {
-//     "dir/dir/file.ext": {                    // A path to file visible in your context, with no ambiguity at all
-//         "TOCHANGE": "symbol1,symbol2",       // symbols that w
-//         "MORE_TOCHANGE": "symbol1,symbol2",
-//         "DEFINITIONS": "symbol1,symbol2",
-//         "HIGHLEV": "symbol1,symbol2",
-//         "USERCODE": "symbol1,symbol2",
-//         "SIMILAR": "symbol1,symbol2",
-//     }
-//     ...all relevant files...
-// }
-
-
-#[derive(Serialize, Deserialize, Debug)]
-struct LocateOutput {
-    symbols: String,
-    why_code: String,
-    // "desc_wrt_task": "string",    // What does it do that is relevant to the task? Avoid generic language, put there identifiers and actions performed.
-    // desc_wrt_task: String,
-}
-
 
 #[async_trait]
 impl Tool for ToolLocateSearch {
@@ -148,16 +125,16 @@ impl Tool for ToolLocateSearch {
 
         ccx.lock().await.pp_skeleton = true;
 
-        let (res, usage, tool_message) = find_relevant_files_with_search(
+        let mut results: Vec<ContextEnum>;
+        let usage: ChatUsage;
+        let tool_message: String;
+        (results, usage, tool_message) = find_relevant_files_with_search(
             ccx_subchat,
             params,
             tool_call_id.clone(),
             problem_statement,
         ).await?;
 
-        let gcx = ccx.lock().await.global_context.clone();
-
-        let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
             content: tool_message,
@@ -167,26 +144,11 @@ impl Tool for ToolLocateSearch {
             ..Default::default()
         }));
 
-        for (file_path, file_info) in res {
-            let text = get_file_text_from_memory_or_disk(gcx.clone(), &std::path::PathBuf::from(&file_path)).await?.to_string();
-            results.push(ContextEnum::ContextFile(ContextFile {
-                file_name: file_path.clone(),
-                file_content: text.clone(),
-                line1: 0,
-                line2: text.lines().count(),
-                symbols: vec![],
-                gradient_type: -1,
-                usefulness: 90.0,
-                // usefulness: file_info.relevancy as f32 / 5. * 80.,
-                is_body_important: false,
-            }));
-        }
-
         Ok((false, results))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec!["search".to_string()]
+        vec!["vecdb".to_string()]
     }
 }
 
@@ -195,17 +157,18 @@ async fn find_relevant_files_with_search(
     subchat_params: SubchatParameters,
     tool_call_id: String,
     user_query: String,
-) -> Result<(IndexMap<String, LocateOutput>, ChatUsage, String), String> {
+) -> Result<(Vec<ContextEnum>, ChatUsage, String), String> {
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
     let total_files_in_project = gcx.read().await.documents_state.workspace_files.lock().unwrap().len();
 
     let mut usage = ChatUsage { ..Default::default() };
-    let mut real_files = IndexMap::new();
+    // let mut real_files = IndexMap::new();
     let mut inspected_files = HashSet::new();
+    let mut results: Vec<ContextEnum> = vec![];
 
     if total_files_in_project == 0 {
         let tool_message = format!("Inspected 0 files, project has 0 files");
-        return Ok((real_files, usage, tool_message))
+        return Ok((results, usage, tool_message))
     }
 
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
@@ -233,36 +196,73 @@ async fn find_relevant_files_with_search(
     let last_message = result.last().unwrap();
     crate::tools::tool_relevant_files::update_usage_from_message(&mut usage, &last_message);
     assert!(last_message.role == "assistant");
-    // let reduced_files = parse_reduce_output(&last_message.content)?;
-    let files2output = serde_json::from_str::<IndexMap<String, LocateOutput>>(last_message.content.as_str()).map_err(|e| {
+
+    let assistant_output = serde_json::from_str::<IndexMap<String, IndexMap<String, String>>>(last_message.content.as_str()).map_err(|e| {
         format!("Unable to parse JSON: {:?}", e)
     })?;
 
-    // let error_log: String;
-    // (real_files, error_log) = _reduced_files_to_reality(reduced_files, ccx.clone()).await;
+    for (category, files) in assistant_output.iter() {
+        for (file_path, symbols) in files {
+            let text = get_file_text_from_memory_or_disk(gcx.clone(), &std::path::PathBuf::from(&file_path)).await?.to_string();
+            let lines_count = text.lines().count();
+            let symbols_vec: Vec<String> = symbols.split(',').map(|s| s.to_string()).collect();
 
-    let mut tool_message = format!("{}\n\n💿 Used 1 expert, inspected {} files, project has {} files",
-        serde_json::to_string_pretty(&files2output).unwrap(),
+            match category.as_str() {
+                "TOCHANGE" | "ADD_NEARBY" => {
+                    results.push(ContextEnum::ContextFile(ContextFile {
+                        file_name: file_path.clone(),
+                        file_content: text.clone(),
+                        line1: 0,
+                        line2: lines_count,
+                        symbols: symbols_vec.clone(),
+                        gradient_type: -1,
+                        usefulness: 100.0,
+                        is_body_important: false,
+                    }));
+                },
+                "MORE_TOCHANGE" | "DEFINITIONS" | "HIGHLEV" | "SIMILAR" | "USERCODE" => {
+                    let usefulness = match category.as_str() {
+                        "MORE_TOCHANGE" => 75.0,
+                        "DEFINITIONS" => 80.0,
+                        "HIGHLEV" => 75.0,
+                        "SIMILAR" => 75.0,
+                        "USERCODE" => 75.0,
+                        _ => 0.0,
+                    };
+                    for symbol in symbols_vec {
+                        results.push(ContextEnum::ContextFile(ContextFile {
+                            file_name: file_path.clone(),
+                            file_content: text.clone(),
+                            line1: 0,
+                            line2: lines_count,
+                            symbols: vec![symbol.clone()],
+                            gradient_type: -1,
+                            usefulness,
+                            is_body_important: false,
+                        }));
+                    }
+                },
+                _ => {},
+            }
+        }
+    }
+
+    let mut tool_message = format!(
+            "{}\n\n💿 Used 1 expert, inspected {} files, project has {} files. Files are attached below. Don't call cat() for the same files, you alrady have them. Proceed to make changes using 📍-notation, if user has requested them. If you need to summarize the code, do it briefly, without extensive quotations. Answer in the language user prefers.",
+        serde_json::to_string_pretty(&assistant_output).unwrap(),
         inspected_files.len(),
         total_files_in_project
     );
-    if !inspected_files.is_empty() {
-        tool_message = format!("{}\n\nInspected context files:\n{}",
-            tool_message,
-            inspected_files.into_iter().collect::<Vec<_>>().join("\n"));
-    }
+
+    // if !inspected_files.is_empty() {
+    //     tool_message = format!("{}\n\nInspected context files:\n{}",
+    //         tool_message,
+    //         inspected_files.into_iter().collect::<Vec<_>>().join("\n"));
+    // }
+
     // if !error_log.is_empty() {
     //     tool_message = format!("{}\n\nChecking file names against what actually exists, error log:\n{}", tool_message, error_log);
     // }
 
-    Ok((real_files, usage, tool_message))
+    Ok((results, usage, tool_message))
 }
-
-// async fn result_to_json(gcx: Arc<ARwLock<GlobalContext>>, result: IndexMap<String, LocateOutput>) -> String {
-//     let mut shortified = IndexMap::new();
-//     for (file_name, file_output) in result {
-//         let shortified_file_name = shortify_paths(gcx.clone(), vec![file_name]).await.get(0).unwrap().clone();
-//         shortified.insert(shortified_file_name, file_output);
-//     }
-//     serde_json::to_string_pretty(&serde_json::json!(shortified)).unwrap()
-// }
