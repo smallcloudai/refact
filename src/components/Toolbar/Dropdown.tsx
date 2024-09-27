@@ -61,7 +61,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const discordUrl = "https://www.smallcloud.ai/discord";
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
-  const { openFile, openCustomizationFile } = useEventsBusForIDE();
+  const { openBringYourOwnKeyFile, openCustomizationFile, openPrivacyFile } =
+    useEventsBusForIDE();
 
   return (
     <DropdownMenu.Root>
@@ -124,8 +125,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
           </Flex>
         </DropdownMenu.Item>
 
-        <DropdownMenu.Separator />
-
         <DropdownMenu.Item
           onSelect={(event) => {
             event.preventDefault();
@@ -134,6 +133,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
         >
           Report a bug...
         </DropdownMenu.Item>
+
+        <DropdownMenu.Separator />
 
         <DropdownMenu.Item onSelect={() => handleNavigation("restart tour")}>
           Restart tour
@@ -146,22 +147,28 @@ export const Dropdown: React.FC<DropdownProps> = ({
         <DropdownMenu.Separator />
 
         <DropdownMenu.Item
-          onSelect={(event) => {
-            event.preventDefault();
+          onSelect={() => {
             void openCustomizationFile();
           }}
         >
           Edit customization.yaml
         </DropdownMenu.Item>
 
+        <DropdownMenu.Item
+          onSelect={() => {
+            void openPrivacyFile();
+          }}
+        >
+          Edit privacy.yaml
+        </DropdownMenu.Item>
+
         {addressURL?.endsWith(".yaml") && (
           <DropdownMenu.Item
-            onSelect={(event) => {
-              event.preventDefault();
-              openFile({ file_name: addressURL });
+            onSelect={() => {
+              void openBringYourOwnKeyFile();
             }}
           >
-            Edit bring your own key
+            Edit Bring Your Own Key
           </DropdownMenu.Item>
         )}
 
