@@ -120,7 +120,7 @@ def print_context_file(json_str: str):
 
 streaming_messages: List[Message] = []
 tool_calls: Dict[str, FunctionDict] = {}
-streaming_toolcall: Optional[FunctionDict] = None
+streaming_toolcall: List[FunctionDict] = []
 is_streaming = False
 lsp = None
 
@@ -138,10 +138,11 @@ def process_streaming_data(data):
         if delta["tool_calls"] is not None:
             for tool_call in delta["tool_calls"]:
                 id = tool_call["id"]
+                index = tool_call["index"]
                 if id is not None:
-                    streaming_toolcall = tool_call
+                    streaming_toolcall.append(tool_call)
                 else:
-                    streaming_toolcall["function"]["arguments"] += tool_call["function"]["arguments"]
+                    streaming_toolcall[index]["function"]["arguments"] += tool_call["function"]["arguments"]
                     app.invalidate()
 
         if content is None:
@@ -149,8 +150,9 @@ def process_streaming_data(data):
             if finish_reason == 'stop':
                 print_response("\n")
             if finish_reason == 'tool_calls':
-                tool_calls[streaming_toolcall["id"]] = streaming_toolcall
-                streaming_toolcall = None
+                for tool_call in streaming_toolcall:
+                    tool_calls[tool_call["id"]] = tool_call
+                streaming_toolcall = []
                 update_response_box()
             return
         if len(streaming_messages) == 0 or streaming_messages[-1].role != "assistant":
@@ -180,7 +182,7 @@ def process_streaming_data(data):
             function = tool_call["function"]
             print_formatted_text(f"  {function['name']}({function['arguments']})")
         else:
-            print_formatted_text(f"  <Unknown tool call>")
+            print_formatted_text(f"  <Unknown tool call {tool_call_id}>")
         print_lines(indented)
 
     elif "subchat_id" in data:
