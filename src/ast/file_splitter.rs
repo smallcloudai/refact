@@ -86,7 +86,7 @@ impl AstBasedFileSplitter {
     pub async fn vectorization_split(
         &self,
         doc: &Document,
-        tokenizer: Arc<StdRwLock<Tokenizer>>,
+        tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
         gcx: Arc<RwLock<GlobalContext>>,
         tokens_limit: usize,
     ) -> Result<Vec<SplitResult>, String> {
@@ -99,7 +99,7 @@ impl AstBasedFileSplitter {
             Ok(parser) => parser,
             Err(_e) => {
                 // info!("cannot find a parser for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e.message);
-                return self.fallback_file_splitter.vectorization_split( &doc, tokenizer.clone(), tokens_limit, gcx.clone()).await;
+                return self.fallback_file_splitter.vectorization_split(&doc, tokenizer.clone(), tokens_limit, gcx.clone()).await;
             }
         };
 

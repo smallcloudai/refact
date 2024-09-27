@@ -24,7 +24,7 @@ impl FileSplitter {
     }
 
     pub async fn vectorization_split(&self, doc: &Document,
-                                     tokenizer: Arc<StdRwLock<Tokenizer>>,
+                                     tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
                                      tokens_limit: usize,
                                      global_context: Arc<ARwLock<GlobalContext>>
     ) -> Result<Vec<SplitResult>, String> {

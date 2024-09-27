@@ -14,16 +14,20 @@ pub mod linters;
 
 
 pub fn count_tokens(
-    tokenizer: Arc<StdRwLock<Tokenizer>>,
+    tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
     text: &str,
 ) -> usize {
-    let tokenizer_locked = tokenizer.write().unwrap();
-    let tokens = match tokenizer_locked.encode(text, false) {
-        Ok(tokens) => tokens,
-        Err(err) => {
-            tracing::warn!("Encoding error: {}", err);
-            return 0;
-        }
-    };
-    tokens.len()
+    if let Some(tokenizer) = tokenizer {
+        let tokenizer_locked = tokenizer.write().unwrap();
+        let tokens = match tokenizer_locked.encode(text, false) {
+            Ok(tokens) => tokens,
+            Err(err) => {
+                tracing::warn!("Encoding error: {}", err);
+                return 0;
+            }
+        };
+        tokens.len()
+    } else {
+        1 + text.len() / 3
+    }
 }

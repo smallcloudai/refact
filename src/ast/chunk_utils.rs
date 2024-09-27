@@ -19,15 +19,14 @@ pub fn get_chunks(text: &String,
                   file_path: &PathBuf,
                   symbol_path: &String,
                   top_bottom_rows: (usize, usize), // case with top comments
-                  tokenizer: Arc<StdRwLock<Tokenizer>>,
+                  tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
                   tokens_limit: usize,
                   intersection_lines: usize,
                   use_symbol_range_always: bool, // use for skeleton case
 ) -> Vec<SplitResult> {
     let (top_row, bottom_row) = top_bottom_rows;
     let mut chunks: Vec<SplitResult> = Vec::new();
-    let mut current_line_accum: VecDeque<&str> = Default::default();
-    let mut current_line_number: u64 = top_row as u64;
+    let mut current_line_accum: VecDeque<(String, usize)> = Default::default();
     let mut current_token_n = 0;
     let lines = text.split("\n").collect::<Vec<&str>>();
 
@@ -40,23 +39,24 @@ pub fn get_chunks(text: &String,
             let text_orig_tok_n = count_tokens(tokenizer.clone(), line_with_newline.as_str());
 
             if current_token_n + text_orig_tok_n > tokens_limit {
-                let current_line = current_line_accum.iter().join("\n");
+                let current_line = current_line_accum.iter().map(|(line, _)| line).join("\n");
+                let start_line = if use_symbol_range_always { top_row as u64 } else { current_line_accum.front().unwrap().1 as u64 };
+                let end_line = if use_symbol_range_always { bottom_row as u64 } else { current_line_accum.back().unwrap().1 as u64 };
                 chunks.push(SplitResult {
                     file_path: file_path.clone(),
                     window_text: current_line.clone(),
                     window_text_hash: official_text_hashing_function(&current_line),
-                    start_line: if use_symbol_range_always { top_row as u64 } else { current_line_number },
-                    end_line: if use_symbol_range_always { bottom_row as u64 } else { max(top_row as i64, top_row as i64 + line_idx as i64 - 1) as u64 },
+                    start_line,
+                    end_line,
                     symbol_path: symbol_path.clone(),
                 });
                 current_line_accum.clear();
                 current_token_n = 0;
-                current_line_number = (current_line_number + line_idx as u64).saturating_sub(intersection_lines as u64);
                 line_idx = (previous_start + 1).max((line_idx as i64 - intersection_lines as i64).max(0) as usize);
                 previous_start = line_idx;
             } else {
                 current_token_n += text_orig_tok_n;
-                current_line_accum.push_back(line);
+                current_line_accum.push_back((line.to_string(), line_idx + top_row));
                 line_idx += 1;
             }
         }
@@ -71,33 +71,38 @@ pub fn get_chunks(text: &String,
             let line_with_newline = if current_line_accum.is_empty() { line.to_string() } else { format!("{}\n", line) };
             let text_orig_tok_n = count_tokens(tokenizer.clone(), line_with_newline.as_str());
             if current_token_n + text_orig_tok_n > tokens_limit {
-                let current_line = current_line_accum.iter().join("\n");
+                let current_line = current_line_accum.iter().map(|(line, _)| line).join("\n");
+                let start_line = if use_symbol_range_always { top_row as u64 } else { current_line_accum.front().unwrap().1 as u64 };
+                let end_line = if use_symbol_range_always { bottom_row as u64 } else { current_line_accum.back().unwrap().1 as u64 };
                 chunks.push(SplitResult {
                     file_path: file_path.clone(),
                     window_text: current_line.clone(),
                     window_text_hash: official_text_hashing_function(&current_line),
-                    start_line: if use_symbol_range_always { top_row as u64 } else { top_row as u64 + line_idx as u64 + 1 },
-                    end_line: if use_symbol_range_always { bottom_row as u64 } else { bottom_row as u64 },
+                    start_line,
+                    end_line,
                     symbol_path: symbol_path.clone(),
                 });
                 current_line_accum.clear();
                 break;
             } else {
                 current_token_n += text_orig_tok_n;
-                current_line_accum.push_front(line);
+                current_line_accum.push_front((line.to_string(), line_idx as usize + top_row));
                 line_idx -= 1;
             }
         }
     }
+
     // flush accumulators
     if !current_line_accum.is_empty() {
-        let current_line = current_line_accum.iter().join("\n");
+        let current_line = current_line_accum.iter().map(|(line, _)| line).join("\n");
+        let start_line = if use_symbol_range_always { top_row as u64 } else { current_line_accum.front().unwrap().1 as u64 };
+        let end_line = if use_symbol_range_always { bottom_row as u64 } else { current_line_accum.back().unwrap().1 as u64 };
         chunks.push(SplitResult {
             file_path: file_path.clone(),
             window_text: current_line.clone(),
             window_text_hash: official_text_hashing_function(&current_line),
-            start_line: top_row as u64,
-            end_line: bottom_row as u64,
+            start_line,
+            end_line,
             symbol_path: symbol_path.clone(),
         });
     }
@@ -148,7 +153,7 @@ mod tests {
     #[test]
     fn dummy_tokenizer_test() {
         let tokenizer = Arc::new(StdRwLock::new(tokenizers::Tokenizer::from_str(DUMMY_TOKENIZER).unwrap()));
-        let text_orig_tok_n = count_tokens(tokenizer.clone(), PYTHON_CODE);
+        let text_orig_tok_n = count_tokens(Some(tokenizer.clone()), PYTHON_CODE);
         assert_eq!(text_orig_tok_n, PYTHON_CODE.len());
     }
 
@@ -159,7 +164,7 @@ mod tests {
                                 &PathBuf::from_str("/tmp/test.py").unwrap(),
                                 &"".to_string(),
                                 (0, 10),
-                                tokenizer.clone(),
+                                Some(tokenizer.clone()),
                                 128, 0, false);
         base_check_chunks(&PYTHON_CODE, chunks, &FULL_CHUNK_RANGES_128);
     }
@@ -171,7 +176,7 @@ mod tests {
                                 &PathBuf::from_str("/tmp/test.py").unwrap(),
                                 &"".to_string(),
                                 (0, 10),
-                                tokenizer.clone(),
+                                Some(tokenizer.clone()),
                                 100, 0, false);
         base_check_chunks(&PYTHON_CODE, chunks, &FULL_CHUNK_RANGES_100);
     }
@@ -188,7 +193,7 @@ mod tests {
                                 &PathBuf::from_str("/tmp/test.py").unwrap(),
                                 &"".to_string(),
                                 (1, 10),
-                                tokenizer.clone(),
+                                Some(tokenizer.clone()),
                                 100, 0, false);
         base_check_chunks(&PYTHON_CODE, chunks, &SKIP_0_LINE_CHUNK_RANGES_128);
     }
@@ -205,7 +210,7 @@ mod tests {
                                 &PathBuf::from_str("/tmp/test.py").unwrap(),
                                 &"".to_string(),
                                 (0, 3),
-                                tokenizer.clone(),
+                                Some(tokenizer.clone()),
                                 100, 0, false);
         base_check_chunks(&PYTHON_CODE, chunks, &TAKE_SMALL_CHUNK_RANGES_128);
     }
@@ -217,7 +222,7 @@ mod tests {
                                 &PathBuf::from_str("/tmp/test.py").unwrap(),
                                 &"".to_string(),
                                 (0, 10),
-                                tokenizer.clone(),
+                                Some(tokenizer.clone()),
                                 128, 2, false);
         base_check_chunks(&PYTHON_CODE, chunks, &FULL_CHUNK_WITH_STRIDE_2_RANGES_128);
     }

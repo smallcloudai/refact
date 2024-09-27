@@ -358,7 +358,7 @@ async fn vectorize_thread(
         }
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
-        let split_data = file_splitter.vectorization_split(&doc, tokenizer.clone(), gcx.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
+        let split_data = file_splitter.vectorization_split(&doc, None, gcx.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
             info!("{}", err);
             vec![]
         });
@@ -368,7 +368,7 @@ async fn vectorize_thread(
             if let Ok(mut file) = std::fs::File::create(path_vecdb) {
                 let mut writer = std::io::BufWriter::new(&mut file);
                 for chunk in split_data.iter() {
-                    let beautiful_line = format!("\n\n------- {:?} {}-{} ------\n", chunk.symbol_path, chunk.start_line, chunk.end_line);
+                    let beautiful_line = format!("\n\n------- {:?} {}-{} -------\n", chunk.symbol_path, chunk.start_line, chunk.end_line);
                     let _ = writer.write_all(beautiful_line.as_bytes());
                     let _ = writer.write_all(chunk.window_text.as_bytes());
                     let _ = writer.write_all(b"\n");

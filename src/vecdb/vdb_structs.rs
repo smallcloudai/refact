@@ -60,7 +60,7 @@ pub struct VecdbRecord {
     pub usefulness: f32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct SplitResult {
     pub file_path: PathBuf,
     pub window_text: String,
@@ -70,7 +70,6 @@ pub struct SplitResult {
     pub symbol_path: String,
 }
 
-// #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 #[derive(Clone)]
 pub struct SimpleTextHashVector {
     pub window_text: String,
