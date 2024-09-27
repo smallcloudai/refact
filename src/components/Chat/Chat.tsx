@@ -98,7 +98,15 @@ export const Chat: React.FC<ChatProps> = ({
   }, [isWaiting, isStreaming, focusTextarea]);
 
   return (
-    <Flex style={style} direction="column" flexGrow="1">
+    <Flex
+      style={style}
+      direction="column"
+      flexGrow="1"
+      width="100%"
+      overflowY="scroll"
+      justify="between"
+      px="1"
+    >
       <ChatContent
         key={`chat-content-${chatId}`}
         ref={chatContentRef}
