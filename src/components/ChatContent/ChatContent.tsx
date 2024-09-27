@@ -13,7 +13,6 @@ import { Flex, Text, Container, Link } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
-import { MemoryContent } from "./MemoryContent";
 import { useAutoScroll } from "./useAutoScroll";
 import { PlainText } from "./PlainText";
 import { useConfig, useEventsBusForIDE } from "../../hooks";
@@ -159,15 +158,6 @@ function renderMessages(
   const [head, ...tail] = messages;
   if (head.role === "tool") {
     return renderMessages(tail, onRetry, memo, index + 1);
-  }
-
-  if (head.role === "context_memory") {
-    const key = "context-memory-" + index;
-    const nextMemo = [
-      ...memo,
-      <MemoryContent key={key} items={head.content} />,
-    ];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (head.role === "plain_text") {

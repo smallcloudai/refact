@@ -4,7 +4,6 @@ import {
   ChatMessage,
   ChatMessages,
   ChatResponse,
-  ContextMemory,
   DiffChunk,
   ToolCall,
   ToolResult,
@@ -14,7 +13,6 @@ import {
   isChatContextFileDelta,
   isChatResponseChoice,
   isContextFileResponse,
-  isContextMemoryResponse,
   isDiffMessage,
   isDiffResponse,
   isPlainTextResponse,
@@ -134,11 +132,6 @@ export function formatChatResponse(
 
   if (isContextFileResponse(response)) {
     const content = parseOrElse<ChatContextFile[]>(response.content, []);
-    return [...messages, { role: response.role, content }];
-  }
-
-  if (isContextMemoryResponse(response)) {
-    const content = parseOrElse<ContextMemory[]>(response.content, []);
     return [...messages, { role: response.role, content }];
   }
 

@@ -7,9 +7,9 @@ export type ChatRole =
   | "context_file"
   | "system"
   | "tool"
-  | "context_memory"
   | "diff"
-  | "plain_text";
+  | "plain_text"
+  | "cd_instruction";
 
 export type ChatContextFile = {
   file_name: string;
@@ -18,11 +18,6 @@ export type ChatContextFile = {
   line2: number;
   usefulness?: number;
   usefullness?: number;
-};
-
-export type ContextMemory = {
-  memo_id: string;
-  memo_text: string;
 };
 
 export type ToolCall = {
@@ -56,13 +51,7 @@ export type ToolResult = {
 
 interface BaseMessage {
   role: ChatRole;
-  content:
-    | string
-    | ChatContextFile[]
-    | ToolResult
-    | ContextMemory[]
-    | DiffChunk[]
-    | null;
+  content: string | ChatContextFile[] | ToolResult | DiffChunk[] | null;
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
@@ -93,11 +82,6 @@ export interface SystemMessage extends BaseMessage {
 export interface ToolMessage extends BaseMessage {
   role: "tool";
   content: ToolResult;
-}
-
-export interface MemoryMessage extends BaseMessage {
-  role: "context_memory";
-  content: ContextMemory[];
 }
 
 // TODO: There maybe sub-types for this
@@ -132,7 +116,6 @@ export type ChatMessage =
   | ChatContextFileMessage
   | SystemMessage
   | ToolMessage
-  | MemoryMessage
   | DiffMessage
   | PlainTextMessage;
 
@@ -302,17 +285,6 @@ export function isContextFileResponse(
 ): json is ContextFileResponse {
   if (!isChatUserMessageResponse(json)) return false;
   return json.role === "context_file";
-}
-
-export type ContextMemoryResponse = ChatUserMessageResponse & {
-  role: "context_memory";
-};
-
-export function isContextMemoryResponse(
-  json: unknown,
-): json is ContextMemoryResponse {
-  if (!isChatUserMessageResponse(json)) return false;
-  return json.role === "context_memory";
 }
 
 export function isToolResponse(json: unknown): json is ToolResponse {
