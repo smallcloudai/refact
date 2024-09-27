@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { TourBubble } from "./TourBubble";
 import { next, useTourRefs } from "../../features/Tour";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -25,21 +25,25 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
     dispatch(push({ name: "history" }));
   }, [dispatch]);
 
-  if (state.type === "in_progress" && state.step === 2 && page === "chat") {
-    dispatch(next());
-  }
+  const step = state.type === "in_progress" ? state.step : 0;
 
-  if (state.type === "in_progress" && state.step === 6 && page === "history") {
-    dispatch(next());
-  }
+  useEffect(() => {
+    if (state.type === "in_progress" && step === 2 && page === "chat") {
+      dispatch(next());
+    }
 
-  if (state.type === "in_progress" && state.step === 8 && page === "history") {
-    dispatch(push({ name: "tour end" }));
-  }
+    if (state.type === "in_progress" && step === 6 && page === "history") {
+      dispatch(next());
+    }
 
-  if (state.type === "finished" && page === "tour end") {
-    dispatch(push({ name: "history" }));
-  }
+    if (state.type === "in_progress" && step === 8 && page === "history") {
+      dispatch(push({ name: "tour end" }));
+    }
+
+    if (state.type === "finished" && page === "tour end") {
+      dispatch(push({ name: "history" }));
+    }
+  }, [state.type, step, page, dispatch]);
 
   const chatWidth = "calc(100% - 20px)";
 

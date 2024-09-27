@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Host, InitialSetup } from "../components/InitialSetup";
 import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
@@ -56,20 +56,29 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     isPageInHistory("welcome") ||
     isPageInHistory("chat");
 
-  if (config.apiKey && config.addressURL && !isLoggedIn) {
-    if (tourState.type === "in_progress" && tourState.step === 1) {
-      dispatch(push({ name: "welcome" }));
-    } else if (Object.keys(historyState).length === 0) {
-      dispatch(push({ name: "history" }));
-      dispatch(newChatAction());
-      dispatch(push({ name: "chat" }));
-    } else {
-      dispatch(push({ name: "history" }));
+  useEffect(() => {
+    if (config.apiKey && config.addressURL && !isLoggedIn) {
+      if (tourState.type === "in_progress" && tourState.step === 1) {
+        dispatch(push({ name: "welcome" }));
+      } else if (Object.keys(historyState).length === 0) {
+        dispatch(push({ name: "history" }));
+        dispatch(newChatAction());
+        dispatch(push({ name: "chat" }));
+      } else {
+        dispatch(push({ name: "history" }));
+      }
     }
-  }
-  if (!config.apiKey && !config.addressURL && isLoggedIn) {
-    dispatch(popBackTo("initial setup"));
-  }
+    if (!config.apiKey && !config.addressURL && isLoggedIn) {
+      dispatch(popBackTo("initial setup"));
+    }
+  }, [
+    config.apiKey,
+    config.addressURL,
+    isLoggedIn,
+    dispatch,
+    tourState,
+    historyState,
+  ]);
 
   const onPressNext = (host: Host) => {
     if (host === "cloud") {
