@@ -163,7 +163,6 @@ pub async fn context_msgs_from_paths(
             symbols: vec![],
             gradient_type: -1,
             usefulness: 0.,
-            is_body_important: false
         });
     }
     messages

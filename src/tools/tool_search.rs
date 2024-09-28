@@ -1,7 +1,5 @@
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use std::fs;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::info;
 
@@ -24,54 +22,33 @@ async fn execute_att_search(
     query: &String,
     scope: &String,
 ) -> Result<Vec<ContextFile>, String> {
-    fn is_scope_a_file(scope: &String, candidates_file: &Vec<String>) -> bool {
-        if !candidates_file.is_empty() {
-            return true
-        }
-        PathBuf::from(scope).extension().is_some()
-    }
-    fn is_scope_a_dir(scope: &String, candidates_dir: &Vec<String>) -> bool {
-        if !candidates_dir.is_empty() {
-            return true
-        }
-        let path = PathBuf::from(scope);
-        match fs::metadata(&path) {
-            Ok(metadata) => metadata.is_dir(),
-            Err(_) => false,
-        }
-    }
     let gcx = ccx.lock().await.global_context.clone();
-    let candidates_file = file_repair_candidates(gcx.clone(), scope, 10, false).await;
-    let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), scope, false, 10).await;
+    if scope == "workspace" {
+        return Ok(execute_at_search(ccx.clone(), &query, None).await?)
+    }
 
-    return match scope.as_str() {
-        "workspace" => {
-            Ok(execute_at_search(ccx.clone(), &query, None).await?)
-        }
-        _ if is_scope_a_file(scope, &candidates_file) => {
-            let file_path = return_one_candidate_or_a_good_error(
-                gcx.clone(),
-                scope,
-                &candidates_file,
-                &get_project_dirs(gcx.clone()
-                ).await, false).await?;
-            let filter = Some(format!("(scope = \"{}\")", file_path));
-            info!("att-search: filter: {:?}", filter);
-            Ok(execute_at_search(ccx.clone(), &query, filter).await?)
-        }
-        _ if is_scope_a_dir(scope, &candidates_dir) => {
-            let dir = return_one_candidate_or_a_good_error(
-                gcx.clone(),
-                scope,
-                &candidates_dir,
-                &get_project_dirs(gcx.clone()
-                ).await, true).await?;
-            let filter = format!("(scope LIKE '{}%')", dir);
-            info!("att-search: filter: {:?}", filter);
-            Ok(execute_at_search(ccx.clone(), &query, Some(filter)).await?)
-        }
-        _ => Err(format!("scope {} is not supported", scope))
+    let filter = if scope.ends_with('/') {
+        let dir = return_one_candidate_or_a_good_error(
+            gcx.clone(),
+            scope,
+            &correct_to_nearest_dir_path(gcx.clone(), scope, false, 10).await,
+            &get_project_dirs(gcx.clone()).await,
+            true
+        ).await?;
+        format!("(scope LIKE '{}%')", dir)
+    } else {
+        let file_path = return_one_candidate_or_a_good_error(
+            gcx.clone(),
+            scope,
+            &file_repair_candidates(gcx.clone(), scope, 10, false).await,
+            &get_project_dirs(gcx.clone()).await,
+            false
+        ).await?;
+        format!("(scope = \"{}\")", file_path)
     };
+
+    info!("att-search: filter: {:?}", filter);
+    Ok(execute_at_search(ccx.clone(), &query, Some(filter)).await?)
 }
 
 #[async_trait]

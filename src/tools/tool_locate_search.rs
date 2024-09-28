@@ -22,11 +22,10 @@ const LS_SYSTEM_PROMPT: &str = r###"You are an expert in finding relevant files 
 
 Here's the list of reasons a file or symbol might be relevant wrt task description:
 
-FOUND = the files and the symbols that the task explicitly tells you to find
-TOCHANGE = the main changes go there, if the task requires changes
+FOUND = the files and the symbols that the task explicitly tells you to find, or the files and symbols the main changes should go into if the task requires changes
 NEWFILE = sometimes the task requires creating new files
 MORE_TOCHANGE = likely to change as well, as a consequence of completing the task
-DEFINITIONS = classes/functions/types involved in the code that has to be changed, located in files not included in TOCHANGE
+DEFINITIONS = classes/functions/types involved in the code that has to be changed, located in files not included already in FOUND
 HIGHLEV = crucial to understand the logic, such as a database scheme, high level script
 USAGE = code that uses the things the task description is about
 SIMILAR = code that might provide an example of how to write similar things
@@ -50,16 +49,12 @@ Follow these guidelines:
 
 0. Does the task make sense at all, after looking at the files? Fill the "rejection" output structure if it doesn't, and stop.
 
-1. If the task tells to find something, it should go to FOUND, and not go to TOCHANGE.
-If the task tells to implement something by analogy, the files to draw the analogy from should go to FOUND.
-Limit the number of FOUND files to 2, maybe 3 at most, unless the task specifies how many files to find.
+1. If the task tells to find something, it should go to FOUND. If the task requires changes, decide which one or two files
+need to go to FOUND, or is it NEWFILE, it can't be no files at all if the task requires changes, fill "rejection" if that's the case.
 
-2. If the task requires changes, decide which one or two files need to go to TOCHANGE, or is it NEWFILE.
-It can't be no files at all if the task requires changes, fill "rejection" if that's the case. If the task doesn't require
-changes, both TOCHANGE and NEWFILE must be empty, and files must go to FOUND or something.
-
-3. Limit the number of SIMILAR files to 1, maybe 2, 3 at most. If you see similar code, take the best, most similar to
-whatever the task is about. It can't be one of TOCHANGE files. No such files (zero) is a perfectly good answer.
+2. If you see similar code, take the best, most similar to whatever the task is about. It can't be one of FOUND files.
+No such files (zero) is a perfectly good answer. If the task tells to implement something by analogy, the files to draw the
+analogy from should go to SIMILAR. Limit the number of SIMILAR files to 1, maybe 2, 3 at most.
 
 4. Of course there could be a lot of MORE_TOCHANGE or USAGE files, potentially every file in the project can be.
 Limit the number of USAGE to 3 files, and MORE_TOCHANGE to 3 files. Prefer small and simple files.
@@ -68,10 +63,10 @@ Only if you are reasonably certain they will also need to change (MORE_TOCHANGE)
 changes (USAGE).
 
 5. Limit the number of HIGHLEV files to 2. Take the best, most relevant high level logic for the task.
-No such files (zero) is a perfectly good answer.
+No such files (zero) is a perfectly good answer. List symbols that contain the high-level logic, for each file.
 
-6. Limit the number of DEFINITIONS to 5.
-No such files (zero) is a perfectly good answer.
+6. Limit the number of DEFINITIONS to 5. Don't list files if they are already in FOUND.
+No such files (zero) is a perfectly good answer. List relevant symbols defined, for each file.
 
 If not sure, drop the file, compact output is better.
 
@@ -87,26 +82,23 @@ or
     "NEW_FILE": {                                   // Does the task require any new files? Don't make stuff up if the task doesn't require any.
         "dir/dir/file1.ext": ""                     // For new files, don't fill any symbols to look up and prioritize (because none exist yet)
     },
-    "FOUND": {                                      // Does the task require to find files or symbols?
-        "dir/dir/file2.ext": "symbol1,symbol2",     // Be specific, what symbols match the request?
+    "FOUND": {                                      // Does the task require to find files or symbols? Does the task require to change existing files?
+        "dir/dir/file2.ext": "symbol1,symbol2",     // Be specific, what symbols require changes or match the description in the task?
         "dir/dir/file3.ext": "symbol1,symbol2"
     },
-    "TOCHANGE": {                                   // Does the task require to change existing files? Must be empty if not.
-        "dir/dir/file4.ext": "symbol1,symbol2"      // Comma-separated symbols found in this file that need to be changed
-    },
     "SIMILAR": {                                    // Don't list the same files again
-        "dir/dir/file5.ext": "symbol1,symbol2"      // If there is similar code in a file not present in TOCHANGE, put it there and list symbols with similar code
+        "dir/dir/file4.ext": "symbol1,symbol2"      // For files not in FOUND, list symbols with similar code to what the task is about
     },
     "MORE_TOCHANGE": {
         ...more files and symbols in them to change...
     },
-    "DEFINITIONS": {                                // Don't list files if they are already in TOCHANGE
+    "DEFINITIONS": {
         ...files that have relevant definitions, very important to name specific symbols...
     },
-    "HIGHLEV": {                                    // Don't list files if they are already in TOCHANGE
+    "HIGHLEV": {
         ...files with high level logic, very important to name specific symbols where the logic actually is...
     },
-    "USAGE": {                                      // Don't list files if they are already in TOCHANGE
+    "USAGE": {
         ...files with code that uses the thing to change, very important to name specific symbols where the use happens...
     }
 }
@@ -167,6 +159,7 @@ impl Tool for ToolLocateSearch {
         }));
 
         if !cd_instruction.is_empty() {
+            tracing::info!("\n{}", cd_instruction);
             results.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "cd_instruction".to_string(),
                 content: cd_instruction,
@@ -286,11 +279,10 @@ async fn process_assistant_output(
     for (category, files) in assistant_output.iter() {
         for (file_path, symbols) in files {
             match category.as_str() {
-                "TOCHANGE" | "FOUND" => {
+                "FOUND" => {
                     let text_maybe = get_file_text_from_memory_or_disk(gcx.clone(), &std::path::PathBuf::from(&file_path)).await;
                     let file_usefulness = match category.as_str() {
-                        "TOCHANGE" => 100.0,
-                        "FOUND" => 90.0,
+                        "FOUND" => 100.0,
                         _ => panic!("unexpected category: {:?}", category),
                     };
                     if text_maybe.is_ok() {
@@ -303,12 +295,14 @@ async fn process_assistant_output(
                             symbols: vec![],
                             gradient_type: -1,
                             usefulness: file_usefulness,
-                            is_body_important: false,
                         }));
                     }
                 },
                 "MORE_TOCHANGE" | "DEFINITIONS" | "HIGHLEV" | "SIMILAR" | "USAGE" => {
-                    let symbols_vec: Vec<String> = symbols.split(',').map(|s| s.to_string()).collect();
+                    let symbols_vec: Vec<String> = symbols.split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
                     let symbol_usefulness = match category.as_str() {
                         "FOUND" => 90.0,
                         "DEFINITIONS" => 80.0,
@@ -327,7 +321,6 @@ async fn process_assistant_output(
                             symbols: vec![symbol.clone()],
                             gradient_type: -1,
                             usefulness: symbol_usefulness,
-                            is_body_important: false,
                         }));
                     }
                 },

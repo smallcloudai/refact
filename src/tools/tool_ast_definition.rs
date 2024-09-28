@@ -76,7 +76,6 @@ impl Tool for ToolAstDefinition {
                         symbols: vec![res.path_drop0()],
                         gradient_type: -1,
                         usefulness: 100.0,
-                        is_body_important: false,
                     })
                 }).collect::<Vec<ContextEnum>>();
                 if defs.len() > DEFS_LIMIT {

@@ -290,7 +290,6 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
                     symbols: vec![],
                     gradient_type: -1,
                     usefulness: -1.0,
-                    is_body_important: false
                 };
                 ast_messages.push(fim_ban);
             }
@@ -493,7 +492,6 @@ async fn _cursor_position_to_context_file(
                 symbols: vec![double_colon_path.clone()],
                 gradient_type: -1,
                 usefulness: 0.,
-                is_body_important: false
             });
         }
     }

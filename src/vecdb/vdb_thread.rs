@@ -19,7 +19,7 @@ use crate::vecdb::vdb_lance::VecDBHandler;
 use crate::vecdb::vdb_structs::{VecdbRecord, SplitResult, VecdbConstants, VecDbStatus, SimpleTextHashVector};
 use crate::vecdb::vdb_cache::VecDBCache;
 
-const DEBUG_WRITE_VECDB_FILES: bool = true;
+const DEBUG_WRITE_VECDB_FILES: bool = false;
 const COOLDOWN_SECONDS: u64 = 3;
 
 

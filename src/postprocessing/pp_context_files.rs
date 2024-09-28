@@ -1,10 +1,11 @@
 use std::sync::Arc;
 use std::sync::RwLock;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::PathBuf;
 use tracing::{info, warn};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
+use indexmap::IndexMap;
 use crate::ast::treesitter::structs::SymbolType;
 
 use crate::call_validation::{ContextFile, PostprocessSettings};
@@ -39,8 +40,8 @@ pub struct FileLine {
 }
 
 
-fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSettings) -> HashMap<PathBuf, Vec<FileLine>> {
-    let mut lines_in_files = HashMap::new();
+fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSettings) -> IndexMap<PathBuf, Vec<FileLine>> {
+    let mut lines_in_files = IndexMap::new();
     for file_ref in files {
         for (line_n, line) in file_ref.file_content.lines().enumerate() {
             let a = FileLine {
@@ -86,7 +87,7 @@ fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSetti
 async fn convert_input_into_usefullness(
     global_context: Arc<ARwLock<GlobalContext>>,
     messages: &Vec<ContextFile>,
-    lines_in_files: &mut HashMap<PathBuf, Vec<FileLine>>,
+    lines_in_files: &mut IndexMap<PathBuf, Vec<FileLine>>,
     settings: &PostprocessSettings,
 ) {
     for msg in messages.iter() {
@@ -114,26 +115,24 @@ async fn convert_input_into_usefullness(
         color_with_gradient_type(msg, lines);
 
         let file_ref = lines.first().unwrap().file_ref.clone();
+        let file_nice_path = last_n_chars(&file_ref.cpath.to_string_lossy().to_string(), 30);
 
-        let mut symbols_to_color = vec![];
-        if !msg.symbols.is_empty() && !(msg.symbols.len() == 1 && msg.symbols.first().unwrap_or(&String::new()).is_empty()) {
-            for sympath in msg.symbols.iter() {
-                let init_len = symbols_to_color.len();
+        let mut symdefs = vec![];
+        if !msg.symbols.is_empty() {
+            for looking_for in msg.symbols.iter() {
+                let colon_colon_looking_for = format!("::{}", looking_for.trim());
                 for x in file_ref.symbols_sorted_by_path_len.iter() {
-                    if x.path() == *sympath {
-                        symbols_to_color.push(x);
+                    if x.path().ends_with(colon_colon_looking_for.as_str()) {
+                        symdefs.push(x);
                         break;
                     }
-                }
-                if init_len == symbols_to_color.len() {
-                    warn!("- cannot find symbol {} in file {}:{}-{}", sympath, msg.file_name, msg.line1, msg.line2);
                 }
             }
         }
 
-        // XXX: rethink is_body_important
-        if !msg.is_body_important && !symbols_to_color.is_empty() {
-            for s in symbols_to_color {
+        if !symdefs.is_empty() {
+            for s in symdefs {
+                info!("+ symbol {} at {}:{}-{} usefulness={:.2}", s.path_drop0(), file_nice_path, msg.line1, msg.line2, msg.usefulness);
                 if DEBUG >= 1 {
                     info!("+ search result {} {:?} {:.2}", s.path(), s.symbol_type, msg.usefulness);
                 }
@@ -147,11 +146,20 @@ async fn convert_input_into_usefullness(
                     colorize_parentof(lines, &parent_path_str, settings.useful_symbol_default, msg.usefulness*settings.downgrade_parent_coef);
                 }
             }
+
+        } else if msg.line1 == 0 && msg.line2 == 0 && msg.symbols.is_empty() {
+            info!("+ file mention without specifics, {}:{}-{} usefulness={:.2}", file_nice_path, msg.line1, msg.line2, msg.usefulness);
+            colorize_if_more_useful(lines, 0, lines.len(), "nosymb".to_string(), msg.usefulness);
+
+        } else if msg.line1 == 0 && msg.line2 == 0 && !msg.symbols.is_empty() {
+            info!("- symbols {:?} not found in {}:{}-{} usefulness={:.2}", msg.symbols, file_nice_path, msg.line1, msg.line2, msg.usefulness);
+            colorize_if_more_useful(lines, 0, lines.len(), "nosymb".to_string(), msg.usefulness);
+
         } else {
-            // no symbol set in search result, go head with just line numbers, omsg.line1, omsg.line2 numbers starts from 1, not from 0
-            info!("+ search result from vecdb or @file {:.2}", msg.usefulness);
+            // no symbol set in search result, go ahead with just line numbers, msg.line1, msg.line2 numbers starts from 1, not from 0
+            info!("+ search result without symbol, {}:{}-{} usefulness={:.2}", file_nice_path, msg.line1, msg.line2, msg.usefulness);
             if msg.line1 == 0 || msg.line2 == 0 || msg.line1 > msg.line2 || msg.line1 > lines.len() || msg.line2 > lines.len() {
-                warn!("range in search results is outside of file lines that actually exist {}:{}-{}; actual len: {}", msg.file_name, msg.line1, msg.line2, lines.len());
+                warn!("range in search results is outside of file lines that actually exist {}:{}-{}; actual len: {}", file_nice_path, msg.line1, msg.line2, lines.len());
             }
             colorize_if_more_useful(lines, msg.line1.saturating_sub(1), msg.line2.saturating_sub(1), "nosymb".to_string(), msg.usefulness);
         }
@@ -161,7 +169,7 @@ async fn convert_input_into_usefullness(
     }
 }
 
-fn downgrade_sub_symbols(lines_in_files: &mut HashMap<PathBuf, Vec<FileLine>>, settings: &PostprocessSettings) {
+fn downgrade_sub_symbols(lines_in_files: &mut IndexMap<PathBuf, Vec<FileLine>>, settings: &PostprocessSettings) {
     for lines in lines_in_files.values_mut().filter(|x|!x.is_empty()) {
         let file_ref = lines.first().unwrap().file_ref.clone();
         if DEBUG >= 2 {
@@ -188,7 +196,7 @@ fn downgrade_sub_symbols(lines_in_files: &mut HashMap<PathBuf, Vec<FileLine>>, s
     }
 }
 
-fn close_small_gaps(lines_in_files: &mut HashMap<PathBuf, Vec<FileLine>>, settings: &PostprocessSettings) {
+fn close_small_gaps(lines_in_files: &mut IndexMap<PathBuf, Vec<FileLine>>, settings: &PostprocessSettings) {
     if settings.close_small_gaps {
         for lines in lines_in_files.values_mut().filter(|x|!x.is_empty()) {
             let mut useful_copy = lines.iter().map(|x| x.useful).collect::<Vec<_>>();
@@ -213,7 +221,7 @@ pub async fn pp_color_lines(
     messages: &Vec<ContextFile>,
     files: Vec<Arc<PPFile>>,
     settings: &PostprocessSettings,
-) -> HashMap<PathBuf, Vec<FileLine>> {
+) -> IndexMap<PathBuf, Vec<FileLine>> {
     // Generate line refs, fill background scopes found in a file (not search results yet)
     let mut lines_in_files = collect_lines_from_files(files, settings);
 
@@ -230,7 +238,7 @@ pub async fn pp_color_lines(
 }
 
 async fn pp_limit_and_merge(
-    lines_in_files: &mut HashMap<PathBuf, Vec<FileLine>>,
+    lines_in_files: &mut IndexMap<PathBuf, Vec<FileLine>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
@@ -338,7 +346,6 @@ async fn pp_limit_and_merge(
             symbols: vec![],
             gradient_type: -1,
             usefulness: 0.0,
-            is_body_important: false
         });
     }
     context_files_merged

@@ -38,7 +38,10 @@ impl Tool for ToolCat {
                 if s == "*" {
                     vec![]
                 } else {
-                    s.split(",").map(|x|x.trim().to_string()).collect::<Vec<_>>()
+                    s.split(",")
+                        .map(|x| x.trim().to_string())
+                        .filter(|x| !x.is_empty())
+                        .collect::<Vec<_>>()
                 }
             },
             Some(v) => return Err(format!("argument `symbols` is not a string: {:?}", v)),
@@ -60,14 +63,11 @@ impl Tool for ToolCat {
         };
         ccx.lock().await.pp_skeleton = skeleton;
 
-        let (filenames_present, symbols_found, not_found_messages, context_files) = paths_and_symbols_to_cat(ccx.clone(), paths, symbols).await;
+        let (filenames_present, symbols_not_found, not_found_messages, context_files) = paths_and_symbols_to_cat(ccx.clone(), paths, symbols).await;
 
         let mut content = "".to_string();
         if !filenames_present.is_empty() {
             content.push_str(&format!("Paths found:\n{}\n\n", filenames_present.join("\n")));
-            let symbols_not_found = symbols_found.iter().filter(|symbol| {
-                !symbols_found.iter().any(|path| path.contains(&symbol[..]))
-            }).cloned().collect::<Vec<_>>();
             if !symbols_not_found.is_empty() {
                 content.push_str(&format!("Symbols not found in the {} files:\n{}\n\n", filenames_present.len(), symbols_not_found.join("\n")));
                 corrections = true;
@@ -95,7 +95,7 @@ impl Tool for ToolCat {
 pub async fn paths_and_symbols_to_cat(
     ccx: Arc<AMutex<AtCommandsContext>>,
     paths: Vec<String>,
-    symbols: Vec<String>,
+    arg_symbols: Vec<String>,
 ) -> (Vec<String>, Vec<String>, Vec<String>, Vec<ContextFile>)
 {
     let (gcx, top_n) = {
@@ -131,16 +131,26 @@ pub async fn paths_and_symbols_to_cat(
     let unique_paths = corrected_paths.into_iter().collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
 
     let mut context_files = vec![];
-    let mut symbols_found = vec![];
+    let mut symbols_found = HashSet::<String>::new();
 
     if let Some(ast_service) = ast_service_opt {
         let ast_index = ast_service.lock().await.ast_index.clone();
         for p in unique_paths.iter() {
             let doc_syms = crate::ast::ast_db::doc_defs(ast_index.clone(), &p).await;
-            // XXX: incorrect
-            let syms_intersection = doc_syms.into_iter().filter(|s|symbols.contains(&s.name())).collect::<Vec<_>>();
-            for sym in syms_intersection {
-                symbols_found.push(sym.path().clone());
+            // s.name() means the last part of the path
+            // symbols.contains means exact match in comma-separated list
+            let mut syms_def_in_this_file = vec![];
+            for looking_for in arg_symbols.iter() {
+                let colon_colon_looking_for = format!("::{}", looking_for.trim());
+                for x in doc_syms.iter() {
+                    if x.path().ends_with(colon_colon_looking_for.as_str()) {
+                        syms_def_in_this_file.push(x.clone());
+                    }
+                }
+                symbols_found.insert(looking_for.clone());
+            }
+
+            for sym in syms_def_in_this_file {
                 let cf = ContextFile {
                     file_name: p.clone(),
                     file_content: "".to_string(),
@@ -149,26 +159,32 @@ pub async fn paths_and_symbols_to_cat(
                     symbols: vec![sym.path()],
                     gradient_type: -1,
                     usefulness: 100.0,
-                    is_body_important: false,
                 };
                 context_files.push(cf);
             }
         }
     }
 
-    let filenames_present = context_files.iter().map(|x|x.file_name.clone()).collect::<Vec<_>>();
-    for p in unique_paths.iter().filter(|x|!filenames_present.contains(x)) {
+    let mut symbols_not_found = vec![];
+    for looking_for in arg_symbols.iter() {
+        if !symbols_found.contains(looking_for) {
+            symbols_not_found.push(looking_for.clone());
+        }
+    }
+
+    let filenames_got_symbols_for = context_files.iter().map(|x|x.file_name.clone()).collect::<Vec<_>>();
+    for p in unique_paths.iter().filter(|x|!filenames_got_symbols_for.contains(x)) {
+        // don't have symbols for these, so we need to mention them as files, without a symbol, analog of @file
         match get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await {
             Ok(text) => {
                 let cf = ContextFile {
                     file_name: p.clone(),
                     file_content: "".to_string(),
-                    line1: 0,
+                    line1: 1,
                     line2: text.lines().count(),
                     symbols: vec![],
                     gradient_type: -1,
-                    usefulness: 0.,
-                    is_body_important: false,
+                    usefulness: 0.0,
                 };
                 context_files.push(cf);
             },
@@ -178,5 +194,5 @@ pub async fn paths_and_symbols_to_cat(
         }
     }
     let filenames_present = context_files.iter().map(|x|x.file_name.clone()).collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
-    (filenames_present, symbols_found, not_found_messages, context_files)
+    (filenames_present, symbols_not_found, not_found_messages, context_files)
 }

@@ -81,10 +81,19 @@ async def test_if_located_right(
 
 
 if __name__ == '__main__':
+    # asyncio.run(test_if_located_right(
+    #     question="find Goat in this project and replace it with Iguana",
+    #     expected_roles={
+    #         "src/ast/alt_testsuite/cpp_goat_library.h": "TOCHANGE",
+    #         "src/ast/alt_testsuite/cpp_goat_main.cpp": "TOCHANGE",
+    #     },
+    # ))
     asyncio.run(test_if_located_right(
-        question="find Goat in this project and replace it with Iguana",
+        question="check out Goat in this project, can you write a similar test in typescript?",
         expected_roles={
-            "src/ast/alt_testsuite/cpp_goat_library.h": "TOCHANGE",
-            "src/ast/alt_testsuite/cpp_goat_main.cpp": "TOCHANGE",
+            # "src/ast/alt_testsuite/cpp_goat_library.h": "TOCHANGE",
+            # "src/ast/alt_testsuite/cpp_goat_main.cpp": "TOCHANGE",
         },
     ))
+    # check out Goat in this project
+    # check out Goat in this project, can you write a similar test in typescript?

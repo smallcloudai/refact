@@ -81,7 +81,6 @@ impl AtCommand for AtAstReference {
                         symbols: vec![usedin.path()],
                         gradient_type: -1,
                         usefulness: 100.0,
-                        is_body_important: false
                     });
                 }
                 if usage_count > USAGES_LIMIT {

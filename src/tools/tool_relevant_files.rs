@@ -136,7 +136,6 @@ impl Tool for ToolRelevantFiles {
                 symbols: vec![],
                 gradient_type: -1,
                 usefulness,
-                is_body_important: false,
             }));
 
             for symbol in ast_symbols {
@@ -148,7 +147,6 @@ impl Tool for ToolRelevantFiles {
                     symbols: vec![symbol.path()],
                     gradient_type: -1,
                     usefulness: 100.,
-                    is_body_important: false,
                 }));
             }
         }

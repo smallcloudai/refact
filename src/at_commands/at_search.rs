@@ -54,7 +54,6 @@ fn results2message(results: &Vec<vecdb::vdb_structs::VecdbRecord>) -> Vec<Contex
             symbols: vec![],
             gradient_type: -1,
             usefulness,
-            is_body_important: false
         });
     }
     vector_of_context_file
