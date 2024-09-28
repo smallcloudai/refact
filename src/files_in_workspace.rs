@@ -37,7 +37,7 @@ pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<Globa
     }
     read_file_from_disk_without_privacy_check(&file_path)
         .await.map(|x|x.to_string())
-        .map_err(|e|format!("Failed to read file: not found in memory, not found on disk. Error:\n{}", e))
+        .map_err(|e|format!("Not found in memory, not found on disk. Error:\n{}", e))
 }
 
 impl Document {

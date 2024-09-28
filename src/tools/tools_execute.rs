@@ -174,7 +174,7 @@ async fn pp_run_tools(
 
     if any_corrections && original_messages.len() <= correction_only_up_to_step {
         generated_other.clear();
-        generated_other.push(ChatMessage::new("user".to_string(), "💿 There are corrections in the tool calls, all the output files are suppressed. Call again with corrections.".to_string()));
+        generated_other.push(ChatMessage::new("cd_instruction".to_string(), "💿 There are corrections in the tool calls, all the output files are suppressed. Call again with corrections.".to_string()));
 
     } else if tokens_for_rag > MIN_RAG_CONTEXT_LIMIT {
         let (tokens_limit_chat_msg, mut tokens_limit_files) = {
@@ -247,15 +247,26 @@ async fn pp_run_tools(
             } else {
                 generated_other.push(ChatMessage::new(
                     "cd_instruction".to_string(),
-                    "💿 Whoops, you are running in circles. You already have those files. Answer the question with what you have. Answer in the language user prefers. Follow the system prompt.".to_string(),
+                    "💿 Whoops, you are running in circles. You already have those files. Answer the question with what you have. Answer in the language the user prefers. Follow the system prompt.".to_string(),
                 ));
             }
         }
+
     } else {
         warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.")
     }
+
+    // Sort generated_other such that cd_instruction comes last using stable sort
+    generated_other.sort_by(|a, b| match (a.role.as_str(), b.role.as_str()) {
+        ("cd_instruction", "cd_instruction") => std::cmp::Ordering::Equal,
+        ("cd_instruction", _) => std::cmp::Ordering::Greater,
+        (_, "cd_instruction") => std::cmp::Ordering::Less,
+        _ => std::cmp::Ordering::Equal,
+    });
+
     (generated_tool, generated_other)
 }
+
 
 fn tool_answer(content: String, tool_call_id: String) -> ChatMessage {
     ChatMessage {

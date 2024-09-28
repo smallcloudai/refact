@@ -19,7 +19,8 @@ use crate::vecdb::vdb_lance::VecDBHandler;
 use crate::vecdb::vdb_structs::{VecdbRecord, SplitResult, VecdbConstants, VecDbStatus, SimpleTextHashVector};
 use crate::vecdb::vdb_cache::VecDBCache;
 
-const DEBUG_WRITE_VECDB_FILES: bool = false;
+const DEBUG_WRITE_VECDB_FILES: bool = true;
+const COOLDOWN_SECONDS: u64 = 3;
 
 
 enum MessageToVecdbThread {
@@ -43,9 +44,8 @@ async fn cooldown_queue_thread(
     vecdb_delayed_q: Arc<AMutex<VecDeque<Document>>>,
     vecdb_immediate_q: Arc<AMutex<VecDeque<MessageToVecdbThread>>>,
     _vstatus: Arc<AMutex<VecDbStatus>>,
-    cooldown_secs: u64,
 ) {
-    // This function delays vectorization of a file, until mtime is at least cooldown_secs old.
+    // This function delays vectorization of a file, until mtime is at least COOLDOWN_SECONDS old.
     let mut last_updated: HashMap<Document, SystemTime> = HashMap::new();
     loop {
         let mut docs: Vec<Document> = Vec::new();
@@ -67,7 +67,7 @@ async fn cooldown_queue_thread(
         let mut stat_too_new = 0;
         let mut stat_proceed = 0;
         for (doc, time) in &last_updated {
-            if time.elapsed().unwrap().as_secs() > cooldown_secs {
+            if time.elapsed().unwrap().as_secs() > COOLDOWN_SECONDS {
                 docs_to_process.push(doc.clone());
                 stat_proceed += 1;
             } else {
@@ -81,7 +81,7 @@ async fn cooldown_queue_thread(
             last_updated.remove(&doc);
             vecdb_immediate_q.lock().await.push_back(MessageToVecdbThread::RegularDocument(doc));
         }
-        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 }
 
@@ -435,7 +435,6 @@ impl FileVectorizerService {
                 self.vecdb_delayed_q.clone(),
                 self.vecdb_immediate_q.clone(),
                 self.vstatus.clone(),
-                self.constants.cooldown_secs,
             )
         );
 

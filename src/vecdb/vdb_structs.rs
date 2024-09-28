@@ -29,7 +29,6 @@ pub struct VecdbConstants {
     pub vectorizer_n_ctx: usize,
     pub endpoint_embeddings_template: String,
     pub endpoint_embeddings_style: String,
-    pub cooldown_secs: u64,
     pub splitter_window_size: usize,
     pub vecdb_max_files: usize,
 }

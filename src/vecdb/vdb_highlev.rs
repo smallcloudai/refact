@@ -144,7 +144,6 @@ async fn do_i_need_to_reload_vecdb(
             tokenizer: None,
             endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
             endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
-            cooldown_secs: 20,
             splitter_window_size: caps_locked.embedding_n_ctx / 2,
             vecdb_max_files: vecdb_max_files,
         }

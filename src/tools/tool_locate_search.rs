@@ -22,12 +22,13 @@ const LS_SYSTEM_PROMPT: &str = r###"You are an expert in finding relevant files 
 
 Here's the list of reasons a file or symbol might be relevant wrt task description:
 
-TOCHANGE = the main changes go there
+FOUND = the files and the symbols that the task explicitly tells you to find
+TOCHANGE = the main changes go there, if the task requires changes
+NEWFILE = sometimes the task requires creating new files
 MORE_TOCHANGE = likely to change as well, as a consequence of completing the task
-ADD_NEARBY = good place to add new code
-DEFINITIONS = classes/functions/types involved in the code that has to be changed
+DEFINITIONS = classes/functions/types involved in the code that has to be changed, located in files not included in TOCHANGE
 HIGHLEV = crucial to understand the logic, such as a database scheme, high level script
-USERCODE = code that uses the things the task description is about
+USAGE = code that uses the things the task description is about
 SIMILAR = code that might provide an example of how to write similar things
 
 Your job is to use search() calls and summarize the results.
@@ -44,54 +45,76 @@ Call any of those that make sense in parallel.
 
 
 const LS_WRAP_UP: &str = r###"
-Look at the task at the top, and the files collected so far.
+Look at the task at the top, and the files collected so far. Not all files are actually useful, many of them are irrelevant.
+Follow these guidelines:
 
-Save your progress, here are some guidelines:
+0. Does the task make sense at all, after looking at the files? Fill the "rejection" output structure if it doesn't, and stop.
 
-1. There can be only one or two files TOCHANGE. But there has to be one or two, not zero.
+1. If the task tells to find something, it should go to FOUND, and not go to TOCHANGE.
+If the task tells to implement something by analogy, the files to draw the analogy from should go to FOUND.
+Limit the number of FOUND files to 2, maybe 3 at most, unless the task specifies how many files to find.
 
-2. Of course there could be a lot of MORE_TOCHANGE or USERCODE files, each file in the project can be potentially.
-Prefer small and simple files for MORE_TOCHANGE and USERCODE. Limit the number of USERCODE to 3 files, and MORE_TOCHANGE to 3 files.
+2. If the task requires changes, decide which one or two files need to go to TOCHANGE, or is it NEWFILE.
+It can't be no files at all if the task requires changes, fill "rejection" if that's the case. If the task doesn't require
+changes, both TOCHANGE and NEWFILE must be empty, and files must go to FOUND or something.
 
-3. Limit the number of SIMILAR files to 1. Take the best, most similar to whatever the task is about.
+3. Limit the number of SIMILAR files to 1, maybe 2, 3 at most. If you see similar code, take the best, most similar to
+whatever the task is about. It can't be one of TOCHANGE files. No such files (zero) is a perfectly good answer.
 
-4. Limit the number of HIGHLEV files to 2. Take the best, most relevant high level logic for the task.
+4. Of course there could be a lot of MORE_TOCHANGE or USAGE files, potentially every file in the project can be.
+Limit the number of USAGE to 3 files, and MORE_TOCHANGE to 3 files. Prefer small and simple files.
+No such files (zero) is a perfectly good answer, don't guess and make stuff up. Don't put files here just in case.
+Only if you are reasonably certain they will also need to change (MORE_TOCHANGE) or they use the thing that
+changes (USAGE).
 
-5. Limit the number of DEFINITIONS to 5.
+5. Limit the number of HIGHLEV files to 2. Take the best, most relevant high level logic for the task.
+No such files (zero) is a perfectly good answer.
 
-6. Each file can occur only once in the output. Use comma-separated list for symbols within the file.
+6. Limit the number of DEFINITIONS to 5.
+No such files (zero) is a perfectly good answer.
 
 If not sure, drop the file, compact output is better.
 
 Use the following structure:
 
 {
-    "TOCHANGE": {                                   // one or two files, start with the best place to start making changes
-        "dir/dir/file1.ext": "symbol1,symbol2",     // comma-separated symbols found in this file that need to be changed
-        "dir/dir/file2.ext": "symbol1,symbol2",
+    "rejection": "string"                           // Fill this if there are no files matching the task, avoid generic language, name specific things that you did or didn't find, what exactly didn't add up, and stop.
+}
+
+or
+
+{
+    "NEW_FILE": {                                   // Does the task require any new files? Don't make stuff up if the task doesn't require any.
+        "dir/dir/file1.ext": ""                     // For new files, don't fill any symbols to look up and prioritize (because none exist yet)
     },
-    "MORE_TOCHANGE": {                              // follow max values for number of files
-        ...more files and symbols to change...
+    "FOUND": {                                      // Does the task require to find files or symbols?
+        "dir/dir/file2.ext": "symbol1,symbol2",     // Be specific, what symbols match the request?
+        "dir/dir/file3.ext": "symbol1,symbol2"
     },
-    "ADD_NEARBY": {                                 // not necessarily you need to add any new things to complete the task, maybe the dict should be empty
-        "dir/dir/file3.ext": "symbol1,symbol2",     // but if you need to, find a good place
+    "TOCHANGE": {                                   // Does the task require to change existing files? Must be empty if not.
+        "dir/dir/file4.ext": "symbol1,symbol2"      // Comma-separated symbols found in this file that need to be changed
     },
-    "DEFINITIONS": {                                // don't list the same things again, if they are already in TOCHANGE
-        ...files that have relevant definitions...
+    "SIMILAR": {                                    // Don't list the same files again
+        "dir/dir/file5.ext": "symbol1,symbol2"      // If there is similar code in a file not present in TOCHANGE, put it there and list symbols with similar code
     },
-    "HIGHLEV": {                                    // don't list the same things again
-        ...
+    "MORE_TOCHANGE": {
+        ...more files and symbols in them to change...
     },
-    "USERCODE": {
-        ...
+    "DEFINITIONS": {                                // Don't list files if they are already in TOCHANGE
+        ...files that have relevant definitions, very important to name specific symbols...
     },
-    "SIMILAR": {                                    // don't list the same things again
-        ...
+    "HIGHLEV": {                                    // Don't list files if they are already in TOCHANGE
+        ...files with high level logic, very important to name specific symbols where the logic actually is...
+    },
+    "USAGE": {                                      // Don't list files if they are already in TOCHANGE
+        ...files with code that uses the thing to change, very important to name specific symbols where the use happens...
     }
 }
 
 Don't write backquotes, json format only.
 "###;
+
+// const LS_REPORT: &str = ;
 
 
 #[async_trait]
@@ -125,15 +148,14 @@ impl Tool for ToolLocateSearch {
 
         ccx.lock().await.pp_skeleton = true;
 
-        let mut results: Vec<ContextEnum>;
-        let usage: ChatUsage;
-        let tool_message: String;
-        (results, usage, tool_message) = find_relevant_files_with_search(
+        let (mut results, usage, tool_message, cd_instruction) = find_relevant_files_with_search(
             ccx_subchat,
             params,
             tool_call_id.clone(),
             problem_statement,
         ).await?;
+
+        tracing::info!("\n{}", tool_message);
 
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
@@ -143,6 +165,17 @@ impl Tool for ToolLocateSearch {
             usage: Some(usage),
             ..Default::default()
         }));
+
+        if !cd_instruction.is_empty() {
+            results.push(ContextEnum::ChatMessage(ChatMessage {
+                role: "cd_instruction".to_string(),
+                content: cd_instruction,
+                tool_calls: None,
+                tool_call_id: "".to_string(),
+                usage: None,
+                ..Default::default()
+            }));
+        }
 
         Ok((false, results))
     }
@@ -157,7 +190,8 @@ async fn find_relevant_files_with_search(
     subchat_params: SubchatParameters,
     tool_call_id: String,
     user_query: String,
-) -> Result<(Vec<ContextEnum>, ChatUsage, String), String> {
+) -> Result<(Vec<ContextEnum>, ChatUsage, String, String), String> {
+    ccx.lock().await.pp_skeleton = true;
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
     let total_files_in_project = gcx.read().await.documents_state.workspace_files.lock().unwrap().len();
 
@@ -168,7 +202,7 @@ async fn find_relevant_files_with_search(
 
     if total_files_in_project == 0 {
         let tool_message = format!("Inspected 0 files, project has 0 files");
-        return Ok((results, usage, tool_message))
+        return Ok((results, usage, tool_message, "".to_string()))
     }
 
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
@@ -197,62 +231,37 @@ async fn find_relevant_files_with_search(
     crate::tools::tool_relevant_files::update_usage_from_message(&mut usage, &last_message);
     assert!(last_message.role == "assistant");
 
-    let assistant_output = serde_json::from_str::<IndexMap<String, IndexMap<String, String>>>(last_message.content.as_str()).map_err(|e| {
+    let assistant_output1 = serde_json::from_str::<IndexMap<String, serde_json::Value>>(last_message.content.as_str()).map_err(|e| {
+        tracing::warn!("\n{}\nUnable to parse JSON: {:?}", last_message.content, e);
+        format!("Unable to parse JSON: {:?}", e)
+    })?;
+    let rejection = assistant_output1.get("rejection");
+    if let Some(_rejection_message) = rejection {
+        let cd_instruction = format!(r###"💿 locate() inspected {} files, workspace has {} files.
+Complain briefly to the user that you cannot do that, ask for clarification.
+Answer in the language the user prefers. Follow the system prompt.
+"###, inspected_files.len(), total_files_in_project);
+        return Ok((results, usage, serde_json::to_string_pretty(&assistant_output1).unwrap(), cd_instruction));
+    }
+
+    let assistant_output2 = serde_json::from_str::<IndexMap<String, IndexMap<String, String>>>(last_message.content.as_str()).map_err(|e| {
+        tracing::warn!("\n{}\nUnable to parse JSON: {:?}", last_message.content, e);
         format!("Unable to parse JSON: {:?}", e)
     })?;
 
-    for (category, files) in assistant_output.iter() {
-        for (file_path, symbols) in files {
-            let text = get_file_text_from_memory_or_disk(gcx.clone(), &std::path::PathBuf::from(&file_path)).await?.to_string();
-            let lines_count = text.lines().count();
-            let symbols_vec: Vec<String> = symbols.split(',').map(|s| s.to_string()).collect();
+    let processed_results = process_assistant_output(&assistant_output2, gcx).await?;
+    results.extend(processed_results);
 
-            match category.as_str() {
-                "TOCHANGE" | "ADD_NEARBY" => {
-                    results.push(ContextEnum::ContextFile(ContextFile {
-                        file_name: file_path.clone(),
-                        file_content: text.clone(),
-                        line1: 0,
-                        line2: lines_count,
-                        symbols: symbols_vec.clone(),
-                        gradient_type: -1,
-                        usefulness: 100.0,
-                        is_body_important: false,
-                    }));
-                },
-                "MORE_TOCHANGE" | "DEFINITIONS" | "HIGHLEV" | "SIMILAR" | "USERCODE" => {
-                    let usefulness = match category.as_str() {
-                        "MORE_TOCHANGE" => 75.0,
-                        "DEFINITIONS" => 80.0,
-                        "HIGHLEV" => 75.0,
-                        "SIMILAR" => 75.0,
-                        "USERCODE" => 75.0,
-                        _ => 0.0,
-                    };
-                    for symbol in symbols_vec {
-                        results.push(ContextEnum::ContextFile(ContextFile {
-                            file_name: file_path.clone(),
-                            file_content: text.clone(),
-                            line1: 0,
-                            line2: lines_count,
-                            symbols: vec![symbol.clone()],
-                            gradient_type: -1,
-                            usefulness,
-                            is_body_important: false,
-                        }));
-                    }
-                },
-                _ => {},
-            }
-        }
-    }
+    let cd_instruction = format!(r###"💿 locate() inspected {} files, workspace has {} files. Files relevant to the task were attached above.
+Don't call cat() for the same files, you already have them.
+Proceed to make changes using 📍-notation, if the user has requested the changes. Change two files at most. If you see more files you need to change,
+list the files you know, maybe try to come up with a generalized way to find such files, for example references("the_function_that_changed"), write about it
+and stop.
 
-    let mut tool_message = format!(
-            "{}\n\n💿 Used 1 expert, inspected {} files, project has {} files. Files are attached below. Don't call cat() for the same files, you alrady have them. Proceed to make changes using 📍-notation, if user has requested them. If you need to summarize the code, do it briefly, without extensive quotations. Answer in the language user prefers.",
-        serde_json::to_string_pretty(&assistant_output).unwrap(),
-        inspected_files.len(),
-        total_files_in_project
-    );
+If you need to summarize the code, do it briefly, without extensive quotations.
+
+Answer in the language the user prefers. Follow the system prompt.
+"###, inspected_files.len(), total_files_in_project);
 
     // if !inspected_files.is_empty() {
     //     tool_message = format!("{}\n\nInspected context files:\n{}",
@@ -264,5 +273,70 @@ async fn find_relevant_files_with_search(
     //     tool_message = format!("{}\n\nChecking file names against what actually exists, error log:\n{}", tool_message, error_log);
     // }
 
-    Ok((results, usage, tool_message))
+    Ok((results, usage, serde_json::to_string_pretty(&assistant_output2).unwrap(), cd_instruction))
+}
+
+
+async fn process_assistant_output(
+    assistant_output: &IndexMap<String, IndexMap<String, String>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
+) -> Result<Vec<ContextEnum>, String> {
+    let mut results: Vec<ContextEnum> = vec![];
+
+    for (category, files) in assistant_output.iter() {
+        for (file_path, symbols) in files {
+            match category.as_str() {
+                "TOCHANGE" | "FOUND" => {
+                    let text_maybe = get_file_text_from_memory_or_disk(gcx.clone(), &std::path::PathBuf::from(&file_path)).await;
+                    let file_usefulness = match category.as_str() {
+                        "TOCHANGE" => 100.0,
+                        "FOUND" => 90.0,
+                        _ => panic!("unexpected category: {:?}", category),
+                    };
+                    if text_maybe.is_ok() {
+                        let lines_count = text_maybe.unwrap().lines().count();
+                        results.push(ContextEnum::ContextFile(ContextFile {
+                            file_name: file_path.clone(),
+                            file_content: "".to_string(),
+                            line1: 1,
+                            line2: lines_count,
+                            symbols: vec![],
+                            gradient_type: -1,
+                            usefulness: file_usefulness,
+                            is_body_important: false,
+                        }));
+                    }
+                },
+                "MORE_TOCHANGE" | "DEFINITIONS" | "HIGHLEV" | "SIMILAR" | "USAGE" => {
+                    let symbols_vec: Vec<String> = symbols.split(',').map(|s| s.to_string()).collect();
+                    let symbol_usefulness = match category.as_str() {
+                        "FOUND" => 90.0,
+                        "DEFINITIONS" => 80.0,
+                        "MORE_TOCHANGE" => 75.0,
+                        "HIGHLEV" => 75.0,
+                        "SIMILAR" => 75.0,
+                        "USAGE" => 75.0,
+                        _ => panic!("unexpected category: {:?}", category),
+                    };
+                    for symbol in symbols_vec {
+                        results.push(ContextEnum::ContextFile(ContextFile {
+                            file_name: file_path.clone(),
+                            file_content: "".to_string(),
+                            line1: 0,
+                            line2: 0,
+                            symbols: vec![symbol.clone()],
+                            gradient_type: -1,
+                            usefulness: symbol_usefulness,
+                            is_body_important: false,
+                        }));
+                    }
+                },
+                _ => {
+                    tracing::warn!("unexpected category: {:?}", category);
+                },
+            }
+        }
+    }
+
+    Ok(results)
 }
