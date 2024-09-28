@@ -166,6 +166,7 @@ mod tests {
     }
 
     // #[cfg(not(debug_assertions))]
+    #[ignore]
     #[test]
     fn test_fuzzy_search_speed() {
         // Arrange

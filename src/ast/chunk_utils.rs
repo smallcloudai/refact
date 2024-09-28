@@ -26,8 +26,8 @@ pub fn get_chunks(text: &String,
 ) -> Vec<SplitResult> {
     let (top_row, bottom_row) = top_bottom_rows;
     let mut chunks: Vec<SplitResult> = Vec::new();
-    let mut current_line_accum: VecDeque<(String, usize)> = Default::default();
-    let mut current_token_n = 0;
+    let mut accum: VecDeque<(String, usize)> = Default::default();
+    let mut current_tok_n = 0;
     let lines = text.split("\n").collect::<Vec<&str>>();
 
     {  // try to split chunks from top to bottom
@@ -35,13 +35,12 @@ pub fn get_chunks(text: &String,
         let mut previous_start = line_idx;
         while line_idx < lines.len() {
             let line = lines[line_idx];
-            let line_with_newline = if current_line_accum.is_empty() { line.to_string() } else { format!("{}\n", line) };
-            let text_orig_tok_n = count_tokens(tokenizer.clone(), line_with_newline.as_str());
+            let line_tok_n = count_tokens(tokenizer.clone(), line);
 
-            if current_token_n + text_orig_tok_n > tokens_limit {
-                let current_line = current_line_accum.iter().map(|(line, _)| line).join("\n");
-                let start_line = if use_symbol_range_always { top_row as u64 } else { current_line_accum.front().unwrap().1 as u64 };
-                let end_line = if use_symbol_range_always { bottom_row as u64 } else { current_line_accum.back().unwrap().1 as u64 };
+            if !accum.is_empty() && current_tok_n + line_tok_n > tokens_limit {
+                let current_line = accum.iter().map(|(line, _)| line).join("\n");
+                let start_line = if use_symbol_range_always { top_row as u64 } else { accum.front().unwrap().1 as u64 };
+                let end_line = if use_symbol_range_always { bottom_row as u64 } else { accum.back().unwrap().1 as u64 };
                 chunks.push(SplitResult {
                     file_path: file_path.clone(),
                     window_text: current_line.clone(),
@@ -50,30 +49,30 @@ pub fn get_chunks(text: &String,
                     end_line,
                     symbol_path: symbol_path.clone(),
                 });
-                current_line_accum.clear();
-                current_token_n = 0;
+                accum.clear();
+                current_tok_n = 0;
                 line_idx = (previous_start + 1).max((line_idx as i64 - intersection_lines as i64).max(0) as usize);
                 previous_start = line_idx;
             } else {
-                current_token_n += text_orig_tok_n;
-                current_line_accum.push_back((line.to_string(), line_idx + top_row));
+                current_tok_n += line_tok_n;
+                accum.push_back((line.to_string(), line_idx + top_row));
                 line_idx += 1;
             }
         }
     }
 
-    if !current_line_accum.is_empty() {  // try to fill last chunk from bottom in tokens_limit
+    // fill last chunk from bottom up to tokens_limit
+    if !accum.is_empty() {
         let mut line_idx: i64 = (lines.len() - 1) as i64;
-        current_line_accum.clear();
-        current_token_n = 0;
+        accum.clear();
+        current_tok_n = 0;
         while line_idx >= 0 {
             let line = lines[line_idx as usize];
-            let line_with_newline = if current_line_accum.is_empty() { line.to_string() } else { format!("{}\n", line) };
-            let text_orig_tok_n = count_tokens(tokenizer.clone(), line_with_newline.as_str());
-            if current_token_n + text_orig_tok_n > tokens_limit {
-                let current_line = current_line_accum.iter().map(|(line, _)| line).join("\n");
-                let start_line = if use_symbol_range_always { top_row as u64 } else { current_line_accum.front().unwrap().1 as u64 };
-                let end_line = if use_symbol_range_always { bottom_row as u64 } else { current_line_accum.back().unwrap().1 as u64 };
+            let text_orig_tok_n = count_tokens(tokenizer.clone(), line);
+            if !accum.is_empty() && current_tok_n + text_orig_tok_n > tokens_limit {
+                let current_line = accum.iter().map(|(line, _)| line).join("\n");
+                let start_line = if use_symbol_range_always { top_row as u64 } else { accum.front().unwrap().1 as u64 };
+                let end_line = if use_symbol_range_always { bottom_row as u64 } else { accum.back().unwrap().1 as u64 };
                 chunks.push(SplitResult {
                     file_path: file_path.clone(),
                     window_text: current_line.clone(),
@@ -82,21 +81,20 @@ pub fn get_chunks(text: &String,
                     end_line,
                     symbol_path: symbol_path.clone(),
                 });
-                current_line_accum.clear();
+                accum.clear();
                 break;
             } else {
-                current_token_n += text_orig_tok_n;
-                current_line_accum.push_front((line.to_string(), line_idx as usize + top_row));
+                current_tok_n += text_orig_tok_n;
+                accum.push_front((line.to_string(), line_idx as usize + top_row));
                 line_idx -= 1;
             }
         }
     }
 
-    // flush accumulators
-    if !current_line_accum.is_empty() {
-        let current_line = current_line_accum.iter().map(|(line, _)| line).join("\n");
-        let start_line = if use_symbol_range_always { top_row as u64 } else { current_line_accum.front().unwrap().1 as u64 };
-        let end_line = if use_symbol_range_always { bottom_row as u64 } else { current_line_accum.back().unwrap().1 as u64 };
+    if !accum.is_empty() {
+        let current_line = accum.iter().map(|(line, _)| line).join("\n");
+        let start_line = if use_symbol_range_always { top_row as u64 } else { accum.front().unwrap().1 as u64 };
+        let end_line = if use_symbol_range_always { bottom_row as u64 } else { accum.back().unwrap().1 as u64 };
         chunks.push(SplitResult {
             file_path: file_path.clone(),
             window_text: current_line.clone(),
@@ -118,7 +116,7 @@ mod tests {
 
     use crate::ast::chunk_utils::get_chunks;
     use crate::ast::count_tokens;
-    use crate::vecdb::vdb_structs::SplitResult;
+    // use crate::vecdb::vdb_structs::SplitResult;
 
     const DUMMY_TOKENIZER: &str = include_str!("dummy_tokenizer.json");
     const PYTHON_CODE: &str = r#"def square_number(x):
@@ -133,23 +131,6 @@ mod tests {
     """
     return x**2"#;
 
-    static FULL_CHUNK_RANGES_128: [(usize, usize); 2] = [(0, 4), (5, 10)];
-    static FULL_CHUNK_WITH_STRIDE_2_RANGES_128: [(usize, usize); 3] = [(0, 4), (3, 9), (5, 10)];
-    static SKIP_0_LINE_CHUNK_RANGES_128: [(usize, usize); 3] = [(1, 4), (5, 9), (6, 10)];
-    static FULL_CHUNK_RANGES_100: [(usize, usize); 3] = [(0, 3), (4, 7), (6, 10)];
-    static TAKE_SMALL_CHUNK_RANGES_128: [(usize, usize); 1] = [(0, 3)];
-
-    fn base_check_chunks(text: &str, chunks: Vec<SplitResult>, ref_data: &[(usize, usize)]) {
-        let lines = text.lines().collect::<Vec<&str>>();
-        assert_eq!(chunks.len(), ref_data.len());
-        for (idx, range) in ref_data.iter().enumerate() {
-            assert_eq!(chunks[idx].start_line, range.0 as u64);
-            assert_eq!(chunks[idx].end_line, range.1 as u64);
-            let ref_content = lines[range.0..range.1 + 1].join("\n");
-            assert_eq!(chunks[idx].window_text, ref_content);
-        }
-    }
-
     #[test]
     fn dummy_tokenizer_test() {
         let tokenizer = Arc::new(StdRwLock::new(tokenizers::Tokenizer::from_str(DUMMY_TOKENIZER).unwrap()));
@@ -160,70 +141,35 @@ mod tests {
     #[test]
     fn simple_chunk_test_1_with_128_limit() {
         let tokenizer = Arc::new(StdRwLock::new(tokenizers::Tokenizer::from_str(DUMMY_TOKENIZER).unwrap()));
-        let chunks = get_chunks(&PYTHON_CODE.to_string(),
-                                &PathBuf::from_str("/tmp/test.py").unwrap(),
-                                &"".to_string(),
-                                (0, 10),
-                                Some(tokenizer.clone()),
-                                128, 0, false);
-        base_check_chunks(&PYTHON_CODE, chunks, &FULL_CHUNK_RANGES_128);
+        let orig = include_str!("../caps.rs").to_string();
+        let token_limits = [10, 50, 100, 200, 300];
+        for &token_limit in &token_limits {
+            let chunks = get_chunks(
+                &orig,
+                &PathBuf::from_str("/tmp/test.py").unwrap(),
+                &"".to_string(),
+                (0, 10),
+                Some(tokenizer.clone()),
+                token_limit, 2, false);
+            let mut not_present: Vec<char> = orig.chars().collect();
+            let mut result = String::new();
+            for chunk in chunks.iter() {
+                result.push_str(&format!("\n\n------- {:?} {}-{} -------\n", chunk.symbol_path, chunk.start_line, chunk.end_line));
+                result.push_str(&chunk.window_text);
+                result.push_str("\n");
+                let mut start_pos = 0;
+                while let Some(found_pos) = orig[start_pos..].find(&chunk.window_text) {
+                    let i = start_pos + found_pos;
+                    for j in i .. i + chunk.window_text.len() {
+                        not_present[j] = ' ';
+                    }
+                    start_pos = i + chunk.window_text.len();
+                }
+            }
+            let not_present_str = not_present.iter().collect::<String>();
+            println!("====\n{}\n====", result);
+            assert!(not_present_str.trim().is_empty(), "token_limit={} anything non space means it's missing from vecdb {:?}", token_limit, not_present_str);
+        }
     }
 
-    #[test]
-    fn simple_chunk_test_with_100_limit() {
-        let tokenizer = Arc::new(StdRwLock::new(tokenizers::Tokenizer::from_str(DUMMY_TOKENIZER).unwrap()));
-        let chunks = get_chunks(&PYTHON_CODE.to_string(),
-                                &PathBuf::from_str("/tmp/test.py").unwrap(),
-                                &"".to_string(),
-                                (0, 10),
-                                Some(tokenizer.clone()),
-                                100, 0, false);
-        base_check_chunks(&PYTHON_CODE, chunks, &FULL_CHUNK_RANGES_100);
-    }
-
-    #[test]
-    fn simple_chunk_test_2_with_128_limit() {
-        let content = {
-            let lines = PYTHON_CODE.lines().collect::<Vec<&str>>();
-            lines[1..lines.len()].join("\n")
-        };
-
-        let tokenizer = Arc::new(StdRwLock::new(tokenizers::Tokenizer::from_str(DUMMY_TOKENIZER).unwrap()));
-        let chunks = get_chunks(&content.to_string(),
-                                &PathBuf::from_str("/tmp/test.py").unwrap(),
-                                &"".to_string(),
-                                (1, 10),
-                                Some(tokenizer.clone()),
-                                100, 0, false);
-        base_check_chunks(&PYTHON_CODE, chunks, &SKIP_0_LINE_CHUNK_RANGES_128);
-    }
-
-    #[test]
-    fn simple_chunk_test_3_with_128_limit() {
-        let content = {
-            let lines = PYTHON_CODE.lines().collect::<Vec<&str>>();
-            lines[0..4].join("\n")
-        };
-
-        let tokenizer = Arc::new(StdRwLock::new(tokenizers::Tokenizer::from_str(DUMMY_TOKENIZER).unwrap()));
-        let chunks = get_chunks(&content.to_string(),
-                                &PathBuf::from_str("/tmp/test.py").unwrap(),
-                                &"".to_string(),
-                                (0, 3),
-                                Some(tokenizer.clone()),
-                                100, 0, false);
-        base_check_chunks(&PYTHON_CODE, chunks, &TAKE_SMALL_CHUNK_RANGES_128);
-    }
-
-    #[test]
-    fn simple_chunk_test_with_stride_1_with_128_limit() {
-        let tokenizer = Arc::new(StdRwLock::new(tokenizers::Tokenizer::from_str(DUMMY_TOKENIZER).unwrap()));
-        let chunks = get_chunks(&PYTHON_CODE.to_string(),
-                                &PathBuf::from_str("/tmp/test.py").unwrap(),
-                                &"".to_string(),
-                                (0, 10),
-                                Some(tokenizer.clone()),
-                                128, 2, false);
-        base_check_chunks(&PYTHON_CODE, chunks, &FULL_CHUNK_WITH_STRIDE_2_RANGES_128);
-    }
 }
