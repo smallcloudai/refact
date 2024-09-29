@@ -63,8 +63,6 @@ impl VecDBHandler {
         let vec_trait = Arc::new(Field::new("item", DataType::Float32, true));
         let schema = Arc::new(Schema::new(vec![
             Field::new("vector", DataType::FixedSizeList(vec_trait, embedding_size), true),
-            // Field::new("window_text", DataType::Utf8, true),
-            // Field::new("window_text_hash", DataType::Utf8, true),
             Field::new("scope", DataType::Utf8, true),
             Field::new("start_line", DataType::UInt64, true),
             Field::new("end_line", DataType::UInt64, true),

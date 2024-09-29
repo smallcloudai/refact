@@ -50,8 +50,6 @@ pub struct VecDbStatus {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct VecdbRecord {
     pub vector: Option<Vec<f32>>,
-    // pub window_text: String,
-    // pub window_text_hash: String,
     pub file_path: PathBuf,
     pub start_line: u64,
     pub end_line: u64,

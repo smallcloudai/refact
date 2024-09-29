@@ -128,8 +128,6 @@ async fn vectorize_batch_from_q(
         ready_to_vecdb.push(
             VecdbRecord {
                 vector: Some(batch_result[i].clone()),
-                // window_text: data_res.window_text.clone(),
-                // window_text_hash: data_res.window_text_hash.clone(),
                 file_path: data_res.file_path.clone(),
                 start_line: data_res.start_line,
                 end_line: data_res.end_line,
