@@ -23,6 +23,8 @@ from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetc
 from refact.cmdline_printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
 from refact.cmdline_printing import print_file, print_lines, highlight_text_by_language, set_background_color, print_file_name
 from refact.cmdline_markdown import to_markdown
+from refact.cmdline_inspect import create_label, inspect_app, open_label
+from refact.cmdline_app_switcher import start_app, exit_all_apps, push_app
 from refact.lsp_runner import LSPServerRunner
 from refact import cmdline_statusbar
 from refact import cmdline_settings
@@ -74,26 +76,26 @@ def update_response_box():
     response_box.text = [("", response_text)]
     for tool_call in tool_calls.values():
         function = tool_call["function"]
-        response_box.text.append(("", f"\n  {function['name']}({function['arguments']})"))
+        response_box.text.append(("", f"\n🔨 {function['name']}({function['arguments']})"))
         if "context_files" in tool_call:
             context_files = tool_call["context_files"]
             if len(context_files) > 4:
                 if nerd_font:
-                    response_box.text.append(("", f"\n  󰏢"))
+                    response_box.text.append(("", f"\n    󰏢"))
                 else:
-                    response_box.text.append(("", f"\n  📎"))
+                    response_box.text.append(("", f"\n    📎"))
                 response_box.text.append(("", f" <{len(context_files) - 4} more files>"))
             for context_file in context_files[-4:]:
                 if nerd_font:
-                    response_box.text.append(("", f"\n  󰏢"))
+                    response_box.text.append(("", f"\n    󰏢"))
                 else:
-                    response_box.text.append(("", f"\n  📎"))
+                    response_box.text.append(("", f"\n    📎"))
                 response_box.text.append(("", f" {context_file}"))
         if "subchat_id" in tool_call:
             if nerd_font:
-                response_box.text.append(("", f"\n   Subchat {tool_call['subchat_id']}"))
+                response_box.text.append(("", f"\n     Subchat {tool_call['subchat_id']}"))
             else:
-                response_box.text.append(("", f"\n  ⏳ Subchat {tool_call['subchat_id']}"))
+                response_box.text.append(("", f"\n    ⏳ Subchat {tool_call['subchat_id']}"))
     app.invalidate()
 
 
@@ -172,18 +174,17 @@ def process_streaming_data(data):
             print_context_file(content)
             return
         terminal_width = get_terminal_width()
-        box = create_box(content, terminal_width - 4, max_height=10)
-        indented = indent(box, 2)
         tool_call_id = data["tool_call_id"]
         print_response("\n")
         flush_response()
+        label = create_label(content)
         if tool_call_id in tool_calls:
             tool_call = tool_calls.pop(tool_call_id)
             function = tool_call["function"]
-            print_formatted_text(f"  {function['name']}({function['arguments']})")
+            print_formatted_text(f"🔨 {function['name']}({function['arguments']}) ?{label}")
         else:
-            print_formatted_text(f"  <Unknown tool call {tool_call_id}>")
-        print_lines(indented)
+            print_formatted_text(f"🔨 <Unknown tool call {tool_call_id}> ?{label}")
+        # print_lines(indented)
 
     elif "subchat_id" in data:
         # print_formatted_text(json.dumps(data, indent=2))
@@ -294,7 +295,7 @@ def _(event):
 
 @kb.add('c-d')
 def exit_(event):
-    event.app.exit()
+    exit_all_apps()
 
 
 @Condition
@@ -334,7 +335,16 @@ def on_submit(buffer):
 
     user_input = buffer.text
     if user_input.lower() in ('exit', 'quit'):
-        app.exit()
+        exit_all_apps()
+        return
+
+    if user_input[0] == "?":
+        label = user_input[1:]
+        if open_label(label):
+            push_app(inspect_app())
+        else:
+            print_formatted_text(f"\nchat> {user_input}")
+            print_formatted_text(FormattedText([("#ff3333", f"label {label} not found")]))
         return
 
     print_response(f"\nchat> {user_input}")
@@ -432,7 +442,7 @@ async def chat_main():
             return
 
         asyncio.create_task(cmdline_statusbar.statusbar_background_task())
-        await app.run_async()
+        await start_app(app)
 
 
 history_fn = os.path.expanduser("~/.cache/refact/cli_history")
