@@ -161,8 +161,6 @@ dmypy.json
 # Ignore code-workspaces
 *.code-workspace
 
-workdir
-Cargo.lock
-
 # macos dir cache
 .DS_Store
+
