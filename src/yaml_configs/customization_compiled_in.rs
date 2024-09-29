@@ -40,6 +40,11 @@ PROMPT_PINS: |
   python my_file.py
   ```
 
+  📍REWRITE_ONE_SYMBOL 002 /home/user/code/my_project/my_other_file.py SYMBOL_NAME g
+  ```python
+  def g(): pass
+  ```
+
   If the user gives you a function to rewrite, prefer 📍REWRITE_ONE_SYMBOL over 📍PARTIAL_EDIT because it can be applied faster.
   If a file is big, 📍PARTIAL_EDIT is better than 📍REWRITE_WHOLE_FILE. Generate several 📍-tickets for all the changes necessary.
 
