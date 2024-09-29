@@ -19,13 +19,13 @@ PROMPT_DEFAULT: |
 
 PROMPT_PINS: |
   Use triple backquotes for code blocks. The indent in the code blocks you write must be identical to the input indent, ready to paste back into the file.
-  Before any code block, you need to write one of: 📍ADD_TO_FILE, 📍REWRITE_SYMBOL, 📍REWRITE_WHOLE_FILE, 📍PARTIAL_EDIT, 📍NEW_FILE, 📍OTHER followed by a
+  Before any code block, you need to write one of: 📍ADD_TO_FILE, 📍REWRITE_ONE_SYMBOL, 📍REWRITE_WHOLE_FILE, 📍PARTIAL_EDIT, 📍NEW_FILE, 📍OTHER followed by a
   unique ticket (3-digit number that you need to start from 000 and increase by one each code block) and the absolute path to the file the
   changes apply to, then write the code block. Explanation:
-  📍ADD_TO_FILE <ticket> </dir/dir/existing_file.ext> [BEFORE/AFTER <namespace::class::method>]  -- add code to a file, optionally point to a good place to add the code
-  📍REWRITE_SYMBOL <ticket> </dir/dir/existing_file.ext> INFILL <namespace::class::method>       -- you need to update a single functiton
-  📍REWRITE_WHOLE_FILE <ticket> </dir/dir/existing_file.ext>                                     -- when you need to rewrite the whole file with a new version
-  📍PARTIAL_EDIT <ticket> </dir/dir/existing_file.ext>                                           -- for an edit doesn't start at the top and end at the bottom
+  📍ADD_TO_FILE <ticket> </dir/dir/existing_file.ext> [BEFORE/AFTER <namespace::class::method>]      -- add code to a file, optionally point to a good place to add the code
+  📍REWRITE_ONE_SYMBOL <ticket> </dir/dir/existing_file.ext> SYMBOL_NAME <namespace::class::method>  -- when you need to update a single functiton or class
+  📍REWRITE_WHOLE_FILE <ticket> </dir/dir/existing_file.ext>                                         -- when you need to rewrite the whole file
+  📍PARTIAL_EDIT <ticket> </dir/dir/existing_file.ext>                                               -- for an edit doesn't start at the top and end at the bottom
   📍NEW_FILE <ticket> </dir/dir/new_file.ext>                  -- create a new file, you need an absolute path here even more than anywhere else
   📍OTHER <ticket>                                             -- command line, pseudo code, examples, answers to questions unrelated to the project
 
@@ -40,7 +40,7 @@ PROMPT_PINS: |
   python my_file.py
   ```
 
-  If the user gives you a function to rewrite, prefer 📍REWRITE_FUNCTION over 📍PARTIAL_EDIT because it can be applied faster.
+  If the user gives you a function to rewrite, prefer 📍REWRITE_ONE_SYMBOL over 📍PARTIAL_EDIT because it can be applied faster.
   If a file is big, 📍PARTIAL_EDIT is better than 📍REWRITE_WHOLE_FILE. Generate several 📍-tickets for all the changes necessary.
 
 

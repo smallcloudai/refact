@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
-use tracing::{info, warn};
+use tracing::warn;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -28,7 +28,7 @@ pub enum PatchAction {
 pub enum PatchLocateAs {
     BEFORE,
     AFTER,
-    INFILL
+    SYMBOLNAME
 }
 
 impl PatchLocateAs {
@@ -36,7 +36,7 @@ impl PatchLocateAs {
         match s {
             "BEFORE" => Ok(PatchLocateAs::BEFORE),
             "AFTER" => Ok(PatchLocateAs::AFTER),
-            "INFILL" => Ok(PatchLocateAs::INFILL),
+            "SYMBOL_NAME" => Ok(PatchLocateAs::SYMBOLNAME),
             _ => Err(format!("invalid locate_as: {}", s)),
         }
     }
@@ -46,7 +46,7 @@ impl PatchAction {
     pub fn from_string(action: &str) -> Result<PatchAction, String> {
         match action {
             "📍ADD_TO_FILE" => Ok(PatchAction::AddToFile),
-            "📍REWRITE_SYMBOL" => Ok(PatchAction::RewriteSymbol),
+            "📍REWRITE_ONE_SYMBOL" => Ok(PatchAction::RewriteSymbol),
             "📍REWRITE_WHOLE_FILE" => Ok(PatchAction::RewriteWholeFile),
             "📍PARTIAL_EDIT" => Ok(PatchAction::PartialEdit),
             "📍NEW_FILE" => Ok(PatchAction::NewFile),
@@ -85,7 +85,7 @@ pub async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>
 
     let path_before = PathBuf::from(ticket.filename_before.as_str());
     let _path_after = PathBuf::from(ticket.filename_after.as_str());
-    
+
     match ticket.action {
         PatchAction::AddToFile => {
             ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
@@ -100,7 +100,7 @@ pub async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>
                .map_err(|e| good_error_text(&format!("failed to resolve filename_before: '{}'. Error:\n{}", ticket.filename_before, e), ticket))?;
             ticket.fallback_action = Some(PatchAction::PartialEdit);
 
-            if ticket.locate_as != Some(PatchLocateAs::INFILL) {
+            if ticket.locate_as != Some(PatchLocateAs::SYMBOLNAME) {
                 ticket.action = PatchAction::PartialEdit;
             }
         },
@@ -127,7 +127,7 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<T
         let mut ticket = TicketToApply::default();
         let command_line = lines[line_num];
         let header = command_line.trim().split(" ").collect::<Vec<&str>>();
-        
+
         ticket.action = match header.get(0) {
             Some(action) => {
                 match PatchAction::from_string(action) {
@@ -138,23 +138,23 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<T
             None => return Err("failed to parse ticket, TICKET ACTION is missing".to_string()),
         };
         ticket.orig_action = ticket.action.clone();
-        
+
         ticket.id = match header.get(1) {
             Some(id) => id.to_string(),
             None => return Err("failed to parse ticket, TICKED ID is missing".to_string()),
         };
-        
+
         ticket.filename_before = match header.get(2) {
             Some(filename) => filename.to_string(),
             None => return Err("failed to parse ticket, TICKED FILENAME is missing".to_string()),
         };
-        
+
         if let Some(el3) = header.get(3) {
             if let Ok(locate_as) = PatchLocateAs::from_string(el3) {
                 ticket.locate_as = Some(locate_as);
             }
         }
-        
+
         if let Some(el4) = header.get(4) {
             let locate_symbol_str = el4.to_string();
             match does_doc_have_symbol(gcx.clone(), &locate_symbol_str, &ticket.filename_before).await {
@@ -203,7 +203,7 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<T
             line_num += 1;
         }
     }
-    
+
     tickets
 }
 

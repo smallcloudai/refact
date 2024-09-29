@@ -254,7 +254,7 @@ impl Tool for ToolPatch {
                 &tickets, Some("recreate the ticket with correct filename in 📍-notation or change path argument".to_string())
             ));
         }
-        
+
         let mut res;
         loop {
             let diff_chunks = tickets_to_diff_chunks(
