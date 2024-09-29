@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::collections::HashSet;
-use std::path::PathBuf;
 use tracing::{info, warn};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
@@ -11,7 +10,6 @@ use crate::ast::treesitter::structs::SymbolType;
 use crate::call_validation::{ContextFile, PostprocessSettings};
 use crate::ast::ast_structs::AstDefinition;
 use crate::global_context::GlobalContext;
-use crate::files_correction::{canonical_path, correct_to_nearest_filename};
 use crate::nicer_logs::{first_n_chars, last_n_chars};
 use crate::postprocessing::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, downgrade_lines_if_subsymbol, pp_ast_markup_files};
 use crate::scratchpads::scratchpad_utils::count_tokens;
@@ -24,7 +22,7 @@ pub const DEBUG: usize = 0;  // 0 nothing, 1 summary "N lines in K files => X to
 pub struct PPFile {
     pub symbols_sorted_by_path_len: Vec<Arc<AstDefinition>>,
     pub file_content: String,
-    pub cpath: PathBuf,
+    pub cpath: String,
     pub cpath_symmetry_breaker: f32,
     pub shorter_path: String,
 }
@@ -40,7 +38,10 @@ pub struct FileLine {
 }
 
 
-fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSettings) -> IndexMap<PathBuf, Vec<FileLine>> {
+fn collect_lines_from_files(
+    files: Vec<Arc<PPFile>>,
+    settings: &PostprocessSettings
+) -> IndexMap<String, Vec<FileLine>> {
     let mut lines_in_files = IndexMap::new();
     for file_ref in files {
         for (line_n, line) in file_ref.file_content.lines().enumerate() {
@@ -85,22 +86,15 @@ fn collect_lines_from_files(files: Vec<Arc<PPFile>>, settings: &PostprocessSetti
 }
 
 async fn convert_input_into_usefullness(
-    global_context: Arc<ARwLock<GlobalContext>>,
-    messages: &Vec<ContextFile>,
-    lines_in_files: &mut IndexMap<PathBuf, Vec<FileLine>>,
+    context_file_vec: &Vec<ContextFile>,
+    lines_in_files: &mut IndexMap<String, Vec<FileLine>>,
     settings: &PostprocessSettings,
 ) {
-    for msg in messages.iter() {
-        // Do what we can to match msg.file_name to something real
-        let candidates = correct_to_nearest_filename(global_context.clone(), &msg.file_name, false, 1).await;
-        let c_path = match candidates.first() {
-            Some(c) => canonical_path(&c),
-            None => canonical_path(&msg.file_name)
-        };
-        let lines = match lines_in_files.get_mut(&c_path) {
+    for msg in context_file_vec.iter() {
+        let lines = match lines_in_files.get_mut(&msg.file_name) {
             Some(x) => x,
             None => {
-                warn!("file not found by name {:?} or cpath {:?}", msg.file_name, c_path);
+                warn!("file not found by name {:?} or cpath {:?}", msg.file_name, msg.file_name);
                 continue;
             }
         };
@@ -115,7 +109,7 @@ async fn convert_input_into_usefullness(
         color_with_gradient_type(msg, lines);
 
         let file_ref = lines.first().unwrap().file_ref.clone();
-        let file_nice_path = last_n_chars(&file_ref.cpath.to_string_lossy().to_string(), 30);
+        let file_nice_path = last_n_chars(&file_ref.cpath, 30);
 
         let mut symdefs = vec![];
         if !msg.symbols.is_empty() {
@@ -169,7 +163,8 @@ async fn convert_input_into_usefullness(
     }
 }
 
-fn downgrade_sub_symbols(lines_in_files: &mut IndexMap<PathBuf, Vec<FileLine>>, settings: &PostprocessSettings) {
+fn downgrade_sub_symbols(lines_in_files: &mut IndexMap<String, Vec<FileLine>>, settings: &PostprocessSettings)
+{
     for lines in lines_in_files.values_mut().filter(|x|!x.is_empty()) {
         let file_ref = lines.first().unwrap().file_ref.clone();
         if DEBUG >= 2 {
@@ -196,7 +191,7 @@ fn downgrade_sub_symbols(lines_in_files: &mut IndexMap<PathBuf, Vec<FileLine>>, 
     }
 }
 
-fn close_small_gaps(lines_in_files: &mut IndexMap<PathBuf, Vec<FileLine>>, settings: &PostprocessSettings) {
+fn close_small_gaps(lines_in_files: &mut IndexMap<String, Vec<FileLine>>, settings: &PostprocessSettings) {
     if settings.close_small_gaps {
         for lines in lines_in_files.values_mut().filter(|x|!x.is_empty()) {
             let mut useful_copy = lines.iter().map(|x| x.useful).collect::<Vec<_>>();
@@ -217,16 +212,15 @@ fn close_small_gaps(lines_in_files: &mut IndexMap<PathBuf, Vec<FileLine>>, setti
 }
 
 pub async fn pp_color_lines(
-    global_context: Arc<ARwLock<GlobalContext>>,
-    messages: &Vec<ContextFile>,
+    context_file_vec: &Vec<ContextFile>,
     files: Vec<Arc<PPFile>>,
     settings: &PostprocessSettings,
-) -> IndexMap<PathBuf, Vec<FileLine>> {
+) -> IndexMap<String, Vec<FileLine>> {
     // Generate line refs, fill background scopes found in a file (not search results yet)
     let mut lines_in_files = collect_lines_from_files(files, settings);
 
     // Fill in usefulness from search results
-    convert_input_into_usefullness(global_context.clone(), messages, &mut lines_in_files, settings).await;
+    convert_input_into_usefullness(context_file_vec, &mut lines_in_files, settings).await;
 
     // Downgrade sub-symbols and uninteresting regions
     downgrade_sub_symbols(&mut lines_in_files, settings);
@@ -238,7 +232,7 @@ pub async fn pp_color_lines(
 }
 
 async fn pp_limit_and_merge(
-    lines_in_files: &mut IndexMap<PathBuf, Vec<FileLine>>,
+    lines_in_files: &mut IndexMap<String, Vec<FileLine>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
@@ -263,16 +257,15 @@ async fn pp_limit_and_merge(
             continue;
         }
         let mut ntokens = count_tokens(&tokenizer.read().unwrap(), &line_ref.line_content);
-        let filename = line_ref.file_ref.cpath.to_string_lossy().to_string();
 
-        if !files_mentioned_set.contains(&filename) {
+        if !files_mentioned_set.contains(&line_ref.file_ref.cpath) {
             if files_mentioned_set.len() >= settings.max_files_n {
                 continue;
             }
-            files_mentioned_set.insert(filename.clone());
+            files_mentioned_set.insert(line_ref.file_ref.cpath.clone());
             files_mentioned_sequence.push(line_ref.file_ref.cpath.clone());
             if !single_file_mode {
-                ntokens += count_tokens(&tokenizer.read().unwrap(), &filename.as_str());
+                ntokens += count_tokens(&tokenizer.read().unwrap(), &line_ref.file_ref.cpath.as_str());
                 ntokens += 5;  // a margin for any overhead: file_sep, new line, etc
             }
         }
@@ -292,7 +285,7 @@ async fn pp_limit_and_merge(
             for line_ref in lines.iter() {
                 t.push_str(format!("{} {}:{:04} {:>7.3} {:43} {:43}\n",
                     if line_ref.take { "take" } else { "dont" },
-                    last_n_chars(&line_ref.file_ref.cpath.to_string_lossy().to_string(), 30),
+                    last_n_chars(&line_ref.file_ref.cpath, 30),
                     line_ref.line_n,
                     line_ref.useful,
                     first_n_chars(&line_ref.line_content, 40),
@@ -353,18 +346,17 @@ async fn pp_limit_and_merge(
 
 pub async fn postprocess_context_files(
     gcx: Arc<ARwLock<GlobalContext>>,
-    messages: &Vec<ContextFile>,
+    context_file_vec: &mut Vec<ContextFile>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
     settings: &PostprocessSettings,
 ) -> Vec<ContextFile> {
     assert!(settings.max_files_n > 0);
-    let files_marked_up = pp_ast_markup_files(gcx.clone(), &messages).await;
+    let files_marked_up = pp_ast_markup_files(gcx.clone(), context_file_vec).await;  // this modifies context_file.file_name to make it cpath
 
     let mut lines_in_files = pp_color_lines(
-        gcx.clone(),
-        &messages,
+        context_file_vec,
         files_marked_up,
         settings,
     ).await;

@@ -138,9 +138,9 @@ pub async fn return_one_candidate_or_a_good_error(
         let similar_paths_str = if dirs {
             correct_to_nearest_dir_path(gcx.clone(), file_path, true, 10).await.join("\n")
         } else {
-            let file_name = f_path.file_name().ok_or(format!("unable to get file name from path: {:?}", f_path))?.to_string_lossy().to_string();
-            let x = file_repair_candidates(gcx.clone(), &file_name, 10, true).await.iter().cloned().take(10).collect();
-            let shortified_file_names = shortify_paths(gcx.clone(), x).await;
+            let name_only = f_path.file_name().ok_or(format!("unable to get file name from path: {:?}", f_path))?.to_string_lossy().to_string();
+            let x = file_repair_candidates(gcx.clone(), &name_only, 10, true).await.iter().cloned().take(10).collect::<Vec<_>>();
+            let shortified_file_names = shortify_paths(gcx.clone(), &x).await;
             shortified_file_names.join("\n")
         };
         if f_path.is_absolute() {
@@ -216,7 +216,7 @@ impl AtParam for AtParamFilePath {
 
         let candidates = file_repair_candidates(gcx.clone(), value, top_n, false).await;
         if !candidates.is_empty() {
-            return shortify_paths(gcx.clone(), candidates).await;
+            return shortify_paths(gcx.clone(), &candidates).await;
         }
         let file_path = PathBuf::from(value);
         if file_path.is_relative() {
@@ -224,11 +224,11 @@ impl AtParam for AtParamFilePath {
             let options = project_dirs.iter().map(|x|x.join(&file_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
             if !options.is_empty() {
                 let res = options.iter().map(|x| x.to_string_lossy().to_string()).collect();
-                return shortify_paths(gcx.clone(), res).await;
+                return shortify_paths(gcx.clone(), &res).await;
             }
         }
         let res = file_repair_candidates(gcx.clone(), value, top_n, true).await;
-        shortify_paths(gcx.clone(), res).await
+        shortify_paths(gcx.clone(), &res).await
     }
 
     fn param_completion_valid(&self) -> bool {true}

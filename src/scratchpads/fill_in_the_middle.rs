@@ -272,7 +272,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         if use_rag && rag_tokens_n > 0 {
             info!(" -- rag search starts --");
             let rag_t0 = Instant::now();
-            let mut ast_messages: Vec<ContextFile> = if let Some(ast) = &self.ast_service {
+            let mut ast_context_file_vec: Vec<ContextFile> = if let Some(ast) = &self.ast_service {
                 let ast_index = ast.lock().await.ast_index.clone();
                 _cursor_position_to_context_file(ast_index.clone(), cpath.to_string_lossy().to_string(), pos.line).await
             } else {
@@ -291,7 +291,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
                     gradient_type: -1,
                     usefulness: -1.0,
                 };
-                ast_messages.push(fim_ban);
+                ast_context_file_vec.push(fim_ban);
             }
 
             info!(" -- post processing starts --");
@@ -307,7 +307,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
 
             let postprocessed_messages = postprocess_context_files(
                 self.global_context.clone(),
-                &ast_messages,
+                &mut ast_context_file_vec,
                 self.t.tokenizer.clone(),
                 rag_tokens_n,
                 false,

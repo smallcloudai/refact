@@ -217,15 +217,16 @@ pub async fn get_project_dirs(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> 
     workspace_folders.iter().cloned().collect::<Vec<_>>()
 }
 
-pub async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: Vec<String>) -> Vec<String> {
+pub async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: &Vec<String>) -> Vec<String> {
     let (_, indexed_paths) = files_cache_rebuild_as_needed(gcx.clone()).await;
     let workspace_folders = get_project_dirs(gcx.clone()).await
         .iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>();
-    shortify_paths_from_indexed(paths, indexed_paths, workspace_folders)
+    _shortify_paths_from_indexed(paths, indexed_paths, workspace_folders)
 }
 
-fn shortify_paths_from_indexed(paths: Vec<String>, indexed_paths: Arc<HashSet<String>>, workspace_folders: Vec<String>) -> Vec<String> {
-    paths.into_iter().map(|mut path| {
+fn _shortify_paths_from_indexed(paths: &Vec<String>, indexed_paths: Arc<HashSet<String>>, workspace_folders: Vec<String>) -> Vec<String>
+{
+    paths.into_iter().map(|path| {
         // Get the length of the workspace part of the path
         let workspace_part_len = workspace_folders.iter()
             .filter_map(|workspace_dir| {
@@ -240,15 +241,15 @@ fn shortify_paths_from_indexed(paths: Vec<String>, indexed_paths: Arc<HashSet<St
 
         // Find the longest suffix of the path, that is in the indexed cache, make sure it is at
         // least as long as the part of the path relative to the workspace root
-        let full_path = path.clone();
-        while !path.is_empty() {
-            if indexed_paths.get(&path).is_some() &&
-                workspace_part_len + if std::path::MAIN_SEPARATOR == '/' { 1 } else { 2 } + path.len() >= full_path.len() {
-                return path;
+        let mut path_to_cut = path.clone();
+        while !path_to_cut.is_empty() {
+            if indexed_paths.get(&path_to_cut).is_some() &&
+                workspace_part_len + if std::path::MAIN_SEPARATOR == '/' { 1 } else { 2 } + path_to_cut.len() >= path.len() {
+                return path_to_cut.clone();
             }
-            path.drain(..1);
+            path_to_cut.drain(..1);
         }
-        full_path
+        path.clone()
     }).collect()
 }
 
@@ -364,7 +365,7 @@ mod tests {
             PathBuf::from("home").join("user").join("repo3").join("dir2").join("another_file.ext").to_string_lossy().to_string(),
         ];
 
-        let result = shortify_paths_from_indexed(paths, indexed_paths, workspace_folders);
+        let result = _shortify_paths_from_indexed(&paths, indexed_paths, workspace_folders);
 
         let expected_result = vec![
             PathBuf::from("repo1").join("dir").join("file.ext").to_string_lossy().to_string(),

@@ -63,10 +63,10 @@ impl Tool for ToolAstReference {
             for (_i, def) in defs.iter().take(DEFS_LIMIT).enumerate() {
                 let usedin_and_uline = crate::ast::ast_db::usages(ast_index.clone(), def.path(), 100).await;
                 let file_paths = usedin_and_uline.iter().map(|(usedin, _)| usedin.cpath.clone()).collect::<Vec<_>>();
-                let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), file_paths.clone()).await;
+                let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), &file_paths).await;
 
                 let def_file_path = vec![def.cpath.clone()];
-                let short_def_file_path = crate::files_correction::shortify_paths(gcx.clone(), def_file_path.clone()).await;
+                let short_def_file_path = crate::files_correction::shortify_paths(gcx.clone(), &def_file_path).await;
 
                 let text = {
                     let usage_count = usedin_and_uline.len();

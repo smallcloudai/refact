@@ -1,5 +1,6 @@
 use std::sync::Arc;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
+use indexmap::IndexSet;
 use std::path::PathBuf;
 use tracing::{info, warn};
 use tokio::sync::RwLock as ARwLock;
@@ -69,31 +70,41 @@ fn calculate_hash(path: &PathBuf) -> u64 {
 
 pub async fn pp_ast_markup_files(
     gcx: Arc<ARwLock<GlobalContext>>,
-    messages: &Vec<ContextFile>,
+    context_file_vec: &mut Vec<ContextFile>,
 ) -> Vec<Arc<PPFile>> {
-    let mut files_markup: HashMap<String, Arc<PPFile>> = HashMap::new();
-    let ast_service = gcx.read().await.ast_service.clone();
-    let shortified_paths: Vec<String> = shortify_paths(
-        gcx.clone(),
-        messages.iter().map(|m| m.file_name.clone()).collect()).await;
-
-    for (i, message) in messages.iter().enumerate() {
-        let file_name = message.file_name.clone();
-        if files_markup.contains_key(&file_name) {
-            continue;
+    let mut unique_cpaths = IndexSet::<String>::new();
+    for context_file in context_file_vec.iter_mut() {
+        // Here we assume data came from outside, we can't trust it too much
+        let path_as_presented = context_file.file_name.clone();
+        let candidates = crate::files_correction::correct_to_nearest_filename(gcx.clone(), &path_as_presented, false, 5).await;
+        let cpath = match candidates.first() {
+            Some(c) => crate::files_correction::canonical_path(&c),
+            None => crate::files_correction::canonical_path(&path_as_presented)
+        };
+        context_file.file_name = cpath.to_string_lossy().to_string();
+        if candidates.len() != 1 {
+            tracing::warn!("{:?} -> snap {:?} -> {:?}", path_as_presented, candidates, context_file.file_name);
         }
-        let cpath = crate::files_correction::canonical_path(&file_name.clone());
-        let cpath_symmetry_breaker: f32 = (calculate_hash(&cpath) as f32) / (u64::MAX as f32) / 100.0;
-        let mut doc = Document::new(&cpath);
+        unique_cpaths.insert(context_file.file_name.clone());
+    }
+
+    let unique_cpaths_vec: Vec<String> = unique_cpaths.into_iter().collect();
+    let shortified_vec: Vec<String> = shortify_paths(gcx.clone(), &unique_cpaths_vec).await;
+
+    let mut result: Vec<Arc<PPFile>> = vec![];
+    let ast_service = gcx.read().await.ast_service.clone();
+    for (cpath, short) in unique_cpaths_vec.iter().zip(shortified_vec.iter()) {
+        let cpath_pathbuf = PathBuf::from(cpath);
+        let cpath_symmetry_breaker: f32 = (calculate_hash(&cpath_pathbuf) as f32) / (u64::MAX as f32) / 100.0;
+        let mut doc = Document::new(&cpath_pathbuf);
         let text = match get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await {
             Ok(text) => text,
             Err(e) => {
-                warn!("pp_ast_markup_files: cannot read file {:?}, not a big deal, will just skip the file.\nThe problem was: {}", file_name, e);
+                warn!("pp_ast_markup_files: cannot read file {:?}, not a big deal, will just skip the file. The problem was: {}", cpath, e);
                 continue;
             }
         };
         doc.update_text(&text);
-        let mut f: Option<Arc<PPFile>> = None;
         let defs = if let Some(ast) = &ast_service {
             let ast_index = ast.lock().await.ast_index.clone();
             crate::ast::ast_db::doc_defs(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
@@ -102,23 +113,16 @@ pub async fn pp_ast_markup_files(
         };
         let mut symbols_sorted_by_path_len = defs.clone();
         symbols_sorted_by_path_len.sort_by_key(|s| s.official_path.len());
-        match f {
-            None => {
-                f = Some(Arc::new(PPFile {
-                    symbols_sorted_by_path_len,
-                    file_content: text,
-                    cpath: doc.doc_path.clone(),
-                    cpath_symmetry_breaker,
-                    shorter_path: shortified_paths[i].clone(),
-                }));
-                files_markup.insert(file_name.clone(), f.unwrap());
-            },
-            Some(_) => {
-                files_markup.insert(file_name.clone(), f.unwrap());
-            }
-        }
+        result.push(Arc::new(PPFile {  // doesn't matter what size the output vector is
+            symbols_sorted_by_path_len,
+            file_content: text,
+            cpath: cpath.clone(),
+            cpath_symmetry_breaker,
+            shorter_path: short.clone(),
+        }));
     }
-    files_markup.values().cloned().collect::<Vec<_>>()
+
+    result
 }
 
 pub fn colorize_if_more_useful(lines: &mut Vec<FileLine>, line1: usize, line2: usize, color: String, useful: f32) {
@@ -144,7 +148,7 @@ pub async fn context_msgs_from_paths(
     global_context: Arc<ARwLock<GlobalContext>>,
     files_set: HashSet<String>
 ) -> Vec<ContextFile> {
-    // XXX: only used once in a test handler, maybe remove it from here?
+    // XXX: only used once in a test handler, maybe remove?
     let mut messages = vec![];
     for file_name in files_set {
         let path = crate::files_correction::canonical_path(&file_name.clone());

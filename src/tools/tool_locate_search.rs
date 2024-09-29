@@ -66,7 +66,7 @@ changes (USAGE).
 No such files (zero) is a perfectly good answer. List symbols that contain the high-level logic, for each file.
 
 6. Limit the number of DEFINITIONS to 5. Don't list files if they are already in FOUND.
-No such files (zero) is a perfectly good answer. List relevant symbols defined, for each file.
+No such files (zero) is a perfectly good answer. List relevant symbols, for each file.
 
 If not sure, drop the file, compact output is better.
 
@@ -105,8 +105,6 @@ or
 
 Don't write backquotes, json format only.
 "###;
-
-// const LS_REPORT: &str = ;
 
 
 #[async_trait]

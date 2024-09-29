@@ -86,7 +86,7 @@ pub async fn run_at_commands(
         // TODO: reduce context_limit by tokens(messages_exec_output)
 
         if context_limit > MIN_RAG_CONTEXT_LIMIT {
-            let context_file_pp = filter_only_context_file_from_context_tool(&messages_exec_output);
+            let mut context_file_pp = filter_only_context_file_from_context_tool(&messages_exec_output);
             let (tokens_limit_plain, mut tokens_limit_files) = {
                 if context_file_pp.is_empty() {
                     (context_limit, 0)
@@ -120,7 +120,7 @@ pub async fn run_at_commands(
             }
             let post_processed = postprocess_context_files(
                 gcx.clone(),
-                &context_file_pp,
+                &mut context_file_pp,
                 tokenizer.clone(),
                 tokens_limit_files,
                 false,

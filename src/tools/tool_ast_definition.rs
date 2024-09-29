@@ -55,7 +55,7 @@ impl Tool for ToolAstDefinition {
             let defs = crate::ast::ast_db::definitions(ast_index.clone(), &symbol).await;
 
             let file_paths = defs.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
-            let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), file_paths.clone()).await;
+            let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), &file_paths).await;
 
             let (messages, tool_message) = if !defs.is_empty() {
                 const DEFS_LIMIT: usize = 20;

@@ -163,7 +163,7 @@ pub async fn handle_v1_command_preview(
 
     let processed = postprocess_context_files(
         global_context.clone(),
-        &filter_only_context_file_from_context_tool(&messages_for_postprocessing),
+        &mut filter_only_context_file_from_context_tool(&messages_for_postprocessing),
         tokenizer_arc.clone(),
         rag_n_ctx,
         false,

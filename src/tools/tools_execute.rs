@@ -138,7 +138,7 @@ pub async fn run_tools(
         any_corrections,
         generated_tool,
         generated_other,
-        context_files_for_pp,
+        &mut context_files_for_pp,
         tokens_for_rag,
         tokenizer.clone(),
     ).await;
@@ -160,7 +160,7 @@ async fn pp_run_tools(
     any_corrections: bool,
     generated_tool: Vec<ChatMessage>,
     generated_other: Vec<ChatMessage>,
-    context_files_for_pp: Vec<ContextFile>,
+    context_files_for_pp: &mut Vec<ContextFile>,
     tokens_for_rag: usize,
     tokenizer: Arc<RwLock<Tokenizer>>,
 ) -> (Vec<ChatMessage>, Vec<ChatMessage>) {
@@ -219,7 +219,7 @@ async fn pp_run_tools(
 
         let context_file_vec = postprocess_context_files(
             gcx.clone(),
-            &context_files_for_pp,
+            context_files_for_pp,
             tokenizer.clone(),
             tokens_limit_files,
             false,

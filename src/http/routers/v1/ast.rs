@@ -47,26 +47,27 @@ pub async fn handle_v1_ast_file_dump(
     let post = serde_json::from_slice::<FileNameOnlyPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-    let corrected = crate::files_correction::correct_to_nearest_filename(
+
+    let candidates = crate::files_correction::correct_to_nearest_filename(
             global_context.clone(),
             &post.file_name,
             false,
             1,
         ).await;
-    if corrected.len() == 0 {
+    if candidates.len() != 1 {
         return Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .body(Body::from(serde_json::to_string_pretty(&json!({"detail": "File not found"})).unwrap()))
+            .body(Body::from(serde_json::to_string_pretty(&json!({"detail": format!("file not found or ambiguous, candidates {:?}", candidates)})).unwrap()))
             .unwrap());
     }
     let mut files_set: HashSet<String> = HashSet::new();
-    files_set.insert(corrected[0].clone());
-    let messages = context_msgs_from_paths(global_context.clone(), files_set).await;
-    let files_markup = pp_ast_markup_files(global_context.clone(), &messages).await;
+    files_set.insert(candidates[0].clone());
+    let mut context_file_vec = context_msgs_from_paths(global_context.clone(), files_set).await;
+
+    let files_markup = pp_ast_markup_files(global_context.clone(), &mut context_file_vec).await;
     let mut settings = PostprocessSettings::new();
     settings.close_small_gaps = false;
     let lines_in_files = pp_color_lines(
-            global_context.clone(),
             &vec![],
             files_markup,
             &settings,
@@ -75,7 +76,7 @@ pub async fn handle_v1_ast_file_dump(
     for linevec in lines_in_files.values() {
         for lineref in linevec {
             result.push_str(format!("{}:{:04} {:<43} {:>7.3} {}\n",
-                crate::nicer_logs::last_n_chars(&lineref.file_ref.cpath.to_string_lossy().to_string(), 30),
+                crate::nicer_logs::last_n_chars(&lineref.file_ref.cpath, 30),
                 lineref.line_n,
                 crate::nicer_logs::first_n_chars(&lineref.line_content, 40),
                 lineref.useful,
