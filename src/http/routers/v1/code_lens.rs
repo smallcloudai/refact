@@ -42,6 +42,7 @@ pub async fn handle_v1_code_lens(
 
     let ast_service_opt = global_context.read().await.ast_service.clone();
     let defs: Vec<Arc<AstDefinition>> = if let Some(ast_service) = ast_service_opt {
+        crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_service.clone(), 300, true).await;
         let ast_index = ast_service.lock().await.ast_index.clone();
         crate::ast::ast_db::doc_defs(ast_index, &cpath_str).await
     } else {
