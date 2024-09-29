@@ -271,10 +271,12 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
 
         if use_rag && rag_tokens_n > 0 {
             info!(" -- rag search starts --");
+            self.context_used = serde_json::json!({});
+
             let rag_t0 = Instant::now();
             let mut ast_context_file_vec: Vec<ContextFile> = if let Some(ast) = &self.ast_service {
                 let ast_index = ast.lock().await.ast_index.clone();
-                _cursor_position_to_context_file(ast_index.clone(), cpath.to_string_lossy().to_string(), pos.line).await
+                _cursor_position_to_context_file(ast_index.clone(), cpath.to_string_lossy().to_string(), pos.line, &mut self.context_used).await
             } else {
                 vec![]
             };
@@ -282,6 +284,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             let to_buckets_ms = rag_t0.elapsed().as_millis() as i32;
 
             if fim_line1 != i32::MAX && fim_line2 != i32::MIN {
+                // disable (usefulness==-1) the FIM region around the cursor from getting into the results
                 let fim_ban = ContextFile {
                     file_name: cpath.to_string_lossy().to_string(),
                     file_content: "".to_string(),
@@ -296,15 +299,13 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
 
             info!(" -- post processing starts --");
             let post_t0 = Instant::now();
-
             let mut pp_settings = {
                 let ccx_locked = ccx.lock().await;
                 ccx_locked.postprocess_parameters.clone()
             };
             if pp_settings.max_files_n == 0 {
-                pp_settings.max_files_n = 10;
+                pp_settings.max_files_n = 5;
             }
-
             let postprocessed_messages = postprocess_context_files(
                 self.global_context.clone(),
                 &mut ast_context_file_vec,
@@ -315,23 +316,28 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             ).await;
 
             prompt = add_context_to_prompt(&self.t.context_format, &prompt, &postprocessed_messages);
-            // let rag_ms = rag_t0.elapsed().as_millis() as i32;
+            let rag_ms = rag_t0.elapsed().as_millis() as i32;
             let post_ms = post_t0.elapsed().as_millis() as i32;
-            info!("fim {}ms, buckets {}ms, post {}ms",
+            info!(" -- /post fim {}ms, buckets {}ms, post {}ms -- ",
                 fim_ms,
                 to_buckets_ms, post_ms
             );
 
-            // if was_looking_for.is_some() {
-                // self.context_used = context_to_fim_debug_page(
-                //     &postprocessed_messages,
-                //     // &was_looking_for.unwrap()
-                // );
-            //     self.context_used["fim_ms"] = Value::from(fim_ms);
-            //     self.context_used["rag_ms"] = Value::from(rag_ms);
-            //     self.context_used["n_ctx".to_string()] = Value::from(n_ctx as i64);
-            //     self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
-            // }
+            // Done, only reporting is left
+            //context_to_fim_debug_page(&postprocessed_messages);
+            let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
+                json!({
+                    "file_name": x.file_name,
+                    "file_content": x.file_content,
+                    "line1": x.line1,
+                    "line2": x.line2,
+                })
+            }).collect();
+            self.context_used["attached_files"] = Value::Array(attached_files);
+            self.context_used["fim_ms"] = Value::from(fim_ms);
+            self.context_used["rag_ms"] = Value::from(rag_ms);
+            self.context_used["n_ctx".to_string()] = Value::from(n_ctx as i64);
+            self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
         }
 
         if DEBUG {
@@ -459,6 +465,7 @@ async fn _cursor_position_to_context_file(
     ast_index: Arc<AMutex<AstDB>>,
     cpath: String,
     cursor_line: i32,
+    context_used: &mut Value,
 ) -> Vec<ContextFile> {
     if cursor_line < 0 || cursor_line > 65535 {
         tracing::error!("cursor line {} out of range", cursor_line);
@@ -475,9 +482,11 @@ async fn _cursor_position_to_context_file(
     distances.sort_by_key(|&(distance, _, _)| distance);
     let nearest_usages: Vec<(usize, String)> = distances.into_iter().take(TAKE_USAGES_AROUND_CURSOR).map(|(_, usage, line)| (line, usage)).collect();
 
-    // info!("nearest_usages={:?}", nearest_usages);
+    // info!("nearest_usages\n{:#?}", nearest_usages);
+
     let unique_paths: HashSet<_> = nearest_usages.into_iter().map(|(_line, double_colon_path)| double_colon_path).collect();
     let mut output = vec![];
+    let mut bucket_declarations = vec![];
     for double_colon_path in unique_paths {
         let defs: Vec<Arc<AstDefinition>> = crate::ast::ast_db::definitions(ast_index.clone(), double_colon_path.as_str()).await;
         if defs.len() != 1 {
@@ -493,47 +502,23 @@ async fn _cursor_position_to_context_file(
                 gradient_type: -1,
                 usefulness: 0.,
             });
+            let usage_dict = json!({
+                "file_path": def.cpath.clone(),
+                "line1": def.full_range.start_point.row + 1,
+                "line2": def.full_range.end_point.row + 1,
+                "name": def.path_drop0(),
+            });
+            bucket_declarations.push(usage_dict);
         }
     }
+    context_used["bucket_declarations"] = json!(bucket_declarations);
+
     info!("FIM context\n{:#?}", output);
     output
 }
 
-
-// pub fn context_to_fim_debug_page(
-//     postprocessed_messages: &[ContextFile],
-//     // search_traces: &crate::ast::structs::AstCursorSearchResult,
-// ) -> Value {
-//     let mut context = json!({});
-//     return context;
-//     // XXX fix buckets
-//     // fn shorter_symbol(x: &SymbolsSearchResultStruct) -> Value {
-//     //     let mut t: Value = json!({});
-//     //     t["name"] = Value::String(x.symbol_declaration.name.clone());
-//     //     t["file_path"] = Value::String(x.symbol_declaration.file_path.display().to_string());
-//     //     t["line1"] = json!(x.symbol_declaration.full_range.start_point.row + 1);
-//     //     t["line2"] = json!(x.symbol_declaration.full_range.end_point.row + 1);
-//     //     t
-//     // }
 //     // context["cursor_symbols"] = Value::Array(search_traces.cursor_symbols.iter()
-//     //     .map(|x| shorter_symbol(x)).collect());
 //     // context["bucket_declarations"] = Value::Array(search_traces.bucket_declarations.iter()
-//     //     .map(|x| shorter_symbol(x)).collect());
 //     // context["bucket_usage_of_same_stuff"] = Value::Array(search_traces.bucket_usage_of_same_stuff.iter()
-//     //     .map(|x| shorter_symbol(x)).collect());
 //     // context["bucket_high_overlap"] = Value::Array(search_traces.bucket_high_overlap.iter()
-//     //     .map(|x| shorter_symbol(x)).collect());
 //     // context["bucket_imports"] = Value::Array(search_traces.bucket_imports.iter()
-//     //     .map(|x| shorter_symbol(x)).collect());
-
-//     // let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
-//     //     json!({
-//     //         "file_name": x.file_name,
-//     //         "file_content": x.file_content,
-//     //         "line1": x.line1,
-//     //         "line2": x.line2,
-//     //     })
-//     // }).collect();
-//     // context["attached_files"] = Value::Array(attached_files);
-//     // context
-// }
