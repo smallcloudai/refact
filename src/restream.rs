@@ -118,6 +118,7 @@ pub async fn scratchpad_interaction_not_stream_json(
     let mut save_url: String = String::new();
     let _ = slowdown_arc.acquire().await;
     let mut model_says = if only_deterministic_messages {
+        save_url = "only-det-messages".to_string();
         Ok(serde_json::Value::Object(serde_json::Map::new()))
     } else if endpoint_style == "hf" {
         forward_to_hf_endpoint::forward_to_hf_style_endpoint(

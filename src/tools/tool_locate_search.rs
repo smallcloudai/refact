@@ -11,7 +11,6 @@ use crate::subchat::subchat;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, SubchatParameters, ContextFile};
 use crate::global_context::GlobalContext;
-use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::at_commands::at_commands::AtCommandsContext;
 
 
@@ -25,8 +24,6 @@ Here's the list of reasons a file or symbol might be relevant wrt task descripti
 FOUND = the files and the symbols that the task explicitly tells you to find, or the files and symbols the main changes should go into if the task requires changes
 NEWFILE = sometimes the task requires creating new files
 MORE_TOCHANGE = likely to change as well, as a consequence of completing the task
-DEFINITIONS = classes/functions/types involved in the code that has to be changed, located in files not included already in FOUND
-HIGHLEV = crucial to understand the logic, such as a database scheme, high level script
 USAGE = code that uses the things the task description is about
 SIMILAR = code that might provide an example of how to write similar things
 
@@ -62,12 +59,6 @@ No such files (zero) is a perfectly good answer, don't guess and make stuff up. 
 Only if you are reasonably certain they will also need to change (MORE_TOCHANGE) or they use the thing that
 changes (USAGE).
 
-5. Limit the number of HIGHLEV files to 2. Take the best, most relevant high level logic for the task.
-No such files (zero) is a perfectly good answer. List symbols that contain the high-level logic, for each file.
-
-6. Limit the number of DEFINITIONS to 5. Don't list files if they are already in FOUND.
-No such files (zero) is a perfectly good answer. List relevant symbols, for each file.
-
 If not sure, drop the file, compact output is better.
 
 Use the following structure:
@@ -91,12 +82,6 @@ or
     },
     "MORE_TOCHANGE": {
         ...more files and symbols in them to change...
-    },
-    "DEFINITIONS": {
-        ...files that have relevant definitions, very important to name specific symbols...
-    },
-    "HIGHLEV": {
-        ...files with high level logic, very important to name specific symbols where the logic actually is...
     },
     "USAGE": {
         ...files with code that uses the thing to change, very important to name specific symbols where the use happens...
@@ -127,7 +112,7 @@ impl Tool for ToolLocateSearch {
             let mut t = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
                 params.subchat_n_ctx,
-                30,
+                7,  // top_n
                 false,
                 ccx_lock.messages.clone(),
             ).await;
@@ -240,7 +225,7 @@ Answer in the language the user prefers. Follow the system prompt.
         format!("Unable to parse JSON: {:?}", e)
     })?;
 
-    let processed_results = process_assistant_output(&assistant_output2, gcx).await?;
+    let processed_results = process_assistant_output(&assistant_output2).await?;
     results.extend(processed_results);
 
     let cd_instruction = format!(r###"💿 locate() inspected {} files, workspace has {} files. Files relevant to the task were attached above.
@@ -270,7 +255,6 @@ Answer in the language the user prefers. Follow the system prompt.
 
 async fn process_assistant_output(
     assistant_output: &IndexMap<String, IndexMap<String, String>>,
-    gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<Vec<ContextEnum>, String> {
     let mut results: Vec<ContextEnum> = vec![];
 
@@ -278,34 +262,27 @@ async fn process_assistant_output(
         for (file_path, symbols) in files {
             match category.as_str() {
                 "FOUND" => {
-                    let text_maybe = get_file_text_from_memory_or_disk(gcx.clone(), &std::path::PathBuf::from(&file_path)).await;
                     let file_usefulness = match category.as_str() {
                         "FOUND" => 100.0,
                         _ => panic!("unexpected category: {:?}", category),
                     };
-                    if text_maybe.is_ok() {
-                        let lines_count = text_maybe.unwrap().lines().count();
-                        results.push(ContextEnum::ContextFile(ContextFile {
-                            file_name: file_path.clone(),
-                            file_content: "".to_string(),
-                            line1: 1,
-                            line2: lines_count,
-                            symbols: vec![],
-                            gradient_type: -1,
-                            usefulness: file_usefulness,
-                        }));
-                    }
+                    results.push(ContextEnum::ContextFile(ContextFile {
+                        file_name: file_path.clone(),
+                        file_content: "".to_string(),
+                        line1: 0,
+                        line2: 0,
+                        symbols: vec![],
+                        gradient_type: -1,
+                        usefulness: file_usefulness,
+                    }));
                 },
-                "MORE_TOCHANGE" | "DEFINITIONS" | "HIGHLEV" | "SIMILAR" | "USAGE" => {
+                "MORE_TOCHANGE" | "SIMILAR" | "USAGE" => {
                     let symbols_vec: Vec<String> = symbols.split(',')
                         .map(|s| s.trim().to_string())
                         .filter(|s| !s.is_empty())
                         .collect();
                     let symbol_usefulness = match category.as_str() {
-                        "FOUND" => 90.0,
-                        "DEFINITIONS" => 80.0,
                         "MORE_TOCHANGE" => 75.0,
-                        "HIGHLEV" => 75.0,
                         "SIMILAR" => 75.0,
                         "USAGE" => 75.0,
                         _ => panic!("unexpected category: {:?}", category),
