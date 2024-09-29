@@ -8,7 +8,7 @@ use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{context_file_from_file_path, file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::privacy::load_privacy_if_needed;
-use crate::tools::patch::snippets::TicketToApply;
+use crate::tools::patch::tickets::TicketToApply;
 use crate::tools::patch::tool_patch::{DefaultToolPatch, N_CHOICES};
 use crate::subchat::subchat_single;
 use crate::cached_tokenizers::cached_tokenizer;
@@ -58,7 +58,7 @@ async fn make_chat_history(
     model: &str,
     max_tokens: usize,
     max_new_tokens: usize,
-    snippets: Vec<TicketToApply>,
+    tickets: Vec<TicketToApply>,
 ) -> Result<Vec<ChatMessage>, String> {
     let gcx = ccx.lock().await.global_context.clone();
     let tokenizer = {
@@ -70,9 +70,9 @@ async fn make_chat_history(
     let max_tokens = max_tokens.saturating_sub(max_new_tokens);
     let system_prompt = format_diff_prompt(gcx.clone()).await;
 
-    let snippet0 = snippets.get(0).expect("no snippet provided");
-    let context_file = read_file(gcx.clone(), snippet0.filename_before.clone()).await
-        .map_err(|e| format!("Cannot read file to modify: {}.\nERROR: {}", snippet0.filename_before, e))?;
+    let ticket0 = tickets.get(0).expect("no tickets provided");
+    let context_file = read_file(gcx.clone(), ticket0.filename_before.clone()).await
+        .map_err(|e| format!("Cannot read file to modify: {}.\nERROR: {}", ticket0.filename_before, e))?;
 
     let mut chat_messages = vec![];
 
@@ -87,10 +87,10 @@ async fn make_chat_history(
     tokens += 3 + count_tokens(&tokenizer, &code);
     chat_messages.push(ChatMessage::new("user".to_string(), code));
 
-    for snippet in snippets {
+    for ticket in tickets {
         let section = format!(
             "Modified section:\n```\n{}\n```",
-            snippet.code
+            ticket.code
         );
         tokens += 3 + count_tokens(&tokenizer, &section);
         chat_messages.push(ChatMessage::new("user".to_string(), section));
@@ -108,7 +108,7 @@ async fn make_chat_history(
 
 pub async fn execute_chat_model(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    snippets: Vec<TicketToApply>,
+    tickets: Vec<TicketToApply>,
     model: &str,
     max_tokens: usize,
     temperature: Option<f32>,
@@ -117,7 +117,7 @@ pub async fn execute_chat_model(
     usage: &mut ChatUsage,
 ) -> Result<Vec<Vec<DiffChunk>>, (String, Option<String>)> {
     let messages = make_chat_history(
-        ccx.clone(), model, max_tokens, max_new_tokens, snippets,
+        ccx.clone(), model, max_tokens, max_new_tokens, tickets,
     ).await.map_err(|e|(e, None))?;
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let response = subchat_single(
@@ -152,7 +152,7 @@ pub async fn execute_chat_model(
             Err(err) => {
                 return Err((
                     format!("diff parsing error: {err}"),
-                    Some("tickets are invalid. Create new tickets from scratch".to_string())
+                    Some("tickets are invalid. Create new tickets from scratch. If file is that big, use FULL_REWRITE".to_string())
                 ));
             }
         };

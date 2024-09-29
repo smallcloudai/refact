@@ -4,7 +4,7 @@ pub mod tools_execute;
 mod tool_ast_definition;
 mod tool_search;
 mod tool_ast_reference;
-mod patch;
+pub mod patch;
 mod tool_web;
 mod tool_tree;
 mod tool_knowledge;

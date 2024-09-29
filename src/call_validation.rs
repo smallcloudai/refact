@@ -336,7 +336,7 @@ fn default_true() -> bool {
     true
 }
 
-#[derive(Serialize, Deserialize, Clone, Hash, Debug, Eq, PartialEq, Default)]
+#[derive(Serialize, Deserialize, Clone, Hash, Debug, Eq, PartialEq, Default, Ord, PartialOrd)]
 pub struct DiffChunk {
     pub file_name: String,
     pub file_action: String, // edit, rename, add, remove
@@ -346,7 +346,7 @@ pub struct DiffChunk {
     pub lines_add: String,
     #[serde(default)]
     pub file_name_rename: Option<String>,
-    #[serde(default = "default_true")]
+    #[serde(default = "default_true", skip_serializing)]
     pub is_file: bool,
 }
 

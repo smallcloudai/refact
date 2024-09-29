@@ -1,23 +1,21 @@
 use std::sync::Arc;
 use std::path::PathBuf;
 use hashbrown::HashMap;
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{RwLock as ARwLock};
 use ropey::Rope;
 use tracing::warn;
-use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::patch::ast_interaction::{lint_and_get_error_messages, parse_and_get_error_symbols};
 use crate::call_validation::DiffChunk;
 use crate::diffs::{apply_diff_chunks_to_text, correct_and_validate_chunks, unwrap_diff_apply_outputs};
 use crate::files_in_workspace::read_file_from_disk;
+use crate::global_context::GlobalContext;
 use crate::privacy::load_privacy_if_needed;
 
 
 pub async fn postprocess_diff_chunks_from_message(
-    ccx: Arc<AMutex<AtCommandsContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     chunks: &mut Vec<DiffChunk>,
-) -> Result<String, String> {
-    let gcx = ccx.lock().await.global_context.clone();
-
+) -> Result<Vec<DiffChunk>, String> {
     if chunks.is_empty() {
         return Err("No diff chunks were found".to_string());
     }
@@ -124,7 +122,5 @@ pub async fn postprocess_diff_chunks_from_message(
             return Err(message);
         }
     }
-
-    serde_json::to_string_pretty(&chunks)
-        .map_err(|e| format!("Error diff chunks serializing: {:?}", e))
+    Ok(chunks.to_vec())
 }

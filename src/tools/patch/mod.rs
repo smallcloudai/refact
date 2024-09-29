@@ -3,5 +3,6 @@ mod chat_interaction;
 pub mod tool_patch;
 mod ast_interaction;
 mod unified_diff_format;
-mod snippets;
-mod whole_file_diff;
+pub mod tickets;
+mod ticket_to_chunks;
+mod patch_utils;
