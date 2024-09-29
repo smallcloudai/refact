@@ -72,10 +72,9 @@ fn partial_edit_choose_correct_chunk(chunks: Vec<Result<Vec<DiffChunk>, String>>
         .filter(|(_, v)| **v == max_repeats)
         .map(|x| *x.0)
         .collect::<Vec<_>>();
-    Ok(chunks_max_repeats
-        .iter()
-        .max()
-        .expect("There is no max repeats").clone().clone()
+    Ok(
+        (*chunks_max_repeats.iter().max().expect("There is no max repeats"))
+        .clone()
     )
 }
 
