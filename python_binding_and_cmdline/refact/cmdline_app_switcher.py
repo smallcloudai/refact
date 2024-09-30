@@ -29,10 +29,11 @@ def push_app(app: Application):
 
 def pop_app():
     current_app = apps.pop()
+    layouts[-1] = current_app.layout
     current_app.layout = empty_layout()
     current_app.invalidate()
     current_app.exit()
-    layouts.pop()
+    current_app.layout = layouts.pop()
     apps[-1].layout = layouts[-1]
 
 def exit_all_apps():
