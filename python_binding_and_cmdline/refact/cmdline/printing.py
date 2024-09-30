@@ -121,42 +121,6 @@ def limit_lines(lines: Lines, max_height: int) -> Lines:
     return lines
 
 
-def create_box(
-    text: str,
-    max_width: int,
-    max_height: Optional[int] = None,
-    title: Optional[str] = None,
-    file_name: Optional[str] = None
-) -> Lines:
-    if file_name is not None:
-        tokens = highlight_text(text, file_name)
-        lines = wrap_tokens(tokens, max_width - 2)
-        lines = [PygmentsTokens(line).__pt_formatted_text__() for line in lines]
-    else:
-        lines = wrap_text(text, max_width - 2)
-
-    result = []
-
-    if title is None:
-        result.append(to_tokens("┌" + "─" * (max_width - 2) + "┐"))
-    else:
-        title_len = min(len(title), max_width - 6)
-        bar_len = max_width - 5 - title_len
-        result.append(
-            to_tokens("┌─ " + title[:title_len] + " " + "─" * bar_len + "┐"))
-
-    if max_height is not None:
-        lines = limit_lines(lines, max_height)
-
-    for line in lines:
-        line_len = tokens_len(line)
-        space_len = max_width - line_len - 2
-        new_line = to_tokens("│") + line + to_tokens(" " * space_len + "│")
-        result.append(new_line)
-    result.append(to_tokens("└" + "─" * (max_width - 2) + "┘"))
-    return result
-
-
 def print_lines(lines: Lines):
     for line in lines:
         print_formatted_text(FormattedText(line))
