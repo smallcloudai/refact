@@ -54,7 +54,7 @@ Other important repos:
 
 ## Compiling and Running
 
-Depending on which API key you have handy, or maybe you have Refact cloud or self-hosting key:
+It will automatically pick up OPENAI_API_KEY, or maybe you have Refact cloud key or Refact Self-Hosting Server:
 
 ```
 cargo build
@@ -156,6 +156,8 @@ You can still use Refact for other languages, just the AST capabilities will be 
 You can compile and use Refact Agent from command line without any other repos, and it's a not an afterthought, it works great!
 
 ```
-TBD
+cargo build --release
+cp target/release/refact-lsp python_binding_and_cmdline/refact/bin/
+pip install -e python_binding_and_cmdline/
 ```
 
