@@ -9,11 +9,11 @@ def is_special_boundary(char: str) -> bool:
     return char in "*_[](){}:.,;!?-"
 
 
-def is_word_boundary(text: str, i: int, after: bool = False, l: int = 1) -> bool:
+def is_word_boundary(text: str, i: int, after: bool = False, length: int = 1) -> bool:
     if after:
-        return i + l >= len(text) or text[i+l].isspace() or is_special_boundary(text[i+l])
+        return i + length >= len(text) or text[i+length].isspace() or is_special_boundary(text[i+length])
     else:
-        return i - l < 0 or text[i-1].isspace() or is_special_boundary(text[i-1])
+        return i - length < 0 or text[i-1].isspace() or is_special_boundary(text[i-1])
 
 
 def is_beginning_of_line(text: str, i: int) -> bool:
@@ -40,9 +40,8 @@ def to_markdown(text: str, width: int) -> Tokens:
         if is_inline_code:
             res.append(f"bg:{gray}")
         if header_level > 0:
-            res.append(f"reverse bold")
+            res.append("reverse bold")
         return " ".join(res)
-
 
     while i < len(text):
 

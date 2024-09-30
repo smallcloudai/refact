@@ -20,7 +20,7 @@ from prompt_toolkit.widgets import TextArea
 from prompt_toolkit.filters import Condition
 
 from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetch_and_filter
-from refact.cmdline.printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
+from refact.cmdline.printing import wrap_tokens, get_terminal_width
 from refact.cmdline.printing import print_file, print_lines, highlight_text_by_language, set_background_color, print_file_name
 from refact.cmdline.markdown import to_markdown
 from refact.cmdline.inspect import create_label, inspect_app, open_label
@@ -80,15 +80,15 @@ def update_response_box():
             context_files = tool_call["context_files"]
             if len(context_files) > 4:
                 if nerd_font:
-                    response_box.text.append(("", f"\n    󰏢"))
+                    response_box.text.append(("", "\n    󰏢"))
                 else:
-                    response_box.text.append(("", f"\n    📎"))
+                    response_box.text.append(("", "\n    📎"))
                 response_box.text.append(("", f" <{len(context_files) - 4} more files>"))
             for context_file in context_files[-4:]:
                 if nerd_font:
-                    response_box.text.append(("", f"\n    󰏢"))
+                    response_box.text.append(("", "\n    󰏢"))
                 else:
-                    response_box.text.append(("", f"\n    📎"))
+                    response_box.text.append(("", "\n    📎"))
                 response_box.text.append(("", f" {context_file}"))
         if "subchat_id" in tool_call:
             if nerd_font:
@@ -103,7 +103,7 @@ def print_response(to_print: str):
     for line in to_print.splitlines(True):
         response_text += line
         if line[-1] == "\n":
-           flush_response()
+            flush_response()
     update_response_box()
 
 
@@ -172,7 +172,6 @@ def process_streaming_data(data):
         if role == "context_file":
             print_context_file(content)
             return
-        terminal_width = get_terminal_width()
         tool_call_id = data["tool_call_id"]
         print_response("\n")
         flush_response()
@@ -205,7 +204,6 @@ def process_streaming_data(data):
             content = json.loads(content)
             for file in content:
                 tool_call["context_files"].append(file["file_name"])
-
 
         update_response_box()
         pass

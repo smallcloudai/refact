@@ -1,7 +1,6 @@
 import os
 import yaml
 from pydantic import BaseModel
-from pydantic import BaseModel, ValidationError
 from typing import Optional, Dict, List
 from prompt_toolkit.enums import EditingMode
 import aiohttp
@@ -33,7 +32,6 @@ class SettingsCLI(BaseModel):
     nerd_font: bool = False
     editing_mode: str = "default"
 
-
     def get_editing_mode(self):
         if self.editing_mode.lower() in ["vim", "vi"]:
             return EditingMode.VI
@@ -63,6 +61,7 @@ vecdb_max_files: 5000
 #editing_mode: vim
 #editing_mode: emacs
 """
+
 
 class CmdlineSettings:
     def __init__(self, caps: Caps, args):

@@ -12,6 +12,7 @@ from refact.cmdline import settings
 Tokens = List[Tuple[str, str]]
 Lines = List[Tokens]
 
+
 def get_terminal_width() -> int:
     return shutil.get_terminal_size((80, 20))[0]
 
@@ -144,7 +145,6 @@ def create_box(
         result.append(
             to_tokens("┌─ " + title[:title_len] + " " + "─" * bar_len + "┐"))
 
-
     if max_height is not None:
         lines = limit_lines(lines, max_height)
 
@@ -176,6 +176,7 @@ def print_file_name(file_name: str):
             ("", " "),
             (f"bg:{tab_color}", f"  {file_name}  "),
         ]))
+
 
 def print_file(content: str, file_name: str):
     bg_color = "#252b37"

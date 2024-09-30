@@ -1,6 +1,5 @@
 import asyncio
 import aiohttp
-from typing import Optional, List, Tuple
 from refact.cmdline.printing import get_terminal_width, tokens_len
 import refact.cmdline.main as cmdline_main
 from prompt_toolkit.layout.containers import Window, Container
@@ -68,8 +67,8 @@ def bottom_status_bar():
 
     if vecdb := vecdb_ast_status.get("vecdb", None):
         if vecdb["state"] not in ["done", "idle"]:
-            vecdb_parsed_qty = vecdb["files_total"] - vecdb["files_unprocessed"];
-            vdb_text = "⛁ VecDB vectorizing %4d/%d files" % (vecdb_parsed_qty, vecdb["files_total"]);
+            vecdb_parsed_qty = vecdb["files_total"] - vecdb["files_unprocessed"]
+            vdb_text = "⛁ VecDB vectorizing %4d/%d files" % (vecdb_parsed_qty, vecdb["files_total"])
         else:
             vdb_text = "⛁ VecDB %d records" % (vecdb["db_size"])
             vdb_color = "#A0FFA0"

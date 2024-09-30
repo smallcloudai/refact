@@ -1,7 +1,5 @@
 from typing import Dict, List
 
-from prompt_toolkit import print_formatted_text
-from prompt_toolkit.layout.containers import Window
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.layout import HSplit
 from prompt_toolkit.application import Application
@@ -18,14 +16,17 @@ labels: Dict[str, str] = {}
 
 kb = KeyBindings()
 
+
 @kb.add('c-d')
 def exit_(event):
     exit_all_apps()
+
 
 @kb.add('c-q')
 @kb.add('q', eager=True)
 def pop_(event):
     pop_app()
+
 
 @kb.add('c-c', eager=True)
 @kb.add('y', eager=True)
@@ -33,6 +34,7 @@ def pop_(event):
 def copy_(event):
     data = text_area.buffer.copy_selection()
     event.app.clipboard.set_data(data)
+
 
 def convert_to_base_x(n: int, x: int) -> List[int]:
     if n == 0:
@@ -63,6 +65,7 @@ def create_label(value: str) -> str:
 def line_number(line: int, wrap_count: int):
     return [("bg:#252b37", f"{line+1:>4} ")]
 
+
 text_area = TextArea(get_line_prefix=line_number, wrap_lines=True)
 hsplit = HSplit([
     text_area,
@@ -77,8 +80,10 @@ _inspect_app: Application = Application(
     clipboard=PyperclipClipboard(),
 )
 
+
 def always_true():
     return True
+
 
 def open_label(label: str) -> bool:
     if label in labels:
@@ -87,6 +92,7 @@ def open_label(label: str) -> bool:
         text_area.read_only = True
         return True
     return False
+
 
 def inspect_app() -> Application:
     _inspect_app.editing_mode = settings.cli_yaml.get_editing_mode()
