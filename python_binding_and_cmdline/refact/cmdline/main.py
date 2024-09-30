@@ -6,7 +6,7 @@ import argparse
 import requests
 import random
 import termcolor
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 
 from prompt_toolkit import PromptSession, Application, print_formatted_text
 from prompt_toolkit.key_binding import KeyBindings
@@ -27,17 +27,6 @@ from refact.cmdline.inspect import create_label, inspect_app, open_label
 from refact.cmdline.app_switcher import start_app, exit_all_apps, push_app
 from refact.cmdline import statusbar, settings
 from refact.lsp_runner import LSPServerRunner
-
-
-def find_tool_call(messages: List[Message], id: str) -> Optional[FunctionDict]:
-    for message in messages:
-        if message.tool_calls is None:
-            continue
-        for tool_call in message.tool_calls:
-            if tool_call.id != id:
-                continue
-            return tool_call.function
-    return None
 
 
 response_text = ""
