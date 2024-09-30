@@ -12,8 +12,8 @@ use crate::custom_error::ScratchError;
 use crate::diffs::{ApplyDiffResult, ApplyDiffUnwrapped, correct_and_validate_chunks, read_files_n_apply_diff_chunks, unwrap_diff_apply_outputs};
 use crate::global_context::GlobalContext;
 use crate::privacy::load_privacy_if_needed;
-use crate::tools::patch::tickets::get_tickets_from_messages;
-use crate::tools::patch::tool_patch::{get_and_correct_active_tickets, tickets_to_diff_chunks};
+use crate::tools::tool_patch_aux::tickets_parsing::{get_and_correct_active_tickets, get_tickets_from_messages};
+use crate::tools::tool_patch::process_tickets;
 use crate::tools::tools_execute::unwrap_subchat_params;
 
 
@@ -58,7 +58,9 @@ pub async fn handle_v1_patch_single_file_from_ticket(
     }
     
     let all_tickets_from_above = get_tickets_from_messages(ccx.clone()).await;
-    let mut active_tickets = get_and_correct_active_tickets(global_context.clone(), post.ticket_ids.clone(), all_tickets_from_above.clone()).await.map_err(|e|{
+    let mut active_tickets = get_and_correct_active_tickets(
+        global_context.clone(), post.ticket_ids.clone(), all_tickets_from_above.clone()
+    ).await.map_err(|e|{
         ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
     })?;
 
@@ -66,7 +68,7 @@ pub async fn handle_v1_patch_single_file_from_ticket(
 
     let mut res;
     loop {
-        let diff_chunks = tickets_to_diff_chunks(
+        let diff_chunks = process_tickets(
             ccx.clone(),
             &mut active_tickets,
             post.ticket_ids.clone(),

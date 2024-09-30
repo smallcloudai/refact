@@ -2,15 +2,10 @@ use std::path::PathBuf;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use ropey::Rope;
-
 use crate::ast::linters::lint;
-use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
-use crate::files_in_workspace::Document;
-
+use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstanceArc, SymbolInformation};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
-// use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::treesitter::ast_instance_structs::AstSymbolInstanceArc;
-
+use crate::files_in_workspace::Document;
 
 pub async fn parse_and_get_error_symbols(
     path: &PathBuf,

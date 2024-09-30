@@ -1,17 +1,19 @@
+use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-use tracing::warn;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use tracing::warn;
 
-use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::ast_structs::AstDefinition;
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
-use crate::tools::patch::patch_utils::does_doc_have_symbol;
-
+use crate::tools::tool_patch::good_error_text;
+use crate::tools::tool_patch_aux::postprocessing_utils::{does_doc_have_symbol, minimal_common_indent, place_indent, vec_contains_vec};
+use crate::tools::tool_patch_aux::fs_utils::read_file;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum PatchAction {
@@ -28,7 +30,7 @@ pub enum PatchAction {
 pub enum PatchLocateAs {
     BEFORE,
     AFTER,
-    SYMBOLNAME
+    SYMBOLNAME,
 }
 
 impl PatchLocateAs {
@@ -94,29 +96,29 @@ pub async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>
             if ticket.locate_as != Some(PatchLocateAs::BEFORE) && ticket.locate_as != Some(PatchLocateAs::AFTER) {
                 ticket.action = PatchAction::PartialEdit;
             }
-        },
+        }
         PatchAction::RewriteSymbol => {
             ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
-               .map_err(|e| good_error_text(&format!("failed to resolve filename_before: '{}'. Error:\n{}", ticket.filename_before, e), ticket))?;
+                .map_err(|e| good_error_text(&format!("failed to resolve filename_before: '{}'. Error:\n{}", ticket.filename_before, e), ticket))?;
             ticket.fallback_action = Some(PatchAction::PartialEdit);
 
             if ticket.locate_as != Some(PatchLocateAs::SYMBOLNAME) {
                 ticket.action = PatchAction::PartialEdit;
             }
-        },
+        }
         PatchAction::PartialEdit => {
             ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
                 .map_err(|e| good_error_text(&format!("failed to resolve filename_before: '{}'. Error:\n{}", ticket.filename_before, e), ticket))?;
-        },
+        }
         PatchAction::RewriteWholeFile => {
             ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
                 .map_err(|e| good_error_text(&format!("failed to resolve filename_before: '{}'. Error:\n{}", ticket.filename_before, e), ticket))?;
-        },
+        }
         PatchAction::NewFile => {
             if path_before.is_relative() {
                 return Err(good_error_text(&format!("filename_before: '{}' must be absolute.", ticket.filename_before), ticket));
             }
-        },
+        }
         PatchAction::Other => {}
     }
     Ok(())
@@ -134,7 +136,7 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<T
                     Ok(a) => a,
                     Err(e) => return Err(format!("failed to parse ticket: couldn't parse TICKET ACTION.\nError: {e}"))
                 }
-            },
+            }
             None => return Err("failed to parse ticket, TICKET ACTION is missing".to_string()),
         };
         ticket.orig_action = ticket.action.clone();
@@ -223,4 +225,160 @@ pub async fn get_tickets_from_messages(
         }
     }
     tickets
+}
+
+pub async fn retain_non_applied_tickets(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    active_tickets: &mut Vec<TicketToApply>,
+) {
+    let action = active_tickets[0].action.clone();
+    match action {
+        PatchAction::AddToFile => {
+            let ticket = &active_tickets[0];
+            if let Ok(context_file) = read_file(gcx.clone(), ticket.filename_before.clone()).await {
+                let symbol = match ticket.locate_symbol.clone() {
+                    Some(s) => s,
+                    None => { return }
+                };
+                let file_text = context_file.file_content.clone();
+                let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
+                let file_lines = file_text.split(line_ending).collect::<Vec<&str>>();
+                let symbol_lines = file_lines[symbol.full_range.start_point.row..symbol.full_range.end_point.row].to_vec();
+                let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
+
+                let ticket_code = ticket.code.clone();
+                let ticket_line_ending = if ticket_code.contains("\r\n") { "\r\n" } else { "\n" };
+                let ticket_code_lines = ticket_code.split(ticket_line_ending).collect::<Vec<&str>>();
+                let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
+
+                let mut all_symbols = ticket.all_symbols.clone();
+                all_symbols.sort_by_key(|s| s.full_range.start_point.row);
+                let locate_as = ticket.locate_as.clone().expect("locate_as not found");
+
+                let search_in_code = match locate_as {
+                    PatchLocateAs::BEFORE => {
+                        Some(file_lines[..symbol.full_range.start_point.row].to_vec())
+                    }
+                    PatchLocateAs::AFTER => {
+                        Some(file_lines[symbol.full_range.end_point.row..].to_vec())
+                    }
+                    _ => None
+                };
+                if let Some(search_in_code) = search_in_code {
+                    if vec_contains_vec(
+                        &search_in_code.into_iter().map(|x| x.to_string()).collect::<Vec<_>>(),
+                        &ticket_code_lines,
+                    ) == 1 {
+                        active_tickets.clear();
+                    }
+                }
+            }
+        }
+        PatchAction::RewriteSymbol => {
+            let ticket = &active_tickets[0];
+            if let Ok(context_file) = read_file(gcx.clone(), ticket.filename_before.clone()).await {
+                let file_text = context_file.file_content.clone();
+                let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
+                let file_lines = file_text.split(line_ending).collect::<Vec<&str>>();
+
+                match ticket.locate_symbol.clone() {
+                    Some(symbol) => {
+                        let symbol_lines = file_lines[symbol.full_range.start_point.row..symbol.full_range.end_point.row].to_vec();
+                        let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
+
+                        let ticket_code = ticket.code.clone();
+                        let ticket_line_ending = if ticket_code.contains("\r\n") { "\r\n" } else { "\n" };
+                        let ticket_code_lines = ticket_code.split(ticket_line_ending).collect::<Vec<&str>>();
+                        let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
+
+                        if vec_contains_vec(
+                            &ticket_code_lines,
+                            &symbol_lines.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
+                        ) == 1 {
+                            active_tickets.clear();
+                        }
+                    }
+                    None => {
+                        let (indent_spaces, indent_tabs) = minimal_common_indent(&file_lines);
+
+                        let ticket_code = ticket.code.clone();
+                        let ticket_line_ending = if ticket_code.contains("\r\n") { "\r\n" } else { "\n" };
+                        let ticket_code_lines = ticket_code.split(ticket_line_ending).collect::<Vec<&str>>();
+                        let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
+
+                        if vec_contains_vec(
+                            &file_lines.into_iter().map(|x| x.to_string()).collect::<Vec<_>>(),
+                            &ticket_code_lines,
+                        ) == 1 {
+                            active_tickets.clear();
+                        }
+                    }
+                };
+            }
+        }
+        PatchAction::PartialEdit => {
+            // todo: implement
+        }
+        PatchAction::RewriteWholeFile => {
+            let ticket = &active_tickets[0];
+            if let Ok(context_file) = read_file(gcx.clone(), ticket.filename_before.clone()).await {
+                let line_ending = if context_file.file_content.contains("\r\n") { "\r\n" } else { "\n" };
+                let mut file_content = context_file.file_content.clone();
+                file_content.push_str(line_ending);
+                if ticket.code == file_content {
+                    active_tickets.clear();
+                }
+            }
+        }
+        PatchAction::NewFile => {
+            let ticket = &active_tickets[0];
+            let path = PathBuf::from(&ticket.filename_before.clone());
+            if path.is_file() {
+                active_tickets.clear();
+            }
+        }
+        _ => {}
+    }
+}
+
+pub async fn get_and_correct_active_tickets(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    ticket_ids: Vec<String>,
+    all_tickets_from_above: HashMap<String, TicketToApply>,
+) -> Result<Vec<TicketToApply>, String> {
+    let mut active_tickets = ticket_ids.iter().map(|t| all_tickets_from_above.get(t).cloned()
+        .ok_or(good_error_text(
+            &format!("No code block found for the ticket {:?} did you forget to write one using 📍-notation?", t),
+            &ticket_ids, Some("wrap the block of code in a 📍-notation, creating a ticket, do not call patch() until you do it. Do not prompt user again this time".to_string()),
+        ))).collect::<Result<Vec<_>, _>>()?;
+
+    if active_tickets.iter().map(|x| x.filename_before.clone()).unique().count() > 1 {
+        return Err(good_error_text(
+            "all tickets must have the same filename_before.",
+            &ticket_ids, Some("split the tickets into multiple patch calls".to_string()),
+        ));
+    }
+    if active_tickets.is_empty() {
+        return Err(good_error_text("no tickets that are referred by IDs were found.", &ticket_ids, None));
+    }
+    if active_tickets.len() > 1 && !active_tickets.iter().all(|s| PatchAction::PartialEdit == s.action) {
+        return Err(good_error_text(
+            "multiple tickets is allowed only for action==PARTIAL_EDIT.",
+            &ticket_ids, Some("split the tickets into multiple patch calls".to_string()),
+        ));
+    }
+    if active_tickets.iter().map(|s| s.action.clone()).unique().count() > 1 {
+        return Err(good_error_text(
+            "tickets must have the same action.",
+            &ticket_ids, Some("split the tickets into multiple patch calls".to_string()),
+        ));
+    }
+
+    for ticket in active_tickets.iter_mut() {
+        correct_and_validate_active_ticket(gcx.clone(), ticket).await.map_err(|e| good_error_text(&e, &ticket_ids, None))?;
+    }
+
+    retain_non_applied_tickets(gcx.clone(), &mut active_tickets).await;
+
+    Ok(active_tickets)
 }

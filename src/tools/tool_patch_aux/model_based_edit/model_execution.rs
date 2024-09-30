@@ -1,33 +1,23 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use tokio::sync::RwLock as ARwLock;
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::at_commands::at_file::{context_file_from_file_path, file_repair_candidates, return_one_candidate_or_a_good_error};
-use crate::privacy::load_privacy_if_needed;
-use crate::tools::patch::tickets::TicketToApply;
-use crate::tools::patch::tool_patch::{DefaultToolPatch, N_CHOICES};
-use crate::subchat::subchat_single;
 use crate::cached_tokenizers::cached_tokenizer;
-use crate::call_validation::{ChatMessage, ChatUsage, ContextFile, DiffChunk};
+use crate::call_validation::{ChatMessage, ChatUsage, DiffChunk};
 use crate::files_correction::get_project_dirs;
-use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::privacy::load_privacy_if_needed;
 use crate::scratchpads::scratchpad_utils::count_tokens;
-
-
-pub async fn read_file(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    file_path: String,
-) -> Result<ContextFile, String> {
-    let candidates = file_repair_candidates(gcx.clone(), &file_path, 10, false).await;
-    let candidate = return_one_candidate_or_a_good_error(
-        gcx.clone(), &file_path, &candidates, &get_project_dirs(gcx.clone()).await, false
-    ).await?;
-    context_file_from_file_path(gcx.clone(), candidate).await
-}
+use crate::subchat::subchat_single;
+use crate::tools::tool_patch::N_CHOICES;
+use crate::tools::tool_patch_aux::fs_utils::read_file;
+use crate::tools::tool_patch_aux::model_based_edit::parser::UnifiedDiffParser;
+use crate::tools::tool_patch_aux::tickets_parsing::TicketToApply;
 
 async fn load_tokenizer(
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -50,7 +40,7 @@ async fn format_diff_prompt(gcx: Arc<ARwLock<GlobalContext>>) -> String {
             dirs
         }
     };
-    DefaultToolPatch::prompt(workspace_dirs)
+    UnifiedDiffParser::prompt(workspace_dirs)
 }
 
 async fn make_chat_history(
@@ -116,9 +106,16 @@ pub async fn execute_chat_model(
     tool_call_id: &String,
     usage: &mut ChatUsage,
 ) -> Result<Vec<Vec<DiffChunk>>, (String, Option<String>)> {
+    let filename = PathBuf::from(
+        tickets
+            .get(0)
+            .expect("no tickets provided")
+            .filename_before
+            .clone()
+    );
     let messages = make_chat_history(
         ccx.clone(), model, max_tokens, max_new_tokens, tickets,
-    ).await.map_err(|e|(e, None))?;
+    ).await.map_err(|e| (e, None))?;
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let response = subchat_single(
         ccx.clone(),
@@ -133,21 +130,20 @@ pub async fn execute_chat_model(
         Some(usage),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-patch")),
-    ).await.map_err(|e|(e, None))?;
+    ).await.map_err(|e| (e, None))?;
 
     let last_messages = response.iter()
         .filter_map(|x| x.iter().last())
         .filter(|x| x.role == "assistant")
         .collect::<Vec<_>>();
 
-    // what does succ even mean?
-    let mut succ_chunks = vec![];
+    let mut chunks = vec![];
     let gcx = ccx.lock().await.global_context.clone();
     let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
     for m in last_messages {
-        match DefaultToolPatch::parse_message(m.content.as_str(), privacy_settings.clone()).await {
-            Ok(chunks) => {
-                succ_chunks.push(chunks);
+        match UnifiedDiffParser::parse_message(m.content.as_str(), &filename, privacy_settings.clone()).await {
+            Ok(c) => {
+                chunks.push(c);
             }
             Err(err) => {
                 return Err((
@@ -157,5 +153,5 @@ pub async fn execute_chat_model(
             }
         };
     }
-    Ok(succ_chunks)
+    Ok(chunks)
 }
