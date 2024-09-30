@@ -1,8 +1,8 @@
 import asyncio
 import aiohttp
 from typing import Optional, List, Tuple
-from refact.cmdline_printing import get_terminal_width, tokens_len
-import refact.cmdline_main as cmdline_main
+from refact.cmdline.printing import get_terminal_width, tokens_len
+import refact.cmdline.main as cmdline_main
 from prompt_toolkit.layout.containers import Window, Container
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.application import get_app_or_none

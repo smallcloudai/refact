@@ -20,14 +20,13 @@ from prompt_toolkit.widgets import TextArea
 from prompt_toolkit.filters import Condition
 
 from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetch_and_filter
-from refact.cmdline_printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
-from refact.cmdline_printing import print_file, print_lines, highlight_text_by_language, set_background_color, print_file_name
-from refact.cmdline_markdown import to_markdown
-from refact.cmdline_inspect import create_label, inspect_app, open_label
-from refact.cmdline_app_switcher import start_app, exit_all_apps, push_app
+from refact.cmdline.printing import create_box, indent, wrap_tokens, print_header, highlight_text, limit_lines, get_terminal_width, tokens_len, Lines
+from refact.cmdline.printing import print_file, print_lines, highlight_text_by_language, set_background_color, print_file_name
+from refact.cmdline.markdown import to_markdown
+from refact.cmdline.inspect import create_label, inspect_app, open_label
+from refact.cmdline.app_switcher import start_app, exit_all_apps, push_app
+from refact.cmdline import statusbar, settings
 from refact.lsp_runner import LSPServerRunner
-from refact import cmdline_statusbar
-from refact import cmdline_settings
 
 
 def find_tool_call(messages: List[Message], id: str) -> Optional[FunctionDict]:
@@ -72,7 +71,7 @@ def flush_response():
 
 
 def update_response_box():
-    nerd_font = cmdline_settings.cli_yaml.nerd_font
+    nerd_font = settings.cli_yaml.nerd_font
     response_box.text = [("", response_text)]
     for tool_call in tool_calls.values():
         function = tool_call["function"]
@@ -262,7 +261,7 @@ Refact Agent is essentially its tools, ask: "what tools do you have?"
 '''.strip().split('\n')
 
 
-async def welcome_message(settings: cmdline_settings.CmdlineSettings, tip: str):
+async def welcome_message(settings: settings.CmdlineSettings, tip: str):
     text = f"""
 ~/.cache/refact/cli.yaml                -- set up this program
 ~/.cache/refact/bring-your-own-key.yaml -- set up models you want to use
@@ -361,7 +360,7 @@ def on_submit(buffer):
     streaming_messages.append(Message(role="user", content=user_input))
 
     async def asyncfunc():
-        await ask_chat(cmdline_settings.settings.model)
+        await ask_chat(settings.settings.model)
 
     loop = asyncio.get_event_loop()
     loop.create_task(asyncfunc())
@@ -392,28 +391,28 @@ async def chat_main():
 
     arg_question = " ".join(after_minus_minus)
 
-    cmdline_settings.cli_yaml = cmdline_settings.load_cli_or_auto_configure()
-    app.editing_mode = cmdline_settings.cli_yaml.get_editing_mode()
+    settings.cli_yaml = settings.load_cli_or_auto_configure()
+    app.editing_mode = settings.cli_yaml.get_editing_mode()
 
     refact_args = [
-        os.path.join(os.path.dirname(__file__), "bin", "refact-lsp"),
-        "--address-url", cmdline_settings.cli_yaml.address_url,
-        "--api-key", cmdline_settings.cli_yaml.api_key,
+        os.path.join(os.path.dirname(__file__), "..", "bin", "refact-lsp"),
+        "--address-url", settings.cli_yaml.address_url,
+        "--api-key", settings.cli_yaml.api_key,
     ]
-    if cmdline_settings.cli_yaml.insecure_ssl:
+    if settings.cli_yaml.insecure_ssl:
         refact_args.append("--insecure-ssl")
-    if cmdline_settings.cli_yaml.basic_telemetry:
+    if settings.cli_yaml.basic_telemetry:
         refact_args.append("--basic-telemetry")
-    if cmdline_settings.cli_yaml.experimental:
+    if settings.cli_yaml.experimental:
         refact_args.append("--experimental")
-    if cmdline_settings.cli_yaml.ast:
+    if settings.cli_yaml.ast:
         refact_args.append("--ast")
         refact_args.append("--ast-max-files")
-        refact_args.append(str(cmdline_settings.cli_yaml.ast_max_files))
-    if cmdline_settings.cli_yaml.vecdb:
+        refact_args.append(str(settings.cli_yaml.ast_max_files))
+    if settings.cli_yaml.vecdb:
         refact_args.append("--vecdb")
         refact_args.append("--vecdb-max-files")
-        refact_args.append(str(cmdline_settings.cli_yaml.vecdb_max_files))
+        refact_args.append(str(settings.cli_yaml.vecdb_max_files))
     if args.path_to_project:
         refact_args.append("--workspace-folder")
         refact_args.append(args.path_to_project)
@@ -425,23 +424,23 @@ async def chat_main():
     )
 
     async with lsp:
-        caps = await cmdline_settings.fetch_caps(lsp.base_url())
-        cmdline_settings.settings = cmdline_settings.CmdlineSettings(caps, args)
+        caps = await settings.fetch_caps(lsp.base_url())
+        settings.settings = settings.CmdlineSettings(caps, args)
 
-        if cmdline_settings.settings.model not in caps.code_chat_models:
+        if settings.settings.model not in caps.code_chat_models:
             known_models = list(caps.code_chat_models.keys())
-            print(f"model {cmdline_settings.settings.model} is unknown, pick one of {known_models}")
+            print(f"model {settings.settings.model} is unknown, pick one of {known_models}")
             return
 
-        await welcome_message(cmdline_settings.settings, random.choice(tips_of_the_day))
-        cmdline_statusbar.model_section = f"model {cmdline_settings.settings.model} context {cmdline_settings.settings.n_ctx()}"
+        await welcome_message(settings.settings, random.choice(tips_of_the_day))
+        statusbar.model_section = f"model {settings.settings.model} context {settings.settings.n_ctx()}"
 
         if arg_question:
             print(arg_question)
-            await answer_question_in_arguments(cmdline_settings.settings, arg_question)
+            await answer_question_in_arguments(settings.settings, arg_question)
             return
 
-        asyncio.create_task(cmdline_statusbar.statusbar_background_task())
+        asyncio.create_task(statusbar.statusbar_background_task())
         await start_app(app)
 
 
@@ -472,7 +471,7 @@ hsplit = HSplit([
         filter=is_not_streaming_condition,
     ),
     Window(),
-    cmdline_statusbar.StatusBar(),
+    statusbar.StatusBar(),
 ])
 layout = Layout(hsplit)
 app: Application = Application(key_bindings=kb, layout=layout)

@@ -1,5 +1,5 @@
-from refact.cmdline_printing import Tokens
-from refact import cmdline_settings
+from refact.cmdline.printing import Tokens
+from refact.cmdline import settings
 
 gray = "#252b37"
 green = "#6ac496"
@@ -21,7 +21,7 @@ def is_beginning_of_line(text: str, i: int) -> bool:
 
 
 def to_markdown(text: str, width: int) -> Tokens:
-    nerd_font = cmdline_settings.cli_yaml.nerd_font
+    nerd_font = settings.cli_yaml.nerd_font
     result = []
     last = -1
     i = 0

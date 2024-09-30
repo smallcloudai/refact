@@ -7,7 +7,7 @@ from pygments.lexers import guess_lexer_for_filename, get_lexer_by_name, guess_l
 import pygments
 import shutil
 
-from refact import cmdline_settings
+from refact.cmdline import settings
 
 Tokens = List[Tuple[str, str]]
 Lines = List[Tokens]
@@ -163,7 +163,7 @@ def print_lines(lines: Lines):
 
 
 def print_file_name(file_name: str):
-    nerd_font = cmdline_settings.cli_yaml.nerd_font
+    nerd_font = settings.cli_yaml.nerd_font
     tab_color = "#3e4957"
     if nerd_font:
         print_formatted_text(FormattedText([
