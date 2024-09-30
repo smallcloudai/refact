@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple
+from typing import List, Tuple
 from prompt_toolkit import HTML
 from prompt_toolkit.shortcuts import print_formatted_text
 from prompt_toolkit.styles import Style
@@ -72,10 +72,6 @@ def wrap_text(text: str, max_width: int) -> Lines:
                 last_whitespace = i
         result.append(to_tokens(line[start:]))
     return result
-
-
-def indent(lines: Lines, amount: int) -> List[str]:
-    return [to_tokens(" " * amount) + line for line in lines]
 
 
 def to_tokens(text: str) -> Tokens:
