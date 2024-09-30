@@ -8,6 +8,7 @@ from prompt_toolkit.layout import HSplit
 from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.widgets import TextArea
+from prompt_toolkit.clipboard.pyperclip import PyperclipClipboard
 from refact import cmdline_settings
 from refact.cmdline_app_switcher import exit_all_apps, pop_app
 
@@ -23,8 +24,16 @@ def exit_(event):
     exit_all_apps()
 
 @kb.add('c-q')
+@kb.add('q', eager=True)
 def pop_(event):
     pop_app()
+
+@kb.add('c-c', eager=True)
+@kb.add('y', eager=True)
+@kb.add('c', eager=True)
+def copy_(event):
+    data = text_area.buffer.copy_selection()
+    event.app.clipboard.set_data(data)
 
 def convert_to_base_x(n: int, x: int) -> List[int]:
     if n == 0:
@@ -61,7 +70,13 @@ hsplit = HSplit([
     cmdline_statusbar.StatusBar(),
 ])
 layout = Layout(hsplit)
-_inspect_app: Application = Application(layout=layout, full_screen=True, key_bindings=kb)
+_inspect_app: Application = Application(
+    layout=layout,
+    full_screen=True,
+    key_bindings=kb,
+    mouse_support=True,
+    clipboard=PyperclipClipboard(),
+)
 
 def always_true():
     return True
