@@ -20,7 +20,7 @@ pub(crate) const BLACKLISTED_DIRS: &[&str] = &[
     "target", "node_modules", "vendor", "build", "dist",
     "bin", "pkg", "lib", "lib64", "obj",
     "out", "venv", "env", "tmp", "temp", "logs",
-    "coverage", "backup"
+    "coverage", "backup", "__pycache__",
 ];
 
 pub fn is_valid_file(path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {

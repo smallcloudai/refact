@@ -243,11 +243,25 @@ pub fn ls_files(path: &PathBuf, recursive: bool) -> Result<Vec<PathBuf>, String>
     let mut dirs_to_visit = vec![path.clone()];
 
     while let Some(dir) = dirs_to_visit.pop() {
-        for entry in fs::read_dir(&dir).map_err(|e| format!("failed to read directory '{}': {}", dir.display(), e))? {
-            let entry = entry
-                .map_err(|e| format!("failed to read entry in '{}': {}", dir.display(), e))?;
+        let ls_maybe = fs::read_dir(&dir);
+        if ls_maybe.is_err() {
+            info!("failed to read directory {}: {}", dir.display(), ls_maybe.unwrap_err());
+            continue;
+        }
+        let ls: fs::ReadDir = ls_maybe.unwrap();
+        let entries_maybe = ls.collect::<Result<Vec<_>, _>>();
+        if entries_maybe.is_err() {
+            info!("failed to read directory {}: {}", dir.display(), entries_maybe.unwrap_err());
+            continue;
+        }
+        let mut entries = entries_maybe.unwrap();
+        entries.sort_by_key(|entry| entry.file_name());
+        for entry in entries {
             let path = entry.path();
-            if path.is_dir() && recursive {
+            if recursive && path.is_dir() && !(
+                path.file_name().unwrap_or_default().to_str().unwrap_or_default().starts_with(".") ||
+                BLACKLISTED_DIRS.contains(&path.file_name().unwrap_or_default().to_str().unwrap_or_default())
+            ) {
                 dirs_to_visit.push(path);
             } else if path.is_file() {
                 paths.push(path);
