@@ -1,38 +1,75 @@
-# Refact LSP Server
 
-This code converts high level code completion or chat calls into low level LLM prompts and converts results back.
+# Refact Agent Rust Executable
 
-It's written in Rust, compiles into the `refact-lsp` binary. This binary is bunlded with
-[VS Code](https://github.com/smallcloudai/refact-vscode/)
-[JetBrains IDEs](https://github.com/smallcloudai/refact-intellij)
-[VS Classic](https://github.com/smallcloudai/refact-vs-classic/),
-[Sublime Text](https://github.com/smallcloudai/refact-sublime/),
-and
-[Qt Creator](https://github.com/smallcloudai/refact-qtcreator)
-plugins.
+This is a small executable written in Rust, a part of Refact Agent project. Its main job is to live
+inside your IDE quietly and keep AST and VecDB indexes up to date. It's well-written, it will not break if
+you edit your files really fast or switch branches, it caches vectorization model responses so you
+don't have to wait for VecDB to complete indexing, AST supports full graph connection between definitions
+and usage in many popular programming languages, etc.
 
-It's a great way to organize code for the plugins, because it can absorb all the common logic, such as cache, debounce,
-telemetry, scratchpads for different models.
+
+## Progress
+
+- [x] Code completion with RAG
+- [x] Chat using
+- [x] definition() / references() tools
+- [x] vecdb search() with scope
+- [x] @file @tree @definition @references @web @search mentions in chat
+- [x] locate() spends test-time compute to find good project cross-section
+- [x] gpt-4o gpt-4o-mini
+- [x] claude-3-5-sonnet
+- [x] llama-3.1 (passthrough)
+- [ ] llama-3.2 (passthrough)
+- [ ] llama-3.2 (scratchpad)
+- [x] [bring-your-own-key](https://docs.refact.ai/byok/)
+- [ ] Memory (--experimental)
+- [ ] Docker integration (--experimental)
+- [ ] git integration (--experimental)
+- [x] pdb python debugger integration (--experimental)
+- [ ] More debuggers
+- [x] github integration (--experimental)
+- [ ] gitlab integration
+- [ ] Jira integration
+
+
+## Refact Agent
+
+For end user:
+
+* [VS Code](https://github.com/smallcloudai/refact-vscode/)
+* [JetBrains IDEs](https://github.com/smallcloudai/refact-intellij)
+* [VS Classic](https://github.com/smallcloudai/refact-vs-classic/)
+* [Sublime Text](https://github.com/smallcloudai/refact-sublime/)
+* [Neovim](https://github.com/smallcloudai/refact-neovim)
+
+Refact Self-Hosting Server:
+
+* [Refact](https://github.com/smallcloudai/refact/)
+
+Other important repos:
+
+* [Documentation](https://github.com/smallcloudai/web_docs_refact_ai)
+* [HTML/JS chat UI](https://github.com/smallcloudai/refact-chat-js)
 
 
 ## Compiling and Running
 
-Depending on which API key you have handy, or maybe you have Refact self-hosting server:
+Depending on which API key you have handy, or maybe you have Refact cloud or self-hosting key:
 
 ```
-cargo build && target/debug/refact-lsp --address-url Refact --api-key YYYY --http-port 8001 --lsp-port 8002 --logs-stderr
-cargo build && target/debug/refact-lsp --address-url HF --api-key hf_XXXX --http-port 8001 --lsp-port 8002 --logs-stderr
-cargo build && target/debug/refact-lsp --address-url http://127.0.0.1:8008/ --http-port 8001 --lsp-port 8002 --logs-stderr
+cargo build && target/debug/refact-lsp --http-port 8001 --logs-stderr
+cargo build && target/debug/refact-lsp --address-url Refact --api-key $REFACT_API_KEY --http-port 8001 --logs-stderr
+cargo build && target/debug/refact-lsp --address-url http://my-refact-self-hosting/ --api-key $REFACT_API_KEY --http-port 8001 --logs-stderr
 ```
 
 Try `--help` for more options.
 
 
-## Usage
+## Things to try
 
-HTTP example:
+Code completion:
 
-```
+```bash
 curl http://127.0.0.1:8001/v1/code-completion -k \
   -H 'Content-Type: application/json' \
   -d '{
@@ -53,19 +90,20 @@ curl http://127.0.0.1:8001/v1/code-completion -k \
 }'
 ```
 
-Output is `[{"code_completion": "\n    return \"Hello World!\"\n"}]`.
+RAG status:
 
-[LSP example](examples/lsp_completion.py)
+```bash
+curl http://127.0.0.1:8001/v1/rag-status
+```
 
 
 ## Telemetry
 
-The flags `--basic-telemetry` and `--snippet-telemetry` control what telemetry is sent. To be clear: without
-these flags, no telemetry is sent. Those flags are typically controlled from IDE plugin settings.
-
-Basic telemetry means counters and error messages without information about you or your code. It is "compressed"
+The flag `--basic-telemetry` means counters and error messages. It is "compressed"
 into `.cache/refact/telemetry/compressed` folder, then from time to time it's sent and moved
 to `.cache/refact/telemetry/sent` folder.
+
+To be clear: without these flags, no telemetry is sent. At no point it sends your code.
 
 "Compressed" means similar records are joined together, increasing the counter. "Sent" means the rust binary
 communicates with a HTTP endpoint specified in caps (see Caps section below) and sends .json file exactly how
@@ -87,13 +125,17 @@ tokenizer, where is the endpoint to access actual language models. To read more,
 compiled-in caps in [caps.rs](src/caps.rs).
 
 
-## Tests
+## AST
 
-The one to run often is [test_edge_cases.py](tests/test_edge_cases.py).
+Supported languages:
 
-You can also run [measure_humaneval_fim.py](tests/measure_humaneval_fim.py) for your favorite model.
+- [x] Java
+- [x] JavaScript
+- [x] TypeScript
+- [x] Python
+- [x] Rust
+- [ ] C#
+
+You can still use Refact for other languages, just the AST capabilities will be missing.
 
 
-## Credits
-
-The initial version of this project was written by looking at llm-ls by [@McPatate](https://github.com/McPatate). He's a Rust fan who inspired this project!
