@@ -11,12 +11,11 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
-use crate::tools::tool_patch::good_error_text;
-use crate::tools::tool_patch_aux::postprocessing_utils::{does_doc_have_symbol, minimal_common_indent, place_indent, vec_contains_vec};
 use crate::tools::tool_patch_aux::fs_utils::read_file;
+use crate::tools::tool_patch_aux::postprocessing_utils::{does_doc_have_symbol, minimal_common_indent, place_indent, vec_contains_vec};
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
-pub enum PatchAction {
+pub(crate) enum PatchAction {
     #[default]
     AddToFile,
     RewriteSymbol,
@@ -76,7 +75,15 @@ pub struct TicketToApply {
     pub code: String,
 }
 
-pub async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ticket: &mut TicketToApply) -> Result<(), String> {
+pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> String {
+    let mut text = format!("Couldn't create patch for tickets: '{}'.\nReason: {reason}", tickets.join(", "));
+    if let Some(resolution) = resolution {
+        text.push_str(&format!("\nResolution: {}", resolution));
+    }
+    text
+}
+
+async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ticket: &mut TicketToApply) -> Result<(), String> {
     fn good_error_text(reason: &str, ticket: &TicketToApply) -> String {
         format!("Failed to validate TICKET '{}': {}", ticket.id, reason)
     }
@@ -227,7 +234,7 @@ pub async fn get_tickets_from_messages(
     tickets
 }
 
-pub async fn retain_non_applied_tickets(
+async fn retain_non_applied_tickets(
     gcx: Arc<ARwLock<GlobalContext>>,
     active_tickets: &mut Vec<TicketToApply>,
 ) {

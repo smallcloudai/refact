@@ -9,7 +9,7 @@ use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, DiffChunk, Sub
 use crate::tools::tool_patch_aux::model_based_edit::partial_edit::partial_edit_tickets_to_chunks;
 use crate::tools::tool_patch_aux::no_model_edit::{add_to_file_diff, full_rewrite_diff, new_file_diff, rewrite_symbol_diff};
 use crate::tools::tool_patch_aux::postprocessing_utils::postprocess_diff_chunks;
-use crate::tools::tool_patch_aux::tickets_parsing::{get_and_correct_active_tickets, get_tickets_from_messages, PatchAction, TicketToApply};
+use crate::tools::tool_patch_aux::tickets_parsing::{get_and_correct_active_tickets, get_tickets_from_messages, good_error_text, PatchAction, TicketToApply};
 use crate::tools::tools_description::Tool;
 use crate::tools::tools_execute::unwrap_subchat_params;
 
@@ -26,15 +26,6 @@ impl ToolPatch {
         }
     }
 }
-
-pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> String {
-    let mut text = format!("Couldn't create patch for tickets: '{}'.\nReason: {reason}", tickets.join(", "));
-    if let Some(resolution) = resolution {
-        text.push_str(&format!("\nResolution: {}", resolution));
-    }
-    text
-}
-
 
 pub async fn process_tickets(
     ccx_subchat: Arc<AMutex<AtCommandsContext>>,
