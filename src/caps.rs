@@ -1,17 +1,20 @@
-use crate::custom_error::ScratchError;
-use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
-use crate::known_models::KNOWN_MODELS;
-use serde::Deserialize;
-use serde::Serialize;
-use serde_json::Value;
+use std::path::PathBuf;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use serde::Deserialize;
+use serde::Serialize;
+use serde_json::Value;
 use tokio::sync::RwLock as ARwLock;
-use tracing::{error, info, warn};
 use url::Url;
+use tracing::{error, info, warn};
+
+use crate::custom_error::ScratchError;
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::known_models::KNOWN_MODELS;
+
 
 const CAPS_FILENAME: &str = "refact-caps";
 const CAPS_FILENAME_FALLBACK: &str = "coding_assistant_caps.json";
@@ -199,17 +202,17 @@ fn load_caps_from_buf(
         r1.embedding_n_ctx = 512;
     }
 
-    info!("caps {} completion models", r1.code_completion_models.len());
-    info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
-    info!("caps {} chat models", r1.code_chat_models.len());
-    info!("caps default chat model: \"{}\"", r1.code_chat_default_model);
-    info!("running models: {:?}", r1.running_models);
+    // info!("caps {} completion models", r1.code_completion_models.len());
+    // info!("caps default completion model: \"{}\"", r1.code_completion_default_model);
+    // info!("caps {} chat models", r1.code_chat_models.len());
+    // info!("caps default chat model: \"{}\"", r1.code_chat_default_model);
+    // info!("running models: {:?}", r1.running_models);
     // info!("code_chat_models models: {:?}", r1.code_chat_models);
     // info!("code completion models: {:?}", r1.code_completion_models);
     Ok(Arc::new(StdRwLock::new(r1)))
 }
 
-macro_rules! get_api_key {
+macro_rules! get_api_key_macro {
     ($gcx:expr, $caps:expr, $field:ident) => {{
         let cx_locked = $gcx.read().await;
         let custom_apikey = $caps.read().unwrap().$field.clone();
@@ -220,7 +223,7 @@ macro_rules! get_api_key {
             match std::env::var(env_var_name) {
                 Ok(env_value) => env_value,
                 Err(e) => {
-                    error!("Tried to read API key from env var {}, but failed: {}", env_var_name, e);
+                    error!("tried to read API key from env var {}, but failed: {}\nTry editing ~/.cache/refact/bring-your-own-key.yaml", env_var_name, e);
                     cx_locked.cmdline.api_key.clone()
                 }
             }
@@ -228,6 +231,27 @@ macro_rules! get_api_key {
             custom_apikey
         }
     }};
+}
+
+pub async fn get_api_key(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    use_this_fall_back_to_default_if_empty: String,
+) -> String {
+    let gcx_locked = gcx.write().await;
+    if use_this_fall_back_to_default_if_empty.is_empty() {
+        gcx_locked.cmdline.api_key.clone()
+    } else if use_this_fall_back_to_default_if_empty.starts_with("$") {
+        let env_var_name = &use_this_fall_back_to_default_if_empty[1..];
+        match std::env::var(env_var_name) {
+            Ok(env_value) => env_value,
+            Err(e) => {
+                error!("tried to read API key from env var {}, but failed: {}\nTry editing ~/.cache/refact/bring-your-own-key.yaml", env_var_name, e);
+                gcx_locked.cmdline.api_key.clone()
+            }
+        }
+    } else {
+        use_this_fall_back_to_default_if_empty
+    }
 }
 
 #[allow(dead_code)]
@@ -241,7 +265,7 @@ async fn get_custom_chat_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<Str
     }
     let caps = caps?;
 
-    let api_key = get_api_key!(gcx, caps, chat_apikey);
+    let api_key = get_api_key_macro!(gcx, caps, chat_apikey);
     Ok(api_key)
 }
 
@@ -255,7 +279,7 @@ pub async fn get_custom_embedding_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> R
     }
     let caps = caps?;
 
-    let api_key = get_api_key!(gcx, caps, embedding_apikey);
+    let api_key = get_api_key_macro!(gcx, caps, embedding_apikey);
     Ok(api_key)
 }
 
@@ -270,16 +294,25 @@ async fn get_custom_completion_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Resu
     }
     let caps = caps?;
 
-    let api_key = get_api_key!(gcx, caps, completion_apikey);
+    let api_key = get_api_key_macro!(gcx, caps, completion_apikey);
     Ok(api_key)
 }
 
 
 async fn load_caps_buf_from_file(
     cmdline: crate::global_context::CommandLine,
-    _gcx: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(String, String), String> {
-    let caps_url = cmdline.address_url.clone();
+    let mut caps_url = cmdline.address_url.clone();
+    if caps_url.is_empty() {
+        let cache_dir = {
+            let gcx_locked = gcx.read().await;
+            gcx_locked.cache_dir.clone()
+        };
+        let caps_path = PathBuf::from(cache_dir).join("bring-your-own-key.yaml");
+        caps_url = caps_path.to_string_lossy().into_owned();
+        info!("will use {} as the caps file", caps_url);
+    }
     let mut buffer = String::new();
     let mut file = File::open(caps_url.clone()).map_err(|_| format!("failed to open file '{}'", caps_url))?;
     file.read_to_string(&mut buffer).map_err(|_| format!("failed to read file '{}'", caps_url))?;
@@ -508,18 +541,18 @@ pub const BRING_YOUR_OWN_KEY_SAMPLE: &str = r#"
 cloud_name: My own mix of clouds!
 
 chat_endpoint: "https://api.openai.com/v1/chat/completions"
-chat_apikey: "sk-..."       # or use $OPENAI_API_KEY if you have it in global environment variables
+chat_apikey: "$OPENAI_API_KEY"           # Will work if you have it in global environment variables, but better use the real sk-... key
 chat_model: gpt-4o-mini
 
 embedding_endpoint: "https://api.openai.com/v1/embeddings"
-embedding_apikey: "sk-..."
+embedding_apikey: "$OPENAI_API_KEY"
 embedding_model: text-embedding-3-small
 embedding_size: 1536
 
-completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
-completion_endpoint_style: "hf"
-completion_apikey: "hf_..."    # or use $HF_TOKEN if you have it in global environment variables
-completion_model: bigcode/starcoder2-3b
+# completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
+# completion_endpoint_style: "hf"
+# completion_apikey: "hf_..."    # or use $HF_TOKEN if you have it in global environment variables
+# completion_model: bigcode/starcoder2-3b
 
 running_models:   # all models mentioned in *_model are automatically running, but you can add more
   - gpt-4o-mini

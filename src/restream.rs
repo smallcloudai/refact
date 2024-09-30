@@ -17,6 +17,7 @@ use crate::nicer_logs;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::telemetry::telemetry_structs;
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::caps::get_api_key;
 
 
 async fn _get_endpoint_and_stuff_from_model_name(
@@ -55,23 +56,7 @@ async fn _get_endpoint_and_stuff_from_model_name(
             )
         }
     };
-    let api_key = {
-        let gcx_locked = gcx.write().await;
-        if custom_apikey.is_empty() {
-            gcx_locked.cmdline.api_key.clone()
-        } else if custom_apikey.starts_with("$") {
-            let env_var_name = &custom_apikey[1..];
-            match std::env::var(env_var_name) {
-                Ok(env_value) => env_value,
-                Err(e) => {
-                    error!("Tried to read API key from env var {}, but failed: {}", env_var_name, e);
-                    gcx_locked.cmdline.api_key.clone()
-                }
-            }
-        } else {
-            custom_apikey
-        }
-    };
+    let api_key = get_api_key(gcx, custom_apikey).await;
     if !custom_endpoint_style.is_empty() {
         endpoint_style = custom_endpoint_style;
     }

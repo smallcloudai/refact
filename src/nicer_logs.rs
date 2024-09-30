@@ -72,17 +72,18 @@ where
 
         if event.metadata().level() <= &self.stderr_max_level {
             let log_message = if self.ansi {
-                format!("{} \x1b[31m{}\x1b[0m{} {}", timestamp, ev_level, location, visitor.message)
+                format!("{} \x1b[31m{}\x1b[0m{} {}\n", timestamp, ev_level, location, visitor.message)
             } else {
-                format!("{} {}{} {}", timestamp, ev_level, location, visitor.message)
+                format!("{} {}{} {}\n", timestamp, ev_level, location, visitor.message)
             };
-            let _ = writeln!(std::io::stderr(), "{}", log_message);
+            let _ = std::io::stderr().write_all(log_message.as_bytes());
             already_have_in_stderr = true;
         }
 
         if (!already_have_in_stderr || !self.writer_is_stderr) && event.metadata().level() <= &self.writer_max_level {
             let mut writer = self.writer.make_writer();
-            let _ = writeln!(writer, "{} {}{} {}", timestamp, ev_level, location, visitor.message);
+            let log_message = format!("{} {}{} {}\n", timestamp, ev_level, location, visitor.message);
+            let _ = writer.write_all(log_message.as_bytes());
         }
     }
 }

@@ -43,7 +43,7 @@ async fn vecdb_test_request(
         }
         Err(e) => {
             error!("vecdb: test search failed: {}", e);
-            Err("vecdb: test search failed".to_string())
+            Err("test search failed".to_string())
         }
     }
 }
@@ -208,7 +208,7 @@ pub async fn vecdb_background_reload(
                 }
                 Err(err) => {
                     gcx.write().await.vec_db_error = err.clone();
-                    error!("vecdb: init failed: {}", err);
+                    error!("vecdb init failed: {}", err);
                     // gcx.vec_db stays None, the rest of the system continues working
                 }
             }

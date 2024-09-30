@@ -89,7 +89,9 @@ impl CommandLine {
         hasher.write(msg.as_bytes());
         format!("{:x}", hasher.finish())
     }
+
     pub fn get_prefix(&self) -> String {
+        // This helps several self-hosting or cloud accounts to not mix
         Self::create_hash(format!("{}:{}", self.address_url.clone(), self.api_key.clone()))[..6].to_string()
     }
 }
@@ -147,22 +149,23 @@ const CAPS_RELOAD_BACKOFF: u64 = 60;       // seconds
 const CAPS_BACKGROUND_RELOAD: u64 = 3600;  // seconds
 
 pub async fn try_load_caps_quickly_if_not_present(
-    global_context: Arc<ARwLock<GlobalContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     max_age_seconds: u64,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, ScratchError> {
-    let caps_reading_lock: Arc<AMutex<bool>> = global_context.read().await.caps_reading_lock.clone();
+    let cmdline = CommandLine::from_args();  // XXX make it Arc and don't reload all the time
+
+    let caps_reading_lock: Arc<AMutex<bool>> = gcx.read().await.caps_reading_lock.clone();
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
     let caps_last_attempted_ts;
     {
-        // global_context is not locked, but a specialized async mutex is, up until caps are saved
+        // gcx is not locked, but a specialized async mutex is, up until caps are saved
         let _caps_reading_locked = caps_reading_lock.lock().await;
-        let cmdline = CommandLine::from_args();
 
         let caps_url = cmdline.address_url.clone();
         if caps_url.to_lowercase() == "refact" || caps_url.starts_with("http") {
             let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
             {
-                let mut cx_locked = global_context.write().await;
+                let mut cx_locked = gcx.write().await;
                 if cx_locked.caps_last_attempted_ts + max_age < now {
                     cx_locked.caps = None;
                     cx_locked.caps_last_attempted_ts = 0;
@@ -175,16 +178,18 @@ pub async fn try_load_caps_quickly_if_not_present(
                 }
             }
             if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
-                let gcx_locked = global_context.write().await;
+                let gcx_locked = gcx.write().await;
                 return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, gcx_locked.caps_last_error.clone()));
             }
         }
+
         let caps_result = crate::caps::load_caps(
-            CommandLine::from_args(),
-            global_context.clone()
+            cmdline,
+            gcx.clone()
         ).await;
+
         {
-            let mut gcx_locked = global_context.write().await;
+            let mut gcx_locked = gcx.write().await;
             gcx_locked.caps_last_attempted_ts = now;
             match caps_result {
                 Ok(caps) => {

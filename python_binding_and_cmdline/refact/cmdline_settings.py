@@ -29,11 +29,11 @@ class SettingsCLI(BaseModel):
     vecdb: bool = True
     vecdb_max_files: int = 5000
     experimental: bool = False
-    basic_telemetry: bool = False
+    basic_telemetry: bool = True
     nerd_font: bool = False
     editing_mode: str = "default"
 
-    
+
     def get_editing_mode(self):
         if self.editing_mode.lower() in ["vim", "vi"]:
             return EditingMode.VI
@@ -42,14 +42,22 @@ class SettingsCLI(BaseModel):
 
 
 default_config = """
+# The caps file is bring-your-own-key.yaml by default, that in turn works with OPENAI_API_KEY inside by default.
+# But you can change it to:
 #address_url: Refact
 #api_key: <take-from-website>
+#address_url: http://your-self-hosting-server/
+#api_key: your-secret-key
+
+# Accept self-signed certificates
 #insecure_ssl: true
+
 ast: true
 ast_max_files: 20000
 vecdb: true
 vecdb_max_files: 5000
-#experimental: false
+
+#experimental: true
 #basic_telemetry: false
 #nerd_font: true
 #editing_mode: vim

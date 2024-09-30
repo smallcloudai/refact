@@ -188,6 +188,12 @@ pub async fn get_embedding_openai_style(
     model_name: &String,
     api_key: &String,
 ) -> Result<Vec<Vec<f32>>, String> {
+    if endpoint_template.is_empty() {
+        return Err(format!("no embedding_endpoint configured"));
+    }
+    if api_key.is_empty() {
+        return Err(format!("cannot access embedding model, because api_key is empty"));
+    }
     #[allow(non_snake_case)]
     let B = text.len();
     let payload = EmbeddingsPayloadOpenAI {
