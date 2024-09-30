@@ -71,7 +71,7 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
             let node = nodes_map.entry(current_path.clone()).or_insert_with(|| {
                 PathsHolderNodeArc(Arc::new(RwLock::new(
                     PathsHolderNode {
-                        path: current_path.clone(),   // XXX: make sure it's cpath
+                        path: current_path.clone(),
                         is_dir: !is_last,
                         child_paths: Vec::new(),
                         depth,
