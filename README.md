@@ -5,36 +5,36 @@ This is a small executable written in Rust, a part of Refact Agent project. Its 
 inside your IDE quietly and keep AST and VecDB indexes up to date. It's well-written, it will not break if
 you edit your files really fast or switch branches, it caches vectorization model responses so you
 don't have to wait for VecDB to complete indexing, AST supports full graph connection between definitions
-and usage in many popular programming languages, etc.
+and usage in many popular programming languages.
 
 
 ## Progress
 
 - [x] Code completion with RAG
-- [x] Chat using
-- [x] definition() / references() tools
+- [x] Chat with tool usage
+- [x] definition() references() tools
 - [x] vecdb search() with scope
-- [x] @file @tree @definition @references @web @search mentions in chat
-- [x] locate() spends test-time compute to find good project cross-section
-- [x] gpt-4o gpt-4o-mini
-- [x] claude-3-5-sonnet
-- [x] llama-3.1 (passthrough)
-- [ ] llama-3.2 (passthrough)
-- [ ] llama-3.2 (scratchpad)
-- [x] [bring-your-own-key](https://docs.refact.ai/byok/)
+- [x] @file @tree @web @definition @references @search mentions in chat
+- [x] locate() uses test-time compute to find good project cross-section
+- [x] Latest gpt-4o gpt-4o-mini
+- [x] Claude-3-5-sonnet
+- [x] Llama-3.1 (passthrough)
+- [ ] Llama-3.2 (passthrough)
+- [ ] Llama-3.2 (scratchpad)
+- [x] [Bring-your-own-key](https://docs.refact.ai/byok/)
 - [ ] Memory (--experimental)
 - [ ] Docker integration (--experimental)
 - [ ] git integration (--experimental)
 - [x] pdb python debugger integration (--experimental)
 - [ ] More debuggers
-- [x] github integration (--experimental)
-- [ ] gitlab integration
+- [x] Github integration (--experimental)
+- [ ] Gitlab integration
 - [ ] Jira integration
 
 
 ## Refact Agent
 
-For end user:
+Installable by the end user:
 
 * [VS Code](https://github.com/smallcloudai/refact-vscode/)
 * [JetBrains IDEs](https://github.com/smallcloudai/refact-intellij)
@@ -49,7 +49,7 @@ Refact Self-Hosting Server:
 Other important repos:
 
 * [Documentation](https://github.com/smallcloudai/web_docs_refact_ai)
-* [HTML/JS chat UI](https://github.com/smallcloudai/refact-chat-js)
+* [Chat UI](https://github.com/smallcloudai/refact-chat-js)
 
 
 ## Compiling and Running
@@ -57,15 +57,16 @@ Other important repos:
 Depending on which API key you have handy, or maybe you have Refact cloud or self-hosting key:
 
 ```
-cargo build && target/debug/refact-lsp --http-port 8001 --logs-stderr
-cargo build && target/debug/refact-lsp --address-url Refact --api-key $REFACT_API_KEY --http-port 8001 --logs-stderr
-cargo build && target/debug/refact-lsp --address-url http://my-refact-self-hosting/ --api-key $REFACT_API_KEY --http-port 8001 --logs-stderr
+cargo build
+target/debug/refact-lsp --http-port 8001 --logs-stderr
+target/debug/refact-lsp --address-url Refact --api-key $REFACT_API_KEY --http-port 8001 --logs-stderr
+target/debug/refact-lsp --address-url http://my-refact-self-hosting/ --api-key $REFACT_API_KEY --http-port 8001 --logs-stderr
 ```
 
 Try `--help` for more options.
 
 
-## Things to try
+## Things to Try
 
 Code completion:
 
@@ -94,6 +95,22 @@ RAG status:
 
 ```bash
 curl http://127.0.0.1:8001/v1/rag-status
+```
+
+Chat, the not-very-standard version, it has deterministic_messages in response for all your @-mentions. The more standard version
+is at /v1/chat/completions.
+
+```bash
+curl http://127.0.0.1:8001/v1/chat -k \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "messages": [
+    {"role": "user", "content": "Who is Bill Clinton? What is his favorite programming language?"}
+  ],
+  "stream": false,
+  "temperature": 0.1,
+  "max_tokens": 20
+}'
 ```
 
 
