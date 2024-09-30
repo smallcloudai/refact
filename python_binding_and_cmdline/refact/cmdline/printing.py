@@ -56,24 +56,6 @@ def wrap_tokens(tokens: Tokens, max_width: int) -> Lines:
     return result
 
 
-def wrap_text(text: str, max_width: int) -> Lines:
-    lines = text.split("\n")
-    result = []
-    for line in lines:
-        last_whitespace = 0
-        start = 0
-        for i in range(len(line)):
-            if i - start >= max_width:
-                if last_whitespace <= start:
-                    last_whitespace = i - 1
-                result.append(to_tokens(line[start:last_whitespace + 1]))
-                start = last_whitespace + 1
-            if line[i].isspace():
-                last_whitespace = i
-        result.append(to_tokens(line[start:]))
-    return result
-
-
 def to_tokens(text: str) -> Tokens:
     return [("", text)]
 
