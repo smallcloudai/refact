@@ -116,7 +116,7 @@ curl http://127.0.0.1:8001/v1/chat -k \
 
 ## Telemetry
 
-The flag `--basic-telemetry` means counters and error messages. It is "compressed"
+The flag `--basic-telemetry` means send counters and error messages. It is "compressed"
 into `.cache/refact/telemetry/compressed` folder, then from time to time it's sent and moved
 to `.cache/refact/telemetry/sent` folder.
 
@@ -131,15 +131,10 @@ When using Refact self-hosted server, telemetry goes to the self-hosted server, 
 
 ## Caps File
 
-The `--address-url` parameter controls the behavior of this program by a lot. The address is first used
-to construct `$URL/coding_assistant_caps.json` address to fetch the caps file. Furthermore, there are
-compiled-in caps you can use by magic addresses "Refact" or make your personal configuration for to use other services.
-Take a look examples in [bring_your_own_key](bring_your_own_key)
-
-The caps file describes which models are running, default models for completion and chat,
-where to send the telemetry, how to download a
-tokenizer, where is the endpoint to access actual language models. To read more, check out
-compiled-in caps in [caps.rs](src/caps.rs).
+The capabilities file stores the same things as [bring-your-own-key.yaml](bring_your_own_key), the file describes how to access AI models.
+The `--address-url` parameter controls where to get this file, it defaults to `~/.cache/refact/bring-your-own-key.yaml`.
+If it's a URL, the executable fetches `$URL/refact-caps` to know what to do. This is especially useful to connect to Refact Self-Hosting Server,
+because the configuration does not need to be copy-pasted among engineers who use the server.
 
 
 ## AST
@@ -155,4 +150,12 @@ Supported languages:
 
 You can still use Refact for other languages, just the AST capabilities will be missing.
 
+
+## CLI
+
+You can compile and use Refact Agent from command line without any other repos, and it's a not an afterthought, it works great!
+
+```
+TBD
+```
 
