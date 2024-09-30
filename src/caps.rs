@@ -101,8 +101,6 @@ pub struct CodeAssistantCaps {
     #[serde(default = "default_telemetry_basic_retrieve_my_own")]
     pub telemetry_basic_retrieve_my_own: String,
     #[serde(default)]
-    pub telemetry_corrected_snippets_dest: String,
-    #[serde(default)]
     pub code_completion_models: HashMap<String, ModelRecord>,
     #[serde(default)]
     #[serde(alias = "completion_model")]
@@ -194,7 +192,6 @@ fn load_caps_from_buf(
         r1.endpoint_chat_passthrough = relative_to_full_url(&caps_url, &r1.chat_endpoint)?;
     }
     r1.telemetry_basic_dest = relative_to_full_url(&caps_url, &r1.telemetry_basic_dest)?;
-    r1.telemetry_corrected_snippets_dest = relative_to_full_url(&caps_url, &r1.telemetry_corrected_snippets_dest)?;
     r1.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &r1.telemetry_basic_retrieve_my_own)?;
     r1.endpoint_embeddings_template = relative_to_full_url(&caps_url, &r1.endpoint_embeddings_template)?;
     r1.tokenizer_path_template = relative_to_full_url(&caps_url, &r1.tokenizer_path_template)?;

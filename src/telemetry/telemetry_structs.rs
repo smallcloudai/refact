@@ -52,7 +52,6 @@ impl TelemetryNetwork {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SnippetTracker {
-    // Sent directly if snippet telemetry is enabled
     pub snippet_telemetry_id: u64,
     pub model: String,
     pub inputs: CodeCompletionInputs,

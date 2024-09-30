@@ -50,8 +50,6 @@ pub struct CommandLine {
     pub enduser_client_version: String,
     #[structopt(long, short="b", help="Send basic telemetry (counters and errors).")]
     pub basic_telemetry: bool,
-    #[structopt(long, short="s", help="Send snippet telemetry (code snippets).")]
-    pub snippet_telemetry: bool,
     #[structopt(long, short="v", help="Makes DEBUG log level visible, instead of the default INFO.")]
     pub verbose: bool,
 
