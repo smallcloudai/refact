@@ -69,12 +69,15 @@ where
         // let my_msg = format!("{} {}{} {}", timestamp, ev_level, location, visitor.message);
 
         let mut already_have_in_stderr = false;
+        let mut log_message;
+
         if event.metadata().level() <= &self.stderr_max_level {
             if self.ansi {
-                let _ = writeln!(std::io::stderr(), "{} \x1b[31m{}\x1b[0m{} {}", timestamp, ev_level, location, visitor.message);
+                log_message = format!("{} \x1b[31m{}\x1b[0m{} {}", timestamp, ev_level, location, visitor.message);
             } else {
-                let _ = writeln!(std::io::stderr(), "{} {}{} {}", timestamp, ev_level, location, visitor.message);
+                log_message = format!("{} {}{} {}", timestamp, ev_level, location, visitor.message);
             }
+            let _ = writeln!(std::io::stderr(), "{}", log_message);
             already_have_in_stderr = true;
         }
 
