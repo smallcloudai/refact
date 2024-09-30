@@ -345,33 +345,23 @@ impl UnifiedDiffParser {
     ) -> String {
         assert_eq!(workspace_projects_dirs.is_empty(), false);
         let prompt = r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT.
-You will receive a file containing code, along with one or several modified sections.
-Your task is to generate a unified diff in a specified format, comparing the original file to the updated portion.
-In the diff generation use following project directory:
-%WORKSPACE_PROJECTS_DIRS%
+You will receive some file containing code along with one or several modified sections.
+Your task is to generate a unified diff in a specified format, comparing the original file to the updated portions.
 
 ### UNIFIED DIFF FORMATTING RULES
 
 ## Rules to generate correct diffs:
 - Fence the diff with "```diff" and "```".
-- Make changes for every given file.
 - Return edits similar to unified diffs that `diff -U2` would produce.
 - Don't include line numbers like `diff -U2` does. The user's patch tool doesn't need them.
 - Copy a few lines from the original file and paste them before the `-` and `+` lines, otherwise the diff will be incorrect.
-- Don't include timestamps with the file paths.
-- `@@ ... block @@` hunk MUST contain `-` or `+` types of lines.
-- The user's patch tool needs CORRECT patches that apply cleanly against the current contents of the file.
-- When using the `@@ ... block @@`, make sure you mark all new or modified lines with `+`.
-- When using the `@@ ... block @@`, make sure you include and mark all lines that need to be removed or changed as `-` lines.
-- Output hunks in whatever order makes the most sense.
+- Make sure you mark all new or modified lines with `+`.
+- Make sure you include and mark all lines that need to be removed as `-` lines.
 - Rewrite the whole blocks of code instead of making multiple small changes.
 - Use filenames from the user as given, don't change them.
-- Include / import symbols which are used in the diff.
 - When editing a function, method, loop, etc. use a hunk to replace the *entire* code block.
-- When using the `@@ ... @@`, delete the entire existing version with `-` lines and then add a new, updated version with `+` lines. This will help you generate correct code and correct diffs.
-- When using the `@@ ... @@`, only output hunks that specify changes with `+` or `-` lines.
-- When using the `@@ ... @@`, copy a few lines from the original file and paste them before the `-` and `+` lines.
-- @@ ... @@ format example for the task: "Replace is_prime with a call to sympy"
+
+## Format example for the task: "Replace is_prime with a call to sympy"
 ```diff
 --- %FIRST_WORKSPACE_PROJECT_DIR%/test.py
 +++ %FIRST_WORKSPACE_PROJECT_DIR%/test.py
@@ -412,8 +402,7 @@ In the diff generation use following project directory:
 +    pass
 ```
 
-USING `+` and `-` markings IS MANDATORY!!!
-DO NOT FORGET TO FOLLOW THE REULES AND USE UNIFIED DIFF FORMAT ONLY!"#.to_string();
+Do not forget to place `+` and `-` markings when it's needed!"#.to_string();
         prompt
             .replace("%WORKSPACE_PROJECTS_DIRS%", &workspace_projects_dirs.join("\n"))
             .replace("%FIRST_WORKSPACE_PROJECT_DIR%", &workspace_projects_dirs[0])
