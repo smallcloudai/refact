@@ -14,7 +14,13 @@ export const Welcome: React.FC<WelcomeProps> = ({
   const { appearance } = useAppearance();
 
   return (
-    <Flex direction="column" gap="2" maxWidth="540px" m="8px">
+    <Flex
+      direction="column"
+      gap="2"
+      maxWidth="540px"
+      m="8px"
+      style={{ alignSelf: "center" }}
+    >
       <TourBox style={{ gap: "15px" }}>
         <TourTitle title="Welcome to Refact.ai!" />
         <Text

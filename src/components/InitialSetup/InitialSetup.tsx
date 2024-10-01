@@ -33,7 +33,13 @@ export const InitialSetup: React.FC<InitialSetupProps> = ({
   };
 
   return (
-    <Flex direction="column" gap="2" maxWidth="540px" m="8px">
+    <Flex
+      direction="column"
+      gap="2"
+      maxWidth="540px"
+      m="8px"
+      style={{ alignSelf: "center" }}
+    >
       <Text size="4">Which Refact.ai setup would you like to use?</Text>
       <RadioCards.Root
         color="tomato"

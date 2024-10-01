@@ -16,7 +16,13 @@ export const BringYourOwnKey: React.FC<BringYourOwnKeyProps> = ({
   };
 
   return (
-    <Flex direction="column" gap="2" maxWidth="540px" m="8px">
+    <Flex
+      direction="column"
+      gap="2"
+      maxWidth="540px"
+      m="8px"
+      style={{ alignSelf: "center" }}
+    >
       <Text size="4">Bring Your Own Key</Text>
       <Text size="2">
         Allows you to connect to any service that has OpenAI- or

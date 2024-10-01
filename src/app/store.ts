@@ -42,6 +42,16 @@ import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
 
+const tipOfTheDayPersistConfig = {
+  key: "totd",
+  storage: storage(),
+  stateReconciler: mergeInitialState,
+};
+
+const persistedTipOfTheDayReducer = persistReducer<
+  ReturnType<typeof tipOfTheDayReducer>
+>(tipOfTheDayPersistConfig, tipOfTheDayReducer);
+
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
 // their `reducerPath`s, therefore we no longer need to call `combineReducers`.
@@ -49,7 +59,7 @@ const rootReducer = combineSlices(
   {
     fim: fimReducer,
     tour: tourReducer,
-    tipOfTheDay: tipOfTheDayReducer,
+    tipOfTheDay: persistedTipOfTheDayReducer,
     config: configReducer,
     active_file: activeFileReducer,
     selected_snippet: selectedSnippetReducer,
@@ -70,15 +80,15 @@ const rootReducer = combineSlices(
   pagesSlice,
 );
 
-const persistConfig = {
+const rootPersistConfig = {
   key: "root",
   storage: storage(),
-  whitelist: [historySlice.reducerPath, "tour", "tipOfTheDay"],
+  whitelist: [historySlice.reducerPath, "tour"],
   stateReconciler: mergeInitialState,
 };
 
 const persistedReducer = persistReducer<ReturnType<typeof rootReducer>>(
-  persistConfig,
+  rootPersistConfig,
   rootReducer,
 );
 
@@ -97,12 +107,28 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
       maxAge: 1000,
     },
     middleware: (getDefaultMiddleware) => {
+      const production = import.meta.env.MODE === "production";
+      const middleware = production
+        ? getDefaultMiddleware({
+            thunk: true,
+            serializableCheck: false,
+            immutableCheck: false,
+          })
+        : getDefaultMiddleware({
+            serializableCheck: {
+              ignoredActions: [
+                FLUSH,
+                REHYDRATE,
+                PAUSE,
+                PERSIST,
+                PURGE,
+                REGISTER,
+              ],
+            },
+          });
+
       return (
-        getDefaultMiddleware({
-          serializableCheck: {
-            ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-          },
-        })
+        middleware
           .concat(
             pingApi.middleware,
             statisticsApi.middleware,

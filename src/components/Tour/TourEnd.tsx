@@ -14,7 +14,13 @@ export const TourEnd = () => {
   };
 
   return (
-    <Flex direction="column" gap="2" maxWidth="540px" m="8px">
+    <Flex
+      direction="column"
+      gap="2"
+      maxWidth="540px"
+      m="8px"
+      style={{ alignSelf: "center" }}
+    >
       <TourBox style={{ gap: "15px", alignSelf: "center" }}>
         <TourTitle title="Your Refact product tour is finished!" />
         <Text
