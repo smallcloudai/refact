@@ -16,6 +16,8 @@ pub struct ContextPy<'a> {
     pub tuple1: Query,
     pub tuple2: Query,
     pub tuple3: Query,
+    pub class1: Query,
+
 }
 
 fn whitespace1(cx: &mut ContextPy, node: &Node) {
@@ -125,21 +127,18 @@ fn py_assignment(cx: &mut ContextPy, node: &Node) {
     }
 }
 
-fn py_class(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
-{
-    // let ass1 = r#"(assignment left: (pattern_list (_) @lhs))"#;
-    // let ass2 = r#"(assignment left: (tuple_pattern (_) @lhs))"#;
-    // let ass3 = r#"(assignment left: (_) @lhs type: (_) @type)"#;
-    // let ass4 = r#"(assignment left: (_) @lhs)"#;
-
-    // let mut lhs_tuple: Vec<(String, Option<String>)> = Vec::new();
-    // let queries = [ass1, ass2, ass3, ass4];
-    // for query_str in &queries {
-    //     let query = Query::new(&language(), query_str).unwrap();
-    //     let mut query_cursor = QueryCursor::new();
-    //     for m in query_cursor.matches(&query, *node, cx.code.as_bytes()) {
-
-
+fn py_class(cx: &mut ContextPy, node: &Node, path: &Vec<String>) {
+    let mut query_cursor = QueryCursor::new();
+    let mut derived_from = vec![];
+    for m in query_cursor.matches(&cx.class1, *node, cx.code.as_bytes()) {
+        for capture in m.captures {
+            let capture_name = cx.class1.capture_names()[capture.index as usize];
+            if capture_name == "dfrom" {
+                derived_from.push(cx.code[capture.node.byte_range()].to_string());
+            }
+        }
+    }
+    println!("\nDerived from: {:?}", derived_from);
 }
 
 fn py_traverse(cx: &mut ContextPy, node: &Node, path: &Vec<String>) {
@@ -157,6 +156,7 @@ fn py_traverse(cx: &mut ContextPy, node: &Node, path: &Vec<String>) {
             }
         },
         "class_definition" => {
+            recursive_print_with_red_brackets(cx, node);
             py_class(cx, node, path);
         },
         // TODO
@@ -214,6 +214,8 @@ pub fn parse(code: &str) {
         tuple2: Query::new(&language(), "(assignment right: (tuple (_) @rhs))").unwrap(),
         // integer[12]]
         tuple3: Query::new(&language(), "(assignment right: _ @rhs)").unwrap(),
+        // class_definition[class·identifier[Goat]argument_list[(identifier[Animal])]:
+        class1: Query::new(&language(), "(class_definition name: (_) superclasses: (argument_list (_) @dfrom))").unwrap(),
     };
     let tree = cx.sitter.parse(code, None).unwrap();
     let path = vec!["file".to_string()];
