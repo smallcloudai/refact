@@ -50,34 +50,33 @@ fn generate_usage(cx: &mut ContextPy, node: &Node, debug_note: &str, lhs_target:
     print!("\x1b[34m<usage {} lhs_type={:?} rhs_type={:?}>\x1b[0m", debug_note, lhs_target, rhs_target);
 }
 
-fn find_type_annotation(cx: &mut ContextPy, node: &Node) -> Option<String> {
-    return Some(format!("{}", &cx.code[node.byte_range()].replace(" ", "·")));
+fn py_typeof(cx: &mut ContextPy, node: &Node) -> Option<String> {
+    return Some(format!("TYPE[{}]", &cx.code[node.byte_range()]));
+}
 
-    // for i in 0..node.child_count() {
-    //     let child = node.child(i).unwrap();
-    //     if child.kind() == "type" {
-    //         return Some(child.utf8_text(cx.code.as_bytes()).unwrap().to_string());
-    //     }
-    // }
-    // None
+fn py_lvalue(cx: &mut ContextPy, node: &Node) -> Option<String> {
+    return Some(format!("LVALUE[{}]", &cx.code[node.byte_range()]));
 }
 
 fn handle_assignment(cx: &mut ContextPy, node: &Node) {
     // assignment[identifier[my_int1]·=·integer[10]]
     // assignment[identifier[my_int2]:·type[identifier[int]]·=·integer[11]]
     // assignment[identifier[my_int3]:·type[generic_type[identifier[Optional]type_parameter[[[[]type[identifier[int]]][]]]]]·=·integer[12]]
+    // assignment[attribute[identifier[self].identifier[weight]]
+    // assignment[attribute[identifier[self].identifier[also1_age]]:·type[identifier[float]]·=·identifier[age]]
     // assignment[pattern_list[identifier[aaa1],·identifier[aaa2]]·=·expression_list[integer[13],·integer[14]]]
     // assignment[tuple_pattern[([(]identifier[aaa2],·identifier[aaa3])[)]]·=·expression_list[integer[15],·integer[16]]]
     // assignment[pattern_list[identifier[aaa5],·tuple_pattern[([(]identifier[aaa6],·identifier[aaa7])[)]]]·=·expression_list[integer[17],·tuple[([(]integer[18],·integer[19])[)]]]]
 
-    let ass1 = r#"(assignment left: (identifier) @lhs type: (_) @type)"#;
-    let ass2 = r#"(assignment left: (identifier) @lhs)"#;
-    let ass3 = r#"(assignment left: (pattern_list (identifier) @lhs))"#;
-    let ass4 = r#"(assignment left: (tuple_pattern (_) @lhs))"#;
+    let ass1 = r#"(assignment left: (pattern_list (_) @lhs))"#;
+    let ass2 = r#"(assignment left: (tuple_pattern (_) @lhs))"#;
+    let ass3 = r#"(assignment left: (identifier) @lhs type: (_) @type)"#;
+    let ass4 = r#"(assignment left: (identifier) @lhs)"#;
+    let ass5 = r#"(assignment left: (attribute) @lhs type: (_) @type)"#;
+    let ass6 = r#"(assignment left: (attribute) @lhs)"#;
 
-    let mut lhs_tuple: Vec<(String, Option<String>)> = Vec::new(); // [("my_int1", Some("int"))]
-
-    let queries = [ass1, ass2, ass3, ass4];
+    let mut lhs_tuple: Vec<(String, Option<String>)> = Vec::new();
+    let queries = [ass1, ass2, ass3, ass4, ass5, ass6];
     for query_str in &queries {
         let query = Query::new(&tree_sitter_python::language(), query_str).unwrap();
         let mut query_cursor = QueryCursor::new();
@@ -86,12 +85,12 @@ fn handle_assignment(cx: &mut ContextPy, node: &Node) {
             let mut lhs_text = None;
             let mut lhs_type = None;
             for capture in m.captures {
-                let node = capture.node;
+                let captured_node = capture.node;
                 let capture_name = query.capture_names()[capture.index as usize];
                 if capture_name == "lhs" {
-                    lhs_text = Some(node.utf8_text(cx.code.as_bytes()).unwrap().to_string());
+                    lhs_text = py_lvalue(cx, &captured_node);
                 } else if capture_name == "type" {
-                    lhs_type = Some(node.utf8_text(cx.code.as_bytes()).unwrap().to_string());
+                    lhs_type = py_typeof(cx, &captured_node);
                 }
             }
             if let Some(lhs_text) = lhs_text {
@@ -103,7 +102,10 @@ fn handle_assignment(cx: &mut ContextPy, node: &Node) {
         }
     }
 
-    println!("\nlhs_tuple {:?}", lhs_tuple);
+    println!();
+    for (lhs_text, lhs_type) in &lhs_tuple {
+        println!("{}: {:?} = VAL", lhs_text, lhs_type);
+    }
 
     // // Generate usage information
     // if lhs_tuple.len() == rhs_tuple.len() {
@@ -126,10 +128,24 @@ fn typeof_expression(cx: &mut ContextPy, node_expr: &Node) -> String {
 
 fn py_traverse(cx: &mut ContextPy, node: &Node) {
     match node.kind() {
-        "module" | "block" | "if_statement" => {
-            // fall through, means loop children
+        "from" | "class" | "identifier" | "import" | "dotted_name" | "def" | "if" | "for" | ":" | "," => {
+            // simple keywords
+            whitespace1(cx, node);
+            just_print(cx, node);
+            whitespace2(cx, node);
         },
-        "expression_statement" => {
+        "module" | "block" | "if_statement" | "expression_statement" => {
+            for i in 0..node.child_count() {
+                let child = node.child(i).unwrap();
+                py_traverse(cx, &child);
+            }
+        },
+        // TODO
+        "import_from_statement" | "class_definition" | "function_definition" => {
+            for i in 0..node.child_count() {
+                let child = node.child(i).unwrap();
+                py_traverse(cx, &child);
+            }
         },
         "assignment" => {
             recursive_print(cx, node);
@@ -138,7 +154,6 @@ fn py_traverse(cx: &mut ContextPy, node: &Node) {
             handle_assignment(cx, node);
             // print!("\x1b[31m]\x1b[0m");
             // whitespace2(cx, node);
-            return;
         }
         // "expression_statement" => {
         //     whitespace1(cx, node);
@@ -148,37 +163,17 @@ fn py_traverse(cx: &mut ContextPy, node: &Node) {
         //     whitespace2(cx, node);
         //     return;
         // }
-        "import_from_statement" => {},
-        "class_definition" => {},
-        "function_definition" => {},
-        //     whitespace1(cx, node);
-        //     handle_function(cx, node);
-        //     whitespace2(cx, node);
-        //     return;
-        // }
-        "from" | "class" | "identifier" | "import" | "dotted_name" | "def" | "if" | "for" | ":" | "," => {
-            // simple keywords
-            whitespace1(cx, node);
-            just_print(cx, node);
-            whitespace2(cx, node);
-            return;
-        },
         // "parameters" => handle_argument(cx, node),
         // "assignment" => handle_variable(cx, node),
         // "for_statement" => handle_variable(cx, node),
         _ => {
+            // unknown, to discover new syntax, just print
             whitespace1(cx, node);
             print!("\x1b[31m{}[\x1b[0m", node.kind());
             just_print(cx, node);
             print!("\x1b[31m]\x1b[0m");
             whitespace2(cx, node);
-            return;
         }
-    }
-
-    for i in 0..node.child_count() {
-        let child = node.child(i).unwrap();
-        py_traverse(cx, &child);
     }
 }
 
@@ -191,23 +186,7 @@ pub fn parse(code: &str) {
         code,
     };
     let tree = cx.sitter.parse(code, None).unwrap();
-    println!("cc\n{:?}\ndd", tree);
-    println!("hello world!\n\n");
-
     py_traverse(&mut cx, &tree.root_node());
-
-    println!("\n\nhello world 2\n\n");
-    let query_source = "(function_definition name: (identifier) @function_name)";
-    let query = Query::new(&tree_sitter_python::language(), query_source).expect("Error compiling query");
-    let mut query_cursor = QueryCursor::new();
-    let matches = query_cursor.matches(&query, tree.root_node(), code.as_bytes());
-    for m in matches {
-        for capture in m.captures {
-            let node = capture.node;
-            let function_name = node.utf8_text(code.as_bytes()).unwrap();
-            println!("Found function: {}", function_name);
-        }
-    }
 }
 
 #[cfg(test)]

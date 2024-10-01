@@ -2,8 +2,11 @@ from typing import Optional, List, Tuple
 
 
 class Animal:
-    def __init__(self, age):
+    def __init__(self, age: int):
         self.age = age
+        self.also1_age: float = age
+        self.also2_age = float(age)
+        self.also2_age = age + 5.0
 
     def self_review(self):
         print(f"self_review age={self.age}")
