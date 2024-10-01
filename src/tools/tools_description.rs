@@ -14,7 +14,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::integr_github::ToolGithub;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct GenericToolConfig {
+pub struct CommandsRequireConfimationConfig {
     pub commands_need_confirmation: Vec<String>,
     pub commands_deny: Vec<String>,
 }
@@ -111,13 +111,13 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
     filtered_tools
 }
 
-pub async fn load_generic_tool_config(gcx: Arc<ARwLock<GlobalContext>>) -> Result<GenericToolConfig, String>
+pub async fn commands_require_confirmation_rules_from_integrations_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> Result<CommandsRequireConfimationConfig, String>
 {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let integrations_value = read_integrations_value(&cache_dir).await?;
 
-    serde_yaml::from_value::<GenericToolConfig>(integrations_value)
-        .map_err(|e| format!("Failed to parse GenericToolConfig: {}", e))
+    serde_yaml::from_value::<CommandsRequireConfimationConfig>(integrations_value)
+        .map_err(|e| format!("Failed to parse CommandsRequireConfimationConfig: {}", e))
 }
 
 const BUILT_IN_TOOLS: &str = r####"

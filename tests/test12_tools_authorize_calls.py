@@ -4,7 +4,7 @@ import termcolor
 
 def test(body: dict, expected: dict):
     response = requests.post(
-        "http://127.0.0.1:8001/v1/tools-authorize-calls",
+        "http://127.0.0.1:8001/v1/tools-check-if-confirmation-needed",
         json=body,
         headers={
             "Content-Type": "application/json",

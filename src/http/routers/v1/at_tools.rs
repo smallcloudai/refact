@@ -8,7 +8,7 @@ use serde_json::Value;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::ChatToolCall;
-use crate::tools::tools_description::{load_generic_tool_config, tool_description_list_from_yaml, tools_merged_and_filtered};
+use crate::tools::tools_description::{commands_require_confirmation_rules_from_integrations_yaml, tool_description_list_from_yaml, tools_merged_and_filtered};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
@@ -42,7 +42,7 @@ pub async fn handle_v1_tools(
     )
 }
 
-pub async fn handle_v1_tools_authorize_calls(
+pub async fn handle_v1_tools_check_if_confirmation_needed(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
@@ -52,7 +52,7 @@ pub async fn handle_v1_tools_authorize_calls(
     let all_tools = tools_merged_and_filtered(gcx.clone()).await;
 
     let mut result_messages = vec![];
-    let mut generic_tool_config = None;
+    let mut confirmation_rules = None;
     for tool_call in &post.tool_calls {
         let tool = match all_tools.get(&tool_call.function.name) {
             Some(x) => x,
@@ -76,18 +76,18 @@ pub async fn handle_v1_tools_authorize_calls(
         })?;
 
         if !command_to_match.is_empty() {
-            if generic_tool_config.is_none() {
-                generic_tool_config = Some(load_generic_tool_config(gcx.clone()).await.map_err(|e| {
-                    ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Error loading generic tool config: {}", e))
+            if confirmation_rules.is_none() {
+                confirmation_rules = Some(commands_require_confirmation_rules_from_integrations_yaml(gcx.clone()).await.map_err(|e| {
+                    ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading generic tool config: {}", e))
                 })?);
             }
 
-            if let Some(generic_tool_cfg) = &generic_tool_config {
-                let (is_denied, deny_reason) = command_should_be_denied(&command_to_match, &generic_tool_cfg.commands_deny, true);
+            if let Some(rules) = &confirmation_rules {
+                let (is_denied, deny_reason) = command_should_be_denied(&command_to_match, &rules.commands_deny, true);
                 if is_denied {
                     result_messages.push(deny_reason);
                 }
-                let (needs_confirmation, confirmation_reason) = command_should_be_confirmed_by_user(&command_to_match, &generic_tool_cfg.commands_need_confirmation);
+                let (needs_confirmation, confirmation_reason) = command_should_be_confirmed_by_user(&command_to_match, &rules.commands_need_confirmation);
                 if needs_confirmation {
                     result_messages.push(confirmation_reason);
                 }
