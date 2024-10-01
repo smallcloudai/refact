@@ -107,9 +107,8 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
       maxAge: 1000,
     },
     middleware: (getDefaultMiddleware) => {
-      const production =
-        process.env.NODE_ENV === "production" || import.meta.env.PROD;
-      const middelware = production
+      const production = import.meta.env.MODE === "production";
+      const middleware = production
         ? getDefaultMiddleware({
             thunk: true,
             serializableCheck: false,
@@ -129,7 +128,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
           });
 
       return (
-        middelware
+        middleware
           .concat(
             pingApi.middleware,
             statisticsApi.middleware,
