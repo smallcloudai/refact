@@ -26,6 +26,7 @@ import {
 } from "../../features/Chat/Thread/selectors";
 import { takeWhile } from "../../utils";
 import { GroupedDiffs } from "./DiffContent";
+import { ScrollToBottomButton } from "./ScrollToBottomButton";
 
 export const TipOfTheDay: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -119,21 +120,33 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
     const isStreaming = useAppSelector(selectIsStreaming);
     const isWaiting = useAppSelector(selectIsWaiting);
 
-    const { innerRef, handleScroll } = useAutoScroll({
+    const {
+      innerRef,
+      handleScroll,
+      handleWheel,
+      handleScrollButtonClick,
+      isScrolledTillBottom,
+    } = useAutoScroll({
       ref,
       messages,
       isStreaming,
     });
 
+    const onRetryWrapper = (index: number, question: string) => {
+      props.onRetry(index, question);
+      handleScrollButtonClick();
+    };
+
     return (
       <ScrollArea
-        style={{ flexGrow: 1, height: "auto" }}
+        style={{ flexGrow: 1, height: "auto", position: "relative" }}
         scrollbars="vertical"
         onScroll={handleScroll}
+        onWheel={handleWheel}
       >
         <Flex direction="column" className={styles.content} p="2" gap="1">
           {messages.length === 0 && <PlaceHolderText />}
-          {renderMessages(messages, props.onRetry)}
+          {renderMessages(messages, onRetryWrapper)}
           {isWaiting && (
             <Container py="4">
               <Spinner />
@@ -141,6 +154,9 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
           )}
           <div ref={innerRef} />
         </Flex>
+        {!isScrolledTillBottom && (
+          <ScrollToBottomButton onClick={handleScrollButtonClick} />
+        )}
       </ScrollArea>
     );
   },
