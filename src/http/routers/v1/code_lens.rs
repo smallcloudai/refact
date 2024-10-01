@@ -54,8 +54,8 @@ pub async fn handle_v1_code_lens(
 
     let mut output: Vec<CodeLensOutput> = Vec::new();
     for def in defs.iter() {
-        let line1 = def.full_range.start_point.row + 1;
-        let line2 = def.full_range.end_point.row + 1;
+        let line1 = def.full_line1();
+        let line2 = def.full_line2();
         if line2 > line1 {
             output.push(CodeLensOutput {
                 spath: def.path_drop0(),

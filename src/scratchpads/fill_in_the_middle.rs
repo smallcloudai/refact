@@ -496,16 +496,16 @@ async fn _cursor_position_to_context_file(
             output.push(ContextFile {
                 file_name: def.cpath.clone(),
                 file_content: "".to_string(),
-                line1: def.full_range.start_point.row + 1,
-                line2: def.full_range.end_point.row + 1,
+                line1: def.full_line1(),
+                line2: def.full_line2(),
                 symbols: vec![double_colon_path.clone()],
                 gradient_type: -1,
                 usefulness: 0.,
             });
             let usage_dict = json!({
                 "file_path": def.cpath.clone(),
-                "line1": def.full_range.start_point.row + 1,
-                "line2": def.full_range.end_point.row + 1,
+                "line1": def.full_line1(),
+                "line2": def.full_line2(),
                 "name": def.path_drop0(),
             });
             bucket_declarations.push(usage_dict);

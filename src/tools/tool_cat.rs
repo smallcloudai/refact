@@ -154,8 +154,8 @@ pub async fn paths_and_symbols_to_cat(
                 let cf = ContextFile {
                     file_name: p.clone(),
                     file_content: "".to_string(),
-                    line1: sym.full_range.start_point.row + 1,
-                    line2: sym.full_range.end_point.row + 1,
+                    line1: sym.full_line1(),
+                    line2: sym.full_line2(),
                     symbols: vec![sym.path()],
                     gradient_type: -1,
                     usefulness: 100.0,

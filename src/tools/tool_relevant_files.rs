@@ -143,8 +143,8 @@ impl Tool for ToolRelevantFiles {
                 results.push(ContextEnum::ContextFile(ContextFile {
                     file_name: file_path.clone(),
                     file_content: "".to_string(),
-                    line1: symbol.full_range.start_point.row + 1,
-                    line2: symbol.full_range.end_point.row + 1,
+                    line1: symbol.full_line1(),
+                    line2: symbol.full_line2(),
                     symbols: vec![symbol.path()],
                     gradient_type: -1,
                     usefulness: 100.,

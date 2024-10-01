@@ -26,12 +26,16 @@ pub struct AstDefinition {
     pub this_is_a_class: String,              // cpp🔎Goat
     pub this_class_derived_from: Vec<String>, // cpp🔎Animal, cpp🔎CosmicJustice
     pub cpath: String,
-    #[serde(with = "RangeDef")]
-    pub full_range: Range,
-    #[serde(with = "RangeDef")]
-    pub declaration_range: Range,
-    #[serde(with = "RangeDef")]
-    pub definition_range: Range,
+    pub decl_line1: usize,                    // starts from 1 (not zero), guaranteed > 0
+    pub decl_line2: usize,                    // guaranteed >= line1
+    pub body_line1: usize,                    // use full_line1() full_line2() if not sure
+    pub body_line2: usize,
+    // #[serde(with = "RangeDef")]
+    // pub full_range: Range,
+    // #[serde(with = "RangeDef")]
+    // pub declaration_range: Range,
+    // #[serde(with = "RangeDef")]
+    // pub definition_range: Range,
 }
 
 impl AstDefinition {
@@ -45,6 +49,14 @@ impl AstDefinition {
 
     pub fn name(&self) -> String {
         self.official_path.last().cloned().unwrap_or_default()
+    }
+
+    pub fn full_line1(&self) -> usize {
+        self.decl_line1
+    }
+
+    pub fn full_line2(&self) -> usize {
+        self.body_line2.max(self.decl_line2)
     }
 }
 

@@ -1,7 +1,9 @@
 use indexmap::IndexMap;
 use tree_sitter::{Node, Parser, Point, Range, Query, QueryCursor};
-use crate::ast::ast_structs::{AstDefinition, AstUsage};
 use tree_sitter_python::language;
+
+use crate::ast::ast_structs::{AstDefinition, AstUsage};
+use crate::ast::treesitter::structs::SymbolType;
 
 
 pub struct ContextPy<'a> {
@@ -76,7 +78,8 @@ fn py_rvalue(cx: &ContextPy, node: &Node) -> Option<String> {
     return Some(format!("VAL[{}]", &cx.code[node.byte_range()]));
 }
 
-fn py_assignment(cx: &mut ContextPy, node: &Node) {
+fn py_assignment(cx: &mut ContextPy, node: &Node)
+{
     let mut lhs_tuple: Vec<(String, Option<String>)> = Vec::new();
     for query in [&cx.ass1, &cx.ass2, &cx.ass3, &cx.ass4] {
         let mut query_cursor = QueryCursor::new();
@@ -118,8 +121,6 @@ fn py_assignment(cx: &mut ContextPy, node: &Node) {
     }
 
     println!();
-    println!("{:?}", lhs_tuple);
-    println!("{:?}", rhs_tuple);
     for i in 0 .. (lhs_tuple.len().min(rhs_tuple.len())) {
         let (lhs_text, lhs_type) = &lhs_tuple[i];
         let rhs_text = &rhs_tuple[i];
@@ -127,21 +128,64 @@ fn py_assignment(cx: &mut ContextPy, node: &Node) {
     }
 }
 
-fn py_class(cx: &mut ContextPy, node: &Node, path: &Vec<String>) {
-    let mut query_cursor = QueryCursor::new();
+fn py_class(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
+{
     let mut derived_from = vec![];
+    let mut query_cursor = QueryCursor::new();
     for m in query_cursor.matches(&cx.class1, *node, cx.code.as_bytes()) {
         for capture in m.captures {
             let capture_name = cx.class1.capture_names()[capture.index as usize];
             if capture_name == "dfrom" {
-                derived_from.push(cx.code[capture.node.byte_range()].to_string());
+                derived_from.push(format!("py🔎{}", cx.code[capture.node.byte_range()].to_string()));
             }
         }
     }
-    println!("\nDerived from: {:?}", derived_from);
+
+    let mut body_line1 = usize::MAX;
+    let mut body_line2 = 0;
+    let mut class_name = "".to_string();
+    let mut block = None;
+    for i in 0 .. node.child_count() {
+        let child = node.child(i).unwrap();
+        if child.kind() == "identifier" {
+            class_name = cx.code[child.byte_range()].to_string();
+        }
+        if child.kind() == "block" {
+            body_line1 = body_line1.min(child.range().start_point.row + 1);
+            body_line2 = body_line2.max(child.range().end_point.row + 1);
+            block = Some(child);
+        }
+    }
+    if class_name == "" {
+        return;
+    }
+    if block.is_none() {
+        return;
+    }
+
+    let mut class_path = path.clone();
+    class_path.push(class_name.clone());
+
+    cx.defs.insert(class_name.clone(), AstDefinition {
+        official_path: class_path.clone(),
+        symbol_type: SymbolType::StructDeclaration,
+        usages: vec![],
+        this_is_a_class: format!("py🔎{}", class_name),
+        this_class_derived_from: derived_from,
+        cpath: "".to_string(),
+        decl_line1: node.range().start_point.row + 1,
+        decl_line2: (node.range().start_point.row + 1).max(body_line1 - 1),
+        body_line1,
+        body_line2,
+    });
+    // println!("\n{}", serde_json::to_string_pretty(cx.defs.last().unwrap().1).unwrap());
+
+    py_traverse(cx, &block.unwrap(), &class_path);
 }
 
-fn py_traverse(cx: &mut ContextPy, node: &Node, path: &Vec<String>) {
+
+fn py_traverse(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
+{
     match node.kind() {
         "from" | "class" | "identifier" | "import" | "dotted_name" | "def" | "if" | "for" | ":" | "," => {
             // simple keywords
@@ -192,7 +236,8 @@ fn py_traverse(cx: &mut ContextPy, node: &Node, path: &Vec<String>) {
     }
 }
 
-pub fn parse(code: &str) {
+pub fn parse(code: &str)
+{
     let mut sitter = Parser::new();
     sitter.set_language(&language()).unwrap();
     let mut cx = ContextPy {

@@ -31,11 +31,13 @@ pub async fn add_to_file_diff(
     let context_file_path = PathBuf::from(&context_file.file_name);
 
     let symbol = ticket.locate_symbol.clone().ok_or("symbol is absent")?;
-    
+
     let file_text = context_file.file_content.clone();
     let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
     let file_lines = file_text.split(line_ending).collect::<Vec<&str>>();
-    let symbol_lines = file_lines[symbol.full_range.start_point.row..symbol.full_range.end_point.row].to_vec();
+    let symbol_full_range_start_point_row = symbol.full_line1() - 1;
+    let symbol_full_range_end_point_row = symbol.full_line2() - 1;
+    let symbol_lines = file_lines[symbol_full_range_start_point_row .. symbol_full_range_end_point_row].to_vec();
     let file_lines = file_lines.into_iter().map(|s| s.to_string()).collect::<Vec<_>>();
     let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
 
@@ -52,36 +54,44 @@ pub async fn add_to_file_diff(
     let new_code_lines = if locate_as == PatchLocateAs::BEFORE {
         let sym_before = if pos_locate_symbol == 0 { None } else { Some(same_parent_symbols[pos_locate_symbol - 1].clone()) };
         let sym_after = symbol;
+        let sym_after_full_range_start_point_row = sym_after.full_line1() - 1;
+        let sym_after_full_range_end_point_row = sym_after.full_line2() - 1;
         if let Some(sym_before) = sym_before {
-            file_lines[..sym_before.full_range.end_point.row + 1].iter()
+            let sym_before_full_range_start_point_row = sym_before.full_line1() - 1;
+            let sym_before_full_range_end_point_row = sym_before.full_line2() - 1;
+            file_lines[..sym_before_full_range_end_point_row + 1].iter()
                 .chain(vec!["".to_string(); spacing].iter())
                 .chain(ticket_code_lines.iter())
                 .chain(vec!["".to_string(); spacing].iter())
-                .chain(file_lines[sym_after.full_range.start_point.row..].iter())
+                .chain(file_lines[sym_after_full_range_start_point_row ..].iter())
                 .cloned().collect::<Vec<_>>()
         } else {
-            file_lines[..sym_after.full_range.start_point.row].iter()
+            file_lines[..sym_after_full_range_start_point_row].iter()
                 .chain(ticket_code_lines.iter())
                 .chain(vec!["".to_string(); spacing].iter())
-                .chain(file_lines[sym_after.full_range.start_point.row..].iter())
+                .chain(file_lines[sym_after_full_range_start_point_row..].iter())
                .cloned().collect::<Vec<_>>()
         }
 
     } else {
         let sym_before = symbol;
         let sym_after = same_parent_symbols.get(pos_locate_symbol + 1).cloned();
+        let sym_before_full_range_start_point_row = sym_before.full_line1() - 1;
+        let sym_before_full_range_end_point_row = sym_before.full_line2() - 1;
         if let Some(sym_after) = sym_after {
-            file_lines[..sym_before.full_range.end_point.row + 1].iter()
+            let sym_after_full_range_start_point_row = sym_after.full_line1() - 1;
+            let sym_after_full_range_end_point_row = sym_after.full_line2() - 1;
+            file_lines[..sym_before_full_range_end_point_row + 1].iter()
                 .chain(vec!["".to_string(); spacing].iter())
                 .chain(ticket_code_lines.iter())
                 .chain(vec!["".to_string(); spacing].iter())
-                .chain(file_lines[sym_after.full_range.start_point.row..].iter())
+                .chain(file_lines[sym_after_full_range_start_point_row ..].iter())
                 .cloned().collect::<Vec<_>>()
         } else {
-            file_lines[..sym_before.full_range.end_point.row + 1].iter()
+            file_lines[..sym_before_full_range_end_point_row + 1].iter()
                 .chain(vec!["".to_string(); spacing].iter())
                 .chain(ticket_code_lines.iter())
-                .chain(file_lines[sym_before.full_range.end_point.row + 1..].iter())
+                .chain(file_lines[sym_before_full_range_end_point_row + 1 ..].iter())
                 .cloned().collect::<Vec<_>>()
         }
     };
@@ -104,7 +114,9 @@ pub async fn rewrite_symbol_diff(
     let file_text = context_file.file_content.clone();
     let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
     let file_lines = file_text.split(line_ending).collect::<Vec<&str>>();
-    let symbol_lines = file_lines[symbol.full_range.start_point.row..symbol.full_range.end_point.row].to_vec();
+    let symbol_full_range_start_point_row = symbol.full_line1() - 1;
+    let symbol_full_range_end_point_row = symbol.full_line2() - 1;
+    let symbol_lines = file_lines[symbol_full_range_start_point_row .. symbol_full_range_end_point_row].to_vec();
     let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
 
     let ticket_code = ticket.code.clone();
@@ -112,10 +124,10 @@ pub async fn rewrite_symbol_diff(
     let ticket_code_lines = ticket_code.split(ticket_line_ending).collect::<Vec<&str>>();
     let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
 
-    let new_code_lines = file_lines[..symbol.full_range.start_point.row].iter()
+    let new_code_lines = file_lines[.. symbol_full_range_start_point_row].iter()
         .map(|s| s.to_string())
         .chain(ticket_code_lines.iter().cloned())
-        .chain(file_lines[symbol.full_range.end_point.row + 1..].iter().map(|s| s.to_string()))
+        .chain(file_lines[symbol_full_range_end_point_row + 1 ..].iter().map(|s| s.to_string()))
         .collect::<Vec<_>>();
 
     let new_code = new_code_lines.join(line_ending);
@@ -212,7 +224,9 @@ pub async fn retain_non_applied_tickets(
                 let file_text = context_file.file_content.clone();
                 let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
                 let file_lines = file_text.split(line_ending).collect::<Vec<&str>>();
-                let symbol_lines = file_lines[symbol.full_range.start_point.row..symbol.full_range.end_point.row].to_vec();
+                let symbol_full_range_start_point_row = symbol.full_line1() - 1;
+                let symbol_full_range_end_point_row = symbol.full_line2() - 1;
+                let symbol_lines = file_lines[symbol_full_range_start_point_row .. symbol_full_range_end_point_row].to_vec();
                 let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
 
                 let ticket_code = ticket.code.clone();
@@ -221,15 +235,15 @@ pub async fn retain_non_applied_tickets(
                 let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
 
                 let mut all_symbols = ticket.all_symbols.clone();
-                all_symbols.sort_by_key(|s| s.full_range.start_point.row);
+                all_symbols.sort_by_key(|s| s.full_line1());
                 let locate_as = ticket.locate_as.clone().expect("locate_as not found");
 
                 let search_in_code = match locate_as {
                     PatchLocateAs::BEFORE => {
-                        Some(file_lines[..symbol.full_range.start_point.row].to_vec())
+                        Some(file_lines[.. symbol_full_range_start_point_row].to_vec())
                     },
                     PatchLocateAs::AFTER => {
-                        Some(file_lines[symbol.full_range.end_point.row..].to_vec())
+                        Some(file_lines[symbol_full_range_end_point_row ..].to_vec())
                     },
                     _ => None
                 };
@@ -252,14 +266,16 @@ pub async fn retain_non_applied_tickets(
 
                 match ticket.locate_symbol.clone() {
                     Some(symbol) => {
-                        let symbol_lines = file_lines[symbol.full_range.start_point.row..symbol.full_range.end_point.row].to_vec();
+                        let symbol_full_range_start_point_row = symbol.full_line1() - 1;
+                        let symbol_full_range_end_point_row = symbol.full_line2() - 1;
+                        let symbol_lines = file_lines[symbol_full_range_start_point_row .. symbol_full_range_end_point_row].to_vec();
                         let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
 
                         let ticket_code = ticket.code.clone();
                         let ticket_line_ending = if ticket_code.contains("\r\n") { "\r\n" } else { "\n" };
                         let ticket_code_lines = ticket_code.split(ticket_line_ending).collect::<Vec<&str>>();
                         let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
-                        
+
                         if vec_contains_vec(
                             &ticket_code_lines,
                             &symbol_lines.iter().map(|x|x.to_string()).collect::<Vec<_>>()
@@ -274,7 +290,7 @@ pub async fn retain_non_applied_tickets(
                         let ticket_line_ending = if ticket_code.contains("\r\n") { "\r\n" } else { "\n" };
                         let ticket_code_lines = ticket_code.split(ticket_line_ending).collect::<Vec<&str>>();
                         let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
-                        
+
                         if vec_contains_vec(
                             &file_lines.into_iter().map(|x|x.to_string()).collect::<Vec<_>>(),
                             &ticket_code_lines

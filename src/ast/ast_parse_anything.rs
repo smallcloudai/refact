@@ -2,12 +2,14 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use indexmap::IndexMap;
 use uuid::Uuid;
+use std::path::Path;
+use sha2::{Sha256, Digest};
+
 use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, AstSymbolInstanceArc};
-use std::path::Path;
-use sha2::{Sha256, Digest};
+use crate::ast::parse_common::line12mid_from_ranges;
 
 
 const TOO_MANY_SYMBOLS_IN_FILE: usize = 10000;
@@ -396,6 +398,7 @@ pub fn parse_anything(
                     }
                 }
                 if !symbol.name().is_empty() && !skip_var_because_parent_is_function {
+                    let (line1, line2, line_mid) = line12mid_from_ranges(symbol.full_range(), symbol.definition_range());
                     let definition = AstDefinition {
                         official_path: _path_of_node(&pcx.map, Some(symbol.guid().clone())),
                         symbol_type: symbol.symbol_type().clone(),
@@ -403,9 +406,13 @@ pub fn parse_anything(
                         this_class_derived_from,
                         usages,
                         cpath: cpath.to_string(),
-                        full_range: symbol.full_range().clone(),
-                        declaration_range: symbol.declaration_range().clone(),
-                        definition_range: symbol.definition_range().clone(),
+                        decl_line1: line1 + 1,
+                        decl_line2: line2 + 1,
+                        body_line1: line_mid + 1,
+                        body_line2: line2 + 1,
+                        // full_range: symbol.full_range().clone(),
+                        // declaration_range: symbol.declaration_range().clone(),
+                        // definition_range: symbol.definition_range().clone(),
                     };
                     pcx.definitions.insert(symbol.guid().clone(), definition);
                 } else if symbol.name().is_empty() {
