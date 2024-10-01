@@ -9,7 +9,7 @@ export type ChatThread = {
   title?: string;
   createdAt?: string;
   updatedAt?: string;
-  tool_use: ToolUse;
+  tool_use?: ToolUse;
   read?: boolean;
 };
 

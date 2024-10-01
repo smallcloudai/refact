@@ -7,6 +7,7 @@ import { Theme } from "@radix-ui/themes";
 import { Provider } from "react-redux";
 import { AppStore, RootState, setUpStore } from "../app/store";
 import { TourProvider } from "../features/Tour";
+import { AbortControllerProvider } from "../contexts/AbortControllers";
 
 // This type interface extends the default options for render from RTL, as well
 // as allows the user to specify other things such as initialState, store.
@@ -35,7 +36,9 @@ const customRender = (
   const Wrapper = ({ children }: PropsWithChildren) => (
     <Provider store={store}>
       <Theme>
-        <TourProvider>{children}</TourProvider>
+        <TourProvider>
+          <AbortControllerProvider>{children}</AbortControllerProvider>
+        </TourProvider>
       </Theme>
     </Provider>
   );

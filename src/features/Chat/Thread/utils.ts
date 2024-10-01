@@ -339,7 +339,6 @@ export function consumeStream(
   }: ReadableStreamReadResult<Uint8Array>): Promise<void> {
     if (done) return Promise.resolve();
     if (signal.aborted) {
-      // dispatch(setPreventSend({ id: chatId }));
       onAbort();
       return Promise.resolve();
     }

@@ -19,27 +19,27 @@ import {
 } from "./actions";
 import { formatChatResponse } from "./utils";
 
-const createChatThread = (): ChatThread => {
+const createChatThread = (tool_use: ToolUse): ChatThread => {
   const chat: ChatThread = {
     id: uuidv4(),
     messages: [],
     title: "",
     model: "",
-    tool_use: "" as ToolUse,
+    tool_use,
   };
   return chat;
 };
 
-const createInitialState = (): Chat => {
+const createInitialState = (tool_use: ToolUse = "explore"): Chat => {
   return {
     streaming: false,
-    thread: createChatThread(),
+    thread: createChatThread(tool_use),
     error: null,
     prevent_send: false,
     waiting_for_response: false,
     cache: {},
     system_prompt: {},
-    tool_use: "explore",
+    tool_use,
     send_immediately: false,
   };
 };
@@ -76,12 +76,11 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(newChatAction, (state) => {
-    const next = createInitialState();
+    const next = createInitialState(state.tool_use);
     next.cache = { ...state.cache };
     if (state.streaming) {
       next.cache[state.thread.id] = { ...state.thread, read: false };
     }
-    next.tool_use = state.tool_use;
     next.thread.model = state.thread.model;
     next.system_prompt = state.system_prompt;
     return next;
@@ -172,6 +171,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       state.streaming = false;
     }
     state.thread = mostUptoDateThread;
+    state.thread.tool_use = state.thread.tool_use ?? state.tool_use;
   });
 
   // New builder to save chat title within the current thread and not only inside of a history thread

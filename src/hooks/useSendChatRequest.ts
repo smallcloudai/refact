@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
 import {
@@ -6,7 +6,6 @@ import {
   selectChatError,
   selectChatId,
   selectIsStreaming,
-  selectIsWaiting,
   selectMessages,
   selectPreventSend,
   selectSendImmediately,
@@ -30,11 +29,12 @@ import {
 import { takeFromLast } from "../utils/takeFromLast";
 import { diffApi, DiffStateResponse } from "../services/refact/diffs";
 import { isToolUse } from "../features/Chat";
+import { useAbortControllers } from "./useAbortControllers";
 
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
-  const abortRef = useRef<null | ((reason?: string | undefined) => void)>(null);
   const hasError = useAppSelector(selectChatError);
+  const abortControllers = useAbortControllers();
 
   const [getDiffState] = diffApi.useLazyDiffStateQuery();
 
@@ -42,7 +42,6 @@ export const useSendChatRequest = () => {
 
   const chatId = useAppSelector(selectChatId);
   const streaming = useAppSelector(selectIsStreaming);
-  const isWaiting = useAppSelector(selectIsWaiting);
   const chatError = useAppSelector(selectChatError);
 
   const errored: boolean = !!hasError || !!chatError;
@@ -91,9 +90,9 @@ export const useSendChatRequest = () => {
       });
 
       const dispatchedAction = dispatch(action);
-      abortRef.current = dispatchedAction.abort;
+      abortControllers.addAbortController(chatId, dispatchedAction.abort);
     },
-    [chatId, dispatch, toolsRequest.data, toolUse],
+    [toolsRequest.data, toolUse, dispatch, chatId, abortControllers],
   );
 
   const submit = useCallback(
@@ -150,7 +149,6 @@ export const useSendChatRequest = () => {
   }, [sendImmediately, sendMessages, messagesWithSystemPrompt]);
 
   // TODO: Automatically calls tool calls. This means that this hook can only be used once :/
-  // making this middle ware may solve the issue
   useEffect(() => {
     if (!streaming && currentMessages.length > 0 && !errored && !preventSend) {
       const lastMessage = currentMessages.slice(-1)[0];
@@ -164,24 +162,28 @@ export const useSendChatRequest = () => {
     }
   }, [errored, currentMessages, preventSend, sendMessages, streaming]);
 
-  const abort = () => {
-    if (abortRef.current && (streaming || isWaiting)) {
-      abortRef.current();
-    }
-  };
+  const abort = useCallback(() => {
+    abortControllers.abort(chatId);
+  }, [abortControllers, chatId]);
 
-  const retry = (messages: ChatMessages) => {
-    abort();
-    sendMessages(messages);
-  };
+  const retry = useCallback(
+    (messages: ChatMessages) => {
+      abort();
+      sendMessages(messages);
+    },
+    [abort, sendMessages],
+  );
 
-  const retryFromIndex = (index: number, question: string) => {
-    const messagesToKeep = currentMessages.slice(0, index);
-    const messagesToSend = messagesToKeep.concat([
-      { role: "user", content: question },
-    ]);
-    retry(messagesToSend);
-  };
+  const retryFromIndex = useCallback(
+    (index: number, question: string) => {
+      const messagesToKeep = currentMessages.slice(0, index);
+      const messagesToSend = messagesToKeep.concat([
+        { role: "user", content: question },
+      ]);
+      retry(messagesToSend);
+    },
+    [currentMessages, retry],
+  );
 
   return {
     submit,

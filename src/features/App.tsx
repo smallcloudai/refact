@@ -28,6 +28,7 @@ import { Tour } from "../components/Tour";
 import { TourEnd } from "../components/Tour/TourEnd";
 import { useEventBusForApp } from "../hooks/useEventBusForApp";
 import { BringYourOwnKey } from "../components/BringYourOwnKey/BringYourOwnKey";
+import { AbortControllerProvider } from "../contexts/AbortControllers";
 import { Toolbar } from "../components/Toolbar";
 import { Tab } from "../components/Toolbar/Toolbar";
 import { PageWrapper } from "../components/PageWrapper";
@@ -199,7 +200,9 @@ export const App = () => {
       <PersistGate persistor={persistor}>
         <Theme>
           <TourProvider>
-            <InnerApp />
+            <AbortControllerProvider>
+              <InnerApp />
+            </AbortControllerProvider>
           </TourProvider>
         </Theme>
       </PersistGate>
