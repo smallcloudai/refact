@@ -27,6 +27,11 @@ async fn execute_att_search(
         return Ok(execute_at_search(ccx.clone(), &query, None).await?)
     }
 
+    // XXX doesn't work for dirs
+    // "/Users/user/code/refact-lsp" does not exist. There are paths with similar names however:"
+    // maybe use this:
+    // let dir_candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
+
     let filter = if scope.ends_with('/') {
         let dir = return_one_candidate_or_a_good_error(
             gcx.clone(),

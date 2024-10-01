@@ -42,14 +42,14 @@ impl Tool for ToolTree {
             Some(v) => return Err(format!("argument `use_ast` is not a boolean: {:?}", v)),
             None => false,
         };
-        
+
 
         let tree = match path_mb {
             Some(path) => {
                 let file_candidates = correct_to_nearest_filename(gcx.clone(), &path, false, 10).await;
                 let dir_candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
                 if dir_candidates.is_empty() && !file_candidates.is_empty() {
-                    return Err("cannot execute tree().\nReason: 'path' provided probably refers to a file, not a directory.\nResolution: use 'path' that refers to a directory".to_string());
+                    return Err("Cannot execute tree() because 'path' provided refers to a file.".to_string());
                 }
 
                 let candidate = return_one_candidate_or_a_good_error(

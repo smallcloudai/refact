@@ -1,11 +1,13 @@
 
 # Refact Agent Rust Executable
 
-This is a small executable written in Rust, a part of Refact Agent project. Its main job is to live
-inside your IDE quietly and keep AST and VecDB indexes up to date. It's well-written, it will not break if
-you edit your files really fast or switch branches, it caches vectorization model responses so you
+This is a small executable written in Rust, a part of the Refact Agent project. Its main job is to live
+inside your IDE quietly and keep AST and VecDB indexes up to date. It is well-written: it will not break if
+you edit your files quickly or switch branches, it caches vectorization model responses so you
 don't have to wait for VecDB to complete indexing, AST supports full graph connection between definitions
 and usage in many popular programming languages.
+
+Yes, it looks like an LSP server to IDE, hence the name.
 
 
 ## Progress
