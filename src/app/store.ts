@@ -39,6 +39,7 @@ import {
 import { errorSlice } from "../features/Errors/errorsSlice";
 import { warningSlice } from "../features/Errors/warningSlice";
 import { pagesSlice } from "../features/Pages/pagesSlice";
+import { openFilesSlice } from "../features/OpenFiles/openFilesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
 
@@ -78,6 +79,7 @@ const rootReducer = combineSlices(
   errorSlice,
   warningSlice,
   pagesSlice,
+  openFilesSlice,
 );
 
 const rootPersistConfig = {
@@ -104,7 +106,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
     reducer: persistedReducer,
     preloadedState: initialState,
     devTools: {
-      maxAge: 1000,
+      maxAge: 500,
     },
     middleware: (getDefaultMiddleware) => {
       const production = import.meta.env.MODE === "production";

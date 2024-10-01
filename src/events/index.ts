@@ -13,15 +13,21 @@ import type { TipOfTheDayState } from "../features/TipOfTheDay";
 import type { PageSliceState } from "../features/Pages/pagesSlice";
 import type { TourState } from "../features/Tour";
 import type { FIMDebugState } from "../hooks";
+
 // import { rootReducer } from "../app/store";
 export { updateConfig, type Config } from "../features/Config/configSlice";
 export { type FileInfo, setFileInfo } from "../features/Chat/activeFile";
+export {
+  setOpenFiles,
+  type OpenFilesState,
+} from "../features/OpenFiles/openFilesSlice";
 export {
   type Snippet,
   setSelectedSnippet,
 } from "../features/Chat/selectedSnippet";
 export type { FimDebugData } from "../services/refact/fim";
 export type { ChatHistoryItem } from "../features/History/historySlice";
+export { resetDiffApi } from "../services/refact/diffs";
 // TODO: re-exporting from redux seems to break things :/
 export type InitialState = {
   fim: FIMDebugState;

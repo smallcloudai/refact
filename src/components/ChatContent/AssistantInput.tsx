@@ -55,6 +55,7 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
             onNewFileClick={newFile}
             onPasteClick={diffPasteBack}
             canPaste={activeFile.can_paste}
+            canHavePins={true}
           >
             {message}
           </Markdown>

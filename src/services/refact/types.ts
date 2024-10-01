@@ -95,6 +95,34 @@ export type DiffChunk = {
   // apply?: boolean;
   // chunk_id?: number;
 };
+
+export function isDiffChunk(json: unknown) {
+  if (!json) {
+    return false;
+  }
+  if (typeof json !== "object") {
+    return false;
+  }
+  if (!("file_name" in json) || typeof json.file_name !== "string") {
+    return false;
+  }
+  if (!("file_action" in json) || typeof json.file_action !== "string") {
+    return false;
+  }
+  if (!("line1" in json) || typeof json.line1 !== "number") {
+    return false;
+  }
+  if (!("line2" in json) || typeof json.line2 !== "number") {
+    return false;
+  }
+  if (!("lines_remove" in json) || typeof json.lines_remove !== "string") {
+    return false;
+  }
+  if (!("lines_add" in json) || typeof json.lines_add !== "string") {
+    return false;
+  }
+  return true;
+}
 export interface DiffMessage extends BaseMessage {
   role: "diff";
   content: DiffChunk[];
