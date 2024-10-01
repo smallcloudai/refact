@@ -4,13 +4,11 @@ use tree_sitter_python::language;
 
 use crate::ast::ast_structs::{AstDefinition, AstUsage};
 use crate::ast::treesitter::structs::SymbolType;
+use crate::ast::parse_common::ContextAnyParser;
 
 
 pub struct ContextPy<'a> {
-    pub sitter: Parser,
-    pub last_end_byte: usize,
-    pub code: &'a str,
-    pub defs: IndexMap<String, AstDefinition>,
+    pub ap: ContextAnyParser<'a>,
     pub ass1: Query,
     pub ass2: Query,
     pub ass3: Query,
@@ -19,47 +17,6 @@ pub struct ContextPy<'a> {
     pub tuple2: Query,
     pub tuple3: Query,
     pub class1: Query,
-
-}
-
-fn whitespace1(cx: &mut ContextPy, node: &Node) {
-    if node.start_byte() > cx.last_end_byte {
-        let whitespace = &cx.code[cx.last_end_byte..node.start_byte()];
-        print!("\x1b[32m{}\x1b[0m", whitespace.replace(" ", "·"));
-        cx.last_end_byte = node.start_byte();
-    }
-}
-
-fn whitespace2(cx: &mut ContextPy, node: &Node) {
-    cx.last_end_byte = node.end_byte();
-}
-
-fn just_print(cx: &mut ContextPy, node: &Node) {
-    whitespace1(cx, node);
-    print!("{}", &cx.code[node.byte_range()].replace(" ", "·"));
-    whitespace2(cx, node);
-}
-
-fn recursive_print_with_red_brackets(cx: &mut ContextPy, node: &Node) {
-    whitespace1(cx, node);
-    match node.kind() {
-        "from" | "class" | "import" | "def" | "if" | "for" | ":" | "," | "=" | "." | "(" | ")" => {
-            // keywords
-            print!("{}", &cx.code[node.byte_range()].replace(" ", "·"));
-        },
-        _ => {
-            print!("\x1b[31m{}[\x1b[0m", node.kind());
-            for i in 0..node.child_count() {
-                let child = node.child(i).unwrap();
-                recursive_print_with_red_brackets(cx, &child);
-            }
-            if node.child_count() == 0 {
-                print!("{}", &cx.code[node.byte_range()]);
-            }
-            print!("\x1b[31m]\x1b[0m");
-        }
-    }
-    whitespace2(cx, node);
 }
 
 fn generate_usage(cx: &mut ContextPy, node: &Node, debug_note: &str, lhs_target: &str, rhs_target: &String) {
@@ -67,15 +24,15 @@ fn generate_usage(cx: &mut ContextPy, node: &Node, debug_note: &str, lhs_target:
 }
 
 fn py_typeof(cx: &ContextPy, node: &Node) -> Option<String> {
-    return Some(format!("TYPE[{}]", &cx.code[node.byte_range()]));
+    return Some(format!("TYPE[{}]", &cx.ap.code[node.byte_range()]));
 }
 
 fn py_lvalue(cx: &ContextPy, node: &Node) -> Option<String> {
-    return Some(format!("LVALUE[{}]", &cx.code[node.byte_range()]));
+    return Some(format!("LVALUE[{}]", &cx.ap.code[node.byte_range()]));
 }
 
 fn py_rvalue(cx: &ContextPy, node: &Node) -> Option<String> {
-    return Some(format!("VAL[{}]", &cx.code[node.byte_range()]));
+    return Some(format!("VAL[{}]", &cx.ap.code[node.byte_range()]));
 }
 
 fn py_assignment(cx: &mut ContextPy, node: &Node)
@@ -83,7 +40,7 @@ fn py_assignment(cx: &mut ContextPy, node: &Node)
     let mut lhs_tuple: Vec<(String, Option<String>)> = Vec::new();
     for query in [&cx.ass1, &cx.ass2, &cx.ass3, &cx.ass4] {
         let mut query_cursor = QueryCursor::new();
-        for m in query_cursor.matches(&query, *node, cx.code.as_bytes()) {
+        for m in query_cursor.matches(&query, *node, cx.ap.code.as_bytes()) {
             let mut lhs_text = None;
             let mut lhs_type = None;
             for capture in m.captures {
@@ -106,7 +63,7 @@ fn py_assignment(cx: &mut ContextPy, node: &Node)
     let mut rhs_tuple: Vec<String> = Vec::new();
     for query in [&cx.tuple1, &cx.tuple2, &cx.tuple3] {
         let mut query_cursor = QueryCursor::new();
-        for m in query_cursor.matches(&query, *node, cx.code.as_bytes()) {
+        for m in query_cursor.matches(&query, *node, cx.ap.code.as_bytes()) {
             let mut rhs_text = None;
             for capture in m.captures {
                 let capture_name = query.capture_names()[capture.index as usize];
@@ -132,11 +89,11 @@ fn py_class(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
 {
     let mut derived_from = vec![];
     let mut query_cursor = QueryCursor::new();
-    for m in query_cursor.matches(&cx.class1, *node, cx.code.as_bytes()) {
+    for m in query_cursor.matches(&cx.class1, *node, cx.ap.code.as_bytes()) {
         for capture in m.captures {
             let capture_name = cx.class1.capture_names()[capture.index as usize];
             if capture_name == "dfrom" {
-                derived_from.push(format!("py🔎{}", cx.code[capture.node.byte_range()].to_string()));
+                derived_from.push(format!("py🔎{}", cx.ap.code[capture.node.byte_range()].to_string()));
             }
         }
     }
@@ -148,7 +105,7 @@ fn py_class(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
     for i in 0 .. node.child_count() {
         let child = node.child(i).unwrap();
         if child.kind() == "identifier" {
-            class_name = cx.code[child.byte_range()].to_string();
+            class_name = cx.ap.code[child.byte_range()].to_string();
         }
         if child.kind() == "block" {
             body_line1 = body_line1.min(child.range().start_point.row + 1);
@@ -166,7 +123,7 @@ fn py_class(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
     let mut class_path = path.clone();
     class_path.push(class_name.clone());
 
-    cx.defs.insert(class_name.clone(), AstDefinition {
+    cx.ap.defs.insert(class_name.clone(), AstDefinition {
         official_path: class_path.clone(),
         symbol_type: SymbolType::StructDeclaration,
         usages: vec![],
@@ -189,9 +146,9 @@ fn py_traverse(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
     match node.kind() {
         "from" | "class" | "identifier" | "import" | "dotted_name" | "def" | "if" | "for" | ":" | "," => {
             // simple keywords
-            whitespace1(cx, node);
-            just_print(cx, node);
-            whitespace2(cx, node);
+            cx.ap.whitespace1(node);
+            cx.ap.just_print(node);
+            cx.ap.whitespace2(node);
         },
         "module" | "block" | "if_statement" | "expression_statement" => {
             for i in 0..node.child_count() {
@@ -200,7 +157,7 @@ fn py_traverse(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
             }
         },
         "class_definition" => {
-            recursive_print_with_red_brackets(cx, node);
+            cx.ap.recursive_print_with_red_brackets(node);
             py_class(cx, node, path);
         },
         // TODO
@@ -211,7 +168,7 @@ fn py_traverse(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
             }
         },
         "assignment" => {
-            recursive_print_with_red_brackets(cx, node);
+            cx.ap.recursive_print_with_red_brackets(node);
             py_assignment(cx, node);
         }
         // "expression_statement" => {
@@ -227,11 +184,11 @@ fn py_traverse(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
         // "for_statement" => handle_variable(cx, node),
         _ => {
             // unknown, to discover new syntax, just print
-            whitespace1(cx, node);
+            cx.ap.whitespace1(node);
             print!("\x1b[31m{}[\x1b[0m", node.kind());
-            just_print(cx, node);
+            cx.ap.just_print(node);
             print!("\x1b[31m]\x1b[0m");
-            whitespace2(cx, node);
+            cx.ap.whitespace2(node);
         }
     }
 }
@@ -241,10 +198,12 @@ pub fn parse(code: &str)
     let mut sitter = Parser::new();
     sitter.set_language(&language()).unwrap();
     let mut cx = ContextPy {
-        sitter,
-        last_end_byte: 0,
-        code,
-        defs: IndexMap::new(),
+        ap: ContextAnyParser {
+            sitter,
+            last_end_byte: 0,
+            code,
+            defs: IndexMap::new(),
+        },
         // assignment[pattern_list[identifier[aaa1],·identifier[aaa2]]·=·expression_list[integer[13],·integer[14]]]
         ass1: Query::new(&language(), "(assignment left: (pattern_list (_) @lhs))").unwrap(),
         // assignment[tuple_pattern[([(]identifier[aaa2],·identifier[aaa3])[)]]·=·expression_list[integer[15],·integer[16]]]
@@ -262,7 +221,7 @@ pub fn parse(code: &str)
         // class_definition[class·identifier[Goat]argument_list[(identifier[Animal])]:
         class1: Query::new(&language(), "(class_definition name: (_) superclasses: (argument_list (_) @dfrom))").unwrap(),
     };
-    let tree = cx.sitter.parse(code, None).unwrap();
+    let tree = cx.ap.sitter.parse(code, None).unwrap();
     let path = vec!["file".to_string()];
     py_traverse(&mut cx, &tree.root_node(), &path);
 }
