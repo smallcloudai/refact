@@ -12,6 +12,9 @@ pub mod file_splitter;
 pub mod chunk_utils;
 pub mod linters;
 
+pub mod parse_python;
+
+
 
 pub fn count_tokens(
     tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
