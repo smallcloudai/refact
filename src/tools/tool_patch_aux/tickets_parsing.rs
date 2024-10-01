@@ -102,6 +102,13 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
             ticket.fallback_action = Some(PatchAction::PartialEdit);
             if ticket.locate_as != Some(PatchLocateAs::BEFORE) && ticket.locate_as != Some(PatchLocateAs::AFTER) {
                 ticket.action = PatchAction::PartialEdit;
+                if let Some(s) = &ticket.locate_symbol {
+                    let extra_prompt = format!(
+                        "Add the following code at the correct place inside or near the `{}` symbol:\n",
+                        s.official_path.last().unwrap_or(&"".to_string())
+                    );
+                    ticket.code = format!("{}{}", extra_prompt, ticket.code);
+                }
             }
         }
         PatchAction::RewriteSymbol => {
@@ -111,6 +118,13 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
 
             if ticket.locate_as != Some(PatchLocateAs::SYMBOLNAME) {
                 ticket.action = PatchAction::PartialEdit;
+                if let Some(s) = &ticket.locate_symbol {
+                    let extra_prompt = format!(
+                        "Replace the whole `{}` symbol by the following code:\n",
+                        s.official_path.last().unwrap_or(&"".to_string())
+                    );
+                    ticket.code = format!("{}{}", extra_prompt, ticket.code);
+                }
             }
         }
         PatchAction::PartialEdit => {

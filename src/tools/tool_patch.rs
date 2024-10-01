@@ -42,21 +42,35 @@ pub async fn process_tickets(
     let action = active_tickets[0].action.clone();
     let res = match action {
         PatchAction::AddToFile => {
-            let mut chunks = add_to_file_diff(gcx.clone(), &active_tickets[0]).await?;
-            postprocess_diff_chunks(gcx.clone(), &mut chunks).await
+            match add_to_file_diff(gcx.clone(), &active_tickets[0]).await {
+                Ok(mut chunks) => {
+                    postprocess_diff_chunks(gcx.clone(), &mut chunks).await
+                }
+                Err(err) => Err(err)
+            }
         }
         PatchAction::RewriteSymbol => {
-            let mut chunks = rewrite_symbol_diff(gcx.clone(), &active_tickets[0]).await?;
-            postprocess_diff_chunks(gcx.clone(), &mut chunks).await
+            match rewrite_symbol_diff(gcx.clone(), &active_tickets[0]).await {
+                Ok(mut chunks) => {
+                    postprocess_diff_chunks(gcx.clone(), &mut chunks).await
+                }
+                Err(err) => Err(err)
+            }
         }
         PatchAction::PartialEdit => {
             partial_edit_tickets_to_chunks(
                 ccx_subchat.clone(), active_tickets.clone(), params, tool_call_id, usage,
-            ).await.map_err(|(e, r)| good_error_text(e.as_str(), &ticket_ids, r))
+            )
+                .await
+                .map_err(|(e, r)| good_error_text(e.as_str(), &ticket_ids, r))
         }
         PatchAction::RewriteWholeFile => {
-            let mut chunks = full_rewrite_diff(gcx.clone(), &active_tickets[0]).await?;
-            postprocess_diff_chunks(gcx.clone(), &mut chunks).await
+            match full_rewrite_diff(gcx.clone(), &active_tickets[0]).await {
+                Ok(mut chunks) => {
+                    postprocess_diff_chunks(gcx.clone(), &mut chunks).await
+                }
+                Err(err) => Err(err)
+            }
         }
         PatchAction::NewFile => {
             let mut chunks = new_file_diff(&active_tickets[0]);

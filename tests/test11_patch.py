@@ -213,7 +213,7 @@ def test05_add_to_file():
 def test01_rewrite_symbol():
     text_expected = (TEST11_DATA / "toad_rewrite_symbol_01.py").read_text()
     ticket_text = \
-f"""📍REWRITE_SYMBOL 001 {TOAD_ORIG} INFILL standalone_jumping_function
+f"""📍REWRITE_ONE_SYMBOL 001 {TOAD_ORIG} SYMBOL_NAME standalone_jumping_function
 ```python
 def brand_new_function():
     print("I am really a brand new function!")
@@ -234,7 +234,7 @@ def brand_new_function():
 def test02_rewrite_symbol():
     text_expected = (TEST11_DATA / "toad_rewrite_symbol_02.py").read_text()
     ticket_text = \
-        f"""📍REWRITE_SYMBOL 001 {TOAD_ORIG} INFILL Toad::bounce_off_banks
+        f"""📍REWRITE_ONE_SYMBOL 001 {TOAD_ORIG} SYMBOL_NAME Toad::bounce_off_banks
 ```python
     def bounce_off_banks(self, pond_width, pond_height):
         pass
@@ -255,7 +255,7 @@ def test02_rewrite_symbol():
 def test03_rewrite_symbol():
     text_expected = (TEST11_DATA / "toad_rewrite_symbol_03.py").read_text()
     ticket_text = \
-        f"""📍REWRITE_SYMBOL 001 {TOAD_ORIG} INFILL DT
+        f"""📍REWRITE_ONE_SYMBOL 001 {TOAD_ORIG} SYMBOL_NAME DT
 ```python
 DT = 10.
 ```
@@ -305,7 +305,7 @@ def hello_toad():
 def test01_already_applied_rewrite_symbol():
     test_file = TEST11_DATA / "already_applied_rewrite_symbol_01.py"
     ticket_text = \
-        f"""📍REWRITE_SYMBOL 001 {test_file} INFILL standalone_jumping_function
+        f"""📍REWRITE_ONE_SYMBOL 001 {test_file} SYMBOL_NAME standalone_jumping_function
 ```python
 def brand_new_function():
     print("I am really a brand new function!")
@@ -320,7 +320,7 @@ def brand_new_function():
 def test02_already_applied_rewrite_symbol():
     test_file = TEST11_DATA / "already_applied_rewrite_symbol_02.py"
     ticket_text = \
-f"""📍REWRITE_SYMBOL 001 {test_file} INFILL Toad::bounce_off_banks
+f"""📍REWRITE_ONE_SYMBOL 001 {test_file} SYMBOL_NAME Toad::bounce_off_banks
 ```python
     def bounce_off_banks(self, pond_width, pond_height):
         pass
@@ -363,7 +363,7 @@ def test01_already_applied_new_file():
 def test01_already_fallback_rewrite_symbol():
     text_expected = (TEST11_DATA / "toad_partial_edit_01.py").read_text()
     ticket_text = \
-        f"""📍REWRITE_SYMBOL 001 {TOAD_ORIG}
+        f"""📍REWRITE_ONE_SYMBOL 001 {TOAD_ORIG}
 ```python
 DT = 0.1
 ```
