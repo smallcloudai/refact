@@ -21,7 +21,10 @@ setup(
         "pydantic",
         "prompt_toolkit",
         "requests",
-        "pyyaml"
+        "pyyaml",
+        "tabulate",
+        "rich",
+        "pyperclip"
     ],
     author="Small Magellanic Cloud AI LTD",
     author_email="info@smallcloud.tech",
