@@ -1,5 +1,5 @@
 
-# Refact Agent
+# Refact Agent (Rust)
 
 This is a small executable written in Rust, a part of the Refact Agent project. Its main job is to live
 inside your IDE quietly and keep AST and VecDB indexes up to date. It is well-written: it will not break if
@@ -156,7 +156,7 @@ You can still use Refact for other languages, just the AST capabilities will be 
 
 ## CLI
 
-You can compile and use Refact Agent from command line without any other repos, and it's a not an afterthought, it works great!
+You can compile and use Refact Agent from command line with this repo alone, and it's a not an afterthought, it works great!
 
 ```
 cargo build --release
