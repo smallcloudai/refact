@@ -1,0 +1,26 @@
+[target.aarch64-unknown-linux-gnu]
+pre-build = [
+    "dpkg --add-architecture arm64",
+    "apt-get update && apt-get install --assume-yes libssl-dev:arm64 curl unzip",
+    "curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip",
+    "unzip protoc-25.1-linux-x86_64.zip -d /usr"
+]
+[target.aarch64-unknown-linux-gnu.env]
+passthrough = [
+    "OPENSSL_STATIC=1",
+    "OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu",
+    "OPENSSL_INCLUDE_DIR=/usr/include/openssl"
+]
+
+[target.x86_64-unknown-linux-gnu]
+pre-build = [
+    "apt-get update && apt-get install --assume-yes libssl-dev curl unzip",
+    "curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip",
+    "unzip protoc-25.1-linux-x86_64.zip -d /usr"
+]
+[target.x86_64-unknown-linux-gnu.env]
+passthrough = [
+    "OPENSSL_STATIC=1",
+    "OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu",
+    "OPENSSL_INCLUDE_DIR=/usr/include/openssl"
+]

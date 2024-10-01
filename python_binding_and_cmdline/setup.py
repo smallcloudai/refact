@@ -1,7 +1,9 @@
 from setuptools import setup, find_packages
+from wheel.bdist_wheel import bdist_wheel
 import re
+import os
 from typing import List
-import platform
+import platform, sysconfig
 
 
 def refact_lsp_binary() -> List[str]:
@@ -10,6 +12,16 @@ def refact_lsp_binary() -> List[str]:
     else:
         return ["refact/bin/refact-lsp"]
 
+class BDistWheel(bdist_wheel):
+    def get_tag(self) -> List[str]:
+        return (
+            self.python_tag, 
+            "none",
+            os.environ.get('WHL_TAG', re.sub("[^\w\d]+", "_", sysconfig.get_platform().replace('.', '_'), re.UNICODE)))
+
+cmdclass = {
+    'bdist_wheel': BDistWheel,
+}
 
 setup(
     name="refact",
@@ -45,6 +57,7 @@ setup(
             'refact=refact.cmdline.main:entrypoint',
         ],
     },
+    cmdclass=cmdclass,
     include_package_data=True,
     data_files=[('bin', refact_lsp_binary())]
 )

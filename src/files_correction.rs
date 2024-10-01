@@ -377,6 +377,8 @@ mod tests {
         assert_eq!(result, expected_result, "The result should contain the expected paths, instead it found");
     }
 
+    // cicd works with virtual machine, this test is slow
+    #[cfg(not(all(target_arch = "aarch64", target_os = "linux")))]
     #[cfg(not(debug_assertions))]
     #[test]
     fn test_make_cache_speed() {
@@ -408,5 +410,47 @@ mod tests {
 
         assert_eq!(cnt, 100000, "The cache should contain 100000 paths");
         assert_eq!(cache_shortened_result.len(), cnt);
+    }
+    
+    // cicd works with virtual machine, this test is slow 
+    #[cfg(not(all(target_arch = "aarch64", target_os = "linux")))]
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn test_fuzzy_search_speed() {
+        // Arrange
+        let workspace_paths = vec![
+            PathBuf::from("home").join("user").join("repo1"),
+            PathBuf::from("home").join("user").join("repo2"),
+            PathBuf::from("home").join("user").join("repo3"),
+            PathBuf::from("home").join("user").join("repo4"),
+        ];
+
+        let mut paths = Vec::new();
+        for i in 0..100000 {
+            let path = workspace_paths[i % workspace_paths.len()]
+                .join(format!("dir{}", i % 1000))
+                .join(format!("dir{}", i / 1000))
+                .join(format!("file{}.ext", i));
+            paths.push(path);
+        }
+        let start_time = std::time::Instant::now();
+        let paths_str = paths.iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>();
+
+        let correction_candidate = PathBuf::from("file100000")
+            .join("dir1000")
+            .join("file100000.ext")
+            .to_string_lossy()
+            .to_string();
+
+        // Act
+        let results = fuzzy_search(&correction_candidate, paths_str, 10);
+
+        // Assert
+        let time_spent = start_time.elapsed();
+        println!("fuzzy_search took {} ms", time_spent.as_millis());
+        assert!(time_spent.as_millis() < 750, "fuzzy_search took {} ms", time_spent.as_millis());
+
+        assert_eq!(results.len(), 10, "The result should contain 10 paths");
+        println!("{:?}", results);
     }
 }

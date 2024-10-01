@@ -21,8 +21,6 @@ env:
   RUSTUP_MAX_RETRIES: 10
   FETCH_DEPTH: 0 # pull in the tags for the version string
   MACOSX_DEPLOYMENT_TARGET: 10.15
-  CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-  CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
 
 jobs:
   dist:
@@ -32,27 +30,38 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             code-target: win32-x64
+            ext: .exe
+            whl-tag: win_amd64
           - os: windows-latest
             target: i686-pc-windows-msvc
             code-target: win32-ia32
+            ext: .exe
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             code-target: win32-arm64
+            ext: .exe
+            whl-tag: win_arm64
           - os: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
             code-target: linux-x64
-          - os: ubuntu-22.04
+            whl-tag: manylinux2014_x86_64
+            cross: true
+          - os: ubuntu-20.04
             target: aarch64-unknown-linux-gnu
             code-target: linux-arm64
-          - os: ubuntu-22.04
-            target: arm-unknown-linux-gnueabihf
-            code-target: linux-armhf
-          - os: macos-12
+            whl-tag: manylinux2014_aarch64
+            cross: true
+#          - os: ubuntu-22.04
+#            target: arm-unknown-linux-gnueabihf
+#            code-target: linux-armhf
+          - os: macos-13
             target: x86_64-apple-darwin
             code-target: darwin-x64
+            whl-tag: macosx_13_0_x86_64
           - os: macos-14
             target: aarch64-apple-darwin
-            code-target: darwin-arm64
+            code-target: darwin-arm64 
+            whl-tag: macosx_13_0_arm64
 
     env:
       LLM_LS_TARGET: ${{ matrix.target }}
@@ -72,15 +81,12 @@ jobs:
           rustup update --no-self-update stable
           rustup target add ${{ matrix.target }}
           rustup component add rust-src
-
-      - name: Update apt repositories
-        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf'
-        run: sudo apt-get update
-
-      - name: Install AArch64 target toolchain
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: sudo apt-get install gcc-aarch64-linux-gnu
-
+      
+      - name: setup cross-rs
+        if: matrix.cross
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+      
       - name: Install ARM target toolchain
         if: matrix.target == 'arm-unknown-linux-gnueabihf'
         run: sudo apt-get install gcc-arm-linux-gnueabihf
@@ -97,11 +103,6 @@ jobs:
         if: startsWith(matrix.os, 'windows')
         run: choco install protoc
       
-      - name: protobuf
-        if: matrix.target == 'arm-unknown-linux-gnueabihf' || matrix.target == 'x86_64-unknown-linux-gnu' || matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'x86_64-unknown-linux-musl'
-        uses: arduino/setup-protoc@v3
-        with:
-          version: "25.1"
       - name: Restore cached cargo
         uses: swatinem/rust-cache@v2
         with:
@@ -109,22 +110,53 @@ jobs:
           shared-key: ${{ matrix.os }}-${{ matrix.target }}-cargo
 
       - name: Build and test artifact
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: |
-          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo test --release || exit 1
-          OPENSSL_STATIC=1 OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu OPENSSL_INCLUDE_DIR=/usr/include/openssl cargo build --release || exit 1
-
-      - name: Build and test artifact
-        if: matrix.target != 'x86_64-unknown-linux-gnu'
+        if: matrix.cross == null && startsWith(matrix.os, 'windows')
         run: |
           cargo test --release || exit 1
           cargo build --release || exit 1
-
+          mkdir python_binding_and_cmdline/refact/bin
+          cp ./target/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+      
+      - name: Build and test artifact
+        if: matrix.cross == null && !startsWith(matrix.os, 'windows')
+        run: |
+          cargo test --release --target ${{ matrix.target }} || exit 1
+          cargo build --release --target ${{ matrix.target }} || exit 1
+          mkdir python_binding_and_cmdline/refact/bin
+          cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+          
+      - name: build linux-like artifacts
+        if: matrix.cross
+        run: |
+          cross test --release --target ${{ matrix.target }} || exit 1
+          cross build --release --target ${{ matrix.target }} || exit 1
+          mkdir python_binding_and_cmdline/refact/bin
+          cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+      
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.target }}
           if-no-files-found: ignore
           path: |
+            ./target/${{ matrix.target }}/release/refact-lsp
+            ./target/${{ matrix.target }}/release/refact-lsp.exe
             ./target/release/refact-lsp
             ./target/release/refact-lsp.exe
+      
+      - if: matrix.whl-tag 
+        env:
+          WHL_TAG: ${{ matrix.whl-tag }}
+        run: |
+          version=$(grep '^version' Cargo.toml | sed -E 's/version = "(.*)"/\1/')-dev
+          sed -i.bak -E "s/version=\"[^\"]+\"/version=\"$version\"/" python_binding_and_cmdline/setup.py
+          
+          pip install wheel build setuptools
+          python -m build --wheel --no-isolation python_binding_and_cmdline --outdir artefacts/
+        
+      - uses: actions/upload-artifact@v4
+        if: matrix.whl-tag
+        with:
+          name: dist-${{ matrix.target }}-whl
+          if-no-files-found: ignore
+          path: ./artefacts/*.whl
