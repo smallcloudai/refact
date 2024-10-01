@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 
 class Animal:
@@ -34,4 +34,9 @@ def animal_function_calling(v1: Goat, v2: Optional[Goat], v3: List[Goat], v4: Li
             y.self_review()
 
 
-my_int = 5
+my_int1 = 10
+my_int2: int = 11
+my_int3: Optional[int] = 12
+aaa1, aaa2 = 13, 14
+(aaa2, aaa3) = 15, 16
+aaa5, (aaa6, aaa7) = 17, (18, 19)
