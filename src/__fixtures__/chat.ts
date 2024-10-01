@@ -243,33 +243,6 @@ export const FROG_CHAT: ChatThread = {
   tool_use: "explore",
   messages: [
     {
-      role: "context_memory",
-      content: [
-        {
-          memo_id: "note20240604_call_56uppUKhQv5bGmcEBlH7QX5w.txt",
-          memo_text: "Number of correction points 1\n",
-        },
-        {
-          memo_id: "note20240604_call_WCmczUa2WUQINsoSvqq0kUPk.txt",
-          memo_text: "Number of correction points 1\n",
-        },
-        {
-          memo_id: "note20240603_call_U54RGiVERn2zDEIpXuNIHLGy.txt",
-          memo_text: "Number of correction points 1\n",
-        },
-        {
-          memo_id: "note20240603_call_E1u9kD6fvb23q56QecnwC6QP.txt",
-          memo_text:
-            "Failed to retrieve the content of the files when attempting to explain the different properties of Frog and Toad.\n",
-        },
-        {
-          memo_id: "note20240603_call_t8R0pFerpCcvdtTkRwiw2e6S.txt",
-          memo_text:
-            "Repeated the same unsuccessful attempt to fetch the content of the files.\n",
-        },
-      ],
-    },
-    {
       role: "user",
       content: "\nWhat is the difference between a frog and a toad?\n",
     },

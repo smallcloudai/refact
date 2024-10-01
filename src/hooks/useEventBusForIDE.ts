@@ -105,14 +105,31 @@ export const useEventsBusForIDE = () => {
   );
 
   const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
+  const [getPrivacyPath] = pathApi.useLazyPrivacyPathQuery();
+  const [getBringYourOwnKeyPath] = pathApi.useLazyBringYourOwnKeyPathQuery();
 
-  const openCustomizationFile = useCallback(async () => {
-    const res = await getCustomizationPath(undefined).unwrap();
-    if (res) {
-      const action = ideOpenFile({ file_name: res });
-      postMessage(action);
-    }
-  }, [getCustomizationPath, postMessage]);
+  // Creating a generic function to trigger different queries from RTK Query (to avoid duplicative code)
+  const openFileFromPathQuery = useCallback(
+    async (
+      getPathQuery: (arg: undefined) => {
+        unwrap: () => Promise<string | undefined>;
+      },
+    ) => {
+      const res = await getPathQuery(undefined).unwrap();
+
+      if (res) {
+        const action = ideOpenFile({ file_name: res });
+        postMessage(action);
+      }
+    },
+    [postMessage],
+  );
+
+  const openCustomizationFile = () =>
+    openFileFromPathQuery(getCustomizationPath);
+  const openPrivacyFile = () => openFileFromPathQuery(getPrivacyPath);
+  const openBringYourOwnKeyFile = () =>
+    openFileFromPathQuery(getBringYourOwnKeyPath);
 
   return {
     diffPasteBack,
@@ -125,6 +142,8 @@ export const useEventsBusForIDE = () => {
     diffPreview,
     queryPathThenOpenFile,
     openCustomizationFile,
+    openPrivacyFile,
+    openBringYourOwnKeyFile,
     // canPaste,
   };
 };
