@@ -67,5 +67,5 @@ commands_deny:
   - "gh auth token*"
 ```
 
-The system will match those patterns against `TBD()` string in a tool.
+The system will match those patterns against `command_to_match_against_confirm_deny()` string in a tool.
 
