@@ -11,14 +11,13 @@ By participating in this project, you agree to uphold this Code of Conduct.
 
 We encourage the following behavior:
 
-* Being respectful and considerate to others
-* Providing constructive feedback and assistance
-* Demonstrating empathy and understanding
+* Be respectful and considerate to others
+* Provide constructive feedback and assistance
 
 We discourage the following behavior:
 
 * Don't use our project for harassment, calling people names, doxxing, go somewhere else
-* Criticism is fine, but you can't go over the top so it gets ugly
+* Criticism is fine, but don't go over the top so it gets ugly
 
 
 ## 4. Reporting and Enforcement

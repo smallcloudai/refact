@@ -48,40 +48,44 @@ fn some_code(big_struct: Arc<AMutex<BigStruct>>)
 }
 ```
 
-Another trick using locks:
+Another multi-threaded trick, move a member function outside of a class:
 
 ```rust
-struct MyStruct;
+struct MyStruct {
+    pub data1: i32,
+    pub data2: i32,
+}
 
 impl MyStruct {
     pub fn lengthy_function1(&mut self)  {  }
 }
 
-fn some_code()
+fn some_code(my_struct: Arc<AMutex<SmallStruct>>)
 {
-    my_struct: Arc<AMutex<SmallStruct>>;
     my_struct.lock().await.lengthy_function1();
-    // Whoops, lengthy_function has the whole structure locked for a long time
+    // Whoops, lengthy_function has the whole structure locked for a long time,
+    // and Rust won't not let you unlock it
 }
 
 pub fn lengthy_function2(s: Arc<AMutex<SmallStruct>>)
 {
     let (data1, data2) = {
         let s_locked = s.lock().await;
-        (s_locked.clone(), s_locked.clone())
+        (s_locked.data1.clone(), s_locked.data2.clone())
     }
-    // Do lengthy stuff without locks!
+    // Do lengthy stuff here without locks!
 }
 ```
 
 
 ## Testing
 
-It's a good idea to have tests in source files, and run them using `cargo test`. But
-not everything can be tested solely within Rust tests, for example a Rust test cannot run
+It's a good idea to have tests in source files, and run them using `cargo test`, and we
+have CI in place to run it automatically.
+But not everything can be tested solely within Rust tests, for example a Rust test cannot run
 an AI model inside.
 
-So we have tests/*.py scripts that expect the `refact-lsp` process to be running on port 8001,
+So we have `tests/*.py` scripts that expect the `refact-lsp` process to be running on port 8001,
 and the project itself as a workspace dir:
 
 
