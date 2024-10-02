@@ -13,12 +13,9 @@ Get started by checking out our open issues and the [contributing.md](https://gi
 
 To maintain a positive and respectful community, we encourage all users to review our [Code of Conduct](https://github.com/smallcloudai/refact-lsp/blob/main/CODE_OF_CONDUCT.md).
 
-Let's build the future of programming together!
-
-Happy coding! :computer::sparkles:
-
 Join our community in our [Discord server](https://www.smallcloud.ai/discord) where you can get help, discuss ideas and be aware of our new releases and news.
 
+Happy coding! :computer::sparkles:
 
 # Refact Agent (Rust)
 
