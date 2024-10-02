@@ -1,3 +1,22 @@
+# :wave: Welcome Hacktoberfest Contributors!
+We're excited to have you join us for Hacktoberfest 2024, check ``hacktoberfest`` label issues!
+
+[Refact.ai](https://refact.ai) is an AI Coding Assistant built to empower developers! You can get work done faster with context-aware code completion, integrated in-IDE chat, and a powerful Toolbox — all tailored to your needs.
+
+Our vision? We're now building an Autonomous AI Agent that will handle engineering tasks end-to-end, empowering every developer! We're building the future of programming and you can join us today!
+
+To show our appreciation, if you submit just one Pull Request (PR) to any of our open issues, we'll reward you with 3 months of free access to the [Refact.ai](https://refact.ai) tool! :rocket:
+
+Get started by checking out our open issues and the [contributing.md](https://github.com/smallcloudai/refact-lsp/blob/main/CONTRIBUTING.md) for all the details you need to start making an impact.
+
+To maintain a positive and respectful community, we encourage all users to review our [Code of Conduct](https://github.com/smallcloudai/refact-lsp/blob/main/CODE_OF_CONDUCT.md).
+
+Let's build the future of programming together!
+
+Happy coding! :computer::sparkles:
+
+Join our community in our [Discord server](https://www.smallcloud.ai/discord) where you can get help, discuss ideas and be aware of our new releases and news.
+
 
 # Refact Agent (Rust)
 
@@ -9,7 +28,6 @@ and usages in many popular programming languages.
 
 Yes, it looks like an LSP server to IDE, hence the name. It can also work within a python program,
 check out the [Text UI](#cli) below, you can talk about your project in the command line!
-
 
 ## Progress
 
