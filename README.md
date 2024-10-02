@@ -1,9 +1,11 @@
 # :wave: Welcome Hacktoberfest Contributors!
-We're excited to have you join us for Hacktoberfest 2024, check ``hacktoberfest`` label issues!
+We're excited to have you join us for Hacktoberfest 2024! Check out issues labeled for ``Hacktoberfest``!
 
-[Refact.ai](https://refact.ai) is an AI Coding Assistant built to empower developers! You can get work done faster with context-aware code completion, integrated in-IDE chat, and a powerful Toolbox — all tailored to your needs.
+At [Refact.ai](https://refact.ai), we're currently building an Autonomous AI Agent that will handle engineering tasks end-to-end. Exciting, isn't it?
 
-Our vision? We're now building an Autonomous AI Agent that will handle engineering tasks end-to-end, empowering every developer! We're building the future of programming and you can join us today!
+We already have an AI Coding Assistant, designed to empower developers. It helps you get work done faster with context-aware code completion and integrated in-IDE chat.
+
+We're building the future of programming, and you can join us today!
 
 To show our appreciation, if you submit just one Pull Request (PR) to any of our open issues, we'll reward you with 3 months of free access to the [Refact.ai](https://refact.ai) tool! :rocket:
 
