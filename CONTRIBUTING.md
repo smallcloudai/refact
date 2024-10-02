@@ -77,6 +77,8 @@ pub fn lengthy_function2(s: Arc<AMutex<SmallStruct>>)
 }
 ```
 
+Avoid nested locks, avoid RwLock unless you know what you are doing.
+
 
 ## Testing
 
