@@ -1,6 +1,6 @@
 import os
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from typing import Optional, Dict, List
 from prompt_toolkit.enums import EditingMode
 import aiohttp
@@ -97,4 +97,11 @@ def load_cli_or_auto_configure():
             file.write(default_config)
     with open(cli_yaml_path, 'r') as file:
         data = yaml.safe_load(file)
-        return SettingsCLI.model_validate(data)
+        try:
+            return SettingsCLI.model_validate(data)
+        except ValidationError as exc:
+            print(f'Warning: Invalid configuration found in {cli_yaml_path}.')
+            print('The following errors were detected:')
+            for err in exc.errors():
+                print(f'  - {err["type"]}: {err["loc"][0]}')
+            exit()
