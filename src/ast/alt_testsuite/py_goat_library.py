@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Callable
 
 
 class Animal:
@@ -37,6 +37,13 @@ def animal_function_calling(v1: Goat, v2: Optional[Goat], v3: List[Goat], v4: Li
         if y:
             y.self_review()
 
+
+def goat_generator() -> Tuple[Goat, Goat]:
+    return Goat(1, 2.0), Goat(3, 4.0)
+
+my_callback: Callable[[], Tuple[Goat, Goat]]
+my_callback = goat_generator
+goat1, goat2 = my_callback()
 
 my_int1 = 10
 my_int2: int = 11
