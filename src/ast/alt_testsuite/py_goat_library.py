@@ -24,7 +24,7 @@ class Goat(Animal):
 
 
 def animal_direct_access(v1: Goat, v2: Optional[Goat], v3: List[Goat], v4: List[Optional[Goat]]):
-    print(f"animal_direct_access: age1={v1.age} age2={v2.age if v2 else 'None'} age3={[x.age for x in v3]} age4={[y.age if y else 'None' for y in v4]}")
+    print(f"animal_direct_access: age1={v1.age} age2={v2.age if v2 else 'None'} age3={[x.age for x in v3]} age4={[(y.age if y else 'not_a_goat') for y in v4]}")
 
 
 
@@ -40,7 +40,8 @@ def animal_function_calling(v1: Goat, v2: Optional[Goat], v3: List[Goat], v4: Li
 
 
 def goat_generator() -> Tuple[Goat, Goat]:
-    return Goat(1, 2.0), Goat(3, 4.0)
+    return Goat(2, 2.0), Goat(3, 4.0)
+
 
 my_callback: Callable[[], Tuple[Goat, Goat]]
 my_callback = goat_generator
@@ -55,10 +56,13 @@ aaa1, aaa2 = 13, 14
 # will not work:
 aaa5, (aaa6, aaa7) = 17, (18, 19)
 
-Person = namedtuple('Person', ['name', 'age', 'city'])
-person1 = Person(name='Alice', age=30, city='New York')
-print(person1.name)
 
-my_dict = dict()
-my_dict["animal"] = Animal()
-my_dict["goat"] = Goat()
+animal_function_calling(*goat_generator(), [Goat(4, 4.0)], [Goat(5, 5.0), None])
+animal_direct_access(*goat_generator(), [Goat(4, 4.0)], [Goat(5, 5.0), None])
+
+# Person = namedtuple('Person', ['name', 'age', 'city'])
+# person1 = Person(name='Alice', age=30, city='New York')
+# print(person1.name)
+# my_dict = dict()
+# my_dict["animal"] = Animal(5)
+# my_dict["goat"] = Goat(6, 6.0)
