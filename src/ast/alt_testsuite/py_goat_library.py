@@ -12,6 +12,7 @@ class Animal:
     def self_review(self):
         print(f"self_review age={self.age}")
 
+
 class Goat(Animal):
     def __init__(self, age: int, weight: float):
         super().__init__(age)

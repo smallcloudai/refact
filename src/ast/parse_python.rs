@@ -9,6 +9,7 @@ use crate::ast::parse_common::{ContextAnyParser, Thing, type_deindex_n, type_zer
 
 pub struct ContextPy<'a> {
     pub ap: ContextAnyParser<'a>,
+    pub pass2: Vec<(Node<'a>, Vec<String>)>,
     pub ass1: Query,
     pub ass2: Query,
     pub ass3: Query,
@@ -93,8 +94,8 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
     // type[generic_type[identifier[List]type_parameter[[type[generic_type[identifier[Optional]type_parameter[[type[identifier[Goat]]]]]]]]
     let node = node.unwrap();
     let node_text = cx.ap.code[node.byte_range()].to_string();
-    let spaces = "    ".repeat(level);
-    println!("{}TYPE_EXPLICIT {:?} {:?}", spaces, node.kind(), node_text);
+    // let spaces = "    ".repeat(level);
+    // println!("{}TYPE_EXPLICIT {:?} {:?}", spaces, node.kind(), node_text);
     match node.kind() {
         "type" => {
             py_type_explicit(cx, node.child(0), path, level+1)
@@ -116,7 +117,7 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
                 let child_text = cx.ap.code[child.byte_range()].to_string();
-                println!("{}GENERIC_LOOP {:?} {:?}", spaces, child.kind(), child_text);
+                // println!("{}GENERIC_LOOP {:?} {:?}", spaces, child.kind(), child_text);
                 match (child.kind(), child_text.as_str()) {
                     ("identifier", "Any") => todo = "give_up",
                     ("identifier", "List") => todo = "List",
@@ -153,7 +154,7 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
                 },
                 _ => format!("NOTHING_TODO/{}", inside_type)
             };
-            println!("{}=> TODO {}", spaces, result);
+            // println!("{}=> TODO {}", spaces, result);
             result
         }
         "type_parameter" => {
@@ -270,10 +271,11 @@ fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
     });
 
     py_traverse(cx, &body.unwrap(), &class_path);
-    println!("\nCLASS {:?}", cx.ap.defs.get(&class_path.join("::")).unwrap());
+    // println!("\nCLASS {:?}", cx.ap.defs.get(&class_path.join("::")).unwrap());
 }
 
 fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) {
+    // No need for 2-nd pass, all types in type annotations must be already visible
     // function_definition[def·identifier[jump_around]parameters[(identifier[self])]·->[->]·type[identifier[Animal]]
     // function_definition[def·identifier[jump_around]parameters[(typed_parameter[identifier[v1]:·type[identifier[Goat]]]
     let mut body_line1 = usize::MAX;
@@ -294,26 +296,20 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
             },
             "parameters" => params_node = Some(child),
             "type" => returns = Some(child),
+            "def" | "->" | ":" => {},
             _ => {
-                println!("\nMOAR {:?}", child.kind());
+                println!("\nFUNCTION STRANGE NODE {:?}", child.kind());
             }
         }
     }
     if func_name == "" {
+        // XXX make error
         return;
     }
     if body.is_none() {
+        // XXX make error
         return;
     }
-
-    println!("\nPARAMS");
-    cx.ap.recursive_print_with_red_brackets(&params_node.unwrap());
-    println!("\n/PARAMS");
-    println!("\nRETURNS");
-    println!("{:?}", returns);
-    println!("/RETURNS");
-
-    // let mut params = vec![];
 
     let mut func_path = path.clone();
     func_path.push(func_name.clone());
@@ -331,14 +327,22 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
         body_line2,
     });
 
+    let returns_type = py_type_explicit(cx, returns, path, 0);
+
     cx.ap.things.insert(func_path.join("::"), Thing {
         assigned_rvalue: None,
-        type_explicit: returns,
-        type_resolved: "".to_string(),
+        type_explicit: None,
+        type_resolved: returns_type,
     });
 
-    py_traverse(cx, &body.unwrap(), &func_path);
-    println!("\nFUNCTION {:?}", cx.ap.defs.get(&func_path.join("::")).unwrap());
+    println!("\nPARAMS");
+    cx.ap.recursive_print_with_red_brackets(&params_node.unwrap());
+    println!("\n/PARAMS");
+    // println!("\nRETURNS");
+    // println!("{:?}", returns);
+    // println!("/RETURNS");
+    cx.pass2.push( (body.unwrap(), func_path.clone()) );
+    // println!("\nFUNCTION {:?}", cx.ap.defs.get(&func_path.join("::")).unwrap());
 }
 
 
@@ -358,18 +362,8 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
         "class_definition" => {
             py_class(cx, node, path);
         },
-        // TODO
         "function_definition" => {
-            cx.ap.recursive_print_with_red_brackets(node);
             py_function(cx, node, path);
-            // cx.ap.whitespace1(node);
-            // print!("\x1b[32mfunction_definition[\x1b[0m");
-            // for i in 0..node.child_count() {
-            //     let child = node.child(i).unwrap();
-            //     py_traverse(cx, &child, path);
-            // }
-            // print!("\x1b[32m]\x1b[0m");
-            // cx.ap.whitespace2(node);
         },
         "import_from_statement" => {
             cx.ap.recursive_print_with_red_brackets(node);
@@ -408,6 +402,7 @@ pub fn py_make_cx(code: &str) -> ContextPy
             defs: IndexMap::new(),
             things: IndexMap::new(),
         },
+        pass2: vec![],
         // assignment[pattern_list[identifier[aaa1],·identifier[aaa2]]·=·expression_list[integer[13],·integer[14]]]
         ass1: Query::new(&language(), "(assignment left: (pattern_list (_) @lhs_inlist))").unwrap(),
         // assignment[tuple_pattern[([(]identifier[aaa2],·identifier[aaa3])[)]]·=·expression_list[integer[15],·integer[16]]]
@@ -437,6 +432,12 @@ pub fn parse(code: &str)
         println!("{:<40} assigned_rvalue={:?}, type_explicit={:?}, type_resolved={:?}", key, thing.assigned_rvalue, thing.type_explicit, thing.type_resolved);
     }
     println!("  -- /things --\n");
+
+    println!("\n  -- defs -- ");
+    for (key, def) in cx.ap.defs.iter() {
+        println!("{:<40} {:?}", key, def);
+    }
+    println!("\n  -- /defs -- ");
 }
 
         // // expression_list[integer[13],·integer[14]]]
