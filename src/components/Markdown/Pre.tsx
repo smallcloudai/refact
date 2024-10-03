@@ -53,7 +53,7 @@ const PreTagWithButtons: React.FC<
             gap="1"
             justify="end"
             style={{ position: "absolute", right: "0" }}
-            pr="4"
+            pr="2"
           >
             <Button variant="surface" size="1" onClick={onNewFileClick}>
               New File

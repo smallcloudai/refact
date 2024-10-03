@@ -25,7 +25,7 @@ import {
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
-import { diffApi } from "../../services/refact";
+import { diffApi, isDetailMessage } from "../../services/refact";
 import {
   useConfig,
   useDiffApplyMutation,
@@ -63,7 +63,7 @@ const MaybePinButton: React.FC<{
     text: string;
   } | null>(null);
 
-  const [getPatch, _patchResult] =
+  const [getPatch, patchResult] =
     diffApi.useLazyPatchSingleFileFromTicketQuery();
 
   const handleShow = useCallback(() => {
@@ -72,14 +72,22 @@ const MaybePinButton: React.FC<{
 
     getPatch({ pin: children, markdown })
       .unwrap()
+      .then((maybeDetail) => {
+        if (isDetailMessage(maybeDetail)) {
+          const error = new Error(maybeDetail.detail);
+          throw error;
+        }
+        return maybeDetail;
+      })
       .then((patch) => {
         if (patch.chunks.length === 0) {
-          throw new Error("No Chunks to show");
+          setErrorMessage({ type: "warning", text: "No Chunks to show." });
+        } else {
+          diffPreview(patch);
         }
-        diffPreview(patch);
       })
-      .catch(() => {
-        setErrorMessage({ type: "warning", text: "No patch to show" });
+      .catch((error: Error) => {
+        setErrorMessage({ type: "error", text: error.message });
       });
   }, [children, diffPreview, getPatch, markdown]);
 
@@ -88,6 +96,13 @@ const MaybePinButton: React.FC<{
     if (!markdown) return;
     getPatch({ pin: children, markdown })
       .unwrap()
+      .then((maybeDetail) => {
+        if (isDetailMessage(maybeDetail)) {
+          const error = new Error(maybeDetail.detail);
+          throw error;
+        }
+        return maybeDetail;
+      })
       .then((patch) => {
         const files = patch.results.reduce<string[]>((acc, cur) => {
           const { file_name_add, file_name_delete, file_name_edit } = cur;
@@ -155,7 +170,7 @@ const MaybePinButton: React.FC<{
           <Flex gap="2" justify="end" ml="auto">
             <Button
               size="1"
-              // loading={patchResult.isFetching}
+              loading={patchResult.isFetching}
               onClick={handleApply}
               disabled={!!errorMessage}
               title="Apply patch"
