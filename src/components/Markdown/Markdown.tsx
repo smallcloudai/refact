@@ -127,6 +127,7 @@ const MaybePinButton: React.FC<{
   }, []);
 
   if (isPin) {
+    const [cmd, ticket, filePath] = children.split(" ");
     return (
       <Box>
         <Flex my="2" gap="2" wrap="wrap-reverse">
@@ -135,20 +136,23 @@ const MaybePinButton: React.FC<{
             wrap="wrap"
             style={{ lineBreak: "anywhere", wordBreak: "break-all" }}
           >
-            {children}
+            {cmd} {ticket}{" "}
+            {host !== "web" || import.meta.env.MODE === "development" ? (
+              <Link
+                wrap="wrap"
+                href=""
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleShow();
+                }}
+              >
+                {filePath}
+              </Link>
+            ) : (
+              filePath
+            )}
           </Text>
           <Flex gap="2" justify="end" ml="auto">
-            {host !== "web" && (
-              <Button
-                size="1"
-                // loading={patchResult.isFetching}
-                onClick={handleShow}
-                title="Show Patch"
-                disabled={!!errorMessage}
-              >
-                Open
-              </Button>
-            )}
             <Button
               size="1"
               // loading={patchResult.isFetching}
