@@ -115,6 +115,7 @@ impl Tool for ToolLocateSearch {
                 7,  // top_n
                 false,
                 ccx_lock.messages.clone(),
+                ccx_lock.chat_id.clone(),
             ).await;
             t.subchat_tx = ccx_lock.subchat_tx.clone();
             t.subchat_rx = ccx_lock.subchat_rx.clone();

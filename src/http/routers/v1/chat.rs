@@ -145,6 +145,7 @@ async fn chat(
         CHAT_TOP_N,
         false,
         chat_post.messages.clone(),
+        chat_post.chat_id,
     ).await;
     ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = chat_post.postprocess_parameters.clone();

@@ -46,7 +46,8 @@ pub async fn handle_v1_patch_single_file_from_ticket(
         8096,
         10,
         false,
-        post.messages.clone()
+        post.messages.clone(),
+        "".to_string(),
     ).await));
     let params = unwrap_subchat_params(ccx.clone(), "patch").await.map_err(|e|{
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Failed to unwrap subchat params: {}", e))

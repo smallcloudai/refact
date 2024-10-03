@@ -240,6 +240,7 @@ impl Tool for ToolPatch {
                 ccx_lock.top_n,
                 false,
                 ccx_lock.messages.clone(),
+                ccx_lock.chat_id.clone(),
             ).await))
         };
 
