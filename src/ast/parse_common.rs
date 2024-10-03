@@ -5,8 +5,9 @@ use crate::ast::ast_structs::AstDefinition;
 
 
 pub struct Thing<'a> {
-    pub thing_expr: Option<Node<'a>>,
-    pub thing_type: Option<Node<'a>>,
+    pub assigned_rvalue: Option<Node<'a>>,
+    pub type_explicit: Option<Node<'a>>,
+    pub type_resolved: String,
 }
 
 pub struct ContextAnyParser<'a> {
@@ -88,38 +89,51 @@ pub fn type_call(t: String) -> String
 
 pub fn type_deindex(t: String) -> String
 {
-    // for x in my_list    t="[MyType]"  =>  "MyType"
+    // Used in this scenario: for x in my_list
+    // t="[MyType]"  =>  "MyType"
     if t.starts_with("[") && t.ends_with("]") {
         return t[1 .. t.len()-1].to_string();
     }
     return "".to_string();
 }
 
+pub fn type_zerolevel_comma_split(t: &str) -> Vec<String> {
+    let mut parts: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut level = 0;
+    for c in t.chars() {
+        match c {
+            '[' => {
+                level += 1;
+                current.push(c);
+            },
+            ']' => {
+                level -= 1;
+                current.push(c);
+            },
+            ',' if level == 0 => {
+                parts.push(current.to_string());
+                current = String::new();
+            },
+            _ => {
+                current.push(c);
+            }
+        }
+    }
+    parts.push(current.to_string());
+    parts
+}
+
 pub fn type_deindex_n(t: String, n: usize) -> String
 {
-    // _, _ = my_value      t="(MyClass1,MyClass2)"  =>  "MyClass1" or "MyClass2"
-    // _, _ = my_value      t="[MyClass3]"  =>  "MyClass3"
+    // Used in this scenario: _, _ = my_value
+    // t="[MyClass1,[int,int],MyClass2]"  =>  n==0 MyClass1  n==1 [int,int]   n==2 MyClass2
     if t.starts_with("[") && t.ends_with("]") {
         let no_square = t[1 .. t.len()-1].to_string();
-        let parts: Vec<&str> = no_square.split(',').collect();
+        let parts = type_zerolevel_comma_split(&no_square);
         if n < parts.len() {
             return parts[n].to_string();
         }
     }
     return "".to_string();
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_types() {
-        let test1 = "(Animal,Goat)".to_string();                    // Option[Tuple[Animal, Goat]]
-        let test2 = "[Animal]".to_string();                         // List[Option[Animal]]
-        let test3 = "[(Animal,Goat)]".to_string();                  // List[Tuple[Animal,Goat]]
-        let test4 = "[Animal]".to_string();                         // Set[Animal]
-        let test5 = "!Tuple[my_module.MyClass4,int]".to_string();   // Callable[[str], Tuple[my_module.MyClass4, int]]
-    }
 }

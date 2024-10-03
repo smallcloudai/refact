@@ -1,4 +1,5 @@
 from typing import Optional, List, Tuple, Callable
+from collections import namedtuple
 
 
 class Animal:
@@ -50,4 +51,14 @@ my_int2: int = 11
 my_int3: Optional[int] = 12
 aaa1, aaa2 = 13, 14
 (aaa3, aaa4) = (15, 16)
+
+# will not work:
 aaa5, (aaa6, aaa7) = 17, (18, 19)
+
+Person = namedtuple('Person', ['name', 'age', 'city'])
+person1 = Person(name='Alice', age=30, city='New York')
+print(person1.name)
+
+my_dict = dict()
+my_dict["animal"] = Animal()
+my_dict["goat"] = Goat()

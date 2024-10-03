@@ -4,7 +4,7 @@ use tree_sitter_python::language;
 
 use crate::ast::ast_structs::{AstDefinition, AstUsage};
 use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::parse_common::{ContextAnyParser, Thing};
+use crate::ast::parse_common::{ContextAnyParser, Thing, type_deindex_n, type_zerolevel_comma_split};
 
 
 pub struct ContextPy<'a> {
@@ -20,9 +20,9 @@ fn generate_usage(cx: &mut ContextPy, node: &Node, debug_note: &str, lhs_target:
     // print!("\x1b[34m<usage {} lhs_type={:?} rhs_type={:?}>\x1b[0m", debug_note, lhs_target, rhs_target);
 }
 
-fn py_type(cx: &ContextPy, node: &Node) -> Option<String> {
-    return Some(format!("TYPE[{}]", &cx.ap.code[node.byte_range()]));
-}
+// fn py_type(cx: &ContextPy, node: &Node) -> Option<String> {
+//     return Some(format!("TYPE[{}]", &cx.ap.code[node.byte_range()]));
+// }
 
 fn py_lvalue(cx: &ContextPy, node: &Node) -> Option<String> {
     return Some(format!("LVALUE[{}]", &cx.ap.code[node.byte_range()]));
@@ -32,7 +32,7 @@ fn py_rvalue(cx: &ContextPy, node: &Node) -> Option<String> {
     return Some(format!("VAL[{}]", &cx.ap.code[node.byte_range()]));
 }
 
-fn py_assignment(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
+fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
     let mut lhs_tuple: Vec<(Option<Node>, Option<Node>)> = Vec::new();
     let mut is_list = false;
@@ -60,20 +60,27 @@ fn py_assignment(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
     }
 
     let right_node = node.child_by_field_name("right");
-    let rhs_type = if let Some(x) = right_node { py_type_of_expr(cx, &x, path) } else { "".to_string() };
+    // let rhs_type = if let Some(x) = right_node { py_type_of_expr(cx, &x, path) } else { "".to_string() };
 
     println!();
     for i in 0 .. lhs_tuple.len() {
         let (lhs_lvalue, lhs_explicit_type_node) = lhs_tuple[i];
-        let lhs_explicit_type = py_type_explicit(cx, lhs_explicit_type_node, path, 0);
-        println!("is_list={} LVALUE[{:?}] {} = ?", is_list, lhs_lvalue, lhs_explicit_type);
-
-        // let rhs_rvalue = rhs_tuple[i];
-        // let assigned_to_path = py_path(cx, &lhs_lvalue.unwrap(), &path);
-        // cx.ap.things[path.join("::")] = Thing {
-        //     thing_expr: lhs_lvalue.clone(),
-        //     thing_type: lhs_type.clone(),
-        // };
+        let lhs_explicit_type_str = py_type_explicit(cx, lhs_explicit_type_node, path, 0);
+        println!("is_list={} LVALUE[{:?}] {} = ?", is_list, lhs_lvalue, lhs_explicit_type_str);
+        let var_path = [path.clone(), vec!["hui".to_string()]].concat();
+        if is_list {
+            cx.ap.things.insert(var_path.join("::"), Thing {
+                assigned_rvalue: None,
+                type_explicit: None,
+                type_resolved: type_deindex_n(lhs_explicit_type_str, i)
+            });
+        } else {
+            cx.ap.things.insert(var_path.join("::"), Thing {
+                assigned_rvalue: None,
+                type_explicit: None,
+                type_resolved: lhs_explicit_type_str,
+            });
+        }
     }
 }
 
@@ -86,13 +93,17 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
     // type[generic_type[identifier[List]type_parameter[[type[generic_type[identifier[Optional]type_parameter[[type[identifier[Goat]]]]]]]]
     let node = node.unwrap();
     let node_text = cx.ap.code[node.byte_range()].to_string();
-    // let spaces = "    ".repeat(level);
-    // println!("{}TYPE_EXPLICIT {:?} {:?}", spaces, node.kind(), node_text);
+    let spaces = "    ".repeat(level);
+    println!("{}TYPE_EXPLICIT {:?} {:?}", spaces, node.kind(), node_text);
     match node.kind() {
         "type" => {
             py_type_explicit(cx, node.child(0), path, level+1)
         }
         "identifier" | "attribute" => {
+            let look_for = cx.ap.code[node.byte_range()].to_string();
+            if look_for == "Any" {
+                return "".to_string();
+            }
             format!("ATTR/{}", cx.ap.code[node.byte_range()].to_string())
             // get_type_of_identifier_or_attribute(cx, &node)
         }
@@ -105,10 +116,12 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
                 let child_text = cx.ap.code[child.byte_range()].to_string();
-                // println!("{}GENERIC_LOOP {:?} {:?}", spaces, child.kind(), child_text);
+                println!("{}GENERIC_LOOP {:?} {:?}", spaces, child.kind(), child_text);
                 match (child.kind(), child_text.as_str()) {
+                    ("identifier", "Any") => todo = "give_up",
                     ("identifier", "List") => todo = "List",
                     ("identifier", "Set") => todo = "Set",
+                    ("identifier", "Dict") => todo = "Dict",
                     ("identifier", "Tuple") => todo = "Tuple",
                     ("identifier", "Callable") => todo = "Callable",
                     ("identifier", "Optional") => todo = "Optional",
@@ -118,6 +131,7 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
                 }
             }
             let result = match todo {
+                "give_up" => format!(""),
                 "List" => format!("[{}]", inside_type),
                 "Set" => format!("[{}]", inside_type),
                 "Tuple" => format!("({})", inside_type),
@@ -129,9 +143,17 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
                         format!("!")
                     }
                 },
+                "Dict" => {
+                    let split = type_zerolevel_comma_split(inside_type.as_str());
+                    if split.len() == 2 {
+                        format!("[{}]", split[1])
+                    } else {
+                        format!("BADDICT[{}]", inside_type)
+                    }
+                },
                 _ => format!("NOTHING_TODO/{}", inside_type)
             };
-            // println!("{}=> TODO {}", spaces, result);
+            println!("{}=> TODO {}", spaces, result);
             result
         }
         "type_parameter" => {
@@ -156,39 +178,39 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
     }
 }
 
-fn py_type_of_expr(cx: &mut ContextPy, node: &Node, path: &Vec<String>) -> String
-{
-    match node.kind() {
-        "expression_list" => {
-            let mut elements = vec![];
-            for i in 0..node.child_count() {
-                let child = node.child(i).unwrap();
-                elements.push(py_type_of_expr(cx, &child, path));
-            }
-            format!("[{}]", elements.join(","))
-        },
-        "tuple" => {
-            let mut elements = vec![];
-            for i in 0..node.child_count() {
-                let child = node.child(i).unwrap();
-                elements.push(py_type_of_expr(cx, &child, path));
-            }
-            format!("({})", elements.join(","))
-        },
-        "identifier" => {
-            cx.ap.code[node.byte_range()].to_string()
-        },
-        _ => {
-            format!("UNKNOWN[{}]", cx.ap.code[node.byte_range()].to_string())
-        }
-    }
-}
+// fn py_type_of_expr(cx: &mut ContextPy, node: &Node, path: &Vec<String>) -> String
+// {
+//     match node.kind() {
+//         "expression_list" => {
+//             let mut elements = vec![];
+//             for i in 0..node.child_count() {
+//                 let child = node.child(i).unwrap();
+//                 elements.push(py_type_of_expr(cx, &child, path));
+//             }
+//             format!("[{}]", elements.join(","))
+//         },
+//         "tuple" => {
+//             let mut elements = vec![];
+//             for i in 0..node.child_count() {
+//                 let child = node.child(i).unwrap();
+//                 elements.push(py_type_of_expr(cx, &child, path));
+//             }
+//             format!("({})", elements.join(","))
+//         },
+//         "identifier" => {
+//             cx.ap.code[node.byte_range()].to_string()
+//         },
+//         _ => {
+//             format!("UNKNOWN[{}]", cx.ap.code[node.byte_range()].to_string())
+//         }
+//     }
+// }
 
 fn py_path(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
 {
 }
 
-fn py_class(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
+fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
     let mut derived_from = vec![];
     let mut query_cursor = QueryCursor::new();
@@ -241,11 +263,18 @@ fn py_class(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
         body_line2,
     });
 
+    cx.ap.things.insert(class_path.join("::"), Thing {
+        assigned_rvalue: None,
+        type_explicit: None,
+        type_resolved: format!("!{}", class_path.join("::")),   // this is about constructor in python, name of the class() is used as constructor, return type is the class
+    });
+
     py_traverse(cx, &body.unwrap(), &class_path);
     println!("\nCLASS {:?}", cx.ap.defs.get(&class_path.join("::")).unwrap());
 }
 
-fn py_function(cx: &mut ContextPy, node: &Node, path: &Vec<String>) {
+fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) {
+
     // function_definition[def·identifier[jump_around]parameters[(identifier[self])]·->[->]·type[identifier[Animal]]
     // function_definition[def·identifier[jump_around]parameters[(typed_parameter[identifier[v1]:·type[identifier[Goat]]]
 
@@ -266,7 +295,7 @@ fn py_function(cx: &mut ContextPy, node: &Node, path: &Vec<String>) {
                 break;
             },
             "parameters" => params_node = Some(child),
-            "type" => returns = py_type(cx, &child),
+            "type" => returns = Some(child),
             _ => {
                 println!("\nMOAR {:?}", child.kind());
             }
@@ -304,13 +333,18 @@ fn py_function(cx: &mut ContextPy, node: &Node, path: &Vec<String>) {
         body_line2,
     });
 
-    py_traverse(cx, &body.unwrap(), &func_path);
+    cx.ap.things.insert(func_path.join("::"), Thing {
+        assigned_rvalue: None,
+        type_explicit: returns,
+        type_resolved: "".to_string(),
+    });
 
+    py_traverse(cx, &body.unwrap(), &func_path);
     println!("\nFUNCTION {:?}", cx.ap.defs.get(&func_path.join("::")).unwrap());
 }
 
 
-fn py_traverse(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
+fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
     match node.kind() {
         "from" | "class" | "identifier" | "import" | "dotted_name" | "def" | "if" | "for" | ":" | "," => {
@@ -399,6 +433,12 @@ pub fn parse(code: &str)
     let tree = cx.ap.sitter.parse(code, None).unwrap();
     let path = vec!["file".to_string()];
     py_traverse(&mut cx, &tree.root_node(), &path);
+
+    println!("\n  -- things -- ");
+    for (key, thing) in cx.ap.things.iter() {
+        println!("{:<40} assigned_rvalue={:?}, type_explicit={:?}, type_resolved={:?}", key, thing.assigned_rvalue, thing.type_explicit, thing.type_resolved);
+    }
+    println!("  -- /things --\n");
 }
 
         // // expression_list[integer[13],·integer[14]]]
@@ -439,6 +479,8 @@ mod tests {
             ("x: Set[Tuple[int, float]]", "EXPECTED_RESULT_3"),
             ("x: Callable[[int, str], Tuple[my_module.MyClass4, int]]", "EXPECTED_RESULT_4"),
             ("x: Callable[[int, str], float]", "EXPECTED_RESULT_5"),
+            ("x: Dict[str, my_module.MyClass4]", "EXPECTED_RESULT_6"),
+            ("x: Dict[str, Any]", "EXPECTED_RESULT_7"),
         ];
 
         for (code, expected) in examples {
