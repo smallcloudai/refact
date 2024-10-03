@@ -12,6 +12,7 @@ import textdistance
 from datasets import load_dataset
 from refact.lsp_runner import LSPServerRunner
 from termcolor import colored
+from tqdm import tqdm
 
 try:
     REFACT_API_KEY = os.environ.get('REFACT_API_KEY')
@@ -106,11 +107,13 @@ def materialize_file_temporary(text: str, suffix) -> Tuple[tempfile.TemporaryDir
 
 async def entrypoint(ds):
     distances = []
-    for repo in ds['train']:
+    correct, complete_errors, incorrect_diffs = 0, 0, 0
+    for repo in tqdm(list(ds['train'])[:100]):
         try:
             print(f'Processing {repo["filename"]}')
             if len(distances) > 0:
                 print(f"Mean text distance: {np.mean(distances):.2f}:\n")
+                print(f"Correct: {correct}, incorrect: {incorrect_diffs}, complete errors: {complete_errors}")
             text_before, text_after = repo['file_before'], repo['file_after']
             text_after_changed_only = get_changed_block(text_before, text_after)
             project_path, filename = materialize_file_temporary(text_before, suffix=Path(repo['filename']).suffix)
@@ -123,15 +126,19 @@ async def entrypoint(ds):
             if text_after != resp["results"][0]["file_text"]:
                 diff = unified_diff(text_after, resp["results"][0]["file_text"])
                 distances.append(1.0 - textdistance.jaro_winkler(text_after, resp["results"][0]["file_text"]))
+                incorrect_diffs += 1
                 print(f'There is some difference:\n{diff}\n')
             else:
                 distances.append(0.0)
+                correct += 1
                 print("Result is correct\n")
         except Exception as e:
             distances.append(1.0)
+            complete_errors += 1
             print(f"Error: {e}, skip to the next example")
             continue
     print(f"Mean text distance: {np.mean(distances)}")
+    print(f"Correct: {correct}, incorrect: {incorrect_diffs}, complete errors: {complete_errors}")
 
 
 if __name__ in '__main__':

@@ -156,7 +156,7 @@ subchat_tool_parameters:
     subchat_model: "gpt-4o-mini"
     subchat_n_ctx: 64000
     subchat_temperature: 0.5
-    subchat_max_new_tokens: 8192
+    subchat_max_new_tokens: 16384
   locate:
     subchat_model: "gpt-4o-mini"
     subchat_tokens_for_rag: 30000
