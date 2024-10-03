@@ -345,64 +345,26 @@ impl UnifiedDiffParser {
     ) -> String {
         assert_eq!(workspace_projects_dirs.is_empty(), false);
         let prompt = r#"YOU ARE THE WORLD'S LEADING AUTO CODING ASSISTANT.
-You will receive some file containing code along with one or several modified sections.
 Your task is to generate a unified diff in a specified format, comparing the original file to the updated portions.
+You will receive a file containing code along with one or several modified sections.
 
-### UNIFIED DIFF FORMATTING RULES
+## STEPS TO FOLLOW
+- Compare modified sections with the original content.
+- Describe all changes that must be presented in the diff in a free form.
+- Produce a correct unified diff.
 
-## Rules to generate correct diffs:
+### UNIFIED DIFF FORMATTING RECOMMENDATIONS
 - Fence the diff with "```diff" and "```".
 - Return edits similar to unified diffs that `diff -U2` would produce.
-- Don't include line numbers like `diff -U2` does. The user's patch tool doesn't need them.
+- Avoid copying the whole file
 - Copy a few lines from the original file and paste them before the `-` and `+` lines, otherwise the diff will be incorrect.
-- Make sure you mark all new or modified lines with `+`.
-- Make sure you include and mark all lines that need to be removed as `-` lines.
+- Mark all new or modified lines with `+`.
+- Include and mark all lines that need to be removed as `-` lines.
 - Rewrite the whole blocks of code instead of making multiple small changes.
 - Use filenames from the user as given, don't change them.
 - When editing a function, method, loop, etc. use a hunk to replace the *entire* code block.
 
-## Format example for the task: "Replace is_prime with a call to sympy"
-```diff
---- %FIRST_WORKSPACE_PROJECT_DIR%/test.py
-+++ %FIRST_WORKSPACE_PROJECT_DIR%/test.py
-@@ ... @@
-+import sympy
-+
-@@ ... @@
--def is_prime(x):
--    if x < 2:
--        return False
--    for i in range(2,
--                  int(math.sqrt(x)) + 1):
--        if x % i == 0:
--            return False
--    return True
-@@ ... @@
--@app.route('/prime/<int:n>')
--def nth_prime(n):
--    count = 0
--    num = 1
--    while count < n:
--        num += 1
--        if is_prime(num):
--            count += 1
--    return str(num)
-+@app.route('/prime/<int:n>')
-+def nth_prime(n):
-+    count = 0
-+    num = 1
-+    while count < n:
-+        num += 1
-+        if sympy.isprime(num):
-+            count += 1
-+    return str(num)
-@@ ... @@
-+
-+def nth_prime_test(n):
-+    pass
-```
-
-Do not forget to place `+` and `-` markings when it's needed!"#.to_string();
+YOU MUST FOLLOW THE STEPS ABOVE!"#.to_string();
         prompt
             .replace("%WORKSPACE_PROJECTS_DIRS%", &workspace_projects_dirs.join("\n"))
             .replace("%FIRST_WORKSPACE_PROJECT_DIR%", &workspace_projects_dirs[0])
