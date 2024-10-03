@@ -443,7 +443,7 @@ mod tests {
             .to_string();
 
         // Act
-        let results = fuzzy_search(&correction_candidate, paths_str, 10);
+        let results = fuzzy_search(&correction_candidate, paths_str, 10, &['/', '\\']);
 
         // Assert
         let time_spent = start_time.elapsed();
