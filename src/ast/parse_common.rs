@@ -1,16 +1,21 @@
 use indexmap::IndexMap;
-use tree_sitter::{Node, Parser, Point, Range, Query, QueryCursor};
-use tree_sitter_python::language;
+use tree_sitter::{Node, Parser, Range};
 
-use crate::ast::ast_structs::{AstDefinition, AstUsage};
-use crate::ast::treesitter::structs::SymbolType;
+use crate::ast::ast_structs::AstDefinition;
 
+
+pub struct Thing<'a> {
+    pub thing_expr: Option<Node<'a>>,
+    pub thing_type: Option<Node<'a>>,
+}
 
 pub struct ContextAnyParser<'a> {
     pub sitter: Parser,
     pub last_end_byte: usize,
     pub code: &'a str,
     pub defs: IndexMap<String, AstDefinition>,
+    pub things: IndexMap<String, Thing<'a>>,
+    // pub draft: Vec<(String, Thing<'a>)>,
 }
 
 impl<'a> ContextAnyParser<'a> {
@@ -35,7 +40,7 @@ impl<'a> ContextAnyParser<'a> {
     pub fn recursive_print_with_red_brackets(&mut self, node: &Node) {
         self.whitespace1(node);
         match node.kind() {
-            "from" | "class" | "import" | "def" | "if" | "for" | ":" | "," | "=" | "." | "(" | ")" => {
+            "from" | "class" | "import" | "def" | "if" | "for" | ":" | "," | "=" | "." | "(" | ")" | "[" | "]" | "->" => {
                 // keywords
                 print!("{}", &self.code[node.byte_range()].replace(" ", "·"));
             },
@@ -67,4 +72,54 @@ pub fn line12mid_from_ranges(full_range: &Range, body_range: &Range) -> (usize, 
         assert!(line_mid <= line2);
     }
     (line1, line2, line_mid)
+}
+
+
+// -----------------------------------------------------------
+
+pub fn type_call(t: String) -> String
+{
+    // my_function()      t="!MyRutrnType"  =>  "MyRutrnType"
+    if t.starts_with("!") {
+        return t[1 ..].to_string();
+    }
+    return "".to_string();
+}
+
+pub fn type_deindex(t: String) -> String
+{
+    // for x in my_list    t="[MyType]"  =>  "MyType"
+    if t.starts_with("[") && t.ends_with("]") {
+        return t[1 .. t.len()-1].to_string();
+    }
+    return "".to_string();
+}
+
+pub fn type_deindex_n(t: String, n: usize) -> String
+{
+    // _, _ = my_value      t="(MyClass1,MyClass2)"  =>  "MyClass1" or "MyClass2"
+    // _, _ = my_value      t="[MyClass3]"  =>  "MyClass3"
+    if t.starts_with("[") && t.ends_with("]") {
+        let no_square = t[1 .. t.len()-1].to_string();
+        let parts: Vec<&str> = no_square.split(',').collect();
+        if n < parts.len() {
+            return parts[n].to_string();
+        }
+    }
+    return "".to_string();
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_types() {
+        let test1 = "(Animal,Goat)".to_string();                    // Option[Tuple[Animal, Goat]]
+        let test2 = "[Animal]".to_string();                         // List[Option[Animal]]
+        let test3 = "[(Animal,Goat)]".to_string();                  // List[Tuple[Animal,Goat]]
+        let test4 = "[Animal]".to_string();                         // Set[Animal]
+        let test5 = "!Tuple[my_module.MyClass4,int]".to_string();   // Callable[[str], Tuple[my_module.MyClass4, int]]
+    }
 }

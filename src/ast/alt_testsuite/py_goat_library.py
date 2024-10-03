@@ -16,9 +16,10 @@ class Goat(Animal):
         super().__init__(age)
         self.weight = weight
 
-    def jump_around(self):
+    def jump_around(self) -> Animal:
         print(f"jump_around age={self.age} weight={self.weight}")
         self.self_review()
+        return self
 
 
 def animal_direct_access(v1: Goat, v2: Optional[Goat], v3: List[Goat], v4: List[Optional[Goat]]):
