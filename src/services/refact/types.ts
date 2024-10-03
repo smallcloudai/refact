@@ -28,6 +28,8 @@ export type ToolCall = {
   index: number;
   type?: "function";
   id?: string;
+  attached_files?: string[];
+  subchat?: string;
 };
 
 export type ToolUsage = {
@@ -315,6 +317,32 @@ export function isContextFileResponse(
   return json.role === "context_file";
 }
 
+export type SubchatContextFileResponse = {
+  content: string;
+  role: "context_file";
+};
+
+export function isSubchatContextFileResponse(
+  json: unknown,
+): json is SubchatContextFileResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("content" in json)) return false;
+  if (!("role" in json)) return false;
+  return json.role === "context_file";
+}
+
+export type ContextMemoryResponse = ChatUserMessageResponse & {
+  role: "context_memory";
+};
+
+export function isContextMemoryResponse(
+  json: unknown,
+): json is ContextMemoryResponse {
+  if (!isChatUserMessageResponse(json)) return false;
+  return json.role === "context_memory";
+}
+
 export function isToolResponse(json: unknown): json is ToolResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
@@ -350,6 +378,21 @@ export function isPlainTextResponse(json: unknown): json is PlainTextResponse {
   if (typeof json !== "object") return false;
   if (!("role" in json)) return false;
   return json.role === "plain_text";
+}
+
+export type SubchatResponse = {
+  add_message: ChatResponse;
+  subchat_id: string;
+  tool_call_id: string;
+};
+
+export function isSubchatResponse(json: unknown): json is SubchatResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("add_message" in json)) return false;
+  if (!("subchat_id" in json)) return false;
+  if (!("tool_call_id" in json)) return false;
+  return true;
 }
 
 type ChatResponseChoice = {
