@@ -103,7 +103,7 @@ export const Chat: React.FC<ChatProps> = ({
       direction="column"
       flexGrow="1"
       width="100%"
-      overflowY="scroll"
+      overflowY="auto"
       justify="between"
       px="1"
     >
