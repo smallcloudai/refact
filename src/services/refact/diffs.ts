@@ -5,9 +5,15 @@ import {
   DIFF_PREVIEW_URL,
   PATCH_URL,
 } from "./consts";
-import { DiffChunk, isDiffChunk, isDiffErrorResponseData } from "./types";
+import {
+  ChatMessages,
+  DiffChunk,
+  isDiffChunk,
+  isDiffErrorResponseData,
+} from "./types";
 import { RootState } from "../../app/store";
 import { createAction } from "@reduxjs/toolkit";
+import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 
 export type DiffAppliedStateArgs = {
   chunks: DiffChunk[];
@@ -124,7 +130,7 @@ function isPatchResponse(json: unknown): json is PatchResponse {
 
 type PatchRequest = {
   pin: string;
-  markdown: string;
+  messages: ChatMessages;
 };
 
 // function cacheIdForChunk(chunk: DiffChunk) {
@@ -261,9 +267,10 @@ export const diffApi = createApi({
         const url = `http://127.0.0.1:${port}${PATCH_URL}`;
 
         const ticket = args.pin.split(" ")[1] ?? "";
-        const messages = [
-          { role: "assistant", content: args.pin + "\n" + args.markdown },
-        ];
+        const messages = formatMessagesForLsp(args.messages);
+        // const messages = [
+        //   { role: "assistant", content: args.pin + "\n" + args.markdown },
+        // ];
 
         const result = await baseQuery({
           url,
