@@ -15,7 +15,7 @@ from termcolor import colored
 from tqdm import tqdm
 
 try:
-    REFACT_API_KEY = os.environ.get('REFACT_API_KEY')
+    REFACT_API_KEY = os.environ['REFACT_API_KEY']
 except KeyError:
     print("Please set REFACT_API_KEY env variable")
     exit(1)
