@@ -150,7 +150,7 @@ async fn sections_to_diff_blocks(
                 file_lines: Arc::new(vec![]),
             })
         } else {
-            warn!(format!("section not found in file {}, distances: {:?}", filename.to_string_lossy(), distances));
+            warn!("section not found in file {}, distances: {:?}", filename.to_string_lossy(), distances);
             continue
         }
     }
