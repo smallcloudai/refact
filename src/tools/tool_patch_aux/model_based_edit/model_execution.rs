@@ -141,18 +141,36 @@ pub async fn execute_chat_model(
     let mut chunks = vec![];
     let gcx = ccx.lock().await.global_context.clone();
     let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
+    let mut tasks = vec![];
+
     for m in last_messages {
-        match BlocksOfCodeParser::parse_message(m.content.as_str(), &filename, privacy_settings.clone()).await {
-            Ok(c) => {
+        let privacy_settings = privacy_settings.clone();
+        let filename = filename.clone();
+        let content = m.content.clone();
+
+        tasks.push(tokio::spawn(async move {
+            BlocksOfCodeParser::parse_message(content.as_str(), &filename, privacy_settings).await
+        }));
+    }
+
+    for task in tasks {
+        match task.await {
+            Ok(Ok(c)) => {
                 chunks.push(c);
             }
-            Err(err) => {
+            Ok(Err(err)) => {
                 return Err((
                     format!("diff parsing error: {err}"),
                     Some("tickets are invalid. Create new tickets from scratch. If file is that big, use FULL_REWRITE".to_string())
                 ));
             }
-        };
+            Err(err) => {
+                return Err((
+                    format!("task join error: {err}"),
+                    Some("tickets are invalid. Create new tickets from scratch. If file is that big, use FULL_REWRITE".to_string())
+                ));
+            }
+        }
     }
     Ok(chunks)
 }

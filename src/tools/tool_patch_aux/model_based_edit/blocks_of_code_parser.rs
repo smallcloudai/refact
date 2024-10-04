@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::path::PathBuf;
 use std::sync::Arc;
-use strsim::normalized_damerau_levenshtein;
+use strsim::jaro_winkler;
 
 use crate::call_validation::DiffChunk;
 use crate::files_in_workspace::read_file_from_disk;
@@ -118,7 +118,7 @@ async fn sections_to_diff_blocks(
             } else {
                 let orig_section_span_str = orig_section_span.join("\n");
                 let file_lines_span_str = file_lines_span.join("\n");
-                distances.push(normalized_damerau_levenshtein(&orig_section_span_str, &file_lines_span_str));
+                distances.push(jaro_winkler(&orig_section_span_str, &file_lines_span_str));
             }
         }
         let start_offset = if start_offset.is_none()  {
@@ -127,7 +127,7 @@ async fn sections_to_diff_blocks(
             .enumerate()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(Ordering::Equal));
             if let Some((idx, val)) = max_el {
-                if val > &0.8 {
+                if val > &0.9 {
                     Some(idx)
                 } else {
                     None
