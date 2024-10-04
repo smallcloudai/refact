@@ -109,6 +109,7 @@ jobs:
           cargo build --release || exit 1
           mkdir python_binding_and_cmdline/refact/bin
           cp ./target/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+          cp ./target/release/refact-lsp${{ matrix.ext }} .
 
       - name: Build and test artifact
         if: matrix.cross == null && !startsWith(matrix.os, 'windows')
@@ -117,6 +118,7 @@ jobs:
           cargo build --release --target ${{ matrix.target }} || exit 1
           mkdir python_binding_and_cmdline/refact/bin
           cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+          cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} .
 
       - name: build linux-like artifacts
         if: matrix.cross
@@ -125,6 +127,7 @@ jobs:
           cross build --release --target ${{ matrix.target }} || exit 1
           mkdir python_binding_and_cmdline/refact/bin
           cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+          cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} .
 
       - if: matrix.whl-tag
         shell: bash
@@ -154,11 +157,6 @@ jobs:
           pip install twine
           twine upload -p ${{ secrets.PYPI_TOKEN }} --skip-existing artefacts/*.whl 
 
-      - name: Copy file
-        if: endsWith(matrix.target, 'msvc')
-        run: |
-          cp ./target/release/refact-lsp.exe refact-lsp.exe
-
       - name: Package artifact in ZIP (WIN)
         uses: vimtor/action-zip@v1.2
         if: endsWith(matrix.target, 'msvc')
@@ -166,11 +164,6 @@ jobs:
           files: refact-lsp.exe
           recursive: false
           dest: dist-${{ matrix.target }}.zip
-
-      - name: Copy file
-        if: ${{ !endsWith(matrix.target, 'msvc') }}
-        run: |
-          cp ./target/${{ matrix.target }}/release/refact-lsp refact-lsp
 
       - name: Package artifact in ZIP (UNIX)
         uses: vimtor/action-zip@v1.2

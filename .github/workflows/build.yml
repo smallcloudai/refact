@@ -116,6 +116,7 @@ jobs:
           cargo build --release || exit 1
           mkdir python_binding_and_cmdline/refact/bin
           cp ./target/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+          cp ./target/release/refact-lsp${{ matrix.ext }} .
       
       - name: Build and test artifact
         if: matrix.cross == null && !startsWith(matrix.os, 'windows')
@@ -124,6 +125,7 @@ jobs:
           cargo build --release --target ${{ matrix.target }} || exit 1
           mkdir python_binding_and_cmdline/refact/bin
           cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+          cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} .
           
       - name: build linux-like artifacts
         if: matrix.cross
@@ -132,6 +134,7 @@ jobs:
           cross build --release --target ${{ matrix.target }} || exit 1
           mkdir python_binding_and_cmdline/refact/bin
           cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+          cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} .
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -139,10 +142,8 @@ jobs:
           name: dist-${{ matrix.target }}
           if-no-files-found: ignore
           path: |
-            ./target/${{ matrix.target }}/release/refact-lsp
-            ./target/${{ matrix.target }}/release/refact-lsp.exe
-            ./target/release/refact-lsp
-            ./target/release/refact-lsp.exe
+            refact-lsp
+            refact-lsp.exe
       
       - if: matrix.whl-tag
         shell: bash
