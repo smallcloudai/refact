@@ -16,7 +16,8 @@ use crate::scratchpads::scratchpad_utils::count_tokens;
 use crate::subchat::subchat_single;
 use crate::tools::tool_patch::N_CHOICES;
 use crate::tools::tool_patch_aux::fs_utils::read_file;
-use crate::tools::tool_patch_aux::model_based_edit::parser::UnifiedDiffParser;
+use crate::tools::tool_patch_aux::model_based_edit::blocks_of_code_parser::BlocksOfCodeParser;
+use crate::tools::tool_patch_aux::model_based_edit::unified_diff_parser::UnifiedDiffParser;
 use crate::tools::tool_patch_aux::tickets_parsing::TicketToApply;
 
 async fn load_tokenizer(
@@ -40,7 +41,7 @@ async fn format_diff_prompt(gcx: Arc<ARwLock<GlobalContext>>) -> String {
             dirs
         }
     };
-    UnifiedDiffParser::prompt(workspace_dirs)
+    BlocksOfCodeParser::prompt(workspace_dirs)
 }
 
 async fn make_chat_history(
@@ -141,7 +142,7 @@ pub async fn execute_chat_model(
     let gcx = ccx.lock().await.global_context.clone();
     let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
     for m in last_messages {
-        match UnifiedDiffParser::parse_message(m.content.as_str(), &filename, privacy_settings.clone()).await {
+        match BlocksOfCodeParser::parse_message(m.content.as_str(), &filename, privacy_settings.clone()).await {
             Ok(c) => {
                 chunks.push(c);
             }

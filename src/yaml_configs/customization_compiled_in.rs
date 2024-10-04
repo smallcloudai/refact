@@ -31,7 +31,9 @@ PROMPT_PINS: |
   Example:
   📍PARTIAL_EDIT 000 /home/user/code/my_project/my_file.py
   ```python
+  [some portion of the original code]
   def f(): pass
+  [some portion of the original code]
   ```
 
   📍OTHER 001
@@ -44,6 +46,7 @@ PROMPT_PINS: |
   def g(): pass
   ```
 
+  When 📍PARTIAL_EDIT is using, include some of the original code above and to help undestand where those changes must be placed.
   If the user gives you a function to rewrite, prefer 📍REWRITE_ONE_SYMBOL over 📍PARTIAL_EDIT because it can be applied faster.
   If a file is big, 📍PARTIAL_EDIT is better than 📍REWRITE_WHOLE_FILE. Generate several 📍-tickets for all the changes necessary.
 

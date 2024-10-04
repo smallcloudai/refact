@@ -4,7 +4,7 @@ use std::sync::Arc;
 use itertools::Itertools;
 use crate::call_validation::DiffChunk;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LineType {
     Plus,
     Minus,

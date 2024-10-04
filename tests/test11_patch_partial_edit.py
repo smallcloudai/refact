@@ -69,6 +69,7 @@ def patch_request(messages, ticket_ids, base_url: str):
     resp = requests.post(
         f"{base_url}/patch-single-file-from-ticket",
         data=json.dumps(payload),
+        timeout=60
     )
     assert resp.status_code == 200, resp.text
     return resp.json()
@@ -92,7 +93,7 @@ def make_refact_lsp(workspace_path: str):
             f'--workspace-folder={workspace_path}',
         ],
         wait_for_ast_vecdb=True,
-        refact_lsp_log=None,
+        refact_lsp_log="./log.txt",
         verbose=False
     )
 
@@ -106,13 +107,13 @@ def materialize_file_temporary(text: str, suffix) -> Tuple[tempfile.TemporaryDir
 
 
 async def entrypoint(ds):
-    distances = []
+    incorrect_distances = []
     correct, complete_errors, incorrect_diffs = 0, 0, 0
     for repo in tqdm(list(ds['train'])[:100]):
         try:
             print(f'Processing {repo["filename"]}')
-            if len(distances) > 0:
-                print(f"Mean text distance: {np.mean(distances):.2f}:\n")
+            if len(incorrect_distances) > 0:
+                print(f"Mean text distance for invalid results: {np.mean(incorrect_distances):.2f}:\n")
                 print(f"Correct: {correct}, incorrect: {incorrect_diffs}, complete errors: {complete_errors}")
             text_before, text_after = repo['file_before'], repo['file_after']
             text_after_changed_only = get_changed_block(text_before, text_after)
@@ -125,19 +126,17 @@ async def entrypoint(ds):
 
             if text_after != resp["results"][0]["file_text"]:
                 diff = unified_diff(text_after, resp["results"][0]["file_text"])
-                distances.append(1.0 - textdistance.jaro_winkler(text_after, resp["results"][0]["file_text"]))
+                incorrect_distances.append(1.0 - textdistance.jaro_winkler(text_after, resp["results"][0]["file_text"]))
                 incorrect_diffs += 1
                 print(f'There is some difference:\n{diff}\n')
             else:
-                distances.append(0.0)
                 correct += 1
                 print("Result is correct\n")
         except Exception as e:
-            distances.append(1.0)
             complete_errors += 1
             print(f"Error: {e}, skip to the next example")
             continue
-    print(f"Mean text distance: {np.mean(distances)}")
+    print(f"Mean text distance for invalid results: {np.mean(incorrect_distances)}")
     print(f"Correct: {correct}, incorrect: {incorrect_diffs}, complete errors: {complete_errors}")
 
 
