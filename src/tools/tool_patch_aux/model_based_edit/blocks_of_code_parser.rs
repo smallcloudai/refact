@@ -176,8 +176,7 @@ impl BlocksOfCodeParser {
 
 ## Steps
 1. **Locate Modified Sections:** Carefully review the provided code file and identify all sections that differ between the original and modified versions.
-2. **Describe Modifications:** Clearly describe each identified modification, focusing on what has changed in terms of functionality, structure, or imports.
-3. **Output Modifications:** After describing all modifications, prepare the output using the format specified below. Ensure the original formatting is preserved for both the original and modified sections.
+2. **Output Modifications:** Prepare the output using the format specified below. Ensure the original formatting is preserved for both the original and modified sections.
 
 ## Output Format
 ### Original Section (to be replaced)
@@ -192,8 +191,6 @@ impl BlocksOfCodeParser {
 ## Notes
 - Where possible, replace entire functions instead of making multiple small changes within them for better clarity.
 - Preserve the original indentation and formatting to avoid introducing errors during code replacement.
-- Ensure the accuracy of the modifications and strictly follow the instructions.
-- Always describe each modification before presenting the code changes.
 - Do not skip any modification, even if they are invalid or insufficient!"#.to_string();
         prompt
     }
