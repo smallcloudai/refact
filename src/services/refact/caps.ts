@@ -80,7 +80,6 @@ export type CapsResponse = {
   endpoint_template: string;
   running_models: string[];
   telemetry_basic_dest: string;
-  telemetry_corrected_snippets_dest: string;
   tokenizer_path_template: string;
   tokenizer_rewrite_path: Record<string, unknown>;
 };

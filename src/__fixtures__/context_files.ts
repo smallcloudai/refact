@@ -49,7 +49,6 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
   endpoint_template: "https://inference.smallcloud.ai/v1/completions",
   running_models: ["smallcloudai/Refact-1_6B-fim", "gpt-3.5-turbo"],
   telemetry_basic_dest: "https://www.smallcloud.ai/v1/telemetry-basic",
-  telemetry_corrected_snippets_dest: "",
   tokenizer_path_template:
     "https://huggingface.co/$MODEL/resolve/main/tokenizer.json",
   tokenizer_rewrite_path: {},
