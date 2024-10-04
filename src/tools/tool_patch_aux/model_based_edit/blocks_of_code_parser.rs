@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::path::PathBuf;
 use std::sync::Arc;
 use strsim::normalized_damerau_levenshtein;
@@ -120,6 +121,24 @@ async fn sections_to_diff_blocks(
                 distances.push(normalized_damerau_levenshtein(&orig_section_span_str, &file_lines_span_str));
             }
         }
+        let start_offset = if start_offset.is_none()  {
+            let max_el = distances
+            .iter()
+            .enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+            if let Some((idx, val)) = max_el {
+                if val > &0.8 {
+                    Some(idx)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            start_offset
+        };
+        
         if let Some(start_offset) = start_offset {
             let lines = file_lines
                 [start_offset..start_offset + orig_section.hunk.len()]
