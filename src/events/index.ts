@@ -51,6 +51,8 @@ export {
   ideOpenHotKeys,
   ideOpenSettingsAction,
   ideOpenChatInNewTab,
+  ideAnimateFileStart,
+  ideAnimateFileStop,
 } from "../hooks/useEventBusForIDE";
 
 export const fim = {

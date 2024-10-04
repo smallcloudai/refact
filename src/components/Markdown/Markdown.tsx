@@ -51,7 +51,8 @@ export type MarkdownProps = Pick<
   > & { canHavePins?: boolean };
 
 const usePinActions = () => {
-  const { diffPreview } = useEventsBusForIDE();
+  const { diffPreview, startFileAnimation, stopFileAnimation } =
+    useEventsBusForIDE();
   const { onSubmit, result: _result } = useDiffApplyMutation();
   const openFiles = useSelector(selectOpenFiles);
   const messages = useSelector(selectMessages);
@@ -76,6 +77,8 @@ const usePinActions = () => {
 
   const handleShow = useCallback(
     (pin: string) => {
+      const [, , fileName] = pin.split(" ");
+      startFileAnimation(fileName);
       getPatch({ pin, messages })
         .unwrap()
         .then((maybeDetail) => {
@@ -86,6 +89,7 @@ const usePinActions = () => {
           return maybeDetail;
         })
         .then((patch) => {
+          stopFileAnimation(fileName);
           if (patch.chunks.length === 0) {
             setErrorMessage({ type: "warning", text: "No Chunks to show." });
           } else {
@@ -93,14 +97,18 @@ const usePinActions = () => {
           }
         })
         .catch((error: Error) => {
+          stopFileAnimation(fileName);
           setErrorMessage({ type: "error", text: error.message });
         });
     },
-    [diffPreview, getPatch, messages],
+    [diffPreview, getPatch, messages, startFileAnimation, stopFileAnimation],
   );
 
   const handleApply = useCallback(
     (pin: string) => {
+      const [, , fileName] = pin.split(" ");
+      startFileAnimation(fileName);
+
       getPatch({ pin, messages })
         .unwrap()
         .then((maybeDetail) => {
@@ -111,6 +119,7 @@ const usePinActions = () => {
           return maybeDetail;
         })
         .then((patch) => {
+          stopFileAnimation(fileName);
           const files = patch.results.reduce<string[]>((acc, cur) => {
             const { file_name_add, file_name_delete, file_name_edit } = cur;
             if (file_name_add) acc.push(file_name_add);
@@ -135,6 +144,7 @@ const usePinActions = () => {
           }
         })
         .catch((error: Error) => {
+          stopFileAnimation(fileName);
           setErrorMessage({
             type: "error",
             text: error.message
@@ -143,7 +153,15 @@ const usePinActions = () => {
           });
         });
     },
-    [diffPreview, getPatch, messages, onSubmit, openFiles],
+    [
+      diffPreview,
+      getPatch,
+      messages,
+      onSubmit,
+      openFiles,
+      startFileAnimation,
+      stopFileAnimation,
+    ],
   );
 
   return {

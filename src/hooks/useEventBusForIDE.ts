@@ -23,11 +23,33 @@ export const ideOpenChatInNewTab = createAction<ChatThread>(
   "ide/openChatInNewTab",
 );
 
+export const ideAnimateFileStart = createAction<string>(
+  "ide/animateFile/start",
+);
+
+export const ideAnimateFileStop = createAction<string>("ide/animateFile/stop");
+
 import { pathApi } from "../services/refact/path";
 
 export const useEventsBusForIDE = () => {
   const postMessage = usePostMessage();
   // const canPaste = useAppSelector((state) => state.active_file.can_paste);
+
+  const startFileAnimation = useCallback(
+    (fileName: string) => {
+      const action = ideAnimateFileStart(fileName);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
+  const stopFileAnimation = useCallback(
+    (fileName: string) => {
+      const action = ideAnimateFileStop(fileName);
+      postMessage(action);
+    },
+    [postMessage],
+  );
 
   const setupHost = useCallback(
     (host: HostSettings) => {
@@ -145,5 +167,7 @@ export const useEventsBusForIDE = () => {
     openPrivacyFile,
     openBringYourOwnKeyFile,
     // canPaste,
+    stopFileAnimation,
+    startFileAnimation,
   };
 };
