@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use arrow::compute::kernels::length::length;
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
@@ -159,10 +160,7 @@ pub async fn execute_chat_model(
                 chunks.push(c);
             }
             Ok(Err(err)) => {
-                return Err((
-                    format!("diff parsing error: {err}"),
-                    Some("tickets are invalid. Create new tickets from scratch. If file is that big, use FULL_REWRITE".to_string())
-                ));
+                warn!("diff parsing error: {err}");
             }
             Err(err) => {
                 return Err((
@@ -171,6 +169,13 @@ pub async fn execute_chat_model(
                 ));
             }
         }
+    }
+    if chunks.is_empty() {
+        return Err((
+            "all diffs were parsed with errors".to_string(),
+            Some("tickets are invalid. Create new tickets from scratch. If file is that big, use FULL_REWRITE".to_string())
+        ));
+
     }
     Ok(chunks)
 }
