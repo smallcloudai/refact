@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Markdown } from "../Markdown";
 
 import { Container, Box } from "@radix-ui/themes";
@@ -6,6 +6,7 @@ import { ToolCall } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 import { useAppSelector, useEventsBusForIDE } from "../../hooks";
 import { selectActiveFile } from "../../features/Chat/activeFile";
+import { selectSelectedSnippet } from "../../features/Chat";
 
 type ChatInputProps = {
   message: string | null;
@@ -33,6 +34,14 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
   toolCalls,
 }) => {
   const activeFile = useAppSelector(selectActiveFile);
+
+  const snippet = useAppSelector(selectSelectedSnippet);
+
+  const codeLineCount = useMemo(() => {
+    if (snippet.code.length === 0) return 0;
+    return snippet.code.split("\n").filter((str) => str).length;
+  }, [snippet.code]);
+
   const { newFile, diffPasteBack } = useEventsBusForIDE();
   const handleCopy = useCallback((text: string) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -54,7 +63,7 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
             onCopyClick={handleCopy}
             onNewFileClick={newFile}
             onPasteClick={diffPasteBack}
-            canPaste={activeFile.can_paste}
+            canPaste={activeFile.can_paste && codeLineCount > 0}
             canHavePins={true}
           >
             {message}
