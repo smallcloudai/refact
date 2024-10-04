@@ -93,6 +93,8 @@ def load_cli_or_auto_configure():
     if not os.path.exists(cli_yaml_path):
         # No config, autodetect
         print("First run. Welcome, I'll try to set up a reasonable config.")
+        from pathlib import Path
+        Path(cli_yaml_path).parent.mkdir(parents=True, exist_ok=True)
         with open(cli_yaml_path, 'w') as file:
             file.write(default_config)
     with open(cli_yaml_path, 'r') as file:
