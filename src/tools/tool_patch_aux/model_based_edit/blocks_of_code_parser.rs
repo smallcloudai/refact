@@ -8,6 +8,7 @@ use crate::privacy::PrivacySettings;
 use crate::tools::tool_patch_aux::diff_structs::{diff_blocks_to_diff_chunks, DiffBlock, DiffLine, LineType};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use tracing::warn;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum SectionType {
@@ -149,7 +150,8 @@ async fn sections_to_diff_blocks(
                 file_lines: Arc::new(vec![]),
             })
         } else {
-            return Err(format!("section not found in file {}, distances: {:?}", filename.to_string_lossy(), distances));
+            warn!(format!("section not found in file {}, distances: {:?}", filename.to_string_lossy(), distances));
+            continue
         }
     }
     Ok(diff_blocks)
