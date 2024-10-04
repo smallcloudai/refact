@@ -144,7 +144,8 @@ jobs:
             ./target/release/refact-lsp
             ./target/release/refact-lsp.exe
       
-      - if: matrix.whl-tag 
+      - if: matrix.whl-tag
+        shell: bash
         env:
           WHL_TAG: ${{ matrix.whl-tag }}
         run: |
