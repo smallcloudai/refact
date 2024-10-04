@@ -11,8 +11,12 @@ export const FilesPreview: React.FC<{
   return (
     <Box p="2" pb="0">
       {files.map((file, i) => {
-        const lineText =
-          file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
+        const lineText = file.cursor
+          ? `:${file.line1}-${file.cursor}`
+          : file.line1 && file.line2
+            ? `:${file.line1}-${file.line2}`
+            : "";
+
         return (
           <pre key={file.file_name + i} className={styles.file}>
             <Text

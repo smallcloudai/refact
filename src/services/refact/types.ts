@@ -16,6 +16,7 @@ export type ChatContextFile = {
   file_content: string;
   line1: number;
   line2: number;
+  cursor?: number;
   usefulness?: number;
   usefullness?: number;
 };
