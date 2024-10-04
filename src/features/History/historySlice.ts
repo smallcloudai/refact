@@ -54,6 +54,17 @@ export const historySlice = createSlice({
       };
 
       state[chat.id] = chat;
+
+      if (Object.entries(state).length >= 100) {
+        const sortedByLastUpdated = Object.values(state).sort((a, b) =>
+          b.updatedAt.localeCompare(a.updatedAt),
+        );
+        const newHistory = sortedByLastUpdated.slice(0, 100);
+        state = newHistory.reduce(
+          (acc, chat) => ({ ...acc, [chat.id]: chat }),
+          {},
+        );
+      }
     },
 
     markChatAsUnread: (state, action: PayloadAction<string>) => {
