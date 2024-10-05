@@ -14,7 +14,7 @@ class Animal:
 
 
 class Goat(Animal):
-    def __init__(self, age: int, weight: float):
+    def __init__(self, age: int, weight: float, *args, **kwargs):
         super().__init__(age)
         self.weight = weight
 

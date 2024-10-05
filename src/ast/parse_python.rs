@@ -307,6 +307,10 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
         // XXX make error
         return;
     }
+    if params_node.is_none() {
+        // XXX make error
+        return;
+    }
 
     let mut func_path = path.clone();
     func_path.push(func_name.clone());
@@ -332,14 +336,43 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
         type_resolved: returns_type,
     });
 
-    println!("\nPARAMS");
-    cx.ap.recursive_print_with_red_brackets(&params_node.unwrap());
-    println!("\n/PARAMS");
-    // println!("\nRETURNS");
-    // println!("{:?}", returns);
-    // println!("/RETURNS");
+    let params = params_node.unwrap();
+    for i in 0..params.child_count() {
+        let param_node = params.child(i).unwrap();
+        let mut param_name = "".to_string();
+        let mut type_resolved = "".to_string(); // Default for plain identifier
+        match param_node.kind() {
+            "identifier" => {
+                param_name = cx.ap.code[param_node.byte_range()].to_string();
+                if param_name == "self" {
+                    type_resolved = path.join("::");
+                }
+            },
+            "typed_parameter" => {
+                if let Some(param_name_node) = param_node.child(0) {
+                    param_name = cx.ap.code[param_name_node.byte_range()].to_string();
+                }
+                type_resolved = py_type_explicit(cx, param_node.child_by_field_name("type"), &func_path, 0);
+            },
+            // list_splat_pattern for *args
+            // dictionary_splat_pattern for **kwargs
+            _ => {
+                continue;
+            }
+        }
+        if param_name.is_empty() {
+            // XXX make error
+            continue;
+        }
+        let param_path = [func_path.clone(), vec![param_name.clone()]].concat();
+        cx.ap.things.insert(param_path.join("::"), Thing {
+            assigned_rvalue: None,
+            type_explicit: None,
+            type_resolved,
+        });
+    }
+
     cx.pass2.push( (body.unwrap(), func_path.clone()) );
-    // println!("\nFUNCTION {:?}", cx.ap.defs.get(&func_path.join("::")).unwrap());
 }
 
 

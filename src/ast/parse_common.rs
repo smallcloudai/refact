@@ -49,6 +49,8 @@ impl<'a> ContextAnyParser<'a> {
                 print!("\x1b[31m{}[\x1b[0m", node.kind());
                 for i in 0..node.child_count() {
                     let child = node.child(i).unwrap();
+                    // let field_name = node.field_name_for_child(i as u32).unwrap_or("");
+                    // print!(" field_name={:?} ", field_name);
                     self.recursive_print_with_red_brackets(&child);
                 }
                 if node.child_count() == 0 {
