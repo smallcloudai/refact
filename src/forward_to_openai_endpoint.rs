@@ -1,17 +1,14 @@
-use std::sync::Arc;
-
+use std::fs::File;
+use std::io::Write;
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
 use reqwest::header::HeaderValue;
 use reqwest_eventsource::EventSource;
-use serde::{Serialize, Deserialize};
 use serde_json::json;
+#[cfg(feature="vecdb")]
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
-
-use std::fs::File;
-use std::io::Write;
 
 use crate::call_validation::SamplingParameters;
 
@@ -169,14 +166,14 @@ fn passthrough_messages_to_json(
 }
 
 #[cfg(feature="vecdb")]
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct EmbeddingsPayloadOpenAI {
     pub input: Vec<String>,
     pub model: String,
 }
 
 #[cfg(feature="vecdb")]
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct EmbeddingsResultOpenAI {
     pub embedding: Vec<f32>,
     pub index: usize,
@@ -184,7 +181,7 @@ struct EmbeddingsResultOpenAI {
 
 #[cfg(feature="vecdb")]
 pub async fn get_embedding_openai_style(
-    client: Arc<AMutex<reqwest::Client>>,
+    client: std::sync::Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,
     endpoint_template: &String,
     model_name: &String,

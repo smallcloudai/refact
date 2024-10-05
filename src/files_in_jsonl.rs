@@ -51,6 +51,8 @@ pub async fn enqueue_all_docs_from_jsonl(
         Some(ref mut db) => db.vectorizer_enqueue_files(&docs, false).await,
         None => {},
     };
+    #[cfg(not(feature="vecdb"))]
+    let _ = vec_db_module;
 }
 
 pub async fn enqueue_all_docs_from_jsonl_but_read_first(

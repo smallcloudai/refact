@@ -410,6 +410,8 @@ async fn enqueue_some_docs(
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&docs, force).await;
     }
+    #[cfg(not(feature="vecdb"))]
+    let _ = vec_db_module;
     if let Some(ast) = &ast_service {
         let cpaths: Vec<String> = docs.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
         ast_indexer_enqueue_files(ast.clone(), cpaths, force).await;
@@ -453,6 +455,8 @@ pub async fn enqueue_all_files_from_workspace_folders(
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&documents, force).await;
     }
+    #[cfg(not(feature="vecdb"))]
+    let _ = vec_db_module;
     if let Some(ast) = ast_service {
         if !vecdb_only {
             let cpaths1: Vec<String> = documents.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
@@ -564,6 +568,8 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         Some(ref mut db) => db.remove_file(path).await,
         None => {}
     }
+    #[cfg(not(feature="vecdb"))]
+    let _ = vec_db_module;
     if let Some(ast) = &ast_service {
         let cpath = path.to_string_lossy().to_string();
         ast_indexer_enqueue_files(ast.clone(), vec![cpath], false).await;
