@@ -24,7 +24,7 @@ class Goat(Animal):
         return self
 
 
-def animal_direct_access(v1: Goat, v2: Optional[Goat], v3: List[Goat], v4: List[Optional[Goat]]):
+def animal_direct_access(v1: Goat, v2: Optional[Animal], v3: List[Goat], v4: List[Optional[Goat]]):
     print(f"animal_direct_access: age1={v1.age} age2={v2.age if v2 else 'None'} age3={[x.age for x in v3]} age4={[(y.age if y else 'not_a_goat') for y in v4]}")
 
 
@@ -42,20 +42,6 @@ def animal_function_calling(v1: Goat, v2: Optional[Goat], v3: List[Goat], v4: Li
 
 def goat_generator() -> Tuple[Goat, Goat]:
     return Goat(2, 2.0), Goat(3, 4.0)
-
-
-my_callback: Callable[[], Tuple[Goat, Goat]]
-my_callback = goat_generator
-goat1, goat2 = my_callback()
-
-my_int1 = 10
-my_int2: int = 11
-my_int3: Optional[int] = 12
-aaa1, aaa2 = 13, 14
-(aaa3, aaa4) = (15, 16)
-
-# will not work:
-aaa5, (aaa6, aaa7) = 17, (18, 19)
 
 
 animal_function_calling(*goat_generator(), [Goat(4, 4.0)], [Goat(5, 5.0), None])

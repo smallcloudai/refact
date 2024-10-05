@@ -89,31 +89,41 @@ pub fn line12mid_from_ranges(full_range: &Range, body_range: &Range) -> (usize, 
 //     return "".to_string();
 // }
 
-// pub fn type_deindex(t: String) -> String
-// {
-//     // Used in this scenario: for x in my_list
-//     // t="[MyType]"  =>  "MyType"
-//     if t.starts_with("[") && t.ends_with("]") {
-//         return t[1 .. t.len()-1].to_string();
-//     }
-//     return "".to_string();
-// }
+pub fn type_deindex(t: String) -> String
+{
+    // Used in this scenario: for x in my_list
+    // t="[MyType]"  =>  "MyType"
+    if t.starts_with("[") && t.ends_with("]") {
+        return t[1 .. t.len()-1].to_string();
+    }
+    // can't do anything for ()
+    return "".to_string();
+}
 
 pub fn type_zerolevel_comma_split(t: &str) -> Vec<String> {
     let mut parts: Vec<String> = Vec::new();
     let mut current = String::new();
-    let mut level = 0;
+    let mut level_brackets1 = 0;
+    let mut level_brackets2 = 0;
     for c in t.chars() {
         match c {
             '[' => {
-                level += 1;
+                level_brackets1 += 1;
                 current.push(c);
             },
             ']' => {
-                level -= 1;
+                level_brackets1 -= 1;
                 current.push(c);
             },
-            ',' if level == 0 => {
+            '(' => {
+                level_brackets2 += 1;
+                current.push(c);
+            },
+            ')' => {
+                level_brackets2 -= 1;
+                current.push(c);
+            },
+            ',' if level_brackets1 == 0 && level_brackets2 == 0 => {
                 parts.push(current.to_string());
                 current = String::new();
             },
@@ -130,7 +140,7 @@ pub fn type_deindex_n(t: String, n: usize) -> String
 {
     // Used in this scenario: _, _ = my_value
     // t="[MyClass1,[int,int],MyClass2]"  =>  n==0 MyClass1  n==1 [int,int]   n==2 MyClass2
-    if t.starts_with("[") && t.ends_with("]") {
+    if t.starts_with("(") && t.ends_with(")") {
         let no_square = t[1 .. t.len()-1].to_string();
         let parts = type_zerolevel_comma_split(&no_square);
         if n < parts.len() {
