@@ -2196,6 +2196,8 @@ Another text"#;
 +    # Third extra jump
 ```
 Another text"#;
+
+        #[allow(unused)]
         let gt_changed_text = r#"import frog
 
 
@@ -2244,27 +2246,27 @@ if __name__ == __main__:
         // );
         // assert_eq!(changed_text, gt_changed_text);
     }
-    
+
 // COMMENTED: REASON: INVALID PATH /home/svakhreev/tmp/flappy_bird/game.js"
 //     #[tokio::test]
 //     #[ignore]
 //     async fn info_test() {
 //         let input = r#"
-// 
+//
 // 1. Fixing the missing curly braces in `startObstacleCreation` and `drawObstacles`.
 // 2. Correcting the array initialization for `obstacles`.
 // 3. Fixing the typo in `createObstacle`.
 // 4. Completing the condition in `updateObstacles`.
 // 5. Adding missing closing braces for functions.
-// 
+//
 // Now, let's translate these changes into a unified diff format.
-// 
+//
 // ```diff
 // --- /home/svakhreev/tmp/flappy_bird/game.js
 // +++ /home/svakhreev/tmp/flappy_bird/game.js
 // @@ file_replace_block @@
 // let obstacleInterval; // Variable to hold the interval ID
-// 
+//
 // function startObstacleCreation() {
 //     if (!obstacleInterval) { // Check if the interval is not already set
 //         obstacleInterval = setInterval(createObstacle, 3000); // Create a new obstacle every 3 seconds
@@ -2274,7 +2276,7 @@ if __name__ == __main__:
 // const obstacleWidth = 20; // Width of the obstacles
 // const obstacleHeight = 100; // Height of the obstacles
 // let score = 0; // Initialize score
-// 
+//
 // function createObstacle() {
 //     const obstacle = {
 //         x: canvas.width,
@@ -2284,14 +2286,14 @@ if __name__ == __main__:
 //     };
 //     obstacles.push(obstacle);
 // }
-// 
+//
 // function drawObstacles() {
 //     ctx.fillStyle = 'red'; // Color of the obstacles
 //     obstacles.forEach(obstacle => {
 //         ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 //     });
 // }
-// 
+//
 // function updateObstacles() {
 //     obstacles.forEach(obstacle => {
 //         obstacle.x -= 2; // Move obstacles to the left
@@ -2302,7 +2304,7 @@ if __name__ == __main__:
 //         score++; // Increment score when an obstacle is passed
 //     }
 // }
-// 
+//
 // function checkCollision() {
 //     obstacles.forEach(obstacle => {
 //         if (bird.x < obstacle.x + obstacle.width &&
@@ -2319,32 +2321,32 @@ if __name__ == __main__:
 //         }
 //     });
 // }
-// 
+//
 // const canvas = document.getElementById("gameCanvas");
 // const ctx = canvas.getContext("2d");
-// 
+//
 // let bird = { x: 50, y: 150, width: 20, height: 20, gravity: 0.6, lift: -15, velocity: 0 };
-// 
+//
 // function drawBird() {
 //     ctx.fillStyle = "yellow";
 //     ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
 // }
-// 
+//
 // function update() {
 //     bird.velocity += bird.gravity;
 //     bird.y += bird.velocity;
-// 
+//
 //     if (bird.y + bird.height >= canvas.height) {
 //         bird.y = canvas.height - bird.height;
 //         bird.velocity = 0;
 //     }
-// 
+//
 //     if (bird.y < 0) {
 //         bird.y = 0;
 //         bird.velocity = 0;
 //     }
 // }
-// 
+//
 // function gameLoop() {
 //     ctx.clearRect(0, 0, canvas.width, canvas.height);
 //     drawBird();
@@ -2354,29 +2356,29 @@ if __name__ == __main__:
 //     checkCollision(); // Check for collisions
 //     requestAnimationFrame(gameLoop);
 // }
-// 
+//
 // document.addEventListener("keydown", () => {
 //     bird.velocity += bird.lift;
 // });
 // // Start the obstacle creation interval when the game starts
 // startObstacleCreation();
-// 
+//
 // gameLoop();
 // ```
 // "#;
-// 
-// 
-// 
+//
+//
+//
 //         let result = UnifiedDiffFormat::parse_message(input, Arc::new(PrivacySettings::allow_all())).await.expect(
 //             "Failed to parse diff message"
 //         );
 //         print!("Result: {:?}\n", serde_json::to_string_pretty(&result));
-// 
+//
 //         let (_, changed_text) = apply_diff(
 //             &"/home/svakhreev/tmp/flappy_bird/game.js".to_string(),
 //             &result,
 //         );
-// 
+//
 //         assert_eq!(changed_text, input);
 //     }
 }

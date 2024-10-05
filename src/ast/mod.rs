@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+#[cfg(feature="vecdb")]
 use std::sync::RwLock as StdRwLock;
 use std::cell::RefCell;
-use tokenizers::Tokenizer;
 use uuid::Uuid;
 use crate::files_in_workspace::Document;
 use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
@@ -26,8 +26,9 @@ pub mod parse_python;
 pub mod parse_common;
 
 
+#[cfg(feature="vecdb")]
 pub fn count_tokens(
-    tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
+    tokenizer: Option<Arc<StdRwLock<tokenizers::Tokenizer>>>,
     text: &str,
 ) -> usize {
     if let Some(tokenizer) = tokenizer {

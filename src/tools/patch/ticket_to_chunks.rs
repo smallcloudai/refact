@@ -55,9 +55,9 @@ pub async fn add_to_file_diff(
         let sym_before = if pos_locate_symbol == 0 { None } else { Some(same_parent_symbols[pos_locate_symbol - 1].clone()) };
         let sym_after = symbol;
         let sym_after_full_range_start_point_row = sym_after.full_line1() - 1;
-        let sym_after_full_range_end_point_row = sym_after.full_line2() - 1;
+        // let sym_after_full_range_end_point_row = sym_after.full_line2() - 1;
         if let Some(sym_before) = sym_before {
-            let sym_before_full_range_start_point_row = sym_before.full_line1() - 1;
+            // let sym_before_full_range_start_point_row = sym_before.full_line1() - 1;
             let sym_before_full_range_end_point_row = sym_before.full_line2() - 1;
             file_lines[..sym_before_full_range_end_point_row + 1].iter()
                 .chain(vec!["".to_string(); spacing].iter())
@@ -76,11 +76,11 @@ pub async fn add_to_file_diff(
     } else {
         let sym_before = symbol;
         let sym_after = same_parent_symbols.get(pos_locate_symbol + 1).cloned();
-        let sym_before_full_range_start_point_row = sym_before.full_line1() - 1;
+        // let sym_before_full_range_start_point_row = sym_before.full_line1() - 1;
         let sym_before_full_range_end_point_row = sym_before.full_line2() - 1;
         if let Some(sym_after) = sym_after {
             let sym_after_full_range_start_point_row = sym_after.full_line1() - 1;
-            let sym_after_full_range_end_point_row = sym_after.full_line2() - 1;
+            // let sym_after_full_range_end_point_row = sym_after.full_line2() - 1;
             file_lines[..sym_before_full_range_end_point_row + 1].iter()
                 .chain(vec!["".to_string(); spacing].iter())
                 .chain(ticket_code_lines.iter())
