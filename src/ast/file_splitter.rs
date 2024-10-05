@@ -1,81 +1,26 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
 use itertools::Itertools;
-use tokenizers::Tokenizer;
 use tokio::sync::RwLock;
-use tracing::info;
-use std::cell::RefCell;
+use std::sync::RwLock as StdRwLock;
 use uuid::Uuid;
 
-use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::skeletonizer::make_formatter;
+use crate::ast::treesitter::ast_instance_structs::SymbolInformation;
 use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::treesitter::file_ast_markup::FileASTMarkup;
 use crate::files_in_workspace::Document;
-use crate::global_context::GlobalContext;
+use crate::ast::treesitter::file_ast_markup::FileASTMarkup;
 
 pub(crate) const LINES_OVERLAP: usize = 3;
 
 
-#[cfg(feature="vecdb")]
 pub struct AstBasedFileSplitter {
     fallback_file_splitter: crate::vecdb::vdb_file_splitter::FileSplitter,
 }
 
-pub fn lowlevel_file_markup(
-    doc: &Document,
-    symbols: &Vec<SymbolInformation>,
-) -> Result<FileASTMarkup, String> {
-    let t0 = std::time::Instant::now();
-    assert!(doc.doc_text.is_some());
-    let mut symbols4export: Vec<Arc<RefCell<SymbolInformation>>> = symbols.iter().map(|s| {
-        Arc::new(RefCell::new(s.clone()))
-    }).collect();
-    let guid_to_symbol: HashMap<Uuid, Arc<RefCell<SymbolInformation>>> = symbols4export.iter().map(
-        |s| (s.borrow().guid.clone(), s.clone())
-    ).collect();
-    fn recursive_path_of_guid(guid_to_symbol: &HashMap<Uuid, Arc<RefCell<SymbolInformation>>>, guid: &Uuid) -> String
-    {
-        return match guid_to_symbol.get(guid) {
-            Some(x) => {
-                let pname = if !x.borrow().name.is_empty() { x.borrow().name.clone() } else { x.borrow().guid.to_string()[..8].to_string() };
-                let pp = recursive_path_of_guid(&guid_to_symbol, &x.borrow().parent_guid);
-                format!("{}::{}", pp, pname)
-            }
-            None => {
-                // FIXME:
-                // info!("parent_guid {} not found, maybe outside of this file", guid);
-                "UNK".to_string()
-            }
-        };
-    }
-    for s in symbols4export.iter_mut() {
-        let symbol_path = recursive_path_of_guid(&guid_to_symbol, &s.borrow().guid);
-        s.borrow_mut().symbol_path = symbol_path.clone();
-    }
-    // longer symbol path at the bottom => parent always higher than children
-    symbols4export.sort_by(|a, b| {
-        a.borrow().symbol_path.len().cmp(&b.borrow().symbol_path.len())
-    });
-    let x = FileASTMarkup {
-        // file_path: doc.doc_path.clone(),
-        // file_content: doc.doc_text.as_ref().unwrap().to_string(),
-        symbols_sorted_by_path_len: symbols4export.iter().map(|s| {
-            s.borrow().clone()
-        }).collect(),
-    };
-    tracing::info!("file_markup {:>4} symbols in {:.3}ms for {}",
-        x.symbols_sorted_by_path_len.len(),
-        t0.elapsed().as_secs_f32(),
-        crate::nicer_logs::last_n_chars(&doc.doc_path.to_string_lossy().to_string(),
-        30));
-    Ok(x)
-}
-
-#[cfg(feature="vecdb")]
 impl AstBasedFileSplitter {
+
     pub fn new(window_size: usize) -> Self {
         Self {
             fallback_file_splitter: crate::vecdb::vdb_file_splitter::FileSplitter::new(window_size),
@@ -85,8 +30,8 @@ impl AstBasedFileSplitter {
     pub async fn vectorization_split(
         &self,
         doc: &Document,
-        tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
-        gcx: Arc<RwLock<GlobalContext>>,
+        tokenizer: Option<Arc<StdRwLock<tokenizers::Tokenizer>>>,
+        gcx: Arc<RwLock<crate::global_context::GlobalContext>>,
         tokens_limit: usize,
     ) -> Result<Vec<crate::vecdb::vdb_structs::SplitResult>, String> {
         assert!(doc.doc_text.is_some());
@@ -97,7 +42,7 @@ impl AstBasedFileSplitter {
         let (mut parser, language) = match get_ast_parser_by_filename(&path) {
             Ok(parser) => parser,
             Err(_e) => {
-                // info!("cannot find a parser for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e.message);
+                // tracing::info!("cannot find a parser for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e.message);
                 return self.fallback_file_splitter.vectorization_split(&doc, tokenizer.clone(), tokens_limit, gcx.clone()).await;
             }
         };
@@ -113,10 +58,10 @@ impl AstBasedFileSplitter {
             });
         }
 
-        let ast_markup: FileASTMarkup = match lowlevel_file_markup(&doc, &symbols_struct) {
+        let ast_markup: FileASTMarkup = match crate::ast::lowlevel_file_markup(&doc, &symbols_struct) {
             Ok(x) => x,
             Err(e) => {
-                info!("lowlevel_file_markup failed for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e);
+                tracing::info!("lowlevel_file_markup failed for {:?}, using simple file splitter: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e);
                 return self.fallback_file_splitter.vectorization_split(&doc, tokenizer.clone(), tokens_limit, gcx.clone()).await;
             }
         };

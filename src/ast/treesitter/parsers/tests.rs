@@ -219,7 +219,7 @@ pub(crate) fn base_skeletonizer_test(lang: &LanguageId,
         doc_text: Some(Rope::from_str(code)),
     };
     let guid_to_children: HashMap<Uuid, Vec<Uuid>> = symbols.iter().map(|s| (s.read().guid().clone(), s.read().childs_guid().clone())).collect();
-    let ast_markup: FileASTMarkup = crate::ast::file_splitter::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
+    let ast_markup: FileASTMarkup = crate::ast::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
     let guid_to_info: HashMap<Uuid, &SymbolInformation> = ast_markup.symbols_sorted_by_path_len.iter().map(|s| (s.guid.clone(), s)).collect();
     let formatter = make_formatter(lang);
     let class_symbols: Vec<_> = ast_markup.symbols_sorted_by_path_len.iter().filter(|x| x.symbol_type == SymbolType::StructDeclaration).collect();
@@ -255,7 +255,7 @@ pub(crate) fn base_declaration_formatter_test(lang: &LanguageId,
         doc_text: Some(Rope::from_str(code)),
     };
     let guid_to_children: HashMap<Uuid, Vec<Uuid>> = symbols.iter().map(|s| (s.read().guid().clone(), s.read().childs_guid().clone())).collect();
-    let ast_markup: FileASTMarkup = crate::ast::file_splitter::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
+    let ast_markup: FileASTMarkup = crate::ast::lowlevel_file_markup(&doc, &symbols_struct).unwrap();
     let guid_to_info: HashMap<Uuid, &SymbolInformation> = ast_markup.symbols_sorted_by_path_len.iter().map(|s| (s.guid.clone(), s)).collect();
     let formatter = make_formatter(lang);
     let mut decls: HashSet<Decl> = Default::default();

@@ -2,10 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::fmt;
 use serde::{Deserialize, Serialize};
-use tree_sitter::Range;
 use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 pub use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::treesitter::structs::RangeDef;
 
 
 #[derive(Serialize, Deserialize)]

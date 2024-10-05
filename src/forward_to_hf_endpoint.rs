@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
@@ -116,7 +114,7 @@ struct EmbeddingsPayloadHF {
 
 #[cfg(feature="vecdb")]
 pub async fn get_embedding_hf_style(
-    client: Arc<AMutex<reqwest::Client>>,
+    client: std::sync::Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,
     endpoint_template: &String,
     model_name: &String,
