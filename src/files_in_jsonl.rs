@@ -34,7 +34,11 @@ pub async fn enqueue_all_docs_from_jsonl(
         let jsonl_files = &mut gcx_locked.documents_state.jsonl_files.lock().unwrap();
         jsonl_files.clear();
         jsonl_files.extend(paths);
-        (gcx_locked.vec_db.clone(), gcx_locked.ast_service.clone())
+        #[cfg(feature="vecdb")]
+        let vec_db_module = gcx_locked.vec_db.clone();
+        #[cfg(not(feature="vecdb"))]
+        let vec_db_module = false;
+        (vec_db_module, gcx_locked.ast_service.clone())
     };
     if let Some(ast) = &ast_service {
         if !vecdb_only {
@@ -42,6 +46,7 @@ pub async fn enqueue_all_docs_from_jsonl(
             ast_indexer_enqueue_files(ast.clone(), cpaths, force).await;
         }
     }
+    #[cfg(feature="vecdb")]
     match *vec_db_module.lock().await {
         Some(ref mut db) => db.vectorizer_enqueue_files(&docs, false).await,
         None => {},

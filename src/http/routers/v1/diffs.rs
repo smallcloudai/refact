@@ -18,8 +18,6 @@ use crate::diffs::{unwrap_diff_apply_outputs, correct_and_validate_chunks, Apply
 use crate::files_in_workspace::{Document, read_file_from_disk};
 use crate::global_context::GlobalContext;
 use crate::privacy::load_privacy_if_needed;
-use crate::vecdb::vdb_highlev::memories_block_until_vectorized;
-use crate::vecdb::vdb_thread::vectorizer_enqueue_files;
 
 
 const MAX_FUZZY_N: usize = 10;
@@ -173,20 +171,22 @@ async fn _sync_documents_ast_vecdb(gcx: Arc<ARwLock<GlobalContext>>, docs: Vec<D
         crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_service.clone(), 1_000, true).await;
     }
 
+    #[cfg(feature="vecdb")]
     let vecdb_enqueued = if let Some(vservice) = {
         let gcx_locked = gcx.write().await;
         let vec_db_guard = gcx_locked.vec_db.lock().await;
         vec_db_guard.as_ref().map(|v| v.vectorizer_service.clone())
     } {
-        vectorizer_enqueue_files(vservice, &docs, true).await;
+        crate::vecdb::vdb_thread::vectorizer_enqueue_files(vservice, &docs, true).await;
         true
     } else {
         false
     };
 
+    #[cfg(feature="vecdb")]
     if vecdb_enqueued {
         let vecdb = gcx.write().await.vec_db.clone();
-        memories_block_until_vectorized(vecdb).await.map_err(|e|
+        crate::vecdb::vdb_highlev::memories_block_until_vectorized(vecdb).await.map_err(|e|
             ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
         )?;
     }
@@ -216,9 +216,9 @@ pub async fn handle_v1_diff_apply(
     // XXX: blocking should happen before any tool calls, not after applying diffs
     // let docs2index = write_results_on_disk(results.clone()).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
     // sync_documents_ast_vecdb(global_context.clone(), docs2index).await?;
-    
+
     let new_documents = write_results_on_disk(global_context.clone(), results.clone()).await.map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
-    
+
     let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, post.chunks);
 
     {
@@ -227,7 +227,7 @@ pub async fn handle_v1_diff_apply(
 
         let cache_dirty = gcx_lock.documents_state.cache_dirty.clone();
         *cache_dirty.lock().await = true;
-        
+
         for doc in new_documents {
             gcx_lock.documents_state.memory_document_map.insert(doc.doc_path.clone(), Arc::new(ARwLock::new(doc)));
         }

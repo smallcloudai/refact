@@ -29,12 +29,15 @@ use crate::http::routers::v1::lsp_like_handlers::{handle_v1_lsp_did_change, hand
 use crate::http::routers::v1::status::handle_v1_rag_status;
 use crate::http::routers::v1::customization::handle_v1_customization;
 use crate::http::routers::v1::customization::handle_v1_config_path;
-use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
 use crate::http::routers::v1::diffs::{handle_v1_diff_apply, handle_v1_diff_preview, handle_v1_diff_state};
 use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
-use crate::http::routers::v1::handlers_memdb::{handle_mem_query, handle_mem_add, handle_mem_erase, handle_mem_update_used, handle_mem_block_until_vectorized, handle_mem_list, handle_ongoing_update_or_create, handle_ongoing_dump};
 use crate::http::routers::v1::patch::handle_v1_patch_single_file_from_ticket;
 use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_single};
+
+#[cfg(feature="vecdb")]
+use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
+#[cfg(feature="vecdb")]
+use crate::http::routers::v1::handlers_memdb::{handle_mem_query, handle_mem_add, handle_mem_erase, handle_mem_update_used, handle_mem_block_until_vectorized, handle_mem_list, handle_ongoing_update_or_create, handle_ongoing_dump};
 
 use crate::http::utils::telemetry_wrapper;
 
@@ -48,19 +51,24 @@ pub mod graceful_shutdown;
 mod dashboard;
 pub mod lsp_like_handlers;
 pub mod customization;
-pub mod vecdb;
 mod at_commands;
 mod ast;
 mod at_tools;
 mod status;
 mod diffs;
-pub mod handlers_memdb;
+
 mod subchat;
 mod gui_help_handlers;
 mod patch;
 
+#[cfg(feature="vecdb")]
+pub mod handlers_memdb;
+#[cfg(feature="vecdb")]
+pub mod vecdb;
+
+
 pub fn make_v1_router() -> Router {
-    Router::new()
+    let builder = Router::new()
         .route("/ping", telemetry_get!(handle_v1_ping))
 
         .route("/code-completion", telemetry_post!(handle_v1_code_completion_web))
@@ -74,8 +82,6 @@ pub fn make_v1_router() -> Router {
         .route("/caps", telemetry_get!(handle_v1_caps))
         .route("/graceful-shutdown", telemetry_get!(handle_v1_graceful_shutdown))
 
-        .route("/vdb-search", telemetry_post!(handle_v1_vecdb_search))
-        .route("/vdb-status", telemetry_get!(handle_v1_vecdb_status))
         .route("/at-command-completion", telemetry_post!(handle_v1_command_completion))
         .route("/at-command-preview", telemetry_post!(handle_v1_command_preview))
 
@@ -106,6 +112,15 @@ pub fn make_v1_router() -> Router {
         .route("/diff-state", telemetry_post!(handle_v1_diff_state))
         .route("/patch-single-file-from-ticket", telemetry_post!(handle_v1_patch_single_file_from_ticket))
 
+        .route("/subchat", telemetry_post!(handle_v1_subchat))
+        .route("/subchat-single", telemetry_post!(handle_v1_subchat_single))
+
+        .route("/fullpath", telemetry_post!(handle_v1_fullpath));
+
+    #[cfg(feature="vecdb")]
+    let builder = builder
+        .route("/vdb-search", telemetry_post!(handle_v1_vecdb_search))
+        .route("/vdb-status", telemetry_get!(handle_v1_vecdb_status))
         .route("/mem-query", telemetry_post!(handle_mem_query))
         .route("/mem-add", telemetry_post!(handle_mem_add))
         .route("/mem-erase", telemetry_post!(handle_mem_erase))
@@ -113,12 +128,7 @@ pub fn make_v1_router() -> Router {
         .route("/mem-block-until-vectorized", telemetry_get!(handle_mem_block_until_vectorized))
         .route("/mem-list", telemetry_get!(handle_mem_list))
         .route("/ongoing-update", telemetry_post!(handle_ongoing_update_or_create))
-        .route("/ongoing-dump", telemetry_get!(handle_ongoing_dump))
+        .route("/ongoing-dump", telemetry_get!(handle_ongoing_dump));
 
-        .route("/subchat", telemetry_post!(handle_v1_subchat))
-        .route("/subchat-single", telemetry_post!(handle_v1_subchat_single))
-
-        .route("/fullpath", telemetry_post!(handle_v1_fullpath))
-
-        .layer(CorsLayer::very_permissive())
+    builder.layer(CorsLayer::very_permissive())
 }

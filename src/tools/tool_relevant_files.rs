@@ -347,9 +347,12 @@ async fn find_relevant_files(
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
     let (vecdb_on, total_files_in_project) = {
         let gcx_locked = gcx.read().await;
-        let vecdb = gcx_locked.vec_db.lock().await.is_some();
+        #[cfg(feature="vecdb")]
+        let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
+        #[cfg(not(feature="vecdb"))]
+        let vecdb_on = false;
         let total_files_in_project = gcx_locked.documents_state.workspace_files.lock().unwrap().len();
-        (vecdb, total_files_in_project)
+        (vecdb_on, total_files_in_project)
     };
 
     let mut usage = ChatUsage { ..Default::default() };

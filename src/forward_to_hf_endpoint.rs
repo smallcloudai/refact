@@ -94,24 +94,27 @@ pub async fn forward_to_hf_style_endpoint_streaming(
     Ok(event_source)
 }
 
+#[cfg(feature="vecdb")]
 #[derive(Serialize)]
 struct EmbeddingsPayloadHFOptions {
     pub wait_for_model: bool
 }
 
+#[cfg(feature="vecdb")]
 impl EmbeddingsPayloadHFOptions {
     pub fn new() -> Self {
         Self { wait_for_model: true }
     }
 }
 
+#[cfg(feature="vecdb")]
 #[derive(Serialize)]
 struct EmbeddingsPayloadHF {
     pub inputs: Vec<String>,
     pub options: EmbeddingsPayloadHFOptions,
 }
 
-
+#[cfg(feature="vecdb")]
 pub async fn get_embedding_hf_style(
     client: Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,
@@ -128,13 +131,13 @@ pub async fn get_embedding_hf_style(
         .json(&payload)
         .send()
         .await;
-    
+
     match maybe_response {
         Ok(response) => {
             let status = response.status().clone();
             if status.is_success() {
                 match response.json::<Vec<Vec<f32>>>().await {
-                    Ok(embedding) => 
+                    Ok(embedding) =>
                         Ok(embedding),
                     Err(err) => Err(format!("Failed to parse the response: {:?}", err)),
                 }

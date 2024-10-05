@@ -168,19 +168,21 @@ fn passthrough_messages_to_json(
     }
 }
 
-
+#[cfg(feature="vecdb")]
 #[derive(Serialize)]
 struct EmbeddingsPayloadOpenAI {
     pub input: Vec<String>,
     pub model: String,
 }
 
+#[cfg(feature="vecdb")]
 #[derive(Deserialize)]
 struct EmbeddingsResultOpenAI {
     pub embedding: Vec<f32>,
     pub index: usize,
 }
 
+#[cfg(feature="vecdb")]
 pub async fn get_embedding_openai_style(
     client: Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,

@@ -406,6 +406,7 @@ async fn enqueue_some_docs(
         let cx = gcx.write().await;
         (cx.vec_db.clone(), cx.ast_service.clone())
     };
+    #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&docs, force).await;
     }
@@ -448,6 +449,7 @@ pub async fn enqueue_all_files_from_workspace_folders(
         info!("    ...");
     }
 
+    #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&documents, force).await;
     }
@@ -557,6 +559,7 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
 
     (*dirty_arc.lock().await) = true;
 
+    #[cfg(feature="vecdb")]
     match *vec_db_module.lock().await {
         Some(ref mut db) => db.remove_file(path).await,
         None => {}

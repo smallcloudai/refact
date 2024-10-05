@@ -11,8 +11,6 @@ use tracing::{error, info};
 
 use crate::call_validation::SamplingParameters;
 use crate::custom_error::ScratchError;
-use crate::forward_to_hf_endpoint;
-use crate::forward_to_openai_endpoint;
 use crate::nicer_logs;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::telemetry::telemetry_structs;
@@ -106,7 +104,7 @@ pub async fn scratchpad_interaction_not_stream_json(
         save_url = "only-det-messages".to_string();
         Ok(serde_json::Value::Object(serde_json::Map::new()))
     } else if endpoint_style == "hf" {
-        forward_to_hf_endpoint::forward_to_hf_style_endpoint(
+        crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint(
             &mut save_url,
             bearer.clone(),
             &model_name,
@@ -116,7 +114,7 @@ pub async fn scratchpad_interaction_not_stream_json(
             &parameters,
         ).await
     } else {
-        forward_to_openai_endpoint::forward_to_openai_style_endpoint(
+        crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint(
             &mut save_url,
             bearer.clone(),
             &model_name,
@@ -347,7 +345,7 @@ pub async fn scratchpad_interaction_stream(
             }
             // info!("prompt: {:?}", prompt);
             let event_source_maybe = if endpoint_style == "hf" {
-                forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
+                crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
                     &mut save_url,
                     bearer.clone(),
                     &model_name,
@@ -357,7 +355,7 @@ pub async fn scratchpad_interaction_stream(
                     &parameters,
                 ).await
             } else {
-                forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(
+                crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(
                     &mut save_url,
                     bearer.clone(),
                     &model_name,
