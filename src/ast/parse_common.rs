@@ -78,24 +78,24 @@ pub fn line12mid_from_ranges(full_range: &Range, body_range: &Range) -> (usize, 
 
 // -----------------------------------------------------------
 
-pub fn type_call(t: String) -> String
-{
-    // my_function()      t="!MyRutrnType"  =>  "MyRutrnType"
-    if t.starts_with("!") {
-        return t[1 ..].to_string();
-    }
-    return "".to_string();
-}
+// pub fn type_call(t: String) -> String
+// {
+//     // my_function()      t="!MyRutrnType"  =>  "MyRutrnType"
+//     if t.starts_with("!") {
+//         return t[1 ..].to_string();
+//     }
+//     return "".to_string();
+// }
 
-pub fn type_deindex(t: String) -> String
-{
-    // Used in this scenario: for x in my_list
-    // t="[MyType]"  =>  "MyType"
-    if t.starts_with("[") && t.ends_with("]") {
-        return t[1 .. t.len()-1].to_string();
-    }
-    return "".to_string();
-}
+// pub fn type_deindex(t: String) -> String
+// {
+//     // Used in this scenario: for x in my_list
+//     // t="[MyType]"  =>  "MyType"
+//     if t.starts_with("[") && t.ends_with("]") {
+//         return t[1 .. t.len()-1].to_string();
+//     }
+//     return "".to_string();
+// }
 
 pub fn type_zerolevel_comma_split(t: &str) -> Vec<String> {
     let mut parts: Vec<String> = Vec::new();

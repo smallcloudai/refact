@@ -45,6 +45,7 @@ impl Document {
         Self { doc_path: doc_path.clone(),  doc_text: None }
     }
 
+    #[cfg(feature="vecdb")]
     pub async fn update_text_from_disk(&mut self, gcx: Arc<ARwLock<GlobalContext>>) -> Result<(), String> {
         match read_file_from_disk(load_privacy_if_needed(gcx.clone()).await, &self.doc_path).await {
             Ok(res) => {
@@ -68,6 +69,7 @@ impl Document {
         self.doc_text = Some(Rope::from_str(text));
     }
 
+    #[cfg(feature="vecdb")]
     pub fn text_as_string(&self) -> Result<String, String> {
         if let Some(r) = &self.doc_text {
             return Ok(r.to_string());

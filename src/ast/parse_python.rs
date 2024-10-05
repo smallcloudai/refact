@@ -1,8 +1,9 @@
 use indexmap::IndexMap;
-use tree_sitter::{Node, Parser, Point, Range, Query, QueryCursor};
+use tree_sitter::{Node, Parser, Query, QueryCursor};
+// use tree_sitter::{Point, Range};
 use tree_sitter_python::language;
 
-use crate::ast::ast_structs::{AstDefinition, AstUsage};
+use crate::ast::ast_structs::AstDefinition;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::parse_common::{ContextAnyParser, Thing, type_deindex_n, type_zerolevel_comma_split};
 
@@ -17,21 +18,21 @@ pub struct ContextPy<'a> {
     pub class1: Query,
 }
 
-fn generate_usage(cx: &mut ContextPy, node: &Node, debug_note: &str, lhs_target: &str, rhs_target: &String) {
-    // print!("\x1b[34m<usage {} lhs_type={:?} rhs_type={:?}>\x1b[0m", debug_note, lhs_target, rhs_target);
-}
+// fn generate_usage(cx: &mut ContextPy, node: &Node, debug_note: &str, lhs_target: &str, rhs_target: &String) {
+//     // print!("\x1b[34m<usage {} lhs_type={:?} rhs_type={:?}>\x1b[0m", debug_note, lhs_target, rhs_target);
+// }
 
 // fn py_type(cx: &ContextPy, node: &Node) -> Option<String> {
 //     return Some(format!("TYPE[{}]", &cx.ap.code[node.byte_range()]));
 // }
 
-fn py_lvalue(cx: &ContextPy, node: &Node) -> Option<String> {
-    return Some(format!("LVALUE[{}]", &cx.ap.code[node.byte_range()]));
-}
+// fn py_lvalue(cx: &ContextPy, node: &Node) -> Option<String> {
+//     return Some(format!("LVALUE[{}]", &cx.ap.code[node.byte_range()]));
+// }
 
-fn py_rvalue(cx: &ContextPy, node: &Node) -> Option<String> {
-    return Some(format!("VAL[{}]", &cx.ap.code[node.byte_range()]));
-}
+// fn py_rvalue(cx: &ContextPy, node: &Node) -> Option<String> {
+//     return Some(format!("VAL[{}]", &cx.ap.code[node.byte_range()]));
+// }
 
 fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
@@ -60,7 +61,7 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
         }
     }
 
-    let right_node = node.child_by_field_name("right");
+    // let right_node = node.child_by_field_name("right");
     // let rhs_type = if let Some(x) = right_node { py_type_of_expr(cx, &x, path) } else { "".to_string() };
 
     println!();
@@ -93,7 +94,7 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
     // type[generic_type[identifier[List]type_parameter[[type[identifier[Goat]]]]]]]
     // type[generic_type[identifier[List]type_parameter[[type[generic_type[identifier[Optional]type_parameter[[type[identifier[Goat]]]]]]]]
     let node = node.unwrap();
-    let node_text = cx.ap.code[node.byte_range()].to_string();
+    // let node_text = cx.ap.code[node.byte_range()].to_string();
     // let spaces = "    ".repeat(level);
     // println!("{}TYPE_EXPLICIT {:?} {:?}", spaces, node.kind(), node_text);
     match node.kind() {
@@ -162,7 +163,7 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
             let mut comma_sep_types = String::new();
             for i in 0 .. node.child_count() {
                 let child = node.child(i).unwrap();
-                let child_text = cx.ap.code[child.byte_range()].to_string();
+                // let child_text = cx.ap.code[child.byte_range()].to_string();
                 // println!("{}TYPE_PARAMETER_LOOP {:?} {:?}", spaces, child.kind(), child_text);
                 comma_sep_types.push_str(match child.kind() {
                     "[" | "]" => "".to_string(),
@@ -206,10 +207,6 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
 //         }
 //     }
 // }
-
-fn py_path(cx: &mut ContextPy, node: &Node, path: &Vec<String>)
-{
-}
 
 fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
@@ -420,6 +417,7 @@ pub fn py_make_cx(code: &str) -> ContextPy
     cx
 }
 
+#[allow(dead_code)]
 pub fn parse(code: &str)
 {
     let mut cx = py_make_cx(code);
@@ -447,18 +445,6 @@ pub fn parse(code: &str)
         // // integer[12]]
         // tuple3: Query::new(&language(), "(assignment right: _ @rhs)").unwrap(),
 
-fn tree_any_node_of_type<'a>(node: Node<'a>, of_type: &str) -> Option<Node<'a>>
-{
-    if node.kind() == of_type {
-        return Some(node);
-    }
-    for i in 0..node.child_count() {
-        if let Some(found) = tree_any_node_of_type(node.child(i).unwrap(), of_type) {
-            return Some(found);
-        }
-    }
-    None
-}
 
 #[cfg(test)]
 mod tests {
@@ -468,6 +454,19 @@ mod tests {
     fn test_parse_py_goat() {
         let code = include_str!("alt_testsuite/py_goat_library.py");
         parse(code);
+    }
+
+    fn tree_any_node_of_type<'a>(node: Node<'a>, of_type: &str) -> Option<Node<'a>>
+    {
+        if node.kind() == of_type {
+            return Some(node);
+        }
+        for i in 0..node.child_count() {
+            if let Some(found) = tree_any_node_of_type(node.child(i).unwrap(), of_type) {
+                return Some(found);
+            }
+        }
+        None
     }
 
     #[test]
@@ -482,7 +481,7 @@ mod tests {
             ("x: Dict[str, Any]", "EXPECTED_RESULT_7"),
         ];
 
-        for (code, expected) in examples {
+        for (code, _expected) in examples {
             let mut cx = py_make_cx(code);
             let tree = cx.ap.sitter.parse(code, None).unwrap();
             let path = vec!["dummy".to_string()];
