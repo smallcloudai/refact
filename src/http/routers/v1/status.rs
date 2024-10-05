@@ -34,7 +34,7 @@ pub async fn handle_v1_rag_status(
     };
 
     #[cfg(not(feature="vecdb"))]
-    let (maybe_vecdb_status, vecdb_message) = (false, "not_configured".to_string());
+    let (_, vecdb_message) = (vec_db_module, "not_configured".to_string());
 
     let (maybe_ast_status, ast_message) = match &ast_module {
         Some(ast_service) => {

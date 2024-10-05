@@ -78,7 +78,7 @@ pub fn lowlevel_file_markup(
 impl AstBasedFileSplitter {
     pub fn new(window_size: usize) -> Self {
         Self {
-            fallback_file_splitter: FileSplitter::new(window_size),
+            fallback_file_splitter: crate::vecdb::vdb_file_splitter::FileSplitter::new(window_size),
         }
     }
 

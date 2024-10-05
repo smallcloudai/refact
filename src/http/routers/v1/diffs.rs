@@ -162,7 +162,7 @@ fn validate_post(post: &DiffPost) -> Result<(), ScratchError> {
 }
 
 #[allow(dead_code)]
-async fn _sync_documents_ast_vecdb(gcx: Arc<ARwLock<GlobalContext>>, docs: Vec<Document>) -> Result<(), ScratchError>
+async fn _sync_documents_ast_vecdb(gcx: Arc<ARwLock<GlobalContext>>, _docs: Vec<Document>) -> Result<(), ScratchError>
 {
     // XXX: blocking should happen before any tool calls, not after applying diffs
 
@@ -177,7 +177,7 @@ async fn _sync_documents_ast_vecdb(gcx: Arc<ARwLock<GlobalContext>>, docs: Vec<D
         let vec_db_guard = gcx_locked.vec_db.lock().await;
         vec_db_guard.as_ref().map(|v| v.vectorizer_service.clone())
     } {
-        crate::vecdb::vdb_thread::vectorizer_enqueue_files(vservice, &docs, true).await;
+        crate::vecdb::vdb_thread::vectorizer_enqueue_files(vservice, &_docs, true).await;
         true
     } else {
         false
