@@ -1,12 +1,13 @@
+// use std::ascii::Char;
 use indexmap::IndexMap;
 use tree_sitter::{Node, Parser, Range};
 
-use crate::ast::ast_structs::AstDefinition;
+use crate::ast::ast_structs::{AstDefinition, AstUsage};
 
 
-pub struct Thing<'a> {
-    pub assigned_rvalue: Option<Node<'a>>,
-    pub type_explicit: Option<Node<'a>>,
+// pub struct Thing<'a> {
+pub struct Thing {
+    pub thing_kind: char,
     pub type_resolved: String,
 }
 
@@ -15,8 +16,15 @@ pub struct ContextAnyParser<'a> {
     pub last_end_byte: usize,
     pub code: &'a str,
     pub defs: IndexMap<String, AstDefinition>,
-    pub things: IndexMap<String, Thing<'a>>,
-    // pub draft: Vec<(String, Thing<'a>)>,
+    pub things: IndexMap<String, Thing>,
+    pub usages: Vec<(String, AstUsage)>,
+    // Aliases:
+    // from hello.world import MyClass       ->   (file::MyClass, hello::world::MyClass)
+    // from hello.world import MyClass as A  ->   (file::A, hello::world::MyClass)
+    pub alias: IndexMap<String, String>,
+    // Star imports are bad for resolving stuff
+    // from hello.world import *             ->   any unresolved usage of MyClass becomes ?::hello::world::MyClass, ?::MyClass
+    pub star_imports: Vec<String>,
 }
 
 impl<'a> ContextAnyParser<'a> {
@@ -61,6 +69,39 @@ impl<'a> ContextAnyParser<'a> {
         }
         self.whitespace2(node);
     }
+
+    pub fn dump(&self) {
+        println!("\n  -- things -- ");
+        for (key, thing) in self.things.iter() {
+            println!("{:<40} {} {}", key, thing.thing_kind, thing.type_resolved);
+        }
+        println!("  -- /things --\n");
+
+        println!("\n  -- usages -- ");
+        for (uat, u) in self.usages.iter() {
+            println!("{:<40} {:03} {:?}", uat, u.uline, u);
+        }
+        println!("  -- /usages -- ");
+
+        println!("\n  -- defs -- ");
+        for (key, def) in self.defs.iter() {
+            println!("{:<40} {:?}", key, def);
+        }
+        println!("  -- /defs -- ");
+
+        println!("\n  -- alias -- ");
+        for (key, dest) in self.alias.iter() {
+            println!("{:<40} -> {:?}", key, dest);
+        }
+        println!("  -- /alias -- ");
+
+        println!("\n  -- star imports -- ");
+        for star in self.star_imports.iter() {
+            println!("{:<40}", star);
+        }
+        println!("  -- /star -- ");
+
+    }
 }
 
 
@@ -79,6 +120,19 @@ pub fn line12mid_from_ranges(full_range: &Range, body_range: &Range) -> (usize, 
 
 
 // -----------------------------------------------------------
+
+// fn tree_any_node_of_type<'a>(node: Node<'a>, of_type: &str) -> Option<Node<'a>>
+// {
+//     if node.kind() == of_type {
+//         return Some(node);
+//     }
+//     for i in 0..node.child_count() {
+//         if let Some(found) = tree_any_node_of_type(node.child(i).unwrap(), of_type) {
+//             return Some(found);
+//         }
+//     }
+//     None
+// }
 
 // pub fn type_call(t: String) -> String
 // {

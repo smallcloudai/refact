@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 use tree_sitter::{Node, Parser, Query, QueryCursor};
 use tree_sitter_python::language;
 
-use crate::ast::ast_structs::AstDefinition;
+use crate::ast::ast_structs::{AstDefinition, AstUsage};
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::parse_common::{ContextAnyParser, Thing, type_deindex_n, type_zerolevel_comma_split};
 
@@ -17,7 +17,59 @@ pub struct ContextPy<'a> {
     pub class1: Query,
 }
 
-fn py_simple_resolve(cx: &mut ContextPy, node: Node, path: &Vec<String>, look_for: &String) -> Option<String>
+fn py_import_save<'a>(cx: &mut ContextPy<'a>, path: &Vec<String>, dotted_from: String, import_what: String, import_as: String)
+{
+    let save_as = format!("{}::{}", path.join("::"), import_as);
+    let mut from_list = dotted_from.split(".").map(|x| { String::from(x.trim()) }).filter(|x| { !x.is_empty() }).collect::<Vec<String>>();
+    from_list.push(import_what);
+    cx.ap.alias.insert(save_as, from_list.join("::"));
+}
+
+fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
+{
+    let mut dotted_from = String::new();
+    let mut just_do_it = false;
+    let mut from_clause = false;
+    for i in 0..node.child_count() {
+        let child = node.child(i).unwrap();
+        let child_text = cx.ap.code[child.byte_range()].to_string();
+        match child.kind() {
+            "import" => {
+                just_do_it = true;
+            },
+            "from" => {
+                from_clause = true;
+            },
+            "dotted_name" => {
+                if just_do_it {
+                    py_import_save(cx, path, dotted_from.clone(), child_text.clone(), child_text.clone());
+                } else if from_clause {
+                    dotted_from = child_text.clone();
+                }
+            },
+            "aliased_import" => {
+                let mut import_what = String::new();
+                for i in 0..child.child_count() {
+                    let subch = child.child(i).unwrap();
+                    let subch_text = cx.ap.code[subch.byte_range()].to_string();
+                    // dotted_name[identifier[os]]·as[as]·identifier[ooooos]]
+                    match subch.kind() {
+                        "dotted_name" => { import_what = subch_text; },
+                        "as" => { },
+                        "identifier" => { py_import_save(cx, path, dotted_from.clone(), import_what.clone(), subch_text); },
+                        _ => {},
+                    }
+                }
+            },
+            "," => {},
+            _ => {
+                println!("\nIMPORT {:?} {:?}", child.kind(), child_text);
+            }
+        }
+    }
+}
+
+fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) -> Option<String>
 {
     match look_for.as_str() {
         "Any" => { return Some("*".to_string()); },
@@ -40,13 +92,19 @@ fn py_simple_resolve(cx: &mut ContextPy, node: Node, path: &Vec<String>, look_fo
 fn py_resolve_type_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<String>) -> String
 {
     let node_text = cx.ap.code[node.byte_range()].to_string();
-    // cx.ap.recursive_print_with_red_brackets(&node);
+    // cx.ap.recursive_print_with_red_brackets(&node)
     // identifier[Goat]
     // attribute[identifier[my_module].identifier[Animal]]
     match node.kind() {
         "identifier" => {
-            if let Some(success) = py_simple_resolve(cx, node, path, &node_text) {
-                // create usage
+            if let Some(success) = py_simple_resolve(cx, path, &node_text) {
+                cx.ap.usages.push((path.join("::"), AstUsage {
+                    targets_for_guesswork: vec![],
+                    // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
+                    resolved_as: success.clone(),
+                    debug_hint: format!("resolve/id"),
+                    uline: node.range().start_point.row,
+                }));
                 return success;
             }
         },
@@ -59,7 +117,7 @@ fn py_resolve_type_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<St
                     "identifier" => {
                         let ident_text = cx.ap.code[child.byte_range()].to_string();
                         if path_builder.is_empty() {  // first
-                            if let Some(success) = py_simple_resolve(cx, node, path, &ident_text) {
+                            if let Some(success) = py_simple_resolve(cx, path, &ident_text) {
                                 path_builder = success.split("::").map(String::from).collect::<Vec<String>>();
                             } else {
                                 return format!("ERR/NOTFOUND/{}", ident_text);
@@ -71,7 +129,12 @@ fn py_resolve_type_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<St
                     _ => {},
                 }
             }
-            // create usage
+            cx.ap.usages.push((path.join("::"), AstUsage {
+                targets_for_guesswork: vec![], // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
+                resolved_as: path_builder.join("::"),
+                debug_hint: format!("resolve/dot"),
+                uline: node.range().start_point.row,
+            }));
             return path_builder.join("::");
         },
         _ => {}
@@ -121,14 +184,12 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
         let var_path = [path.clone(), vec!["hui".to_string()]].concat();
         if is_list {
             cx.ap.things.insert(var_path.join("::"), Thing {
-                assigned_rvalue: None,
-                type_explicit: None,
+                thing_kind: 'v',
                 type_resolved: type_deindex_n(lhs_explicit_type_str, i)
             });
         } else {
             cx.ap.things.insert(var_path.join("::"), Thing {
-                assigned_rvalue: None,
-                type_explicit: None,
+                thing_kind: 'v',
                 type_resolved: lhs_explicit_type_str,
             });
         }
@@ -248,6 +309,7 @@ fn py_type_of_expr(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>) -
         },
         "integer" => { "int".to_string() },
         "float" => { "float".to_string() },
+        //  | "str" | "bool"
         // call
         "identifier" => {
             cx.ap.code[node.byte_range()].to_string()
@@ -313,8 +375,7 @@ fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
     });
 
     cx.ap.things.insert(class_path.join("::"), Thing {
-        assigned_rvalue: None,
-        type_explicit: None,
+        thing_kind: 's',
         type_resolved: format!("!{}", class_path.join("::")),   // this is about constructor in python, name of the class() is used as constructor, return type is the class
     });
 
@@ -382,8 +443,7 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
     let returns_type = py_type_explicit(cx, returns, path, 0);
 
     cx.ap.things.insert(func_path.join("::"), Thing {
-        assigned_rvalue: None,
-        type_explicit: None,
+        thing_kind: 'f',
         type_resolved: returns_type,
     });
 
@@ -418,8 +478,7 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
         }
         let param_path = [func_path.clone(), vec![param_name.clone()]].concat();
         cx.ap.things.insert(param_path.join("::"), Thing {
-            assigned_rvalue: None,
-            type_explicit: None,
+            thing_kind: 'p',
             type_resolved,
         });
     }
@@ -447,15 +506,12 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
         "function_definition" => {
             py_function(cx, node, path);
         },
-        "import_from_statement" => {
-            cx.ap.recursive_print_with_red_brackets(node);
-            return;
-        },
         "assignment" => {
             // cx.ap.just_print(node);
             cx.ap.recursive_print_with_red_brackets(node);
             py_assignment(cx, node, path);
         }
+        "import_statement" | "import_from_statement" => { py_import(cx, node, path); }
         // "expression_statement" => {
         //     print!("\nexpression_statement\n");
         //     cx.ap.recursive_print_with_red_brackets(node);
@@ -495,6 +551,9 @@ pub fn py_make_cx(code: &str) -> ContextPy
             code,
             defs: IndexMap::new(),
             things: IndexMap::new(),
+            usages: vec![],
+            alias: IndexMap::new(),
+            star_imports: vec![],
         },
         pass2: vec![],
         // assignment[pattern_list[identifier[aaa1],·identifier[aaa2]]·=·expression_list[integer[13],·integer[14]]]
@@ -518,18 +577,7 @@ pub fn parse(code: &str)
     let tree = cx.ap.sitter.parse(code, None).unwrap();
     let path = vec!["file".to_string()];
     py_traverse(&mut cx, &tree.root_node(), &path);
-
-    println!("\n  -- things -- ");
-    for (key, thing) in cx.ap.things.iter() {
-        println!("{:<40} assigned_rvalue={:?}, type_explicit={:?}, type_resolved={:?}", key, thing.assigned_rvalue, thing.type_explicit, thing.type_resolved);
-    }
-    println!("  -- /things --\n");
-
-    println!("\n  -- defs -- ");
-    for (key, def) in cx.ap.defs.iter() {
-        println!("{:<40} {:?}", key, def);
-    }
-    println!("\n  -- /defs -- ");
+    cx.ap.dump();
 }
 
 
@@ -541,18 +589,5 @@ mod tests {
     fn test_parse_py_goat() {
         let code = include_str!("alt_testsuite/py_torture.py");
         parse(code);
-    }
-
-    fn tree_any_node_of_type<'a>(node: Node<'a>, of_type: &str) -> Option<Node<'a>>
-    {
-        if node.kind() == of_type {
-            return Some(node);
-        }
-        for i in 0..node.child_count() {
-            if let Some(found) = tree_any_node_of_type(node.child(i).unwrap(), of_type) {
-                return Some(found);
-            }
-        }
-        None
     }
 }
