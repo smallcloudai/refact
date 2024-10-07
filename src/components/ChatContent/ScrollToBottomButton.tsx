@@ -12,14 +12,14 @@ export const ScrollToBottomButton = ({
     <IconButton
       style={{
         position: "absolute",
-        width: 50,
-        height: 50,
-        bottom: 20,
-        right: 20,
+        width: 35,
+        height: 35,
+        bottom: 15,
+        right: 15,
       }}
       onClick={onClick}
     >
-      <ArrowDownIcon width={25} height={25} />
+      <ArrowDownIcon width={21} height={21} />
     </IconButton>
   );
 };
