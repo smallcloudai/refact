@@ -1,6 +1,7 @@
 import os, sys
 from typing import List, Callable, Optional, Dict, Tuple
 import os as ooooos
+import multiprocessing
 from multiprocessing import Process as NotAProcess, TimeoutError
 from os. path import join as ospj, split as osps
 
@@ -9,12 +10,15 @@ print("ls1", ooooos.listdir("."))
 # works
 my_int1 = 10
 my_int2: int = 11
+my_int2 = 22
 my_int3: Optional[int] = 12
+my_int4 = sum([1337])
 aaa1, aaa2 = 13, 14
 (aaa3, aaa4) = (15, 16)
+aaa5: Tuple[int, float] = (20, 21)
 
 # doesn't work:
-aaa5, (aaa6, aaa7) = 17, (18, 19)
+aaa6, (aaa7, aaa8) = 16, (17, 18)
 
 class WobbleNoble:
     def __init__(self):
@@ -64,6 +68,7 @@ def list_directory():
 
 
 if __name__ == '__main__':
+    process: multiprocessing.Process
     process = NotAProcess(target=list_directory)
     process.start()
     process.join()

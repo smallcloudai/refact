@@ -79,7 +79,7 @@ impl<'a> ContextAnyParser<'a> {
 
         println!("\n  -- usages -- ");
         for (uat, u) in self.usages.iter() {
-            println!("{:<40} {:03} {:?}", uat, u.uline, u);
+            println!("{:<40} {:03} {:?}", uat, u.uline + 1, u);
         }
         println!("  -- /usages -- ");
 

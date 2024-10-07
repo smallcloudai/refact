@@ -34,12 +34,8 @@ fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
         let child = node.child(i).unwrap();
         let child_text = cx.ap.code[child.byte_range()].to_string();
         match child.kind() {
-            "import" => {
-                just_do_it = true;
-            },
-            "from" => {
-                from_clause = true;
-            },
+            "import" => { just_do_it = true; },
+            "from" => { from_clause = true; },
             "dotted_name" => {
                 if just_do_it {
                     py_import_save(cx, path, dotted_from.clone(), child_text.clone(), child_text.clone());
@@ -80,19 +76,22 @@ fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) 
     while !current_path.is_empty() {
         let mut hypothetical = current_path.clone();
         hypothetical.push(look_for.clone());
-        let thing_maybe = cx.ap.things.get(&hypothetical.join("::"));
+        let hypothtical_str = hypothetical.join("::");
+        let thing_maybe = cx.ap.things.get(&hypothtical_str);
         if thing_maybe.is_some() {
-            return Some(hypothetical.join("::"));
+            return Some(hypothtical_str);
+        }
+        if let Some(an_alias) = cx.ap.alias.get(&hypothtical_str) {
+            return Some(an_alias.clone());
         }
         current_path.pop();
     }
     return None;
 }
 
-fn py_resolve_type_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<String>) -> String
+fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<String>) -> String
 {
     let node_text = cx.ap.code[node.byte_range()].to_string();
-    // cx.ap.recursive_print_with_red_brackets(&node)
     // identifier[Goat]
     // attribute[identifier[my_module].identifier[Animal]]
     match node.kind() {
@@ -115,12 +114,15 @@ fn py_resolve_type_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<St
                 match child.kind() {
                     "." => { },
                     "identifier" => {
+                        // TODO: create usages along the path
                         let ident_text = cx.ap.code[child.byte_range()].to_string();
                         if path_builder.is_empty() {  // first
                             if let Some(success) = py_simple_resolve(cx, path, &ident_text) {
                                 path_builder = success.split("::").map(String::from).collect::<Vec<String>>();
+                            // } else if Some(alias) = py_simple_resolve(cx, path, &ident_text) {
+                            //     path_builder = vec!["?".to_string(), ident_text];
                             } else {
-                                return format!("ERR/NOTFOUND/{}", ident_text);
+                                path_builder = vec!["?".to_string(), ident_text];
                             }
                         } else { // next
                             path_builder.push(ident_text);
@@ -148,7 +150,7 @@ fn py_resolve_type_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<St
 
 fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
-    let mut lhs_tuple: Vec<(Option<Node>, Option<Node>)> = Vec::new();
+    let mut lhs_tuple: Vec<(Node, Option<Node>)> = Vec::new();
     let mut is_list = false;
     for query in [&cx.ass1, &cx.ass2, &cx.ass3, &cx.ass4] {
         let mut query_cursor = QueryCursor::new();
@@ -166,47 +168,60 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
                     lhs_type = Some(capture.node);
                 }
             }
-            lhs_tuple.push((lhs_lvalue, lhs_type));
+            if lhs_lvalue.is_some() {
+                lhs_tuple.push((lhs_lvalue.unwrap(), lhs_type));
+            }
         }
         if !lhs_tuple.is_empty() {
             break;
         }
     }
 
+    // save
     let right_node = node.child_by_field_name("right");
-    let rhs = py_type_of_expr(cx, right_node, path);
-
-    // println!();
-    for i in 0 .. lhs_tuple.len() {
-        let (lhs_lvalue, lhs_explicit_type_node) = lhs_tuple[i];
-        let lhs_explicit_type_str = py_type_explicit(cx, lhs_explicit_type_node, path, 0);
-        println!("is_list={} LVALUE[{:?}] {} = {}", is_list, lhs_lvalue, lhs_explicit_type_str, rhs);
-        let var_path = [path.clone(), vec!["hui".to_string()]].concat();
+    let rhs_type = py_type_of_expr(cx, right_node, path);
+    for n in 0 .. lhs_tuple.len() {
+        let (lhs_lvalue, lvalue_type_node) = lhs_tuple[n];
+        let lvalue_type = py_type_generic(cx, lvalue_type_node, path, 0);
         if is_list {
-            cx.ap.things.insert(var_path.join("::"), Thing {
-                thing_kind: 'v',
-                type_resolved: type_deindex_n(lhs_explicit_type_str, i)
-            });
+            py_add_var(cx, lhs_lvalue, lvalue_type, type_deindex_n(rhs_type.clone(), n), path);
         } else {
-            cx.ap.things.insert(var_path.join("::"), Thing {
-                thing_kind: 'v',
-                type_resolved: lhs_explicit_type_str,
-            });
+            py_add_var(cx, lhs_lvalue, lvalue_type, rhs_type.clone(), path);
         }
     }
 }
 
+fn py_add_var(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
+{
+    let mut lvalue_path = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path);
+    if lvalue_path.starts_with("ERR/RESOLVE") {
+        let child_text = cx.ap.code[lhs_lvalue.byte_range()].to_string();
+        // make sure doesn't have dots?
+        lvalue_path = [path.clone(), vec![child_text]].concat().join("::");
+    }
+    let mut mut_good_idea_to_write = true;
+    if let Some(existing_thing) = cx.ap.things.get(&lvalue_path) {
+        mut_good_idea_to_write = existing_thing.type_resolved == "NO_GENERIC" || existing_thing.type_resolved.is_empty();
+    }
+    // println!("\npy_add_var lvalue_path={} lvalue_type={} <= rhs_type={} mut_good_idea_to_write={}", lvalue_path, lvalue_type, rhs_type, mut_good_idea_to_write);
+    if mut_good_idea_to_write {
+        cx.ap.things.insert(lvalue_path, Thing {
+            thing_kind: 'p',
+            type_resolved: if lvalue_type == "NO_GENERIC" || lvalue_type.is_empty() || lvalue_type.starts_with("ERR") { rhs_type } else { lvalue_type },
+        });
+    }
+}
 
-fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, level: usize) -> String {
+fn py_type_generic(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, level: usize) -> String {
     if node.is_none() {
-        return format!("NO_EXPLICIT_TYPE")
+        return format!("NO_GENERIC")
     }
     // type[generic_type[identifier[List]type_parameter[[type[identifier[Goat]]]]]]]
     // type[generic_type[identifier[List]type_parameter[[type[generic_type[identifier[Optional]type_parameter[[type[identifier[Goat]]]]]]]]
     let node = node.unwrap();
     match node.kind() {
-        "type" => { py_type_explicit(cx, node.child(0), path, level+1) },
-        "identifier" | "attribute" => { py_resolve_type_creating_usages(cx, node, path) },
+        "type" => { py_type_generic(cx, node.child(0), path, level+1) },
+        "identifier" | "attribute" => { py_resolve_dotted_creating_usages(cx, node, path) },
         "list" => { format!("CALLABLE_ARGLIST") },
         "generic_type" => {
             let mut inside_type = String::new();
@@ -224,8 +239,8 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
                     ("identifier", "Callable") => todo = "Callable",
                     ("identifier", "Optional") => todo = "Optional",
                     ("identifier", _) | ("attribute", _) => inside_type = format!("ERR/ID/{}", child_text),
-                    // ("identifier", _) => { inside_type = py_resolve_type_creating_usages(cx, child, path); },
-                    ("type_parameter", _) => inside_type = py_type_explicit(cx, Some(child), path, level+1),
+                    // ("identifier", _) => { inside_type = py_resolve_dotted_creating_usages(cx, child, path); },
+                    ("type_parameter", _) => inside_type = py_type_generic(cx, Some(child), path, level+1),
                     (_, _) => inside_type = format!("ERR/GENERIC/{:?}", child.kind()),
                 }
             }
@@ -262,7 +277,7 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
                 let child = node.child(i).unwrap();
                 comma_sep_types.push_str(match child.kind() {
                     "[" | "]" => "".to_string(),
-                    "type" | "identifier" => py_type_explicit(cx, Some(child), path, level+1),
+                    "type" | "identifier" => py_type_generic(cx, Some(child), path, level+1),
                     "," => ",".to_string(),
                     _ => format!("SOMETHING/{:?}/{}", child.kind(), cx.ap.code[child.byte_range()].to_string())
                 }.as_str());
@@ -274,7 +289,6 @@ fn py_type_explicit(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, 
         }
     }
 }
-
 
 fn py_type_of_expr(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>) -> String
 {
@@ -312,14 +326,22 @@ fn py_type_of_expr(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>) -
         //  | "str" | "bool"
         // call
         "identifier" => {
+            // py_resolve_dotted_creating_usages
             cx.ap.code[node.byte_range()].to_string()
         },
         _ => {
-            format!("UNKNOWN[{:?}{}]", node.kind(), cx.ap.code[node.byte_range()].to_string())
+            format!("ERR/EXPR/{:?}/{}", node.kind(), cx.ap.code[node.byte_range()].to_string())
         }
     }
 }
 
+// pub fn py_parse_body(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
+// {
+//     match node.kind() {
+//         "function_definition" => { py_function(cx, &child, path); },
+//         "class_definition" => { py_class(cx, &child, path); },
+//         _ =>
+// }
 
 fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
@@ -350,7 +372,6 @@ fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
             },
             _ => {}
         }
-        cx.ap.just_print(&child);
     }
 
     if class_name == "" {
@@ -440,7 +461,7 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
         body_line2,
     });
 
-    let returns_type = py_type_explicit(cx, returns, path, 0);
+    let returns_type = py_type_generic(cx, returns, path, 0);
 
     cx.ap.things.insert(func_path.join("::"), Thing {
         thing_kind: 'f',
@@ -464,7 +485,7 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
                 if let Some(param_name_node) = param_node.child(0) {
                     param_name = cx.ap.code[param_name_node.byte_range()].to_string();
                 }
-                type_resolved = py_type_explicit(cx, param_node.child_by_field_name("type"), &func_path, 0);
+                type_resolved = py_type_generic(cx, param_node.child_by_field_name("type"), &func_path, 0);
             },
             // "list_splat_pattern" for *args
             // "dictionary_splat_pattern" for **kwargs
@@ -507,8 +528,7 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
             py_function(cx, node, path);
         },
         "assignment" => {
-            // cx.ap.just_print(node);
-            cx.ap.recursive_print_with_red_brackets(node);
+            // cx.ap.recursive_print_with_red_brackets(node);
             py_assignment(cx, node, path);
         }
         "import_statement" | "import_from_statement" => { py_import(cx, node, path); }
