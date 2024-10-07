@@ -96,9 +96,19 @@ const usePinActions = () => {
             diffPreview(patch);
           }
         })
-        .catch((error: Error) => {
+        .catch((error: Error | { data: { detail: string } }) => {
           stopFileAnimation(fileName);
-          setErrorMessage({ type: "error", text: error.message });
+          if ("message" in error) {
+            setErrorMessage({
+              type: "error",
+              text: "Failed to open patch: " + error.message,
+            });
+          } else {
+            setErrorMessage({
+              type: "error",
+              text: "Failed to open patch: " + error.data.detail,
+            });
+          }
         });
     },
     [diffPreview, getPatch, messages, startFileAnimation, stopFileAnimation],
@@ -143,14 +153,19 @@ const usePinActions = () => {
             void onSubmit({ chunks, toApply });
           }
         })
-        .catch((error: Error) => {
+        .catch((error: Error | { data: { detail: string } }) => {
           stopFileAnimation(fileName);
-          setErrorMessage({
-            type: "error",
-            text: error.message
-              ? "Failed to apply patch: " + error.message
-              : "Failed to apply patch.",
-          });
+          if ("message" in error) {
+            setErrorMessage({
+              type: "error",
+              text: "Failed to apply patch: " + error.message,
+            });
+          } else {
+            setErrorMessage({
+              type: "error",
+              text: "Failed to apply patch: " + error.data.detail,
+            });
+          }
         });
     },
     [
@@ -225,13 +240,13 @@ const MaybePinButton: React.FC<{
           </Flex>
         </Flex>
         {errorMessage && errorMessage.type === "error" && (
-          <ErrorCallout onClick={resetErrorMessage} timeout={3000}>
+          <ErrorCallout onClick={resetErrorMessage} timeout={5000}>
             {errorMessage.text}
           </ErrorCallout>
         )}
         {errorMessage && errorMessage.type === "warning" && (
           <DiffWarningCallout
-            timeout={3000}
+            timeout={5000}
             onClick={resetErrorMessage}
             message={errorMessage.text}
           />
