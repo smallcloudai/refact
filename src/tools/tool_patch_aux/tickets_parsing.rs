@@ -73,6 +73,7 @@ pub struct TicketToApply {
     #[serde(default)]
     pub all_symbols: Vec<Arc<AstDefinition>>,
     pub code: String,
+    pub hint_message: String,
 }
 
 pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> String {
@@ -212,7 +213,10 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<T
         let line = lines[line_num];
         if line.contains("📍") {
             match process_ticket(gcx.clone(), &lines, line_num).await {
-                Ok((new_line_num, ticket)) => {
+                Ok((new_line_num, mut ticket)) => {
+                    if line_num > 0 {  // if there is something to put to the extra context
+                        ticket.hint_message = lines[0..line_num - 1].iter().join(" ");
+                    }
                     line_num = new_line_num;
                     tickets.push(ticket);
                 }

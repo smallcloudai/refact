@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use arrow::compute::kernels::length::length;
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
@@ -18,7 +17,6 @@ use crate::subchat::subchat_single;
 use crate::tools::tool_patch::N_CHOICES;
 use crate::tools::tool_patch_aux::fs_utils::read_file;
 use crate::tools::tool_patch_aux::model_based_edit::blocks_of_code_parser::BlocksOfCodeParser;
-use crate::tools::tool_patch_aux::model_based_edit::unified_diff_parser::UnifiedDiffParser;
 use crate::tools::tool_patch_aux::tickets_parsing::TicketToApply;
 
 async fn load_tokenizer(
@@ -80,10 +78,18 @@ async fn make_chat_history(
     chat_messages.push(ChatMessage::new("user".to_string(), code));
 
     for ticket in tickets {
-        let section = format!(
-            "Modified section:\n```\n{}\n```",
-            ticket.code
-        );
+        let section = if ticket.hint_message.is_empty() {
+            format!(
+                "Modified section:\n```\n{}\n```",
+                ticket.code
+            )
+        } else {
+            format!(
+                "Hint:\n{}\nModified section:\n```\n{}\n```",
+                ticket.hint_message,
+                ticket.code
+            )
+        };
         tokens += 3 + count_tokens(&tokenizer, &section);
         chat_messages.push(ChatMessage::new("user".to_string(), section));
     }
