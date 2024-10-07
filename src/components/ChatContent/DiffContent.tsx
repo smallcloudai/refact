@@ -184,10 +184,10 @@ export const DiffTitle: React.FC<{
         key={fullPath + "-" + diffForFile.length}
       >
         {name}{" "}
-        <Text color="red" wrap="wrap">
+        <Text color="red" wrap="wrap" style={{ wordBreak: "break-all" }}>
           {removes}
         </Text>
-        <Text color="green" wrap="wrap">
+        <Text color="green" wrap="wrap" style={{ wordBreak: "break-all" }}>
           {adds}
         </Text>
       </Text>
