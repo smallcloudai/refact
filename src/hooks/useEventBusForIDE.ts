@@ -7,18 +7,25 @@ import {
   HostSettings,
   SetupHost,
 } from "../events/setup";
-import type { DiffPreviewResponse } from "../services/refact";
+import type { DiffPreviewResponse, PatchResult } from "../services/refact";
+
 export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
+
 export const ideDiffPreviewAction =
   createAction<DiffPreviewResponse>("ide/diffPreview");
+
 export const ideOpenSettingsAction = createAction("ide/openSettings");
+
 export const ideNewFileAction = createAction<string>("ide/newFile");
+
 export const ideOpenHotKeys = createAction("ide/openHotKeys");
+
 export type OpenFilePayload = {
   file_name: string;
   line?: number;
 };
 export const ideOpenFile = createAction<OpenFilePayload>("ide/openFile");
+
 export const ideOpenChatInNewTab = createAction<ChatThread>(
   "ide/openChatInNewTab",
 );
@@ -28,6 +35,10 @@ export const ideAnimateFileStart = createAction<string>(
 );
 
 export const ideAnimateFileStop = createAction<string>("ide/animateFile/stop");
+
+export const ideWriteResultsToFile = createAction<PatchResult[]>(
+  "ide/writeResultsToFile",
+);
 
 import { pathApi } from "../services/refact/path";
 
@@ -126,6 +137,14 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const writeResultsToFile = useCallback(
+    (results: PatchResult[]) => {
+      const action = ideWriteResultsToFile(results);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
   const [getPrivacyPath] = pathApi.useLazyPrivacyPathQuery();
   const [getBringYourOwnKeyPath] = pathApi.useLazyBringYourOwnKeyPathQuery();
@@ -169,5 +188,6 @@ export const useEventsBusForIDE = () => {
     // canPaste,
     stopFileAnimation,
     startFileAnimation,
+    writeResultsToFile,
   };
 };
