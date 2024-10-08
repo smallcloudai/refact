@@ -20,7 +20,7 @@ import {
   Strong,
   Button,
   Flex,
-  Box,
+  Card,
 } from "@radix-ui/themes";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
@@ -181,11 +181,12 @@ const MaybePinButton: React.FC<{
   if (isPin) {
     const [_cmd, _ticket, filePath, ..._rest] = children.split(" ");
     return (
-      <Box>
-        <Flex my="2" gap="2">
+      <Card className={styles.patch_title} size="1" variant="surface" mt="4">
+        <Flex gap="2" py="2" pl="2">
           <TruncateLeft>
             <Link
               href=""
+              title="Open file"
               onClick={(event) => {
                 event.preventDefault();
                 openFile({ file_name: filePath });
@@ -199,7 +200,7 @@ const MaybePinButton: React.FC<{
               size="1"
               onClick={() => handleShow(children)}
               disabled={disable}
-              title="Show patch"
+              title={`Show: ${children}`}
             >
               Show
             </Button>
@@ -207,7 +208,7 @@ const MaybePinButton: React.FC<{
               size="1"
               onClick={() => handleApply(children)}
               disabled={disable}
-              title="Apply patch"
+              title={`Apply: ${children}`}
             >
               Apply
             </Button>
@@ -225,7 +226,7 @@ const MaybePinButton: React.FC<{
             message={errorMessage.text}
           />
         )}
-      </Box>
+      </Card>
     );
   }
 
