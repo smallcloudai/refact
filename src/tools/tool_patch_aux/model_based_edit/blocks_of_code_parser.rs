@@ -1,7 +1,5 @@
-use std::cmp::Ordering;
 use std::path::PathBuf;
 use std::sync::Arc;
-use strsim::jaro_winkler;
 
 use crate::call_validation::DiffChunk;
 use crate::files_in_workspace::read_file_from_disk;
@@ -100,7 +98,6 @@ async fn sections_to_diff_blocks(
             .map(|x| x.trim_start().to_string())
             .collect::<Vec<_>>();
         let mut start_offset = None;
-        let mut distances = vec![];
         for file_line_idx in 0..=file_lines.len() - orig_section.hunk.len() {
             let file_lines_span = file_lines[file_line_idx..file_line_idx + orig_section.hunk.len()]
                 .iter()
@@ -109,26 +106,8 @@ async fn sections_to_diff_blocks(
             if file_lines_span == orig_section_span {
                 start_offset = Some(file_line_idx);
                 break;
-            } else {
-                let orig_section_span_str = orig_section_span.join("\n");
-                let file_lines_span_str = file_lines_span.join("\n");
-                distances.push(jaro_winkler(&orig_section_span_str, &file_lines_span_str));
             }
         }
-        let start_offset = if start_offset.is_none() {
-            let max_el = distances
-                .iter()
-                .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(Ordering::Equal));
-            if let Some((idx, val)) = max_el {
-                if val > &0.9 { Some(idx) } else { None }
-            } else {
-                None
-            }
-        } else {
-            start_offset
-        };
-
         if let Some(start_offset) = start_offset {
             diff_blocks.push(DiffBlock {
                 file_name_before: filename.clone(),
@@ -158,7 +137,7 @@ async fn sections_to_diff_blocks(
                 file_lines: Arc::new(vec![]),
             })
         } else {
-            warn!("section not found in file {}, distances: {:?}", filename.to_string_lossy(), distances);
+            warn!("section not found in file {}", filename.to_string_lossy());
             continue;
         }
     }
@@ -190,6 +169,7 @@ impl BlocksOfCodeParser {
 
 ## Notes
 - Where possible, replace entire functions instead of making multiple small changes within them for better clarity.
+- Split a single modified section into multiple if changes are located in different parts of the original file.
 - Preserve the original indentation and formatting to avoid introducing errors during code replacement.
 - Do not skip any modification, even if they are invalid or insufficient!"#.to_string();
         prompt
