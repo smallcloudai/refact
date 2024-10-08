@@ -18,11 +18,6 @@ import type { FIMDebugState } from "../hooks";
 export { updateConfig, type Config } from "../features/Config/configSlice";
 export { type FileInfo, setFileInfo } from "../features/Chat/activeFile";
 export {
-  // TODO: not used
-  setOpenFiles,
-  type OpenFilesState,
-} from "../features/OpenFiles/openFilesSlice";
-export {
   type Snippet,
   setSelectedSnippet,
 } from "../features/Chat/selectedSnippet";
