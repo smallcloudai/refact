@@ -30,7 +30,6 @@ use crate::http::routers::v1::status::handle_v1_rag_status;
 use crate::http::routers::v1::customization::handle_v1_customization;
 use crate::http::routers::v1::customization::handle_v1_config_path;
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
-use crate::http::routers::v1::diffs::{handle_v1_diff_apply, handle_v1_diff_preview, handle_v1_diff_state};
 use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
 use crate::http::routers::v1::handlers_memdb::{handle_mem_query, handle_mem_add, handle_mem_erase, handle_mem_update_used, handle_mem_block_until_vectorized, handle_mem_list, handle_ongoing_update_or_create, handle_ongoing_dump};
 use crate::http::routers::v1::patch::handle_v1_patch_single_file_from_ticket;
@@ -53,7 +52,6 @@ mod at_commands;
 mod ast;
 mod at_tools;
 mod status;
-mod diffs;
 pub mod handlers_memdb;
 mod subchat;
 mod gui_help_handlers;
@@ -101,9 +99,6 @@ pub fn make_v1_router() -> Router {
 
         .route("/code-completion-prompt", telemetry_post!(handle_v1_code_completion_prompt))
 
-        .route("/diff-apply", telemetry_post!(handle_v1_diff_apply))
-        .route("/diff-preview", telemetry_post!(handle_v1_diff_preview))
-        .route("/diff-state", telemetry_post!(handle_v1_diff_state))
         .route("/patch-single-file-from-ticket", telemetry_post!(handle_v1_patch_single_file_from_ticket))
 
         .route("/mem-query", telemetry_post!(handle_mem_query))
