@@ -82,7 +82,7 @@ function isPatchState(json: unknown): json is PatchState {
   return true;
 }
 
-type PatchResult = {
+export type PatchResult = {
   file_text: string;
   file_name_edit: string | null;
   file_name_delete: string | null;

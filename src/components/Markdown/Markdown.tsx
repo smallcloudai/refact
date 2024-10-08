@@ -20,18 +20,13 @@ import {
   Strong,
   Button,
   Flex,
-  Box,
+  Card,
 } from "@radix-ui/themes";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import { diffApi, isDetailMessage } from "../../services/refact";
-import {
-  useConfig,
-  useDiffApplyMutation,
-  useEventsBusForIDE,
-} from "../../hooks";
-import { selectOpenFiles } from "../../features/OpenFiles/openFilesSlice";
+import { useEventsBusForIDE } from "../../hooks";
 import { useSelector } from "react-redux";
 import { ErrorCallout, DiffWarningCallout } from "../Callout";
 import {
@@ -39,6 +34,7 @@ import {
   selectIsWaiting,
   selectMessages,
 } from "../../features/Chat";
+import { TruncateLeft } from "../Text";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -51,10 +47,13 @@ export type MarkdownProps = Pick<
   > & { canHavePins?: boolean };
 
 const usePinActions = () => {
-  const { diffPreview, startFileAnimation, stopFileAnimation } =
-    useEventsBusForIDE();
-  const { onSubmit, result: _result } = useDiffApplyMutation();
-  const openFiles = useSelector(selectOpenFiles);
+  const {
+    diffPreview,
+    startFileAnimation,
+    stopFileAnimation,
+    openFile,
+    writeResultsToFile,
+  } = useEventsBusForIDE();
   const messages = useSelector(selectMessages);
   const isStreaming = useSelector(selectIsStreaming);
   const isWaiting = useSelector(selectIsWaiting);
@@ -90,11 +89,8 @@ const usePinActions = () => {
         })
         .then((patch) => {
           stopFileAnimation(fileName);
-          if (patch.chunks.length === 0) {
-            setErrorMessage({ type: "warning", text: "No Chunks to show." });
-          } else {
-            diffPreview(patch);
-          }
+          // TODO: might work with patch results?
+          diffPreview(patch);
         })
         .catch((error: Error | { data: { detail: string } }) => {
           stopFileAnimation(fileName);
@@ -130,28 +126,7 @@ const usePinActions = () => {
         })
         .then((patch) => {
           stopFileAnimation(fileName);
-          const files = patch.results.reduce<string[]>((acc, cur) => {
-            const { file_name_add, file_name_delete, file_name_edit } = cur;
-            if (file_name_add) acc.push(file_name_add);
-            if (file_name_delete) acc.push(file_name_delete);
-            if (file_name_edit) acc.push(file_name_edit);
-            return acc;
-          }, []);
-
-          if (files.length === 0) {
-            setErrorMessage({ type: "warning", text: "No chunks to apply" });
-            return;
-          }
-
-          const fileIsOpen = files.some((file) => openFiles.includes(file));
-
-          if (fileIsOpen) {
-            diffPreview(patch);
-          } else {
-            const chunks = patch.chunks;
-            const toApply = chunks.map(() => true);
-            void onSubmit({ chunks, toApply });
-          }
+          writeResultsToFile(patch.results);
         })
         .catch((error: Error | { data: { detail: string } }) => {
           stopFileAnimation(fileName);
@@ -169,13 +144,11 @@ const usePinActions = () => {
         });
     },
     [
-      diffPreview,
       getPatch,
       messages,
-      onSubmit,
-      openFiles,
       startFileAnimation,
       stopFileAnimation,
+      writeResultsToFile,
     ],
   );
 
@@ -186,6 +159,7 @@ const usePinActions = () => {
     handleApply,
     resetErrorMessage,
     disable,
+    openFile,
   };
 };
 
@@ -193,47 +167,48 @@ const MaybePinButton: React.FC<{
   key?: Key | null;
   children?: React.ReactNode;
 }> = ({ children }) => {
-  const { host } = useConfig();
-
   const isPin = typeof children === "string" && children.startsWith("📍");
 
-  const { handleApply, handleShow, errorMessage, resetErrorMessage, disable } =
-    usePinActions();
+  const {
+    handleApply,
+    handleShow,
+    errorMessage,
+    resetErrorMessage,
+    disable,
+    openFile,
+  } = usePinActions();
 
   if (isPin) {
-    const [cmd, ticket, filePath] = children.split(" ");
+    const [_cmd, _ticket, filePath, ..._rest] = children.split(" ");
     return (
-      <Box>
-        <Flex my="2" gap="2" wrap="wrap-reverse">
-          <Text
-            as="p"
-            wrap="wrap"
-            style={{ lineBreak: "anywhere", wordBreak: "break-all" }}
-          >
-            {cmd} {ticket}{" "}
-            {host !== "web" || import.meta.env.MODE === "development" ? (
-              <Link
-                wrap="wrap"
-                href=""
-                // TODO: button that looks like a link
-                // disabled={disable}
-                onClick={(event) => {
-                  event.preventDefault();
-                  handleShow(children);
-                }}
-              >
-                {filePath}
-              </Link>
-            ) : (
-              filePath
-            )}
-          </Text>
+      <Card className={styles.patch_title} size="1" variant="surface" mt="4">
+        <Flex gap="2" py="2" pl="2">
+          <TruncateLeft>
+            <Link
+              href=""
+              title="Open file"
+              onClick={(event) => {
+                event.preventDefault();
+                openFile({ file_name: filePath });
+              }}
+            >
+              {filePath}
+            </Link>
+          </TruncateLeft>{" "}
           <Flex gap="2" justify="end" ml="auto">
+            <Button
+              size="1"
+              onClick={() => handleShow(children)}
+              disabled={disable}
+              title={`Show: ${children}`}
+            >
+              Show
+            </Button>
             <Button
               size="1"
               onClick={() => handleApply(children)}
               disabled={disable}
-              title="Apply patch"
+              title={`Apply: ${children}`}
             >
               Apply
             </Button>
@@ -251,7 +226,7 @@ const MaybePinButton: React.FC<{
             message={errorMessage.text}
           />
         )}
-      </Box>
+      </Card>
     );
   }
 
