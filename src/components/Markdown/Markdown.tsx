@@ -26,11 +26,7 @@ import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import { diffApi, isDetailMessage } from "../../services/refact";
-import {
-  useConfig,
-  useDiffApplyMutation,
-  useEventsBusForIDE,
-} from "../../hooks";
+import { useDiffApplyMutation, useEventsBusForIDE } from "../../hooks";
 import { selectOpenFiles } from "../../features/OpenFiles/openFilesSlice";
 import { useSelector } from "react-redux";
 import { ErrorCallout, DiffWarningCallout } from "../Callout";
@@ -51,7 +47,7 @@ export type MarkdownProps = Pick<
   > & { canHavePins?: boolean };
 
 const usePinActions = () => {
-  const { diffPreview, startFileAnimation, stopFileAnimation } =
+  const { diffPreview, startFileAnimation, stopFileAnimation, openFile } =
     useEventsBusForIDE();
   const { onSubmit, result: _result } = useDiffApplyMutation();
   const openFiles = useSelector(selectOpenFiles);
@@ -145,6 +141,7 @@ const usePinActions = () => {
 
           const fileIsOpen = files.some((file) => openFiles.includes(file));
 
+          // TODO: should open the file and apply the changes
           if (fileIsOpen) {
             diffPreview(patch);
           } else {
@@ -186,6 +183,7 @@ const usePinActions = () => {
     handleApply,
     resetErrorMessage,
     disable,
+    openFile,
   };
 };
 
@@ -193,15 +191,19 @@ const MaybePinButton: React.FC<{
   key?: Key | null;
   children?: React.ReactNode;
 }> = ({ children }) => {
-  const { host } = useConfig();
-
   const isPin = typeof children === "string" && children.startsWith("📍");
 
-  const { handleApply, handleShow, errorMessage, resetErrorMessage, disable } =
-    usePinActions();
+  const {
+    handleApply,
+    handleShow,
+    errorMessage,
+    resetErrorMessage,
+    disable,
+    openFile,
+  } = usePinActions();
 
   if (isPin) {
-    const [cmd, ticket, filePath] = children.split(" ");
+    const [_cmd, _ticket, filePath, ..._rest] = children.split(" ");
     return (
       <Box>
         <Flex my="2" gap="2" wrap="wrap-reverse">
@@ -210,25 +212,28 @@ const MaybePinButton: React.FC<{
             wrap="wrap"
             style={{ lineBreak: "anywhere", wordBreak: "break-all" }}
           >
-            {cmd} {ticket}{" "}
-            {host !== "web" || import.meta.env.MODE === "development" ? (
-              <Link
-                wrap="wrap"
-                href=""
-                // TODO: button that looks like a link
-                // disabled={disable}
-                onClick={(event) => {
-                  event.preventDefault();
-                  handleShow(children);
-                }}
-              >
-                {filePath}
-              </Link>
-            ) : (
-              filePath
-            )}
+            {/** TODO: make look nice */}
+            {/* {cmd} {ticket}{" "} */}
+            <Link
+              wrap="wrap"
+              href=""
+              onClick={(event) => {
+                event.preventDefault();
+                openFile({ file_name: filePath });
+              }}
+            >
+              {filePath}
+            </Link>
           </Text>
           <Flex gap="2" justify="end" ml="auto">
+            <Button
+              size="1"
+              onClick={() => handleShow(children)}
+              disabled={disable}
+              title="Show patch"
+            >
+              Show
+            </Button>
             <Button
               size="1"
               onClick={() => handleApply(children)}
