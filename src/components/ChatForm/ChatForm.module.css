@@ -19,11 +19,6 @@
   overflow: hidden;
 }
 
-.chatForm_ScrollArea {
-  max-height: 50vh;
-  max-height: 50dvh;
-}
-
 .file {
   display: block;
   margin: 0;
