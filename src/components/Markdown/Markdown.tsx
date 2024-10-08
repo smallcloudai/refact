@@ -34,6 +34,7 @@ import {
   selectIsWaiting,
   selectMessages,
 } from "../../features/Chat";
+import { TruncateLeft } from "../Text";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -181,16 +182,9 @@ const MaybePinButton: React.FC<{
     const [_cmd, _ticket, filePath, ..._rest] = children.split(" ");
     return (
       <Box>
-        <Flex my="2" gap="2" wrap="wrap-reverse">
-          <Text
-            as="p"
-            wrap="wrap"
-            style={{ lineBreak: "anywhere", wordBreak: "break-all" }}
-          >
-            {/** TODO: make look nice */}
-            {/* {cmd} {ticket}{" "} */}
+        <Flex my="2" gap="2">
+          <TruncateLeft>
             <Link
-              wrap="wrap"
               href=""
               onClick={(event) => {
                 event.preventDefault();
@@ -199,7 +193,7 @@ const MaybePinButton: React.FC<{
             >
               {filePath}
             </Link>
-          </Text>
+          </TruncateLeft>{" "}
           <Flex gap="2" justify="end" ml="auto">
             <Button
               size="1"
