@@ -887,6 +887,7 @@ impl SkeletonFormatter for PythonSkeletonFormatter {
 
         res_line
     }
+
     fn get_declaration_with_comments(&self,
                                      symbol: &SymbolInformation,
                                      text: &String,
