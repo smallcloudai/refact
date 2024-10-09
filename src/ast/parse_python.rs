@@ -4,7 +4,7 @@ use tree_sitter_python::language;
 
 use crate::ast::ast_structs::{AstDefinition, AstUsage};
 use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::parse_common::{ContextAnyParser, Thing, type_deindex_n, type_zerolevel_comma_split};
+use crate::ast::parse_common::{ContextAnyParser, Thing, type_deindex_n, type_call, type_zerolevel_comma_split};
 
 
 pub struct ContextPy<'a> {
@@ -89,7 +89,7 @@ fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) 
     return None;
 }
 
-fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<String>) -> String
+fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<String>, allow_creation: bool) -> Option<AstUsage>
 {
     let node_text = cx.ap.code[node.byte_range()].to_string();
     // identifier[Goat]
@@ -97,51 +97,89 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
     match node.kind() {
         "identifier" => {
             if let Some(success) = py_simple_resolve(cx, path, &node_text) {
-                cx.ap.usages.push((path.join("::"), AstUsage {
+                let u = AstUsage {
                     targets_for_guesswork: vec![],
-                    // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
                     resolved_as: success.clone(),
                     debug_hint: format!("resolve/id"),
                     uline: node.range().start_point.row,
-                }));
-                return success;
+                };
+                cx.ap.usages.push((path.join("::"), u.clone()));
+                return Some(u);
+            }
+            if allow_creation {
+                return Some(AstUsage {
+                    targets_for_guesswork: vec![],
+                    resolved_as: node_text,
+                    debug_hint: format!("local_var_create"),
+                    uline: node.range().start_point.row,
+                });
             }
         },
         "attribute" => {
             let mut path_builder: Vec<String> = vec![];
+            let mut found_prev1 = true;
+            let mut found_prev2 = true;
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
                 match child.kind() {
                     "." => { },
                     "identifier" => {
-                        // TODO: create usages along the path
                         let ident_text = cx.ap.code[child.byte_range()].to_string();
                         if path_builder.is_empty() {  // first
                             if let Some(success) = py_simple_resolve(cx, path, &ident_text) {
                                 path_builder = success.split("::").map(String::from).collect::<Vec<String>>();
-                            // } else if Some(alias) = py_simple_resolve(cx, path, &ident_text) {
-                            //     path_builder = vec!["?".to_string(), ident_text];
+                                // cx.ap.usages.push((path.join("::"), AstUsage {
+                                //     targets_for_guesswork: vec![],
+                                //     resolved_as: path_builder.join("::"),
+                                //     debug_hint: format!("dotted/first"),
+                                //     uline: node.range().start_point.row,
+                                // }));
                             } else {
                                 path_builder = vec!["?".to_string(), ident_text];
                             }
                         } else { // next
                             path_builder.push(ident_text);
                         }
+                        if path_builder.starts_with(&vec!["?".to_string()]) { // guesses
+                            cx.ap.usages.push((path.join("::"), AstUsage {
+                                targets_for_guesswork: vec![path_builder.join("::")],
+                                resolved_as: "".to_string(),
+                                debug_hint: format!("dotted/guessing"),
+                                uline: node.range().start_point.row,
+                            }));
+                        } else if let Some(_existing_thing) = cx.ap.things.get(&path_builder.join("::")) { // oh cool, real objects
+                            cx.ap.usages.push((path.join("::"), AstUsage {
+                                targets_for_guesswork: vec![],
+                                resolved_as: path_builder.join("::"),
+                                debug_hint: format!("dotted/exists"),
+                                uline: node.range().start_point.row,
+                            }));
+                        } else {  // not a guess, should exist but doesn't
+                            found_prev2 = found_prev1;
+                            found_prev1 = false;
+                        }
                     },
                     _ => {},
                 }
             }
-            cx.ap.usages.push((path.join("::"), AstUsage {
-                targets_for_guesswork: vec![], // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
-                resolved_as: path_builder.join("::"),
-                debug_hint: format!("resolve/dot"),
+            if allow_creation && !found_prev2 {
+                return Some(AstUsage {
+                    targets_for_guesswork: vec![],
+                    resolved_as: path_builder.join("::"),
+                    debug_hint: format!("dotted/create"),
+                    uline: node.range().start_point.row,
+                });
+            }
+            return Some(AstUsage {
+                targets_for_guesswork: vec![path_builder.join("::")],
+                resolved_as: "".to_string(),
+                debug_hint: format!("ERR/RESOLVE/{}/{}", node.kind(), node_text),
                 uline: node.range().start_point.row,
-            }));
-            return path_builder.join("::");
+            });
         },
         _ => {}
     }
-    return format!("ERR/RESOLVE/{}/{}", node.kind(), node_text);
+    None
 }
 
 // fn py_expression<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
@@ -179,7 +217,7 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
 
     // save
     let right_node = node.child_by_field_name("right");
-    let rhs_type = py_type_of_expr(cx, right_node, path);
+    let rhs_type = py_type_of_expr_creating_usages(cx, right_node, path);
     for n in 0 .. lhs_tuple.len() {
         let (lhs_lvalue, lvalue_type_node) = lhs_tuple[n];
         let lvalue_type = py_type_generic(cx, lvalue_type_node, path, 0);
@@ -193,35 +231,50 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
 
 fn py_add_var(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
 {
-    let mut lvalue_path = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path);
-    if lvalue_path.starts_with("ERR/RESOLVE") {
-        let child_text = cx.ap.code[lhs_lvalue.byte_range()].to_string();
-        // make sure doesn't have dots?
-        lvalue_path = [path.clone(), vec![child_text]].concat().join("::");
+    let lvalue_usage = if let Some(u) = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path, true) {
+        u
+    } else {
+        return; // syntax error or something
+    };
+    let lvalue_path;
+    if lvalue_usage.targets_for_guesswork.is_empty() { // no guessing, exact location
+        lvalue_path = lvalue_usage.resolved_as.clone();
+    } else {
+        // never mind can't create anything, for example a.b.c = 5 if b doesn't exit
+        return;
     }
     let mut mut_good_idea_to_write = true;
     if let Some(existing_thing) = cx.ap.things.get(&lvalue_path) {
-        mut_good_idea_to_write = existing_thing.type_resolved == "NO_GENERIC" || existing_thing.type_resolved.is_empty();
+        mut_good_idea_to_write = existing_thing.type_resolved == "?" || existing_thing.type_resolved.starts_with("ERR");
     }
     // println!("\npy_add_var lvalue_path={} lvalue_type={} <= rhs_type={} mut_good_idea_to_write={}", lvalue_path, lvalue_type, rhs_type, mut_good_idea_to_write);
     if mut_good_idea_to_write {
         cx.ap.things.insert(lvalue_path, Thing {
-            thing_kind: 'p',
-            type_resolved: if lvalue_type == "NO_GENERIC" || lvalue_type.is_empty() || lvalue_type.starts_with("ERR") { rhs_type } else { lvalue_type },
+            thing_kind: 'v',
+            type_resolved: if lvalue_type == "?" || lvalue_type.is_empty() || lvalue_type.starts_with("ERR") { rhs_type } else { lvalue_type },
         });
     }
 }
 
 fn py_type_generic(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, level: usize) -> String {
     if node.is_none() {
-        return format!("NO_GENERIC")
+        return format!("void")
     }
     // type[generic_type[identifier[List]type_parameter[[type[identifier[Goat]]]]]]]
     // type[generic_type[identifier[List]type_parameter[[type[generic_type[identifier[Optional]type_parameter[[type[identifier[Goat]]]]]]]]
     let node = node.unwrap();
     match node.kind() {
         "type" => { py_type_generic(cx, node.child(0), path, level+1) },
-        "identifier" | "attribute" => { py_resolve_dotted_creating_usages(cx, node, path) },
+        "identifier" | "attribute" => {
+            if let Some(a_type) = py_resolve_dotted_creating_usages(cx, node, path, false) {
+                if !a_type.resolved_as.is_empty() {
+                    return a_type.resolved_as;
+                } else if !a_type.targets_for_guesswork.is_empty() {
+                    return a_type.targets_for_guesswork.first().unwrap().clone();
+                }
+            }
+            format!("UNK/id/{}", cx.ap.code[node.byte_range()].to_string())
+        },
         "list" => { format!("CALLABLE_ARGLIST") },
         "generic_type" => {
             let mut inside_type = String::new();
@@ -290,7 +343,7 @@ fn py_type_generic(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, l
     }
 }
 
-fn py_type_of_expr(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>) -> String
+fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>) -> String
 {
     if node.is_none() {
         return "".to_string();
@@ -305,7 +358,7 @@ fn py_type_of_expr(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>) -
                     "(" | "," |")" => { continue; }
                     _ => {}
                 }
-                elements.push(py_type_of_expr(cx, Some(child), path));
+                elements.push(py_type_of_expr_creating_usages(cx, Some(child), path));
             }
             format!("({})", elements.join(","))
         },
@@ -317,14 +370,42 @@ fn py_type_of_expr(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>) -
                     "(" | "," |")" => { continue; }
                     _ => {}
                 }
-                elements.push(py_type_of_expr(cx, Some(child), path));
+                elements.push(py_type_of_expr_creating_usages(cx, Some(child), path));
             }
             format!("({})", elements.join(","))
         },
         "integer" => { "int".to_string() },
         "float" => { "float".to_string() },
-        //  | "str" | "bool"
-        // call
+        "string" => { "str".to_string() },
+        "false" => { "bool".to_string() },
+        "true" => { "bool".to_string() },
+        "call" => {
+            let fname = node.child_by_field_name("function");
+            if fname.is_none() {
+                return format!("ERR/CALL/NAMELESS")
+            }
+            // "print" => { return Some("None".to_string()); },
+            let return_type = if let Some(a_type) = py_resolve_dotted_creating_usages(cx, fname.unwrap(), path, false) {
+                if !a_type.resolved_as.is_empty() {
+                    let resolved_thing = cx.ap.things.get(&a_type.resolved_as).unwrap();
+                    if resolved_thing.thing_kind == 'f' {
+                        resolved_thing.type_resolved.clone()
+                    } else {
+                        type_call(resolved_thing.type_resolved.clone())
+                    }
+                } else {
+                    "?".to_string()
+                }
+            } else {
+                format!("ERR/EXPR/{:?}/{}", node.kind(), cx.ap.code[node.byte_range()].to_string())
+            };
+            return_type
+            // println!("fname_resolved={:?}", fname_resolved);
+            // format!("AA fname_resolved={:?}", fname_resolved)
+        },
+        // call[identifier[print]argument_list[(string[string_start["]string_content[argv]string_end["]],·identifier[argv],·false[False],
+        // call[attribute[identifier[os].identifier[print]]
+        // string[string_start["]string_content[hello]string_end["]])]]
         "identifier" => {
             // py_resolve_dotted_creating_usages
             cx.ap.code[node.byte_range()].to_string()
@@ -549,6 +630,11 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
         // "parameters" => handle_argument(cx, node),
         // "assignment" => handle_variable(cx, node),
         // "for_statement" => handle_variable(cx, node),
+        "call" => {
+            cx.ap.recursive_print_with_red_brackets(node);
+            let ret_type = py_type_of_expr_creating_usages(cx, Some(node.clone()), path);
+            println!("\nRET_TYPE {:?}", ret_type);
+        }
         _ => {
             // unknown, to discover new syntax, just print
             cx.ap.whitespace1(node);

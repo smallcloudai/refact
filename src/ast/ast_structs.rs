@@ -6,7 +6,7 @@ use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 pub use crate::ast::treesitter::structs::SymbolType;
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AstUsage {
     // Linking means trying to match targets_for_guesswork against official_path, the longer
     // the matched path the more probability the linking was correct

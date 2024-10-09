@@ -134,14 +134,14 @@ pub fn line12mid_from_ranges(full_range: &Range, body_range: &Range) -> (usize, 
 //     None
 // }
 
-// pub fn type_call(t: String) -> String
-// {
-//     // my_function()      t="!MyRutrnType"  =>  "MyRutrnType"
-//     if t.starts_with("!") {
-//         return t[1 ..].to_string();
-//     }
-//     return "".to_string();
-// }
+pub fn type_call(t: String) -> String
+{
+    // my_function()      t="!MyRutrnType"  =>  "MyRutrnType"
+    if t.starts_with("!") {
+        return t[1 ..].to_string();
+    }
+    return "".to_string();
+}
 
 pub fn type_deindex(t: String) -> String
 {
