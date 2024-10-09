@@ -1,4 +1,4 @@
-import os, sys
+from sys import *
 from typing import List, Callable, Optional, Dict, Tuple
 import os as ooooos
 import multiprocessing
@@ -6,6 +6,7 @@ from multiprocessing import Process as NotAProcess, TimeoutError
 from os. path import join as ospj, split as osps
 
 print("ls1", ooooos.listdir("."))
+print("argv", argv)
 
 # works
 my_int1 = 10
