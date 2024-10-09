@@ -2,18 +2,16 @@ use crate::ast::ast_db::doc_defs;
 use crate::ast::ast_structs::AstDefinition;
 use crate::call_validation::DiffChunk;
 use crate::diffs::{apply_diff_chunks_to_text, correct_and_validate_chunks, unwrap_diff_apply_outputs};
-use crate::files_in_workspace::read_file_from_disk;
 use crate::global_context::GlobalContext;
-use crate::privacy::load_privacy_if_needed;
 use crate::tools::tool_patch_aux::ast_lint::{lint_and_get_error_messages, parse_and_get_error_symbols};
 use crate::tools::tool_patch_aux::tickets_parsing::TicketToApply;
-use ropey::Rope;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
+use crate::tools::tool_patch_aux::fs_utils::read_file;
 
 pub fn vec_contains_vec<T: PartialEq>(vec: &[T], subvec: &[T]) -> usize {
     if subvec.is_empty() {
@@ -142,10 +140,10 @@ pub async fn postprocess_diff_chunks(
         }
 
         let text_before = if action == "add" {
-            Rope::new()
+            String::new()
         } else {
-            match read_file_from_disk(load_privacy_if_needed(gcx.clone()).await, &path).await {
-                Ok(text) => text,
+            match read_file(gcx.clone(), path.to_string_lossy().to_string()).await {
+                Ok(text) => text.file_content,
                 Err(err) => {
                     let message = format!("Error reading file: {:?}", err);
                     return Err(message);
@@ -153,7 +151,7 @@ pub async fn postprocess_diff_chunks(
             }
         };
         let (results, outputs) = apply_diff_chunks_to_text(
-            &text_before.to_string(),
+            &text_before,
             chunks.iter().enumerate().collect::<Vec<_>>(),
             vec![],
             1,
@@ -195,7 +193,7 @@ pub async fn postprocess_diff_chunks(
         };
         let after_error_symbols = match parse_and_get_error_symbols(
             &path,
-            &Rope::from_str(&text_after),
+            &text_after,
         ).await {
             Ok(symbols) => symbols,
             Err(err) => {
@@ -213,11 +211,11 @@ pub async fn postprocess_diff_chunks(
 
         let before_lint_errors = lint_and_get_error_messages(
             &path,
-            &Rope::from_str(&text_after),
+            &text_after,
         );
         let after_lint_errors = lint_and_get_error_messages(
             &path,
-            &Rope::from_str(&text_after),
+            &text_after,
         );
         if before_lint_errors.len() < after_lint_errors.len() {
             let message = format!(

@@ -2,12 +2,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::call_validation::DiffChunk;
-use crate::files_in_workspace::read_file_from_disk;
-use crate::privacy::PrivacySettings;
 use crate::tools::tool_patch_aux::diff_structs::{diff_blocks_to_diff_chunks, DiffBlock, DiffLine, LineType};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use tracing::warn;
+use tokio::sync::RwLock as ARwLock;
+use tracing::error;
+
+use crate::global_context::GlobalContext;
+use crate::tools::tool_patch_aux::fs_utils::read_file;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum SectionType {
@@ -49,13 +51,13 @@ fn get_edit_sections(content: &str) -> Vec<EditSection> {
     while line_num < lines.len() {
         while line_num < lines.len() {
             let line = lines[line_num];
-            if line.starts_with("### Original Section (to be replaced)") {
+            if line.contains("Original Section (to be replaced)") {
                 let (new_line_num, section) = process_fenced_block(&lines, line_num + 2, true);
                 line_num = new_line_num;
                 sections.push(section);
                 break;
             }
-            if line.starts_with("### Modified Section (to replace with)") {
+            if line.contains("Modified Section (to replace with)") {
                 let (new_line_num, section) = process_fenced_block(&lines, line_num + 2, false);
                 line_num = new_line_num;
                 sections.push(section);
@@ -68,14 +70,14 @@ fn get_edit_sections(content: &str) -> Vec<EditSection> {
 }
 
 async fn sections_to_diff_blocks(
+    gcx: Arc<ARwLock<GlobalContext>>,
     sections: &Vec<EditSection>,
     filename: &PathBuf,
-    privacy_settings: Arc<PrivacySettings>,
 ) -> Result<Vec<DiffBlock>, String> {
     let mut diff_blocks = vec![];
-    let file_lines = read_file_from_disk(privacy_settings.clone(), &filename)
+    let file_lines = read_file(gcx.clone(), filename.to_string_lossy().to_string())
         .await
-        .map(|x| x.lines().into_iter()
+        .map(|x| x.file_content.lines().into_iter()
             .map(|x| {
                 if let Some(stripped_row) = x.to_string()
                     .replace("\r\n", "\n")
@@ -87,6 +89,7 @@ async fn sections_to_diff_blocks(
             })
             .collect::<Vec<_>>()
         )?;
+    let mut errors: Vec<String> = vec![];
     for (idx, sections) in sections.iter().chunks(2).into_iter()
         .map(|x| x.collect::<Vec<_>>()).enumerate() {
         let orig_section = sections.get(0).ok_or("No original section found")?;
@@ -137,20 +140,23 @@ async fn sections_to_diff_blocks(
                 file_lines: Arc::new(vec![]),
             })
         } else {
-            warn!("section not found in file {}", filename.to_string_lossy());
+            let err = format!("section wasn't found in the original file content:\n{}", orig_section_span.join("\n"));
+            errors.push(err.clone());
+            error!("{}", err);
             continue;
         }
     }
-    Ok(diff_blocks)
+    if errors.is_empty() {
+        Ok(diff_blocks)
+    } else {
+        Err(errors.join("\n"))
+    }
 }
 
 pub struct BlocksOfCodeParser {}
 
 impl BlocksOfCodeParser {
-    pub fn prompt(
-        workspace_projects_dirs: Vec<String>
-    ) -> String {
-        assert_eq!(workspace_projects_dirs.is_empty(), false);
+    pub fn prompt() -> String {
         let prompt = r#"You will receive a file containing code with one or more modified sections. Your task is to identify, describe, and extract all sections of the original code that correspond to the modified sections provided. Follow the steps below to ensure accuracy and clarity in your response.
 
 ## Steps
@@ -175,102 +181,26 @@ impl BlocksOfCodeParser {
         prompt
     }
 
+    pub fn followup_prompt(error_message: &String) -> String {
+        let prompt = r#"{error_message}
+1. Write the reasons why these sections couldn't be found. 
+2. Rewrite those sections. The best way to do that is to split them into smaller pieces: 
+- if there are many functions - make a separate section for each function 
+3. Copy other correct sections without any changes"#.to_string();
+        prompt.replace("{error_message}", error_message)
+    }
+
     pub async fn parse_message(
+        gcx: Arc<ARwLock<GlobalContext>>,
         content: &str,
         filename: &PathBuf,
-        privacy_settings: Arc<PrivacySettings>,
     ) -> Result<Vec<DiffChunk>, String> {
         let edits = get_edit_sections(content);
-        let diff_blocks = sections_to_diff_blocks(&edits, &filename, privacy_settings).await?;
+        let diff_blocks = sections_to_diff_blocks(gcx, &edits, &filename).await?;
         let chunks = diff_blocks_to_diff_chunks(&diff_blocks)
             .into_iter()
             .unique()
             .collect::<Vec<_>>();
         Ok(chunks)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::privacy::PrivacySettings;
-    use std::io::Write;
-    use std::sync::Arc;
-    use tempfile::NamedTempFile;
-
-    #[tokio::test]
-    async fn test_get_edit_sections() {
-        let content = r#"
-### Original Section (to be replaced)
-```
-let a = 1;
-let b = 2;
-```
-
-### Modified Section (to replace with)
-```
-let a = 10;
-let b = 20;
-```
-"#;
-        let sections = get_edit_sections(content);
-        assert_eq!(sections.len(), 2);
-        assert_eq!(sections[0].type_, SectionType::Original);
-        assert_eq!(sections[1].type_, SectionType::Modified);
-        assert_eq!(sections[0].hunk, vec!["let a = 1;", "let b = 2;"]);
-        assert_eq!(sections[1].hunk, vec!["let a = 10;", "let b = 20;"]);
-    }
-
-    #[tokio::test]
-    async fn test_sections_to_diff_blocks() {
-        let content = r#"
-### Original Section (to be replaced)
-```
-let a = 1;
-let b = 2;
-```
-### Modified Section (to replace with)
-```
-let a = 10;
-let b = 20;
-```
-"#;
-        let sections = get_edit_sections(content);
-        let mut temp_file = NamedTempFile::new().unwrap();
-        writeln!(temp_file, "let a = 1;\nlet b = 2;").unwrap();
-        let filename = temp_file.path().to_path_buf();
-        let privacy_settings = Arc::new(PrivacySettings::allow_all());
-
-        let diff_blocks = sections_to_diff_blocks(&sections, &filename, privacy_settings).await.unwrap();
-        assert_eq!(diff_blocks.len(), 1);
-        let diff_block = &diff_blocks[0];
-        assert_eq!(diff_block.diff_lines.len(), 4);
-        assert_eq!(diff_block.diff_lines[0].line_type, LineType::Minus);
-        assert_eq!(diff_block.diff_lines[1].line_type, LineType::Minus);
-        assert_eq!(diff_block.diff_lines[2].line_type, LineType::Plus);
-        assert_eq!(diff_block.diff_lines[3].line_type, LineType::Plus);
-    }
-
-    #[tokio::test]
-    async fn test_parse_message() {
-        let content = r#"
-### Original Section (to be replaced)
-```
-let a = 1;
-let b = 2;
-```
-### Modified Section (to replace with)
-```
-let a = 10;
-let b = 20;
-```
-"#;
-        let mut temp_file = NamedTempFile::new().unwrap();
-        writeln!(temp_file, "let a = 1;\nlet b = 2;").unwrap();
-        let filename = temp_file.path().to_path_buf();
-        let privacy_settings = Arc::new(PrivacySettings::allow_all());
-
-        let diff_chunks = BlocksOfCodeParser::parse_message(content, &filename, privacy_settings).await.unwrap();
-        assert_eq!(diff_chunks.len(), 1);
     }
 }

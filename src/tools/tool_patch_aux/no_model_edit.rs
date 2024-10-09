@@ -4,10 +4,10 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::DiffChunk;
 use crate::global_context::GlobalContext;
-use crate::tools::tool_patch_aux::diff_structs::{diff_blocks_to_diff_chunks, DiffBlock, DiffLine, LineType};
+use crate::tools::tool_patch_aux::diff_structs::chunks_from_diffs;
+use crate::tools::tool_patch_aux::fs_utils::read_file;
 use crate::tools::tool_patch_aux::postprocessing_utils::{minimal_common_indent, most_common_spacing, place_indent, same_parent_symbols};
 use crate::tools::tool_patch_aux::tickets_parsing::{PatchLocateAs, TicketToApply};
-use crate::tools::tool_patch_aux::fs_utils::read_file;
 
 pub async fn full_rewrite_diff(
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -140,56 +140,3 @@ pub fn new_file_diff(
     ]
 }
 
-fn chunks_from_diffs(file_path: PathBuf, diffs: Vec<diff::Result<&str>>) -> Result<Vec<DiffChunk>, String> {
-    let mut line_num: usize = 0;
-    let mut blocks = vec![];
-    let mut diff_lines = vec![];
-    for diff in diffs {
-        match diff {
-            diff::Result::Left(l) => {
-                diff_lines.push(DiffLine {
-                    line: l.to_string(),
-                    line_type: LineType::Minus,
-                    file_line_num_idx: Some(line_num),
-                    correct_spaces_offset: Some(0),
-                });
-                line_num += 1;
-            }
-            diff::Result::Right(r) => {
-                diff_lines.push(DiffLine {
-                    line: r.to_string(),
-                    line_type: LineType::Plus,
-                    file_line_num_idx: Some(line_num),
-                    correct_spaces_offset: Some(0),
-                });
-            }
-            diff::Result::Both(_, _) => {
-                line_num += 1;
-                if !diff_lines.is_empty() {
-                    blocks.push(DiffBlock {
-                        file_name_before: file_path.clone(),
-                        file_name_after: file_path.clone(),
-                        action: "edit".to_string(),
-                        file_lines: Arc::new(vec![]),
-                        hunk_idx: 0,
-                        diff_lines: diff_lines.clone(),
-                    });
-                    diff_lines.clear();
-                }
-            }
-        }
-    }
-    if !diff_lines.is_empty() {
-        blocks.push(DiffBlock {
-            file_name_before: file_path.clone(),
-            file_name_after: file_path.clone(),
-            action: "edit".to_string(),
-            file_lines: Arc::new(vec![]),
-            hunk_idx: 0,
-            diff_lines: diff_lines.clone(),
-        });
-        diff_lines.clear();
-    }
-
-    Ok(diff_blocks_to_diff_chunks(&blocks))
-}

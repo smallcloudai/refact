@@ -9,7 +9,7 @@ use crate::files_in_workspace::Document;
 
 pub async fn parse_and_get_error_symbols(
     path: &PathBuf,
-    file_text: &Rope,
+    file_text: &String,
 ) -> Result<Vec<SymbolInformation>, String> {
     let (mut parser, _language) = match get_ast_parser_by_filename(&path) {
         Ok(x) => x,
@@ -19,9 +19,7 @@ pub async fn parse_and_get_error_symbols(
         }
     };
 
-    let code = file_text.to_string();
-    let symbols: Vec<AstSymbolInstanceArc> = parser.parse(&code, path);
-
+    let symbols: Vec<AstSymbolInstanceArc> = parser.parse(&file_text, path);
     let error_symbols: Vec<SymbolInformation> = symbols
         .into_iter()
         .filter_map(|symbol| {
@@ -39,7 +37,7 @@ pub async fn parse_and_get_error_symbols(
 
 pub fn lint_and_get_error_messages(
     path: &PathBuf,
-    file_text: &Rope,
+    file_text: &String,
 ) -> Vec<String> {
     let dummy_filename = PathBuf::from(rand::thread_rng()
         .sample_iter(&Alphanumeric)
@@ -49,7 +47,7 @@ pub fn lint_and_get_error_messages(
     let new_filename = dummy_filename.with_extension(
         path.extension().unwrap_or_default()
     );
-    let doc = Document { doc_path: new_filename.clone(), doc_text: Some(file_text.clone()) };
+    let doc = Document { doc_path: new_filename.clone(), doc_text: Some(Rope::from_str(file_text)) };
     match lint(&doc) {
         Ok(_) => vec![],
         Err(problems) => problems,
