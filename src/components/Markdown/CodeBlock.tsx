@@ -10,8 +10,6 @@ import styles from "./Markdown.module.css";
 import type { Element } from "hast";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
 import { trimIndent } from "../../utils";
-import { useDiffPreview } from "../../hooks";
-import { convertMarkdownToDiffChunk } from "./convertMarkdownToDiffChunk";
 
 export type MarkdownControls = {
   onCopyClick: (str: string) => void;
@@ -19,14 +17,6 @@ export type MarkdownControls = {
   onPasteClick: (str: string) => void;
   canPaste: boolean;
 };
-
-function useDiff(language: string, markdown: string) {
-  const isDiff = language === "language-diff";
-  const chunk = convertMarkdownToDiffChunk(markdown);
-  const { onPreview } = useDiffPreview();
-  const handlePreview = () => onPreview([chunk], [true]);
-  return { onPreview: handlePreview, isDiff };
-}
 
 export type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] &
   Partial<MarkdownControls> & {
@@ -50,10 +40,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   const match = /language-(\w+)/.exec(className ?? "");
   const textWithOutTrailingNewLine = String(children); //.replace(/\n$/, "");
   const textWithOutIndent = trimIndent(textWithOutTrailingNewLine);
-  const { isDiff, onPreview } = useDiff(
-    className ?? "",
-    textWithOutTrailingNewLine,
-  );
+
   const preTagProps: PreTagProps =
     onCopyClick && onNewFileClick && onPasteClick
       ? {
@@ -68,9 +55,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
             }
           },
           onPasteClick: () => {
-            if (isDiff) {
-              void onPreview();
-            } else if (codeRef.current?.textContent) {
+            if (codeRef.current?.textContent) {
               onPasteClick(codeRef.current.textContent);
             }
           },

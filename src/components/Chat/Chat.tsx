@@ -64,12 +64,7 @@ export const Chat: React.FC<ChatProps> = ({
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
-  const handleSummit = useCallback(
-    (value: string) => {
-      void submit(value);
-    },
-    [submit],
-  );
+  const handleSummit = useCallback(submit, [submit]);
 
   const onTextAreaHeightChange = useCallback(() => {
     if (!chatContentRef.current) return;

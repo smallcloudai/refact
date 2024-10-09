@@ -68,11 +68,11 @@ const usePinActions = () => {
   }, []);
 
   const [getPatch, patchResult] =
-    diffApi.useLazyPatchSingleFileFromTicketQuery();
+    diffApi.usePatchSingleFileFromTicketMutation();
 
   const disable = useMemo(() => {
-    return !!errorMessage || isStreaming || isWaiting || patchResult.isFetching;
-  }, [errorMessage, isStreaming, isWaiting, patchResult.isFetching]);
+    return !!errorMessage || isStreaming || isWaiting || patchResult.isLoading;
+  }, [errorMessage, isStreaming, isWaiting, patchResult.isLoading]);
 
   const handleShow = useCallback(
     (pin: string) => {
