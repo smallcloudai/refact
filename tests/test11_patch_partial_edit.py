@@ -123,7 +123,8 @@ async def entrypoint(ds):
             messages = make_messages(f"📍PARTIAL_EDIT 001 {filename}\n```\n{text_after_changed_only}\n```")
             resp = patch_request(messages, ["001"], base_url=refact_lsp.base_url())
             await refact_lsp.stop()
-
+            text_after = text_after.strip()
+            resp["results"][0]["file_text"] = resp["results"][0]["file_text"].strip()
             if text_after != resp["results"][0]["file_text"]:
                 diff = unified_diff(text_after, resp["results"][0]["file_text"])
                 incorrect_distances.append(1.0 - textdistance.jaro_winkler(text_after, resp["results"][0]["file_text"]))
