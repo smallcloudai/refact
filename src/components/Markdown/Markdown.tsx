@@ -178,6 +178,10 @@ const MaybePinButton: React.FC<{
     openFile,
   } = usePinActions();
 
+  if (isPin && children.startsWith("📍OTHER")) {
+    return null;
+  }
+
   if (isPin) {
     const [_cmd, _ticket, filePath, ..._rest] = children.split(" ");
     return (
