@@ -159,6 +159,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: matrix.whl-tag
         with:
-          name: dist-${{ matrix.target }}-whl
+          name: whl-${{ matrix.target }}
           if-no-files-found: ignore
           path: ./artefacts/*.whl

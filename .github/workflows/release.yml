@@ -145,7 +145,7 @@ jobs:
         if: matrix.whl-tag
         with:
           repo_token: ${{ github.token }}
-          asset_name: dist-${{ matrix.target }}
+          asset_name: whl-${{ matrix.target }}
           file: artefacts/*.whl
           tag: ${{ github.ref }}
           overwrite: true
