@@ -74,8 +74,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   );
   const [value, setValue] = React.useState("");
 
-  const { checkboxes, onToggleCheckbox, setInteracted, unCheckAll } =
-    useCheckboxes();
+  const { checkboxes, onToggleCheckbox, unCheckAll } = useCheckboxes();
 
   const { previewFiles, commands, requestCompletion } =
     useCommandCompletionAndPreviewFiles(checkboxes);
@@ -140,7 +139,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const handleChange = useCallback(
     (command: string) => {
       setValue(command);
-      setInteracted(true);
       const trimmedCommand = command.trim();
       if (trimmedCommand === "@help") {
         handleHelpInfo(helpText()); // This line has been fixed
@@ -148,7 +146,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         handleHelpInfo(null);
       }
     },
-    [setInteracted, handleHelpInfo],
+    [handleHelpInfo],
   );
 
   if (error) {

@@ -128,26 +128,19 @@ const useAttachSelectedSnippet = (
     });
 
   useEffect(() => {
-    if (!attachedSelectedSnippet.checked || !interacted) {
-      setAttachedSelectedSnippet((prev) => {
-        return {
-          ...prev,
-          label: label,
-          value: markdown,
-          disabled: !snippet.code,
-          hide: host === "web",
-          checked: !!snippet.code && !interacted,
-        };
-      });
-    }
-  }, [
-    snippet.code,
-    host,
-    attachedSelectedSnippet.checked,
-    label,
-    markdown,
-    interacted,
-  ]);
+    // removing unnecessary check for checked state and interacted state
+    // and excluding attachedSelectedSnippet.checked from dependency array
+    setAttachedSelectedSnippet((prev) => {
+      return {
+        ...prev,
+        label: label,
+        value: markdown,
+        disabled: !snippet.code,
+        hide: host === "web",
+        checked: !!snippet.code && !interacted,
+      };
+    });
+  }, [snippet.code, host, label, markdown, interacted]);
 
   const onToggleAttachedSelectedSnippet = useCallback(() => {
     setAttachedSelectedSnippet((prev) => {
@@ -218,14 +211,16 @@ export type Checkboxes = {
 };
 
 export const useCheckboxes = () => {
-  const [interacted, setInteracted] = useState(false);
+  // creating 2 different states instead of only one being used for both checkboxes
+  const [lineSelectionInteracted, setLineSelectionInteracted] = useState(false);
+  const [fileInteracted, setFileInteracted] = useState(false);
 
   const [attachedSelectedSnippet, onToggleAttachedSelectedSnippet] =
-    useAttachSelectedSnippet(interacted);
+    useAttachSelectedSnippet(lineSelectionInteracted);
   const [searchWorkspace, onToggleSearchWorkspace] = useSearchWorkSpace();
 
   const [attachFileCheckboxData, onToggleAttachFile] = useAttachActiveFile(
-    interacted,
+    fileInteracted,
     attachedSelectedSnippet.checked,
   );
 
@@ -246,13 +241,14 @@ export const useCheckboxes = () => {
           break;
         case "file_upload":
           onToggleAttachFile();
+          setFileInteracted(true);
           break;
         case "selected_lines":
           onToggleAttachedSelectedSnippet();
+          setFileInteracted(true);
+          setLineSelectionInteracted((prev) => !prev);
           break;
       }
-
-      setInteracted(true);
     },
     [
       onToggleAttachFile,
@@ -280,5 +276,11 @@ export const useCheckboxes = () => {
     searchWorkspace.checked,
   ]);
 
-  return { checkboxes, onToggleCheckbox, setInteracted, unCheckAll };
+  return {
+    checkboxes,
+    onToggleCheckbox,
+    setFileInteracted,
+    setLineSelectionInteracted,
+    unCheckAll,
+  };
 };
