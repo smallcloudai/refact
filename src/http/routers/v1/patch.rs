@@ -11,7 +11,6 @@ use crate::call_validation::{ChatMessage, ChatUsage, DiffChunk};
 use crate::custom_error::ScratchError;
 use crate::diffs::{ApplyDiffResult, ApplyDiffUnwrapped, correct_and_validate_chunks, read_files_n_apply_diff_chunks, unwrap_diff_apply_outputs};
 use crate::global_context::GlobalContext;
-use crate::privacy::load_privacy_if_needed;
 use crate::tools::tool_patch_aux::tickets_parsing::{get_and_correct_active_tickets, get_tickets_from_messages};
 use crate::tools::tool_patch::process_tickets;
 use crate::tools::tools_execute::unwrap_subchat_params;
@@ -95,12 +94,12 @@ pub async fn handle_v1_patch_single_file_from_ticket(
             .map_err(|e|ScratchError::new(StatusCode::BAD_REQUEST, e))?;
 
         let (results, outputs) = read_files_n_apply_diff_chunks(
-            load_privacy_if_needed(global_context.clone()).await,
+            global_context.clone(),
             &diff_chunks,
             &vec![false; diff_chunks.len()],
             &vec![true; diff_chunks.len()],
             10
-        );
+        ).await;
 
         let outputs_unwrapped = unwrap_diff_apply_outputs(outputs, diff_chunks.clone());
         (results, outputs_unwrapped, vec![])

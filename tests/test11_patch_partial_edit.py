@@ -126,7 +126,7 @@ async def entrypoint(ds):
             text_after = text_after.strip()
             resp["results"][0]["file_text"] = resp["results"][0]["file_text"].strip()
             if text_after != resp["results"][0]["file_text"]:
-                diff = unified_diff(text_after, resp["results"][0]["file_text"])
+                diff = unified_diff(resp["results"][0]["file_text"], text_after)
                 incorrect_distances.append(1.0 - textdistance.jaro_winkler(text_after, resp["results"][0]["file_text"]))
                 incorrect_diffs += 1
                 print(f'There is some difference:\n{diff}\n')

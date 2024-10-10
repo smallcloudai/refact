@@ -183,22 +183,6 @@ pub async fn read_file_from_disk(
     read_file_from_disk_without_privacy_check(path).await
 }
 
-pub fn read_file_from_disk_sync(
-    privacy_settings: Arc<PrivacySettings>,
-    path: &PathBuf,
-) -> Result<Rope, String> {
-    check_file_privacy(privacy_settings, path, &FilePrivacyLevel::AllowToSendAnywhere)?;
-    match std::fs::read_to_string(path) {
-        Ok(content) => {
-            let rope = Rope::from_str(&content);
-            Ok(rope)
-        },
-        Err(e) => {
-            Err(format!("failed to read file {}: {}", crate::nicer_logs::last_n_chars(&path.display().to_string(), 30), e))
-        }
-    }
-}
-
 async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<PathBuf>> {
     info!("{} EXEC {} {}", path.display(), cmd, args.join(" "));
     let output = async_process::Command::new(cmd)
