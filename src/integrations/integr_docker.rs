@@ -1,7 +1,6 @@
 use std::path::Path;
 use std::sync::Arc;
 use std::collections::{HashMap, HashSet};
-use ignore::WalkBuilder;
 use regex::Regex;
 use tokio::io::{duplex, DuplexStream};
 use tokio::sync::Mutex as AMutex;
@@ -176,14 +175,14 @@ impl Tool for ToolDocker {
 async fn build_docker_image(parsed_args: &Vec<String>, docker: &Docker) -> Result<Value, String> {
     let (remaining_args, options) = parse_options(parsed_args, &HashSet::new(), &HashSet::from(["file", "tag"]))?;
     let dockerfile = options.get("file").unwrap_or(&"Dockerfile".to_string()).to_string();
-    let context_dir = remaining_args[0].to_string();
+    let context_dir = remaining_args.last().unwrap_or(&"".to_string()).to_string();
     let context_dir_name = Regex::new(r"[\\/]").unwrap().split(&context_dir).last().unwrap_or("").to_string();
     let image_tag = options.get("tag").unwrap_or(&context_dir_name).to_string();
 
     let build_options = BuildImageOptions {
         t: image_tag,
         rm: true,
-        // dockerfile: dockerfile,
+        dockerfile: dockerfile,
         labels: HashMap::from([(COMMON_LABEL.to_string(), "".to_string())]),
         ..Default::default()
     };
