@@ -95,6 +95,26 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
   );
 };
 
+export const InformationCallout: React.FC<Omit<CalloutProps, "type">> = ({
+  timeout = null,
+  onClick,
+  children,
+  ...props
+}) => {
+  return (
+    <Callout
+      type="info"
+      color="blue"
+      onClick={onClick}
+      timeout={timeout}
+      itemType={props.itemType}
+      {...props}
+    >
+      Info: {children}
+    </Callout>
+  );
+};
+
 export const DiffWarningCallout: React.FC<Omit<CalloutProps, "type">> = ({
   timeout = null,
   onClick,

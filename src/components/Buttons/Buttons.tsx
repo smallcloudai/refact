@@ -1,6 +1,11 @@
 import React from "react";
 import { IconButton, Button, Flex } from "@radix-ui/themes";
-import { PaperPlaneIcon, ExitIcon, Cross1Icon } from "@radix-ui/react-icons";
+import {
+  PaperPlaneIcon,
+  ExitIcon,
+  Cross1Icon,
+  FileTextIcon,
+} from "@radix-ui/react-icons";
 import classNames from "classnames";
 import styles from "./button.module.css";
 
@@ -10,6 +15,12 @@ type ButtonProps = React.ComponentProps<typeof Button>;
 export const PaperPlaneButton: React.FC<IconButtonProps> = (props) => (
   <IconButton variant="ghost" {...props}>
     <PaperPlaneIcon />
+  </IconButton>
+);
+
+export const ThreadHistoryButton: React.FC<IconButtonProps> = (props) => (
+  <IconButton variant="ghost" {...props}>
+    <FileTextIcon />
   </IconButton>
 );
 

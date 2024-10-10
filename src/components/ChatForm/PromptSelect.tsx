@@ -30,6 +30,7 @@ export const PromptSelect: React.FC<PromptSelectProps> = ({
     [onChange, promptKeysAndValues],
   );
   const val = useMemo(() => Object.keys(value)[0] ?? "default", [value]);
+
   if (promptKeysAndValues.length === 0) return null;
 
   return (

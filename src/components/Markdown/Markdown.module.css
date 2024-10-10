@@ -53,9 +53,9 @@
 }
 
 .patch_title + pre {
-  margin-top: 0;
+  margin: 0;
 }
 
 .patch_title + pre pre {
-  margin-top: 0;
+  margin: 0;
 }

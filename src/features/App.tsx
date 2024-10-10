@@ -32,6 +32,7 @@ import { AbortControllerProvider } from "../contexts/AbortControllers";
 import { Toolbar } from "../components/Toolbar";
 import { Tab } from "../components/Toolbar/Toolbar";
 import { PageWrapper } from "../components/PageWrapper";
+import { ThreadHistory } from "./ThreadHistory";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -185,6 +186,15 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             tabbed={config.tabbed}
             host={config.host}
             onCloseStatistic={goBack}
+          />
+        )}
+        {page.name === "thread history page" && (
+          <ThreadHistory
+            backFromThreadHistory={goBack}
+            tabbed={config.tabbed}
+            host={config.host}
+            onCloseThreadHistory={goBack}
+            chatId={page.chatId}
           />
         )}
       </PageWrapper>

@@ -1,10 +1,14 @@
 import { FC } from "react";
-import { Link as RadixLink } from "@radix-ui/themes";
-import { useConfig } from "../../hooks";
-import styles from "./Link.module.css";
+import {
+  type LinkProps as RadixLinkProps,
+  Link as RadixLink,
+} from "@radix-ui/themes";
 import classNames from "classnames";
 
-interface LinkProps {
+import { useConfig } from "../../hooks";
+import styles from "./Link.module.css";
+
+interface LinkProps extends RadixLinkProps {
   href?: string;
   children: React.ReactNode;
   className?: string;

@@ -37,6 +37,7 @@ import { errorSlice } from "../features/Errors/errorsSlice";
 import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
+import { informationSlice } from "../features/Errors/informationSlice";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -72,6 +73,7 @@ const rootReducer = combineSlices(
   },
   historySlice,
   errorSlice,
+  informationSlice,
   pagesSlice,
 );
 

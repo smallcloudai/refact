@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useEffect } from "react";
+import React, { useCallback, useRef, useEffect, useState } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
@@ -14,12 +14,13 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   setChatModel,
-  // selectThread,
   selectPreventSend,
   selectChatId,
   selectMessages,
   getSelectedToolUse,
 } from "../../features/Chat/Thread";
+import { ThreadHistoryButton } from "../Buttons";
+import { push } from "../../features/Pages/pagesSlice";
 
 export type ChatProps = {
   host: Config["host"];
@@ -44,6 +45,7 @@ export const Chat: React.FC<ChatProps> = ({
   onSetSystemPrompt,
   selectedSystemPrompt,
 }) => {
+  const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const chatContentRef = useRef<HTMLDivElement>(null);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
@@ -54,6 +56,10 @@ export const Chat: React.FC<ChatProps> = ({
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectMessages);
+
+  const [isDebugChatHistoryVisible, setIsDebugChatHistoryVisible] =
+    useState(false);
+
   const onSetChatModel = useCallback(
     (value: string) => {
       const model = caps.default_cap === value ? "" : value;
@@ -64,7 +70,15 @@ export const Chat: React.FC<ChatProps> = ({
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
-  const handleSummit = useCallback(submit, [submit]);
+  const handleSummit = useCallback(
+    (value: string) => {
+      submit(value);
+      if (isViewingRawJSON) {
+        setIsViewingRawJSON(false);
+      }
+    },
+    [submit, isViewingRawJSON],
+  );
 
   const onTextAreaHeightChange = useCallback(() => {
     if (!chatContentRef.current) return;
@@ -85,6 +99,10 @@ export const Chat: React.FC<ChatProps> = ({
       textarea.focus();
     }
   }, []);
+
+  const handleThreadHistoryPage = useCallback(() => {
+    dispatch(push({ name: "thread history page", chatId }));
+  }, [chatId, dispatch]);
 
   useEffect(() => {
     if (!isWaiting && !isStreaming) {
@@ -107,7 +125,6 @@ export const Chat: React.FC<ChatProps> = ({
         ref={chatContentRef}
         onRetry={retryFromIndex}
       />
-
       {!isStreaming && preventSend && unCalledTools && (
         <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
           <Card>
@@ -136,10 +153,27 @@ export const Chat: React.FC<ChatProps> = ({
         selectedSystemPrompt={selectedSystemPrompt}
       />
       <Flex justify="between" pl="1" pr="1" pt="1">
+        {/* Two flexboxes are left for the future UI element on the right side */}
         {messages.length > 0 && (
-          <Flex align="center" gap="1">
-            <Text size="1">model: {chatModel || caps.default_cap} </Text> •{" "}
-            <Text size="1">mode: {chatToolUse} </Text>
+          <Flex align="center" justify="between" width="100%">
+            <Flex align="center" gap="1">
+              <Text size="1">model: {chatModel || caps.default_cap} </Text> •{" "}
+              <Text
+                size="1"
+                onClick={() => setIsDebugChatHistoryVisible((prev) => !prev)}
+              >
+                mode: {chatToolUse}{" "}
+              </Text>
+            </Flex>
+            {messages.length !== 0 &&
+              !isStreaming &&
+              isDebugChatHistoryVisible && (
+                <ThreadHistoryButton
+                  title="View history of current thread"
+                  size="1"
+                  onClick={handleThreadHistoryPage}
+                />
+              )}
           </Flex>
         )}
       </Flex>

@@ -48,6 +48,11 @@ export interface DocumentationSettingsPage {
   name: "documentation settings";
 }
 
+export interface ChatThreadHistoryPage {
+  name: "thread history page";
+  chatId: string;
+}
+
 export type Page =
   | InitialSetupPage
   | CloudLogin
@@ -60,7 +65,8 @@ export type Page =
   | HistoryList
   | FIMDebugPage
   | StatisticsPage
-  | DocumentationSettingsPage;
+  | DocumentationSettingsPage
+  | ChatThreadHistoryPage;
 
 export type PageSliceState = Page[];
 
