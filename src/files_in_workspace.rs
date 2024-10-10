@@ -110,7 +110,6 @@ pub struct DocumentsState {
     pub cache_correction: Arc<HashMap<String, HashSet<String>>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
     pub cache_shortened: Arc<HashSet<String>>,
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
-    pub diffs_applied_state: HashMap<u64, Vec<bool>>,
 }
 
 async fn overwrite_or_create_document(
@@ -145,7 +144,6 @@ impl DocumentsState {
             cache_correction: Arc::new(HashMap::<String, HashSet<String>>::new()),
             cache_shortened: Arc::new(HashSet::<String>::new()),
             fs_watcher: Arc::new(ARwLock::new(watcher)),
-            diffs_applied_state: HashMap::new(),
         }
     }
 
