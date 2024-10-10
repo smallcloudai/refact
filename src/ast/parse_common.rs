@@ -57,8 +57,8 @@ impl<'a> ContextAnyParser<'a> {
                 print!("\x1b[31m{}[\x1b[0m", node.kind());
                 for i in 0..node.child_count() {
                     let child = node.child(i).unwrap();
-                    // let field_name = node.field_name_for_child(i as u32).unwrap_or("");
-                    // print!(" field_name={:?} ", field_name);
+                    let field_name = node.field_name_for_child(i as u32).unwrap_or("");
+                    print!(" field_name={:?} ", field_name);
                     self.recursive_print_with_red_brackets(&child);
                 }
                 if node.child_count() == 0 {
@@ -102,6 +102,26 @@ impl<'a> ContextAnyParser<'a> {
         println!("  -- /star -- ");
 
     }
+
+    pub fn annotate_code(&self, comment: &str) -> String {
+        let mut r = String::new();
+        let lines: Vec<&str> = self.code.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            r.push_str(line);
+            let mut usages_on_line = Vec::new();
+            for (_, usage) in &self.usages {
+                if usage.uline == i {
+                    usages_on_line.push(format!("{:?}", usage));
+                }
+            }
+            if !usages_on_line.is_empty() {
+                let indent = line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
+                r.push_str(format!("\n{}{} {}", indent, comment, usages_on_line.join(" ")).as_str());
+            }
+            r.push('\n');
+        }
+        r
+    }
 }
 
 
@@ -134,9 +154,12 @@ pub fn line12mid_from_ranges(full_range: &Range, body_range: &Range) -> (usize, 
 //     None
 // }
 
-pub fn type_call(t: String) -> String
+pub fn type_call(t: String, _arg_types: String) -> String
 {
-    // my_function()      t="!MyRutrnType"  =>  "MyRutrnType"
+    if t.starts_with("ERR/") {
+        return t;
+    }
+    // my_function()      t="!MyReturnType"  =>  "MyReturnType"
     if t.starts_with("!") {
         return t[1 ..].to_string();
     }
@@ -145,6 +168,9 @@ pub fn type_call(t: String) -> String
 
 pub fn type_deindex(t: String) -> String
 {
+    if t.starts_with("ERR/") {
+        return t;
+    }
     // Used in this scenario: for x in my_list
     // t="[MyType]"  =>  "MyType"
     if t.starts_with("[") && t.ends_with("]") {
@@ -192,6 +218,9 @@ pub fn type_zerolevel_comma_split(t: &str) -> Vec<String> {
 
 pub fn type_deindex_n(t: String, n: usize) -> String
 {
+    if t.starts_with("ERR/") {
+        return t;
+    }
     // Used in this scenario: _, _ = my_value
     // t="[MyClass1,[int,int],MyClass2]"  =>  n==0 MyClass1  n==1 [int,int]   n==2 MyClass2
     if t.starts_with("(") && t.ends_with(")") {

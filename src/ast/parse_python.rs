@@ -65,10 +65,18 @@ fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
     }
 }
 
+fn py_is_trivial(potential_usage: &str) -> bool {
+    match potential_usage {
+        "int" | "float" | "str" | "bool" => true,
+        _ => false,
+    }
+}
+
 fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) -> Option<String>
 {
     match look_for.as_str() {
         "Any" => { return Some("*".to_string()); },
+        "print" => { return Some("!void".to_string()); },
         "int" | "float" | "str" | "bool" => { return Some(look_for.clone()); },
         _ => {},
     }
@@ -103,13 +111,15 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
                     debug_hint: format!("resolve/id"),
                     uline: node.range().start_point.row,
                 };
-                cx.ap.usages.push((path.join("::"), u.clone()));
+                if !py_is_trivial(u.resolved_as.as_str()) {
+                    cx.ap.usages.push((path.join("::"), u.clone()));
+                }
                 return Some(u);
             }
             if allow_creation {
                 return Some(AstUsage {
                     targets_for_guesswork: vec![],
-                    resolved_as: node_text,
+                    resolved_as: format!("{}::{}", path.join("::"), node_text),
                     debug_hint: format!("local_var_create"),
                     uline: node.range().start_point.row,
                 });
@@ -151,7 +161,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
                             cx.ap.usages.push((path.join("::"), AstUsage {
                                 targets_for_guesswork: vec![],
                                 resolved_as: path_builder.join("::"),
-                                debug_hint: format!("dotted/exists"),
+                                debug_hint: format!("dotted"),
                                 uline: node.range().start_point.row,
                             }));
                         } else {  // not a guess, should exist but doesn't
@@ -222,14 +232,14 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
         let (lhs_lvalue, lvalue_type_node) = lhs_tuple[n];
         let lvalue_type = py_type_generic(cx, lvalue_type_node, path, 0);
         if is_list {
-            py_add_var(cx, lhs_lvalue, lvalue_type, type_deindex_n(rhs_type.clone(), n), path);
+            py_var_add(cx, lhs_lvalue, lvalue_type, type_deindex_n(rhs_type.clone(), n), path);
         } else {
-            py_add_var(cx, lhs_lvalue, lvalue_type, rhs_type.clone(), path);
+            py_var_add(cx, lhs_lvalue, lvalue_type, rhs_type.clone(), path);
         }
     }
 }
 
-fn py_add_var(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
+fn py_var_add(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
 {
     let lvalue_usage = if let Some(u) = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path, true) {
         u
@@ -247,7 +257,7 @@ fn py_add_var(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_typ
     if let Some(existing_thing) = cx.ap.things.get(&lvalue_path) {
         mut_good_idea_to_write = existing_thing.type_resolved == "?" || existing_thing.type_resolved.starts_with("ERR");
     }
-    // println!("\npy_add_var lvalue_path={} lvalue_type={} <= rhs_type={} mut_good_idea_to_write={}", lvalue_path, lvalue_type, rhs_type, mut_good_idea_to_write);
+    println!("\npy_var_add lvalue_path={} lvalue_type={} <= rhs_type={} mut_good_idea_to_write={}", lvalue_path, lvalue_type, rhs_type, mut_good_idea_to_write);
     if mut_good_idea_to_write {
         cx.ap.things.insert(lvalue_path, Thing {
             thing_kind: 'v',
@@ -258,7 +268,7 @@ fn py_add_var(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_typ
 
 fn py_type_generic(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, level: usize) -> String {
     if node.is_none() {
-        return format!("void")
+        return format!("?")
     }
     // type[generic_type[identifier[List]type_parameter[[type[identifier[Goat]]]]]]]
     // type[generic_type[identifier[List]type_parameter[[type[generic_type[identifier[Optional]type_parameter[[type[identifier[Goat]]]]]]]]
@@ -380,49 +390,46 @@ fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path:
         "false" => { "bool".to_string() },
         "true" => { "bool".to_string() },
         "call" => {
+            // cx.ap.recursive_print_with_red_brackets(node);
             let fname = node.child_by_field_name("function");
             if fname.is_none() {
                 return format!("ERR/CALL/NAMELESS")
             }
-            // "print" => { return Some("None".to_string()); },
-            let return_type = if let Some(a_type) = py_resolve_dotted_creating_usages(cx, fname.unwrap(), path, false) {
-                if !a_type.resolved_as.is_empty() {
-                    let resolved_thing = cx.ap.things.get(&a_type.resolved_as).unwrap();
-                    if resolved_thing.thing_kind == 'f' {
+            let ftype = if let Some(u) = py_resolve_dotted_creating_usages(cx, fname.unwrap(), path, false) {
+                if !u.resolved_as.is_empty() {
+                    if let Some(resolved_thing) = cx.ap.things.get(&u.resolved_as) {
                         resolved_thing.type_resolved.clone()
                     } else {
-                        type_call(resolved_thing.type_resolved.clone())
+                        format!("ERR/NOT_A_THING/{}", u.resolved_as.clone())
                     }
                 } else {
-                    "?".to_string()
+                    "?".to_string()  // something outside of this file :/
                 }
             } else {
-                format!("ERR/EXPR/{:?}/{}", node.kind(), cx.ap.code[node.byte_range()].to_string())
+                format!("ERR/FUNC_NOT_FOUND/{}", cx.ap.code[fname.unwrap().byte_range()].to_string())
             };
-            return_type
-            // println!("fname_resolved={:?}", fname_resolved);
-            // format!("AA fname_resolved={:?}", fname_resolved)
+            let arg_types = py_type_of_expr_creating_usages(cx, node.child_by_field_name("arguments"), path);
+            let ret_type = type_call(ftype.clone(), arg_types.clone());
+            println!("\nCALL ftype={:?} arg_types={:?} => ret_type={:?}", ftype, arg_types, ret_type);
+            ret_type
         },
-        // call[identifier[print]argument_list[(string[string_start["]string_content[argv]string_end["]],·identifier[argv],·false[False],
-        // call[attribute[identifier[os].identifier[print]]
-        // string[string_start["]string_content[hello]string_end["]])]]
-        "identifier" => {
-            // py_resolve_dotted_creating_usages
-            cx.ap.code[node.byte_range()].to_string()
+        "identifier" | "dotted_name" => {
+            let dotted_type = if let Some(u) = py_resolve_dotted_creating_usages(cx, node, path, false) {
+                if let Some(resolved_thing) = cx.ap.things.get(&u.resolved_as) {
+                    resolved_thing.type_resolved.clone()
+                } else {
+                    format!("ERR/NOT_A_THING/{}", u.resolved_as.clone())
+                }
+            } else {
+                format!("ERR/DOTTED_NOT_FOUND/{}", cx.ap.code[node.byte_range()].to_string())
+            };
+            dotted_type
         },
         _ => {
             format!("ERR/EXPR/{:?}/{}", node.kind(), cx.ap.code[node.byte_range()].to_string())
         }
     }
 }
-
-// pub fn py_parse_body(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
-// {
-//     match node.kind() {
-//         "function_definition" => { py_function(cx, &child, path); },
-//         "class_definition" => { py_class(cx, &child, path); },
-//         _ =>
-// }
 
 fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
@@ -546,7 +553,7 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
 
     cx.ap.things.insert(func_path.join("::"), Thing {
         thing_kind: 'f',
-        type_resolved: returns_type,
+        type_resolved: format!("!{}", returns_type),
     });
 
     // All types in type annotations must be already visible in python
@@ -609,31 +616,13 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
             py_function(cx, node, path);
         },
         "assignment" => {
-            // cx.ap.recursive_print_with_red_brackets(node);
+            cx.ap.recursive_print_with_red_brackets(node);
             py_assignment(cx, node, path);
         }
         "import_statement" | "import_from_statement" => { py_import(cx, node, path); }
-        // "expression_statement" => {
-        //     print!("\nexpression_statement\n");
-        //     cx.ap.recursive_print_with_red_brackets(node);
-        //     print!("\n/expression_statement\n");
-            // x1.x2.x3
-            //  -> usage of x1
-            //  -> usage of x2
-            //  -> usage of x3
-            // return type(x3)
-            // x4.f()
-            //  -> usage of x4
-            //  -> usage of f
-            // return type of f()
-        // }
-        // "parameters" => handle_argument(cx, node),
-        // "assignment" => handle_variable(cx, node),
         // "for_statement" => handle_variable(cx, node),
         "call" => {
-            cx.ap.recursive_print_with_red_brackets(node);
-            let ret_type = py_type_of_expr_creating_usages(cx, Some(node.clone()), path);
-            println!("\nRET_TYPE {:?}", ret_type);
+            py_type_of_expr_creating_usages(cx, Some(node.clone()), path);
         }
         _ => {
             // unknown, to discover new syntax, just print
@@ -684,6 +673,7 @@ pub fn parse(code: &str)
     let path = vec!["file".to_string()];
     py_traverse(&mut cx, &tree.root_node(), &path);
     cx.ap.dump();
+    println!("\n -- code annotated --\n{}\n -- /code --", cx.ap.annotate_code("#"));
 }
 
 
