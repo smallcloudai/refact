@@ -12,7 +12,7 @@ from refact.cli_printing import wrap_tokens, get_terminal_width, print_file, pri
 from refact.cli_markdown import to_markdown
 from refact.cli_inspect import create_label
 from refact.cli_settings import cli_yaml
-from refact.cli_main import lsp
+from refact import cli_main
 
 
 response_text = ""
@@ -194,9 +194,9 @@ async def ask_chat(model):
                 process_streaming_data(data)
 
         messages = list(streaming_messages)
-        tools = await tools_fetch_and_filter(base_url=lsp.base_url(), tools_turn_on=None)
+        tools = await tools_fetch_and_filter(base_url=cli_main.lsp.base_url(), tools_turn_on=None)
         new_messages = await ask_using_http(
-            lsp.base_url(),
+            cli_main.lsp.base_url(),
             messages,
             N,
             model,

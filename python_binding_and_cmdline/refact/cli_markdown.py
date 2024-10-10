@@ -1,5 +1,6 @@
 from refact.cli_printing import Tokens
-from refact.cli_settings import settings
+from refact import cli_settings
+
 
 gray = "#252b37"
 green = "#6ac496"
@@ -21,7 +22,8 @@ def is_beginning_of_line(text: str, i: int) -> bool:
 
 
 def to_markdown(text: str, width: int) -> Tokens:
-    nerd_font = settings.cli_yaml.nerd_font
+    assert cli_settings.cli_yaml is not None
+    nerd_font = cli_settings.cli_yaml.nerd_font
     result = []
     last = -1
     i = 0

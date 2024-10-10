@@ -47,7 +47,7 @@ class Message(BaseModel):
     tool_call_id: str = ""
     usage: Optional[Usage] = None
     subchats: Optional[DefaultDict[str, List[Message]]] = None
-    model_config = ConfigDict(exclude_none=True)
+    model_config = ConfigDict()
 
 
 def messages_to_dicts(
@@ -67,7 +67,7 @@ def messages_to_dicts(
             listofdict.append({
                 "role": x.role,
                 "content": x.content,
-                "tool_calls": [tc.dict() for tc in x.tool_calls] if x.tool_calls else None,
+                "tool_calls": [tc.model_dump(exclude_none=True) for tc in x.tool_calls] if x.tool_calls else None,
                 "tool_call_id": x.tool_call_id
             })
         else:
@@ -333,7 +333,7 @@ async def ask_using_openai_client(
         msg = Message(
             role=ch.message.role,
             content=ch.message.content,
-            tool_calls=[ToolCallDict(**x.dict()) for x in ch.message.tool_calls] if ch.message.tool_calls is not None else None,
+            tool_calls=[ToolCallDict(**x.model_dump(exclude_none=True)) for x in ch.message.tool_calls] if ch.message.tool_calls is not None else None,
             finish_reason=ch.finish_reason
         )
         choices[index] = msg

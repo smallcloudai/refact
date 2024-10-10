@@ -7,7 +7,8 @@ from pygments.lexers import guess_lexer_for_filename, get_lexer_by_name, guess_l
 import pygments
 import shutil
 
-from refact.cli_settings import settings
+from refact import cli_settings
+
 
 Tokens = List[Tuple[str, str]]
 Lines = List[Tokens]
@@ -30,10 +31,10 @@ def split_newline_tokens(tokens: Tokens) -> Tokens:
     return result
 
 
-def wrap_tokens(tokens: Tokens, max_width: int) -> Lines:
-    tokens: Tokens = split_newline_tokens(tokens)
-    result = []
-    current_line = []
+def wrap_tokens(tokens_: Tokens, max_width: int) -> Lines:
+    tokens: Tokens = split_newline_tokens(tokens_)
+    result: Lines = []
+    current_line: Tokens = []
     line_length = 0
     for token in tokens:
         token_len = len(token[1])
@@ -42,7 +43,7 @@ def wrap_tokens(tokens: Tokens, max_width: int) -> Lines:
             current_line = []
             line_length = 0
         while token_len > max_width:
-            result.append((token[0], token[1][:max_width]))
+            result.append([(token[0], token[1][:max_width])])
             token = (token[0], token[1][max_width:])
             token_len = len(token[1])
 
@@ -54,6 +55,7 @@ def wrap_tokens(tokens: Tokens, max_width: int) -> Lines:
             current_line.append(token)
             line_length += token_len
     return result
+
 
 
 def to_tokens(text: str) -> Tokens:
@@ -68,17 +70,17 @@ def highlight_text_by_language(text: str, language: str) -> Tokens:
     try:
         lexer = get_lexer_by_name(language)
         tokens = list(pygments.lex(text, lexer=lexer))
-        return PygmentsTokens(tokens).__pt_formatted_text__()
+        return [(token[0], token[1]) for token in PygmentsTokens(tokens).__pt_formatted_text__()]
     except:
         lexer = guess_lexer(language)
         tokens = list(pygments.lex(text, lexer=lexer))
-        return PygmentsTokens(tokens).__pt_formatted_text__()
+        return [(token[0], token[1]) for token in PygmentsTokens(tokens).__pt_formatted_text__()]
 
 
 def highlight_text(text: str, file_name: str) -> Tokens:
-    lexer = guess_lexer_for_filename(file_name, text)
+    lexer = get_lexer_by_name(guess_lexer_for_filename(file_name, text).name)
     tokens = list(pygments.lex(text, lexer=lexer))
-    return PygmentsTokens(tokens).__pt_formatted_text__()
+    return [(token[0], token[1]) for token in PygmentsTokens(tokens).__pt_formatted_text__()]
 
 
 def set_tokens_background_color(tokens: Tokens, color: str) -> Tokens:
@@ -105,7 +107,8 @@ def print_lines(lines: Lines):
 
 
 def print_file_name(file_name: str):
-    nerd_font = settings.cli_yaml.nerd_font
+    assert cli_settings.cli_yaml is not None
+    nerd_font = cli_settings.cli_yaml.nerd_font
     tab_color = "#3e4957"
     if nerd_font:
         print_formatted_text(FormattedText([
@@ -120,11 +123,11 @@ def print_file_name(file_name: str):
         ]))
 
 
-def print_file(content: str, file_name: str):
+def print_file(content_: str, file_name: str):
     bg_color = "#252b37"
 
     terminal_width = get_terminal_width()
-    content = highlight_text(content, file_name)
+    content = highlight_text(content_, file_name)
     wrapped = wrap_tokens(content, terminal_width - 2)
     limited = limit_lines(wrapped, 15)
     colored = set_background_color(limited, bg_color)
@@ -132,7 +135,7 @@ def print_file(content: str, file_name: str):
     print_lines(colored)
 
 
-def print_header(text: str, width: int) -> str:
+def print_header(text: str, width: int):
     style = Style.from_dict({
         'block': 'bg:ansiwhite fg:ansiblack',
     })

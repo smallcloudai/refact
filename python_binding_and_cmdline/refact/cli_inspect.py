@@ -95,5 +95,6 @@ def open_label(label: str) -> bool:
 
 
 def inspect_app() -> Application:
+    assert cli_settings.cli_yaml is not None
     _inspect_app.editing_mode = cli_settings.cli_yaml.get_editing_mode()
     return _inspect_app

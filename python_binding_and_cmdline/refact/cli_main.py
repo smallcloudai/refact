@@ -164,7 +164,7 @@ async def chat_main():
     app.editing_mode = cli_settings.cli_yaml.get_editing_mode()
 
     refact_args = [
-        os.path.join(os.path.dirname(__file__), "..", "bin", "refact-lsp"),
+        os.path.join(os.path.dirname(__file__), "bin", "refact-lsp"),
         "--address-url", cli_settings.cli_yaml.address_url,
         "--api-key", cli_settings.cli_yaml.api_key,
     ]
