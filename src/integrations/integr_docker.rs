@@ -1,5 +1,9 @@
+use std::path::Path;
 use std::sync::Arc;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use ignore::WalkBuilder;
+use regex::Regex;
+use tokio::io::{duplex, DuplexStream};
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 use tracing::{error, info};
@@ -22,10 +26,20 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage};
 use crate::tools::tools_description::Tool;
 
+const COMMON_LABEL: &str = "humberto-refact";
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
-#[allow(non_snake_case)]
 pub struct IntegrationDocker {
     pub connect_to_daemon_at: String,   // 127.0.0.1:1337
+    // pub ssh_config: Option<SshConfig>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct SshConfig {
+    pub host: String,
+    pub port: u16,
+    pub user: String,
+    pub identity_file: Option<String>,
 }
 
 // Bollard features:
@@ -42,19 +56,27 @@ pub struct ToolDocker {
 impl ToolDocker {
     pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
         let settings_docker_value = integrations_value.get("docker")?;
-
+    
         let settings_docker = serde_yaml::from_value::<IntegrationDocker>(settings_docker_value.clone()).or_else(|e| {
             error!("Failed to parse integration docker: {:?}", e);
             Err(e)
         }).ok()?;
-
-        let conn_bollard = Docker::connect_with_local(
-            "unix:///Users/humbertoyusta/.docker/run/docker.sock", 120, bollard::API_DEFAULT_VERSION).unwrap();
-        //     &settings_docker.connect_to_daemon_at,
-        //     120,
-        //     bollard::API_DEFAULT_VERSION,
-        // ).unwrap();
-
+    
+        let conn_bollard = {
+            let connect_method = if settings_docker.connect_to_daemon_at.starts_with("http://") 
+                || settings_docker.connect_to_daemon_at.starts_with("tcp://") {
+                Docker::connect_with_http
+            } else {
+                Docker::connect_with_local
+            };
+    
+            connect_method(&settings_docker.connect_to_daemon_at, 30 * 60, bollard::API_DEFAULT_VERSION)
+                .or_else(|e| {
+                    error!("Failed to connect to docker daemon: {:?}", e);
+                    Err(e)
+                }).ok()?
+        };
+    
         Some(Self { settings_docker, conn_bollard })
     }
 }
@@ -117,10 +139,9 @@ impl Tool for ToolDocker {
             json_result = serde_json::json!({ "images": [] });
             for image in images {
                 info!("{:?}", image);
-                let short_id = &image.id[7..19];
                 json_result["images"].as_array_mut().unwrap().push(serde_json::json!({
                     "repo_tags": image.repo_tags,
-                    "id": short_id
+                    "id": &image.id[7..19],
                 }));
             }
         }
@@ -148,75 +169,29 @@ impl Tool for ToolDocker {
     }
 }
 
-// fn parse_options(
-//     args: &[String],
-//     flag_options: &[(String, String)],
-//     value_options: &[(String, String)],
-// ) -> Result<(Vec<String>, HashMap<String, String>), String> {
-//     let mut options = HashMap::new();
-//     let mut remaining_args = Vec::new();
-//     let mut iter = args.iter().peekable();
-
-//     // Convert the tuples into sets for easier lookup
-//     let flag_set: std::collections::HashSet<_> = flag_options.iter().flat_map(|(s, l)| vec![s, l]).collect();
-//     let value_set: std::collections::HashSet<_> = value_options.iter().flat_map(|(s, l)| vec![s, l]).collect();
-
-//     while let Some(arg) = iter.next() {
-//         if arg.starts_with("--") || arg.starts_with("-") {
-//             if let Some(eq_pos) = arg.find('=') {
-//                 // Handle --option=value or -o=value
-//                 let key = arg[..eq_pos].to_string();
-//                 let value = arg[eq_pos + 1..].to_string();
-//                 if value_set.contains(&key.as_str()) {
-//                     options.insert(key, value);
-//                 } else {
-//                     return Err(format!("Unknown option: {}", key));
-//                 }
-//             } else if flag_set.contains(&arg.as_str()) {
-//                 // Handle flag options like --interactive or -i
-//                 options.insert(arg.clone(), String::new());
-//             } else if value_set.contains(&arg.as_str()) {
-//                 // Handle value options like --option value or -o value
-//                 if let Some(next_arg) = iter.peek() {
-//                     if !next_arg.starts_with("--") && !next_arg.starts_with("-") {
-//                         options.insert(arg.clone(), next_arg.clone());
-//                         iter.next(); // Skip the next argument as it is the value for the current option
-//                     } else {
-//                         return Err(format!("Expected value for option: {}", arg));
-//                     }
-//                 } else {
-//                     return Err(format!("Expected value for option: {}", arg));
-//                 }
-//             } else {
-//                 // Handle unknown options
-//                 return Err(format!("Unknown option: {}", arg));
-//             }
-//         } else {
-//             remaining_args.push(arg.clone());
-//         }
-//     }
-
-//     Ok((remaining_args, options))
-// }
-
 // use bollard::image::BuildImageOptions;
 // use bollard::Docker;
 
 
 async fn build_docker_image(parsed_args: &Vec<String>, docker: &Docker) -> Result<Value, String> {
-    let image_name = "test";
-    let folder_path = parsed_args[2].clone();
+    let (remaining_args, options) = parse_options(parsed_args, &HashSet::new(), &HashSet::from(["file", "tag"]))?;
+    let dockerfile = options.get("file").unwrap_or(&"Dockerfile".to_string()).to_string();
+    let context_dir = remaining_args[0].to_string();
+    let context_dir_name = Regex::new(r"[\\/]").unwrap().split(&context_dir).last().unwrap_or("").to_string();
+    let image_tag = options.get("tag").unwrap_or(&context_dir_name).to_string();
 
     let build_options = BuildImageOptions {
-        t: image_name.to_string(),
+        t: image_tag,
         rm: true,
+        // dockerfile: dockerfile,
+        labels: HashMap::from([(COMMON_LABEL.to_string(), "".to_string())]),
         ..Default::default()
     };
 
     // Create a tar archive of the folder
     let tar_data = {
         let mut tar = Builder::new(Vec::new());
-        tar.append_dir_all(".", &folder_path).map_err(|e| e.to_string())?;
+        tar.append_dir_all(".", &context_dir).map_err(|e| e.to_string())?;
         tar.into_inner().map_err(|e| e.to_string())?
     };
     
@@ -238,4 +213,80 @@ async fn build_docker_image(parsed_args: &Vec<String>, docker: &Docker) -> Resul
     info!("{:?}", build_log);
 
     Ok(json_result)
+}
+
+// async fn create_tar_from_context(context_dir: &Path) -> Result<DuplexStream, String> {
+//     // Create a duplex stream with a 16 KB buffer for async tar streaming
+//     let (mut tar_writer, tar_reader) = duplex(16 * 1024);
+
+//     // Read the .dockerignore file and set up the directory walker
+//     let dockerignore_path = context_dir.join(".dockerignore");
+//     let mut walk_builder = WalkBuilder::new(context_dir);
+//     if dockerignore_path.exists() {
+//         walk_builder.add_custom_ignore_filename(file_name(&dockerignore_path));
+//     }
+
+//     // Create the tar archive asynchronously
+//     tokio::spawn(async move {
+//         let mut tar = Builder::new(&mut tar_writer);
+
+//         for result in walk_builder.build() {
+//             match result {
+//                 Ok(entry) => {
+//                     let path = entry.path();
+//                     if let Ok(relative_path) = path.strip_prefix(context_dir) {
+//                         if let Err(e) = tar.append_path_with_name(path, relative_path) {
+//                             eprintln!("Error adding path to tar: {}", e);
+//                         }
+//                     }
+//                 }
+//                 Err(e) => eprintln!("Error reading directory entry: {}", e),
+//             }
+//         }
+
+//         // Finalize the tar archive and close the writer
+//         if let Err(e) = tar.finish() {
+//             eprintln!("Error finishing tar: {}", e);
+//         }
+
+//         if let Err(e) = tar_writer.shutdown().await {
+//             eprintln!("Error shutting down tar writer: {}", e);
+//         }
+//     });
+
+//     Ok(tar_reader)
+// }
+
+fn parse_options(
+    args: &[String],
+    flag_options: &HashSet<&str>,
+    value_options: &HashSet<&str>,
+) -> Result<(Vec<String>, HashMap<String, String>), String> {
+    let mut options = HashMap::new();
+    let mut remaining_args = Vec::new();
+    let mut iter = args.iter().peekable();
+
+    while let Some(arg) = iter.next() {
+        if arg.starts_with("-") && !arg.starts_with("--") {
+            return Err(format!("Use only long options, starting with \"--\""));
+        }
+        if arg.starts_with("--") {
+            let option_key = arg.strip_prefix("--").unwrap_or(arg);
+            if flag_options.contains(option_key) {
+                options.insert(option_key.to_string(), "true".to_string());
+            } else if value_options.contains(option_key) {
+                if let Some(next_arg) = iter.peek() {
+                    options.insert(option_key.to_string(), next_arg.to_string());
+                } else {
+                    return Err(format!("Missing value for option \"{}\"", option_key));
+                }
+            } else {
+                return Err(format!("Option \"{}\" is not supported", option_key));
+            }
+        } else {
+            remaining_args.push(arg.clone());
+        }
+    }
+
+    Ok((remaining_args, options))
 }
