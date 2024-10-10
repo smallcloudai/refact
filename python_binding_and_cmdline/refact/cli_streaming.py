@@ -5,15 +5,14 @@ from prompt_toolkit import print_formatted_text
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.application import get_app
+from prompt_toolkit.filters import Condition
 
 from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetch_and_filter
-from refact.cmdline.printing import wrap_tokens, get_terminal_width
-from refact.cmdline.printing import print_file, print_lines, highlight_text_by_language, set_background_color, print_file_name
-from refact.cmdline.markdown import to_markdown
-from refact.cmdline.inspect import create_label
-from refact.cmdline import settings
-from refact.cmdline import main
-from prompt_toolkit.filters import Condition
+from refact.cli_printing import wrap_tokens, get_terminal_width, print_file, print_lines, highlight_text_by_language, set_background_color, print_file_name
+from refact.cli_markdown import to_markdown
+from refact.cli_inspect import create_label
+from refact.cli_settings import cli_yaml
+from refact.cli_main import lsp
 
 
 response_text = ""
@@ -56,7 +55,7 @@ def flush_response():
 
 
 def update_response_box():
-    nerd_font = settings.cli_yaml.nerd_font
+    nerd_font = cli_yaml.nerd_font
     response_box.text = [("", response_text)]
     for tool_call in tool_calls.values():
         function = tool_call["function"]
@@ -96,8 +95,6 @@ def print_context_file(json_str: str):
     file = json.loads(json_str)[0]
     content = file["file_content"]
     file_name = file["file_name"]
-    # line1 = file["line1"]
-    # line2 = file["line2"]
 
     print_response("\n")
     flush_response()
@@ -160,11 +157,8 @@ def process_streaming_data(data):
             print_formatted_text(f"🔨 {function['name']}({function['arguments']}) ?{label}")
         else:
             print_formatted_text(f"🔨 <Unknown tool call {tool_call_id}> ?{label}")
-        # print_lines(indented)
 
     elif "subchat_id" in data:
-        # print_formatted_text(json.dumps(data, indent=2))
-
         subchat_id = data["subchat_id"]
         tool_call_id = data["tool_call_id"]
         if tool_call_id not in tool_calls:
@@ -184,7 +178,6 @@ def process_streaming_data(data):
                 tool_call["context_files"].append(file["file_name"])
 
         update_response_box()
-        pass
 
     else:
         print_response("unknown streaming data:\n%s" % data)
@@ -201,9 +194,9 @@ async def ask_chat(model):
                 process_streaming_data(data)
 
         messages = list(streaming_messages)
-        tools = await tools_fetch_and_filter(base_url=main.lsp.base_url(), tools_turn_on=None)
+        tools = await tools_fetch_and_filter(base_url=lsp.base_url(), tools_turn_on=None)
         new_messages = await ask_using_http(
-            main.lsp.base_url(),
+            lsp.base_url(),
             messages,
             N,
             model,

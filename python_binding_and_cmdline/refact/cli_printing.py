@@ -7,7 +7,7 @@ from pygments.lexers import guess_lexer_for_filename, get_lexer_by_name, guess_l
 import pygments
 import shutil
 
-from refact.cmdline import settings
+from refact.cli_settings import settings
 
 Tokens = List[Tuple[str, str]]
 Lines = List[Tokens]

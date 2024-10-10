@@ -1,15 +1,17 @@
 import asyncio
 import aiohttp
-from refact.cmdline.printing import get_terminal_width, tokens_len
-import refact.cmdline.main as cmdline_main
 from prompt_toolkit.layout.containers import Window, Container
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.application import get_app_or_none
+
+from refact.cli_printing import get_terminal_width, tokens_len
+import refact.cli_main as cli_main
 
 
 vecdb_ast_status = {
     "detail": "Initializing..."
 }
+
 
 model_section = ""
 
@@ -19,7 +21,7 @@ async def statusbar_background_task():
     while get_app_or_none() is not None:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{cmdline_main.lsp.base_url()}/rag-status") as response:
+                async with session.get(f"{cli_main.lsp.base_url()}/rag-status") as response:
                     vecdb_ast_status = await response.json(content_type=None)
         except Exception as e:
             if get_app_or_none() is not None:
@@ -31,7 +33,7 @@ async def statusbar_background_task():
 
         if get_app_or_none() is None:
             return
-        cmdline_main.app.invalidate()
+        cli_main.app.invalidate()
 
         fast_sleep = False
         if ast := vecdb_ast_status.get("ast", None):

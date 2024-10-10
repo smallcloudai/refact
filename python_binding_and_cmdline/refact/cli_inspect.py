@@ -6,8 +6,8 @@ from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.widgets import TextArea
 from prompt_toolkit.clipboard.pyperclip import PyperclipClipboard
-from refact.cmdline import statusbar, settings
-from refact.cmdline.app_switcher import exit_all_apps, pop_app
+from refact import cli_statusbar, cli_settings
+from refact.cli_app_switcher import exit_all_apps, pop_app
 
 
 next_label_i = 0
@@ -69,7 +69,7 @@ def line_number(line: int, wrap_count: int):
 text_area = TextArea(get_line_prefix=line_number, wrap_lines=True)
 hsplit = HSplit([
     text_area,
-    statusbar.StatusBar(),
+    cli_statusbar.StatusBar(),
 ])
 layout = Layout(hsplit)
 _inspect_app: Application = Application(
@@ -95,5 +95,5 @@ def open_label(label: str) -> bool:
 
 
 def inspect_app() -> Application:
-    _inspect_app.editing_mode = settings.cli_yaml.get_editing_mode()
+    _inspect_app.editing_mode = cli_settings.cli_yaml.get_editing_mode()
     return _inspect_app

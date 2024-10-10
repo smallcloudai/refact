@@ -18,12 +18,12 @@ from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.widgets import TextArea
 
 from refact.chat_client import Message
-from refact.cmdline.inspect import inspect_app, open_label
-from refact.cmdline.streaming import ask_chat, print_response, get_response_box
-from refact.cmdline.streaming import stop_streaming, is_not_streaming_condition, is_streaming, start_streaming
-from refact.cmdline.streaming import add_streaming_message
-from refact.cmdline.app_switcher import start_app, exit_all_apps, push_app
-from refact.cmdline import statusbar, settings
+from refact.cli_inspect import inspect_app, open_label
+from refact.cli_streaming import ask_chat, print_response, get_response_box
+from refact.cli_streaming import stop_streaming, is_not_streaming_condition, is_streaming, start_streaming
+from refact.cli_streaming import add_streaming_message
+from refact.cli_app_switcher import start_app, exit_all_apps, push_app
+from refact import cli_statusbar, cli_settings
 from refact.lsp_runner import LSPServerRunner
 
 
@@ -42,7 +42,7 @@ Refact Agent is essentially its tools, ask: "what tools do you have?"
 '''.strip().split('\n')
 
 
-async def welcome_message(settings: settings.CmdlineSettings, tip: str):
+async def welcome_message(settings: cli_settings.CmdlineSettings, tip: str):
     text = f"""
 ~/.cache/refact/cli.yaml                -- set up this program
 ~/.cache/refact/bring-your-own-key.yaml -- set up models you want to use
@@ -132,7 +132,7 @@ def on_submit(buffer):
     add_streaming_message(Message(role="user", content=user_input))
 
     async def asyncfunc():
-        await ask_chat(settings.settings.model)
+        await ask_chat(cli_settings.args.model)
 
     loop = asyncio.get_event_loop()
     loop.create_task(asyncfunc())
@@ -160,28 +160,28 @@ async def chat_main():
 
     arg_question = " ".join(after_minus_minus)
 
-    settings.cli_yaml = settings.load_cli_or_auto_configure()
-    app.editing_mode = settings.cli_yaml.get_editing_mode()
+    cli_settings.cli_yaml = cli_settings.load_cli_or_auto_configure()
+    app.editing_mode = cli_settings.cli_yaml.get_editing_mode()
 
     refact_args = [
         os.path.join(os.path.dirname(__file__), "..", "bin", "refact-lsp"),
-        "--address-url", settings.cli_yaml.address_url,
-        "--api-key", settings.cli_yaml.api_key,
+        "--address-url", cli_settings.cli_yaml.address_url,
+        "--api-key", cli_settings.cli_yaml.api_key,
     ]
-    if settings.cli_yaml.insecure_ssl:
+    if cli_settings.cli_yaml.insecure_ssl:
         refact_args.append("--insecure-ssl")
-    if settings.cli_yaml.basic_telemetry:
+    if cli_settings.cli_yaml.basic_telemetry:
         refact_args.append("--basic-telemetry")
-    if settings.cli_yaml.experimental:
+    if cli_settings.cli_yaml.experimental:
         refact_args.append("--experimental")
-    if settings.cli_yaml.ast:
+    if cli_settings.cli_yaml.ast:
         refact_args.append("--ast")
         refact_args.append("--ast-max-files")
-        refact_args.append(str(settings.cli_yaml.ast_max_files))
-    if settings.cli_yaml.vecdb:
+        refact_args.append(str(cli_settings.cli_yaml.ast_max_files))
+    if cli_settings.cli_yaml.vecdb:
         refact_args.append("--vecdb")
         refact_args.append("--vecdb-max-files")
-        refact_args.append(str(settings.cli_yaml.vecdb_max_files))
+        refact_args.append(str(cli_settings.cli_yaml.vecdb_max_files))
     if args.path_to_project:
         refact_args.append("--workspace-folder")
         refact_args.append(args.path_to_project)
@@ -193,23 +193,23 @@ async def chat_main():
     )
 
     async with lsp:
-        caps = await settings.fetch_caps(lsp.base_url())
-        settings.settings = settings.CmdlineSettings(caps, args)
+        caps = await cli_settings.fetch_caps(lsp.base_url())
+        cli_settings.args = cli_settings.CmdlineSettings(caps, args)
 
-        if settings.settings.model not in caps.code_chat_models:
+        if cli_settings.args.model not in caps.code_chat_models:
             known_models = list(caps.code_chat_models.keys())
-            print(f"model {settings.settings.model} is unknown, pick one of {known_models}")
+            print(f"model {cli_settings.args.model} is unknown, pick one of {known_models}")
             return
 
-        await welcome_message(settings.settings, random.choice(tips_of_the_day))
-        statusbar.model_section = f"model {settings.settings.model} context {settings.settings.n_ctx()}"
+        await welcome_message(cli_settings.args, random.choice(tips_of_the_day))
+        cli_statusbar.model_section = f"model {cli_settings.args.model} context {cli_settings.args.n_ctx()}"
 
         if arg_question:
             print(arg_question)
-            await answer_question_in_arguments(settings.settings, arg_question)
+            await answer_question_in_arguments(cli_settings.args, arg_question)
             return
 
-        asyncio.create_task(statusbar.statusbar_background_task())
+        asyncio.create_task(cli_statusbar.statusbar_background_task())
         await start_app(app)
 
 
@@ -239,7 +239,7 @@ hsplit = HSplit([
         filter=is_not_streaming_condition,
     ),
     Window(),
-    statusbar.StatusBar(),
+    cli_statusbar.StatusBar(),
 ])
 layout = Layout(hsplit)
 app: Application = Application(key_bindings=kb, layout=layout)
