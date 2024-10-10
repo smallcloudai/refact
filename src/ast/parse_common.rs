@@ -100,7 +100,6 @@ impl<'a> ContextAnyParser<'a> {
             println!("{:<40}", star);
         }
         println!("  -- /star -- ");
-
     }
 
     pub fn annotate_code(&self, comment: &str) -> String {

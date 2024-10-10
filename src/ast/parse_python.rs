@@ -76,8 +76,7 @@ fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) 
 {
     match look_for.as_str() {
         "Any" => { return Some("*".to_string()); },
-        "print" => { return Some("!void".to_string()); },
-        "int" | "float" | "str" | "bool" => { return Some(look_for.clone()); },
+        "print" | "int" | "float" | "str" | "bool" => { return Some(look_for.clone()); },
         _ => {},
     }
     let mut current_path = path.clone();
@@ -138,18 +137,13 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
                         if path_builder.is_empty() {  // first
                             if let Some(success) = py_simple_resolve(cx, path, &ident_text) {
                                 path_builder = success.split("::").map(String::from).collect::<Vec<String>>();
-                                // cx.ap.usages.push((path.join("::"), AstUsage {
-                                //     targets_for_guesswork: vec![],
-                                //     resolved_as: path_builder.join("::"),
-                                //     debug_hint: format!("dotted/first"),
-                                //     uline: node.range().start_point.row,
-                                // }));
                             } else {
                                 path_builder = vec!["?".to_string(), ident_text];
                             }
                         } else { // next
                             path_builder.push(ident_text);
                         }
+                        println!("DOTTED_LOOP {:?}", path_builder);
                         if path_builder.starts_with(&vec!["?".to_string()]) { // guesses
                             cx.ap.usages.push((path.join("::"), AstUsage {
                                 targets_for_guesswork: vec![path_builder.join("::")],
@@ -164,7 +158,14 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
                                 debug_hint: format!("dotted"),
                                 uline: node.range().start_point.row,
                             }));
-                        } else {  // not a guess, should exist but doesn't
+                        } else {
+                            // not a guess, does not exist as a thing, probably usage of something from another module, such as os.system
+                            cx.ap.usages.push((path.join("::"), AstUsage {
+                                targets_for_guesswork: vec![],
+                                resolved_as: path_builder.join("::"),
+                                debug_hint: format!("othermod"),
+                                uline: node.range().start_point.row,
+                            }));
                             found_prev2 = found_prev1;
                             found_prev1 = false;
                         }
@@ -360,7 +361,7 @@ fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path:
     }
     let node = node.unwrap();
     match node.kind() {
-        "expression_list" => {
+        "expression_list" | "argument_list" => {
             let mut elements = vec![];
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
@@ -666,14 +667,14 @@ pub fn py_make_cx(code: &str) -> ContextPy
 }
 
 #[allow(dead_code)]
-pub fn parse(code: &str)
+pub fn parse(code: &str) -> String
 {
     let mut cx = py_make_cx(code);
     let tree = cx.ap.sitter.parse(code, None).unwrap();
     let path = vec!["file".to_string()];
     py_traverse(&mut cx, &tree.root_node(), &path);
     cx.ap.dump();
-    println!("\n -- code annotated --\n{}\n -- /code --", cx.ap.annotate_code("#"));
+    cx.ap.annotate_code("#")
 }
 
 
@@ -684,6 +685,7 @@ mod tests {
     #[test]
     fn test_parse_py_goat() {
         let code = include_str!("alt_testsuite/py_torture.py");
-        parse(code);
+        let annotated = parse(code);
+        std::fs::write("src/ast/alt_testsuite/py_torture_annotated.py", annotated).expect("Unable to write file");
     }
 }
