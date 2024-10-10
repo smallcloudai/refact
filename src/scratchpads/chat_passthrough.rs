@@ -20,7 +20,7 @@ use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, system_prompt_add_workspace_info};
 
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 
 pub struct DeltaSender {

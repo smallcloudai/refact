@@ -182,6 +182,7 @@ code_lens:
     messages:
     - role: "user"
       content: |
+        @file %CURRENT_FILE%:%CURSOR_LINE%
         ```
         %CODE_SELECTION%
         ```
@@ -197,6 +198,7 @@ code_lens:
     messages:
     - role: "user"
       content: |
+        @file %CURRENT_FILE%:%CURSOR_LINE%
         ```
         %CODE_SELECTION%
         ```
