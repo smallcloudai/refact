@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from "react";
-import { Text, Container, Button } from "@radix-ui/themes";
+import { Text, Container, Button, Flex, IconButton } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
 import styles from "./ChatContent.module.css";
+import { Pencil2Icon } from "@radix-ui/react-icons";
 
 function processLines(
   lines: string[],
@@ -54,6 +55,7 @@ export const UserInput: React.FC<UserInputProps> = ({
 }) => {
   // const { retryFromIndex } = useSendChatRequest();
   const [showTextArea, setShowTextArea] = useState(false);
+  const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
   const ref = React.useRef<HTMLButtonElement>(null);
   const handleSubmit = useCallback(
     (value: string) => {
@@ -63,16 +65,15 @@ export const UserInput: React.FC<UserInputProps> = ({
     [messageIndex, onRetry],
   );
 
-  const handleShowTextArea = (value: boolean) => {
-    setShowTextArea(value);
-  };
-
-  const handleEditClick = () => {
-    const selection = window.getSelection();
-    if (selection?.type !== "Range") {
-      setShowTextArea(true);
-    }
-  };
+  const handleShowTextArea = useCallback(
+    (value: boolean) => {
+      setShowTextArea(value);
+      if (isEditButtonVisible) {
+        setIsEditButtonVisible(false);
+      }
+    },
+    [isEditButtonVisible],
+  );
 
   const lines = children.split("\n");
   const elements = processLines(lines);
@@ -86,17 +87,38 @@ export const UserInput: React.FC<UserInputProps> = ({
           onClose={() => handleShowTextArea(false)}
         />
       ) : (
-        <Button
-          ref={ref}
-          variant="soft"
-          size="4"
-          onClick={handleEditClick}
-          className={styles.userInput}
+        <Flex
+          direction="row"
+          // checking for the length of the lines to determine the position of the edit button
+          gap={lines.length <= 2 ? "2" : "1"}
+          align={lines.length <= 2 ? "center" : "end"}
           my="1"
-          asChild
+          onMouseEnter={() => setIsEditButtonVisible(true)}
+          onMouseLeave={() => setIsEditButtonVisible(false)}
         >
-          <div>{elements}</div>
-        </Button>
+          <Button
+            ref={ref}
+            variant="soft"
+            size="4"
+            className={styles.userInput}
+            asChild
+          >
+            <div>{elements}</div>
+          </Button>
+          <IconButton
+            title="Edit message"
+            variant="soft"
+            size={"2"}
+            onClick={() => handleShowTextArea(true)}
+            style={{
+              opacity: isEditButtonVisible ? 1 : 0,
+              visibility: isEditButtonVisible ? "visible" : "hidden",
+              transition: "opacity 0.15s, visibility 0.15s",
+            }}
+          >
+            <Pencil2Icon width={15} height={15} />
+          </IconButton>
+        </Flex>
       )}
     </Container>
   );
