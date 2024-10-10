@@ -321,8 +321,9 @@ impl AtCommand for AtFile {
         }
 
         let context_file = context_file_from_file_path(gcx.clone(), candidates[0].clone()).await?;
+        let replacement_text = if cmd.pos1 == 0 { "".to_string() } else { arg0.text.clone() };
 
-        Ok((vec_context_file_to_context_tools(vec![context_file]), arg0.text.clone()))
+        Ok((vec_context_file_to_context_tools(vec![context_file]), replacement_text))
     }
 }
 
