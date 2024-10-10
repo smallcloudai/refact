@@ -48,8 +48,9 @@ def wobble_operator(w: Optional[WobbleNoble]) -> str:
 wobble_list1 = wobble_generator1(5)
 wobble_list2 = wobble_generator2(5)
 
-if wobble_list1[3] is not None:
-    print(wobble_list1[3].trouble)
+for w in wobble_list1:
+    if w is not None:
+        print(w.trouble)
 if wobble_list2[3] is not None:
     print(wobble_list2[3].trouble)
 print("wobble_operator", wobble_operator(wobble_list2[3]))
