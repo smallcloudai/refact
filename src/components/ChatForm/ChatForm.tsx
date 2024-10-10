@@ -19,6 +19,7 @@ import { useAppSelector, useAppDispatch } from "../../hooks";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useCheckboxes } from "./useCheckBoxes";
+import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
@@ -68,11 +69,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const information = useAppSelector(getInformationMessage);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
+  const [value, setValue] = useInputValue();
   const onClearInformation = useCallback(
     () => dispatch(clearInformation()),
     [dispatch],
   );
-  const [value, setValue] = React.useState("");
 
   const { checkboxes, onToggleCheckbox, unCheckAll } = useCheckboxes();
 
@@ -102,6 +103,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     checkboxes,
     config.features?.vecdb,
     onSubmit,
+    setValue,
     unCheckAll,
   ]);
 
@@ -146,7 +148,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         handleHelpInfo(null);
       }
     },
-    [handleHelpInfo],
+    [handleHelpInfo, setValue],
   );
 
   if (error) {
