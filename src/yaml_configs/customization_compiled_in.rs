@@ -185,12 +185,12 @@ code_lens:
         ```
         %CODE_SELECTION%
         ```
-        Don't call any tools this time.
-        Your task is to find potential problems. Locks, initialization, security, type safety, interaction with other parts of the program.
-        If there are no serious problems, tell briefly there are no problems, a variation of "Looks good."
-        If you found a problem, offer a replacement for code above, don't rewrite the whole file.
-        If you still want to rewrite the whole file, tell the user what the problem is, ask if they want to rewrite the whole file.
-        Don't solve all problems at once, fix just one.
+        Find potential problems: locks, initialization, security, type safety, faulty logic.
+        If there are no serious problems, tell briefly there are no problems.
+    - role: "cd_instruction"
+      content: |
+        Don't solve all problems at once, fix just one. Don't call any tools this time.
+        Use 📍-notation for code blocks, as described in the system prompt.
   explain:
     label: Explain
     auto_submit: true
@@ -200,8 +200,8 @@ code_lens:
         ```
         %CODE_SELECTION%
         ```
-        Look at the code above, look up usages of things defined in this code, lookup definitions of notable types used in this code.
-        Explain: one paragraph on why this code exists, one paragraph about the code, maybe a paragraph about
+        Look up definitions of types used in this code. Look up references on things defined in this code.
+        Explain: about one paragraph on why this code exists, one paragraph about the code, maybe a paragraph about
         any tricky parts in the code. Be concise, wait for a more specific follow-up question from the user.
 
 

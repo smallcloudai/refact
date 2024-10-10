@@ -138,7 +138,7 @@ pub async fn run_at_commands(
                     stream_back_to_user.push_in_json(json!(message));
                 }
             }
-            info!("postprocess_plain_text_messages+postprocess_at_results2 {:.3}s", t0.elapsed().as_secs_f32());
+            info!("postprocess_plain_text_messages + postprocess_context_files {:.3}s", t0.elapsed().as_secs_f32());
         }
 
         if content.trim().len() > 0 {
