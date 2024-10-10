@@ -11,7 +11,7 @@ from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetc
 from refact.cli_printing import wrap_tokens, get_terminal_width, print_file, print_lines, highlight_text_by_language, set_background_color, print_file_name
 from refact.cli_markdown import to_markdown
 from refact.cli_inspect import create_label
-from refact.cli_settings import cli_yaml
+from refact import cli_settings
 from refact import cli_main
 
 
@@ -55,7 +55,8 @@ def flush_response():
 
 
 def update_response_box():
-    nerd_font = cli_yaml.nerd_font
+    assert cli_settings.cli_yaml is not None
+    nerd_font = cli_settings.cli_yaml.nerd_font
     response_box.text = [("", response_text)]
     for tool_call in tool_calls.values():
         function = tool_call["function"]

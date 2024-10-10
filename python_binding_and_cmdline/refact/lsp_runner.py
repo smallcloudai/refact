@@ -20,12 +20,16 @@ class LSPServerRunner:
         self._port: int = 0
         self._wait_for_ast_vecdb = wait_for_ast_vecdb
         self._verbose = verbose
+        self._xdebug = 0
 
     def check_if_still_running(self) -> bool:
         return self._refact_lsp_process is not None and self._refact_lsp_process.returncode is None
 
     def base_url(self):
-        return f"http://127.0.0.1:{self._port}/v1"
+        return f"http://127.0.0.1:{self._xdebug or self._port}/v1"
+
+    def set_xdebug(self, debug_port):
+        self._xdebug = debug_port
 
     async def start(self):
         assert self._refact_lsp_process is None

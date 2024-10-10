@@ -155,6 +155,7 @@ async def chat_main():
     parser.add_argument('path_to_project', type=str, nargs='?', help="Path to the project", default=None)
     parser.add_argument('--model', type=str, help="Specify the model to use")
     parser.add_argument('--experimental', type=bool, default=False, help="Enable experimental features, such as new integrations")
+    parser.add_argument('--xdebug', type=int, default=0, help="Connect to refact-lsp on the given port, as opposed to starting a new refact-lsp process")
     parser.add_argument('question', nargs=argparse.REMAINDER, help="You can continue your question in the command line after --")
     args = parser.parse_args(before_minus_minus)
 
@@ -192,6 +193,7 @@ async def chat_main():
         verbose=False
     )
 
+    lsp.set_xdebug(args.xdebug)
     async with lsp:
         caps = await cli_settings.fetch_caps(lsp.base_url())
         cli_settings.args = cli_settings.CmdlineSettings(caps, args)
