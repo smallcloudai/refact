@@ -190,7 +190,7 @@ async fn sections_to_diff_blocks(
                     err += "Split it into multiple sections like this:\n";
                     for (_, _, found_block) in res {
                         err += &format!("### Original Section (to be replaced)\n```\n{}\n```\n", found_block.join("\n"));
-                        err += &"### Modified Section (to replace with)\n```\n...\n```\n".to_string();
+                        err += &"### Modified Section (to replace with)\n```\n[Modified code section]\n```\n".to_string();
                     }
                     errors.push(err.clone());
                     error!("{}", err);
@@ -246,7 +246,7 @@ impl BlocksOfCodeParser {
 2. Rewrite those sections. The best way to do that correctly is to split them into smaller pieces. 
 I.e., if there are many functions in a single section - make a separate section for each function
 3. Copy other correct sections without any changes
-4. Keep the output format the same is in the initial prompt:
+4. Keep the output format the same is in the initial prompt and don't forget to replace [Modified code section] with the real modified code:
 ## Output Format
 ### Original Section (to be replaced)
 ```
