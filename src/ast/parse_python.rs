@@ -110,7 +110,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
                     debug_hint: format!("resolve/id"),
                     uline: node.range().start_point.row,
                 };
-                if !py_is_trivial(u.resolved_as.as_str()) {
+                if !py_is_trivial(u.resolved_as.as_str()) && !cx.ap.suppress_adding {
                     cx.ap.usages.push((path.join("::"), u.clone()));
                 }
                 return Some(u);
@@ -143,16 +143,18 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
                         } else { // next
                             path_builder.push(ident_text.clone());
                         }
-                        println!("DOTTED_LOOP {:?}", path_builder);
+                        // println!("DOTTED_LOOP {:?}", path_builder);
                         if path_builder.starts_with(&vec!["?".to_string()]) { // guesses
-                            cx.ap.usages.push((path.join("::"), AstUsage {
-                                targets_for_guesswork: vec![path_builder.join("::")],
-                                resolved_as: "".to_string(),
-                                debug_hint: format!("dotted/guessing"),
-                                uline: node.range().start_point.row,
-                            }));
+                            if !cx.ap.suppress_adding {
+                                cx.ap.usages.push((path.join("::"), AstUsage {
+                                    targets_for_guesswork: vec![path_builder.join("::")],
+                                    resolved_as: "".to_string(),
+                                    debug_hint: format!("dotted/guessing"),
+                                    uline: node.range().start_point.row,
+                                }));
+                            }
                         } else if let Some(existing_thing) = cx.ap.things.get(&path_builder.join("::")) { // oh cool, real objects
-                            if ident_text != "self" {  // self references are trivial (we don't skip them completely, just reference on `self` itself is skipped)
+                            if ident_text != "self"  && !cx.ap.suppress_adding {  // self references are trivial (we don't skip them completely, just reference on `self` itself is skipped)
                                 cx.ap.usages.push((path.join("::"), AstUsage {
                                     targets_for_guesswork: vec![],
                                     resolved_as: path_builder.join("::"),
@@ -165,7 +167,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
                             }
                         } else {
                             // not a guess, does not exist as a thing, probably usage of something from another module, such as os.system
-                            if !allow_creation {
+                            if !allow_creation && !cx.ap.suppress_adding {
                                 cx.ap.usages.push((path.join("::"), AstUsage {
                                     targets_for_guesswork: vec![],
                                     resolved_as: path_builder.join("::"),
@@ -247,6 +249,10 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
     }
 }
 
+fn resolved_type(type_str: &String) -> bool {
+    type_str != "?" && !type_str.is_empty()
+}
+
 fn py_var_add(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
 {
     let lvalue_usage = if let Some(u) = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path, true) {
@@ -262,14 +268,18 @@ fn py_var_add(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_typ
         return;
     }
     let mut mut_good_idea_to_write = true;
+    let potential_new_type = if !resolved_type(&lvalue_type) || lvalue_type.starts_with("ERR") { rhs_type.clone() } else { lvalue_type.clone() };
+    println!("\npy_var_add lvalue_path={} lvalue_type={} <= potential_new_type={} rhs_type={} mut_good_idea_to_write={}", lvalue_path, lvalue_type, potential_new_type, rhs_type, mut_good_idea_to_write);
     if let Some(existing_thing) = cx.ap.things.get(&lvalue_path) {
-        mut_good_idea_to_write = existing_thing.type_resolved == "?" || existing_thing.type_resolved.starts_with("ERR");
+        mut_good_idea_to_write = !resolved_type(&existing_thing.type_resolved) && resolved_type(&potential_new_type);
+        if mut_good_idea_to_write {
+            cx.ap.resolved_anything = true;
+        }
     }
-    println!("\npy_var_add lvalue_path={} lvalue_type={} <= rhs_type={} mut_good_idea_to_write={}", lvalue_path, lvalue_type, rhs_type, mut_good_idea_to_write);
     if mut_good_idea_to_write {
         cx.ap.things.insert(lvalue_path, Thing {
             thing_kind: 'v',
-            type_resolved: if lvalue_type == "?" || lvalue_type.is_empty() || lvalue_type.starts_with("ERR") { rhs_type } else { lvalue_type },
+            type_resolved: potential_new_type,
         });
     }
 }
@@ -630,6 +640,10 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
         "call" => {
             py_type_of_expr_creating_usages(cx, Some(node.clone()), path);
         }
+        // "return_statement" => {
+        //     py_type_of_expr_creating_usages(cx, Some(node.clone()), path);
+        //     // assign type to thing at path
+        // }
         _ => {
             // unknown, to discover new syntax, just print
             cx.ap.whitespace1(node);
@@ -650,6 +664,8 @@ pub fn py_make_cx(code: &str) -> ContextPy
             sitter,
             last_end_byte: 0,
             code,
+            suppress_adding: false,
+            resolved_anything: false,
             defs: IndexMap::new(),
             things: IndexMap::new(),
             usages: vec![],
