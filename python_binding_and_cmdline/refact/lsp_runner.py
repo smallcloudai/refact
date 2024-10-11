@@ -33,6 +33,8 @@ class LSPServerRunner:
 
     async def start(self):
         assert self._refact_lsp_process is None
+        if self._xdebug:
+            return
         ports_tried = []
         for maybe_port_busy in range(5):
             self._port = random.randint(8100, 9100)

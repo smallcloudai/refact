@@ -21,7 +21,7 @@ async def statusbar_background_task():
     while get_app_or_none() is not None:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{cli_main.lsp.base_url()}/rag-status") as response:
+                async with session.get(f"{cli_main.lsp_runner.base_url()}/rag-status") as response:
                     vecdb_ast_status = await response.json(content_type=None)
         except Exception as e:
             if get_app_or_none() is not None:

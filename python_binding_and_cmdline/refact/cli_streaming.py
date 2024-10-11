@@ -195,7 +195,7 @@ async def ask_chat(model):
                 process_streaming_data(data)
 
         messages = list(streaming_messages)
-        tools = await tools_fetch_and_filter(base_url=cli_main.lsp.base_url(), tools_turn_on=None)
+        tools = await tools_fetch_and_filter(base_url=cli_main.lsp_runner.base_url(), tools_turn_on=None)
         new_messages = await ask_using_http(
             cli_main.lsp.base_url(),
             messages,

@@ -27,7 +27,7 @@ from refact import cli_statusbar, cli_settings
 from refact.lsp_runner import LSPServerRunner
 
 
-lsp = None
+lsp_runner = None
 
 
 async def answer_question_in_arguments(settings, arg_question):
@@ -84,8 +84,7 @@ class ToolsCompleter(Completer):
     def get_completions(self, document, complete_event):
         text = document.text
         position = document.cursor_position
-        response = get_at_command_completion(lsp.base_url(), text, position)
-
+        response = get_at_command_completion(lsp_runner.base_url(), text, position)
         completions = response["completions"]
         replace = response["replace"]
         for completion in completions:
@@ -139,7 +138,7 @@ def on_submit(buffer):
 
 
 async def chat_main():
-    global lsp
+    global lsp_runner
 
     args = sys.argv[1:]
     if '--' in args:
@@ -186,16 +185,16 @@ async def chat_main():
     if args.path_to_project:
         refact_args.append("--workspace-folder")
         refact_args.append(args.path_to_project)
-    lsp = LSPServerRunner(
+    lsp_runner = LSPServerRunner(
         refact_args,
         wait_for_ast_vecdb=False,
         refact_lsp_log=None,
         verbose=False
     )
 
-    lsp.set_xdebug(args.xdebug)
-    async with lsp:
-        caps = await cli_settings.fetch_caps(lsp.base_url())
+    lsp_runner.set_xdebug(args.xdebug)
+    async with lsp_runner:
+        caps = await cli_settings.fetch_caps(lsp_runner.base_url())
         cli_settings.args = cli_settings.CmdlineSettings(caps, args)
 
         if cli_settings.args.model not in caps.code_chat_models:
