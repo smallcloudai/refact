@@ -60,6 +60,10 @@ def update_response_box():
     response_box.text = [("", response_text)]
     for tool_call in tool_calls.values():
         function = tool_call["function"]
+
+        import traceback
+        traceback.print_stack()
+
         response_box.text.append(("", f"\n🔨 {function['name']}({function['arguments']})"))
         if "context_files" in tool_call:
             context_files = tool_call["context_files"]

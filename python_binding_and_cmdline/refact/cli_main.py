@@ -22,6 +22,7 @@ from refact.cli_inspect import inspect_app, open_label
 from refact.cli_streaming import the_chatting_loop, print_response, get_response_box
 from refact.cli_streaming import stop_streaming, is_not_streaming_condition, start_streaming
 from refact import cli_streaming
+from refact import cli_printing
 from refact.cli_app_switcher import start_app, exit_all_apps, push_app
 from refact import cli_statusbar, cli_settings
 from refact.lsp_runner import LSPServerRunner
@@ -130,8 +131,9 @@ def on_submit(buffer):
             print_formatted_text(f"\nchat> {user_input}")
             print_formatted_text(FormattedText([("#ff3333", f"label {label} not found")]))
         return
-    else:
-        print_response(f"\nchat> {user_input}")
+
+    if user_input.strip() != "":
+        print_response(f"\nchat> {user_input}\n")
 
     start_streaming()
 
@@ -140,6 +142,13 @@ def on_submit(buffer):
 
     async def asyncfunc():
         await the_chatting_loop(cli_settings.args.model, max_auto_resubmit=4 if cli_settings.args.always_pause else 1)
+        if len(cli_streaming.streaming_messages) > 0:
+            last_message = cli_streaming.streaming_messages[-1]
+            if last_message.role == "assistant" and last_message.tool_calls is not None:
+                # cli_streaming.process_streaming_data()
+                cli_printing.print_formatted_text(FormattedText([
+                    (f"fg:#808080", f"tool calls paused because of max_auto_resubmit, press Enter to submit"),
+                ]))
 
     loop = asyncio.get_event_loop()
     loop.create_task(asyncfunc())
