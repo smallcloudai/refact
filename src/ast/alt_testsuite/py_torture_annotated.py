@@ -91,6 +91,6 @@ if __name__ == '__main__':
     process = NotAProcess(target=list_directory)
     # U{ resolve/id multiprocessing::Process } U{ resolve/id file::process }
     process.start()
-    # U{ dotted file::process } U{ othermod file::process::start }
+    # U{ dotted file::process } U{ othermod multiprocessing::Process::start }
     process.join()
-    # U{ dotted file::process } U{ othermod file::process::join }
+    # U{ dotted file::process } U{ othermod multiprocessing::Process::join }

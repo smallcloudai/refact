@@ -151,13 +151,16 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
                                 debug_hint: format!("dotted/guessing"),
                                 uline: node.range().start_point.row,
                             }));
-                        } else if let Some(_existing_thing) = cx.ap.things.get(&path_builder.join("::")) { // oh cool, real objects
+                        } else if let Some(existing_thing) = cx.ap.things.get(&path_builder.join("::")) { // oh cool, real objects
                             cx.ap.usages.push((path.join("::"), AstUsage {
                                 targets_for_guesswork: vec![],
                                 resolved_as: path_builder.join("::"),
                                 debug_hint: format!("dotted"),
                                 uline: node.range().start_point.row,
                             }));
+                            if existing_thing.thing_kind == 'v' {
+                                path_builder = existing_thing.type_resolved.split("::").map(|x| { String::from(x) }).collect::<Vec<String>>();
+                            }
                         } else {
                             // not a guess, does not exist as a thing, probably usage of something from another module, such as os.system
                             cx.ap.usages.push((path.join("::"), AstUsage {
