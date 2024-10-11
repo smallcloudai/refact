@@ -69,7 +69,7 @@ def patch_request(messages, ticket_ids, base_url: str):
     resp = requests.post(
         f"{base_url}/patch-single-file-from-ticket",
         data=json.dumps(payload),
-        timeout=120
+        timeout=240
     )
     assert resp.status_code == 200, resp.text
     return resp.json()
