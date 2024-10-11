@@ -32,10 +32,15 @@ class FumbleNoble(object):
     def __init__(self):
         self.humble = "mumble"
 
+    def do_the_thing(self):
+        print("wobble", self.trouble)
+        # U{ resolve/id print } U{ othermod file::FumbleNoble::trouble }
+
 
 def wobble_generator(n: int) -> List[Optional[WobbleNoble]]:
 # U{ resolve/id file::WobbleNoble }
     return [WobbleNoble() for _ in range(n)]
+    # FIX
 
 wobble_generator1: Callable[[int], List[Optional[WobbleNoble]]]
 # U{ resolve/id file::WobbleNoble }
@@ -47,11 +52,14 @@ wobble_generator2 = wobble_generator
 def mixed_generator() -> Tuple[WobbleNoble, FumbleNoble]:
 # U{ resolve/id file::WobbleNoble } U{ resolve/id file::FumbleNoble }
     return (WobbleNoble(), FumbleNoble())
+    # FIX
 
 def wobble_operator(w: Optional[WobbleNoble]) -> str:
 # U{ resolve/id file::WobbleNoble }
     if w is not None:
+    # FIX
         return w.trouble
+    # FIX
     return "woof"
 
 wobble_list1 = wobble_generator1(5)
@@ -64,9 +72,9 @@ for w in wobble_list1:
         print(w.trouble)
 if wobble_list2[3] is not None:
     print(wobble_list2[3].trouble)
-    # U{ resolve/id print } U{ dotted/guessing ?::trouble }
+    # FIX U{ resolve/id print } U{ dotted/guessing ?::trouble }
 print("wobble_operator", wobble_operator(wobble_list2[3]))
-# U{ resolve/id print } U{ resolve/id file::wobble_operator }
+# FIX U{ resolve/id print } U{ resolve/id file::wobble_operator }
 print("wobble_operator", wobble_operator(None))
 # U{ resolve/id print } U{ resolve/id file::wobble_operator }
 
@@ -79,7 +87,7 @@ def mega_test() -> WobbleNoble:
     return wobble
 
 print(mega_test().trouble)
-# U{ resolve/id print } U{ dotted/guessing ?::trouble }
+# FIX U{ resolve/id print } U{ dotted/guessing ?::trouble }
 
 
 def list_directory():
