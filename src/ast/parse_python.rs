@@ -676,6 +676,9 @@ pub fn parse(code: &str) -> String
     let tree = cx.ap.sitter.parse(code, None).unwrap();
     let path = vec!["file".to_string()];
     py_traverse(&mut cx, &tree.root_node(), &path);
+    while let Some((body, func_path)) = cx.pass2.pop() {
+        py_traverse(&mut cx, &body, &func_path);
+    }
     cx.ap.dump();
     cx.ap.annotate_code("#")
 }
