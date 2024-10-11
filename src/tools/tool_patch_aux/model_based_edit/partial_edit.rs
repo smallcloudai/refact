@@ -1,14 +1,10 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use itertools::Itertools;
 use tokio::sync::Mutex as AMutex;
-use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
 use crate::call_validation::{ChatUsage, DiffChunk, SubchatParameters};
-use crate::global_context::GlobalContext;
-use crate::tools::tool_patch_aux::fs_utils::read_file;
 use crate::tools::tool_patch_aux::model_based_edit::model_execution::{execute_blocks_of_code_patch, execute_whole_file_patch};
 use crate::tools::tool_patch_aux::postprocessing_utils::postprocess_diff_chunks;
 use crate::tools::tool_patch_aux::tickets_parsing::TicketToApply;
@@ -58,25 +54,6 @@ fn partial_edit_choose_correct_chunk(chunks: Vec<Result<Vec<DiffChunk>, String>>
     )
 }
 
-async fn is_file_too_big(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    tickets: Vec<TicketToApply>,
-) -> Result<bool, String> {
-    let filename = PathBuf::from(
-        tickets
-            .get(0)
-            .expect("no tickets provided")
-            .filename_before
-            .clone()
-    );
-    let context_file = read_file(gcx, filename.to_string_lossy().to_string())
-        .await
-        .map_err(|e| format!("cannot read file to modify: {:?}.\nError: {e}", filename))?;
-
-    // more than 15Kb is too big
-    Ok(context_file.file_content.len() > 15_000)
-}
-
 pub async fn partial_edit_tickets_to_chunks(
     ccx_subchat: Arc<AMutex<AtCommandsContext>>,
     tickets: Vec<TicketToApply>,
@@ -85,39 +62,33 @@ pub async fn partial_edit_tickets_to_chunks(
     usage: &mut ChatUsage,
 ) -> Result<Vec<DiffChunk>, (String, Option<String>)> {
     let gcx = ccx_subchat.lock().await.global_context.clone();
-    let mut all_chunks = match is_file_too_big(gcx.clone(), tickets.clone()).await {
-        Ok(too_big) => {
-            if too_big {
-                warn!("given file is too big, using execute_blocks_of_code_patch");
-                execute_blocks_of_code_patch(
-                    ccx_subchat.clone(),
-                    tickets,
-                    &params.subchat_model,
-                    params.subchat_n_ctx,
-                    params.subchat_temperature,
-                    params.subchat_max_new_tokens,
-                    tool_call_id,
-                    usage,
-                ).await?
-            } else {
-                warn!("using execute_whole_file_patch");
-                execute_whole_file_patch(
-                    ccx_subchat.clone(),
-                    tickets,
-                    &params.subchat_model,
-                    params.subchat_n_ctx,
-                    params.subchat_temperature,
-                    params.subchat_max_new_tokens,
-                    tool_call_id,
-                    usage,
-                ).await?
-            }
+    let mut all_chunks = match execute_blocks_of_code_patch(
+        ccx_subchat.clone(),
+        tickets.clone(),
+        &params.subchat_model,
+        params.subchat_n_ctx,
+        params.subchat_temperature,
+        params.subchat_max_new_tokens,
+        tool_call_id,
+        usage,
+    ).await {
+        Ok(chunks) => {
+            Ok(chunks)
         }
-        Err(err) => {
-            return Err((err, None));
+        Err((err, _)) => {
+            warn!("cannot patch file, error: {err}");
+            warn!("trying a fallback `whole_file_rewrite` prompt");
+            execute_whole_file_patch(
+                ccx_subchat.clone(),
+                tickets,
+                &params.subchat_model,
+                params.subchat_n_ctx,
+                params.subchat_max_new_tokens,
+                tool_call_id,
+                usage,
+            ).await
         }
-    };
-
+    }?;
     let mut chunks_for_answers = vec![];
     for chunks in all_chunks.iter_mut() {
         let diffs = postprocess_diff_chunks(gcx.clone(), chunks).await;

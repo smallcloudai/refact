@@ -3,6 +3,7 @@ use itertools::Itertools;
 use std::fmt;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tracing::warn;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LineType {
@@ -88,6 +89,7 @@ pub fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk
                 .map(|x| format!("{}\n", x.line.clone()))
                 .join("");
             if lines_remove == lines_add {
+                warn!("Lines are the same in diff block, skipping it");
                 return None;
             }
             Some(DiffChunk {

@@ -13,8 +13,6 @@ use crate::tools::tool_patch_aux::tickets_parsing::{get_and_correct_active_ticke
 use crate::tools::tools_description::Tool;
 use crate::tools::tools_execute::unwrap_subchat_params;
 
-pub const N_CHOICES: usize = 16;
-
 pub struct ToolPatch {
     pub usage: Option<ChatUsage>,
 }

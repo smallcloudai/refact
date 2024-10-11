@@ -51,13 +51,13 @@ fn get_edit_sections(content: &str) -> Vec<EditSection> {
     while line_num < lines.len() {
         while line_num < lines.len() {
             let line = lines[line_num];
-            if line.contains("Original Section (to be replaced)") {
+            if line.contains("Original Section") {
                 let (new_line_num, section) = process_fenced_block(&lines, line_num + 2, true);
                 line_num = new_line_num;
                 sections.push(section);
                 break;
             }
-            if line.contains("Modified Section (to replace with)") {
+            if line.contains("Modified Section") {
                 let (new_line_num, section) = process_fenced_block(&lines, line_num + 2, false);
                 line_num = new_line_num;
                 sections.push(section);
@@ -67,6 +67,50 @@ fn get_edit_sections(content: &str) -> Vec<EditSection> {
         }
     }
     sections
+}
+
+fn search_block_line_by_line(file_text: &Vec<String>, block_to_find: &Vec<String>) -> Result<Vec<(usize, usize, Vec<String>)>, String> {
+    let mut found: Vec<(usize, usize, Vec<String>)> = vec![];
+    let mut block_index = 0;
+    let mut current_start = None;
+    let mut current_block = vec![];
+
+    for (file_index, file_line) in file_text.iter().enumerate() {
+        if file_line.trim_start() == block_to_find[block_index].trim_start() {
+            if current_start.is_none() {
+                current_start = Some(file_index);
+            }
+            current_block.push(file_line.clone());
+            block_index += 1;
+
+            if block_index == block_to_find.len() {
+                break;
+            }
+        } else {
+            if !current_block.is_empty() {
+                found.push((
+                    current_start.unwrap(),
+                    file_index,
+                    std::mem::take(&mut current_block),
+                ));
+                current_start = None;
+                current_block.clear();
+            }
+        }
+    }
+    if !current_block.is_empty() {
+        found.push((
+            current_start.unwrap(),
+            file_text.len(),
+            std::mem::take(&mut current_block),
+        ));
+    }
+
+    if found.is_empty() {
+        Err(format!("Block not found in the file text: {:?}", block_to_find))
+    } else {
+        Ok(found)
+    }
 }
 
 async fn sections_to_diff_blocks(
@@ -140,10 +184,25 @@ async fn sections_to_diff_blocks(
                 file_lines: Arc::new(vec![]),
             })
         } else {
-            let err = format!("section wasn't found in the original file content:\n{}", orig_section_span.join("\n"));
-            errors.push(err.clone());
-            error!("{}", err);
-            continue;
+            match search_block_line_by_line(&file_lines, &orig_section.hunk) {
+                Ok(res) => {
+                    let mut err = format!("This section wasn't found in the original file content:\n```\n{}\n```\n", orig_section.hunk.iter().join("\n"));
+                    err += "Split it into multiple sections like this:\n";
+                    for (_, _, found_block) in res {
+                        err += &format!("### Original Section (to be replaced)\n```\n{}\n```\n", found_block.join("\n"));
+                        err += &"### Modified Section (to replace with)\n```\n...\n```\n".to_string();
+                    }
+                    errors.push(err.clone());
+                    error!("{}", err);
+                    continue;
+                }
+                Err(_) => {
+                    let err = format!("This section wasn't found in the original file content:\n```\n{}\n```\n", orig_section.hunk.iter().join("\n"));
+                    errors.push(err.clone());
+                    error!("{}", err);
+                    continue;
+                }
+            }
         }
     }
     if errors.is_empty() {
@@ -183,10 +242,20 @@ impl BlocksOfCodeParser {
 
     pub fn followup_prompt(error_message: &String) -> String {
         let prompt = r#"{error_message}
-1. Write the reasons why these sections couldn't be found. 
-2. Rewrite those sections. The best way to do that is to split them into smaller pieces: 
-- if there are many functions - make a separate section for each function 
-3. Copy other correct sections without any changes"#.to_string();
+1. Provide your thoughts why these sections couldn't be found. 
+2. Rewrite those sections. The best way to do that correctly is to split them into smaller pieces. 
+I.e., if there are many functions in a single section - make a separate section for each function
+3. Copy other correct sections without any changes
+4. Keep the output format the same is in the initial prompt:
+## Output Format
+### Original Section (to be replaced)
+```
+[Original code section]
+```
+### Modified Section (to replace with)
+```
+[Modified code section]
+```"#.to_string();
         prompt.replace("{error_message}", error_message)
     }
 
@@ -195,12 +264,18 @@ impl BlocksOfCodeParser {
         content: &str,
         filename: &PathBuf,
     ) -> Result<Vec<DiffChunk>, String> {
-        let edits = get_edit_sections(content);
-        let diff_blocks = sections_to_diff_blocks(gcx, &edits, &filename).await?;
+        let sections = get_edit_sections(content);
+        if sections.is_empty() {
+            return Err("no sections found, probably an empty diff".to_string());
+        }
+        let diff_blocks = sections_to_diff_blocks(gcx, &sections, &filename).await?;
         let chunks = diff_blocks_to_diff_chunks(&diff_blocks)
             .into_iter()
             .unique()
             .collect::<Vec<_>>();
+        if chunks.is_empty() {
+            return Err("no chunks found, probably an empty diff".to_string());
+        }
         Ok(chunks)
     }
 }

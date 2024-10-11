@@ -4,7 +4,6 @@ use crate::call_validation::{ChatMessage, ChatUsage, DiffChunk};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::scratchpads::scratchpad_utils::count_tokens;
 use crate::subchat::subchat_single;
-use crate::tools::tool_patch::N_CHOICES;
 use crate::tools::tool_patch_aux::fs_utils::read_file;
 use crate::tools::tool_patch_aux::model_based_edit::blocks_of_code_parser::BlocksOfCodeParser;
 use crate::tools::tool_patch_aux::model_based_edit::whole_file_parser::WholeFileParser;
@@ -15,7 +14,10 @@ use std::sync::RwLock as StdRwLock;
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
-use tracing::warn;
+use tracing::{info, warn};
+
+
+const DEBUG: bool = true;
 
 async fn load_tokenizer(
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -83,6 +85,13 @@ async fn make_chat_history(
             context_file.file_name,
         ));
     }
+    
+    if DEBUG {
+        info!("Using {} prompt in the `PARTIAL_EDIT` diff generation", if use_whole_file_parser { "whole_file" } else { "file_blocks" });
+        for m in messages.iter() {
+            info!("{}", m.content);
+        }
+    }
 
     Ok(messages)
 }
@@ -106,6 +115,11 @@ async fn make_follow_up_chat_history(
 
     messages.push(last_message.clone());
     messages.push(ChatMessage::new("user".to_string(), BlocksOfCodeParser::followup_prompt(error)));
+    if DEBUG {
+        for m in messages.iter() {
+            info!("{}", m.content);
+        }
+    }
 
     let tokens = messages.iter().map(|x| 3 + count_tokens(&tokenizer, &x.content)).sum::<usize>();
     if tokens > max_tokens {
@@ -185,7 +199,7 @@ pub async fn execute_blocks_of_code_patch(
         false,
         temperature,
         Some(max_new_tokens),
-        N_CHOICES,
+        1,
         Some(usage),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-patch")),
@@ -196,6 +210,12 @@ pub async fn execute_blocks_of_code_patch(
         .filter(|x| x.role == "assistant")
         .cloned()
         .collect::<Vec<_>>();
+    if DEBUG {
+        info!("patch responses: ");
+        for (idx, m) in last_messages.iter().enumerate() {
+            info!("choice {idx}:\n{}", m.content);
+        }
+    }
     let chunks = get_valid_chunks_from_messages(
         ccx.clone(),
         &filename,
@@ -229,9 +249,9 @@ pub async fn execute_blocks_of_code_patch(
         vec![],
         None,
         false,
-        temperature,
+        Some(0.2),
         Some(max_new_tokens),
-        N_CHOICES,
+        4,
         Some(usage),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-patch")),
@@ -241,24 +261,30 @@ pub async fn execute_blocks_of_code_patch(
         .filter(|x| x.role == "assistant")
         .cloned()
         .collect::<Vec<_>>();
+    if DEBUG {
+        info!("follow-up patch responses: ");
+        for (idx, m) in last_messages.iter().enumerate() {
+            info!("choice {idx}:\n{}", m.content);
+        }
+    }
     let chunks = get_valid_chunks_from_messages(
         ccx.clone(),
         &filename,
         &last_messages,
         false,
     ).await;
-
-    if chunks.is_empty() {
-        return Err((
+    if chunks.iter().any(|x| x.is_ok()) {
+        Ok(chunks
+            .iter()
+            .map(|x| x.clone().ok())
+            .filter_map(|x| x)
+            .collect())
+    } else {
+        Err((
             "after a follow-up, all diffs were parsed with errors".to_string(),
             Some("tickets are invalid. Create new tickets from scratch. If file is that big, use FULL_REWRITE".to_string())
-        ));
+        ))
     }
-    Ok(chunks
-        .iter()
-        .map(|x| x.clone().ok())
-        .filter_map(|x| x)
-        .collect())
 }
 
 pub async fn execute_whole_file_patch(
@@ -266,7 +292,6 @@ pub async fn execute_whole_file_patch(
     tickets: Vec<TicketToApply>,
     model: &str,
     max_tokens: usize,
-    temperature: Option<f32>,
     max_new_tokens: usize,
     tool_call_id: &String,
     usage: &mut ChatUsage,
@@ -289,19 +314,24 @@ pub async fn execute_whole_file_patch(
         vec![],
         None,
         false,
-        temperature,
+        Some(0.1),
         Some(max_new_tokens),
-        N_CHOICES,
+        1,
         Some(usage),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-patch")),
     ).await.map_err(|e| (e, None))?;
-
     let last_messages = response.iter()
         .filter_map(|x| x.iter().last())
         .filter(|x| x.role == "assistant")
         .cloned()
         .collect::<Vec<_>>();
+    if DEBUG {
+        info!("patch responses: ");
+        for (idx, m) in last_messages.iter().enumerate() {
+            info!("choice {idx}:\n{}", m.content);
+        }
+    }
     let chunks = get_valid_chunks_from_messages(
         ccx.clone(),
         &filename,
