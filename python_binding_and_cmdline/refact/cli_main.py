@@ -5,7 +5,7 @@ import argparse
 import requests
 import random
 import termcolor
-from typing import Any
+from typing import Any, Optional
 
 from prompt_toolkit import PromptSession, Application, print_formatted_text
 from prompt_toolkit.key_binding import KeyBindings
@@ -19,20 +19,21 @@ from prompt_toolkit.widgets import TextArea
 
 from refact.chat_client import Message
 from refact.cli_inspect import inspect_app, open_label
-from refact.cli_streaming import ask_chat, print_response, get_response_box
-from refact.cli_streaming import stop_streaming, is_not_streaming_condition, is_streaming, start_streaming
-from refact.cli_streaming import add_streaming_message
+from refact.cli_streaming import the_chatting_loop, print_response, get_response_box
+from refact.cli_streaming import stop_streaming, is_not_streaming_condition, start_streaming
+from refact import cli_streaming
 from refact.cli_app_switcher import start_app, exit_all_apps, push_app
 from refact import cli_statusbar, cli_settings
 from refact.lsp_runner import LSPServerRunner
 
 
-lsp_runner = None
+lsp_runner: Optional[LSPServerRunner] = None
+app: Optional[Application] = None
 
 
 async def answer_question_in_arguments(settings, arg_question):
-    add_streaming_message(Message(role="user", content=arg_question))
-    await ask_chat(settings.model)
+    cli_streaming.add_streaming_message(Message(role="user", content=arg_question))
+    await the_chatting_loop(settings.model, max_auto_resubmit=4)
 
 
 tips_of_the_day = '''
@@ -108,7 +109,20 @@ def on_submit(buffer):
         exit_all_apps()
         return
 
-    if user_input[0] == "?":
+    if cli_streaming.is_streaming():
+        return
+
+    if user_input == "" and len(cli_streaming.streaming_messages) > 0:
+        last_message = cli_streaming.streaming_messages[-1]
+        if last_message.role == "assistant" and last_message.tool_calls is not None:
+            pass   # re submit tool calls
+        else:
+            return
+
+    elif user_input.strip() == '':
+        return
+
+    elif user_input[0] == "?":
         label = user_input[1:]
         if open_label(label):
             push_app(inspect_app())
@@ -116,29 +130,23 @@ def on_submit(buffer):
             print_formatted_text(f"\nchat> {user_input}")
             print_formatted_text(FormattedText([("#ff3333", f"label {label} not found")]))
         return
-
-    print_response(f"\nchat> {user_input}")
-
-    if user_input.strip() == '':
-        return
-
-    if is_streaming():
-        return
+    else:
+        print_response(f"\nchat> {user_input}")
 
     start_streaming()
 
-    print_response("\n")
-    add_streaming_message(Message(role="user", content=user_input))
+    # print_response("\nwait\n")
+    cli_streaming.add_streaming_message(Message(role="user", content=user_input))
 
     async def asyncfunc():
-        await ask_chat(cli_settings.args.model)
+        await the_chatting_loop(cli_settings.args.model, max_auto_resubmit=4 if cli_settings.args.always_pause else 1)
 
     loop = asyncio.get_event_loop()
     loop.create_task(asyncfunc())
 
 
 async def chat_main():
-    global lsp_runner
+    global lsp_runner, app
 
     args = sys.argv[1:]
     if '--' in args:
@@ -155,10 +163,41 @@ async def chat_main():
     parser.add_argument('--model', type=str, help="Specify the model to use")
     parser.add_argument('--experimental', type=bool, default=False, help="Enable experimental features, such as new integrations")
     parser.add_argument('--xdebug', type=int, default=0, help="Connect to refact-lsp on the given port, as opposed to starting a new refact-lsp process")
+    parser.add_argument('--always-pause', type=bool, default=False, help="Pause even if the model tries to run tools, normally that's submitteed automatically")
     parser.add_argument('question', nargs=argparse.REMAINDER, help="You can continue your question in the command line after --")
     args = parser.parse_args(before_minus_minus)
-
     arg_question = " ".join(after_minus_minus)
+
+    history_fn = os.path.expanduser("~/.cache/refact/cli_history")
+    session: PromptSession = PromptSession(history=FileHistory(history_fn))
+
+    tool_completer = ToolsCompleter()
+    text_area = TextArea(
+        height=10,
+        multiline=True,
+        accept_handler=on_submit,
+        completer=tool_completer,
+        focusable=True,
+        focus_on_click=True,
+        history=session.history,
+    )
+    vsplit = VSplit([
+        Window(content=FormattedTextControl(text="chat> "), width=6),
+        text_area,
+    ])
+    hsplit = HSplit([
+        Window(content=get_response_box(), dont_extend_height=True),
+        ConditionalContainer(
+            content=FloatContainer(content=vsplit, floats=[
+                Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
+            ),
+            filter=is_not_streaming_condition,
+        ),
+        Window(),
+        cli_statusbar.StatusBar(),
+    ])
+    layout = Layout(hsplit)
+    app = Application(key_bindings=kb, layout=layout)
 
     cli_settings.cli_yaml = cli_settings.load_cli_or_auto_configure()
     app.editing_mode = cli_settings.cli_yaml.get_editing_mode()
@@ -212,38 +251,6 @@ async def chat_main():
 
         asyncio.create_task(cli_statusbar.statusbar_background_task())
         await start_app(app)
-
-
-history_fn = os.path.expanduser("~/.cache/refact/cli_history")
-session: PromptSession = PromptSession(history=FileHistory(history_fn))
-
-tool_completer = ToolsCompleter()
-text_area = TextArea(
-    height=10,
-    multiline=True,
-    accept_handler=on_submit,
-    completer=tool_completer,
-    focusable=True,
-    focus_on_click=True,
-    history=session.history,
-)
-vsplit = VSplit([
-    Window(content=FormattedTextControl(text="chat> "), width=6),
-    text_area,
-])
-hsplit = HSplit([
-    Window(content=get_response_box(), dont_extend_height=True),
-    ConditionalContainer(
-        content=FloatContainer(content=vsplit, floats=[
-            Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
-        ),
-        filter=is_not_streaming_condition,
-    ),
-    Window(),
-    cli_statusbar.StatusBar(),
-])
-layout = Layout(hsplit)
-app: Application = Application(key_bindings=kb, layout=layout)
 
 
 def entrypoint():

@@ -184,12 +184,12 @@ def process_streaming_data(data):
         print_response("unknown streaming data:\n%s" % data)
 
 
-async def ask_chat(model):
+async def the_chatting_loop(model, max_auto_resubmit):
     global streaming_messages
     global _is_streaming
 
     N = 1
-    for step_n in range(4):
+    for step_n in range(max_auto_resubmit):
         def callback(data):
             if _is_streaming:
                 process_streaming_data(data)
@@ -197,7 +197,7 @@ async def ask_chat(model):
         messages = list(streaming_messages)
         tools = await tools_fetch_and_filter(base_url=cli_main.lsp_runner.base_url(), tools_turn_on=None)
         new_messages = await ask_using_http(
-            cli_main.lsp.base_url(),
+            cli_main.lsp_runner.base_url(),
             messages,
             N,
             model,
