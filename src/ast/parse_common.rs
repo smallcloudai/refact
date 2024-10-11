@@ -50,7 +50,6 @@ impl<'a> ContextAnyParser<'a> {
         self.whitespace1(node);
         match node.kind() {
             "from" | "class" | "import" | "def" | "if" | "for" | ":" | "," | "=" | "." | "(" | ")" | "[" | "]" | "->" => {
-                // keywords
                 print!("{}", &self.code[node.byte_range()].replace(" ", "·"));
             },
             _ => {

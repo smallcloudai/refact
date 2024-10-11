@@ -64,7 +64,7 @@ for w in wobble_list1:
         print(w.trouble)
 if wobble_list2[3] is not None:
     print(wobble_list2[3].trouble)
-    # U{ resolve/id print }
+    # U{ resolve/id print } U{ dotted/guessing ?::trouble }
 print("wobble_operator", wobble_operator(wobble_list2[3]))
 # U{ resolve/id print } U{ resolve/id file::wobble_operator }
 print("wobble_operator", wobble_operator(None))
@@ -73,16 +73,19 @@ print("wobble_operator", wobble_operator(None))
 def mega_test() -> WobbleNoble:
 # U{ resolve/id file::WobbleNoble }
     wobble, fumble = mixed_generator()
+    # U{ resolve/id file::mixed_generator }
     print(wobble.trouble, fumble.humble)
+    # U{ resolve/id print } U{ dotted file::mega_test::wobble } U{ othermod file::WobbleNoble::trouble } U{ dotted file::mega_test::fumble } U{ othermod file::FumbleNoble::humble }
     return wobble
 
 print(mega_test().trouble)
-# U{ resolve/id print }
+# U{ resolve/id print } U{ dotted/guessing ?::trouble }
 
 
 def list_directory():
     import os as ooooos2
     ooooos2.system("ls")
+    # U{ othermod os } U{ othermod os::system }
 
 
 if __name__ == '__main__':
