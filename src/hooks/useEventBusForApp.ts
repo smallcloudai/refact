@@ -12,11 +12,14 @@ import {
   selectPages,
 } from "../features/Pages/pagesSlice";
 import { diffApi, resetDiffApi } from "../services/refact/diffs";
+import { usePatchActions } from "./usePatchActions";
+import { showPatchTicket } from "../events";
 
 export function useEventBusForApp() {
   const config = useConfig();
   const dispatch = useAppDispatch();
   const pages = useAppSelector(selectPages);
+  const { handleShow } = usePatchActions();
 
   useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -42,6 +45,10 @@ export function useEventBusForApp() {
       if (resetDiffApi.match(event.data)) {
         dispatch(diffApi.util.resetApiState());
       }
+
+      if (showPatchTicket.match(event.data)) {
+        handleShow(event.data.payload);
+      }
     };
 
     window.addEventListener("message", listener);
@@ -49,5 +56,5 @@ export function useEventBusForApp() {
     return () => {
       window.removeEventListener("message", listener);
     };
-  }, [config.host, dispatch, pages]);
+  }, [config.host, dispatch, handleShow, pages]);
 }

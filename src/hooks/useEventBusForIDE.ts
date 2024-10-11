@@ -11,8 +11,9 @@ import type { DiffPreviewResponse, PatchResult } from "../services/refact";
 
 export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
 
-export const ideDiffPreviewAction =
-  createAction<DiffPreviewResponse>("ide/diffPreview");
+export const ideDiffPreviewAction = createAction<
+  DiffPreviewResponse & { currentPin: string; allPins: string[] }
+>("ide/diffPreview");
 
 export const ideOpenSettingsAction = createAction("ide/openSettings");
 
@@ -85,8 +86,8 @@ export const useEventsBusForIDE = () => {
   );
 
   const diffPreview = useCallback(
-    (preview: DiffPreviewResponse) => {
-      postMessage(ideDiffPreviewAction(preview));
+    (preview: DiffPreviewResponse, currentPin: string, allPins: string[]) => {
+      postMessage(ideDiffPreviewAction({ ...preview, currentPin, allPins }));
     },
     [postMessage],
   );
