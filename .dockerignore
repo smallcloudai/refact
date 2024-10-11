@@ -2,13 +2,13 @@
 .git/
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-_*
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/_*
 
 # C extensions
-*.so
+**/*.so
 
 # Distribution / packaging
 .Python
