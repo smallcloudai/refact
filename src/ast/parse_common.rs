@@ -5,7 +5,7 @@ use tree_sitter::{Node, Parser, Range};
 use crate::ast::ast_structs::{AstDefinition, AstUsage};
 
 
-// pub struct Thing<'a> {
+#[derive(Debug)]
 pub struct Thing {
     pub thing_kind: char,
     pub type_resolved: String,

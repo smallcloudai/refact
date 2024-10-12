@@ -95,6 +95,8 @@ fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) 
 fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec<String>, allow_creation: bool) -> Option<AstUsage>
 {
     let node_text = cx.ap.code[node.byte_range()].to_string();
+    // println!("RESOLVE {:?}", node_text);
+
     // identifier[Goat]
     // attribute[identifier[my_module].identifier[Animal]]
     match node.kind() {
@@ -106,8 +108,9 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                     debug_hint: format!("resolve/id"),
                     uline: node.range().start_point.row,
                 };
-                if !py_is_trivial(u.resolved_as.as_str()) && !cx.ap.suppress_adding {
+                if !py_is_trivial(u.resolved_as.as_str()) && !cx.ap.suppress_adding && !allow_creation {
                     cx.ap.usages.push((path.join("::"), u.clone()));
+                    // println!("ADD_USAGE_ID {:?}", cx.ap.usages.last().unwrap());
                 }
                 return Some(u);
             }
@@ -149,6 +152,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                                     debug_hint: format!("dotted/guessing"),
                                     uline: node.range().start_point.row,
                                 }));
+                                // println!("ADD_USAGE1 {:?}", cx.ap.usages.last().unwrap());
                             }
                         } else if let Some(existing_thing) = cx.ap.things.get(&path_builder.join("::")) { // oh cool, real objects
                             if ident_text != "self"  && !cx.ap.suppress_adding && !creation_happening {  // self usages are trivial, skip
@@ -158,9 +162,14 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                                     debug_hint: format!("dotted"),
                                     uline: node.range().start_point.row,
                                 }));
+                                // println!("ADD_USAGE2 {:?} real_object={:?}", cx.ap.usages.last().unwrap(), existing_thing);
                             }
                             if existing_thing.thing_kind == 'v' || existing_thing.thing_kind == 'p' {
-                                path_builder = existing_thing.type_resolved.split("::").map(|x| { String::from(x) }).collect::<Vec<String>>();
+                                if existing_thing.type_resolved.starts_with("ERR") {
+                                    path_builder = vec!["?".to_string()];
+                                } else {
+                                    path_builder = existing_thing.type_resolved.split("::").map(|x| { String::from(x) }).collect::<Vec<String>>();
+                                }
                             }
                         } else {
                             // not a guess, does not exist as a thing, probably usage of something from another module, such as os.system
@@ -171,6 +180,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                                     debug_hint: format!("othermod"),
                                     uline: node.range().start_point.row,
                                 }));
+                                // println!("ADD_USAGE3 {:?}", cx.ap.usages.last().unwrap());
                             }
                             found_prev2 = found_prev1;
                             found_prev1 = false;
@@ -208,7 +218,15 @@ fn py_lhs_tuple<'a>(cx: &mut ContextPy<'a>, left: &Node<'a>, type_node: Option<N
             is_list = true;
             for j in 0 .. left.child_count() {
                 let child = left.child(j).unwrap();
-                lhs_tuple.push((child, "?".to_string()));
+                match child.kind() {
+                    "identifier" | "attribute" => {
+                        lhs_tuple.push((child, "?".to_string()));
+                    },
+                    "," | "(" | ")" => { },
+                    _ => {
+                        println!("PY_LHS PATTERN SYNTAX {:?}", child.kind());
+                    }
+                }
             }
         },
         "identifier" | "attribute" => {
@@ -234,6 +252,7 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
         return;
     }
     let (lhs_tuple, is_list) = py_lhs_tuple(cx, &left_node.unwrap(), node.child_by_field_name("type"), path);
+    // println!("ASSIGNMENT {:?} {:?} {:?} {:?}", lhs_tuple, is_list, rhs_type, path);
     for n in 0 .. lhs_tuple.len() {
         let (lhs_lvalue, lvalue_type) = &lhs_tuple[n];
         if is_list {
@@ -631,11 +650,12 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
         "for_statement" => py_assignment(cx, node, path, true),  // for loop is similar to assignment
         "call" => { py_type_of_expr_creating_usages(cx, Some(node.clone()), path); }
         "return_statement" => {
-            let ret_type = py_type_of_expr_creating_usages(cx, node.child(1), path);
+            let mut ret_type = py_type_of_expr_creating_usages(cx, node.child(1), path);
             let func_path = path.join("::");
             if let Some(func_exists) = cx.ap.things.get(&func_path) {
                 let good_idea_to_write = !resolved_type(&func_exists.type_resolved) && resolved_type(&ret_type) && func_exists.thing_kind == 'f';
                 if good_idea_to_write {
+                    ret_type = format!("!{}", ret_type);
                     println!("\nUPDATE RETURN TYPE {:?} for {}", ret_type, path.join("::"));
                     cx.ap.things.insert(func_path, Thing {
                         thing_kind: 'f',
