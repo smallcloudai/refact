@@ -25,12 +25,13 @@ class WobbleNoble:
     def __init__(self):
         self.trouble = "double"
 
+    def do_the_thing(self):
+        print("wobble", self.trouble)
+
+
 class FumbleNoble(object):
     def __init__(self):
         self.humble = "mumble"
-
-    def do_the_thing(self):
-        print("wobble", self.trouble)
 
 
 def wobble_generator(n: int) -> List[Optional[WobbleNoble]]:
