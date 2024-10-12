@@ -202,10 +202,6 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
     None
 }
 
-// fn py_expression<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
-// {
-// }
-
 fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
     let mut lhs_tuple: Vec<(Node, Option<Node>)> = Vec::new();
@@ -407,7 +403,6 @@ fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path:
         "false" => { "bool".to_string() },
         "true" => { "bool".to_string() },
         "call" => {
-            cx.ap.recursive_print_with_red_brackets(&node);
             let fname = node.child_by_field_name("function");
             if fname.is_none() {
                 return format!("ERR/CALL/NAMELESS")
@@ -616,21 +611,20 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
 fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
     match node.kind() {
-        "from" | "class" | "identifier" | "import" | "dotted_name" | "def" | "if" | "for" | ":" | "," => {
-            // simple keywords
+        "if" | "else" | ":" | "integer" | "float" | "string" | "false" | "true" => {
             cx.ap.just_print(node);
         },
-        "module" | "block" | "if_statement" | "expression_statement" => {
+        "module" | "block" | "if_statement" | "expression_statement" | "else_clause" => {
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
                 py_traverse(cx, &child, path);
             }
         },
         "class_definition" => {
-            py_class(cx, node, path);
+            py_class(cx, node, path);  // class recursively calls py_traverse
         },
         "function_definition" => {
-            py_function(cx, node, path);
+            py_function(cx, node, path);  // function adds body to pass2, this calls py_traverse later
         },
         "assignment" => {
             py_assignment(cx, node, path);
@@ -640,16 +634,18 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
         "call" => {
             py_type_of_expr_creating_usages(cx, Some(node.clone()), path);
         }
-        // "return_statement" => {
-        //     py_type_of_expr_creating_usages(cx, Some(node.clone()), path);
-        //     // assign type to thing at path
-        // }
+        "return_statement" => {
+            // cx.ap.recursive_print_with_red_brackets(&node);
+            let ret_type = py_type_of_expr_creating_usages(cx, node.child(1), path);
+            // assign type to thing at path
+            println!("\nRETURN {:?} for {}", ret_type, path.join("::"));
+        }
         _ => {
             // unknown, to discover new syntax, just print
             cx.ap.whitespace1(node);
-            print!("\x1b[31m{}[\x1b[0m", node.kind());
+            print!("\x1b[35m{}[\x1b[0m", node.kind());
             cx.ap.just_print(node);
-            print!("\x1b[31m]\x1b[0m");
+            print!("\x1b[35m]\x1b[0m\n");
             cx.ap.whitespace2(node);
         }
     }
