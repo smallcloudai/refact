@@ -265,7 +265,6 @@ fn py_var_add(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_typ
     }
     let mut good_idea_to_write = true;
     let potential_new_type = if !resolved_type(&lvalue_type) || lvalue_type.starts_with("ERR") { rhs_type.clone() } else { lvalue_type.clone() };
-    println!("\npy_var_add lvalue_path={} lvalue_type={} <= potential_new_type={} rhs_type={} good_idea_to_write={}", lvalue_path, lvalue_type, potential_new_type, rhs_type, good_idea_to_write);
     if let Some(existing_thing) = cx.ap.things.get(&lvalue_path) {
         good_idea_to_write = !resolved_type(&existing_thing.type_resolved) && resolved_type(&potential_new_type);
         if good_idea_to_write {
@@ -699,9 +698,23 @@ pub fn parse(code: &str) -> String
     let tree = cx.ap.sitter.parse(code, None).unwrap();
     let path = vec!["file".to_string()];
     py_traverse(&mut cx, &tree.root_node(), &path);
-    while let Some((body, func_path)) = cx.pass2.pop() {
-        py_traverse(&mut cx, &body, &func_path);
+
+    cx.ap.suppress_adding = true;
+    let my_pass2 = cx.pass2.clone();
+    loop {
+        cx.ap.resolved_anything = false;
+        for (body, func_path) in my_pass2.iter() {
+            py_traverse(&mut cx, body, func_path);
+        }
+        if !cx.ap.resolved_anything {
+            break;
+        }
     }
+    cx.ap.suppress_adding = false;
+    for (body, func_path) in my_pass2.iter() {
+        py_traverse(&mut cx, body, func_path);
+    }
+
     cx.ap.dump();
     cx.ap.annotate_code("#")
 }
