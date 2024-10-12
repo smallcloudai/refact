@@ -4,16 +4,12 @@ use tree_sitter_python::language;
 
 use crate::ast::ast_structs::{AstDefinition, AstUsage};
 use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::parse_common::{ContextAnyParser, Thing, type_deindex_n, type_call, type_zerolevel_comma_split};
+use crate::ast::parse_common::{ContextAnyParser, Thing, type_deindex, type_deindex_n, type_call, type_zerolevel_comma_split};
 
 
 pub struct ContextPy<'a> {
     pub ap: ContextAnyParser<'a>,
     pub pass2: Vec<(Node<'a>, Vec<String>)>,
-    pub ass1: Query,
-    pub ass2: Query,
-    pub ass3: Query,
-    pub ass4: Query,
     pub class1: Query,
 }
 
@@ -96,7 +92,7 @@ fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) 
     return None;
 }
 
-fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<String>, allow_creation: bool) -> Option<AstUsage>
+fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec<String>, allow_creation: bool) -> Option<AstUsage>
 {
     let node_text = cx.ap.code[node.byte_range()].to_string();
     // identifier[Goat]
@@ -202,45 +198,47 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: Node, path: &Vec<
     None
 }
 
-fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
+fn py_lhs_tuple<'a>(cx: &mut ContextPy<'a>, left: &Node<'a>, type_node: Option<Node>, path: &Vec<String>) -> (Vec<(Node<'a>, String)>, bool)
 {
-    let mut lhs_tuple: Vec<(Node, Option<Node>)> = Vec::new();
+    println!("py_lhs_tuple");
+    let mut lhs_tuple: Vec<(Node, String)> = Vec::new();
     let mut is_list = false;
-    for query in [&cx.ass1, &cx.ass2, &cx.ass3, &cx.ass4] {
-        let mut query_cursor = QueryCursor::new();
-        for m in query_cursor.matches(&query, *node, cx.ap.code.as_bytes()) {
-            let mut lhs_lvalue = None;
-            let mut lhs_type = None;
-            for capture in m.captures {
-                let capture_name = query.capture_names()[capture.index as usize];
-                if capture_name == "lhs_inlist" {
-                    lhs_lvalue = Some(capture.node);
-                    is_list = true;
-                } else if capture_name == "lhs" {
-                    lhs_lvalue = Some(capture.node);
-                } else if capture_name == "lhs_type" {
-                    lhs_type = Some(capture.node);
-                }
+    match left.kind() {
+        "pattern_list" | "tuple_pattern" => {
+            is_list = true;
+            for j in 0 .. left.child_count() {
+                let child = left.child(j).unwrap();
+                println!("py_lhs_tuple {:?} {:?}", child.kind(), cx.ap.code[child.byte_range()].to_string());
+                lhs_tuple.push((child, "?".to_string()));
             }
-            if lhs_lvalue.is_some() {
-                lhs_tuple.push((lhs_lvalue.unwrap(), lhs_type));
-            }
-        }
-        if !lhs_tuple.is_empty() {
-            break;
-        }
+        },
+        "identifier" => {
+            lhs_tuple.push((*left, py_type_generic(cx, type_node, path, 0)));
+        },
+        _ => {},
     }
+    (lhs_tuple, is_list)
+}
 
-    // save
+fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>, is_for_loop: bool)
+{
+    // cx.ap.recursive_print_with_red_brackets(node);
+    let left_node = node.child_by_field_name("left");
     let right_node = node.child_by_field_name("right");
-    let rhs_type = py_type_of_expr_creating_usages(cx, right_node, path);
+    let mut rhs_type = py_type_of_expr_creating_usages(cx, right_node, path);
+    if is_for_loop {
+        rhs_type = type_deindex(rhs_type);
+    }
+    if left_node.is_none() {
+        return;
+    }
+    let (lhs_tuple, is_list) = py_lhs_tuple(cx, &left_node.unwrap(), node.child_by_field_name("type"), path);
     for n in 0 .. lhs_tuple.len() {
-        let (lhs_lvalue, lvalue_type_node) = lhs_tuple[n];
-        let lvalue_type = py_type_generic(cx, lvalue_type_node, path, 0);
+        let (lhs_lvalue, lvalue_type) = &lhs_tuple[n];
         if is_list {
-            py_var_add(cx, lhs_lvalue, lvalue_type, type_deindex_n(rhs_type.clone(), n), path);
+            py_var_add(cx, lhs_lvalue, lvalue_type.clone(), type_deindex_n(rhs_type.clone(), n), path);
         } else {
-            py_var_add(cx, lhs_lvalue, lvalue_type, rhs_type.clone(), path);
+            py_var_add(cx, lhs_lvalue, lvalue_type.clone(), rhs_type.clone(), path);
         }
     }
 }
@@ -249,7 +247,7 @@ fn resolved_type(type_str: &String) -> bool {
     type_str != "?" && !type_str.is_empty() && type_str != "!?"
 }
 
-fn py_var_add(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
+fn py_var_add(cx: &mut ContextPy, lhs_lvalue: &Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
 {
     let lvalue_usage = if let Some(u) = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path, true) {
         u
@@ -289,7 +287,7 @@ fn py_type_generic(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, l
     match node.kind() {
         "type" => { py_type_generic(cx, node.child(0), path, level+1) },
         "identifier" | "attribute" => {
-            if let Some(a_type) = py_resolve_dotted_creating_usages(cx, node, path, false) {
+            if let Some(a_type) = py_resolve_dotted_creating_usages(cx, &node, path, false) {
                 if !a_type.resolved_as.is_empty() {
                     return a_type.resolved_as;
                 } else if !a_type.targets_for_guesswork.is_empty() {
@@ -365,6 +363,11 @@ fn py_type_generic(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, l
     }
 }
 
+
+// my_list1 = [1,2,3]
+// my_list2: List[int] = [3,2,1]
+// # assignment[ field_name="left" identifier[my_list1] field_name="" ·= field_name="right" ·list[ field_name="" [ field_name="" integer[1] field_name="" , field_name="" integer[2] field_name="" , field_name="" integer[3] field_name="" ]]]py_lhs_tuple
+
 fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>) -> String
 {
     if node.is_none() {
@@ -406,7 +409,7 @@ fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path:
             if fname.is_none() {
                 return format!("ERR/CALL/NAMELESS")
             }
-            let ftype = if let Some(u) = py_resolve_dotted_creating_usages(cx, fname.unwrap(), path, false) {
+            let ftype = if let Some(u) = py_resolve_dotted_creating_usages(cx, &fname.unwrap(), path, false) {
                 if !u.resolved_as.is_empty() {
                     if let Some(resolved_thing) = cx.ap.things.get(&u.resolved_as) {
                         resolved_thing.type_resolved.clone()
@@ -425,7 +428,7 @@ fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path:
             ret_type
         },
         "identifier" | "dotted_name" | "attribute" => {
-            let dotted_type = if let Some(u) = py_resolve_dotted_creating_usages(cx, node, path, false) {
+            let dotted_type = if let Some(u) = py_resolve_dotted_creating_usages(cx, &node, path, false) {
                 if let Some(resolved_thing) = cx.ap.things.get(&u.resolved_as) {
                     resolved_thing.type_resolved.clone()
                 } else {
@@ -610,29 +613,19 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
 fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 {
     match node.kind() {
-        "if" | "else" | ":" | "integer" | "float" | "string" | "false" | "true" => {
-            cx.ap.just_print(node);
-        },
+        "import_statement" | "import_from_statement" => py_import(cx, node, path),
+        "if" | "else" | ":" | "integer" | "float" | "string" | "false" | "true" => cx.ap.just_print(node),
         "module" | "block" | "if_statement" | "expression_statement" | "else_clause" => {
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
                 py_traverse(cx, &child, path);
             }
         },
-        "class_definition" => {
-            py_class(cx, node, path);  // class recursively calls py_traverse
-        },
-        "function_definition" => {
-            py_function(cx, node, path);  // function adds body to pass2, this calls py_traverse later
-        },
-        "assignment" => {
-            py_assignment(cx, node, path);
-        }
-        "import_statement" | "import_from_statement" => { py_import(cx, node, path); }
-        // "for_statement" => handle_variable(cx, node),
-        "call" => {
-            py_type_of_expr_creating_usages(cx, Some(node.clone()), path);
-        }
+        "class_definition" => py_class(cx, node, path),  // class recursively calls py_traverse
+        "function_definition" => py_function(cx, node, path),  // function adds body to pass2, that calls py_traverse later
+        "assignment" => py_assignment(cx, node, path, false),
+        "for_statement" => py_assignment(cx, node, path, true),  // for loop is similar to assignment
+        "call" => { py_type_of_expr_creating_usages(cx, Some(node.clone()), path); }
         "return_statement" => {
             let ret_type = py_type_of_expr_creating_usages(cx, node.child(1), path);
             let func_path = path.join("::");
@@ -649,7 +642,7 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
             }
         }
         _ => {
-            // unknown, to discover new syntax, just print
+            // unknown, to discover new syntax, just print with magenta color
             cx.ap.whitespace1(node);
             print!("\x1b[35m{}[\x1b[0m", node.kind());
             cx.ap.just_print(node);
@@ -677,14 +670,6 @@ pub fn py_make_cx(code: &str) -> ContextPy
             star_imports: vec![],
         },
         pass2: vec![],
-        // assignment[pattern_list[identifier[aaa1],·identifier[aaa2]]·=·expression_list[integer[13],·integer[14]]]
-        ass1: Query::new(&language(), "(assignment left: (pattern_list (_) @lhs_inlist))").unwrap(),
-        // assignment[tuple_pattern[([(]identifier[aaa2],·identifier[aaa3])[)]]·=·expression_list[integer[15],·integer[16]]]
-        ass2: Query::new(&language(), "(assignment left: (tuple_pattern (_) @lhs_inlist))").unwrap(),
-        // assignment[attribute[identifier[self].identifier[also1_age]]:·type[identifier[float]]·=·identifier[age]]
-        ass3: Query::new(&language(), "(assignment left: (_) @lhs type: (_) @lhs_type)").unwrap(),
-        // assignment[attribute[identifier[self].identifier[weight]] =·identifier[weight]]
-        ass4: Query::new(&language(), "(assignment left: (_) @lhs)").unwrap(),
         // class_definition[class·identifier[Goat]argument_list[(identifier[Animal])]:
         class1: Query::new(&language(), "(class_definition name: (_) superclasses: (argument_list (_) @dfrom))").unwrap(),
     };
@@ -697,8 +682,11 @@ pub fn parse(code: &str) -> String
     let mut cx = py_make_cx(code);
     let tree = cx.ap.sitter.parse(code, None).unwrap();
     let path = vec!["file".to_string()];
+
+    // pass1
     py_traverse(&mut cx, &tree.root_node(), &path);
 
+    // pass2
     cx.ap.suppress_adding = true;
     let my_pass2 = cx.pass2.clone();
     loop {
