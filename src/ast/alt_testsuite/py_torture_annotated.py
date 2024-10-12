@@ -34,7 +34,7 @@ class FumbleNoble(object):
 
     def do_the_thing(self):
         print("wobble", self.trouble)
-        # U{ resolve/id print } U{ othermod file::FumbleNoble::trouble }
+        # FIX U{ resolve/id print } U{ othermod file::FumbleNoble::trouble }
 
 
 def wobble_generator(n: int) -> List[Optional[WobbleNoble]]:
@@ -49,17 +49,20 @@ wobble_generator1 = wobble_generator
 wobble_generator2 = wobble_generator
 # U{ resolve/id file::wobble_generator }
 
-def mixed_generator() -> Tuple[WobbleNoble, FumbleNoble]:
-# U{ resolve/id file::WobbleNoble } U{ resolve/id file::FumbleNoble }
-    return (WobbleNoble(), FumbleNoble())
-    # FIX
+def mixed_generator():
+    if 1:
+        return WobbleNoble(), FumbleNoble()
+        # U{ resolve/id file::WobbleNoble } U{ resolve/id file::FumbleNoble }
+    else:
+        return (WobbleNoble(), FumbleNoble())
+        # U{ resolve/id file::WobbleNoble } U{ resolve/id file::FumbleNoble }
 
 def wobble_operator(w: Optional[WobbleNoble]) -> str:
 # U{ resolve/id file::WobbleNoble }
     if w is not None:
     # FIX
         return w.trouble
-    # FIX
+        # FIX U{ dotted file::wobble_operator::w } U{ othermod file::WobbleNoble::trouble }
     return "woof"
 
 wobble_list1 = wobble_generator1(5)
@@ -68,9 +71,13 @@ wobble_list2 = wobble_generator2(5)
 # U{ resolve/id file::wobble_generator2 }
 
 for w in wobble_list1:
+# FIX
     if w is not None:
+    # FIX
         print(w.trouble)
+        # FIX
 if wobble_list2[3] is not None:
+# FIX
     print(wobble_list2[3].trouble)
     # FIX U{ resolve/id print } U{ dotted/guessing ?::trouble }
 print("wobble_operator", wobble_operator(wobble_list2[3]))
@@ -83,8 +90,9 @@ def mega_test() -> WobbleNoble:
     wobble, fumble = mixed_generator()
     # U{ resolve/id file::mixed_generator }
     print(wobble.trouble, fumble.humble)
-    # U{ resolve/id print } U{ dotted file::mega_test::wobble } U{ othermod file::WobbleNoble::trouble } U{ dotted file::mega_test::fumble } U{ othermod file::FumbleNoble::humble }
+    # FIX U{ resolve/id print } U{ dotted file::mega_test::wobble } U{ othermod ::trouble } U{ dotted file::mega_test::fumble } U{ othermod ::humble }
     return wobble
+    # U{ resolve/id file::mega_test::wobble }
 
 print(mega_test().trouble)
 # FIX U{ resolve/id print } U{ dotted/guessing ?::trouble }

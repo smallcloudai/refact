@@ -246,7 +246,7 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
 }
 
 fn resolved_type(type_str: &String) -> bool {
-    type_str != "?" && !type_str.is_empty()
+    type_str != "?" && !type_str.is_empty() && type_str != "!?"
 }
 
 fn py_var_add(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
@@ -263,16 +263,16 @@ fn py_var_add(cx: &mut ContextPy, lhs_lvalue: Node, lvalue_type: String, rhs_typ
         // never mind can't create anything, for example a.b.c = 5 if b doesn't exit
         return;
     }
-    let mut mut_good_idea_to_write = true;
+    let mut good_idea_to_write = true;
     let potential_new_type = if !resolved_type(&lvalue_type) || lvalue_type.starts_with("ERR") { rhs_type.clone() } else { lvalue_type.clone() };
-    println!("\npy_var_add lvalue_path={} lvalue_type={} <= potential_new_type={} rhs_type={} mut_good_idea_to_write={}", lvalue_path, lvalue_type, potential_new_type, rhs_type, mut_good_idea_to_write);
+    println!("\npy_var_add lvalue_path={} lvalue_type={} <= potential_new_type={} rhs_type={} good_idea_to_write={}", lvalue_path, lvalue_type, potential_new_type, rhs_type, good_idea_to_write);
     if let Some(existing_thing) = cx.ap.things.get(&lvalue_path) {
-        mut_good_idea_to_write = !resolved_type(&existing_thing.type_resolved) && resolved_type(&potential_new_type);
-        if mut_good_idea_to_write {
+        good_idea_to_write = !resolved_type(&existing_thing.type_resolved) && resolved_type(&potential_new_type);
+        if good_idea_to_write {
             cx.ap.resolved_anything = true;
         }
     }
-    if mut_good_idea_to_write {
+    if good_idea_to_write {
         cx.ap.things.insert(lvalue_path, Thing {
             thing_kind: 'v',
             type_resolved: potential_new_type,
@@ -635,10 +635,19 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
             py_type_of_expr_creating_usages(cx, Some(node.clone()), path);
         }
         "return_statement" => {
-            // cx.ap.recursive_print_with_red_brackets(&node);
             let ret_type = py_type_of_expr_creating_usages(cx, node.child(1), path);
-            // assign type to thing at path
-            println!("\nRETURN {:?} for {}", ret_type, path.join("::"));
+            let func_path = path.join("::");
+            if let Some(func_exists) = cx.ap.things.get(&func_path) {
+                let good_idea_to_write = !resolved_type(&func_exists.type_resolved) && resolved_type(&ret_type) && func_exists.thing_kind == 'f';
+                if good_idea_to_write {
+                    println!("\nUPDATE RETURN TYPE {:?} for {}", ret_type, path.join("::"));
+                    cx.ap.things.insert(func_path, Thing {
+                        thing_kind: 'f',
+                        type_resolved: ret_type,
+                    });
+                    cx.ap.resolved_anything = true;
+                }
+            }
         }
         _ => {
             // unknown, to discover new syntax, just print

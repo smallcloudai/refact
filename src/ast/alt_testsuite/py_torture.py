@@ -40,8 +40,11 @@ wobble_generator1: Callable[[int], List[Optional[WobbleNoble]]]
 wobble_generator1 = wobble_generator
 wobble_generator2 = wobble_generator
 
-def mixed_generator() -> Tuple[WobbleNoble, FumbleNoble]:
-    return (WobbleNoble(), FumbleNoble())
+def mixed_generator():
+    if 1:
+        return WobbleNoble(), FumbleNoble()
+    else:
+        return (WobbleNoble(), FumbleNoble())
 
 def wobble_operator(w: Optional[WobbleNoble]) -> str:
     if w is not None:
