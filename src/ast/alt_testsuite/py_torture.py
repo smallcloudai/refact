@@ -50,7 +50,8 @@ def mixed_generator():
 def wobble_operator(w: Optional[WobbleNoble]) -> str:
     if w is not None:
         return w.trouble
-    return "woof"
+    else:
+        return w.trouble + " woof"
 
 wobble_list1 = wobble_generator1(5)
 wobble_list2 = wobble_generator2(5)

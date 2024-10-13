@@ -14,8 +14,8 @@ pub struct Thing {
 
 pub struct ContextAnyParser<'a> {
     pub sitter: Parser,
-    pub last_end_byte: usize,
     pub code: &'a str,
+    pub reclevel: usize,
     pub suppress_adding: bool,
     pub resolved_anything: bool,
     pub defs: IndexMap<String, AstDefinition>,
@@ -31,47 +31,47 @@ pub struct ContextAnyParser<'a> {
 }
 
 impl<'a> ContextAnyParser<'a> {
-    pub fn whitespace1(&mut self, node: &Node) {
-        if node.start_byte() > self.last_end_byte {
-            let whitespace = &self.code[self.last_end_byte..node.start_byte()];
-            print!("\x1b[32m{}\x1b[0m", whitespace.replace(" ", "·"));
-            self.last_end_byte = node.start_byte();
-        }
+    pub fn recursive_print_with_red_brackets(&self, node: &Node) -> String {
+        self._recursive_print_with_red_brackets_helper(node, 0)
     }
 
-    pub fn whitespace2(&mut self, node: &Node) {
-        self.last_end_byte = node.end_byte();
-    }
-
-    pub fn just_print(&mut self, node: &Node) {
-        self.whitespace1(node);
-        print!("{}", &self.code[node.byte_range()].replace(" ", "·"));
-        self.whitespace2(node);
-    }
-
-    pub fn recursive_print_with_red_brackets(&mut self, node: &Node) {
-        self.whitespace1(node);
+    fn _recursive_print_with_red_brackets_helper(&self, node: &Node, rec: usize) -> String {
+        let mut result = String::new();
+        let color_code = if rec >= 1 { "\x1b[90m" } else { "\x1b[31m" };
         match node.kind() {
             "from" | "class" | "import" | "def" | "if" | "for" | ":" | "," | "=" | "." | "(" | ")" | "[" | "]" | "->" => {
-                print!("{}", &self.code[node.byte_range()].replace(" ", "·"));
+                result.push_str(&self.code[node.byte_range()].replace(" ", "·"));
             },
             _ => {
-                print!("\x1b[31m{}[\x1b[0m", node.kind());
+                result.push_str(&format!("{}{}[\x1b[0m", color_code, node.kind()));
                 for i in 0..node.child_count() {
                     let child = node.child(i).unwrap();
                     let field_name = node.field_name_for_child(i as u32).unwrap_or("");
-                    print!(" field_name={:?} ", field_name);
-                    self.recursive_print_with_red_brackets(&child);
+                    if field_name != "" && rec == 0 {
+                        result.push_str(&format!("\x1b[35m field_name={:?} \x1b[0m", field_name));
+                    }
+                    result.push_str(&self._recursive_print_with_red_brackets_helper(&child, rec + 1));
                 }
                 if node.child_count() == 0 {
-                    print!("{}", &self.code[node.byte_range()]);
+                    result.push_str(&self.code[node.byte_range()]);
                 }
-                print!("\x1b[31m]\x1b[0m");
+                result.push_str(&format!("{}]\x1b[0m", color_code));
             }
         }
-        self.whitespace2(node);
+        result
     }
 
+    // Way to print 2: follow recursion level of self.reclevel
+    pub fn indent(&self) -> String
+    {
+        return " ".repeat(self.reclevel*8);
+    }
+
+    pub fn indented_println(&self, args: std::fmt::Arguments) {
+        println!("{}{}", self.indent(), args);
+    }
+
+    // Way to print 3: annotate original text with things and usages
     pub fn dump(&self) {
         println!("\n  -- things -- ");
         for (key, thing) in self.things.iter() {
@@ -116,7 +116,7 @@ impl<'a> ContextAnyParser<'a> {
                 }
             }
             let indent = line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
-            for (tk, thing) in &self.things {
+            for (_, thing) in &self.things {
                 if thing.tline == i {
                     r.push_str(format!("\n{indent}{comment} {} {}", thing.thing_kind, thing.type_resolved).as_str());
                 }
