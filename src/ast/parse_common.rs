@@ -7,6 +7,7 @@ use crate::ast::ast_structs::{AstDefinition, AstUsage};
 
 #[derive(Debug)]
 pub struct Thing {
+    pub tline: usize,
     pub thing_kind: char,
     pub type_resolved: String,
 }
@@ -114,8 +115,13 @@ impl<'a> ContextAnyParser<'a> {
                     usages_on_line.push(format!("{:?}", usage));
                 }
             }
+            let indent = line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
+            for (tk, thing) in &self.things {
+                if thing.tline == i {
+                    r.push_str(format!("\n{indent}{comment} {} {}", thing.thing_kind, thing.type_resolved).as_str());
+                }
+            }
             if !usages_on_line.is_empty() {
-                let indent = line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
                 r.push_str(format!("\n{}{} {}", indent, comment, usages_on_line.join(" ")).as_str());
             }
             r.push('\n');

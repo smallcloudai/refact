@@ -108,7 +108,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                     debug_hint: format!("resolve/id"),
                     uline: node.range().start_point.row,
                 };
-                if !py_is_trivial(u.resolved_as.as_str()) && !cx.ap.suppress_adding && !allow_creation {
+                if !py_is_trivial(u.resolved_as.as_str()) && !cx.ap.suppress_adding {
                     cx.ap.usages.push((path.join("::"), u.clone()));
                     // println!("ADD_USAGE_ID {:?}", cx.ap.usages.last().unwrap());
                 }
@@ -132,7 +132,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                 match child.kind() {
                     "." => { },
                     "identifier" => {
-                        let creation_happening= (i == node.child_count() - 1) && allow_creation;
+                        // let creation_happening= (i == node.child_count() - 1) && allow_creation;
                         let ident_text = cx.ap.code[child.byte_range()].to_string();
                         if path_builder.is_empty() {  // first
                             if let Some(success) = py_simple_resolve(cx, path, &ident_text) {
@@ -155,14 +155,14 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                                 // println!("ADD_USAGE1 {:?}", cx.ap.usages.last().unwrap());
                             }
                         } else if let Some(existing_thing) = cx.ap.things.get(&path_builder.join("::")) { // oh cool, real objects
-                            if ident_text != "self"  && !cx.ap.suppress_adding && !creation_happening {  // self usages are trivial, skip
+                            if ident_text != "self"  && !cx.ap.suppress_adding {  // self usages are trivial, skip
                                 cx.ap.usages.push((path.join("::"), AstUsage {
                                     targets_for_guesswork: vec![],
                                     resolved_as: path_builder.join("::"),
                                     debug_hint: format!("dotted"),
                                     uline: node.range().start_point.row,
                                 }));
-                                // println!("ADD_USAGE2 {:?} real_object={:?}", cx.ap.usages.last().unwrap(), existing_thing);
+                                println!("ADD_USAGE2 {:?} real_object={:?}", cx.ap.usages.last().unwrap(), existing_thing);
                             }
                             if existing_thing.thing_kind == 'v' || existing_thing.thing_kind == 'p' {
                                 if existing_thing.type_resolved.starts_with("ERR") {
@@ -173,7 +173,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                             }
                         } else {
                             // not a guess, does not exist as a thing, probably usage of something from another module, such as os.system
-                            if !creation_happening && !cx.ap.suppress_adding {
+                            if !cx.ap.suppress_adding {
                                 cx.ap.usages.push((path.join("::"), AstUsage {
                                     targets_for_guesswork: vec![],
                                     resolved_as: path_builder.join("::"),
@@ -270,7 +270,7 @@ fn resolved_type(type_str: &String) -> bool {
 fn py_var_add(cx: &mut ContextPy, lhs_lvalue: &Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
 {
     let lvalue_usage = if let Some(u) = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path, true) {
-        // println!("u={:?}", u);
+        println!("u={:?}", u);
         u
     } else {
         // println!("syntax error or something");
@@ -285,10 +285,11 @@ fn py_var_add(cx: &mut ContextPy, lhs_lvalue: &Node, lvalue_type: String, rhs_ty
     }
     let mut good_idea_to_write = true;
     let potential_new_type = if !resolved_type(&lvalue_type) || lvalue_type.starts_with("ERR") { rhs_type.clone() } else { lvalue_type.clone() };
-    // println!("VAR_ADD {:?} {:?} {:?} potential_new_type={:?} {:?}", lvalue_path, lvalue_type, rhs_type, potential_new_type, good_idea_to_write);
+    // println!("VAR_ADD {:?} {:?} {:?} potential_new_type={:?} good_idea_to_write={:?}", lvalue_path, lvalue_type, rhs_type, potential_new_type, good_idea_to_write);
     if let Some(existing_thing) = cx.ap.things.get(&lvalue_path) {
         good_idea_to_write = !resolved_type(&existing_thing.type_resolved) && resolved_type(&potential_new_type);
         if good_idea_to_write {
+            println!("VAR_ADD {} UPDATE TYPE {:?} -> {:?}", lvalue_path, existing_thing.type_resolved, potential_new_type);
             cx.ap.resolved_anything = true;
         }
     }
@@ -296,6 +297,7 @@ fn py_var_add(cx: &mut ContextPy, lhs_lvalue: &Node, lvalue_type: String, rhs_ty
         cx.ap.things.insert(lvalue_path, Thing {
             thing_kind: 'v',
             type_resolved: potential_new_type,
+            tline: lhs_lvalue.range().start_point.row,
         });
     }
 }
@@ -523,9 +525,10 @@ fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
     cx.ap.things.insert(class_path.join("::"), Thing {
         thing_kind: 's',
         type_resolved: format!("!{}", class_path.join("::")),   // this is about constructor in python, name of the class() is used as constructor, return type is the class
+        tline: node.range().start_point.row,
     });
 
-    py_traverse(cx, &body.unwrap(), &class_path);
+    py_body(cx, &body.unwrap(), &class_path);
     // println!("\nCLASS {:?}", cx.ap.defs.get(&class_path.join("::")).unwrap());
 }
 
@@ -591,6 +594,7 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
     cx.ap.things.insert(func_path.join("::"), Thing {
         thing_kind: 'f',
         type_resolved: format!("!{}", returns_type),
+        tline: node.range().start_point.row,
     });
 
     // All types in type annotations must be already visible in python
@@ -626,6 +630,7 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
         cx.ap.things.insert(param_path.join("::"), Thing {
             thing_kind: 'p',
             type_resolved,
+            tline: param_node.range().start_point.row,
         });
     }
 
@@ -633,38 +638,42 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
 }
 
 
-fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
+fn py_save_func_return_type(cx: &mut ContextPy, ret_type: String, fpath: &Vec<String>)
 {
+    let func_path = fpath.join("::");
+    if let Some(func_exists) = cx.ap.things.get(&func_path) {
+        let good_idea_to_write = !resolved_type(&func_exists.type_resolved) && resolved_type(&ret_type) && func_exists.thing_kind == 'f';
+        if good_idea_to_write {
+            let ret_type = format!("!{}", ret_type);
+            println!("\nUPDATE RETURN TYPE {:?} for {}", ret_type, fpath.join("::"));
+            cx.ap.things.insert(func_path, Thing {
+                thing_kind: 'f',
+                type_resolved: ret_type,
+                tline: func_exists.tline,
+            });
+            cx.ap.resolved_anything = true;
+        }
+    }
+}
+
+fn py_body<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) -> String
+{
+    let mut ret_type = "void".to_string();
     match node.kind() {
         "import_statement" | "import_from_statement" => py_import(cx, node, path),
         "if" | "else" | ":" | "integer" | "float" | "string" | "false" | "true" => cx.ap.just_print(node),
         "module" | "block" | "if_statement" | "expression_statement" | "else_clause" => {
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
-                py_traverse(cx, &child, path);
+                py_body(cx, &child, path);
             }
         },
-        "class_definition" => py_class(cx, node, path),  // class recursively calls py_traverse
-        "function_definition" => py_function(cx, node, path),  // function adds body to pass2, that calls py_traverse later
+        "class_definition" => py_class(cx, node, path),  // class recursively calls py_body
+        "function_definition" => py_function(cx, node, path),  // function adds body to pass2, that calls py_body later
         "assignment" => py_assignment(cx, node, path, false),
         "for_statement" => py_assignment(cx, node, path, true),  // for loop is similar to assignment
         "call" => { py_type_of_expr_creating_usages(cx, Some(node.clone()), path); }
-        "return_statement" => {
-            let mut ret_type = py_type_of_expr_creating_usages(cx, node.child(1), path);
-            let func_path = path.join("::");
-            if let Some(func_exists) = cx.ap.things.get(&func_path) {
-                let good_idea_to_write = !resolved_type(&func_exists.type_resolved) && resolved_type(&ret_type) && func_exists.thing_kind == 'f';
-                if good_idea_to_write {
-                    ret_type = format!("!{}", ret_type);
-                    println!("\nUPDATE RETURN TYPE {:?} for {}", ret_type, path.join("::"));
-                    cx.ap.things.insert(func_path, Thing {
-                        thing_kind: 'f',
-                        type_resolved: ret_type,
-                    });
-                    cx.ap.resolved_anything = true;
-                }
-            }
-        }
+        "return_statement" => { ret_type = py_type_of_expr_creating_usages(cx, node.child(1), path); }
         _ => {
             // unknown, to discover new syntax, just print with magenta color
             cx.ap.whitespace1(node);
@@ -674,6 +683,7 @@ fn py_traverse<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
             cx.ap.whitespace2(node);
         }
     }
+    return ret_type;
 }
 
 pub fn py_make_cx(code: &str) -> ContextPy
@@ -708,7 +718,7 @@ pub fn parse(code: &str) -> String
     let path = vec!["file".to_string()];
 
     // pass1
-    py_traverse(&mut cx, &tree.root_node(), &path);
+    py_body(&mut cx, &tree.root_node(), &path);
 
     // pass2
     cx.ap.suppress_adding = true;
@@ -717,7 +727,8 @@ pub fn parse(code: &str) -> String
         cx.ap.resolved_anything = false;
         for (body, func_path) in my_pass2.iter() {
             println!("\n\x1b[31mPASS2 RESOLVE\x1b[0m {:?}", func_path.join("::"));
-            py_traverse(&mut cx, body, func_path);
+            let ret_type = py_body(&mut cx, body, func_path);
+            py_save_func_return_type(&mut cx, ret_type, func_path);
         }
         if !cx.ap.resolved_anything {
             break;
@@ -726,7 +737,7 @@ pub fn parse(code: &str) -> String
     cx.ap.suppress_adding = false;
     for (body, func_path) in my_pass2.iter() {
         println!("\n\x1b[31mPASS2 SAVE USAGES\x1b[0m {:?}", func_path.join("::"));
-        py_traverse(&mut cx, body, func_path);
+        py_body(&mut cx, body, func_path);
     }
 
     cx.ap.dump();
