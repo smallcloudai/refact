@@ -78,6 +78,7 @@ fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 fn py_is_trivial(potential_usage: &str) -> bool {
     match potential_usage {
         "int" | "float" | "str" | "bool" => true,
+        _ if potential_usage.ends_with("::self") => true,
         _ => false,
     }
 }
@@ -110,6 +111,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
 {
     let node_text = cx.ap.code[node.byte_range()].to_string();
     debug!(cx, "DOTTED {:?}", node_text);
+    // debug!(cx, "DOTTED {}", cx.ap.recursive_print_with_red_brackets(&node));
 
     // identifier[Goat]
     // attribute[identifier[my_module].identifier[Animal]]
@@ -124,9 +126,9 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                 };
                 if !py_is_trivial(u.resolved_as.as_str()) && !cx.ap.suppress_adding {
                     cx.ap.usages.push((path.join("::"), u.clone()));
-                    debug!(cx, "ADD_USAGE_ID {:?}", cx.ap.usages.last().unwrap());
+                    debug!(cx, "ADD_USAGE ID {:?}", u);
                 }
-                debug!(cx, "DOTTED {} simple_id", success);
+                debug!(cx, "DOTTED simple_id u={:?}", u);
                 return Some(u);
             }
             if allow_creation {
@@ -140,95 +142,34 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
             }
         },
         "attribute" => {
-            let mut path_builder: Vec<String> = vec![];
-            let mut found_prev1 = true;
-            let mut found_prev2 = true;
-            for i in 0 .. node.child_count() {
-                let child = node.child(i).unwrap();
-                let is_last = i == node.child_count() - 1;
-                match child.kind() {
-                    "." => { },
-                    "identifier" => {
-                        // let creation_happening= (i == node.child_count() - 1) && allow_creation;
-                        let ident_text = cx.ap.code[child.byte_range()].to_string();
-                        if path_builder.is_empty() {  // first
-                            if let Some(success) = py_simple_resolve(cx, path, &ident_text) {
-                                path_builder = success.split("::").map(String::from).collect::<Vec<String>>();
-                            } else {
-                                path_builder = vec!["?".to_string(), ident_text.clone()];
-                            }
-                        } else { // next
-                            path_builder.push(ident_text.clone());
-                        }
-                        debug!(cx, "DOTTED_LOOP {:?}", path_builder);
-                        if path_builder.starts_with(&vec!["?".to_string()]) { // guesses
-                            if !cx.ap.suppress_adding {
-                                cx.ap.usages.push((path.join("::"), AstUsage {
-                                    targets_for_guesswork: vec![path_builder.join("::")],
-                                    resolved_as: "".to_string(),
-                                    debug_hint: format!("dotted/guessing"),
-                                    uline: node.range().start_point.row,
-                                }));
-                                debug!(cx, "ADD_USAGE1 {:?}", cx.ap.usages.last().unwrap());
-                            }
-                        } else if let Some(existing_thing) = cx.ap.things.get(&path_builder.join("::")) { // oh cool, real objects
-                            let u = AstUsage {
-                                targets_for_guesswork: vec![],
-                                resolved_as: path_builder.join("::"),
-                                debug_hint: format!("dotted"),
-                                uline: node.range().start_point.row,
-                            };
-                            if ident_text != "self"  && !cx.ap.suppress_adding {  // self usages are trivial, skip
-                                cx.ap.usages.push((path.join("::"), u.clone()));
-                                debug!(cx, "ADD_USAGE2 {:?} real_object={:?}", cx.ap.usages.last().unwrap(), existing_thing);
-                            }
-                            if is_last {
-                                debug!(cx, "DOTTED {} dotted/last", path_builder.join("::"));
-                                return Some(u);
-                            }
-                            if existing_thing.thing_kind == 'v' || existing_thing.thing_kind == 'p' {
-                                if existing_thing.type_resolved.starts_with("ERR") {
-                                    path_builder = vec!["?".to_string()];
-                                } else {
-                                    path_builder = existing_thing.type_resolved.split("::").map(|x| { String::from(x) }).collect::<Vec<String>>();
-                                }
-                            }
-                        } else {
-                            // not a guess, does not exist as a thing, probably usage of something from another module, such as os.system
-                            if !cx.ap.suppress_adding {
-                                cx.ap.usages.push((path.join("::"), AstUsage {
-                                    targets_for_guesswork: vec![],
-                                    resolved_as: path_builder.join("::"),
-                                    debug_hint: format!("othermod"),
-                                    uline: node.range().start_point.row,
-                                }));
-                                debug!(cx, "ADD_USAGE3 {:?}", cx.ap.usages.last().unwrap());
-                            }
-                            found_prev2 = found_prev1;
-                            found_prev1 = false;
-                        }
-                    },
-                    _ => {},
+            let object = node.child_by_field_name("object").unwrap();
+            let attrib = node.child_by_field_name("attribute").unwrap();
+            let object_type = py_type_of_expr_creating_usages(cx, Some(object), path);
+            let attrib_text = cx.ap.code[attrib.byte_range()].to_string();
+            let attrib_path = format!("{}::{}", object_type, attrib_text);
+            let mut u = AstUsage {
+                targets_for_guesswork: vec![],
+                resolved_as: attrib_path.clone(),
+                debug_hint: format!("attr"),
+                uline: attrib.range().start_point.row,
+            };
+            if let Some(existing_attr) = cx.ap.things.get(&attrib_path) {
+                if !cx.ap.suppress_adding {
+                    cx.ap.usages.push((path.join("::"), u.clone()));
+                    debug!(cx, "ADD_USAGE ATTR {:?}", u);
+                }
+                return Some(u);
+            }
+            if let Some(existing_object) = cx.ap.things.get(&object_type) {
+                if allow_creation {
+                    u.debug_hint = format!("attr_create");
+                    return Some(u);
                 }
             }
-            if allow_creation && found_prev2 {
-                debug!(cx, "DOTTED {} dotted/create", path_builder.join("::"));
-                return Some(AstUsage {
-                    targets_for_guesswork: vec![],
-                    resolved_as: path_builder.join("::"),
-                    debug_hint: format!("dotted/create"),
-                    uline: node.range().start_point.row,
-                });
-            }
-            debug!(cx, "DOTTED {} ERR/RESOLVE {:?}", path_builder.join("::"), node_text);
-            return Some(AstUsage {
-                targets_for_guesswork: vec![path_builder.join("::")],
-                resolved_as: "".to_string(),
-                debug_hint: format!("ERR/RESOLVE/{}/{}", node.kind(), node_text),
-                uline: node.range().start_point.row,
-            });
         },
-        _ => {}
+        _ => {
+            debug!(cx, "DOTTED syntax {}", cx.ap.recursive_print_with_red_brackets(node));
+        }
     }
     None
 }
@@ -449,7 +390,6 @@ fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path:
             format!("({})", elements.join(","))
         },
         "comparison_operator" => {
-            // debug!(cx, "comparison_operator {}", cx.ap.recursive_print_with_red_brackets(&node));
             for i in 0 .. node.child_count() {
                 let child = node.child(i).unwrap();
                 match child.kind() {
@@ -502,6 +442,12 @@ fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path:
                 format!("ERR/DOTTED_NOT_FOUND/{}", node_text)
             };
             dotted_type
+        },
+        "subscript" => {
+            debug!(cx, "subscript {}", cx.ap.recursive_print_with_red_brackets(&node));
+            let typeof_value = py_type_of_expr_creating_usages(cx, node.child_by_field_name("value"), path);
+            py_type_of_expr_creating_usages(cx, node.child_by_field_name("subscript"), path);
+            type_deindex(typeof_value)
         },
         _ => {
             debug!(cx, "py_type_of_expr syntax {}", cx.ap.recursive_print_with_red_brackets(&node));
@@ -710,23 +656,25 @@ fn py_body<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) -> S
         "module" | "block" | "expression_statement" | "else_clause" | "if_statement" | "elif_clause" => {
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
+                // debug!(cx, "CHILD {}", cx.ap.recursive_print_with_red_brackets(&child));
+                // debug!(cx, "CHILD {}", child.kind());
                 match child.kind() {
                     "if" | "elif" | "else" | ":" | "integer" | "float" | "string" | "false" | "true" => { continue; }
-                    _ => { }
+                    "return_statement" => { ret_type = py_type_of_expr_creating_usages(cx, child.child(1), path); }
+                    _ => { let _ = py_body(cx, &child, path); }
                 }
-                let alt_ret_type = py_body(cx, &child, path);
-                if child.kind() == "block" && ret_type == "void" && resolved_type(&alt_ret_type) {
-                    ret_type = alt_ret_type;
-                }
+                // let alt_ret_type = ;
+                // debug!(cx, "ret_type child.kind()=={} ret_type={} alt_ret_type={}", child.kind(), ret_type, alt_ret_type);
+                // if child.kind() == "block" && ret_type == "void" && resolved_type(&alt_ret_type) {
+                //     ret_type = alt_ret_type;
+                // }
             }
         },
-        //     debug!(cx, "AAAA {}", cx.ap.recursive_print_with_red_brackets(node));
         "class_definition" => py_class(cx, node, path),  // class recursively calls py_body
         "function_definition" => py_function(cx, node, path),  // function adds body to pass2, that calls py_body later
         "assignment" => py_assignment(cx, node, path, false),
         "for_statement" => py_assignment(cx, node, path, true),
         "call" | "comparison_operator" => { py_type_of_expr_creating_usages(cx, Some(node.clone()), path); }
-        "return_statement" => { ret_type = py_type_of_expr_creating_usages(cx, node.child(1), path); }
         _ => {
             debug!(cx, "py_body syntax {}", cx.ap.recursive_print_with_red_brackets(node));
         }
@@ -801,9 +749,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_py_goat() {
-        let code = include_str!("alt_testsuite/py_torture.py");
+    fn test_parse_py_tort1() {
+        let code = include_str!("alt_testsuite/py_torture1_attr.py");
         let annotated = parse(code);
-        std::fs::write("src/ast/alt_testsuite/py_torture_annotated.py", annotated).expect("Unable to write file");
+        std::fs::write("src/ast/alt_testsuite/py_torture1_attr_annotated.py", annotated).expect("Unable to write file");
+    }
+
+    #[test]
+    fn test_parse_py_tort2() {
+        let code = include_str!("alt_testsuite/py_torture2_resolving.py");
+        let annotated = parse(code);
+        std::fs::write("src/ast/alt_testsuite/py_torture2_resolving_annotated.py", annotated).expect("Unable to write file");
     }
 }
