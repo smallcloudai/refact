@@ -31,8 +31,11 @@ macro_rules! debug {
     }
 }
 
-fn resolved_type(type_str: &String) -> bool {
-    type_str != "?" && !type_str.is_empty() && type_str != "!?"
+fn type_problems(type_str: &String) -> usize {
+    let empty_very_bad = 1000000 * (type_str == "?" || type_str.is_empty()) as usize;
+    let question_marks = type_str.matches('?').count() * 1000;
+    let errors = type_str.matches("ERR").count();
+    question_marks + errors + empty_very_bad
 }
 
 fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
@@ -153,14 +156,14 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                 debug_hint: format!("attr"),
                 uline: attrib.range().start_point.row,
             };
-            if let Some(existing_attr) = cx.ap.things.get(&attrib_path) {
+            if let Some(_existing_attr) = cx.ap.things.get(&attrib_path) {
                 if !cx.ap.suppress_adding {
                     cx.ap.usages.push((path.join("::"), u.clone()));
                     debug!(cx, "ADD_USAGE ATTR {:?}", u);
                 }
                 return Some(u);
             }
-            if let Some(existing_object) = cx.ap.things.get(&object_type) {
+            if let Some(_existing_object) = cx.ap.things.get(&object_type) {
                 if allow_creation {
                     u.debug_hint = format!("attr_create");
                     return Some(u);
@@ -244,10 +247,10 @@ fn py_var_add(cx: &mut ContextPy, lhs_lvalue: &Node, lvalue_type: String, rhs_ty
         return;
     }
     let mut good_idea_to_write = true;
-    let potential_new_type = if !resolved_type(&lvalue_type) || lvalue_type.starts_with("ERR") { rhs_type.clone() } else { lvalue_type.clone() };
+    let potential_new_type = if type_problems(&lvalue_type) > type_problems(&rhs_type) { rhs_type.clone() } else { lvalue_type.clone() };
     // debug!(cx, "VAR_ADD {:?} {:?} {:?} potential_new_type={:?} good_idea_to_write={:?}", lvalue_path, lvalue_type, rhs_type, potential_new_type, good_idea_to_write);
     if let Some(existing_thing) = cx.ap.things.get(&lvalue_path) {
-        good_idea_to_write = !resolved_type(&existing_thing.type_resolved) && resolved_type(&potential_new_type);
+        good_idea_to_write = type_problems(&existing_thing.type_resolved) > type_problems(&potential_new_type);
         if good_idea_to_write {
             debug!(cx, "VAR_ADD {} UPDATE TYPE {:?} -> {:?}", lvalue_path, existing_thing.type_resolved, potential_new_type);
             cx.ap.resolved_anything = true;
@@ -393,12 +396,19 @@ fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path:
             for i in 0 .. node.child_count() {
                 let child = node.child(i).unwrap();
                 match child.kind() {
-                    "is" | "is not" | ">" | "<" | "<=" | "==" | "!=" | ">=" => { continue; }
+                    "is" | "is not" | ">" | "<" | "<=" | "==" | "!=" | ">=" | "%" => { continue; }
                     _ => {}
                 }
                 py_type_of_expr_creating_usages(cx, Some(child), path);
             }
             "bool".to_string()
+        },
+        "binary_operator" => {
+            let left_type = py_type_of_expr_creating_usages(cx, node.child_by_field_name("left"), path);
+            let right_type = py_type_of_expr_creating_usages(cx, node.child_by_field_name("right"), path);
+            let op =  cx.ap.code[node.child_by_field_name("operator").unwrap().byte_range()].to_string();
+            debug!(cx, "left={} op={} right={}", left_type, op, right_type);
+            left_type
         },
         "integer" => { "int".to_string() },
         "float" => { "float".to_string() },
@@ -412,6 +422,7 @@ fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path:
                 debug!(cx, "ERR/CALL/NAMELESS {}", cx.ap.recursive_print_with_red_brackets(&node));
                 format!("ERR/CALL/NAMELESS")
             } else {
+                // XXX use expression or something for function, return ?::func instead of FUNC_NOT_FOUND
                 let ftype = if let Some(u) = py_resolve_dotted_creating_usages(cx, &fname.unwrap(), path, false) {
                     if !u.resolved_as.is_empty() {
                         if let Some(resolved_thing) = cx.ap.things.get(&u.resolved_as) {
@@ -627,17 +638,17 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
 }
 
 
-fn py_save_func_return_type(cx: &mut ContextPy, ret_type: String, fpath: &Vec<String>)
+fn py_save_func_return_type(cx: &mut ContextPy, new_ret_type: String, fpath: &Vec<String>)
 {
     let func_path = fpath.join("::");
     if let Some(func_exists) = cx.ap.things.get(&func_path) {
-        let good_idea_to_write = !resolved_type(&func_exists.type_resolved) && resolved_type(&ret_type) && func_exists.thing_kind == 'f';
+        let good_idea_to_write = type_problems(&func_exists.type_resolved) > type_problems(&new_ret_type) && func_exists.thing_kind == 'f';
+        debug!(cx, "UPDATE RETURN TYPE type_problems={} type_problems={}", type_problems(&func_exists.type_resolved), type_problems(&new_ret_type));
         if good_idea_to_write {
-            let ret_type = format!("!{}", ret_type);
-            debug!(cx, "\nUPDATE RETURN TYPE {:?} for {}", ret_type, fpath.join("::"));
+            debug!(cx, "UPDATE RETURN TYPE {:?} for {}", new_ret_type, fpath.join("::"));
             cx.ap.things.insert(func_path, Thing {
                 thing_kind: 'f',
-                type_resolved: ret_type,
+                type_resolved: new_ret_type,
                 tline: func_exists.tline,
             });
             cx.ap.resolved_anything = true;
@@ -656,18 +667,11 @@ fn py_body<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) -> S
         "module" | "block" | "expression_statement" | "else_clause" | "if_statement" | "elif_clause" => {
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
-                // debug!(cx, "CHILD {}", cx.ap.recursive_print_with_red_brackets(&child));
-                // debug!(cx, "CHILD {}", child.kind());
                 match child.kind() {
                     "if" | "elif" | "else" | ":" | "integer" | "float" | "string" | "false" | "true" => { continue; }
                     "return_statement" => { ret_type = py_type_of_expr_creating_usages(cx, child.child(1), path); }
                     _ => { let _ = py_body(cx, &child, path); }
                 }
-                // let alt_ret_type = ;
-                // debug!(cx, "ret_type child.kind()=={} ret_type={} alt_ret_type={}", child.kind(), ret_type, alt_ret_type);
-                // if child.kind() == "block" && ret_type == "void" && resolved_type(&alt_ret_type) {
-                //     ret_type = alt_ret_type;
-                // }
             }
         },
         "class_definition" => py_class(cx, node, path),  // class recursively calls py_body
@@ -727,7 +731,7 @@ pub fn parse(code: &str) -> String
             debug!(&cx, "\n\x1b[31mPASS2 RESOLVE {:?}\x1b[0m", func_path.join("::"));
             let ret_type = py_body(&mut cx, body, func_path);
             debug!(&cx, "\n\x1b[31mPASS2 RESOLVE {:?} new return type {}\x1b[0m", func_path.join("::"), ret_type);
-            py_save_func_return_type(&mut cx, ret_type, func_path);
+            py_save_func_return_type(&mut cx, format!("!{}", ret_type), func_path);
         }
         if !cx.ap.resolved_anything {
             break;

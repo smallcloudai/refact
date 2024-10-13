@@ -11,7 +11,7 @@ print("argv", argv)
 
 
 def can_you_dig_it():
-# FIX f !(?,file::FumbleNoble)
+# f !(str,file::FumbleNoble)
     WN = WobbleNoble
     # v !file::WobbleNoble
     # U{ simple_id file::WobbleNoble } U{ simple_id file::can_you_dig_it::WN }
@@ -29,9 +29,10 @@ class WobbleNoble:
         # U{ attr file::WobbleNoble::trouble }
 
     def do_the_thing(self):
-    # FIX f !ERR/EXPR/"binary_operator"/"wobble '%s'" % self.trouble
+    # f !str
     # p file::WobbleNoble
         return "wobble '%s'" % self.trouble
+        # U{ attr file::WobbleNoble::trouble }
 
 
 class FumbleNoble(object):
