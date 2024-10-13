@@ -123,8 +123,8 @@ def mega_test() -> WobbleNoble:
 # f !file::WobbleNoble
 # U{ resolve/id file::WobbleNoble }
     wobble, fumble = mixed_generator()
-    # FIX v
-    # FIX v
+    # v file::WobbleNoble
+    # v file::FumbleNoble
     # U{ resolve/id file::mixed_generator } U{ resolve/id file::mega_test::wobble } U{ resolve/id file::mega_test::fumble }
     print(wobble.trouble, fumble.humble)
     # FIX U{ resolve/id print } U{ dotted file::mega_test::wobble } U{ othermod ::trouble } U{ dotted file::mega_test::fumble } U{ othermod ::humble }

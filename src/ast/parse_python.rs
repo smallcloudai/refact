@@ -162,7 +162,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
                                     debug_hint: format!("dotted"),
                                     uline: node.range().start_point.row,
                                 }));
-                                println!("ADD_USAGE2 {:?} real_object={:?}", cx.ap.usages.last().unwrap(), existing_thing);
+                                // println!("ADD_USAGE2 {:?} real_object={:?}", cx.ap.usages.last().unwrap(), existing_thing);
                             }
                             if existing_thing.thing_kind == 'v' || existing_thing.thing_kind == 'p' {
                                 if existing_thing.type_resolved.starts_with("ERR") {
@@ -270,7 +270,7 @@ fn resolved_type(type_str: &String) -> bool {
 fn py_var_add(cx: &mut ContextPy, lhs_lvalue: &Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
 {
     let lvalue_usage = if let Some(u) = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path, true) {
-        println!("u={:?}", u);
+        // println!("u={:?}", u);
         u
     } else {
         // println!("syntax error or something");
@@ -665,7 +665,7 @@ fn py_body<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) -> S
         "module" | "block" | "if_statement" | "expression_statement" | "else_clause" => {
             for i in 0..node.child_count() {
                 let child = node.child(i).unwrap();
-                py_body(cx, &child, path);
+                ret_type = py_body(cx, &child, path);
             }
         },
         "class_definition" => py_class(cx, node, path),  // class recursively calls py_body
@@ -683,6 +683,7 @@ fn py_body<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) -> S
             cx.ap.whitespace2(node);
         }
     }
+    println!("{:?} RETURN TYPE {:?}", node.kind(), ret_type);
     return ret_type;
 }
 
@@ -728,6 +729,7 @@ pub fn parse(code: &str) -> String
         for (body, func_path) in my_pass2.iter() {
             println!("\n\x1b[31mPASS2 RESOLVE\x1b[0m {:?}", func_path.join("::"));
             let ret_type = py_body(&mut cx, body, func_path);
+            println!("\n\x1b[31mPASS2 RESOLVE\x1b[0m {:?} {}", func_path.join("::"), ret_type);
             py_save_func_return_type(&mut cx, ret_type, func_path);
         }
         if !cx.ap.resolved_anything {
