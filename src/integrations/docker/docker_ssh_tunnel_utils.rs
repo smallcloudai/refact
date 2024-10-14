@@ -1,10 +1,9 @@
-use std::{sync::Arc, time::Duration};
-use rand::Rng;
+use std::{process::Stdio, sync::Arc};
 use serde::{Deserialize, Serialize};
-use tokio::{net::{TcpListener, TcpStream}, process::{Child, Command}, sync::RwLock as ARwLock, time::sleep};
-use tracing::{error, info, warn};
+use tokio::{net::{TcpListener, TcpStream}, process::{Child, ChildStderr, Command}, sync::RwLock as ARwLock};
+use tracing::{info, warn};
 
-use crate::global_context::GlobalContext;
+use crate::{global_context::GlobalContext, integrations::integr_pdb::read_until_token_or_timeout};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SshConfig {
@@ -18,6 +17,7 @@ pub struct SshTunnel {
     pub remote_port_or_socket: String,
     pub local_port: String,
     pub process: Child,
+    pub stderr: ChildStderr,
 }
 
 pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_config: &SshConfig, gcx: Arc<ARwLock<GlobalContext>>) -> Result<(), String> 
@@ -50,31 +50,31 @@ pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_con
     Ok(())
 }
 
-pub async fn open_ssh_tunnel(remote_port_or_socket: &str, ssh_config: &SshConfig) -> Result<SshTunnel, String> {
+pub async fn open_ssh_tunnel(remote_port_or_socket: &str, ssh_config: &SshConfig) -> Result<SshTunnel, String> 
+{
     let mut command = Command::new("ssh");
     command.arg("-N");
     if let Some(identity_file) = &ssh_config.identity_file {
         command.arg("-i").arg(identity_file);
     }
     command.arg("-p").arg(ssh_config.port.to_string());
-    
-    let mut local_port = None;
-    for _ in 0..5 {
-        let port = rand::thread_rng().gen_range(2u16.pow(14)..2u16.pow(15));
-        match TcpListener::bind(("127.0.0.1", port)).await {
-            Ok(_) => {
-                local_port = Some(port);
-                break;
-            }
-            Err(e) => error!("Failed to bind to port {}: {}", port, e),
-        }
-    }
-    let local_port = local_port.ok_or("Failed to find a free local port")?;
 
-    command.arg("-L").arg(format!("{}:{}", local_port, remote_port_or_socket));
     command.arg(&format!("{}@{}", ssh_config.user, ssh_config.host));
+    command.stderr(Stdio::piped());
+
+    let local_port = {
+        let listener = TcpListener::bind("127.0.0.1:0").await.map_err(|e| format!("Failed to bind to address: {}", e))?;
+        let local_addr = listener.local_addr().map_err(|e| format!("Failed to get local address: {}", e))?;
+        local_addr.port()
+    };
+    command.arg("-L").arg(format!("127.0.0.1:{}:{}", local_port, remote_port_or_socket));
+    let mut process = command.spawn().map_err(|e| format!("Failed to start ssh process: {}", e))?;
     
-    let process = command.spawn().map_err(|e| format!("Failed to start ssh process: {}", e))?;
+    let mut stderr = process.stderr.take().ok_or("Failed to open stderr for ssh process")?;
+    let output_stderr = read_until_token_or_timeout(&mut stderr, 100, "").await?;
+    if !output_stderr.is_empty() {
+        return Err(format!("SSH error: {}", output_stderr));
+    }
 
     for attempt in 0..10 {
         match TcpStream::connect(("127.0.0.1", local_port)).await {
@@ -83,14 +83,18 @@ pub async fn open_ssh_tunnel(remote_port_or_socket: &str, ssh_config: &SshConfig
                     remote_port_or_socket: remote_port_or_socket.to_string(),
                     local_port: local_port.to_string(),
                     process,
+                    stderr,
                 });
             }
             Err(e) => {
                 warn!("Failed to connect to 127.0.0.1:{} (attempt {}): {}", local_port, attempt + 1, e);
-                sleep(Duration::from_millis(300)).await;
+                let stderr_output = read_until_token_or_timeout(&mut stderr, 300, "").await?;
+                if !stderr_output.is_empty() {
+                    return Err(format!("Failed to open ssh tunnel: {}", stderr_output));
+                }
             },
         }
     }
 
-    Err(format!("Failed to connect to 127.0.0.1:{}, max attempts reached", local_port))
+    return Err(format!("Failed to connect to 127.0.0.1:{}, max attempts reached", local_port));
 }

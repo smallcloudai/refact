@@ -33,11 +33,6 @@ impl ToolDocker {
     
         let integration_docker = serde_yaml::from_value::<IntegrationDocker>(integration_docker_value)
             .map_err(|e| e.to_string())?;
-
-        if let Some(ssh_config) = &integration_docker.ssh_config 
-        {
-            forward_remote_docker_if_needed(&integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
-        }
     
         Ok(Self { integration_docker })
     }
@@ -59,12 +54,18 @@ impl Tool for ToolDocker {
 
         command_append_label_if_creates_resource(&mut command_args);
 
-        let docker_cli_command = self.integration_docker.docker_cli_path.as_deref().unwrap_or("docker");
-        
-        let mut docker_host = self.integration_docker.connect_to_daemon_at.clone();
         let gcx = {
             ccx.lock().await.global_context.clone()
         };
+
+        if let Some(ssh_config) = &self.integration_docker.ssh_config 
+        {
+            forward_remote_docker_if_needed(&self.integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
+        }
+
+        let docker_cli_command = self.integration_docker.docker_cli_path.as_deref().unwrap_or("docker");
+        
+        let mut docker_host = self.integration_docker.connect_to_daemon_at.clone();
         let ssh_tunnel_arc = {
             gcx.read().await.docker_ssh_tunnel.clone()
         };
