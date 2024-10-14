@@ -127,7 +127,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         let mut filtered_msgs = vec![];
         for msg in &limited_msgs {
             if msg.role == "assistant" || msg.role == "system" || msg.role == "user" || msg.role == "tool" {
-                filtered_msgs.push(msg.into_real());
+                filtered_msgs.push(msg.drop_usage());
 
             } else if msg.role == "diff" {
                 let tool_msg = ChatMessage {
@@ -137,19 +137,19 @@ impl ScratchpadAbstract for ChatPassthrough {
                     tool_call_id: msg.tool_call_id.clone(),
                     ..Default::default()
                 };
-                filtered_msgs.push(tool_msg.into_real());
+                filtered_msgs.push(tool_msg.drop_usage());
 
             } else if msg.role == "plain_text" || msg.role == "cd_instruction" {
                 filtered_msgs.push(ChatMessage::new(
                     "user".to_string(),
                     msg.content.clone(),
-                ).into_real());
+                ).drop_usage());
 
             } else if msg.role == "plain_text" {
                 filtered_msgs.push(ChatMessage::new(
                     "user".to_string(),
                     msg.content.clone(),
-                ).into_real());
+                ).drop_usage());
 
             } else if msg.role == "context_file" {
                 match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
@@ -162,7 +162,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                                         context_file.line1,
                                         context_file.line2,
                                         context_file.file_content),
-                            ).into_real());
+                            ).drop_usage());
                         }
                     },
                     Err(e) => { error!("error parsing context file: {}", e); }
