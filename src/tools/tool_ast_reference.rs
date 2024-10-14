@@ -7,7 +7,7 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::Tool;
-use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
+use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 use crate::tools::tool_ast_definition::there_are_definitions_with_similar_names_though;
 
 
@@ -119,7 +119,7 @@ impl Tool for ToolAstReference {
             let mut result_messages = all_results.into_iter().map(|x| ContextEnum::ContextFile(x)).collect::<Vec<ContextEnum>>();
             result_messages.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "tool".to_string(),
-                content: messages.join("\n"),
+                content: ChatContent::SimpleText(messages.join("\n")),
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
                 ..Default::default()

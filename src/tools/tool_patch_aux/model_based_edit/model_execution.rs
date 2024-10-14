@@ -85,11 +85,11 @@ async fn make_chat_history(
             context_file.file_name,
         ));
     }
-    
+
     if DEBUG {
         info!("Using {} prompt in the `PARTIAL_EDIT` diff generation", if use_whole_file_parser { "whole_file" } else { "file_blocks" });
         for m in messages.iter() {
-            info!("{}", m.content);
+            info!("{}", m.content.content_text_only());
         }
     }
 
@@ -117,7 +117,7 @@ async fn make_follow_up_chat_history(
     messages.push(ChatMessage::new("user".to_string(), BlocksOfCodeParser::followup_prompt(error)));
     if DEBUG {
         for m in messages.iter() {
-            info!("{}", m.content);
+            info!("{}", m.content.content_text_only());
         }
     }
 
@@ -145,9 +145,9 @@ pub async fn get_valid_chunks_from_messages(
         let gcx = ccx.lock().await.global_context.clone();
         tasks.push(tokio::spawn(async move {
             if use_whole_file_parser {
-                WholeFileParser::parse_message(gcx.clone(), content.as_str(), &filename).await
+                WholeFileParser::parse_message(gcx.clone(), content.content_text_only().as_str(), &filename).await
             } else {
-                BlocksOfCodeParser::parse_message(gcx.clone(), content.as_str(), &filename).await
+                BlocksOfCodeParser::parse_message(gcx.clone(), content.content_text_only().as_str(), &filename).await
             }
         }));
     }
@@ -213,7 +213,7 @@ pub async fn execute_blocks_of_code_patch(
     if DEBUG {
         info!("patch responses: ");
         for (idx, m) in last_messages.iter().enumerate() {
-            info!("choice {idx}:\n{}", m.content);
+            info!("choice {idx}:\n{}", m.content.content_text_only());
         }
     }
     let chunks = get_valid_chunks_from_messages(
@@ -264,7 +264,7 @@ pub async fn execute_blocks_of_code_patch(
     if DEBUG {
         info!("follow-up patch responses: ");
         for (idx, m) in last_messages.iter().enumerate() {
-            info!("choice {idx}:\n{}", m.content);
+            info!("choice {idx}:\n{}", m.content.content_text_only());
         }
     }
     let chunks = get_valid_chunks_from_messages(
@@ -329,7 +329,7 @@ pub async fn execute_whole_file_patch(
     if DEBUG {
         info!("patch responses: ");
         for (idx, m) in last_messages.iter().enumerate() {
-            info!("choice {idx}:\n{}", m.content);
+            info!("choice {idx}:\n{}", m.content.content_text_only());
         }
     }
     let chunks = get_valid_chunks_from_messages(

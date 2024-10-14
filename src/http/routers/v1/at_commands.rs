@@ -17,7 +17,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
-use crate::call_validation::{ChatMessage, ContextEnum};
+use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat;
@@ -163,7 +163,7 @@ pub async fn handle_v1_command_preview(
         pp_settings.max_files_n = crate::http::routers::v1::chat::CHAT_TOP_N;
     }
 
-    let processed = postprocess_context_files(
+    let cf = postprocess_context_files(
         global_context.clone(),
         &mut filter_only_context_file_from_context_tool(&messages_for_postprocessing),
         tokenizer_arc.clone(),
@@ -172,10 +172,10 @@ pub async fn handle_v1_command_preview(
         &pp_settings,
     ).await;
 
-    if !processed.is_empty() {
+    if !cf.is_empty() {
         let message = ChatMessage {
             role: "context_file".to_string(),
-            content: serde_json::to_string(&processed).unwrap(),
+            content: ChatContent::SimpleText(serde_json::to_string(&cf).unwrap()),
             tool_calls: None,
             tool_call_id: "".to_string(),
             ..Default::default()

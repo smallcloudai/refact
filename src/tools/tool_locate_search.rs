@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use hashbrown::HashSet;
 use crate::subchat::subchat;
 use crate::tools::tools_description::Tool;
-use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, SubchatParameters, ContextFile};
+use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile};
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 
@@ -135,7 +135,7 @@ impl Tool for ToolLocateSearch {
 
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: tool_message,
+            content: ChatContent::SimpleText(tool_message),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             usage: Some(usage),
@@ -208,8 +208,8 @@ async fn find_relevant_files_with_search(
     crate::tools::tool_relevant_files::update_usage_from_message(&mut usage, &last_message);
     assert!(last_message.role == "assistant");
 
-    let assistant_output1 = serde_json::from_str::<IndexMap<String, serde_json::Value>>(last_message.content.as_str()).map_err(|e| {
-        tracing::warn!("\n{}\nUnable to parse JSON: {:?}", last_message.content, e);
+    let assistant_output1 = serde_json::from_str::<IndexMap<String, serde_json::Value>>(last_message.content.content_text_only().as_str()).map_err(|e| {
+        tracing::warn!("\n{}\nUnable to parse JSON: {:?}", last_message.content.content_text_only(), e);
         format!("Unable to parse JSON: {:?}", e)
     })?;
     let rejection = assistant_output1.get("rejection");
@@ -221,8 +221,8 @@ Answer in the language the user prefers. Follow the system prompt.
         return Ok((results, usage, serde_json::to_string_pretty(&assistant_output1).unwrap(), cd_instruction));
     }
 
-    let assistant_output2 = serde_json::from_str::<IndexMap<String, IndexMap<String, String>>>(last_message.content.as_str()).map_err(|e| {
-        tracing::warn!("\n{}\nUnable to parse JSON: {:?}", last_message.content, e);
+    let assistant_output2 = serde_json::from_str::<IndexMap<String, IndexMap<String, String>>>(last_message.content.content_text_only().as_str()).map_err(|e| {
+        tracing::warn!("\n{}\nUnable to parse JSON: {:?}", last_message.content.content_text_only(), e);
         format!("Unable to parse JSON: {:?}", e)
     })?;
 

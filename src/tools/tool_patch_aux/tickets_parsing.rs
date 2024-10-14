@@ -255,7 +255,7 @@ pub async fn get_tickets_from_messages(
     for message in messages
         .iter()
         .filter(|x| x.role == "assistant") {
-        for ticket in parse_tickets(gcx.clone(), &message.content).await.into_iter() {
+        for ticket in parse_tickets(gcx.clone(), &message.content.content_text_only()).await.into_iter() {
             tickets.insert(ticket.id.clone(), ticket);
         }
     }

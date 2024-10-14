@@ -8,7 +8,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::ast_structs::AstDB;
 use crate::ast::ast_db::fetch_counters;
 use crate::tools::tools_description::Tool;
-use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
+use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 
 
 pub struct ToolAstDefinition;
@@ -91,7 +91,7 @@ impl Tool for ToolAstDefinition {
             let mut result_messages = messages;
             result_messages.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "tool".to_string(),
-                content: tool_message.clone(),
+                content: ChatContent::SimpleText(tool_message),
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
                 ..Default::default()

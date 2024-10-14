@@ -40,7 +40,7 @@ pub async fn run_at_commands(
         let message = original_messages.get(user_msg_starts - 1).unwrap().clone();
         if message.role == "user" {
             user_msg_starts -= 1;
-            if message.content.contains("@") {
+            if message.content.content_text_only().contains("@") {
                 messages_with_at += 1;
             }
         } else {
@@ -56,13 +56,13 @@ pub async fn run_at_commands(
     for msg_idx in user_msg_starts..original_messages.len() {
         let msg = original_messages[msg_idx].clone();
         let role = msg.role.clone();
-        let mut content = msg.content.clone();
-        let content_n_tokens = count_tokens(&tokenizer.read().unwrap(), &content);
+        let mut content = msg.content.content_text_only();
+        let content_n_tokens = count_tokens(&tokenizer.read().unwrap(), &msg.content);
 
         let mut context_limit = reserve_for_context / messages_with_at.max(1);
         context_limit = context_limit.saturating_sub(content_n_tokens);
 
-        info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", msg_idx, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens,context_limit);
+        info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", msg_idx, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens, context_limit);
 
         let mut messages_exec_output = vec![];
         if content.contains("@") {

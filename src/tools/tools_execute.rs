@@ -8,7 +8,7 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
-use crate::call_validation::{ChatMessage, ContextEnum, ContextFile, SubchatParameters};
+use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile, SubchatParameters};
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
@@ -78,7 +78,7 @@ pub async fn run_tools(
                 let tool_failed_message = tool_answer(
                     format!("tool use: function {:?} not found", &t_call.function.name), t_call.id.to_string()
                 );
-                warn!("{}", tool_failed_message.content);
+                warn!("{}", tool_failed_message.content.content_text_only());
                 generated_tool.push(tool_failed_message.clone());
                 continue;
             }
@@ -313,7 +313,7 @@ async fn pp_run_tools(
 fn tool_answer(content: String, tool_call_id: String) -> ChatMessage {
     ChatMessage {
         role: "tool".to_string(),
-        content,
+        content: ChatContent::SimpleText(content),
         tool_calls: None,
         tool_call_id,
         ..Default::default()

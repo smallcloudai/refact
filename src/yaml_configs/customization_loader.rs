@@ -79,12 +79,14 @@ fn _replace_variables_in_text(text: &mut String, variables: &HashMap<String, Str
     replaced
 }
 
-fn _replace_variables_in_messages(config: &mut CustomizationYaml, variables: &HashMap<String, String>) {
+fn _replace_variables_in_messages(config: &mut CustomizationYaml, variables: &HashMap<String, String>)
+{
+    // this is about pre-filled messages in tools, there are no images
     for command in config.toolbox_commands.values_mut() {
         for msg in command.messages.iter_mut() {
             let mut replaced = true;
             while replaced {
-                replaced = _replace_variables_in_text(&mut msg.content, variables);
+                replaced = _replace_variables_in_text(&mut msg.content.content_text_only(), variables);
             }
         }
     }
@@ -92,7 +94,7 @@ fn _replace_variables_in_messages(config: &mut CustomizationYaml, variables: &Ha
         for msg in command.messages.iter_mut() {
             let mut replaced = true;
             while replaced {
-                replaced = _replace_variables_in_text(&mut msg.content, variables);
+                replaced = _replace_variables_in_text(&mut msg.content.content_text_only(), variables);
             }
         }
     }

@@ -141,14 +141,14 @@ async fn chat_interaction_non_stream(
         let message = choice.get("message").ok_or("error parsing model's output: choice.message doesn't exist".to_string())?;
 
         // convert choice to a ChatMessage (we don't have code like this in any other place in rust, only in python and typescript)
-        let (role, content, tool_calls, tool_call_id) = {
+        let (role, content_value, tool_calls, tool_call_id) = {
             (
                 message.get("role")
                     .and_then(|v| v.as_str())
                     .ok_or("error parsing model's output: choice0.message.role doesn't exist or is not a string".to_string())?.to_string(),
                 message.get("content")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("").to_string(),
+                    .ok_or("error parsing model's output: choice0.message.content doesn't exist".to_string())?
+                    .clone(),
                 message.get("tool_calls")
                     .and_then(|v| v.as_array())
                     .and_then(|arr| {
@@ -161,6 +161,10 @@ async fn chat_interaction_non_stream(
                     .unwrap_or("").to_string()
             )
         };
+
+        let content: crate::call_validation::ChatContent = crate::call_validation::chat_content_from_value(content_value)
+            .map_err(|e| format!("error parsing model's output: {}", e))?;
+
         let mut ch_results = vec![];
         let msg = ChatMessage {
             role,
@@ -179,6 +183,7 @@ async fn chat_interaction_non_stream(
 
     Ok(results)
 }
+
 
 async fn chat_interaction(
     ccx: Arc<AMutex<AtCommandsContext>>,

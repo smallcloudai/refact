@@ -18,7 +18,7 @@ use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::files_correction::{get_project_dirs, shortify_paths};
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, SubchatParameters, ContextFile, ChatToolCall, ChatToolFunction};
+use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, ChatToolCall, ChatToolFunction};
 use crate::subchat::subchat;
 use crate::tools::tools_description::Tool;
 
@@ -48,7 +48,7 @@ pub fn pretend_tool_call(tool_name: &str, tool_arguments: &str, content: String)
     };
     ChatMessage {
         role: "assistant".to_string(),
-        content: content,
+        content: ChatContent::SimpleText(content),
         tool_calls: Some(vec![tool_call]),
         tool_call_id: "".to_string(),
         ..Default::default()
@@ -109,7 +109,7 @@ impl Tool for ToolRelevantFiles {
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: format!("{}\n\n💿 {}", tool_result, tool_message),
+            content: ChatContent::SimpleText(format!("{}\n\n💿 {}", tool_result, tool_message)),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             usage: Some(usage),
@@ -437,7 +437,7 @@ async fn find_relevant_files(
     messages.push(ChatMessage::new("system".to_string(), RF_EXPAND_REDUCE_SYSTEM_PROMPT.to_string()));
     messages.push(ChatMessage::new("user".to_string(), format!("User provided task:\n\n{}", user_query)));
     for (i, expert_message) in expert_results.clone().into_iter().enumerate() {
-        messages.push(ChatMessage::new("user".to_string(), format!("Expert {} says:\n\n{}", i + 1, expert_message.content)));
+        messages.push(ChatMessage::new("user".to_string(), format!("Expert {} says:\n\n{}", i + 1, expert_message.content.content_text_only())));
     }
     messages.push(ChatMessage::new("user".to_string(), "Start your answer with STEP1_CAT".to_string()));
 
@@ -465,7 +465,7 @@ async fn find_relevant_files(
     let last_message = result.last().unwrap();
     update_usage_from_message(&mut usage, &last_message);
 
-    let reduced_files = parse_reduce_output(&last_message.content)?;
+    let reduced_files = parse_reduce_output(&last_message.content.content_text_only())?;
 
     let error_log: String;
     (real_files, error_log) = _reduced_files_to_reality(reduced_files, ccx.clone()).await;
@@ -490,7 +490,7 @@ async fn find_relevant_files(
 
 pub fn check_for_inspected_files(inspected_files: &mut HashSet<String>, messages: &[ChatMessage]) {
     for context_file_msg in messages.iter().filter(|msg| msg.role == "context_file").cloned().collect::<Vec<ChatMessage>>() {
-        if let Ok(context_files) = serde_json::from_str::<Vec<ContextFile>>(&context_file_msg.content) {
+        if let Ok(context_files) = serde_json::from_str::<Vec<ContextFile>>(&context_file_msg.content.content_text_only()) {
             for context_file in context_files {
                 inspected_files.insert(context_file.file_name.clone());
             }

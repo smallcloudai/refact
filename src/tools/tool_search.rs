@@ -12,7 +12,7 @@ use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_o
 use crate::at_commands::at_search::execute_at_search;
 use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs};
 use crate::tools::tools_description::Tool;
-use crate::call_validation::{ChatMessage, ContextEnum, ContextFile};
+use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 
 
 pub struct ToolSearch;
@@ -102,7 +102,7 @@ impl Tool for ToolSearch {
         let mut results = vec_context_file_to_context_tools(vector_of_context_file.clone());
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content,
+            content: ChatContent::SimpleText(content),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
