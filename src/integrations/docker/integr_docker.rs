@@ -51,11 +51,13 @@ impl Tool for ToolDocker {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let command_args = parse_command_args(args)?;
+        let mut command_args = parse_command_args(args)?;
 
         if command_is_interactive_or_blocking(&command_args) {
             return Err("Docker commands that are interactive or blocking are not supported".to_string());
         }
+
+        command_append_label_if_creates_resource(&mut command_args);
 
         let docker_cli_command = self.integration_docker.docker_cli_path.as_deref().unwrap_or("docker");
         
@@ -146,26 +148,53 @@ fn command_is_interactive_or_blocking(command_args: &Vec<String>) -> bool
         false
     }
 
-    let subcommand = if command_args.len() >= 2 && command_args[0] == "container" { 
-        command_args[1].as_str()
-    } else { 
-        command_args[0].as_str()
+    let mut command_args_iter = command_args.iter().filter(|arg| !arg.starts_with('-'));
+    let subcommand_generic = command_args_iter.next().map(|arg| arg.as_str()).unwrap_or("");
+
+    let subcommand_specific = if subcommand_generic == "container" {
+        command_args_iter.next().map(|arg| arg.as_str()).unwrap_or("")
+    } else {
+        subcommand_generic
     };
 
-    if COMMANDS_THAT_CAN_BE_INTERACTIVE.contains(&subcommand) && 
+    if COMMANDS_THAT_CAN_BE_INTERACTIVE.contains(&subcommand_specific) && 
         command_contains_flag(command_args, "i", "interactive") 
     {
         return true;
     }
 
-    if subcommand == "logs" && command_contains_flag(command_args, "f", "follow") { 
+    if subcommand_specific == "logs" && command_contains_flag(command_args, "f", "follow") { 
         return true;
     }
 
-    if subcommand == "stats" && !command_contains_flag(command_args, "", "no-stream") {
+    if subcommand_specific == "stats" && !command_contains_flag(command_args, "", "no-stream") {
         return true;
     }
 
-    COMMANDS_ALWAYS_BLOCKING.contains(&subcommand)
+    COMMANDS_ALWAYS_BLOCKING.contains(&subcommand_specific)
 }
 
+fn command_append_label_if_creates_resource(command_args: &mut Vec<String>) -> () {
+    const COMMANDS_FOR_RESOURCE_CREATION: &[&[&str]] = &[
+        &["build"], 
+        &["buildx", "build"], 
+        &["image", "build"], 
+        &["builder", "build"], 
+        &["buildx", "b"], 
+        &["create"],
+        &["container", "create"],
+        &["network", "create"], 
+        &["volume", "create"],
+        &["run"],
+        &["container", "run"],
+    ];
+
+    for prefix in COMMANDS_FOR_RESOURCE_CREATION {
+        let prefix_vec: Vec<String> = prefix.iter().map(|s| s.to_string()).collect();
+        if command_args.starts_with( &prefix_vec) {
+            let insert_pos = prefix.len();
+            command_args.insert(insert_pos, format!("--label={}", COMMON_LABEL));
+            break;
+        }
+    }
+}
