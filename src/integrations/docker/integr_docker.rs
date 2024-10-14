@@ -53,6 +53,9 @@ impl Tool for ToolDocker {
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let command_args = parse_command_args(args)?;
 
+        if command_is_interactive_or_blocking(&command_args) {
+            return Err("Docker commands that are interactive or blocking are not supported".to_string());
+        }
 
         let docker_cli_command = self.integration_docker.docker_cli_path.as_deref().unwrap_or("docker");
         
@@ -124,3 +127,45 @@ fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, Stri
 
     Ok(parsed_args)
 }
+
+fn command_is_interactive_or_blocking(command_args: &Vec<String>) -> bool 
+{
+    const COMMANDS_THAT_CAN_BE_INTERACTIVE: &[&str] = &["run", "exec"];
+    const COMMANDS_ALWAYS_BLOCKING: &[&str] = &["attach", "events", "wait"];
+
+    fn command_contains_flag(command_args: &Vec<String>, short_flag: &str, long_flag: &str) -> bool
+    {
+        for arg in command_args {
+            if !short_flag.is_empty() && arg.starts_with("-") && !arg.starts_with("--") && arg.contains(short_flag) {
+                return true;
+            }
+            if !long_flag.is_empty() && arg == format!("--{}", long_flag).as_str() {
+                return true;
+            }
+        }
+        false
+    }
+
+    let subcommand = if command_args.len() >= 2 && command_args[0] == "container" { 
+        command_args[1].as_str()
+    } else { 
+        command_args[0].as_str()
+    };
+
+    if COMMANDS_THAT_CAN_BE_INTERACTIVE.contains(&subcommand) && 
+        command_contains_flag(command_args, "i", "interactive") 
+    {
+        return true;
+    }
+
+    if subcommand == "logs" && command_contains_flag(command_args, "f", "follow") { 
+        return true;
+    }
+
+    if subcommand == "stats" && !command_contains_flag(command_args, "", "no-stream") {
+        return true;
+    }
+
+    COMMANDS_ALWAYS_BLOCKING.contains(&subcommand)
+}
+
