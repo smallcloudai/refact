@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::collections::HashMap;
 use tokio::process::Command;
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use async_trait::async_trait;
 use tracing::error;
 use serde::{Deserialize, Serialize};
@@ -9,8 +9,9 @@ use serde_json::Value;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage};
+use crate::global_context::GlobalContext;
 use crate::tools::tools_description::Tool;
-use crate::integrations::docker::docker_ssh_tunnel_handler::SshConfig;
+use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
 
 const COMMON_LABEL: &str = "humberto-refact";
 
@@ -26,15 +27,19 @@ pub struct ToolDocker {
 }
 
 impl ToolDocker {
-    pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
-        let integration_docker_value = integrations_value.get("docker")?;
+    pub async fn new_if_configured(integrations_value: &serde_yaml::Value, gcx: Arc<ARwLock<GlobalContext>>) -> Result<Self, String> {
+        let integration_docker_value = integrations_value.get("docker")
+            .ok_or_else(|| "Docker integration is not configured").cloned()?;
     
-        let integration_docker = serde_yaml::from_value::<IntegrationDocker>(integration_docker_value.clone()).or_else(|e| {
-            error!("Failed to parse integration docker: {:?}", e);
-            Err(e)
-        }).ok()?;
+        let integration_docker = serde_yaml::from_value::<IntegrationDocker>(integration_docker_value)
+            .map_err(|e| e.to_string())?;
+
+        if let Some(ssh_config) = &integration_docker.ssh_config 
+        {
+            forward_remote_docker_if_needed(&integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
+        }
     
-        Some(Self { integration_docker })
+        Ok(Self { integration_docker })
     }
 }
 
@@ -42,16 +47,32 @@ impl ToolDocker {
 impl Tool for ToolDocker {
     async fn tool_execute(
         &mut self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let command_args = parse_command_args(args)?;
 
-        let docker_command = self.integration_docker.docker_cli_path.as_deref().unwrap_or("docker");
-        let output = Command::new(docker_command)
+
+        let docker_cli_command = self.integration_docker.docker_cli_path.as_deref().unwrap_or("docker");
+        
+        let mut docker_host = self.integration_docker.connect_to_daemon_at.clone();
+        let gcx = {
+            ccx.lock().await.global_context.clone()
+        };
+        let ssh_tunnel_arc = {
+            gcx.read().await.docker_ssh_tunnel.clone()
+        };
+        {
+            let ssh_tunnel_locked = ssh_tunnel_arc.lock().await;
+            if let Some(ssh_tunnel) = &*ssh_tunnel_locked {
+                docker_host = format!("tcp://localhost:{}", ssh_tunnel.local_port);
+            }
+        };
+        
+        let output = Command::new(docker_cli_command)
             .arg("-H")
-            .arg(&self.integration_docker.connect_to_daemon_at)
+            .arg(&docker_host)
             .args(&command_args)
             .output()
             .await
