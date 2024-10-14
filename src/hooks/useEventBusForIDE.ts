@@ -41,6 +41,8 @@ export const ideWriteResultsToFile = createAction<PatchResult[]>(
   "ide/writeResultsToFile",
 );
 
+export const ideChatPageChange = createAction<string>("ide/chatPageChange");
+
 import { pathApi } from "../services/refact/path";
 
 export const useEventsBusForIDE = () => {
@@ -146,6 +148,14 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const chatPageChange = useCallback(
+    (page: string) => {
+      const action = ideChatPageChange(page);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
   const [getPrivacyPath] = pathApi.useLazyPrivacyPathQuery();
   const [getBringYourOwnKeyPath] = pathApi.useLazyBringYourOwnKeyPathQuery();
@@ -190,5 +200,6 @@ export const useEventsBusForIDE = () => {
     stopFileAnimation,
     startFileAnimation,
     writeResultsToFile,
+    chatPageChange,
   };
 };

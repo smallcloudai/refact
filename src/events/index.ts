@@ -1,7 +1,11 @@
 // Careful with exports that include components, it'll cause this to compile to a large file.
 import type { FileInfo } from "../features/Chat/activeFile";
 // TODO: this cause more exports than needed :/
-export { type ChatThread, type Chat } from "../features/Chat/Thread/types";
+export {
+  type ChatThread,
+  type Chat,
+  type ToolUse,
+} from "../features/Chat/Thread/types";
 export { newChatAction } from "../features/Chat/Thread/actions";
 import { type Chat } from "../features/Chat/Thread/types";
 import type { Snippet } from "../features/Chat/selectedSnippet";
@@ -54,6 +58,7 @@ export {
   ideAnimateFileStart,
   ideAnimateFileStop,
   ideWriteResultsToFile,
+  ideChatPageChange,
 } from "../hooks/useEventBusForIDE";
 
 export const fim = {
