@@ -17,7 +17,7 @@ const COMMON_LABEL: &str = "humberto-refact";
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct IntegrationDocker {
-    pub connect_to_daemon_at: String,   // 127.0.0.1:1337
+    pub connect_to_daemon_at: String, // /var/run/docker.sock or 127.0.0.1:50371
     pub docker_cli_path: Option<String>,
     pub ssh_config: Option<SshConfig>,
 }
@@ -55,26 +55,18 @@ impl Tool for ToolDocker {
         command_append_label_if_creates_resource(&mut command_args);
 
         let gcx = {
-            ccx.lock().await.global_context.clone()
+            let ccx_locked = ccx.lock().await;
+            ccx_locked.global_context.clone()
         };
 
+        let mut docker_host = self.integration_docker.connect_to_daemon_at.clone();
         if let Some(ssh_config) = &self.integration_docker.ssh_config 
         {
-            forward_remote_docker_if_needed(&self.integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
+            let local_port = forward_remote_docker_if_needed(&self.integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
+            docker_host = format!("127.0.0.1:{}", local_port);
         }
 
         let docker_cli_command = self.integration_docker.docker_cli_path.as_deref().unwrap_or("docker");
-        
-        let mut docker_host = self.integration_docker.connect_to_daemon_at.clone();
-        let ssh_tunnel_arc = {
-            gcx.read().await.docker_ssh_tunnel.clone()
-        };
-        {
-            let ssh_tunnel_locked = ssh_tunnel_arc.lock().await;
-            if let Some(ssh_tunnel) = &*ssh_tunnel_locked {
-                docker_host = format!("tcp://localhost:{}", ssh_tunnel.local_port);
-            }
-        };
         
         let output = Command::new(docker_cli_command)
             .arg("-H")
@@ -91,16 +83,15 @@ impl Tool for ToolDocker {
             return Err(stderr);
         }
 
-        let mut results = vec![];
-        results.push(ContextEnum::ChatMessage(ChatMessage {
-            role: "tool".to_string(),
-            content: stdout,
-            tool_calls: None,
-            tool_call_id: tool_call_id.clone(),
-            ..Default::default()
-        }));
-
-        Ok((false, results))
+        Ok((false, vec![
+            ContextEnum::ChatMessage(ChatMessage {
+                role: "tool".to_string(),
+                content: stdout,
+                tool_calls: None,
+                tool_call_id: tool_call_id.clone(),
+                ..Default::default()
+            }),
+        ]))
     }
 
     fn command_to_match_against_confirm_deny(
