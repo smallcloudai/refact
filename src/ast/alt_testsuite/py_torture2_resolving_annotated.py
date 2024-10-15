@@ -59,6 +59,10 @@ if __name__ == '__main__':
     # v UNK/id/multiprocessing.Process
     # U{ simple_id multiprocessing } U{ simple_id file::process }
     process = NotAProcess(target=list_directory)
+    # py_type_of_expr syntax
+    # py_type_of_expr syntax
+    # py_type_of_expr syntax
+    # py_type_of_expr syntax
     # U{ simple_id multiprocessing::Process } U{ simple_id file::process }
     process.start()
     # U{ simple_id file::process }

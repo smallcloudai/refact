@@ -73,7 +73,6 @@ impl<'a> ContextAnyParser<'a> {
         result
     }
 
-    // Way to print 2: follow recursion level of self.reclevel
     pub fn indent(&self) -> String {
         return " ".repeat(self.reclevel*4);
     }
@@ -82,7 +81,6 @@ impl<'a> ContextAnyParser<'a> {
         println!("{}{}", self.indent(), args);
     }
 
-    // Way to print 3: annotate original text with things and usages
     pub fn dump(&self) {
         println!("\n  -- things -- ");
         for (key, thing) in self.things.iter() {
@@ -127,6 +125,11 @@ impl<'a> ContextAnyParser<'a> {
                 }
             }
             let indent = line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
+            for err in &self.errs.errors {
+                if err.err_line == i + 1 {
+                    r.push_str(format!("\n{indent}{comment} {}", err.err_message).as_str());
+                }
+            }
             for (_, thing) in &self.things {
                 if thing.tline == i {
                     r.push_str(format!("\n{indent}{comment} {} {}", thing.thing_kind, thing.type_resolved).as_str());
