@@ -4,7 +4,7 @@ use tree_sitter_python::language;
 
 use crate::ast::ast_structs::{AstDefinition, AstUsage};
 use crate::ast::treesitter::structs::SymbolType;
-use crate::ast::parse_common::{ContextAnyParser, Thing, type_deindex, type_deindex_n, type_call, type_zerolevel_comma_split};
+use crate::ast::parse_common::{ContextAnyParser, Thing, any_child_of_type, type_deindex, type_deindex_n, type_call, type_zerolevel_comma_split};
 
 
 pub struct ContextPy<'a> {
@@ -110,7 +110,7 @@ fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) 
     return None;
 }
 
-fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec<String>, allow_creation: bool) -> Option<AstUsage>
+fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>, allow_creation: bool) -> Option<AstUsage>
 {
     let node_text = cx.ap.code[node.byte_range()].to_string();
     debug!(cx, "DOTTED {:?}", node_text);
@@ -177,7 +177,7 @@ fn py_resolve_dotted_creating_usages(cx: &mut ContextPy, node: &Node, path: &Vec
     None
 }
 
-fn py_lhs_tuple<'a>(cx: &mut ContextPy<'a>, left: &Node<'a>, type_node: Option<Node>, path: &Vec<String>) -> (Vec<(Node<'a>, String)>, bool)
+fn py_lhs_tuple<'a>(cx: &mut ContextPy<'a>, left: &Node<'a>, type_node: Option<Node<'a>>, path: &Vec<String>) -> (Vec<(Node<'a>, String)>, bool)
 {
     let mut lhs_tuple: Vec<(Node, String)> = Vec::new();
     let mut is_list = false;
@@ -230,7 +230,7 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
     }
 }
 
-fn py_var_add(cx: &mut ContextPy, lhs_lvalue: &Node, lvalue_type: String, rhs_type: String, path: &Vec<String>)
+fn py_var_add<'a>(cx: &mut ContextPy<'a>, lhs_lvalue: &Node<'a>, lvalue_type: String, rhs_type: String, path: &Vec<String>)
 {
     let lvalue_usage = if let Some(u) = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path, true) {
         debug!(cx, "VAR_ADD u={:?}", u);
@@ -267,7 +267,7 @@ fn py_var_add(cx: &mut ContextPy, lhs_lvalue: &Node, lvalue_type: String, rhs_ty
     }
 }
 
-fn py_type_generic(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, level: usize) -> String {
+fn py_type_generic<'a>(cx: &mut ContextPy<'a>, node: Option<Node<'a>>, path: &Vec<String>, level: usize) -> String {
     if node.is_none() {
         return format!("?")
     }
@@ -358,7 +358,7 @@ fn py_type_generic(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>, l
 // my_list2: List[int] = [3,2,1]
 // # assignment[ field_name="left" identifier[my_list1] field_name="" ·= field_name="right" ·list[ field_name="" [ field_name="" integer[1] field_name="" , field_name="" integer[2] field_name="" , field_name="" integer[3] field_name="" ]]]py_lhs_tuple
 
-fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path: &Vec<String>) -> String
+fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node<'a>>, path: &Vec<String>) -> String
 {
     if node.is_none() {
         return "".to_string();
@@ -455,10 +455,24 @@ fn py_type_of_expr_creating_usages(cx: &mut ContextPy, node: Option<Node>, path:
             dotted_type
         },
         "subscript" => {
-            debug!(cx, "subscript {}", cx.ap.recursive_print_with_red_brackets(&node));
             let typeof_value = py_type_of_expr_creating_usages(cx, node.child_by_field_name("value"), path);
             py_type_of_expr_creating_usages(cx, node.child_by_field_name("subscript"), path);
             type_deindex(typeof_value)
+        },
+        "list_comprehension" => {
+            let mut path_anon = path.clone();
+            path_anon.push("<listcomp>".to_string());
+            if let Some(for_clause) = any_child_of_type(node, "for_in_clause") {
+                // debug!(cx, "for_clause {}", cx.ap.recursive_print_with_red_brackets(&for_clause));
+                py_assignment(cx, &for_clause, &path_anon, true);
+                // XXX two let Some combined?
+                let body = node.child_by_field_name("body");
+                // debug!(cx, "body {}", cx.ap.recursive_print_with_red_brackets(&body.unwrap()));
+                let body_type = py_type_of_expr_creating_usages(cx, body, &path_anon);
+                format!("[{}]", body_type)
+            } else {
+                format!("ERR/EXPR/list_comprehension/no_for")
+            }
         },
         _ => {
             debug!(cx, "py_type_of_expr syntax {}", cx.ap.recursive_print_with_red_brackets(&node));
