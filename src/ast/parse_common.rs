@@ -2,7 +2,7 @@
 use indexmap::IndexMap;
 use tree_sitter::{Node, Parser, Range};
 
-use crate::ast::ast_structs::{AstDefinition, AstUsage};
+use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
 
 
 #[derive(Debug)]
@@ -15,6 +15,7 @@ pub struct Thing {
 pub struct ContextAnyParser<'a> {
     pub sitter: Parser,
     pub code: &'a str,
+    pub errs: AstErrorStats,
     pub reclevel: usize,
     pub suppress_refadd: bool,
     pub resolved_anything: bool,
@@ -31,6 +32,15 @@ pub struct ContextAnyParser<'a> {
 }
 
 impl<'a> ContextAnyParser<'a> {
+    pub fn error_report(&mut self, node: &Node, msg: String) -> String {
+        let line = node.range().start_point.row + 1;
+        self.errs.add_error(
+            "".to_string(),
+            line,
+            msg.as_str());
+        return format!("line {}: {}", line, self.recursive_print_with_red_brackets(node));
+    }
+
     pub fn recursive_print_with_red_brackets(&self, node: &Node) -> String {
         self._recursive_print_with_red_brackets_helper(node, 0)
     }
@@ -64,8 +74,7 @@ impl<'a> ContextAnyParser<'a> {
     }
 
     // Way to print 2: follow recursion level of self.reclevel
-    pub fn indent(&self) -> String
-    {
+    pub fn indent(&self) -> String {
         return " ".repeat(self.reclevel*4);
     }
 
