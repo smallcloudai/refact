@@ -450,6 +450,21 @@ describe("ComboBox", () => {
     expect(app.queryByText("@file")).toBeNull();
   });
 
+  test.each([
+    "{Shift>}{enter>}{/enter}{/Shift}", // hold shift, hold enter, release enter, release shift,
+    "{Shift>}{enter>}{/Shift}{/enter}", // hold shift,  hold enter, release enter, release shift,
+  ])("when pressing %s, it should not submit", async (action) => {
+    const onSubmitSpy = vi.fn();
+    const { user, ...app } = render(<App onSubmit={onSubmitSpy} />);
+    const textarea = app.getByRole("combobox");
+
+    await user.type(textarea, "Hello");
+
+    expect(textarea.textContent).toEqual("Hello");
+    await user.type(textarea, action);
+    expect(onSubmitSpy).not.toHaveBeenCalled();
+  });
+
   // test("textarea should be empty after submit", async () => {
   //   const submitSpy = vi.fn();
   //   const { user, ...app } = render(<App onSubmit={submitSpy} />);

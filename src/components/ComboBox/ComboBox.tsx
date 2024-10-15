@@ -108,14 +108,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       if (state.open && event.key === "Tab") {
         event.preventDefault();
       }
-    },
-    [combobox],
-  );
-  // TODO: filter matches
-  const onKeyUp = useCallback(
-    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (!ref.current) return;
-
+      if (state.open) return;
       if (
         !shiftEnterToSubmit &&
         event.key === "Enter" &&
@@ -149,6 +142,14 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
         return;
       }
+    },
+    [combobox, hasMatches, onChange, onSubmit, shiftEnterToSubmit, value],
+  );
+
+  // TODO: filter matches
+  const onKeyUp = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!ref.current) return;
 
       const wasArrowLeftOrRight =
         event.key === "ArrowLeft" || event.key === "ArrowRight";
@@ -186,14 +187,9 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
       closeCombobox,
       combobox,
       handleReplace,
-      hasMatches,
-      onChange,
-      onSubmit,
-      shiftEnterToSubmit,
       state.activeId,
       state.activeValue,
       state.open,
-      value,
     ],
   );
 
