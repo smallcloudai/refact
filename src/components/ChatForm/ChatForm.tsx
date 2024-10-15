@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 
 import { Flex, Card, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
@@ -69,7 +69,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const information = useAppSelector(getInformationMessage);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
-  const [value, setValue] = useInputValue();
+  const [value, setValue, isSendImmediately, setIsSendImmediately] =
+    useInputValue();
+
   const onClearInformation = useCallback(
     () => dispatch(clearInformation()),
     [dispatch],
@@ -150,6 +152,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     },
     [handleHelpInfo, setValue],
   );
+
+  useEffect(() => {
+    if (isSendImmediately) {
+      handleSubmit();
+      setIsSendImmediately(false);
+    }
+  }, [isSendImmediately, handleSubmit, setIsSendImmediately]);
 
   if (error) {
     return (

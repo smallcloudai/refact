@@ -6,8 +6,11 @@ import { setInputValue, addInputValue } from "./actions";
 export function useInputValue(): [
   string,
   React.Dispatch<React.SetStateAction<string>>,
+  boolean,
+  React.Dispatch<React.SetStateAction<boolean>>,
 ] {
   const [value, setValue] = useState<string>("");
+  const [isSendImmediately, setIsSendImmediately] = useState<boolean>(false);
   const dispatch = useAppDispatch();
   const pages = useAppSelector(selectPages);
 
@@ -24,10 +27,19 @@ export function useInputValue(): [
       if (addInputValue.match(event.data)) {
         const { payload } = event.data;
         setUpIfNotReady();
-        setValue((prev) => prev + payload);
+        setValue((prev) => prev + payload.value);
+
+        if (payload.send_immediately) {
+          setIsSendImmediately(payload.send_immediately);
+        }
       } else if (setInputValue.match(event.data)) {
+        const { payload } = event.data;
         setUpIfNotReady();
-        setValue(event.data.payload);
+        setValue(payload.value);
+
+        if (payload.send_immediately) {
+          setIsSendImmediately(payload.send_immediately);
+        }
       }
     };
 
@@ -36,5 +48,5 @@ export function useInputValue(): [
     return () => window.removeEventListener("message", listener);
   });
 
-  return [value, setValue];
+  return [value, setValue, isSendImmediately, setIsSendImmediately];
 }

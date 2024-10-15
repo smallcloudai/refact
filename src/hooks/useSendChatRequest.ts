@@ -11,7 +11,7 @@ import {
   selectSendImmediately,
   selectToolUse,
 } from "../features/Chat/Thread/selectors";
-import { useGetToolsQuery } from "./useGetToolsQuery";
+import { useGetToolsLazyQuery } from "./useGetToolsQuery";
 import {
   ChatMessage,
   ChatMessages,
@@ -31,7 +31,7 @@ export const useSendChatRequest = () => {
   const hasError = useAppSelector(selectChatError);
   const abortControllers = useAbortControllers();
 
-  const toolsRequest = useGetToolsQuery();
+  const [triggerGetTools] = useGetToolsLazyQuery();
 
   const chatId = useAppSelector(selectChatId);
   const streaming = useAppSelector(selectIsStreaming);
@@ -58,21 +58,20 @@ export const useSendChatRequest = () => {
   }, [currentMessages, systemPrompt]);
 
   const sendMessages = useCallback(
-    (messages: ChatMessages) => {
-      let tools = toolsRequest.data ?? null;
+    async (messages: ChatMessages) => {
+      let tools = await triggerGetTools(undefined).unwrap();
       if (isToolUse(toolUse)) {
         dispatch(setToolUse(toolUse));
       }
       if (toolUse === "quick") {
         tools = [];
       } else if (toolUse === "explore") {
-        tools = tools?.filter((t) => !t.function.agentic) ?? [];
+        tools = tools.filter((t) => !t.function.agentic);
       }
-      tools =
-        tools?.map((t) => {
-          const { agentic: _, ...remaining } = t.function;
-          return { ...t, function: { ...remaining } };
-        }) ?? [];
+      tools = tools.map((t) => {
+        const { agentic: _, ...remaining } = t.function;
+        return { ...t, function: { ...remaining } };
+      });
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
@@ -85,21 +84,21 @@ export const useSendChatRequest = () => {
       const dispatchedAction = dispatch(action);
       abortControllers.addAbortController(chatId, dispatchedAction.abort);
     },
-    [toolsRequest.data, toolUse, dispatch, chatId, abortControllers],
+    [triggerGetTools, toolUse, dispatch, chatId, abortControllers],
   );
 
   const submit = useCallback(
     (question: string) => {
       const message: ChatMessage = { role: "user", content: question };
       const messages = messagesWithSystemPrompt.concat(message);
-      sendMessages(messages);
+      void sendMessages(messages);
     },
     [messagesWithSystemPrompt, sendMessages],
   );
 
   useEffect(() => {
     if (sendImmediately) {
-      sendMessages(messagesWithSystemPrompt);
+      void sendMessages(messagesWithSystemPrompt);
     }
   }, [sendImmediately, sendMessages, messagesWithSystemPrompt]);
 
@@ -112,7 +111,7 @@ export const useSendChatRequest = () => {
         lastMessage.tool_calls &&
         lastMessage.tool_calls.length > 0
       ) {
-        sendMessages(currentMessages);
+        void sendMessages(currentMessages);
       }
     }
   }, [errored, currentMessages, preventSend, sendMessages, streaming]);
@@ -124,7 +123,7 @@ export const useSendChatRequest = () => {
   const retry = useCallback(
     (messages: ChatMessages) => {
       abort();
-      sendMessages(messages);
+      void sendMessages(messages);
     },
     [abort, sendMessages],
   );
