@@ -127,9 +127,9 @@ describe("ChatForm", () => {
     const textarea = app.container.querySelector("textarea")!;
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
-    const epexted = `@file ${activeFile.path}:${activeFile.line1}-${activeFile.line2}\n@symbols-at ${activeFile.path}:${activeFile.cursor}\nfoo\n`;
+    const expected = `@file ${activeFile.path}:${activeFile.line1}-${activeFile.line2}\n@symbols-at ${activeFile.path}:${activeFile.cursor}\nfoo\n`;
 
-    expect(fakeOnSubmit).toHaveBeenCalledWith(epexted);
+    expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
   });
 
   test("checkbox snippet", async () => {
@@ -147,10 +147,10 @@ describe("ChatForm", () => {
           selected_snippet: snippet,
           active_file: {
             name: "foo.txt",
-            cursor: 1,
+            cursor: 2,
             path: "foo.txt",
-            line1: 0,
-            line2: 0,
+            line1: 1,
+            line2: 3,
             can_paste: true,
           },
           config: { host: "vscode", themeProps: {}, lspPort: 8001 },
@@ -165,7 +165,11 @@ describe("ChatForm", () => {
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     const markdown = "```python\nprint(1)\n```\n";
-    const expected = `@file foo.txt:0-0\n${markdown}\nfoo\n`;
+    const cursor = app.store.getState().active_file.cursor;
+
+    const expected = `@file foo.txt:${
+      cursor ? cursor + 1 : 1
+    }\n${markdown}\nfoo\n`;
     expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
   });
 });

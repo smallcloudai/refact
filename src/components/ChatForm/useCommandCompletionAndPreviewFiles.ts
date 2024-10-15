@@ -9,7 +9,6 @@ import {
   commandsApi,
 } from "../../services/refact/commands";
 import { ChatContextFile } from "../../services/refact/types";
-import { selectActiveFile } from "../../features/Chat";
 
 function useGetCommandCompletionQuery(
   query: string,
@@ -79,7 +78,8 @@ function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
 
   const queryWithCheckboxes = useMemo(
     () => addCheckboxValuesToInput(query, checkboxes, hasVecdb),
-    [checkboxes, query, hasVecdb],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [checkboxes, query, hasVecdb, checkboxes.file_upload.value],
   );
   const [previewQuery, setPreviewQuery] = useState<string>(queryWithCheckboxes);
 
@@ -93,7 +93,11 @@ function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
 
   useEffect(() => {
     debounceSetPreviewQuery(queryWithCheckboxes);
-  }, [debounceSetPreviewQuery, queryWithCheckboxes]);
+  }, [
+    debounceSetPreviewQuery,
+    queryWithCheckboxes,
+    checkboxes.file_upload.value,
+  ]);
 
   const previewFileResponse = useGetCommandPreviewQuery(previewQuery);
   return previewFileResponse;
@@ -101,25 +105,11 @@ function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
 
 export function useCommandCompletionAndPreviewFiles(checkboxes: Checkboxes) {
   const { commands, requestCompletion, query } = useCommandCompletion();
-  const activeFile = useAppSelector(selectActiveFile);
   const previewFileResponse = useGetPreviewFiles(query, checkboxes);
-
-  const previewFiles = previewFileResponse.map((file) => {
-    if (activeFile.path.includes(file.file_name)) {
-      return {
-        ...file,
-        cursor: activeFile.cursor ?? undefined,
-      };
-    }
-
-    return {
-      ...file,
-    };
-  });
 
   return {
     commands,
     requestCompletion,
-    previewFiles,
+    previewFiles: previewFileResponse,
   };
 }
