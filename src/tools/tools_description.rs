@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use std::any::Any;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -26,6 +27,8 @@ pub struct CommandsRequireConfirmationConfig { // todo: fix typo
 
 #[async_trait]
 pub trait Tool: Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

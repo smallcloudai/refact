@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -15,6 +16,8 @@ pub struct ToolAstReference;
 
 #[async_trait]
 impl Tool for ToolAstReference {
+    fn as_any(&self) -> &dyn Any { self }
+    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

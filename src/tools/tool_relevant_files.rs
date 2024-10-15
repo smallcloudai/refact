@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::Arc;
@@ -61,6 +62,8 @@ pub struct ToolRelevantFiles;
 
 #[async_trait]
 impl Tool for ToolRelevantFiles {
+    fn as_any(&self) -> &dyn Any { self }
+    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -89,6 +92,7 @@ impl Tool for ToolRelevantFiles {
                 false,
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
+                ccx_lock.docker_image_id.clone(),
             ).await;
             t.subchat_tx = ccx_lock.subchat_tx.clone();
             t.subchat_rx = ccx_lock.subchat_rx.clone();

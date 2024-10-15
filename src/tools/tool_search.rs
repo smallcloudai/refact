@@ -1,4 +1,5 @@
 use serde_json::Value;
+use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::info;
@@ -58,6 +59,8 @@ async fn execute_att_search(
 
 #[async_trait]
 impl Tool for ToolSearch {
+    fn as_any(&self) -> &dyn Any { self }
+    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

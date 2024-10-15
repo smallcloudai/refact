@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::sync::Arc;
 use std::collections::HashMap;
 use tokio::sync::Mutex as AMutex;
@@ -37,6 +38,8 @@ impl ToolGithub {
 
 #[async_trait]
 impl Tool for ToolGithub {
+    fn as_any(&self) -> &dyn Any { self }
+    
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,

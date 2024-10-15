@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::sync::Arc;
 use std::collections::HashMap;
 use async_trait::async_trait;
@@ -14,6 +15,8 @@ pub struct ToolWeb;
 
 #[async_trait]
 impl Tool for ToolWeb {
+    fn as_any(&self) -> &dyn Any { self }
+    
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,
