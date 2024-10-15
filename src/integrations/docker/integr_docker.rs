@@ -27,14 +27,15 @@ pub struct ToolDocker {
 }
 
 impl ToolDocker {
-    pub async fn new_if_configured(integrations_value: &serde_yaml::Value, gcx: Arc<ARwLock<GlobalContext>>) -> Result<Self, String> {
-        let integration_docker_value = integrations_value.get("docker")
-            .ok_or_else(|| "Docker integration is not configured").cloned()?;
-    
-        let integration_docker = serde_yaml::from_value::<IntegrationDocker>(integration_docker_value)
-            .map_err(|e| e.to_string())?;
-    
-        Ok(Self { integration_docker })
+    pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
+        let integration_docker_value = integrations_value.get("docker")?;
+
+        let integration_docker = serde_yaml::from_value::<IntegrationDocker>(integration_docker_value.clone()).or_else(|e| {
+            error!("Failed to parse integration docker: {:?}", e);
+            Err(e)
+        }).ok()?;
+
+        Some(Self { integration_docker })
     }
 }
 
