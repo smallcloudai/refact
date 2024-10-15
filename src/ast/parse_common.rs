@@ -17,7 +17,6 @@ pub struct ContextAnyParser<'a> {
     pub code: &'a str,
     pub errs: AstErrorStats,
     pub reclevel: usize,
-    pub suppress_refadd: bool,
     pub resolved_anything: bool,
     pub defs: IndexMap<String, AstDefinition>,
     pub things: IndexMap<String, Thing>,
@@ -127,7 +126,7 @@ impl<'a> ContextAnyParser<'a> {
             let indent = line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
             for err in &self.errs.errors {
                 if err.err_line == i + 1 {
-                    r.push_str(format!("\n{indent}{comment} {}", err.err_message).as_str());
+                    r.push_str(format!("\n{indent}{comment} ERROR {}", err.err_message).as_str());
                 }
             }
             for (_, thing) in &self.things {

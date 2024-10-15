@@ -152,7 +152,7 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>
                     debug_hint: format!("simple_id"),
                     uline: node.range().start_point.row,
                 };
-                if !py_is_trivial(u.resolved_as.as_str()) && !cx.ap.suppress_refadd {
+                if !py_is_trivial(u.resolved_as.as_str()) {
                     cx.ap.usages.push((path.join("::"), u.clone()));
                     // debug!(cx, "ADD_USAGE ID {:?}", u);
                 }
@@ -182,10 +182,8 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>
                 uline: attrib.range().start_point.row,
             };
             if let Some(_existing_attr) = cx.ap.things.get(&attrib_path) {
-                if !cx.ap.suppress_refadd {
-                    cx.ap.usages.push((path.join("::"), u.clone()));
-                    // debug!(cx, "ADD_USAGE ATTR {:?}", u);
-                }
+                cx.ap.usages.push((path.join("::"), u.clone()));
+                // debug!(cx, "ADD_USAGE ATTR {:?}", u);
                 return Some(u);
             }
             if let Some(_existing_object) = cx.ap.things.get(&object_type) {
@@ -708,7 +706,6 @@ pub fn py_make_cx(code: &str) -> ContextPy
             reclevel: 0,
             code,
             errs: AstErrorStats::default(),
-            suppress_refadd: false,
             resolved_anything: false,
             defs: IndexMap::new(),
             things: IndexMap::new(),
@@ -724,26 +721,23 @@ pub fn py_make_cx(code: &str) -> ContextPy
 }
 
 #[allow(dead_code)]
-pub fn parse(code: &str) -> String
+pub fn py_parse(code: &str) -> String
 {
     let mut cx = py_make_cx(code);
     let tree = cx.ap.sitter.parse(code, None).unwrap();
     let path = vec!["file".to_string()];
-
-    cx.ap.suppress_refadd = true;
+    let mut pass_n = 1;
     loop {
-        debug!(&cx, "\n\x1b[31mPASS1 RESOLVE\x1b[0m");
+        debug!(&cx, "\n\x1b[31mPASS {}\x1b[0m", pass_n);
         cx.ap.resolved_anything = false;
         py_body(&mut cx, &tree.root_node(), &path);
         if !cx.ap.resolved_anything {
             break;
         }
+        cx.ap.usages.clear();
+        cx.ap.errs = AstErrorStats::default();
+        pass_n += 1;
     }
-    cx.ap.suppress_refadd = false;
-
-    debug!(&cx, "\n\x1b[31mPASS2 SAVE USAGES\x1b[0m");
-    py_body(&mut cx, &tree.root_node(), &path);
-
     cx.ap.dump();
     cx.ap.annotate_code("#")
 }
@@ -756,14 +750,14 @@ mod tests {
     #[test]
     fn test_parse_py_tort1() {
         let code = include_str!("alt_testsuite/py_torture1_attr.py");
-        let annotated = parse(code);
+        let annotated = py_parse(code);
         std::fs::write("src/ast/alt_testsuite/py_torture1_attr_annotated.py", annotated).expect("Unable to write file");
     }
 
     #[test]
     fn test_parse_py_tort2() {
         let code = include_str!("alt_testsuite/py_torture2_resolving.py");
-        let annotated = parse(code);
+        let annotated = py_parse(code);
         std::fs::write("src/ast/alt_testsuite/py_torture2_resolving_annotated.py", annotated).expect("Unable to write file");
     }
 }
