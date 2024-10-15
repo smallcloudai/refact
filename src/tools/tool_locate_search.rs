@@ -146,7 +146,7 @@ impl Tool for ToolLocateSearch {
             tracing::info!("\n{}", cd_instruction);
             results.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "cd_instruction".to_string(),
-                content: cd_instruction,
+                content: ChatContent::SimpleText(cd_instruction),
                 tool_calls: None,
                 tool_call_id: "".to_string(),
                 usage: None,

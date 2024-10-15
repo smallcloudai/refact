@@ -11,7 +11,7 @@ use tracing::{error, info, warn};
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_execute::run_tools;
-use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
+use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
@@ -118,7 +118,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         });
         if let Some(first_msg) = limited_msgs.first_mut() {
             if first_msg.role == "system" {
-                first_msg.content = system_prompt_add_workspace_info(gcx.clone(), &first_msg.content).await;
+                first_msg.content = ChatContent::SimpleText(system_prompt_add_workspace_info(gcx.clone(), &first_msg.content.content_text_only()).await);
             }
         }
         if DEBUG {
@@ -142,11 +142,11 @@ impl ScratchpadAbstract for ChatPassthrough {
             } else if msg.role == "plain_text" || msg.role == "cd_instruction" {
                 filtered_msgs.push(ChatMessage::new(
                     "user".to_string(),
-                    msg.content.clone(),
+                    msg.content.content_text_only(),
                 ).drop_usage());
 
             } else if msg.role == "context_file" {
-                match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
+                match serde_json::from_str::<Vec<ContextFile>>(&msg.content.content_text_only()) {
                     Ok(vector_of_context_files) => {
                         for context_file in vector_of_context_files {
                             filtered_msgs.push(ChatMessage::new(
@@ -192,7 +192,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
         if DEBUG {
             for msg in &filtered_msgs {
-                info!("keep role={} {:?}", msg.role, crate::nicer_logs::first_n_chars(&msg.content, 30));
+                info!("keep role={} {:?}", msg.role, crate::nicer_logs::first_n_chars(&msg.content.content_text_only(), 30));
             }
         }
         Ok(prompt.to_string())

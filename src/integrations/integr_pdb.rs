@@ -13,7 +13,7 @@ use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ContextEnum, ChatMessage};
+use crate::call_validation::{ContextEnum, ChatMessage, ChatContent};
 use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::global_context::GlobalContext;
 use crate::tools::tools_description::Tool;
@@ -92,7 +92,7 @@ impl Tool for ToolPdb {
         Ok((false, vec![
             ContextEnum::ChatMessage(ChatMessage {
                 role: "tool".to_string(),
-                content: output,
+                content: ChatContent::SimpleText(output),
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
                 ..Default::default()

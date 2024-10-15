@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatMessage, ChatUsage, ContextEnum, DiffChunk, SubchatParameters};
+use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, DiffChunk, SubchatParameters};
 use crate::tools::tool_patch_aux::diff_apply::diff_apply;
 use crate::tools::tool_patch_aux::model_based_edit::partial_edit::partial_edit_tickets_to_chunks;
 use crate::tools::tool_patch_aux::no_model_edit::{add_to_file_diff, full_rewrite_diff, new_file_diff, rewrite_symbol_diff};
@@ -13,6 +13,7 @@ use crate::tools::tool_patch_aux::postprocessing_utils::postprocess_diff_chunks;
 use crate::tools::tool_patch_aux::tickets_parsing::{get_and_correct_active_tickets, get_tickets_from_messages, good_error_text, PatchAction, TicketToApply};
 use crate::tools::tools_description::Tool;
 use crate::tools::tools_execute::unwrap_subchat_params;
+
 
 pub struct ToolPatch {
     pub usage: Option<ChatUsage>,
@@ -163,7 +164,7 @@ impl Tool for ToolPatch {
         let mut results = vec![];
         results.push(ChatMessage {
             role: "diff".to_string(),
-            content: json!(diff_chunks).to_string(),
+            content: ChatContent::SimpleText(json!(diff_chunks).to_string()),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             usage: Some(usage),

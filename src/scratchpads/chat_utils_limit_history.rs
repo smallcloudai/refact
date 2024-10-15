@@ -19,7 +19,7 @@ pub fn limit_messages_history(
     let mut message_take: Vec<bool> = vec![false; messages.len()];
     let mut have_system = false;
     for (i, msg) in messages.iter().enumerate() {
-        let tcnt = (3 + t.count_tokens(msg.content.as_str())?) as i32;  // 3 for role "\n\nASSISTANT:" kind of thing
+        let tcnt = 3 + msg.content.count_tokens(t.tokenizer.clone())?;
         message_token_count[i] = tcnt;
         if i==0 && msg.role == "system" {
             message_take[i] = true;
@@ -45,15 +45,15 @@ pub fn limit_messages_history(
             if tokens_used + tcnt < tokens_limit {
                 message_take[i] = true;
                 tokens_used += tcnt;
-                log_buffer.push(format!("take {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tokens_used, tokens_limit));
+                log_buffer.push(format!("take {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content.content_text_only(), 30), tokens_used, tokens_limit));
             } else {
-                log_buffer.push(format!("DROP {:?} with {} tokens, quit", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tcnt));
+                log_buffer.push(format!("DROP {:?} with {} tokens, quit", crate::nicer_logs::first_n_chars(&messages[i].content.content_text_only(), 30), tcnt));
                 dropped = true;
                 break;
             }
         } else {
             message_take[i] = true;
-            log_buffer.push(format!("not allowed to drop {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content, 30), tokens_used, tokens_limit));
+            log_buffer.push(format!("not allowed to drop {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content.content_text_only(), 30), tokens_used, tokens_limit));
         }
     }
 
@@ -79,7 +79,7 @@ pub fn limit_messages_history(
         }
         if tool_call_id_drop.contains(messages[i].tool_call_id.as_str()) {
             message_take[i] = false;
-            tracing::info!("drop {:?} because of drop tool result rule", crate::nicer_logs::first_n_chars(&messages[i].content, 30));
+            tracing::info!("drop {:?} because of drop tool result rule", crate::nicer_logs::first_n_chars(&messages[i].content.content_text_only(), 30));
         }
     }
 

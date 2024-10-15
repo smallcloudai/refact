@@ -9,7 +9,7 @@ use tracing::{info, error};
 
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
+use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
@@ -94,7 +94,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message)?;
         if let Some(first_msg) = limited_msgs.first_mut() {
             if first_msg.role == "system" {
-                first_msg.content = system_prompt_add_workspace_info(gcx.clone(), &first_msg.content).await;
+                first_msg.content = ChatContent::SimpleText(system_prompt_add_workspace_info(gcx.clone(), &first_msg.content.content_text_only()).await);
             }
         }
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
@@ -104,6 +104,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         prompt.push_str("[INST] ");
         let mut do_strip = false;
         for msg in limited_msgs {
+            let msg_content = msg.content.content_text_only();
             if msg.role == "system" {
                 if !do_strip {
                     prompt.push_str("<<SYS>>\n");
@@ -114,24 +115,25 @@ impl ScratchpadAbstract for ChatLlama2 {
                 // prompt.push_str("\n\n");
             }
             if msg.role == "context_file" {
-                let vector_of_context_files: Vec<ContextFile> = serde_json::from_str(&msg.content).map_err(|e|error!("parsing context_files has failed: {}; content: {}", e, &msg.content)).unwrap_or_default();
+                let vector_of_context_files: Vec<ContextFile> = serde_json::from_str(&msg_content)
+                    .map_err(|e|error!("parsing context_files has failed: {}; content: {}", e, &msg.content.content_text_only())).unwrap_or_default();
                 for context_file in vector_of_context_files {
                     prompt.push_str(format!("{}\n```\n{}```\n\n", context_file.file_name, context_file.file_content).as_str());
                 }
             }
             if msg.role == "cd_instruction" {
-                prompt.push_str(msg.content.trim());
+                prompt.push_str(msg_content.trim());
                 prompt.push_str("");
             }
             if msg.role == "user" {
-                let user_input = if do_strip { msg.content.trim().to_string() } else { msg.content.clone() };
+                let user_input = if do_strip { msg_content.trim().to_string() } else { msg_content.clone() };
                 prompt.push_str(user_input.as_str());
                 prompt.push_str(" [/INST]");
                 do_strip = true;
             }
 
             if msg.role == "assistant" {
-                prompt.push_str(msg.content.trim());
+                prompt.push_str(msg_content.trim());
                 prompt.push_str(" ");
                 prompt.push_str(&self.keyword_slash_s.as_str());
                 prompt.push_str(&self.keyword_s.as_str());

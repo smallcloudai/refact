@@ -1,9 +1,11 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::sync::{Arc, RwLock};
 use axum::http::StatusCode;
 use indexmap::IndexMap;
 use ropey::Rope;
+use tokenizers::Tokenizer;
 use crate::custom_error::ScratchError;
 
 
@@ -96,7 +98,7 @@ fn default_gradient_type_value() -> i32 {
     -1
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct ChatContentElement {
     pub content_type: String,
     pub content: String,
@@ -107,6 +109,12 @@ pub struct ChatContentElement {
 pub enum ChatContent {
     SimpleText(String),
     Multimodal(Vec<ChatContentElement>),
+}
+
+impl Default for ChatContent {
+    fn default() -> Self {
+        ChatContent::SimpleText(String::new())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -174,7 +182,11 @@ where
 
 impl ChatMessage {
     pub fn new(role: String, content: String) -> Self {
-        ChatMessage { role, content, ..Default::default()}
+        ChatMessage { 
+            role, 
+            content: ChatContent::SimpleText(content),
+            ..Default::default()
+        }
     }
 
     pub fn drop_usage(&self) -> ChatMessage {
@@ -190,7 +202,7 @@ impl ChatMessage {
 
 impl ChatContent {
     pub fn content_text_only(&self) -> String {
-        match &self.content {
+        match self {
             ChatContent::SimpleText(text) => text.clone(),
             ChatContent::Multimodal(elements) => {
                 elements
@@ -209,6 +221,17 @@ impl ChatContent {
             ChatContent::Multimodal(elements) => {
                 elements.iter().map(|element| element.content.len()).sum()
             }
+        }
+    }
+    
+    pub fn count_tokens(&self, tokenizer: Arc<RwLock<Tokenizer>>) -> Result<i32, String> {
+        let tokenizer_lock = tokenizer.write().unwrap();
+        match self {
+            ChatContent::SimpleText(text) => tokenizer_lock.encode(text.as_str(), false)
+                .map(|tokens|tokens.len() as i32)
+                .map_err(|e|format!("Tokenizing error: {e}")),
+            // todo: implement me!
+            ChatContent::Multimodal(_) => unimplemented!()
         }
     }
 }
