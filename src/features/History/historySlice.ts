@@ -116,16 +116,13 @@ startHistoryListening({
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
     const lastMessage = state.chat.thread.messages.slice(-1)[0];
-
     // Checking for reliable chat pause
     if (isAssistantMessage(lastMessage) && !lastMessage.tool_calls) {
       // Getting user message
       const firstUserMessage = state.chat.thread.messages.find(isUserMessage);
       if (firstUserMessage) {
         // Checking if chat title is already generated, if not - generating it
-        if (
-          state.history[state.chat.thread.id].title === firstUserMessage.content
-        ) {
+        if (!state.chat.thread.title) {
           listenerApi
             .dispatch(
               chatGenerateTitleThunk({
@@ -138,7 +135,10 @@ startHistoryListening({
               if (isChatGetTitleActionPayload(response)) {
                 if (typeof response.title === "string") {
                   listenerApi.dispatch(
-                    saveChat({ ...state.chat.thread, title: response.title }),
+                    saveChat({
+                      ...state.chat.thread,
+                      title: response.title,
+                    }),
                   );
                 }
               }
