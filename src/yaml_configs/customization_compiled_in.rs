@@ -184,9 +184,11 @@ code_lens:
   open_chat:
     label: Open Chat
     auto_submit: false
+    new_tab: true
   problems:
     label: Find Problems
     auto_submit: true
+    new_tab: true
     messages:
     - role: "user"
       content: |
@@ -203,6 +205,7 @@ code_lens:
   explain:
     label: Explain
     auto_submit: true
+    new_tab: true
     messages:
     - role: "user"
       content: |
@@ -332,6 +335,7 @@ pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# You can find the compiled-
 #  my_custom:
 #    label: My Custom
 #    auto_submit: true
+#    new_tab: true
 #    messages:
 #    - role: "user"
 #      content: |

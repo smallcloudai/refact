@@ -43,10 +43,16 @@ pub struct ToolboxCommand {
     pub insert_at_cursor: bool,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CodeLensCommand {
     pub label: String,
     pub auto_submit: bool,
+    #[serde(default = "default_true")]
+    pub new_tab: bool,
     #[serde(default)]
     pub messages: Vec<ChatMessage>,
 }
