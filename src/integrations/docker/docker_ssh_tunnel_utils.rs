@@ -13,6 +13,7 @@ pub struct SshConfig {
     pub identity_file: Option<String>,
 }
 
+#[allow(dead_code)]
 pub struct SshTunnel {
     pub remote_port_or_socket: String,
     pub local_port: u16,

@@ -114,7 +114,7 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Resu
             tools_all.insert("chrome".to_string(), Arc::new(AMutex::new(Box::new(chrome_tool) as Box<dyn Tool + Send>)));
         }
         if let Some(docker_tool) = ToolDocker::new_if_configured(&integrations_value) {
-            tools_all.insert("pdb".to_string(), Arc::new(AMutex::new(Box::new(docker_tool) as Box<dyn Tool + Send>)));
+            tools_all.insert("docker".to_string(), Arc::new(AMutex::new(Box::new(docker_tool) as Box<dyn Tool + Send>)));
         }
         #[cfg(feature="vecdb")]
         tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
