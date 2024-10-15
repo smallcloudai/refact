@@ -68,6 +68,7 @@ pub async fn handle_v1_command_completion(
         true,
         vec![],
         "".to_string(),
+        "".to_string(),
     ).await));
 
     let at_commands = {
@@ -137,6 +138,7 @@ pub async fn handle_v1_command_preview(
         crate::http::routers::v1::chat::CHAT_TOP_N,
         true,
         vec![],
+        "".to_string(),
         "".to_string(),
     ).await));
 

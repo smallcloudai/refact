@@ -184,6 +184,8 @@ pub struct ChatPost {
     pub chat_id: String,
     #[serde(default)]
     pub style: Option<String>,
+    #[serde(default)]
+    pub docker_image_id: String, // If sent, chat will run in a container created from this image
 }
 
 fn default_true() -> bool {
