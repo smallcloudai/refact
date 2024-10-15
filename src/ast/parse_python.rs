@@ -37,6 +37,38 @@ fn type_problems(type_str: &String) -> usize {
     question_marks + errors + empty_very_bad
 }
 
+fn py_is_trivial(potential_usage: &str) -> bool {
+    match potential_usage {
+        "int" | "float" | "str" | "bool" => true,
+        _ if potential_usage.ends_with("::self") => true,
+        _ => false,
+    }
+}
+
+fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) -> Option<String>
+{
+    match look_for.as_str() {
+        "Any" => { return Some("*".to_string()); },
+        "print" | "int" | "float" | "str" | "bool" => { return Some(look_for.clone()); },
+        _ => {},
+    }
+    let mut current_path = path.clone();
+    while !current_path.is_empty() {
+        let mut hypothetical = current_path.clone();
+        hypothetical.push(look_for.clone());
+        let hypothtical_str = hypothetical.join("::");
+        let thing_maybe = cx.ap.things.get(&hypothtical_str);
+        if thing_maybe.is_some() {
+            return Some(hypothtical_str);
+        }
+        if let Some(an_alias) = cx.ap.alias.get(&hypothtical_str) {
+            return Some(an_alias.clone());
+        }
+        current_path.pop();
+    }
+    return None;
+}
+
 fn py_add_a_thing<'a>(cx: &mut ContextPy<'a>, thing_path: &String, thing_kind: char, type_new: String, node: &Node<'a>) -> (bool, String)
 {
     if let Some(thing_exists) = cx.ap.things.get(thing_path) {
@@ -86,7 +118,6 @@ fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
                 for i in 0..child.child_count() {
                     let subch = child.child(i).unwrap();
                     let subch_text = cx.ap.code[subch.byte_range()].to_string();
-                    // dotted_name[identifier[os]]·as[as]·identifier[ooooos]]
                     match subch.kind() {
                         "dotted_name" => { import_what = subch_text; },
                         "as" => { },
@@ -97,52 +128,17 @@ fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
             },
             "," => {},
             _ => {
-                debug!(cx, "IMPORT {:?} {:?}", child.kind(), child_text);
+                let msg = cx.ap.error_report(&child, format!("import syntax"));
+                debug!(cx, "{}", msg);
             }
         }
     }
 }
 
-fn py_is_trivial(potential_usage: &str) -> bool {
-    match potential_usage {
-        "int" | "float" | "str" | "bool" => true,
-        _ if potential_usage.ends_with("::self") => true,
-        _ => false,
-    }
-}
-
-fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) -> Option<String>
-{
-    match look_for.as_str() {
-        "Any" => { return Some("*".to_string()); },
-        "print" | "int" | "float" | "str" | "bool" => { return Some(look_for.clone()); },
-        _ => {},
-    }
-    let mut current_path = path.clone();
-    while !current_path.is_empty() {
-        let mut hypothetical = current_path.clone();
-        hypothetical.push(look_for.clone());
-        let hypothtical_str = hypothetical.join("::");
-        let thing_maybe = cx.ap.things.get(&hypothtical_str);
-        if thing_maybe.is_some() {
-            return Some(hypothtical_str);
-        }
-        if let Some(an_alias) = cx.ap.alias.get(&hypothtical_str) {
-            return Some(an_alias.clone());
-        }
-        current_path.pop();
-    }
-    return None;
-}
-
 fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>, allow_creation: bool) -> Option<AstUsage>
 {
     let node_text = cx.ap.code[node.byte_range()].to_string();
-    // debug!(cx, "DOTTED {}", node_text);
     // debug!(cx, "DOTTED {}", cx.ap.recursive_print_with_red_brackets(&node));
-
-    // identifier[Goat]
-    // attribute[identifier[my_module].identifier[Animal]]
     match node.kind() {
         "identifier" => {
             if let Some(success) = py_simple_resolve(cx, path, &node_text) {
@@ -245,7 +241,6 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
         return;
     }
     let (lhs_tuple, is_list) = py_lhs_tuple(cx, &left_node.unwrap(), node.child_by_field_name("type"), path);
-    // debug!(cx, "ASSIGNMENT {:?} {:?} {:?} {:?}", lhs_tuple, is_list, rhs_type, path);
     for n in 0 .. lhs_tuple.len() {
         let (lhs_lvalue, lvalue_type) = &lhs_tuple[n];
         if is_list {
@@ -269,7 +264,9 @@ fn py_var_add<'a>(cx: &mut ContextPy<'a>, lhs_lvalue: &Node<'a>, lvalue_type: St
     if lvalue_usage.targets_for_guesswork.is_empty() { // no guessing, exact location
         lvalue_path = lvalue_usage.resolved_as.clone();
     } else {
-        // never mind can't create anything, for example a.b.c = 5 if b doesn't exit
+        // typical for creating things in a different file, or for example a.b.c = 5 when b doesn't exit
+        let msg = cx.ap.error_report(lhs_lvalue, format!("py_var_add cannot create"));
+        debug!(cx, "{}", msg);
         return;
     }
     let potential_new_type = if type_problems(&lvalue_type) > type_problems(&rhs_type) { rhs_type.clone() } else { lvalue_type.clone() };
@@ -304,7 +301,6 @@ fn py_type_generic<'a>(cx: &mut ContextPy<'a>, node: Option<Node<'a>>, path: &Ve
                 let child_text = cx.ap.code[child.byte_range()].to_string();
                 // debug!(cx, "{}GENERIC_LOOP {:?} {:?}", spaces, child.kind(), child_text);
                 match (child.kind(), child_text.as_str()) {
-                    // ("identifier", "Any") => todo = "give_up",
                     ("identifier", "List") => todo = "List",
                     ("identifier", "Set") => todo = "Set",
                     ("identifier", "Dict") => todo = "Dict",
@@ -357,15 +353,12 @@ fn py_type_generic<'a>(cx: &mut ContextPy<'a>, node: Option<Node<'a>>, path: &Ve
             comma_sep_types
         }
         _ => {
+            let msg = cx.ap.error_report(&node, format!("py_type_generic syntax"));
+            debug!(cx, "{}", msg);
             format!("UNK/{:?}/{}", node.kind(), cx.ap.code[node.byte_range()].to_string())
         }
     }
 }
-
-
-// my_list1 = [1,2,3]
-// my_list2: List[int] = [3,2,1]
-// # assignment[ field_name="left" identifier[my_list1] field_name="" ·= field_name="right" ·list[ field_name="" [ field_name="" integer[1] field_name="" , field_name="" integer[2] field_name="" , field_name="" integer[3] field_name="" ]]]py_lhs_tuple
 
 fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node<'a>>, path: &Vec<String>) -> String
 {
@@ -428,8 +421,7 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node
             let fname = node.child_by_field_name("function").unwrap();
             // if fname.is_none() {
             //     let msg = cx.ap.error_report(lhs_lvalue, format!("py_var_add cannot form lvalue"));
-            // debug!(cx, "{}", msg);
-            // } else {
+            //     debug!(cx, "{}", msg);
             // XXX use expression or something for function, return ?::func instead of FUNC_NOT_FOUND
             let ftype = if let Some(u) = py_resolve_dotted_creating_usages(cx, &fname, path, false) {
                 if !u.resolved_as.is_empty() {
@@ -479,6 +471,7 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node
                 format!("ERR/EXPR/list_comprehension/no_for")
             }
         },
+        "keyword_argument" => { format!("void") },
         _ => {
             let msg = cx.ap.error_report(&node, format!("py_type_of_expr syntax"));
             debug!(cx, "{}", msg);
@@ -507,9 +500,10 @@ fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
     let mut body = None;
     let mut body_line1 = usize::MAX;
     let mut body_line2 = 0;
-    for i in 0..node.child_count() {
+    for i in 0 .. node.child_count() {
         let child = node.child(i).unwrap();
         match child.kind() {
+            "class" | ":" => continue,
             "identifier" => class_name = cx.ap.code[child.byte_range()].to_string(),
             "block" => {
                 body_line1 = body_line1.min(child.range().start_point.row + 1);
@@ -517,14 +511,22 @@ fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
                 body = Some(child);
                 break;
             },
-            _ => {}
+            // XXX argument list => dfrom
+            _ => {
+                let msg = cx.ap.error_report(&child, format!("py_class syntax"));
+                debug!(cx, "{}", msg);
+            }
         }
     }
 
     if class_name == "" {
+        let msg = cx.ap.error_report(node, format!("py_class nameless class"));
+        debug!(cx, "{}", msg);
         return;
     }
     if body.is_none() {
+        let msg = cx.ap.error_report(node, format!("py_class bodyless class"));
+        debug!(cx, "{}", msg);
         return;
     }
 
@@ -533,6 +535,7 @@ fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
         official_path: class_path.clone(),
         symbol_type: SymbolType::StructDeclaration,
         usages: vec![],
+        resolved_type: format!("!{}", class_path.join("::")),
         this_is_a_class: format!("py🔎{}", class_name),
         this_class_derived_from: derived_from,
         cpath: "".to_string(),
@@ -543,9 +546,9 @@ fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
     });
 
     cx.ap.things.insert(class_path.join("::"), Thing {
+        tline: node.range().start_point.row,
         thing_kind: 's',
         type_resolved: format!("!{}", class_path.join("::")),   // this is about constructor in python, name of the class() is used as constructor, return type is the class
-        tline: node.range().start_point.row,
     });
 
     py_body(cx, &body.unwrap(), &class_path);
@@ -554,8 +557,6 @@ fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 
 
 fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) {
-    // function_definition[def·identifier[jump_around]parameters[(identifier[self])]·->[->]·type[identifier[Animal]]
-    // function_definition[def·identifier[jump_around]parameters[(typed_parameter[identifier[v1]:·type[identifier[Goat]]]
     let mut body_line1 = usize::MAX;
     let mut body_line2 = 0;
     let mut func_name = "".to_string();
@@ -625,9 +626,12 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
                 }
                 type_resolved = py_type_generic(cx, param_node.child_by_field_name("type"), &func_path, 0);
             },
+            "," | "(" | ")" => continue,
             // "list_splat_pattern" for *args
             // "dictionary_splat_pattern" for **kwargs
             _ => {
+                let msg = cx.ap.error_report(&param_node, format!("py_function parameter syntax"));
+                debug!(cx, "{}", msg);
                 continue;
             }
         }
@@ -638,20 +642,20 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
         }
         let param_path = [func_path.clone(), vec![param_name.clone()]].concat();
         cx.ap.things.insert(param_path.join("::"), Thing {
+            tline: param_node.range().start_point.row,
             thing_kind: 'p',
             type_resolved,
-            tline: param_node.range().start_point.row,
         });
     }
 
     let ret_type = py_body(cx, &body.unwrap(), &func_path);
     let (upd2, best_return_type) = py_add_a_thing(cx, &func_path_str, 'f', format!("!{}", ret_type), node);
     if upd1 || upd2 {
-        let _ = best_return_type;
         cx.ap.defs.insert(func_path_str, AstDefinition {
             official_path: func_path.clone(),
             symbol_type: SymbolType::FunctionDeclaration,
             usages: vec![],
+            resolved_type: best_return_type,
             this_is_a_class: "".to_string(),
             this_class_derived_from: vec![],
             cpath: "".to_string(),
@@ -713,7 +717,6 @@ pub fn py_make_cx(code: &str) -> ContextPy
             alias: IndexMap::new(),
             star_imports: vec![],
         },
-        // pass2: vec![],
         // class_definition[class·identifier[Goat]argument_list[(identifier[Animal])]:
         class1: Query::new(&language(), "(class_definition name: (_) superclasses: (argument_list (_) @dfrom))").unwrap(),
     };

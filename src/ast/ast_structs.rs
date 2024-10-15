@@ -13,7 +13,7 @@ pub struct AstUsage {
     pub targets_for_guesswork: Vec<String>, // ?::DerivedFrom1::f ?::DerivedFrom2::f ?::f
     pub resolved_as: String,
     pub debug_hint: String,
-    pub uline: usize,
+    pub uline: usize,     // starts from 0, TODO make it start from 1
 }
 
 #[derive(Serialize, Deserialize)]
@@ -21,10 +21,11 @@ pub struct AstDefinition {
     pub official_path: Vec<String>,  // file::namespace::class::method becomes ["file", "namespace", "class", "method"]
     pub symbol_type: SymbolType,
     pub usages: Vec<AstUsage>,
+    pub resolved_type: String,
     pub this_is_a_class: String,              // cpp🔎Goat
     pub this_class_derived_from: Vec<String>, // cpp🔎Animal, cpp🔎CosmicJustice
     pub cpath: String,
-    pub decl_line1: usize,                    // starts from 1 (not zero), guaranteed > 0
+    pub decl_line1: usize,                    // starts from 1, guaranteed > 0
     pub decl_line2: usize,                    // guaranteed >= line1
     pub body_line1: usize,                    // use full_line1() full_line2() if not sure
     pub body_line2: usize,

@@ -1,4 +1,5 @@
 from sys import *
+# ERROR import syntax: "wildcard_import" in *
 import os as ooooos
 import multiprocessing
 from multiprocessing import Process as NotAProcess, TimeoutError
@@ -36,6 +37,7 @@ class WobbleNoble:
 
 
 class FumbleNoble(object):
+# ERROR py_class syntax: "argument_list" in (object)
 # s !file::FumbleNoble
     def __init__(self):
     # f !void
@@ -59,7 +61,6 @@ if __name__ == '__main__':
     # v UNK/id/multiprocessing.Process
     # U{ simple_id multiprocessing } U{ simple_id file::process }
     process = NotAProcess(target=list_directory)
-    # ERROR py_type_of_expr syntax
     # U{ simple_id multiprocessing::Process } U{ simple_id file::process }
     process.start()
     # U{ simple_id file::process }
