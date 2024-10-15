@@ -26,18 +26,18 @@ class Wrapper:
         return self.messy
         # U{ attr file::Wrapper::messy }
 
-def wrapped_messy_mouse_generator(N: int):
+def wrapped_messy_generator(N: int):
 # f ![file::Wrapper]
 # p int
     return [Wrapper(Messy()) for i in range(N)]
     # v ERR/FUNC_NOT_FOUND/range
-    # U{ simple_id file::wrapped_messy_mouse_generator::N } U{ simple_id file::wrapped_messy_mouse_generator::<listcomp>::i } U{ simple_id file::Wrapper } U{ simple_id file::Messy }
+    # U{ simple_id file::wrapped_messy_generator::N } U{ simple_id file::wrapped_messy_generator::<listcomp>::i } U{ simple_id file::Wrapper } U{ simple_id file::Messy }
 
 def my_test():
 # f !void
-    wrapper_list1 = wrapped_messy_mouse_generator(5)
+    wrapper_list1 = wrapped_messy_generator(5)
     # v [file::Wrapper]
-    # U{ simple_id file::wrapped_messy_mouse_generator } U{ simple_id file::my_test::wrapper_list1 }
+    # U{ simple_id file::wrapped_messy_generator } U{ simple_id file::my_test::wrapper_list1 }
     wrapper_list2 = [Wrapper(Messy()) for _ in range(5)]
     # v ERR/FUNC_NOT_FOUND/range
     # v [file::Wrapper]

@@ -137,7 +137,7 @@ fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) 
 fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>, allow_creation: bool) -> Option<AstUsage>
 {
     let node_text = cx.ap.code[node.byte_range()].to_string();
-    debug!(cx, "DOTTED {:?}", node_text);
+    // debug!(cx, "DOTTED {}", node_text);
     // debug!(cx, "DOTTED {}", cx.ap.recursive_print_with_red_brackets(&node));
 
     // identifier[Goat]
@@ -153,13 +153,13 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>
                 };
                 if !py_is_trivial(u.resolved_as.as_str()) && !cx.ap.suppress_refadd {
                     cx.ap.usages.push((path.join("::"), u.clone()));
-                    debug!(cx, "ADD_USAGE ID {:?}", u);
+                    // debug!(cx, "ADD_USAGE ID {:?}", u);
                 }
-                debug!(cx, "DOTTED simple_id u={:?}", u);
+                // debug!(cx, "DOTTED simple_id u={:?}", u);
                 return Some(u);
             }
             if allow_creation {
-                debug!(cx, "DOTTED {} local_var_create", node_text);
+                // debug!(cx, "DOTTED {} local_var_create", node_text);
                 return Some(AstUsage {
                     targets_for_guesswork: vec![],
                     resolved_as: format!("{}::{}", path.join("::"), node_text),
@@ -183,7 +183,7 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>
             if let Some(_existing_attr) = cx.ap.things.get(&attrib_path) {
                 if !cx.ap.suppress_refadd {
                     cx.ap.usages.push((path.join("::"), u.clone()));
-                    debug!(cx, "ADD_USAGE ATTR {:?}", u);
+                    // debug!(cx, "ADD_USAGE ATTR {:?}", u);
                 }
                 return Some(u);
             }
@@ -195,6 +195,7 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>
             }
         },
         _ => {
+            // XXX
             debug!(cx, "DOTTED syntax {}", cx.ap.recursive_print_with_red_brackets(node));
         }
     }
@@ -216,6 +217,7 @@ fn py_lhs_tuple<'a>(cx: &mut ContextPy<'a>, left: &Node<'a>, type_node: Option<N
                     },
                     "," | "(" | ")" => { },
                     _ => {
+                        // XXX
                         debug!(cx, "PY_LHS PATTERN SYNTAX {:?}", child.kind());
                     }
                 }
@@ -225,6 +227,7 @@ fn py_lhs_tuple<'a>(cx: &mut ContextPy<'a>, left: &Node<'a>, type_node: Option<N
             lhs_tuple.push((*left, py_type_generic(cx, type_node, path, 0)));
         },
         _ => {
+            // XXX
             debug!(cx, "py_lhs syntax {}", cx.ap.recursive_print_with_red_brackets(left));
         },
     }
@@ -257,11 +260,10 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
 fn py_var_add<'a>(cx: &mut ContextPy<'a>, lhs_lvalue: &Node<'a>, lvalue_type: String, rhs_type: String, path: &Vec<String>)
 {
     let lvalue_usage = if let Some(u) = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path, true) {
-        debug!(cx, "VAR_ADD u={:?}", u);
         u
     } else {
         // debug!(cx, "syntax error or something");
-        return; // syntax error or something
+        return; // XXX syntax error or something
     };
     let lvalue_path;
     if lvalue_usage.targets_for_guesswork.is_empty() { // no guessing, exact location
@@ -412,9 +414,8 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node
         },
         "binary_operator" => {
             let left_type = py_type_of_expr_creating_usages(cx, node.child_by_field_name("left"), path);
-            let right_type = py_type_of_expr_creating_usages(cx, node.child_by_field_name("right"), path);
-            let op =  cx.ap.code[node.child_by_field_name("operator").unwrap().byte_range()].to_string();
-            debug!(cx, "left={} op={} right={}", left_type, op, right_type);
+            let _right_type = py_type_of_expr_creating_usages(cx, node.child_by_field_name("right"), path);
+            let _op =  cx.ap.code[node.child_by_field_name("operator").unwrap().byte_range()].to_string();
             left_type
         },
         "integer" => { "int".to_string() },
@@ -426,7 +427,8 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node
         "call" => {
             let fname = node.child_by_field_name("function");
             if fname.is_none() {
-                debug!(cx, "ERR/CALL/NAMELESS {}", cx.ap.recursive_print_with_red_brackets(&node));
+                // XXX err
+                // debug!(cx, "ERR/CALL/NAMELESS {}", cx.ap.recursive_print_with_red_brackets(&node));
                 format!("ERR/CALL/NAMELESS")
             } else {
                 // XXX use expression or something for function, return ?::func instead of FUNC_NOT_FOUND
@@ -445,7 +447,7 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node
                 };
                 let arg_types = py_type_of_expr_creating_usages(cx, node.child_by_field_name("arguments"), path);
                 let ret_type = type_call(ftype.clone(), arg_types.clone());
-                // debug!(cx, "\nCALL ftype={:?} arg_types={:?} => ret_type={:?}", ftype, arg_types, ret_type);
+                // can actually "run" functions like sum() range(), now generates FUNC_NOT_FOUND
                 ret_type
             }
         },
@@ -470,11 +472,9 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node
             let mut path_anon = path.clone();
             path_anon.push("<listcomp>".to_string());
             if let Some(for_clause) = any_child_of_type(node, "for_in_clause") {
-                // debug!(cx, "for_clause {}", cx.ap.recursive_print_with_red_brackets(&for_clause));
                 py_assignment(cx, &for_clause, &path_anon, true);
                 // XXX two let Some combined?
                 let body = node.child_by_field_name("body");
-                // debug!(cx, "body {}", cx.ap.recursive_print_with_red_brackets(&body.unwrap()));
                 let body_type = py_type_of_expr_creating_usages(cx, body, &path_anon);
                 format!("[{}]", body_type)
             } else {
@@ -482,6 +482,7 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node
             }
         },
         _ => {
+            // XXX
             debug!(cx, "py_type_of_expr syntax {}", cx.ap.recursive_print_with_red_brackets(&node));
             format!("ERR/EXPR/{:?}/{}", node.kind(), node_text)
         }
@@ -577,7 +578,8 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
             "type" => returns = Some(child),
             "def" | "->" | ":" => {},
             _ => {
-                debug!(cx, "\nFUNCTION STRANGE NODE {:?}", child.kind());
+                // XXX
+                debug!(cx, "FUNCTION SYNTAX {:?}", child.kind());
             }
         }
     }
@@ -683,6 +685,7 @@ fn py_body<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) -> S
         "for_statement" => py_assignment(cx, node, path, true),
         "call" | "comparison_operator" => { py_type_of_expr_creating_usages(cx, Some(node.clone()), path); }
         _ => {
+            // XXX error
             debug!(cx, "py_body syntax {}", cx.ap.recursive_print_with_red_brackets(node));
         }
     }
@@ -724,6 +727,7 @@ pub fn parse(code: &str) -> String
 
     cx.ap.suppress_refadd = true;
     loop {
+        debug!(&cx, "\n\x1b[31mPASS1 RESOLVE\x1b[0m");
         cx.ap.resolved_anything = false;
         py_body(&mut cx, &tree.root_node(), &path);
         if !cx.ap.resolved_anything {

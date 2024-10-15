@@ -66,7 +66,7 @@ impl<'a> ContextAnyParser<'a> {
     // Way to print 2: follow recursion level of self.reclevel
     pub fn indent(&self) -> String
     {
-        return " ".repeat(self.reclevel*8);
+        return " ".repeat(self.reclevel*4);
     }
 
     pub fn indented_println(&self, args: std::fmt::Arguments) {
