@@ -11,8 +11,8 @@ class Wrapper:
     def maybe(self):
         return self.messy
 
-def wrapped_messy_mouse_generator(n: int) -> List[Optional[Wrapper]]:
-    return [Wrapper(Messy()) for _ in range(n)]
+def wrapped_messy_mouse_generator(N: int):
+    return [Wrapper(Messy()) for i in range(N)]
 
 def my_test():
     wrapper_list1 = wrapped_messy_mouse_generator(5)

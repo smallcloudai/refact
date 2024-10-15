@@ -48,7 +48,9 @@ impl<'a> ContextAnyParser<'a> {
                     let child = node.child(i).unwrap();
                     let field_name = node.field_name_for_child(i as u32).unwrap_or("");
                     if field_name != "" && rec == 0 {
-                        result.push_str(&format!("\x1b[35m field_name={:?} \x1b[0m", field_name));
+                        result.push_str(&format!("\x1b[35mfield_name={:?} \x1b[0m", field_name));
+                    } else if rec == 0 {
+                        result.push_str(&format!("\x1b[35mnaf\x1b[0m"));
                     }
                     result.push_str(&self._recursive_print_with_red_brackets_helper(&child, rec + 1));
                 }
@@ -147,18 +149,29 @@ pub fn line12mid_from_ranges(full_range: &Range, body_range: &Range) -> (usize, 
 
 // -----------------------------------------------------------
 
-// fn tree_any_node_of_type<'a>(node: Node<'a>, of_type: &str) -> Option<Node<'a>>
+// pub fn any_child_of_type_recursive<'a>(node: Node<'a>, of_type: &str) -> Option<Node<'a>>
 // {
 //     if node.kind() == of_type {
 //         return Some(node);
 //     }
-//     for i in 0..node.child_count() {
-//         if let Some(found) = tree_any_node_of_type(node.child(i).unwrap(), of_type) {
+//     for i in 0 .. node.child_count() {
+//         if let Some(found) = any_child_of_type_recursive(node.child(i).unwrap(), of_type) {
 //             return Some(found);
 //         }
 //     }
 //     None
 // }
+
+pub fn any_child_of_type<'a>(node: Node<'a>, of_type: &str) -> Option<Node<'a>>
+{
+    for i in 0 .. node.child_count() {
+        let child = node.child(i).unwrap();
+        if child.kind() == of_type {
+            return Some(child);
+        }
+    }
+    None
+}
 
 pub fn type_call(t: String, _arg_types: String) -> String
 {

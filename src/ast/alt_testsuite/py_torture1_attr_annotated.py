@@ -26,12 +26,12 @@ class Wrapper:
         return self.messy
         # U{ attr file::Wrapper::messy }
 
-def wrapped_messy_mouse_generator(n: int) -> List[Optional[Wrapper]]:
+def wrapped_messy_mouse_generator(N: int):
 # f ![file::Wrapper]
 # p int
-# U{ simple_id file::Wrapper }
-    return [Wrapper(Messy()) for _ in range(n)]
-    # FIX
+    return [Wrapper(Messy()) for i in range(N)]
+    # v ERR/FUNC_NOT_FOUND/range
+    # U{ simple_id file::wrapped_messy_mouse_generator::N } U{ simple_id file::wrapped_messy_mouse_generator::<listcomp>::i } U{ simple_id file::Wrapper } U{ simple_id file::Messy }
 
 def my_test():
 # f !void
@@ -39,13 +39,14 @@ def my_test():
     # v [file::Wrapper]
     # U{ simple_id file::wrapped_messy_mouse_generator } U{ simple_id file::my_test::wrapper_list1 }
     wrapper_list2 = [Wrapper(Messy()) for _ in range(5)]
-    # FIX v ERR/EXPR/"list_comprehension"/[Wrapper(Messy()) for _ in range(5)]
-    # U{ simple_id file::my_test::wrapper_list2 }
+    # v ERR/FUNC_NOT_FOUND/range
+    # v [file::Wrapper]
+    # U{ simple_id file::my_test::<listcomp>::_ } U{ simple_id file::Wrapper } U{ simple_id file::Messy } U{ simple_id file::my_test::wrapper_list2 }
     if 1:
         print(wrapper_list1[3].maybe().mouse)
         # U{ simple_id print } U{ simple_id file::my_test::wrapper_list1 } U{ attr file::Wrapper::maybe } U{ attr file::Messy::mouse }
         print(wrapper_list2[3].maybe().mouse)
-        # U{ simple_id print } U{ simple_id file::my_test::wrapper_list2 }
+        # U{ simple_id print } U{ simple_id file::my_test::wrapper_list2 } U{ attr file::Wrapper::maybe } U{ attr file::Messy::mouse }
 
 my_test()
 # U{ simple_id file::my_test }
