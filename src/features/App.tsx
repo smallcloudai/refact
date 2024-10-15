@@ -173,7 +173,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             onOpenChatInTab={undefined}
             style={{
               alignSelf: "stretch",
-              height: "100%",
+              height: "calc(100% - var(--space-5)* 2)",
             }}
           />
         )}

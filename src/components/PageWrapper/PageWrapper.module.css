@@ -2,6 +2,7 @@
   width: 100%;
   /* justify-content: center; */
   /* Fallback height for JB */
-  height: 100vh;
-  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  height: 100%;
 }
