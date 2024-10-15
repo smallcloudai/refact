@@ -16,7 +16,7 @@ pub struct ContextAnyParser<'a> {
     pub sitter: Parser,
     pub code: &'a str,
     pub reclevel: usize,
-    pub suppress_adding: bool,
+    pub suppress_refadd: bool,
     pub resolved_anything: bool,
     pub defs: IndexMap<String, AstDefinition>,
     pub things: IndexMap<String, Thing>,

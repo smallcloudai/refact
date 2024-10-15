@@ -9,7 +9,6 @@ use crate::ast::parse_common::{ContextAnyParser, Thing, any_child_of_type, type_
 
 pub struct ContextPy<'a> {
     pub ap: ContextAnyParser<'a>,
-    pub pass2: Vec<(Node<'a>, Vec<String>)>,
     pub class1: Query,
 }
 
@@ -36,6 +35,31 @@ fn type_problems(type_str: &String) -> usize {
     let question_marks = type_str.matches('?').count() * 1000;
     let errors = type_str.matches("ERR").count();
     question_marks + errors + empty_very_bad
+}
+
+fn py_add_a_thing<'a>(cx: &mut ContextPy<'a>, thing_path: &String, thing_kind: char, type_new: String, tline: usize) -> (bool, String)
+{
+    if let Some(thing_exists) = cx.ap.things.get(thing_path) {
+        if thing_exists.thing_kind != thing_kind {
+            // XXX error?
+            return (false, type_new.clone());
+        }
+        let good_idea_to_write = type_problems(&thing_exists.type_resolved) > type_problems(&type_new);
+        if good_idea_to_write {
+            debug!(cx, "TYPE UPDATE {thing_kind} {thing_path} TYPE {} problems={:?} => {} problems={:?}", thing_exists.type_resolved, type_problems(&thing_exists.type_resolved), type_new, type_problems(&type_new));
+            cx.ap.resolved_anything = true;
+        } else {
+            return (false, thing_exists.type_resolved.clone());
+        }
+    } else {
+        debug!(cx, "ADD {thing_kind} {thing_path} {}", type_new);
+    }
+    cx.ap.things.insert(thing_path.clone(), Thing {
+        tline,
+        thing_kind,
+        type_resolved: type_new.clone(),
+    });
+    return (true, type_new);
 }
 
 fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
@@ -127,7 +151,7 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>
                     debug_hint: format!("simple_id"),
                     uline: node.range().start_point.row,
                 };
-                if !py_is_trivial(u.resolved_as.as_str()) && !cx.ap.suppress_adding {
+                if !py_is_trivial(u.resolved_as.as_str()) && !cx.ap.suppress_refadd {
                     cx.ap.usages.push((path.join("::"), u.clone()));
                     debug!(cx, "ADD_USAGE ID {:?}", u);
                 }
@@ -157,7 +181,7 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>
                 uline: attrib.range().start_point.row,
             };
             if let Some(_existing_attr) = cx.ap.things.get(&attrib_path) {
-                if !cx.ap.suppress_adding {
+                if !cx.ap.suppress_refadd {
                     cx.ap.usages.push((path.join("::"), u.clone()));
                     debug!(cx, "ADD_USAGE ATTR {:?}", u);
                 }
@@ -246,25 +270,8 @@ fn py_var_add<'a>(cx: &mut ContextPy<'a>, lhs_lvalue: &Node<'a>, lvalue_type: St
         // never mind can't create anything, for example a.b.c = 5 if b doesn't exit
         return;
     }
-    let mut good_idea_to_write = true;
     let potential_new_type = if type_problems(&lvalue_type) > type_problems(&rhs_type) { rhs_type.clone() } else { lvalue_type.clone() };
-    // debug!(cx, "VAR_ADD {:?} {:?} {:?} potential_new_type={:?} good_idea_to_write={:?}", lvalue_path, lvalue_type, rhs_type, potential_new_type, good_idea_to_write);
-    if let Some(existing_thing) = cx.ap.things.get(&lvalue_path) {
-        good_idea_to_write = type_problems(&existing_thing.type_resolved) > type_problems(&potential_new_type);
-        if good_idea_to_write {
-            debug!(cx, "VAR_ADD {} UPDATE TYPE {:?} -> {:?}", lvalue_path, existing_thing.type_resolved, potential_new_type);
-            cx.ap.resolved_anything = true;
-        }
-    }
-    if good_idea_to_write {
-        let thing = Thing {
-            thing_kind: 'v',
-            type_resolved: potential_new_type,
-            tline: lhs_lvalue.range().start_point.row,
-        };
-        debug!(cx, "VAR_ADD {} {:?}", lvalue_path, thing);
-        cx.ap.things.insert(lvalue_path, thing);
-    }
+    py_add_a_thing(cx, &lvalue_path, 'v', potential_new_type, lhs_lvalue.range().start_point.row);
 }
 
 fn py_type_generic<'a>(cx: &mut ContextPy<'a>, node: Option<Node<'a>>, path: &Vec<String>, level: usize) -> String {
@@ -589,29 +596,14 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
 
     let mut func_path = path.clone();
     func_path.push(func_name.clone());
-
-    cx.ap.defs.insert(func_path.join("::"), AstDefinition {
-        official_path: func_path.clone(),
-        symbol_type: SymbolType::FunctionDeclaration,
-        usages: vec![],
-        this_is_a_class: "".to_string(),
-        this_class_derived_from: vec![],
-        cpath: "".to_string(),
-        decl_line1: node.range().start_point.row + 1,
-        decl_line2: (node.range().start_point.row + 1).max(body_line1 - 1),
-        body_line1,
-        body_line2,
-    });
+    let func_path_str = func_path.join("::");
 
     let returns_type = py_type_generic(cx, returns, path, 0);
 
-    cx.ap.things.insert(func_path.join("::"), Thing {
-        thing_kind: 'f',
-        type_resolved: format!("!{}", returns_type),
-        tline: node.range().start_point.row,
-    });
+    let upd1;
+    (upd1, _) = py_add_a_thing(cx, &func_path_str, 'f', returns_type, node.range().start_point.row);
 
-    // All types in type annotations must be already visible in python
+    // All types in param type annotations must be already visible in python
     let params = params_node.unwrap();
     for i in 0..params.child_count() {
         let param_node = params.child(i).unwrap();
@@ -648,25 +640,22 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
         });
     }
 
-    cx.pass2.push( (body.unwrap(), func_path.clone()) );
-}
-
-
-fn py_save_func_return_type(cx: &mut ContextPy, new_ret_type: String, fpath: &Vec<String>)
-{
-    let func_path = fpath.join("::");
-    if let Some(func_exists) = cx.ap.things.get(&func_path) {
-        let good_idea_to_write = type_problems(&func_exists.type_resolved) > type_problems(&new_ret_type) && func_exists.thing_kind == 'f';
-        debug!(cx, "UPDATE RETURN TYPE type_problems={} type_problems={}", type_problems(&func_exists.type_resolved), type_problems(&new_ret_type));
-        if good_idea_to_write {
-            debug!(cx, "UPDATE RETURN TYPE {:?} for {}", new_ret_type, fpath.join("::"));
-            cx.ap.things.insert(func_path, Thing {
-                thing_kind: 'f',
-                type_resolved: new_ret_type,
-                tline: func_exists.tline,
-            });
-            cx.ap.resolved_anything = true;
-        }
+    let ret_type = py_body(cx, &body.unwrap(), &func_path);
+    let (upd2, best_return_type) = py_add_a_thing(cx, &func_path_str, 'f', format!("!{}", ret_type), node.range().start_point.row);
+    if upd1 || upd2 {
+        let _ = best_return_type;
+        cx.ap.defs.insert(func_path_str, AstDefinition {
+            official_path: func_path.clone(),
+            symbol_type: SymbolType::FunctionDeclaration,
+            usages: vec![],
+            this_is_a_class: "".to_string(),
+            this_class_derived_from: vec![],
+            cpath: "".to_string(),
+            decl_line1: node.range().start_point.row + 1,
+            decl_line2: (node.range().start_point.row + 1).max(body_line1 - 1),
+            body_line1,
+            body_line2,
+        });
     }
 }
 
@@ -688,8 +677,8 @@ fn py_body<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) -> S
                 }
             }
         },
-        "class_definition" => py_class(cx, node, path),  // class recursively calls py_body
-        "function_definition" => py_function(cx, node, path),  // function adds body to pass2, that calls py_body later
+        "class_definition" => py_class(cx, node, path),  // calls py_body recursively
+        "function_definition" => py_function(cx, node, path),  // calls py_body recursively
         "assignment" => py_assignment(cx, node, path, false),
         "for_statement" => py_assignment(cx, node, path, true),
         "call" | "comparison_operator" => { py_type_of_expr_creating_usages(cx, Some(node.clone()), path); }
@@ -711,7 +700,7 @@ pub fn py_make_cx(code: &str) -> ContextPy
             sitter,
             reclevel: 0,
             code,
-            suppress_adding: false,
+            suppress_refadd: false,
             resolved_anything: false,
             defs: IndexMap::new(),
             things: IndexMap::new(),
@@ -719,7 +708,7 @@ pub fn py_make_cx(code: &str) -> ContextPy
             alias: IndexMap::new(),
             star_imports: vec![],
         },
-        pass2: vec![],
+        // pass2: vec![],
         // class_definition[class·identifier[Goat]argument_list[(identifier[Animal])]:
         class1: Query::new(&language(), "(class_definition name: (_) superclasses: (argument_list (_) @dfrom))").unwrap(),
     };
@@ -733,29 +722,18 @@ pub fn parse(code: &str) -> String
     let tree = cx.ap.sitter.parse(code, None).unwrap();
     let path = vec!["file".to_string()];
 
-    // pass1
-    py_body(&mut cx, &tree.root_node(), &path);
-
-    // pass2
-    cx.ap.suppress_adding = true;
-    let my_pass2 = cx.pass2.clone();
+    cx.ap.suppress_refadd = true;
     loop {
         cx.ap.resolved_anything = false;
-        for (body, func_path) in my_pass2.iter() {
-            debug!(&cx, "\n\x1b[31mPASS2 RESOLVE {:?}\x1b[0m", func_path.join("::"));
-            let ret_type = py_body(&mut cx, body, func_path);
-            debug!(&cx, "\n\x1b[31mPASS2 RESOLVE {:?} new return type {}\x1b[0m", func_path.join("::"), ret_type);
-            py_save_func_return_type(&mut cx, format!("!{}", ret_type), func_path);
-        }
+        py_body(&mut cx, &tree.root_node(), &path);
         if !cx.ap.resolved_anything {
             break;
         }
     }
-    cx.ap.suppress_adding = false;
-    for (body, func_path) in my_pass2.iter() {
-        debug!(&cx, "\n\x1b[31mPASS2 SAVE USAGES\x1b[0m {:?}", func_path.join("::"));
-        py_body(&mut cx, body, func_path);
-    }
+    cx.ap.suppress_refadd = false;
+
+    debug!(&cx, "\n\x1b[31mPASS2 SAVE USAGES\x1b[0m");
+    py_body(&mut cx, &tree.root_node(), &path);
 
     cx.ap.dump();
     cx.ap.annotate_code("#")

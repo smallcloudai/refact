@@ -57,7 +57,7 @@ def list_directory():
 if __name__ == '__main__':
     process: multiprocessing.Process
     # v UNK/id/multiprocessing.Process
-    # U{ simple_id multiprocessing }
+    # U{ simple_id multiprocessing } U{ simple_id file::process }
     process = NotAProcess(target=list_directory)
     # U{ simple_id multiprocessing::Process } U{ simple_id file::process }
     process.start()
@@ -65,8 +65,8 @@ if __name__ == '__main__':
     process.join()
     # U{ simple_id file::process }
     should_be_a_string, fumble = can_you_dig_it()
-    # FIX v
-    # FIX v
-    # U{ simple_id file::can_you_dig_it }
+    # v str
+    # v file::FumbleNoble
+    # U{ simple_id file::can_you_dig_it } U{ simple_id file::should_be_a_string } U{ simple_id file::fumble }
     print(fumble.humble)
-    # FIX U{ simple_id print } U{ simple_id file::fumble }
+    # U{ simple_id print } U{ simple_id file::fumble } U{ attr file::FumbleNoble::humble }
