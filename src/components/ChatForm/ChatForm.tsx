@@ -77,7 +77,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [dispatch],
   );
 
-  const { checkboxes, onToggleCheckbox, unCheckAll } = useCheckboxes();
+  const {
+    checkboxes,
+    onToggleCheckbox,
+    unCheckAll,
+    setFileInteracted,
+    setLineSelectionInteracted,
+  } = useCheckboxes();
 
   const { previewFiles, commands, requestCompletion } =
     useCommandCompletionAndPreviewFiles(checkboxes);
@@ -144,13 +150,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     (command: string) => {
       setValue(command);
       const trimmedCommand = command.trim();
+      setFileInteracted(!!trimmedCommand);
+      setLineSelectionInteracted(!!trimmedCommand);
       if (trimmedCommand === "@help") {
         handleHelpInfo(helpText()); // This line has been fixed
       } else {
         handleHelpInfo(null);
       }
     },
-    [handleHelpInfo, setValue],
+    [handleHelpInfo, setValue, setFileInteracted, setLineSelectionInteracted],
   );
 
   useEffect(() => {

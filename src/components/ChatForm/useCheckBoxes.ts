@@ -124,18 +124,18 @@ const useAttachSelectedSnippet = (
     });
 
   useEffect(() => {
-    // removing unnecessary check for checked state and interacted state
-    // and excluding attachedSelectedSnippet.checked from dependency array
-    setAttachedSelectedSnippet((prev) => {
-      return {
-        ...prev,
-        label: label,
-        value: markdown,
-        disabled: !snippet.code,
-        hide: host === "web",
-        checked: !!snippet.code && !interacted,
-      };
-    });
+    if (!interacted) {
+      setAttachedSelectedSnippet((prev) => {
+        return {
+          ...prev,
+          label: label,
+          value: markdown,
+          disabled: !snippet.code,
+          hide: host === "web",
+          checked: !!snippet.code && !interacted,
+        };
+      });
+    }
   }, [snippet.code, host, label, markdown, interacted]);
 
   const onToggleAttachedSelectedSnippet = useCallback(() => {
