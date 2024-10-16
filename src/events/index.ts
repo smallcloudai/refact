@@ -59,6 +59,7 @@ export {
   ideAnimateFileStop,
   ideWriteResultsToFile,
   ideChatPageChange,
+  ideDoneStreaming,
 } from "../hooks/useEventBusForIDE";
 
 export const fim = {

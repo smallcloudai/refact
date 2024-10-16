@@ -4,7 +4,7 @@ import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
 import { SelfHostingSetup } from "../components/SelfHostingSetup";
 import { Flex } from "@radix-ui/themes";
-import { Chat, newChatAction, selectChatId } from "./Chat";
+import { Chat, newChatAction, selectChatId, selectIsStreaming } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import { useEventsBusForIDE, useConfig } from "../hooks";
 
@@ -41,6 +41,7 @@ export interface AppProps {
 export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const dispatch = useAppDispatch();
   const pages = useAppSelector(selectPages);
+  const isStreaming = useAppSelector(selectIsStreaming);
   const isPageInHistory = useCallback(
     (pageName: string) => {
       return pages.some((page) => page.name === pageName);
@@ -48,7 +49,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     [pages],
   );
 
-  const { setupHost, chatPageChange } = useEventsBusForIDE();
+  const { setupHost, chatPageChange, doneStreaming } = useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
   const historyState = useAppSelector((state: RootState) => state.history);
   const chatId = useAppSelector(selectChatId);
@@ -92,6 +93,10 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
       chatPageChange(currentPage.name);
     }
   }, [pages, chatPageChange]);
+
+  useEffect(() => {
+    doneStreaming(isStreaming);
+  }, [isStreaming, doneStreaming]);
 
   const onPressNext = (host: Host) => {
     if (host === "cloud") {

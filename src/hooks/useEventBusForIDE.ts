@@ -43,6 +43,8 @@ export const ideWriteResultsToFile = createAction<PatchResult[]>(
 
 export const ideChatPageChange = createAction<string>("ide/chatPageChange");
 
+export const ideDoneStreaming = createAction<boolean>("ide/doneStreaming");
+
 import { pathApi } from "../services/refact/path";
 
 export const useEventsBusForIDE = () => {
@@ -156,6 +158,14 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const doneStreaming = useCallback(
+    (state: boolean) => {
+      const action = ideDoneStreaming(state);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
   const [getPrivacyPath] = pathApi.useLazyPrivacyPathQuery();
   const [getBringYourOwnKeyPath] = pathApi.useLazyBringYourOwnKeyPathQuery();
@@ -201,5 +211,6 @@ export const useEventsBusForIDE = () => {
     startFileAnimation,
     writeResultsToFile,
     chatPageChange,
+    doneStreaming,
   };
 };
