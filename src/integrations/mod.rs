@@ -3,6 +3,7 @@ pub mod integr_pdb;
 pub mod integr_chrome;
 pub mod sessions;
 pub mod process_io_utils;
+pub mod integr_postgres;
 
 pub const INTEGRATIONS_DEFAULT_YAML: &str = r#"# This file is used to configure integrations in Refact Agent.
 # If there is a syntax error in this file, no integrations will work.
@@ -13,6 +14,7 @@ pub const INTEGRATIONS_DEFAULT_YAML: &str = r#"# This file is used to configure 
 
 commands_need_confirmation:
   - "gh * delete*"
+  - "psql*[!SELECT]*"
 commands_deny:
   - "gh auth token*"
 
@@ -33,5 +35,10 @@ chrome:
 #  chrome_path: "/path/to/chrome"  # can be path to your binary or opened debug_ws_url (see --remote-debugging-port)
   window_size: [1024, 768]   # Size of the window, defaults to [1024, 768]
   idle_browser_timeout: 600  # Timeout in seconds for idle browsers, defaults to 600 seconds
+
+# --- Postgres integration ---
+#postgres:
+#  psql_binary_path: "/path/to/psql"  # Uncomment to set a custom path for the psql binary, defaults to "psql"
+#  connection_string: "postgresql://username:password@localhost/dbname"  # To get a connection string, check out https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
 
 "#;

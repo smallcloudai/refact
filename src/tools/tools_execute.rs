@@ -133,6 +133,11 @@ pub async fn run_tools(
                     generated_tool.push(tool_failed_message);
                     continue;
                 }
+                let (needs_confirmation, confirmation_reason) = command_should_be_confirmed_by_user(&command_to_match, &rules.commands_need_confirmation);
+                if needs_confirmation {
+                    generated_tool.push(tool_answer(confirmation_reason, t_call.id.to_string()));
+                    continue;
+                }
             }
         }
 

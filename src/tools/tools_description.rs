@@ -106,6 +106,9 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         if let Some(chrome_tool) = ToolChrome::new_if_configured(&integrations_value) {
             tools_all.insert("chrome".to_string(), Arc::new(AMutex::new(Box::new(chrome_tool) as Box<dyn Tool + Send>)));
         }
+        if let Some(postgres_tool) = ToolPostgres::new_if_configured(&integrations_value) {
+            tools_all.insert("postgres".to_string(), Arc::new(AMutex::new(Box::new(postgres_tool) as Box<dyn Tool + Send>)));
+        }
         #[cfg(feature="vecdb")]
         tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
     }
@@ -295,6 +298,17 @@ tools:
           reload
     parameters_required:
       - "command"
+
+  - name: "postgres"
+    agentic: true
+    experimental: true
+    description: "Execute PostgreSQL queries using psql command-line tool."
+    parameters:
+      - name: "command"
+        type: "string"
+        description: "Examples: 'SELECT * FROM table_name', 'SELECT * FROM table_name WHERE column_name = value'" 
+    parameters_required:
+      - "columns"   
 "####;
 
 #[allow(dead_code)]
