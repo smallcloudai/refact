@@ -120,9 +120,7 @@ impl Tool for ToolLocateSearch {
                 false,
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
-                ccx_lock.docker_image_id.clone(),
             ).await;
-            t.docker_image_id = ccx_lock.docker_image_id.clone();
             t.subchat_tx = ccx_lock.subchat_tx.clone();
             t.subchat_rx = ccx_lock.subchat_rx.clone();
             Arc::new(AMutex::new(t))
