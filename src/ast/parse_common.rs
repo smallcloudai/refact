@@ -7,14 +7,15 @@ use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
 
 #[derive(Debug)]
 pub struct Thing {
-    pub tline: usize,
+    pub tline: usize,  // only needed for printing in this file
     pub thing_kind: char,
     pub type_resolved: String,
 }
 
-pub struct ContextAnyParser<'a> {
+pub struct ContextAnyParser {
     pub sitter: Parser,
-    pub code: &'a str,
+    // pub code: &'a str,
+    pub code: String,
     pub errs: AstErrorStats,
     pub reclevel: usize,
     pub resolved_anything: bool,
@@ -30,14 +31,19 @@ pub struct ContextAnyParser<'a> {
     pub star_imports: Vec<String>,
 }
 
-impl<'a> ContextAnyParser<'a> {
+impl ContextAnyParser {
     pub fn error_report(&mut self, node: &Node, msg: String) -> String {
         let line = node.range().start_point.row + 1;
+        let mut node_text = self.code[node.byte_range()].to_string().replace("\n", "\\n");
+        if node_text.len() > 50 {
+            node_text = node_text.chars().take(50).collect();
+            node_text.push_str("...");
+        }
         self.errs.add_error(
             "".to_string(),
             line,
-            msg.as_str());
-        return format!("line {}: {}", line, self.recursive_print_with_red_brackets(node));
+            format!("{msg}: {:?} in {node_text}", node.kind()).as_str());
+        return format!("line {}: {msg} {}", line, self.recursive_print_with_red_brackets(node));
     }
 
     pub fn recursive_print_with_red_brackets(&self, node: &Node) -> String {
@@ -49,7 +55,7 @@ impl<'a> ContextAnyParser<'a> {
         let color_code = if rec >= 1 { "\x1b[90m" } else { "\x1b[31m" };
         match node.kind() {
             "from" | "class" | "import" | "def" | "if" | "for" | ":" | "," | "=" | "." | "(" | ")" | "[" | "]" | "->" => {
-                result.push_str(&self.code[node.byte_range()].replace(" ", "·"));
+                result.push_str(&self.code[node.byte_range()]);
             },
             _ => {
                 result.push_str(&format!("{}{}[\x1b[0m", color_code, node.kind()));
@@ -112,6 +118,32 @@ impl<'a> ContextAnyParser<'a> {
         println!("  -- /star -- ");
     }
 
+    pub fn export_defs(&mut self) -> Vec<AstDefinition> {  // self.defs becomes empty after this operation
+        for (def_key, def) in &mut self.defs {
+            assert!(*def_key == def.official_path.join("::"));
+            def.usages.clear();
+        }
+        for (usage_at, usage) in &self.usages {
+            let mut atv = usage_at.split("::").collect::<Vec<&str>>();
+            while !atv.is_empty() {
+                let k = atv.join("::");
+                if let Some(existing_def) = self.defs.get_mut(&k) {
+                    existing_def.usages.push(usage.clone());
+                    break;
+                }
+                atv.pop();
+            }
+        }
+        let mut new_defs = IndexMap::new();
+        std::mem::swap(&mut self.defs, &mut new_defs);
+        new_defs.into_values().collect()
+    }
+
+    // more todo:
+    // * global variables to AstDefinition
+    // * comments
+    // * type aliases
+
     pub fn annotate_code(&self, comment: &str) -> String {
         let mut r = String::new();
         let lines: Vec<&str> = self.code.lines().collect();
@@ -142,7 +174,6 @@ impl<'a> ContextAnyParser<'a> {
         r
     }
 }
-
 
 pub fn line12mid_from_ranges(full_range: &Range, body_range: &Range) -> (usize, usize, usize)
 {

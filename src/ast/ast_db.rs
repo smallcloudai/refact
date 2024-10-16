@@ -181,7 +181,7 @@ pub async fn doc_add(
     let mut added_defs: i32 = 0;
     let mut added_usages: i32 = 0;
     let mut unresolved_usages: i32 = 0;
-    for definition in defs.values() {
+    for definition in defs.iter() {
         let serialized = serde_cbor::to_vec(&definition).unwrap();
         let official_path = definition.official_path.join("::");
         let d_key = format!("d|{}", official_path);
@@ -226,7 +226,7 @@ pub async fn doc_add(
     _increase_counter(ast_index.clone(), "counters|defs", added_defs).await;
     _increase_counter(ast_index.clone(), "counters|usages", added_usages).await;
 
-    Ok((defs.into_values().map(Arc::new).collect(), language))
+    Ok((defs.into_iter().map(Arc::new).collect(), language))
 }
 
 pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)

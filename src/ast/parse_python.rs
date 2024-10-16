@@ -6,18 +6,12 @@ use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::parse_common::{ContextAnyParser, Thing, any_child_of_type, type_deindex, type_deindex_n, type_call, type_zerolevel_comma_split};
 
+const DEBUG: bool = false;
 
-pub struct ContextPy<'a> {
-    pub ap: ContextAnyParser<'a>,
+
+pub struct ContextPy {
+    pub ap: ContextAnyParser,
     pub class1: Query,
-}
-
-fn py_import_save<'a>(cx: &mut ContextPy<'a>, path: &Vec<String>, dotted_from: String, import_what: String, import_as: String)
-{
-    let save_as = format!("{}::{}", path.join("::"), import_as);
-    let mut from_list = dotted_from.split(".").map(|x| { String::from(x.trim()) }).filter(|x| { !x.is_empty() }).collect::<Vec<String>>();
-    from_list.push(import_what);
-    cx.ap.alias.insert(save_as, from_list.join("::"));
 }
 
 fn debug_helper(cx: &ContextPy, args: std::fmt::Arguments) {
@@ -26,7 +20,9 @@ fn debug_helper(cx: &ContextPy, args: std::fmt::Arguments) {
 
 macro_rules! debug {
     ($cx:expr, $($arg:tt)*) => {
-        debug_helper($cx, format_args!($($arg)*));
+        if DEBUG {
+            debug_helper($cx, format_args!($($arg)*));
+        }
     }
 }
 
@@ -69,7 +65,7 @@ fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) 
     return None;
 }
 
-fn py_add_a_thing<'a>(cx: &mut ContextPy<'a>, thing_path: &String, thing_kind: char, type_new: String, node: &Node<'a>) -> (bool, String)
+fn py_add_a_thing<'a>(cx: &mut ContextPy, thing_path: &String, thing_kind: char, type_new: String, node: &Node<'a>) -> (bool, String)
 {
     if let Some(thing_exists) = cx.ap.things.get(thing_path) {
         if thing_exists.thing_kind != thing_kind {
@@ -95,7 +91,15 @@ fn py_add_a_thing<'a>(cx: &mut ContextPy<'a>, thing_path: &String, thing_kind: c
     return (true, type_new);
 }
 
-fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
+fn py_import_save<'a>(cx: &mut ContextPy, path: &Vec<String>, dotted_from: String, import_what: String, import_as: String)
+{
+    let save_as = format!("{}::{}", path.join("::"), import_as);
+    let mut from_list = dotted_from.split(".").map(|x| { String::from(x.trim()) }).filter(|x| { !x.is_empty() }).collect::<Vec<String>>();
+    from_list.push(import_what);
+    cx.ap.alias.insert(save_as, from_list.join("::"));
+}
+
+fn py_import<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
 {
     let mut dotted_from = String::new();
     let mut just_do_it = false;
@@ -122,7 +126,10 @@ fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
                         "dotted_name" => { import_what = subch_text; },
                         "as" => { },
                         "identifier" => { py_import_save(cx, path, dotted_from.clone(), import_what.clone(), subch_text); },
-                        _ => {},
+                        _ => {
+                            let msg = cx.ap.error_report(&child, format!("aliased_import syntax"));
+                            debug!(cx, "{}", msg);
+                        },
                     }
                 }
             },
@@ -135,7 +142,7 @@ fn py_import<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
     }
 }
 
-fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>, allow_creation: bool) -> Option<AstUsage>
+fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>, allow_creation: bool) -> Option<AstUsage>
 {
     let node_text = cx.ap.code[node.byte_range()].to_string();
     // debug!(cx, "DOTTED {}", cx.ap.recursive_print_with_red_brackets(&node));
@@ -197,7 +204,7 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>
     None
 }
 
-fn py_lhs_tuple<'a>(cx: &mut ContextPy<'a>, left: &Node<'a>, type_node: Option<Node<'a>>, path: &Vec<String>) -> (Vec<(Node<'a>, String)>, bool)
+fn py_lhs_tuple<'a>(cx: &mut ContextPy, left: &Node<'a>, type_node: Option<Node<'a>>, path: &Vec<String>) -> (Vec<(Node<'a>, String)>, bool)
 {
     let mut lhs_tuple: Vec<(Node, String)> = Vec::new();
     let mut is_list = false;
@@ -229,7 +236,7 @@ fn py_lhs_tuple<'a>(cx: &mut ContextPy<'a>, left: &Node<'a>, type_node: Option<N
     (lhs_tuple, is_list)
 }
 
-fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>, is_for_loop: bool)
+fn py_assignment<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>, is_for_loop: bool)
 {
     let left_node = node.child_by_field_name("left");
     let right_node = node.child_by_field_name("right");
@@ -251,7 +258,7 @@ fn py_assignment<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>
     }
 }
 
-fn py_var_add<'a>(cx: &mut ContextPy<'a>, lhs_lvalue: &Node<'a>, lvalue_type: String, rhs_type: String, path: &Vec<String>)
+fn py_var_add<'a>(cx: &mut ContextPy, lhs_lvalue: &Node<'a>, lvalue_type: String, rhs_type: String, path: &Vec<String>)
 {
     let lvalue_usage = if let Some(u) = py_resolve_dotted_creating_usages(cx, lhs_lvalue, path, true) {
         u
@@ -273,7 +280,7 @@ fn py_var_add<'a>(cx: &mut ContextPy<'a>, lhs_lvalue: &Node<'a>, lvalue_type: St
     py_add_a_thing(cx, &lvalue_path, 'v', potential_new_type, lhs_lvalue);
 }
 
-fn py_type_generic<'a>(cx: &mut ContextPy<'a>, node: Option<Node<'a>>, path: &Vec<String>, level: usize) -> String {
+fn py_type_generic<'a>(cx: &mut ContextPy, node: Option<Node<'a>>, path: &Vec<String>, level: usize) -> String {
     if node.is_none() {
         return format!("?")
     }
@@ -360,7 +367,7 @@ fn py_type_generic<'a>(cx: &mut ContextPy<'a>, node: Option<Node<'a>>, path: &Ve
     }
 }
 
-fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node<'a>>, path: &Vec<String>) -> String
+fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy, node: Option<Node<'a>>, path: &Vec<String>) -> String
 {
     if node.is_none() {
         return "".to_string();
@@ -483,7 +490,7 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy<'a>, node: Option<Node
     type_of
 }
 
-fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
+fn py_class<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
 {
     let mut derived_from = vec![];
     let mut query_cursor = QueryCursor::new();
@@ -556,7 +563,7 @@ fn py_class<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>)
 }
 
 
-fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) {
+fn py_function<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>) {
     let mut body_line1 = usize::MAX;
     let mut body_line2 = 0;
     let mut func_name = "".to_string();
@@ -667,7 +674,7 @@ fn py_function<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) 
     }
 }
 
-fn py_body<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) -> String
+fn py_body<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>) -> String
 {
     let mut ret_type = "void".to_string();  // if there's no return clause, then it's None aka void
     debug!(cx, "{}", node.kind());
@@ -700,7 +707,7 @@ fn py_body<'a>(cx: &mut ContextPy<'a>, node: &Node<'a>, path: &Vec<String>) -> S
     return ret_type;
 }
 
-pub fn py_make_cx(code: &str) -> ContextPy
+fn py_make_cx(code: &str) -> ContextPy
 {
     let mut sitter = Parser::new();
     sitter.set_language(&language()).unwrap();
@@ -708,7 +715,7 @@ pub fn py_make_cx(code: &str) -> ContextPy
         ap: ContextAnyParser {
             sitter,
             reclevel: 0,
-            code,
+            code: code.to_string(),
             errs: AstErrorStats::default(),
             resolved_anything: false,
             defs: IndexMap::new(),
@@ -723,8 +730,7 @@ pub fn py_make_cx(code: &str) -> ContextPy
     cx
 }
 
-#[allow(dead_code)]
-pub fn py_parse(code: &str) -> String
+pub fn py_parse(code: &str) -> ContextPy
 {
     let mut cx = py_make_cx(code);
     let tree = cx.ap.sitter.parse(code, None).unwrap();
@@ -741,8 +747,7 @@ pub fn py_parse(code: &str) -> String
         cx.ap.errs = AstErrorStats::default();
         pass_n += 1;
     }
-    cx.ap.dump();
-    cx.ap.annotate_code("#")
+    return cx;
 }
 
 
@@ -750,17 +755,38 @@ pub fn py_parse(code: &str) -> String
 mod tests {
     use super::*;
 
+    fn py_parse4test(code: &str) -> String
+    {
+        let cx = py_parse(code);
+        cx.ap.dump();
+        cx.ap.annotate_code("#")
+    }
+
     #[test]
     fn test_parse_py_tort1() {
         let code = include_str!("alt_testsuite/py_torture1_attr.py");
-        let annotated = py_parse(code);
+        let annotated = py_parse4test(code);
         std::fs::write("src/ast/alt_testsuite/py_torture1_attr_annotated.py", annotated).expect("Unable to write file");
     }
 
     #[test]
     fn test_parse_py_tort2() {
         let code = include_str!("alt_testsuite/py_torture2_resolving.py");
-        let annotated = py_parse(code);
+        let annotated = py_parse4test(code);
         std::fs::write("src/ast/alt_testsuite/py_torture2_resolving_annotated.py", annotated).expect("Unable to write file");
+    }
+
+    #[test]
+    fn test_parse_py_goat_library() {
+        let code = include_str!("alt_testsuite/py_goat_library.py");
+        let annotated = py_parse4test(code);
+        std::fs::write("src/ast/alt_testsuite/py_goat_library_annotated.py", annotated).expect("Unable to write file");
+    }
+
+    #[test]
+    fn test_parse_py_goat_main() {
+        let code = include_str!("alt_testsuite/py_goat_main.py");
+        let annotated = py_parse4test(code);
+        std::fs::write("src/ast/alt_testsuite/py_goat_main_annotated.py", annotated).expect("Unable to write file");
     }
 }
