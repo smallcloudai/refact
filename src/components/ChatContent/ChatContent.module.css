@@ -26,7 +26,7 @@
   text-align: left;
   cursor: default;
   user-select: auto;
-  max-width: 100%;
+  max-width: calc(100% - var(--space-2) * 4.5);
   padding: var(--space-2);
   min-height: var(--base-button-height);
   height: auto;
