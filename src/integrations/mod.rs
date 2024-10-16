@@ -18,13 +18,13 @@ commands_need_confirmation:
   - "gh * delete*"
   - "glab * delete*"
   - "psql*[!SELECT]*"
+commands_deny:
   - "docker* rm *"
   - "docker* remove *"
   - "docker* rmi *"
   - "docker* pause *"
   - "docker* stop *"
   - "docker* kill *"
-commands_deny:
   - "gh auth token*"
   - "glab auth token*"
 
