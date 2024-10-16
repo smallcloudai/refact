@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{net::{TcpListener, TcpStream}, process::{Child, ChildStderr, Command}, sync::RwLock as ARwLock};
 use tracing::{info, warn};
 
-use crate::{global_context::GlobalContext, integrations::integr_pdb::read_until_token_or_timeout};
+use crate::{global_context::GlobalContext, integrations::process_io_utils::read_until_token_or_timeout};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SshConfig {
