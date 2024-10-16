@@ -10,8 +10,11 @@ import {
   selectMessages,
   selectIsStreaming,
   selectIsWaiting,
+  selectActiveFile,
+  selectSelectedSnippet,
 } from "../features/Chat";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
+import { useAppSelector } from "./useAppSelector";
 
 export const usePatchActions = () => {
   const {
@@ -20,10 +23,25 @@ export const usePatchActions = () => {
     stopFileAnimation,
     openFile,
     writeResultsToFile,
+    diffPasteBack,
   } = useEventsBusForIDE();
   const messages = useSelector(selectMessages);
   const isStreaming = useSelector(selectIsStreaming);
   const isWaiting = useSelector(selectIsWaiting);
+
+  const activeFile = useAppSelector(selectActiveFile);
+
+  const snippet = useAppSelector(selectSelectedSnippet);
+
+  const codeLineCount = useMemo(() => {
+    if (snippet.code.length === 0) return 0;
+    return snippet.code.split("\n").filter((str) => str).length;
+  }, [snippet.code]);
+
+  const canPaste = useMemo(
+    () => activeFile.can_paste && codeLineCount > 0,
+    [activeFile.can_paste, codeLineCount],
+  );
 
   const [errorMessage, setErrorMessage] = useState<{
     type: "warning" | "error";
@@ -145,5 +163,8 @@ export const usePatchActions = () => {
     resetErrorMessage,
     disable,
     openFile,
+
+    handlePaste: diffPasteBack,
+    canPaste,
   };
 };

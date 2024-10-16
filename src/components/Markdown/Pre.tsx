@@ -1,24 +1,14 @@
 import React from "react";
-import { Button, Flex } from "@radix-ui/themes";
-import { RightButton, RightButtonGroup } from "../Buttons/";
 import "./highlightjs.css";
+import { Flex, Button } from "@radix-ui/themes";
 import { useConfig } from "../../hooks";
+import { RightButtonGroup, RightButton } from "../Buttons";
 
 const PreTagWithButtons: React.FC<
   React.PropsWithChildren<{
     onCopyClick: () => void;
-    onNewFileClick: () => void;
-    onPasteClick: () => void;
-    canPaste: boolean;
   }>
-> = ({
-  children,
-  onCopyClick,
-  onNewFileClick,
-  onPasteClick,
-  canPaste,
-  ...props
-}) => {
+> = ({ children, onCopyClick, ...props }) => {
   const config = useConfig();
 
   return (
@@ -55,17 +45,9 @@ const PreTagWithButtons: React.FC<
             style={{ position: "absolute", right: "0" }}
             pr="2"
           >
-            <Button variant="surface" size="1" onClick={onNewFileClick}>
-              New File
-            </Button>
             <Button size="1" variant="surface" onClick={onCopyClick}>
-              Copy
+              ⿻ Copy
             </Button>
-            {canPaste && (
-              <Button variant="surface" size="1" onClick={onPasteClick}>
-                ➕ Diff
-              </Button>
-            )}
           </Flex>
         </RightButtonGroup>
       )}
@@ -74,37 +56,15 @@ const PreTagWithButtons: React.FC<
   );
 };
 
-const PreTagWithoutButtons: React.FC<React.PropsWithChildren> = ({
-  children,
-  ...props
-}) => {
-  return <pre {...props}>{children}</pre>;
-};
-
 export type PreTagProps = {
   onCopyClick?: () => void;
-  onNewFileClick?: () => void;
-  onPasteClick?: () => void;
-  canPaste?: boolean;
 };
 
-export const PreTag: React.FC<React.PropsWithChildren<PreTagProps>> = ({
-  onCopyClick,
-  onNewFileClick,
-  onPasteClick,
-  canPaste,
-  ...props
-}) => {
-  if (onCopyClick && onNewFileClick && onPasteClick) {
-    return (
-      <PreTagWithButtons
-        {...props}
-        onCopyClick={onCopyClick}
-        onNewFileClick={onNewFileClick}
-        onPasteClick={onPasteClick}
-        canPaste={!!canPaste}
-      />
-    );
+export const PreTag: React.FC<React.PropsWithChildren<PreTagProps>> = (
+  props,
+) => {
+  if (props.onCopyClick) {
+    return <PreTagWithButtons {...props} onCopyClick={props.onCopyClick} />;
   }
-  return <PreTagWithoutButtons {...props} />;
+  return <pre {...props} />;
 };

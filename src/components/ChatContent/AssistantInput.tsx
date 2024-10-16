@@ -1,17 +1,9 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { Markdown } from "../Markdown";
 
 import { Container, Box } from "@radix-ui/themes";
 import { ToolCall } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
-import { useAppSelector, useEventsBusForIDE } from "../../hooks";
-import { selectActiveFile } from "../../features/Chat/activeFile";
-import { selectSelectedSnippet } from "../../features/Chat";
-
-type ChatInputProps = {
-  message: string | null;
-  toolCalls?: ToolCall[] | null;
-};
 
 function fallbackCopying(text: string) {
   const textArea = document.createElement("textarea");
@@ -29,20 +21,15 @@ function fallbackCopying(text: string) {
   document.body.removeChild(textArea);
 }
 
+type ChatInputProps = {
+  message: string | null;
+  toolCalls?: ToolCall[] | null;
+};
+
 export const AssistantInput: React.FC<ChatInputProps> = ({
   message,
   toolCalls,
 }) => {
-  const activeFile = useAppSelector(selectActiveFile);
-
-  const snippet = useAppSelector(selectSelectedSnippet);
-
-  const codeLineCount = useMemo(() => {
-    if (snippet.code.length === 0) return 0;
-    return snippet.code.split("\n").filter((str) => str).length;
-  }, [snippet.code]);
-
-  const { newFile, diffPasteBack } = useEventsBusForIDE();
   const handleCopy = useCallback((text: string) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (window.navigator?.clipboard?.writeText) {
@@ -59,13 +46,7 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
     <Container position="relative">
       {message && (
         <Box py="4">
-          <Markdown
-            onCopyClick={handleCopy}
-            onNewFileClick={newFile}
-            onPasteClick={diffPasteBack}
-            canPaste={activeFile.can_paste && codeLineCount > 0}
-            canHavePins={true}
-          >
+          <Markdown canHavePins={true} onCopyClick={handleCopy}>
             {message}
           </Markdown>
         </Box>

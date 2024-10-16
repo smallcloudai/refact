@@ -1,4 +1,11 @@
-import React, { Key, useMemo } from "react";
+import React, {
+  Key,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import classNames from "classnames";
@@ -6,8 +13,8 @@ import classNames from "classnames";
 import styles from "./Markdown.module.css";
 import {
   MarkdownCodeBlock,
-  type MarkdownControls,
   type MarkdownCodeBlockProps,
+  type MarkdownControls,
 } from "./CodeBlock";
 import {
   Text,
@@ -35,26 +42,52 @@ export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
   "children" | "allowedElements" | "unwrapDisallowed"
 > &
-  Partial<MarkdownControls> &
   Pick<
     MarkdownCodeBlockProps,
     "startingLineNumber" | "showLineNumbers" | "useInlineStyles" | "style"
-  > & { canHavePins?: boolean };
+  > & { canHavePins?: boolean } & Partial<MarkdownControls>;
 
 const MaybePinButton: React.FC<{
   key?: Key | null;
   children?: React.ReactNode;
 }> = ({ children }) => {
   const isPin = typeof children === "string" && children.startsWith("📍");
+  const ref = useRef<HTMLDivElement>(null);
 
   const {
-    handleApply,
     handleShow,
     errorMessage,
     resetErrorMessage,
     disable,
     openFile,
+    handlePaste,
+    canPaste,
   } = usePatchActions();
+
+  const getMarkdown = useCallback(() => {
+    return (
+      ref.current?.nextElementSibling?.querySelector("code")?.textContent ??
+      null
+    );
+  }, []);
+
+  const onDiffClick = useCallback(() => {
+    const markdown = getMarkdown();
+    if (markdown) {
+      handlePaste(markdown);
+    }
+  }, [getMarkdown, handlePaste]);
+
+  const [hasMarkdown, setHasMarkdown] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!ref.current) {
+      setHasMarkdown(false);
+    } else {
+      const markdown = !!getMarkdown();
+      setHasMarkdown(markdown);
+    }
+  }, [getMarkdown]);
 
   if (isPin && children.startsWith("📍OTHER")) {
     return null;
@@ -63,8 +96,14 @@ const MaybePinButton: React.FC<{
   if (isPin) {
     const [_cmd, _ticket, filePath, ..._rest] = children.split(" ");
     return (
-      <Card className={styles.patch_title} size="1" variant="surface" mt="4">
-        <Flex gap="2" py="2" pl="2">
+      <Card
+        className={styles.patch_title}
+        size="1"
+        variant="surface"
+        mt="4"
+        ref={ref}
+      >
+        <Flex gap="2" py="2" pl="2" justify="between">
           <TruncateLeft>
             <Link
               href=""
@@ -77,24 +116,23 @@ const MaybePinButton: React.FC<{
               {filePath}
             </Link>
           </TruncateLeft>{" "}
-          <Flex gap="2" justify="end" ml="auto">
-            <Button
-              size="1"
-              onClick={() => handleShow(children)}
-              disabled={disable}
-              title={`Show: ${children}`}
-            >
-              Show
-            </Button>
-            <Button
-              size="1"
-              onClick={() => handleApply(children)}
-              disabled={disable}
-              title={`Apply: ${children}`}
-            >
-              Apply
-            </Button>
-          </Flex>
+          <div style={{ flexGrow: 1 }} />
+          <Button
+            size="1"
+            onClick={() => handleShow(children)}
+            disabled={disable}
+            title={`Show: ${children}`}
+          >
+            ➕ Auto Apply
+          </Button>
+          <Button
+            size="1"
+            onClick={onDiffClick}
+            disabled={disable || !hasMarkdown || !canPaste}
+            title="Replace the current selection in the ide."
+          >
+            ➕ Replace Selection
+          </Button>
         </Flex>
         {errorMessage && errorMessage.type === "error" && (
           <ErrorCallout onClick={resetErrorMessage} timeout={5000}>
