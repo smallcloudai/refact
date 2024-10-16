@@ -175,12 +175,10 @@ async fn chat(
         CHAT_TOP_N,
         false,
         messages.clone(),
-        chat_post.chat_id.clone(),
-        chat_post.docker_image_id.clone(),
+        chat_post.chat_id,
     ).await;
     ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = chat_post.postprocess_parameters.clone();
-    ccx.docker_image_id = chat_post.docker_image_id.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {
