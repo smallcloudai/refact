@@ -52,7 +52,7 @@ pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_con
     Ok(local_port)
 }
 
-async fn ssh_tunnel_check_status(ssh_tunnel: &mut SshTunnel) -> Result<(), String> 
+pub async fn ssh_tunnel_check_status(ssh_tunnel: &mut SshTunnel) -> Result<(), String> 
 {
     let exit_status = ssh_tunnel.process.try_wait().map_err(|e| e.to_string())?;
     if let Some(status) = exit_status {
@@ -67,7 +67,7 @@ async fn ssh_tunnel_check_status(ssh_tunnel: &mut SshTunnel) -> Result<(), Strin
     Ok(())
 }
 
-async fn ssh_tunnel_open(remote_port_or_socket: &str, ssh_config: &SshConfig) -> Result<SshTunnel, String> 
+pub async fn ssh_tunnel_open(remote_port_or_socket: &str, ssh_config: &SshConfig) -> Result<SshTunnel, String> 
 {
     let mut command = Command::new("ssh");
     command.arg("-N");

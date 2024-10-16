@@ -1,14 +1,16 @@
+use std::any::Any;
 use std::sync::Arc;
 use std::collections::HashMap;
 use tokio::process::Command;
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use async_trait::async_trait;
-use tracing::error;
+use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage};
+use crate::global_context::GlobalContext;
 use crate::tools::tools_description::Tool;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
 
@@ -22,7 +24,7 @@ pub struct IntegrationDocker {
 }
 
 pub struct ToolDocker {
-    integration_docker: IntegrationDocker,
+    pub integration_docker: IntegrationDocker,
 }
 
 impl ToolDocker {
@@ -36,28 +38,16 @@ impl ToolDocker {
 
         Some(Self { integration_docker })
     }
-}
 
-#[async_trait]
-impl Tool for ToolDocker {
-    async fn tool_execute(
-        &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        tool_call_id: &String,
-        args: &HashMap<String, Value>,
-    ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let mut command_args = parse_command_args(args)?;
+    pub async fn command_execute(&self, command: &str, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String> 
+    {
+        let mut command_args = split_command(&command)?;
 
         if command_is_interactive_or_blocking(&command_args) {
             return Err("Docker commands that are interactive or blocking are not supported".to_string());
         }
 
         command_append_label_if_creates_resource(&mut command_args);
-
-        let gcx = {
-            let ccx_locked = ccx.lock().await;
-            ccx_locked.global_context.clone()
-        };
 
         let mut docker_host = self.integration_docker.connect_to_daemon_at.clone();
         if let Some(ssh_config) = &self.integration_docker.ssh_config 
@@ -83,6 +73,30 @@ impl Tool for ToolDocker {
             return Err(stderr);
         }
 
+        Ok(stdout)
+    }
+}
+
+#[async_trait]
+impl Tool for ToolDocker {
+    fn as_any(&self) -> &dyn Any { self }
+
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
+
+        let command = parse_command(args)?;
+
+        let gcx = {
+            let ccx_locked = ccx.lock().await;
+            ccx_locked.global_context.clone()
+        };
+        
+        let stdout = self.command_execute(&command, gcx.clone()).await?;
+
         Ok((false, vec![
             ContextEnum::ChatMessage(ChatMessage {
                 role: "tool".to_string(),
@@ -98,19 +112,22 @@ impl Tool for ToolDocker {
         &self,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        let mut command_args = parse_command_args(args)?;
+        let command = parse_command(args)?;
+        let mut command_args = split_command(&command)?;
         command_args.insert(0, "docker".to_string());
         Ok(command_args.join(" "))
     }
 }
 
-fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, String> {
-    let command = match args.get("command") {
-        Some(Value::String(s)) => s,
-        Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
-        None => return Err("Missing argument `command`".to_string())
+fn parse_command(args: &HashMap<String, Value>) -> Result<String, String>{
+    return match args.get("command") {
+        Some(Value::String(s)) => Ok(s.to_string()),
+        Some(v) => Err(format!("argument `command` is not a string: {:?}", v)),
+        None => Err("Missing argument `command`".to_string())
     };
+}
 
+fn split_command(command: &str) -> Result<Vec<String>, String> {
     let mut parsed_args = shell_words::split(&command).map_err(|e| e.to_string())?;
     if parsed_args.is_empty() {
         return Err("Parsed command is empty".to_string());
@@ -118,7 +135,6 @@ fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, Stri
     if parsed_args[0] == "docker" {
         parsed_args.remove(0);
     }
-
     Ok(parsed_args)
 }
 
