@@ -71,7 +71,7 @@ class NlpCompletion(NlpSamplingParams):
 
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: Union[str, List[Dict]]
     # TODO: validate using pydantic
     tool_calls: Optional[List[Dict[str, Any]]] = None
     tool_call_id: Optional[str] = None
@@ -520,7 +520,7 @@ class BaseCompletionsRouter(APIRouter):
                     max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
                     tools=post.tools,
                     tool_choice=post.tool_choice,
-                    stop=post.stop,
+                    stop=post.stop if post.stop else None,
                     n=post.n,
                 )
                 finish_reason = None
@@ -559,7 +559,7 @@ class BaseCompletionsRouter(APIRouter):
                     max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
                     tools=post.tools,
                     tool_choice=post.tool_choice,
-                    stop=post.stop,
+                    stop=post.stop if post.stop else None,
                     n=post.n,
                 )
                 finish_reason = None
