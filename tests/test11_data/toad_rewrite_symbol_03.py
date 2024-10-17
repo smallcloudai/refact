@@ -3,7 +3,6 @@ import numpy as np
 DT = 10.
 
 
-
 class Toad:
     def __init__(self, x, y, vx, vy):
         self.x = x

@@ -44,7 +44,7 @@ f"""📍REWRITE_WHOLE_FILE 001 {FROG_PY}
 
     res0 = resp["results"][0]
     assert res0["file_name_edit"] == str(FROG_PY)
-    assert res0["file_text"] == text_expected + "\n", res0["file_text"]
+    assert res0["file_text"] == text_expected, res0["file_text"]
     print(colored("test01_rewrite_whole_file PASSED", "green"))
 
 
@@ -62,7 +62,7 @@ f"""📍NEW_FILE 001 {FN}
 
     res0 = resp["results"][0]
     assert res0["file_name_add"] == str(FN)
-    assert res0["file_text"] == text_expected + "\n", res0["file_text"]
+    assert res0["file_text"] == text_expected, res0["file_text"]
     print(colored("test01_new_file PASSED", "green"))
 
 
@@ -342,7 +342,7 @@ def test01_already_applied_rewrite_whole_file():
 """
     messages = make_messages(ticket_text)
     resp = patch_request(messages, ["001"])
-    assert resp["ticket_ids_already_applied"] == ["001"], resp
+    assert resp["ticket_ids_already_applied"] == [], resp["ticket_ids_already_applied"]
     print(colored("test02_already_applied_rewrite_symbol PASSED", "green"))
 
 

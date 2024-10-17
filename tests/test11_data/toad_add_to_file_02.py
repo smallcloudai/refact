@@ -36,7 +36,6 @@ def hello_toad():
     print("Hello Toad!")
 
 
-
 class AlternativeFrog:
     def alternative_jump(self):
         pass

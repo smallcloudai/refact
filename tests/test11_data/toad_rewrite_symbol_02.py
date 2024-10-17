@@ -13,7 +13,6 @@ class Toad:
     def bounce_off_banks(self, pond_width, pond_height):
         pass
 
-
     def jump(self, pond_width, pond_height):
         self.x += self.vx * DT
         self.y += self.vy * DT

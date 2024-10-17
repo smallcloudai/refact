@@ -196,6 +196,7 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<T
             }
             for (idx, line) in lines.iter().enumerate().skip(line_num + 2) {
                 if line.contains("```") {
+                    ticket.code = ticket.code.trim_end().to_string();
                     return Ok((2 + idx, ticket));
                 }
                 ticket.code.push_str(format!("{}\n", line).as_str());

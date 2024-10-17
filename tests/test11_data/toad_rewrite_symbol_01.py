@@ -39,4 +39,3 @@ class AlternativeFrog:
 
 def brand_new_function():
     print("I am really a brand new function!")
-

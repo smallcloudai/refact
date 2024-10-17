@@ -7,7 +7,6 @@ def hello_toad():
     print("Hello Toad!")
 
 
-
 class Toad:
     def __init__(self, x, y, vx, vy):
         self.x = x

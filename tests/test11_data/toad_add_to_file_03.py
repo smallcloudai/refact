@@ -7,7 +7,6 @@ class Toad:
     def pre_init(self):
         pass
 
-
     def __init__(self, x, y, vx, vy):
         self.x = x
         self.y = y

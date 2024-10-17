@@ -23,7 +23,6 @@ class Toad:
     def post_bounce(self):
         print("CROAK")
 
-
     def jump(self, pond_width, pond_height):
         self.x += self.vx * DT
         self.y += self.vy * DT
