@@ -149,8 +149,17 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
 async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<TicketToApply> {
     async fn process_ticket(gcx: Arc<ARwLock<GlobalContext>>, lines: &[&str], line_num: usize) -> Result<(usize, TicketToApply), String> {
         let mut ticket = TicketToApply::default();
-        let command_line = lines[line_num];
-        let header = command_line.trim().split(" ").collect::<Vec<&str>>();
+        let header = if let Some(idx) = lines[line_num].find("📍") {
+            lines[line_num]
+                .split_at(idx)
+                .1.to_string()
+                .trim()
+                .split(" ")
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+        } else {
+            return Err("failed to parse ticket, 📍 is missing".to_string());
+        };
 
         ticket.action = match header.get(0) {
             Some(action) => {
