@@ -145,12 +145,6 @@ impl ScratchpadAbstract for ChatPassthrough {
                     msg.content.clone(),
                 ).drop_usage());
 
-            } else if msg.role == "plain_text" {
-                filtered_msgs.push(ChatMessage::new(
-                    "user".to_string(),
-                    msg.content.clone(),
-                ).drop_usage());
-
             } else if msg.role == "context_file" {
                 match serde_json::from_str::<Vec<ContextFile>>(&msg.content) {
                     Ok(vector_of_context_files) => {
