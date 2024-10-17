@@ -19,7 +19,7 @@ from prompt_toolkit.widgets import TextArea
 
 from refact.chat_client import Message
 from refact.cli_inspect import inspect_app, open_label
-from refact.cli_streaming import the_chatting_loop, print_response, get_response_box
+from refact.cli_streaming import the_chatting_loop, print_response, get_entertainment_box
 from refact.cli_streaming import stop_streaming, is_not_streaming_condition, start_streaming
 from refact import cli_streaming
 from refact import cli_printing
@@ -141,14 +141,21 @@ def on_submit(buffer):
     cli_streaming.add_streaming_message(Message(role="user", content=user_input))
 
     async def asyncfunc():
-        await the_chatting_loop(cli_settings.args.model, max_auto_resubmit=4 if cli_settings.args.always_pause else 1)
-        if len(cli_streaming.streaming_messages) > 0:
-            last_message = cli_streaming.streaming_messages[-1]
-            if last_message.role == "assistant" and last_message.tool_calls is not None:
-                # cli_streaming.process_streaming_data()
+        await the_chatting_loop(cli_settings.args.model, max_auto_resubmit=(1 if cli_settings.args.always_pause else 4))
+        if len(cli_streaming.streaming_messages) == 0:
+            return
+        # cli_streaming.print_response("\n")  # flush_response inside
+        cli_streaming.flush_response()
+        last_message = cli_streaming.streaming_messages[-1]
+        if last_message.role == "assistant" and last_message.tool_calls is not None:
+            for tool_call in last_message.tool_calls:
+                function = tool_call.function
                 cli_printing.print_formatted_text(FormattedText([
-                    (f"fg:#808080", f"tool calls paused because of max_auto_resubmit, press Enter to submit"),
+                    (f"fg:#808080", f"🔨PAUSED {function.name}({function.arguments})\n")
                 ]))
+            cli_printing.print_formatted_text(FormattedText([
+                (f"fg:#808080", f"tool calls paused because of max_auto_resubmit, press Enter to submit"),
+            ]))
 
     loop = asyncio.get_event_loop()
     loop.create_task(asyncfunc())
@@ -195,7 +202,7 @@ async def chat_main():
         text_area,
     ])
     hsplit = HSplit([
-        Window(content=get_response_box(), dont_extend_height=True),
+        Window(content=get_entertainment_box(), dont_extend_height=True),
         ConditionalContainer(
             content=FloatContainer(content=vsplit, floats=[
                 Float(xcursor=True, ycursor=True, content=CompletionsMenu())]

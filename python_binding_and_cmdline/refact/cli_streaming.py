@@ -9,6 +9,7 @@ from prompt_toolkit.filters import Condition
 
 from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetch_and_filter
 from refact.cli_printing import wrap_tokens, get_terminal_width, print_file, print_lines, highlight_text_by_language, set_background_color, print_file_name
+from refact import cli_printing
 from refact.cli_markdown import to_markdown
 from refact.cli_inspect import create_label
 from refact import cli_settings
@@ -17,15 +18,15 @@ from refact import cli_main
 
 response_text = ""
 language_printing = None
-response_box = FormattedTextControl(text=[])
+entertainment_box = FormattedTextControl(text=[])
 streaming_messages: List[Message] = []
 tool_calls: Dict[str, FunctionDict] = {}
 streaming_toolcall: List[FunctionDict] = []
 _is_streaming = False
 
 
-def get_response_box():
-    return response_box
+def get_entertainment_box():
+    return entertainment_box
 
 
 def flush_response():
@@ -50,40 +51,27 @@ def flush_response():
 
         print_lines(with_background)
 
-    response_box.text = []
+    entertainment_box.text = []
     response_text = ""
 
 
-def update_response_box():
+def update_entertainment_box():
     assert cli_settings.cli_yaml is not None
-    nerd_font = cli_settings.cli_yaml.nerd_font
-    response_box.text = [("", response_text)]
+    entertainment_box.text = [("", response_text)]
     for tool_call in tool_calls.values():
         function = tool_call["function"]
-
-        import traceback
-        traceback.print_stack()
-
-        response_box.text.append(("", f"\n🔨 {function['name']}({function['arguments']})"))
+        # 🤔 🔨
+        entertainment_box.text.append(("", f"\n🤔 {function['name']}({function['arguments']})"))
         if "context_files" in tool_call:
             context_files = tool_call["context_files"]
             if len(context_files) > 4:
-                if nerd_font:
-                    response_box.text.append(("", "\n    󰏢"))
-                else:
-                    response_box.text.append(("", "\n    📎"))
-                response_box.text.append(("", f" <{len(context_files) - 4} more files>"))
+                entertainment_box.text.append(("", "\n    📎"))
+                entertainment_box.text.append(("", f" <{len(context_files) - 4} more files>"))
             for context_file in context_files[-4:]:
-                if nerd_font:
-                    response_box.text.append(("", "\n    󰏢"))
-                else:
-                    response_box.text.append(("", "\n    📎"))
-                response_box.text.append(("", f" {context_file}"))
+                entertainment_box.text.append(("", "\n    📎"))
+                entertainment_box.text.append(("", f" {context_file}"))
         if "subchat_id" in tool_call:
-            if nerd_font:
-                response_box.text.append(("", f"\n     Subchat {tool_call['subchat_id']}"))
-            else:
-                response_box.text.append(("", f"\n    ⏳ Subchat {tool_call['subchat_id']}"))
+            entertainment_box.text.append(("", f"\n    ⏳ Subchat {tool_call['subchat_id']}"))
     get_app().invalidate()
 
 
@@ -93,7 +81,7 @@ def print_response(to_print: str):
         response_text += line
         if line[-1] == "\n":
             flush_response()
-    update_response_box()
+    update_entertainment_box()
 
 
 def print_context_file(json_str: str):
@@ -134,7 +122,7 @@ def process_streaming_data(data):
                 for tool_call in streaming_toolcall:
                     tool_calls[tool_call["id"]] = tool_call
                 streaming_toolcall = []
-                update_response_box()
+                update_entertainment_box()
             return
         if len(streaming_messages) == 0 or streaming_messages[-1].role != "assistant":
             print_response("\n")
@@ -149,19 +137,29 @@ def process_streaming_data(data):
             return
         content = data["content"]
         streaming_messages.append(Message(role=role, content=content))
-        if role == "context_file":
+        if role in ["context_file"]:
             print_context_file(content)
+            return
+        if role in ["plain_text", "cd_instruction"]:
+            print_response(content.strip())
+            print_response("\n")
             return
         tool_call_id = data["tool_call_id"]
         print_response("\n")
         flush_response()
         label = create_label(content)
+        tool_callout = ""
         if tool_call_id in tool_calls:
             tool_call = tool_calls.pop(tool_call_id)
             function = tool_call["function"]
-            print_formatted_text(f"🔨 {function['name']}({function['arguments']}) ?{label}")
+            tool_callout = f"🔨 {function['name']}({function['arguments']}) "
+            # don't print content, user can use label to see it
         else:
-            print_formatted_text(f"🔨 <Unknown tool call {tool_call_id}> ?{label}")
+            tool_callout = f"🔨 Unknown tool call {repr(tool_call_id)} "
+        term_width = get_terminal_width()
+        while len(tool_callout) < term_width - 10:
+            tool_callout += "·"
+        print_formatted_text(f"{tool_callout} ?{label}")
 
     elif "subchat_id" in data:
         subchat_id = data["subchat_id"]
@@ -182,7 +180,7 @@ def process_streaming_data(data):
             for file in content:
                 tool_call["context_files"].append(file["file_name"])
 
-        update_response_box()
+        update_entertainment_box()
 
     else:
         print_response("unknown streaming data:\n%s" % data)
@@ -192,6 +190,13 @@ async def the_chatting_loop(model, max_auto_resubmit):
     global streaming_messages
     global _is_streaming
 
+    roles_str = " ".join([f"{msg.role}/{len(msg.content)}" for msg in streaming_messages]) + " -> model"
+    cli_printing.print_formatted_text(FormattedText([
+        (f"fg:#808080", f"\n➤ {roles_str}"),
+    ]))
+
+    # print_response("\n%d messages -> model" % len(streaming_messages))
+
     N = 1
     for step_n in range(max_auto_resubmit):
         def callback(data):
@@ -200,7 +205,7 @@ async def the_chatting_loop(model, max_auto_resubmit):
 
         messages = list(streaming_messages)
         tools = await tools_fetch_and_filter(base_url=cli_main.lsp_runner.base_url(), tools_turn_on=None)
-        new_messages = await ask_using_http(
+        choices = await ask_using_http(
             cli_main.lsp_runner.base_url(),
             messages,
             N,
@@ -213,7 +218,7 @@ async def the_chatting_loop(model, max_auto_resubmit):
             only_deterministic_messages=False,
             callback=callback,
         )
-        streaming_messages = new_messages[0]
+        streaming_messages = choices[0]
 
         if not _is_streaming:
             break
