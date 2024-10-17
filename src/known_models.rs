@@ -139,17 +139,6 @@ pub const KNOWN_MODELS: &str = r####"
                 "gpt-4o-mini-2024-07-18"
             ]
         },
-        "gpt-4o-mini": {
-            "n_ctx": 128000,
-            "supports_tools": true,
-            "supports_scratchpads": {
-                "PASSTHROUGH": {
-                }
-            },
-            "similar_models": [
-                "gpt-4o-mini-2024-07-18"
-            ]
-        },
         "claude-instant-1.2": {
             "n_ctx": 8096,
             "supports_scratchpads": {
