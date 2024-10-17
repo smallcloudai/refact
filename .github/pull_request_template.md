@@ -24,9 +24,9 @@
 
 <!-- Provide instructions for testing the changes. Include any relevant details such as test setup, steps to reproduce the issue, and expected outcomes. -->
 
-1. Step 1:
-2. Step 2:
-3. ...
+- Step 1:
+- Step 2:
+- ...
 
 ## Screenshots (if applicable)
 
