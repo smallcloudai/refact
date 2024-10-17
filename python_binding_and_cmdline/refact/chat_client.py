@@ -283,12 +283,13 @@ async def ask_using_http(
                 for d in deterministic:
                     if d.tool_call_id is None:
                         continue
-                    d.subchats = collections.defaultdict(list)
-                    for k, msglist in subchats.items():
-                        if k.startswith(d.tool_call_id + "__"):
-                            subchat_id = k[len(d.tool_call_id + "__"):]
-                            d.subchats[subchat_id] = msglist
-                            has_home.add(k)
+                    if len(subchats) > 0:
+                        d.subchats = collections.defaultdict(list)
+                        for k, msglist in subchats.items():
+                            if k.startswith(d.tool_call_id + "__"):
+                                subchat_id = k[len(d.tool_call_id + "__"):]
+                                d.subchats[subchat_id] = msglist
+                                has_home.add(k)
                 assert set(has_home) == set(subchats.keys()), f"Whoops, not all subchats {subchats.keys()} are attached to a tool result."
     return join_messages_and_choices(messages, deterministic, choices, verbose)
 
@@ -521,7 +522,7 @@ def print_messages(
                     con(_wrap_color(message, "red"))
 
         elif m.role in ["tool", "user", "assistant", "system"]:
-            if m.subchats:  # actually subchats can only appear in role="tool", but code is the same anyway
+            if m.subchats is not None:  # actually subchats can only appear in role="tool", but code is the same anyway
                 for subchat_id, subchat_msgs in m.subchats.items():
                     subchats_strs = print_messages(subchat_msgs, also_print_to_console=also_print_to_console)
                     subchats_str = "\n".join(subchats_strs)

@@ -23,6 +23,7 @@ from refact.cli_streaming import the_chatting_loop, print_response, get_entertai
 from refact.cli_streaming import stop_streaming, is_not_streaming_condition, start_streaming
 from refact import cli_streaming
 from refact import cli_printing
+from refact import cli_export
 from refact.cli_app_switcher import start_app, exit_all_apps, push_app
 from refact import cli_statusbar, cli_settings
 from refact.lsp_runner import LSPServerRunner
@@ -106,24 +107,34 @@ def get_at_command_completion(base_url: str, query: str, cursor_pos: int) -> Any
 
 def on_submit(buffer):
     user_input = buffer.text
-    if user_input.lower() in ('exit', 'quit'):
+    if user_input.lower() in ["exit", "quit", "/exit", "/quit"]:
         exit_all_apps()
         return
 
     if cli_streaming.is_streaming():
         return
 
-    if user_input == "" and len(cli_streaming.streaming_messages) > 0:
+    if user_input.startswith("/"):  # commands
+        args = user_input.split(" ")
+        if args[0] == "/export":
+            loop = asyncio.get_event_loop()
+            loop.create_task(cli_export.think_of_good_filename_and_export(cli_streaming.streaming_messages))
+        else:
+            print_formatted_text(f"\nchat> {user_input}")
+            print_formatted_text(f"\nunknown command %s" % args[0])
+        return
+
+    elif user_input == "" and len(cli_streaming.streaming_messages) > 0:
         last_message = cli_streaming.streaming_messages[-1]
         if last_message.role == "assistant" and last_message.tool_calls is not None:
-            pass   # re submit tool calls
+            pass   # re-submit tool calls
         else:
             return
 
-    elif user_input.strip() == '':
+    elif user_input.strip() == "":
         return
 
-    elif user_input[0] == "?":
+    elif user_input.startswith("?"):
         label = user_input[1:]
         if open_label(label):
             push_app(inspect_app())

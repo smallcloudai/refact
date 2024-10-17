@@ -7,13 +7,15 @@ from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.application import get_app
 from prompt_toolkit.filters import Condition
 
-from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetch_and_filter
+
+from refact.chat_client import Message, FunctionDict, tools_fetch_and_filter
 from refact.cli_printing import wrap_tokens, get_terminal_width, print_lines, highlight_text_by_language, set_background_color, print_file_name
 from refact import cli_printing
 from refact.cli_markdown import to_markdown
 from refact.cli_inspect import create_label
 from refact import cli_settings
 from refact import cli_main
+from refact import chat_client
 
 
 response_text = ""
@@ -208,7 +210,7 @@ async def the_chatting_loop(model, max_auto_resubmit):
 
         messages = list(streaming_messages)
         tools = await tools_fetch_and_filter(base_url=cli_main.lsp_runner.base_url(), tools_turn_on=None)
-        choices = await ask_using_http(
+        choices = await chat_client.ask_using_http(
             cli_main.lsp_runner.base_url(),
             messages,
             N,
