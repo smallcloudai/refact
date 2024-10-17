@@ -20,7 +20,7 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 const SYSTEM_PROMPT: &str = r#"You are given an incomplete code file and a block of code from that file. Within this block, an unfinished line is marked with <CURSOR>. Your task is to complete the code at the <CURSOR> position.
 Ensure you copy the additional lines from before and after the <CURSOR> line exactly as they are. 
 Do not comment the new code you added!"#;
@@ -49,8 +49,8 @@ pub struct ChatCompletionScratchpad {
     pub context_used: Value,
     pub data4cache: completion_cache::CompletionSaveToCache,
     pub data4snippet: snippets_collection::SaveSnippet,
-    pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
-    pub global_context: Arc<ARwLock<GlobalContext>>,
+    pub _ast_service: Option<Arc<AMutex<AstIndexService>>>,
+    pub _global_context: Arc<ARwLock<GlobalContext>>,
 }
 
 impl SubBlock {
@@ -61,7 +61,7 @@ impl SubBlock {
             .collect::<Vec<_>>()
             .join("");
 
-        let (new_cursor_line, cut_part) = if !self.cursor_line.is_empty() {
+        let (new_cursor_line, _cut_part) = if !self.cursor_line.is_empty() {
             let tokenizer_ref = tokenizer.tokenizer
                 .write()
                 .map_err(|x| x.to_string())?;
@@ -263,8 +263,8 @@ impl ChatCompletionScratchpad {
             context_used: json!({}),
             data4cache,
             data4snippet,
-            ast_service,
-            global_context,
+            _ast_service: ast_service,
+            _global_context: global_context,
         }
     }
 
@@ -316,7 +316,7 @@ impl ScratchpadAbstract for ChatCompletionScratchpad {
         ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let (n_ctx, gcx) = {
+        let (n_ctx, _gcx) = {
             let ccx_locked = ccx.lock().await;
             (ccx_locked.n_ctx, ccx_locked.global_context.clone())
         };
@@ -342,7 +342,7 @@ impl ScratchpadAbstract for ChatCompletionScratchpad {
         available_tokens = available_tokens.saturating_sub(1 + self.t.count_tokens(self.keyword_user.as_str())? as usize);
         available_tokens = available_tokens.saturating_sub(1 + self.t.count_tokens(self.keyword_asst.as_str())? as usize);
         let main_file_available_tokens = (available_tokens as f64 * 0.9) as usize;
-        let mut subblock_available_tokens = available_tokens.saturating_sub(main_file_available_tokens).min(256).max(32);
+        let subblock_available_tokens = available_tokens.saturating_sub(main_file_available_tokens).min(256).max(32);
 
         let cpath = crate::files_correction::canonical_path(&self.post.inputs.cursor.file);
         let mut source = self.post.inputs.sources.get(
@@ -351,14 +351,14 @@ impl ScratchpadAbstract for ChatCompletionScratchpad {
         source = self.cleanup_prompt(&source);
         let text = Rope::from_str(&*source);
 
-        let (file_content, file_content_tokens_count) = prepare_main_file(
+        let (file_content, _file_content_tokens_count) = prepare_main_file(
             &self.t,
             main_file_available_tokens,
             &cpath,
             &text,
             &self.post.inputs.cursor,
         )?;
-        let (subblock, subblock_tokens_count) = prepare_subblock(
+        let (subblock, _subblock_tokens_count) = prepare_subblock(
             &self.t,
             subblock_available_tokens,
             &text,
@@ -441,9 +441,9 @@ impl ScratchpadAbstract for ChatCompletionScratchpad {
 
     fn response_streaming(
         &mut self,
-        delta: String,
-        stop_toks: bool,
-        stop_length: bool,
+        _delta: String,
+        _stop_toks: bool,
+        _stop_length: bool,
     ) -> Result<(Value, bool), String> {
         Err("".to_string())
     }
