@@ -27,6 +27,7 @@ pub struct GenericChatScratchpad {
     pub t: HasTokenizerAndEot,
     pub dd: DeltaDeltaChatStreamer,
     pub post: ChatPost,
+    pub token_bos: String,
     pub token_esc: String,
     // for models that switch between sections using <esc>SECTION
     pub keyword_syst: String,
@@ -50,6 +51,7 @@ impl GenericChatScratchpad {
             t: HasTokenizerAndEot::new(tokenizer),
             dd: DeltaDeltaChatStreamer::new(),
             post: post.clone(),
+            token_bos: "".to_string(),
             token_esc: "".to_string(),
             keyword_syst: "".to_string(),
             keyword_user: "".to_string(),
@@ -70,6 +72,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         exploration_tools: bool,
         agentic_tools: bool,
     ) -> Result<(), String> {
+        self.token_bos = patch.get("token_bos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.keyword_syst = patch.get("keyword_system").and_then(|x| x.as_str()).unwrap_or("SYSTEM:").to_string();
         self.keyword_user = patch.get("keyword_user").and_then(|x| x.as_str()).unwrap_or("USER:").to_string();

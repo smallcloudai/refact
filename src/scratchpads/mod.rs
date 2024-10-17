@@ -11,6 +11,7 @@ pub mod chat_utils_deltadelta;
 pub mod chat_utils_limit_history;
 pub mod chat_utils_prompts;
 pub mod scratchpad_utils;
+pub mod chat_completion;
 
 use crate::ast::ast_indexer_thread::AstIndexService;
 use crate::call_validation::CodeCompletionPost;
@@ -43,6 +44,8 @@ pub async fn create_code_completion_scratchpad(
         result = Box::new(fill_in_the_middle::FillInTheMiddleScratchpad::new(tokenizer_arc, &post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
     } else if scratchpad_name == "FIM-SPM" {
         result = Box::new(fill_in_the_middle::FillInTheMiddleScratchpad::new(tokenizer_arc, &post, "SPM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
+    }  else if scratchpad_name == "CHAT" {
+        result = Box::new(chat_completion::ChatCompletionScratchpad::new(tokenizer_arc, &post, cache_arc, tele_storage, ast_module, global_context.clone()));
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }

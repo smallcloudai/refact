@@ -95,6 +95,25 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "default_scratchpad": "FIM-PSM",
             "similar_models": []
+        },
+        "llama3/8b/instruct": {
+            "n_ctx": 8192,
+            "supports_scratchpads": {
+                "CHAT": {
+                    "token_bos": "<|begin_of_text|>",
+                    "token_esc": "<|eot_id|>",
+                    "keyword_system": "<|start_header_id|>system<|end_header_id|>\n\n",
+                    "keyword_user": "<|start_header_id|>user<|end_header_id|>\n\n",
+                    "keyword_assistant": "<|start_header_id|>assistant<|end_header_id|>\n\n",
+                    "eot": "<|eot_id|>"
+                }
+            },
+            "default_scratchpad": "CHAT",
+            "similar_models": [
+                "llama3/8b/instruct/vllm",
+                "llama3/8b/instruct/neuron",
+                "meta-llama/llama-3.1-8b-instruct"
+            ]
         }
     },
     "code_chat_models": {
@@ -165,6 +184,7 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
+                    "token_bos": "",
                     "token_esc": "",
                     "keyword_system": "<|start_header_id|>system<|end_header_id|>\n\n",
                     "keyword_user": "<|start_header_id|>user<|end_header_id|>\n\n",
@@ -196,6 +216,7 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 2048,
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
+                    "token_bos": "",
                     "token_esc": "",
                     "keyword_system": "<s>",
                     "keyword_user": "\nUSER: ",
@@ -213,6 +234,7 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
+                    "token_bos": "",
                     "token_esc": "",
                     "keyword_system": "",
                     "keyword_user": "\n@@ Instruction\n",
@@ -226,6 +248,7 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
+                    "token_bos": "",
                     "token_esc": "",
                     "keyword_system": "",
                     "keyword_user": "[INST] ",
@@ -242,6 +265,7 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 4095,
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
+                    "token_bos": "",
                     "token_esc": "",
                     "keyword_system": "### System Prompt\n",
                     "keyword_user": "\n### User Message\n",
@@ -255,6 +279,7 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 4096,
             "supports_scratchpads": {
                 "CHAT-GENERIC": {
+                    "token_bos": "",
                     "token_esc": "",
                     "keyword_system": "",
                     "keyword_user": "### Instruction:\n",
