@@ -3,15 +3,20 @@ use std::sync::Arc;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::RwLock as ARwLock;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
-use crate::call_validation::ChatToolCall;
+use crate::at_commands::at_commands::AtCommandsContext;
+use crate::cached_tokenizers;
+use crate::call_validation::{ChatMessage, ChatToolCall, PostprocessSettings, SubchatParameters};
+use crate::http::routers::v1::chat::CHAT_TOP_N;
+use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::tools::tools_description::{commands_require_confirmation_rules_from_integrations_yaml, tool_description_list_from_yaml, tools_merged_and_filtered};
 use crate::custom_error::ScratchError;
-use crate::global_context::GlobalContext;
-use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied, run_tools};
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -21,7 +26,7 @@ struct ToolsPermissionCheckPost {
 
 #[derive(Serialize)]
 #[serde(rename_all = "lowercase")]
-enum PauseReasonType { 
+enum PauseReasonType {
     Confirmation,
     Denial,
 }
@@ -35,6 +40,22 @@ struct PauseReason {
     tool_call_id: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ToolsExecutePost {
+    pub messages: Vec<ChatMessage>,
+    pub n_ctx: usize,
+    pub maxgen: usize,
+    pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
+    pub postprocess_parameters: PostprocessSettings,
+    pub model_name: String,
+    pub chat_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ToolExecuteResponse {
+    pub messages: Vec<ChatMessage>,
+    pub tools_runned: bool,
+}
 
 pub async fn handle_v1_tools(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
@@ -155,4 +176,84 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
         .header("Content-Type", "application/json")
         .body(Body::from(body))
         .unwrap())
+}
+
+pub async fn handle_v1_tools_execute(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let tools_execute_post = serde_json::from_slice::<ToolsExecutePost>(&body_bytes)
+      .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    let tokenizer = cached_tokenizers::cached_tokenizer(caps, gcx.clone(), tools_execute_post.model_name.clone()).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
+
+    let mut ccx = AtCommandsContext::new(
+        gcx.clone(),
+        tools_execute_post.n_ctx,
+        CHAT_TOP_N,
+        false,
+        tools_execute_post.messages.clone(),
+        tools_execute_post.chat_id.clone(),
+    ).await;
+    ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
+    ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();
+    let ccx_arc = Arc::new(AMutex::new(ccx));
+
+    let (messages, tools_runned) = run_tools(
+        ccx_arc.clone(), tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &mut HasRagResults::new()
+    ).await;
+
+    let body = serde_json::json!({
+        "messages": messages,
+        "tools_runned": tools_runned,
+    }).to_string();
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(body))
+        .unwrap()
+    )
+}
+
+pub async fn handle_v1_tools_execute(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let tools_execute_post = serde_json::from_slice::<ToolsExecutePost>(&body_bytes)
+      .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    let tokenizer = cached_tokenizers::cached_tokenizer(caps, gcx.clone(), tools_execute_post.model_name.clone()).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
+
+    let mut ccx = AtCommandsContext::new(
+        gcx.clone(),
+        tools_execute_post.n_ctx,
+        CHAT_TOP_N,
+        false,
+        tools_execute_post.messages.clone(),
+        tools_execute_post.chat_id.clone(),
+    ).await;
+    ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
+    ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();
+    let ccx_arc = Arc::new(AMutex::new(ccx));
+
+    let (messages, tools_runned) = run_tools(
+        ccx_arc.clone(), tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &mut HasRagResults::new()
+    ).await;
+
+    let body = serde_json::json!({
+        "messages": messages,
+        "tools_runned": tools_runned,
+    }).to_string();
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(body))
+        .unwrap()
+    )
 }

@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use glob::Pattern;
+use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tracing::{info, warn};
+use reqwest::Client;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
@@ -15,6 +17,7 @@ use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_cha
 use crate::tools::tools_description::commands_require_confirmation_rules_from_integrations_yaml;
 use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::get_model_record;
+use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
 pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_name: &str) -> Result<SubchatParameters, String> {
@@ -43,6 +46,54 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
         }
     }
     Ok(params)
+}
+
+pub async fn run_tools_remotely(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    maxgen: usize,
+    original_messages: &Vec<ChatMessage>,
+    model_name: &str,
+) -> Result<(Vec<ChatMessage>, bool), String> {
+    let (n_ctx, subchat_tool_parameters, postprocess_parameters, chat_id) = {
+        let ccx_locked = ccx.lock().await;
+        (
+            ccx_locked.n_ctx,
+            ccx_locked.subchat_tool_parameters.clone(),
+            ccx_locked.postprocess_parameters.clone(),
+            ccx_locked.chat_id.clone(),
+        )
+    };
+
+    let tools_execute_post = ToolsExecutePost {
+        messages: original_messages.clone(),
+        n_ctx,
+        maxgen,
+        subchat_tool_parameters,
+        postprocess_parameters,
+        model_name: model_name.to_string(),
+        chat_id,
+    };
+
+    let client = Client::builder().build().map_err(|e| e.to_string())?;
+    let post_result = client
+        .post("http://localhost:8005/v1/tools-execute")
+        .json(&tools_execute_post)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !post_result.status().is_success() {
+        let status = post_result.status();
+        let error_text = post_result.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        return Err(format!("HTTP request failed with status {}: {}", status, error_text));
+    }
+
+    let response = post_result
+      .json::<ToolExecuteResponse>()
+      .await
+      .map_err(|e| e.to_string())?;
+
+    Ok((response.messages, response.tools_runned))
 }
 
 pub async fn run_tools(

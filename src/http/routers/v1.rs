@@ -15,7 +15,7 @@ use crate::http::routers::v1::code_completion::{handle_v1_code_completion_web, h
 use crate::http::routers::v1::code_lens::handle_v1_code_lens;
 use crate::http::routers::v1::ast::{handle_v1_ast_file_dump, handle_v1_ast_file_symbols, handle_v1_ast_status};
 use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview};
-use crate::http::routers::v1::at_tools::{handle_v1_tools, handle_v1_tools_check_if_confirmation_needed};
+use crate::http::routers::v1::at_tools::{handle_v1_tools, handle_v1_tools_check_if_confirmation_needed, handle_v1_tools_execute};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions};
@@ -50,7 +50,7 @@ pub mod lsp_like_handlers;
 pub mod customization;
 mod at_commands;
 mod ast;
-mod at_tools;
+pub mod at_tools;
 mod status;
 
 mod subchat;
@@ -83,6 +83,7 @@ pub fn make_v1_router() -> Router {
 
         .route("/tools", telemetry_get!(handle_v1_tools))
         .route("/tools-check-if-confirmation-needed", telemetry_post!(handle_v1_tools_check_if_confirmation_needed))
+        .route("/tools-execute", telemetry_post!(handle_v1_tools_execute))
 
         .route("/lsp-initialize", telemetry_post!(handle_v1_lsp_initialize))
         .route("/lsp-did-changed", telemetry_post!(handle_v1_lsp_did_change))
