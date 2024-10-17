@@ -69,14 +69,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const information = useAppSelector(getInformationMessage);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
-  const [value, setValue, isSendImmediately, setIsSendImmediately] =
-    useInputValue();
-
-  const onClearInformation = useCallback(
-    () => dispatch(clearInformation()),
-    [dispatch],
-  );
-
   const {
     checkboxes,
     onToggleCheckbox,
@@ -84,6 +76,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     setFileInteracted,
     setLineSelectionInteracted,
   } = useCheckboxes();
+
+  const [value, setValue, isSendImmediately, setIsSendImmediately] =
+    useInputValue(() => unCheckAll());
+
+  const onClearInformation = useCallback(
+    () => dispatch(clearInformation()),
+    [dispatch],
+  );
 
   const { previewFiles, commands, requestCompletion } =
     useCommandCompletionAndPreviewFiles(checkboxes);

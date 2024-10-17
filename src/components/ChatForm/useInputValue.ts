@@ -3,7 +3,9 @@ import { useAppDispatch, useAppSelector } from "../../hooks";
 import { selectPages, change, ChatPage } from "../../features/Pages/pagesSlice";
 import { setInputValue, addInputValue } from "./actions";
 
-export function useInputValue(): [
+export function useInputValue(
+  uncheckCheckboxes: () => void,
+): [
   string,
   React.Dispatch<React.SetStateAction<string>>,
   boolean,
@@ -36,9 +38,12 @@ export function useInputValue(): [
         const { payload } = event.data;
         setUpIfNotReady();
         setValue(payload.value);
-
+        uncheckCheckboxes();
         if (payload.send_immediately) {
-          setIsSendImmediately(payload.send_immediately);
+          const timeoutID = setTimeout(() => {
+            setIsSendImmediately(payload.send_immediately);
+            clearTimeout(timeoutID);
+          }, 100);
         }
       }
     };
