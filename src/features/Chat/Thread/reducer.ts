@@ -127,6 +127,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (state.thread.id !== action.payload.id) return state;
     state.streaming = false;
     state.thread.read = true;
+    state.prevent_send = false;
   });
 
   builder.addCase(chatAskedQuestion, (state, action) => {
@@ -170,6 +171,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     } else {
       state.streaming = false;
     }
+    state.prevent_send = true;
     state.thread = mostUptoDateThread;
     state.thread.tool_use = state.thread.tool_use ?? state.tool_use;
   });

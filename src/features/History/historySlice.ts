@@ -115,14 +115,23 @@ startHistoryListening({
   actionCreator: doneStreaming,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
-    const lastMessage = state.chat.thread.messages.slice(-1)[0];
+    const thread =
+      action.payload.id in state.chat.cache
+        ? state.chat.cache[action.payload.id]
+        : state.chat.thread;
+    const lastMessage = thread.messages.slice(-1)[0];
+
     // Checking for reliable chat pause
-    if (isAssistantMessage(lastMessage) && !lastMessage.tool_calls) {
+    if (
+      thread.messages.length &&
+      isAssistantMessage(lastMessage) &&
+      !lastMessage.tool_calls
+    ) {
       // Getting user message
       const firstUserMessage = state.chat.thread.messages.find(isUserMessage);
       if (firstUserMessage) {
         // Checking if chat title is already generated, if not - generating it
-        if (!state.chat.thread.title) {
+        if (!thread.title) {
           listenerApi
             .dispatch(
               chatGenerateTitleThunk({
@@ -136,7 +145,7 @@ startHistoryListening({
                 if (typeof response.title === "string") {
                   listenerApi.dispatch(
                     saveChat({
-                      ...state.chat.thread,
+                      ...thread,
                       title: response.title,
                     }),
                   );
@@ -147,7 +156,7 @@ startHistoryListening({
               // TODO: handle error in case if not generated, now returning user message as a title
               listenerApi.dispatch(
                 saveChat({
-                  ...state.chat.thread,
+                  ...thread,
                   title: firstUserMessage.content,
                 }),
               );
