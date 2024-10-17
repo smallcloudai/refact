@@ -21,25 +21,8 @@ use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
 const DEBUG: bool = true;
-const SYSTEM_PROMPT: &str = r#"You are given an incomplete code file along with a block of code from that file. This block contains both the unfinished part of the code and some additional lines from before and after the unfinished section.
-
-Your task is to rewrite only the unfinished line in the block and copy the additional lines from before and after the unfinished part exactly as they are presented in the block.
-Do not add any comments or make any changes that are unrelated to completing the unfinished code.
-Do not copy more code than it's presented in the code block.
-
-# Example
-# Block of code:
-```
-    middle = [x for x in arr if x == pivot]
-    ri
-    return quicksort(left) + middle + quicksort(right)
-```
-# Finished block of code:
-```
-    middle = [x for x in arr if x == pivot]
-    right = [x for x in arr if x > pivot]
-    return quicksort(left) + middle + quicksort(right)
-```"#;
+const SYSTEM_PROMPT: &str = r#"You are given an incomplete code file and a block of code from that file. Within this block, an unfinished line is marked with <CURSOR>. Your task is to complete the code at the <CURSOR> position.
+Ensure you copy the additional lines from before and after the <CURSOR> line exactly as they are. Do not comment added code."#;
 const SUBBLOCK_CUT_TOKENS_N: usize = 2;
 
 #[derive(Debug, Clone)] 
@@ -76,12 +59,16 @@ impl SubBlock {
             .map(|x| x.replace("\r\n", "\n"))
             .collect::<Vec<_>>()
             .join("");
-        let cursor_line = self.cursor_line
+        match self.cursor_line
             .replace("\r\n", "\n")
-            .strip_suffix("\n")
-            .unwrap_or(&self.cursor_line)
-            .to_string();
-        code.push_str(format!("{}<CURSOR>", cursor_line).as_str());
+            .strip_suffix("\n") {
+            Some(stripped_line) => {
+                code.push_str(format!("{}<CURSOR>\n", stripped_line).as_str());
+            }
+            None => {
+                code.push_str(format!("{}<CURSOR>", self.cursor_line).as_str());
+            }
+        };
         code.push_str(self.after_lines
             .iter()
             .map(|x| x.replace("\r\n", "\n"))
@@ -118,7 +105,7 @@ impl SubBlock {
         };
         code.push_str(&new_cursor_line);
         self.cut_part = Some(cut_part);
-        Ok(format!("# Finished block of code:\n```\n{code}"))
+        Ok(format!("# Completed block of code:\n```\n{code}"))
     }
     
     fn after_lines_str(&self) -> String {
@@ -172,7 +159,7 @@ fn prepare_main_file(
             }
         }
 
-        if cursor_pos.line - line_idx_offset < 0 || cursor_pos.line + line_idx_offset >= file_text.len_lines() as i32  {
+        if cursor_pos.line - line_idx_offset < 0 && cursor_pos.line + line_idx_offset >= file_text.len_lines() as i32  {
             break;
         }
         
@@ -318,6 +305,7 @@ impl ScratchpadAbstract for ChatCompletionScratchpad {
             (ccx_locked.n_ctx, ccx_locked.global_context.clone())
         };
         // let use_rag = !self.t.context_format.is_empty() && self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_service.is_some();
+        sampling_parameters_to_patch.temperature = Some(0.05);
         sampling_parameters_to_patch.stop = vec![self.t.eot.clone()];
         if !self.post.inputs.multiline {
             sampling_parameters_to_patch.stop.push("\n".to_string());
