@@ -22,8 +22,9 @@ use tracing::info;
 
 const DEBUG: bool = true;
 const SYSTEM_PROMPT: &str = r#"You are given an incomplete code file and a block of code from that file. Within this block, an unfinished line is marked with <CURSOR>. Your task is to complete the code at the <CURSOR> position.
-Ensure you copy the additional lines from before and after the <CURSOR> line exactly as they are. Do not comment added code."#;
-const SUBBLOCK_CUT_TOKENS_N: usize = 2;
+Ensure you copy the additional lines from before and after the <CURSOR> line exactly as they are. 
+Do not comment the new code you added!"#;
+const SUBBLOCK_CUT_TOKENS_N: usize = 3;
 
 #[derive(Debug, Clone)] 
 pub struct SubBlock {
@@ -53,29 +54,41 @@ pub struct ChatCompletionScratchpad {
 }
 
 impl SubBlock {
-    fn prompt(&self) -> Result<String, String> {
+    fn prompt(&self, tokenizer: &HasTokenizerAndEot) -> Result<String, String> {
         let mut code = self.before_lines
             .iter()
             .map(|x| x.replace("\r\n", "\n"))
             .collect::<Vec<_>>()
             .join("");
-        match self.cursor_line
-            .replace("\r\n", "\n")
-            .strip_suffix("\n") {
-            Some(stripped_line) => {
-                code.push_str(format!("{}<CURSOR>\n", stripped_line).as_str());
-            }
-            None => {
-                code.push_str(format!("{}<CURSOR>", self.cursor_line).as_str());
-            }
+
+        let (new_cursor_line, cut_part) = if !self.cursor_line.is_empty() {
+            let tokenizer_ref = tokenizer.tokenizer
+                .write()
+                .map_err(|x| x.to_string())?;
+            let cursor_line = self.cursor_line
+                .replace("\r\n", "\n")
+                .strip_suffix("\n")
+                .unwrap_or(&self.cursor_line)
+                .to_string();
+            let cursor_line_tokens = tokenizer_ref.encode(&*cursor_line, false)
+                .map_err(|x| x.to_string())?;
+            let cut_until = cursor_line_tokens.len().saturating_sub(SUBBLOCK_CUT_TOKENS_N);
+            (tokenizer_ref.decode(&cursor_line_tokens.get_ids()[..cut_until], true)
+                 .map_err(|x| x.to_string())?,
+             tokenizer_ref.decode(&cursor_line_tokens.get_ids()[cut_until..], true)
+                 .map_err(|x| x.to_string())?)
+        } else {
+            (self.cursor_line.clone(), "".to_string())
         };
+        code.push_str(format!("{}<CURSOR>\n", new_cursor_line).as_str());
         code.push_str(self.after_lines
             .iter()
             .map(|x| x.replace("\r\n", "\n"))
             .collect::<Vec<_>>()
             .join("")
             .as_str());
-        Ok(format!("# Block of code:\n```\n{code}\n```"))
+        let extra_user_message = format!("The user started to type this, use it as a prompt:\n```\n{}\n```", self.cursor_line);
+        Ok(format!("# Block of code:\n```\n{code}\n```\n{extra_user_message}"))
     }
 
     fn prefilling_prompt(&mut self, tokenizer: &HasTokenizerAndEot) -> Result<String, String> {
@@ -258,6 +271,9 @@ impl ChatCompletionScratchpad {
     fn cleanup_prompt(&mut self, text: &String) -> String {
         text.replace(&self.token_bos, "")
             .replace(&self.token_esc, "")
+            .replace(&self.keyword_syst, "")
+            .replace(&self.keyword_user, "")
+            .replace(&self.keyword_asst, "")
             .replace(&self.t.eos, "")
             .replace(&self.t.eot, "")
     }
@@ -305,6 +321,7 @@ impl ScratchpadAbstract for ChatCompletionScratchpad {
             (ccx_locked.n_ctx, ccx_locked.global_context.clone())
         };
         // let use_rag = !self.t.context_format.is_empty() && self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_service.is_some();
+        sampling_parameters_to_patch.max_new_tokens = 256;
         sampling_parameters_to_patch.temperature = Some(0.05);
         sampling_parameters_to_patch.stop = vec![self.t.eot.clone()];
         if !self.post.inputs.multiline {
@@ -354,7 +371,7 @@ impl ScratchpadAbstract for ChatCompletionScratchpad {
             Some("\n".to_string())
         };
         prompt.push_str(self.keyword_user.as_str());
-        prompt.push_str(format!("{file_content}\n{}", self.cursor_subblock.as_ref().unwrap().prompt()?).as_str());
+        prompt.push_str(format!("{file_content}\n{}", self.cursor_subblock.as_ref().unwrap().prompt(&self.t)?).as_str());
         prompt.push_str(self.token_esc.as_str());
         prompt.push_str(self.keyword_asst.as_str());
         prompt.push_str(self.cursor_subblock.as_mut().unwrap().prefilling_prompt(&self.t)?.as_str());
@@ -383,12 +400,12 @@ impl ScratchpadAbstract for ChatCompletionScratchpad {
 
             let (mut cc, mut finished) = _cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
             cc = cc.replacen(cut_part.as_str(), "", 1);
-            if !after_lines_str.is_empty() {
+            if !after_lines_str.trim().is_empty() {
                 if let Some(idx) = cc.find(after_lines_str.as_str()) {
                     cc = cc.split_at(idx).0.to_string();
                 } else if let Some(idx) = cc.find(after_lines_str.trim()) {
                     cc = cc.split_at(idx).0.to_string();
-                };
+                }
             }
             finished |= stopped[i];
             let finish_reason = if finished {
