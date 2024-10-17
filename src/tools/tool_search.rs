@@ -79,7 +79,7 @@ impl Tool for ToolSearch {
         info!("att-search: vector_of_context_file={:?}", vector_of_context_file);
 
         if vector_of_context_file.is_empty() {
-            return Err("Search produced no results. Adjust the query or try a different scope".to_string());
+            return Err("Search produced no results, adjust the query or try a different scope.".to_string());
         }
 
         let mut content = "Records found:\n\n".to_string();

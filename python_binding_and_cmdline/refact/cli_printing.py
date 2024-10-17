@@ -123,18 +123,6 @@ def print_file_name(file_name: str):
         ]))
 
 
-def print_file(content_: str, file_name: str):
-    bg_color = "#252b37"
-
-    terminal_width = get_terminal_width()
-    content = highlight_text(content_, file_name)
-    wrapped = wrap_tokens(content, terminal_width - 2)
-    limited = limit_lines(wrapped, 15)
-    colored = set_background_color(limited, bg_color)
-    print_file_name(file_name)
-    print_lines(colored)
-
-
 def print_header(text: str, width: int):
     style = Style.from_dict({
         'block': 'bg:ansiwhite fg:ansiblack',

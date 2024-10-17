@@ -65,6 +65,16 @@ def create_label(value: str) -> str:
 def line_number(line: int, wrap_count: int):
     return [("bg:#252b37", f"{line+1:>4} ")]
 
+# TODO: highlight
+# def print_file(content_: str, file_name: str):
+#     bg_color = "#252b37"
+#     terminal_width = get_terminal_width()
+#     content = highlight_text(content_, file_name)
+#     wrapped = wrap_tokens(content, terminal_width - 2)
+#     limited = limit_lines(wrapped, 15)
+#     colored = set_background_color(limited, bg_color)
+#     print_file_name(file_name)
+#     print_lines(colored)
 
 text_area = TextArea(get_line_prefix=line_number, wrap_lines=True)
 hsplit = HSplit([

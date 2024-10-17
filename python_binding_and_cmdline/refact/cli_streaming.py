@@ -8,7 +8,7 @@ from prompt_toolkit.application import get_app
 from prompt_toolkit.filters import Condition
 
 from refact.chat_client import Message, FunctionDict, ask_using_http, tools_fetch_and_filter
-from refact.cli_printing import wrap_tokens, get_terminal_width, print_file, print_lines, highlight_text_by_language, set_background_color, print_file_name
+from refact.cli_printing import wrap_tokens, get_terminal_width, print_lines, highlight_text_by_language, set_background_color, print_file_name
 from refact import cli_printing
 from refact.cli_markdown import to_markdown
 from refact.cli_inspect import create_label
@@ -84,20 +84,12 @@ def print_response(to_print: str):
     update_entertainment_box()
 
 
-def print_context_file(json_str: str):
-    file = json.loads(json_str)[0]
-    content = file["file_content"]
-    file_name = file["file_name"]
-
-    print_response("\n")
-    flush_response()
-    print_file(content, file_name)
-
-
 def process_streaming_data(data):
     global streaming_messages
     global streaming_toolcall
     global tool_calls
+    term_width = get_terminal_width()
+
     if "choices" in data:
         choices = data['choices']
         delta = choices[0]['delta']
@@ -138,7 +130,19 @@ def process_streaming_data(data):
         content = data["content"]
         streaming_messages.append(Message(role=role, content=content))
         if role in ["context_file"]:
-            print_context_file(content)
+            context_file = json.loads(content)
+            for fdict in context_file:
+                content = fdict["file_content"]
+                file_name = fdict["file_name"]
+                line1, line2 = fdict["line1"], fdict["line2"]
+                attach = "📎 %s:%d-%d " % (file_name, line1, line2)
+                while len(attach) < term_width - 10:
+                    attach += "·"
+                label = create_label(content)
+                # don't print content, user can use label to see it
+                print_formatted_text(f"{attach} ?{label}")
+            print_response("\n")
+            flush_response()
             return
         if role in ["plain_text", "cd_instruction"]:
             print_response(content.strip())
@@ -147,7 +151,6 @@ def process_streaming_data(data):
         tool_call_id = data["tool_call_id"]
         print_response("\n")
         flush_response()
-        label = create_label(content)
         tool_callout = ""
         if tool_call_id in tool_calls:
             tool_call = tool_calls.pop(tool_call_id)
@@ -156,9 +159,9 @@ def process_streaming_data(data):
             # don't print content, user can use label to see it
         else:
             tool_callout = f"🔨 Unknown tool call {repr(tool_call_id)} "
-        term_width = get_terminal_width()
         while len(tool_callout) < term_width - 10:
             tool_callout += "·"
+        label = create_label(content)
         print_formatted_text(f"{tool_callout} ?{label}")
 
     elif "subchat_id" in data:
@@ -190,9 +193,9 @@ async def the_chatting_loop(model, max_auto_resubmit):
     global streaming_messages
     global _is_streaming
 
-    roles_str = " ".join([f"{msg.role}/{len(msg.content)}" for msg in streaming_messages]) + " -> model"
+    roles_str = " ".join(["%s/%d" % (msg.role, len(msg.content or "")) for msg in streaming_messages]) + " -> model"
     cli_printing.print_formatted_text(FormattedText([
-        (f"fg:#808080", f"\n➤ {roles_str}"),
+        ("fg:#808080", "\n➤ %s" % roles_str),
     ]))
 
     # print_response("\n%d messages -> model" % len(streaming_messages))
