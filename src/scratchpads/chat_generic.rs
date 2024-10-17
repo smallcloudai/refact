@@ -122,10 +122,9 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         }
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
-        let mut prompt = "".to_string();
+        let mut prompt = self.token_bos.to_string();
         let mut last_role = "assistant".to_string();
         for msg in limited_msgs {
-            prompt.push_str(self.token_esc.as_str());
             if msg.role == "system" {
                 prompt.push_str(self.keyword_syst.as_str());
                 prompt.push_str(msg.content.as_str());
@@ -151,6 +150,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
                 return Err(format!("role \"{}\"not recognized", msg.role));
             }
             last_role = msg.role.clone();
+            prompt.push_str(self.token_esc.as_str());
         }
         prompt.push_str(self.token_esc.as_str());
         if last_role == "assistant" || last_role == "system" {
