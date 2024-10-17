@@ -161,6 +161,7 @@ async fn vectorize_batch_from_q(
 async fn from_splits_to_vecdb_records_applying_cache(
     splits: &mut Vec<SplitResult>,
     ready_to_vecdb: &mut Vec<VecdbRecord>,
+    run_actual_model_on_these: &mut Vec<SplitResult>,
     vecdb_cache_arc: Arc<AMutex<VecDBCache>>,
     group_size: usize,
 ) {
@@ -169,10 +170,12 @@ async fn from_splits_to_vecdb_records_applying_cache(
             .drain(..group_size.min(splits.len()))
             .collect::<Vec<_>>();
         // let t0 = std::time::Instant::now();
-        if let Ok(vectors) = vecdb_cache_arc.lock().await.fetch_vectors_from_cache(&batch).await {
-            // info!("query cache {} records {:.3}s", batch.len(), t0.elapsed().as_secs_f32());
+        let vectors_maybe = vecdb_cache_arc.lock().await.fetch_vectors_from_cache(&batch).await;
+        if let Ok(vectors) = vectors_maybe {
+            // info!("query cache {} -> {} records {:.3}s", batch.len(), vectors.len(), t0.elapsed().as_secs_f32());
             for (split, maybe_vector) in batch.iter().zip(vectors.iter()) {
                 if maybe_vector.is_none() {
+                    run_actual_model_on_these.push(split.clone());
                     continue;
                 }
                 ready_to_vecdb.push(VecdbRecord {
@@ -184,7 +187,7 @@ async fn from_splits_to_vecdb_records_applying_cache(
                     usefulness: 0.0,
                 });
             }
-        } else if let Err(err) = vecdb_cache_arc.lock().await.fetch_vectors_from_cache(&batch).await {
+        } else if let Err(err) = vectors_maybe {
             tracing::error!("{}", err);
         }
     }
@@ -358,6 +361,7 @@ async fn vectorize_thread(
         from_splits_to_vecdb_records_applying_cache(
             &mut splits,
             &mut ready_to_vecdb,
+            &mut run_actual_model_on_these,
             vecdb_cache_arc.clone(),
             1024,
         ).await;

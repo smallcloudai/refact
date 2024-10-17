@@ -413,7 +413,7 @@ pub async fn enqueue_all_files_from_workspace_folders(
         documents.push(Document { doc_path: d.clone(), doc_text: None });
     }
 
-    let (vec_db_module, ast_service, removed_old) = {
+    let (vec_db_module, ast_service, previous_list) = {
         let cx = gcx.write().await;
         *cx.documents_state.cache_dirty.lock().await = true;
         let mut workspace_files = cx.documents_state.workspace_files.lock().unwrap();
@@ -422,21 +422,15 @@ pub async fn enqueue_all_files_from_workspace_folders(
         workspace_files.extend(paths);
         (cx.vec_db.clone(), cx.ast_service.clone(), old_workspace_files)
     };
-    info!("detected {} deleted files", removed_old.len());
-    for p in removed_old.iter().take(5) {
-        info!("    deleted {}", crate::nicer_logs::last_n_chars(&p.display().to_string(), 30));
-    }
-    if removed_old.len() > 5 {
-        info!("    ...");
-    }
 
     if let Some(ref mut db) = *vec_db_module.lock().await {
+        // TODO: enqueue both lists, ones that don't open should be removed from vecdb
         db.vectorizer_enqueue_files(&documents, force).await;
     }
     if let Some(ast) = ast_service {
         if !vecdb_only {
             let cpaths1: Vec<String> = documents.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
-            let cpaths2: Vec<String> = removed_old.iter().map(|p| p.to_string_lossy().to_string()).collect();
+            let cpaths2: Vec<String> = previous_list.iter().map(|p| p.to_string_lossy().to_string()).collect();
             ast_indexer_enqueue_files(ast.clone(), cpaths1, force).await;
             ast_indexer_enqueue_files(ast.clone(), cpaths2, force).await;
         }
