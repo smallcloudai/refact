@@ -63,7 +63,7 @@ vecdb_max_files: 5000
 """
 
 
-class CmdlineSettings:
+class CmdlineArgs:
     def __init__(self, caps: Caps, args):
         self.caps = caps
         self.model = args.model or caps.code_chat_default_model
@@ -74,7 +74,7 @@ class CmdlineSettings:
         return self.caps.code_chat_models[self.model].n_ctx
 
 
-args: Optional[CmdlineSettings] = None
+args: Optional[CmdlineArgs] = None
 cli_yaml: Optional[SettingsCLI] = None
 
 

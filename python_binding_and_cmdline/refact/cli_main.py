@@ -5,6 +5,7 @@ import argparse
 import requests
 import random
 import termcolor
+import json
 from typing import Any, Optional
 
 from prompt_toolkit import PromptSession, Application, print_formatted_text
@@ -17,10 +18,10 @@ from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.widgets import TextArea
 
-from refact.chat_client import Message
 from refact.cli_inspect import inspect_app, open_label
 from refact.cli_streaming import the_chatting_loop, print_response, get_entertainment_box
 from refact.cli_streaming import stop_streaming, is_not_streaming_condition, start_streaming
+from refact import chat_client
 from refact import cli_streaming
 from refact import cli_printing
 from refact import cli_export
@@ -34,7 +35,7 @@ app: Optional[Application] = None
 
 
 async def answer_question_in_arguments(settings, arg_question):
-    cli_streaming.add_streaming_message(Message(role="user", content=arg_question))
+    cli_streaming.add_streaming_message(chat_client.Message(role="user", content=arg_question))
     await the_chatting_loop(settings.model, max_auto_resubmit=4)
 
 
@@ -45,7 +46,7 @@ Refact Agent is essentially its tools, ask: "what tools do you have?"
 '''.strip().split('\n')
 
 
-async def welcome_message(settings: cli_settings.CmdlineSettings, tip: str):
+async def welcome_message(settings: cli_settings.CmdlineArgs, tip: str):
     text = f"""
 ~/.cache/refact/cli.yaml                -- set up this program
 ~/.cache/refact/bring-your-own-key.yaml -- set up models you want to use
@@ -149,7 +150,7 @@ def on_submit(buffer):
     start_streaming()
 
     # print_response("\nwait\n")
-    cli_streaming.add_streaming_message(Message(role="user", content=user_input))
+    cli_streaming.add_streaming_message(chat_client.Message(role="user", content=user_input))
 
     async def asyncfunc():
         await the_chatting_loop(cli_settings.args.model, max_auto_resubmit=(1 if cli_settings.args.always_pause else 4))
@@ -191,8 +192,9 @@ async def chat_main():
     parser.add_argument('--experimental', type=bool, default=False, help="Enable experimental features, such as new integrations")
     parser.add_argument('--xdebug', type=int, default=0, help="Connect to refact-lsp on the given port, as opposed to starting a new refact-lsp process")
     parser.add_argument('--always-pause', type=bool, default=False, help="Pause even if the model tries to run tools, normally that's submitteed automatically")
+    parser.add_argument('--start-with', type=str, default=False, help="Start with messages in a .json file, the format is [msg, msg, ...]")
     parser.add_argument('question', nargs=argparse.REMAINDER, help="You can continue your question in the command line after --")
-    args = parser.parse_args(before_minus_minus)
+    args_parsed = parser.parse_args(before_minus_minus)
     arg_question = " ".join(after_minus_minus)
 
     history_fn = os.path.expanduser("~/.cache/refact/cli_history")
@@ -248,9 +250,9 @@ async def chat_main():
         refact_args.append("--vecdb")
         refact_args.append("--vecdb-max-files")
         refact_args.append(str(cli_settings.cli_yaml.vecdb_max_files))
-    if args.path_to_project:
+    if args_parsed.path_to_project:
         refact_args.append("--workspace-folder")
-        refact_args.append(args.path_to_project)
+        refact_args.append(args_parsed.path_to_project)
     lsp_runner = LSPServerRunner(
         refact_args,
         wait_for_ast_vecdb=False,
@@ -258,10 +260,17 @@ async def chat_main():
         verbose=False
     )
 
-    lsp_runner.set_xdebug(args.xdebug)
+    if args_parsed.start_with:
+        with open(args_parsed.start_with, "r") as f:
+            startwith = json.loads(f.read())
+        for msg_j in startwith:
+            cli_streaming.process_streaming_data(msg_j)
+            # cli_streaming.streaming_messages.append(chat_client.Message.model_validate(msg_j))
+
+    lsp_runner.set_xdebug(args_parsed.xdebug)
     async with lsp_runner:
         caps = await cli_settings.fetch_caps(lsp_runner.base_url())
-        cli_settings.args = cli_settings.CmdlineSettings(caps, args)
+        cli_settings.args = cli_settings.CmdlineArgs(caps, args_parsed)
 
         if cli_settings.args.model not in caps.code_chat_models:
             known_models = list(caps.code_chat_models.keys())
