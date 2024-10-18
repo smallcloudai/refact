@@ -38,7 +38,7 @@ pub struct PdbSession {
     last_usage_ts: u64,
 }
 
-impl IntegrationSession for PdbSession 
+impl IntegrationSession for PdbSession
 {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
@@ -73,7 +73,7 @@ impl Tool for ToolPdb {
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let command = parse_command(args)?;
         let mut command_args = split_command(&command)?;
-        
+
         let (gcx, chat_id) = {
             let ccx_lock = ccx.lock().await;
             (ccx_lock.global_context.clone(), ccx_lock.chat_id.clone())
@@ -96,7 +96,7 @@ impl Tool for ToolPdb {
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
                 ..Default::default()
-            })    
+            })
         ]))
     }
 
@@ -127,13 +127,13 @@ fn split_command(command: &str) -> Result<Vec<String>, String> {
     Ok(parsed_args)
 }
 
-async fn start_pdb_session(python_command: &String, command_args: &mut Vec<String>, session_hashmap_key: &String, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String> 
+async fn start_pdb_session(python_command: &String, command_args: &mut Vec<String>, session_hashmap_key: &String, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String>
 {
     if !(command_args.len() >= 3 && command_args[0] == "python" && command_args[1] == "-m" && command_args[2] == "pdb") {
         return Err("Usage: python -m pdb ... To use a different Python environment, set `python_path` in `integrations.yaml`.".to_string());
     }
     command_args.remove(0);
-    
+
     info!("Starting pdb session with command: {} {:?}", python_command, command_args);
     let mut process = Command::new(python_command)
         .args(command_args)
@@ -166,32 +166,32 @@ async fn start_pdb_session(python_command: &String, command_args: &mut Vec<Strin
         &mut pdb_session, "where", session_hashmap_key, gcx.clone()).await?;
     let (output_locals, error_locals) = send_command_and_get_output_and_error(
         &mut pdb_session, "p {k: v for k, v in locals().items() if not k.startswith('__')}", session_hashmap_key, gcx.clone()).await?;
-    
+
     pdb_session.last_usage_ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
     let command_session: Box<dyn IntegrationSession> = Box::new(pdb_session);
     {
         let mut gcx_locked = gcx.write().await;
         gcx_locked.integration_sessions.insert(
-            session_hashmap_key.clone(), Arc::new(AMutex::new(command_session)) 
+            session_hashmap_key.clone(), Arc::new(AMutex::new(command_session))
         );
     }
 
-    Ok(format_all_output(&output, &error, &output_list, &error_list, 
+    Ok(format_all_output(&output, &error, &output_list, &error_list,
         &output_where, &error_where, &output_locals, &error_locals))
 }
 
 async fn interact_with_pdb(
-    input_command: &String, 
-    session_hashmap_key: &String, 
+    input_command: &String,
+    session_hashmap_key: &String,
     gcx: Arc<ARwLock<GlobalContext>>
 ) -> Result<String, String> {
     let command_session = {
         let gcx_locked = gcx.read().await;
         gcx_locked.integration_sessions.get(session_hashmap_key)
-            .ok_or("There is no active pdb session in this chat, perhaps a new one should be opened.")?
+            .ok_or("There is no active pdb session in this chat, you can open it by running pdb(\"python -m pdb my_script.py\")")?
             .clone()
     };
-    
+
     let mut command_session_locked = command_session.lock().await;
     let mut pdb_session = command_session_locked.as_any_mut().downcast_mut::<PdbSession>()
         .ok_or("Failed to downcast to PdbSession")?;
@@ -209,8 +209,8 @@ async fn interact_with_pdb(
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_secs();
-    
-    Ok(format_all_output(&output_main_command, &error_main_command, &output_list, &error_list, 
+
+    Ok(format_all_output(&output_main_command, &error_main_command, &output_list, &error_list,
         &output_where, &error_where, &output_locals, &error_locals))
 }
 
@@ -232,7 +232,7 @@ async fn send_command_and_get_output_and_error(pdb_session: &mut PdbSession, inp
 fn format_all_output(output_main_command: &str, error_main_command: &str, output_list: &str, error_list: &str, output_where: &str, error_where: &str, output_locals: &str, error_locals: &str) -> String
 {
     format!(
-        "Command output:\n{}\n{}Extra context:\nCurrent code section:\n{}{}Stack trace:\n{}{}Local variables:\n{}{}",
+        "Command output:\n{}\n{}\nCurrent code section:\n{}{}\nStack trace:\n{}{}\nLocal variables:\n{}{}",
         last_n_chars(output_main_command, 5000),
         format_error("Command error", error_main_command),
         output_list.replace(PDB_TOKEN, ""),
@@ -244,7 +244,7 @@ fn format_all_output(output_main_command: &str, error_main_command: &str, output
     )
 }
 
-fn format_error(error_title: &str, error: &str) -> String 
+fn format_error(error_title: &str, error: &str) -> String
 {
     if !error.is_empty() {
         format!("{}:\n{}\n", error_title, error)
