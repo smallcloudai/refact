@@ -36,7 +36,8 @@ search("log message 1 mentioned")   -- when the task has log messages, for each 
 search("    def f():\n        print(\"the example function!\")")   -- look for the code piece mentioned in the task
 search("imaginary_call(imaginary_arguments)\nmore_calls()\n")      -- you can imagine what kind of code you need to find
 
-Call any of those that make sense in parallel.
+Call any of those that make sense in parallel. Make at least two calls in parallel, pay special attention that at least one
+search() call should not have a restrictive scope, because you are running the risk of getting no results at all.
 "###;
 
 
@@ -187,6 +188,7 @@ async fn find_relevant_files_with_search(
     let mut msgs = vec![];
     msgs.push(ChatMessage::new("system".to_string(), LS_SYSTEM_PROMPT.to_string()));
     msgs.push(ChatMessage::new("user".to_string(), user_query.to_string()));
+    msgs.push(ChatMessage::new("cd_instruction".to_string(), "Look at user query above. Follow the system prompt. Run several search() calls in parallel.".to_string()));
 
     let result = subchat(
         ccx.clone(),
@@ -214,7 +216,7 @@ async fn find_relevant_files_with_search(
     })?;
     let rejection = assistant_output1.get("rejection");
     if let Some(_rejection_message) = rejection {
-        let cd_instruction = format!(r###"💿 locate() inspected {} files, workspace has {} files.
+        let cd_instruction = format!(r###"💿 locate() looked inside of {} files, workspace has {} files.
 Complain briefly to the user that you cannot do that, ask for clarification.
 Answer in the language the user prefers. Follow the system prompt.
 "###, inspected_files.len(), total_files_in_project);
@@ -231,14 +233,10 @@ Answer in the language the user prefers. Follow the system prompt.
 
     let cd_instruction = format!(r###"💿 locate() inspected {} files, workspace has {} files. Files relevant to the task were attached above.
 Don't call cat() for the same files, you already have them.
-Proceed to make changes using 📍-notation, if the user has requested the changes. Change two files at most. If you see more files you need to change,
+You can proceed to make changes using 📍-notation, if the user has requested the changes, change two files at most. If you see more files you need to change,
 list the files you know, maybe try to come up with a generalized way to find such files, for example references("the_function_that_changed"), write about it
-and stop.
-
-If you need to summarize the code, do it briefly, without extensive quotations.
-
-Answer in the language the user prefers. Follow the system prompt.
-"###, inspected_files.len(), total_files_in_project);
+and stop. If you need to summarize the code, do it briefly, without extensive quotations. Answer in the language the user prefers. Follow the system prompt.
+"###, inspected_files.len(), total_files_in_project).replace("\n", " ");
 
     // if !inspected_files.is_empty() {
     //     tool_message = format!("{}\n\nInspected context files:\n{}",
