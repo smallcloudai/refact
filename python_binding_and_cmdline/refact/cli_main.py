@@ -55,7 +55,10 @@ async def welcome_message(settings: cli_settings.CmdlineArgs, tip: str):
 Project: {settings.project_path}
 To exit, type 'exit' or Ctrl+D. {tip}.
 """
-    print(termcolor.colored(text.strip(), "white", None, ["dark"]))
+    cli_printing.print_formatted_text(FormattedText([
+        (f"fg:#707070", text.strip()),
+    ]))
+
 
 kb = KeyBindings()
 
@@ -120,10 +123,23 @@ def on_submit(buffer):
         if args[0] == "/export":
             loop = asyncio.get_event_loop()
             loop.create_task(cli_export.think_of_good_filename_and_export(cli_streaming.streaming_messages))
+            return
+        elif args[0] == "/hint":
+            if cli_streaming.streaming_messages[-1].role != "assistant":
+                print_formatted_text(f"\nthe last message is not role=\"assistant\", you can't use /hint here")
+                return
+            cli_streaming.streaming_messages.pop()
+            if cli_streaming.streaming_messages[-1].role == "cd_instruction":
+                cli_streaming.streaming_messages.pop()
+            cli_streaming.streaming_messages.append(chat_client.Message(
+                role="cd_instruction",
+                content=("💿 Hint: %s" % " ".join(args[1:])),
+            ))
+            user_input = ""
         else:
             print_formatted_text(f"\nchat> {user_input}")
             print_formatted_text(f"\nunknown command %s" % args[0])
-        return
+            return
 
     elif user_input == "" and len(cli_streaming.streaming_messages) > 0:
         last_message = cli_streaming.streaming_messages[-1]
@@ -133,6 +149,7 @@ def on_submit(buffer):
             return
 
     elif user_input.strip() == "":
+        print_formatted_text("\n")
         return
 
     elif user_input.startswith("?"):
@@ -146,11 +163,11 @@ def on_submit(buffer):
 
     if user_input.strip() != "":
         print_response(f"\nchat> {user_input}\n")
+        cli_streaming.add_streaming_message(chat_client.Message(role="user", content=user_input))
 
     start_streaming()
 
     # print_response("\nwait\n")
-    cli_streaming.add_streaming_message(chat_client.Message(role="user", content=user_input))
 
     async def asyncfunc():
         await the_chatting_loop(cli_settings.args.model, max_auto_resubmit=(1 if cli_settings.args.always_pause else 4))
@@ -163,10 +180,10 @@ def on_submit(buffer):
             for tool_call in last_message.tool_calls:
                 function = tool_call.function
                 cli_printing.print_formatted_text(FormattedText([
-                    (f"fg:#808080", f"🔨PAUSED {function.name}({function.arguments})\n")
+                    (f"fg:#707070", f"🔨PAUSED {function.name}({function.arguments})\n")
                 ]))
             cli_printing.print_formatted_text(FormattedText([
-                (f"fg:#808080", f"tool calls paused because of max_auto_resubmit, press Enter to submit"),
+                (f"fg:#707070", f"tool calls paused because of max_auto_resubmit, press Enter to submit"),
             ]))
 
     loop = asyncio.get_event_loop()
@@ -191,7 +208,7 @@ async def chat_main():
     parser.add_argument('--model', type=str, help="Specify the model to use")
     parser.add_argument('--experimental', type=bool, default=False, help="Enable experimental features, such as new integrations")
     parser.add_argument('--xdebug', type=int, default=0, help="Connect to refact-lsp on the given port, as opposed to starting a new refact-lsp process")
-    parser.add_argument('--always-pause', type=bool, default=False, help="Pause even if the model tries to run tools, normally that's submitteed automatically")
+    parser.add_argument('--always-pause', action='store_true', help="Pause even if the model tries to run tools, normally that's submitted automatically")
     parser.add_argument('--start-with', type=str, default=False, help="Start with messages in a .json file, the format is [msg, msg, ...]")
     parser.add_argument('question', nargs=argparse.REMAINDER, help="You can continue your question in the command line after --")
     args_parsed = parser.parse_args(before_minus_minus)
@@ -265,7 +282,10 @@ async def chat_main():
             startwith = json.loads(f.read())
         for msg_j in startwith:
             cli_streaming.process_streaming_data(msg_j)
-            # cli_streaming.streaming_messages.append(chat_client.Message.model_validate(msg_j))
+        cli_streaming.flush_response()
+        cli_printing.print_formatted_text(FormattedText([
+            (f"fg:#808080", "\n\n -- process started with %d messages --\n" % len(cli_streaming.streaming_messages)),
+        ]))
 
     lsp_runner.set_xdebug(args_parsed.xdebug)
     async with lsp_runner:
