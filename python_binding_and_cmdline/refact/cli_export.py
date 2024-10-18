@@ -12,7 +12,7 @@ Print name for a new file that will contain the current chat. Requirements for t
 2. Use double __ between the following sections
 3. It should start with name of the project (1-3 words)
 4. Continue with initial goal (2-6 words)
-5. Finish with success/fail/progress depending on how you see chat ended
+5. Finish with success/fail/progress depending on how you see the chat ended
 6. Add .json extension
 
 Example:
