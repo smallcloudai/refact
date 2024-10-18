@@ -212,6 +212,7 @@ pub struct DiffChunk {
     pub file_name_rename: Option<String>,
     #[serde(default = "default_true", skip_serializing)]
     pub is_file: bool,
+    pub application_details: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
