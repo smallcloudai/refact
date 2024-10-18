@@ -29,35 +29,24 @@ PROMPT_PINS: |
   📍OTHER <ticket>                                             -- command line, pseudo code, examples, answers to questions unrelated to the project
 
   Examples:
-  📍PARTIAL_EDIT 000 /home/user/code/my_project/my_file.py
+  📍PARTIAL_EDIT 000 c:/Users/UserName/code/my_project/my_file.py
   ```python
   [some portion of the original code]
   def f(): pass
   [some portion of the original code]
   ```
 
-  📍PARTIAL_EDIT 001 c:/Users/UserName/code/my_project/my_file.py
-  ```python
-  [some portion of the original code]
-  def g(): pass
-  ```
-
-  📍OTHER 002
+  📍OTHER 001
   ```bash
   python my_file.py
   ```
 
-  📍REWRITE_ONE_SYMBOL 003 /home/user/code/my_project/my_other_file.py SYMBOL_NAME g
+  📍REWRITE_ONE_SYMBOL 002 /home/user/code/my_project/my_other_file.py SYMBOL_NAME g
   ```python
   def g(): pass
   ```
 
-  📍REWRITE_ONE_SYMBOL 004 c:/Users/UserName/code/my_project/my_other_file.py SYMBOL_NAME my_method
-  ```python
-  def my_method(): pass
-  ```
-
-  📍REWRITE_ONE_SYMBOL 005 /home/user/code/my_project/my_other_file.py SYMBOL_NAME Test
+  📍REWRITE_ONE_SYMBOL 003 c:/Users/UserName/some_project/my_other_file.py SYMBOL_NAME Test
   ```python
   class Test():
       # to be implemented
