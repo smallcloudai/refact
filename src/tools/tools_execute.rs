@@ -289,7 +289,7 @@ async fn pp_run_tools(
             } else {
                 generated_other.push(ChatMessage::new(
                     "cd_instruction".to_string(),
-                    "💿 Whoops, you are running in circles. You already have those files. Answer the question with what you have. Answer in the language the user prefers. Follow the system prompt.".to_string(),
+                    "💿 Whoops, you are running in circles. You already have those files. Try something other than exploring files. Follow the user request and the system prompt.".to_string(),
                 ));
             }
         }

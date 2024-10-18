@@ -232,11 +232,12 @@ Answer in the language the user prefers. Follow the system prompt.
     results.extend(processed_results);
 
     let cd_instruction = format!(r###"💿 locate() looked inside of {} files, workspace has {} files. Files relevant to the task were attached above.
-Don't call cat() for the same files, you already have them.
-You can proceed to make changes using 📍-notation, if the user has requested the changes, change two files at most. If you see more files you need to change,
-list the files you know, maybe try to come up with a generalized way to find such files, for example references("the_function_that_changed"), write about it
-and stop. If you need to summarize the code, do it briefly, without extensive quotations. Answer in the language the user prefers. Follow the system prompt.
+Don't call cat() for the same files, you already have them. Follow your task and the system prompt.
 "###, inspected_files.len(), total_files_in_project).replace("\n", " ");
+
+// You can proceed to make changes using 📍-notation, if the user has requested the changes, change two files at most. If you see more files you need to change,
+// list the files you know, maybe try to come up with a generalized way to find such files, for example references("the_function_that_changed"), write about it
+// and stop. If you need to summarize the code, do it briefly, without extensive quotations. Answer in the language the user prefers. Follow the system prompt.
 
     // if !inspected_files.is_empty() {
     //     tool_message = format!("{}\n\nInspected context files:\n{}",
