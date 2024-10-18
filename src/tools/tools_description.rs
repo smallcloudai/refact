@@ -283,6 +283,9 @@ tools:
       - name: "url"
         type: "string"
         description: "URL of the web page to make screenshot."
+      - name: "html"
+        type: "boolean"
+        description: "In addition to the screenshot, return inner HTML of the page."
     parameters_required:
       - "url"
 "####;
