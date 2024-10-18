@@ -3,7 +3,7 @@ use std::sync::RwLock as StdRwLock;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokenizers::Tokenizer;
 
-pub mod fill_in_the_middle;
+pub mod code_completion_fim;
 pub mod chat_generic;
 pub mod chat_llama2;
 pub mod chat_passthrough;
@@ -11,7 +11,7 @@ pub mod chat_utils_deltadelta;
 pub mod chat_utils_limit_history;
 pub mod chat_utils_prompts;
 pub mod scratchpad_utils;
-pub mod chat_completion;
+pub mod code_completion_replace;
 
 use crate::ast::ast_indexer_thread::AstIndexService;
 use crate::call_validation::CodeCompletionPost;
@@ -41,11 +41,11 @@ pub async fn create_code_completion_scratchpad(
     let mut result: Box<dyn ScratchpadAbstract>;
     let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
     if scratchpad_name == "FIM-PSM" {
-        result = Box::new(fill_in_the_middle::FillInTheMiddleScratchpad::new(tokenizer_arc, &post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
+        result = Box::new(code_completion_fim::FillInTheMiddleScratchpad::new(tokenizer_arc, &post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
     } else if scratchpad_name == "FIM-SPM" {
-        result = Box::new(fill_in_the_middle::FillInTheMiddleScratchpad::new(tokenizer_arc, &post, "SPM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
-    }  else if scratchpad_name == "CHAT" {
-        result = Box::new(chat_completion::ChatCompletionScratchpad::new(tokenizer_arc, &post, cache_arc, tele_storage, ast_module, global_context.clone()));
+        result = Box::new(code_completion_fim::FillInTheMiddleScratchpad::new(tokenizer_arc, &post, "SPM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()));
+    }  else if scratchpad_name == "REPLACE" {
+        result = Box::new(code_completion_replace::CodeCompletionReplaceScratchpad::new(tokenizer_arc, &post, cache_arc, tele_storage, ast_module, global_context.clone()));
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }

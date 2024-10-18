@@ -99,7 +99,7 @@ pub const KNOWN_MODELS: &str = r####"
         "llama3/8b/instruct": {
             "n_ctx": 8192,
             "supports_scratchpads": {
-                "CHAT": {
+                "REPLACE": {
                     "token_bos": "<|begin_of_text|>",
                     "token_esc": "<|eot_id|>",
                     "keyword_system": "<|start_header_id|>system<|end_header_id|>\n\n",
@@ -108,7 +108,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "eot": "<|eot_id|>"
                 }
             },
-            "default_scratchpad": "CHAT",
+            "default_scratchpad": "REPLACE",
             "similar_models": [
                 "llama3/8b/instruct/vllm",
                 "llama3/8b/instruct/neuron",

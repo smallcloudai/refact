@@ -34,7 +34,7 @@ pub struct SubBlock {
     cut_part: Option<String>
 }
 
-pub struct ChatCompletionScratchpad {
+pub struct CodeCompletionReplaceScratchpad {
     pub t: HasTokenizerAndEot,
     pub post: CodeCompletionPost,
     
@@ -239,7 +239,7 @@ fn prepare_subblock(
 }
 
 
-impl ChatCompletionScratchpad {
+impl CodeCompletionReplaceScratchpad {
     pub fn new(
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: &CodeCompletionPost,
@@ -250,7 +250,7 @@ impl ChatCompletionScratchpad {
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
         let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
-        ChatCompletionScratchpad {
+        CodeCompletionReplaceScratchpad {
             t: HasTokenizerAndEot::new(tokenizer),
             post: post.clone(),
             token_bos: "".to_string(),
@@ -280,7 +280,7 @@ impl ChatCompletionScratchpad {
 }
 
 #[async_trait]
-impl ScratchpadAbstract for ChatCompletionScratchpad {
+impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
