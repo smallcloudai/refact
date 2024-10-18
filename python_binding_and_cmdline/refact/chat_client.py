@@ -255,8 +255,9 @@ async def ask_using_http(
                     # print(">>>", line_str)
                     if callback is not None:
                         callback(j)
-                    if "choices" in j and j["choices"]:
-                        choice_collector.add_deltas(j["choices"])
+                    if "choices" in j:
+                        if j["choices"]:
+                            choice_collector.add_deltas(j["choices"])
                     elif "role" in j:
                         deterministic.append(Message(**j))
                     elif "subchat_id" in j:
