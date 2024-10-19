@@ -12,7 +12,7 @@ use tokenizers::Tokenizer;
 
 use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::get_embedding_with_retry;
-use crate::files_in_workspace::Document;
+use crate::files_in_workspace::{Document, is_path_to_enqueue_valid};
 use crate::global_context::GlobalContext;
 use crate::knowledge::{MemoriesDatabase, vectorize_dirty_memories};
 use crate::vecdb::vdb_lance::VecDBHandler;
@@ -481,12 +481,37 @@ pub async fn vectorizer_enqueue_dirty_memory(
     vstatus_notify.notify_waiters();
 }
 
+fn filter_docs_to_enqueue(docs: &Vec<Document>) -> Vec<Document> {
+    let mut rejected_reasons = HashMap::new();
+    let mut filtered_docs = vec![];
+
+    for d in docs {
+        let path = d.doc_path.clone();
+        match is_path_to_enqueue_valid(&path) {
+            Ok(_) => {
+                filtered_docs.push(d.clone());
+            }
+            Err(e) => {
+                rejected_reasons.entry(e.to_string()).and_modify(|x| *x += 1).or_insert(1);
+            }
+        }
+    }
+    if !rejected_reasons.is_empty() {
+        info!("VecDB rejected docs to enqueue reasons:");
+        for (reason, count) in &rejected_reasons {
+            info!("    {:>6} {}", count, reason);
+        }
+    }
+    filtered_docs
+}
+
 pub async fn vectorizer_enqueue_files(
     vservice: Arc<AMutex<FileVectorizerService>>,
     documents: &Vec<Document>,
     process_immediately: bool
 ) {
     info!("adding {} files", documents.len());
+    let documents = filter_docs_to_enqueue(documents);
     let (delayed_q, immediate_q, vstatus, vstatus_notify, vecdb_max_files) = {
         let service = vservice.lock().await;
         (

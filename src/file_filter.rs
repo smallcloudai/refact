@@ -6,7 +6,7 @@ use std::path::PathBuf;
 const LARGE_FILE_SIZE_THRESHOLD: u64 = 180*1024; // 180k files (180k is ~0.2% of all files on our dataset)
 const SMALL_FILE_SIZE_THRESHOLD: u64 = 5;        // 5 Bytes
 
-const SOURCE_FILE_EXTENSIONS: &[&str] = &[
+pub const SOURCE_FILE_EXTENSIONS: &[&str] = &[
     "c", "cpp", "cc", "h", "hpp", "cs", "java", "py", "rb", "go", "rs", "swift",
     "php", "js", "jsx", "ts", "tsx", "lua", "pl", "r", "sh", "bat", "cmd", "ps1",
     "m", "kt", "kts", "groovy", "dart", "fs", "fsx", "fsi", "html", "htm", "css",
@@ -34,14 +34,6 @@ pub fn is_valid_file(path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
             .unwrap_or(false)
     }) {
         return Err("Parent dir stars with a dot".into());
-    }
-
-    if let Some(extension) = path.extension() {
-        if !SOURCE_FILE_EXTENSIONS.contains(&extension.to_str().unwrap_or_default()) {
-            return Err(format!("Unsupported file extension {:?}", extension).into());
-        }
-    } else {
-        return Err("File has no extension".into());
     }
 
     if let Ok(metadata) = fs::metadata(path) {

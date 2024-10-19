@@ -14,7 +14,7 @@ use tracing::info;
 
 use crate::global_context::GlobalContext;
 use crate::telemetry;
-use crate::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS};
+use crate::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS, SOURCE_FILE_EXTENSIONS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, PrivacySettings, FilePrivacyLevel};
 
@@ -370,6 +370,14 @@ pub async fn retrieve_files_in_workspace_folders(proj_folders: Vec<PathBuf>) -> 
         all_files.extend(files);
     }
     all_files
+}
+
+pub fn is_path_to_enqueue_valid(path: &PathBuf) -> Result<(), String> {
+    let extension = path.extension().unwrap_or_default();
+    if !SOURCE_FILE_EXTENSIONS.contains(&extension.to_str().unwrap_or_default()) {
+        return Err(format!("Unsupported file extension {:?}", extension).into());
+    }
+    Ok(())
 }
 
 async fn enqueue_some_docs(
