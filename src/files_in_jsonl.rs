@@ -29,8 +29,9 @@ pub async fn enqueue_all_docs_from_jsonl(
         docs.push(Document { doc_path: d.clone(), doc_text: None });
     }
     let (vec_db_module, ast_service) = {
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
         let gcx_locked = gcx.write().await;
-        *gcx_locked.documents_state.cache_dirty.lock().await = true;
+        *gcx_locked.documents_state.cache_dirty.lock().await = now;
         let jsonl_files = &mut gcx_locked.documents_state.jsonl_files.lock().unwrap();
         jsonl_files.clear();
         jsonl_files.extend(paths);

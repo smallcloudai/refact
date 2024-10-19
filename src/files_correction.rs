@@ -9,10 +9,18 @@ use crate::fuzzy_search::fuzzy_search;
 
 
 pub async fn paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
-    let file_paths_from_memory = global_context.read().await.documents_state.memory_document_map.keys().map(|x|x.clone()).collect::<Vec<_>>();
-    let paths_from_workspace: Vec<PathBuf> = global_context.read().await.documents_state.workspace_files.lock().unwrap().clone();
-    let paths_from_jsonl: Vec<PathBuf> = global_context.read().await.documents_state.jsonl_files.lock().unwrap().clone();
-    let paths_from_anywhere = file_paths_from_memory.into_iter().chain(paths_from_workspace.into_iter().chain(paths_from_jsonl.into_iter()));
+    let (file_paths_from_memory, paths_from_workspace, paths_from_jsonl) = {
+        let documents_state = &global_context.read().await.documents_state;  // somehow keeps lock until out of scope
+        let file_paths_from_memory = documents_state.memory_document_map.keys().cloned().collect::<Vec<_>>();
+        let paths_from_workspace = documents_state.workspace_files.lock().unwrap().clone();
+        let paths_from_jsonl = documents_state.jsonl_files.lock().unwrap().clone();
+        (file_paths_from_memory, paths_from_workspace, paths_from_jsonl)
+    };
+
+    let paths_from_anywhere = file_paths_from_memory
+        .into_iter()
+        .chain(paths_from_workspace.into_iter().chain(paths_from_jsonl.into_iter()));
+
     paths_from_anywhere.collect::<Vec<PathBuf>>()
 }
 
@@ -84,8 +92,9 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
         )
     };
 
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
     let mut cache_dirty_ref = cache_dirty_arc.lock().await;
-    if *cache_dirty_ref {
+    if *cache_dirty_ref > 0.0 && now > *cache_dirty_ref {
         info!("rebuilding files cache...");
         // filter only get_project_dirs?
         let start_time = Instant::now();
@@ -101,7 +110,7 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
             cx.documents_state.cache_correction = cache_correction_arc.clone();
             cx.documents_state.cache_shortened = cache_shortened_arc.clone();
         }
-        *cache_dirty_ref = false;
+        *cache_dirty_ref = 0.0;
     }
 
     return (cache_correction_arc, cache_shortened_arc);
@@ -411,8 +420,8 @@ mod tests {
         assert_eq!(cnt, 100000, "The cache should contain 100000 paths");
         assert_eq!(cache_shortened_result.len(), cnt);
     }
-    
-    // cicd works with virtual machine, this test is slow 
+
+    // cicd works with virtual machine, this test is slow
     #[cfg(not(all(target_arch = "aarch64", target_os = "linux")))]
     #[cfg(not(debug_assertions))]
     #[test]

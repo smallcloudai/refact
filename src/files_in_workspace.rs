@@ -106,16 +106,16 @@ pub struct DocumentsState {
     // document_map on windows: c%3A/Users/user\Documents/file.ext
     // query on windows: C:/Users/user/Documents/file.ext
     pub memory_document_map: HashMap<PathBuf, Arc<ARwLock<Document>>>,   // if a file is open in IDE, and it's outside workspace dirs, it will be in this map and not in workspace_files
-    pub cache_dirty: Arc<AMutex<bool>>,
+    pub cache_dirty: Arc<AMutex<f64>>,
     pub cache_correction: Arc<HashMap<String, HashSet<String>>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
     pub cache_shortened: Arc<HashSet<String>>,
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
 }
 
-async fn overwrite_or_create_document(
+async fn mem_overwrite_or_create_document(
     global_context: Arc<ARwLock<GlobalContext>>,
     document: Document
-) -> (Arc<ARwLock<Document>>, Arc<AMutex<bool>>, bool) {
+) -> (Arc<ARwLock<Document>>, Arc<AMutex<f64>>, bool) {
     let mut cx = global_context.write().await;
     let doc_map = &mut cx.documents_state.memory_document_map;
     if let Some(existing_doc) = doc_map.get_mut(&document.doc_path) {
@@ -140,7 +140,7 @@ impl DocumentsState {
             active_file_path: None,
             jsonl_files: Arc::new(StdMutex::new(Vec::new())),
             memory_document_map: HashMap::new(),
-            cache_dirty: Arc::new(AMutex::<bool>::new(false)),
+            cache_dirty: Arc::new(AMutex::<f64>::new(0.0)),
             cache_correction: Arc::new(HashMap::<String, HashSet<String>>::new()),
             cache_shortened: Arc::new(HashSet::<String>::new()),
             fs_watcher: Arc::new(ARwLock::new(watcher)),
@@ -403,6 +403,24 @@ async fn enqueue_some_docs(
         let cpaths: Vec<String> = docs.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
         ast_indexer_enqueue_files(ast.clone(), cpaths, force).await;
     }
+    let (cache_correction_arc, _) = crate::files_correction::files_cache_rebuild_as_needed(gcx.clone()).await;
+    let mut moar_files: Vec<PathBuf> = Vec::new();
+    for doc in docs {
+        let doc_path_str = doc.doc_path.to_string_lossy().to_string();
+        if !cache_correction_arc.contains_key(&doc_path_str) {
+            moar_files.push(doc.doc_path.clone());
+        }
+    }
+    if moar_files.len() > 0 {
+        info!("this made file cache dirty");
+        let dirty_arc = {
+            let gcx_locked = gcx.write().await;
+            gcx_locked.documents_state.workspace_files.lock().unwrap().extend(moar_files);
+            gcx_locked.documents_state.cache_dirty.clone()
+        };
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+        *dirty_arc.lock().await = now + 1.0;  // next rebuild will be one second later, to prevent rapid-fire rebuilds from file events
+    }
 }
 
 pub async fn enqueue_all_files_from_workspace_folders(
@@ -422,8 +440,9 @@ pub async fn enqueue_all_files_from_workspace_folders(
     }
 
     let (vec_db_module, ast_service, previous_list) = {
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
         let cx = gcx.write().await;
-        *cx.documents_state.cache_dirty.lock().await = true;
+        *cx.documents_state.cache_dirty.lock().await = now;
         let mut workspace_files = cx.documents_state.workspace_files.lock().unwrap();
         let mut old_workspace_files = Vec::new();
         std::mem::swap(&mut *workspace_files, &mut old_workspace_files);
@@ -467,9 +486,10 @@ pub async fn on_did_open(
     let mut doc = Document::new(cpath);
     doc.update_text(text);
     info!("on_did_open {}", crate::nicer_logs::last_n_chars(&cpath.display().to_string(), 30));
-    let (_doc_arc, dirty_arc, mark_dirty) = overwrite_or_create_document(gcx.clone(), doc).await;
+    let (_doc_arc, dirty_arc, mark_dirty) = mem_overwrite_or_create_document(gcx.clone(), doc).await;
     if mark_dirty {
-        (*dirty_arc.lock().await) = true;
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+        *dirty_arc.lock().await = now;
     }
     gcx.write().await.documents_state.active_file_path = Some(cpath.clone());
 }
@@ -496,12 +516,13 @@ pub async fn on_did_change(
     let (doc_arc, dirty_arc, mark_dirty) = {
         let mut doc = Document::new(path);
         doc.update_text(text);
-        let (doc_arc, dirty_arc, set_mark_dirty) = overwrite_or_create_document(gcx.clone(), doc).await;
+        let (doc_arc, dirty_arc, set_mark_dirty) = mem_overwrite_or_create_document(gcx.clone(), doc).await;
         (doc_arc, dirty_arc, set_mark_dirty)
     };
 
     if mark_dirty {
-        (*dirty_arc.lock().await) = true;
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+        *dirty_arc.lock().await = now;
     }
 
     gcx.write().await.documents_state.active_file_path = Some(path.clone());
@@ -539,7 +560,8 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         (cx.vec_db.clone(), cx.ast_service.clone(), cx.documents_state.cache_dirty.clone())
     };
 
-    (*dirty_arc.lock().await) = true;
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+    (*dirty_arc.lock().await) = now;
 
     match *vec_db_module.lock().await {
         Some(ref mut db) => db.remove_file(path).await,
