@@ -143,8 +143,8 @@ impl Tool for ToolRelevantFiles {
                 results.push(ContextEnum::ContextFile(ContextFile {
                     file_name: file_path.clone(),
                     file_content: "".to_string(),
-                    line1: symbol.full_range.start_point.row + 1,
-                    line2: symbol.full_range.end_point.row + 1,
+                    line1: symbol.full_line1(),
+                    line2: symbol.full_line2(),
                     symbols: vec![symbol.path()],
                     gradient_type: -1,
                     usefulness: 100.,
@@ -347,9 +347,12 @@ async fn find_relevant_files(
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
     let (vecdb_on, total_files_in_project) = {
         let gcx_locked = gcx.read().await;
-        let vecdb = gcx_locked.vec_db.lock().await.is_some();
+        #[cfg(feature="vecdb")]
+        let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
+        #[cfg(not(feature="vecdb"))]
+        let vecdb_on = false;
         let total_files_in_project = gcx_locked.documents_state.workspace_files.lock().unwrap().len();
-        (vecdb, total_files_in_project)
+        (vecdb_on, total_files_in_project)
     };
 
     let mut usage = ChatUsage { ..Default::default() };

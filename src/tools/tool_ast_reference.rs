@@ -84,8 +84,8 @@ impl Tool for ToolAstReference {
                         "For {} defined at {}:{}-{} there are {} usages:\n{}\n{}\n",
                         def.path_drop0(),
                         short_def_file_path.get(0).unwrap_or(&def.path().to_string()),
-                        def.full_range.start_point.row + 1,
-                        def.full_range.end_point.row + 1,
+                        def.full_line1(),
+                        def.full_line2(),
                         usage_count,
                         usage_lines.join("\n"),
                         more_usages

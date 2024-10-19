@@ -79,25 +79,36 @@ async fn ast_indexer_thread(
             match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await {
                 Ok(file_text) => {
                     doc.update_text(&file_text);
-                    let start_time = std::time::Instant::now();
-
-                    match doc_add(ast_index.clone(), &cpath, &file_text, &mut stats_parsing_errors).await {
-                        Ok((defs, language)) => {
-                            let elapsed = start_time.elapsed().as_secs_f32();
-                            if elapsed > 0.1 {
-                                tracing::info!("{}/{} doc_add {:.3?}s {}", stats_parsed_cnt, (stats_parsed_cnt+left_todo_count), elapsed, crate::nicer_logs::last_n_chars(&cpath, 40));
+                    let mut error_message: Option<String> = None;
+                    match doc.does_text_look_good() {
+                        Ok(_) => {
+                            let start_time = std::time::Instant::now();
+                            match doc_add(ast_index.clone(), &cpath, &file_text, &mut stats_parsing_errors).await {
+                                Ok((defs, language)) => {
+                                    let elapsed = start_time.elapsed().as_secs_f32();
+                                    if elapsed > 0.1 {
+                                        tracing::info!("{}/{} doc_add {:.3?}s {}", stats_parsed_cnt, (stats_parsed_cnt+left_todo_count), elapsed, crate::nicer_logs::last_n_chars(&cpath, 40));
+                                    }
+                                    stats_parsed_cnt += 1;
+                                    stats_symbols_cnt += defs.len();
+                                    *stats_success_languages.entry(language).or_insert(0) += 1;
+                                }
+                                Err(reason) => {
+                                    error_message = Some(reason);
+                                }
                             }
-                            stats_parsed_cnt += 1;
-                            stats_symbols_cnt += defs.len();
-                            *stats_success_languages.entry(language).or_insert(0) += 1;
                         }
-                        Err(reason) => {
-                            *stats_failure_reasons.entry(reason).or_insert(0) += 1;
+                        Err(err) => {
+                            error_message = Some(err.to_string());
                         }
+                    }
+                    if let Some(err) = error_message {
+                        *stats_failure_reasons.entry(err).or_insert(0) += 1;
                     }
                 }
                 Err(_e) => {
                     tracing::info!("deleting from index {} because cannot read it", crate::nicer_logs::last_n_chars(&cpath, 30));
+                    *stats_failure_reasons.entry("cannot read file".to_string()).or_insert(0) += 1;
                 }
             }
 

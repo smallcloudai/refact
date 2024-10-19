@@ -135,8 +135,8 @@ impl AtCommand for AtAstDefinition {
                 result.push(ContextFile {
                     file_name: cpath.clone(),
                     file_content: "".to_string(),
-                    line1: res.full_range.start_point.row + 1,
-                    line2: res.full_range.end_point.row + 1,
+                    line1: res.full_line1(),
+                    line2: res.full_line2(),
                     symbols: vec![res.path()],
                     gradient_type: -1,
                     usefulness: 100.0,

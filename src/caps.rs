@@ -269,6 +269,7 @@ async fn get_custom_chat_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<Str
     Ok(api_key)
 }
 
+#[cfg(feature="vecdb")]
 pub async fn get_custom_embedding_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
     let caps = try_load_caps_quickly_if_not_present(
         gcx.clone(), 0,

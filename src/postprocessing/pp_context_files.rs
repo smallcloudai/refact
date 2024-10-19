@@ -64,11 +64,11 @@ fn collect_lines_from_files(
         }
         for s in file.symbols_sorted_by_path_len.iter() {
             if DEBUG >= 2 {
-                info!("    {} {:?} {}-{}", s.path(), s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
+                info!("    {} {:?} {}-{}", s.path(), s.symbol_type, s.full_line1(), s.full_line2());
             }
             if s.symbol_type == SymbolType::CommentDefinition {
                 let useful = settings.useful_symbol_default;
-                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, "comment".to_string(), useful);
+                colorize_if_more_useful(lines, s.full_line1() - 1, s.full_line2(), "comment".to_string(), useful);
             } else {
                 let mut useful = settings.useful_symbol_default;
                 if s.symbol_type == SymbolType::StructDeclaration {
@@ -77,7 +77,7 @@ fn collect_lines_from_files(
                 if s.symbol_type == SymbolType::FunctionDeclaration {
                     useful = 55.0;
                 }
-                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.path()), useful);
+                colorize_if_more_useful(lines, s.full_line1() - 1, s.full_line2(), format!("{}", s.path()), useful);
             }
         }
         colorize_if_more_useful(lines, 0, lines.len(), "empty".to_string(), settings.useful_background);
@@ -130,7 +130,7 @@ async fn convert_input_into_usefullness(
                 if DEBUG >= 1 {
                     info!("+ search result {} {:?} {:.2}", s.path(), s.symbol_type, msg.usefulness);
                 }
-                colorize_if_more_useful(lines, s.full_range.start_point.row, s.full_range.end_point.row+1, format!("{}", s.path()), msg.usefulness);
+                colorize_if_more_useful(lines, s.full_line1() - 1, s.full_line2(), format!("{}", s.path()), msg.usefulness);
                 let mut parent_path = s.official_path.clone();
                 if parent_path.len() > 1 {
                     // MyClass::f  ->  MyClass
@@ -171,21 +171,12 @@ fn downgrade_sub_symbols(lines_in_files: &mut IndexMap<String, Vec<FileLine>>, s
             info!("downgrading body of symbols in {:?}", file_ref.cpath);
         }
         for s in file_ref.symbols_sorted_by_path_len.iter() {
-            if s.definition_range.end_byte != 0 {
-                if DEBUG >= 2 {
-                    info!("    {} {:?} {}-{}", s.path(), s.symbol_type, s.full_range.start_point.row, s.full_range.end_point.row);
-                }
-                // decl  void f() {
-                // def      int x = 5;
-                // def   }
-                let (def0, def1) = (
-                    s.definition_range.start_point.row.max(s.declaration_range.end_point.row + 1),   // definition must stay clear of declaration
-                    s.definition_range.end_point.row + 1
-                );
-                if def1 > def0 {
-                    downgrade_lines_if_subsymbol(lines, def0, def1, &format!("{}::body", s.path()), settings.downgrade_body_coef);
-                    // NOTE: this will not downgrade function body of a function that is a search result, because it's not a subsymbol it's the symbol itself (equal path)
-                }
+            if DEBUG >= 2 {
+                info!("    {} {:?} {}-{}", s.path(), s.symbol_type, s.full_line1(), s.full_line2());
+            }
+            if s.body_line1 > 0 && s.body_line1 >= s.body_line2 {
+                downgrade_lines_if_subsymbol(lines, s.body_line1 - 1, s.body_line1, &format!("{}::body", s.path()), settings.downgrade_body_coef);
+                // NOTE: this will not downgrade function body of a function that is a search result, because it's not a subsymbol it's the symbol itself (equal path)
             }
         }
     }

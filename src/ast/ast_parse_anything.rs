@@ -2,12 +2,14 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use indexmap::IndexMap;
 use uuid::Uuid;
+use std::path::Path;
+use sha2::{Sha256, Digest};
+
 use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::treesitter::ast_instance_structs::{VariableUsage, VariableDefinition, AstSymbolInstance, FunctionDeclaration, StructDeclaration, FunctionCall, AstSymbolInstanceArc};
-use std::path::Path;
-use sha2::{Sha256, Digest};
+use crate::ast::parse_common::line12mid_from_ranges;
 
 
 const TOO_MANY_SYMBOLS_IN_FILE: usize = 10000;
@@ -333,11 +335,16 @@ pub fn parse_anything(
     cpath: &str,
     text: &str,
     errors: &mut AstErrorStats,
-) -> Result<(IndexMap<Uuid, AstDefinition>, String), String>
+) -> Result<(Vec<AstDefinition>, String), String>
 {
     let path = PathBuf::from(cpath);
     let (mut parser, language_id) = get_ast_parser_by_filename(&path).map_err(|err| err.message)?;
     let language = language_id.to_string();
+    if language == "python" {
+        let mut cx = crate::ast::parse_python::py_parse(text);
+        return Ok((cx.ap.export_defs(), "python".to_string()));
+    }
+    assert!(false);
     let file_global_path = vec!["file".to_string()];
 
     let symbols = parser.parse(text, &path);
@@ -396,16 +403,22 @@ pub fn parse_anything(
                     }
                 }
                 if !symbol.name().is_empty() && !skip_var_because_parent_is_function {
+                    let (line1, line2, line_mid) = line12mid_from_ranges(symbol.full_range(), symbol.definition_range());
                     let definition = AstDefinition {
                         official_path: _path_of_node(&pcx.map, Some(symbol.guid().clone())),
                         symbol_type: symbol.symbol_type().clone(),
+                        resolved_type: "".to_string(),
                         this_is_a_class,
                         this_class_derived_from,
                         usages,
                         cpath: cpath.to_string(),
-                        full_range: symbol.full_range().clone(),
-                        declaration_range: symbol.declaration_range().clone(),
-                        definition_range: symbol.definition_range().clone(),
+                        decl_line1: line1 + 1,
+                        decl_line2: line2 + 1,
+                        body_line1: line_mid + 1,
+                        body_line2: line2 + 1,
+                        // full_range: symbol.full_range().clone(),
+                        // declaration_range: symbol.declaration_range().clone(),
+                        // definition_range: symbol.definition_range().clone(),
                     };
                     pcx.definitions.insert(symbol.guid().clone(), definition);
                 } else if symbol.name().is_empty() {
@@ -474,8 +487,8 @@ pub fn parse_anything(
 
     let mut sorted_definitions: Vec<(Uuid, AstDefinition)> = pcx.definitions.into_iter().collect();
     sorted_definitions.sort_by(|a, b| a.1.official_path.cmp(&b.1.official_path));
-    let definitions = IndexMap::from_iter(sorted_definitions);
-    Ok((definitions, pcx.language))
+    let definitions: IndexMap<Uuid, AstDefinition> = IndexMap::from_iter(sorted_definitions);
+    Ok((definitions.into_values().collect(), pcx.language))
 }
 
 pub fn filesystem_path_to_double_colon_path(cpath: &str) -> Vec<String> {
@@ -517,7 +530,7 @@ pub fn parse_anything_and_add_file_path(
     cpath: &str,
     text: &str,
     errstats: &mut AstErrorStats,
-) -> Result<(IndexMap<Uuid, AstDefinition>, String), String>
+) -> Result<(Vec<AstDefinition>, String), String>
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let file_global_path_str = file_global_path.join("::");
@@ -527,7 +540,7 @@ pub fn parse_anything_and_add_file_path(
         error.err_cpath = cpath.to_string();
     }
 
-    for definition in definitions.values_mut() {
+    for definition in definitions.iter_mut() {
         definition.official_path = [
             file_global_path.clone(),
             definition.official_path.clone()
@@ -601,7 +614,7 @@ mod tests {
         let text = _read_file(absfn1.to_str().unwrap());
         let (definitions, _language) = parse_anything(absfn1.to_str().unwrap(), &text, &mut errstats).unwrap();
         let mut defs_str = String::new();
-        for d in definitions.values() {
+        for d in definitions.iter() {
             defs_str.push_str(&format!("{:?}\n", d));
         }
         println!("\n --- {:#?} ---\n{} ---\n", absfn1, defs_str.clone());

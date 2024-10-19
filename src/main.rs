@@ -30,10 +30,14 @@ mod files_in_workspace;
 mod files_in_jsonl;
 mod fuzzy_search;
 mod files_correction;
+
+#[cfg(feature="vecdb")]
 mod vecdb;
+#[cfg(feature="vecdb")]
+mod knowledge;
+
 mod ast;
 mod subchat;
-mod knowledge;
 mod at_commands;
 mod tools;
 mod diffs;
@@ -44,6 +48,7 @@ mod known_models;
 mod scratchpad_abstract;
 mod scratchpads;
 
+#[cfg(feature="vecdb")]
 mod fetch_embedding;
 mod forward_to_hf_endpoint;
 mod forward_to_openai_endpoint;
@@ -57,7 +62,6 @@ mod http;
 mod integrations;
 mod privacy;
 mod privacy_compiled_in;
-
 
 #[tokio::main]
 async fn main() {

@@ -11,7 +11,6 @@ use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextFile, ContextEnum, SubchatParameters, PostprocessSettings};
 use crate::global_context::GlobalContext;
 
-use crate::at_commands::at_search::AtSearch;
 use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_ast_definition::AtAstDefinition;
 use crate::at_commands::at_ast_reference::AtAstReference;
@@ -90,7 +89,6 @@ pub trait AtParam: Send + Sync {
 
 pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {
     let at_commands_dict = HashMap::from([
-        ("@search".to_string(), Arc::new(AMutex::new(Box::new(AtSearch::new()) as Box<dyn AtCommand + Send>))),
         ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
         // ("@file-search".to_string(), Arc::new(AMutex::new(Box::new(AtFileSearch::new()) as Box<dyn AtCommand + Send>))),
         ("@definition".to_string(), Arc::new(AMutex::new(Box::new(AtAstDefinition::new()) as Box<dyn AtCommand + Send>))),
@@ -100,12 +98,17 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         // ("@diff".to_string(), Arc::new(AMutex::new(Box::new(AtDiff::new()) as Box<dyn AtCommand + Send>))),
         // ("@diff-rev".to_string(), Arc::new(AMutex::new(Box::new(AtDiffRev::new()) as Box<dyn AtCommand + Send>))),
         ("@web".to_string(), Arc::new(AMutex::new(Box::new(AtWeb::new()) as Box<dyn AtCommand + Send>))),
+        #[cfg(feature="vecdb")]
+        ("@search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_search::AtSearch::new()) as Box<dyn AtCommand + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
-        let gcx = gcx.read().await;
-        let vecdb = gcx.vec_db.lock().await;
-        (gcx.ast_service.is_some(), vecdb.is_some())
+        let gcx_locked = gcx.read().await;
+        #[cfg(feature="vecdb")]
+        let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
+        #[cfg(not(feature="vecdb"))]
+        let vecdb_on = false;
+        (gcx_locked.ast_service.is_some(), vecdb_on)
     };
 
     let mut result = HashMap::new();

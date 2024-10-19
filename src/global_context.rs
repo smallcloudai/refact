@@ -23,7 +23,7 @@ use crate::files_in_workspace::DocumentsState;
 use crate::integrations::sessions::IntegrationSession;
 use crate::privacy::PrivacySettings;
 use crate::telemetry::telemetry_structs;
-use crate::vecdb::vdb_highlev::VecDb;
+
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CommandLine {
@@ -63,12 +63,16 @@ pub struct CommandLine {
     #[structopt(long, default_value="", help="Give it a path for AST database to make it permanent, if there is the database already, process starts without parsing all the files (careful). This quick start is helpful for automated solution search.")]
     pub ast_permanent: String,
 
+    #[cfg(feature="vecdb")]
     #[structopt(long, help="Use vector database. Give it LSP workspace folders or a jsonl, it also needs an embedding model.")]
     pub vecdb: bool,
+    #[cfg(feature="vecdb")]
     #[structopt(long, help="Delete all memories, start with empty memory.")]
     pub reset_memory: bool,
+    #[cfg(feature="vecdb")]
     #[structopt(long, default_value="15000", help="Maximum files count for VecDB index, to avoid OOM.")]
     pub vecdb_max_files: usize,
+    #[cfg(feature="vecdb")]
     #[structopt(long, default_value="", help="Set VecDB storage path manually.")]
     pub vecdb_force_path: String,
 
@@ -135,9 +139,12 @@ pub struct GlobalContext {
     pub tokenizer_download_lock: Arc<AMutex<bool>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
-    pub vec_db: Arc<AMutex<Option<VecDb>>>,
-    pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
+    #[cfg(feature="vecdb")]
+    pub vec_db: Arc<AMutex<Option<crate::vecdb::vdb_highlev::VecDb>>>,
+    #[cfg(not(feature="vecdb"))]
+    pub vec_db: bool,
     pub vec_db_error: String,
+    pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
     pub at_commands_preview_cache: Arc<AMutex<AtCommandsPreviewCache>>,
@@ -313,9 +320,12 @@ pub async fn create_global_context(
         tokenizer_download_lock: Arc::new(AMutex::<bool>::new(false)),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
+        #[cfg(feature="vecdb")]
         vec_db: Arc::new(AMutex::new(None)),
-        ast_service: None,
+        #[cfg(not(feature="vecdb"))]
+        vec_db: false,
         vec_db_error: String::new(),
+        ast_service: None,
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState::new(workspace_dirs).await,
         at_commands_preview_cache: Arc::new(AMutex::new(AtCommandsPreviewCache::new())),
