@@ -96,7 +96,7 @@ async fn vectorize_batch_from_q(
     #[allow(non_snake_case)]
     B: usize,
 ) -> Result<(), String> {
-    let batch = run_actual_model_on_these.drain(..B.min(run_actual_model_on_these.len())).collect::<Vec<_>>();
+    let batch = run_actual_model_on_these.drain(.. B.min(run_actual_model_on_these.len())).collect::<Vec<_>>();
     assert!(batch.len() > 0);
 
     let batch_result = get_embedding_with_retry(
@@ -210,7 +210,6 @@ async fn vectorize_thread(
     let mut reported_unprocessed: usize = 0;
     let mut run_actual_model_on_these: Vec<SplitResult> = vec![];
     let mut ready_to_vecdb: Vec<VecdbRecord> = vec![];
-    // let mut delayed_cached_splits_q: Vec<SplitResult> = vec![];
 
     loop {
         let (msg_to_me, files_unprocessed, vstatus_changed) = {
@@ -239,8 +238,12 @@ async fn vectorize_thread(
             vstatus_notify.notify_waiters();
         }
 
+        let flush = ready_to_vecdb.len() > 100 || files_unprocessed == 0 || msg_to_me.is_none();
         loop {
-            if run_actual_model_on_these.len() >= constants.embedding_batch || (!run_actual_model_on_these.is_empty() && files_unprocessed == 0) {
+            if
+                run_actual_model_on_these.len() > 0 && flush ||
+                run_actual_model_on_these.len() >= constants.embedding_batch
+            {
                 if let Err(err) = vectorize_batch_from_q(
                     &mut run_actual_model_on_these,
                     &mut ready_to_vecdb,
@@ -257,6 +260,12 @@ async fn vectorize_thread(
             } else {
                 break;
             }
+        }
+
+        if flush {
+            assert!(run_actual_model_on_these.len() == 0);
+            // This function assumes it can delete records with the filenames mentioned, therefore assert above
+            _send_to_vecdb(vecdb_handler_arc.clone(), &mut ready_to_vecdb).await;
         }
 
         if (files_unprocessed + 99).div(100) != (reported_unprocessed + 99).div(100) {
@@ -292,7 +301,9 @@ async fn vectorize_thread(
                     continue;
                 }
                 None => {
-                    _send_to_vecdb(vecdb_handler_arc.clone(), &mut ready_to_vecdb).await;
+                    // no more files
+                    assert!(run_actual_model_on_these.is_empty());
+                    assert!(ready_to_vecdb.is_empty());
                     let reported_vecdb_complete = {
                         let mut vstatus_locked = vstatus.lock().await;
                         let done = vstatus_locked.state == "done";
@@ -365,10 +376,6 @@ async fn vectorize_thread(
             vecdb_cache_arc.clone(),
             1024,
         ).await;
-
-        if ready_to_vecdb.len() > 100 {
-            _send_to_vecdb(vecdb_handler_arc.clone(), &mut ready_to_vecdb).await;
-        }
     }
 }
 

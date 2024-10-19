@@ -146,7 +146,7 @@ impl VecDBHandler {
             self.schema.clone(),
         );
 
-        tracing::info!("vecdb_records_add: adding {} records", records.len());
+        tracing::info!("adding {} records", records.len());
         if let Err(err) = self.data_table.add(
             data_batches_iter, Option::from(WriteParams {
                 mode: WriteMode::Append,
@@ -181,8 +181,10 @@ impl VecDBHandler {
                     tracing::error!("Error deleting from vecdb: {:?}", err);
                 }
             }
-            let cnt = self.data_table.count_deleted_rows().await.unwrap();
-            tracing::info!("deleted {} records", cnt);
+
+            // unfortunately this gives wrong numbers (37 instead of 20), lance is garbage :/
+            // let cnt = self.data_table.count_deleted_rows().await.unwrap();
+            // tracing::info!("deleted {} records", cnt);
         }
     }
 
