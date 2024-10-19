@@ -34,7 +34,7 @@ pub async fn add_to_file_diff(
     let file_text = context_file.file_content.clone();
     let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
     let file_lines = file_text.split(line_ending).collect::<Vec<&str>>();
-    let symbol_lines = file_lines[symbol.full_range.start_point.row..symbol.full_range.end_point.row].to_vec();
+    let symbol_lines = file_lines[symbol.full_line1() - 1 .. symbol.full_line2() - 1].to_vec();
     let file_lines = file_lines.into_iter().map(|s| s.to_string()).collect::<Vec<_>>();
     let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
 
@@ -52,34 +52,34 @@ pub async fn add_to_file_diff(
         let sym_before = if pos_locate_symbol == 0 { None } else { Some(same_parent_symbols[pos_locate_symbol - 1].clone()) };
         let sym_after = symbol;
         if let Some(sym_before) = sym_before {
-            file_lines[..sym_before.full_range.end_point.row + 1].iter()
+            file_lines[.. sym_before.full_line2()].iter()
                 .chain(vec!["".to_string(); spacing].iter())
                 .chain(ticket_code_lines.iter())
                 .chain(vec!["".to_string(); spacing].iter())
-                .chain(file_lines[sym_after.full_range.start_point.row..].iter())
+                .chain(file_lines[sym_after.full_line1() - 1 ..].iter())
                 .cloned().collect::<Vec<_>>()
         } else {
-            file_lines[..sym_after.full_range.start_point.row].iter()
+            file_lines[.. sym_after.full_line1() - 1].iter()
                 .chain(ticket_code_lines.iter())
                 .chain(vec!["".to_string(); spacing].iter())
-                .chain(file_lines[sym_after.full_range.start_point.row..].iter())
+                .chain(file_lines[sym_after.full_line1() - 1 ..].iter())
                 .cloned().collect::<Vec<_>>()
         }
     } else {
         let sym_before = symbol;
         let sym_after = same_parent_symbols.get(pos_locate_symbol + 1).cloned();
         if let Some(sym_after) = sym_after {
-            file_lines[..sym_before.full_range.end_point.row + 1].iter()
+            file_lines[.. sym_before.full_line2()].iter()
                 .chain(vec!["".to_string(); spacing].iter())
                 .chain(ticket_code_lines.iter())
                 .chain(vec!["".to_string(); spacing].iter())
-                .chain(file_lines[sym_after.full_range.start_point.row..].iter())
+                .chain(file_lines[sym_after.full_line1() - 1 ..].iter())
                 .cloned().collect::<Vec<_>>()
         } else {
-            file_lines[..sym_before.full_range.end_point.row + 1].iter()
+            file_lines[.. sym_before.full_line2()].iter()
                 .chain(vec!["".to_string(); spacing].iter())
                 .chain(ticket_code_lines.iter())
-                .chain(file_lines[sym_before.full_range.end_point.row + 1..].iter())
+                .chain(file_lines[sym_before.full_line2() ..].iter())
                 .cloned().collect::<Vec<_>>()
         }
     };
@@ -102,7 +102,7 @@ pub async fn rewrite_symbol_diff(
     let file_text = context_file.file_content.clone();
     let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
     let file_lines = file_text.split(line_ending).collect::<Vec<&str>>();
-    let symbol_lines = file_lines[symbol.full_range.start_point.row..symbol.full_range.end_point.row].to_vec();
+    let symbol_lines = file_lines[symbol.full_line1() - 1 .. symbol.full_line2() - 1].to_vec();
     let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
 
     let ticket_code = ticket.code.clone();
@@ -110,10 +110,10 @@ pub async fn rewrite_symbol_diff(
     let ticket_code_lines = ticket_code.split(ticket_line_ending).collect::<Vec<&str>>();
     let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
 
-    let new_code_lines = file_lines[..symbol.full_range.start_point.row].iter()
+    let new_code_lines = file_lines[.. symbol.full_line1() - 1].iter()
         .map(|s| s.to_string())
         .chain(ticket_code_lines.iter().cloned())
-        .chain(file_lines[symbol.full_range.end_point.row + 1..].iter().map(|s| s.to_string()))
+        .chain(file_lines[symbol.full_line2() ..].iter().map(|s| s.to_string()))
         .collect::<Vec<_>>();
 
     let new_code = new_code_lines.join(line_ending);

@@ -225,7 +225,7 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<T
             match process_ticket(gcx.clone(), &lines, line_num).await {
                 Ok((new_line_num, mut ticket)) => {
                     if line_num > 0 {  // if there is something to put to the extra context
-                        ticket.hint_message = lines[0..line_num - 1].iter().join(" ");
+                        ticket.hint_message = lines[0 .. line_num - 1].iter().join(" ");
                     }
                     line_num = new_line_num;
                     tickets.push(ticket);
@@ -278,7 +278,7 @@ async fn retain_non_applied_tickets(
                 let file_text = context_file.file_content.clone();
                 let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
                 let file_lines = file_text.split(line_ending).collect::<Vec<&str>>();
-                let symbol_lines = file_lines[symbol.full_range.start_point.row..symbol.full_range.end_point.row].to_vec();
+                let symbol_lines = file_lines[symbol.full_line1() - 1 .. symbol.full_line2() - 1].to_vec();
                 let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
 
                 let ticket_code = ticket.code.clone();
@@ -287,15 +287,15 @@ async fn retain_non_applied_tickets(
                 let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
 
                 let mut all_symbols = ticket.all_symbols.clone();
-                all_symbols.sort_by_key(|s| s.full_range.start_point.row);
+                all_symbols.sort_by_key(|s| s.full_line1());
                 let locate_as = ticket.locate_as.clone().expect("locate_as not found");
 
                 let search_in_code = match locate_as {
                     PatchLocateAs::BEFORE => {
-                        Some(file_lines[..symbol.full_range.start_point.row].to_vec())
+                        Some(file_lines[..symbol.full_line1() - 1].to_vec())
                     }
                     PatchLocateAs::AFTER => {
-                        Some(file_lines[symbol.full_range.end_point.row..].to_vec())
+                        Some(file_lines[symbol.full_line2() - 1 ..].to_vec())
                     }
                     _ => None
                 };
@@ -318,7 +318,7 @@ async fn retain_non_applied_tickets(
 
                 match ticket.locate_symbol.clone() {
                     Some(symbol) => {
-                        let symbol_lines = file_lines[symbol.full_range.start_point.row..symbol.full_range.end_point.row].to_vec();
+                        let symbol_lines = file_lines[symbol.full_line1() - 1 .. symbol.full_line2() - 1].to_vec();
                         let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
 
                         let ticket_code = ticket.code.clone();

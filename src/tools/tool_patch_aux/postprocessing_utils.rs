@@ -78,7 +78,7 @@ pub fn same_parent_symbols(ticket: &TicketToApply, locate_symbol: &Arc<AstDefini
     }
     let mut same_parents_syms = grouped_symbols.get(&symbol_parent_elements(locate_symbol)).cloned().unwrap_or(Vec::new());
     if same_parents_syms.len() > 1 {
-        same_parents_syms.sort_by_key(|s| s.full_range.start_point.row);
+        same_parents_syms.sort_by_key(|s| s.full_line1());
     }
     same_parents_syms
 }
@@ -89,7 +89,7 @@ pub fn most_common_spacing(same_parent_symbols: &Vec<Arc<AstDefinition>>) -> usi
             .map(|pair| {
                 // info!("pair names: {:?} AND {:?}", pair[1].official_path, pair[0].official_path);
                 // info!("diff: {}", pair[1].full_range.start_point.row as isize - pair[0].full_range.end_point.row as isize);
-                (pair[1].full_range.start_point.row as isize - pair[0].full_range.end_point.row as isize).saturating_sub(1)
+                (pair[1].full_line1() as isize - pair[0].full_line2() as isize).saturating_sub(1)
             })
             .collect();
         most_common_value_in_vec(spacings).unwrap_or(1) as usize
