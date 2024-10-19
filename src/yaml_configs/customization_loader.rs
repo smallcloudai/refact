@@ -75,6 +75,9 @@ fn _replace_variables_in_text(text: &mut String, variables: &HashMap<String, Str
             *text = text.replace(&placeholder, vtext);
             replaced = true;
         }
+        if text.contains(&placeholder) {
+            tracing::error!("replacement might be buggy {placeholder} in {}...", text.chars().take(100).collect::<String>().replace("\n", "\\n"));
+        }
     }
     replaced
 }
@@ -85,16 +88,20 @@ fn _replace_variables_in_messages(config: &mut CustomizationYaml, variables: &Ha
     for command in config.toolbox_commands.values_mut() {
         for msg in command.messages.iter_mut() {
             let mut replaced = true;
-            while replaced {
+            let mut countdown = 10;
+            while replaced && countdown > 0 {
                 replaced = _replace_variables_in_text(&mut msg.content.content_text_only(), variables);
+                countdown -= 1;
             }
         }
     }
     for command in config.code_lens.values_mut() {
         for msg in command.messages.iter_mut() {
             let mut replaced = true;
-            while replaced {
+            let mut countdown = 10;
+            while replaced && countdown > 0 {
                 replaced = _replace_variables_in_text(&mut msg.content.content_text_only(), variables);
+                countdown -= 1;
             }
         }
     }
@@ -103,8 +110,10 @@ fn _replace_variables_in_messages(config: &mut CustomizationYaml, variables: &Ha
 fn _replace_variables_in_system_prompts(config: &mut CustomizationYaml, variables: &HashMap<String, String>) {
     for prompt in config.system_prompts.values_mut() {
         let mut replaced = true;
-        while replaced {
+        let mut countdown = 10;
+        while replaced && countdown > 0 {
             replaced = _replace_variables_in_text(&mut prompt.text, variables);
+            countdown -= 1;
         }
     }
 }
