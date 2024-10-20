@@ -734,7 +734,7 @@ pub fn py_parse(code: &str) -> ContextPy
 {
     let mut cx = py_make_cx(code);
     let tree = cx.ap.sitter.parse(code, None).unwrap();
-    let path = vec!["file".to_string()];
+    let path = vec!["root".to_string()];
     let mut pass_n = 1;
     loop {
         debug!(&cx, "\n\x1b[31mPASS {}\x1b[0m", pass_n);
