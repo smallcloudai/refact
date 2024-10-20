@@ -32,20 +32,29 @@ fn type_problems(type_str: &String) -> usize {
     question_marks + errors + empty_very_bad
 }
 
-fn py_is_trivial(potential_usage: &str) -> bool {
+fn py_trivial(potential_usage: &str) -> Option<String> {
     match potential_usage {
-        "int" | "float" | "str" | "bool" => true,
-        _ if potential_usage.ends_with("::self") => true,
-        _ => false,
+        "?::int" | "int" => Some("int".to_string()),
+        "?::float" | "float" => Some("float".to_string()),
+        "?::bool" | "bool" => Some("bool".to_string()),
+        "?::str" | "str" => Some("str".to_string()),
+        "Any" => { Some("*".to_string()) },
+        "__name__" => { Some("str".to_string()) },
+        "range" => { Some("![int]".to_string()) },
+        // "print" => { Some("!void".to_string()) },
+        _ => None,
     }
 }
 
-fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) -> Option<String>
+fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String, uline: usize) -> AstUsage
 {
-    match look_for.as_str() {
-        "Any" => { return Some("*".to_string()); },
-        "print" | "int" | "float" | "str" | "bool" => { return Some(look_for.clone()); },
-        _ => {},
+    if let Some(t) = py_trivial(look_for) {
+        return AstUsage {
+            resolved_as: t,
+            targets_for_guesswork: vec![],
+            debug_hint: format!("trivial"),
+            uline,
+        };
     }
     let mut current_path = path.clone();
     while !current_path.is_empty() {
@@ -54,14 +63,29 @@ fn py_simple_resolve(cx: &mut ContextPy, path: &Vec<String>, look_for: &String) 
         let hypothtical_str = hypothetical.join("::");
         let thing_maybe = cx.ap.things.get(&hypothtical_str);
         if thing_maybe.is_some() {
-            return Some(hypothtical_str);
+            return AstUsage {
+                resolved_as: hypothtical_str,
+                targets_for_guesswork: vec![],
+                debug_hint: format!("go_up"),
+                uline,
+            };
         }
         if let Some(an_alias) = cx.ap.alias.get(&hypothtical_str) {
-            return Some(an_alias.clone());
+            return AstUsage {
+                resolved_as: an_alias.clone(),
+                targets_for_guesswork: vec![],
+                debug_hint: format!("alias"),
+                uline,
+            };
         }
         current_path.pop();
     }
-    return None;
+    return AstUsage {
+        resolved_as: "".to_string(),
+        targets_for_guesswork: vec![format!("?::{}", look_for)],
+        debug_hint: format!("go_up_fail"),
+        uline,
+    };
 }
 
 fn py_add_a_thing<'a>(cx: &mut ContextPy, thing_path: &String, thing_kind: char, type_new: String, node: &Node<'a>) -> (bool, String)
@@ -93,9 +117,10 @@ fn py_add_a_thing<'a>(cx: &mut ContextPy, thing_path: &String, thing_kind: char,
 fn py_import_save<'a>(cx: &mut ContextPy, path: &Vec<String>, dotted_from: String, import_what: String, import_as: String)
 {
     let save_as = format!("{}::{}", path.join("::"), import_as);
-    let mut from_list = dotted_from.split(".").map(|x| { String::from(x.trim()) }).filter(|x| { !x.is_empty() }).collect::<Vec<String>>();
-    from_list.push(import_what);
-    cx.ap.alias.insert(save_as, from_list.join("::"));
+    let mut p = dotted_from.split(".").map(|x| { String::from(x.trim()) }).filter(|x| { !x.is_empty() }).collect::<Vec<String>>();
+    p.push(import_what);
+    p.insert(0, "?".to_string());
+    cx.ap.alias.insert(save_as, p.join("::"));
 }
 
 fn py_import<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
@@ -147,22 +172,9 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy, node: &Node<'a>, pa
     // debug!(cx, "DOTTED {}", cx.ap.recursive_print_with_red_brackets(&node));
     match node.kind() {
         "identifier" => {
-            if let Some(success) = py_simple_resolve(cx, path, &node_text) {
-                let u = AstUsage {
-                    targets_for_guesswork: vec![],
-                    resolved_as: success.clone(),
-                    debug_hint: format!("simple_id"),
-                    uline: node.range().start_point.row,
-                };
-                if !py_is_trivial(u.resolved_as.as_str()) {
-                    cx.ap.usages.push((path.join("::"), u.clone()));
-                    // debug!(cx, "ADD_USAGE ID {:?}", u);
-                }
-                // debug!(cx, "DOTTED simple_id u={:?}", u);
-                return Some(u);
-            }
-            if allow_creation {
-                // debug!(cx, "DOTTED {} local_var_create", node_text);
+            let u = py_simple_resolve(cx, path, &node_text, node.range().start_point.row);
+            // debug!(cx, "DOTTED GO_UP {:?}", u);
+            if u.resolved_as.is_empty() && allow_creation {
                 return Some(AstUsage {
                     targets_for_guesswork: vec![],
                     resolved_as: format!("{}::{}", path.join("::"), node_text),
@@ -170,6 +182,10 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy, node: &Node<'a>, pa
                     uline: node.range().start_point.row,
                 });
             }
+            if !u.resolved_as.ends_with("::self") && !u.debug_hint.ends_with("trivial") {
+                cx.ap.usages.push((path.join("::"), u.clone()));
+            }
+            return Some(u);
         },
         "attribute" => {
             let object = node.child_by_field_name("object").unwrap();
@@ -429,41 +445,25 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy, node: Option<Node<'a>
         "none" => { "void".to_string() },
         "call" => {
             let fname = node.child_by_field_name("function").unwrap();
-            // if fname.is_none() {
-            //     let msg = cx.ap.error_report(lhs_lvalue, format!("py_var_add cannot form lvalue"));
-            //     debug!(cx, "{}", msg);
-            // XXX use expression or something for function, return ?::func instead of FUNC_NOT_FOUND
-            let ftype = if let Some(u) = py_resolve_dotted_creating_usages(cx, &fname, path, false) {
-                if !u.resolved_as.is_empty() {
-                    if let Some(resolved_thing) = cx.ap.things.get(&u.resolved_as) {
-                        resolved_thing.type_resolved.clone()
-                    } else {
-                        format!("?::{}", u.resolved_as)
-                    }
-                } else {
-                    // debug!(cx, "FUNC_NOT_FOUND1 {:?}", u);
-                    "?".to_string()
-                }
-            } else {
-                format!("ERR/FUNC_NOT_FOUND/{}", cx.ap.code[fname.byte_range()].to_string())
-            };
+            let ftype = py_type_of_expr_creating_usages(cx, Some(fname), path);
             let arg_types = py_type_of_expr_creating_usages(cx, node.child_by_field_name("arguments"), path);
             let ret_type = type_call(ftype.clone(), arg_types.clone());
-            // can actually "run" functions like sum() range(), now generates FUNC_NOT_FOUND
             ret_type
         },
         "identifier" | "dotted_name" | "attribute" => {
             let dotted_type = if let Some(u) = py_resolve_dotted_creating_usages(cx, &node, path, false) {
-                if !u.resolved_as.is_empty() {
+                if u.resolved_as.starts_with("!") {  // trivial function, like "range" that has type ![int]
+                    u.resolved_as
+                } else if !u.resolved_as.is_empty() {
                     if let Some(resolved_thing) = cx.ap.things.get(&u.resolved_as) {
                         resolved_thing.type_resolved.clone()
                     } else {
                         format!("?::{}", u.resolved_as)
                     }
                 } else {
-                    // debug!(cx, "DOTTED_NO_THING1 {:?}", u);
-                    assert!(u.targets_for_guesswork.len() > 0);
-                    u.targets_for_guesswork[0].clone()
+                    // assert!(u.targets_for_guesswork.len() > 0);
+                    // u.targets_for_guesswork[0].clone()
+                    format!("ERR/FUNC_NOT_FOUND/{}", u.targets_for_guesswork[0])
                 }
             } else {
                 format!("ERR/DOTTED_NOT_FOUND/{}", node_text)
@@ -519,7 +519,6 @@ fn py_class<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
                 break;
             },
             "argument_list" => {
-                debug!(cx, "class argument_list {}", cx.ap.recursive_print_with_red_brackets(&child));
                 for j in 0 .. child.child_count() {
                     let arg = child.child(j).unwrap();
                     match arg.kind() {
@@ -545,7 +544,6 @@ fn py_class<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
                     }
                 }
             },
-            // XXX argument list => dfrom
             _ => {
                 let msg = cx.ap.error_report(&child, format!("py_class syntax"));
                 debug!(cx, "{}", msg);
@@ -782,8 +780,9 @@ mod tests {
 
     fn py_parse4test(code: &str) -> String
     {
-        let cx = py_parse(code);
+        let mut cx = py_parse(code);
         cx.ap.dump();
+        let _ = cx.ap.export_defs();
         cx.ap.annotate_code("#")
     }
 

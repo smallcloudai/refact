@@ -138,7 +138,8 @@ impl ContextAnyParser {
             def.usages.clear();
         }
         for (usage_at, usage) in &self.usages {
-            assert!(usage.resolved_as.is_empty() || usage.resolved_as.starts_with("root::"));
+            println!("usage_at {} {:?} usage.resolved_as={:?}", usage_at, usage, usage.resolved_as);
+            assert!(usage.resolved_as.is_empty() || usage.resolved_as.starts_with("root::") || usage.resolved_as.starts_with("?::"));
             let mut atv = usage_at.split("::").collect::<Vec<&str>>();
             let mut found_home = false;
             while !atv.is_empty() {
