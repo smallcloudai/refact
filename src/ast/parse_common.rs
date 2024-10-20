@@ -161,9 +161,13 @@ impl ContextAnyParser {
                     r.push_str(format!("\n{indent}{comment} ERROR {}", err.err_message).as_str());
                 }
             }
-            for (_, thing) in &self.things {
+            for (key, thing) in &self.things {
                 if thing.tline == i {
-                    r.push_str(format!("\n{indent}{comment} {} {}", thing.thing_kind, thing.type_resolved).as_str());
+                    let mut key_last = key.split("::").last().unwrap_or("").to_string();
+                    if thing.thing_kind == 'f' {
+                        key_last += "()";
+                    }
+                    r.push_str(format!("\n{indent}{comment} {} {} {}", thing.thing_kind, key_last, thing.type_resolved).as_str());
                 }
             }
             if !usages_on_line.is_empty() {
