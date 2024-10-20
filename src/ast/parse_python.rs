@@ -196,6 +196,7 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy, node: &Node<'a>, pa
             }
             u.resolved_as = "".to_string();
             u.targets_for_guesswork.push(format!("?::{}", attrib_text));
+            cx.ap.usages.push((path.join("::"), u.clone()));
             return Some(u);
         },
         _ => {
@@ -523,13 +524,16 @@ fn py_class<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
                     let arg = child.child(j).unwrap();
                     match arg.kind() {
                         "identifier" | "attribute" => {
-                            debug!(cx, "class AAAAA {} {}", arg.kind(), cx.ap.recursive_print_with_red_brackets(&arg));
                             if let Some(a_type) = py_resolve_dotted_creating_usages(cx, &arg, path, false) {
-                                debug!(cx, "class a_type = {:?}", a_type);
                                 if !a_type.resolved_as.is_empty() {
-                                    derived_from.push(format!("py🔎{}", a_type.resolved_as));
-                                // } else if !a_type.targets_for_guesswork.is_empty() {
-                                //     return a_type.targets_for_guesswork.first().unwrap().clone();
+                                    // XXX losing information, we have resolved usage, turning it into approx 🔎-link
+                                    let after_last_colon_colon = a_type.resolved_as.split("::").last().unwrap().to_string();
+                                    derived_from.push(format!("py🔎{}", after_last_colon_colon));
+                                } else {
+                                    // could be better than a guess, too
+                                    assert!(!a_type.targets_for_guesswork.is_empty());
+                                    let after_last_colon_colon = a_type.targets_for_guesswork.first().unwrap().split("::").last().unwrap().to_string();
+                                    derived_from.push(format!("py🔎{}", after_last_colon_colon));
                                 }
                             }
                         },

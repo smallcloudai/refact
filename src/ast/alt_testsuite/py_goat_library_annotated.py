@@ -15,7 +15,7 @@ class Animal:
         # v also1_age float
         # U{ simple_id root::Animal::__init__::age } U{ attr root::Animal::also1_age }
         self.also2_age = float(age)
-        # v also2_age ERR/CALL/NOT_A_THING/float
+        # v also2_age ?
         # U{ simple_id root::Animal::__init__::age } U{ attr root::Animal::also2_age }
         self.also3_age = age + 5.0
         # v also3_age int
@@ -39,7 +39,7 @@ class Goat(Animal):
     # p age int
     # p weight float
         super().__init__(age)
-        # U{ simple_id root::Goat::__init__::age }
+        # U{ attr guess ?::__init__ } U{ simple_id root::Goat::__init__::age }
         self.weight = weight
         # v weight float
         # U{ simple_id root::Goat::__init__::weight } U{ attr root::Goat::weight }
@@ -51,5 +51,6 @@ class Goat(Animal):
         print(f"jump_around age={self.age} weight={self.weight}")
         # U{ simple_id print }
         self.self_review()
+        # U{ attr guess ?::self_review }
         return self
 

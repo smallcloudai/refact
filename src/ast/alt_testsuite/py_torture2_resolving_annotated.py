@@ -6,7 +6,7 @@ from multiprocessing import Process as NotAProcess, TimeoutError
 from os. path import join as ospj, split as osps
 
 print("ls1", ooooos.listdir("."))
-# U{ simple_id print } U{ simple_id os }
+# U{ simple_id print } U{ simple_id os } U{ attr guess ?::listdir }
 print("argv", argv)
 # U{ simple_id print }
 
@@ -50,21 +50,21 @@ def list_directory():
 # f list_directory() !void
     import os as ooooos2
     ooooos2.system("ls")
-    # U{ simple_id os }
+    # U{ simple_id os } U{ attr guess ?::system }
     print("ospj", ospj("hello", "world"))
     # U{ simple_id print } U{ simple_id os::path::join }
 
 
 if __name__ == '__main__':
     process: multiprocessing.Process
-    # v process UNK/id/multiprocessing.Process
-    # U{ simple_id multiprocessing } U{ simple_id root::process }
+    # v process ?::Process
+    # U{ simple_id multiprocessing } U{ attr guess ?::Process } U{ simple_id root::process }
     process = NotAProcess(target=list_directory)
     # U{ simple_id multiprocessing::Process } U{ simple_id root::process }
     process.start()
-    # U{ simple_id root::process }
+    # U{ simple_id root::process } U{ attr guess ?::start }
     process.join()
-    # U{ simple_id root::process }
+    # U{ simple_id root::process } U{ attr guess ?::join }
     should_be_a_string, fumble = can_you_dig_it()
     # v should_be_a_string str
     # v fumble root::FumbleNoble
