@@ -21,7 +21,7 @@ pub struct AstDefinition {
     pub official_path: Vec<String>,  // file::namespace::class::method becomes ["file", "namespace", "class", "method"]
     pub symbol_type: SymbolType,
     pub usages: Vec<AstUsage>,
-    pub resolved_type: String,
+    pub resolved_type: String,                // for type derivation at pass2 or something, not used much now
     pub this_is_a_class: String,              // cpp🔎Goat
     pub this_class_derived_from: Vec<String>, // cpp🔎Animal, cpp🔎CosmicJustice
     pub cpath: String,
@@ -174,7 +174,7 @@ impl fmt::Debug for AstUsage {
             f,
             "U{{ {} {} }}",
             self.debug_hint,
-            if self.resolved_as.len() > 0 { self.resolved_as.clone() } else { self.targets_for_guesswork.join(" ") }
+            if self.resolved_as.len() > 0 { self.resolved_as.clone() } else { format!("guess {}", self.targets_for_guesswork.join(" ")) }
         )
     }
 }

@@ -37,7 +37,6 @@ class WobbleNoble:
 
 
 class FumbleNoble(object):
-# ERROR py_class syntax: "argument_list" in (object)
 # s FumbleNoble !root::FumbleNoble
     def __init__(self):
     # f __init__() !void

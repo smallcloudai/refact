@@ -16,6 +16,7 @@ const TOO_MANY_SYMBOLS_IN_FILE: usize = 10000;
 
 fn _is_declaration(t: SymbolType) -> bool {
     match t {
+        SymbolType::Module |
         SymbolType::StructDeclaration |
         SymbolType::TypeAlias |
         SymbolType::ClassFieldDeclaration |
@@ -340,11 +341,11 @@ pub fn parse_anything(
     let path = PathBuf::from(cpath);
     let (mut parser, language_id) = get_ast_parser_by_filename(&path).map_err(|err| err.message)?;
     let language = language_id.to_string();
+    tracing::info!("PARSE {} {}", language, cpath);
     if language == "python" {
         let mut cx = crate::ast::parse_python::py_parse(text);
         return Ok((cx.ap.export_defs(), "python".to_string()));
     }
-    assert!(false);
     let file_global_path = vec!["file".to_string()];
 
     let symbols = parser.parse(text, &path);
@@ -425,6 +426,7 @@ pub fn parse_anything(
                     errors.add_error("".to_string(), symbol.full_range().start_point.row + 1, "nameless decl");
                 }
             }
+            SymbolType::Module |
             SymbolType::CommentDefinition |
             SymbolType::ImportDeclaration |
             SymbolType::FunctionCall |
@@ -439,6 +441,7 @@ pub fn parse_anything(
         // eprintln!("pass2: {:?}", symbol);
         match symbol.symbol_type() {
             SymbolType::StructDeclaration |
+            SymbolType::Module |
             SymbolType::TypeAlias |
             SymbolType::ClassFieldDeclaration |
             SymbolType::ImportDeclaration |
@@ -541,20 +544,23 @@ pub fn parse_anything_and_add_file_path(
     }
 
     for definition in definitions.iter_mut() {
+        if !definition.official_path.is_empty() && definition.official_path[0] == "root" {
+            definition.official_path.remove(0);
+        }
         definition.official_path = [
             file_global_path.clone(),
             definition.official_path.clone()
         ].concat();
         for usage in &mut definition.usages {
             for t in &mut usage.targets_for_guesswork {
-                if t.starts_with("file::") {
+                if t.starts_with("file::") || t.starts_with("root::") {
                     let path_within_file = t[4..].to_string();
                     t.clear();
                     t.push_str(file_global_path_str.as_str());
                     t.push_str(path_within_file.as_str());
                 }
             }
-            if usage.resolved_as.starts_with("file::") {
+            if usage.resolved_as.starts_with("file::") || usage.resolved_as.starts_with("root::") {
                 let path_within_file = usage.resolved_as[4..].to_string();
                 usage.resolved_as.clear();
                 usage.resolved_as.push_str(file_global_path_str.as_str());
@@ -641,6 +647,14 @@ mod tests {
         _run_parse_test(
             "src/ast/alt_testsuite/cpp_goat_main.cpp",
             "src/ast/alt_testsuite/cpp_goat_main.correct"
+        );
+    }
+
+    #[test]
+    fn test_ast_parse_py_library() {
+        _run_parse_test(
+            "src/ast/alt_testsuite/py_goat_library.py",
+            "src/ast/alt_testsuite/py_goat_library.correct"
         );
     }
 }

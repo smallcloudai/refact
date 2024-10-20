@@ -462,7 +462,7 @@ async fn _connect_usages_helper(
     //
     // Usage data:
     //   u/file::Animal::age ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
-    // means `age` was used in self_review(). Only key is set, value doesn't matter.
+    // means `age` was used in self_review(). This all goes to the key, value contains a line number.
     //
     // Saved data by this function:
     //   u/RESOLVED ⚡ official_path        -- value has line number uline
@@ -877,19 +877,20 @@ mod tests {
         fs::read_to_string(file_path).expect("Unable to read file")
     }
 
-    #[tokio::test]
-    async fn test_ast_db() {
-        init_tracing();
-        let ast_index = ast_index_init("".to_string(), 10, false).await;
+    async fn run_ast_db_test(
+        ast_index: Arc<AMutex<AstDB>>,
+        library_file_path: &str,
+        main_file_path: &str,
+        goat_location: &str,
+        language: &str,
+        animal_age_location: &str,
+    ) {
         let mut errstats: AstErrorStats = AstErrorStats::default();
 
-        let cpp_library_path = "src/ast/alt_testsuite/cpp_goat_library.h";
-        let cpp_library_text = read_file(cpp_library_path);
-        doc_add(ast_index.clone(), &cpp_library_path.to_string(), &cpp_library_text, &mut errstats).await.unwrap();
-
-        let cpp_main_path = "src/ast/alt_testsuite/cpp_goat_main.cpp";
-        let cpp_main_text = read_file(cpp_main_path);
-        doc_add(ast_index.clone(), &cpp_main_path.to_string(), &cpp_main_text, &mut errstats).await.unwrap();
+        let library_text = read_file(library_file_path);
+        let main_text = read_file(main_file_path);
+        doc_add(ast_index.clone(), &library_file_path.to_string(), &library_text, &mut errstats).await.unwrap();
+        doc_add(ast_index.clone(), &main_file_path.to_string(), &main_text, &mut errstats).await.unwrap();
 
         for error in errstats.errors {
             println!("(E) {}:{} {}", error.err_cpath, error.err_line, error.err_message);
@@ -904,15 +905,22 @@ mod tests {
         }
 
         flush_sled_batch(ast_index.clone(), 0).await;
-        let hierarchy = type_hierarchy(ast_index.clone(), "cpp".to_string(), "".to_string()).await;
-        println!("Type hierarchy:\n{}", hierarchy);
-        let expected_hierarchy = "Animal\n  Goat\n    CosmicGoat\nCosmicJustice\n  CosmicGoat\n";
-        assert_eq!(hierarchy, expected_hierarchy, "Type hierarchy does not match expected output");
-        println!("Type hierachy subtree_of=Animal:\n{}", type_hierarchy(ast_index.clone(), "cpp".to_string(), "cpp🔎Animal".to_string()).await);
         dump_database(ast_index.clone()).await;
 
+        let hierarchy = type_hierarchy(ast_index.clone(), language.to_string(), "".to_string()).await;
+        println!("Type hierarchy:\n{}", hierarchy);
+        let expected_hierarchy = "Animal\n  Goat\n    CosmicGoat\nCosmicJustice\n  CosmicGoat\n";
+        assert_eq!(
+            hierarchy, expected_hierarchy,
+            "Type hierarchy does not match expected output"
+        );
+        println!(
+            "Type hierachy subtree_of=Animal:\n{}",
+            type_hierarchy(ast_index.clone(), language.to_string(), "cpp🔎Animal".to_string()).await
+        );
+
         // Goat::Goat() is a C++ constructor
-        let goat_def = definitions(ast_index.clone(), "Goat::Goat").await;
+        let goat_def = definitions(ast_index.clone(), goat_location).await;
         let mut goat_def_str = String::new();
         for def in goat_def.iter() {
             goat_def_str.push_str(&format!("{:?}\n", def));
@@ -920,7 +928,7 @@ mod tests {
         println!("goat_def_str:\n{}", goat_def_str);
         assert!(goat_def.len() == 1);
 
-        let animalage_defs = definitions(ast_index.clone(), "Animal::age").await;
+        let animalage_defs = definitions(ast_index.clone(), animal_age_location).await;
         let animalage_def0 = animalage_defs.first().unwrap();
         let animalage_usage = usages(ast_index.clone(), animalage_def0.path(), 100).await;
         let mut animalage_usage_str = String::new();
@@ -940,8 +948,8 @@ mod tests {
         println!("goat_usage:\n{}", goat_usage_str);
         assert!(goat_usage.len() == 1);
 
-        doc_remove(ast_index.clone(), &cpp_library_path.to_string()).await;
-        doc_remove(ast_index.clone(), &cpp_main_path.to_string()).await;
+        doc_remove(ast_index.clone(), &library_file_path.to_string()).await;
+        doc_remove(ast_index.clone(), &main_file_path.to_string()).await;
         flush_sled_batch(ast_index.clone(), 0).await;
 
         let dblen = dump_database(ast_index.clone()).await;
@@ -949,7 +957,7 @@ mod tests {
         assert_eq!(counters.counter_defs, 0);
         assert_eq!(counters.counter_usages, 0);
         assert_eq!(counters.counter_docs, 0);
-        assert_eq!(dblen, 3+1); // 3 counters and 1 class hierarchy
+        assert_eq!(dblen, 3 + 1); // 3 counters and 1 class hierarchy
 
         let db = ast_index.lock().await.sleddb.clone();
         drop(ast_index);
@@ -959,5 +967,33 @@ mod tests {
         println!("db.flush returned {}, drop", x);
         drop(db);
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+
+    #[tokio::test]
+    async fn test_ast_db_cpp() {
+        init_tracing();
+        let ast_index = ast_index_init("".to_string(), 10, false).await;
+        run_ast_db_test(
+            ast_index,
+            "src/ast/alt_testsuite/cpp_goat_library.h",
+            "src/ast/alt_testsuite/cpp_goat_main.cpp",
+            "Goat::Goat",
+            "cpp",
+            "Animal::age",
+        ).await;
+    }
+
+    #[tokio::test]
+    async fn test_ast_db_py() {
+        init_tracing();
+        let ast_index = ast_index_init("".to_string(), 10, false).await;
+        run_ast_db_test(
+            ast_index,
+            "src/ast/alt_testsuite/py_goat_library.py",
+            "src/ast/alt_testsuite/py_goat_main.py",
+            "Goat::Goat",
+            "py",
+            "Animal::age",
+        ).await;
     }
 }

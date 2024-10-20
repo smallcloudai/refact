@@ -157,10 +157,9 @@ pub async fn correct_to_nearest_filename(
     // (another thread never writes to the map itself, it can only replace the arc with a different map)
 
     if let Some(fixed) = (*cache_correction_arc).get(&correction_candidate.clone()) {
-        // info!("found {:?} in cache_correction, returning [{:?}]", correction_candidate, fixed);
         return fixed.into_iter().cloned().collect::<Vec<String>>();
     } else {
-        info!("not found {} in cache_correction", correction_candidate);
+        info!("not found {:?} in cache_correction", correction_candidate);
     }
 
     if fuzzy {

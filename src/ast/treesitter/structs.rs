@@ -24,6 +24,7 @@ pub(crate) struct RangeDef {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Eq, Hash)]
 pub enum SymbolType {
+    Module,
     StructDeclaration,
     TypeAlias,
     ClassFieldDeclaration,

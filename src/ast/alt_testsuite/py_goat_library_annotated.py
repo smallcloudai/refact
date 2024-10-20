@@ -29,8 +29,8 @@ class Animal:
 
 
 class Goat(Animal):
-# ERROR py_class syntax: "argument_list" in (Animal)
 # s Goat !root::Goat
+# U{ simple_id root::Animal }
     def __init__(self, age: int, weight: float, *args, **kwargs):
     # ERROR py_function parameter syntax: "list_splat_pattern" in *args
     # ERROR py_function parameter syntax: "dictionary_splat_pattern" in **kwargs

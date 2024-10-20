@@ -6,12 +6,11 @@ use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::parse_common::{ContextAnyParser, Thing, any_child_of_type, type_deindex, type_deindex_n, type_call, type_zerolevel_comma_split};
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 
 pub struct ContextPy {
     pub ap: ContextAnyParser,
-    pub class1: Query,
 }
 
 fn debug_helper(cx: &ContextPy, args: std::fmt::Arguments) {
@@ -184,9 +183,9 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy, node: &Node<'a>, pa
                 debug_hint: format!("attr"),
                 uline: attrib.range().start_point.row,
             };
+            // debug!(cx, "DOTTED_ATTR {:?}", u);
             if let Some(_existing_attr) = cx.ap.things.get(&attrib_path) {
                 cx.ap.usages.push((path.join("::"), u.clone()));
-                // debug!(cx, "ADD_USAGE ATTR {:?}", u);
                 return Some(u);
             }
             if let Some(_existing_object) = cx.ap.things.get(&object_type) {
@@ -195,6 +194,9 @@ fn py_resolve_dotted_creating_usages<'a>(cx: &mut ContextPy, node: &Node<'a>, pa
                     return Some(u);
                 }
             }
+            u.resolved_as = "".to_string();
+            u.targets_for_guesswork.push(format!("?::{}", attrib_text));
+            return Some(u);
         },
         _ => {
             let msg = cx.ap.error_report(node, format!("py_resolve_dotted_creating_usages syntax"));
@@ -435,10 +437,11 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy, node: Option<Node<'a>
                     if let Some(resolved_thing) = cx.ap.things.get(&u.resolved_as) {
                         resolved_thing.type_resolved.clone()
                     } else {
-                        format!("ERR/CALL/NOT_A_THING/{}", u.resolved_as.clone())
+                        format!("?::{}", u.resolved_as)
                     }
                 } else {
-                    "?".to_string()  // something outside of this file :/
+                    // debug!(cx, "FUNC_NOT_FOUND1 {:?}", u);
+                    "?".to_string()
                 }
             } else {
                 format!("ERR/FUNC_NOT_FOUND/{}", cx.ap.code[fname.byte_range()].to_string())
@@ -450,10 +453,16 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy, node: Option<Node<'a>
         },
         "identifier" | "dotted_name" | "attribute" => {
             let dotted_type = if let Some(u) = py_resolve_dotted_creating_usages(cx, &node, path, false) {
-                if let Some(resolved_thing) = cx.ap.things.get(&u.resolved_as) {
-                    resolved_thing.type_resolved.clone()
+                if !u.resolved_as.is_empty() {
+                    if let Some(resolved_thing) = cx.ap.things.get(&u.resolved_as) {
+                        resolved_thing.type_resolved.clone()
+                    } else {
+                        format!("?::{}", u.resolved_as)
+                    }
                 } else {
-                    format!("ERR/DOTTED/NOT_A_THING/{}", u.resolved_as.clone())
+                    // debug!(cx, "DOTTED_NO_THING1 {:?}", u);
+                    assert!(u.targets_for_guesswork.len() > 0);
+                    u.targets_for_guesswork[0].clone()
                 }
             } else {
                 format!("ERR/DOTTED_NOT_FOUND/{}", node_text)
@@ -493,16 +502,6 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy, node: Option<Node<'a>
 fn py_class<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
 {
     let mut derived_from = vec![];
-    let mut query_cursor = QueryCursor::new();
-    for m in query_cursor.matches(&cx.class1, *node, cx.ap.code.as_bytes()) {
-        for capture in m.captures {
-            let capture_name = cx.class1.capture_names()[capture.index as usize];
-            if capture_name == "dfrom" {
-                derived_from.push(format!("py🔎{}", cx.ap.code[capture.node.byte_range()].to_string()));
-            }
-        }
-    }
-
     let mut class_name = "".to_string();
     let mut body = None;
     let mut body_line1 = usize::MAX;
@@ -517,6 +516,30 @@ fn py_class<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
                 body_line2 = body_line2.max(child.range().end_point.row + 1);
                 body = Some(child);
                 break;
+            },
+            "argument_list" => {
+                debug!(cx, "class argument_list {}", cx.ap.recursive_print_with_red_brackets(&child));
+                for j in 0 .. child.child_count() {
+                    let arg = child.child(j).unwrap();
+                    match arg.kind() {
+                        "identifier" | "attribute" => {
+                            debug!(cx, "class AAAAA {} {}", arg.kind(), cx.ap.recursive_print_with_red_brackets(&arg));
+                            if let Some(a_type) = py_resolve_dotted_creating_usages(cx, &arg, path, false) {
+                                debug!(cx, "class a_type = {:?}", a_type);
+                                if !a_type.resolved_as.is_empty() {
+                                    derived_from.push(format!("py🔎{}", a_type.resolved_as));
+                                // } else if !a_type.targets_for_guesswork.is_empty() {
+                                //     return a_type.targets_for_guesswork.first().unwrap().clone();
+                                }
+                            }
+                        },
+                        "," | "(" | ")" => continue,
+                        _ => {
+                            let msg = cx.ap.error_report(&arg, format!("py_class dfrom syntax"));
+                            debug!(cx, "{}", msg);
+                        }
+                    }
+                }
             },
             // XXX argument list => dfrom
             _ => {
@@ -724,8 +747,6 @@ fn py_make_cx(code: &str) -> ContextPy
             alias: IndexMap::new(),
             star_imports: vec![],
         },
-        // class_definition[class·identifier[Goat]argument_list[(identifier[Animal])]:
-        class1: Query::new(&language(), "(class_definition name: (_) superclasses: (argument_list (_) @dfrom))").unwrap(),
     };
     cx
 }

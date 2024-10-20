@@ -14,8 +14,8 @@ class CosmicJustice:
 
 
 class CosmicGoat(py_goat_library.Goat, CosmicJustice):
-# ERROR py_class syntax: "argument_list" in (py_goat_library.Goat, CosmicJustice)
 # s CosmicGoat !root::CosmicGoat
+# U{ simple_id py_goat_library } U{ simple_id root::CosmicJustice }
     def __init__(self, age, weight, balance_):
     # f __init__() !void
     # p self root::CosmicGoat

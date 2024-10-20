@@ -3,6 +3,7 @@ use indexmap::IndexMap;
 use tree_sitter::{Node, Parser, Range};
 
 use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
+use crate::ast::treesitter::structs::SymbolType;
 
 
 #[derive(Debug)]
@@ -119,19 +120,42 @@ impl ContextAnyParser {
     }
 
     pub fn export_defs(&mut self) -> Vec<AstDefinition> {  // self.defs becomes empty after this operation
+        self.defs.insert("root".to_string(), AstDefinition {
+            official_path: vec!["root".to_string()],
+            symbol_type: SymbolType::Module,
+            usages: vec![],
+            resolved_type: "".to_string(),
+            this_is_a_class: "".to_string(),
+            this_class_derived_from: vec![],
+            cpath: "".to_string(),
+            decl_line1: 1,
+            decl_line2: self.code.lines().count(),
+            body_line1: 0,
+            body_line2: 0,
+        });
         for (def_key, def) in &mut self.defs {
             assert!(*def_key == def.official_path.join("::"));
             def.usages.clear();
         }
         for (usage_at, usage) in &self.usages {
+            assert!(usage.resolved_as.is_empty() || usage.resolved_as.starts_with("root::"));
             let mut atv = usage_at.split("::").collect::<Vec<&str>>();
+            let mut found_home = false;
             while !atv.is_empty() {
                 let k = atv.join("::");
                 if let Some(existing_def) = self.defs.get_mut(&k) {
                     existing_def.usages.push(usage.clone());
+                    found_home = true;
                     break;
                 }
                 atv.pop();
+            }
+            if !found_home {
+                self.errs.add_error(
+                    "".to_string(),
+                    usage.uline + 1,
+                    format!("cannot find parent for {}", usage_at).as_str()
+                );
             }
         }
         let mut new_defs = IndexMap::new();
@@ -228,7 +252,7 @@ pub fn type_call(t: String, _arg_types: String) -> String
     if t.starts_with("!") {
         return t[1 ..].to_string();
     }
-    return "".to_string();
+    return "?".to_string();
 }
 
 pub fn type_deindex(t: String) -> String
