@@ -619,7 +619,7 @@ fn py_function<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>) {
     for i in 0..params.child_count() {
         let param_node = params.child(i).unwrap();
         let mut param_name = "".to_string();
-        let mut type_resolved = "".to_string();
+        let mut type_resolved = "?".to_string();
         match param_node.kind() {
             "identifier" => {
                 param_name = cx.ap.code[param_node.byte_range()].to_string();

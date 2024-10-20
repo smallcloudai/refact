@@ -19,15 +19,15 @@ class CosmicGoat(py_goat_library.Goat, CosmicJustice):
     def __init__(self, age, weight, balance_):
     # f __init__() !void
     # p self file::CosmicGoat
-    # p age 
-    # p weight 
-    # p balance_ 
+    # p age ?
+    # p weight ?
+    # p balance_ ?
         py_goat_library.Goat.__init__(self, age, weight)
         # U{ simple_id py_goat_library } U{ simple_id file::CosmicGoat::__init__::age } U{ simple_id file::CosmicGoat::__init__::weight }
         CosmicJustice.__init__(self)
         # U{ simple_id file::CosmicJustice }
         self.balance = balance_
-        # v balance 
+        # v balance ?
         # U{ simple_id file::CosmicGoat::__init__::balance_ } U{ attr file::CosmicGoat::balance }
 
     def say_hi(self):
