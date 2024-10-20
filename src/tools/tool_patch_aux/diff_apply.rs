@@ -4,7 +4,6 @@ use crate::diffs::{correct_and_validate_chunks, read_files_n_apply_diff_chunks, 
 use crate::files_in_workspace::{read_file_from_disk, Document};
 use crate::global_context::GlobalContext;
 use crate::privacy::load_privacy_if_needed;
-use crate::vecdb::vdb_highlev::memories_block_until_vectorized;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -125,7 +124,6 @@ async fn set_chunks_detail_and_sync_documents_ast_vecdb(
     chunks: &mut Vec<DiffChunk>,
 ) -> Result<(), String> {
     let ast_service_mb = gcx.read().await.ast_service.clone();
-    let vecdb_service_mb = gcx.read().await.vec_db.clone();
 
     for (doc, apply_output, chunk) in multizip((new_documents.iter(), apply_outputs.iter(), chunks.iter_mut())) {
         if apply_output.applied {
@@ -137,10 +135,6 @@ async fn set_chunks_detail_and_sync_documents_ast_vecdb(
                     true,
                 ).await;
             }
-            match *vecdb_service_mb.lock().await {
-                Some(ref mut db) => db.vectorizer_enqueue_files(&vec![doc.clone()], false).await,
-                None => {}
-            };
         } else {
             if let Some(error) = &apply_output.detail {
                 if !error.is_empty() {
@@ -156,9 +150,6 @@ async fn set_chunks_detail_and_sync_documents_ast_vecdb(
     if let Some(ast_service) = &ast_service_mb {
         ast_indexer_block_until_finished(ast_service.clone(), 20_000, true).await;
     }
-    if vecdb_service_mb.lock().await.is_some() {
-        memories_block_until_vectorized(vecdb_service_mb).await?;
-    };
     Ok(())
 }
 
