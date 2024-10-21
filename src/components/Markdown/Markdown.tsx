@@ -47,13 +47,10 @@ export type MarkdownProps = Pick<
     "startingLineNumber" | "showLineNumbers" | "useInlineStyles" | "style"
   > & { canHavePins?: boolean } & Partial<MarkdownControls>;
 
-const MaybePinButton: React.FC<{
-  key?: Key | null;
-  children?: React.ReactNode;
+const PinMessages: React.FC<{
+  children: string;
 }> = ({ children }) => {
-  const isPin = typeof children === "string" && children.startsWith("📍");
   const ref = useRef<HTMLDivElement>(null);
-
   const {
     handleShow,
     errorMessage,
@@ -66,8 +63,8 @@ const MaybePinButton: React.FC<{
 
   const getMarkdown = useCallback(() => {
     return (
-      ref.current?.nextElementSibling?.querySelector("code")?.textContent ??
-      null
+      ref.current?.parentElement?.nextElementSibling?.querySelector("code")
+        ?.textContent ?? null
     );
   }, []);
 
@@ -89,70 +86,80 @@ const MaybePinButton: React.FC<{
     }
   }, [getMarkdown]);
 
-  if (isPin && children.startsWith("📍OTHER")) {
+  if (children.startsWith("📍OTHER")) {
     return null;
   }
 
-  if (isPin) {
-    const [_cmd, _ticket, filePath, ..._rest] = children.split(" ");
-    return (
-      <Card
-        className={styles.patch_title}
-        size="1"
-        variant="surface"
-        mt="4"
-        ref={ref}
-      >
-        <Flex gap="2" py="2" pl="2" justify="between">
-          <TruncateLeft>
-            <Link
-              href=""
-              title="Open file"
-              onClick={(event) => {
-                event.preventDefault();
-                openFile({ file_name: filePath });
-              }}
-            >
-              {filePath}
-            </Link>
-          </TruncateLeft>{" "}
-          <div style={{ flexGrow: 1 }} />
-          <Button
-            size="1"
-            onClick={() => handleShow(children)}
-            disabled={disable}
-            title={`Show: ${children}`}
+  const [_cmd, _ticket, filePath, ..._rest] = children.split(" ");
+  return (
+    <Card
+      className={styles.patch_title}
+      size="1"
+      variant="surface"
+      mt="4"
+      ref={ref}
+    >
+      <Flex gap="2" py="2" pl="2" justify="between">
+        <TruncateLeft>
+          <Link
+            title="Open file"
+            onClick={(event) => {
+              event.preventDefault();
+              openFile({ file_name: filePath });
+            }}
           >
-            ➕ Auto Apply
-          </Button>
-          <Button
-            size="1"
-            onClick={onDiffClick}
-            disabled={disable || !hasMarkdown || !canPaste}
-            title="Replace the current selection in the ide."
-          >
-            ➕ Replace Selection
-          </Button>
-        </Flex>
-        {errorMessage && errorMessage.type === "error" && (
-          <ErrorCallout onClick={resetErrorMessage} timeout={5000}>
-            {errorMessage.text}
-          </ErrorCallout>
-        )}
-        {errorMessage && errorMessage.type === "warning" && (
-          <DiffWarningCallout
-            timeout={5000}
-            onClick={resetErrorMessage}
-            message={errorMessage.text}
-          />
-        )}
-      </Card>
-    );
-  }
+            {filePath}
+          </Link>
+        </TruncateLeft>{" "}
+        <div style={{ flexGrow: 1 }} />
+        <Button
+          size="1"
+          onClick={() => handleShow(children)}
+          disabled={disable}
+          title={`Show: ${children}`}
+        >
+          ➕ Auto Apply
+        </Button>
+        <Button
+          size="1"
+          onClick={onDiffClick}
+          disabled={disable || !hasMarkdown || !canPaste}
+          title="Replace the current selection in the ide."
+        >
+          ➕ Replace Selection
+        </Button>
+      </Flex>
+      {errorMessage && errorMessage.type === "error" && (
+        <ErrorCallout onClick={resetErrorMessage} timeout={5000}>
+          {errorMessage.text}
+        </ErrorCallout>
+      )}
+      {errorMessage && errorMessage.type === "warning" && (
+        <DiffWarningCallout
+          timeout={5000}
+          onClick={resetErrorMessage}
+          message={errorMessage.text}
+        />
+      )}
+    </Card>
+  );
+};
+
+const MaybePinButton: React.FC<{
+  key?: Key | null;
+  children?: React.ReactNode;
+}> = ({ children }) => {
+  const processed = React.Children.map(children, (child, index) => {
+    if (typeof child === "string" && child.startsWith("📍")) {
+      const key = `pin-message-${index}`;
+      return <PinMessages key={key}>{child}</PinMessages>;
+    }
+    return child;
+  });
 
   return (
-    <Text my="2" as="p">
-      {children}
+    <Text className={styles.maybe_pin} my="2">
+      {processed}
     </Text>
   );
 };

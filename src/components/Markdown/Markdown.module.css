@@ -39,6 +39,9 @@
   padding-inline-start: var(--space-6);
 }
 
+.maybe_pin {
+}
+
 .patch_title {
   padding-left: var(--space-2);
   padding-right: var(--space-2);
@@ -52,10 +55,10 @@
   border-bottom-width: 0;
 }
 
-.patch_title + pre {
+.maybe_pin:has(.patch_title) + pre {
   margin: 0;
 }
 
-.patch_title + pre pre {
+.maybe_pin:has(.patch_title) + pre pre {
   margin: 0;
 }
