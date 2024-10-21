@@ -116,19 +116,38 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
     return (cache_correction_arc, cache_shortened_arc);
 }
 
+
+fn winpath_normalize(p: &str) -> PathBuf {
+    let parts = p
+        .to_string()
+        .replace(r"\\", r"\")
+        .replace(r"/", r"\")
+        .split(r"\")
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+    if parts.len() >= 2 && parts[0] == "?" {
+        canonical_path(&format!(r"\\?\{}", parts[1..].join(r"\")))
+    } else if parts.len() > 1 && parts[0].contains(":") {
+        canonical_path(&format!(r"\\?\{}", parts.join(r"\")))
+    } else {
+        canonical_path(&p.to_string())
+    }
+}
+
 async fn complete_path_with_project_dir(
     gcx: Arc<ARwLock<GlobalContext>>,
     correction_candidate: &String,
     is_dir: bool,
 ) -> Option<PathBuf> {
     fn path_exists(path: &PathBuf, is_dir: bool) -> bool {
-        return if (is_dir && path.is_dir()) || (!is_dir && path.is_file()) {
-            true
-        } else {
-            false
-        }
+        (is_dir && path.is_dir()) || (!is_dir && path.is_file())
     }
-    let candidate_path = PathBuf::from(correction_candidate);
+    let candidate_path = if cfg!(target_os = "windows") {
+        PathBuf::from(winpath_normalize(&correction_candidate))
+    } else {
+        PathBuf::from(correction_candidate)
+    };
     let project_dirs = get_project_dirs(gcx.clone()).await;
     for p in project_dirs {
         if path_exists(&candidate_path, is_dir) && candidate_path.starts_with(&p) {
@@ -137,6 +156,24 @@ async fn complete_path_with_project_dir(
         let j_path = p.join(&candidate_path);
         if path_exists(&j_path, is_dir) {
             return Some(j_path);
+        }
+
+        if candidate_path.starts_with(&p) {
+            let last_component = p.components()
+                .last()
+                .map(|x| x.as_os_str().to_string_lossy().to_string())
+                .unwrap_or("".to_string());
+            let last_component_duplicated = p
+                .join(&last_component)
+                .join(&candidate_path.strip_prefix(&p).unwrap_or(candidate_path.as_path()));
+            if path_exists(&last_component_duplicated, is_dir) {
+                info!(
+                    "autocorrected by duplicating the project last component: {} -> {}",
+                    p.to_string_lossy().to_string(),
+                    last_component_duplicated.to_string_lossy().to_string()
+                );
+                return Some(last_component_duplicated);
+            }
         }
     }
     None
