@@ -429,6 +429,21 @@ fn py_type_generic<'a>(cx: &mut ContextPy, node: Option<Node<'a>>, path: &Vec<St
     }
 }
 
+fn py_string<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>) -> String
+{
+    for i in 0..node.child_count() {
+        let child = node.child(i).unwrap();
+        // debug!(cx, "  string child[{}] {}", i, cx.ap.recursive_print_with_red_brackets(&child));
+        match child.kind() {
+            "interpolation" => {
+                let _ = py_type_of_expr_creating_usages(cx, child.child_by_field_name("expression"), path);
+            },
+            _ => { },
+        }
+    }
+    "str".to_string()
+}
+
 fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy, node: Option<Node<'a>>, path: &Vec<String>) -> String
 {
     if node.is_none() {
@@ -436,8 +451,7 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy, node: Option<Node<'a>
     }
     let node = node.unwrap();
     let node_text = cx.ap.code[node.byte_range()].to_string();
-    // debug!(cx, "EXPR {}", node_text);
-    debug!(cx, "EXPR {}", cx.ap.recursive_print_with_red_brackets(&node));
+    debug!(cx, "EXPR {}", node_text);
     cx.ap.reclevel += 1;
     let type_of = match node.kind() {
         "expression_list" | "argument_list" => {
@@ -483,7 +497,7 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy, node: Option<Node<'a>
         },
         "integer" => { "int".to_string() },
         "float" => { "float".to_string() },
-        "string" => { "str".to_string() },
+        "string" => { py_string(cx, &node, path) },
         "false" => { "bool".to_string() },
         "true" => { "bool".to_string() },
         "none" => { "void".to_string() },

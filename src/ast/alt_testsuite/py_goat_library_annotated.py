@@ -25,7 +25,7 @@ class Animal:
     # f self_review() !void
     # p self root::Animal
         print(f"self_review age={self.age}")
-        # U{ go_up_fail guess ?::print }
+        # U{ go_up_fail guess ?::print } U{ attr root::Animal::age }
 
 
 class Goat(Animal):
@@ -49,7 +49,7 @@ class Goat(Animal):
     # p self root::Goat
     # U{ go_up root::Animal }
         print(f"jump_around age={self.age} weight={self.weight}")
-        # U{ go_up_fail guess ?::print }
+        # U{ go_up_fail guess ?::print } U{ attr guess ?::age } U{ attr root::Goat::weight }
         self.self_review()
         # U{ attr guess ?::self_review }
         return self

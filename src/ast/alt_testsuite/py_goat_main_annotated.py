@@ -34,7 +34,7 @@ class CosmicGoat(py_goat_library.Goat, CosmicJustice):
     # f say_hi() !void
     # p self root::CosmicGoat
         print(f"I am a CosmicGoat, age={self.age} weight={self.weight} balance={self.balance:.2f}")
-        # U{ go_up_fail guess ?::print }
+        # U{ go_up_fail guess ?::print } U{ attr guess ?::age } U{ attr guess ?::weight } U{ attr root::CosmicGoat::balance }
 
 
 def goat_generator1():
@@ -56,7 +56,11 @@ def animal_direct_access(v1: CosmicGoat, v2: Optional[Animal], v3: List[Animal],
 # p v4 [?::py_goat_library::Animal]
 # U{ go_up root::CosmicGoat } U{ alias ?::py_goat_library::Animal } U{ alias ?::py_goat_library::Animal } U{ alias ?::py_goat_library::Animal }
     print(f"animal_direct_access: age1={v1.age} age2={v2.age if v2 else 'None'} age3={[x.age for x in v3]} age4={[(y.age if y else 'not_a_goat') for y in v4]}")
-    # U{ go_up_fail guess ?::print }
+    # ERROR py_type_of_expr syntax: "conditional_expression" in v2.age if v2 else 'None'
+    # ERROR py_type_of_expr syntax: "parenthesized_expression" in (y.age if y else 'not_a_goat')
+    # v x ?::py_goat_library::Animal
+    # v y ?::py_goat_library::Animal
+    # U{ go_up_fail guess ?::print } U{ go_up root::animal_direct_access::v1 } U{ attr guess ?::age } U{ go_up root::animal_direct_access::v3 } U{ go_up root::animal_direct_access::<listcomp>::x } U{ go_up root::animal_direct_access::<listcomp>::x } U{ attr guess ?::age } U{ go_up root::animal_direct_access::v4 } U{ go_up root::animal_direct_access::<listcomp>::y }
 
 
 def animal_function_calling(v1: CosmicGoat, v2: Optional[Animal], v3: List[Animal], v4: List[Optional[Animal]]):
@@ -76,14 +80,11 @@ def animal_function_calling(v1: CosmicGoat, v2: Optional[Animal], v3: List[Anima
     # v x ?::py_goat_library::Animal
     # U{ go_up root::animal_function_calling::v3 } U{ go_up root::animal_function_calling::x }
         x.self_review()
-        # FIX
     for y in v4:
     # v y ?::py_goat_library::Animal
     # U{ go_up root::animal_function_calling::v4 } U{ go_up root::animal_function_calling::y }
         if y:
-        # FIX
             y.self_review()
-            # FIX
 
 
 def goat_generator() -> Tuple[CosmicGoat, CosmicGoat]:
@@ -94,14 +95,16 @@ def goat_generator() -> Tuple[CosmicGoat, CosmicGoat]:
 
 
 if __name__ == '__main__':
-# U{ go_up_fail guess ?::__name__ }
     animal_function_calling(*goat_generator(), [CosmicGoat(4, 4.0, 13.37)], [CosmicGoat(5, 5.0, 13.37), None])
-    # FIX ERROR py_type_of_expr syntax: "list_splat" in *goat_generator()
-    # FIX ERROR py_type_of_expr syntax: "list" in [CosmicGoat(4, 4.0, 13.37)]
-    # FIX ERROR py_type_of_expr syntax: "list" in [CosmicGoat(5, 5.0, 13.37), None]
+    # ERROR py_type_of_expr syntax: "list_splat" in *goat_generator()
+    # ERROR py_type_of_expr syntax: "list" in [CosmicGoat(4, 4.0, 13.37)]
+    # ERROR py_type_of_expr syntax: "list" in [CosmicGoat(5, 5.0, 13.37), None]
     # U{ go_up root::animal_function_calling }
-    animal_direct_access(*goat_generator(), [CosmicGoat(4, 4.0, 13.37)], [CosmicGoat(5, 5.0, 13.37), None])
-    # FIX ERROR py_type_of_expr syntax: "list_splat" in *goat_generator()
-    # FIX ERROR py_type_of_expr syntax: "list" in [CosmicGoat(4, 4.0, 13.37)]
-    # FIX ERROR py_type_of_expr syntax: "list" in [CosmicGoat(5, 5.0, 13.37), None]
+    goat_generator_copy = goat_generator
+    # v goat_generator_copy (root::CosmicGoat,root::CosmicGoat)
+    # U{ go_up root::goat_generator } U{ go_up root::goat_generator_copy }
+    animal_direct_access(*goat_generator_copy(), [CosmicGoat(4, 4.0, 13.37)], [CosmicGoat(5, 5.0, 13.37), None])
+    # ERROR py_type_of_expr syntax: "list_splat" in *goat_generator_copy()
+    # ERROR py_type_of_expr syntax: "list" in [CosmicGoat(4, 4.0, 13.37)]
+    # ERROR py_type_of_expr syntax: "list" in [CosmicGoat(5, 5.0, 13.37), None]
     # U{ go_up root::animal_direct_access }

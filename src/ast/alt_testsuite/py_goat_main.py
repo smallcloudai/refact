@@ -46,4 +46,5 @@ def goat_generator() -> Tuple[CosmicGoat, CosmicGoat]:
 
 if __name__ == '__main__':
     animal_function_calling(*goat_generator(), [CosmicGoat(4, 4.0, 13.37)], [CosmicGoat(5, 5.0, 13.37), None])
-    animal_direct_access(*goat_generator(), [CosmicGoat(4, 4.0, 13.37)], [CosmicGoat(5, 5.0, 13.37), None])
+    goat_generator_copy = goat_generator
+    animal_direct_access(*goat_generator_copy(), [CosmicGoat(4, 4.0, 13.37)], [CosmicGoat(5, 5.0, 13.37), None])
