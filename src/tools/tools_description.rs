@@ -91,7 +91,7 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         ("search".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>))),
         #[cfg(feature="vecdb")]
         ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>))),
-        ("web_screenshot".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_web_screenshot::ToolWebScreenshot{}) as Box<dyn Tool + Send>))),
+        // ("web_screenshot".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_web_screenshot::ToolWebScreenshot{}) as Box<dyn Tool + Send>))),
     ]);
 
     if allow_experimental {
@@ -102,6 +102,9 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         }
         if let Some(pdb_tool) = ToolPdb::new_if_configured(&integrations_value) {
             tools_all.insert("pdb".to_string(), Arc::new(AMutex::new(Box::new(pdb_tool) as Box<dyn Tool + Send>)));
+        }
+        if let Some(chrome_tool) = ToolChrome::new_if_configured(&integrations_value) {
+            tools_all.insert("chrome".to_string(), Arc::new(AMutex::new(Box::new(chrome_tool) as Box<dyn Tool + Send>)));
         }
         #[cfg(feature="vecdb")]
         tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
@@ -288,6 +291,17 @@ tools:
         description: "In addition to the screenshot, return inner HTML of the page."
     parameters_required:
       - "url"
+
+  - name: "chrome"
+    agentic: true
+    experimental: true
+    description: "Web browser. Opens a tab and operates in it."
+    parameters:
+      - name: "command"
+        type: "string"
+        description: "Chrome has this commands: navigate_to url, screenshot."
+    parameters_required:
+      - "command"
 "####;
 
 #[allow(dead_code)]

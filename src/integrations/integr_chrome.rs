@@ -1,0 +1,236 @@
+use std::any::Any;
+use std::sync::Arc;
+use std::collections::HashMap;
+use std::time::Duration;
+use serde_json::Value;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use async_trait::async_trait;
+
+use crate::at_commands::at_commands::AtCommandsContext;
+use crate::call_validation::ContextEnum;
+use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
+use crate::global_context::GlobalContext;
+use crate::scratchpads::chat_message::{ChatContent, ChatMessage, ChatMultimodalElement, MultimodalElementImage};
+use crate::tools::tools_description::Tool;
+
+use tracing::error;
+use reqwest::Client;
+use std::path::PathBuf;
+use headless_chrome::{Browser, LaunchOptions, Tab};
+use headless_chrome::protocol::cdp::Page;
+use log::info;
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct IntegrationChrome {
+    pub chrome_path: Option<String>,
+    pub window_size: Option<Vec<u32>>,
+    pub idle_browser_timeout: Option<u32>,
+}
+pub struct ToolChrome {
+    integration_chrome: IntegrationChrome,
+}
+
+pub struct ChromeSession {
+    browser: Browser,
+    tab: Arc<Tab>,
+}
+
+impl IntegrationSession for ChromeSession
+{
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+    fn is_expired(&self) -> bool { false }
+}
+
+impl ToolChrome {
+    pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
+        info!("ToolChrome::new_if_configured {:?}", integrations_value);
+        let integration_chrome_value = integrations_value.get("chrome")?;
+
+        let integration_chrome = serde_yaml::from_value::<IntegrationChrome>(integration_chrome_value.clone()).or_else(|e| {
+            error!("Failed to parse integration chrome: {:?}", e);
+            Err(e)
+        }).ok()?;
+
+        Some(Self { integration_chrome })
+    }
+}
+
+#[async_trait]
+impl Tool for ToolChrome {
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, Value>,
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let command_args = parse_command_args(args)?;
+        
+        let (gcx, chat_id) = {
+            let ccx_lock = ccx.lock().await;
+            (ccx_lock.global_context.clone(), ccx_lock.chat_id.clone())
+        };
+
+        let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
+        let _session_started = start_chrome_session(&self.integration_chrome, &session_hashmap_key, gcx.clone()).await?;
+        let messages = interact_with_chrome(&command_args, &session_hashmap_key, &tool_call_id, gcx.clone()).await?;
+
+        Ok((false, messages))
+    }
+
+    fn command_to_match_against_confirm_deny(
+        &self,
+        args: &HashMap<String, Value>,
+    ) -> Result<String, String> {
+        let command_args = parse_command_args(args)?;
+        Ok(command_args.join(" "))
+    }
+}
+
+fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, String> {
+    let command = match args.get("command") {
+        Some(Value::String(s)) => s,
+        Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
+        None => return Err("Missing argument `command`".to_string())
+    };
+
+    let parsed_args = shell_words::split(&command).map_err(|e| e.to_string())?;
+    if parsed_args.is_empty() {
+        return Err("Parsed command is empty".to_string());
+    }
+
+    Ok(parsed_args)
+}
+
+async fn start_chrome_session(
+    args: &IntegrationChrome,
+    session_hashmap_key: &String,
+    gcx: Arc<ARwLock<GlobalContext>>) -> Result<bool, String>
+{
+    if !is_chrome_session_active(&session_hashmap_key, gcx.clone()).await {
+        let mut path: Option<PathBuf> = None;
+        if let Some(chrome_path) = args.chrome_path.clone() {
+            path = Some(PathBuf::from(chrome_path));
+        }
+        let mut window_size: Option<(u32, u32)> = None;
+        if let Some(size) = args.window_size.clone() {
+            if size.len() == 1 {
+                window_size = Some((size[0], size[0]));
+            } else if size.len() == 2 {
+                window_size = Some((size[0], size[1]));
+            }
+        }
+        let mut idle_browser_timeout = Duration::from_secs(30);
+        if let Some(timeout) = args.idle_browser_timeout.clone() {
+            idle_browser_timeout = Duration::from_secs(timeout as u64);
+        }
+        let launch_options = LaunchOptions {
+            path,
+            window_size,
+            idle_browser_timeout,
+            ..Default::default()
+        };
+        let browser = Browser::new(launch_options).map_err(|e| e.to_string())?;
+        let tab = browser.new_tab().map_err(|e| e.to_string())?;
+        let command_session: Box<dyn IntegrationSession> = Box::new(ChromeSession { browser, tab });
+        gcx.write().await.integration_sessions.insert(
+            session_hashmap_key.clone(), Arc::new(AMutex::new(command_session))
+        );
+    }
+    Ok(true)
+}
+
+
+fn tool_message(content: String, tool_call_id: &String) -> ContextEnum {
+    ContextEnum::ChatMessage(ChatMessage {
+        role: "tool".to_string(),
+        content: ChatContent::SimpleText(content.clone()),
+        tool_calls: None,
+        tool_call_id: tool_call_id.clone(),
+        ..Default::default()
+    })
+}
+
+
+async fn interact_with_chrome(
+    command_args: &Vec<String>,
+    session_hashmap_key: &String,
+    tool_call_id: &String,
+    gcx: Arc<ARwLock<GlobalContext>>) -> Result<Vec<ContextEnum>, String>
+{
+    let command_session = {
+        let gcx_locked = gcx.read().await;
+        gcx_locked.integration_sessions.get(session_hashmap_key)
+            .ok_or(format!("Error getting chrome session for chat: {}", session_hashmap_key))?
+            .clone()
+    };
+    
+    let mut command_session_locked = command_session.lock().await;
+    let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+
+    let mut messages = vec![];
+    if command_args[0] == "navigate_to" {
+        if command_args.len() < 2 {
+            messages.push(tool_message(format!("Missing argument `url`: {:?}", command_args), tool_call_id));
+        } else {
+            chrome_session.tab.navigate_to(command_args[1].as_str()).map_err(|e| e.to_string())?;
+            chrome_session.tab.wait_until_navigated().map_err(|e| e.to_string())?;
+            messages.push(tool_message(format!("Chrome tab navigated to {}", command_args[1]), tool_call_id));
+        }
+    } else if command_args[0] == "screenshot" {
+        messages.push(tool_message("Made a screenshot".to_string(), tool_call_id));
+        let screenshot_message = screenshot_jpeg_base64(&chrome_session.tab, false).await?;
+        messages.push(ContextEnum::ChatMessage(screenshot_message));
+    } else if command_args[0] == "html" {
+        let content: String;
+        let client = Client::builder()
+            .build()
+            .map_err(|e| e.to_string())?;
+        let url = chrome_session.tab.get_url();
+        let response = client.get(url.clone()).send().await.map_err(|e| e.to_string())?;
+        if !response.status().is_success() {
+            content = format!("Unable to fetch url: {}; status: {}", url, response.status());
+        } else {
+            content = response.text().await.map_err(|e| e.to_string())?;
+        }
+        messages.push(tool_message(content, tool_call_id));
+    } else {
+        return Err(format!("Unknown command: {:?}", command_args));
+    }
+
+    Ok(messages)
+}
+
+async fn is_chrome_session_active(
+    key: &String,
+    gcx: Arc<ARwLock<GlobalContext>>,
+) -> bool {
+    let session = {
+        let gcx_locked = gcx.read().await;
+        gcx_locked.integration_sessions.get(key).cloned()
+    };
+    !session.is_none()
+}
+
+async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -> Result<ChatMessage, String> {
+    let jpeg_data = tab.call_method(Page::CaptureScreenshot {
+        format: Some(Page::CaptureScreenshotFormatOption::Jpeg),
+        clip: None,
+        quality: Some(75),
+        from_surface: Some(true),
+        capture_beyond_viewport: Some(capture_beyond_viewport),
+    }).map_err(|e| e.to_string())?.data;
+
+    let screenshot_content = format!("data:image/jpeg;base64,{}", jpeg_data);
+    let multimodal_element = ChatMultimodalElement::MultiModalImageURLElement(
+        MultimodalElementImage::new(screenshot_content.clone())
+    );
+
+    Ok(ChatMessage {
+        role: "user".to_string(),  // Image URLs are only allowed for messages with role 'user'
+        content: ChatContent::Multimodal(vec![multimodal_element]),
+        ..Default::default()
+    })
+}

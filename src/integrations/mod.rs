@@ -1,5 +1,6 @@
 pub mod integr_github;
 pub mod integr_pdb;
+pub mod integr_chrome;
 pub mod sessions;
 pub mod process_io_utils;
 
@@ -25,5 +26,12 @@ commands_deny:
 # --- Pdb integration ---
 #pdb:
 #  python_path: "/opt/homebrew/bin/python3"  # Uncomment to set a custom python path, defaults to "python3"
+
+
+# --- Chrome integration ---
+chrome:
+#  chrome_path: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  # Uncomment to set a custom path for the chrome binary, defaults to "
+  window_size: [1024, 768]  # Size of the window, defaults to [1024, 768]
+  idle_browser_timeout: 60  # Timeout in seconds for idle browsers, defaults to 60 seconds
 
 "#;
