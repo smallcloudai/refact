@@ -18,7 +18,7 @@ use reqwest::Client;
 use std::path::PathBuf;
 use headless_chrome::{Browser, LaunchOptions, Tab};
 use headless_chrome::protocol::cdp::Page;
-use log::info;
+use headless_chrome::protocol::cdp::types::Event;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -46,7 +46,6 @@ impl IntegrationSession for ChromeSession
 
 impl ToolChrome {
     pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
-        info!("ToolChrome::new_if_configured {:?}", integrations_value);
         let integration_chrome_value = integrations_value.get("chrome")?;
 
         let integration_chrome = serde_yaml::from_value::<IntegrationChrome>(integration_chrome_value.clone()).or_else(|e| {
@@ -74,7 +73,7 @@ impl Tool for ToolChrome {
         };
 
         let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
-        let _session_started = start_chrome_session(&self.integration_chrome, &session_hashmap_key, gcx.clone()).await?;
+        start_chrome_session(&self.integration_chrome, &session_hashmap_key, gcx.clone()).await?;
         let messages = interact_with_chrome(&command_args, &session_hashmap_key, &tool_call_id, gcx.clone()).await?;
 
         Ok((false, messages))
@@ -195,6 +194,27 @@ async fn interact_with_chrome(
         } else {
             content = response.text().await.map_err(|e| e.to_string())?;
         }
+        messages.push(tool_message(content, tool_call_id));
+    } else if command_args[0] == "reload" {
+        // TODO: how to collect logs using this?
+        // let content = Arc::new(Mutex::new(format!("Page {} reloaded with following log\n", chrome_session.tab.get_url())));
+        // let listener = chrome_session.tab.add_event_listener(Arc::new(move |event: &Event| {
+        //     let mut locked_content = content.lock().unwrap();
+        //     match event {
+        //         Event::LogEntryAdded(evt) => {
+        //             locked_content.push_str(format!("\n[{:?}] {:?}", evt.params.entry.level, evt.params.entry.text).as_str());
+        //         }
+        //         _ => {
+        //             // TODO: we need to catch more event probably
+        //         }
+        //     }
+        // })).map_err(|e| e.to_string())?;
+        // chrome_session.tab.enable_log().map_err(|e| e.to_string())?;
+        chrome_session.tab.reload(false, None).map_err(|e| e.to_string())?;
+        // chrome_session.tab.disable_log().map_err(|e| e.to_string())?;
+        // let _ = chrome_session.tab.remove_event_listener(&listener);
+        // let _content = content.lock().unwrap().clone();
+        let content = format!("Page {} reloaded with following log", chrome_session.tab.get_url());
         messages.push(tool_message(content, tool_call_id));
     } else {
         return Err(format!("Unknown command: {:?}", command_args));
