@@ -50,21 +50,24 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
 
 pub async fn run_tools_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
+    model_name: &str,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
-    model_name: &str,
+    stream_back_to_user: &mut HasRagResults,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
-    let (n_ctx, subchat_tool_parameters, postprocess_parameters, chat_id) = {
+    let (n_ctx, subchat_tool_parameters, postprocess_parameters, chat_id, context_messages) = {
         let ccx_locked = ccx.lock().await;
         (
             ccx_locked.n_ctx,
             ccx_locked.subchat_tool_parameters.clone(),
             ccx_locked.postprocess_parameters.clone(),
             ccx_locked.chat_id.clone(),
+            ccx_locked.messages.clone(),
         )
     };
 
     let tools_execute_post = ToolsExecutePost {
+        context_messages,
         messages: original_messages.clone(),
         n_ctx,
         maxgen,
@@ -82,18 +85,36 @@ pub async fn run_tools_remotely(
         .await
         .map_err(|e| e.to_string())?;
 
-    if !post_result.status().is_success() {
-        let status = post_result.status();
-        let error_text = post_result.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-        return Err(format!("HTTP request failed with status {}: {}", status, error_text));
-    }
-
     let response = post_result
       .json::<ToolExecuteResponse>()
       .await
       .map_err(|e| e.to_string())?;
 
-    Ok((response.messages, response.tools_runned))
+    let mut all_messages = original_messages.to_vec();
+    for msg in response.messages {
+        all_messages.push(msg.clone());
+        stream_back_to_user.push_in_json(json!(msg));
+    }
+
+    Ok((all_messages, response.tools_runned))
+}
+
+pub async fn run_tools_locally(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+    maxgen: usize,
+    original_messages: &Vec<ChatMessage>,
+    stream_back_to_user: &mut HasRagResults,
+) -> (Vec<ChatMessage>, bool) {
+    let (new_messages, tools_runned) = run_tools(ccx, tokenizer, maxgen, original_messages).await;
+
+    let mut all_messages = original_messages.to_vec();
+    for msg in new_messages {
+        all_messages.push(msg.clone());
+        stream_back_to_user.push_in_json(json!(msg));
+    }
+
+    (all_messages, tools_runned)
 }
 
 pub async fn run_tools(
@@ -101,7 +122,6 @@ pub async fn run_tools(
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
-    stream_back_to_user: &mut HasRagResults,
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let gcx = ccx.lock().await.global_context.clone();
@@ -245,11 +265,8 @@ pub async fn run_tools(
         style,
     ).await;
 
-    let mut all_messages = original_messages.to_vec();
-    for msg in generated_tool.iter().chain(generated_other.iter()) {
-        all_messages.push(msg.clone());
-        stream_back_to_user.push_in_json(json!(msg));
-    }
+    let new_messages = generated_tool.into_iter().chain(generated_other.into_iter())
+        .collect::<Vec<_>>();
 
     ccx.lock().await.pp_skeleton = false;
 

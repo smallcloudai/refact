@@ -12,7 +12,6 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatToolCall, PostprocessSettings, SubchatParameters};
 use crate::http::routers::v1::chat::CHAT_TOP_N;
-use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::tools::tools_description::{commands_require_confirmation_rules_from_integrations_yaml, tool_description_list_from_yaml, tools_merged_and_filtered};
 use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
@@ -42,6 +41,7 @@ struct PauseReason {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ToolsExecutePost {
+    pub context_messages: Vec<ChatMessage>,
     pub messages: Vec<ChatMessage>,
     pub n_ctx: usize,
     pub maxgen: usize,
@@ -234,7 +234,7 @@ pub async fn handle_v1_tools_execute(
         tools_execute_post.n_ctx,
         CHAT_TOP_N,
         false,
-        tools_execute_post.messages.clone(),
+        tools_execute_post.context_messages.clone(),
         tools_execute_post.chat_id.clone(),
     ).await;
     ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
@@ -242,18 +242,21 @@ pub async fn handle_v1_tools_execute(
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
     let (messages, tools_runned) = run_tools(
-        ccx_arc.clone(), tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &mut HasRagResults::new()
+        ccx_arc.clone(), tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages
     ).await;
 
-    let body = serde_json::json!({
-        "messages": messages,
-        "tools_runned": tools_runned,
-    }).to_string();
+    let response = ToolExecuteResponse {
+        messages,
+        tools_runned,
+    };
+
+    let response_json = serde_json::to_string(&response)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::from(body))
+        .body(Body::from(response_json))
         .unwrap()
     )
 }
