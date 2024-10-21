@@ -7,6 +7,7 @@ use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
 
 #[derive(Debug)]
 pub struct Thing {
+    #[allow(dead_code)]
     pub tline: usize,  // only needed for printing in this file
     pub public: bool,
     pub thing_kind: char,
@@ -27,8 +28,10 @@ pub struct ContextAnyParser {
     // from hello.world import MyClass       ->   (file::MyClass, hello::world::MyClass)
     // from hello.world import MyClass as A  ->   (file::A, hello::world::MyClass)
     pub alias: IndexMap<String, String>,
-    // Star imports are bad for resolving stuff
+    // TODO
+    // star imports are bad for resolving stuff
     // from hello.world import *             ->   any unresolved usage of MyClass becomes ?::hello::world::MyClass, ?::MyClass
+    #[allow(dead_code)]
     pub star_imports: Vec<String>,
 }
 
@@ -87,6 +90,7 @@ impl ContextAnyParser {
         println!("{}{}", self.indent(), args);
     }
 
+    #[allow(dead_code)]
     pub fn dump(&self) {
         println!("\n  -- things -- ");
         for (key, thing) in self.things.iter() {
@@ -117,6 +121,41 @@ impl ContextAnyParser {
             println!("{:<40}", star);
         }
         println!("  -- /star -- ");
+    }
+
+    #[allow(dead_code)]
+    pub fn annotate_code(&self, comment: &str) -> String {
+        let mut r = String::new();
+        let lines: Vec<&str> = self.code.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            r.push_str(line);
+            let mut usages_on_line = Vec::new();
+            for (_, usage) in &self.usages {
+                if usage.uline == i {
+                    usages_on_line.push(format!("{:?}", usage));
+                }
+            }
+            let indent = line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
+            for err in &self.errs.errors {
+                if err.err_line == i + 1 {
+                    r.push_str(format!("\n{indent}{comment} ERROR {}", err.err_message).as_str());
+                }
+            }
+            for (key, thing) in &self.things {
+                if thing.tline == i {
+                    let mut key_last = key.split("::").last().unwrap_or("").to_string();
+                    if thing.thing_kind == 'f' {
+                        key_last += "()";
+                    }
+                    r.push_str(format!("\n{indent}{comment} {} {} {}", thing.thing_kind, key_last, thing.type_resolved).as_str());
+                }
+            }
+            if !usages_on_line.is_empty() {
+                r.push_str(format!("\n{}{} {}", indent, comment, usages_on_line.join(" ")).as_str());
+            }
+            r.push('\n');
+        }
+        r
     }
 
     pub fn export_defs(&mut self, cpath: &str) -> Vec<AstDefinition> {  // self.defs becomes empty after this operation
@@ -151,40 +190,6 @@ impl ContextAnyParser {
         let mut new_defs = IndexMap::new();
         std::mem::swap(&mut self.defs, &mut new_defs);
         new_defs.into_values().collect()
-    }
-
-    pub fn annotate_code(&self, comment: &str) -> String {
-        let mut r = String::new();
-        let lines: Vec<&str> = self.code.lines().collect();
-        for (i, line) in lines.iter().enumerate() {
-            r.push_str(line);
-            let mut usages_on_line = Vec::new();
-            for (_, usage) in &self.usages {
-                if usage.uline == i {
-                    usages_on_line.push(format!("{:?}", usage));
-                }
-            }
-            let indent = line.chars().take_while(|c| c.is_whitespace()).collect::<String>();
-            for err in &self.errs.errors {
-                if err.err_line == i + 1 {
-                    r.push_str(format!("\n{indent}{comment} ERROR {}", err.err_message).as_str());
-                }
-            }
-            for (key, thing) in &self.things {
-                if thing.tline == i {
-                    let mut key_last = key.split("::").last().unwrap_or("").to_string();
-                    if thing.thing_kind == 'f' {
-                        key_last += "()";
-                    }
-                    r.push_str(format!("\n{indent}{comment} {} {} {}", thing.thing_kind, key_last, thing.type_resolved).as_str());
-                }
-            }
-            if !usages_on_line.is_empty() {
-                r.push_str(format!("\n{}{} {}", indent, comment, usages_on_line.join(" ")).as_str());
-            }
-            r.push('\n');
-        }
-        r
     }
 }
 

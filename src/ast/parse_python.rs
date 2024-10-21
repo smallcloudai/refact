@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use tree_sitter::{Node, Parser, Query, QueryCursor};
+use tree_sitter::{Node, Parser};
 use tree_sitter_python::language;
 
 use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
