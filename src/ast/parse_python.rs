@@ -8,6 +8,11 @@ use crate::ast::parse_common::{ContextAnyParser, Thing, any_child_of_type, type_
 
 const DEBUG: bool = true;
 
+// more python todo:
+// - comments
+// - type aliases
+// - star imports
+
 
 pub struct ContextPy {
     pub ap: ContextAnyParser,
@@ -108,10 +113,31 @@ fn py_add_a_thing<'a>(cx: &mut ContextPy, thing_path: &String, thing_kind: char,
     }
     cx.ap.things.insert(thing_path.clone(), Thing {
         tline: node.range().start_point.row,
+        public: py_is_public(cx, thing_path),
         thing_kind,
         type_resolved: type_new.clone(),
     });
     return (true, type_new);
+}
+
+fn py_is_public(cx: &ContextPy, path_str: &String) -> bool {
+    let path: Vec<String> = path_str.split("::").map(String::from).collect();
+    // if let Some(name) = path.last() {
+    //     if name.starts_with('_') {
+    //         return false;
+    //     }
+    // }
+    for i in 1 .. path.len() {
+        let parent_path = path[0 .. i].join("::");
+        if let Some(parent_thing) = cx.ap.things.get(&parent_path) {
+            match parent_thing.thing_kind {
+                's' => { return parent_thing.public; },
+                'f' => { return false; },
+                _ => { },
+            }
+        }
+    }
+    true
 }
 
 fn py_import_save<'a>(cx: &mut ContextPy, path: &Vec<String>, dotted_from: String, import_what: String, import_as: String)
@@ -296,7 +322,24 @@ fn py_var_add<'a>(cx: &mut ContextPy, lhs_lvalue: &Node<'a>, lvalue_type: String
         return;
     }
     let potential_new_type = if type_problems(&lvalue_type) > type_problems(&rhs_type) { rhs_type.clone() } else { lvalue_type.clone() };
-    py_add_a_thing(cx, &lvalue_path, 'v', potential_new_type, lhs_lvalue);
+    let (upd, best_return_type) = py_add_a_thing(cx, &lvalue_path, 'v', potential_new_type, lhs_lvalue);
+    // let (upd2, best_return_type) = py_add_a_thing(cx, &func_path_str, 'f', format!("!{}", ret_type), node);
+    if upd {
+        let path: Vec<String> = lvalue_path.split("::").map(String::from).collect();
+        cx.ap.defs.insert(lvalue_path.clone(), AstDefinition {
+            official_path: path,
+            symbol_type: SymbolType::VariableDefinition,
+            usages: vec![],
+            resolved_type: best_return_type,
+            this_is_a_class: "".to_string(),
+            this_class_derived_from: vec![],
+            cpath: "".to_string(),
+            decl_line1: lhs_lvalue.range().start_point.row + 1,
+            decl_line2: lhs_lvalue.range().end_point.row + 1,
+            body_line1: 0,
+            body_line2: 0,
+        });
+    }
 }
 
 fn py_type_generic<'a>(cx: &mut ContextPy, node: Option<Node<'a>>, path: &Vec<String>, level: usize) -> String {
@@ -393,7 +436,8 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy, node: Option<Node<'a>
     }
     let node = node.unwrap();
     let node_text = cx.ap.code[node.byte_range()].to_string();
-    debug!(cx, "EXPR {}", node_text);
+    // debug!(cx, "EXPR {}", node_text);
+    debug!(cx, "EXPR {}", cx.ap.recursive_print_with_red_brackets(&node));
     cx.ap.reclevel += 1;
     let type_of = match node.kind() {
         "expression_list" | "argument_list" => {
@@ -563,7 +607,8 @@ fn py_class<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
     }
 
     let class_path = [path.clone(), vec![class_name.clone()]].concat();
-    cx.ap.defs.insert(class_path.join("::"), AstDefinition {
+    let class_path_str = class_path.join("::");
+    cx.ap.defs.insert(class_path_str.clone(), AstDefinition {
         official_path: class_path.clone(),
         symbol_type: SymbolType::StructDeclaration,
         usages: vec![],
@@ -577,10 +622,11 @@ fn py_class<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>)
         body_line2,
     });
 
-    cx.ap.things.insert(class_path.join("::"), Thing {
+    cx.ap.things.insert(class_path_str.clone(), Thing {
         tline: node.range().start_point.row,
+        public: py_is_public(cx, &class_path_str),
         thing_kind: 's',
-        type_resolved: format!("!{}", class_path.join("::")),   // this is about constructor in python, name of the class() is used as constructor, return type is the class
+        type_resolved: format!("!{}", class_path_str),   // this is about constructor in python, name of the class() is used as constructor, return type is the class
     });
 
     py_body(cx, &body.unwrap(), &class_path);
@@ -675,6 +721,7 @@ fn py_function<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>) {
         let param_path = [func_path.clone(), vec![param_name.clone()]].concat();
         cx.ap.things.insert(param_path.join("::"), Thing {
             tline: param_node.range().start_point.row,
+            public: false,
             thing_kind: 'p',
             type_resolved,
         });
@@ -770,6 +817,19 @@ pub fn py_parse(code: &str) -> ContextPy
         cx.ap.errs = AstErrorStats::default();
         pass_n += 1;
     }
+    cx.ap.defs.insert("root".to_string(), AstDefinition {
+        official_path: vec!["root".to_string()],
+        symbol_type: SymbolType::Module,
+        usages: vec![],
+        resolved_type: "".to_string(),
+        this_is_a_class: "".to_string(),
+        this_class_derived_from: vec![],
+        cpath: "".to_string(),
+        decl_line1: 1,
+        decl_line2: cx.ap.code.lines().count(),
+        body_line1: 0,
+        body_line2: 0,
+    });
     return cx;
 }
 
@@ -782,7 +842,7 @@ mod tests {
     {
         let mut cx = py_parse(code);
         cx.ap.dump();
-        let _ = cx.ap.export_defs();
+        let _ = cx.ap.export_defs("test");
         cx.ap.annotate_code("#")
     }
 

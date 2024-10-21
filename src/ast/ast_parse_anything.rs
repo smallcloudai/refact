@@ -344,7 +344,7 @@ pub fn parse_anything(
     tracing::info!("PARSE {} {}", language, cpath);
     if language == "python" {
         let mut cx = crate::ast::parse_python::py_parse(text);
-        return Ok((cx.ap.export_defs(), "python".to_string()));
+        return Ok((cx.ap.export_defs(cpath), "python".to_string()));
     }
     let file_global_path = vec!["file".to_string()];
 

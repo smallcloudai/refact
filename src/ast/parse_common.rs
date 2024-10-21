@@ -3,12 +3,12 @@ use indexmap::IndexMap;
 use tree_sitter::{Node, Parser, Range};
 
 use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
-use crate::ast::treesitter::structs::SymbolType;
 
 
 #[derive(Debug)]
 pub struct Thing {
     pub tline: usize,  // only needed for printing in this file
+    pub public: bool,
     pub thing_kind: char,
     pub type_resolved: String,
 }
@@ -90,7 +90,7 @@ impl ContextAnyParser {
     pub fn dump(&self) {
         println!("\n  -- things -- ");
         for (key, thing) in self.things.iter() {
-            println!("{:<40} {} {}", key, thing.thing_kind, thing.type_resolved);
+            println!("{:<40} {} {:<40} {}", key, thing.thing_kind, thing.type_resolved, if thing.public { "pub" } else { "" } );
         }
         println!("  -- /things --\n");
 
@@ -119,26 +119,14 @@ impl ContextAnyParser {
         println!("  -- /star -- ");
     }
 
-    pub fn export_defs(&mut self) -> Vec<AstDefinition> {  // self.defs becomes empty after this operation
-        self.defs.insert("root".to_string(), AstDefinition {
-            official_path: vec!["root".to_string()],
-            symbol_type: SymbolType::Module,
-            usages: vec![],
-            resolved_type: "".to_string(),
-            this_is_a_class: "".to_string(),
-            this_class_derived_from: vec![],
-            cpath: "".to_string(),
-            decl_line1: 1,
-            decl_line2: self.code.lines().count(),
-            body_line1: 0,
-            body_line2: 0,
-        });
+    pub fn export_defs(&mut self, cpath: &str) -> Vec<AstDefinition> {  // self.defs becomes empty after this operation
         for (def_key, def) in &mut self.defs {
             assert!(*def_key == def.official_path.join("::"));
             def.usages.clear();
+            def.cpath = cpath.to_string();
         }
         for (usage_at, usage) in &self.usages {
-            println!("usage_at {} {:?} usage.resolved_as={:?}", usage_at, usage, usage.resolved_as);
+            // println!("usage_at {} {:?} usage.resolved_as={:?}", usage_at, usage, usage.resolved_as);
             assert!(usage.resolved_as.is_empty() || usage.resolved_as.starts_with("root::") || usage.resolved_as.starts_with("?::"));
             let mut atv = usage_at.split("::").collect::<Vec<&str>>();
             let mut found_home = false;
@@ -163,11 +151,6 @@ impl ContextAnyParser {
         std::mem::swap(&mut self.defs, &mut new_defs);
         new_defs.into_values().collect()
     }
-
-    // more todo:
-    // * global variables to AstDefinition
-    // * comments
-    // * type aliases
 
     pub fn annotate_code(&self, comment: &str) -> String {
         let mut r = String::new();

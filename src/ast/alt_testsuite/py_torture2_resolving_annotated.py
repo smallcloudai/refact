@@ -57,7 +57,6 @@ def list_directory():
 
 
 if __name__ == '__main__':
-# U{ go_up_fail guess ?::__name__ }
     process: multiprocessing.Process
     # v process ?::Process
     # U{ alias ?::multiprocessing } U{ attr guess ?::Process } U{ go_up root::process }

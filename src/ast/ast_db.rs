@@ -916,7 +916,7 @@ mod tests {
         );
         println!(
             "Type hierachy subtree_of=Animal:\n{}",
-            type_hierarchy(ast_index.clone(), language.to_string(), "cpp🔎Animal".to_string()).await
+            type_hierarchy(ast_index.clone(), language.to_string(), format!("{}🔎Animal", language)).await
         );
 
         // Goat::Goat() is a C++ constructor
@@ -929,6 +929,7 @@ mod tests {
         assert!(goat_def.len() == 1);
 
         let animalage_defs = definitions(ast_index.clone(), animal_age_location).await;
+        println!("AAAAA {:?} BBBB {}", animalage_defs, animal_age_location);
         let animalage_def0 = animalage_defs.first().unwrap();
         let animalage_usage = usages(ast_index.clone(), animalage_def0.path(), 100).await;
         let mut animalage_usage_str = String::new();
@@ -938,7 +939,7 @@ mod tests {
         println!("animalage_usage_str:\n{}", animalage_usage_str);
         assert!(animalage_usage.len() == 5);
 
-        let goat_defs = definitions(ast_index.clone(), "cpp_goat_library::Goat").await;
+        let goat_defs = definitions(ast_index.clone(), format!("{}_goat_library::Goat", language).as_str()).await;
         let goat_def0 = goat_defs.first().unwrap();
         let goat_usage = usages(ast_index.clone(), goat_def0.path(), 100).await;
         let mut goat_usage_str = String::new();
@@ -991,7 +992,7 @@ mod tests {
             ast_index,
             "src/ast/alt_testsuite/py_goat_library.py",
             "src/ast/alt_testsuite/py_goat_main.py",
-            "Goat::Goat",
+            "Goat::__init__",
             "py",
             "Animal::age",
         ).await;
