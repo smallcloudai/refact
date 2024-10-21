@@ -122,18 +122,6 @@ mod tests {
     use super::*;
     use std::{path::PathBuf, sync::Arc};
 
-    impl PrivacySettings {
-        pub fn allow_all() -> Self {
-            PrivacySettings {
-                privacy_rules: FilePrivacySettings {
-                    only_send_to_servers_I_control: Vec::new(),
-                    blocked: Vec::new(),
-                },
-                loaded_ts: 0,
-            }
-        }
-    }
-
     #[test]
     fn test_privacy_patterns() {
         // Arrange
