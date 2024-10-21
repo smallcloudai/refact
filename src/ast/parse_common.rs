@@ -121,7 +121,8 @@ impl ContextAnyParser {
 
     pub fn export_defs(&mut self, cpath: &str) -> Vec<AstDefinition> {  // self.defs becomes empty after this operation
         for (def_key, def) in &mut self.defs {
-            assert!(*def_key == def.official_path.join("::"));
+            let def_offpath = def.official_path.join("::");
+            assert!(*def_key == def_offpath || format!("{}::<toplevel>", *def_key) == def_offpath);
             def.usages.clear();
             def.cpath = cpath.to_string();
         }

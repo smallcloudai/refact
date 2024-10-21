@@ -6,7 +6,7 @@ use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
 use crate::ast::treesitter::structs::SymbolType;
 use crate::ast::parse_common::{ContextAnyParser, Thing, any_child_of_type, type_deindex, type_deindex_n, type_call, type_zerolevel_comma_split};
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 // more python todo:
 // - comments
@@ -832,7 +832,7 @@ pub fn py_parse(code: &str) -> ContextPy
         pass_n += 1;
     }
     cx.ap.defs.insert("root".to_string(), AstDefinition {
-        official_path: vec!["root".to_string()],
+        official_path: vec!["root".to_string(), "<toplevel>".to_string()],
         symbol_type: SymbolType::Module,
         usages: vec![],
         resolved_type: "".to_string(),

@@ -182,6 +182,7 @@ pub async fn doc_add(
     let mut added_usages: i32 = 0;
     let mut unresolved_usages: i32 = 0;
     for definition in defs.iter() {
+        assert!(definition.cpath == *cpath);
         let serialized = serde_cbor::to_vec(&definition).unwrap();
         let official_path = definition.official_path.join("::");
         let d_key = format!("d|{}", official_path);
@@ -929,7 +930,6 @@ mod tests {
         assert!(goat_def.len() == 1);
 
         let animalage_defs = definitions(ast_index.clone(), animal_age_location).await;
-        println!("AAAAA {:?} BBBB {}", animalage_defs, animal_age_location);
         let animalage_def0 = animalage_defs.first().unwrap();
         let animalage_usage = usages(ast_index.clone(), animalage_def0.path(), 100).await;
         let mut animalage_usage_str = String::new();
@@ -947,7 +947,7 @@ mod tests {
             goat_usage_str.push_str(&format!("{:}:{}\n", used_at_def.cpath, used_at_uline));
         }
         println!("goat_usage:\n{}", goat_usage_str);
-        assert!(goat_usage.len() == 1);
+        assert!(goat_usage.len() == 1 || goat_usage.len() == 2);  // derived from generates usages (new style: py) or not (old style)
 
         doc_remove(ast_index.clone(), &library_file_path.to_string()).await;
         doc_remove(ast_index.clone(), &main_file_path.to_string()).await;
