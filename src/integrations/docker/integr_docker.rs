@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ContextEnum, ChatMessage};
+use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::tools::tools_description::Tool;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
@@ -100,7 +100,7 @@ impl Tool for ToolDocker {
         Ok((false, vec![
             ContextEnum::ChatMessage(ChatMessage {
                 role: "tool".to_string(),
-                content: stdout,
+                content: ChatContent::SimpleText(stdout),
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
                 ..Default::default()

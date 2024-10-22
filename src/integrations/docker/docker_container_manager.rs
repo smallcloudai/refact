@@ -166,26 +166,18 @@ async fn docker_container_start(
     let workspace_folder = "/app";
     let docker_image_id = "079b939b3ea1";
     let host_lsp_path = "/home/humberto/bin/refact-lsp";
-    let host_cache_path = "/home/humberto/.cache/refact";
+
+    let api_key = gcx.read().await.cmdline.api_key.clone();
 
     let lsp_command = format!(
-        "{lsp_path} --http-port {port} --logs-stderr --address-url Refact --api-key {api_key} --vecdb \
-         --reset-memory --ast --experimental --inside-container --workspace-folder {workspace}",
-        lsp_path = DEFAULT_LSP_PATH,
-        port = internal_port,
-        api_key = "<API_KEY>",
-        workspace = workspace_folder,
+        "mkdir -p $HOME/.cache/refact/ && {DEFAULT_LSP_PATH} --http-port {internal_port} --logs-stderr \
+        --address-url Refact --api-key {api_key} --vecdb --reset-memory --ast --experimental \
+        --inside-container --workspace-folder {workspace_folder}",
     );
 
     let run_command = format!(
-        "run --detach --name=refact-{chat_id} --rm --volume={host_lsp_path}:{lsp_path} \
-        --volume={host_cache_path}:/root/.cache/refact/ --publish=0:{port} {image_id} {command}",
-        chat_id = chat_id,
-        host_lsp_path = host_lsp_path,
-        lsp_path = DEFAULT_LSP_PATH,
-        port = internal_port,
-        image_id = docker_image_id,
-        command = lsp_command,
+        "run --detach --name=refact-{chat_id} --rm --volume={host_lsp_path}:{DEFAULT_LSP_PATH} \
+        --publish=0:{internal_port} {docker_image_id} sh -c '{lsp_command}'",
     );
 
     info!("Executing docker command: {}", &run_command);
