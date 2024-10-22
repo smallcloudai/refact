@@ -17,7 +17,7 @@ use crate::knowledge::{lance_search, MemoriesDatabase};
 use crate::vecdb::vdb_cache::VecDBCache;
 use crate::vecdb::vdb_lance::VecDBHandler;
 use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, OngoingWork, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
-use crate::vecdb::vdb_thread::{vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
+use crate::vecdb::vdb_thread::{vecdb_start_background_tasks, vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
 
 const VECDB_DISTANCE_REJECT_COMPLETELY: f32 = 0.25;  // XXX: it's actually a constant per embedding model, not universal for all models
 
@@ -254,12 +254,7 @@ impl VecDb {
     ) -> Vec<JoinHandle<()>> {
         info!("vecdb: start_background_tasks");
         vectorizer_enqueue_dirty_memory(self.vectorizer_service.clone()).await;
-        let my_tokenizer = self.constants.tokenizer.clone().unwrap();
-        return self.vectorizer_service.lock().await.vecdb_start_background_tasks(
-            self.vecdb_emb_client.clone(),
-            gcx.clone(),
-            my_tokenizer.clone(),
-        ).await;
+        return vecdb_start_background_tasks(self.vecdb_emb_client.clone(), self.vectorizer_service.clone(), gcx.clone()).await;
     }
 
     pub async fn vectorizer_enqueue_files(&self, documents: &Vec<Document>, process_immediately: bool) {
