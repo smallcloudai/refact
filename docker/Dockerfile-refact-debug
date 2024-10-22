@@ -1,4 +1,3 @@
-# First stage: Build
 FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y \
@@ -15,7 +14,18 @@ ENV PATH=/root/.cargo/bin:$PATH
 
 WORKDIR /refact-lsp
 
+COPY Cargo.toml build.rs ./
+
+RUN mkdir src && echo 'fn main() { println!("Dummy main to satisfy Cargo"); }' > src/main.rs
+
+RUN cargo fetch
+RUN cargo check
+
+RUN rm -rf src
+
 COPY . .
 
 RUN cargo build
+
+RUN mkdir -p /output && cp target/debug/refact-lsp /output/
 

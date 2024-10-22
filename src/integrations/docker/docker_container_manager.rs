@@ -86,7 +86,7 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
 
             // docker_container_session.last_usage_ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
             // return Ok(());
-            todo!()
+            Ok(())
         }
         None => {
             let docker_tool_locked = docker_tool.lock().await;  
@@ -103,10 +103,10 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
 
             let connection = match ssh_config_maybe {
                 Some(ssh_config) => {
-                    let ssh_tunnel = ssh_tunnel_open(&host_port.to_string(), &ssh_config).await?;
+                    let ssh_tunnel = ssh_tunnel_open(&format!("127.0.0.1:{}", host_port.to_string()), &ssh_config).await?;
                     DockerContainerConnectionEnum::SshTunnel(ssh_tunnel)
                 },
-                None => DockerContainerConnectionEnum::LocalPort(internal_port),
+                None => DockerContainerConnectionEnum::LocalPort(host_port),
             };
 
             let session: Arc<AMutex<Box<dyn IntegrationSession>>> = Arc::new(AMutex::new(Box::new(DockerContainerSession {
@@ -124,6 +124,39 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
     }
 }
 
+pub async fn docker_container_get_host_port_to_connect(ccx: Arc<AMutex<AtCommandsContext>>) -> Result<u16, String> {
+    let (gcx, chat_id) = {
+        let ccx_locked = ccx.lock().await;
+        (ccx_locked.global_context.clone(), ccx_locked.chat_id.clone())
+    };
+
+    let docker_container_session_maybe = {
+        let gcx_locked = gcx.read().await;
+        gcx_locked.integration_sessions.get(&get_session_hashmap_key("docker", &chat_id)).cloned()
+    };
+
+    match docker_container_session_maybe {
+        Some(docker_container_session) => {
+            let mut docker_container_session_locked = docker_container_session.lock().await;
+            let docker_container_session = docker_container_session_locked.as_any_mut().downcast_mut::<DockerContainerSession>()
+              .ok_or_else(|| "Failed to downcast docker container session")?;
+
+            return match &docker_container_session.connection {
+                DockerContainerConnectionEnum::SshTunnel(ssh_tunnel) => {
+                    Ok(ssh_tunnel.local_port)
+                },
+                DockerContainerConnectionEnum::LocalPort(internal_port) => {
+                    Ok(*internal_port)
+                },
+            };
+        },
+        None => {
+            return Err("Docker container session not found, cannot get host port".to_string());
+        }
+    }
+}
+   
+
 async fn docker_container_start(
     docker: &ToolDocker,
     chat_id: &str,
@@ -131,19 +164,21 @@ async fn docker_container_start(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
     let workspace_folder = "/app";
-    let docker_image_id = "0450f724c058";
-    let host_lsp_path = "/Users/humbertoyusta/refact/bin/refact-lsp";
+    let docker_image_id = "079b939b3ea1";
+    let host_lsp_path = "/home/humberto/bin/refact-lsp";
+    let host_cache_path = "/home/humberto/.cache/refact";
 
     let lsp_command = format!(
-        "{lsp_path} --http-port {port} --logs-stderr --vecdb --reset-memory --ast --experimental --workspace-folder {workspace}",
+        "{lsp_path} --http-port {port} --logs-stderr --address-url Refact --api-key {api_key} --vecdb --reset-memory --ast --experimental --workspace-folder {workspace}",
         lsp_path = DEFAULT_LSP_PATH,
         port = internal_port,
+        api_key = "<API_KEY>",
         workspace = workspace_folder,
     );
 
     let run_command = format!(
         "run --detach --name=refact-{chat_id} --rm --volume={host_lsp_path}:{lsp_path} \
-         --publish=0:{port} {image_id} {command}",
+        --volume={host_cache_path}:/root/.cache/refact/ --publish=0:{port} {image_id} {command}",
         chat_id = chat_id,
         host_lsp_path = host_lsp_path,
         lsp_path = DEFAULT_LSP_PATH,
