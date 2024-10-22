@@ -25,12 +25,15 @@ pub async fn start_server(
     ask_shutdown_receiver: std::sync::mpsc::Receiver<String>,
     shutdown_flag: Arc<AtomicBool>
 ) -> Option<JoinHandle<()>> {
-    let port = global_context.read().await.cmdline.http_port;
+    let (port, is_inside_container) = {
+        let gcx_locked= global_context.read().await;
+        (gcx_locked.cmdline.http_port, gcx_locked.cmdline.inside_container)
+    };
     if port == 0 {
         return None
     }
     return Some(tokio::spawn(async move {
-        let addr = ([0, 0, 0, 0], port).into();
+        let addr = if is_inside_container { ([0, 0, 0, 0], port).into() } else { ([127, 0, 0, 1], port).into() };
         let builder = Server::try_bind(&addr).map_err(|e| {
             let _ = write!(std::io::stderr(), "PORT_BUSY {}\n", e);
             format!("port busy, address {}: {}", addr, e)

@@ -109,13 +109,14 @@ impl ScratchpadAbstract for ChatPassthrough {
             (ccx_locked.n_ctx, ccx_locked.global_context.clone())
         };
         let style = self.post.style.clone();
+        let is_inside_container = gcx.read().await.cmdline.inside_container;
         let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
             run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
         } else {
             (self.messages.clone(), self.messages.len(), false)
         };
         if self.supports_tools {
-            (messages, _) = if false {
+            (messages, _) = if is_inside_container {
                 run_tools_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
             } else {
                 run_tools_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?

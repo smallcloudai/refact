@@ -169,7 +169,8 @@ async fn docker_container_start(
     let host_cache_path = "/home/humberto/.cache/refact";
 
     let lsp_command = format!(
-        "{lsp_path} --http-port {port} --logs-stderr --address-url Refact --api-key {api_key} --vecdb --reset-memory --ast --experimental --workspace-folder {workspace}",
+        "{lsp_path} --http-port {port} --logs-stderr --address-url Refact --api-key {api_key} --vecdb \
+         --reset-memory --ast --experimental --inside-container --workspace-folder {workspace}",
         lsp_path = DEFAULT_LSP_PATH,
         port = internal_port,
         api_key = "<API_KEY>",
