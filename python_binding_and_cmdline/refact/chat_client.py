@@ -64,12 +64,8 @@ def messages_to_dicts(
     log += termcolor.colored("------ call chat %s T=%0.2f tools=%s ------\n" % (model_name, temperature, tools_namesonly), "red")
     for x in messages:
         if x.role in ["system", "user", "assistant", "tool", "context_file", "diff", "plain_text", "cd_instruction"]:
-            listofdict.append({
-                "role": x.role,
-                "content": x.content,
-                "tool_calls": [tc.model_dump(exclude_none=True) for tc in x.tool_calls] if x.tool_calls else None,
-                "tool_call_id": x.tool_call_id
-            })
+            t = x.model_dump(exclude_none=True)
+            listofdict.append(t)
         else:
             assert 0, x.role
         if x.role == "system":
