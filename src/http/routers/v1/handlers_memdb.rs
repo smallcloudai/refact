@@ -125,7 +125,7 @@ pub async fn handle_mem_block_until_vectorized(
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let vec_db = gcx.read().await.vec_db.clone();
-    crate::vecdb::vdb_highlev::memories_block_until_vectorized(vec_db)
+    crate::vecdb::vdb_highlev::memories_block_until_vectorized(vec_db, 20_000)
         .await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
 

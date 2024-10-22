@@ -293,7 +293,10 @@ pub async fn memories_add(
 
 pub async fn memories_block_until_vectorized(
     vec_db: Arc<AMutex<Option<VecDb>>>,
+    max_blocking_time_ms: usize
 ) -> Result<(), String> {
+    let max_blocking_duration = tokio::time::Duration::from_millis(max_blocking_time_ms as u64);
+    let start_time = std::time::Instant::now();
     let vectorizer_service = {
         let vec_db_guard = vec_db.lock().await;
         let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
@@ -307,11 +310,22 @@ pub async fn memories_block_until_vectorized(
         let future: tokio::sync::futures::Notified = vstatus_notify.notified();
         {
             let vstatus_locked = vstatus.lock().await;
-            if vstatus_locked.state == "done" && !vstatus_locked.queue_additions {
+            if (vstatus_locked.state == "done" && !vstatus_locked.queue_additions) || 
+                start_time.elapsed() >= max_blocking_duration {
                 break;
             }
         }
-        future.await;
+        let remaining_time = max_blocking_duration
+            .checked_sub(start_time.elapsed())
+            .unwrap_or_else(|| tokio::time::Duration::from_millis(0));
+        let sleep_duration = remaining_time
+            .checked_add(tokio::time::Duration::from_millis(50))
+            .unwrap_or_else(|| tokio::time::Duration::from_millis(50))
+            .max(tokio::time::Duration::from_millis(1));
+        tokio::select! {
+            _ = future => {},
+            _ = tokio::time::sleep(sleep_duration) => {},
+        }
     };
     Ok(())
 }
