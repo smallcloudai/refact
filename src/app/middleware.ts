@@ -59,13 +59,14 @@ startListening({
         : `fetching caps from lsp`;
       listenerApi.dispatch(setError(message));
     }
-
+    // do we need this?
     if (
       promptsApi.endpoints.getPrompts.matchRejected(action) &&
       !action.meta.condition
     ) {
       const message = `fetching system prompts.`;
-      listenerApi.dispatch(setError(action.error.message ?? message));
+      // action.error.message contains always "Rejected" message, not the error message from LSP
+      listenerApi.dispatch(setError(message));
     }
 
     if (

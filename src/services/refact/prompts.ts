@@ -1,6 +1,11 @@
 import { RootState } from "../../app/store";
+import { setError } from "../../features/Errors/errorsSlice";
 import { CUSTOM_PROMPTS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+type CustomizationErrorResponse = {
+  detail?: string;
+};
 
 export const promptsApi = createApi({
   reducerPath: "prompts",
@@ -27,7 +32,19 @@ export const promptsApi = createApi({
           credentials: "same-origin",
           redirect: "follow",
         });
-        if (result.error) return { error: result.error };
+        if (result.error) {
+          // getting first 2 lines of error message to show to user
+          const errorMessage = (
+            result.error.data as CustomizationErrorResponse
+          ).detail
+            ?.split("\n")
+            .slice(0, 2)
+            .join("\n");
+          api.dispatch(setError(errorMessage ?? "fetching system prompts."));
+          return {
+            error: result.error,
+          };
+        }
         if (!isCustomPromptsResponse(result.data)) {
           return {
             error: {

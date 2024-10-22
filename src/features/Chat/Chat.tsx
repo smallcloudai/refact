@@ -1,18 +1,9 @@
 import React from "react";
 import type { Config } from "../Config/configSlice";
-import { SystemPrompts } from "../../services/refact";
 import { Chat as ChatComponent } from "../../components/Chat";
-import {
-  useGetPromptsQuery,
-  useAppDispatch,
-  useAppSelector,
-} from "../../hooks";
+import { useAppSelector } from "../../hooks";
 import { useGetCapsQuery } from "../../hooks/useGetCapsQuery";
-import {
-  getSelectedSystemPrompt,
-  setSystemPrompt,
-  selectMessages,
-} from "./Thread";
+import { selectMessages } from "./Thread";
 
 export type ChatProps = {
   host: Config["host"];
@@ -28,13 +19,6 @@ export const Chat: React.FC<ChatProps> = ({
   tabbed,
 }) => {
   const capsRequest = useGetCapsQuery();
-
-  // TODO: these could be lower in the component tree
-  const promptsRequest = useGetPromptsQuery();
-  const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
-  const dispatch = useAppDispatch();
-  const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
-    dispatch(setSystemPrompt(prompt));
 
   const messages = useAppSelector(selectMessages);
 
@@ -70,10 +54,6 @@ export const Chat: React.FC<ChatProps> = ({
         available_caps: capsRequest.data?.code_chat_models ?? {},
       }}
       maybeSendToSidebar={maybeSendToSideBar}
-      prompts={promptsRequest.data ?? {}}
-      // Could be lowered
-      onSetSystemPrompt={onSetSelectedSystemPrompt}
-      selectedSystemPrompt={selectedSystemPrompt}
       // TODO: This can be removed
       // requestPreviewFiles={() => ({})}
     />
