@@ -56,9 +56,9 @@
 }
 
 .maybe_pin:has(.patch_title) + pre {
-  margin: 0;
+  margin-top: 0;
 }
 
 .maybe_pin:has(.patch_title) + pre pre {
-  margin: 0;
+  margin-top: 0;
 }
