@@ -74,7 +74,9 @@ export const usePatchActions = () => {
   const handleShow = useCallback(
     (pin: string) => {
       const [, , fileName] = pin.split(" ");
-      startFileAnimation(fileName);
+      const cleanedFileName = fileName.replace(/\\\?\\|^\\+/g, "");
+
+      startFileAnimation(cleanedFileName);
       getPatch({ pin, messages })
         .unwrap()
         .then((maybeDetail) => {
@@ -85,11 +87,11 @@ export const usePatchActions = () => {
           return maybeDetail;
         })
         .then((patch) => {
-          stopFileAnimation(fileName);
+          stopFileAnimation(cleanedFileName);
           diffPreview(patch, pin, pinMessages);
         })
         .catch((error: Error | { data: { detail: string } }) => {
-          stopFileAnimation(fileName);
+          stopFileAnimation(cleanedFileName);
           if ("message" in error) {
             setErrorMessage({
               type: "error",

@@ -75,6 +75,23 @@ const PinMessages: React.FC<{
     }
   }, [getMarkdown, handlePaste]);
 
+  const handleAutoApply = useCallback(
+    (
+      event: React.MouseEvent<HTMLButtonElement>,
+      children: string,
+      filePath: string,
+    ) => {
+      event.preventDefault();
+      openFile({ file_name: filePath });
+      // timeout is required to open file properly and then start rainbow animation
+      const timeoutId = setTimeout(() => {
+        handleShow(children);
+        clearTimeout(timeoutId);
+      }, 150);
+    },
+    [handleShow, openFile],
+  );
+
   const [hasMarkdown, setHasMarkdown] = useState<boolean>(false);
 
   useEffect(() => {
@@ -114,7 +131,7 @@ const PinMessages: React.FC<{
         <div style={{ flexGrow: 1 }} />
         <Button
           size="1"
-          onClick={() => handleShow(children)}
+          onClick={(event) => handleAutoApply(event, children, filePath)}
           disabled={disable}
           title={`Show: ${children}`}
         >
