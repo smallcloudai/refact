@@ -42,6 +42,7 @@ export const ideWriteResultsToFile = createAction<PatchResult[]>(
 );
 
 export const ideChatPageChange = createAction<string>("ide/chatPageChange");
+export const ideEscapeKeyPressed = createAction<string>("ide/escapeKeyPressed");
 
 export const ideDoneStreaming = createAction<boolean>("ide/doneStreaming");
 
@@ -158,6 +159,14 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const escapeKeyPressed = useCallback(
+    (mode: string) => {
+      const action = ideEscapeKeyPressed(mode);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   const doneStreaming = useCallback(
     (state: boolean) => {
       const action = ideDoneStreaming(state);
@@ -211,6 +220,7 @@ export const useEventsBusForIDE = () => {
     startFileAnimation,
     writeResultsToFile,
     chatPageChange,
+    escapeKeyPressed,
     doneStreaming,
   };
 };

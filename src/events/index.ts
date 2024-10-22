@@ -59,6 +59,7 @@ export {
   ideAnimateFileStop,
   ideWriteResultsToFile,
   ideChatPageChange,
+  ideEscapeKeyPressed,
   ideDoneStreaming,
 } from "../hooks/useEventBusForIDE";
 
