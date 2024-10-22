@@ -8,8 +8,6 @@ class Frog:
         self.y = y
         self.vx = vx
         self.vy = vy
-# AltDefinition { Frog::__init__::x }
-# AltDefinition { Frog::__init__::y }
 
     def bounce_off_banks(self, pond_width, pond_height):
         if self.x < 0:
@@ -21,7 +19,6 @@ class Frog:
         elif self.y > pond_height:
             self.vy = -np.abs(self.vy)
 
-# AltDefinition { Frog::jump, usages: Link{ self ?::bounce_off_banks } Link{ np ?::clip } Link{ np ?::clip } }
     def jump(self, pond_width, pond_height):
         self.x += self.vx * DT
         self.y += self.vy * DT

@@ -32,7 +32,7 @@ def test_completion_with_rag(fpath):
                     "line": cursor_line_n,
                     "character": cursor_column,
                 },
-                "multiline": True
+                "multiline": False
             },
             "stream": False,
             "no_cache": True,

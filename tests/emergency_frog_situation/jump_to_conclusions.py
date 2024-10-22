@@ -35,7 +35,7 @@ creatures = [
 
 
 def main_loop():
-    screen = pygame.display.set_mode((W,H))   # without space because it's a test it needs to pick up right line below
+    screen = pygame.display.set_mode((W,H))   # without space because it's a test it needs to pick up the correct line below
     quit_flag = False
     while not quit_flag:
         for event in pygame.event.get():
@@ -45,11 +45,11 @@ def main_loop():
         for p in creatures:
             pygame.draw.circle(screen, (0, 255, 0), (p.x, p.y), 10)
         draw_hello_frog(screen, "Jump To Conclusions!", (0, 200, 0))
-        pygame.display.flip()
-        pygame.time.Clock().tick(60)
         p: frog.Frog
         for p in creatures:
             p.jump(W, H)
+        pygame.display.flip()
+        pygame.time.Clock().tick(60)
 
 
 if __name__ == '__main__':

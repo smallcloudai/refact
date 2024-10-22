@@ -482,15 +482,20 @@ async fn _cursor_position_to_context_file(
     distances.sort_by_key(|&(distance, _, _)| distance);
     let nearest_usages: Vec<(usize, String)> = distances.into_iter().take(TAKE_USAGES_AROUND_CURSOR).map(|(_, usage, line)| (line, usage)).collect();
 
-    // info!("nearest_usages\n{:#?}", nearest_usages);
+    if DEBUG {
+        info!("nearest_usages\n{:#?}", nearest_usages);
+    }
 
     let unique_paths: HashSet<_> = nearest_usages.into_iter().map(|(_line, double_colon_path)| double_colon_path).collect();
     let mut output = vec![];
     let mut bucket_declarations = vec![];
     for double_colon_path in unique_paths {
+        if DEBUG {
+            info!("adding {} to context", double_colon_path);
+        }
         let defs: Vec<Arc<AstDefinition>> = crate::ast::ast_db::definitions(ast_index.clone(), double_colon_path.as_str()).await;
         if defs.len() != 1 {
-            tracing::warn!("hmm, number of definitions for {} is not one {}", double_colon_path, defs.len());
+            tracing::warn!("hmm, number of definitions for {} is {} which is not one", double_colon_path, defs.len());
         }
         for def in defs {
             output.push(ContextFile {
@@ -498,9 +503,9 @@ async fn _cursor_position_to_context_file(
                 file_content: "".to_string(),
                 line1: def.full_line1(),
                 line2: def.full_line2(),
-                symbols: vec![double_colon_path.clone()],
+                symbols: vec![def.path_drop0()],
                 gradient_type: -1,
-                usefulness: 0.,
+                usefulness: 100.,
             });
             let usage_dict = json!({
                 "file_path": def.cpath.clone(),
