@@ -10,7 +10,8 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ContextEnum;
 use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::global_context::GlobalContext;
-use crate::scratchpads::chat_message::{ChatContent, ChatMessage, ChatMultimodalElement, MultimodalElementImage};
+use crate::call_validation::{ChatContent, ChatMessage};
+use crate::scratchpads::multimodality::MultimodalElement;
 use crate::tools::tools_description::Tool;
 
 use tracing::error;
@@ -18,7 +19,6 @@ use reqwest::Client;
 use std::path::PathBuf;
 use headless_chrome::{Browser, LaunchOptions, Tab};
 use headless_chrome::protocol::cdp::Page;
-use headless_chrome::protocol::cdp::types::Event;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -243,10 +243,10 @@ async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -
         capture_beyond_viewport: Some(capture_beyond_viewport),
     }).map_err(|e| e.to_string())?.data;
 
-    let screenshot_content = format!("data:image/jpeg;base64,{}", jpeg_data);
-    let multimodal_element = ChatMultimodalElement::MultiModalImageURLElement(
-        MultimodalElementImage::new(screenshot_content.clone())
-    );
+    let multimodal_element = MultimodalElement {
+        m_type: "image/jpeg".to_string(),
+        m_content: format!("data:image/jpeg;base64,{}", jpeg_data),
+    };
 
     Ok(ChatMessage {
         role: "user".to_string(),  // Image URLs are only allowed for messages with role 'user'
