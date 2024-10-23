@@ -95,12 +95,14 @@ def process_streaming_data(data):
     # TODO: remake callback to use entities from chat_client
 
     if "choices" in data:
+        if not data.get("choices") and data.get("usage"):
+            return
         choices = data['choices']
         delta = choices[0]['delta']
         content = delta.get('content', None)
 
         # streaming tool calls
-        if delta["tool_calls"] is not None:
+        if delta.get("tool_calls"):
             for tool_call in delta["tool_calls"]:
                 id = tool_call["id"]
                 index = tool_call["index"]

@@ -262,6 +262,8 @@ async def ask_using_http(
                     elif "subchat_id" in j:
                         map_key = j["tool_call_id"] + "__" + j["subchat_id"]
                         subchats[map_key].append(Message(**j["add_message"]))
+                    elif not j.get("choices") and j.get("usage"):
+                        pass
                     else:
                         print("unrecognized streaming data (2):", j)
                 end_str = buffer.decode('utf-8').strip()
