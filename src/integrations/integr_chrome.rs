@@ -109,9 +109,9 @@ async fn start_chrome_session(
     gcx: Arc<ARwLock<GlobalContext>>) -> Result<bool, String>
 {
     if !is_chrome_session_active(&session_hashmap_key, gcx.clone()).await {
-        let mut path: Option<PathBuf> = None;
+        let mut is_connection = false;
         if let Some(chrome_path) = args.chrome_path.clone() {
-            path = Some(PathBuf::from(chrome_path));
+            is_connection = chrome_path.starts_with("ws://");
         }
         let mut window_size: Option<(u32, u32)> = None;
         if let Some(size) = args.window_size.clone() {
@@ -125,13 +125,24 @@ async fn start_chrome_session(
         if let Some(timeout) = args.idle_browser_timeout.clone() {
             idle_browser_timeout = Duration::from_secs(timeout as u64);
         }
-        let launch_options = LaunchOptions {
-            path,
-            window_size,
-            idle_browser_timeout,
-            ..Default::default()
-        };
-        let browser = Browser::new(launch_options).map_err(|e| e.to_string())?;
+
+        let browser: Browser;
+        if is_connection {
+            let debug_ws_url: String = args.chrome_path.clone().unwrap();
+            browser = Browser::connect_with_timeout(debug_ws_url, idle_browser_timeout).map_err(|e| e.to_string())?;
+        } else {
+            let mut path: Option<PathBuf> = None;
+            if let Some(chrome_path) = args.chrome_path.clone() {
+                path = Some(PathBuf::from(chrome_path));
+            }
+            let launch_options = LaunchOptions {
+                path,
+                window_size,
+                idle_browser_timeout,
+                ..Default::default()
+            };
+            browser = Browser::new(launch_options).map_err(|e| e.to_string())?;
+        }
         let tab = browser.new_tab().map_err(|e| e.to_string())?;
         let command_session: Box<dyn IntegrationSession> = Box::new(ChromeSession { browser, tab });
         gcx.write().await.integration_sessions.insert(
