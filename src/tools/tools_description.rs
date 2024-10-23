@@ -56,7 +56,7 @@ pub trait Tool: Send + Sync {
     }
 }
 
-async fn read_integrations_yaml(cache_dir: &PathBuf) -> Result<serde_yaml::Value, String> {
+pub async fn read_integrations_yaml(cache_dir: &PathBuf) -> Result<serde_yaml::Value, String> {
     let yaml_path = cache_dir.join("integrations.yaml");
 
     let file = std::fs::File::open(&yaml_path).map_err(

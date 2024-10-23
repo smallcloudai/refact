@@ -1,30 +1,45 @@
-use std::{sync::Arc, time::SystemTime};
+use std::{sync::Arc, sync::Weak, time::SystemTime};
 use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
-use tracing::{info, warn};
+use tracing::{error, info};
 
 use crate::global_context::GlobalContext;
 use crate::integrations::sessions::get_session_hashmap_key;
+use crate::tools::tools_description::read_integrations_value;
 use crate::{at_commands::at_commands::AtCommandsContext, integrations::sessions::IntegrationSession};
 use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel};
 use crate::integrations::docker::integr_docker::ToolDocker;
-
-use super::docker_ssh_tunnel_utils::ssh_tunnel_check_status;
 
 const SESSION_TIMEOUT_AFTER_INACTIVITY: Duration = Duration::from_secs(60 * 60);
 
 const DEFAULT_CONTAINER_LSP_PATH: &str = "/usr/local/bin/refact-lsp";
 
 pub struct DockerContainerSession {
-    pub container_id: String,
+    container_id: String,
     connection: DockerContainerConnectionEnum,
     last_usage_ts: u64,
+    weak_gcx: Weak<ARwLock<GlobalContext>>,
 }
 
 enum DockerContainerConnectionEnum {
     SshTunnel(SshTunnel),
     LocalPort(u16),
+}
+
+impl Drop for DockerContainerSession {
+    fn drop(&mut self) {
+        if let Some(gcx) = self.weak_gcx.upgrade() {
+            let container_id = self.container_id.clone();
+            tokio::spawn(async move {
+                if let Err(e) = docker_container_kill(gcx, &container_id).await {
+                    error!("Failed to cleanup docker container session: {}", e);
+                }
+            });
+        } else {
+            error!("Failed to upgrade global context, cannot clean up docker container session");
+        }
+    }
 }
 
 impl IntegrationSession for DockerContainerSession {
@@ -114,6 +129,7 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
                 container_id,
                 connection,
                 last_usage_ts: SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
+                weak_gcx: Arc::downgrade(&gcx),
             }))); 
 
             let mut gcx_locked = gcx.write().await;
@@ -207,4 +223,20 @@ async fn docker_container_get_host_port(
         .ok_or_else(|| "Error getting host port from docker inspect output.".to_string())?
         .parse::<u16>()
         .map_err(|e| format!("Error parsing host port as u16: {}", e))
+}
+
+async fn docker_container_kill(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    container_id: &str,
+) -> Result<(), String> {
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    let integrations_value = read_integrations_value(&cache_dir).await?;
+    let docker = ToolDocker::new_if_configured(&integrations_value)
+        .ok_or_else(|| "No docker integration configured".to_string())?;
+
+    docker.command_execute(&format!("container stop {container_id}"), gcx.clone()).await?;
+    info!("Stopped docker container {container_id}.");
+    docker.command_execute(&format!("container remove {container_id}"), gcx.clone()).await?;
+    info!("Removed docker container {container_id}.");
+    Ok(())
 }
