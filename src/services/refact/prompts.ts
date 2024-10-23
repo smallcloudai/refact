@@ -103,7 +103,7 @@ export function isCustomPromptsResponse(
 }
 
 type DetailMessage = { detail: string };
-
+// TODO: importing isDetailMessage from features/Chat/Thread/types seems to completely crash redux store
 function isDetailMessage(json: unknown): json is DetailMessage {
   if (!json) return false;
   if (typeof json !== "object") return false;
