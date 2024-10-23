@@ -128,7 +128,7 @@ startHistoryListening({
       !lastMessage.tool_calls
     ) {
       // Getting user message
-      const firstUserMessage = state.chat.thread.messages.find(isUserMessage);
+      const firstUserMessage = thread.messages.find(isUserMessage);
       if (firstUserMessage) {
         // Checking if chat title is already generated, if not - generating it
         if (!thread.title) {
