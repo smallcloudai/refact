@@ -13,6 +13,7 @@ use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_github::ToolGithub;
 use crate::integrations::integr_pdb::ToolPdb;
+use crate::integrations::integr_chrome::ToolChrome;
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -91,7 +92,6 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         ("search".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>))),
         #[cfg(feature="vecdb")]
         ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>))),
-        // ("web_screenshot".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_web_screenshot::ToolWebScreenshot{}) as Box<dyn Tool + Send>))),
     ]);
 
     if allow_experimental {
@@ -279,18 +279,6 @@ tools:
         description: "Examples: 'python -m pdb script.py', 'break module_name.function_name', 'break 10', 'continue', 'print(variable_name)', 'list', 'quit'"
     parameters_required:
       - "command"
-
-  - name: "web_screenshot"
-    description: "Add screenshot of a web page to the chat."
-    parameters:
-      - name: "url"
-        type: "string"
-        description: "URL of the web page to make screenshot."
-      - name: "html"
-        type: "boolean"
-        description: "In addition to the screenshot, return inner HTML of the page."
-    parameters_required:
-      - "url"
 
   - name: "chrome"
     agentic: true
