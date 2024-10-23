@@ -341,7 +341,6 @@ pub fn parse_anything(
     let path = PathBuf::from(cpath);
     let (mut parser, language_id) = get_ast_parser_by_filename(&path).map_err(|err| err.message)?;
     let language = language_id.to_string();
-    tracing::info!("PARSE {} {}", language, cpath);
     if language == "python" {
         let mut cx = crate::ast::parse_python::py_parse(text);
         return Ok((cx.ap.export_defs(cpath), "python".to_string()));

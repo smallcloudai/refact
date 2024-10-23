@@ -194,11 +194,6 @@ impl ScratchpadAbstract for ChatPassthrough {
             }
         }
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
-        if DEBUG {
-            for msg in &filtered_msgs {
-                info!("keep role={} {:?}", msg.role, crate::nicer_logs::first_n_chars(&msg.content.content_text_only(), 30));
-            }
-        }
         Ok(prompt.to_string())
     }
 
