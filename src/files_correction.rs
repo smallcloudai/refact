@@ -118,6 +118,8 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
 
 
 fn winpath_normalize(p: &str) -> PathBuf {
+    // horrible_path//..\project1\project1/1.cpp
+    // everything should become an absolute \\?\ path on windows
     let parts = p
         .to_string()
         .replace(r"\\", r"\")
@@ -158,6 +160,9 @@ async fn complete_path_with_project_dir(
             return Some(j_path);
         }
 
+        // This might save a roundtrip:
+        // .../project1/project1/1.cpp
+        // model likes to output only one "project1" of the two needed
         if candidate_path.starts_with(&p) {
             let last_component = p.components()
                 .last()
