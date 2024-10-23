@@ -79,12 +79,17 @@ fn calculate_image_tokens_by_dimensions_openai(mut width: u32, mut height: u32) 
     small_chunks_needed as i32 * COST_PER_SMALL_CHUNK + CONST_COST
 }
 
-// for detail = high. all images w detail = low cost 85 tokens (independent of image size)
-pub fn calculate_image_tokens_openai(image_string: &String, detail: &str) -> Result<i32, String> {
+pub fn image_reader_from_b64string(image_b64: &str) -> Result<ImageReader<Cursor<Vec<u8>>>, String> {
     #[allow(deprecated)]
-    let image_bytes = base64::decode(image_string).map_err(|_| "base64 decode failed".to_string())?;
+    let image_bytes = base64::decode(image_b64).map_err(|_| "base64 decode failed".to_string())?;
     let cursor = Cursor::new(image_bytes);
     let reader = ImageReader::new(cursor).with_guessed_format().map_err(|e| e.to_string())?;
+    Ok(reader)
+}
+
+// for detail = high. all images w detail = low cost 85 tokens (independent of image size)
+pub fn calculate_image_tokens_openai(image_string: &String, detail: &str) -> Result<i32, String> {
+    let reader = image_reader_from_b64string(&image_string).map_err(|_| "Failed to read image".to_string())?;
     let (width, height) = reader.into_dimensions().map_err(|_| "Failed to get dimensions".to_string())?;
 
     match detail {

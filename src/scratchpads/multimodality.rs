@@ -2,8 +2,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
-use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ChatUsage};
-use crate::scratchpads::scratchpad_utils::{calculate_image_tokens_openai, count_tokens as count_tokens_simple_text, parse_image_b64_from_image_url_openai};
+use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall};
+use crate::scratchpads::scratchpad_utils::{calculate_image_tokens_openai, count_tokens as count_tokens_simple_text, image_reader_from_b64string, parse_image_b64_from_image_url_openai};
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
@@ -13,6 +13,17 @@ pub struct MultimodalElement {
 }
 
 impl MultimodalElement {
+    pub fn new(m_type: String, m_content: String) -> Result<Self, String> {
+        if !(m_type == "text") && !m_type.starts_with("image/") {
+            return Err(format!("MultimodalElement::new() received invalid type: {}", m_type));
+        }
+        if m_type.starts_with("image/") {
+            let _ = image_reader_from_b64string(&m_content)
+                .map_err(|e| format!("MultimodalElement::new() failed to parse m_content: {}", e));
+        }
+        Ok(MultimodalElement { m_type, m_content })
+    }
+    
     pub fn is_text(&self) -> bool {
         self.m_type == "text"
     }
@@ -24,17 +35,11 @@ impl MultimodalElement {
     pub fn from_openai_image(openai_image: MultimodalElementImageOpenAI) -> Result<Self, String> {
         let (image_type, _, image_content) = parse_image_b64_from_image_url_openai(&openai_image.image_url.url)
             .ok_or(format!("Failed to parse image URL: {}", openai_image.image_url.url))?;
-        Ok(MultimodalElement {
-            m_type: image_type.to_string(),
-            m_content: image_content,
-        })
+        MultimodalElement::new(image_type, image_content)
     }
 
-    pub fn from_openai_text(openai_text: MultimodalElementTextOpenAI) -> Self {
-        MultimodalElement {
-            m_type: "text".to_string(),
-            m_content: openai_text.text,
-        }
+    pub fn from_openai_text(openai_text: MultimodalElementTextOpenAI) -> Result<Self, String> {
+        MultimodalElement::new("text".to_string(), openai_text.text)
     }
 
     pub fn to_orig(&self, style: &Option<String>) -> ChatMultimodalElement {
@@ -140,7 +145,7 @@ impl ChatContentRaw {
                 let internal_elements: Result<Vec<MultimodalElement>, String> = elements.iter()
                     .map(|el| match el {
                         ChatMultimodalElement::MultimodalElementTextOpenAI(text_el) => {
-                            Ok(MultimodalElement::from_openai_text(text_el.clone()))
+                            MultimodalElement::from_openai_text(text_el.clone())
                         },
                         ChatMultimodalElement::MultimodalElementImageOpenAI(image_el) => {
                             MultimodalElement::from_openai_image(image_el.clone())
@@ -286,16 +291,13 @@ impl<'de> Deserialize<'de> for ChatMessage {
             .transpose()?;
         let tool_call_id: Option<String> = value.get("tool_call_id")
             .and_then(|s| s.as_str()).map(|s| s.to_string());
-        let usage: Option<ChatUsage> = value.get("usage")
-            .map(|v| serde_json::from_value(v.clone()).map_err(serde::de::Error::custom))
-            .transpose()?;
 
         Ok(ChatMessage {
             role,
             content,
             tool_calls,
             tool_call_id: tool_call_id.unwrap_or_default(),
-            usage,
+            ..Default::default()
         })
     }
 }

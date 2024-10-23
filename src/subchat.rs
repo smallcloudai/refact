@@ -131,11 +131,23 @@ async fn chat_interaction_non_stream(
             }
         });
 
-    let det_messages = j.get("deterministic_messages")
-        .and_then(|value| value.as_array())
-        .and_then(|arr| {
-            serde_json::from_value::<Vec<ChatMessage>>(Value::Array(arr.clone())).ok()
-        }).unwrap_or_else(Vec::new);
+    let det_messages = if let Some(det_messages) = j.get("deterministic_messages") {
+        if let Value::Array(arr) = det_messages {
+            let mut d_messages = vec![];
+            for a in arr {
+                let m = serde_json::from_value(a.clone()).map_err(|e| {
+                    warn!("error parsing det message's output: {}", e);
+                    format!("error parsing det message's output: {}", e)
+                })?;
+                d_messages.push(m);
+            }
+            d_messages
+        } else {
+            vec![]
+        }
+    } else {
+        vec![]
+    };
 
     let mut results = vec![];
 
