@@ -5,7 +5,7 @@ use tokio::sync::Mutex as AMutex;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::call_validation::{ChatContent, ChatMessage, ChatPost};
 use crate::caps::CodeAssistantCaps;
@@ -34,10 +34,10 @@ pub async fn lookup_chat_scratchpad(
         &recommended_model_record.default_scratchpad,
     )?;
     Ok((
-        model_name, 
-        sname.clone(), 
-        patch.clone(), 
-        recommended_model_record.n_ctx, 
+        model_name,
+        sname.clone(),
+        patch.clone(),
+        recommended_model_record.n_ctx,
         recommended_model_record.supports_tools,
         recommended_model_record.supports_multimodality,
     ))
@@ -64,7 +64,7 @@ pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Resu
         .map(|x| serde_json::from_value(x.clone()))
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| {
-            warn!("couldn't parse message:\n{:?}", e);
+            tracing::error!("can't deserialize ChatMessage: {}", e);
             ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
         })?;
     Ok(messages)
@@ -80,7 +80,7 @@ async fn chat(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
-    
+
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
     let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, supports_multimodality) = lookup_chat_scratchpad(
         caps.clone(),
@@ -109,7 +109,7 @@ async fn chat(
             }
             message.content = ChatContent::SimpleText(message.content.content_text_only());
         }
-        
+
         if let Some(tool_calls) = &mut message.tool_calls {
             for call in tool_calls {
                 let args_input = &call.function.arguments;

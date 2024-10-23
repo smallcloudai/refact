@@ -16,11 +16,11 @@ impl MultimodalElement {
     pub fn is_text(&self) -> bool {
         self.m_type == "text"
     }
-    
+
     pub fn is_image(&self) -> bool {
         self.m_type.starts_with("image/")
     }
-    
+
     pub fn from_openai_image(openai_image: MultimodalElementImageOpenAI) -> Result<Self, String> {
         let (image_type, _, image_content) = parse_image_b64_from_image_url_openai(&openai_image.image_url.url)
             .ok_or(format!("Failed to parse image URL: {}", openai_image.image_url.url))?;
@@ -29,14 +29,14 @@ impl MultimodalElement {
             m_content: image_content,
         })
     }
-    
+
     pub fn from_openai_text(openai_text: MultimodalElementTextOpenAI) -> Self {
         MultimodalElement {
             m_type: "text".to_string(),
             m_content: openai_text.text,
         }
     }
-    
+
     pub fn to_orig(&self, style: &Option<String>) -> ChatMultimodalElement {
         let style = style.clone().unwrap_or("openai".to_string());
         match style.as_str() {
@@ -52,7 +52,7 @@ impl MultimodalElement {
             _ => unreachable!()
         }
     }
-    
+
     fn to_openai_image(&self) -> ChatMultimodalElement {
         let image_url = format!("data:{};base64,{}", self.m_type, self.m_content);
         ChatMultimodalElement::MultimodalElementImageOpenAI(MultimodalElementImageOpenAI {
@@ -63,7 +63,7 @@ impl MultimodalElement {
             }
         })
     }
-    
+
     fn to_openai_text(&self) -> ChatMultimodalElement {
         ChatMultimodalElement::MultimodalElementTextOpenAI(MultimodalElementTextOpenAI {
             content_type: "text".to_string(),
@@ -169,10 +169,10 @@ impl ChatContent {
     pub fn size_estimate(&self, tokenizer: Arc<RwLock<Tokenizer>>, style: &Option<String>) -> usize {
         match self {
             ChatContent::SimpleText(text) => text.len(),
-            ChatContent::Multimodal(_elements) => { 
+            ChatContent::Multimodal(_elements) => {
                 let tcnt = self.count_tokens(tokenizer, style).unwrap_or(0);
                 (tcnt as f32 * 2.618) as usize
-            }
+            },
         }
     }
 
@@ -248,16 +248,16 @@ impl ChatMessage {
             ..Default::default()
         }
     }
-    
+
     pub fn into_value(&self, style: &Option<String>) -> Value {
         let mut dict = serde_json::Map::new();
         let chat_content_raw = self.content.into_raw(style);
-        
+
         dict.insert("role".to_string(), Value::String(self.role.clone()));
         dict.insert("content".to_string(), json!(chat_content_raw));
         dict.insert("tool_calls".to_string(), json!(self.tool_calls.clone()));
         dict.insert("tool_call_id".to_string(), Value::String(self.tool_call_id.clone()));
-        
+
         Value::Object(dict)
     }
 }
@@ -269,14 +269,15 @@ impl<'de> Deserialize<'de> for ChatMessage {
             .and_then(|s| s.as_str())
             .ok_or_else(|| serde::de::Error::missing_field("role"))?
             .to_string();
-        
-        let content = {
-            let content_value = value.get("content")
-                .ok_or_else(|| serde::de::Error::missing_field("content")).cloned()?;
-            let content_raw: ChatContentRaw = chat_content_raw_from_value(content_value)
-                .map_err(|e| serde::de::Error::custom(e))?;
-            content_raw.to_internal_format()
-                .map_err(|e| serde::de::Error::custom(e))?
+
+        let content = match value.get("content") {
+            Some(content_value) => {
+                let content_raw: ChatContentRaw = chat_content_raw_from_value(content_value.clone())
+                    .map_err(|e| serde::de::Error::custom(e))?;
+                content_raw.to_internal_format()
+                    .map_err(|e| serde::de::Error::custom(e))?
+            },
+            None => ChatContent::SimpleText(String::new()),
         };
 
         let tool_calls: Option<Vec<ChatToolCall>> = value.get("tool_calls")

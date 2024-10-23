@@ -5,6 +5,7 @@ use axum::http::StatusCode;
 use indexmap::IndexMap;
 use ropey::Rope;
 
+
 use crate::custom_error::ScratchError;
 use crate::scratchpads::multimodality::MultimodalElement;
 
