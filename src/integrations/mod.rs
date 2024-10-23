@@ -82,4 +82,27 @@ chrome:
 #      grep_context_lines: 5          # leave that many lines around a grep match (default 5)
 #      remove_from_output: "process didn't exit"    # some lines and very long and unwanted, this is also a regular expression (default "")
 
+
+# --- Docker integration ---
+docker:
+  connect_to_daemon_at: "unix:///var/run/docker.sock"  # Path to the Docker daemon. For remote Docker, the path to the daemon on the remote server.
+  # docker_cli_path: "/usr/local/bin/docker"  # Uncomment to set a custom path for the docker cli, defaults to "docker"
+
+  # Uncomment the following to connect to a remote Docker daemon (uncomment all of them)
+  # Docker and necessary ports will be forwarded for container communication. No additional commands will be executed over SSH.
+  # ssh_config:
+  #   host: "<your_server_domain_or_ip_here>"
+  #   user: "root"
+  #   port: 22
+  #   identity_file: "~/.ssh/id_rsa"
+
+  # The folder inside the container where the workspace is mounted, refact-lsp will start there, defaults to "/app"
+  # container_workspace_folder: "/app"  
+
+  # Image ID for running containers, which can later be selected in the UI before starting a chat thread.
+  # docker_image_id: "079b939b3ea1"
+
+  # Path to the LSP binary on the host machine, to be bound into the containers.
+  host_lsp_path: "/opt/refact/bin/refact-lsp"
+
 "#;

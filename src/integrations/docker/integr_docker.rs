@@ -18,9 +18,12 @@ const COMMON_LABEL: &str = "humberto-refact";
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct IntegrationDocker {
-    pub connect_to_daemon_at: String, // /var/run/docker.sock or 127.0.0.1:50371
+    pub connect_to_daemon_at: String,
     pub docker_cli_path: Option<String>,
     pub ssh_config: Option<SshConfig>,
+    pub container_workspace_folder: Option<String>,
+    pub docker_image_id: Option<String>,
+    pub host_lsp_path: String,
 }
 
 pub struct ToolDocker {
@@ -69,8 +72,7 @@ impl ToolDocker {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
         if !stderr.is_empty() {
-            error!("Error: {:?}", stderr);
-            return Err(stderr);
+            return Err(format!("Error running command '{command}': {stderr}"));
         }
 
         Ok(stdout)

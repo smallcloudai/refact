@@ -13,7 +13,8 @@ use crate::integrations::docker::integr_docker::ToolDocker;
 use super::docker_ssh_tunnel_utils::ssh_tunnel_check_status;
 
 const SESSION_TIMEOUT_AFTER_INACTIVITY: Duration = Duration::from_secs(60 * 60);
-const DEFAULT_LSP_PATH: &str = "/usr/local/bin/refact-lsp";
+
+const DEFAULT_CONTAINER_LSP_PATH: &str = "/usr/local/bin/refact-lsp";
 
 pub struct DockerContainerSession {
     pub container_id: String,
@@ -163,20 +164,20 @@ async fn docker_container_start(
     internal_port: &u16,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
-    let workspace_folder = "/app";
-    let docker_image_id = "079b939b3ea1";
-    let host_lsp_path = "/home/humberto/bin/refact-lsp";
+    let docker_image_id = docker.integration_docker.docker_image_id.clone().ok_or_else(|| "No image ID to run container from, please specify one in integrations.yaml".to_string())?;
+    let workspace_folder = docker.integration_docker.container_workspace_folder.clone().unwrap_or("/app".to_string());
+    let host_lsp_path  = docker.integration_docker.host_lsp_path.clone();
 
     let api_key = gcx.read().await.cmdline.api_key.clone();
 
     let lsp_command = format!(
-        "mkdir -p $HOME/.cache/refact/ && {DEFAULT_LSP_PATH} --http-port {internal_port} --logs-stderr \
+        "mkdir -p $HOME/.cache/refact/ && {DEFAULT_CONTAINER_LSP_PATH} --http-port {internal_port} --logs-stderr \
         --address-url Refact --api-key {api_key} --vecdb --reset-memory --ast --experimental \
         --inside-container --workspace-folder {workspace_folder}",
     );
 
     let run_command = format!(
-        "run --detach --name=refact-{chat_id} --rm --volume={host_lsp_path}:{DEFAULT_LSP_PATH} \
+        "run --detach --name=refact-{chat_id} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
         --publish=0:{internal_port} {docker_image_id} sh -c '{lsp_command}'",
     );
 
