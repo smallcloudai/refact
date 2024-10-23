@@ -14,8 +14,9 @@ use crate::global_context::GlobalContext;
 use crate::integrations::integr_github::ToolGithub;
 use crate::integrations::integr_pdb::ToolPdb;
 
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CommandsRequireConfimationConfig {
+pub struct CommandsRequireConfimationConfig { // todo: fix typo
     pub commands_need_confirmation: Vec<String>,
     pub commands_deny: Vec<String>,
 }

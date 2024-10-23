@@ -19,7 +19,7 @@ pub fn limit_messages_history(
     let mut message_take: Vec<bool> = vec![false; messages.len()];
     let mut have_system = false;
     for (i, msg) in messages.iter().enumerate() {
-        let tcnt = 3 + msg.content.count_tokens(t.tokenizer.clone())?;
+        let tcnt = 3 + msg.content.count_tokens(t.tokenizer.clone(), &None)?;
         message_token_count[i] = tcnt;
         if i==0 && msg.role == "system" {
             message_take[i] = true;

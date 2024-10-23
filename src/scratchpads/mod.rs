@@ -12,9 +12,10 @@ pub mod chat_utils_limit_history;
 pub mod chat_utils_prompts;
 pub mod scratchpad_utils;
 pub mod code_completion_replace;
+pub mod multimodality;
 
 use crate::ast::ast_indexer_thread::AstIndexService;
-use crate::call_validation::CodeCompletionPost;
+use crate::call_validation::{ChatMessage, CodeCompletionPost};
 use crate::call_validation::ChatPost;
 use crate::global_context::GlobalContext;
 use crate::caps::CodeAssistantCaps;
@@ -59,6 +60,7 @@ pub async fn create_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     model_name_for_tokenizer: String,
     post: &ChatPost,
+    messages: &Vec<ChatMessage>,
     scratchpad_name: &str,
     scratchpad_patch: &serde_json::Value,
     allow_at: bool,
@@ -67,11 +69,11 @@ pub async fn create_chat_scratchpad(
     let mut result: Box<dyn ScratchpadAbstract>;
     let tokenizer_arc = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
     if scratchpad_name == "CHAT-GENERIC" {
-        result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc.clone(), post, global_context.clone(), allow_at));
+        result = Box::new(chat_generic::GenericChatScratchpad::new(tokenizer_arc.clone(), post, messages, global_context.clone(), allow_at));
     } else if scratchpad_name == "CHAT-LLAMA2" {
-        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc.clone(), post, global_context.clone(), allow_at));
+        result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc.clone(), post, messages, global_context.clone(), allow_at));
     } else if scratchpad_name == "PASSTHROUGH" {
-        result = Box::new(chat_passthrough::ChatPassthrough::new(tokenizer_arc.clone(), post, global_context.clone(), allow_at, supports_tools));
+        result = Box::new(chat_passthrough::ChatPassthrough::new(tokenizer_arc.clone(), post, messages, global_context.clone(), allow_at, supports_tools));
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }

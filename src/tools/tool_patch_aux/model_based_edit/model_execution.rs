@@ -1,13 +1,3 @@
-use crate::at_commands::at_commands::AtCommandsContext;
-use crate::cached_tokenizers::cached_tokenizer;
-use crate::call_validation::{ChatMessage, ChatUsage, DiffChunk};
-use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
-use crate::scratchpads::scratchpad_utils::count_tokens;
-use crate::subchat::subchat_single;
-use crate::tools::tool_patch_aux::fs_utils::read_file;
-use crate::tools::tool_patch_aux::model_based_edit::blocks_of_code_parser::BlocksOfCodeParser;
-use crate::tools::tool_patch_aux::model_based_edit::whole_file_parser::WholeFileParser;
-use crate::tools::tool_patch_aux::tickets_parsing::TicketToApply;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
@@ -15,6 +5,16 @@ use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tracing::{info, warn};
+
+use crate::at_commands::at_commands::AtCommandsContext;
+use crate::cached_tokenizers::cached_tokenizer;
+use crate::call_validation::{ChatMessage, ChatUsage, DiffChunk};
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::subchat::subchat_single;
+use crate::tools::tool_patch_aux::fs_utils::read_file;
+use crate::tools::tool_patch_aux::model_based_edit::blocks_of_code_parser::BlocksOfCodeParser;
+use crate::tools::tool_patch_aux::model_based_edit::whole_file_parser::WholeFileParser;
+use crate::tools::tool_patch_aux::tickets_parsing::TicketToApply;
 
 
 const DEBUG: bool = true;
@@ -40,10 +40,7 @@ async fn make_chat_history(
     use_whole_file_parser: bool,
 ) -> Result<Vec<ChatMessage>, String> {
     let gcx = ccx.lock().await.global_context.clone();
-    let tokenizer = {
-        let tokenizer_arc = load_tokenizer(gcx.clone(), model).await?;
-        tokenizer_arc.clone().read().unwrap().clone()
-    };
+    let tokenizer_arc = load_tokenizer(gcx.clone(), model).await?;
 
     let max_tokens = max_tokens.saturating_sub(max_new_tokens);
 
@@ -78,7 +75,9 @@ async fn make_chat_history(
         }));
     }
 
-    let tokens = messages.iter().map(|x| 3 + count_tokens(&tokenizer, &x.content)).sum::<usize>();
+    let tokens = messages.iter().map(|x| 
+        3 + x.content.count_tokens(tokenizer_arc.clone(), &None).unwrap_or(0) as usize
+    ).sum::<usize>();
     if tokens > max_tokens {
         return Err(format!(
             "the provided file {} is too large for the patch tool: {tokens} > {max_tokens}",
@@ -107,10 +106,7 @@ async fn make_follow_up_chat_history(
     error: &String,
 ) -> Result<(), String> {
     let gcx = ccx.lock().await.global_context.clone();
-    let tokenizer = {
-        let tokenizer_arc = load_tokenizer(gcx.clone(), model).await?;
-        tokenizer_arc.clone().read().unwrap().clone()
-    };
+    let tokenizer_arc = load_tokenizer(gcx.clone(), model).await?;
     let max_tokens = max_tokens.saturating_sub(max_new_tokens);
 
     messages.push(last_message.clone());
@@ -121,7 +117,9 @@ async fn make_follow_up_chat_history(
         }
     }
 
-    let tokens = messages.iter().map(|x| 3 + count_tokens(&tokenizer, &x.content)).sum::<usize>();
+    let tokens = messages.iter().map(|x| 
+        3 + x.content.count_tokens(tokenizer_arc.clone(), &None).unwrap_or(0) as usize
+    ).sum::<usize>();
     if tokens > max_tokens {
         return Err(format!(
             "All generated patches were invalid, but cannot make a follow-up, not enough tokens: {tokens} > {max_tokens}",

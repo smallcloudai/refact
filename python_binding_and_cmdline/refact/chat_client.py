@@ -7,7 +7,7 @@ import termcolor
 import copy
 import json
 import time
-from typing import Optional, List, Any, Tuple, DefaultDict, Dict, Literal, Set, Callable
+from typing import Optional, List, Any, Tuple, DefaultDict, Dict, Literal, Set, Callable, Union
 import collections
 
 from pydantic import BaseModel, ConfigDict
@@ -41,7 +41,7 @@ class Usage(BaseModel):
 
 class Message(BaseModel):
     role: Literal["system", "assistant", "user", "tool", "context_file", "diff", "plain_text", "cd_instruction"]
-    content: Optional[str] = None
+    content: Optional[Union[str, List]] = None
     tool_calls: Optional[List[ToolCallDict]] = None
     finish_reason: str = ""
     tool_call_id: str = ""
@@ -255,7 +255,7 @@ async def ask_using_http(
                     # print(">>>", line_str)
                     if callback is not None:
                         callback(j)
-                    if "choices" in j:
+                    if "choices" in j and j["choices"]:
                         choice_collector.add_deltas(j["choices"])
                     elif "role" in j:
                         deterministic.append(Message(**j))

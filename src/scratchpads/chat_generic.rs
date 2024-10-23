@@ -27,6 +27,7 @@ pub struct GenericChatScratchpad {
     pub t: HasTokenizerAndEot,
     pub dd: DeltaDeltaChatStreamer,
     pub post: ChatPost,
+    pub messages: Vec<ChatMessage>,
     pub token_bos: String,
     pub token_esc: String,
     // for models that switch between sections using <esc>SECTION
@@ -44,6 +45,7 @@ impl GenericChatScratchpad {
     pub fn new(
         tokenizer: Arc<RwLock<Tokenizer>>,
         post: &ChatPost,
+        messages: &Vec<ChatMessage>,
         global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
     ) -> Self {
@@ -51,6 +53,7 @@ impl GenericChatScratchpad {
             t: HasTokenizerAndEot::new(tokenizer),
             dd: DeltaDeltaChatStreamer::new(),
             post: post.clone(),
+            messages: messages.clone(),
             token_bos: "".to_string(),
             token_esc: "".to_string(),
             keyword_syst: "".to_string(),
@@ -108,9 +111,9 @@ impl ScratchpadAbstract for GenericChatScratchpad {
             (ccx_locked.n_ctx, ccx_locked.global_context.clone())
         };
         let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
-            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.post.messages, &mut self.has_rag_results).await
+            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
         } else {
-            (self.post.messages.clone(), self.post.messages.len(), false)
+            (self.messages.clone(), self.messages.len(), false)
         };
         let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, n_ctx, &self.default_system_message)?;
         // if self.supports_tools {

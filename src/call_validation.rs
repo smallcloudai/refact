@@ -1,12 +1,12 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::sync::{Arc, RwLock};
 use axum::http::StatusCode;
 use indexmap::IndexMap;
 use ropey::Rope;
-use tokenizers::Tokenizer;
+
 use crate::custom_error::ScratchError;
+use crate::scratchpads::multimodality::MultimodalElement;
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -88,33 +88,14 @@ pub struct ContextFile {
     pub usefulness: f32,  // higher is better
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum ContextEnum {
-    ContextFile(ContextFile),
-    ChatMessage(ChatMessage),
-}
-
 fn default_gradient_type_value() -> i32 {
     -1
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
-pub struct ChatContentElement {
-    pub content_type: String,
-    pub content: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-#[serde(untagged)]
-pub enum ChatContent {
-    SimpleText(String),
-    Multimodal(Vec<ChatContentElement>),
-}
-
-impl Default for ChatContent {
-    fn default() -> Self {
-        ChatContent::SimpleText(String::new())
-    }
+#[derive(Debug, Clone)]
+pub enum ContextEnum {
+    ContextFile(ContextFile),
+    ChatMessage(ChatMessage),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -131,6 +112,19 @@ pub struct ChatToolCall {
     pub tool_type: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(untagged)]
+pub enum ChatContent {
+    SimpleText(String),
+    Multimodal(Vec<MultimodalElement>),
+}
+
+impl Default for ChatContent {
+    fn default() -> Self {
+        ChatContent::SimpleText(String::new())
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ChatUsage {
     pub prompt_tokens: usize,
@@ -138,102 +132,13 @@ pub struct ChatUsage {
     pub total_tokens: usize,   // TODO: remove (can produce self-contradictory data when prompt+completion != total)
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Clone, Default)]
 pub struct ChatMessage {
     pub role: String,
-    #[serde(default, deserialize_with="deserialize_chat_content")]
     pub content: ChatContent,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<ChatToolCall>>,
-    #[serde(default)]
     pub tool_call_id: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub usage: Option<ChatUsage>,
-}
-
-pub fn chat_content_from_value(value: serde_json::Value) -> Result<ChatContent, String> {
-    match value {
-        serde_json::Value::String(s) => Ok(ChatContent::SimpleText(s)),
-        serde_json::Value::Array(array) => {
-            if array.len() == 1 {
-                if let Some(serde_json::Value::Object(map)) = array.get(0) {
-                    if let Some(serde_json::Value::String(type_value)) = map.get("type") {
-                        if let Some(serde_json::Value::String(content_value)) = map.get(type_value) {
-                            return Ok(ChatContent::SimpleText(content_value.clone()));
-                        }
-                    }
-                }
-            }
-            serde_json::from_value::<Vec<ChatContentElement>>(serde_json::Value::Array(array))
-                .map(ChatContent::Multimodal)
-                .map_err(|e| e.to_string())
-        },
-        _ => Err("deserialize_chat_content() can't parse content".to_string()),
-    }
-}
-
-fn deserialize_chat_content<'de, D>(deserializer: D) -> Result<ChatContent, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value: serde_json::Value = Deserialize::deserialize(deserializer)?;
-    chat_content_from_value(value).map_err(serde::de::Error::custom)
-}
-
-impl ChatMessage {
-    pub fn new(role: String, content: String) -> Self {
-        ChatMessage { 
-            role, 
-            content: ChatContent::SimpleText(content),
-            ..Default::default()
-        }
-    }
-
-    pub fn drop_usage(&self) -> ChatMessage {
-        ChatMessage {
-            role: self.role.clone(),
-            content: self.content.clone(),
-            tool_calls: self.tool_calls.clone(),
-            tool_call_id: self.tool_call_id.clone(),
-            usage: None,
-        }
-    }
-}
-
-impl ChatContent {
-    pub fn content_text_only(&self) -> String {
-        match self {
-            ChatContent::SimpleText(text) => text.clone(),
-            ChatContent::Multimodal(elements) => {
-                elements
-                    .iter()
-                    .filter(|element| element.content_type == "text")
-                    .map(|element| element.content.clone())
-                    .collect::<Vec<String>>()
-                    .join("\n\n")
-            }
-        }
-    }
-
-    pub fn size_estimate(&self) -> usize {
-        match self {
-            ChatContent::SimpleText(text) => text.len(),
-            ChatContent::Multimodal(elements) => {
-                elements.iter().map(|element| element.content.len()).sum()
-            }
-        }
-    }
-    
-    pub fn count_tokens(&self, tokenizer: Arc<RwLock<Tokenizer>>) -> Result<i32, String> {
-        let tokenizer_lock = tokenizer.write().unwrap();
-        match self {
-            ChatContent::SimpleText(text) => tokenizer_lock.encode(text.as_str(), false)
-                .map(|tokens|tokens.len() as i32)
-                .map_err(|e|format!("Tokenizing error: {e}")),
-            // todo: implement me!
-            ChatContent::Multimodal(_) => unimplemented!()
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -250,7 +155,7 @@ pub struct SubchatParameters {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ChatPost {
-    pub messages: Vec<ChatMessage>,
+    pub messages: Vec<serde_json::Value>,
     #[serde(default)]
     pub parameters: SamplingParameters,
     #[serde(default)]
@@ -276,6 +181,8 @@ pub struct ChatPost {
     #[allow(dead_code)]
     #[serde(default)]
     pub chat_id: String,
+    #[serde(default)]
+    pub style: Option<String>,
 }
 
 fn default_true() -> bool {

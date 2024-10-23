@@ -26,7 +26,9 @@ const DEBUG: bool = true;
 pub struct ChatLlama2 {
     pub t: HasTokenizerAndEot,
     pub dd: DeltaDeltaChatStreamer,
+    #[allow(dead_code)]
     pub post: ChatPost,
+    pub messages: Vec<ChatMessage>,
     pub keyword_s: String, // "SYSTEM:" keyword means it's not one token
     pub keyword_slash_s: String,
     pub default_system_message: String,
@@ -40,6 +42,7 @@ impl ChatLlama2 {
     pub fn new(
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: &ChatPost,
+        messages: &Vec<ChatMessage>,
         global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
     ) -> Self {
@@ -47,6 +50,7 @@ impl ChatLlama2 {
             t: HasTokenizerAndEot::new(tokenizer),
             dd: DeltaDeltaChatStreamer::new(),
             post: post.clone(),
+            messages: messages.clone(),
             keyword_s: "<s>".to_string(),
             keyword_slash_s: "</s>".to_string(),
             default_system_message: "".to_string(),
@@ -87,9 +91,9 @@ impl ScratchpadAbstract for ChatLlama2 {
             (ccx_locked.n_ctx, ccx_locked.global_context.clone())
         };
         let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
-            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.post.messages, &mut self.has_rag_results).await
+            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
         } else {
-            (self.post.messages.clone(), self.post.messages.len(), false)
+            (self.messages.clone(), self.messages.len(), false)
         };
         let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message)?;
         if let Some(first_msg) = limited_msgs.first_mut() {

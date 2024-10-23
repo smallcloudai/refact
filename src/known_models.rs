@@ -137,6 +137,7 @@ pub const KNOWN_MODELS: &str = r####"
         "gpt-4o": {
             "n_ctx": 128000,
             "supports_tools": true,
+            "supports_multimodality": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
@@ -150,6 +151,7 @@ pub const KNOWN_MODELS: &str = r####"
         "gpt-4o-mini": {
             "n_ctx": 128000,
             "supports_tools": true,
+            "supports_multimodality": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }

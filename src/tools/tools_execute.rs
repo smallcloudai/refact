@@ -42,6 +42,7 @@ pub async fn run_tools(
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
+    style: &Option<String>,
 ) -> (Vec<ChatMessage>, bool) {
     let (n_ctx, at_tools) = {
         let ccx_lock = ccx.lock().await;
@@ -183,6 +184,7 @@ pub async fn run_tools(
         &mut context_files_for_pp,
         tokens_for_rag,
         tokenizer.clone(),
+        style,
     ).await;
 
     let mut all_messages = original_messages.to_vec();
@@ -205,6 +207,7 @@ async fn pp_run_tools(
     context_files_for_pp: &mut Vec<ContextFile>,
     tokens_for_rag: usize,
     tokenizer: Arc<RwLock<Tokenizer>>,
+    style: &Option<String>,
 ) -> (Vec<ChatMessage>, Vec<ChatMessage>) {
     let mut generated_tool = generated_tool.to_vec();
     let mut generated_other = generated_other.to_vec();
@@ -232,6 +235,7 @@ async fn pp_run_tools(
             generated_tool.iter().chain(generated_other.iter()).collect(),
             tokenizer.clone(),
             tokens_limit_chat_msg,
+            style,
         ).await;
 
         // re-add potentially truncated messages, role="tool" will still go first
