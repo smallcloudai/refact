@@ -112,7 +112,7 @@ async fn vectorize_batch_from_q(
         Ok(res) => res,
         Err(e) => {
             let mut vstatus_locked = vstatus.lock().await;
-            *vstatus_locked.errors.entry(e.clone()).or_insert(0) += 1;
+            vstatus_locked.vecdb_errors.entry(e.clone()).and_modify(|counter| *counter += 1).or_insert(1);
             return Err(e);
         }
     };
@@ -338,8 +338,8 @@ async fn vectorize_thread(
                         vstatus_notify.notify_waiters();
                         {
                             let vstatus_locked = vstatus.lock().await;
-                            if !vstatus_locked.errors.is_empty() {
-                                info!("VECDB ERRORS: {:#?}", vstatus_locked.errors);
+                            if !vstatus_locked.vecdb_errors.is_empty() {
+                                info!("VECDB ERRORS: {:#?}", vstatus_locked.vecdb_errors);
                             }
                         }
                     }
@@ -432,7 +432,7 @@ impl FileVectorizerService {
                 state: "starting".to_string(),
                 queue_additions: true,
                 vecdb_max_files_hit: false,
-                errors: IndexMap::new(),
+                vecdb_errors: IndexMap::new(),
             }
         ));
         FileVectorizerService {

@@ -44,7 +44,7 @@ pub struct VecDbStatus {
     pub state: String,   // "starting", "parsing", "done"
     pub queue_additions: bool,
     pub vecdb_max_files_hit: bool,
-    pub errors: IndexMap<String, usize>,
+    pub vecdb_errors: IndexMap<String, usize>,
 }
 
 

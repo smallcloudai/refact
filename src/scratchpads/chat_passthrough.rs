@@ -20,7 +20,7 @@ use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, system_prompt_add_workspace_info};
 
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 
 pub struct DeltaSender {
@@ -148,7 +148,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                     "user".to_string(),
                     msg.content.content_text_only(),
                 ).into_value(&style));
-                
+
             } else if msg.role == "context_file" {
                 match serde_json::from_str::<Vec<ContextFile>>(&msg.content.content_text_only()) {
                     Ok(vector_of_context_files) => {
@@ -194,6 +194,11 @@ impl ScratchpadAbstract for ChatPassthrough {
             }
         }
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
+        if DEBUG {
+            for msg in &filtered_msgs {
+                info!("keep role={} {:?}", msg.role, crate::nicer_logs::first_n_chars(&msg.content.content_text_only(), 30));
+            }
+        }
         Ok(prompt.to_string())
     }
 

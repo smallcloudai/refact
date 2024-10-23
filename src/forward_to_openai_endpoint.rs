@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io::Write;
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
