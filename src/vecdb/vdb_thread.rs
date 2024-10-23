@@ -166,7 +166,6 @@ async fn vectorize_thread(
     let mut run_actual_model_on_these: Vec<SplitResult> = vec![];
     let mut ready_to_vecdb: Vec<VecdbRecord> = vec![];
 
-    let mut last_updated: HashMap<Document, SystemTime> = HashMap::new();
     let (memdb,
         constants,
         vecdb_handler_arc,
@@ -186,6 +185,8 @@ async fn vectorize_thread(
             vservice_locked.api_key.clone()
         )
     };
+
+    let mut last_updated: HashMap<Document, SystemTime> = HashMap::new();
     loop {
         let current_time = SystemTime::now();
         let mut new_msgs: VecDeque<MessageToVecdbThread> = VecDeque::new();
@@ -202,7 +203,7 @@ async fn vectorize_thread(
                             MessageToVecdbThread::RegularDocument(doc) => {
                                 last_updated.insert(doc, current_time);
                             }
-                            MessageToVecdbThread::ImmediatelyRegularDocument(_) | 
+                            MessageToVecdbThread::ImmediatelyRegularDocument(_) |
                             MessageToVecdbThread::MemoriesSomethingDirty() => {
                                 new_msgs.push_back(msg);
                             }
@@ -230,6 +231,7 @@ async fn vectorize_thread(
                 }
             }
         }
+
         loop {
             let (msg_to_me, files_unprocessed, vstatus_changed) = {
                 let q_len = new_msgs.len();
@@ -254,7 +256,7 @@ async fn vectorize_thread(
             if vstatus_changed {
                 vstatus_notify.notify_waiters();
             }
-            
+
             let flush = ready_to_vecdb.len() > 100 || files_unprocessed == 0 || msg_to_me.is_none();
             loop {
                 if
@@ -278,13 +280,13 @@ async fn vectorize_thread(
                     break;
                 }
             }
-            
+
             if flush {
                 assert!(run_actual_model_on_these.len() == 0);
                 // This function assumes it can delete records with the filenames mentioned, therefore assert above
                 _send_to_vecdb(vecdb_handler_arc.clone(), &mut ready_to_vecdb).await;
             }
-            
+
             if (files_unprocessed + 99).div(100) != (reported_unprocessed + 99).div(100) {
                 info!("have {} unprocessed files", files_unprocessed);
                 reported_unprocessed = files_unprocessed;
