@@ -3,10 +3,6 @@ import { setError } from "../../features/Errors/errorsSlice";
 import { CUSTOM_PROMPTS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-type CustomizationErrorResponse = {
-  detail?: string;
-};
-
 export const promptsApi = createApi({
   reducerPath: "prompts",
   baseQuery: fetchBaseQuery({
@@ -33,14 +29,17 @@ export const promptsApi = createApi({
           redirect: "follow",
         });
         if (result.error) {
+          if (!isDetailMessage(result.error.data)) {
+            return {
+              error: result.error,
+            };
+          }
           // getting first 2 lines of error message to show to user
-          const errorMessage = (
-            result.error.data as CustomizationErrorResponse
-          ).detail
-            ?.split("\n")
+          const errorMessage = result.error.data.detail
+            .split("\n")
             .slice(0, 2)
             .join("\n");
-          api.dispatch(setError(errorMessage ?? "fetching system prompts."));
+          api.dispatch(setError(errorMessage));
           return {
             error: result.error,
           };
@@ -101,4 +100,12 @@ export function isCustomPromptsResponse(
   if (typeof json.system_prompts !== "object") return false;
   if (json.system_prompts === null) return false;
   return isSystemPrompts(json.system_prompts);
+}
+
+type DetailMessage = { detail: string };
+
+function isDetailMessage(json: unknown): json is DetailMessage {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  return "detail" in json && typeof json.detail === "string";
 }

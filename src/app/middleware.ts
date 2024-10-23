@@ -40,6 +40,7 @@ startListening({
       toolsApi.util.resetApiState(),
       commandsApi.util.resetApiState(),
       diffApi.util.resetApiState(),
+      pingApi.util.resetApiState(),
     ].forEach((api) => listenerApi.dispatch(api));
 
     listenerApi.dispatch(clearError());
@@ -59,13 +60,12 @@ startListening({
         : `fetching caps from lsp`;
       listenerApi.dispatch(setError(message));
     }
-    // do we need this?
     if (
       promptsApi.endpoints.getPrompts.matchRejected(action) &&
       !action.meta.condition
     ) {
       const message = `fetching system prompts.`;
-      // action.error.message contains always "Rejected" message, not the error message from LSP
+      // action.error.message contains always "Rejected" message, not the explanation message at all
       listenerApi.dispatch(setError(message));
     }
 
