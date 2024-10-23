@@ -10,8 +10,10 @@ use tokio::sync::Mutex as AMutex;
 use tokio::process::Command;
 use serde_yaml;
 use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
 use tracing::info;
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ToolPostgres {
     connection_string: String,
     psql_binary_path: PathBuf,
@@ -30,19 +32,22 @@ impl ToolPostgres {
     }
 
     async fn run_psql_command(&self, query: &str) -> Result<String, String> {
-        let mut cmd = Command::new(&self.psql_binary_path);
-        cmd.arg(&self.connection_string)
+        let output_future = Command::new(&self.psql_binary_path)
+            .arg(&self.connection_string)
             .arg("ON_ERROR_STOP=1")
             .arg("-c")
-            .arg(query);
+            .arg(query)
+            .output();
+        if let Ok(output) = tokio::time::timeout(tokio::time::Duration::from_millis(10_000), output_future).await {
+            let output = output.map_err(|e| format!("Failed to execute psql command: {}", e))?;
 
-        let output = cmd.output().await
-            .map_err(|e| format!("Failed to execute psql command: {}", e))?;
-
-        if output.status.success() {
-            Ok(String::from_utf8_lossy(&output.stdout).to_string())
+            if output.status.success() {
+                Ok(String::from_utf8_lossy(&output.stdout).to_string())
+            } else {
+                Err(format!("psql command failed: {}", String::from_utf8_lossy(&output.stderr)))
+            }
         } else {
-            Err(format!("psql command failed: {}", String::from_utf8_lossy(&output.stderr)))
+            Err("psql command timed out".to_string())
         }
     }
 }

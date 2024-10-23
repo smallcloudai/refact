@@ -294,7 +294,8 @@ pub async fn memories_add(
 
 pub async fn memories_block_until_vectorized_from_vectorizer(
     vectorizer_service: Arc<AMutex<FileVectorizerService>>, 
-    max_blocking_time_ms: usize) -> Result<(), String>  {
+    max_blocking_time_ms: usize
+) -> Result<(), String> {
     let max_blocking_duration = tokio::time::Duration::from_millis(max_blocking_time_ms as u64);
     let start_time = std::time::Instant::now();
     let (vstatus, vstatus_notify) = {

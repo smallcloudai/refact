@@ -4,6 +4,7 @@ use std::io::Write;
 use std::ops::Div;
 use std::sync::Arc;
 use std::time::SystemTime;
+use std::option::Option;
 use tokio::sync::{Mutex as AMutex, Notify as ANotify, RwLock as ARwLock};
 use std::collections::HashSet;
 use indexmap::IndexMap;
@@ -52,7 +53,7 @@ async fn vectorize_batch_from_q(
     #[allow(non_snake_case)]
     B: usize,
 ) -> Result<(), String> {
-    let batch = run_actual_model_on_these.drain(.. B.min(run_actual_model_on_these.len())).collect::<Vec<_>>();
+    let batch = run_actual_model_on_these.drain(..B.min(run_actual_model_on_these.len())).collect::<Vec<_>>();
     assert!(batch.len() > 0);
 
     let batch_result = match get_embedding_with_retry(
@@ -188,138 +189,123 @@ async fn vectorize_thread(
 
     let mut last_updated: HashMap<Document, SystemTime> = HashMap::new();
     loop {
+        let mut msg_to_me: Option<MessageToVecdbThread> = None;
         let current_time = SystemTime::now();
-        let mut new_msgs: VecDeque<MessageToVecdbThread> = VecDeque::new();
-        // filter fast updated documents and remove all if faced MemoriesSomethingDirty
-        {
-            let mut stat_too_new = 0;
-            let mut stat_proceed = 0;
-            {
-                let vservice_locked = vservice.lock().await;
-                let mut vecdb_todo_locked = vservice_locked.vecdb_todo.lock().await;
-                for _ in 0..vecdb_todo_locked.len() {
-                    if let Some(msg) = vecdb_todo_locked.pop_front() {
-                        match msg {
-                            MessageToVecdbThread::RegularDocument(doc) => {
-                                last_updated.insert(doc, current_time);
-                            }
-                            MessageToVecdbThread::ImmediatelyRegularDocument(_) |
-                            MessageToVecdbThread::MemoriesSomethingDirty() => {
-                                new_msgs.push_back(msg);
-                            }
-                        }
-                    }
-                }
-            }
-            for (doc, time) in &last_updated {
-                if time.elapsed().unwrap().as_secs() > COOLDOWN_SECONDS {
-                    new_msgs.push_back(MessageToVecdbThread::RegularDocument(doc.clone()));
-                    stat_proceed += 1;
-                } else {
-                    stat_too_new += 1;
-                }
-            }
-            if stat_proceed > 0 || stat_too_new > 0 {
-                info!("{} files to process, {} files too new", stat_proceed, stat_too_new);
-            }
-            for msg in &new_msgs {
+        let todo_len = {
+            let vservice_locked = vservice.lock().await;
+            let mut vecdb_todo_locked = vservice_locked.vecdb_todo.lock().await;
+            if let Some(msg) = vecdb_todo_locked.pop_front() {
                 match msg {
-                    MessageToVecdbThread::RegularDocument(doc) | MessageToVecdbThread::ImmediatelyRegularDocument(doc) => {
-                        last_updated.remove(&doc);
+                    MessageToVecdbThread::RegularDocument(doc) => {
+                        last_updated.insert(doc, current_time);
                     }
-                    MessageToVecdbThread::MemoriesSomethingDirty() => {}
+                    MessageToVecdbThread::ImmediatelyRegularDocument(_) |
+                    MessageToVecdbThread::MemoriesSomethingDirty() => {
+                        msg_to_me = Some(msg);
+                    }
                 }
+            }
+            if msg_to_me.is_none() {
+                let doc_to_remove = last_updated.iter()
+                    .find(|(_, time)| time.elapsed().unwrap().as_secs() > COOLDOWN_SECONDS)
+                    .map(|(doc, _)| doc.clone());
+
+                if let Some(doc) = doc_to_remove {
+                    msg_to_me = Some(MessageToVecdbThread::RegularDocument(doc.clone()));
+                    last_updated.remove(&doc);
+                }
+            }
+            vecdb_todo_locked.len()
+        };
+        let files_unprocessed = todo_len + last_updated.len();
+
+        let vstatus_changed = {
+            let mut state_changed = false;
+            {
+                let mut vstatus_locked = vstatus.lock().await;
+                if files_unprocessed == 0 {
+                    if vstatus_locked.queue_additions {
+                        vstatus_locked.queue_additions = false;
+                        state_changed = true;
+                    }
+                    // will set "done" but later
+                } else {
+                    if vstatus_locked.state != "parsing" {
+                        vstatus_locked.state = "parsing".to_string();
+                        state_changed = true;
+                    }
+                }
+            }
+            state_changed
+        };
+        if vstatus_changed {
+            vstatus_notify.notify_waiters();
+        }
+
+        let flush = ready_to_vecdb.len() > 100 || files_unprocessed == 0 || msg_to_me.is_none();
+        loop {
+            if
+            run_actual_model_on_these.len() > 0 && flush ||
+                run_actual_model_on_these.len() >= constants.embedding_batch
+            {
+                if let Err(err) = vectorize_batch_from_q(
+                    &mut run_actual_model_on_these,
+                    &mut ready_to_vecdb,
+                    vstatus.clone(),
+                    client.clone(),
+                    &constants,
+                    &api_key,
+                    vecdb_cache.clone(),
+                    constants.embedding_batch,
+                ).await {
+                    tracing::error!("{}", err);
+                    continue;
+                }
+            } else {
+                break;
             }
         }
 
-        loop {
-            let (msg_to_me, files_unprocessed, vstatus_changed) = {
-                let q_len = new_msgs.len();
-                let mut state_changed = false;
-                {
-                    let mut vstatus_locked = vstatus.lock().await;
-                    if q_len == 0 {
-                        if vstatus_locked.queue_additions {
-                            vstatus_locked.queue_additions = false;
-                            state_changed = true;
-                        }
-                        // will set "done" but later
-                    } else {
-                        if vstatus_locked.state != "parsing" {
-                            vstatus_locked.state = "parsing".to_string();
-                            state_changed = true;
-                        }
-                    }
-                }
-                (new_msgs.pop_front(), q_len, state_changed)
-            };
-            if vstatus_changed {
-                vstatus_notify.notify_waiters();
-            }
+        if flush {
+            assert!(run_actual_model_on_these.len() == 0);
+            // This function assumes it can delete records with the filenames mentioned, therefore assert above
+            _send_to_vecdb(vecdb_handler_arc.clone(), &mut ready_to_vecdb).await;
+        }
 
-            let flush = ready_to_vecdb.len() > 100 || files_unprocessed == 0 || msg_to_me.is_none();
-            loop {
-                if
-                run_actual_model_on_these.len() > 0 && flush ||
-                    run_actual_model_on_these.len() >= constants.embedding_batch
-                {
-                    if let Err(err) = vectorize_batch_from_q(
-                        &mut run_actual_model_on_these,
-                        &mut ready_to_vecdb,
+        if (files_unprocessed + 99).div(100) != (reported_unprocessed + 99).div(100) {
+            info!("have {} unprocessed files", files_unprocessed);
+            reported_unprocessed = files_unprocessed;
+        }
+        let mut doc = {
+            match msg_to_me {
+                Some(MessageToVecdbThread::RegularDocument(doc)) |
+                Some(MessageToVecdbThread::ImmediatelyRegularDocument(doc)) => {
+                    {
+                        let mut vstatus_locked = vstatus.lock().await;
+                        vstatus_locked.files_unprocessed = files_unprocessed;
+                        if files_unprocessed > files_total {
+                            files_total = files_unprocessed;
+                        }
+                        vstatus_locked.files_total = files_total;
+                    }
+                    vstatus_notify.notify_waiters();
+                    doc
+                }
+                Some(MessageToVecdbThread::MemoriesSomethingDirty()) => {
+                    info!("MEMDB VECTORIZER START");
+                    let r = vectorize_dirty_memories(
+                        memdb.clone(),
+                        vecdb_cache.clone(),
                         vstatus.clone(),
                         client.clone(),
-                        &constants,
                         &api_key,
-                        vecdb_cache.clone(),
                         constants.embedding_batch,
-                    ).await {
-                        tracing::error!("{}", err);
-                        continue;
-                    }
-                } else {
-                    break;
+                    ).await;
+                    info!("/MEMDB {:?}", r);
+                    continue;
                 }
-            }
-
-            if flush {
-                assert!(run_actual_model_on_these.len() == 0);
-                // This function assumes it can delete records with the filenames mentioned, therefore assert above
-                _send_to_vecdb(vecdb_handler_arc.clone(), &mut ready_to_vecdb).await;
-            }
-
-            if (files_unprocessed + 99).div(100) != (reported_unprocessed + 99).div(100) {
-                info!("have {} unprocessed files", files_unprocessed);
-                reported_unprocessed = files_unprocessed;
-            }
-            let mut doc = {
-                match msg_to_me {
-                    Some(MessageToVecdbThread::RegularDocument(doc)) |
-                    Some(MessageToVecdbThread::ImmediatelyRegularDocument(doc)) => {
-                        {
-                            let mut vstatus_locked = vstatus.lock().await;
-                            vstatus_locked.files_unprocessed = files_unprocessed;
-                            if files_unprocessed > files_total {
-                                files_total = files_unprocessed;
-                            }
-                            vstatus_locked.files_total = files_total;
-                        }
-                        vstatus_notify.notify_waiters();
-                        doc
-                    }
-                    Some(MessageToVecdbThread::MemoriesSomethingDirty()) => {
-                        info!("MEMDB VECTORIZER START");
-                        let r = vectorize_dirty_memories(
-                            memdb.clone(),
-                            vecdb_cache.clone(),
-                            vstatus.clone(),
-                            client.clone(),
-                            &api_key,
-                            constants.embedding_batch,
-                        ).await;
-                        info!("/MEMDB {:?}", r);
-                        break;
-                    }
-                    None => {
+                None => {
+                    if last_updated.is_empty() {
                         // no more files
                         assert!(run_actual_model_on_these.is_empty());
                         assert!(ready_to_vecdb.is_empty());
@@ -355,53 +341,53 @@ async fn vectorize_thread(
                         }
                         }
                         tokio::select! {
-                            _ = tokio::time::sleep(tokio::time::Duration::from_millis(5000)) => {},
+                            _ = tokio::time::sleep(tokio::time::Duration::from_millis(1_000)) => {},
                             _ = vstatus_notify.notified() => {},
                         }
-                        break;
                     }
-                }
-            };
-            let last_30_chars = crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30);
-
-            // Not from memory, vecdb works on files from disk
-            if let Err(err) = doc.update_text_from_disk(gcx.clone()).await {
-                info!("{}: {}", last_30_chars, err);
-                continue;
-            }
-
-            if let Err(err) = doc.does_text_look_good() {
-                info!("embeddings {} doesn't look good: {}", last_30_chars, err);
-                continue;
-            }
-
-            let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
-            let mut splits = file_splitter.vectorization_split(&doc, None, gcx.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
-                info!("{}", err);
-                vec![]
-            });
-
-            if DEBUG_WRITE_VECDB_FILES {
-                let path_vecdb = doc.doc_path.with_extension("vecdb");
-                if let Ok(mut file) = std::fs::File::create(path_vecdb) {
-                    let mut writer = std::io::BufWriter::new(&mut file);
-                    for chunk in splits.iter() {
-                        let beautiful_line = format!("\n\n------- {:?} {}-{} -------\n", chunk.symbol_path, chunk.start_line, chunk.end_line);
-                        let _ = writer.write_all(beautiful_line.as_bytes());
-                        let _ = writer.write_all(chunk.window_text.as_bytes());
-                        let _ = writer.write_all(b"\n");
-                    }
+                    continue;
                 }
             }
+        };
+        let last_30_chars = crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30);
 
-            from_splits_to_vecdb_records_applying_cache(
-                &mut splits,
-                &mut ready_to_vecdb,
-                &mut run_actual_model_on_these,
-                vecdb_cache.clone(),
-                1024,
-            ).await;
+        // Not from memory, vecdb works on files from disk
+        if let Err(err) = doc.update_text_from_disk(gcx.clone()).await {
+            info!("{}: {}", last_30_chars, err);
+            continue;
         }
+
+        if let Err(err) = doc.does_text_look_good() {
+            info!("embeddings {} doesn't look good: {}", last_30_chars, err);
+            continue;
+        }
+
+        let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
+        let mut splits = file_splitter.vectorization_split(&doc, None, gcx.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
+            info!("{}", err);
+            vec![]
+        });
+
+        if DEBUG_WRITE_VECDB_FILES {
+            let path_vecdb = doc.doc_path.with_extension("vecdb");
+            if let Ok(mut file) = std::fs::File::create(path_vecdb) {
+                let mut writer = std::io::BufWriter::new(&mut file);
+                for chunk in splits.iter() {
+                    let beautiful_line = format!("\n\n------- {:?} {}-{} -------\n", chunk.symbol_path, chunk.start_line, chunk.end_line);
+                    let _ = writer.write_all(beautiful_line.as_bytes());
+                    let _ = writer.write_all(chunk.window_text.as_bytes());
+                    let _ = writer.write_all(b"\n");
+                }
+            }
+        }
+
+        from_splits_to_vecdb_records_applying_cache(
+            &mut splits,
+            &mut ready_to_vecdb,
+            &mut run_actual_model_on_these,
+            vecdb_cache.clone(),
+            1024,
+        ).await;
     }
 }
 

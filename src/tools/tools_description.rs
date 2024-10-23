@@ -302,13 +302,13 @@ tools:
   - name: "postgres"
     agentic: true
     experimental: true
-    description: "Execute PostgreSQL queries using psql command-line tool."
+    description: "Execute PostgreSQL query using psql command-line tool."
     parameters:
       - name: "command"
         type: "string"
         description: "Examples: 'SELECT * FROM table_name', 'SELECT * FROM table_name WHERE column_name = value'" 
     parameters_required:
-      - "columns"   
+      - "command"   
 "####;
 
 #[allow(dead_code)]
