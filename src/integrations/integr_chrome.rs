@@ -245,7 +245,7 @@ async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -
 
     let multimodal_element = MultimodalElement {
         m_type: "image/jpeg".to_string(),
-        m_content: format!("data:image/jpeg;base64,{}", jpeg_data),
+        m_content: jpeg_data,
     };
 
     Ok(ChatMessage {
