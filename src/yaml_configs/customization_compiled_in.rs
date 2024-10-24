@@ -220,7 +220,7 @@ custom_cmdline_tools:
         type: "string"
         description: "absolute path to the project"
     parameters_required:
-      - "project_path"
+      - "path"
     command: "cargo check --manifest-path %path%/Cargo.toml"
     runs_in_background: false
     runs_in_background_false_timeout: 120
@@ -362,18 +362,5 @@ pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# You can find the compiled-
 #        %CODE_SELECTION%
 #        ```
 #        Replace all variables with animal names, such that they lose any original meaning.
-
-# custom_cmdline_tools:
-#   cargo_build:
-#     description: "Check for cargo errors"
-#     parameters:
-#       - name: "project_path"
-#         type: "string"
-#         description: "absolute path to the project"
-#     parameters_required:
-#       - "project_path"
-#     command: "cargo build --manifest-path %project_path%/Cargo.toml --target-dir %project_path%
-#     background: false
-#     background_false_timeout: 120
 
 "#;
