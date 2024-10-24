@@ -156,7 +156,7 @@ async fn convert_input_into_usefullness(
             if msg.line1 == 0 || msg.line2 == 0 || msg.line1 > msg.line2 || msg.line1 > lines.len() || msg.line2 > lines.len() {
                 warn!("range in search results is outside of file lines that actually exist {}:{}-{}; actual len: {}", file_nice_path, msg.line1, msg.line2, lines.len());
             }
-            colorize_if_more_useful(lines, msg.line1.saturating_sub(1), msg.line2.saturating_sub(1), "nosymb".to_string(), msg.usefulness);
+            colorize_if_more_useful(lines, msg.line1.saturating_sub(1), msg.line2, "nosymb".to_string(), msg.usefulness);
         }
 
         // example: see comment in class Toad
