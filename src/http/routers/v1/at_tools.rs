@@ -49,6 +49,7 @@ pub struct ToolsExecutePost {
     pub postprocess_parameters: PostprocessSettings,
     pub model_name: String,
     pub chat_id: String,
+    pub style: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -242,7 +243,7 @@ pub async fn handle_v1_tools_execute(
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
     let (messages, tools_runned) = run_tools(
-        ccx_arc.clone(), tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages
+        ccx_arc.clone(), tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style
     ).await;
 
     let response = ToolExecuteResponse {

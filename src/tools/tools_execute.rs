@@ -54,6 +54,7 @@ pub async fn run_tools_remotely(
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
+    style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let (n_ctx, subchat_tool_parameters, postprocess_parameters, chat_id, context_messages) = {
         let ccx_locked = ccx.lock().await;
@@ -75,6 +76,7 @@ pub async fn run_tools_remotely(
         postprocess_parameters,
         model_name: model_name.to_string(),
         chat_id,
+        style: style.clone(),
     };
 
     let port = docker_container_get_host_port_to_connect(ccx.clone()).await?;
@@ -116,8 +118,9 @@ pub async fn run_tools_locally(
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
+    style: &Option<String>,
 ) -> (Vec<ChatMessage>, bool) {
-    let (new_messages, tools_runned) = run_tools(ccx, tokenizer, maxgen, original_messages).await;
+    let (new_messages, tools_runned) = run_tools(ccx, tokenizer, maxgen, original_messages, style).await;
 
     let mut all_messages = original_messages.to_vec();
     for msg in new_messages {
