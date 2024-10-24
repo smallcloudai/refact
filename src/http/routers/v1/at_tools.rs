@@ -252,7 +252,7 @@ pub async fn handle_v1_tools_execute(
     };
 
     let response_json = serde_json::to_string(&response)
-        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Response JSON problem: {}", e)))?;
 
     Ok(Response::builder()
         .status(StatusCode::OK)

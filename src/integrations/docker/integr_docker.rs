@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use tokio::process::Command;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use async_trait::async_trait;
-use tracing::{error, info};
+use tracing::error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

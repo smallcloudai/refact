@@ -4,7 +4,7 @@ use rand::Rng;
 use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::global_context::GlobalContext;
 use crate::integrations::sessions::get_session_hashmap_key;
@@ -12,6 +12,8 @@ use crate::tools::tools_description::read_integrations_value;
 use crate::{at_commands::at_commands::AtCommandsContext, integrations::sessions::IntegrationSession};
 use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel};
 use crate::integrations::docker::integr_docker::ToolDocker;
+
+use super::docker_ssh_tunnel_utils::ssh_tunnel_check_status;
 
 const SESSION_TIMEOUT_AFTER_INACTIVITY: Duration = Duration::from_secs(60 * 60);
 
@@ -78,32 +80,29 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
             let docker_container_session = docker_container_session_locked.as_any_mut().downcast_mut::<DockerContainerSession>()
                 .ok_or_else(|| "Failed to downcast docker container session")?;
 
-            // let ssh_config = {
-            //     let docker_tool_locked = docker_tool.lock().await;
-            //     let docker = docker_tool_locked.as_any().downcast_ref::<ToolDocker>().ok_or_else(|| "Failed to downcast docker tool")?;
+            let ssh_config = {
+                let docker_tool_locked = docker_tool.lock().await;
+                let docker = docker_tool_locked.as_any().downcast_ref::<ToolDocker>().ok_or_else(|| "Failed to downcast docker tool")?;
+                docker.integration_docker.ssh_config.clone()
+            };
 
-            //     todo!()
-            //     // docker_container_check_status(&docker, &docker_container_session.container_id, gcx.clone()).await?;
-
-            //     // docker.integration_docker.ssh_config.clone()
-            // };
-
-            // match &mut docker_container_session.connection {
-            //     DockerContainerConnectionEnum::SshTunnel(ssh_tunnel) => {
-            //         match ssh_tunnel_check_status(ssh_tunnel).await {
-            //             Ok(()) => {}
-            //             Err(e) => {
-            //                 warn!("SSH tunnel error: {}, restarting tunnel..", e);
-            //                 let ssh_config = ssh_config.ok_or_else(|| "No ssh config for docker container".to_string())?;
-            //                 ssh_tunnel = &mut ssh_tunnel_open(&ssh_tunnel.remote_port_or_socket, &ssh_config).await?;
-            //             }
-            //         }
-            //     },
-            //     DockerContainerConnectionEnum::LocalPort(_) => {}
-            // }
+            match &mut docker_container_session.connection {
+                DockerContainerConnectionEnum::SshTunnel(ssh_tunnel) => {
+                    match ssh_tunnel_check_status(ssh_tunnel).await {
+                        Ok(()) => {}
+                        Err(e) => {
+                            warn!("SSH tunnel error: {}, restarting tunnel..", e);
+                            let ssh_config = ssh_config.ok_or_else(|| "No ssh config for docker container".to_string())?;
+                            docker_container_session.connection = DockerContainerConnectionEnum::SshTunnel(
+                                ssh_tunnel_open(&ssh_tunnel.remote_port_or_socket, &ssh_config).await?
+                            );
+                        }
+                    }
+                },
+                DockerContainerConnectionEnum::LocalPort(_) => {}
+            }
 
             docker_container_session.last_usage_ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-
             Ok(())
         }
         None => {
@@ -254,9 +253,4 @@ async fn docker_container_kill(
     docker.command_execute(&format!("container remove {container_id}"), gcx.clone()).await?;
     info!("Removed docker container {container_id}.");
     Ok(())
-}
-
-async fn docker_execute_configured_command(docker: &ToolDocker)
-{
-    
 }

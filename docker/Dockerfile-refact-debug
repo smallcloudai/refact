@@ -1,3 +1,6 @@
+# This dockerfile can be used to compile refact-lsp for development purposes, 
+# for example, to get refact-lsp to bind into docker containers to start threads in containers
+
 FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y \
