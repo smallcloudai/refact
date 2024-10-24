@@ -160,6 +160,11 @@ fn tool_message(content: String, tool_call_id: &String) -> ContextEnum {
     })
 }
 
+async fn navigate_to(tab: &Arc<Tab>, url: &String) -> Result<String, String> {
+    tab.navigate_to(url.as_str()).map_err(|e| e.to_string())?;
+    tab.wait_until_navigated().map_err(|e| e.to_string())?;
+    Ok(format!("Chrome tab navigated to {}", tab.get_url()))
+}
 
 async fn interact_with_chrome(
     command_args: &Vec<String>,
@@ -180,11 +185,12 @@ async fn interact_with_chrome(
     let mut messages = vec![];
     if command_args[0] == "navigate_to" {
         if command_args.len() < 2 {
-            messages.push(tool_message(format!("Missing argument `url`: {:?}", command_args), tool_call_id));
+            messages.push(tool_message(format!("Missing argument `url`: {:?}. Call this command another time using format `navigate_to url`.", command_args), tool_call_id));
         } else {
-            chrome_session.tab.navigate_to(command_args[1].as_str()).map_err(|e| e.to_string())?;
-            chrome_session.tab.wait_until_navigated().map_err(|e| e.to_string())?;
-            messages.push(tool_message(format!("Chrome tab navigated to {}", command_args[1]), tool_call_id));
+            let content = navigate_to(&chrome_session.tab, &command_args[1]).await.map_err(
+                |e| format!("Cannot navigate_to `{}`: {}. Probably url doesn't exist. If you're trying to open local file add file:// prefix.", command_args[1], e)
+            )?;
+            messages.push(tool_message(content, tool_call_id));
         }
     } else if command_args[0] == "screenshot" {
         messages.push(tool_message("Made a screenshot".to_string(), tool_call_id));

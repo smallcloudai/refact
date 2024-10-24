@@ -320,7 +320,7 @@ tools:
         type: "string"
         description: |
           Supports these commands:
-          navigate_to <url>
+          navigate_to <uri>
           screenshot
           html
           reload
