@@ -5,6 +5,8 @@ import argparse
 import requests
 import random
 import termcolor
+import base64
+import glob
 import json
 from typing import Any, Optional
 
@@ -136,6 +138,36 @@ def on_submit(buffer):
                 role="cd_instruction",
                 content=("💿 Hint: %s" % " ".join(args[1:])),
             ))
+            user_input = ""
+        elif args[0] == "/attach":
+            error_messages = []
+            for filename in glob.iglob(args[1]):
+                try:
+                    filename_ext = filename.split(".")[-1]
+                    ext2type = {
+                        "jpg": "image/jpeg",
+                        "jpeg": "image/jpeg",
+                        "png": "image/png",
+                    }
+                    if filename_ext not in ext2type:
+                        raise RuntimeError(f"unknown extension '{filename_ext}'")
+                    m_type = ext2type[filename_ext]
+                    with open(filename, "rb") as f:
+                        m_content = base64.b64encode(f.read()).decode("utf-8")
+                    cli_streaming.streaming_messages.append(chat_client.Message(
+                        role="user",
+                        content=[{
+                            "m_type": m_type,
+                            "m_content": m_content,
+                        }],
+                    ))
+                except Exception as e:
+                    error_messages.append(f"can't attach file {filename}: {e}")
+            if error_messages:
+                cli_streaming.streaming_messages.append(chat_client.Message(
+                    role="user",
+                    content="\n".join(error_messages),
+                ))
             user_input = ""
         else:
             print_formatted_text(f"\nchat> {user_input}")
