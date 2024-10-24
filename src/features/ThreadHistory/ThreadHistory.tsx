@@ -59,16 +59,9 @@ export const ThreadHistory: FC<ThreadHistoryProps> = ({
       return;
     }
 
-    copyChatHistoryToClipboard(historyThread)
-      .then((response) => {
-        if (response.error) {
-          dispatch(setError(response.error));
-        }
-        dispatch(setInformation("Chat history copied to clipboard"));
-      })
-      .catch(() => {
-        dispatch(setError("Unknown error occured while copying to clipboard"));
-      });
+    void copyChatHistoryToClipboard(historyThread).then(() => {
+      dispatch(setInformation("Chat history copied to clipboard"));
+    });
   }, [dispatch, historyThread]);
 
   const handleBackFromThreadHistory = useCallback(

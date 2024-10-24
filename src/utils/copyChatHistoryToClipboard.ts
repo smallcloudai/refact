@@ -1,22 +1,29 @@
 import type { RootState } from "../app/store";
 
-type CopyChatHistoryToClipboardResponse = {
-  error?: string;
-  success: boolean;
-};
-
 export const copyChatHistoryToClipboard = async (
   chatThread: RootState["history"]["thread"],
-): Promise<CopyChatHistoryToClipboardResponse> => {
+): Promise<void> => {
   const jsonString = JSON.stringify(chatThread, null, 2);
 
   try {
-    await navigator.clipboard.writeText(jsonString);
-    return { success: true };
-  } catch (error) {
-    if (error instanceof Error) {
-      return { error: error.message, success: false };
-    }
-    return { error: "Unknown error", success: false };
+    await window.navigator.clipboard.writeText(jsonString);
+  } catch {
+    fallbackCopying(jsonString);
   }
 };
+
+function fallbackCopying(text: string) {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+
+  textArea.style.top = "0";
+  textArea.style.left = "0";
+  textArea.style.position = "fixed";
+
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  document.execCommand("copy");
+  document.body.removeChild(textArea);
+}
