@@ -49,7 +49,8 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     [pages],
   );
 
-  const { setupHost, chatPageChange, doneStreaming } = useEventsBusForIDE();
+  const { setupHost, chatPageChange, setIsChatStreaming } =
+    useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
   const historyState = useAppSelector((state: RootState) => state.history);
   const chatId = useAppSelector(selectChatId);
@@ -95,8 +96,8 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   }, [pages, chatPageChange]);
 
   useEffect(() => {
-    doneStreaming(isStreaming);
-  }, [isStreaming, doneStreaming]);
+    setIsChatStreaming(isStreaming);
+  }, [isStreaming, setIsChatStreaming]);
 
   const onPressNext = (host: Host) => {
     if (host === "cloud") {

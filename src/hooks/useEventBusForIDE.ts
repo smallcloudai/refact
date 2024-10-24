@@ -44,7 +44,7 @@ export const ideWriteResultsToFile = createAction<PatchResult[]>(
 export const ideChatPageChange = createAction<string>("ide/chatPageChange");
 export const ideEscapeKeyPressed = createAction<string>("ide/escapeKeyPressed");
 
-export const ideDoneStreaming = createAction<boolean>("ide/isChatStreaming");
+export const ideIsChatStreaming = createAction<boolean>("ide/isChatStreaming");
 
 import { pathApi } from "../services/refact/path";
 
@@ -167,9 +167,9 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
-  const doneStreaming = useCallback(
+  const setIsChatStreaming = useCallback(
     (state: boolean) => {
-      const action = ideDoneStreaming(state);
+      const action = ideIsChatStreaming(state);
       postMessage(action);
     },
     [postMessage],
@@ -221,6 +221,6 @@ export const useEventsBusForIDE = () => {
     writeResultsToFile,
     chatPageChange,
     escapeKeyPressed,
-    doneStreaming,
+    setIsChatStreaming,
   };
 };

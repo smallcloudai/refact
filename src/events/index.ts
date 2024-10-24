@@ -60,7 +60,7 @@ export {
   ideWriteResultsToFile,
   ideChatPageChange,
   ideEscapeKeyPressed,
-  ideDoneStreaming,
+  ideIsChatStreaming,
 } from "../hooks/useEventBusForIDE";
 
 export const fim = {
