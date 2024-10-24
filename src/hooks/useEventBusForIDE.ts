@@ -44,7 +44,7 @@ export const ideWriteResultsToFile = createAction<PatchResult[]>(
 export const ideChatPageChange = createAction<string>("ide/chatPageChange");
 export const ideEscapeKeyPressed = createAction<string>("ide/escapeKeyPressed");
 
-export const ideDoneStreaming = createAction<boolean>("ide/doneStreaming");
+export const ideDoneStreaming = createAction<boolean>("ide/isChatStreaming");
 
 import { pathApi } from "../services/refact/path";
 
