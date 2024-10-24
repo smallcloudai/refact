@@ -78,7 +78,7 @@ impl AtCommand for AtAstReference {
                         file_content: "".to_string(),
                         line1: *uline,
                         line2: *uline,
-                        symbols: vec![usedin.path()],
+                        symbols: vec![usedin.path_drop0()],
                         gradient_type: -1,
                         usefulness: 100.0,
                     });

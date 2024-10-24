@@ -137,7 +137,7 @@ impl AtCommand for AtAstDefinition {
                     file_content: "".to_string(),
                     line1: res.full_line1(),
                     line2: res.full_line2(),
-                    symbols: vec![res.path()],
+                    symbols: vec![res.path_drop0()],
                     gradient_type: -1,
                     usefulness: 100.0,
                 });

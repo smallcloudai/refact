@@ -29,12 +29,6 @@ pub struct AstDefinition {
     pub decl_line2: usize,                    // guaranteed >= line1
     pub body_line1: usize,                    // use full_line1() full_line2() if not sure
     pub body_line2: usize,
-    // #[serde(with = "RangeDef")]
-    // pub full_range: Range,
-    // #[serde(with = "RangeDef")]
-    // pub declaration_range: Range,
-    // #[serde(with = "RangeDef")]
-    // pub definition_range: Range,
 }
 
 impl AstDefinition {
@@ -43,7 +37,11 @@ impl AstDefinition {
     }
 
     pub fn path_drop0(&self) -> String {
-        self.official_path.iter().skip(1).cloned().collect::<Vec<String>>().join("::")
+        if self.official_path.len() > 3 {  // new style long path, starts with hex code we don't want users to see
+            self.official_path.iter().skip(1).cloned().collect::<Vec<String>>().join("::")
+        } else {  // there's not much to cut
+            self.official_path.join("::")
+        }
     }
 
     pub fn name(&self) -> String {
