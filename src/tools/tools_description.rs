@@ -16,7 +16,7 @@ use crate::integrations::integr_gitlab::ToolGitlab;
 use crate::integrations::integr_pdb::ToolPdb;
 use crate::integrations::integr_chrome::ToolChrome;
 use crate::integrations::integr_postgres::ToolPostgres;
-use crate::yaml_configs::customization_loader::load_customization;
+use crate::yaml_configs::customization_loader::{CustomCMDLineTool, load_customization};
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -116,21 +116,19 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
     }
 
-    if let Ok(tconfig) = load_customization(gcx.clone(), true).await {
-        for (c_name, c_cmd_tool) in tconfig.custom_cmdline_tools {
-            let tool = Arc::new(AMutex::new(Box::new(
-                crate::tools::tool_custom::ToolCustom {
-                    name: c_name.clone(),
-                    parameters: c_cmd_tool.parameters,
-                    parameters_required: c_cmd_tool.parameters_required,
-                    command: c_cmd_tool.command,
-                    runs_in_background: c_cmd_tool.runs_in_background,
-                    runs_in_background_false_timeout: c_cmd_tool.runs_in_background_false_timeout,
-                    output_filter: c_cmd_tool.output_filter,
-                }
-            ) as Box<dyn Tool + Send>));
-            tools_all.insert(c_name, tool);
-        }
+    let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await.unwrap_or_default();
+    for (c_name, c_cmd_tool) in custom_tools_dict {
+        let tool = Arc::new(AMutex::new(Box::new(
+            crate::tools::tool_custom::ToolCustom {
+                name: c_name.clone(),
+                parameters: c_cmd_tool.parameters,
+                parameters_required: c_cmd_tool.parameters_required,
+                command: c_cmd_tool.command,
+                runs_in_background: c_cmd_tool.runs_in_background,
+                runs_in_background_false_timeout: c_cmd_tool.runs_in_background_false_timeout,
+            }
+        ) as Box<dyn Tool + Send>));
+        tools_all.insert(c_name, tool);
     }
 
     let mut filtered_tools = IndexMap::new();
@@ -478,6 +476,34 @@ impl ToolDict {
     }
 }
 
+pub async fn get_custom_cmdline_tools(
+    gcx: Arc<ARwLock<GlobalContext>>,
+) -> Result<IndexMap<String, CustomCMDLineTool>, String> {
+    let tconfig = load_customization(gcx.clone(), true).await?;
+    let mut tools_dict = tconfig.custom_cmdline_tools.clone();
+    for (_, tool) in tools_dict.iter_mut() {
+        if tool.runs_in_background {
+            tool.description = format!("{}. Runs in background. Action is start by default", tool.description);
+            tool.parameters.push(AtParamDict {
+                name: "status".to_string(),
+                param_type: "boolean".to_string(),
+                description: "Action: get status of the background task. Path does not matter".to_string(),
+            });
+            tool.parameters.push( AtParamDict {
+                name: "restart".to_string(),
+                param_type: "boolean".to_string(),
+                description: "Action: restart the background task".to_string(),
+            });
+            tool.parameters.push( AtParamDict {
+                name: "stop".to_string(),
+                param_type: "boolean".to_string(),
+                description: "Action: restart the background task. Path does not matter".to_string(),
+            });
+        }
+    }
+    Ok(tools_dict)
+}
+
 pub async fn tool_description_list_from_yaml(
     gcx: Arc<ARwLock<GlobalContext>>,
     turned_on: &Vec<String>,
@@ -490,7 +516,9 @@ pub async fn tool_description_list_from_yaml(
     tools.extend(at_dict.tools.iter().cloned());
 
     let tconfig = load_customization(gcx.clone(), true).await?;
-    for (c_name, c_cmd_tool) in tconfig.custom_cmdline_tools {
+    // let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await?;
+    // for (c_name, c_cmd_tool) in tconfig.custom_cmdline_tools {
+    for (c_name, c_cmd_tool) in custom_tools_dict {
         let c_tool_dict = c_cmd_tool.into_tool_dict(c_name);
         tools.push(c_tool_dict);
     }

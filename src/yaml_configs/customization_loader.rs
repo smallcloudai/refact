@@ -70,7 +70,7 @@ pub struct CustomCMDLineTool {
     #[serde(default)]
     pub runs_in_background_false_timeout: usize,
     #[serde(default)]
-    pub output_filter: IndexMap<String, String> // todo
+    pub experimental: bool
 }
 
 impl CustomCMDLineTool {
@@ -78,7 +78,7 @@ impl CustomCMDLineTool {
         ToolDict {
             name,
             agentic: false,
-            experimental: false,
+            experimental: self.experimental,
             description: self.description.clone(),
             parameters: self.parameters.clone(),
             parameters_required: self.parameters_required.clone(),

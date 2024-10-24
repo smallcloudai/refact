@@ -214,18 +214,28 @@ code_lens:
 
 custom_cmdline_tools:
   cargo_check:
-    description: "Check for cargo errors"
+    description: "Checks for cargo errors"
     parameters:
-      - name: "project_path"
+      - name: "path"
         type: "string"
         description: "absolute path to the project"
     parameters_required:
       - "project_path"
-    command: "cargo check --manifest-path %project_path%/Cargo.toml"
+    command: "cargo check --manifest-path %path%/Cargo.toml"
     runs_in_background: false
     runs_in_background_false_timeout: 120
-    output_filter:
+    experimental: true
 
+  run_chat_js:
+    description: "runs chat js in background"
+    parameters:
+      - name: "path"
+        type: "string"
+        description: "absolute path to the project"
+    parameters_required:
+    command: "npm --prefix %path% run dev"
+    runs_in_background: true
+    experimental: true
 
 # DEPRECATED
 toolbox_commands:
@@ -365,6 +375,5 @@ pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# You can find the compiled-
 #     command: "cargo build --manifest-path %project_path%/Cargo.toml --target-dir %project_path%
 #     background: false
 #     background_false_timeout: 120
-#     output_filter:
 
 "#;
