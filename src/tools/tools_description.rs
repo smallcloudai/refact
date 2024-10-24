@@ -16,6 +16,7 @@ use crate::integrations::integr_gitlab::ToolGitlab;
 use crate::integrations::integr_pdb::ToolPdb;
 use crate::integrations::integr_chrome::ToolChrome;
 use crate::integrations::integr_postgres::ToolPostgres;
+use crate::yaml_configs::customization_loader::load_customization;
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -73,13 +74,10 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
     };
 
     let cache_dir = gcx.read().await.cache_dir.clone();
-    let integrations_value = match read_integrations_value(&cache_dir).await {
-        Ok(value) => value,
-        Err(e) => {
-            warn!(e);
-            serde_yaml::Value::default()
-        }
-    };
+    let integrations_value = read_integrations_value(&cache_dir).await.unwrap_or_else(|e| {
+        warn!(e);
+        serde_yaml::Value::default()
+    });
 
     let mut tools_all = IndexMap::from([
         ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>))),
@@ -116,6 +114,23 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         }
         #[cfg(feature="vecdb")]
         tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
+    }
+
+    if let Ok(tconfig) = load_customization(gcx.clone(), true).await {
+        for (c_name, c_cmd_tool) in tconfig.custom_cmdline_tools {
+            let tool = Arc::new(AMutex::new(Box::new(
+                crate::tools::tool_custom::ToolCustom {
+                    name: c_name.clone(),
+                    parameters: c_cmd_tool.parameters,
+                    parameters_required: c_cmd_tool.parameters_required,
+                    command: c_cmd_tool.command,
+                    runs_in_background: c_cmd_tool.runs_in_background,
+                    runs_in_background_false_timeout: c_cmd_tool.runs_in_background_false_timeout,
+                    output_filter: c_cmd_tool.output_filter,
+                }
+            ) as Box<dyn Tool + Send>));
+            tools_all.insert(c_name, tool);
+        }
     }
 
     let mut filtered_tools = IndexMap::new();
@@ -463,13 +478,24 @@ impl ToolDict {
     }
 }
 
-pub fn tool_description_list_from_yaml(
+pub async fn tool_description_list_from_yaml(
+    gcx: Arc<ARwLock<GlobalContext>>,
     turned_on: &Vec<String>,
     allow_experimental: bool,
 ) -> Result<Vec<ToolDict>, String> {
     let at_dict: ToolDictDeserialize = serde_yaml::from_str(BUILT_IN_TOOLS)
         .map_err(|e|format!("Failed to parse BUILT_IN_TOOLS: {}", e))?;
-    Ok(at_dict.tools.iter()
+
+    let mut tools = vec![];
+    tools.extend(at_dict.tools.iter().cloned());
+
+    let tconfig = load_customization(gcx.clone(), true).await?;
+    for (c_name, c_cmd_tool) in tconfig.custom_cmdline_tools {
+        let c_tool_dict = c_cmd_tool.into_tool_dict(c_name);
+        tools.push(c_tool_dict);
+    }
+
+    Ok(tools.iter()
         .filter(|x| turned_on.contains(&x.name) && (allow_experimental || !x.experimental))
         .cloned()
         .collect::<Vec<_>>())

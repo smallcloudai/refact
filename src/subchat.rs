@@ -255,7 +255,7 @@ pub async fn subchat_single(
     let tools_turned_on_by_cmdline_set: HashSet<String> = tools_turned_on_by_cmdline.into_iter().collect();
     let tools_on_intersection: Vec<String> = tools_turn_on_set.intersection(&tools_turned_on_by_cmdline_set).cloned().collect();
     let allow_experimental = gcx.read().await.cmdline.experimental;
-    let tools_desclist = tool_description_list_from_yaml(&tools_on_intersection, allow_experimental).unwrap_or_else(|e|{
+    let tools_desclist = tool_description_list_from_yaml(gcx.clone(), &tools_on_intersection, allow_experimental).await.unwrap_or_else(|e|{
         error!("Error loading compiled_in_tools: {:?}", e);
         vec![]
     });

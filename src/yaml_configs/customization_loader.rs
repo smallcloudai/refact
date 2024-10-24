@@ -7,6 +7,7 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, SubchatParameters};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
+use crate::tools::tools_description::{AtParamDict, ToolDict};
 use crate::yaml_configs::customization_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML;
 
 
@@ -20,6 +21,8 @@ pub struct CustomizationYaml {
     pub toolbox_commands: IndexMap<String, ToolboxCommand>,
     #[serde(default)]
     pub code_lens: IndexMap<String, CodeLensCommand>,
+    #[serde(default)]
+    pub custom_cmdline_tools: IndexMap<String, CustomCMDLineTool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -55,6 +58,32 @@ pub struct CodeLensCommand {
     pub new_tab: bool,
     #[serde(default)]
     pub messages: Vec<ChatMessage>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomCMDLineTool {
+    pub description: String,
+    pub parameters: Vec<AtParamDict>,
+    pub parameters_required: Vec<String>,
+    pub command: String,
+    pub runs_in_background: bool,
+    #[serde(default)]
+    pub runs_in_background_false_timeout: usize,
+    #[serde(default)]
+    pub output_filter: IndexMap<String, String> // todo
+}
+
+impl CustomCMDLineTool {
+    pub fn into_tool_dict(&self, name: String) -> ToolDict {
+        ToolDict {
+            name,
+            agentic: false,
+            experimental: false,
+            description: self.description.clone(),
+            parameters: self.parameters.clone(),
+            parameters_required: self.parameters_required.clone(),
+        }
+    }
 }
 
 fn _extract_mapping_values(mapping: &Option<&serde_yaml::Mapping>, variables: &mut HashMap<String, String>) {

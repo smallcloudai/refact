@@ -13,6 +13,7 @@ use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
 
+
 #[derive(Serialize, Deserialize, Clone)]
 struct ToolsPermissionCheckPost {
     pub tool_calls: Vec<ChatToolCall>,
@@ -23,10 +24,10 @@ pub async fn handle_v1_tools(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     _: hyper::body::Bytes,
 )  -> axum::response::Result<Response<Body>, ScratchError> {
-    let turned_on = crate::tools::tools_description::tools_merged_and_filtered(gcx.clone()).await.keys().cloned().collect::<Vec<_>>();
+    let turned_on = tools_merged_and_filtered(gcx.clone()).await.keys().cloned().collect::<Vec<_>>();
     let allow_experimental = gcx.read().await.cmdline.experimental;
 
-    let tool_desclist = tool_description_list_from_yaml(&turned_on, allow_experimental).unwrap_or_else(|e|{
+    let tool_desclist = tool_description_list_from_yaml(gcx.clone(), &turned_on, allow_experimental).await.unwrap_or_else(|e|{
         tracing::error!("Error loading compiled_in_tools: {:?}", e);
         vec![]
     });

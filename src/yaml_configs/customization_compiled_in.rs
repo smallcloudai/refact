@@ -212,6 +212,21 @@ code_lens:
         any tricky parts in the code. Be concise, wait for a more specific follow-up question from the user.
 
 
+custom_cmdline_tools:
+  cargo_check:
+    description: "Check for cargo errors"
+    parameters:
+      - name: "project_path"
+        type: "string"
+        description: "absolute path to the project"
+    parameters_required:
+      - "project_path"
+    command: "cargo check --manifest-path %project_path%/Cargo.toml"
+    runs_in_background: false
+    runs_in_background_false_timeout: 120
+    output_filter:
+
+
 # DEPRECATED
 toolbox_commands:
   shorter:
@@ -337,5 +352,19 @@ pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# You can find the compiled-
 #        %CODE_SELECTION%
 #        ```
 #        Replace all variables with animal names, such that they lose any original meaning.
+
+# custom_cmdline_tools:
+#   cargo_build:
+#     description: "Check for cargo errors"
+#     parameters:
+#       - name: "project_path"
+#         type: "string"
+#         description: "absolute path to the project"
+#     parameters_required:
+#       - "project_path"
+#     command: "cargo build --manifest-path %project_path%/Cargo.toml --target-dir %project_path%
+#     background: false
+#     background_false_timeout: 120
+#     output_filter:
 
 "#;
