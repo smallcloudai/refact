@@ -8,6 +8,7 @@ mod tool_web;
 mod tool_tree;
 mod tool_relevant_files;
 mod tool_cat;
+mod tool_image_attach;
 
 #[cfg(feature="vecdb")]
 mod tool_search;

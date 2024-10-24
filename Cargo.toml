@@ -105,3 +105,4 @@ base64 = "0.21.7"
 image = "0.25.2"
 headless_chrome = "1.0.15"
 nix = { version = "0.29.0", features = ["signal"] }
+resvg = "0.44.0"
