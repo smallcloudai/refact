@@ -216,7 +216,7 @@ pub struct BlocksOfCodeParser {}
 
 impl BlocksOfCodeParser {
     pub fn prompt() -> String {
-        let prompt = r#"You will receive a file containing code with one or more modified sections. Your task is to identify, describe, and extract all sections of the original code that correspond to the modified sections provided. Follow the steps below to ensure accuracy and clarity in your response.
+        let prompt = r#"You will receive a file containing code with one or more modified sections. Your task is to identify, describe, and extract all sections of the original code that correspond to the modified sections provided. Follow the steps below to ensure accuracy and clarity in your response. Carefully read the hints if they're given, they contain important information about the changes (i.e. exact spots where to paste new code).
 
 ## Steps
 1. **Locate Modified Sections:** Carefully review the provided code file and identify all sections that differ between the original and modified versions.
@@ -236,7 +236,16 @@ impl BlocksOfCodeParser {
 - Where possible, replace entire functions instead of making multiple small changes within them for better clarity.
 - Split a single modified section into multiple if changes are located in different parts of the original file.
 - Preserve the original indentation and formatting to avoid introducing errors during code replacement.
-- Do not skip any modification, even if they are invalid or insufficient!"#.to_string();
+- Do not skip any modification, even if they are invalid or insufficient!
+- If there is new code added without any modifications, use this format:
+### Original Section (to be replaced)
+```
+[an old section of the code where you need to insert new code]
+```
+### Modified Section (to replace with)
+```
+[an old section of the code + new code]
+```"#.to_string();
         prompt
     }
 
@@ -246,7 +255,8 @@ impl BlocksOfCodeParser {
 2. Rewrite those sections. The best way to do that correctly is to split them into smaller pieces. 
 I.e., if there are many functions in a single section - make a separate section for each function
 3. Copy other correct sections without any changes
-4. Keep the output format the same is in the initial prompt and don't forget to replace [Modified code section] with the real modified code:
+4. Follow the hints to find the spot where to paste the code
+5. Keep the output format the same is in the initial prompt and don't forget to replace [Modified code section] with the real modified code:
 ## Output Format
 ### Original Section (to be replaced)
 ```

@@ -68,7 +68,7 @@ async fn make_chat_history(
             )
         } else {
             format!(
-                "Hint:\n{}\nModified section:\n```\n{}\n```",
+                "The hints (FOLLOW them to produce correct changes!):\n```\n{}\n```\nModified section:\n```\n{}\n```",
                 ticket.hint_message,
                 ticket.code
             )
