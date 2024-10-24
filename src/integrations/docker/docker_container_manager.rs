@@ -180,8 +180,11 @@ async fn docker_container_start(
     internal_port: &u16,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
-    let docker_image_id = docker.integration_docker.docker_image_id.clone().ok_or_else(|| "No image ID to run container from, please specify one in integrations.yaml".to_string())?;
-    let workspace_folder = docker.integration_docker.container_workspace_folder.clone().unwrap_or("/app".to_string());
+    let docker_image_id = docker.integration_docker.docker_image_id.clone();
+    if docker_image_id.is_empty() { 
+        return Err("No image ID to run container from, please specify one.".to_string()); 
+    }
+    let workspace_folder = docker.integration_docker.container_workspace_folder.clone();
     let host_lsp_path  = docker.integration_docker.host_lsp_path.clone();
 
     let api_key = gcx.read().await.cmdline.api_key.clone();

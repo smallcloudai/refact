@@ -18,13 +18,24 @@ const COMMON_LABEL: &str = "humberto-refact";
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct IntegrationDocker {
+    #[serde(default = "default_connect_to_daemon_at")]
     pub connect_to_daemon_at: String,
-    pub docker_cli_path: Option<String>,
+    #[serde(default = "default_docker_cli_path")]
+    pub docker_cli_path: String,
     pub ssh_config: Option<SshConfig>,
-    pub container_workspace_folder: Option<String>,
-    pub docker_image_id: Option<String>,
+    #[serde(default = "default_container_workspace_folder")]
+    pub container_workspace_folder: String,
+    #[serde(default)]
+    pub docker_image_id: String,
+    #[serde(default = "default_host_lsp_path")]
     pub host_lsp_path: String,
+    #[serde(default)]
+    pub run_chat_threads_inside_container: bool,
 }
+fn default_connect_to_daemon_at() -> String { "unix:///var/run/docker.sock".to_string() }
+fn default_docker_cli_path() -> String { "docker".to_string() }
+fn default_container_workspace_folder() -> String { "/app".to_string() }
+fn default_host_lsp_path() -> String { "/opt/refact/bin/refact-lsp".to_string() }
 
 pub struct ToolDocker {
     pub integration_docker: IntegrationDocker,
@@ -52,16 +63,14 @@ impl ToolDocker {
 
         command_append_label_if_creates_resource(&mut command_args);
 
-        let mut docker_host = self.integration_docker.connect_to_daemon_at.clone();
-        if let Some(ssh_config) = &self.integration_docker.ssh_config 
-        {
+        let docker_host = if let Some(ssh_config) = &self.integration_docker.ssh_config {
             let local_port = forward_remote_docker_if_needed(&self.integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
-            docker_host = format!("127.0.0.1:{}", local_port);
-        }
+            format!("127.0.0.1:{}", local_port)
+        } else {
+            self.integration_docker.connect_to_daemon_at.clone()
+        };
 
-        let docker_cli_command = self.integration_docker.docker_cli_path.as_deref().unwrap_or("docker");
-        
-        let output = Command::new(docker_cli_command)
+        let output = Command::new(&self.integration_docker.docker_cli_path)
             .arg("-H")
             .arg(&docker_host)
             .args(&command_args)

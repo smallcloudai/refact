@@ -10,7 +10,7 @@ use tracing::{error, info, warn};
 
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_execute::run_tools;
+use crate::integrations::docker::integr_docker::ToolDocker;
 use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
@@ -104,9 +104,18 @@ impl ScratchpadAbstract for ChatPassthrough {
         ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let (n_ctx, gcx) = {
+        let (n_ctx, gcx, docker_tool_maybe) = {
             let ccx_locked = ccx.lock().await;
-            (ccx_locked.n_ctx, ccx_locked.global_context.clone())
+            (ccx_locked.n_ctx, ccx_locked.global_context.clone(), ccx_locked.at_tools.get("docker").cloned())
+        };
+        let run_chat_threads_inside_container = match docker_tool_maybe {
+            Some(docker_tool) => {
+                let docker_tool_locked = docker_tool.lock().await;
+                let docker_tool_downcasted = docker_tool_locked.as_any().downcast_ref::<ToolDocker>()
+                    .ok_or_else(|| "Failed to downcast docker tool".to_string())?;
+                docker_tool_downcasted.integration_docker.run_chat_threads_inside_container
+            },
+            None => false,
         };
         let style = self.post.style.clone();
         let is_inside_container = gcx.read().await.cmdline.inside_container;
@@ -116,10 +125,10 @@ impl ScratchpadAbstract for ChatPassthrough {
             (self.messages.clone(), self.messages.len(), false)
         };
         if self.supports_tools {
-            (messages, _) = if is_inside_container {
-                run_tools_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
-            } else {
+            (messages, _) = if run_chat_threads_inside_container && !is_inside_container {
                 run_tools_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
+            } else {
+                run_tools_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
             }
         };
         let mut limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message).unwrap_or_else(|e| {
