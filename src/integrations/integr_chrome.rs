@@ -121,7 +121,7 @@ async fn start_chrome_session(
                 window_size = Some((size[0], size[1]));
             }
         }
-        let mut idle_browser_timeout = Duration::from_secs(30);
+        let mut idle_browser_timeout = Duration::from_secs(600);
         if let Some(timeout) = args.idle_browser_timeout.clone() {
             idle_browser_timeout = Duration::from_secs(timeout as u64);
         }
@@ -254,10 +254,9 @@ async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -
         capture_beyond_viewport: Some(capture_beyond_viewport),
     }).map_err(|e| e.to_string())?.data;
 
-    let multimodal_element = MultimodalElement {
-        m_type: "image/jpeg".to_string(),
-        m_content: jpeg_data,
-    };
+    let multimodal_element = MultimodalElement::new(
+        "image/jpeg".to_string(), jpeg_data,
+    ).map_err(|e| e.to_string())?;
 
     Ok(ChatMessage {
         role: "user".to_string(),  // Image URLs are only allowed for messages with role 'user'
