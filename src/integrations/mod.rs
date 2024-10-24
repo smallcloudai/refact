@@ -30,8 +30,8 @@ commands_deny:
 
 # --- Chrome integration ---
 chrome:
-#  chrome_path: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  # Uncomment to set a custom path for the chrome binary, defaults to "
+#  chrome_path: "/path/to/chrome"  # can be path to your binary or opened debug_ws_url (see --remote-debugging-port)
   window_size: [1024, 768]   # Size of the window, defaults to [1024, 768]
-  idle_browser_timeout: 600  # Timeout in seconds for idle browsers, defaults to 60 seconds
+  idle_browser_timeout: 600  # Timeout in seconds for idle browsers, defaults to 600 seconds
 
 "#;
