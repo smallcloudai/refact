@@ -14,8 +14,6 @@ use crate::global_context::GlobalContext;
 use crate::tools::tools_description::Tool;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
 
-const COMMON_LABEL: &str = "humberto-refact";
-
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct IntegrationDocker {
     #[serde(default = "default_connect_to_daemon_at")]
@@ -31,11 +29,14 @@ pub struct IntegrationDocker {
     pub host_lsp_path: String,
     #[serde(default)]
     pub run_chat_threads_inside_container: bool,
+    #[serde(default = "default_label")]
+    pub label: String,
 }
 fn default_connect_to_daemon_at() -> String { "unix:///var/run/docker.sock".to_string() }
 fn default_docker_cli_path() -> String { "docker".to_string() }
 fn default_container_workspace_folder() -> String { "/app".to_string() }
 fn default_host_lsp_path() -> String { "/opt/refact/bin/refact-lsp".to_string() }
+fn default_label() -> String { "refact".to_string() }
 
 pub struct ToolDocker {
     pub integration_docker: IntegrationDocker,
@@ -61,7 +62,7 @@ impl ToolDocker {
             return Err("Docker commands that are interactive or blocking are not supported".to_string());
         }
 
-        command_append_label_if_creates_resource(&mut command_args);
+        command_append_label_if_creates_resource(&mut command_args, &self.integration_docker.label);
 
         let docker_host = if let Some(ssh_config) = &self.integration_docker.ssh_config {
             let local_port = forward_remote_docker_if_needed(&self.integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
@@ -193,7 +194,7 @@ fn command_is_interactive_or_blocking(command_args: &Vec<String>) -> bool
     COMMANDS_ALWAYS_BLOCKING.contains(&subcommand_specific)
 }
 
-fn command_append_label_if_creates_resource(command_args: &mut Vec<String>) -> () {
+fn command_append_label_if_creates_resource(command_args: &mut Vec<String>, label: &str) -> () {
     const COMMANDS_FOR_RESOURCE_CREATION: &[&[&str]] = &[
         &["build"], 
         &["buildx", "build"], 
@@ -212,7 +213,7 @@ fn command_append_label_if_creates_resource(command_args: &mut Vec<String>) -> (
         let prefix_vec: Vec<String> = prefix.iter().map(|s| s.to_string()).collect();
         if command_args.starts_with( &prefix_vec) {
             let insert_pos = prefix.len();
-            command_args.insert(insert_pos, format!("--label={}", COMMON_LABEL));
+            command_args.insert(insert_pos, format!("--label={}", label));
             break;
         }
     }

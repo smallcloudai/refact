@@ -37,7 +37,7 @@ impl Drop for DockerContainerSession {
                 }
             });
         } else {
-            error!("Failed to upgrade global context, cannot clean up docker container session");
+            info!("Detected program shutdown, quit.");
         }
     }
 }
@@ -72,9 +72,9 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
 
     match docker_container_session_maybe {
         Some(docker_container_session) => {
-            // let mut docker_container_session_locked = docker_container_session.lock().await;
-            // let docker_container_session = docker_container_session_locked.as_any_mut().downcast_mut::<DockerContainerSession>()
-            //     .ok_or_else(|| "Failed to downcast docker container session")?;
+            let mut docker_container_session_locked = docker_container_session.lock().await;
+            let docker_container_session = docker_container_session_locked.as_any_mut().downcast_mut::<DockerContainerSession>()
+                .ok_or_else(|| "Failed to downcast docker container session")?;
 
             // let ssh_config = {
             //     let docker_tool_locked = docker_tool.lock().await;
@@ -100,8 +100,8 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
             //     DockerContainerConnectionEnum::LocalPort(_) => {}
             // }
 
-            // docker_container_session.last_usage_ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-            // return Ok(());
+            docker_container_session.last_usage_ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+
             Ok(())
         }
         None => {

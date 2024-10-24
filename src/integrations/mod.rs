@@ -96,6 +96,8 @@ docker:
   #   port: 22
   #   identity_file: "~/.ssh/id_rsa"
 
+  run_chat_threads_inside_container: false
+
   # The folder inside the container where the workspace is mounted, refact-lsp will start there, defaults to "/app"
   # container_workspace_folder: "/app"  
 
@@ -104,5 +106,8 @@ docker:
 
   # Path to the LSP binary on the host machine, to be bound into the containers.
   host_lsp_path: "/opt/refact/bin/refact-lsp"
+
+  # Will be added as a label to containers, images, and other resources created by Refact Agent, defaults to "refact"
+  label: "refact"
 
 "#;
