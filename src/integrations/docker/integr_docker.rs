@@ -31,6 +31,8 @@ pub struct IntegrationDocker {
     pub run_chat_threads_inside_container: bool,
     #[serde(default = "default_label")]
     pub label: String,
+    #[serde(default)]
+    pub command: String,
 }
 fn default_connect_to_daemon_at() -> String { "unix:///var/run/docker.sock".to_string() }
 fn default_docker_cli_path() -> String { "docker".to_string() }

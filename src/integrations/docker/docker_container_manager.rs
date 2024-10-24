@@ -1,4 +1,6 @@
 use std::{sync::Arc, sync::Weak, time::SystemTime};
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
@@ -194,10 +196,11 @@ async fn docker_container_start(
         --address-url Refact --api-key {api_key} --vecdb --reset-memory --ast --experimental \
         --inside-container --workspace-folder {workspace_folder}",
     );
+    let random_str = rand::thread_rng().sample_iter(&Alphanumeric).take(9).map(char::from).collect::<String>();
 
     let run_command = format!(
-        "run --detach --name=refact-{chat_id} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
-        --publish=0:{internal_port} {docker_image_id} sh -c '{lsp_command}'",
+        "run --detach --name=refact-{chat_id}-{random_str} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
+        --publish=0:{internal_port} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
     );
 
     info!("Executing docker command: {}", &run_command);
@@ -207,6 +210,15 @@ async fn docker_container_start(
     if container_id.len() < 12 {
         return Err("Docker run error: no container ID returned.".into());
     }
+
+    if !docker.integration_docker.command.is_empty() {
+        let cmd_to_execute = format!("exec --detach {} {}", container_id, docker.integration_docker.command);
+        match docker.command_execute(&cmd_to_execute, gcx.clone()).await {
+            Ok(cmd_result) => { info!("Command executed: {}", cmd_result) },
+            Err(e) => { error!("Command execution failed: {}", e) },
+        };
+    }
+
     Ok(container_id[..12].to_string())
 }
 
@@ -242,4 +254,9 @@ async fn docker_container_kill(
     docker.command_execute(&format!("container remove {container_id}"), gcx.clone()).await?;
     info!("Removed docker container {container_id}.");
     Ok(())
+}
+
+async fn docker_execute_configured_command(docker: &ToolDocker)
+{
+    
 }
