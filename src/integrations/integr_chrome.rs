@@ -62,8 +62,20 @@ impl Tool for ToolChrome {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let command_args = parse_command_args(args)?;
+        let command = match args.get("command") {
+            Some(Value::String(s)) => s,
+            Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
+            None => return Err("Missing argument `command`".to_string())
+        };
 
+        let tab_name = match args.get("tab") {
+            Some(Value::String(s)) => s,
+            Some(v) => return Err(format!("argument `tab` is not a string: {:?}", v)),
+            None => return Err("Missing argument `tab`".to_string())
+        };
+
+        let command_args = parse_command_args(command)?;
+        
         let (gcx, chat_id) = {
             let ccx_lock = ccx.lock().await;
             (ccx_lock.global_context.clone(), ccx_lock.chat_id.clone())
@@ -71,27 +83,13 @@ impl Tool for ToolChrome {
 
         let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
         start_chrome_session(&self.integration_chrome, &session_hashmap_key, gcx.clone()).await?;
-        let messages = interact_with_chrome(&command_args, &session_hashmap_key, &tool_call_id, gcx.clone()).await?;
+        let messages = interact_with_chrome(&tab_name, &command_args, &session_hashmap_key, &tool_call_id, gcx.clone()).await?;
 
         Ok((false, messages))
     }
-
-    fn command_to_match_against_confirm_deny(
-        &self,
-        args: &HashMap<String, Value>,
-    ) -> Result<String, String> {
-        let command_args = parse_command_args(args)?;
-        Ok(command_args.join(" "))
-    }
 }
 
-fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, String> {
-    let command = match args.get("command") {
-        Some(Value::String(s)) => s,
-        Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
-        None => return Err("Missing argument `command`".to_string())
-    };
-
+fn parse_command_args(command: &String) -> Result<Vec<String>, String> {
     let parsed_args = shell_words::split(&command).map_err(|e| e.to_string())?;
     if parsed_args.is_empty() {
         return Err("Parsed command is empty".to_string());
@@ -140,8 +138,7 @@ async fn start_chrome_session(
             };
             browser = Browser::new(launch_options).map_err(|e| e.to_string())?;
         }
-        let tab = browser.new_tab().map_err(|e| e.to_string())?;
-        let command_session: Box<dyn IntegrationSession> = Box::new(ChromeSession { browser, tab });
+        let command_session: Box<dyn IntegrationSession> = Box::new(ChromeSession { browser, tabs: HashMap::new() });
         gcx.write().await.integration_sessions.insert(
             session_hashmap_key.clone(), Arc::new(AMutex::new(command_session))
         );
@@ -150,10 +147,10 @@ async fn start_chrome_session(
 }
 
 
-fn tool_message(content: String, tool_call_id: &String) -> ContextEnum {
+fn tool_message(content: Vec<String>, tool_call_id: &String) -> ContextEnum {
     ContextEnum::ChatMessage(ChatMessage {
         role: "tool".to_string(),
-        content: ChatContent::SimpleText(content.clone()),
+        content: ChatContent::SimpleText(content.join("\n")),
         tool_calls: None,
         tool_call_id: tool_call_id.clone(),
         ..Default::default()
@@ -167,6 +164,7 @@ async fn navigate_to(tab: &Arc<Tab>, url: &String) -> Result<String, String> {
 }
 
 async fn interact_with_chrome(
+    tab_name: &String,
     command_args: &Vec<String>,
     session_hashmap_key: &String,
     tool_call_id: &String,
@@ -178,58 +176,56 @@ async fn interact_with_chrome(
             .ok_or(format!("Error getting chrome session for chat: {}", session_hashmap_key))?
             .clone()
     };
-
+    
     let mut command_session_locked = command_session.lock().await;
     let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+
+    let mut tool_log = vec![];
+    let tab = match chrome_session.tabs.get(tab_name) {
+        Some(tab) => {
+            tool_log.push(format!("Using opened tab {}\n", tab_name.clone()));
+            tab.clone()
+        },
+        None => {
+            let tab = chrome_session.browser.new_tab().map_err(|e| e.to_string())?;
+            chrome_session.tabs.insert(tab_name.clone(), tab.clone());
+            tool_log.push(format!("Opened new tab {}\n", tab_name.clone()));
+            tab
+        }
+    };
 
     let mut messages = vec![];
     if command_args[0] == "navigate_to" {
         if command_args.len() < 2 {
-            messages.push(tool_message(format!("Missing argument `url`: {:?}. Call this command another time using format `navigate_to url`.", command_args), tool_call_id));
+            tool_log.push(format!("Missing argument `url`: {:?}. Call this command another time using format `navigate_to url`.", command_args));
         } else {
-            let content = navigate_to(&chrome_session.tab, &command_args[1]).await.map_err(
+            let content = navigate_to(&tab, &command_args[1]).await.map_err(
                 |e| format!("Cannot navigate_to `{}`: {}. Probably url doesn't exist. If you're trying to open local file add file:// prefix.", command_args[1], e)
             )?;
-            messages.push(tool_message(content, tool_call_id));
+            tool_log.push(content);
         }
+        messages.push(tool_message(tool_log, tool_call_id));
     } else if command_args[0] == "screenshot" {
-        messages.push(tool_message("Made a screenshot".to_string(), tool_call_id));
-        let screenshot_message = screenshot_jpeg_base64(&chrome_session.tab, false).await?;
+        tool_log.push(format!("Made a screenshot of {}", tab.get_url()));
+        messages.push(tool_message(tool_log, tool_call_id));
+        let screenshot_message = screenshot_jpeg_base64(&tab, false).await?;
         messages.push(ContextEnum::ChatMessage(screenshot_message));
     } else if command_args[0] == "html" {
-        let content: String;
         let client = Client::builder()
             .build()
             .map_err(|e| e.to_string())?;
-        let url = chrome_session.tab.get_url();
+        let url = tab.get_url();
         let response = client.get(url.clone()).send().await.map_err(|e| e.to_string())?;
         if !response.status().is_success() {
-            content = format!("Unable to fetch url: {}; status: {}", url, response.status());
+            tool_log.push(format!("Unable to fetch url: {}; status: {}", url, response.status()));
         } else {
-            content = response.text().await.map_err(|e| e.to_string())?;
+            tool_log.push(response.text().await.map_err(|e| e.to_string())?);
         }
-        messages.push(tool_message(content, tool_call_id));
+        messages.push(tool_message(tool_log, tool_call_id));
     } else if command_args[0] == "reload" {
-        // TODO: how to collect logs using this?
-        // let content = Arc::new(Mutex::new(format!("Page {} reloaded with following log\n", chrome_session.tab.get_url())));
-        // let listener = chrome_session.tab.add_event_listener(Arc::new(move |event: &Event| {
-        //     let mut locked_content = content.lock().unwrap();
-        //     match event {
-        //         Event::LogEntryAdded(evt) => {
-        //             locked_content.push_str(format!("\n[{:?}] {:?}", evt.params.entry.level, evt.params.entry.text).as_str());
-        //         }
-        //         _ => {
-        //             // TODO: we need to catch more event probably
-        //         }
-        //     }
-        // })).map_err(|e| e.to_string())?;
-        // chrome_session.tab.enable_log().map_err(|e| e.to_string())?;
-        chrome_session.tab.reload(false, None).map_err(|e| e.to_string())?;
-        // chrome_session.tab.disable_log().map_err(|e| e.to_string())?;
-        // let _ = chrome_session.tab.remove_event_listener(&listener);
-        // let _content = content.lock().unwrap().clone();
-        let content = format!("Page {} reloaded with following log", chrome_session.tab.get_url());
-        messages.push(tool_message(content, tool_call_id));
+        tab.reload(false, None).map_err(|e| e.to_string())?;
+        tool_log.push(format!("Page {} reloaded", tab.get_url()));
+        messages.push(tool_message(tool_log, tool_call_id));
     } else {
         return Err(format!("Unknown command: {:?}", command_args));
     }

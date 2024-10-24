@@ -324,8 +324,12 @@ tools:
           screenshot
           html
           reload
+      - name: "tab"
+        type: "string"
+        description: "Tab where command will be executed."
     parameters_required:
       - "command"
+      - "tab"
 
   - name: "postgres"
     agentic: true
