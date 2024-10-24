@@ -6,7 +6,7 @@ from termcolor import colored
 # TODO: SecretaryBird
 
 
-BASE_DIR = pathlib.Path(__file__).parent
+BASE_DIR = pathlib.Path(__file__).parent.resolve()
 FROG_PY = BASE_DIR / "emergency_frog_situation" / "frog.py"
 TEST11_DATA = BASE_DIR / "test11_data"
 TOAD_ORIG = BASE_DIR / "test11_data" / "toad_orig.py"
