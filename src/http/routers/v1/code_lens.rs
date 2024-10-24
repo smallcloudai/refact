@@ -40,7 +40,7 @@ pub struct CodeLensCache {
 }
 
 impl CodeLensCache {
-    pub async fn clean_up_old_entries(&mut self, now: f64) {
+    pub fn clean_up_old_entries(&mut self, now: f64) {
         self.store.retain(|_, entry| now - entry.ts <= 600.0);
     }
 }
