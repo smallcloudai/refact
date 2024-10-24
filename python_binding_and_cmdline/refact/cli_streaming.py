@@ -166,8 +166,15 @@ def process_streaming_data(data):
         elif msg.role in ["plain_text", "cd_instruction", "user"]:
             if replace_last_user:
                 return
-            if msg.content is not None:
+            if isinstance(msg.content, str):
                 print_response(msg.content.strip())
+            elif isinstance(msg.content, list):
+                for content in msg.content:
+                    if content.get("m_type") == "text":
+                        print_response(content.get("m_content"))
+                    else:
+                        print_response(content.get("m_type"))
+                    print_response("\n")
             else:
                 print_response("content is None, not normal\n")
             print_response("\n")
