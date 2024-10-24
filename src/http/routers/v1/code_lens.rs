@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::collections::HashMap;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
@@ -15,17 +16,33 @@ pub struct CodeLensPost {
     pub uri: Url,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 struct CodeLensResponse {
     success: u8,
     code_lens: Vec<CodeLensOutput>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 struct CodeLensOutput {
     spath: String,
     line1: usize,
     line2: usize,
+}
+
+struct CodeLensCacheEntry {
+    response: CodeLensResponse,
+    ts: f64,
+}
+
+#[derive(Default)]
+pub struct CodeLensCache {
+    store: HashMap<String, CodeLensCacheEntry>,
+}
+
+impl CodeLensCache {
+    pub async fn clean_up_old_entries(&mut self, now: f64) {
+        self.store.retain(|_, entry| now - entry.ts <= 600.0);
+    }
 }
 
 pub async fn handle_v1_code_lens(
@@ -36,15 +53,27 @@ pub async fn handle_v1_code_lens(
         tracing::info!("chat handler cannot parse input:\n{:?}", body_bytes);
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
+    let codelens_cache = global_context.read().await.codelens_cache.clone();
 
     let cpath = crate::files_correction::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
     let cpath_str = cpath.to_string_lossy().to_string();
 
     let ast_service_opt = global_context.read().await.ast_service.clone();
     let defs: Vec<Arc<AstDefinition>> = if let Some(ast_service) = ast_service_opt {
-        crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_service.clone(), 300, true).await;
+        let indexing_finished = crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_service.clone(), 300, true).await;
         let ast_index = ast_service.lock().await.ast_index.clone();
-        crate::ast::ast_db::doc_defs(ast_index, &cpath_str).await
+        let defs = crate::ast::ast_db::doc_defs(ast_index, &cpath_str).await;
+        if !indexing_finished || defs.len() <= 1 {
+            tracing::info!("indexing_finished={} defs.len()=={}", indexing_finished, defs.len());
+            if let Some(cache_entry) = codelens_cache.lock().await.store.get(&cpath_str) {
+                tracing::info!("therefore return cached {} records", cache_entry.response.code_lens.len());
+                return Ok(Response::builder()
+                    .status(StatusCode::OK)
+                    .body(Body::from(serde_json::to_string(&cache_entry.response).unwrap()))
+                    .unwrap());
+            }
+        }
+        defs
     } else {
         return Ok(Response::builder()
             .status(StatusCode::OK)
@@ -70,6 +99,9 @@ pub async fn handle_v1_code_lens(
         code_lens: output,
     };
 
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+    codelens_cache.lock().await.store.insert(cpath_str.clone(), CodeLensCacheEntry { response: response.clone(), ts: now });
+    codelens_cache.lock().await.clean_up_old_entries(now);
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(serde_json::to_string(&response).unwrap()))

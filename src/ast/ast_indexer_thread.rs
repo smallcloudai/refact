@@ -263,7 +263,7 @@ async fn ast_indexer_thread(
     }
 }
 
-pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexService>>, max_blocking_time_ms: usize, wake_up_indexer: bool)
+pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexService>>, max_blocking_time_ms: usize, wake_up_indexer: bool) -> bool
 {
     let max_blocking_duration = tokio::time::Duration::from_millis(max_blocking_time_ms as u64);
     let start_time = std::time::Instant::now();
@@ -283,7 +283,7 @@ pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexSe
             let ast_service_locked = ast_service.lock().await;
             let ast_status_locked = ast_service_locked.ast_status.lock().await;
             if ast_status_locked.astate == "done" || start_time.elapsed() >= max_blocking_duration {
-                break;
+                return ast_status_locked.astate == "done";
             }
         }
         let remaining_time = max_blocking_duration
