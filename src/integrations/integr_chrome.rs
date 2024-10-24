@@ -32,6 +32,7 @@ pub struct ToolChrome {
 }
 
 pub struct ChromeSession {
+    #[allow(dead_code)]    // it's not actually useless code, it keeps strong reference on browser so it doesn't die
     browser: Browser,
     tab: Arc<Tab>,
 }
@@ -66,7 +67,7 @@ impl Tool for ToolChrome {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let command_args = parse_command_args(args)?;
-        
+
         let (gcx, chat_id) = {
             let ccx_lock = ccx.lock().await;
             (ccx_lock.global_context.clone(), ccx_lock.chat_id.clone())
@@ -176,7 +177,7 @@ async fn interact_with_chrome(
             .ok_or(format!("Error getting chrome session for chat: {}", session_hashmap_key))?
             .clone()
     };
-    
+
     let mut command_session_locked = command_session.lock().await;
     let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
 
