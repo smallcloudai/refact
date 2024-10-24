@@ -64,6 +64,7 @@ export const MARS_ROVER_CHAT: ChatHistoryItem = {
     { role: "user", content: "long message\n" + "a".repeat(10000) },
   ],
   title: "mars rover kata",
+  isTitleGenerated: true,
   model: "gpt-3.5-turbo",
   tool_use: "explore",
   createdAt: "2023-12-21T17:32:50.186Z",

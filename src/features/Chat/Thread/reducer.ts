@@ -180,5 +180,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(saveTitle, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
     state.thread.title = action.payload.title;
+    state.thread.isTitleGenerated = action.payload.isTitleGenerated;
   });
 });

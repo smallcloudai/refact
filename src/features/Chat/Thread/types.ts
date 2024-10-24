@@ -11,6 +11,7 @@ export type ChatThread = {
   updatedAt?: string;
   tool_use?: ToolUse;
   read?: boolean;
+  isTitleGenerated?: boolean;
 };
 
 export type ToolUse = "quick" | "explore" | "agent";
@@ -28,7 +29,10 @@ export type Chat = {
 };
 
 export type PayloadWithId = { id: string };
-export type PayloadWithIdAndTitle = { title: string } & PayloadWithId;
+export type PayloadWithIdAndTitle = {
+  title: string;
+  isTitleGenerated: boolean;
+} & PayloadWithId;
 
 export type DetailMessage = { detail: string };
 

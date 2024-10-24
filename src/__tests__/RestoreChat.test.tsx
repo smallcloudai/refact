@@ -30,6 +30,7 @@ describe("Restore Chat from history", () => {
         history: {
           id: {
             title: "test title",
+            isTitleGenerated: true,
             id: "id",
             createdAt: "0",
             updatedAt: "0",

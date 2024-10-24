@@ -129,7 +129,9 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
       const cleanedTitle = title.replace(/"/g, "");
 
       // Dispatching saveTitle action for a chatThread
-      thunkAPI.dispatch(saveTitle({ id: chatId, title: cleanedTitle }));
+      thunkAPI.dispatch(
+        saveTitle({ id: chatId, title: cleanedTitle, isTitleGenerated: true }),
+      );
       return { title: cleanedTitle, chatId: state.chat.thread.id };
     })
     .catch((err: Error) => {
