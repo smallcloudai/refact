@@ -283,11 +283,16 @@ tools:
   - name: "chrome"
     agentic: true
     experimental: true
-    description: "Web browser. Opens a tab and operates in it."
+    description: "A real web browser with graphical interface."
     parameters:
       - name: "command"
         type: "string"
-        description: "Chrome has this commands: navigate_to url, screenshot, html, reload."
+        description: |
+          Supports these commands:
+          navigate_to <url>
+          screenshot
+          html
+          reload
     parameters_required:
       - "command"
 "####;
