@@ -189,27 +189,28 @@ async fn vectorize_thread(
 
     let mut last_updated: HashMap<Document, SystemTime> = HashMap::new();
     loop {
-        let mut msg_to_me: Option<MessageToVecdbThread> = None;
+        let mut work_on_one: Option<MessageToVecdbThread> = None;
         let current_time = SystemTime::now();
         let todo_len = {
             let mut vecdb_todo_locked = vecdb_todo.lock().await;
-            if let Some(msg) = vecdb_todo_locked.pop_front() {
+            while let Some(msg) = vecdb_todo_locked.pop_front() {
                 match msg {
                     MessageToVecdbThread::RegularDocument(doc) => {
                         last_updated.insert(doc, current_time);
                     }
                     MessageToVecdbThread::ImmediatelyRegularDocument(_) | MessageToVecdbThread::MemoriesSomethingDirty() => {
-                        msg_to_me = Some(msg);
+                        work_on_one = Some(msg);
+                        break;
                     }
                 }
             }
-            if msg_to_me.is_none() {
+            if work_on_one.is_none() {
                 let doc_to_remove = last_updated.iter()
                     .find(|(_, time)| time.elapsed().unwrap().as_secs() > COOLDOWN_SECONDS)
                     .map(|(doc, _)| doc.clone());
 
                 if let Some(doc) = doc_to_remove {
-                    msg_to_me = Some(MessageToVecdbThread::RegularDocument(doc.clone()));
+                    work_on_one = Some(MessageToVecdbThread::RegularDocument(doc.clone()));
                     last_updated.remove(&doc);
                 }
             }
@@ -240,7 +241,7 @@ async fn vectorize_thread(
             vstatus_notify.notify_waiters();
         }
 
-        let flush = ready_to_vecdb.len() > 100 || files_unprocessed == 0 || msg_to_me.is_none();
+        let flush = ready_to_vecdb.len() > 100 || files_unprocessed == 0 || work_on_one.is_none();
         loop {
             if
             run_actual_model_on_these.len() > 0 && flush ||
@@ -275,7 +276,7 @@ async fn vectorize_thread(
             reported_unprocessed = files_unprocessed;
         }
         let mut doc = {
-            match msg_to_me {
+            match work_on_one {
                 Some(MessageToVecdbThread::RegularDocument(doc)) |
                 Some(MessageToVecdbThread::ImmediatelyRegularDocument(doc)) => {
                     {
