@@ -16,7 +16,7 @@ use crate::integrations::integr_gitlab::ToolGitlab;
 use crate::integrations::integr_pdb::ToolPdb;
 use crate::integrations::integr_chrome::ToolChrome;
 use crate::integrations::integr_postgres::ToolPostgres;
-use crate::yaml_configs::customization_loader::{CustomCMDLineTool, load_customization};
+use crate::tools::tool_custom::ToolCustom;
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -119,13 +119,13 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
     let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await.unwrap_or_default();
     for (c_name, c_cmd_tool) in custom_tools_dict {
         let tool = Arc::new(AMutex::new(Box::new(
-            crate::tools::tool_custom::ToolCustom {
+            ToolCustom {
                 name: c_name.clone(),
                 parameters: c_cmd_tool.parameters,
                 parameters_required: c_cmd_tool.parameters_required,
                 command: c_cmd_tool.command,
-                runs_in_background: c_cmd_tool.runs_in_background,
-                runs_in_background_false_timeout: c_cmd_tool.runs_in_background_false_timeout,
+                blocking: c_cmd_tool.blocking,
+                background: c_cmd_tool.background,
             }
         ) as Box<dyn Tool + Send>));
         tools_all.insert(c_name, tool);
@@ -482,22 +482,12 @@ pub async fn get_custom_cmdline_tools(
     let tconfig = load_customization(gcx.clone(), true).await?;
     let mut tools_dict = tconfig.custom_cmdline_tools.clone();
     for (_, tool) in tools_dict.iter_mut() {
-        if tool.runs_in_background {
-            tool.description = format!("{}. Runs in background. Action is start by default", tool.description);
+        if tool.background.is_some() {
+            tool.description = format!("{}. Runs in background", tool.description);
             tool.parameters.push(AtParamDict {
-                name: "status".to_string(),
-                param_type: "boolean".to_string(),
-                description: "Action: get status of the background task. Path does not matter".to_string(),
-            });
-            tool.parameters.push( AtParamDict {
-                name: "restart".to_string(),
-                param_type: "boolean".to_string(),
-                description: "Action: restart the background task".to_string(),
-            });
-            tool.parameters.push( AtParamDict {
-                name: "stop".to_string(),
-                param_type: "boolean".to_string(),
-                description: "Action: restart the background task. Path does not matter".to_string(),
+                name: "action".to_string(),
+                param_type: "string".to_string(),
+                description: "one of ['status', 'restart', 'stop']; default: 'start'".to_string(),
             });
         }
     }

@@ -222,9 +222,8 @@ custom_cmdline_tools:
     parameters_required:
       - "project_path"
     command: "cargo check --manifest-path %project_path%/Cargo.toml"
-    runs_in_background: false
-    runs_in_background_false_timeout: 120
-    experimental: true
+    blocking:
+      timeout_s: 120
 
 
 # DEPRECATED

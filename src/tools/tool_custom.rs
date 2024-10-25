@@ -8,15 +8,16 @@ use regex::Regex;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tracing::{info, warn};
 use tokio::process::{Command, Child, ChildStdout, ChildStderr};
-use tokio::time::{timeout, Duration};
+use tokio::time::{timeout, Duration, sleep, Instant};
 use std::process::Stdio;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{AtParamDict, Tool};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::global_context::GlobalContext;
-use crate::integrations::process_io_utils::{kill_process_and_children, read_until_token_or_timeout};
+use crate::integrations::process_io_utils::{kill_process_and_children, read_until_token_or_timeout, wait_until_port_gets_busy};
 use crate::integrations::sessions::IntegrationSession;
+use crate::yaml_configs::customization_loader::{CustomCMDLineToolBackgroundCfg, CustomCMDLineToolBlockingCfg};
 
 
 pub struct ToolCustom {
@@ -25,12 +26,13 @@ pub struct ToolCustom {
     pub parameters: Vec<AtParamDict>,
     pub parameters_required: Vec<String>,
     pub command: String,
-    pub runs_in_background: bool,
-    pub runs_in_background_false_timeout: usize,
+    pub blocking: Option<CustomCMDLineToolBlockingCfg>,
+    pub background: Option<CustomCMDLineToolBackgroundCfg>,
 }
 
 pub struct ToolSession {
     process: Child,
+    command: String,
     #[allow(dead_code)]
     stdout: BufReader<ChildStdout>,
     #[allow(dead_code)]
@@ -46,13 +48,9 @@ impl IntegrationSession for ToolSession {
 
 fn replace_magics_from_command(
     command: &str,
-    args: &HashMap<String, Value>,
+    args_str: &HashMap<String, String>,
     required_params: &Vec<String>
 ) -> Result<String, String> {
-    let args_str: HashMap<String, String> = args.iter()
-        .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
-        .collect();
-
     let mut command_clone = command.to_string();
     for (key, value) in args_str {
         let pattern = format!("%{}%", key);
@@ -71,7 +69,7 @@ fn replace_magics_from_command(
 
 async fn execute_command_with_timeout(
     command: &str,
-    timeout_duration: Duration
+    cfg: CustomCMDLineToolBlockingCfg,
 ) -> Result<String, String> {
     info!("EXEC: {command}");
     let command_future = async {
@@ -100,19 +98,60 @@ async fn execute_command_with_timeout(
         Ok(res)
     };
 
+    let timeout_duration = Duration::from_secs(cfg.timeout_s);
     timeout(timeout_duration, command_future).await
         .unwrap_or_else(|_| Err("Command execution timed out".to_string()))
+}
+
+async fn get_stdout_and_stderr(
+    timeout_ms: u64,
+    stdout: &mut BufReader<ChildStdout>,
+    stderr: &mut BufReader<ChildStderr>,
+    token: Option<String>,
+) -> Result<(String, String), String> {
+    let token = token.unwrap_or_default();
+    let stdout_out = read_until_token_or_timeout(stdout, timeout_ms, token.as_str()).await?;
+    let stderr_out = read_until_token_or_timeout(stderr, timeout_ms, token.as_str()).await?;
+    Ok((stdout_out, stderr_out))
+}
+
+async fn read_until_text_in_output_or_timeout(
+    timeout: Duration,
+    stdout: &mut BufReader<ChildStdout>,
+    stderr: &mut BufReader<ChildStderr>,
+    text: &str,
+) -> Result<(String, String), String> {
+
+    let start = Instant::now();
+    let step_duration = Duration::from_millis(100);
+    let mut stdout_text = String::new();
+    let mut stderr_text = String::new();
+    
+    while start.elapsed() < timeout {
+        let stdout_out = read_until_token_or_timeout(stdout, step_duration.as_millis() as u64, text).await?;
+        let stderr_out = read_until_token_or_timeout(stderr, step_duration.as_millis() as u64, text).await?;
+        stdout_text.push_str(&stdout_out);
+        stderr_text.push_str(&stderr_out);
+        
+        if !text.is_empty() && format!("{}{}", stdout_text, stderr_text).contains(text) {
+            return Ok((stdout_text, stderr_text));
+        }
+
+        sleep(step_duration).await;
+    }
+    Err(format!("Timeout reached. Output:\nSTDOUT:{}\nSTDERR:\n{}", stdout_text, stderr_text))
 }
 
 async fn start_session(
     gcx: Arc<ARwLock<GlobalContext>>,
     session_key: &str,
-    command: &str,
+    command: String,
+    cfg: &CustomCMDLineToolBackgroundCfg,
 ) -> Result<String, String> {
     info!("EXEC: {command}");
     let mut process = Command::new("sh")
        .arg("-c")
-       .arg(command)
+       .arg(command.clone())
        .stdout(Stdio::piped())
        .stderr(Stdio::piped())
        .spawn()
@@ -121,8 +160,19 @@ async fn start_session(
     let mut stdout = BufReader::new(process.stdout.take().ok_or("Failed to open stdout")?);
     let mut stderr = BufReader::new(process.stderr.take().ok_or("Failed to open stderr")?);
 
-    let stdout_out = read_until_token_or_timeout(&mut stdout, 1000, "").await?;
-    let stderr_out = read_until_token_or_timeout(&mut stderr, 1000, "").await?;
+    let wait_timeout = Duration::from_secs(cfg.wait_timeout_s);
+
+    let stdout_out: String;
+    let stderr_out: String;
+
+    // todo: does not work for npm run somewhy
+    if let Some(wait_port) = cfg.wait_port {
+        let resp = wait_until_port_gets_busy(wait_port, &wait_timeout).await;
+        (stdout_out, stderr_out) = get_stdout_and_stderr(100, &mut stdout, &mut stderr, None).await?;
+        resp?;
+    } else {
+        (stdout_out, stderr_out) = read_until_text_in_output_or_timeout(wait_timeout, &mut stdout, &mut stderr, cfg.wait_keyword.clone().unwrap_or_default().as_str()).await?;
+    }
 
     let mut out = String::new();
     if !stdout_out.is_empty() {
@@ -132,8 +182,6 @@ async fn start_session(
         out.push_str(&format!("STDERR:\n{stderr_out}"));
     }
 
-    // todo: check if RegExp is in stdout/ stderr to ensure that the tool is running
-    
     let exit_status = process.try_wait().map_err(|e| e.to_string())?;
     if exit_status.is_some() {
         let status = exit_status.unwrap().code().unwrap();
@@ -141,7 +189,12 @@ async fn start_session(
         return Err(format!("tool process exited with status: {:?}; Output:\n{out}", status));
     }
     
-    let session: Box<dyn IntegrationSession> = Box::new(ToolSession { process, stdout, stderr});
+    let session: Box<dyn IntegrationSession> = Box::new(ToolSession {
+        process,
+        command,
+        stdout,
+        stderr
+    });
     gcx.write().await.integration_sessions.insert(session_key.to_string(), Arc::new(AMutex::new(session)));
     
     Ok(out)
@@ -151,40 +204,42 @@ async fn execute_background_command(
     gcx: Arc<ARwLock<GlobalContext>>,
     tool_name: &str,
     command: &str,
-    // restart, stop, status, [start=default]
-    args: &HashMap<String, Value>,
+    cfg: CustomCMDLineToolBackgroundCfg,
+    action: &str,
 ) -> Result<String, String> {
     let session_key = format!("tool_{tool_name}");
     let session_mb = gcx.read().await.integration_sessions.get(&session_key).cloned();
+    let mut command = command.to_string();
 
-    if !(args.contains_key("restart") || args.contains_key("stop") || args.contains_key("status"))
+    if !(action == "restart" || action == "stop" || action == "status")
         && session_mb.is_some() {
         return Err(format!("cannot execute tool '{tool_name}'. Reason: tool '{tool_name}' is already running.\n"));
     }    
-    if session_mb.is_none() && (args.contains_key("restart") || args.contains_key("stop") || args.contains_key("status")) {
+    if session_mb.is_none() && (action == "restart" || action == "stop" || action == "status") {
         return Err(format!("cannot execute this action on tool '{tool_name}'. Reason: tool '{tool_name}' is not running.\n"));
     }
     
-    if args.contains_key("restart") || args.contains_key("stop") || args.contains_key("status") {
+    if action == "restart" || action == "stop" || action == "status" {
         let session = session_mb.clone().unwrap();
         let mut session_lock = session.lock().await;
         let tool_session = session_lock.as_any_mut().downcast_mut::<ToolSession>()
             .ok_or("Failed to downcast tool session".to_string())?;
         
-        if args.contains_key("status") {
+        if action == "status" {
             return Ok(format!("Tool '{tool_name}' is running.\n"));
         }
         kill_process_and_children(&tool_session.process, tool_name).await
             .map_err(|e| format!("Failed to kill tool '{tool_name}'. Error: {}", e))?;
+        command = tool_session.command.clone();
         drop(session_lock);
         gcx.write().await.integration_sessions.remove(&session_key);
 
-        if args.contains_key("stop") {
+        if action == "stop" {
             return Ok(format!("Tool '{tool_name}' is stopped.\n"));
         }
     }
     
-    let output = start_session(gcx, &session_key, command).await
+    let output = start_session(gcx, &session_key, command, &cfg).await
         .map_err(|e| format!("Failed to start tool '{tool_name}'. Error: {}", e))?;
     
     return Ok(format!("Tool '{tool_name}' is up and running in a background:\n{output}"));
@@ -200,12 +255,24 @@ impl Tool for ToolCustom {
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
 
-        let command = replace_magics_from_command(self.command.as_str(), &args, &self.parameters_required)?;
+        let args_str: HashMap<String, String> = args.iter()
+            .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+            .collect();
 
-        let resp = if !self.runs_in_background {
-            execute_command_with_timeout(&command, Duration::from_secs(self.runs_in_background_false_timeout as u64)).await
+        let command = replace_magics_from_command(self.command.as_str(), &args_str, &self.parameters_required)?;
+
+        let resp = if self.blocking.is_some() {
+            let blocking_cfg = self.blocking.clone().unwrap();
+            execute_command_with_timeout(&command, blocking_cfg).await
+        } else if self.background.is_some() {
+            let action = args_str.get("action").cloned().unwrap_or("start".to_string());
+            if !["start", "restart", "stop", "status"].contains(&action.as_str()) {
+                return Err("Too call is invalid. Param 'action' must be one for 'start','restart','stop','status'. Try again".to_string());
+            }
+            let background_cfg = self.background.clone().unwrap();
+            execute_background_command(gcx, &self.name, &command, background_cfg, action.as_str()).await
         } else {
-            execute_background_command(gcx, &self.name, &command, &args).await
+            Err(format!("Custom tool '{}' is invalid. It must have one of 'blocking' or 'background' param.", self.name))
         }?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {

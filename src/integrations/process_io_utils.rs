@@ -1,7 +1,9 @@
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 use tokio::process::{Child, ChildStdin};
-use tokio::time::{timeout, Duration};
+use tokio::time::{timeout, Duration, sleep};
 use tracing::error;
+
 
 pub async fn write_to_stdin_and_flush(stdin: &mut ChildStdin, text_to_write: &str) -> Result<(), String>
 {
@@ -45,6 +47,26 @@ where
     }
 
     Ok(String::from_utf8_lossy(&output).to_string())
+}
+
+pub async fn wait_until_port_gets_busy(port: u16, timeout_duration: &Duration) -> Result<(), String> {
+    let addr = format!("127.0.0.1:{}", port);
+
+    let result: Result<_, _> = timeout(timeout_duration.clone(), async {
+        loop {
+            match TcpStream::connect(&addr).await {
+                Ok(_) => {
+                    return Ok::<(), std::io::Error>(());
+                },
+                Err(_) => sleep(Duration::from_millis(500)).await,
+            }
+        }
+    }).await;
+
+    match result {
+        Ok(_) => Ok(()),
+        Err(_) => Err(format!("Timeout expired: Port {} wasn't busy after {:?}", port, timeout_duration)),
+    }
 }
 
 pub fn first_n_chars(msg: &str, n: usize) -> String {

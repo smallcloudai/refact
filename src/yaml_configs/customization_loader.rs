@@ -66,11 +66,24 @@ pub struct CustomCMDLineTool {
     pub parameters: Vec<AtParamDict>,
     pub parameters_required: Vec<String>,
     pub command: String,
-    pub runs_in_background: bool,
     #[serde(default)]
-    pub runs_in_background_false_timeout: usize,
+    pub blocking: Option<CustomCMDLineToolBlockingCfg>,
     #[serde(default)]
-    pub experimental: bool
+    pub background: Option<CustomCMDLineToolBackgroundCfg>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomCMDLineToolBlockingCfg {
+    pub timeout_s: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomCMDLineToolBackgroundCfg {
+    #[serde(default)]
+    pub wait_port: Option<u16>,
+    #[serde(default)]
+    pub wait_keyword: Option<String>,
+    pub wait_timeout_s: u64,
 }
 
 impl CustomCMDLineTool {
@@ -78,7 +91,7 @@ impl CustomCMDLineTool {
         ToolDict {
             name,
             agentic: false,
-            experimental: self.experimental,
+            experimental: false,
             description: self.description.clone(),
             parameters: self.parameters.clone(),
             parameters_required: self.parameters_required.clone(),
@@ -178,10 +191,12 @@ fn load_and_mix_with_users_config(
     work_config.system_prompts.extend(caps_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.toolbox_commands.extend(caps_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.code_lens.extend(caps_config.code_lens.iter().map(|(k, v)| (k.clone(), v.clone())));
+    work_config.custom_cmdline_tools.extend(caps_config.custom_cmdline_tools.iter().map(|(k, v)| (k.clone(), v.clone())));
 
     work_config.system_prompts.extend(user_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.toolbox_commands.extend(user_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.code_lens.extend(user_config.code_lens.iter().map(|(k, v)| (k.clone(), v.clone())));
+    work_config.custom_cmdline_tools.extend(user_config.custom_cmdline_tools.iter().map(|(k, v)| (k.clone(), v.clone())));
 
     let filtered_system_prompts = work_config.system_prompts
         .iter()
