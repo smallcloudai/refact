@@ -339,9 +339,8 @@ async fn vectorize_thread(
                         }
                     }
                     tokio::select! {
-                            _ = tokio::time::sleep(tokio::time::Duration::from_millis(1_000)) => {},
-                            _ = vstatus_notify.notified() => {},
-
+                        _ = tokio::time::sleep(tokio::time::Duration::from_millis(1_000)) => {},
+                        _ = vstatus_notify.notified() => {},
                     }
                     continue;
                 }
@@ -350,9 +349,10 @@ async fn vectorize_thread(
         };
         let last_30_chars = crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30);
 
-        // Not from memory, vecdb works on files from disk
-        if let Err(err) = doc.update_text_from_disk(gcx.clone()).await {
-            info!("{}: {}", last_30_chars, err);
+        // Not from memory, vecdb works on files from disk, because they change less
+        if let Err(_) = doc.update_text_from_disk(gcx.clone()).await {
+            info!("{} cannot read, deleting from index", last_30_chars);  // don't care what the error is, trivial (or privacy)
+            vecdb_handler_arc.lock().await.vecdb_records_remove(vec![doc.doc_path.to_string_lossy().to_string()]).await;
             continue;
         }
 
