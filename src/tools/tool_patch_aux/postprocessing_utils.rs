@@ -4,9 +4,7 @@ use crate::call_validation::DiffChunk;
 use crate::diffs::{apply_diff_chunks_to_text, correct_and_validate_chunks, unwrap_diff_apply_outputs};
 use crate::global_context::GlobalContext;
 use crate::tools::tool_patch_aux::ast_lint::{lint_and_get_error_messages, parse_and_get_error_symbols};
-use crate::tools::tool_patch_aux::tickets_parsing::TicketToApply;
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
@@ -24,17 +22,6 @@ pub fn vec_contains_vec<T: PartialEq>(vec: &[T], subvec: &[T]) -> usize {
     vec.windows(subvec.len())
         .filter(|window| *window == subvec)
         .count()
-}
-
-pub fn most_common_value_in_vec<T: Eq + Hash + Copy>(items: Vec<T>) -> Option<T> {
-    items.iter()
-        .fold(HashMap::new(), |mut acc, &item| {
-            *acc.entry(item).or_insert(0) += 1;
-            acc
-        })
-        .into_iter()
-        .max_by_key(|&(_, count)| count)
-        .map(|(item, _)| item)
 }
 
 pub fn minimal_common_indent(symbol_lines: &[&str]) -> (usize, usize) {
@@ -64,38 +51,6 @@ pub fn place_indent(code_lines: &[&str], indent_spaces: usize, indent_tabs: usiz
         let new_indent = if line.is_empty() { "".to_string() } else { " ".repeat(indent_spaces) + &"\t".repeat(indent_tabs) };
         format!("{}{}", new_indent, trimmed_line)
     }).collect()
-}
-
-pub fn same_parent_symbols(ticket: &TicketToApply, locate_symbol: &Arc<AstDefinition>) -> Vec<Arc<AstDefinition>> {
-    fn symbol_parent_elements(symbol: &Arc<AstDefinition>) -> Vec<String> {
-        let mut elements = symbol.official_path.clone();
-        elements.pop();
-        elements
-    }
-    let mut grouped_symbols = HashMap::new();
-    for symbol in &ticket.all_symbols {
-        grouped_symbols.entry(symbol_parent_elements(symbol)).or_insert_with(Vec::new).push(symbol.clone());
-    }
-    let mut same_parents_syms = grouped_symbols.get(&symbol_parent_elements(locate_symbol)).cloned().unwrap_or(Vec::new());
-    if same_parents_syms.len() > 1 {
-        same_parents_syms.sort_by_key(|s| s.full_line1());
-    }
-    same_parents_syms
-}
-
-pub fn most_common_spacing(same_parent_symbols: &Vec<Arc<AstDefinition>>) -> usize {
-    if same_parent_symbols.len() > 1 {
-        let spacings: Vec<isize> = same_parent_symbols.windows(2)
-            .map(|pair| {
-                // info!("pair names: {:?} AND {:?}", pair[1].official_path, pair[0].official_path);
-                // info!("diff: {}", pair[1].full_range.start_point.row as isize - pair[0].full_range.end_point.row as isize);
-                (pair[1].full_line1() as isize - pair[0].full_line2() as isize).saturating_sub(1)
-            })
-            .collect();
-        most_common_value_in_vec(spacings).unwrap_or(1) as usize
-    } else {
-        1
-    }
 }
 
 pub async fn does_doc_have_symbol(

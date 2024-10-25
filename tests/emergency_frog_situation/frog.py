@@ -38,4 +38,3 @@ class AlternativeFrog:
 
 def standalone_jumping_function():
     print("I'm a frog! Jump! Jump! Really!")
-

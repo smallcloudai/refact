@@ -16,9 +16,8 @@ use crate::tools::tool_patch_aux::postprocessing_utils::{does_doc_have_symbol, m
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum PatchAction {
-    #[default]
-    AddToFile,
     RewriteSymbol,
+    #[default]
     PartialEdit,
     RewriteWholeFile,
     NewFile,
@@ -46,7 +45,6 @@ impl PatchLocateAs {
 impl PatchAction {
     pub fn from_string(action: &str) -> Result<PatchAction, String> {
         match action {
-            "📍ADD_TO_FILE" => Ok(PatchAction::AddToFile),
             "📍REWRITE_ONE_SYMBOL" => Ok(PatchAction::RewriteSymbol),
             "📍REWRITE_WHOLE_FILE" => Ok(PatchAction::RewriteWholeFile),
             "📍PARTIAL_EDIT" => Ok(PatchAction::PartialEdit),
@@ -59,7 +57,7 @@ impl PatchAction {
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
 pub struct TicketToApply {
-    pub action: PatchAction, // action is changed for ADD_TO_FILE and REWRITE_SYMBOL if failed to parse
+    pub action: PatchAction, // action is changed for REWRITE_SYMBOL if failed to parse
     pub orig_action: PatchAction,
     #[serde(default)]
     pub fallback_action: Option<PatchAction>,
@@ -97,21 +95,6 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
     let _path_after = PathBuf::from(ticket.filename_after.as_str());
 
     match ticket.action {
-        PatchAction::AddToFile => {
-            ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
-                .map_err(|e| good_error_text(&format!("failed to resolve filename_before: '{}'. Error:\n{}", ticket.filename_before, e), ticket))?;
-            ticket.fallback_action = Some(PatchAction::PartialEdit);
-            if ticket.locate_as != Some(PatchLocateAs::BEFORE) && ticket.locate_as != Some(PatchLocateAs::AFTER) {
-                ticket.action = PatchAction::PartialEdit;
-                if let Some(s) = &ticket.locate_symbol {
-                    let extra_prompt = format!(
-                        "Add the following code at the correct place inside or near the `{}` symbol:\n",
-                        s.official_path.last().unwrap_or(&"".to_string())
-                    );
-                    ticket.code = format!("{}{}", extra_prompt, ticket.code);
-                }
-            }
-        }
         PatchAction::RewriteSymbol => {
             ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
                 .map_err(|e| good_error_text(&format!("failed to resolve filename_before: '{}'. Error:\n{}", ticket.filename_before, e), ticket))?;
@@ -268,47 +251,6 @@ async fn retain_non_applied_tickets(
 ) {
     let action = active_tickets[0].action.clone();
     match action {
-        PatchAction::AddToFile => {
-            let ticket = &active_tickets[0];
-            if let Ok(context_file) = read_file(gcx.clone(), ticket.filename_before.clone()).await {
-                let symbol = match ticket.locate_symbol.clone() {
-                    Some(s) => s,
-                    None => { return }
-                };
-                let file_text = context_file.file_content.clone();
-                let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
-                let file_lines = file_text.split(line_ending).collect::<Vec<&str>>();
-                let symbol_lines = file_lines[symbol.full_line1() - 1 .. symbol.full_line2() - 1].to_vec();
-                let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
-
-                let ticket_code = ticket.code.clone();
-                let ticket_line_ending = if ticket_code.contains("\r\n") { "\r\n" } else { "\n" };
-                let ticket_code_lines = ticket_code.split(ticket_line_ending).collect::<Vec<&str>>();
-                let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
-
-                let mut all_symbols = ticket.all_symbols.clone();
-                all_symbols.sort_by_key(|s| s.full_line1());
-                let locate_as = ticket.locate_as.clone().expect("locate_as not found");
-
-                let search_in_code = match locate_as {
-                    PatchLocateAs::BEFORE => {
-                        Some(file_lines[..symbol.full_line1() - 1].to_vec())
-                    }
-                    PatchLocateAs::AFTER => {
-                        Some(file_lines[symbol.full_line2() - 1 ..].to_vec())
-                    }
-                    _ => None
-                };
-                if let Some(search_in_code) = search_in_code {
-                    if vec_contains_vec(
-                        &search_in_code.into_iter().map(|x| x.to_string()).collect::<Vec<_>>(),
-                        &ticket_code_lines,
-                    ) == 1 {
-                        active_tickets.clear();
-                    }
-                }
-            }
-        }
         PatchAction::RewriteSymbol => {
             let ticket = &active_tickets[0];
             if let Ok(context_file) = read_file(gcx.clone(), ticket.filename_before.clone()).await {
@@ -318,7 +260,7 @@ async fn retain_non_applied_tickets(
 
                 match ticket.locate_symbol.clone() {
                     Some(symbol) => {
-                        let symbol_lines = file_lines[symbol.full_line1() - 1 .. symbol.full_line2() - 1].to_vec();
+                        let symbol_lines = file_lines[symbol.full_line1() - 1 .. symbol.full_line2()].to_vec();
                         let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
 
                         let ticket_code = ticket.code.clone();
