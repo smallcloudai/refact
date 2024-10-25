@@ -1,14 +1,12 @@
+use indexmap::IndexMap;
 use std::collections::HashSet;
 use std::collections::{HashMap, VecDeque};
 use std::io::Write;
 use std::ops::Div;
+use std::option::Option;
 use std::sync::Arc;
 use std::time::SystemTime;
-use std::option::Option;
 use tokio::sync::{Mutex as AMutex, Notify as ANotify, RwLock as ARwLock};
-use std::collections::HashSet;
-use indexmap::IndexMap;
-use tokio::sync::{Mutex as AMutex, RwLock as ARwLock, Notify as ANotify};
 use tokio::task::JoinHandle;
 use tracing::{info, warn};
 
@@ -167,7 +165,8 @@ async fn vectorize_thread(
     let mut run_actual_model_on_these: Vec<SplitResult> = vec![];
     let mut ready_to_vecdb: Vec<VecdbRecord> = vec![];
 
-    let (memdb,
+    let (vecdb_todo,
+        memdb,
         constants,
         vecdb_handler_arc,
         vstatus,
@@ -177,6 +176,7 @@ async fn vectorize_thread(
     ) = {
         let vservice_locked = vservice.lock().await;
         (
+            vservice_locked.vecdb_todo.clone(),
             vservice_locked.memdb.clone(),
             vservice_locked.constants.clone(),
             vservice_locked.vecdb_handler.clone(),
@@ -192,8 +192,7 @@ async fn vectorize_thread(
         let mut msg_to_me: Option<MessageToVecdbThread> = None;
         let current_time = SystemTime::now();
         let todo_len = {
-            let vservice_locked = vservice.lock().await;
-            let mut vecdb_todo_locked = vservice_locked.vecdb_todo.lock().await;
+            let mut vecdb_todo_locked = vecdb_todo.lock().await;
             if let Some(msg) = vecdb_todo_locked.pop_front() {
                 match msg {
                     MessageToVecdbThread::RegularDocument(doc) => {
@@ -304,49 +303,49 @@ async fn vectorize_thread(
                     info!("/MEMDB {:?}", r);
                     continue;
                 }
-                None => {
-                    if last_updated.is_empty() {
-                        // no more files
-                        assert!(run_actual_model_on_these.is_empty());
-                        assert!(ready_to_vecdb.is_empty());
-                        let reported_vecdb_complete = {
-                            let mut vstatus_locked = vstatus.lock().await;
-                            let done = vstatus_locked.state == "done";
-                            if !done {
-                                vstatus_locked.files_unprocessed = 0;
-                                vstatus_locked.files_total = 0;
-                                vstatus_locked.state = "done".to_string();
-                                info!(
+                None if last_updated.is_empty() => {
+                    // no more files
+                    assert!(run_actual_model_on_these.is_empty());
+                    assert!(ready_to_vecdb.is_empty());
+                    let reported_vecdb_complete = {
+                        let mut vstatus_locked = vstatus.lock().await;
+                        let done = vstatus_locked.state == "done";
+                        if !done {
+                            vstatus_locked.files_unprocessed = 0;
+                            vstatus_locked.files_total = 0;
+                            vstatus_locked.state = "done".to_string();
+                            info!(
                                     "vectorizer since start {} API calls, {} vectors",
                                     vstatus_locked.requests_made_since_start, vstatus_locked.vectors_made_since_start
                                 );
-                            }
-                            done
-                        };
-                        if !reported_vecdb_complete {
-                            // For now, we do not create index because it hurts the quality of retrieval
-                            // info!("VECDB Creating index");
-                            // match vecdb_handler_arc.lock().await.create_index().await {
-                            //     Ok(_) => info!("VECDB CREATED INDEX"),
-                            //     Err(err) => info!("VECDB Error creating index: {}", err)
-                            // }
-                            let _ = write!(std::io::stderr(), "VECDB COMPLETE\n");
-                            info!("VECDB COMPLETE"); // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
-                            vstatus_notify.notify_waiters();
-                                                    {
+                        }
+                        done
+                    };
+                    if !reported_vecdb_complete {
+                        // For now, we do not create index because it hurts the quality of retrieval
+                        // info!("VECDB Creating index");
+                        // match vecdb_handler_arc.lock().await.create_index().await {
+                        //     Ok(_) => info!("VECDB CREATED INDEX"),
+                        //     Err(err) => info!("VECDB Error creating index: {}", err)
+                        // }
+                        let _ = write!(std::io::stderr(), "VECDB COMPLETE\n");
+                        info!("VECDB COMPLETE"); // you can see stderr "VECDB COMPLETE" sometimes faster vs logs
+                        vstatus_notify.notify_waiters();
+                        {
                             let vstatus_locked = vstatus.lock().await;
                             if !vstatus_locked.vecdb_errors.is_empty() {
                                 info!("VECDB ERRORS: {:#?}", vstatus_locked.vecdb_errors);
                             }
                         }
-                        }
-                        tokio::select! {
+                    }
+                    tokio::select! {
                             _ = tokio::time::sleep(tokio::time::Duration::from_millis(1_000)) => {},
                             _ = vstatus_notify.notified() => {},
-                        }
+                        
                     }
                     continue;
                 }
+                _ => continue
             }
         };
         let last_30_chars = crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30);
@@ -417,8 +416,6 @@ impl FileVectorizerService {
         api_key: String,
         memdb: Arc<AMutex<MemoriesDatabase>>,
     ) -> Self {
-        // let vecdb_delayed_q = Arc::new(AMutex::new(VecDeque::new()));
-        // let vecdb_immediate_q = Arc::new(AMutex::new(VecDeque::new()));
         let vstatus = Arc::new(AMutex::new(
             VecDbStatus {
                 files_unprocessed: 0,
@@ -434,8 +431,6 @@ impl FileVectorizerService {
             }
         ));
         FileVectorizerService {
-            // vecdb_delayed_q: vecdb_delayed_q.clone(),
-            // vecdb_immediate_q: vecdb_immediate_q.clone(),
             vecdb_handler: vecdb_handler.clone(),
             vecdb_cache: vecdb_cache.clone(),
             vstatus: vstatus.clone(),
@@ -517,7 +512,6 @@ pub async fn vectorizer_enqueue_files(
     let (vecdb_todo, /*immediate_q,*/ vstatus, vstatus_notify, vecdb_max_files) = {
         let service = vservice.lock().await;
         (
-            // service.vecdb_delayed_q.clone(),
             service.vecdb_todo.clone(),
             service.vstatus.clone(),
             service.vstatus_notify.clone(),

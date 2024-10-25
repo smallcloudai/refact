@@ -14,6 +14,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::integr_github::ToolGithub;
 use crate::integrations::integr_pdb::ToolPdb;
 use crate::integrations::integr_chrome::ToolChrome;
+use crate::integrations::integr_postgres::ToolPostgres;
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

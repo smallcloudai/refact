@@ -1,39 +1,44 @@
-use crate::tools::tools_description::Tool;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
 use crate::call_validation::ContextEnum;
+use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
+use crate::tools::tools_description::Tool;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use serde_yaml;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::Mutex as AMutex;
 use tokio::process::Command;
-use serde_yaml;
-use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
-use tracing::info;
+use tokio::sync::Mutex as AMutex;
+use tracing::{error, info};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
+pub struct IntegrationPostgres {
+    pub psql_binary_path: Option<String>,
+    pub connection_string: String,
+}
+
 pub struct ToolPostgres {
-    connection_string: String,
-    psql_binary_path: PathBuf,
+    integration_postgres: IntegrationPostgres,
 }
 
 impl ToolPostgres {
     pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
-        let postgres = integrations_value.get("postgres")?;
-        let connection_string = postgres.get("connection_string")?.as_str()?.to_string();
-        let psql_binary_path = postgres.get("psql_binary_path")?.as_str()?;
+        let integration_postgres_value = integrations_value.get("postgres")?;
 
-        Some(ToolPostgres {
-            connection_string,
-            psql_binary_path: PathBuf::from(psql_binary_path),
-        })
+        let integration_postgres = serde_yaml::from_value::<IntegrationPostgres>(integration_postgres_value.clone()).or_else(|e| {
+            error!("Failed to parse integration postgres: {:?}", e);
+            Err(e)
+        }).ok()?;
+
+        Some(Self { integration_postgres })
     }
 
     async fn run_psql_command(&self, query: &str) -> Result<String, String> {
-        let output_future = Command::new(&self.psql_binary_path)
-            .arg(&self.connection_string)
+        let psql_command = self.integration_postgres.psql_binary_path.as_deref().unwrap_or("psql");
+        let output_future = Command::new(psql_command)
+            .arg(&self.integration_postgres.connection_string)
             .arg("ON_ERROR_STOP=1")
             .arg("-c")
             .arg(query)
@@ -65,7 +70,7 @@ impl Tool for ToolPostgres {
             Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
             None => return Err("Command is empty".to_string()),
         };
-        
+
         let result = self.run_psql_command(&query).await?;
 
         let mut results = vec![];
