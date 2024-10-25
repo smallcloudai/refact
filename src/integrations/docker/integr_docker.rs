@@ -33,12 +33,15 @@ pub struct IntegrationDocker {
     pub label: String,
     #[serde(default)]
     pub command: String,
+    #[serde(default = "default_keep_containers_alive_for_x_minutes")]
+    pub keep_containers_alive_for_x_minutes: u64,
 }
 fn default_connect_to_daemon_at() -> String { "unix:///var/run/docker.sock".to_string() }
 fn default_docker_cli_path() -> String { "docker".to_string() }
 fn default_container_workspace_folder() -> String { "/app".to_string() }
 fn default_host_lsp_path() -> String { "/opt/refact/bin/refact-lsp".to_string() }
 fn default_label() -> String { "refact".to_string() }
+fn default_keep_containers_alive_for_x_minutes() -> u64 { 60 }
 
 pub struct ToolDocker {
     pub integration_docker: IntegrationDocker,

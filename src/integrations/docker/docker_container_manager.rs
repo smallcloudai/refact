@@ -15,14 +15,13 @@ use crate::integrations::docker::integr_docker::ToolDocker;
 
 use super::docker_ssh_tunnel_utils::ssh_tunnel_check_status;
 
-const SESSION_TIMEOUT_AFTER_INACTIVITY: Duration = Duration::from_secs(60 * 60);
-
 const DEFAULT_CONTAINER_LSP_PATH: &str = "/usr/local/bin/refact-lsp";
 
 pub struct DockerContainerSession {
     container_id: String,
     connection: DockerContainerConnectionEnum,
     last_usage_ts: u64,
+    session_timeout_after_inactivity: Duration,
     weak_gcx: Weak<ARwLock<GlobalContext>>,
 }
 
@@ -53,7 +52,7 @@ impl IntegrationSession for DockerContainerSession {
 
     fn is_expired(&self) -> bool {
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-        self.last_usage_ts + SESSION_TIMEOUT_AFTER_INACTIVITY.as_secs() < current_time
+        self.last_usage_ts + self.session_timeout_after_inactivity.as_secs() < current_time
     }
 }
 
@@ -115,6 +114,7 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
             let host_port = docker_container_get_host_port(docker, &container_id, &internal_port, gcx.clone()).await?;
 
             let ssh_config_maybe = docker.integration_docker.ssh_config.clone();
+            let keep_containers_alive_for_x_minutes = docker.integration_docker.keep_containers_alive_for_x_minutes;
 
             drop(docker_tool_locked);
 
@@ -130,6 +130,7 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
                 container_id,
                 connection,
                 last_usage_ts: SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
+                session_timeout_after_inactivity: Duration::from_secs(60 * keep_containers_alive_for_x_minutes),
                 weak_gcx: Arc::downgrade(&gcx),
             })));
 
@@ -208,7 +209,8 @@ async fn docker_container_start(
     let run_output = docker.command_execute(&run_command, gcx.clone()).await?;
     // XXX docker output might be:
     // /usr/local/bin/refact-lsp: error while loading shared libraries: libssl.so.1.1: cannot open shared object file: No such file or directory
-
+    info!("run output: {}", &run_output);
+    
     let container_id = run_output.trim();
     if container_id.len() < 12 {
         return Err("Docker run error: no container ID returned.".into());

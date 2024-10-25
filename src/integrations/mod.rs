@@ -112,4 +112,7 @@ docker:
 
   # Uncomment to execute a command inside the container when the thread starts. Regardless, refact-lsp will run independently of this setting.
   # command: "npm run dev"
+
+  # The time in minutes that the containers will be kept alive while not interacting with the chat thread, defaults to 60.
+  keep_containers_alive_for_x_minutes: 60  
 "#;
