@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 
 use itertools::Itertools;
+use ropey::Rope;
 use tokenizers::Tokenizer;
 
 use crate::ast::count_tokens;
@@ -13,6 +14,40 @@ use crate::vecdb::vdb_structs::SplitResult;
 pub fn official_text_hashing_function(s: &String) -> String {
     let digest = md5::compute(s);
     format!("{:x}", digest)
+}
+
+
+fn split_line_if_needed(line: &str, tokenizer: Option<Arc<StdRwLock<Tokenizer>>>, tokens_limit: usize) -> Vec<String> {
+    if let Some(tokenizer) = tokenizer {
+        let tokenizer = tokenizer.read().unwrap();
+        tokenizer.encode(line, false).map_or_else(
+            |_| split_without_tokenizer(line, tokens_limit),
+            |tokens| {
+                let ids = tokens.get_ids();
+                if ids.len() <= tokens_limit {
+                    vec![line.to_string()]
+                } else {
+                    ids.chunks(tokens_limit)
+                        .filter_map(|chunk| tokenizer.decode(chunk, true).ok())
+                        .collect()
+                }
+            }
+        )
+    } else {
+        split_without_tokenizer(line, tokens_limit)
+    }
+}
+
+fn split_without_tokenizer(line: &str, tokens_limit: usize) -> Vec<String> {
+    if count_tokens(None, line) <= tokens_limit {
+        vec![line.to_string()]
+    } else {
+        Rope::from_str(line).chars()
+            .collect::<Vec<_>>()
+            .chunks(tokens_limit)
+            .map(|chunk| chunk.iter().collect())
+            .collect()
+    }
 }
 
 pub fn get_chunks(text: &String,
@@ -41,14 +76,16 @@ pub fn get_chunks(text: &String,
                 let current_line = accum.iter().map(|(line, _)| line).join("\n");
                 let start_line = if use_symbol_range_always { top_row as u64 } else { accum.front().unwrap().1 as u64 };
                 let end_line = if use_symbol_range_always { bottom_row as u64 } else { accum.back().unwrap().1 as u64 };
-                chunks.push(SplitResult {
-                    file_path: file_path.clone(),
-                    window_text: current_line.clone(),
-                    window_text_hash: official_text_hashing_function(&current_line),
-                    start_line,
-                    end_line,
-                    symbol_path: symbol_path.clone(),
-                });
+                for chunked_line in split_line_if_needed(&current_line, tokenizer.clone(), tokens_limit) {
+                    chunks.push(SplitResult {
+                        file_path: file_path.clone(),
+                        window_text: chunked_line.clone(),
+                        window_text_hash: official_text_hashing_function(&chunked_line),
+                        start_line,
+                        end_line,
+                        symbol_path: symbol_path.clone(),
+                    });
+                }
                 accum.clear();
                 current_tok_n = 0;
                 line_idx = (previous_start + 1).max((line_idx as i64 - intersection_lines as i64).max(0) as usize);
@@ -73,14 +110,16 @@ pub fn get_chunks(text: &String,
                 let current_line = accum.iter().map(|(line, _)| line).join("\n");
                 let start_line = if use_symbol_range_always { top_row as u64 } else { accum.front().unwrap().1 as u64 };
                 let end_line = if use_symbol_range_always { bottom_row as u64 } else { accum.back().unwrap().1 as u64 };
-                chunks.push(SplitResult {
-                    file_path: file_path.clone(),
-                    window_text: current_line.clone(),
-                    window_text_hash: official_text_hashing_function(&current_line),
-                    start_line,
-                    end_line,
-                    symbol_path: symbol_path.clone(),
-                });
+                for chunked_line in split_line_if_needed(&current_line, tokenizer.clone(), tokens_limit) {
+                    chunks.push(SplitResult {
+                        file_path: file_path.clone(),
+                        window_text: chunked_line.clone(),
+                        window_text_hash: official_text_hashing_function(&chunked_line),
+                        start_line,
+                        end_line,
+                        symbol_path: symbol_path.clone(),
+                    });
+                }
                 accum.clear();
                 break;
             } else {
@@ -95,14 +134,16 @@ pub fn get_chunks(text: &String,
         let current_line = accum.iter().map(|(line, _)| line).join("\n");
         let start_line = if use_symbol_range_always { top_row as u64 } else { accum.front().unwrap().1 as u64 };
         let end_line = if use_symbol_range_always { bottom_row as u64 } else { accum.back().unwrap().1 as u64 };
-        chunks.push(SplitResult {
-            file_path: file_path.clone(),
-            window_text: current_line.clone(),
-            window_text_hash: official_text_hashing_function(&current_line),
-            start_line,
-            end_line,
-            symbol_path: symbol_path.clone(),
-        });
+        for chunked_line in split_line_if_needed(&current_line, tokenizer.clone(), tokens_limit) {
+            chunks.push(SplitResult {
+                file_path: file_path.clone(),
+                window_text: chunked_line.clone(),
+                window_text_hash: official_text_hashing_function(&chunked_line),
+                start_line,
+                end_line,
+                symbol_path: symbol_path.clone(),
+            });
+        }
     }
 
     chunks.into_iter().filter(|c|!c.window_text.is_empty()).collect()
