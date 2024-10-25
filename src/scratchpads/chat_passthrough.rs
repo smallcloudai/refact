@@ -119,6 +119,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         };
         let style = self.post.style.clone();
         let is_inside_container = gcx.read().await.cmdline.inside_container;
+        // XXX can't attach files using @-commands if !is_inside_container && run_chat_threads_inside_container
         let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
             run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
         } else {

@@ -57,7 +57,7 @@ impl IntegrationSession for DockerContainerSession {
     }
 }
 
-pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsContext>>) -> Result<(), String> 
+pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsContext>>) -> Result<(), String>
 {
     let (gcx, chat_id, docker_tool_maybe) = {
         let ccx_locked = ccx.lock().await;
@@ -106,7 +106,7 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
             Ok(())
         }
         None => {
-            let docker_tool_locked = docker_tool.lock().await;  
+            let docker_tool_locked = docker_tool.lock().await;
             let docker = docker_tool_locked.as_any().downcast_ref::<ToolDocker>().ok_or_else(|| "Failed to downcast docker tool")?;
 
             let internal_port: u16 = 8001;
@@ -131,7 +131,7 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
                 connection,
                 last_usage_ts: SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
                 weak_gcx: Arc::downgrade(&gcx),
-            }))); 
+            })));
 
             let mut gcx_locked = gcx.write().await;
             gcx_locked.integration_sessions.insert(
@@ -173,7 +173,7 @@ pub async fn docker_container_get_host_port_to_connect(ccx: Arc<AMutex<AtCommand
         }
     }
 }
-   
+
 
 async fn docker_container_start(
     docker: &ToolDocker,
@@ -182,14 +182,15 @@ async fn docker_container_start(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
     let docker_image_id = docker.integration_docker.docker_image_id.clone();
-    if docker_image_id.is_empty() { 
-        return Err("No image ID to run container from, please specify one.".to_string()); 
+    if docker_image_id.is_empty() {
+        return Err("No image ID to run container from, please specify one.".to_string());
     }
     let workspace_folder = docker.integration_docker.container_workspace_folder.clone();
     let host_lsp_path  = docker.integration_docker.host_lsp_path.clone();
 
     let api_key = gcx.read().await.cmdline.api_key.clone();
 
+    // XXX hardcoded Refact, api_key is insufficient
     let lsp_command = format!(
         "mkdir -p $HOME/.cache/refact/ && {DEFAULT_CONTAINER_LSP_PATH} --http-port {internal_port} --logs-stderr \
         --address-url Refact --api-key {api_key} --vecdb --reset-memory --ast --experimental \
@@ -197,6 +198,7 @@ async fn docker_container_start(
     );
     let random_str = rand::thread_rng().sample_iter(&Alphanumeric).take(9).map(char::from).collect::<String>();
 
+    // XXX look again, chat_id should be enough, why random_str?
     let run_command = format!(
         "run --detach --name=refact-{chat_id}-{random_str} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
         --publish=0:{internal_port} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
@@ -204,6 +206,8 @@ async fn docker_container_start(
 
     info!("Executing docker command: {}", &run_command);
     let run_output = docker.command_execute(&run_command, gcx.clone()).await?;
+    // XXX docker output might be:
+    // /usr/local/bin/refact-lsp: error while loading shared libraries: libssl.so.1.1: cannot open shared object file: No such file or directory
 
     let container_id = run_output.trim();
     if container_id.len() < 12 {
@@ -229,6 +233,7 @@ async fn docker_container_get_host_port(
 ) -> Result<u16, String> {
     let inspect_command = "inspect --format '{{json .NetworkSettings.Ports}}' ".to_string() + &container_id;
     let inspect_output = docker.command_execute(&inspect_command, gcx.clone()).await?;
+    tracing::info!("{}:\n{}", inspect_command, inspect_output);
 
     let inspect_data: Value = serde_json::from_str(&inspect_output)
         .map_err(|e| format!("Error parsing JSON output from docker inspect: {}", e))?;

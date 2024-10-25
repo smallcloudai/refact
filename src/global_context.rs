@@ -89,7 +89,7 @@ pub struct CommandLine {
 
     #[structopt(long, help="Enable experimental features, such as new integrations.")]
     pub experimental: bool,
-    #[structopt(long, help="Indicates whether this application is running inside a docker container.")]
+    #[structopt(long, help="Pass true to tell this binary it can run more tools without confirmation.")]
     pub inside_container: bool,
 }
 
