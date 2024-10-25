@@ -20,7 +20,7 @@ use crate::vecdb::vdb_lance::VecDBHandler;
 use crate::vecdb::vdb_structs::{SimpleTextHashVector, SplitResult, VecDbStatus, VecdbConstants, VecdbRecord};
 
 const DEBUG_WRITE_VECDB_FILES: bool = false;
-const COOLDOWN_SECONDS: u64 = 3;
+const COOLDOWN_SECONDS: u64 = 10;
 
 
 enum MessageToVecdbThread {
@@ -171,7 +171,7 @@ async fn vectorize_thread(
         vecdb_handler_arc,
         vstatus,
         vstatus_notify,
-        vecdb_cache,
+        vecdb_cache_arc,
         api_key
     ) = {
         let vservice_locked = vservice.lock().await;
@@ -198,8 +198,7 @@ async fn vectorize_thread(
                     MessageToVecdbThread::RegularDocument(doc) => {
                         last_updated.insert(doc, current_time);
                     }
-                    MessageToVecdbThread::ImmediatelyRegularDocument(_) |
-                    MessageToVecdbThread::MemoriesSomethingDirty() => {
+                    MessageToVecdbThread::ImmediatelyRegularDocument(_) | MessageToVecdbThread::MemoriesSomethingDirty() => {
                         msg_to_me = Some(msg);
                     }
                 }
@@ -254,7 +253,7 @@ async fn vectorize_thread(
                     client.clone(),
                     &constants,
                     &api_key,
-                    vecdb_cache.clone(),
+                    vecdb_cache_arc.clone(),
                     constants.embedding_batch,
                 ).await {
                     tracing::error!("{}", err);
@@ -294,7 +293,7 @@ async fn vectorize_thread(
                     info!("MEMDB VECTORIZER START");
                     let r = vectorize_dirty_memories(
                         memdb.clone(),
-                        vecdb_cache.clone(),
+                        vecdb_cache_arc.clone(),
                         vstatus.clone(),
                         client.clone(),
                         &api_key,
@@ -341,7 +340,7 @@ async fn vectorize_thread(
                     tokio::select! {
                             _ = tokio::time::sleep(tokio::time::Duration::from_millis(1_000)) => {},
                             _ = vstatus_notify.notified() => {},
-                        
+
                     }
                     continue;
                 }
@@ -384,7 +383,7 @@ async fn vectorize_thread(
             &mut splits,
             &mut ready_to_vecdb,
             &mut run_actual_model_on_these,
-            vecdb_cache.clone(),
+            vecdb_cache_arc.clone(),
             1024,
         ).await;
     }
@@ -411,7 +410,7 @@ async fn _send_to_vecdb(
 impl FileVectorizerService {
     pub async fn new(
         vecdb_handler: Arc<AMutex<VecDBHandler>>,
-        vecdb_cache: Arc<AMutex<VecDBCache>>,
+        vecdb_cache_arc: Arc<AMutex<VecDBCache>>,
         constants: VecdbConstants,
         api_key: String,
         memdb: Arc<AMutex<MemoriesDatabase>>,
@@ -432,7 +431,7 @@ impl FileVectorizerService {
         ));
         FileVectorizerService {
             vecdb_handler: vecdb_handler.clone(),
-            vecdb_cache: vecdb_cache.clone(),
+            vecdb_cache: vecdb_cache_arc.clone(),
             vstatus: vstatus.clone(),
             vstatus_notify: Arc::new(ANotify::new()),
             constants,
@@ -509,7 +508,7 @@ pub async fn vectorizer_enqueue_files(
 ) {
     info!("adding {} files", documents.len());
     let documents = filter_docs_to_enqueue(documents);
-    let (vecdb_todo, /*immediate_q,*/ vstatus, vstatus_notify, vecdb_max_files) = {
+    let (vecdb_todo, vstatus, vstatus_notify, vecdb_max_files) = {
         let service = vservice.lock().await;
         (
             service.vecdb_todo.clone(),
