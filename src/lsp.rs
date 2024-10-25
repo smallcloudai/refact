@@ -296,7 +296,8 @@ impl LanguageServer for LspBackend {
     }
 
     async fn shutdown(&self) -> Result<()> {
-        let _ = info!("shutdown");
+        info!("shutdown");
+        self.gcx.write().await.ask_shutdown_sender.lock().unwrap().send("LSP SHUTDOWN".to_string()).unwrap();
         Ok(())
     }
 
