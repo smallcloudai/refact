@@ -118,15 +118,16 @@ impl ScratchpadAbstract for ChatPassthrough {
             None => false,
         };
         let style = self.post.style.clone();
-        let is_inside_container = gcx.read().await.cmdline.inside_container;
-        // XXX can't attach files using @-commands if !is_inside_container && run_chat_threads_inside_container
-        let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
+        let should_execute_remotely = run_chat_threads_inside_container && !gcx.read().await.cmdline.inside_container;
+
+        // TODO? Maybe we should execute at commands remotely.
+        let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at && !should_execute_remotely {
             run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
         } else {
             (self.messages.clone(), self.messages.len(), false)
         };
         if self.supports_tools {
-            (messages, _) = if run_chat_threads_inside_container && !is_inside_container {
+            (messages, _) = if should_execute_remotely {
                 run_tools_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             } else {
                 run_tools_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
