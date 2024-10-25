@@ -216,26 +216,16 @@ custom_cmdline_tools:
   cargo_check:
     description: "Checks for cargo errors"
     parameters:
-      - name: "path"
+      - name: "project_path"
         type: "string"
         description: "absolute path to the project"
     parameters_required:
-      - "path"
-    command: "cargo check --manifest-path %path%/Cargo.toml"
+      - "project_path"
+    command: "cargo check --manifest-path %project_path%/Cargo.toml"
     runs_in_background: false
     runs_in_background_false_timeout: 120
     experimental: true
 
-  run_chat_js:
-    description: "runs chat js in background"
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "absolute path to the project"
-    parameters_required:
-    command: "npm --prefix %path% run dev"
-    runs_in_background: true
-    experimental: true
 
 # DEPRECATED
 toolbox_commands:
