@@ -303,13 +303,16 @@ tools:
   - name: "postgres"
     agentic: true
     experimental: true
-    description: "Execute PostgreSQL query using psql command-line tool."
+    description: "PostgreSQL integration, can run a single query per call."
     parameters:
-      - name: "command"
+      - name: "query"
         type: "string"
-        description: "Examples: 'SELECT * FROM table_name', 'SELECT * FROM table_name WHERE column_name = value'" 
+        description: |
+          Don't forget semicolon at the end, examples:
+          SELECT * FROM table_name;
+          CREATE INDEX my_index_users_email ON my_users (email);
     parameters_required:
-      - "command"   
+      - "query"
 "####;
 
 #[allow(dead_code)]

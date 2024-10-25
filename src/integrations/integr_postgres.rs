@@ -10,10 +10,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::process::Command;
 use tokio::sync::Mutex as AMutex;
-use tracing::{error, info};
+
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-#[allow(non_snake_case)]
 pub struct IntegrationPostgres {
     pub psql_binary_path: Option<String>,
     pub connection_string: String,
@@ -28,7 +27,7 @@ impl ToolPostgres {
         let integration_postgres_value = integrations_value.get("postgres")?;
 
         let integration_postgres = serde_yaml::from_value::<IntegrationPostgres>(integration_postgres_value.clone()).or_else(|e| {
-            error!("Failed to parse integration postgres: {:?}", e);
+            tracing::error!("postgres integration exists, but there is a syntax error in yaml:\n{}", e);
             Err(e)
         }).ok()?;
 
@@ -44,14 +43,22 @@ impl ToolPostgres {
             .arg(query)
             .output();
         if let Ok(output) = tokio::time::timeout(tokio::time::Duration::from_millis(10_000), output_future).await {
-            let output = output.map_err(|e| format!("Failed to execute psql command: {}", e))?;
-
+            if output.is_err() {
+                let err_text = format!("{}", output.unwrap_err());
+                tracing::error!("psql didn't work:\n{}\n{}\n{}", self.integration_postgres.connection_string, query, err_text);
+                return Err(format!("psql failed:\n{}", err_text));
+            }
+            let output = output.unwrap();
             if output.status.success() {
                 Ok(String::from_utf8_lossy(&output.stdout).to_string())
             } else {
-                Err(format!("psql command failed: {}", String::from_utf8_lossy(&output.stderr)))
+                // XXX: limit stderr, can be infinite
+                let stderr_string = String::from_utf8_lossy(&output.stderr);
+                tracing::error!("psql didn't work:\n{}\n{}\n{}", self.integration_postgres.connection_string, query, stderr_string);
+                Err(format!("psql failed:\n{}", stderr_string))
             }
         } else {
+            tracing::error!("psql timed out:\n{}\n{}", self.integration_postgres.connection_string, query);
             Err("psql command timed out".to_string())
         }
     }
@@ -63,12 +70,12 @@ impl Tool for ToolPostgres {
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
-        command: &HashMap<String, Value>,
+        args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let query = match command.get("command") {
+        let query = match args.get("query") {
             Some(Value::String(v)) => v.clone(),
-            Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
-            None => return Err("Command is empty".to_string()),
+            Some(v) => return Err(format!("argument `query` is not a string: {:?}", v)),
+            None => return Err("no `query` argument found".to_string()),
         };
 
         let result = self.run_psql_command(&query).await?;
@@ -88,9 +95,12 @@ impl Tool for ToolPostgres {
         &self,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        let mut command_args = parse_command_args(args)?;
-        command_args.insert(0, "psql".to_string());
-        Ok(command_args.join(" "))
+        let query = match args.get("query") {
+            Some(Value::String(v)) => v.clone(),
+            Some(v) => return Err(format!("argument `query` is not a string: {:?}", v)),
+            None => return Err("no `query` argument found".to_string()),
+        };
+        Ok(format!("psql {}", query))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
@@ -102,26 +112,4 @@ impl Tool for ToolPostgres {
         #[allow(static_mut_refs)]
         unsafe { &mut DEFAULT_USAGE }
     }
-}
-
-
-fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, String> {
-    let command = match args.get("command") {
-        Some(Value::String(s)) => s,
-        Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
-        None => return Err("Missing argument `command`".to_string())
-    };
-
-    let mut parsed_args = shell_words::split(&command).map_err(|e| e.to_string())?;
-    if parsed_args.is_empty() {
-        return Err("Parsed command is empty".to_string());
-    }
-    for (i, arg) in parsed_args.iter().enumerate() {
-        info!("argument[{}]: {}", i, arg);
-    }
-    if parsed_args[0] == "psql" {
-        parsed_args.remove(0);
-    }
-
-    Ok(parsed_args)
 }
