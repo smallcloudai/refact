@@ -1,6 +1,4 @@
 use std::{sync::Arc, sync::Weak, time::SystemTime};
-use rand::distributions::Alphanumeric;
-use rand::Rng;
 use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
@@ -175,7 +173,6 @@ pub async fn docker_container_get_host_port_to_connect(ccx: Arc<AMutex<AtCommand
     }
 }
 
-
 async fn docker_container_start(
     docker: &ToolDocker,
     chat_id: &str,
@@ -189,19 +186,19 @@ async fn docker_container_start(
     let workspace_folder = docker.integration_docker.container_workspace_folder.clone();
     let host_lsp_path  = docker.integration_docker.host_lsp_path.clone();
 
-    let api_key = gcx.read().await.cmdline.api_key.clone();
+    let (address_url, api_key) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.cmdline.address_url.clone(), gcx_locked.cmdline.api_key.clone())
+    };
 
-    // XXX hardcoded Refact, api_key is insufficient
     let lsp_command = format!(
         "mkdir -p $HOME/.cache/refact/ && {DEFAULT_CONTAINER_LSP_PATH} --http-port {internal_port} --logs-stderr \
-        --address-url Refact --api-key {api_key} --vecdb --reset-memory --ast --experimental \
+        --address-url {address_url} --api-key {api_key} --vecdb --reset-memory --ast --experimental \
         --inside-container --workspace-folder {workspace_folder}",
     );
-    let random_str = rand::thread_rng().sample_iter(&Alphanumeric).take(9).map(char::from).collect::<String>();
 
-    // XXX look again, chat_id should be enough, why random_str?
     let run_command = format!(
-        "run --detach --name=refact-{chat_id}-{random_str} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
+        "run --detach --name=refact-{chat_id} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
         --publish=0:{internal_port} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
     );
 
