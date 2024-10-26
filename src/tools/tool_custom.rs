@@ -15,7 +15,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{AtParamDict, Tool};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::global_context::GlobalContext;
-use crate::integrations::process_io_utils::{kill_process_and_children, read_until_token_or_timeout, wait_until_port_gets_busy};
+use crate::integrations::process_io_utils::{kill_process_and_children, read_until_token_or_timeout, wait_until_port_gets_occupied};
 use crate::integrations::sessions::IntegrationSession;
 use crate::yaml_configs::customization_loader::{CustomCMDLineToolBackgroundCfg, CustomCMDLineToolBlockingCfg};
 
@@ -126,13 +126,13 @@ async fn read_until_text_in_output_or_timeout(
     let step_duration = Duration::from_millis(100);
     let mut stdout_text = String::new();
     let mut stderr_text = String::new();
-    
+
     while start.elapsed() < timeout {
         let stdout_out = read_until_token_or_timeout(stdout, step_duration.as_millis() as u64, text).await?;
         let stderr_out = read_until_token_or_timeout(stderr, step_duration.as_millis() as u64, text).await?;
         stdout_text.push_str(&stdout_out);
         stderr_text.push_str(&stderr_out);
-        
+
         if !text.is_empty() && format!("{}{}", stdout_text, stderr_text).contains(text) {
             return Ok((stdout_text, stderr_text));
         }
@@ -167,7 +167,7 @@ async fn start_session(
 
     // todo: does not work for npm run somewhy
     if let Some(wait_port) = cfg.wait_port {
-        let resp = wait_until_port_gets_busy(wait_port, &wait_timeout).await;
+        let resp = wait_until_port_gets_occupied(wait_port, &wait_timeout).await;
         (stdout_out, stderr_out) = get_stdout_and_stderr(100, &mut stdout, &mut stderr, None).await?;
         resp?;
     } else {
@@ -188,7 +188,7 @@ async fn start_session(
         warn!("tool process exited with status: {:?}. Output:\n{out}", status);
         return Err(format!("tool process exited with status: {:?}; Output:\n{out}", status));
     }
-    
+
     let session: Box<dyn IntegrationSession> = Box::new(ToolSession {
         process,
         command,
@@ -196,7 +196,7 @@ async fn start_session(
         stderr
     });
     gcx.write().await.integration_sessions.insert(session_key.to_string(), Arc::new(AMutex::new(session)));
-    
+
     Ok(out)
 }
 
@@ -207,24 +207,24 @@ async fn execute_background_command(
     cfg: CustomCMDLineToolBackgroundCfg,
     action: &str,
 ) -> Result<String, String> {
-    let session_key = format!("tool_{tool_name}");
+    let session_key = format!("custom_service_{tool_name}");
     let session_mb = gcx.read().await.integration_sessions.get(&session_key).cloned();
     let mut command = command.to_string();
 
     if !(action == "restart" || action == "stop" || action == "status")
         && session_mb.is_some() {
         return Err(format!("cannot execute tool '{tool_name}'. Reason: tool '{tool_name}' is already running.\n"));
-    }    
+    }
     if session_mb.is_none() && (action == "restart" || action == "stop" || action == "status") {
         return Err(format!("cannot execute this action on tool '{tool_name}'. Reason: tool '{tool_name}' is not running.\n"));
     }
-    
+
     if action == "restart" || action == "stop" || action == "status" {
         let session = session_mb.clone().unwrap();
         let mut session_lock = session.lock().await;
         let tool_session = session_lock.as_any_mut().downcast_mut::<ToolSession>()
             .ok_or("Failed to downcast tool session".to_string())?;
-        
+
         if action == "status" {
             return Ok(format!("Tool '{tool_name}' is running.\n"));
         }
@@ -238,10 +238,10 @@ async fn execute_background_command(
             return Ok(format!("Tool '{tool_name}' is stopped.\n"));
         }
     }
-    
+
     let output = start_session(gcx, &session_key, command, &cfg).await
         .map_err(|e| format!("Failed to start tool '{tool_name}'. Error: {}", e))?;
-    
+
     return Ok(format!("Tool '{tool_name}' is up and running in a background:\n{output}"));
 }
 

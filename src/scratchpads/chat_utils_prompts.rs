@@ -29,7 +29,11 @@ pub async fn get_default_system_prompt(
     },|x| x.text.clone())
 }
 
-async fn _workspace_info(workspace_dirs: &[String], active_file_path: &Option<PathBuf>, background_tools_running: Vec<String>) -> String
+async fn _workspace_info(
+    workspace_dirs: &[String],
+    active_file_path: &Option<PathBuf>,
+    // background_tools_running: Vec<String>
+) -> String
 {
     async fn get_vcs_info(detect_vcs_at: &PathBuf) -> String {
         let mut info = String::new();
@@ -56,9 +60,9 @@ async fn _workspace_info(workspace_dirs: &[String], active_file_path: &Option<Pa
     } else {
         info.push_str("\n\nThere is no active file with version control, complain to user if they want to use anything git/hg/svn/etc and ask to open a file in IDE for you to know which project is active.");
     }
-    if !background_tools_running.is_empty() {
-        info.push_str(&format!("\n\nThe tools that are currently in a background:\n{}", background_tools_running.join(", ")));
-    }
+    // if !background_tools_running.is_empty() {
+    //     info.push_str(&format!("\n\nThe tools that are currently in a background:\n{}", background_tools_running.join(", ")));
+    // }
     info
 }
 
@@ -79,10 +83,13 @@ pub async fn system_prompt_add_workspace_info(
 
     if system_prompt.contains("%WORKSPACE_INFO%") {
         let (workspace_dirs, active_file_path) = workspace_files_info(&gcx).await;
-        let background_tools_running = gcx.read().await.integration_sessions.keys().filter(|k|k.starts_with("tool_")).cloned().collect::<Vec<_>>();
-        let info = _workspace_info(&workspace_dirs, &active_file_path, background_tools_running).await;
+        // let background_tools_running = gcx.read().await.integration_sessions.keys()
+        //     .filter(|k| k.starts_with("custom_service_"))
+        //     .map(|k| k.trim_start_matches("custom_service_").to_string())
+        //     .collect::<Vec<_>>();
+        let info = _workspace_info(&workspace_dirs, &active_file_path).await;
         system_prompt = system_prompt.replace("%WORKSPACE_INFO%", &info);
-        // tracing::info!("system prompt:\n{}", system_prompt);
+        tracing::info!("system prompt:\n{}", system_prompt);
     }
 
     system_prompt

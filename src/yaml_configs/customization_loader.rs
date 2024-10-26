@@ -90,7 +90,7 @@ impl CustomCMDLineTool {
     pub fn into_tool_dict(&self, name: String) -> ToolDict {
         ToolDict {
             name,
-            agentic: false,
+            agentic: true,
             experimental: false,
             description: self.description.clone(),
             parameters: self.parameters.clone(),

@@ -25,7 +25,7 @@ where
 {
     let mut output = Vec::new();
     let mut buf = [0u8; 1024];
-    
+
     loop {
         let read_result = if timeout_ms > 0 {
             timeout(Duration::from_millis(timeout_ms), buffer.read(&mut buf)).await
@@ -40,7 +40,7 @@ where
         };
 
         if bytes_read == 0 { break; }
-        
+
         output.extend_from_slice(&buf[..bytes_read]);
 
         if !token.is_empty() && output.trim_ascii_end().ends_with(token.as_bytes()) { break; }
@@ -49,7 +49,7 @@ where
     Ok(String::from_utf8_lossy(&output).to_string())
 }
 
-pub async fn wait_until_port_gets_busy(port: u16, timeout_duration: &Duration) -> Result<(), String> {
+pub async fn wait_until_port_gets_occupied(port: u16, timeout_duration: &Duration) -> Result<(), String> {
     let addr = format!("127.0.0.1:{}", port);
 
     let result: Result<_, _> = timeout(timeout_duration.clone(), async {
@@ -65,7 +65,7 @@ pub async fn wait_until_port_gets_busy(port: u16, timeout_duration: &Duration) -
 
     match result {
         Ok(_) => Ok(()),
-        Err(_) => Err(format!("Timeout expired: Port {} wasn't busy after {:?}", port, timeout_duration)),
+        Err(_) => Err(format!("port {} didn't turn occupied after {:?}", port, timeout_duration)),
     }
 }
 
