@@ -212,9 +212,6 @@ code_lens:
         any tricky parts in the code. Be concise, wait for a more specific follow-up question from the user.
 
 
-custom_cmdline_tools:
-
-
 # DEPRECATED
 toolbox_commands:
   shorter:

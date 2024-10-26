@@ -144,7 +144,7 @@ async fn execute_blocking_command(
             .await;
 
         if result.is_err() {
-            let msg = format!("cannot run {:?} with args {:?}\n{}", &command_args[0], &command_args[1..], result.unwrap_err());
+            let msg = format!("cannot run {:?} with workdir\n{}\nwith args {:?}\n{}", &command_args[0], cfg_command_workdir, &command_args[1..], result.unwrap_err());
             tracing::error!("{}", msg);
             return Err(msg);
         }
@@ -171,7 +171,7 @@ async fn execute_blocking_command(
 
     match result {
         Ok(res) => res,
-        Err(_) => Err(format!("Command execution timed out after {:?} cfg.timeout={}s", timeout_duration, cfg.timeout)),
+        Err(_) => Err(format!("command timed out after {:?}", timeout_duration, cfg.timeout)),
     }
 }
 

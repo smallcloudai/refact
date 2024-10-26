@@ -149,12 +149,10 @@ fn load_and_mix_with_users_config(
     work_config.system_prompts.extend(caps_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.toolbox_commands.extend(caps_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.code_lens.extend(caps_config.code_lens.iter().map(|(k, v)| (k.clone(), v.clone())));
-    // work_config.custom_cmdline_tools.extend(caps_config.custom_cmdline_tools.iter().map(|(k, v)| (k.clone(), v.clone())));
 
     work_config.system_prompts.extend(user_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.toolbox_commands.extend(user_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.code_lens.extend(user_config.code_lens.iter().map(|(k, v)| (k.clone(), v.clone())));
-    // work_config.custom_cmdline_tools.extend(user_config.custom_cmdline_tools.iter().map(|(k, v)| (k.clone(), v.clone())));
 
     let filtered_system_prompts = work_config.system_prompts
         .iter()
