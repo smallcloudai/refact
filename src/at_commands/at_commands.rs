@@ -7,7 +7,6 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ContextFile, ContextEnum, SubchatParameters, PostprocessSettings};
 use crate::global_context::GlobalContext;
 
@@ -32,7 +31,6 @@ pub struct AtCommandsContext {
     pub chat_id: String,
 
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
-    pub at_tools: IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>,
     pub postprocess_parameters: PostprocessSettings,
 
@@ -62,7 +60,6 @@ impl AtCommandsContext {
             chat_id,
 
             at_commands: at_commands_dict(global_context.clone()).await,
-            at_tools: crate::tools::tools_description::tools_merged_and_filtered(global_context.clone()).await,
             subchat_tool_parameters: IndexMap::new(),
             postprocess_parameters: PostprocessSettings::new(),
 

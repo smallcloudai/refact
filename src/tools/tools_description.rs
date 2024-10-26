@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
-use tracing::warn;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
@@ -16,7 +15,6 @@ use crate::integrations::integr_gitlab::ToolGitlab;
 use crate::integrations::integr_pdb::ToolPdb;
 use crate::integrations::integr_chrome::ToolChrome;
 use crate::integrations::integr_postgres::ToolPostgres;
-use crate::tools::tool_custom::{ToolCustom, CustomCMDLineTool};
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -48,21 +46,29 @@ pub trait Tool: Send + Sync {
         #[allow(static_mut_refs)]
         unsafe { &mut DEFAULT_USAGE }
     }
+
+    fn tool_description(&self) -> ToolDesc {
+        unimplemented!();
+    }
 }
 
-async fn read_integrations_value(cache_dir: &PathBuf) -> Result<serde_yaml::Value, String> {
+async fn read_integrations_yaml(cache_dir: &PathBuf) -> Result<serde_yaml::Value, String> {
     let yaml_path = cache_dir.join("integrations.yaml");
 
-    let integrations_yaml = tokio::fs::read_to_string(&yaml_path).await.map_err(
-        |e| format!("Failed to read integrations.yaml: {}", e)
+    let file = std::fs::File::open(&yaml_path).map_err(
+        |e| format!("Failed to open {}: {}", yaml_path.display(), e)
     )?;
 
-    serde_yaml::from_str::<serde_yaml::Value>(&integrations_yaml).map_err(
-        |e| format!("Failed to parse integrations.yaml: {}", e)
+    let reader = std::io::BufReader::new(file);
+    serde_yaml::from_reader(reader).map_err(
+        |e| {
+            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+            format!("Failed to parse {}{}: {}", yaml_path.display(), location, e)
+        }
     )
 }
 
-pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>
+pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String>
 {
     let (ast_on, vecdb_on, allow_experimental) = {
         let gcx_locked = gcx.read().await;
@@ -74,10 +80,10 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
     };
 
     let cache_dir = gcx.read().await.cache_dir.clone();
-    let integrations_value = read_integrations_value(&cache_dir).await.unwrap_or_else(|e| {
-        warn!(e);
-        serde_yaml::Value::default()
-    });
+    let integrations_value = match read_integrations_yaml(&cache_dir).await {
+        Ok(value) => value,
+        Err(e) => return Err(format!("Problem in integrations.yaml: {}", e)),
+    };
 
     let mut tools_all = IndexMap::from([
         ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>))),
@@ -95,59 +101,29 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
     ]);
 
     if allow_experimental {
-        // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_knowledge::ToolSaveKnowledge{}) as Box<dyn Tool + Send>))),
-        // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
-        if let Some(github_tool) = ToolGithub::new_if_configured(&integrations_value) {
-            tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(github_tool) as Box<dyn Tool + Send>)));
+        if let Some(gh_config) = integrations_value.get("github") {
+            tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(ToolGithub::new_from_yaml(gh_config)?) as Box<dyn Tool + Send>)));
         }
-        if let Some(gitlab_tool) = ToolGitlab::new_if_configured(&integrations_value) {
-            tools_all.insert("gitlab".to_string(), Arc::new(AMutex::new(Box::new(gitlab_tool) as Box<dyn Tool + Send>)));
+        // if let Some(gitlab_tool) = ToolGitlab::new_if_configured(&integrations_value) {
+        //     tools_all.insert("gitlab".to_string(), Arc::new(AMutex::new(Box::new(gitlab_tool) as Box<dyn Tool + Send>)));
+        // }
+        if let Some(pdb_config) = integrations_value.get("pdb") {
+            tools_all.insert("pdb".to_string(), Arc::new(AMutex::new(Box::new(ToolPdb::new_from_yaml(pdb_config)?) as Box<dyn Tool + Send>)));
         }
-        if let Some(pdb_tool) = ToolPdb::new_if_configured(&integrations_value) {
-            tools_all.insert("pdb".to_string(), Arc::new(AMutex::new(Box::new(pdb_tool) as Box<dyn Tool + Send>)));
+        if let Some(chrome_config) = integrations_value.get("chrome") {
+            tools_all.insert("chrome".to_string(), Arc::new(AMutex::new(Box::new(ToolChrome::new_from_yaml(chrome_config)?) as Box<dyn Tool + Send>)));
         }
-        if let Some(chrome_tool) = ToolChrome::new_if_configured(&integrations_value) {
-            tools_all.insert("chrome".to_string(), Arc::new(AMutex::new(Box::new(chrome_tool) as Box<dyn Tool + Send>)));
-        }
-        if let Some(postgres_tool) = ToolPostgres::new_if_configured(&integrations_value) {
-            tools_all.insert("postgres".to_string(), Arc::new(AMutex::new(Box::new(postgres_tool) as Box<dyn Tool + Send>)));
+        if let Some(postgres_config) = integrations_value.get("postgres") {
+            tools_all.insert("postgres".to_string(), Arc::new(AMutex::new(Box::new(ToolPostgres::new_from_yaml(postgres_config)?) as Box<dyn Tool + Send>)));
         }
         #[cfg(feature="vecdb")]
         tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
     }
 
-    // let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await.unwrap_or_default();
-    // for (c_name, c_cmd_tool) in custom_tools_dict {
-    //     let tool = Arc::new(AMutex::new(Box::new(
-    //         ToolCustom {
-    //             name: c_name.clone(),
-    //             parameters: c_cmd_tool.parameters,
-    //             parameters_required: c_cmd_tool.parameters_required,
-    //             command: c_cmd_tool.command,
-    //             blocking: c_cmd_tool.blocking,
-    //             background: c_cmd_tool.background,
-    //         }
-    //     ) as Box<dyn Tool + Send>));
-    //     tools_all.insert(c_name, tool);
-    // }
-
-    // pub async fn get_custom_cmdline_tools(
-    //   gcx: Arc<ARwLock<GlobalContext>>,
-    // ) -> Result<IndexMap<String, CustomCMDLineTool>, String> {
-    //   let tconfig = crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true).await?;
-    //   let mut tools_dict = tconfig.custom_cmdline_tools.clone();
-    //   for (_, tool) in tools_dict.iter_mut() {
-    //       if tool.background.is_some() {
-    //           tool.description = format!("{}. Runs in background", tool.description);
-    //           tool.parameters.push(AtParamDict {
-    //               name: "action".to_string(),
-    //               param_type: "string".to_string(),
-    //               description: "one of ['status', 'restart', 'stop']; default: 'start'".to_string(),
-    //           });
-    //       }
-    //   }
-    //   Ok(tools_dict)
-    // }
+    if let Some(cmdline) = integrations_value.get("cmdline") {
+        let blocking_cmdline_tools = crate::tools::tool_custom::cmdline_tool_from_yaml_value(cmdline)?;
+        tools_all.extend(blocking_cmdline_tools);
+    }
 
     let mut filtered_tools = IndexMap::new();
     for (tool_name, tool_arc) in tools_all {
@@ -162,13 +138,13 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         filtered_tools.insert(tool_name, tool_arc.clone());
     }
 
-    filtered_tools
+    Ok(filtered_tools)
 }
 
 pub async fn commands_require_confirmation_rules_from_integrations_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> Result<CommandsRequireConfimationConfig, String>
 {
     let cache_dir = gcx.read().await.cache_dir.clone();
-    let integrations_value = read_integrations_value(&cache_dir).await?;
+    let integrations_value = read_integrations_yaml(&cache_dir).await?;
 
     serde_yaml::from_value::<CommandsRequireConfimationConfig>(integrations_value)
         .map_err(|e| format!("Failed to parse CommandsRequireConfimationConfig: {}", e))
@@ -308,6 +284,7 @@ tools:
       - "project_dir"
       - "command"
 
+<<<<<<< HEAD
   - name: "gitlab"
     agentic: true
     experimental: true
@@ -334,6 +311,8 @@ tools:
     parameters_required:
       - "command"
 
+=======
+>>>>>>> 8bc94535 (description in tool virtual method, return yaml errors from /v1/tools)
   - name: "chrome"
     agentic: true
     experimental: true
@@ -378,29 +357,28 @@ const NOT_READY_TOOLS: &str = r####"
 "####;
 
 
-#[derive(Deserialize)]
-pub struct ToolDictDeserialize {
-    pub tools: Vec<ToolDict>,
-}
-
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ToolDict {
+pub struct ToolDesc {
     pub name: String,
     #[serde(default)]
     pub agentic: bool,
     #[serde(default)]
     pub experimental: bool,
     pub description: String,
-    pub parameters: Vec<AtParamDict>,
+    pub parameters: Vec<ToolParam>,
     pub parameters_required: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct AtParamDict {
+pub struct ToolParam {
     pub name: String,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default = "default_param_type")]
     pub param_type: String,
     pub description: String,
+}
+
+fn default_param_type() -> String {
+    "string".to_string()
 }
 
 pub fn make_openai_tool_value(
@@ -408,7 +386,7 @@ pub fn make_openai_tool_value(
     agentic: bool,
     description: String,
     parameters_required: Vec<String>,
-    parameters: Vec<AtParamDict>,
+    parameters: Vec<ToolParam>,
 ) -> Value {
     let params_properties = parameters.iter().map(|param| {
         (
@@ -436,7 +414,7 @@ pub fn make_openai_tool_value(
     function_json
 }
 
-impl ToolDict {
+impl ToolDesc {
     pub fn into_openai_style(self) -> Value {
         make_openai_tool_value(
             self.name,
@@ -448,31 +426,33 @@ impl ToolDict {
     }
 }
 
+#[derive(Deserialize)]
+pub struct ToolDictDeserialize {
+    pub tools: Vec<ToolDesc>,
+}
+
 pub async fn tool_description_list_from_yaml(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    tools: indexmap::IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
     turned_on: &Vec<String>,
     allow_experimental: bool,
-) -> Result<Vec<ToolDict>, String> {
-    let at_dict: ToolDictDeserialize = serde_yaml::from_str(BUILT_IN_TOOLS)
+) -> Result<Vec<ToolDesc>, String> {
+    let tool_desc_deser: ToolDictDeserialize = serde_yaml::from_str(BUILT_IN_TOOLS)
         .map_err(|e|format!("Failed to parse BUILT_IN_TOOLS: {}", e))?;
 
-    let mut tools = vec![];
-    tools.extend(at_dict.tools.iter().cloned());
+    let mut tool_desc_vec = vec![];
+    tool_desc_vec.extend(tool_desc_deser.tools.iter().cloned());
 
-    // let tconfig = load_customization(gcx.clone(), true).await?;
-    // let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await?;
-    // for (c_name, c_cmd_tool) in tconfig.custom_cmdline_tools {
-    // for (c_name, c_cmd_tool) in custom_tools_dict {
-    //     let c_tool_dict = c_cmd_tool.into_tool_dict(c_name);
-    //     tools.push(c_tool_dict);
-    // }
-    // let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await?;
-    // for (c_name, c_cmd_tool) in custom_tools_dict {
-    //     let c_tool_dict = c_cmd_tool.into_tool_dict(c_name);
-    //     tools.push(c_tool_dict);
-    // }
+    for (tool_name, tool_arc) in tools {
+        if !tool_desc_vec.iter().any(|desc| desc.name == tool_name) {
+            let tool_desc = {
+                let tool_locked = tool_arc.lock().await;
+                tool_locked.tool_description()
+            };
+            tool_desc_vec.push(tool_desc);
+        }
+    }
 
-    Ok(tools.iter()
+    Ok(tool_desc_vec.iter()
         .filter(|x| turned_on.contains(&x.name) && (allow_experimental || !x.experimental))
         .cloned()
         .collect::<Vec<_>>())

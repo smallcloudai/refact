@@ -16,7 +16,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent};
 use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::global_context::GlobalContext;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::integrations::process_io_utils::{first_n_chars, last_n_chars, last_n_lines, write_to_stdin_and_flush, read_until_token_or_timeout};
 
 const SESSION_TIMEOUT_AFTER_INACTIVITY: Duration = Duration::from_secs(30 * 60);
@@ -51,15 +51,12 @@ impl IntegrationSession for PdbSession
 }
 
 impl ToolPdb {
-    pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
-        let integration_pdb_value = integrations_value.get("pdb")?;
-
-        let integration_pdb = serde_yaml::from_value::<IntegrationPdb>(integration_pdb_value.clone()).or_else(|e| {
-            error!("Failed to parse integration pdb: {:?}", e);
-            Err(e)
-        }).ok()?;
-
-        Some(Self { integration_pdb })
+    pub fn new_from_yaml(v: &serde_yaml::Value) -> Result<Self, String> {
+        let integration_pdb = serde_yaml::from_value::<IntegrationPdb>(v.clone()).map_err(|e| {
+            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+            format!("{}{}", e.to_string(), location)
+        })?;
+        Ok(Self { integration_pdb })
     }
 }
 
@@ -98,6 +95,23 @@ impl Tool for ToolPdb {
                 ..Default::default()
             })
         ]))
+    }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "pdb".to_string(),
+            agentic: true,
+            experimental: true,
+            description: "Python debugger for inspecting variables and exploring what the program really does. This tool executes only one command at a time. Start with python -m pdb ...".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "command".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Examples:\npython -m pdb script.py\nbreak module_name.function_name\nbreak 10\ncontinue\nprint(variable_name)\nlist\nquit\n".to_string(),
+                },
+            ],
+            parameters_required: vec!["command".to_string()],
+        }
     }
 
     fn command_to_match_against_confirm_deny(

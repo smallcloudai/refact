@@ -114,7 +114,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             (self.messages.clone(), self.messages.len(), false)
         };
         if self.supports_tools {
-            (messages, _) = run_tools(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await;
+            (messages, _) = run_tools(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?;
         };
         let mut limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);

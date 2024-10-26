@@ -1,18 +1,18 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
-use serde_json::Value;
-use tokio::io::BufReader;
-use async_trait::async_trait;
+use std::process::Stdio;
+use indexmap::IndexMap;
 use regex::Regex;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
-use tracing::{info, warn};
 use tokio::time::{timeout, Duration, sleep, Instant};
-use std::process::Stdio;
-use serde::{Deserialize};
+use tokio::io::BufReader;
+use serde::Deserialize;
+use async_trait::async_trait;
+use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::{AtParamDict, Tool, ToolDict};
+use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::{kill_process_and_children, read_until_token_or_timeout, wait_until_port_gets_occupied};
@@ -36,19 +36,19 @@ pub struct CmdlineToolBackground {
 
 #[derive(Deserialize)]
 pub struct CmdlineToolConfig {
-    #[serde(alias="description")]
+    #[serde(rename="description")]
     pub cfg_description: String,
-    #[serde(default, alias="parameters")]
-    pub cfg_parameters: Vec<AtParamDict>,
-    #[serde(default, alias="parameters_required")]
+    #[serde(default, rename="parameters")]
+    pub cfg_parameters: Vec<ToolParam>,
+    #[serde(default, rename="parameters_required")]
     pub cfg_parameters_required: Option<Vec<String>>,
-    #[serde(default, alias="command")]
+    #[serde(default, rename="command")]
     pub cfg_command: String,
-    #[serde(alias="workdir")]
+    #[serde(rename="command_workdir")]
     pub cfg_command_workdir: String,
-    #[serde(default, alias="blocking")]
+    #[serde(default, rename="blocking")]
     pub blocking: Option<CmdlineToolBlocking>,
-    #[serde(default, alias="background")]
+    #[serde(default, rename="background")]
     pub background: Option<CmdlineToolBackground>,
 }
 
@@ -57,29 +57,33 @@ pub struct ToolCmdline {
     pub cfg: CmdlineToolConfig,
 }
 
-
-impl ToolCmdline {
-    pub fn into_tool_dict(&self, name: String) -> ToolDict {
-        let req = self.cfg.cfg_parameters_required.clone().unwrap_or_else(|| {
-            self.cfg.cfg_parameters.iter().map(|param| param.name.clone()).collect()
-        });
-        ToolDict {
-            name,
-            agentic: true,
-            experimental: false,
-            description: self.cfg.cfg_description.clone(),
-            parameters: self.cfg.cfg_parameters.clone(),
-            parameters_required: req,
+pub fn cmdline_tool_from_yaml_value(cfg_cmdline_value: &serde_yaml::Value) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
+    let mut result = IndexMap::new();
+    let cfgmap = match serde_yaml::from_value::<IndexMap<String, CmdlineToolConfig>>(cfg_cmdline_value.clone()) {
+        Ok(cfgmap) => cfgmap,
+        Err(e) => {
+            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+            return Err(format!("failed to parse cmdline section: {:?}{}", e, location));
         }
+    };
+    for (c_name, c_cmd_tool) in cfgmap {
+        let tool = Arc::new(AMutex::new(Box::new(
+            ToolCmdline {
+                name: c_name.clone(),
+                cfg: c_cmd_tool,
+            }
+        ) as Box<dyn Tool + Send>));
+        result.insert(c_name, tool);
     }
+    Ok(result)
 }
 
 pub struct CmdlineSession {
     cmdline_string: String,
     cmdline_process: tokio::process::Child,
-    // #[allow(dead_code)]
+    #[allow(dead_code)]
     cmdline_stdout: BufReader<tokio::process::ChildStdout>,
-    // #[allow(dead_code)]
+    #[allow(dead_code)]
     cmdline_stderr: BufReader<tokio::process::ChildStderr>,
 }
 
@@ -292,7 +296,7 @@ impl Tool for ToolCmdline {
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
-        args: &HashMap<String, Value>,
+        args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
 
@@ -304,7 +308,7 @@ impl Tool for ToolCmdline {
                 return Err(format!("Unexpected argument `{}`", k));
             }
             match v {
-                Value::String(s) => { args_str.insert(k.clone(), s.clone()); },
+                serde_json::Value::String(s) => { args_str.insert(k.clone(), s.clone()); },
                 _ => return Err(format!("argument `{}` is not a string: {:?}", k, v)),
             }
         }
@@ -348,8 +352,18 @@ impl Tool for ToolCmdline {
     fn tool_depends_on(&self) -> Vec<String> {
         vec![]
     }
+
+    fn tool_description(&self) -> ToolDesc {
+        let parameters_required = self.cfg.cfg_parameters_required.clone().unwrap_or_else(|| {
+            self.cfg.cfg_parameters.iter().map(|param| param.name.clone()).collect()
+        });
+        ToolDesc {
+            name: self.name.clone(),
+            agentic: true,
+            experimental: false,
+            description: self.cfg.cfg_description.clone(),
+            parameters: self.cfg.cfg_parameters.clone(),
+            parameters_required,
+        }
+    }
 }
-
-
-// #[serde(default)]
-// pub custom_cmdline_tools: IndexMap<String, CustomCMDLineTool>,

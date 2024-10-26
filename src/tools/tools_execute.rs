@@ -43,11 +43,10 @@ pub async fn run_tools(
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
     style: &Option<String>,
-) -> (Vec<ChatMessage>, bool) {
-    let (n_ctx, at_tools) = {
-        let ccx_lock = ccx.lock().await;
-        (ccx_lock.n_ctx, ccx_lock.at_tools.clone())
-    };
+) -> Result<(Vec<ChatMessage>, bool), String> {
+    let gcx = ccx.lock().await.global_context.clone();
+    let at_tools = crate::tools::tools_description::tools_merged_and_filtered(gcx.clone()).await?;
+    let n_ctx = ccx.lock().await.n_ctx;
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     let tokens_for_rag = reserve_for_context;
     ccx.lock().await.tokens_for_rag = tokens_for_rag;
@@ -55,15 +54,15 @@ pub async fn run_tools(
 
     if tokens_for_rag < MIN_RAG_CONTEXT_LIMIT {
         warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.");
-        return (original_messages.clone(), false);
+        return Ok((original_messages.clone(), false));
     }
 
     let last_msg_tool_calls = match original_messages.last().filter(|m|m.role=="assistant") {
         Some(m) => m.tool_calls.clone().unwrap_or(vec![]),
-        None => return (original_messages.clone(), false),
+        None => return Ok((original_messages.clone(), false)),
     };
     if last_msg_tool_calls.is_empty() {
-        return (original_messages.clone(), false);
+        return Ok((original_messages.clone(), false));
     }
 
     let mut context_files_for_pp = vec![];
@@ -112,7 +111,6 @@ pub async fn run_tools(
         };
 
         if !command_to_match.is_empty() {
-            let gcx = ccx.lock().await.global_context.clone();
             if confirmation_rules.is_none() {
                 confirmation_rules = match commands_require_confirmation_rules_from_integrations_yaml(gcx.clone()).await {
                     Ok(g) => Some(g),
@@ -195,7 +193,7 @@ pub async fn run_tools(
 
     ccx.lock().await.pp_skeleton = false;
 
-    (all_messages, true)
+    Ok((all_messages, true))
 }
 
 async fn pp_run_tools(

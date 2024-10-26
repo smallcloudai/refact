@@ -25,15 +25,13 @@ pub struct ToolGithub {
 }
 
 impl ToolGithub {
-    pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
-        let integration_github_value = integrations_value.get("github")?;
-
-        let integration_github = serde_yaml::from_value::<IntegrationGitHub>(integration_github_value.clone()).or_else(|e| {
-            error!("Failed to parse integration github: {:?}", e);
-            Err(e)
-        }).ok()?;
-
-        Some(Self { integration_github })
+    pub fn new_from_yaml(gh_config: &serde_yaml::Value) -> Result<Self, String> {
+        let integration_github = serde_yaml::from_value::<IntegrationGitHub>(gh_config.clone())
+            .map_err(|e| {
+                let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+                format!("{}{}", e.to_string(), location)
+            })?;
+        Ok(Self { integration_github })
     }
 }
 

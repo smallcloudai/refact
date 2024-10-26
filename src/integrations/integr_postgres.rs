@@ -23,15 +23,12 @@ pub struct ToolPostgres {
 }
 
 impl ToolPostgres {
-    pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
-        let integration_postgres_value = integrations_value.get("postgres")?;
-
-        let integration_postgres = serde_yaml::from_value::<IntegrationPostgres>(integration_postgres_value.clone()).or_else(|e| {
-            tracing::error!("postgres integration exists, but there is a syntax error in yaml:\n{}", e);
-            Err(e)
-        }).ok()?;
-
-        Some(Self { integration_postgres })
+    pub fn new_from_yaml(v: &serde_yaml::Value) -> Result<Self, String> {
+        let integration_postgres = serde_yaml::from_value::<IntegrationPostgres>(v.clone()).map_err(|e| {
+            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+            format!("{}{}", e.to_string(), location)
+        })?;
+        Ok(Self { integration_postgres })
     }
 
     async fn run_psql_command(&self, query: &str) -> Result<String, String> {

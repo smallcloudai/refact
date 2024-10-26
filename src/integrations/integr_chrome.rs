@@ -14,7 +14,6 @@ use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::multimodality::MultimodalElement;
 use crate::tools::tools_description::Tool;
 
-use tracing::error;
 use reqwest::Client;
 use std::path::PathBuf;
 use headless_chrome::{Browser, LaunchOptions, Tab};
@@ -46,15 +45,12 @@ impl IntegrationSession for ChromeSession
 }
 
 impl ToolChrome {
-    pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
-        let integration_chrome_value = integrations_value.get("chrome")?;
-
-        let integration_chrome = serde_yaml::from_value::<IntegrationChrome>(integration_chrome_value.clone()).or_else(|e| {
-            error!("Failed to parse integration chrome: {:?}", e);
-            Err(e)
-        }).ok()?;
-
-        Some(Self { integration_chrome })
+    pub fn new_from_yaml(v: &serde_yaml::Value) -> Result<Self, String> {
+        let integration_chrome = serde_yaml::from_value::<IntegrationChrome>(v.clone()).map_err(|e| {
+            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+            format!("{}{}", e.to_string(), location)
+        })?;
+        Ok(Self { integration_chrome })
     }
 }
 
