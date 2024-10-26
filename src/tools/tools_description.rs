@@ -359,53 +359,6 @@ const NOT_READY_TOOLS: &str = r####"
 "####;
 
 
-// - name: "save_knowledge"
-// description: "Use it when you see something you'd want to remember about user, project or your experience for your future self."
-// parameters:
-//   - name: "memory_topic"
-//     type: "string"
-//     description: "one or two words that describe the memory"
-//   - name: "memory_text"
-//     type: "string"
-//     description: "The text of memory you want to save"
-//   - name: "memory_type"
-//     type: "string"
-//     description: "one of: `consequence` -- the set of actions that caused success / fail; `reflection` -- what can you do better next time; `familirity` -- what new did you get about the project; `relationship` -- what new did you get about the user."
-// parameters_required:
-//   - "memory_topic"
-//   - "memory_text"
-//   - "memory_type"
-
-// - "op"
-// - name: "op"
-// type: "string"
-// description: "Operation on a file: 'new', 'edit', 'remove'"
-// - "lookup_definitions"
-// - name: "lookup_definitions"
-// type: "string"
-// description: "Comma separated types that might be useful in making this change"
-// - name: "remember_how_to_use_tools"
-// description: Save a note to memory.
-// parameters:
-//   - name: "text"
-//     type: "string"
-//     description: "Write the exact format message here, starting with CORRECTION_POINTS"
-// parameters_required:
-//   - "text"
-
-// - name: "memorize_if_user_asks"
-// description: |
-//     DO NOT CALL UNLESS USER EXPLICITLY ASKS. Use this format exactly:
-//     when ... [describe situation when it's applicable] use ... tool call or method or plan
-// parameters:
-//   - name: "text"
-//     type: "string"
-//     description: "Follow the format in function description."
-// parameters_required:
-//   - "text"
-//   - "shortdesc"
-
-
 #[derive(Deserialize)]
 pub struct ToolDictDeserialize {
     pub tools: Vec<ToolDict>,

@@ -341,18 +341,4 @@ pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# You can find the compiled-
 #        ```
 #        Replace all variables with animal names, such that they lose any original meaning.
 
-#custom_cmdline_tools:
-#  cargo_check:
-#    description: "Checks for cargo errors"
-#    parameters:
-#      - name: "project_path"
-#        type: "string"
-#        description: "absolute path to the project"
-#    parameters_required:
-#      - "project_path"
-#    command: "cargo check --manifest-path %project_path%/Cargo.toml"
-#    blocking:
-#      timeout_s: 120
-
-
 "#;
