@@ -5,7 +5,7 @@ use std::process::Stdio;
 use indexmap::IndexMap;
 use regex::Regex;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
-use tokio::time::{timeout, Duration, sleep, Instant};
+use tokio::time::{Duration, sleep, Instant};
 use tokio::io::BufReader;
 use serde::Deserialize;
 use async_trait::async_trait;
@@ -21,7 +21,20 @@ use crate::integrations::sessions::IntegrationSession;
 
 #[derive(Deserialize, Clone)]
 pub struct CmdlineToolBlocking {
+    #[serde(default = "default_timeout_s")]
     pub timeout_s: u64,
+}
+
+fn default_timeout_s() -> u64 {
+    10
+}
+
+impl Default for CmdlineToolBlocking {
+    fn default() -> Self {
+        Self {
+            timeout_s: default_timeout_s(),
+        }
+    }
 }
 
 #[derive(Deserialize, Clone)]
@@ -124,12 +137,18 @@ async fn execute_blocking_command(
             cmd.args(&command_args[1..]);
         }
         cmd.current_dir(cfg_command_workdir);
-        let output = cmd
+        let result = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
-            .await
-            .map_err(|e| format!("Failed to execute command: {}", e))?;
+            .await;
+
+        if result.is_err() {
+            let msg = format!("cannot run {:?} with args {:?}\n{}", &command_args[0], &command_args[1..], result.unwrap_err());
+            tracing::error!("{}", msg);
+            return Err(msg);
+        }
+        let output = result.unwrap();
 
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -148,10 +167,12 @@ async fn execute_blocking_command(
     };
 
     let timeout_duration = Duration::from_secs(cfg.timeout_s);
-    timeout(
-        timeout_duration,
-        command_future
-    ).await.unwrap_or_else(|_| Err("Command execution timed out".to_string()))
+    let result = tokio::time::timeout(timeout_duration, command_future).await;
+
+    match result {
+        Ok(res) => res,
+        Err(_) => Err(format!("Command execution timed out after {:?} cfg.timeout_s={}s", timeout_duration, cfg.timeout_s)),
+    }
 }
 
 async fn get_stdout_and_stderr(
@@ -324,10 +345,7 @@ impl Tool for ToolCmdline {
             &args_str,
         )?;
 
-        let resp = if let Some(blocking_cfg) = &self.cfg.blocking {
-            execute_blocking_command(&command, blocking_cfg.clone(), &self.cfg.cfg_command_workdir).await
-
-        } else if let Some(background_cfg) = &self.cfg.background {
+        let resp = if let Some(background_cfg) = &self.cfg.background {
             let action = args_str.get("action").cloned().unwrap_or("start".to_string());
             if !["start", "restart", "stop", "status"].contains(&action.as_str()) {
                 return Err("Tool call is invalid. Param 'action' must be one of 'start', 'restart', 'stop', 'status'. Try again".to_string());
@@ -335,7 +353,7 @@ impl Tool for ToolCmdline {
             execute_background_command(gcx, &self.name, &command, background_cfg.clone(), action.as_str()).await
 
         } else {
-            Err(format!("Custom tool '{}' is invalid. It must have one of 'blocking' or 'background' param.", self.name))
+            execute_blocking_command(&command, self.cfg.blocking.clone().unwrap_or_else(|| CmdlineToolBlocking::default()), &self.cfg.cfg_command_workdir).await
         }?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {

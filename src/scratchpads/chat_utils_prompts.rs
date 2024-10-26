@@ -89,7 +89,7 @@ pub async fn system_prompt_add_workspace_info(
         //     .collect::<Vec<_>>();
         let info = _workspace_info(&workspace_dirs, &active_file_path).await;
         system_prompt = system_prompt.replace("%WORKSPACE_INFO%", &info);
-        tracing::info!("system prompt:\n{}", system_prompt);
+        // tracing::info!("system prompt:\n{}", system_prompt);
     }
 
     system_prompt
