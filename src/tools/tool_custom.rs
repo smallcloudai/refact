@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::process::Stdio;
 use indexmap::IndexMap;
-use regex::Regex;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::{Duration, sleep, Instant};
 use tokio::io::BufReader;
@@ -107,17 +106,12 @@ impl IntegrationSession for CmdlineSession {
     fn is_expired(&self) -> bool { false }
 }
 
-fn replace_magics_inside_command(
-    command: &str,
-    args_str: &HashMap<String, String>,
-) -> Result<String, String> {
-    let mut command_clone = command.to_string();
+fn _replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
+    let mut result = x.to_string();
     for (key, value) in args_str {
-        let pattern = format!("%{}%", key);
-        let re = Regex::new(&regex::escape(&pattern)).unwrap();
-        command_clone = re.replace_all(&command_clone, value.as_str()).to_string();
+        result = result.replace(&format!("%{}%", key), value);
     }
-    Ok(command_clone)
+    result
 }
 
 async fn execute_blocking_command(
@@ -171,7 +165,7 @@ async fn execute_blocking_command(
 
     match result {
         Ok(res) => res,
-        Err(_) => Err(format!("command timed out after {:?}", timeout_duration, cfg.timeout)),
+        Err(_) => Err(format!("command timed out after {:?}", timeout_duration)),
     }
 }
 
@@ -340,10 +334,8 @@ impl Tool for ToolCmdline {
             }
         }
 
-        let command = replace_magics_inside_command(
-            self.cfg.cfg_command.as_str(),
-            &args_str,
-        )?;
+        let command = _replace_args(self.cfg.cfg_command.as_str(), &args_str);
+        let workdir = _replace_args(self.cfg.cfg_command_workdir.as_str(), &args_str);
 
         let resp = if let Some(background_cfg) = &self.cfg.background {
             let action = args_str.get("action").cloned().unwrap_or("start".to_string());
@@ -353,7 +345,7 @@ impl Tool for ToolCmdline {
             execute_background_command(gcx, &self.name, &command, background_cfg.clone(), action.as_str()).await
 
         } else {
-            execute_blocking_command(&command, self.cfg.blocking.clone().unwrap_or_else(|| CmdlineToolBlocking::default()), &self.cfg.cfg_command_workdir).await
+            execute_blocking_command(&command, self.cfg.blocking.clone().unwrap_or_else(|| CmdlineToolBlocking::default()), &workdir).await
         }?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
