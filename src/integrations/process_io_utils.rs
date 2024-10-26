@@ -111,7 +111,7 @@ pub async fn kill_process_and_children(process: &Child, process_name4log: &str) 
     #[cfg(windows)]
     {
         use std::process::Command;
-        let pid = process.id();
+        let pid = process.id().expect("Failed to get process id");
         Command::new("taskkill")
             .args(&["/PID", &pid.to_string(), "/T", "/F"])
             .output()
