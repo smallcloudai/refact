@@ -41,9 +41,14 @@ commands_deny:
 
 # Chrome web browser
 chrome:
-#  chrome_path: "/path/to/chrome"  # can be path to your binary or opened debug_ws_url (see --remote-debugging-port)
-  window_size: [1024, 768]   # Size of the window, defaults to [1024, 768]
-  idle_browser_timeout: 600  # Timeout in seconds for idle browsers, defaults to 600 seconds
+  # This can be path to your chrome binary. You can install with "npx @puppeteer/browsers install chrome@stable", read
+  # more here https://developer.chrome.com/blog/chrome-for-testing/?utm_source=Fibery&utm_medium=iframely
+  #chrome_path: "/Users/me/my_path/chrome/mac_arm-130.0.6723.69/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+  # Or you can give it ws:// path, read more here https://developer.chrome.com/docs/devtools/remote-debugging/local-server/
+  # In that case start chrome with --remote-debugging-port
+  chrome_path: "ws://127.0.0.1:6006/"
+  window_size: [1024, 768]
+  idle_browser_timeout: 600
 
 # Postgres database
 #postgres:
