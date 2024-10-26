@@ -22,30 +22,30 @@ commands_deny:
   - "glab auth token*"
 
 
-# --- GitHub integration ---
+# GitHub integration
 #github:
-#   gh_binary_path: "/opt/homebrew/bin/gh"  # Uncomment to set a custom path for the gh binary, defaults to "gh"
 #   GH_TOKEN: "GH_xxx"                      # To get a token, check out https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+#   gh_binary_path: "/opt/homebrew/bin/gh"  # Uncomment to set a custom path for the gh binary, defaults to "gh"
 
 
-# --- GitLab integration ---
+# GitLab integration: install on mac using "brew install glab"
 #gitlab:
+#   GITLAB_TOKEN: "glpat-xxx"                   # To get a token, check out https://docs.gitlab.com/ee/user/profile/personal_access_tokens
 #   glab_binary_path: "/opt/homebrew/bin/glab"  # Uncomment to set a custom path for the glab binary, defaults to "glab"
-#   GITLAB_TOKEN: "GL_xxx"                      # To get a token, check out https://docs.gitlab.com/ee/user/profile/personal_access_tokens
 
 
-# --- Pdb integration ---
+# Python debugger
 #pdb:
 #  python_path: "/opt/homebrew/bin/python3"  # Uncomment to set a custom python path, defaults to "python3"
 
 
-# --- Chrome integration ---
+# Chrome web browser
 chrome:
 #  chrome_path: "/path/to/chrome"  # can be path to your binary or opened debug_ws_url (see --remote-debugging-port)
   window_size: [1024, 768]   # Size of the window, defaults to [1024, 768]
   idle_browser_timeout: 600  # Timeout in seconds for idle browsers, defaults to 600 seconds
 
-# --- Postgres integration ---
+# Postgres database
 #postgres:
 #  psql_binary_path: "/path/to/psql"  # Uncomment to set a custom path for the psql binary, defaults to "psql"
 #  connection_string: "postgresql://username:password@localhost/dbname"  # To get a connection string, check out https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING

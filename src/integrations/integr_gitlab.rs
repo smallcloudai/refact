@@ -85,7 +85,7 @@ impl Tool for ToolGitlab {
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: content,
+            content: crate::call_validation::ChatContent::SimpleText(content),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
