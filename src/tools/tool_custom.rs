@@ -21,18 +21,18 @@ use crate::integrations::sessions::IntegrationSession;
 
 #[derive(Deserialize, Clone)]
 pub struct CmdlineToolBlocking {
-    #[serde(default = "default_timeout_s")]
-    pub timeout_s: u64,
+    #[serde(default = "_default_timeout")]
+    pub timeout: u64,
 }
 
-fn default_timeout_s() -> u64 {
+fn _default_timeout() -> u64 {
     10
 }
 
 impl Default for CmdlineToolBlocking {
     fn default() -> Self {
         Self {
-            timeout_s: default_timeout_s(),
+            timeout: _default_timeout(),
         }
     }
 }
@@ -44,7 +44,7 @@ pub struct CmdlineToolBackground {
     #[serde(default)]
     pub wait_keyword: Option<String>,
     #[serde(default)]
-    pub wait_timeout_s: u64,
+    pub wait_timeout: u64,
 }
 
 #[derive(Deserialize)]
@@ -166,12 +166,12 @@ async fn execute_blocking_command(
         Ok(res)
     };
 
-    let timeout_duration = Duration::from_secs(cfg.timeout_s);
+    let timeout_duration = Duration::from_secs(cfg.timeout);
     let result = tokio::time::timeout(timeout_duration, command_future).await;
 
     match result {
         Ok(res) => res,
-        Err(_) => Err(format!("Command execution timed out after {:?} cfg.timeout_s={}s", timeout_duration, cfg.timeout_s)),
+        Err(_) => Err(format!("Command execution timed out after {:?} cfg.timeout={}s", timeout_duration, cfg.timeout)),
     }
 }
 
@@ -268,7 +268,7 @@ async fn execute_background_command(
         let mut stdout = BufReader::new(process.stdout.take().ok_or("Failed to open stdout")?);
         let mut stderr = BufReader::new(process.stderr.take().ok_or("Failed to open stderr")?);
 
-        let wait_timeout = Duration::from_secs(bg_cfg.wait_timeout_s);
+        let wait_timeout = Duration::from_secs(bg_cfg.wait_timeout);
 
         let stdout_out: String;
         let stderr_out: String;
