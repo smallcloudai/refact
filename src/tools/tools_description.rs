@@ -16,7 +16,7 @@ use crate::integrations::integr_gitlab::ToolGitlab;
 use crate::integrations::integr_pdb::ToolPdb;
 use crate::integrations::integr_chrome::ToolChrome;
 use crate::integrations::integr_postgres::ToolPostgres;
-use crate::tools::tool_custom::ToolCustom;
+use crate::tools::tool_custom::{ToolCustom, CustomCMDLineTool};
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -116,20 +116,38 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
     }
 
-    let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await.unwrap_or_default();
-    for (c_name, c_cmd_tool) in custom_tools_dict {
-        let tool = Arc::new(AMutex::new(Box::new(
-            ToolCustom {
-                name: c_name.clone(),
-                parameters: c_cmd_tool.parameters,
-                parameters_required: c_cmd_tool.parameters_required,
-                command: c_cmd_tool.command,
-                blocking: c_cmd_tool.blocking,
-                background: c_cmd_tool.background,
-            }
-        ) as Box<dyn Tool + Send>));
-        tools_all.insert(c_name, tool);
-    }
+    // let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await.unwrap_or_default();
+    // for (c_name, c_cmd_tool) in custom_tools_dict {
+    //     let tool = Arc::new(AMutex::new(Box::new(
+    //         ToolCustom {
+    //             name: c_name.clone(),
+    //             parameters: c_cmd_tool.parameters,
+    //             parameters_required: c_cmd_tool.parameters_required,
+    //             command: c_cmd_tool.command,
+    //             blocking: c_cmd_tool.blocking,
+    //             background: c_cmd_tool.background,
+    //         }
+    //     ) as Box<dyn Tool + Send>));
+    //     tools_all.insert(c_name, tool);
+    // }
+
+    // pub async fn get_custom_cmdline_tools(
+    //   gcx: Arc<ARwLock<GlobalContext>>,
+    // ) -> Result<IndexMap<String, CustomCMDLineTool>, String> {
+    //   let tconfig = crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true).await?;
+    //   let mut tools_dict = tconfig.custom_cmdline_tools.clone();
+    //   for (_, tool) in tools_dict.iter_mut() {
+    //       if tool.background.is_some() {
+    //           tool.description = format!("{}. Runs in background", tool.description);
+    //           tool.parameters.push(AtParamDict {
+    //               name: "action".to_string(),
+    //               param_type: "string".to_string(),
+    //               description: "one of ['status', 'restart', 'stop']; default: 'start'".to_string(),
+    //           });
+    //       }
+    //   }
+    //   Ok(tools_dict)
+    // }
 
     let mut filtered_tools = IndexMap::new();
     for (tool_name, tool_arc) in tools_all {
@@ -332,6 +350,7 @@ tools:
     parameters_required:
       - "command"
 
+<<<<<<< HEAD
   - name: "postgres"
     agentic: true
     experimental: true
@@ -345,6 +364,8 @@ tools:
           CREATE INDEX my_index_users_email ON my_users (email);
     parameters_required:
       - "query"
+=======
+>>>>>>> 825db6f8 (custom_cmdline: remove from customization)
 "####;
 
 #[allow(dead_code)]
@@ -429,24 +450,6 @@ impl ToolDict {
     }
 }
 
-pub async fn get_custom_cmdline_tools(
-    gcx: Arc<ARwLock<GlobalContext>>,
-) -> Result<IndexMap<String, CustomCMDLineTool>, String> {
-    let tconfig = load_customization(gcx.clone(), true).await?;
-    let mut tools_dict = tconfig.custom_cmdline_tools.clone();
-    for (_, tool) in tools_dict.iter_mut() {
-        if tool.background.is_some() {
-            tool.description = format!("{}. Runs in background", tool.description);
-            tool.parameters.push(AtParamDict {
-                name: "action".to_string(),
-                param_type: "string".to_string(),
-                description: "one of ['status', 'restart', 'stop']; default: 'start'".to_string(),
-            });
-        }
-    }
-    Ok(tools_dict)
-}
-
 pub async fn tool_description_list_from_yaml(
     gcx: Arc<ARwLock<GlobalContext>>,
     turned_on: &Vec<String>,
@@ -458,6 +461,7 @@ pub async fn tool_description_list_from_yaml(
     let mut tools = vec![];
     tools.extend(at_dict.tools.iter().cloned());
 
+<<<<<<< HEAD
     let tconfig = load_customization(gcx.clone(), true).await?;
     // let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await?;
     // for (c_name, c_cmd_tool) in tconfig.custom_cmdline_tools {
@@ -465,6 +469,13 @@ pub async fn tool_description_list_from_yaml(
         let c_tool_dict = c_cmd_tool.into_tool_dict(c_name);
         tools.push(c_tool_dict);
     }
+=======
+    // let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await?;
+    // for (c_name, c_cmd_tool) in custom_tools_dict {
+    //     let c_tool_dict = c_cmd_tool.into_tool_dict(c_name);
+    //     tools.push(c_tool_dict);
+    // }
+>>>>>>> 825db6f8 (custom_cmdline: remove from customization)
 
     Ok(tools.iter()
         .filter(|x| turned_on.contains(&x.name) && (allow_experimental || !x.experimental))

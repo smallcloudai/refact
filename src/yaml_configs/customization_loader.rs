@@ -7,7 +7,6 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, SubchatParameters};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
-use crate::tools::tools_description::{AtParamDict, ToolDict};
 use crate::yaml_configs::customization_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML;
 
 
@@ -21,8 +20,6 @@ pub struct CustomizationYaml {
     pub toolbox_commands: IndexMap<String, ToolboxCommand>,
     #[serde(default)]
     pub code_lens: IndexMap<String, CodeLensCommand>,
-    #[serde(default)]
-    pub custom_cmdline_tools: IndexMap<String, CustomCMDLineTool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -58,45 +55,6 @@ pub struct CodeLensCommand {
     pub new_tab: bool,
     #[serde(default)]
     pub messages: Vec<ChatMessage>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CustomCMDLineTool {
-    pub description: String,
-    pub parameters: Vec<AtParamDict>,
-    pub parameters_required: Vec<String>,
-    pub command: String,
-    #[serde(default)]
-    pub blocking: Option<CustomCMDLineToolBlockingCfg>,
-    #[serde(default)]
-    pub background: Option<CustomCMDLineToolBackgroundCfg>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CustomCMDLineToolBlockingCfg {
-    pub timeout_s: u64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CustomCMDLineToolBackgroundCfg {
-    #[serde(default)]
-    pub wait_port: Option<u16>,
-    #[serde(default)]
-    pub wait_keyword: Option<String>,
-    pub wait_timeout_s: u64,
-}
-
-impl CustomCMDLineTool {
-    pub fn into_tool_dict(&self, name: String) -> ToolDict {
-        ToolDict {
-            name,
-            agentic: true,
-            experimental: false,
-            description: self.description.clone(),
-            parameters: self.parameters.clone(),
-            parameters_required: self.parameters_required.clone(),
-        }
-    }
 }
 
 fn _extract_mapping_values(mapping: &Option<&serde_yaml::Mapping>, variables: &mut HashMap<String, String>) {
@@ -191,12 +149,12 @@ fn load_and_mix_with_users_config(
     work_config.system_prompts.extend(caps_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.toolbox_commands.extend(caps_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.code_lens.extend(caps_config.code_lens.iter().map(|(k, v)| (k.clone(), v.clone())));
-    work_config.custom_cmdline_tools.extend(caps_config.custom_cmdline_tools.iter().map(|(k, v)| (k.clone(), v.clone())));
+    // work_config.custom_cmdline_tools.extend(caps_config.custom_cmdline_tools.iter().map(|(k, v)| (k.clone(), v.clone())));
 
     work_config.system_prompts.extend(user_config.system_prompts.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.toolbox_commands.extend(user_config.toolbox_commands.iter().map(|(k, v)| (k.clone(), v.clone())));
     work_config.code_lens.extend(user_config.code_lens.iter().map(|(k, v)| (k.clone(), v.clone())));
-    work_config.custom_cmdline_tools.extend(user_config.custom_cmdline_tools.iter().map(|(k, v)| (k.clone(), v.clone())));
+    // work_config.custom_cmdline_tools.extend(user_config.custom_cmdline_tools.iter().map(|(k, v)| (k.clone(), v.clone())));
 
     let filtered_system_prompts = work_config.system_prompts
         .iter()

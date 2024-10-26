@@ -10,15 +10,54 @@ use tracing::{info, warn};
 use tokio::process::{Command, Child, ChildStdout, ChildStderr};
 use tokio::time::{timeout, Duration, sleep, Instant};
 use std::process::Stdio;
+use serde::{Serialize, Deserialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::{AtParamDict, Tool};
+use crate::tools::tools_description::{AtParamDict, Tool, ToolDict};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::{kill_process_and_children, read_until_token_or_timeout, wait_until_port_gets_occupied};
 use crate::integrations::sessions::IntegrationSession;
-use crate::yaml_configs::customization_loader::{CustomCMDLineToolBackgroundCfg, CustomCMDLineToolBlockingCfg};
 
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomCMDLineTool {
+    pub description: String,
+    pub parameters: Vec<AtParamDict>,
+    pub parameters_required: Vec<String>,
+    pub command: String,
+    #[serde(default)]
+    pub blocking: Option<CustomCMDLineToolBlockingCfg>,
+    #[serde(default)]
+    pub background: Option<CustomCMDLineToolBackgroundCfg>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomCMDLineToolBlockingCfg {
+    pub timeout_s: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CustomCMDLineToolBackgroundCfg {
+    #[serde(default)]
+    pub wait_port: Option<u16>,
+    #[serde(default)]
+    pub wait_keyword: Option<String>,
+    pub wait_timeout_s: u64,
+}
+
+impl CustomCMDLineTool {
+    pub fn into_tool_dict(&self, name: String) -> ToolDict {
+        ToolDict {
+            name,
+            agentic: true,
+            experimental: false,
+            description: self.description.clone(),
+            parameters: self.parameters.clone(),
+            parameters_required: self.parameters_required.clone(),
+        }
+    }
+}
 
 pub struct ToolCustom {
     pub name: String,
@@ -290,3 +329,7 @@ impl Tool for ToolCustom {
         vec![]
     }
 }
+
+
+// #[serde(default)]
+// pub custom_cmdline_tools: IndexMap<String, CustomCMDLineTool>,
