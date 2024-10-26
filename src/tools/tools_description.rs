@@ -350,7 +350,6 @@ tools:
     parameters_required:
       - "command"
 
-<<<<<<< HEAD
   - name: "postgres"
     agentic: true
     experimental: true
@@ -364,8 +363,7 @@ tools:
           CREATE INDEX my_index_users_email ON my_users (email);
     parameters_required:
       - "query"
-=======
->>>>>>> 825db6f8 (custom_cmdline: remove from customization)
+
 "####;
 
 #[allow(dead_code)]
@@ -461,21 +459,18 @@ pub async fn tool_description_list_from_yaml(
     let mut tools = vec![];
     tools.extend(at_dict.tools.iter().cloned());
 
-<<<<<<< HEAD
-    let tconfig = load_customization(gcx.clone(), true).await?;
+    // let tconfig = load_customization(gcx.clone(), true).await?;
     // let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await?;
     // for (c_name, c_cmd_tool) in tconfig.custom_cmdline_tools {
-    for (c_name, c_cmd_tool) in custom_tools_dict {
-        let c_tool_dict = c_cmd_tool.into_tool_dict(c_name);
-        tools.push(c_tool_dict);
-    }
-=======
+    // for (c_name, c_cmd_tool) in custom_tools_dict {
+    //     let c_tool_dict = c_cmd_tool.into_tool_dict(c_name);
+    //     tools.push(c_tool_dict);
+    // }
     // let custom_tools_dict = get_custom_cmdline_tools(gcx.clone()).await?;
     // for (c_name, c_cmd_tool) in custom_tools_dict {
     //     let c_tool_dict = c_cmd_tool.into_tool_dict(c_name);
     //     tools.push(c_tool_dict);
     // }
->>>>>>> 825db6f8 (custom_cmdline: remove from customization)
 
     Ok(tools.iter()
         .filter(|x| turned_on.contains(&x.name) && (allow_experimental || !x.experimental))
