@@ -12,6 +12,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_github::ToolGithub;
+use crate::integrations::integr_gitlab::ToolGitlab;
 use crate::integrations::integr_pdb::ToolPdb;
 use crate::integrations::integr_chrome::ToolChrome;
 use crate::integrations::integr_postgres::ToolPostgres;
@@ -100,6 +101,9 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Inde
         // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
         if let Some(github_tool) = ToolGithub::new_if_configured(&integrations_value) {
             tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(github_tool) as Box<dyn Tool + Send>)));
+        }
+        if let Some(gitlab_tool) = ToolGitlab::new_if_configured(&integrations_value) {
+            tools_all.insert("gitlab".to_string(), Arc::new(AMutex::new(Box::new(gitlab_tool) as Box<dyn Tool + Send>)));
         }
         if let Some(pdb_tool) = ToolPdb::new_if_configured(&integrations_value) {
             tools_all.insert("pdb".to_string(), Arc::new(AMutex::new(Box::new(pdb_tool) as Box<dyn Tool + Send>)));
@@ -269,6 +273,21 @@ tools:
       - name: "command"
         type: "string"
         description: 'Examples:\ngh issue create --body "hello world" --title "Testing gh integration"\ngh issue list --author @me --json number,title,updatedAt,url\n'
+    parameters_required:
+      - "project_dir"
+      - "command"
+
+  - name: "gitlab"
+    agentic: true
+    experimental: true
+    description: "Access to glab command line command, to fetch issues, review PRs."
+    parameters:
+      - name: "project_dir"
+        type: "string"
+        description: "Look at system prompt for location of version control (.git folder) of the active file."
+      - name: "command"
+        type: "string"
+        description: 'Examples:\nglab issue create --description "hello world" --title "Testing glab integration"\nglab issue list --author @me\n'
     parameters_required:
       - "project_dir"
       - "command"

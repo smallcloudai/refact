@@ -1,4 +1,5 @@
 pub mod integr_github;
+pub mod integr_gitlab;
 pub mod integr_pdb;
 pub mod integr_chrome;
 pub mod sessions;
@@ -14,15 +15,23 @@ pub const INTEGRATIONS_DEFAULT_YAML: &str = r#"# This file is used to configure 
 
 commands_need_confirmation:
   - "gh * delete*"
+  - "glab * delete*"
   - "psql*[!SELECT]*"
 commands_deny:
   - "gh auth token*"
+  - "glab auth token*"
 
 
 # --- GitHub integration ---
 #github:
-#  gh_binary_path: "/opt/homebrew/bin/gh"  # Uncomment to set a custom path for the gh binary, defaults to "gh"
-#  GH_TOKEN: "GH_xxx"                      # To get a token, check out https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+#   gh_binary_path: "/opt/homebrew/bin/gh"  # Uncomment to set a custom path for the gh binary, defaults to "gh"
+#   GH_TOKEN: "GH_xxx"                      # To get a token, check out https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+
+
+# --- GitLab integration ---
+#gitlab:
+#   glab_binary_path: "/opt/homebrew/bin/glab"  # Uncomment to set a custom path for the glab binary, defaults to "glab"
+#   GITLAB_TOKEN: "GL_xxx"                      # To get a token, check out https://docs.gitlab.com/ee/user/profile/personal_access_tokens
 
 
 # --- Pdb integration ---
