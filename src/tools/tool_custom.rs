@@ -7,10 +7,9 @@ use async_trait::async_trait;
 use regex::Regex;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tracing::{info, warn};
-use tokio::process::{Command, Child, ChildStdout, ChildStderr};
 use tokio::time::{timeout, Duration, sleep, Instant};
 use std::process::Stdio;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{AtParamDict, Tool, ToolDict};
@@ -20,75 +19,80 @@ use crate::integrations::process_io_utils::{kill_process_and_children, read_unti
 use crate::integrations::sessions::IntegrationSession;
 
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CustomCMDLineTool {
-    pub description: String,
-    pub parameters: Vec<AtParamDict>,
-    pub parameters_required: Vec<String>,
-    pub command: String,
-    #[serde(default)]
-    pub blocking: Option<CustomCMDLineToolBlockingCfg>,
-    #[serde(default)]
-    pub background: Option<CustomCMDLineToolBackgroundCfg>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CustomCMDLineToolBlockingCfg {
+#[derive(Deserialize, Clone)]
+pub struct CmdlineToolBlocking {
     pub timeout_s: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CustomCMDLineToolBackgroundCfg {
+#[derive(Deserialize, Clone)]
+pub struct CmdlineToolBackground {
     #[serde(default)]
     pub wait_port: Option<u16>,
     #[serde(default)]
     pub wait_keyword: Option<String>,
+    #[serde(default)]
     pub wait_timeout_s: u64,
 }
 
-impl CustomCMDLineTool {
+#[derive(Deserialize)]
+pub struct CmdlineToolConfig {
+    #[serde(alias="description")]
+    pub cfg_description: String,
+    #[serde(default, alias="parameters")]
+    pub cfg_parameters: Vec<AtParamDict>,
+    #[serde(default, alias="parameters_required")]
+    pub cfg_parameters_required: Option<Vec<String>>,
+    #[serde(default, alias="command")]
+    pub cfg_command: String,
+    #[serde(alias="workdir")]
+    pub cfg_command_workdir: String,
+    #[serde(default, alias="blocking")]
+    pub blocking: Option<CmdlineToolBlocking>,
+    #[serde(default, alias="background")]
+    pub background: Option<CmdlineToolBackground>,
+}
+
+pub struct ToolCmdline {
+    pub name: String,
+    pub cfg: CmdlineToolConfig,
+}
+
+
+impl ToolCmdline {
     pub fn into_tool_dict(&self, name: String) -> ToolDict {
+        let req = self.cfg.cfg_parameters_required.clone().unwrap_or_else(|| {
+            self.cfg.cfg_parameters.iter().map(|param| param.name.clone()).collect()
+        });
         ToolDict {
             name,
             agentic: true,
             experimental: false,
-            description: self.description.clone(),
-            parameters: self.parameters.clone(),
-            parameters_required: self.parameters_required.clone(),
+            description: self.cfg.cfg_description.clone(),
+            parameters: self.cfg.cfg_parameters.clone(),
+            parameters_required: req,
         }
     }
 }
 
-pub struct ToolCustom {
-    pub name: String,
-    #[allow(dead_code)]
-    pub parameters: Vec<AtParamDict>,
-    pub parameters_required: Vec<String>,
-    pub command: String,
-    pub blocking: Option<CustomCMDLineToolBlockingCfg>,
-    pub background: Option<CustomCMDLineToolBackgroundCfg>,
+pub struct CmdlineSession {
+    cmdline_string: String,
+    cmdline_process: tokio::process::Child,
+    // #[allow(dead_code)]
+    cmdline_stdout: BufReader<tokio::process::ChildStdout>,
+    // #[allow(dead_code)]
+    cmdline_stderr: BufReader<tokio::process::ChildStderr>,
 }
 
-pub struct ToolSession {
-    process: Child,
-    command: String,
-    #[allow(dead_code)]
-    stdout: BufReader<ChildStdout>,
-    #[allow(dead_code)]
-    stderr: BufReader<ChildStderr>,
-}
-
-impl IntegrationSession for ToolSession {
+impl IntegrationSession for CmdlineSession {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
     fn is_expired(&self) -> bool { false }
 }
 
-fn replace_magics_from_command(
+fn replace_magics_inside_command(
     command: &str,
     args_str: &HashMap<String, String>,
-    required_params: &Vec<String>
 ) -> Result<String, String> {
     let mut command_clone = command.to_string();
     for (key, value) in args_str {
@@ -96,25 +100,27 @@ fn replace_magics_from_command(
         let re = Regex::new(&regex::escape(&pattern)).unwrap();
         command_clone = re.replace_all(&command_clone, value.as_str()).to_string();
     }
-
-    for param in required_params {
-        let pattern = format!("%{}%", param);
-        if command_clone.contains(&pattern) {
-            return Err(format!("Required parameter '{}' is missing in the arguments", param));
-        }
-    }
     Ok(command_clone)
 }
 
-async fn execute_command_with_timeout(
+async fn execute_blocking_command(
     command: &str,
-    cfg: CustomCMDLineToolBlockingCfg,
+    cfg: CmdlineToolBlocking,
+    cfg_command_workdir: &String,
 ) -> Result<String, String> {
     info!("EXEC: {command}");
+    let command_args = shell_words::split(command)
+        .map_err(|e| format!("Failed to parse command: {}", e))?;
+    if command_args.is_empty() {
+        return Err("Command is empty after parsing".to_string());
+    }
     let command_future = async {
-        let output = Command::new("sh")
-            .arg("-c")
-            .arg(command)
+        let mut cmd = tokio::process::Command::new(&command_args[0]);
+        if command_args.len() > 1 {
+            cmd.args(&command_args[1..]);
+        }
+        cmd.current_dir(cfg_command_workdir);
+        let output = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
@@ -138,14 +144,16 @@ async fn execute_command_with_timeout(
     };
 
     let timeout_duration = Duration::from_secs(cfg.timeout_s);
-    timeout(timeout_duration, command_future).await
-        .unwrap_or_else(|_| Err("Command execution timed out".to_string()))
+    timeout(
+        timeout_duration,
+        command_future
+    ).await.unwrap_or_else(|_| Err("Command execution timed out".to_string()))
 }
 
 async fn get_stdout_and_stderr(
     timeout_ms: u64,
-    stdout: &mut BufReader<ChildStdout>,
-    stderr: &mut BufReader<ChildStderr>,
+    stdout: &mut BufReader<tokio::process::ChildStdout>,
+    stderr: &mut BufReader<tokio::process::ChildStderr>,
     token: Option<String>,
 ) -> Result<(String, String), String> {
     let token = token.unwrap_or_default();
@@ -156,8 +164,8 @@ async fn get_stdout_and_stderr(
 
 async fn read_until_text_in_output_or_timeout(
     timeout: Duration,
-    stdout: &mut BufReader<ChildStdout>,
-    stderr: &mut BufReader<ChildStderr>,
+    stdout: &mut BufReader<tokio::process::ChildStdout>,
+    stderr: &mut BufReader<tokio::process::ChildStderr>,
     text: &str,
 ) -> Result<(String, String), String> {
 
@@ -181,111 +189,105 @@ async fn read_until_text_in_output_or_timeout(
     Err(format!("Timeout reached. Output:\nSTDOUT:{}\nSTDERR:\n{}", stdout_text, stderr_text))
 }
 
-async fn start_session(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    session_key: &str,
-    command: String,
-    cfg: &CustomCMDLineToolBackgroundCfg,
-) -> Result<String, String> {
-    info!("EXEC: {command}");
-    let mut process = Command::new("sh")
-       .arg("-c")
-       .arg(command.clone())
-       .stdout(Stdio::piped())
-       .stderr(Stdio::piped())
-       .spawn()
-       .map_err(|e| format!("failed to create process: {e}"))?;
-
-    let mut stdout = BufReader::new(process.stdout.take().ok_or("Failed to open stdout")?);
-    let mut stderr = BufReader::new(process.stderr.take().ok_or("Failed to open stderr")?);
-
-    let wait_timeout = Duration::from_secs(cfg.wait_timeout_s);
-
-    let stdout_out: String;
-    let stderr_out: String;
-
-    // todo: does not work for npm run somewhy
-    if let Some(wait_port) = cfg.wait_port {
-        let resp = wait_until_port_gets_occupied(wait_port, &wait_timeout).await;
-        (stdout_out, stderr_out) = get_stdout_and_stderr(100, &mut stdout, &mut stderr, None).await?;
-        resp?;
-    } else {
-        (stdout_out, stderr_out) = read_until_text_in_output_or_timeout(wait_timeout, &mut stdout, &mut stderr, cfg.wait_keyword.clone().unwrap_or_default().as_str()).await?;
-    }
-
-    let mut out = String::new();
-    if !stdout_out.is_empty() {
-        out.push_str(&format!("STDOUT:\n{stdout_out}"));
-    }
-    if !stderr_out.is_empty() {
-        out.push_str(&format!("STDERR:\n{stderr_out}"));
-    }
-
-    let exit_status = process.try_wait().map_err(|e| e.to_string())?;
-    if exit_status.is_some() {
-        let status = exit_status.unwrap().code().unwrap();
-        warn!("tool process exited with status: {:?}. Output:\n{out}", status);
-        return Err(format!("tool process exited with status: {:?}; Output:\n{out}", status));
-    }
-
-    let session: Box<dyn IntegrationSession> = Box::new(ToolSession {
-        process,
-        command,
-        stdout,
-        stderr
-    });
-    gcx.write().await.integration_sessions.insert(session_key.to_string(), Arc::new(AMutex::new(session)));
-
-    Ok(out)
-}
-
 async fn execute_background_command(
     gcx: Arc<ARwLock<GlobalContext>>,
-    tool_name: &str,
+    service_name: &str,
     command: &str,
-    cfg: CustomCMDLineToolBackgroundCfg,
+    bg_cfg: CmdlineToolBackground,
     action: &str,
 ) -> Result<String, String> {
-    let session_key = format!("custom_service_{tool_name}");
+    let session_key = format!("custom_service_{service_name}");
     let session_mb = gcx.read().await.integration_sessions.get(&session_key).cloned();
     let mut command = command.to_string();
 
-    if !(action == "restart" || action == "stop" || action == "status")
-        && session_mb.is_some() {
-        return Err(format!("cannot execute tool '{tool_name}'. Reason: tool '{tool_name}' is already running.\n"));
-    }
-    if session_mb.is_none() && (action == "restart" || action == "stop" || action == "status") {
-        return Err(format!("cannot execute this action on tool '{tool_name}'. Reason: tool '{tool_name}' is not running.\n"));
-    }
+    // XXX: this needs re-thinking
+
+    // if session_mb.is_some() && action == "start" {
+    //     return Ok(format!("the service '{service_name}' is running"));
+    // }
+
+    // if session_mb.is_none() && action == "status" {
+    //     return Err(format!("cannot execute this action on service '{service_name}'. Reason: service '{service_name}' is not running.\n"));
+    // }
 
     if action == "restart" || action == "stop" || action == "status" {
         let session = session_mb.clone().unwrap();
         let mut session_lock = session.lock().await;
-        let tool_session = session_lock.as_any_mut().downcast_mut::<ToolSession>()
-            .ok_or("Failed to downcast tool session".to_string())?;
+        let session = session_lock.as_any_mut().downcast_mut::<CmdlineSession>()
+            .ok_or("Failed to downcast CmdlineSession".to_string())?;
 
         if action == "status" {
-            return Ok(format!("Tool '{tool_name}' is running.\n"));
+            return Ok(format!("service '{service_name}' is running.\n"));
         }
-        kill_process_and_children(&tool_session.process, tool_name).await
-            .map_err(|e| format!("Failed to kill tool '{tool_name}'. Error: {}", e))?;
-        command = tool_session.command.clone();
+        kill_process_and_children(&session.cmdline_process, service_name).await
+            .map_err(|e| format!("Failed to kill service '{service_name}'. Error: {}", e))?;
+        command = session.cmdline_string.clone();
         drop(session_lock);
         gcx.write().await.integration_sessions.remove(&session_key);
 
         if action == "stop" {
-            return Ok(format!("Tool '{tool_name}' is stopped.\n"));
+            return Ok(format!("service '{service_name}' is stopped.\n"));
         }
     }
 
-    let output = start_session(gcx, &session_key, command, &cfg).await
-        .map_err(|e| format!("Failed to start tool '{tool_name}'. Error: {}", e))?;
+    let output = {
+        info!("EXEC: {command}");
+        let mut process = tokio::process::Command::new("sh")
+           .arg("-c")
+           .arg(command.clone())
+           .stdout(Stdio::piped())
+           .stderr(Stdio::piped())
+           .spawn()
+           .map_err(|e| format!("failed to create process: {e}"))?;
 
-    return Ok(format!("Tool '{tool_name}' is up and running in a background:\n{output}"));
+        let mut stdout = BufReader::new(process.stdout.take().ok_or("Failed to open stdout")?);
+        let mut stderr = BufReader::new(process.stderr.take().ok_or("Failed to open stderr")?);
+
+        let wait_timeout = Duration::from_secs(bg_cfg.wait_timeout_s);
+
+        let stdout_out: String;
+        let stderr_out: String;
+
+        // todo: does not work for npm run
+        if let Some(wait_port) = bg_cfg.wait_port {
+            let resp = wait_until_port_gets_occupied(wait_port, &wait_timeout).await;
+            (stdout_out, stderr_out) = get_stdout_and_stderr(100, &mut stdout, &mut stderr, None).await?;
+            resp?;
+        } else {
+            (stdout_out, stderr_out) = read_until_text_in_output_or_timeout(wait_timeout, &mut stdout, &mut stderr, bg_cfg.wait_keyword.clone().unwrap_or_default().as_str()).await?;
+        }
+
+        let mut out = String::new();
+        if !stdout_out.is_empty() {
+            out.push_str(&format!("STDOUT:\n{stdout_out}"));
+        }
+        if !stderr_out.is_empty() {
+            out.push_str(&format!("STDERR:\n{stderr_out}"));
+        }
+
+        let exit_status = process.try_wait().map_err(|e| e.to_string())?;
+        if exit_status.is_some() {
+            let status = exit_status.unwrap().code().unwrap();
+            warn!("service process exited with status: {:?}. Output:\n{out}", status);
+            return Err(format!("service process exited with status: {:?}; Output:\n{out}", status));
+        }
+
+        let session: Box<dyn IntegrationSession> = Box::new(CmdlineSession {
+            cmdline_process: process,
+            cmdline_string: command,
+            cmdline_stdout: stdout,
+            cmdline_stderr: stderr,
+        });
+        gcx.write().await.integration_sessions.insert(session_key.to_string(), Arc::new(AMutex::new(session)));
+
+        out
+    };
+
+    return Ok(format!("service '{service_name}' is up and running in a background:\n{output}"));
 }
 
 #[async_trait]
-impl Tool for ToolCustom {
+impl Tool for ToolCmdline {
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -294,22 +296,40 @@ impl Tool for ToolCustom {
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
 
-        let args_str: HashMap<String, String> = args.iter()
-            .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
-            .collect();
+        let mut args_str: HashMap<String, String> = HashMap::new();
+        let valid_params: Vec<String> = self.cfg.cfg_parameters.iter().map(|p| p.name.clone()).collect();
 
-        let command = replace_magics_from_command(self.command.as_str(), &args_str, &self.parameters_required)?;
+        for (k, v) in args.iter() {
+            if !valid_params.contains(k) {
+                return Err(format!("Unexpected argument `{}`", k));
+            }
+            match v {
+                Value::String(s) => { args_str.insert(k.clone(), s.clone()); },
+                _ => return Err(format!("argument `{}` is not a string: {:?}", k, v)),
+            }
+        }
 
-        let resp = if self.blocking.is_some() {
-            let blocking_cfg = self.blocking.clone().unwrap();
-            execute_command_with_timeout(&command, blocking_cfg).await
-        } else if self.background.is_some() {
+        for param in &self.cfg.cfg_parameters {
+            if self.cfg.cfg_parameters_required.as_ref().map_or(false, |req| req.contains(&param.name)) && !args_str.contains_key(&param.name) {
+                return Err(format!("Missing required argument `{}`", param.name));
+            }
+        }
+
+        let command = replace_magics_inside_command(
+            self.cfg.cfg_command.as_str(),
+            &args_str,
+        )?;
+
+        let resp = if let Some(blocking_cfg) = &self.cfg.blocking {
+            execute_blocking_command(&command, blocking_cfg.clone(), &self.cfg.cfg_command_workdir).await
+
+        } else if let Some(background_cfg) = &self.cfg.background {
             let action = args_str.get("action").cloned().unwrap_or("start".to_string());
             if !["start", "restart", "stop", "status"].contains(&action.as_str()) {
-                return Err("Too call is invalid. Param 'action' must be one for 'start','restart','stop','status'. Try again".to_string());
+                return Err("Tool call is invalid. Param 'action' must be one of 'start', 'restart', 'stop', 'status'. Try again".to_string());
             }
-            let background_cfg = self.background.clone().unwrap();
-            execute_background_command(gcx, &self.name, &command, background_cfg, action.as_str()).await
+            execute_background_command(gcx, &self.name, &command, background_cfg.clone(), action.as_str()).await
+
         } else {
             Err(format!("Custom tool '{}' is invalid. It must have one of 'blocking' or 'background' param.", self.name))
         }?;
