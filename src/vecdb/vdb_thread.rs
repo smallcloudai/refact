@@ -193,7 +193,7 @@ async fn vectorize_thread(
         let mut work_on_one: Option<MessageToVecdbThread> = None;
         let current_time = SystemTime::now();
         let mut vstatus_changed = false;
-        let todo_len = {
+        {
             let mut vecdb_todo_locked = vecdb_todo.lock().await;
             while let Some(msg) = vecdb_todo_locked.pop_front() {
                 match msg {
@@ -233,8 +233,7 @@ async fn vectorize_thread(
                     vstatus_changed = true;
                 }
             }
-            vecdb_todo_locked.len()
-        };
+        }
         if vstatus_changed {
             vstatus_notify.notify_waiters();
         }
