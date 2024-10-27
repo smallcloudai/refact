@@ -41,7 +41,7 @@ pub struct VecDbStatus {
     pub vectors_made_since_start: usize,
     pub db_size: usize,
     pub db_cache_size: usize,
-    pub state: String,   // "starting", "parsing", "done"
+    pub state: String,   // "starting", "parsing", "done", "cooldown"
     pub queue_additions: bool,
     pub vecdb_max_files_hit: bool,
     pub vecdb_errors: IndexMap<String, usize>,

@@ -174,7 +174,7 @@ impl VecDBHandler {
         }
 
         for delete_query in delete_queries {
-            tracing::info!("delete: {}", delete_query.as_str());
+            // tracing::info!("delete: {}", delete_query.as_str());
             match self.data_table.delete(delete_query.as_str()).await {
                 Ok(_) => {}
                 Err(err) => {

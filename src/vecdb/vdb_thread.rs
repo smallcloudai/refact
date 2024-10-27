@@ -161,6 +161,7 @@ async fn vectorize_thread(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) {
     let mut files_total: usize = 0;
+    let mut files_unprocessed: usize;
     let mut reported_unprocessed: usize = 0;
     let mut run_actual_model_on_these: Vec<SplitResult> = vec![];
     let mut ready_to_vecdb: Vec<VecdbRecord> = vec![];
@@ -191,6 +192,7 @@ async fn vectorize_thread(
     loop {
         let mut work_on_one: Option<MessageToVecdbThread> = None;
         let current_time = SystemTime::now();
+        let mut vstatus_changed = false;
         let todo_len = {
             let mut vecdb_todo_locked = vecdb_todo.lock().await;
             while let Some(msg) = vecdb_todo_locked.pop_front() {
@@ -214,28 +216,24 @@ async fn vectorize_thread(
                     last_updated.remove(&doc);
                 }
             }
-            vecdb_todo_locked.len()
-        };
-        let files_unprocessed = todo_len + last_updated.len();
-
-        let vstatus_changed = {
-            let mut state_changed = false;
+            files_unprocessed = vecdb_todo_locked.len() + last_updated.len() + if work_on_one.is_some() { 1 } else { 0 };
+            files_total = files_total.max(files_unprocessed);
             {
+                // two locks in sequence, vecdb_todo.lock -> vstatus.lock
                 let mut vstatus_locked = vstatus.lock().await;
-                if files_unprocessed == 0 {
-                    if vstatus_locked.queue_additions {
-                        vstatus_locked.queue_additions = false;
-                        state_changed = true;
-                    }
-                    // will set "done" but later
-                } else {
-                    if vstatus_locked.state != "parsing" {
-                        vstatus_locked.state = "parsing".to_string();
-                        state_changed = true;
-                    }
+                vstatus_locked.files_unprocessed = files_unprocessed;
+                vstatus_locked.files_total = files_total;
+                vstatus_locked.queue_additions = false;
+                if work_on_one.is_some() && vstatus_locked.state != "parsing" {
+                    vstatus_locked.state = "parsing".to_string();
+                    vstatus_changed = true;
+                }
+                if work_on_one.is_none() && files_unprocessed > 0 && vstatus_locked.state != "cooldown" {
+                    vstatus_locked.state = "cooldown".to_string();
+                    vstatus_changed = true;
                 }
             }
-            state_changed
+            vecdb_todo_locked.len()
         };
         if vstatus_changed {
             vstatus_notify.notify_waiters();
@@ -279,15 +277,6 @@ async fn vectorize_thread(
             match work_on_one {
                 Some(MessageToVecdbThread::RegularDocument(doc)) |
                 Some(MessageToVecdbThread::ImmediatelyRegularDocument(doc)) => {
-                    {
-                        let mut vstatus_locked = vstatus.lock().await;
-                        vstatus_locked.files_unprocessed = files_unprocessed;
-                        if files_unprocessed > files_total {
-                            files_total = files_unprocessed;
-                        }
-                        vstatus_locked.files_total = files_total;
-                    }
-                    vstatus_notify.notify_waiters();
                     doc
                 }
                 Some(MessageToVecdbThread::MemoriesSomethingDirty()) => {
@@ -311,13 +300,14 @@ async fn vectorize_thread(
                         let mut vstatus_locked = vstatus.lock().await;
                         let done = vstatus_locked.state == "done";
                         if !done {
+                            files_total = 0;
                             vstatus_locked.files_unprocessed = 0;
                             vstatus_locked.files_total = 0;
                             vstatus_locked.state = "done".to_string();
                             info!(
-                                    "vectorizer since start {} API calls, {} vectors",
-                                    vstatus_locked.requests_made_since_start, vstatus_locked.vectors_made_since_start
-                                );
+                                "vectorizer since start {} API calls, {} vectors",
+                                vstatus_locked.requests_made_since_start, vstatus_locked.vectors_made_since_start
+                            );
                         }
                         done
                     };
@@ -470,7 +460,7 @@ pub async fn vectorizer_enqueue_dirty_memory(
         )
     };
     {
-        // CAREFUL: two locks, qlocked -> vstatus_locked
+        // two locks in sequence, vecdb_todo.lock -> vstatus.lock
         let mut qlocked = vecdb_todo.lock().await;
         qlocked.push_back(MessageToVecdbThread::MemoriesSomethingDirty());
         vstatus.lock().await.queue_additions = true;
@@ -526,6 +516,7 @@ pub async fn vectorizer_enqueue_files(
     }
     {
         {
+            // two locks in sequence, vecdb_todo.lock -> vstatus.lock
             let mut vecdb_todo_locked = vecdb_todo.lock().await;
             for doc in documents.iter() {
                 if process_immediately {
@@ -534,9 +525,7 @@ pub async fn vectorizer_enqueue_files(
                     vecdb_todo_locked.push_back(MessageToVecdbThread::RegularDocument(doc.clone()));
                 }
             }
-            if process_immediately {
-                vstatus.lock().await.queue_additions = true;
-            }
+            vstatus.lock().await.queue_additions = true;
         }
         if process_immediately {
             vstatus_notify.notify_waiters();

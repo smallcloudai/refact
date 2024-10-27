@@ -364,7 +364,7 @@ pub async fn get_status(vec_db: Arc<AMutex<Option<VecDb>>>) -> Result<Option<Vec
         Err(err) => return Err(err.to_string())
     };
     if vstatus_copy.state == "done" && vstatus_copy.queue_additions {
-        vstatus_copy.state = "parsing".to_string();
+        vstatus_copy.state = "cooldown".to_string();
     }
     return Ok(Some(vstatus_copy));
 }
