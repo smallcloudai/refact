@@ -19,24 +19,6 @@ use crate::integrations::sessions::IntegrationSession;
 
 
 #[derive(Deserialize, Clone)]
-struct CmdlineToolBlocking {
-    #[serde(default = "_default_timeout")]
-    timeout: u64,
-}
-
-fn _default_timeout() -> u64 {
-    10
-}
-
-impl Default for CmdlineToolBlocking {
-    fn default() -> Self {
-        Self {
-            timeout: _default_timeout(),
-        }
-    }
-}
-
-#[derive(Deserialize, Clone)]
 struct CmdlineToolBackground {
     #[serde(default)]
     wait_port: Option<u16>,
@@ -53,8 +35,13 @@ struct CmdlineToolConfig {
     parameters_required: Option<Vec<String>>,
     command: String,
     command_workdir: String,
-    blocking: Option<CmdlineToolBlocking>,
+    #[serde(default = "_default_timeout")]
+    timeout: u64,
     background: Option<CmdlineToolBackground>,
+}
+
+fn _default_timeout() -> u64 {
+    10
 }
 
 pub struct ToolCmdline {
@@ -109,7 +96,7 @@ fn _replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
 
 async fn execute_blocking_command(
     command: &str,
-    cfg: CmdlineToolBlocking,
+    timeout: u64,
     command_workdir: &String,
 ) -> Result<String, String> {
     info!("EXEC: {command}");
@@ -153,7 +140,7 @@ async fn execute_blocking_command(
         Ok(res)
     };
 
-    let timeout_duration = Duration::from_secs(cfg.timeout);
+    let timeout_duration = Duration::from_secs(timeout);
     let result = tokio::time::timeout(timeout_duration, command_future).await;
 
     match result {
@@ -338,7 +325,7 @@ impl Tool for ToolCmdline {
             execute_background_command(gcx, &self.name, &command, background_cfg.clone(), action.as_str()).await
 
         } else {
-            execute_blocking_command(&command, self.cfg.blocking.clone().unwrap_or_else(|| CmdlineToolBlocking::default()), &workdir).await
+            execute_blocking_command(&command, self.cfg.timeout, &workdir).await
         }?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
