@@ -128,7 +128,6 @@ impl ContextAnyParser {
         let mut r = String::new();
         let lines: Vec<&str> = self.code.lines().collect();
         for (i, line) in lines.iter().enumerate() {
-            r.push_str(line);
             let mut usages_on_line = Vec::new();
             for (_, usage) in &self.usages {
                 if usage.uline == i {
@@ -154,6 +153,7 @@ impl ContextAnyParser {
                 r.push_str(format!("\n{}{} {}", indent, comment, usages_on_line.join(" ")).as_str());
             }
             r.push('\n');
+            r.push_str(line);
         }
         r
     }

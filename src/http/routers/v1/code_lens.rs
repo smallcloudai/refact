@@ -9,6 +9,7 @@ use url::Url;
 use crate::global_context::SharedGlobalContext;
 use crate::ast::ast_structs::AstDefinition;
 use crate::custom_error::ScratchError;
+use crate::ast::treesitter::structs::SymbolType;
 
 
 #[derive(Deserialize)]
@@ -105,11 +106,19 @@ pub async fn handle_v1_code_lens(
         } else {
             let line1 = def.full_line1();
             let line2 = def.full_line2();
+            let mut entity_char = 'D';
+            if def.symbol_type == SymbolType::VariableDefinition {
+                entity_char = '📦';
+            } else if def.symbol_type == SymbolType::StructDeclaration {
+                entity_char = '📂';
+            } else if def.symbol_type == SymbolType::FunctionDeclaration {
+                entity_char = '⭐';
+            }
             output.push(CodeLensOutput {
                 spath: "".to_string(),
                 line1,
                 line2,
-                debug_string: Some(format!("D({})", def.path_drop0()))
+                debug_string: Some(format!("{entity_char}({})", def.path_drop0()))
             });
             for u in def.usages.iter() {
                 let resolved = u.resolved_as.rsplit("::").take(2).collect::<Vec<&str>>().iter().rev().cloned().collect::<Vec<&str>>().join("::");

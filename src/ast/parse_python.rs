@@ -350,6 +350,7 @@ fn py_type_generic<'a>(cx: &mut ContextPy, node: Option<Node<'a>>, path: &Vec<St
     // type[generic_type[identifier[List]type_parameter[[type[generic_type[identifier[Optional]type_parameter[[type[identifier[Goat]]]]]]]]
     let node = node.unwrap();
     match node.kind() {
+        "none" => { format!("void") },
         "type" => { py_type_generic(cx, node.child(0), path, level+1) },
         "identifier" | "attribute" => {
             if let Some(a_type) = py_resolve_dotted_creating_usages(cx, &node, path, false) {
@@ -494,6 +495,11 @@ fn py_type_of_expr_creating_usages<'a>(cx: &mut ContextPy, node: Option<Node<'a>
             let _right_type = py_type_of_expr_creating_usages(cx, node.child_by_field_name("right"), path);
             let _op =  cx.ap.code[node.child_by_field_name("operator").unwrap().byte_range()].to_string();
             left_type
+        },
+        "unary_operator" | "not_operator" => {
+            // ignore "operator"
+            let arg_type = py_type_of_expr_creating_usages(cx, node.child_by_field_name("argument"), path);
+            arg_type
         },
         "integer" => { "int".to_string() },
         "float" => { "float".to_string() },
@@ -712,11 +718,12 @@ fn py_function<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>) {
                     type_resolved = path.join("::");
                 }
             },
-            "typed_parameter" => {
+            "typed_parameter" | "typed_default_parameter" | "default_parameter" => {
                 if let Some(param_name_node) = param_node.child(0) {
                     param_name = cx.ap.code[param_name_node.byte_range()].to_string();
                 }
                 type_resolved = py_type_generic(cx, param_node.child_by_field_name("type"), &func_path, 0);
+                let _defvalue_type = py_type_of_expr_creating_usages(cx, param_node.child_by_field_name("value"), &func_path);
             },
             "," | "(" | ")" => continue,
             // "list_splat_pattern" for *args
@@ -781,10 +788,17 @@ fn py_body<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>) -> Strin
         "class_definition" => py_class(cx, node, path),  // calls py_body recursively
         "function_definition" => py_function(cx, node, path),  // calls py_body recursively
         "assignment" => py_assignment(cx, node, path, false),
-        "for_statement" => py_assignment(cx, node, path, true),
+        "for_statement" => {
+            py_assignment(cx, node, path, true);
+            let _body_type = py_body(cx, &node.child_by_field_name("body").unwrap(), path);
+        }
+        "while_statement" => {
+            let _cond_type = py_type_of_expr_creating_usages(cx, node.child_by_field_name("condition"), path);
+            let _body_type = py_body(cx, &node.child_by_field_name("body").unwrap(), path);
+        }
         "call" | "comparison_operator" => { py_type_of_expr_creating_usages(cx, Some(node.clone()), path); }
         _ => {
-            let msg = cx.ap.error_report(node, format!("py_body no body"));
+            let msg = cx.ap.error_report(node, format!("py_body syntax error"));
             debug!(cx, "{}", msg);
         }
     }
@@ -848,6 +862,9 @@ pub fn py_parse(code: &str) -> ContextPy
 }
 
 
+// Run tests like this:
+// cargo test --no-default-features test_parse_py_goat_main -- --nocapture
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -858,6 +875,13 @@ mod tests {
         cx.ap.dump();
         let _ = cx.ap.export_defs("test");
         cx.ap.annotate_code("#")
+    }
+
+    #[test]
+    fn test_parse_py_jump_to_conclusions() {
+        let code = include_str!("../../tests/emergency_frog_situation/jump_to_conclusions.py");
+        let annotated = py_parse4test(code);
+        std::fs::write("src/ast/alt_testsuite/jump_to_conclusions_annotated.py", annotated).expect("Unable to write file");
     }
 
     #[test]

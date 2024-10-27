@@ -20,24 +20,23 @@ W = 640
 H = 480
 
 
-# f draw_hello_frog() UNK/"none"/None
+# f draw_hello_frog() void
 def draw_hello_frog(
     # p screen ?::Surface
     # U{ alias ?::pygame } U{ attr guess ?::Surface }
     screen: pygame.Surface,
     # p message str
     message: str,
-    # ERROR py_function parameter syntax: "typed_default_parameter" in color: Tuple[int, int, int] = (0, 255, 255)
+    # p color (int,int,int)
     color: Tuple[int, int, int] = (0, 255, 255),
-    # ERROR py_function parameter syntax: "typed_default_parameter" in font_name: str = "Arial"
+    # p font_name str
     font_name: str = "Arial",
-# ERROR py_type_generic syntax: "none" in None
 ) -> None:
     # v font ERR/FUNC_NOT_FOUND/?::SysFont
-    # U{ alias ?::pygame } U{ attr guess ?::font } U{ attr guess ?::SysFont } U{ go_up_fail guess ?::font_name } U{ go_up root::draw_hello_frog::font }
+    # U{ alias ?::pygame } U{ attr guess ?::font } U{ attr guess ?::SysFont } U{ go_up root::draw_hello_frog::font_name } U{ go_up root::draw_hello_frog::font }
     font = pygame.font.SysFont(font_name, 32)
     # v text ERR/FUNC_NOT_FOUND/?::render
-    # U{ go_up root::draw_hello_frog::font } U{ attr guess ?::render } U{ go_up root::draw_hello_frog::message } U{ go_up_fail guess ?::color } U{ go_up root::draw_hello_frog::text }
+    # U{ go_up root::draw_hello_frog::font } U{ attr guess ?::render } U{ go_up root::draw_hello_frog::message } U{ go_up root::draw_hello_frog::color } U{ go_up root::draw_hello_frog::text }
     text = font.render(message, True, color)
     # v text_rect ERR/FUNC_NOT_FOUND/?::get_rect
     # U{ go_up root::draw_hello_frog::text } U{ attr guess ?::get_rect } U{ go_up root::draw_hello_frog::text_rect }
@@ -76,30 +75,29 @@ def main_loop():
     # v quit_flag bool
     # U{ go_up root::main_loop::quit_flag }
     quit_flag = False
-    # v p ?::Frog
-    # U{ alias ?::frog } U{ attr guess ?::Frog } U{ go_up root::main_loop::p }
-    p: frog.Frog
-    # U{ go_up root::creatures } U{ go_up root::main_loop::p }
-    for p in creatures:
-        p.jump(10, 10)
     # U{ go_up root::main_loop::quit_flag }
     while not quit_flag:
         # v event ERR/FUNC_NOT_FOUND/?::get
         # U{ alias ?::pygame } U{ attr guess ?::event } U{ attr guess ?::get } U{ go_up root::main_loop::event }
         for event in pygame.event.get():
+            # U{ go_up root::main_loop::event } U{ attr guess ?::type } U{ alias ?::pygame } U{ attr guess ?::QUIT }
             if event.type == pygame.QUIT:
+                # U{ go_up root::main_loop::quit_flag }
                 quit_flag = True
         # U{ go_up root::main_loop::screen } U{ attr guess ?::fill }
         screen.fill((0, 0, 0))
         # U{ go_up root::creatures } U{ go_up root::main_loop::p }
         for p in creatures:
+            # U{ alias ?::pygame } U{ attr guess ?::draw } U{ attr guess ?::circle } U{ go_up root::main_loop::screen } U{ go_up root::main_loop::p } U{ attr guess ?::x } U{ go_up root::main_loop::p } U{ attr guess ?::y }
             pygame.draw.circle(screen, (0, 255, 0), (p.x, p.y), 10)
         # U{ go_up root::draw_hello_frog } U{ go_up root::main_loop::screen }
         draw_hello_frog(screen, "Jump To Conclusions!", (0, 200, 0))
+        # v p ?::Frog
         # U{ alias ?::frog } U{ attr guess ?::Frog } U{ go_up root::main_loop::p }
         p: frog.Frog
         # U{ go_up root::creatures } U{ go_up root::main_loop::p }
         for p in creatures:
+            # U{ go_up root::main_loop::p } U{ attr guess ?::jump } U{ go_up root::W } U{ go_up root::H }
             p.jump(W, H)
         # U{ alias ?::pygame } U{ attr guess ?::display } U{ attr guess ?::flip }
         pygame.display.flip()
