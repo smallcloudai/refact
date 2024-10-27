@@ -19,9 +19,9 @@ use crate::integrations::sessions::IntegrationSession;
 
 
 #[derive(Deserialize, Clone)]
-pub struct CmdlineToolBlocking {
+struct CmdlineToolBlocking {
     #[serde(default = "_default_timeout")]
-    pub timeout: u64,
+    timeout: u64,
 }
 
 fn _default_timeout() -> u64 {
@@ -37,36 +37,29 @@ impl Default for CmdlineToolBlocking {
 }
 
 #[derive(Deserialize, Clone)]
-pub struct CmdlineToolBackground {
+struct CmdlineToolBackground {
     #[serde(default)]
-    pub wait_port: Option<u16>,
+    wait_port: Option<u16>,
     #[serde(default)]
-    pub wait_keyword: Option<String>,
+    wait_keyword: Option<String>,
     #[serde(default)]
-    pub wait_timeout: u64,
+    wait_timeout: u64,
 }
 
 #[derive(Deserialize)]
-pub struct CmdlineToolConfig {
-    #[serde(rename="description")]
-    pub cfg_description: String,
-    #[serde(default, rename="parameters")]
-    pub cfg_parameters: Vec<ToolParam>,
-    #[serde(default, rename="parameters_required")]
-    pub cfg_parameters_required: Option<Vec<String>>,
-    #[serde(default, rename="command")]
-    pub cfg_command: String,
-    #[serde(rename="command_workdir")]
-    pub cfg_command_workdir: String,
-    #[serde(default, rename="blocking")]
-    pub blocking: Option<CmdlineToolBlocking>,
-    #[serde(default, rename="background")]
-    pub background: Option<CmdlineToolBackground>,
+struct CmdlineToolConfig {
+    description: String,
+    parameters: Vec<ToolParam>,
+    parameters_required: Option<Vec<String>>,
+    command: String,
+    command_workdir: String,
+    blocking: Option<CmdlineToolBlocking>,
+    background: Option<CmdlineToolBackground>,
 }
 
 pub struct ToolCmdline {
-    pub name: String,
-    pub cfg: CmdlineToolConfig,
+    name: String,
+    cfg: CmdlineToolConfig,
 }
 
 pub fn cmdline_tool_from_yaml_value(cfg_cmdline_value: &serde_yaml::Value) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
@@ -117,7 +110,7 @@ fn _replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
 async fn execute_blocking_command(
     command: &str,
     cfg: CmdlineToolBlocking,
-    cfg_command_workdir: &String,
+    command_workdir: &String,
 ) -> Result<String, String> {
     info!("EXEC: {command}");
     let command_args = shell_words::split(command)
@@ -130,7 +123,7 @@ async fn execute_blocking_command(
         if command_args.len() > 1 {
             cmd.args(&command_args[1..]);
         }
-        cmd.current_dir(cfg_command_workdir);
+        cmd.current_dir(command_workdir);
         let result = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -138,7 +131,7 @@ async fn execute_blocking_command(
             .await;
 
         if result.is_err() {
-            let msg = format!("cannot run {:?} with workdir\n{}\nwith args {:?}\n{}", &command_args[0], cfg_command_workdir, &command_args[1..], result.unwrap_err());
+            let msg = format!("cannot run {:?} with workdir\n{}\nwith args {:?}\n{}", &command_args[0], command_workdir, &command_args[1..], result.unwrap_err());
             tracing::error!("{}", msg);
             return Err(msg);
         }
@@ -316,7 +309,7 @@ impl Tool for ToolCmdline {
         let gcx = ccx.lock().await.global_context.clone();
 
         let mut args_str: HashMap<String, String> = HashMap::new();
-        let valid_params: Vec<String> = self.cfg.cfg_parameters.iter().map(|p| p.name.clone()).collect();
+        let valid_params: Vec<String> = self.cfg.parameters.iter().map(|p| p.name.clone()).collect();
 
         for (k, v) in args.iter() {
             if !valid_params.contains(k) {
@@ -328,14 +321,14 @@ impl Tool for ToolCmdline {
             }
         }
 
-        for param in &self.cfg.cfg_parameters {
-            if self.cfg.cfg_parameters_required.as_ref().map_or(false, |req| req.contains(&param.name)) && !args_str.contains_key(&param.name) {
+        for param in &self.cfg.parameters {
+            if self.cfg.parameters_required.as_ref().map_or(false, |req| req.contains(&param.name)) && !args_str.contains_key(&param.name) {
                 return Err(format!("Missing required argument `{}`", param.name));
             }
         }
 
-        let command = _replace_args(self.cfg.cfg_command.as_str(), &args_str);
-        let workdir = _replace_args(self.cfg.cfg_command_workdir.as_str(), &args_str);
+        let command = _replace_args(self.cfg.command.as_str(), &args_str);
+        let workdir = _replace_args(self.cfg.command_workdir.as_str(), &args_str);
 
         let resp = if let Some(background_cfg) = &self.cfg.background {
             let action = args_str.get("action").cloned().unwrap_or("start".to_string());
@@ -364,15 +357,15 @@ impl Tool for ToolCmdline {
     }
 
     fn tool_description(&self) -> ToolDesc {
-        let parameters_required = self.cfg.cfg_parameters_required.clone().unwrap_or_else(|| {
-            self.cfg.cfg_parameters.iter().map(|param| param.name.clone()).collect()
+        let parameters_required = self.cfg.parameters_required.clone().unwrap_or_else(|| {
+            self.cfg.parameters.iter().map(|param| param.name.clone()).collect()
         });
         ToolDesc {
             name: self.name.clone(),
             agentic: true,
             experimental: false,
-            description: self.cfg.cfg_description.clone(),
-            parameters: self.cfg.cfg_parameters.clone(),
+            description: self.cfg.description.clone(),
+            parameters: self.cfg.parameters.clone(),
             parameters_required,
         }
     }
