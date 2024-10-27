@@ -8,7 +8,6 @@ export interface CloudHost {
   type: "cloud";
   apiKey: string;
   userName: string;
-  sendCorrectedCodeSnippets: boolean;
 }
 
 export interface SelfHost {
