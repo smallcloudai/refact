@@ -104,6 +104,10 @@ def process_streaming_data(data):
         # streaming tool calls
         if delta.get("tool_calls"):
             for tool_call in delta["tool_calls"]:
+                # XXX doesn't work for BYOK
+                # {'index': 0, 'id': 'call_RwbNYLiACAgUXzFR9967dWmf', 'type': 'function', 'function': {'name': 'cargo_check', 'arguments': ''}}
+                # {'index': 0, 'function': {'arguments': '{"'}}
+                # need to collect deltas properly
                 id = tool_call["id"]
                 index = tool_call["index"]
                 if id is not None:
