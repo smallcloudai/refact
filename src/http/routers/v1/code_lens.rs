@@ -14,6 +14,8 @@ use crate::custom_error::ScratchError;
 #[derive(Deserialize)]
 pub struct CodeLensPost {
     pub uri: Url,
+    #[serde(default)]
+    pub debug: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -27,6 +29,7 @@ struct CodeLensOutput {
     spath: String,
     line1: usize,
     line2: usize,
+    debug_string: Option<String>,
 }
 
 struct CodeLensCacheEntry {
@@ -83,14 +86,45 @@ pub async fn handle_v1_code_lens(
 
     let mut output: Vec<CodeLensOutput> = Vec::new();
     for def in defs.iter() {
-        let line1 = def.full_line1();
-        let line2 = def.full_line2();
-        if line2 > line1 {
+        if let Some(last) = def.official_path.last() {
+            if last == "root" {
+                continue;
+            }
+        }
+        if !post.debug {
+            let line1 = def.full_line1();
+            let line2 = def.full_line2();
+            if line2 > line1 {
+                output.push(CodeLensOutput {
+                    spath: def.path_drop0(),
+                    line1,
+                    line2,
+                    debug_string: None,
+                });
+            }
+        } else {
+            let line1 = def.full_line1();
+            let line2 = def.full_line2();
             output.push(CodeLensOutput {
-                spath: def.path_drop0(),
+                spath: "".to_string(),
                 line1,
                 line2,
+                debug_string: Some(format!("D({})", def.path_drop0()))
             });
+            for u in def.usages.iter() {
+                let resolved = u.resolved_as.rsplit("::").take(2).collect::<Vec<&str>>().iter().rev().cloned().collect::<Vec<&str>>().join("::");
+                let txt = if resolved != "" {
+                    format!("↗{}", resolved)
+                } else {
+                    format!("❌{}", u.targets_for_guesswork.get(0).unwrap_or(&"".to_string()))
+                };
+                output.push(CodeLensOutput {
+                    spath: "".to_string(),
+                    line1: u.uline + 1,
+                    line2: u.uline + 1,
+                    debug_string: Some(txt)
+                });
+            }
         }
     }
 
