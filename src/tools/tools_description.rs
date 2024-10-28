@@ -122,7 +122,7 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Resu
     }
 
     if let Some(cmdline) = integrations_value.get("cmdline") {
-        let blocking_cmdline_tools = crate::tools::tool_custom::cmdline_tool_from_yaml_value(cmdline)?;
+        let blocking_cmdline_tools = crate::tools::tool_cmdline::cmdline_tool_from_yaml_value(cmdline)?;
         tools_all.extend(blocking_cmdline_tools);
     }
 
