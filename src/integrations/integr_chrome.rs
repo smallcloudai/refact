@@ -33,7 +33,7 @@ pub struct ToolChrome {
 pub struct ChromeSession {
     #[allow(dead_code)]    // it's not actually useless code, it keeps strong reference on browser so it doesn't die
     browser: Browser,
-    tab: Arc<Tab>,
+    tabs: HashMap<String, Arc<Tab>>,
 }
 
 impl IntegrationSession for ChromeSession
