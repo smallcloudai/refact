@@ -55,4 +55,14 @@ chrome:
 #  psql_binary_path: "/path/to/psql"  # Uncomment to set a custom path for the psql binary, defaults to "psql"
 #  connection_string: "postgresql://username:password@localhost/dbname"  # To get a connection string, check out https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
 
+// cmdline:  # things you can call and immediately get an answer (blocking command line calls)
+//   run_make:
+//     command: "make"
+//     command_workdir: "%project_path%"
+//     timeout: 600
+//     description: "Run `make` inside a C/C++ project, or a similar project with a Makefile."
+//     parameters:
+//       - name: "project_path"
+//         description: "absolute path to the project"
+
 "#;
