@@ -74,6 +74,12 @@ impl Tool for ToolChrome {
             None => return Err("Missing argument `tab`".to_string())
         };
 
+        let append_screenshot = match args.get("screenshot") {
+            Some(Value::Bool(s)) => s.clone(),
+            Some(v) => return Err(format!("argument `screenshot` is not boolean: {:?}", v)),
+            None => false
+        };
+
         let command_args = parse_command_args(command)?;
         
         let (gcx, chat_id) = {
@@ -83,7 +89,13 @@ impl Tool for ToolChrome {
 
         let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
         start_chrome_session(&self.integration_chrome, &session_hashmap_key, gcx.clone()).await?;
-        let messages = interact_with_chrome(&tab_name, &command_args, &session_hashmap_key, &tool_call_id, gcx.clone()).await?;
+        let messages = interact_with_chrome(
+            &tab_name,
+            &command_args,
+            &append_screenshot,
+            &session_hashmap_key,
+            &tool_call_id, gcx.clone()
+        ).await?;
 
         Ok((false, messages))
     }
@@ -166,10 +178,12 @@ async fn navigate_to(tab: &Arc<Tab>, url: &String) -> Result<String, String> {
 async fn interact_with_chrome(
     tab_name: &String,
     command_args: &Vec<String>,
+    append_screenshot: &bool,
     session_hashmap_key: &String,
     tool_call_id: &String,
     gcx: Arc<ARwLock<GlobalContext>>) -> Result<Vec<ContextEnum>, String>
 {
+    let mut force_screenshot = append_screenshot.clone();
     let command_session = {
         let gcx_locked = gcx.read().await;
         gcx_locked.integration_sessions.get(session_hashmap_key)
@@ -197,19 +211,15 @@ async fn interact_with_chrome(
     let mut messages = vec![];
     if command_args[0] == "navigate_to" {
         if command_args.len() < 2 {
-            tool_log.push(format!("Missing argument `url`: {:?}. Call this command another time using format `navigate_to url`.", command_args));
+            tool_log.push(format!("Missing required argument `uri`: {:?}. Call this command another time using format `navigate_to <uri>`.", command_args));
         } else {
             let content = navigate_to(&tab, &command_args[1]).await.map_err(
                 |e| format!("Cannot navigate_to `{}`: {}. Probably url doesn't exist. If you're trying to open local file add file:// prefix.", command_args[1], e)
             )?;
             tool_log.push(content);
         }
-        messages.push(tool_message(tool_log, tool_call_id));
     } else if command_args[0] == "screenshot" {
-        tool_log.push(format!("Made a screenshot of {}", tab.get_url()));
-        messages.push(tool_message(tool_log, tool_call_id));
-        let screenshot_message = screenshot_jpeg_base64(&tab, false).await?;
-        messages.push(ContextEnum::ChatMessage(screenshot_message));
+        force_screenshot = true;
     } else if command_args[0] == "html" {
         let client = Client::builder()
             .build()
@@ -221,13 +231,19 @@ async fn interact_with_chrome(
         } else {
             tool_log.push(response.text().await.map_err(|e| e.to_string())?);
         }
-        messages.push(tool_message(tool_log, tool_call_id));
     } else if command_args[0] == "reload" {
         tab.reload(false, None).map_err(|e| e.to_string())?;
         tool_log.push(format!("Page {} reloaded", tab.get_url()));
-        messages.push(tool_message(tool_log, tool_call_id));
     } else {
         return Err(format!("Unknown command: {:?}", command_args));
+    }
+
+    if force_screenshot {
+        tool_log.push(format!("Made a screenshot of {}", tab.get_url()));
+        messages.push(tool_message(tool_log, tool_call_id));
+        messages.push(screenshot_jpeg_base64(&tab, false).await?);
+    } else {
+        messages.push(tool_message(tool_log, tool_call_id));
     }
 
     Ok(messages)
@@ -244,7 +260,7 @@ async fn is_chrome_session_active(
     !session.is_none()
 }
 
-async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -> Result<ChatMessage, String> {
+async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -> Result<ContextEnum, String> {
     let jpeg_data = tab.call_method(Page::CaptureScreenshot {
         format: Some(Page::CaptureScreenshotFormatOption::Jpeg),
         clip: None,
@@ -257,9 +273,9 @@ async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -
         "image/jpeg".to_string(), jpeg_data,
     ).map_err(|e| e.to_string())?;
 
-    Ok(ChatMessage {
+    Ok(ContextEnum::ChatMessage(ChatMessage {
         role: "user".to_string(),  // Image URLs are only allowed for messages with role 'user'
         content: ChatContent::Multimodal(vec![multimodal_element]),
         ..Default::default()
-    })
+    }))
 }

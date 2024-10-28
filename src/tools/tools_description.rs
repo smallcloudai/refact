@@ -327,6 +327,9 @@ tools:
       - name: "tab"
         type: "string"
         description: "Tab where command will be executed."
+      - name: "screenshot"
+        type: "boolean"
+        description: "Optionally make a screenshot of a tab."
     parameters_required:
       - "command"
       - "tab"
