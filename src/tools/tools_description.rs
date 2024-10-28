@@ -101,12 +101,13 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Resu
     ]);
 
     if allow_experimental {
+        // The approach here: if it exists, it shouldn't have syntax errors, note the "?"
         if let Some(gh_config) = integrations_value.get("github") {
             tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(ToolGithub::new_from_yaml(gh_config)?) as Box<dyn Tool + Send>)));
         }
-        // if let Some(gitlab_tool) = ToolGitlab::new_if_configured(&integrations_value) {
-        //     tools_all.insert("gitlab".to_string(), Arc::new(AMutex::new(Box::new(gitlab_tool) as Box<dyn Tool + Send>)));
-        // }
+        if let Some(gl_config) = integrations_value.get("gitlab") {
+            tools_all.insert("gitlab".to_string(), Arc::new(AMutex::new(Box::new(ToolGitlab::new_from_yaml(gl_config)?) as Box<dyn Tool + Send>)));
+        }
         if let Some(pdb_config) = integrations_value.get("pdb") {
             tools_all.insert("pdb".to_string(), Arc::new(AMutex::new(Box::new(ToolPdb::new_from_yaml(pdb_config)?) as Box<dyn Tool + Send>)));
         }

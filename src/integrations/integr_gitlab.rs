@@ -25,15 +25,12 @@ pub struct ToolGitlab {
 }
 
 impl ToolGitlab {
-    pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
-        let integration_gitlab_value = integrations_value.get("gitlab")?;
-
-        let integration_gitlab = serde_yaml::from_value::<IntegrationGitLab>(integration_gitlab_value.clone()).or_else(|e| {
-            error!("Failed to parse integration gitlab: {:?}", e);
-            Err(e)
-        }).ok()?;
-
-        Some(Self { integration_gitlab })
+    pub fn new_from_yaml(v: &serde_yaml::Value) -> Result<Self, String> {
+        let integration_gitlab = serde_yaml::from_value::<IntegrationGitLab>(v.clone()).map_err(|e| {
+            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+            format!("{}{}", e.to_string(), location)
+        })?;
+        Ok(Self { integration_gitlab })
     }
 }
 
