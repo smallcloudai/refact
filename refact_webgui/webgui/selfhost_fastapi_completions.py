@@ -228,6 +228,7 @@ class BaseCompletionsRouter(APIRouter):
         def _integrations_env_setup(env_var_name: str, api_key_name: str, api_enable_name: str):
             os.environ[env_var_name] = integrations.get(api_key_name, "") if inference.get(api_enable_name, False) else ""
 
+        litellm.modify_params = True  # NOTE: for Anthropic API
         _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
         _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
 
