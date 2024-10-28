@@ -5,13 +5,14 @@ use serde_json::Value;
 
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
+use resvg::{tiny_skia, usvg};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs};
 use crate::files_in_workspace::{get_file_text_from_memory_or_disk, ls_files};
-
+use crate::scratchpads::multimodality::MultimodalElement;
 
 pub struct ToolCat;
 
@@ -63,7 +64,7 @@ impl Tool for ToolCat {
         };
         ccx.lock().await.pp_skeleton = skeleton;
 
-        let (filenames_present, symbols_not_found, not_found_messages, context_files) = paths_and_symbols_to_cat(ccx.clone(), paths, symbols).await;
+        let (filenames_present, symbols_not_found, not_found_messages, context_enums) = paths_and_symbols_to_cat(ccx.clone(), paths, symbols).await;
 
         let mut content = "".to_string();
         if !filenames_present.is_empty() {
@@ -77,9 +78,9 @@ impl Tool for ToolCat {
             content.push_str(&format!("Path problems:\n\n{}\n\n", not_found_messages.join("\n\n")));
             corrections = true;
         }
-
-        let mut results = context_files.into_iter().map(|i|ContextEnum::ContextFile(i)).collect::<Vec<ContextEnum>>();
-
+        
+        let mut results = context_enums;
+        
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
             content: ChatContent::SimpleText(content),
@@ -92,11 +93,69 @@ impl Tool for ToolCat {
     }
 }
 
+// todo: we can extract if from pipe, however PathBuf does not implement it
+fn get_file_type(path: &PathBuf) -> String {
+    let extension = path.extension().unwrap_or_default().to_string_lossy().to_string();
+    if ["png", "svg", "jpeg"].contains(&extension.as_str()) {
+        return format!("image/{extension}");
+    }
+    if ["jpg"].contains(&extension.as_str()) {
+        return "image/jpeg".to_string();
+    }
+    return "text".to_string();
+}
+
+async fn load_image(path: &String, f_type: &String) -> Result<ChatMessage, String> {
+    let extension = path.split(".").last().unwrap().to_string();
+
+    let data = match f_type.as_str() {
+        "image/png" | "image/jpeg" => {
+            std::fs::read(path).map_err(|_| format!("{} read failed", path))
+        },
+        "image/svg" => {
+            let tree = {
+                let mut opt = usvg::Options::default();
+                opt.resources_dir = std::fs::canonicalize(&path)
+                    .ok()
+                    .and_then(|p| p.parent().map(|p| p.to_path_buf()));
+                opt.fontdb_mut().load_system_fonts();
+
+                let svg_data = std::fs::read(&path).unwrap();
+                usvg::Tree::from_data(&svg_data, &opt).unwrap()
+            };
+            let pixmap_size = tree.size().to_int_size();
+            let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height()).unwrap();
+            resvg::render(&tree, tiny_skia::Transform::default(), &mut pixmap.as_mut());
+            pixmap.encode_png().map_err(|_| format!("{} encode_png failed", path))
+        },
+        _ => Err(format!("Unsupported image format (extension): {}", extension)),
+    }?;
+    
+    #[allow(deprecated)]
+    let m_content = base64::encode(&data);
+
+    let image = MultimodalElement::new(
+        f_type.clone(),
+        m_content,
+    ).map_err(|e| e.to_string())?;
+
+    let text = MultimodalElement::new(
+        "text".to_string(),
+        path.clone(),
+    ).map_err(|e| e.to_string())?;
+
+    Ok(ChatMessage { 
+        role: "user".to_string(),
+        content: ChatContent::Multimodal(vec![text, image]),
+        ..Default::default() 
+    })
+}
+
 pub async fn paths_and_symbols_to_cat(
     ccx: Arc<AMutex<AtCommandsContext>>,
     paths: Vec<String>,
     arg_symbols: Vec<String>,
-) -> (Vec<String>, Vec<String>, Vec<String>, Vec<ContextFile>)
+) -> (Vec<String>, Vec<String>, Vec<String>, Vec<ContextEnum>)
 {
     let (gcx, top_n) = {
         let ccx_locked = ccx.lock().await;
@@ -130,7 +189,7 @@ pub async fn paths_and_symbols_to_cat(
 
     let unique_paths = corrected_paths.into_iter().collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
 
-    let mut context_files = vec![];
+    let mut context_enums = vec![];
     let mut symbols_found = HashSet::<String>::new();
 
     if let Some(ast_service) = ast_service_opt {
@@ -160,7 +219,7 @@ pub async fn paths_and_symbols_to_cat(
                     gradient_type: -1,
                     usefulness: 100.0,
                 };
-                context_files.push(cf);
+                context_enums.push(ContextEnum::ContextFile(cf));
             }
         }
     }
@@ -172,27 +231,46 @@ pub async fn paths_and_symbols_to_cat(
         }
     }
 
-    let filenames_got_symbols_for = context_files.iter().map(|x|x.file_name.clone()).collect::<Vec<_>>();
+    let filenames_got_symbols_for = context_enums.iter()
+        .filter_map(|x| if let ContextEnum::ContextFile(cf) = x { Some(cf.file_name.clone()) } else { None })
+        .collect::<Vec<_>>();
+    
+    let mut filenames_present = vec![];
     for p in unique_paths.iter().filter(|x|!filenames_got_symbols_for.contains(x)) {
         // don't have symbols for these, so we need to mention them as files, without a symbol, analog of @file
-        match get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await {
-            Ok(text) => {
-                let cf = ContextFile {
-                    file_name: p.clone(),
-                    file_content: "".to_string(),
-                    line1: 1,
-                    line2: text.lines().count(),
-                    symbols: vec![],
-                    gradient_type: -1,
-                    usefulness: 0.0,
-                };
-                context_files.push(cf);
-            },
-            Err(e) => {
-                not_found_messages.push(format!("{}: {}", p, e));
+        let f_type = get_file_type(&PathBuf::from(p));
+
+        if f_type.starts_with("image/") {
+            match load_image(p, &f_type).await {
+                Ok(msg) => { 
+                    filenames_present.push(p.clone());
+                    context_enums.push(ContextEnum::ChatMessage(msg));
+                },
+                Err(e) => { not_found_messages.push(format!("{}: {}", p, e)); }
+            }
+        } else {
+            match get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await {
+                Ok(text) => {
+                    let cf = ContextFile {
+                        file_name: p.clone(),
+                        file_content: "".to_string(),
+                        line1: 1,
+                        line2: text.lines().count(),
+                        symbols: vec![],
+                        gradient_type: -1,
+                        usefulness: 0.0,
+                    };
+                    context_enums.push(ContextEnum::ContextFile(cf));
+                },
+                Err(e) => {
+                    not_found_messages.push(format!("{}: {}", p, e));
+                }
             }
         }
     }
-    let filenames_present = context_files.iter().map(|x|x.file_name.clone()).collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
-    (filenames_present, symbols_not_found, not_found_messages, context_files)
+    for cf in context_enums.iter()
+        .filter_map(|x| if let ContextEnum::ContextFile(cf) = x { Some(cf) } else { None }) {
+        filenames_present.push(cf.file_name.clone());
+    }
+    (filenames_present, symbols_not_found, not_found_messages, context_enums)
 }
