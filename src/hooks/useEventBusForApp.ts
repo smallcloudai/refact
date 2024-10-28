@@ -15,8 +15,6 @@ import { diffApi, resetDiffApi } from "../services/refact/diffs";
 import { usePatchActions } from "./usePatchActions";
 import { showPatchTicket } from "../events";
 
-import { setInputValue, addInputValue } from "../components/ChatForm/actions";
-
 export function useEventBusForApp() {
   const config = useConfig();
   const dispatch = useAppDispatch();
@@ -42,14 +40,6 @@ export function useEventBusForApp() {
           dispatch(push({ name: "chat" }));
         }
         dispatch(newChatAction(event.data.payload));
-      }
-
-      // codelens
-      if (addInputValue.match(event.data)) {
-        dispatch(addInputValue(event.data.payload));
-      }
-      if (setInputValue.match(event.data)) {
-        dispatch(setInputValue(event.data.payload));
       }
 
       if (resetDiffApi.match(event.data)) {
