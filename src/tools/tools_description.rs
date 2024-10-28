@@ -285,7 +285,6 @@ tools:
       - "project_dir"
       - "command"
 
-<<<<<<< HEAD
   - name: "gitlab"
     agentic: true
     experimental: true
@@ -301,19 +300,6 @@ tools:
       - "project_dir"
       - "command"
 
-  - name: "pdb"
-    agentic: true
-    experimental: true
-    description: "Python debugger for exploring code and inspecting variables. It can open debugging sessions on python files and interact with them in the chat."
-    parameters:
-      - name: "command"
-        type: "string"
-        description: "Examples: 'python -m pdb script.py', 'break module_name.function_name', 'break 10', 'continue', 'print(variable_name)', 'list', 'quit'"
-    parameters_required:
-      - "command"
-
-=======
->>>>>>> 8bc94535 (description in tool virtual method, return yaml errors from /v1/tools)
   - name: "chrome"
     agentic: true
     experimental: true
