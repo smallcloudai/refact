@@ -32,7 +32,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
 }) => {
   const codeRef = React.useRef<HTMLElement | null>(null);
   const match = /language-(\w+)/.exec(className ?? "");
-  const textWithOutTrailingNewLine = String(children); //.replace(/\n$/, "");
+  const textWithOutTrailingNewLine = String(children).replace(/\n$/, "");
   const textWithOutIndent = trimIndent(textWithOutTrailingNewLine);
 
   const preTagProps: PreTagProps = onCopyClick
