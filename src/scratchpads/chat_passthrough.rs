@@ -10,7 +10,6 @@ use tracing::{error, info, warn};
 
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::integrations::docker::integr_docker::ToolDocker;
 use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
@@ -106,17 +105,11 @@ impl ScratchpadAbstract for ChatPassthrough {
     ) -> Result<String, String> {
         let (n_ctx, gcx, docker_tool_maybe) = {
             let ccx_locked = ccx.lock().await;
-            (ccx_locked.n_ctx, ccx_locked.global_context.clone(), ccx_locked.at_tools.get("docker").cloned())
+            (ccx_locked.n_ctx, ccx_locked.global_context.clone(), ccx_locked.docker_tool.clone())
         };
-        let run_chat_threads_inside_container = match docker_tool_maybe {
-            Some(docker_tool) => {
-                let docker_tool_locked = docker_tool.lock().await;
-                let docker_tool_downcasted = docker_tool_locked.as_any().downcast_ref::<ToolDocker>()
-                    .ok_or_else(|| "Failed to downcast docker tool".to_string())?;
-                docker_tool_downcasted.integration_docker.run_chat_threads_inside_container
-            },
-            None => false,
-        };
+        let run_chat_threads_inside_container = docker_tool_maybe
+            .map(|docker_tool| docker_tool.integration_docker.run_chat_threads_inside_container)
+            .unwrap_or(false);
         let style = self.post.style.clone();
         let should_execute_remotely = run_chat_threads_inside_container && !gcx.read().await.cmdline.inside_container;
 

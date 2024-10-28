@@ -119,8 +119,8 @@ pub async fn run_tools_locally(
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
     style: &Option<String>,
-) -> (Vec<ChatMessage>, bool) {
-    let (new_messages, tools_runned) = run_tools(ccx, tokenizer, maxgen, original_messages, style).await;
+) -> Result<(Vec<ChatMessage>, bool), String> {
+    let (new_messages, tools_runned) = run_tools(ccx, tokenizer, maxgen, original_messages, style).await?;
 
     let mut all_messages = original_messages.to_vec();
     for msg in new_messages {
@@ -128,7 +128,7 @@ pub async fn run_tools_locally(
         stream_back_to_user.push_in_json(json!(msg));
     }
 
-    (all_messages, tools_runned)
+    Ok((all_messages, tools_runned))
 }
 
 pub async fn run_tools(
@@ -148,15 +148,15 @@ pub async fn run_tools(
 
     if tokens_for_rag < MIN_RAG_CONTEXT_LIMIT {
         warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.");
-        return Ok((original_messages.clone(), false));
+        return Ok((vec![], false));
     }
 
     let last_msg_tool_calls = match original_messages.last().filter(|m|m.role=="assistant") {
         Some(m) => m.tool_calls.clone().unwrap_or(vec![]),
-        None => return Ok((original_messages.clone(), false)),
+        None => return Ok((vec![], false)),
     };
     if last_msg_tool_calls.is_empty() {
-        return Ok((original_messages.clone(), false));
+        return Ok((vec![], false));
     }
 
     let mut context_files_for_pp = vec![];
@@ -284,7 +284,7 @@ pub async fn run_tools(
 
     ccx.lock().await.pp_skeleton = false;
 
-    Ok((all_messages, true))
+    Ok((new_messages, true))
 }
 
 async fn pp_run_tools(

@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -20,8 +19,6 @@ pub struct ToolCat;
 
 #[async_trait]
 impl Tool for ToolCat {
-    fn as_any(&self) -> &dyn Any { self }
-    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

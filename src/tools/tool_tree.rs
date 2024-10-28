@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::sync::Arc;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -24,8 +23,6 @@ fn preformat_path(path: &String) -> String {
 
 #[async_trait]
 impl Tool for ToolTree {
-    fn as_any(&self) -> &dyn Any { self }
-    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

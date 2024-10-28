@@ -1,5 +1,4 @@
 use indexmap::IndexMap;
-use std::any::Any;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -27,8 +26,6 @@ pub struct CommandsRequireConfirmationConfig { // todo: fix typo
 
 #[async_trait]
 pub trait Tool: Send + Sync {
-    fn as_any(&self) -> &dyn Any;
-
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -105,19 +102,24 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Resu
     ]);
 
     if allow_experimental {
-        // ("save_knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_knowledge::ToolSaveKnowledge{}) as Box<dyn Tool + Send>))),
-        // ("memorize_if_user_asks".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::att_note_to_self::AtNoteToSelf{}) as Box<dyn AtTool + Send>))),
-        if let Some(github_tool) = ToolGithub::new_if_configured(&integrations_value) {
-            tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(github_tool) as Box<dyn Tool + Send>)));
+        // The approach here: if it exists, it shouldn't have syntax errors, note the "?"
+        if let Some(gh_config) = integrations_value.get("github") {
+            tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(ToolGithub::new_from_yaml(gh_config)?) as Box<dyn Tool + Send>)));
         }
-        if let Some(pdb_tool) = ToolPdb::new_if_configured(&integrations_value) {
-            tools_all.insert("pdb".to_string(), Arc::new(AMutex::new(Box::new(pdb_tool) as Box<dyn Tool + Send>)));
+        if let Some(gl_config) = integrations_value.get("gitlab") {
+            tools_all.insert("gitlab".to_string(), Arc::new(AMutex::new(Box::new(ToolGitlab::new_from_yaml(gl_config)?) as Box<dyn Tool + Send>)));
         }
-        if let Some(chrome_tool) = ToolChrome::new_if_configured(&integrations_value) {
-            tools_all.insert("chrome".to_string(), Arc::new(AMutex::new(Box::new(chrome_tool) as Box<dyn Tool + Send>)));
+        if let Some(pdb_config) = integrations_value.get("pdb") {
+            tools_all.insert("pdb".to_string(), Arc::new(AMutex::new(Box::new(ToolPdb::new_from_yaml(pdb_config)?) as Box<dyn Tool + Send>)));
         }
-        if let Some(docker_tool) = ToolDocker::new_if_configured(&integrations_value) {
-            tools_all.insert("docker".to_string(), Arc::new(AMutex::new(Box::new(docker_tool) as Box<dyn Tool + Send>)));
+        if let Some(chrome_config) = integrations_value.get("chrome") {
+            tools_all.insert("chrome".to_string(), Arc::new(AMutex::new(Box::new(ToolChrome::new_from_yaml(chrome_config)?) as Box<dyn Tool + Send>)));
+        }
+        if let Some(postgres_config) = integrations_value.get("postgres") {
+            tools_all.insert("postgres".to_string(), Arc::new(AMutex::new(Box::new(ToolPostgres::new_from_yaml(postgres_config)?) as Box<dyn Tool + Send>)));
+        }
+        if let Some(docker_config) = integrations_value.get("docker") {
+            tools_all.insert("docker".to_string(), Arc::new(AMutex::new(Box::new(ToolDocker::new_from_yaml(docker_config)?) as Box<dyn Tool + Send>)));
         }
         #[cfg(feature="vecdb")]
         tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));

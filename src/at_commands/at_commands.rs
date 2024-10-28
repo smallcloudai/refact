@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use tracing::info;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -16,6 +17,8 @@ use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_tree::AtTree;
 use crate::at_commands::at_web::AtWeb;
 use crate::at_commands::execute_at::AtCommandMember;
+use crate::integrations::docker::integr_docker::docker_tool_load;
+use crate::integrations::docker::integr_docker::ToolDocker;
 
 
 pub struct AtCommandsContext {
@@ -31,6 +34,7 @@ pub struct AtCommandsContext {
     pub chat_id: String,
 
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
+    pub docker_tool: Option<Arc<ToolDocker>>,
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>,
     pub postprocess_parameters: PostprocessSettings,
 
@@ -59,6 +63,9 @@ impl AtCommandsContext {
             correction_only_up_to_step: 0,
             chat_id,
             at_commands: at_commands_dict(global_context.clone()).await,
+            docker_tool: docker_tool_load(global_context.clone()).await
+                .map_err(|e| info!("Docker integration not available: {e}")).ok().map(Arc::new),
+            subchat_tool_parameters: IndexMap::new(),
             postprocess_parameters: PostprocessSettings::new(),
 
             subchat_tx: Arc::new(AMutex::new(tx)),

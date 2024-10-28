@@ -13,7 +13,6 @@ use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::global_context::SharedGlobalContext;
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
-use crate::integrations::docker::integr_docker::ToolDocker;
 use crate::{caps, scratchpads};
 
 
@@ -184,15 +183,9 @@ async fn chat(
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
     let is_inside_container = global_context.read().await.cmdline.inside_container;
-    let run_chat_threads_inside_container = match ccx_arc.lock().await.at_tools.get("docker").cloned() {
-        Some(docker_tool) => {
-            let docker_tool_locked = docker_tool.lock().await;
-            let docker_tool_downcasted = docker_tool_locked.as_any().downcast_ref::<ToolDocker>()
-                .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to downcast docker tool".to_string()))?;
-            docker_tool_downcasted.integration_docker.run_chat_threads_inside_container
-        },
-        None => false,
-    };
+    let run_chat_threads_inside_container = ccx_arc.lock().await.docker_tool.clone()
+        .map(|docker_tool| docker_tool.integration_docker.run_chat_threads_inside_container)
+        .unwrap_or(false);
 
     if run_chat_threads_inside_container && !is_inside_container {
         docker_container_check_status_or_start(ccx_arc.clone()).await

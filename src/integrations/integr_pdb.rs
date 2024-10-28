@@ -62,8 +62,6 @@ impl ToolPdb {
 
 #[async_trait]
 impl Tool for ToolPdb {
-    fn as_any(&self) -> &dyn Any { self }
-    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

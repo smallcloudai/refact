@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::Arc;
@@ -96,8 +95,6 @@ Don't write backquotes, json format only.
 
 #[async_trait]
 impl Tool for ToolLocateSearch {
-    fn as_any(&self) -> &dyn Any { self }
-    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

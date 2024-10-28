@@ -1,17 +1,15 @@
-use std::any::Any;
 use std::sync::Arc;
 use std::collections::HashMap;
 use tokio::process::Command;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use async_trait::async_trait;
-use tracing::error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{read_integrations_yaml, Tool};
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -48,15 +46,13 @@ pub struct ToolDocker {
 }
 
 impl ToolDocker {
-    pub fn new_if_configured(integrations_value: &serde_yaml::Value) -> Option<Self> {
-        let integration_docker_value = integrations_value.get("docker")?;
-
-        let integration_docker = serde_yaml::from_value::<IntegrationDocker>(integration_docker_value.clone()).or_else(|e| {
-            error!("Failed to parse integration docker: {:?}", e);
-            Err(e)
-        }).ok()?;
-
-        Some(Self { integration_docker })
+    pub fn new_from_yaml(docker_config: &serde_yaml::Value) -> Result<Self, String> {
+        let integration_docker = serde_yaml::from_value::<IntegrationDocker>(docker_config.clone())
+            .map_err(|e| {
+                let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+                format!("{}{}", e.to_string(), location)
+            })?;
+        Ok(Self { integration_docker })
     }
 
     pub async fn command_execute(&self, command: &str, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String> 
@@ -96,8 +92,6 @@ impl ToolDocker {
 
 #[async_trait]
 impl Tool for ToolDocker {
-    fn as_any(&self) -> &dyn Any { self }
-
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -134,6 +128,14 @@ impl Tool for ToolDocker {
         command_args.insert(0, "docker".to_string());
         Ok(command_args.join(" "))
     }
+}
+
+pub async fn docker_tool_load(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolDocker, String> {
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    let integrations_yaml = read_integrations_yaml(&cache_dir).await?;
+    let docker_config = integrations_yaml.get("docker")
+        .ok_or_else(|| "No docker integration found in integrations.yaml".to_string())?;
+    Ok(ToolDocker::new_from_yaml(docker_config)?)
 }
 
 fn parse_command(args: &HashMap<String, Value>) -> Result<String, String>{

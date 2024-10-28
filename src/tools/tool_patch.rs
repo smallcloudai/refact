@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use serde_json::{json, Value};
-use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
@@ -85,8 +84,6 @@ pub async fn process_tickets(
 
 #[async_trait]
 impl Tool for ToolPatch {
-    fn as_any(&self) -> &dyn Any { self }
-    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

@@ -74,8 +74,6 @@ impl ToolChrome {
 
 #[async_trait]
 impl Tool for ToolChrome {
-    fn as_any(&self) -> &dyn Any { self }
-
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

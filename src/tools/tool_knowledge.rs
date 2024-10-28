@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::sync::Arc;
 use std::collections::{HashMap, HashSet};
 use serde_json::Value;
@@ -19,8 +18,6 @@ pub struct ToolGetKnowledge;
 
 #[async_trait]
 impl Tool for ToolGetKnowledge {
-    fn as_any(&self) -> &dyn Any { self }
-    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

@@ -6,10 +6,9 @@ use tracing::{error, info, warn};
 
 use crate::global_context::GlobalContext;
 use crate::integrations::sessions::get_session_hashmap_key;
-use crate::tools::tools_description::read_integrations_value;
 use crate::{at_commands::at_commands::AtCommandsContext, integrations::sessions::IntegrationSession};
 use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel};
-use crate::integrations::docker::integr_docker::ToolDocker;
+use crate::integrations::docker::integr_docker::{docker_tool_load, ToolDocker};
 
 use super::docker_ssh_tunnel_utils::ssh_tunnel_check_status;
 
@@ -58,14 +57,9 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
 {
     let (gcx, chat_id, docker_tool_maybe) = {
         let ccx_locked = ccx.lock().await;
-        (ccx_locked.global_context.clone(), ccx_locked.chat_id.clone(), ccx_locked.at_tools.get("docker").cloned())
+        (ccx_locked.global_context.clone(), ccx_locked.chat_id.clone(), ccx_locked.docker_tool.clone())
     };
-
-    let docker_tool = match docker_tool_maybe {
-        Some(docker_tool) => docker_tool,
-        None => return Err(format!("docker tool not found, cannot check status or start docker container")),
-    };
-
+    let docker = docker_tool_maybe.ok_or_else(|| "Docker tool not found".to_string())?;
     let docker_container_session_maybe = {
         let gcx_locked = gcx.read().await;
         gcx_locked.integration_sessions.get(&get_session_hashmap_key("docker", &chat_id)).cloned()
@@ -77,19 +71,13 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
             let docker_container_session = docker_container_session_locked.as_any_mut().downcast_mut::<DockerContainerSession>()
                 .ok_or_else(|| "Failed to downcast docker container session")?;
 
-            let ssh_config = {
-                let docker_tool_locked = docker_tool.lock().await;
-                let docker = docker_tool_locked.as_any().downcast_ref::<ToolDocker>().ok_or_else(|| "Failed to downcast docker tool")?;
-                docker.integration_docker.ssh_config.clone()
-            };
-
             match &mut docker_container_session.connection {
                 DockerContainerConnectionEnum::SshTunnel(ssh_tunnel) => {
                     match ssh_tunnel_check_status(ssh_tunnel).await {
                         Ok(()) => {}
                         Err(e) => {
                             warn!("SSH tunnel error: {}, restarting tunnel..", e);
-                            let ssh_config = ssh_config.ok_or_else(|| "No ssh config for docker container".to_string())?;
+                            let ssh_config = docker.integration_docker.ssh_config.clone().ok_or_else(|| "No ssh config for docker container".to_string())?;
                             docker_container_session.connection = DockerContainerConnectionEnum::SshTunnel(
                                 ssh_tunnel_open(&ssh_tunnel.remote_port_or_socket, &ssh_config).await?
                             );
@@ -103,18 +91,13 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
             Ok(())
         }
         None => {
-            let docker_tool_locked = docker_tool.lock().await;
-            let docker = docker_tool_locked.as_any().downcast_ref::<ToolDocker>().ok_or_else(|| "Failed to downcast docker tool")?;
-
             let internal_port: u16 = 8001;
 
-            let container_id = docker_container_start(docker, &chat_id, &internal_port, gcx.clone()).await?;
-            let host_port = docker_container_get_host_port(docker, &container_id, &internal_port, gcx.clone()).await?;
+            let container_id = docker_container_start(&docker, &chat_id, &internal_port, gcx.clone()).await?;
+            let host_port = docker_container_get_host_port(&docker, &container_id, &internal_port, gcx.clone()).await?;
 
             let ssh_config_maybe = docker.integration_docker.ssh_config.clone();
             let keep_containers_alive_for_x_minutes = docker.integration_docker.keep_containers_alive_for_x_minutes;
-
-            drop(docker_tool_locked);
 
             let connection = match ssh_config_maybe {
                 Some(ssh_config) => {
@@ -247,10 +230,7 @@ async fn docker_container_kill(
     gcx: Arc<ARwLock<GlobalContext>>,
     container_id: &str,
 ) -> Result<(), String> {
-    let cache_dir = gcx.read().await.cache_dir.clone();
-    let integrations_value = read_integrations_value(&cache_dir).await?;
-    let docker = ToolDocker::new_if_configured(&integrations_value)
-        .ok_or_else(|| "No docker integration configured".to_string())?;
+    let docker = docker_tool_load(gcx.clone()).await?;
 
     docker.command_execute(&format!("container stop {container_id}"), gcx.clone()).await?;
     info!("Stopped docker container {container_id}.");
