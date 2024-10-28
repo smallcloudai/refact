@@ -253,6 +253,7 @@ tools:
 
   - name: "patch"
     agentic: true
+    experimental: true
     description: |
       Collect context first, then write the necessary changes using the 📍-notation before code blocks, then call this function to apply the changes.
       To make this call correctly, you only need the tickets.
