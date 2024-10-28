@@ -61,6 +61,16 @@ startListening({
       listenerApi.dispatch(setError(message));
     }
     if (
+      toolsApi.endpoints.getTools.matchRejected(action) &&
+      !action.meta.condition
+    ) {
+      // getting error message from LSP
+      const errorMessage = isDetailMessage(action.payload?.data)
+        ? action.payload.data.detail
+        : "fetching tools from lsp.";
+      listenerApi.dispatch(setError(errorMessage));
+    }
+    if (
       promptsApi.endpoints.getPrompts.matchRejected(action) &&
       !action.meta.condition
     ) {
