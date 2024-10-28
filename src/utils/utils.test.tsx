@@ -1,5 +1,12 @@
 import { describe, test, expect } from "vitest";
-import { trimIndentFromMarkdown, trimIndent, filename, parseOrElse } from ".";
+import {
+  trimIndentFromMarkdown,
+  trimIndent,
+  filename,
+  parseOrElse,
+  takeFromEndWhile,
+  scanFoDuplicatesWith,
+} from ".";
 
 const spaces = "    ";
 describe("trim indent from markdown", () => {
@@ -79,4 +86,38 @@ describe("parseOrElse", () => {
       expect(result).toEqual(expected);
     },
   );
+});
+
+describe("takeFromEndWhile", () => {
+  const tests = [
+    [
+      ["a", "a", "b", "a", "b", "b"],
+      ["b", "b"],
+    ],
+    [["a", "b", "c", "d"], []],
+    [
+      ["a", "b", "c", "b", "b"],
+      ["b", "c", "b", "b"],
+    ],
+  ];
+
+  test.each(tests)("when given %s it should return %s", (input, expected) => {
+    const result = takeFromEndWhile(
+      input,
+      (char) => char === "b" || char === "c",
+    );
+    expect(result).toEqual(expected);
+  });
+});
+
+describe("scanForDuplicates", () => {
+  const tests: [string[], boolean][] = [
+    [["a", "b", "c", "d", "b", "e"], true],
+    [["a", "b", "c", "d", "e"], false],
+  ];
+
+  test.each(tests)("when given %s it should return %b", (input, expected) => {
+    const result = scanFoDuplicatesWith(input, (a, b) => a === b);
+    expect(result).toEqual(expected);
+  });
 });

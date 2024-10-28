@@ -8,7 +8,10 @@ import {
 import {
   isAssistantMessage,
   isChatGetTitleResponse,
+  isToolCallMessage,
   isToolMessage,
+  ToolCall,
+  ToolMessage,
   type ChatMessages,
   type ChatResponse,
 } from "../../../services/refact/types";
@@ -17,6 +20,7 @@ import type { SystemPrompts } from "../../../services/refact/prompts";
 import { formatMessagesForLsp, consumeStream } from "./utils";
 import { generateChatTitle, sendChat } from "../../../services/refact/chat";
 import { ToolCommand } from "../../../services/refact/tools";
+import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 
 export const newChatAction = createAction("chatThread/new");
 
@@ -141,6 +145,43 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
     });
 });
 
+function checkForToolLoop(message: ChatMessages): boolean {
+  const assistantOrToolMessages = takeFromEndWhile(message, (message) => {
+    return isToolMessage(message) || isToolCallMessage(message);
+  });
+
+  if (assistantOrToolMessages.length === 0) return false;
+
+  const toolCalls = assistantOrToolMessages.reduce<ToolCall[]>((acc, cur) => {
+    if (!isToolCallMessage(cur)) return acc;
+    return acc.concat(cur.tool_calls);
+  }, []);
+
+  if (toolCalls.length === 0) return false;
+
+  const toolResults = assistantOrToolMessages.filter(isToolMessage);
+
+  const hasDuplicates = scanFoDuplicatesWith(toolCalls, (a, b) => {
+    const aResult: ToolMessage | undefined = toolResults.find(
+      (message) => message.content.tool_call_id === a.id,
+    );
+
+    const bResult: ToolMessage | undefined = toolResults.find(
+      (message) => message.content.tool_call_id === b.id,
+    );
+
+    return (
+      a.function.name === b.function.name &&
+      a.function.arguments === b.function.arguments &&
+      !!aResult &&
+      !!bResult &&
+      aResult.content.content === bResult.content.content
+    );
+  });
+
+  return hasDuplicates;
+}
+
 export const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
@@ -151,7 +192,10 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
 >("chatThread/sendChat", ({ messages, chatId, tools }, thunkAPI) => {
   const state = thunkAPI.getState();
 
+  const onlyDeterministicMessages = checkForToolLoop(messages);
+
   const messagesForLsp = formatMessagesForLsp(messages);
+
   return sendChat({
     messages: messagesForLsp,
     model: state.chat.thread.model,
@@ -161,6 +205,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     chatId,
     apiKey: state.config.apiKey,
     port: state.config.lspPort,
+    onlyDeterministicMessages,
   })
     .then((response) => {
       if (!response.ok) {
