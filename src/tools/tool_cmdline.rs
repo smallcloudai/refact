@@ -38,6 +38,7 @@ struct CmdlineToolConfig {
     #[serde(default = "_default_timeout")]
     timeout: u64,
     background: Option<CmdlineToolBackground>,
+    output_filter: Option<crate::postprocessing::pp_command_output::CmdlineOutputFilter>,
 }
 
 fn _default_timeout() -> u64 {
@@ -98,6 +99,7 @@ async fn execute_blocking_command(
     command: &str,
     timeout: u64,
     command_workdir: &String,
+    output_filter: &crate::postprocessing::pp_command_output::CmdlineOutputFilter,
 ) -> Result<String, String> {
     info!("EXEC: {command}");
     let command_args = shell_words::split(command)
@@ -111,11 +113,14 @@ async fn execute_blocking_command(
             cmd.args(&command_args[1..]);
         }
         cmd.current_dir(command_workdir);
+        let start_time = Instant::now();
         let result = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
             .await;
+        let duration = start_time.elapsed();
+        info!("EXEC: /{} finished in {:?}", command_args[0], duration);
 
         if result.is_err() {
             let msg = format!("cannot run {:?} with workdir\n{}\nwith args {:?}\n{}", &command_args[0], command_workdir, &command_args[1..], result.unwrap_err());
@@ -128,14 +133,11 @@ async fn execute_blocking_command(
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
         let mut res = "".to_string();
-        if output.status.success() {
-            res.push_str(&format!("EXEC SUCCESS: {command}\n"));
-        } else {
-            res.push_str(&format!("EXEC FAIL: {command}\n"));
-        }
-        res.push_str(&format!("STDOUT:\n{stdout}"));
+        let exit_code = output.status.code().unwrap_or_default();
+        res.push_str(&format!("command was running {:.3}s, finished with exit code {exit_code}\n", duration.as_secs_f64()));
+        res.push_str(&format!("STDOUT:\n{}", crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, stdout.as_str())));
         if !stderr.is_empty() {
-            res.push_str(&format!("\nSTDERR:\n{stderr}"));
+            res.push_str(&format!("\nSTDERR:\n{}", crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, stderr.as_str())));
         }
         Ok(res)
     };
@@ -325,7 +327,9 @@ impl Tool for ToolCmdline {
             execute_background_command(gcx, &self.name, &command, background_cfg.clone(), action.as_str()).await
 
         } else {
-            execute_blocking_command(&command, self.cfg.timeout, &workdir).await
+            let default_filter = crate::postprocessing::pp_command_output::CmdlineOutputFilter::default();
+            let output_filter = self.cfg.output_filter.as_ref().unwrap_or(&default_filter);
+            execute_blocking_command(&command, self.cfg.timeout, &workdir, output_filter).await
         }?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
@@ -357,3 +361,4 @@ impl Tool for ToolCmdline {
         }
     }
 }
+

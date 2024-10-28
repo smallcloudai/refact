@@ -50,19 +50,29 @@ chrome:
   window_size: [1024, 768]
   idle_browser_timeout: 600
 
+
 # Postgres database
 #postgres:
 #  psql_binary_path: "/path/to/psql"  # Uncomment to set a custom path for the psql binary, defaults to "psql"
 #  connection_string: "postgresql://username:password@localhost/dbname"  # To get a connection string, check out https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
 
-// cmdline:  # things you can call and immediately get an answer (blocking command line calls)
-//   run_make:
-//     command: "make"
-//     command_workdir: "%project_path%"
-//     timeout: 600
-//     description: "Run `make` inside a C/C++ project, or a similar project with a Makefile."
-//     parameters:
-//       - name: "project_path"
-//         description: "absolute path to the project"
+
+# Command line: things you can call and immediately get an answer
+#cmdline:
+#  run_make:
+#    command: "make"
+#    command_workdir: "%project_path%"
+#    timeout: 600
+#    description: "Run `make` inside a C/C++ project, or a similar project with a Makefile."
+#    parameters:    # this is what the model needs to produce, you can use %parameter% in command and workdir
+#      - name: "project_path"
+#        description: "absolute path to the project"
+#    output_filter:                   # output filter is optional, can help if the output is very long to reduce it, preserving valuable information
+#      limit_lines: 50
+#      limit_chars: 10000
+#      valuable_top_or_bottom: "top"  # the useful infomation more likely to be at the top or bottom? (default "top")
+#      grep: "(?i)error|warning"      # in contrast to regular grep this doesn't remove other lines from output, just prefers matching when approaching limit_lines or limit_chars (default "(?i)error")
+#      grep_context_lines: 5          # leave that many lines around a grep match (default 5)
+#      remove_from_output: "process didn't exit"    # some lines and very long and unwanted, this is also a regular expression (default "")
 
 "#;
