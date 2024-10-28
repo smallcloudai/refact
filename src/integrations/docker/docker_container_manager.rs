@@ -187,13 +187,18 @@ async fn docker_container_start(
 
     info!("Executing docker command: {}", &run_command);
     let run_output = docker.command_execute(&run_command, gcx.clone()).await?;
-    // XXX docker output might be:
-    // /usr/local/bin/refact-lsp: error while loading shared libraries: libssl.so.1.1: cannot open shared object file: No such file or directory
-    info!("run output: {}", &run_output);
-    
+
     let container_id = run_output.trim();
     if container_id.len() < 12 {
         return Err("Docker run error: no container ID returned.".into());
+    }
+
+    // If docker container is not running, print last lines of logs.
+    let inspect_command = "inspect --format '{{json .State.Running}}' ".to_string() + &container_id;
+    let inspect_output = docker.command_execute(&inspect_command, gcx.clone()).await?;
+    if inspect_output.trim() != "true" {
+        let logs_output = docker.command_execute(&format!("container logs --tail 10 {container_id}"), gcx.clone()).await?;
+        return Err(format!("Docker container is not running: \n{logs_output}"));
     }
 
     if !docker.integration_docker.command.is_empty() {
