@@ -25,7 +25,7 @@ all_refact_packages = {
     "refact_known_models": PyPackage(),
     "refact_utils": PyPackage(),
     "refact_data_pipeline": PyPackage(
-        requires=["numpy", "tokenizers>=0.15.0", "torch", "requests>=2.31.0", "cloudpickle", "blobfile",
+        requires=["numpy", "tokenizers>=0.20.1", "torch", "requests>=2.31.0", "cloudpickle", "blobfile",
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools', "cdifflib",
                   "ujson", "zstandard", "scipy", "einops", "matplotlib", "giturlparse",
                   "jsonlines", "binpacking", "filelock", "tables==3.8.0", "pygments", "kshingle"],
@@ -41,10 +41,10 @@ all_refact_packages = {
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",]),
     "self_hosting_machinery": PyPackage(
         requires=["python-multipart", "auto-gptq==0.7.1", "accelerate",
-                  "termcolor", "torch", "transformers>=4.39.3",
+                  "termcolor", "torch", "transformers>=4.46.0",
                   "bitsandbytes", "safetensors", "peft", "triton",
-                  "torchinfo", "mpi4py", "deepspeed==0.14.2",
-                  "sentence-transformers", "huggingface-hub>=0.19.3",
+                  "torchinfo", "mpi4py", "deepspeed>=0.15.3",
+                  "sentence-transformers", "huggingface-hub>=0.26.2",
                   "aiohttp", "setproctitle"],
         optional=["ninja", "flash-attn"],
         requires_packages=["refact_known_models", "refact_data_pipeline",

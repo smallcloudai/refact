@@ -113,7 +113,37 @@ huggingface_mini_db = {
         },
         "required_memory_mb": 20000,
         "T": 8192,
-        "filter_caps": ["chat"],
+        "filter_caps": ["completion", "chat"],
+    },
+    "llama3.1/8b/instruct": {
+        "backend": "transformers",
+        "model_path": "meta-llama/Llama-3.1-8B-Instruct",
+        "model_class_kwargs": {
+            "torch_dtype": "bf16",
+        },
+        "required_memory_mb": 20000,
+        "T": 16384,  # in fact this model can handle 128K context
+        "filter_caps": ["completion", "chat"],
+    },
+    "llama3.2/3b/instruct": {
+        "backend": "transformers",
+        "model_path": "meta-llama/Llama-3.2-3B-Instruct",
+        "model_class_kwargs": {
+            "torch_dtype": "bf16",
+        },
+        "required_memory_mb": 12000,
+        "T": 16384,  # in fact this model can handle 128K context
+        "filter_caps": ["completion", "chat"],
+    },
+    "llama3.2/1b/instruct": {
+        "backend": "transformers",
+        "model_path": "meta-llama/Llama-3.2-1B-Instruct",
+        "model_class_kwargs": {
+            "torch_dtype": "bf16",
+        },
+        "required_memory_mb": 8000,
+        "T": 16384,  # in fact this model can handle 128K context
+        "filter_caps": ["completion", "chat"],
     },
     "deepseek-coder-v2/16b/instruct": {
         "backend": "transformers",
