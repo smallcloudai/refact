@@ -310,7 +310,6 @@ tools:
         type: "string"
         description: |
           Supports these commands:
-          connect
           navigate_to <uri> <tab_id>
           screenshot <tab_id>
           html <tab_id>

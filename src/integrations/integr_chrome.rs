@@ -80,19 +80,19 @@ impl Tool for ToolChrome {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let command = match args.get("command") {
-            Some(Value::String(s)) => s,
-            Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
-            None => return Err("Missing argument `command`".to_string())
-        };
-
-        let (command_name, command_args) = parse_command(command)?;
-
         let (gcx, chat_id) = {
             let ccx_lock = ccx.lock().await;
             (ccx_lock.global_context.clone(), ccx_lock.chat_id.clone())
         };
 
+        let command = match args.get("command") {
+            Some(Value::String(s)) => s,
+            Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
+            None => return Err("Missing argument `command`".to_string())
+        };
+        let (command_name, command_args) = parse_command(command)?;
+
+        // TODO: we should add connect command to start/restart the session if it's expired or closed
         let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
         start_chrome_session(gcx.clone(), &self.integration_chrome, &session_hashmap_key).await?;
 
