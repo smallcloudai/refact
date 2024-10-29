@@ -130,7 +130,34 @@ impl ScratchpadAbstract for ChatPassthrough {
         }
         let mut filtered_msgs = vec![];
         for msg in &limited_msgs {
-            if msg.role == "assistant" || msg.role == "system" || msg.role == "user" || msg.role == "tool" {
+            if msg.role == "tool" {
+                match &msg.content {
+                    ChatContent::Multimodal(multimodal_content) => {
+                        let texts = multimodal_content.iter().filter(|x|x.is_text()).collect::<Vec<_>>();
+                        let images = multimodal_content.iter().filter(|x|x.is_image()).collect::<Vec<_>>();
+                        let text = if texts.is_empty() {
+                            "attached images below".to_string()
+                        } else {
+                            texts.iter().map(|x|x.m_content.clone()).collect::<Vec<_>>().join("\n")
+                        };
+                        let mut msg_cloned = msg.clone();
+                        msg_cloned.content = ChatContent::SimpleText(text);
+                        filtered_msgs.push(msg_cloned.into_value(&style));
+                        if !images.is_empty() {
+                            let msg_img = ChatMessage {
+                                role: "user".to_string(),
+                                content: ChatContent::Multimodal(images.into_iter().cloned().collect()),
+                               ..Default::default()
+                            };
+                            filtered_msgs.push(msg_img.into_value(&style));
+                        }
+                    },
+                    ChatContent::SimpleText(_) => {
+                        filtered_msgs.push(msg.into_value(&style));
+                    }
+                }
+            }
+            if msg.role == "assistant" || msg.role == "system" || msg.role == "user" {
                 filtered_msgs.push(msg.into_value(&style));
 
             } else if msg.role == "diff" {

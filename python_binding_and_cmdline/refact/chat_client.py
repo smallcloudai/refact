@@ -72,7 +72,7 @@ def messages_to_dicts(
             continue
         if x.role == "tool" and x.content is not None:
             log += termcolor.colored(x.role, "yellow") + " " + \
-                "\n%s" % termcolor.colored(x.content.strip(), "magenta") + "\n"
+                "\n%s" % termcolor.colored(x.content, "magenta") + "\n"
             continue
         tool_calls = ""
         if x.tool_calls is not None:
