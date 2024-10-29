@@ -42,6 +42,19 @@ pub struct ChromeSession {
     tabs: HashMap<String, Arc<Tab>>,
 }
 
+impl ChromeSession {
+    fn is_connected(&self) -> bool {
+        match self.browser.get_version() {
+            Ok(_) => {
+                true
+            },
+            Err(_) => {
+                false
+            }
+        }
+    }
+}
+
 impl IntegrationSession for ChromeSession
 {
     fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -130,9 +143,19 @@ async fn start_chrome_session(
     args: &IntegrationChrome,
     session_hashmap_key: &String,
 ) -> Result<(), String> {
-    let is_chrome_session_active = gcx.read().await.integration_sessions.contains_key(session_hashmap_key);
-    if is_chrome_session_active {
-        return Ok(());
+    let session_entry  = {
+        let gcx_locked = gcx.read().await;
+        gcx_locked.integration_sessions.get(session_hashmap_key).cloned()
+    };
+
+    if let Some(session) = session_entry {
+        let mut session_locked = session.lock().await;
+        let chrome_session = session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+        if chrome_session.is_connected() {
+            return Ok(())
+        } else {
+            gcx.write().await.integration_sessions.remove(session_hashmap_key);
+        }
     }
 
     let window_size = match args.window_size.as_deref() {
