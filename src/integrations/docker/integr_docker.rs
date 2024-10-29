@@ -65,13 +65,7 @@ impl ToolDocker {
 
         command_append_label_if_creates_resource(&mut command_args, &self.integration_docker.label);
 
-        let docker_host = if let Some(ssh_config) = &self.integration_docker.ssh_config {
-            let local_port = forward_remote_docker_if_needed(&self.integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
-            format!("127.0.0.1:{}", local_port)
-        } else {
-            self.integration_docker.connect_to_daemon_at.clone()
-        };
-
+        let docker_host = self.get_docker_host(gcx.clone()).await?;
         let output = Command::new(&self.integration_docker.docker_cli_path)
             .arg("-H")
             .arg(&docker_host)
@@ -87,6 +81,17 @@ impl ToolDocker {
         }
 
         Ok((stdout, stderr))
+    }
+
+    pub async fn get_docker_host(&self, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String>
+    {
+        match &self.integration_docker.ssh_config {
+            Some(ssh_config) => {
+                let local_port = forward_remote_docker_if_needed(&self.integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
+                Ok(format!("127.0.0.1:{}", local_port))
+            },
+            None => Ok(self.integration_docker.connect_to_daemon_at.clone()),
+        }
     }
 }
 

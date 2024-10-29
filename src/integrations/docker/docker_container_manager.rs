@@ -10,7 +10,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::last_n_lines;
 use crate::integrations::sessions::get_session_hashmap_key;
 use crate::{at_commands::at_commands::AtCommandsContext, integrations::sessions::IntegrationSession};
-use crate::integrations::docker::docker_ssh_tunnel_utils::{forward_remote_docker_if_needed, ssh_tunnel_open, SshTunnel};
+use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel};
 use crate::integrations::docker::integr_docker::{docker_tool_load, ToolDocker};
 
 use super::docker_ssh_tunnel_utils::ssh_tunnel_check_status;
@@ -224,16 +224,16 @@ async fn docker_container_sync_yaml_configs(
 ) -> Result<(), String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
 
-    let (stdout, _) = docker.command_execute(&format!("container exec {container_id} sh -c 'echo $HOME'"), gcx.clone(), true).await?;
+    let home_cmd = format!("container exec {container_id} sh -c 'echo $HOME'");
+    let (stdout, _) = docker.command_execute(&home_cmd, gcx.clone(), true).await?;
     let container_home_dir = stdout.trim();
-    
-    let privacy_yaml_path = cache_dir.join("privacy.yaml").to_string_lossy().to_string();
-    let integrations_yaml_path = cache_dir.join("integrations.yaml").to_string_lossy().to_string();
-    let privacy_yaml_path_in_container = format!("{container_id}:{container_home_dir}/.cache/refact/privacy.yaml");
-    let integrations_yaml_path_in_container = format!("{container_id}:{container_home_dir}/.cache/refact/integrations.yaml");
 
-    docker.command_execute(&format!("container cp {privacy_yaml_path} {privacy_yaml_path_in_container}"), gcx.clone(), true).await?;
-    docker.command_execute(&format!("container cp {integrations_yaml_path} {integrations_yaml_path_in_container}"), gcx.clone(), true).await?;
+    let config_files_to_sync = ["privacy.yaml", "integrations.yaml"];
+    for file in &config_files_to_sync {
+        let local_path = cache_dir.join(file).to_string_lossy().to_string();
+        let container_path = format!("{container_id}:{container_home_dir}/.cache/refact/{file}");
+        docker.command_execute(&format!("container cp {local_path} {container_path}"), gcx.clone(), true).await?;
+    }
 
     Ok(())
 }
@@ -243,7 +243,8 @@ async fn docker_container_sync_workspace(
     container_id: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(), String> {
-    let _ = Command::new("rsync").output().await.map_err(|e| e.to_string())?;
+    let _ = Command::new("rsync").output().await.map_err(|e| format!("Error copying workspace folder, rsync not found locally: {}", e))?;
+    
     // TODO: There could be more than one workspace folder, to decide which one we'll sync we should 
     // get the active one, probably from the IDE.
     let mut workspace_folder = get_project_dirs(gcx.clone()).await.into_iter().next().ok_or_else(|| "No workspace folders found".to_string())?;
@@ -288,29 +289,16 @@ async fn docker_container_sync_workspace(
     }
 
     let docker_cli_command = &docker.integration_docker.docker_cli_path;
-    let docker_host = if let Some(ssh_config) = &docker.integration_docker.ssh_config {
-        let local_port = forward_remote_docker_if_needed(&docker.integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
-        format!("127.0.0.1:{}", local_port)
-    } else {
-        docker.integration_docker.connect_to_daemon_at.clone()
-    };
+    let docker_host = docker.get_docker_host(gcx.clone()).await?;
+    let docker_exec_command = format!("{docker_cli_command} -H={docker_host} exec -i");
 
-    let rsync_output = Command::new("rsync")
-        .arg("--rsh")
-        .arg(format!("{docker_cli_command} -H={docker_host} exec -i"))
-        .arg("--checksum")
-        .arg("--recursive")
-        .arg("--links")
-        .arg("--perms")
-        .arg("--executability")
-        .arg("--itemize-changes")
-        .arg("--filter")
-        .arg(":- .gitignore")
-        // .arg("--exclude=.git")  // TODO: Copying .git folder can take a lot of time, we should try to not to copy it fully later
-        .arg(workspace_folder)
-        .arg(format!("{container_id}:{container_workspace_folder}"))
-        .output()
-        .await
+    let copy_from = workspace_folder.to_string_lossy().to_string();
+    let copy_to = format!("{container_id}:{container_workspace_folder}");
+    let args = ["--rsh", &docker_exec_command, "--checksum", "--recursive", "--links", "--perms", 
+        "--executability", "--itemize-changes", "--filter", ":- .gitignore", &copy_from, &copy_to];
+    // TODO: Copying .git folder can take a lot of time, we should try to not to copy it fully later.
+
+    let rsync_output = Command::new("rsync").args(args).output().await
         .map_err(|e| format!("Error executing rsync: {e}"))?;
 
     let stderr = String::from_utf8_lossy(&rsync_output.stderr).to_string();
