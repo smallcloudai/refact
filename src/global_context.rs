@@ -83,6 +83,8 @@ pub struct CommandLine {
 
     #[structopt(long, help="create manually bring-your-own-key.yaml, integrations.yaml, customization.yaml and privacy.yaml and EXIT")]
     pub only_create_yaml_configs: bool,
+    #[structopt(long, help="Print combined customization settings from both system defaults and customization.yaml.")]
+    pub print_customization: bool,
 
     #[structopt(long, help="Enable experimental features, such as new integrations.")]
     pub experimental: bool,

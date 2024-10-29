@@ -13,7 +13,7 @@ use crate::background_tasks::start_background_tasks;
 use crate::lsp::spawn_lsp_task;
 use crate::telemetry::{basic_transmit, snippets_transmit};
 use crate::yaml_configs::create_configs::yaml_configs_try_create_all;
-
+use crate::yaml_configs::customization_loader::load_customization;
 // mods roughly sorted by dependency ↓
 
 mod version;
@@ -122,6 +122,18 @@ async fn main() {
     if cmdline.only_create_yaml_configs {
         println!("{}", byok_config_path);
         std::process::exit(0);
+    }
+    if cmdline.print_customization {
+        match load_customization(gcx.clone(), false).await {
+            Ok(customization) => {
+                println!("{}", serde_json::to_string(&customization).unwrap());
+                std::process::exit(0);
+            }
+            Err(_) => {
+                println!("Failed to load customization, exiting");
+                std::process::exit(1);
+            }
+        }
     }
 
     if cmdline.ast {
