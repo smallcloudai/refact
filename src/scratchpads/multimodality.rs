@@ -8,7 +8,7 @@ use crate::scratchpads::scratchpad_utils::{calculate_image_tokens_openai, count_
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct MultimodalElement {
-    pub m_type: String, // text or image/*
+    pub m_type: String, // "text", "image/png" etc
     pub m_content: String,
 }
 
@@ -23,7 +23,7 @@ impl MultimodalElement {
         }
         Ok(MultimodalElement { m_type, m_content })
     }
-    
+
     pub fn is_text(&self) -> bool {
         self.m_type == "text"
     }

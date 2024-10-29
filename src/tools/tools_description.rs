@@ -18,7 +18,7 @@ use crate::integrations::integr_postgres::ToolPostgres;
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CommandsRequireConfimationConfig { // todo: fix typo
+pub struct CommandsRequireConfirmationConfig { // todo: fix typo
     pub commands_need_confirmation: Vec<String>,
     pub commands_deny: Vec<String>,
 }
@@ -142,13 +142,13 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Resu
     Ok(filtered_tools)
 }
 
-pub async fn commands_require_confirmation_rules_from_integrations_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> Result<CommandsRequireConfimationConfig, String>
+pub async fn commands_require_confirmation_rules_from_integrations_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> Result<CommandsRequireConfirmationConfig, String>
 {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let integrations_value = read_integrations_yaml(&cache_dir).await?;
 
-    serde_yaml::from_value::<CommandsRequireConfimationConfig>(integrations_value)
-        .map_err(|e| format!("Failed to parse CommandsRequireConfimationConfig: {}", e))
+    serde_yaml::from_value::<CommandsRequireConfirmationConfig>(integrations_value)
+        .map_err(|e| format!("Failed to parse CommandsRequireConfirmationConfig: {}", e))
 }
 
 const BUILT_IN_TOOLS: &str = r####"
