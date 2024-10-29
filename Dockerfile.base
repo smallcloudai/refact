@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 ENV INSTALL_OPTIONAL=TRUE
 ENV MAX_JOBS=8
@@ -13,24 +13,28 @@ RUN DEBIAN_FRONTEND="noninteractive" TZ=Etc/UTC apt-get install -y  \
     ruby-full \
     ruby-bundler \
     build-essential \
-    cmake \
     pkg-config \
     libicu-dev \
     zlib1g-dev \
     libcurl4-openssl-dev \
     libssl-dev \
     && rm -rf /var/lib/{apt,dpkg,cache,log}
+RUN DEBIAN_FRONTEND="noninteractive" TZ=Etc/UTC apt remove cmake -y
+RUN pip install cmake --upgrade
+
 RUN git clone https://github.com/smallcloudai/linguist.git /tmp/linguist \
     && cd /tmp/linguist \
     && bundle install \
     && rake build_gem
 ENV PATH="${PATH}:/tmp/linguist/bin"
 
-RUN pip install --no-cache-dir torch==2.3.0 --index-url https://download.pytorch.org/whl/cu118
-RUN pip install --no-cache-dir xformers==0.0.26.post1 --index-url https://download.pytorch.org/whl/cu118
+RUN pip install --no-cache-dir torch==2.5.0
+RUN pip install --no-cache-dir xformers==v0.0.28.post2
 RUN pip install ninja
-RUN VLLM_INSTALL_PUNICA_KERNELS=1 pip install -v --no-build-isolation git+https://github.com/smallcloudai/vllm@refact_v0.4.2_06052024
+RUN pip install setuptools_scm
+ENV CMAKE_ARGS="-DLLAMA_CUBLAS=on -DCMAKE_CUDA_ARCHITECTURES=60;61;70;75;80;86;89;90+PTX"
+RUN pip install -v --no-build-isolation git+https://github.com/smallcloudai/vllm@refact_v0.6.3_2adb440
 
-# there is no prebuild auto-gptq with torch 2.3.0 support
+# there is no prebuild auto-gptq with torch 2.5.0 support
 ENV TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0+PTX"
 RUN BUILD_CUDA_EXT=1 pip install -v --no-build-isolation git+https://github.com/PanQiWei/AutoGPTQ.git@v0.7.1

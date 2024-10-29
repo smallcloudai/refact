@@ -149,38 +149,32 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
 
         self._device = "cuda:0"
         token = huggingface_hub_token()
-        for local_files_only in [True, False]:
-            try:
-                logging.getLogger("MODEL").info("loading model local_files_only=%i" % local_files_only)
-                self._tokenizer = AutoTokenizer.from_pretrained(
-                    self._model_dict["model_path"], cache_dir=self.cache_dir, trust_remote_code=True,
-                    local_files_only=local_files_only, token=token,
-                    )
-                if model_dict["backend"] == "transformers":
-                    torch_dtype_mapping = {
-                        "auto": "auto",
-                        "fp16": torch.float16,
-                        "bf16": torch.bfloat16,
-                    }
-                    torch_dtype = self._model_dict["model_class_kwargs"].pop("torch_dtype", "auto")
-                    torch_dtype = torch_dtype_mapping[torch_dtype]
-                    self._model = AutoModelForCausalLM.from_pretrained(
-                        self._model_dict["model_path"], cache_dir=self.cache_dir,
-                        device_map="auto", torch_dtype=torch_dtype, trust_remote_code=True,
-                        local_files_only=local_files_only, token=token,
-                        **self._model_dict["model_class_kwargs"])
-                elif model_dict["backend"] == "autogptq":
-                    self._model = CustomAutoGPTQForCausalLM.from_quantized(
-                        self._model_dict["model_path"], cache_dir=self.cache_dir, device=self._device,
-                        trust_remote_code=True,
-                        local_files_only=local_files_only, token=token,
-                        **self._model_dict["model_class_kwargs"])
-                else:
-                    raise RuntimeError(f"unknown model backend {model_dict['backend']}")
-                break
-            except IOError as e:
-                if local_files_only == False:
-                    raise e
+        logging.getLogger("MODEL").info("loading model")
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            self._model_dict["model_path"], cache_dir=self.cache_dir,
+            trust_remote_code=True, token=token,
+        )
+        if model_dict["backend"] == "transformers":
+            torch_dtype_mapping = {
+                "auto": "auto",
+                "fp16": torch.float16,
+                "bf16": torch.bfloat16,
+            }
+            torch_dtype = self._model_dict["model_class_kwargs"].pop("torch_dtype", "auto")
+            torch_dtype = torch_dtype_mapping[torch_dtype]
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self._model_dict["model_path"], cache_dir=self.cache_dir,
+                device_map="auto", torch_dtype=torch_dtype, trust_remote_code=True,
+                token=token, **self._model_dict["model_class_kwargs"]
+            )
+        elif model_dict["backend"] == "autogptq":
+            self._model = CustomAutoGPTQForCausalLM.from_quantized(
+                self._model_dict["model_path"], cache_dir=self.cache_dir, device=self._device,
+                trust_remote_code=True, token=token,
+                **self._model_dict["model_class_kwargs"]
+            )
+        else:
+            raise RuntimeError(f"unknown model backend {model_dict['backend']}")
         self._dump_embeddings()
 
     @property
