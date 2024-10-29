@@ -107,12 +107,14 @@ fn get_file_type(path: &PathBuf) -> String {
 
 async fn load_image(path: &String, f_type: &String) -> Result<ChatMessage, String> {
     let extension = path.split(".").last().unwrap().to_string();
+    let mut f_type = f_type.clone();
 
     let data = match f_type.as_str() {
         "image/png" | "image/jpeg" => {
             std::fs::read(path).map_err(|_| format!("{} read failed", path))
         },
         "image/svg" => {
+            f_type = "image/png".to_string();
             let tree = {
                 let mut opt = usvg::Options::default();
                 opt.resources_dir = std::fs::canonicalize(&path)
