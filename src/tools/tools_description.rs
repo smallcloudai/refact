@@ -310,19 +310,13 @@ tools:
         type: "string"
         description: |
           Supports these commands:
-          navigate_to <uri>
-          screenshot
-          html
-          reload
-      - name: "tab"
-        type: "string"
-        description: "Tab where command will be executed."
-      - name: "screenshot"
-        type: "boolean"
-        description: "Optionally make a screenshot of a tab."
+          connect
+          navigate_to <uri> <tab_id>
+          screenshot <tab_id>
+          html <tab_id>
+          reload <tab_id>
     parameters_required:
       - "command"
-      - "tab"
 
   - name: "postgres"
     agentic: true

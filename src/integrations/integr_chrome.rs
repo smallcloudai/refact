@@ -37,7 +37,6 @@ pub struct ToolChrome {
 }
 
 pub struct ChromeSession {
-    #[allow(dead_code)]    // it's not actually useless code, it keeps strong reference on browser so it doesn't die
     browser: Browser,
     tabs: HashMap<String, Arc<Tab>>,
 }
@@ -87,20 +86,8 @@ impl Tool for ToolChrome {
             None => return Err("Missing argument `command`".to_string())
         };
 
-        let tab_name = match args.get("tab") {
-            Some(Value::String(s)) => s,
-            Some(v) => return Err(format!("argument `tab` is not a string: {:?}", v)),
-            None => return Err("Missing argument `tab`".to_string())
-        };
+        let (command_name, command_args) = parse_command(command)?;
 
-        let append_screenshot = match args.get("screenshot") {
-            Some(Value::Bool(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `screenshot` is not boolean: {:?}", v)),
-            None => false
-        };
-
-        let command_args = parse_command_args(command)?;
-        
         let (gcx, chat_id) = {
             let ccx_lock = ccx.lock().await;
             (ccx_lock.global_context.clone(), ccx_lock.chat_id.clone())
@@ -111,9 +98,8 @@ impl Tool for ToolChrome {
 
         let messages = interact_with_chrome(
             gcx.clone(),
-            &tab_name,
+            &command_name,
             &command_args,
-            &append_screenshot,
             &session_hashmap_key,
         ).await?;
 
@@ -129,13 +115,12 @@ impl Tool for ToolChrome {
     }
 }
 
-fn parse_command_args(command: &String) -> Result<Vec<String>, String> {
+fn parse_command(command: &String) -> Result<(String, Vec<String>), String> {
     let parsed_args = shell_words::split(&command).map_err(|e| e.to_string())?;
     if parsed_args.is_empty() {
         return Err("Parsed command is empty".to_string());
     }
-
-    Ok(parsed_args)
+    Ok((parsed_args[0].clone(), parsed_args[1..].to_vec()))
 }
 
 async fn start_chrome_session(
@@ -143,6 +128,7 @@ async fn start_chrome_session(
     args: &IntegrationChrome,
     session_hashmap_key: &String,
 ) -> Result<(), String> {
+    // TODO: return start log
     let session_entry  = {
         let gcx_locked = gcx.read().await;
         gcx_locked.integration_sessions.get(session_hashmap_key).cloned()
@@ -196,14 +182,32 @@ async fn navigate_to(tab: &Arc<Tab>, url: &String) -> Result<String, String> {
     Ok(format!("Chrome tab navigated to {}", tab.get_url()))
 }
 
+async fn session_open_tab(
+    chrome_session: &mut ChromeSession,
+    tab_name: &String,
+) -> Result<(Arc<Tab>, String), String> {
+    match chrome_session.tabs.get(tab_name) {
+        Some(tab) => {
+            Ok((tab.clone(), format!("Using opened tab {}\n", tab_name.clone())))
+        },
+        None => {
+            let tab = chrome_session.browser.new_tab().map_err(|e| e.to_string())?;
+            chrome_session.tabs.insert(tab_name.clone(), tab.clone());
+            Ok((tab, format!("Opened new tab {}\n", tab_name.clone())))
+        }
+    }
+}
+
+fn command_format_error_message(format_str: &str) -> String {
+    format!("Call this command another time using format {}.", format_str)
+}
+
 async fn interact_with_chrome(
     gcx: Arc<ARwLock<GlobalContext>>,
-    tab_name: &String,
+    command_name: &String,
     command_args: &Vec<String>,
-    append_screenshot: &bool,
     session_hashmap_key: &String,
 ) -> Result<Vec<MultimodalElement>, String> {
-    let mut force_screenshot = *append_screenshot;
     let command_session = {
         let gcx_locked = gcx.read().await;
         gcx_locked.integration_sessions.get(session_hashmap_key)
@@ -215,60 +219,81 @@ async fn interact_with_chrome(
     let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
 
     let mut tool_log = vec![];
-    let tab = match chrome_session.tabs.get(tab_name) {
-        Some(tab) => {
-            tool_log.push(format!("Using opened tab {}\n", tab_name.clone()));
-            tab.clone()
-        },
-        None => {
-            let tab = chrome_session.browser.new_tab().map_err(|e| e.to_string())?;
-            chrome_session.tabs.insert(tab_name.clone(), tab.clone());
-            tool_log.push(format!("Opened new tab {}\n", tab_name.clone()));
-            tab
-        }
-    };
+    let mut multimodal_els = vec![];
 
-    match command_args[0].as_str() {
+    match command_name.as_str() {
         "navigate_to" => {
-            if command_args.len() < 2 {
-                tool_log.push(format!("Missing required argument `uri`: {:?}. Call this command another time using format `navigate_to <uri>`.", command_args));
+            let format_err_msg = command_format_error_message("`navigate_to <uri> <tab_id>`");
+            if command_args.len() < 1 {
+                tool_log.push(format!("Missing required argument `uri`: {:?}. {}.", command_args, format_err_msg));
+            } else if command_args.len() < 2 {
+                tool_log.push(format!("Missing required argument `tab_id`: {:?}. {}", command_args, format_err_msg));
             } else {
-                let content = navigate_to(&tab, &command_args[1]).await.map_err(
-                    |e| format!("Cannot navigate_to `{}`: {}. Probably url doesn't exist. If you're trying to open local file add file:// prefix.", command_args[1], e)
+                let (uri, tab_id) = (command_args[0].clone(), command_args[1].clone());
+                let (tab, open_tab_log) = session_open_tab(chrome_session, &tab_id).await.map_err(
+                    |e| format!("Can't open tab `{}`: {}.", tab_id, e)
+                )?;
+                tool_log.push(open_tab_log);
+                let content = navigate_to(&tab, &uri).await.map_err(
+                    |e| format!("Can't navigate_to `{}` on tab `{}`: {}. If you're trying to open local file add file:// prefix.", uri, tab_id, e)
                 )?;
                 tool_log.push(content);
             }
         },
         "screenshot" => {
-            force_screenshot = true;
+            if command_args.len() < 1 {
+                let format_err_msg = command_format_error_message("`screenshot <tab_id>`");
+                tool_log.push(format!("Missing required argument `tab_id`: {:?}. {}", command_args, format_err_msg));
+            } else {
+                let tab_id = command_args[0].clone();
+                let (tab, open_tab_log) = session_open_tab(chrome_session, &tab_id).await.map_err(
+                    |e| format!("Can't open tab `{}`: {}.", tab_id, e)
+                )?;
+                tool_log.push(open_tab_log);
+                let screenshot = screenshot_jpeg_base64(&tab, false).await?;
+                tool_log.push(format!("Made a screenshot of {}", tab.get_url()));
+                multimodal_els.push(screenshot);
+            }
         },
         "html" => {
-            let client = Client::builder()
-                .build()
-                .map_err(|e| e.to_string())?;
-            let url = tab.get_url();
-            let response = client.get(url.clone()).send().await.map_err(|e| e.to_string())?;
-            if !response.status().is_success() {
-                tool_log.push(format!("Unable to fetch url: {}; status: {}", url, response.status()));
+            if command_args.len() < 1 {
+                let format_err_msg = command_format_error_message("`html <tab_id>`");
+                tool_log.push(format!("Missing required argument `tab_id`: {:?}. {}", command_args, format_err_msg));
             } else {
-                tool_log.push(response.text().await.map_err(|e| e.to_string())?);
+                let tab_id = command_args[0].clone();
+                let (tab, open_tab_log) = session_open_tab(chrome_session, &tab_id).await.map_err(
+                    |e| format!("Can't open tab `{}`: {}.", tab_id, e)
+                )?;
+                tool_log.push(open_tab_log);
+                let client = Client::builder()
+                    .build()
+                    .map_err(|e| e.to_string())?;
+                let url = tab.get_url();
+                let response = client.get(url.clone()).send().await.map_err(|e| e.to_string())?;
+                if !response.status().is_success() {
+                    tool_log.push(format!("Unable to fetch url: {}; status: {}", url, response.status()));
+                } else {
+                    tool_log.push(response.text().await.map_err(|e| e.to_string())?);
+                }
             }
         },
         "reload" => {
-            tab.reload(false, None).map_err(|e| e.to_string())?;
-            tool_log.push(format!("Page {} reloaded", tab.get_url()));
+            if command_args.len() < 1 {
+                let format_err_msg = command_format_error_message("`reload <tab_id>`");
+                tool_log.push(format!("Missing required argument `tab_id`: {:?}. {}", command_args, format_err_msg));
+            } else {
+                let tab_id = command_args[0].clone();
+                let (tab, open_tab_log) = session_open_tab(chrome_session, &tab_id).await.map_err(
+                    |e| format!("Can't open tab `{}`: {}.", tab_id, e)
+                )?;
+                tool_log.push(open_tab_log);
+                tab.reload(false, None).map_err(|e| e.to_string())?;
+                tool_log.push(format!("Page `{}` on tab `{}` reloaded", tab.get_url(), tab_id));
+            }
         },
         _ => {
             return Err(format!("Unknown command: {:?}", command_args));
         }
-    }
-
-    let mut multimodal_els = vec![];
-
-    if force_screenshot {
-        let screenshot = screenshot_jpeg_base64(&tab, false).await?;
-        tool_log.push(format!("Made a screenshot of {}", tab.get_url()));
-        multimodal_els.push(screenshot);
     }
 
     multimodal_els.push(MultimodalElement::new(
