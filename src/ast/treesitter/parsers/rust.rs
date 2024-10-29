@@ -398,8 +398,7 @@ impl RustParser {
 
         if let Some(value_node) = parent.child_by_field_name("value") {
             decl.type_ = parse_type_in_value(&value_node, code);
-
-            symbols.extend(self.parse_usages(&value_node, code, path, &decl.ast_fields.guid.clone(), is_error));
+            symbols.extend(self.parse_usages(&value_node, code, path, &parent_guid, is_error));
         }
 
         let pattern_node = match parent.kind() {

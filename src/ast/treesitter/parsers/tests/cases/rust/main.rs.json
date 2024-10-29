@@ -2,12 +2,12 @@
   {
     "ImportDeclaration": {
       "ast_fields": {
-        "guid": "ec58fe76-c5a5-4c46-b5e2-6a259b9a6f5a",
+        "guid": "0819179a-e77b-4c6d-92d6-47746efdf424",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 0,
@@ -46,8 +46,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "path_components": [
         "std",
@@ -62,12 +64,12 @@
   {
     "ImportDeclaration": {
       "ast_fields": {
-        "guid": "f2049acb-845c-4e5a-8573-ae19dc28f639",
+        "guid": "215fdec1-1475-4e78-bb37-20d0d810b83d",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 20,
@@ -106,8 +108,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "path_components": [
         "parking_lot",
@@ -121,12 +125,12 @@
   {
     "ImportDeclaration": {
       "ast_fields": {
-        "guid": "f37a42f1-6667-4e0f-a573-1f10375665c5",
+        "guid": "cab9d346-169d-4c19-adba-66c19c1c5754",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 63,
@@ -165,8 +169,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "path_components": [
         "tree_sitter",
@@ -181,12 +187,12 @@
   {
     "ImportDeclaration": {
       "ast_fields": {
-        "guid": "45cab023-9e8c-4033-8e60-89d3af180ed1",
+        "guid": "d3fbd09a-249c-42d8-9c85-0aaaccd934a6",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 79,
@@ -225,8 +231,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "path_components": [
         "tree_sitter",
@@ -240,12 +248,12 @@
   {
     "ImportDeclaration": {
       "ast_fields": {
-        "guid": "4799e894-3f94-4ef2-a07d-23569ab0556a",
+        "guid": "f70603b9-4fe4-4313-9868-1f3a485bec15",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 87,
@@ -284,8 +292,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "path_components": [
         "tree_sitter",
@@ -299,12 +309,12 @@
   {
     "ImportDeclaration": {
       "ast_fields": {
-        "guid": "7cdd03f5-b70e-4d8e-9001-d8542395b3df",
+        "guid": "268e21a3-7988-48b1-b95d-cfd9b7bef40f",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 94,
@@ -343,8 +353,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "path_components": [
         "tree_sitter",
@@ -358,12 +370,12 @@
   {
     "ImportDeclaration": {
       "ast_fields": {
-        "guid": "15a13c48-9976-47f5-8974-37c036e9a73b",
+        "guid": "4fb19565-1a2f-4f50-9d47-5b123e811a71",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 102,
@@ -402,8 +414,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "path_components": [
         "tokio",
@@ -418,12 +432,12 @@
   {
     "ImportDeclaration": {
       "ast_fields": {
-        "guid": "5d8aeb12-fac0-4c64-a7dd-7a2a2f9980da",
+        "guid": "8310ee18-5a21-40c6-a158-c2041abd409e",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 138,
@@ -462,8 +476,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "path_components": [
         "crate",
@@ -478,12 +494,12 @@
   {
     "ImportDeclaration": {
       "ast_fields": {
-        "guid": "9d738632-1c17-47bc-aaec-cd1d4927cfc1",
+        "guid": "c7ee4f91-d886-4f5f-877f-d959ca114774",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 191,
@@ -522,8 +538,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "path_components": [
         "std",
@@ -537,12 +555,12 @@
   {
     "TypeAlias": {
       "ast_fields": {
-        "guid": "cc191731-83db-4762-8d36-5964d66a5219",
+        "guid": "6c0688dc-c060-48e0-a4f7-eff4f9a784ef",
         "name": "N",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 186,
@@ -581,13 +599,16 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "types": [
         {
           "name": "Node",
           "inference_info": null,
+          "inference_info_guid": null,
           "is_pod": false,
           "namespace": "",
           "guid": null,
@@ -599,12 +620,12 @@
   {
     "TypeAlias": {
       "ast_fields": {
-        "guid": "f7dd5fb0-9a7b-459d-965c-249c2e3eb0df",
+        "guid": "81c27ac1-6a7d-4132-8115-7bb2fc604d0f",
         "name": "ass",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 186,
@@ -643,8 +664,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "types": []
     }
@@ -652,12 +675,12 @@
   {
     "ImportDeclaration": {
       "ast_fields": {
-        "guid": "63a148f4-95d2-4b67-969a-b76c28428633",
+        "guid": "a215d79b-32a2-446c-a1b7-3a9195b3981f",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 222,
@@ -696,8 +719,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "path_components": [
         "asd",
@@ -711,12 +736,12 @@
   {
     "TypeAlias": {
       "ast_fields": {
-        "guid": "ba15ad89-a635-4b73-92a4-f40a85f6671e",
+        "guid": "d983f0bd-ba8c-445c-a163-e8a1352ee51b",
         "name": "sl",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 233,
@@ -755,8 +780,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "types": []
     }
@@ -764,12 +791,12 @@
   {
     "ClassFieldDeclaration": {
       "ast_fields": {
-        "guid": "d27e4b49-79ec-4ce4-9b5c-e2bfec908fa5",
+        "guid": "6639a9a7-ac15-42f3-bb86-ab07ec488287",
         "name": "f1",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "d2aa03f5-fe34-4d4d-90a0-480e5e94a808",
+        "parent_guid": "f89fa75c-90a3-47ef-ae20-cacb6cdcaea9",
         "childs_guid": [],
         "full_range": {
           "start_byte": 262,
@@ -808,12 +835,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": "u32",
         "inference_info": null,
+        "inference_info_guid": null,
         "is_pod": true,
         "namespace": "",
         "guid": null,
@@ -824,12 +854,12 @@
   {
     "ClassFieldDeclaration": {
       "ast_fields": {
-        "guid": "a123a420-6ca4-4953-bcd1-fc6711f12dab",
+        "guid": "2431248e-3112-4993-83ab-5aae495c675b",
         "name": "f2",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "d2aa03f5-fe34-4d4d-90a0-480e5e94a808",
+        "parent_guid": "f89fa75c-90a3-47ef-ae20-cacb6cdcaea9",
         "childs_guid": [],
         "full_range": {
           "start_byte": 275,
@@ -868,12 +898,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": "f32",
         "inference_info": null,
+        "inference_info_guid": null,
         "is_pod": true,
         "namespace": "",
         "guid": null,
@@ -884,15 +917,15 @@
   {
     "StructDeclaration": {
       "ast_fields": {
-        "guid": "d2aa03f5-fe34-4d4d-90a0-480e5e94a808",
+        "guid": "f89fa75c-90a3-47ef-ae20-cacb6cdcaea9",
         "name": "MyUnion",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [
-          "d27e4b49-79ec-4ce4-9b5c-e2bfec908fa5",
-          "a123a420-6ca4-4953-bcd1-fc6711f12dab"
+          "6639a9a7-ac15-42f3-bb86-ab07ec488287",
+          "2431248e-3112-4993-83ab-5aae495c675b"
         ],
         "full_range": {
           "start_byte": 242,
@@ -931,8 +964,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "inherited_types": []
@@ -941,12 +976,12 @@
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "cf20c68c-cd7c-41e0-9b88-ce69cdabcd5a",
+        "guid": "7ec89e41-9b95-4d2c-9858-032c76507079",
         "name": "u",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "588f2305-3e87-4aa5-802d-130bdf3dde51",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 308,
@@ -985,20 +1020,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "cc3be4e0-693d-4343-9b0b-aea8ce436a29",
+        "guid": "5061f6f5-6bc5-437d-8dd0-14aa0a22d307",
         "name": "f1",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "588f2305-3e87-4aa5-802d-130bdf3dde51",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 308,
@@ -1037,20 +1074,22 @@
           }
         },
         "linked_decl_guid": null,
-        "caller_guid": "cf20c68c-cd7c-41e0-9b88-ce69cdabcd5a",
-        "is_error": false
+        "linked_decl_type": null,
+        "caller_guid": "7ec89e41-9b95-4d2c-9858-032c76507079",
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableDefinition": {
       "ast_fields": {
-        "guid": "588f2305-3e87-4aa5-802d-130bdf3dde51",
+        "guid": "a641aa21-4af9-4717-8ecd-f73421c5bd76",
         "name": "f",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 300,
@@ -1089,12 +1128,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": null,
         "inference_info": "u.f1",
+        "inference_info_guid": null,
         "is_pod": false,
         "namespace": "",
         "guid": null,
@@ -1105,12 +1147,12 @@
   {
     "VariableDefinition": {
       "ast_fields": {
-        "guid": "a0e69456-77bb-498e-99d8-ebee1fbc2a74",
+        "guid": "e547f8e8-965d-41e9-9cbf-7a4fe9c705bc",
         "name": "GLOBAL_VARIABLE",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 320,
@@ -1149,12 +1191,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": null,
         "inference_info": "\"asdasd\"",
+        "inference_info_guid": null,
         "is_pod": true,
         "namespace": "",
         "guid": null,
@@ -1165,12 +1210,12 @@
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "54f4b787-fd52-493c-b9e3-6c5dc6a80ccf",
+        "guid": "c493d491-503f-42bb-be99-0612887ccbd6",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 441,
@@ -1209,20 +1254,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "2a4e9cd9-838f-4fbf-baa0-e7cc4d52b504",
+        "guid": "030b2a02-26c9-4058-b91f-252dee8f405d",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 463,
@@ -1261,20 +1308,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "a4e5b802-9bb1-4cd6-8689-da3c8acaed55",
+        "guid": "024a72e4-73b7-4d98-8a79-64041459a83a",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 530,
@@ -1313,20 +1362,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "7184a366-a85c-4e24-8ba3-93b687a6d6c4",
+        "guid": "4ffde6be-7287-4ad5-9058-2dadee9a3e3d",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 556,
@@ -1365,20 +1416,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "91f9bd27-728e-449e-aede-f9e79888fe50",
+        "guid": "3beb00fe-9916-489b-a2a2-c18a65c665ce",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 627,
@@ -1417,20 +1470,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "6b17fddc-4eb7-479d-aa11-4264176e5274",
+        "guid": "fd79c90e-2c00-48ef-ad6b-0b06f6f7861f",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 649,
@@ -1469,20 +1524,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "54db0dc4-f0e1-4dc9-807b-1b5f9f32e623",
+        "guid": "1a8b7980-651c-45bc-8a28-c3b8332abde9",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 691,
@@ -1521,20 +1578,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "6ee8d500-eff7-40e0-8796-0f55e6a29c7e",
+        "guid": "45352c20-3c94-4b20-925c-09a6e1475868",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 714,
@@ -1573,20 +1632,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "82e2daf9-3150-43f9-b88f-a55323a66d2a",
+        "guid": "15efcb37-b83f-4484-bc5c-7a1cd545834e",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 739,
@@ -1625,20 +1686,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "7f16fe55-3f34-452e-9d32-6d71ce43cdd8",
+        "guid": "c80540ce-0fa9-4b0f-90e0-25c34cddcd3c",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 787,
@@ -1677,20 +1740,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "61c6fb0c-b5ea-4b5b-98e2-e47cdcfa23b4",
+        "guid": "c637e6c6-3601-48da-8fc3-8bf023e71c3d",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 813,
@@ -1729,20 +1794,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "ClassFieldDeclaration": {
       "ast_fields": {
-        "guid": "08046839-8fde-43ce-a4bb-d35c8fe1684b",
+        "guid": "40e6df20-d0bd-4258-8662-1751b679b48a",
         "name": "x",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "53417b38-12b0-4eab-b055-232697e91218",
+        "parent_guid": "4b229390-ce11-4698-84dd-98716d609859",
         "childs_guid": [],
         "full_range": {
           "start_byte": 881,
@@ -1781,12 +1848,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": "f64",
         "inference_info": null,
+        "inference_info_guid": null,
         "is_pod": true,
         "namespace": "",
         "guid": null,
@@ -1797,12 +1867,12 @@
   {
     "ClassFieldDeclaration": {
       "ast_fields": {
-        "guid": "4e8aa711-b150-4cda-a0fd-d8c278dc8a46",
+        "guid": "91446280-33b5-4a43-8476-cc0b994a2ede",
         "name": "y",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "53417b38-12b0-4eab-b055-232697e91218",
+        "parent_guid": "4b229390-ce11-4698-84dd-98716d609859",
         "childs_guid": [],
         "full_range": {
           "start_byte": 893,
@@ -1841,12 +1911,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": "f64",
         "inference_info": null,
+        "inference_info_guid": null,
         "is_pod": true,
         "namespace": "",
         "guid": null,
@@ -1857,15 +1930,15 @@
   {
     "StructDeclaration": {
       "ast_fields": {
-        "guid": "53417b38-12b0-4eab-b055-232697e91218",
+        "guid": "4b229390-ce11-4698-84dd-98716d609859",
         "name": "Point",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [
-          "08046839-8fde-43ce-a4bb-d35c8fe1684b",
-          "4e8aa711-b150-4cda-a0fd-d8c278dc8a46"
+          "40e6df20-d0bd-4258-8662-1751b679b48a",
+          "91446280-33b5-4a43-8476-cc0b994a2ede"
         ],
         "full_range": {
           "start_byte": 862,
@@ -1904,8 +1977,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "inherited_types": []
@@ -1914,12 +1989,12 @@
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "5b5a34fa-72fc-48c1-89da-d10bbb2a972c",
+        "guid": "425f0275-0698-415f-90b3-5f18a4146a9e",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "609c8b2d-8a8e-41a6-a287-fe4dea7d4f9c",
+        "parent_guid": "5c329302-6e82-4d8c-8df1-fe6a9e7107c0",
         "childs_guid": [],
         "full_range": {
           "start_byte": 921,
@@ -1958,20 +2033,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "9791843a-c9f9-4f8e-98c7-c7822094d92f",
+        "guid": "c66e786e-7b22-4067-94f0-5bec903027f8",
         "name": "x",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7212bb90-4bda-4a41-ab95-fe57819e1869",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1032,
@@ -2010,20 +2087,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "391bc28b-a8f5-4e77-ab69-6603ef7a631d",
+        "guid": "3be71d6c-21b8-4e0f-be42-c75372b333b4",
         "name": "other",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7212bb90-4bda-4a41-ab95-fe57819e1869",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1041,
@@ -2062,20 +2141,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "714cc147-8bee-4a80-aa1a-024f56f8261e",
+        "guid": "c5676554-c28b-4bc1-9825-7f400112988e",
         "name": "x",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7212bb90-4bda-4a41-ab95-fe57819e1869",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1041,
@@ -2114,20 +2195,22 @@
           }
         },
         "linked_decl_guid": null,
-        "caller_guid": "391bc28b-a8f5-4e77-ab69-6603ef7a631d",
-        "is_error": false
+        "linked_decl_type": null,
+        "caller_guid": "3be71d6c-21b8-4e0f-be42-c75372b333b4",
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableDefinition": {
       "ast_fields": {
-        "guid": "7212bb90-4bda-4a41-ab95-fe57819e1869",
+        "guid": "a915e5ab-3615-4525-ad30-66b6ab478bae",
         "name": "dx",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7809f004-696a-467c-990a-dce3702bccf0",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1018,
@@ -2166,12 +2249,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": null,
         "inference_info": "self.x - other.x",
+        "inference_info_guid": null,
         "is_pod": false,
         "namespace": "",
         "guid": null,
@@ -2182,12 +2268,12 @@
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "273d5c52-f982-4e45-8ab1-3a3e0a10fa0d",
+        "guid": "05779b6b-4ff6-45f6-aff5-6a4be846d5b7",
         "name": "y",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "0664c77f-f870-40c1-aaf8-80e9ac9e6b7d",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1067,
@@ -2226,20 +2312,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "e0662067-c0e6-4a64-8412-3a3d247c7c27",
+        "guid": "a8d7473f-4ca8-41f1-b323-bbb2d6bdb3eb",
         "name": "other",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "0664c77f-f870-40c1-aaf8-80e9ac9e6b7d",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1076,
@@ -2278,20 +2366,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "ef151b6e-28cf-40aa-b75b-c634cf50ccfb",
+        "guid": "4f3849dd-f47d-4fa2-9c28-b2f985348cc2",
         "name": "y",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "0664c77f-f870-40c1-aaf8-80e9ac9e6b7d",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1076,
@@ -2330,20 +2420,22 @@
           }
         },
         "linked_decl_guid": null,
-        "caller_guid": "e0662067-c0e6-4a64-8412-3a3d247c7c27",
-        "is_error": false
+        "linked_decl_type": null,
+        "caller_guid": "a8d7473f-4ca8-41f1-b323-bbb2d6bdb3eb",
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableDefinition": {
       "ast_fields": {
-        "guid": "0664c77f-f870-40c1-aaf8-80e9ac9e6b7d",
+        "guid": "d92f62a5-6f0f-4095-9f7c-27e05156a74e",
         "name": "dy",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7809f004-696a-467c-990a-dce3702bccf0",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1058,
@@ -2382,12 +2474,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": null,
         "inference_info": "self.y - other.y",
+        "inference_info_guid": null,
         "is_pod": false,
         "namespace": "",
         "guid": null,
@@ -2398,12 +2493,12 @@
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "ee57bbbe-a5e9-497f-9d59-8487b325cf06",
+        "guid": "eaafff7d-bd69-4444-b128-0fc9cbeae766",
         "name": "dx",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "dc5f1ece-f88c-4c26-87b9-bf7d5af6e2e1",
+        "parent_guid": "14c3ee33-d84b-45c9-a325-9808acc1c563",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1103,
@@ -2442,20 +2537,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "f2fc5217-4fca-41b5-9e65-a44062d8086a",
+        "guid": "58459a84-9e01-41f3-82cd-0b751c5ea3df",
         "name": "dx",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "dc5f1ece-f88c-4c26-87b9-bf7d5af6e2e1",
+        "parent_guid": "14c3ee33-d84b-45c9-a325-9808acc1c563",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1106,
@@ -2494,20 +2591,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "c1cc6a0a-5f6e-48dd-bf11-3b435e70d3be",
+        "guid": "23584f77-b410-4186-8515-088c0861278a",
         "name": "dy",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "dc5f1ece-f88c-4c26-87b9-bf7d5af6e2e1",
+        "parent_guid": "14c3ee33-d84b-45c9-a325-9808acc1c563",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1111,
@@ -2546,20 +2645,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "71ac6408-209f-444e-9244-61769a1276fc",
+        "guid": "5828a19c-3cee-46c0-b476-40a978a55841",
         "name": "dy",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "dc5f1ece-f88c-4c26-87b9-bf7d5af6e2e1",
+        "parent_guid": "14c3ee33-d84b-45c9-a325-9808acc1c563",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1114,
@@ -2598,25 +2699,27 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "dc5f1ece-f88c-4c26-87b9-bf7d5af6e2e1",
+        "guid": "14c3ee33-d84b-45c9-a325-9808acc1c563",
         "name": "sqrt",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7809f004-696a-467c-990a-dce3702bccf0",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
         "childs_guid": [
-          "ee57bbbe-a5e9-497f-9d59-8487b325cf06",
-          "f2fc5217-4fca-41b5-9e65-a44062d8086a",
-          "c1cc6a0a-5f6e-48dd-bf11-3b435e70d3be",
-          "71ac6408-209f-444e-9244-61769a1276fc"
+          "eaafff7d-bd69-4444-b128-0fc9cbeae766",
+          "58459a84-9e01-41f3-82cd-0b751c5ea3df",
+          "23584f77-b410-4186-8515-088c0861278a",
+          "5828a19c-3cee-46c0-b476-40a978a55841"
         ],
         "full_range": {
           "start_byte": 1093,
@@ -2655,8 +2758,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -2664,16 +2769,22 @@
   {
     "FunctionDeclaration": {
       "ast_fields": {
-        "guid": "7809f004-696a-467c-990a-dce3702bccf0",
+        "guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
         "name": "distance",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "609c8b2d-8a8e-41a6-a287-fe4dea7d4f9c",
+        "parent_guid": "5c329302-6e82-4d8c-8df1-fe6a9e7107c0",
         "childs_guid": [
-          "7212bb90-4bda-4a41-ab95-fe57819e1869",
-          "0664c77f-f870-40c1-aaf8-80e9ac9e6b7d",
-          "dc5f1ece-f88c-4c26-87b9-bf7d5af6e2e1"
+          "c66e786e-7b22-4067-94f0-5bec903027f8",
+          "3be71d6c-21b8-4e0f-be42-c75372b333b4",
+          "c5676554-c28b-4bc1-9825-7f400112988e",
+          "a915e5ab-3615-4525-ad30-66b6ab478bae",
+          "05779b6b-4ff6-45f6-aff5-6a4be846d5b7",
+          "a8d7473f-4ca8-41f1-b323-bbb2d6bdb3eb",
+          "4f3849dd-f47d-4fa2-9c28-b2f985348cc2",
+          "d92f62a5-6f0f-4095-9f7c-27e05156a74e",
+          "14c3ee33-d84b-45c9-a325-9808acc1c563"
         ],
         "full_range": {
           "start_byte": 967,
@@ -2712,8 +2823,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "args": [
@@ -2722,6 +2835,7 @@
           "type_": {
             "name": "Point",
             "inference_info": null,
+            "inference_info_guid": null,
             "is_pod": false,
             "namespace": "",
             "guid": null,
@@ -2732,6 +2846,7 @@
       "return_type": {
         "name": "f64",
         "inference_info": null,
+        "inference_info_guid": null,
         "is_pod": true,
         "namespace": "",
         "guid": null,
@@ -2742,15 +2857,15 @@
   {
     "StructDeclaration": {
       "ast_fields": {
-        "guid": "609c8b2d-8a8e-41a6-a287-fe4dea7d4f9c",
+        "guid": "5c329302-6e82-4d8c-8df1-fe6a9e7107c0",
         "name": "Point",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [
-          "5b5a34fa-72fc-48c1-89da-d10bbb2a972c",
-          "7809f004-696a-467c-990a-dce3702bccf0"
+          "425f0275-0698-415f-90b3-5f18a4146a9e",
+          "def866db-1e45-4fbd-b365-6a73a47561e7"
         ],
         "full_range": {
           "start_byte": 904,
@@ -2789,8 +2904,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "inherited_types": []
@@ -2799,12 +2916,12 @@
   {
     "FunctionDeclaration": {
       "ast_fields": {
-        "guid": "78e7cf45-4fcf-4169-8f04-a829ab21c761",
+        "guid": "c1248b73-2fd5-4b21-a12e-17d629e3c1f2",
         "name": "foo",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "8cbe6513-6b9b-4bca-a0c1-336e6ebfa8ba",
+        "parent_guid": "f5f2664a-14ef-4641-82b3-ba944219a277",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1151,
@@ -2843,8 +2960,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "args": [],
@@ -2854,14 +2973,14 @@
   {
     "StructDeclaration": {
       "ast_fields": {
-        "guid": "8cbe6513-6b9b-4bca-a0c1-336e6ebfa8ba",
+        "guid": "f5f2664a-14ef-4641-82b3-ba944219a277",
         "name": "Point",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [
-          "78e7cf45-4fcf-4169-8f04-a829ab21c761"
+          "c1248b73-2fd5-4b21-a12e-17d629e3c1f2"
         ],
         "full_range": {
           "start_byte": 1126,
@@ -2900,13 +3019,16 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [
         {
           "name": "Foo",
           "inference_info": null,
+          "inference_info_guid": null,
           "is_pod": false,
           "namespace": "",
           "guid": null,
@@ -2919,12 +3041,12 @@
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "4c6b825a-0c8a-4295-9451-e14692cc3093",
+        "guid": "085de677-f025-40b2-b98c-6823a41b4c86",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1165,
@@ -2963,20 +3085,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "StructDeclaration": {
       "ast_fields": {
-        "guid": "963583ff-06c7-45c0-b6de-2f49764102fa",
+        "guid": "6b3da938-9377-4dce-a040-0dac25f07096",
         "name": "Direction",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1183,
@@ -3015,8 +3139,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "inherited_types": []
@@ -3025,12 +3151,12 @@
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "1fca0718-ff36-46d2-a691-d2c92ce175ff",
+        "guid": "c6aa67f9-2426-47d4-9556-dc2f34102a83",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1270,
@@ -3069,20 +3195,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "FunctionDeclaration": {
       "ast_fields": {
-        "guid": "3a974979-f785-4519-8088-6d23a3a9ac93",
+        "guid": "f006d7ee-6ed2-4a24-b85d-1127708d455f",
         "name": "print",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "51f582c6-6662-489c-98db-9c1ee70ad9d0",
+        "parent_guid": "d995abe9-f68e-4782-ba1d-b580c44d8351",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1327,
@@ -3121,8 +3249,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "args": [],
@@ -3132,14 +3262,14 @@
   {
     "StructDeclaration": {
       "ast_fields": {
-        "guid": "51f582c6-6662-489c-98db-9c1ee70ad9d0",
+        "guid": "d995abe9-f68e-4782-ba1d-b580c44d8351",
         "name": "Print",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [
-          "3a974979-f785-4519-8088-6d23a3a9ac93"
+          "f006d7ee-6ed2-4a24-b85d-1127708d455f"
         ],
         "full_range": {
           "start_byte": 1309,
@@ -3178,8 +3308,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "inherited_types": []
@@ -3188,12 +3320,12 @@
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "f23491fe-e1b3-4a83-9d0e-c3cada61dcc3",
+        "guid": "cd246561-d4f8-44e6-bf6c-0d8ae3037bd9",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1347,
@@ -3232,20 +3364,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "FunctionDeclaration": {
       "ast_fields": {
-        "guid": "f93208de-a7e2-4266-b3b5-8016829586a3",
+        "guid": "57e0117c-6938-46e0-a688-ecb5763a3da9",
         "name": "print",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "6bb948e2-61a4-4427-b8c6-9bdf01ef0c0d",
+        "parent_guid": "52c730e5-8eff-4af4-a02e-fa382a251217",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1415,
@@ -3284,8 +3418,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "args": [],
@@ -3295,14 +3431,14 @@
   {
     "StructDeclaration": {
       "ast_fields": {
-        "guid": "6bb948e2-61a4-4427-b8c6-9bdf01ef0c0d",
+        "guid": "52c730e5-8eff-4af4-a02e-fa382a251217",
         "name": "Direction",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [
-          "f93208de-a7e2-4266-b3b5-8016829586a3"
+          "57e0117c-6938-46e0-a688-ecb5763a3da9"
         ],
         "full_range": {
           "start_byte": 1384,
@@ -3341,13 +3477,16 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [
         {
           "name": "Print",
           "inference_info": null,
+          "inference_info_guid": null,
           "is_pod": false,
           "namespace": "",
           "guid": null,
@@ -3360,12 +3499,12 @@
   {
     "CommentDefinition": {
       "ast_fields": {
-        "guid": "dc37a3c7-b5c1-4822-bb68-6150adb0c5ce",
+        "guid": "12e20a86-1d00-444d-bc5f-05d29013b460",
         "name": "",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1820,
@@ -3404,20 +3543,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "8d259b0a-ddf6-44f4-8d33-8df8d82f4799",
+        "guid": "ac3be573-ce89-4a62-9909-71a715c4f0af",
         "name": "direction",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "62e902f6-cb10-4e0b-aeb0-9acb458254d1",
+        "parent_guid": "cf4c913a-177a-49b4-b203-67aff57425bc",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1931,
@@ -3456,20 +3597,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "f1d86547-e2d8-4ee0-9235-65f5c45e7094",
+        "guid": "787fb3bd-348e-4d67-b2e2-8f69bdf17af9",
         "name": "print",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "62e902f6-cb10-4e0b-aeb0-9acb458254d1",
+        "parent_guid": "cf4c913a-177a-49b4-b203-67aff57425bc",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1931,
@@ -3508,8 +3651,10 @@
           }
         },
         "linked_decl_guid": null,
-        "caller_guid": "8d259b0a-ddf6-44f4-8d33-8df8d82f4799",
-        "is_error": false
+        "linked_decl_type": null,
+        "caller_guid": "ac3be573-ce89-4a62-9909-71a715c4f0af",
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -3517,15 +3662,15 @@
   {
     "FunctionDeclaration": {
       "ast_fields": {
-        "guid": "62e902f6-cb10-4e0b-aeb0-9acb458254d1",
+        "guid": "cf4c913a-177a-49b4-b203-67aff57425bc",
         "name": "print_direction",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [
-          "8d259b0a-ddf6-44f4-8d33-8df8d82f4799",
-          "f1d86547-e2d8-4ee0-9235-65f5c45e7094"
+          "ac3be573-ce89-4a62-9909-71a715c4f0af",
+          "787fb3bd-348e-4d67-b2e2-8f69bdf17af9"
         ],
         "full_range": {
           "start_byte": 1884,
@@ -3564,8 +3709,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "args": [
@@ -3574,6 +3721,7 @@
           "type_": {
             "name": "Direction",
             "inference_info": null,
+            "inference_info_guid": null,
             "is_pod": false,
             "namespace": "",
             "guid": null,
@@ -3587,12 +3735,12 @@
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "36494c52-8f61-447e-a2a4-4361c4281343",
+        "guid": "1b0b6a3a-d58b-46d4-9934-67ef026a1b37",
         "name": "Point",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "8bc59c73-9df7-47fe-86c2-d212ddceb9c9",
+        "parent_guid": "18cc942b-0682-44fb-b85d-3a03c8a0be49",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2013,
@@ -3631,8 +3779,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -3640,14 +3790,14 @@
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "8bc59c73-9df7-47fe-86c2-d212ddceb9c9",
+        "guid": "18cc942b-0682-44fb-b85d-3a03c8a0be49",
         "name": "Up",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "5b013224-6239-4fe9-bc62-127ba649c148",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [
-          "36494c52-8f61-447e-a2a4-4361c4281343"
+          "1b0b6a3a-d58b-46d4-9934-67ef026a1b37"
         ],
         "full_range": {
           "start_byte": 1999,
@@ -3686,8 +3836,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -3695,12 +3847,12 @@
   {
     "VariableDefinition": {
       "ast_fields": {
-        "guid": "5b013224-6239-4fe9-bc62-127ba649c148",
+        "guid": "eb10da6c-856f-48b3-b13c-f20c81b867a6",
         "name": "up",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [],
         "full_range": {
           "start_byte": 1969,
@@ -3739,12 +3891,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": null,
         "inference_info": "Direction::Up(Point { x: 0, y: 1 })",
+        "inference_info_guid": null,
         "is_pod": false,
         "namespace": "",
         "guid": null,
@@ -3755,12 +3910,12 @@
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "dbab0c3c-e3c6-4f90-9b82-6558fe5f877a",
+        "guid": "70f80d4e-b637-4899-b45e-714ecb14453f",
         "name": "a",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2040,
@@ -3799,20 +3954,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "f3faab9e-bdd2-471d-be5d-9072205e39c8",
+        "guid": "66318e17-bc3d-4b35-b2f4-0d986b1a86e4",
         "name": "b",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2040,
@@ -3851,20 +4008,22 @@
           }
         },
         "linked_decl_guid": null,
-        "caller_guid": "dbab0c3c-e3c6-4f90-9b82-6558fe5f877a",
-        "is_error": false
+        "linked_decl_type": null,
+        "caller_guid": "70f80d4e-b637-4899-b45e-714ecb14453f",
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "101b5873-be59-4222-b99f-b4643058c1e1",
+        "guid": "494ed40a-4ff1-4a24-ab1f-78e83ddd9132",
         "name": "up",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "a091e490-105d-4e95-ab8b-95e100ac81f9",
+        "parent_guid": "18356b1c-e09c-4dbd-b8b6-087c2bde355d",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2060,
@@ -3903,22 +4062,24 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "a091e490-105d-4e95-ab8b-95e100ac81f9",
+        "guid": "18356b1c-e09c-4dbd-b8b6-087c2bde355d",
         "name": "print_direction",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [
-          "101b5873-be59-4222-b99f-b4643058c1e1"
+          "494ed40a-4ff1-4a24-ab1f-78e83ddd9132"
         ],
         "full_range": {
           "start_byte": 2040,
@@ -3957,8 +4118,10 @@
           }
         },
         "linked_decl_guid": null,
-        "caller_guid": "f3faab9e-bdd2-471d-be5d-9072205e39c8",
-        "is_error": false
+        "linked_decl_type": null,
+        "caller_guid": "66318e17-bc3d-4b35-b2f4-0d986b1a86e4",
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -3966,12 +4129,12 @@
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "23e9b5d0-24ca-4708-aee1-ee14d8577b4c",
+        "guid": "3a6dd70c-6d40-4154-a3a7-65fe1738204c",
         "name": "Point",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "f2e80821-271c-4d78-9360-eb3e7a9e5eb7",
+        "parent_guid": "6b5c18a9-a75c-4565-9b4a-21bef9332248",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2112,
@@ -4010,8 +4173,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -4019,14 +4184,14 @@
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "f2e80821-271c-4d78-9360-eb3e7a9e5eb7",
+        "guid": "6b5c18a9-a75c-4565-9b4a-21bef9332248",
         "name": "Down",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "3e31caeb-3f99-4d56-a163-3e164550843d",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [
-          "23e9b5d0-24ca-4708-aee1-ee14d8577b4c"
+          "3a6dd70c-6d40-4154-a3a7-65fe1738204c"
         ],
         "full_range": {
           "start_byte": 2096,
@@ -4065,8 +4230,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -4074,12 +4241,12 @@
   {
     "VariableDefinition": {
       "ast_fields": {
-        "guid": "3e31caeb-3f99-4d56-a163-3e164550843d",
+        "guid": "aa777a19-f9f6-477f-8b81-53e9e00c7427",
         "name": "down",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2070,
@@ -4118,12 +4285,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": null,
         "inference_info": "Direction::Down(Point { x: 0, y: -1 })",
+        "inference_info_guid": null,
         "is_pod": false,
         "namespace": "",
         "guid": null,
@@ -4134,12 +4304,12 @@
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "7e0f25d2-2537-46c7-b997-f528401bf0b9",
+        "guid": "a88e6838-8a34-45f5-a099-b6ff983da309",
         "name": "a",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2140,
@@ -4178,20 +4348,22 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "7fed12ab-a4cc-43d0-8d8a-be42fbce0804",
+        "guid": "4dc9b426-af55-428b-b404-90657dd595ab",
         "name": "down",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "e40c93ee-fe09-40e5-9cf3-eddc57d26e30",
+        "parent_guid": "f3085315-bf98-4c65-9931-0c999640be3a",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2158,
@@ -4230,22 +4402,24 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "e40c93ee-fe09-40e5-9cf3-eddc57d26e30",
+        "guid": "f3085315-bf98-4c65-9931-0c999640be3a",
         "name": "print_direction",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [
-          "7fed12ab-a4cc-43d0-8d8a-be42fbce0804"
+          "4dc9b426-af55-428b-b404-90657dd595ab"
         ],
         "full_range": {
           "start_byte": 2140,
@@ -4284,8 +4458,10 @@
           }
         },
         "linked_decl_guid": null,
-        "caller_guid": "7e0f25d2-2537-46c7-b997-f528401bf0b9",
-        "is_error": false
+        "linked_decl_type": null,
+        "caller_guid": "a88e6838-8a34-45f5-a099-b6ff983da309",
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -4293,12 +4469,12 @@
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "566ab4e9-3a37-40ca-8b2d-cc17b6e13a6b",
+        "guid": "9fbac0ac-1f01-4829-b0cc-0bca0b3a630f",
         "name": "Point",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "e608fae9-5de4-4615-8c28-da336ce1ad1f",
+        "parent_guid": "3b09a383-ea94-4268-a7eb-5cfa00367866",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2206,
@@ -4337,8 +4513,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -4346,14 +4524,14 @@
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "e608fae9-5de4-4615-8c28-da336ce1ad1f",
+        "guid": "3b09a383-ea94-4268-a7eb-5cfa00367866",
         "name": "Left",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "59ee248a-3e22-4898-96ac-acbc5431f91b",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [
-          "566ab4e9-3a37-40ca-8b2d-cc17b6e13a6b"
+          "9fbac0ac-1f01-4829-b0cc-0bca0b3a630f"
         ],
         "full_range": {
           "start_byte": 2190,
@@ -4392,8 +4570,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -4401,12 +4581,12 @@
   {
     "VariableDefinition": {
       "ast_fields": {
-        "guid": "59ee248a-3e22-4898-96ac-acbc5431f91b",
+        "guid": "12107190-8f91-42fa-af64-e5d663998b2a",
         "name": "left",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2170,
@@ -4445,12 +4625,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": null,
         "inference_info": "Direction::Left(Point { x: -1, y: 0 })",
+        "inference_info_guid": null,
         "is_pod": false,
         "namespace": "",
         "guid": null,
@@ -4461,12 +4644,12 @@
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "a5e16271-b5aa-4bb8-83fe-15f208a2266c",
+        "guid": "1c69ba2b-7d04-4143-98af-8c508793843b",
         "name": "left",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ff216d76-82d6-4321-96b1-c061bf19f64a",
+        "parent_guid": "3a83e959-f0c6-4cfd-82b9-dd5a0291e2bd",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2250,
@@ -4505,22 +4688,24 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "ff216d76-82d6-4321-96b1-c061bf19f64a",
+        "guid": "3a83e959-f0c6-4cfd-82b9-dd5a0291e2bd",
         "name": "print_direction",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [
-          "a5e16271-b5aa-4bb8-83fe-15f208a2266c"
+          "1c69ba2b-7d04-4143-98af-8c508793843b"
         ],
         "full_range": {
           "start_byte": 2234,
@@ -4559,8 +4744,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -4568,12 +4755,12 @@
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "a532c657-d77a-4a8c-8715-bfdb758ebf28",
+        "guid": "ad0c03f6-49fb-4a50-8e43-7a476bae214e",
         "name": "Point",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "bf35ca4e-d2ab-46c2-9e2b-ee9eaf729333",
+        "parent_guid": "e1408575-2548-4429-89e0-57144633e034",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2305,
@@ -4612,8 +4799,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -4621,14 +4810,14 @@
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "bf35ca4e-d2ab-46c2-9e2b-ee9eaf729333",
+        "guid": "e1408575-2548-4429-89e0-57144633e034",
         "name": "Right",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "d0f2b81a-4a49-4c63-b45a-17ec946b1fab",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [
-          "a532c657-d77a-4a8c-8715-bfdb758ebf28"
+          "ad0c03f6-49fb-4a50-8e43-7a476bae214e"
         ],
         "full_range": {
           "start_byte": 2288,
@@ -4667,8 +4856,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -4676,12 +4867,12 @@
   {
     "VariableDefinition": {
       "ast_fields": {
-        "guid": "d0f2b81a-4a49-4c63-b45a-17ec946b1fab",
+        "guid": "e31308b1-dfcc-4246-8f8c-5bb7541cfe01",
         "name": "right",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2262,
@@ -4720,12 +4911,15 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "type_": {
         "name": null,
         "inference_info": "Direction::Right(Point { x: 1, y: 0 })",
+        "inference_info_guid": null,
         "is_pod": false,
         "namespace": "",
         "guid": null,
@@ -4736,12 +4930,12 @@
   {
     "VariableUsage": {
       "ast_fields": {
-        "guid": "e9c8406e-6788-41e9-88c3-c6a16c31a2f5",
+        "guid": "e7c8ba5c-d40b-49e6-9068-7293bbe8dcf5",
         "name": "right",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "94c18cfb-d73c-4df6-8d90-5fe2d79ef754",
+        "parent_guid": "102e6ff2-3f98-4fbc-b10f-79880695c0f1",
         "childs_guid": [],
         "full_range": {
           "start_byte": 2348,
@@ -4780,22 +4974,24 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       }
     }
   },
   {
     "FunctionCall": {
       "ast_fields": {
-        "guid": "94c18cfb-d73c-4df6-8d90-5fe2d79ef754",
+        "guid": "102e6ff2-3f98-4fbc-b10f-79880695c0f1",
         "name": "print_direction",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "childs_guid": [
-          "e9c8406e-6788-41e9-88c3-c6a16c31a2f5"
+          "e7c8ba5c-d40b-49e6-9068-7293bbe8dcf5"
         ],
         "full_range": {
           "start_byte": 2332,
@@ -4834,8 +5030,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": []
     }
@@ -4843,24 +5041,28 @@
   {
     "FunctionDeclaration": {
       "ast_fields": {
-        "guid": "7cba5e32-223e-4ac3-a121-4da283061124",
+        "guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
         "name": "main",
         "language": "Rust",
         "file_path": "file:///main.rs",
         "namespace": "",
-        "parent_guid": "ec8b493f-790b-4370-9c57-d8851f8f7c78",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
         "childs_guid": [
-          "5b013224-6239-4fe9-bc62-127ba649c148",
-          "dbab0c3c-e3c6-4f90-9b82-6558fe5f877a",
-          "f3faab9e-bdd2-471d-be5d-9072205e39c8",
-          "a091e490-105d-4e95-ab8b-95e100ac81f9",
-          "3e31caeb-3f99-4d56-a163-3e164550843d",
-          "7e0f25d2-2537-46c7-b997-f528401bf0b9",
-          "e40c93ee-fe09-40e5-9cf3-eddc57d26e30",
-          "59ee248a-3e22-4898-96ac-acbc5431f91b",
-          "ff216d76-82d6-4321-96b1-c061bf19f64a",
-          "d0f2b81a-4a49-4c63-b45a-17ec946b1fab",
-          "94c18cfb-d73c-4df6-8d90-5fe2d79ef754"
+          "18cc942b-0682-44fb-b85d-3a03c8a0be49",
+          "eb10da6c-856f-48b3-b13c-f20c81b867a6",
+          "70f80d4e-b637-4899-b45e-714ecb14453f",
+          "66318e17-bc3d-4b35-b2f4-0d986b1a86e4",
+          "18356b1c-e09c-4dbd-b8b6-087c2bde355d",
+          "6b5c18a9-a75c-4565-9b4a-21bef9332248",
+          "aa777a19-f9f6-477f-8b81-53e9e00c7427",
+          "a88e6838-8a34-45f5-a099-b6ff983da309",
+          "f3085315-bf98-4c65-9931-0c999640be3a",
+          "3b09a383-ea94-4268-a7eb-5cfa00367866",
+          "12107190-8f91-42fa-af64-e5d663998b2a",
+          "3a83e959-f0c6-4cfd-82b9-dd5a0291e2bd",
+          "e1408575-2548-4429-89e0-57144633e034",
+          "e31308b1-dfcc-4246-8f8c-5bb7541cfe01",
+          "102e6ff2-3f98-4fbc-b10f-79880695c0f1"
         ],
         "full_range": {
           "start_byte": 1953,
@@ -4899,8 +5101,10 @@
           }
         },
         "linked_decl_guid": null,
+        "linked_decl_type": null,
         "caller_guid": null,
-        "is_error": false
+        "is_error": false,
+        "caller_depth": null
       },
       "template_types": [],
       "args": [],
