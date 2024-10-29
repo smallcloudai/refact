@@ -64,7 +64,7 @@ impl Tool for ToolCat {
         };
         ccx.lock().await.pp_skeleton = skeleton;
 
-        let (filenames_present, symbols_not_found, not_found_messages, context_enums) = paths_and_symbols_to_cat(ccx.clone(), paths, symbols).await;
+        let (filenames_present, symbols_not_found, not_found_messages, context_enums, multimodal) = paths_and_symbols_to_cat(ccx.clone(), paths, symbols).await;
 
         let mut content = "".to_string();
         if !filenames_present.is_empty() {
@@ -78,12 +78,20 @@ impl Tool for ToolCat {
             content.push_str(&format!("Path problems:\n\n{}\n\n", not_found_messages.join("\n\n")));
             corrections = true;
         }
-        
+
         let mut results = context_enums;
-        
+        let content = if multimodal.is_empty() {
+            ChatContent::SimpleText(content)
+        } else {
+            ChatContent::Multimodal([
+                vec![MultimodalElement { m_type: "text".to_string(), m_content: content }],
+                multimodal
+            ].concat())
+        };
+
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: ChatContent::SimpleText(content),
+            content,
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
@@ -105,7 +113,7 @@ fn get_file_type(path: &PathBuf) -> String {
     return "text".to_string();
 }
 
-async fn load_image(path: &String, f_type: &String) -> Result<ChatMessage, String> {
+async fn load_image(path: &String, f_type: &String) -> Result<MultimodalElement, String> {
     let extension = path.split(".").last().unwrap().to_string();
     let mut f_type = f_type.clone();
 
@@ -132,32 +140,21 @@ async fn load_image(path: &String, f_type: &String) -> Result<ChatMessage, Strin
         },
         _ => Err(format!("Unsupported image format (extension): {}", extension)),
     }?;
-    
+
     #[allow(deprecated)]
     let m_content = base64::encode(&data);
 
-    let image = MultimodalElement::new(
+    MultimodalElement::new(
         f_type.clone(),
         m_content,
-    ).map_err(|e| e.to_string())?;
-
-    let text = MultimodalElement::new(
-        "text".to_string(),
-        path.clone(),
-    ).map_err(|e| e.to_string())?;
-
-    Ok(ChatMessage { 
-        role: "user".to_string(),
-        content: ChatContent::Multimodal(vec![text, image]),
-        ..Default::default() 
-    })
+    )
 }
 
 pub async fn paths_and_symbols_to_cat(
     ccx: Arc<AMutex<AtCommandsContext>>,
     paths: Vec<String>,
     arg_symbols: Vec<String>,
-) -> (Vec<String>, Vec<String>, Vec<String>, Vec<ContextEnum>)
+) -> (Vec<String>, Vec<String>, Vec<String>, Vec<ContextEnum>, Vec<MultimodalElement>)
 {
     let (gcx, top_n) = {
         let ccx_locked = ccx.lock().await;
@@ -193,6 +190,9 @@ pub async fn paths_and_symbols_to_cat(
 
     let mut context_enums = vec![];
     let mut symbols_found = HashSet::<String>::new();
+    let mut symbols_not_found = vec![];
+    let mut filenames_present = vec![];
+    let mut multimodal: Vec<MultimodalElement> = vec![];
 
     if let Some(ast_service) = ast_service_opt {
         let ast_index = ast_service.lock().await.ast_index.clone();
@@ -226,7 +226,6 @@ pub async fn paths_and_symbols_to_cat(
         }
     }
 
-    let mut symbols_not_found = vec![];
     for looking_for in arg_symbols.iter() {
         if !symbols_found.contains(looking_for) {
             symbols_not_found.push(looking_for.clone());
@@ -236,17 +235,16 @@ pub async fn paths_and_symbols_to_cat(
     let filenames_got_symbols_for = context_enums.iter()
         .filter_map(|x| if let ContextEnum::ContextFile(cf) = x { Some(cf.file_name.clone()) } else { None })
         .collect::<Vec<_>>();
-    
-    let mut filenames_present = vec![];
+
     for p in unique_paths.iter().filter(|x|!filenames_got_symbols_for.contains(x)) {
         // don't have symbols for these, so we need to mention them as files, without a symbol, analog of @file
         let f_type = get_file_type(&PathBuf::from(p));
 
         if f_type.starts_with("image/") {
             match load_image(p, &f_type).await {
-                Ok(msg) => { 
+                Ok(mm) => {
                     filenames_present.push(p.clone());
-                    context_enums.push(ContextEnum::ChatMessage(msg));
+                    multimodal.push(mm);
                 },
                 Err(e) => { not_found_messages.push(format!("{}: {}", p, e)); }
             }
@@ -274,5 +272,5 @@ pub async fn paths_and_symbols_to_cat(
         .filter_map(|x| if let ContextEnum::ContextFile(cf) = x { Some(cf) } else { None }) {
         filenames_present.push(cf.file_name.clone());
     }
-    (filenames_present, symbols_not_found, not_found_messages, context_enums)
+    (filenames_present, symbols_not_found, not_found_messages, context_enums, multimodal)
 }
