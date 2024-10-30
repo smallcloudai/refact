@@ -18,6 +18,7 @@ use reqwest::Client;
 use std::path::PathBuf;
 use headless_chrome::{Browser, LaunchOptions, Tab};
 use headless_chrome::protocol::cdp::Page;
+use headless_chrome::protocol::cdp::Emulation;
 use serde::{Deserialize, Serialize};
 
 
@@ -212,6 +213,7 @@ pub enum Command {
     Screenshot(ScreenshotArgs),
     Html(HtmlArgs),
     Reload(ReloadArgs),
+    Device(DeviceArgs),
 }
 
 impl Command {
@@ -258,6 +260,34 @@ impl Command {
                 tab.reload(false, None).map_err(|e| e.to_string())?;
                 tool_log.push(format!("Page `{}` on tab `{}` reloaded", tab.get_url(), args.tab_id));
             },
+            Command::Device(args) => {
+                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
+                tool_log.push(open_tab_log);
+                match args.device {
+                    DeviceType::MOBILE => {
+                        tab.call_method(Emulation::SetDeviceMetricsOverride {
+                            width: 375,
+                            height: 812,
+                            device_scale_factor: 0.0,
+                            mobile: true,
+                            scale: None,
+                            screen_width: None,
+                            screen_height: None,
+                            position_x: None,
+                            position_y: None,
+                            dont_set_visible_size: None,
+                            screen_orientation: None,
+                            viewport: None,
+                            display_feature: None,
+                        }).map_err(|e| e.to_string())?;
+                        tool_log.push(format!("Tab `{}` set to mobile view", args.tab_id));
+                    },
+                    DeviceType::DESKTOP => {
+                        tab.call_method(Emulation::ClearDeviceMetricsOverride(None)).map_err(|e| e.to_string())?;
+                        tool_log.push(format!("Tab `{}` set to desktop view", args.tab_id));
+                    }
+                }
+            },
         }
 
         Ok((tool_log, multimodal_els))
@@ -282,6 +312,18 @@ pub struct HtmlArgs {
 
 #[derive(Debug)]
 pub struct ReloadArgs {
+    pub tab_id: String,
+}
+
+#[derive(Debug)]
+pub enum DeviceType {
+    DESKTOP,
+    MOBILE,
+}
+
+#[derive(Debug)]
+pub struct DeviceArgs {
+    pub device: DeviceType,
     pub tab_id: String,
 }
 
@@ -325,6 +367,19 @@ fn parse_command(command: &String) -> Result<Command, String> {
             }
             Ok(Command::Reload(ReloadArgs {
                 tab_id: parsed_args[0].clone(),
+            }))
+        },
+        "device" => {
+            if parsed_args.len() < 2 {
+                return Err(format!("`device` requires 2 arguments: `desktop|mobile` and `tab_id`. Provided: {:?}", parsed_args));
+            }
+            Ok(Command::Device(DeviceArgs {
+                device: match parsed_args[0].as_str() {
+                    "desktop" => DeviceType::DESKTOP,
+                    "mobile" => DeviceType::MOBILE,
+                    _ => return Err(format!("Unknown device type: {}. Should be either `desktop` or `mobile`.", parsed_args[0]))
+                },
+                tab_id: parsed_args[1].clone(),
             }))
         },
         _ => Err(format!("Unknown command: {:?}.", command_name)),

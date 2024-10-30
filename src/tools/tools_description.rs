@@ -304,6 +304,7 @@ tools:
           screenshot <tab_id>
           html <tab_id>
           reload <tab_id>
+          device <desktop|mobile> <tab_id>
     parameters_required:
       - "command"
 
