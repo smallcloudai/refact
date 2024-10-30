@@ -211,101 +211,100 @@ code_lens:
         any tricky parts in the code. Be concise, wait for a more specific follow-up question from the user.
 
 
-# DEPRECATED
+# Now it's lamp menu in vscode
+
 toolbox_commands:
   shorter:
     selection_needed: [1, 50]
     description: "Make code shorter"
     messages:
     - role: "system"
-      content: "%PROMPT_DEFAULT%"
+      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
-      content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nMake the code block below shorter:\n\n```\n%CODE_SELECTION%```\n"
+      content: |
+        @file %CURRENT_FILE%:%CURSOR_LINE%
+        Rewrite the code block below shorter
+        ```
+        %CODE_SELECTION%
+        ```
   bugs:
     selection_needed: [1, 50]
     description: "Find and fix bugs"
     messages:
     - role: "system"
-      content: "%PROMPT_DEFAULT%"
+      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
-      content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nFind and fix bugs in the code block below:\n\n```\n%CODE_SELECTION%```\n"
-  improve:
-    selection_needed: [1, 50]
-    description: "Rewrite code to improve it"
-    messages:
-    - role: "system"
-      content: "%PROMPT_DEFAULT%"
-    - role: "user"
-      content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRewrite the code block below to improve it:\n\n```\n%CODE_SELECTION%```\n"
+      content: |
+        @file %CURRENT_FILE%:%CURSOR_LINE%
+        Find and fix bugs in the code block below:
+        ```
+        %CODE_SELECTION%
+        ```
   comment:
     selection_needed: [1, 50]
     description: "Comment each line"
     messages:
     - role: "system"
-      content: "%PROMPT_DEFAULT%"
+      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
-      content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nComment each line of the code block below:\n\n```\n%CODE_SELECTION%```\n"
+      content: |
+        @file %CURRENT_FILE%:%CURSOR_LINE%
+        Comment each line of the code block below:
+        ```
+        %CODE_SELECTION%
+        ```
   typehints:
     selection_needed: [1, 50]
     description: "Add type hints"
     messages:
     - role: "system"
-      content: "%PROMPT_DEFAULT%"
+      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
-      content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nAdd type hints to the code block below:\n\n```\n%CODE_SELECTION%```\n"
-  naming:
-    selection_needed: [1, 50]
-    description: "Improve variable names"
-    messages:
-    - role: "system"
-      content: "%PROMPT_DEFAULT%"
-    - role: "user"
-      content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nImprove variable names in the code block below:\n\n```\n%CODE_SELECTION%```\n"
+      content: |
+        @file %CURRENT_FILE%:%CURSOR_LINE%
+        Add type hints to the code block below:
+        ```
+        %CODE_SELECTION%
+        ```
   explain:
     selection_needed: [1, 50]
     description: "Explain code"
     messages:
     - role: "system"
-      content: "%PROMPT_DEFAULT%"
+      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
-      content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nExplain the code block below:\n\n```\n%CODE_SELECTION%```\n"
+      content: |
+        @file %CURRENT_FILE%:%CURSOR_LINE%
+        Explain the code block below:
+        ```
+        %CODE_SELECTION%
+        ```
   summarize:
     selection_needed: [1, 50]
     description: "Summarize code in 1 paragraph"
     messages:
     - role: "system"
-      content: "%PROMPT_DEFAULT%"
+      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
-      content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nSummarize the code block below in 1 paragraph:\n\n```\n%CODE_SELECTION%```\n"
+      content: |
+        @file %CURRENT_FILE%:%CURSOR_LINE%
+        Summarize the code block below in 1 paragraph:
+        ```
+        %CODE_SELECTION%
+        ```
   typos:
     selection_needed: [1, 50]
     description: "Fix typos"
     messages:
     - role: "system"
-      content: "%PROMPT_DEFAULT%"
+      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
-      content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRewrite the code block below to fix typos, especially inside strings and comments:\n\n```\n%CODE_SELECTION%```\n"
-  gen:
-    selection_unwanted: true
-    insert_at_cursor: true
-    description: "Create new code, provide a description after the command"
-    messages:
-      - role: "system"
-        content: "You are a fill-in-the middle model, analyze suffix and prefix, generate code that goes exactly between suffix and prefix. Never rewrite existing code. Watch indent level carefully. Never fix anything outside of your generated code. Stop after writing just one thing."
-      - role: "user"
-        content: "@file %CURRENT_FILE%:%CURSOR_LINE%-\n"
-      - role: "user"
-        content: "@file %CURRENT_FILE%:-%CURSOR_LINE%\n"
-      - role: "user"
-        content: "%ARGS%"
-  edit:
-    selection_needed: [1, 50]
-    description: "Edit code, write instruction after the command"
-    messages:
-      - role: "system"
-        content: "%PROMPT_DEFAULT%"
-      - role: "user"
-        content: "@file %CURRENT_FILE%:%CURSOR_LINE%\nRe-write the code block below, keep indent as in block below, don't add any code besides re-writing the code block below, make this edit: %ARGS%\n\n```\n%CODE_SELECTION%```\n"
+      content: |
+        @file %CURRENT_FILE%:%CURSOR_LINE%
+        Rewrite the code block below to fix typos, especially inside strings and comments:
+        ```
+        %CODE_SELECTION%
+        ```
   help:
     description: "Show available commands"
     messages: []
