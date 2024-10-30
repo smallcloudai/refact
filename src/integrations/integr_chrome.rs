@@ -92,34 +92,32 @@ impl Tool for ToolChrome {
         };
         let command = parse_command(command)?;
 
-        // TODO: we should add connect command to start/restart the session if it's expired or closed
-        let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
-        start_chrome_session(gcx.clone(), &self.integration_chrome, &session_hashmap_key).await?;
-
-        let messages = interact_with_chrome(
+        let content = interact_with_chrome(
             gcx.clone(),
+            &chat_id,
+            &self.integration_chrome,
             &command,
-            &session_hashmap_key,
         ).await?;
 
         let msg = ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: ChatContent::Multimodal(messages),
+            content: ChatContent::Multimodal(content),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
-           ..Default::default()
+            ..Default::default()
         });
 
         Ok((false, vec![msg]))
     }
 }
 
-async fn start_chrome_session(
+async fn setup_chrome_session(
     gcx: Arc<ARwLock<GlobalContext>>,
     args: &IntegrationChrome,
     session_hashmap_key: &String,
-) -> Result<(), String> {
-    // TODO: return start log
+) -> Result<Vec<String>, String> {
+    let mut setup_log = vec![];
+
     let session_entry  = {
         let gcx_locked = gcx.read().await;
         gcx_locked.integration_sessions.get(session_hashmap_key).cloned()
@@ -129,8 +127,9 @@ async fn start_chrome_session(
         let mut session_locked = session.lock().await;
         let chrome_session = session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
         if chrome_session.is_connected() {
-            return Ok(())
+            return Ok(setup_log)
         } else {
+            setup_log.push("Chrome session is disconnected. Trying to reconnect.".to_string());
             gcx.write().await.integration_sessions.remove(session_hashmap_key);
         }
     }
@@ -147,6 +146,7 @@ async fn start_chrome_session(
 
     let browser = if args.chrome_path.clone().unwrap_or_default().starts_with("ws://") {
         let debug_ws_url: String = args.chrome_path.clone().unwrap();
+        setup_log.push("Connect to existing web socket.".to_string());
         Browser::connect_with_timeout(debug_ws_url, idle_browser_timeout).map_err(|e| e.to_string())
     } else {
         let path = args.chrome_path.clone().map(PathBuf::from);
@@ -157,14 +157,28 @@ async fn start_chrome_session(
             headless: args.headless,
             ..Default::default()
         };
+        setup_log.push("Start new chrome process.".to_string());
         Browser::new(launch_options).map_err(|e| e.to_string())
     }?;
 
-    let command_session: Box<dyn IntegrationSession> = Box::new(ChromeSession { browser, tabs: HashMap::new() });
+    browser.register_missing_tabs();
+    let browser_tabs = browser.clone().get_tabs().lock().map_err(|e| e.to_string())?.clone();
+
+    let mut session_tabs = HashMap::new();
+    if browser_tabs.is_empty() {
+        setup_log.push("No opened tabs.".to_string());
+    } else {
+        for (tab_id, tab) in browser_tabs.iter().enumerate() {
+            setup_log.push(format!("Opened tab {}: {}", tab_id, tab.get_url()));
+            session_tabs.insert(tab_id.to_string(), tab.clone());
+        }
+    }
+
+    let command_session: Box<dyn IntegrationSession> = Box::new(ChromeSession { browser, tabs: session_tabs });
     gcx.write().await.integration_sessions.insert(
         session_hashmap_key.clone(), Arc::new(AMutex::new(command_session))
     );
-    Ok(())
+    Ok(setup_log)
 }
 
 async fn navigate_to(tab: &Arc<Tab>, url: &String) -> Result<String, String> {
@@ -201,7 +215,7 @@ impl Command {
     pub async fn execute(
         &self,
         chrome_session: &mut ChromeSession
-    ) -> Result<Vec<MultimodalElement>, String> {
+    ) -> Result<(Vec<String>, Vec<MultimodalElement>), String> {
         let mut tool_log = vec![];
         let mut multimodal_els = vec![];
 
@@ -243,11 +257,7 @@ impl Command {
             },
         }
 
-        multimodal_els.push(MultimodalElement::new(
-            "text".to_string(), tool_log.join("\n"),
-        )?);
-
-        Ok(multimodal_els)
+        Ok((tool_log, multimodal_els))
     }
 }
 
@@ -320,23 +330,31 @@ fn parse_command(command: &String) -> Result<Command, String> {
 
 async fn interact_with_chrome(
     gcx: Arc<ARwLock<GlobalContext>>,
+    chat_id: &String,
+    integration_chrome: &IntegrationChrome,
     command: &Command,
-    session_hashmap_key: &String,
 ) -> Result<Vec<MultimodalElement>, String> {
+    let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
+    let setup_log = setup_chrome_session(gcx.clone(), &integration_chrome, &session_hashmap_key).await?;
+
     let command_session = {
         let gcx_locked = gcx.read().await;
-        gcx_locked.integration_sessions.get(session_hashmap_key)
-            .ok_or(format!("Error getting chrome session for chat: {}", session_hashmap_key))?
+        gcx_locked.integration_sessions.get(&session_hashmap_key)
+            .ok_or(format!("Error getting chrome session for chat: {}", chat_id))?
             .clone()
     };
-
     let mut command_session_locked = command_session.lock().await;
-    let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>()
-        .ok_or("Failed to downcast to ChromeSession")?;
+    let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
 
-    let multimodal_els = command.execute(chrome_session).await?;
+    let (execute_log, multimodal_els) = command.execute(chrome_session).await?;
 
-    Ok(multimodal_els)
+    let mut tool_content = multimodal_els.clone();
+    let tool_log = setup_log.iter().chain(execute_log.iter()).map(|s| s.clone()).collect::<Vec<_>>();
+    tool_content.push(MultimodalElement::new(
+        "text".to_string(), tool_log.join("\n")
+    )?);
+
+    Ok(tool_content)
 }
 
 async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -> Result<MultimodalElement, String> {
