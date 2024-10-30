@@ -349,15 +349,14 @@ async fn interact_with_chrome(
     let mut command_session_locked = command_session.lock().await;
     let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
 
-    let (execute_log, multimodal_els) = command.execute(chrome_session).await?;
+    let (execute_log, mut multimodal_els) = command.execute(chrome_session).await?;
 
-    let mut tool_content = multimodal_els.clone();
     let tool_log = setup_log.iter().chain(execute_log.iter()).map(|s| s.clone()).collect::<Vec<_>>();
-    tool_content.push(MultimodalElement::new(
+    multimodal_els.push(MultimodalElement::new(
         "text".to_string(), tool_log.join("\n")
     )?);
 
-    Ok(tool_content)
+    Ok(multimodal_els)
 }
 
 async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -> Result<MultimodalElement, String> {
