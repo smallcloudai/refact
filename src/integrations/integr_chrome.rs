@@ -205,6 +205,9 @@ async fn session_open_tab(
 
 #[derive(Debug)]
 pub enum Command {
+    // TODO: probably we need connect command
+    // if we're tying to operate on non-existing tab (no connection or something like this)
+    // we should not auto-open connection again
     NavigateTo(NavigateToArgs),
     Screenshot(ScreenshotArgs),
     Html(HtmlArgs),
