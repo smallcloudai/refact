@@ -787,10 +787,49 @@ export const LARGE_DIFF: ChatThread = {
     },
     {
       role: "assistant",
+      content: "",
+      tool_calls: [
+        {
+          function: {
+            arguments:
+              '{"path":"/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py","todo":"Add an \'edible\' property to the Frog class and initialize it in the constructor."}',
+            name: "patch",
+          },
+          id: "call_dIXVNlzugvrPJvTF5G7n1YgK",
+          index: 0,
+          type: "function",
+        },
+      ],
+    },
+    {
+      role: "diff",
+      content: [
+        {
+          file_action: "edit",
+          file_name:
+            "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py",
+          line1: 1,
+          line2: 1,
+          lines_add:
+            "class Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n        self.edible = True",
+          lines_remove:
+            "class Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy",
+        },
+      ],
+      tool_call_id: "call_dIXVNlzugvrPJvTF5G7n1YgK",
+    },
+    {
+      role: "assistant",
       content:
-        "The class `Frog` has been successfully renamed to `Bird` and all its references have been updated accordingly in the following files:\n\n- `frog.py`\n- `set_as_avatar.py`\n- `jump_to_conclusions.py`\n- `work_day.py`\n- `holiday.py`\n\nIs there anything else you need help with?",
+        "The `Frog` class has been updated to include an `edible` property.",
       tool_calls: null,
     },
+    // {
+    //   role: "assistant",
+    //   content:
+    //     "The class `Frog` has been successfully renamed to `Bird` and all its references have been updated accordingly in the following files:\n\n- `frog.py`\n- `set_as_avatar.py`\n- `jump_to_conclusions.py`\n- `work_day.py`\n- `holiday.py`\n\nIs there anything else you need help with?",
+    //   tool_calls: null,
+    // },
   ],
   title: "rename the frog class to bird.\n",
   model: "gpt-4o",

@@ -14,13 +14,13 @@ const preview: Preview = {
     },
     layout: "fullscreen",
   },
-  decorators: [
-    (Page) => (
-      <Theme accentColor="gray">
-        <Page />
-      </Theme>
-    ),
-  ],
+  // decorators: [
+  //   (Page) => (
+  //     <Theme accentColor="gray">
+  //       <Page />
+  //     </Theme>
+  //   ),
+  // ],
 };
 
 export default preview;
