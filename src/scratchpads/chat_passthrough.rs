@@ -156,8 +156,8 @@ impl ScratchpadAbstract for ChatPassthrough {
                         filtered_msgs.push(msg.into_value(&style));
                     }
                 }
-            }
-            if msg.role == "assistant" || msg.role == "system" || msg.role == "user" {
+
+            } else if msg.role == "assistant" || msg.role == "system" || msg.role == "user" {
                 filtered_msgs.push(msg.into_value(&style));
 
             } else if msg.role == "diff" {
