@@ -90,7 +90,7 @@ impl Tool for ToolChrome {
             Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
             None => return Err("Missing argument `command`".to_string())
         };
-        let (command_name, command_args) = parse_command(command)?;
+        let command = parse_command(command)?;
 
         // TODO: we should add connect command to start/restart the session if it's expired or closed
         let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
@@ -98,8 +98,7 @@ impl Tool for ToolChrome {
 
         let messages = interact_with_chrome(
             gcx.clone(),
-            &command_name,
-            &command_args,
+            &command,
             &session_hashmap_key,
         ).await?;
 
@@ -113,14 +112,6 @@ impl Tool for ToolChrome {
 
         Ok((false, vec![msg]))
     }
-}
-
-fn parse_command(command: &String) -> Result<(String, Vec<String>), String> {
-    let parsed_args = shell_words::split(&command).map_err(|e| e.to_string())?;
-    if parsed_args.is_empty() {
-        return Err("Parsed command is empty".to_string());
-    }
-    Ok((parsed_args[0].clone(), parsed_args[1..].to_vec()))
 }
 
 async fn start_chrome_session(
@@ -198,72 +189,40 @@ async fn session_open_tab(
     }
 }
 
-fn command_format_error_message(format_str: &str) -> String {
-    format!("Call this command another time using format {}.", format_str)
+#[derive(Debug)]
+pub enum Command {
+    NavigateTo(NavigateToArgs),
+    Screenshot(ScreenshotArgs),
+    Html(HtmlArgs),
+    Reload(ReloadArgs),
 }
 
-async fn interact_with_chrome(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    command_name: &String,
-    command_args: &Vec<String>,
-    session_hashmap_key: &String,
-) -> Result<Vec<MultimodalElement>, String> {
-    let command_session = {
-        let gcx_locked = gcx.read().await;
-        gcx_locked.integration_sessions.get(session_hashmap_key)
-            .ok_or(format!("Error getting chrome session for chat: {}", session_hashmap_key))?
-            .clone()
-    };
-    
-    let mut command_session_locked = command_session.lock().await;
-    let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+impl Command {
+    pub async fn execute(
+        &self,
+        chrome_session: &mut ChromeSession
+    ) -> Result<Vec<MultimodalElement>, String> {
+        let mut tool_log = vec![];
+        let mut multimodal_els = vec![];
 
-    let mut tool_log = vec![];
-    let mut multimodal_els = vec![];
-
-    match command_name.as_str() {
-        "navigate_to" => {
-            let format_err_msg = command_format_error_message("`navigate_to <uri> <tab_id>`");
-            if command_args.len() < 1 {
-                tool_log.push(format!("Missing required argument `uri`: {:?}. {}.", command_args, format_err_msg));
-            } else if command_args.len() < 2 {
-                tool_log.push(format!("Missing required argument `tab_id`: {:?}. {}", command_args, format_err_msg));
-            } else {
-                let (uri, tab_id) = (command_args[0].clone(), command_args[1].clone());
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &tab_id).await.map_err(
-                    |e| format!("Can't open tab `{}`: {}.", tab_id, e)
-                )?;
+        match self {
+            Command::NavigateTo(args) => {
+                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
                 tool_log.push(open_tab_log);
-                let content = navigate_to(&tab, &uri).await.map_err(
-                    |e| format!("Can't navigate_to `{}` on tab `{}`: {}. If you're trying to open local file add file:// prefix.", uri, tab_id, e)
+                let content = navigate_to(&tab, &args.uri).await.map_err(
+                    |e| format!("Can't navigate_to `{}` on tab `{}`: {}. If you're trying to open a local file, add a file:// prefix.", args.uri, args.tab_id, e)
                 )?;
                 tool_log.push(content);
-            }
-        },
-        "screenshot" => {
-            if command_args.len() < 1 {
-                let format_err_msg = command_format_error_message("`screenshot <tab_id>`");
-                tool_log.push(format!("Missing required argument `tab_id`: {:?}. {}", command_args, format_err_msg));
-            } else {
-                let tab_id = command_args[0].clone();
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &tab_id).await.map_err(
-                    |e| format!("Can't open tab `{}`: {}.", tab_id, e)
-                )?;
+            },
+            Command::Screenshot(args) => {
+                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
                 tool_log.push(open_tab_log);
                 let screenshot = screenshot_jpeg_base64(&tab, false).await?;
                 tool_log.push(format!("Made a screenshot of {}", tab.get_url()));
                 multimodal_els.push(screenshot);
-            }
-        },
-        "html" => {
-            if command_args.len() < 1 {
-                let format_err_msg = command_format_error_message("`html <tab_id>`");
-                tool_log.push(format!("Missing required argument `tab_id`: {:?}. {}", command_args, format_err_msg));
-            } else {
-                let tab_id = command_args[0].clone();
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &tab_id).await.map_err(
-                    |e| format!("Can't open tab `{}`: {}.", tab_id, e)
-                )?;
+            },
+            Command::Html(args) => {
+                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
                 tool_log.push(open_tab_log);
                 let client = Client::builder()
                     .build()
@@ -275,30 +234,107 @@ async fn interact_with_chrome(
                 } else {
                     tool_log.push(response.text().await.map_err(|e| e.to_string())?);
                 }
-            }
-        },
-        "reload" => {
-            if command_args.len() < 1 {
-                let format_err_msg = command_format_error_message("`reload <tab_id>`");
-                tool_log.push(format!("Missing required argument `tab_id`: {:?}. {}", command_args, format_err_msg));
-            } else {
-                let tab_id = command_args[0].clone();
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &tab_id).await.map_err(
-                    |e| format!("Can't open tab `{}`: {}.", tab_id, e)
-                )?;
+            },
+            Command::Reload(args) => {
+                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
                 tool_log.push(open_tab_log);
                 tab.reload(false, None).map_err(|e| e.to_string())?;
-                tool_log.push(format!("Page `{}` on tab `{}` reloaded", tab.get_url(), tab_id));
-            }
-        },
-        _ => {
-            return Err(format!("Unknown command: {:?}", command_args));
+                tool_log.push(format!("Page `{}` on tab `{}` reloaded", tab.get_url(), args.tab_id));
+            },
         }
+
+        multimodal_els.push(MultimodalElement::new(
+            "text".to_string(), tool_log.join("\n"),
+        )?);
+
+        Ok(multimodal_els)
+    }
+}
+
+#[derive(Debug)]
+pub struct NavigateToArgs {
+    pub uri: String,
+    pub tab_id: String,
+}
+
+#[derive(Debug)]
+pub struct ScreenshotArgs {
+    pub tab_id: String,
+}
+
+#[derive(Debug)]
+pub struct HtmlArgs {
+    pub tab_id: String,
+}
+
+#[derive(Debug)]
+pub struct ReloadArgs {
+    pub tab_id: String,
+}
+
+fn parse_command(command: &String) -> Result<Command, String> {
+    let args = shell_words::split(&command).map_err(|e| e.to_string())?;
+    if args.is_empty() {
+        return Err("Command is empty".to_string());
     }
 
-    multimodal_els.push(MultimodalElement::new(
-        "text".to_string(), tool_log.join("\n"),
-    )?);
+    let (command_name, parsed_args) = (args[0].clone(), args[1..].to_vec());
+
+    match command_name.as_str() {
+        "navigate_to" => {
+            if parsed_args.len() < 2 {
+                return Err(format!("`navigate_to` requires 2 arguments: `uri` and `tab_id`. Provided: {:?}", parsed_args));
+            }
+            Ok(Command::NavigateTo(NavigateToArgs {
+                uri: parsed_args[0].clone(),
+                tab_id: parsed_args[1].clone(),
+            }))
+        },
+        "screenshot" => {
+            if parsed_args.len() < 1 {
+                return Err(format!("`screenshot` requires 1 argument: `tab_id`. Provided: {:?}", parsed_args));
+            }
+            Ok(Command::Screenshot(ScreenshotArgs {
+                tab_id: parsed_args[0].clone(),
+            }))
+        },
+        "html" => {
+            if parsed_args.len() < 1 {
+                return Err(format!("`html` requires 1 argument: `tab_id`. Provided: {:?}", parsed_args));
+            }
+            Ok(Command::Html(HtmlArgs {
+                tab_id: parsed_args[0].clone(),
+            }))
+        },
+        "reload" => {
+            if parsed_args.len() < 1 {
+                return Err(format!("`reload` requires 1 argument: `tab_id`. Provided: {:?}", parsed_args));
+            }
+            Ok(Command::Reload(ReloadArgs {
+                tab_id: parsed_args[0].clone(),
+            }))
+        },
+        _ => Err(format!("Unknown command: {:?}.", command_name)),
+    }
+}
+
+async fn interact_with_chrome(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    command: &Command,
+    session_hashmap_key: &String,
+) -> Result<Vec<MultimodalElement>, String> {
+    let command_session = {
+        let gcx_locked = gcx.read().await;
+        gcx_locked.integration_sessions.get(session_hashmap_key)
+            .ok_or(format!("Error getting chrome session for chat: {}", session_hashmap_key))?
+            .clone()
+    };
+
+    let mut command_session_locked = command_session.lock().await;
+    let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>()
+        .ok_or("Failed to downcast to ChromeSession")?;
+
+    let multimodal_els = command.execute(chrome_session).await?;
 
     Ok(multimodal_els)
 }
