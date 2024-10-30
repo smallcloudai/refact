@@ -218,10 +218,10 @@ const _Markdown: React.FC<MarkdownProps> = ({
         return <Heading my="6" size="7" as="h2" {...props} />;
       },
       h3({ color: _color, ref: _ref, node: _node, ...props }) {
-        return <Heading my="6" size="6" as="h3" {...props} />;
+        return <Heading my="4" size="6" as="h3" {...props} />;
       },
       h4({ color: _color, ref: _ref, node: _node, ...props }) {
-        return <Heading my="5" size="5" as="h4" {...props} />;
+        return <Heading my="4" size="4" as="h4" {...props} />;
       },
       h5({ color: _color, ref: _ref, node: _node, ...props }) {
         return <Heading my="4" size="4" as="h5" {...props} />;
