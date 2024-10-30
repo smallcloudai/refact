@@ -162,20 +162,10 @@ async fn setup_chrome_session(
         Browser::new(launch_options).map_err(|e| e.to_string())
     }?;
 
-    browser.register_missing_tabs();
-    let browser_tabs = browser.clone().get_tabs().lock().map_err(|e| e.to_string())?.clone();
+    // NOTE: we're not register any tabs because they can be used by another chat
+    setup_log.push("No opened tabs.".to_string());
 
-    let mut session_tabs = HashMap::new();
-    if browser_tabs.is_empty() {
-        setup_log.push("No opened tabs.".to_string());
-    } else {
-        for (tab_id, tab) in browser_tabs.iter().enumerate() {
-            setup_log.push(format!("Opened tab {}: {}", tab_id, tab.get_url()));
-            session_tabs.insert(tab_id.to_string(), tab.clone());
-        }
-    }
-
-    let command_session: Box<dyn IntegrationSession> = Box::new(ChromeSession { browser, tabs: session_tabs });
+    let command_session: Box<dyn IntegrationSession> = Box::new(ChromeSession { browser, tabs: HashMap::new() });
     gcx.write().await.integration_sessions.insert(
         session_hashmap_key.clone(), Arc::new(AMutex::new(command_session))
     );
