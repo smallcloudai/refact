@@ -111,8 +111,12 @@ pub const KNOWN_MODELS: &str = r####"
             "default_scratchpad": "REPLACE",
             "similar_models": [
                 "llama3/8b/instruct/vllm",
-                "llama3/8b/instruct/neuron",
-                "meta-llama/llama-3.1-8b-instruct"
+                "llama3.1/8b/instruct",
+                "llama3.1/8b/instruct/vllm",
+                "llama3.2/3b/instruct",
+                "llama3.2/3b/instruct/vllm",
+                "llama3.2/1b/instruct",
+                "llama3.2/1b/instruct/vllm"
             ]
         }
     },
@@ -200,7 +204,13 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "llama3/8b/instruct/vllm",
                 "llama3/8b/instruct/neuron",
-                "meta-llama/llama-3.1-8b-instruct"
+                "meta-llama/llama-3.1-8b-instruct",
+                "llama3.1/8b/instruct",
+                "llama3.1/8b/instruct/vllm",
+                "llama3.2/3b/instruct",
+                "llama3.2/3b/instruct/vllm",
+                "llama3.2/1b/instruct",
+                "llama3.2/1b/instruct/vllm"
             ]
         },
         "groq-llama-3.1-8b": {

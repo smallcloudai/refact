@@ -19,11 +19,19 @@ use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
+use crate::scratchpads::comments_parser::parse_comments;
 
-const DEBUG: bool = false;
-const SYSTEM_PROMPT: &str = r#"You are given an incomplete code file and a block of code from that file. Within this block, an unfinished line is marked with <CURSOR>. Your task is to complete the code at the <CURSOR> position.
-Ensure you copy the additional lines from before and after the <CURSOR> line exactly as they are. 
-Do not comment the new code you added!"#;
+const DEBUG: bool = true;
+const SYSTEM_PROMPT: &str = r#"You are given a code file and a <BLOCK_OF_CODE> from that file. 
+An unfinished line in this block is marked with <CURSOR>. 
+Complete the code after <CURSOR> by rewriting the <BLOCK_OF_CODE>. 
+Produce a single <REWRITTEN_BLOCK_OF_CODE> containing all changes.
+Copy additional lines before and after the <CURSOR> line exactly as they are"#;
+const SYSTEM_PROMPT_COMMENTS: &str = r#"You are given a code file, a <BLOCK_OF_CODE> from that file, and a user's intention.
+Rewrite the <BLOCK_OF_CODE> to fulfill the user's intention, starting from the <CURSOR> position.
+Provide a SINGLE <REWRITTEN_BLOCK_OF_CODE> containing all changes.
+User's intention:
+<comment>"#;
 const SUBBLOCK_CUT_TOKENS_N: usize = 3;
 
 #[derive(Debug, Clone)] 
@@ -72,7 +80,7 @@ impl SubBlock {
                 .to_string();
             let cursor_line_tokens = tokenizer_ref.encode(&*cursor_line, false)
                 .map_err(|x| x.to_string())?;
-            let cut_until = cursor_line_tokens.len().saturating_sub(SUBBLOCK_CUT_TOKENS_N);
+            let cut_until = cursor_line_tokens.len().saturating_sub(0);
             (tokenizer_ref.decode(&cursor_line_tokens.get_ids()[..cut_until], true)
                  .map_err(|x| x.to_string())?,
              tokenizer_ref.decode(&cursor_line_tokens.get_ids()[cut_until..], true)
@@ -87,8 +95,7 @@ impl SubBlock {
             .collect::<Vec<_>>()
             .join("")
             .as_str());
-        let extra_user_message = format!("The user started to type this, use it as a prompt:\n```\n{}\n```", self.cursor_line);
-        Ok(format!("# Block of code:\n```\n{code}\n```\n{extra_user_message}"))
+        Ok(format!("<BLOCK_OF_CDDE>:\n```\n{code}\n```"))
     }
 
     fn prefilling_prompt(&mut self, tokenizer: &HasTokenizerAndEot) -> Result<String, String> {
@@ -118,7 +125,7 @@ impl SubBlock {
         };
         code.push_str(&new_cursor_line);
         self.cut_part = Some(cut_part);
-        Ok(format!("# Completed block of code:\n```\n{code}"))
+        Ok(format!("<REWRITTEN_BLOCK_OF_CODE>:\n```\n{code}"))
     }
     
     fn after_lines_str(&self) -> String {
@@ -192,6 +199,7 @@ fn prepare_subblock(
     max_tokens: usize,
     file_text: &Rope,
     cursor_pos: &CursorPosition,
+    max_rows_up_or_downs: usize
 ) -> Result<(SubBlock, usize), String> {
     let mut subblock: SubBlock = SubBlock {
         before_lines: vec![],
@@ -211,10 +219,13 @@ fn prepare_subblock(
         return Err("Cannot retrieve the cursor line from the given file".to_string());
     }
 
-    for i in cursor_pos.line - 4..cursor_pos.line {
+    for i in (cursor_pos.line - max_rows_up_or_downs as i32..cursor_pos.line).rev() {
         if i >= 0 {
             if let Some(line) = file_text.line(i as usize).as_str() {
-                subblock.before_lines.push(line.to_string());
+                if line.trim().is_empty() {
+                    break;
+                }
+                subblock.before_lines.insert(0, line.to_string());
                 tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
                 if tokens_used > max_tokens {
                     return Err("Tokens limit is too small to fit the context for the code subblock".to_string());
@@ -223,10 +234,13 @@ fn prepare_subblock(
         }
     }
 
-    for i in cursor_pos.line + 1..cursor_pos.line + 5 {
+    for i in cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32 {
         if i < file_text.len_lines() as i32 {
             let line = file_text.line(i as usize);
             if let Some(line) = line.as_str() {
+                if line.trim().is_empty() {
+                    break;
+                }
                 tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
                 if tokens_used > max_tokens {
                     break;
@@ -322,16 +336,35 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         };
         // let use_rag = !self.t.context_format.is_empty() && self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_service.is_some();
         sampling_parameters_to_patch.max_new_tokens = 256;
-        sampling_parameters_to_patch.temperature = Some(0.05);
+        sampling_parameters_to_patch.temperature = Some(0.2);
         sampling_parameters_to_patch.stop = vec![self.t.eot.clone()];
         if !self.post.inputs.multiline {
             sampling_parameters_to_patch.stop.push("\n".to_string());
         }
+
+        let cpath = crate::files_correction::canonical_path(&self.post.inputs.cursor.file);
+        let mut source = self.post.inputs.sources.get(
+            &self.post.inputs.cursor.file
+        ).ok_or("Cursor is in file not found in sources".to_string())?.clone();
+        let comment = parse_comments(
+            &source, 
+            &cpath.extension().map(|x| x.to_string_lossy().to_string()).unwrap_or("".to_string())
+        )
+            .into_iter()
+            .filter(|x| x.end_line == self.post.inputs.cursor.line as usize && !x.is_inline)
+            .next();
         let mut prompt = self.token_bos.clone();
         prompt.push_str(self.keyword_syst.as_str());
-        prompt.push_str(SYSTEM_PROMPT);
+        if let Some(comment) = comment {
+            prompt.push_str(&SYSTEM_PROMPT_COMMENTS.replace("<comment>", &comment.text));
+            sampling_parameters_to_patch.max_new_tokens = 512;
+            sampling_parameters_to_patch.temperature = Some(0.2);
+            sampling_parameters_to_patch.stop = vec![self.t.eot.clone()];
+        } else {
+            prompt.push_str(SYSTEM_PROMPT);
+        }
         prompt.push_str(self.token_esc.as_str());
-
+        
         let mut available_tokens = n_ctx.saturating_sub(self.t.count_tokens(prompt.as_str())? as usize);
         // let mut rag_tokens_n = if self.post.rag_tokens_n > 0 {
         //     self.post.rag_tokens_n.min(4096).max(50)
@@ -344,10 +377,7 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         let main_file_available_tokens = (available_tokens as f64 * 0.9) as usize;
         let subblock_available_tokens = available_tokens.saturating_sub(main_file_available_tokens).min(256).max(32);
 
-        let cpath = crate::files_correction::canonical_path(&self.post.inputs.cursor.file);
-        let mut source = self.post.inputs.sources.get(
-            &self.post.inputs.cursor.file
-        ).ok_or("Cursor is in file not found in sources".to_string())?.clone();
+        
         source = self.cleanup_prompt(&source);
         let text = Rope::from_str(&*source);
 
@@ -363,6 +393,7 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
             subblock_available_tokens,
             &text,
             &self.post.inputs.cursor,
+            10
         )?;
         self.cursor_subblock = Some(subblock);
         self.new_line_symbol = if self.cursor_subblock.as_ref().unwrap().cursor_line.ends_with("\r\n") {
@@ -392,21 +423,36 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
             .as_mut()
             .expect("cursor_subblock must be initialized in the prompt");
         let cut_part = subblock_ref.cut_part.clone().expect("cut_part must be initialized in the prompt");
-        let after_lines_str = subblock_ref.after_lines_str();
+        let mut after_lines_str = subblock_ref.after_lines_str();
+        if !self.post.inputs.multiline {
+            after_lines_str = after_lines_str.lines().next().unwrap_or("").to_string();
+        }
         let json_choices = choices.iter().enumerate().map(|(i, x)| {
             if DEBUG {
                 info!("unprocessed {i} response_n_choice\n{:?}", x);
             }
 
             let (mut cc, mut finished) = _cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
-            cc = cc.replacen(cut_part.as_str(), "", 1);
             if !after_lines_str.trim().is_empty() {
                 if let Some(idx) = cc.find(after_lines_str.as_str()) {
                     cc = cc.split_at(idx).0.to_string();
                 } else if let Some(idx) = cc.find(after_lines_str.trim()) {
                     cc = cc.split_at(idx).0.to_string();
+                } else if self.post.inputs.multiline {
+                    cc = skip_similar_letters_from_a_rev(after_lines_str.as_str(), &cc);
                 }
             }
+            cc = skip_similar_letters_from_a(cut_part.as_str(), cc.as_str());
+            // 
+            // if !cut_part.trim().is_empty() {
+            //     if let Some(idx) = cc.find(cut_part.as_str()) {
+            //         cc = cc.split_at(idx).1.to_string();
+            //     } else if let Some(idx) = cc.find(cut_part.trim()) {
+            //         cc = cc.split_at(idx).1.to_string();
+            //     } else  {
+            //     }
+            // }
+            
             finished |= stopped[i];
             let finish_reason = if finished {
                 cc = cc.trim_end().to_string();
@@ -452,6 +498,45 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         Err("".to_string())
     }
 }
+
+fn skip_similar_letters_from_a(a: &str, b: &str) -> String {
+    let mut found_idx = None;
+    for (idx, (ch_a, ch_b)) in a.chars().zip(b.chars()).enumerate() {
+        if ch_a != ch_b {
+            found_idx = Some(idx);
+            break;
+        }
+    }
+    if let Some(idx) = found_idx {
+        b.split_at(idx).1.to_string()
+    } else {
+        if b.len() >= a.len() {
+            b.split_at(a.len()).1.to_string()
+        } else {
+            "".to_string()
+        }
+    }
+}
+
+fn skip_similar_letters_from_a_rev(a: &str, b: &str) -> String {
+    let mut found_idx = None;
+    for (idx, (ch_a, ch_b)) in a.chars().rev().zip(b.chars().rev()).enumerate() {
+        if ch_a != ch_b {
+            found_idx = Some(idx);
+            break;
+        }
+    }
+    if let Some(idx) = found_idx {
+        b.split_at(b.len() - idx).0.to_string()
+    } else {
+        if b.len() >= a.len() {
+            b.split_at(a.len()).1.to_string()
+        } else {
+            b.to_string()
+        }
+    }
+}
+
 
 fn _cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
     let mut cut_at = vec![];
