@@ -139,9 +139,8 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
                 Some(ssh_config) => {
                     let mut ports_to_forward_through_ssh = exposed_ports.into_iter()
                         .map(|exposed_port| {
-                            let matched_external_port = ports_to_forward
-                                .iter()
-                                .find(|forwarded_port| forwarded_port.internal == exposed_port.internal)
+                            let matched_external_port = docker.integration_docker.ports.iter()
+                                .find(|configured_port| configured_port.internal == exposed_port.internal)
                                 .map_or_else(|| "0".to_string(), |forwarded_port| forwarded_port.external.clone());
                             Port {
                                 external: matched_external_port,
