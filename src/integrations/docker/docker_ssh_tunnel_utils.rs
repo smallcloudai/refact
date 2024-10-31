@@ -8,10 +8,14 @@ use crate::{global_context::GlobalContext, integrations::process_io_utils::read_
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SshConfig {
     pub host: String,
-    pub port: u16,
+    #[serde(default = "default_user")]
     pub user: String,
+    #[serde(default = "default_port")]
+    pub port: u16,
     pub identity_file: Option<String>,
 }
+fn default_user() -> String { "root".to_string() }
+fn default_port() -> u16 { 22 }
 
 #[allow(dead_code)]
 pub struct SshTunnel {

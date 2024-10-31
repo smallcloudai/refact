@@ -88,13 +88,13 @@ docker:
   connect_to_daemon_at: "unix:///var/run/docker.sock"  # Path to the Docker daemon. For remote Docker, the path to the daemon on the remote server.
   # docker_cli_path: "/usr/local/bin/docker"  # Uncomment to set a custom path for the docker cli, defaults to "docker"
 
-  # Uncomment the following to connect to a remote Docker daemon (uncomment all of them)
+  # Uncomment the following to connect to a remote Docker daemon
   # Docker and necessary ports will be forwarded for container communication. No additional commands will be executed over SSH.
   # ssh_config:
   #   host: "<your_server_domain_or_ip_here>"
   #   user: "root"
   #   port: 22
-  #   identity_file: "~/.ssh/id_rsa"
+  #   identity_file: "~/.ssh/id_rsa" 
 
   run_chat_threads_inside_container: false
 
