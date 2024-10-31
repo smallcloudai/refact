@@ -224,6 +224,8 @@ tools:
       - "im_going_to_use_tools"
       - "im_going_to_apply_to"
 
+      ### FIXME
+
   - name: "cat"
     description: "Like cat in console, but better: it can read multiple files (texts, images, etc.) and skeletonize them. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full."
     parameters:

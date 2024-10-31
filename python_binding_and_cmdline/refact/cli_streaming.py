@@ -169,12 +169,14 @@ def process_streaming_data(data):
             if isinstance(msg.content, str):
                 print_response(msg.content.strip())
             elif isinstance(msg.content, list):
+                collected_responses = ["multimodal["]
                 for content in msg.content:
                     if content.get("m_type") == "text":
-                        print_response(content.get("m_content"))
+                        collected_responses.append("text=%r" % content.get("m_content"))
                     else:
-                        print_response(content.get("m_type"))
-                    print_response("\n")
+                        collected_responses.append("not_text=%r" % content.get("m_type"))
+                collected_responses = ["]"]
+                print_response("\n".join(collected_responses))
             else:
                 print_response("content is None, not normal\n")
             print_response("\n")
