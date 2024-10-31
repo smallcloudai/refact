@@ -33,7 +33,7 @@ impl SshTunnel {
     }
 }
 
-pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_config: &SshConfig, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String> 
+pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_config: &SshConfig, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String>
 {
     let ssh_tunnel_arc = {
         let gcx_locked = gcx.read().await;
@@ -45,7 +45,7 @@ pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_con
         match ssh_tunnel_check_status(ssh_tunnel).await {
             Ok(()) => return ssh_tunnel.get_first_external_port(),
             Err(e) => {
-                warn!("{}, restarting..", e);
+                warn!("{}, restarting...", e);
                 *ssh_tunnel_locked = None;
             }
         }
@@ -64,7 +64,7 @@ pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_con
     Ok(port)
 }
 
-pub async fn ssh_tunnel_check_status(ssh_tunnel: &mut SshTunnel) -> Result<(), String> 
+pub async fn ssh_tunnel_check_status(ssh_tunnel: &mut SshTunnel) -> Result<(), String>
 {
     let exit_status = ssh_tunnel.process.try_wait().map_err(|e| e.to_string())?;
     if let Some(status) = exit_status {
@@ -79,7 +79,7 @@ pub async fn ssh_tunnel_check_status(ssh_tunnel: &mut SshTunnel) -> Result<(), S
     Ok(())
 }
 
-pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshConfig) -> Result<SshTunnel, String> 
+pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshConfig) -> Result<SshTunnel, String>
 {
     let mut command = Command::new("ssh");
     command.arg("-N");
@@ -113,11 +113,12 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
     if !output_stderr.is_empty() {
         return Err(format!("SSH error: {}", output_stderr));
     }
- 
+
     let port_to_test_connection = ports_to_forward.iter().next().ok_or_else(|| "Failed to get port to test connection".to_string())?;
     for attempt in 0..10 {
         match TcpStream::connect(format!("127.0.0.1:{}", &port_to_test_connection.external)).await {
             Ok(_) => {
+                info!("huzzah, it worked: connect to 127.0.0.1:{}", port_to_test_connection.external);
                 return Ok(SshTunnel {
                     forwarded_ports: ports_to_forward.clone(),
                     process,
@@ -125,7 +126,7 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
                 });
             }
             Err(e) => {
-                warn!("Failed to connect to 127.0.0.1:{} (attempt {}): {}", &port_to_test_connection.external, attempt + 1, e);
+                info!("this should eventually work: connect to 127.0.0.1:{} attempt {}: {}", port_to_test_connection.external, attempt + 1, e);
                 let stderr_output = read_until_token_or_timeout(&mut stderr, 300, "").await?;
                 if !stderr_output.is_empty() {
                     return Err(format!("Failed to open ssh tunnel: {}", stderr_output));
