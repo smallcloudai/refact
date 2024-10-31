@@ -48,6 +48,7 @@ async def trajectory_compressor(msglist: List[chat_client.Message]):
         verbose=False,
         temperature=0.3,
         max_tokens=1000,
+        chat_id=cli_settings.args.chat_id,
     )
     choice0 = json_choices[0]
     choice0_last = choice0[-1]

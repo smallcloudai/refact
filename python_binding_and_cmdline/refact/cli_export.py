@@ -46,6 +46,7 @@ async def think_of_good_filename_and_export(msglist: List[chat_client.Message]):
             verbose=False,
             temperature=0.0,
             max_tokens=100,
+            chat_id=cli_settings.args.chat_id,
         )
         choice0 = good_name_choices[0]
         fn = choice0[-1].content.strip()

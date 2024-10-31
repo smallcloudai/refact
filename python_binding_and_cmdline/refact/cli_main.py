@@ -205,7 +205,7 @@ def on_submit(buffer):
     # print_response("\nwait\n")
 
     async def asyncfunc():
-        await the_chatting_loop(cli_settings.args.model, max_auto_resubmit=(1 if cli_settings.args.always_pause else 6))
+        await the_chatting_loop(cli_settings.args.model, cli_settings.args.chat_id, max_auto_resubmit=(1 if cli_settings.args.always_pause else 6))
         if len(cli_streaming.streaming_messages) == 0:
             return
         # cli_streaming.print_response("\n")  # flush_response inside
@@ -244,6 +244,7 @@ async def chat_main():
     parser.add_argument('--always-pause', action='store_true', help="Pause even if the model tries to run tools, normally that's submitted automatically")
     parser.add_argument('--start-with', type=str, default=False, help="Start with messages in a .json file, the format is [msg, msg, ...]")
     parser.add_argument('--compressor', action='store_true', help="Compress trajectory that comes from reading --start-with and exit")
+    parser.add_argument('--chat-id', type=str, default=None, help="Optional unique id of the chat")
     parser.add_argument('question', nargs=argparse.REMAINDER, help="You can continue your question in the command line after --")
     args_parsed = parser.parse_args(before_minus_minus)
     arg_question = " ".join(after_minus_minus)
