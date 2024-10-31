@@ -10,7 +10,7 @@ use reqwest::Client;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile, SubchatParameters};
-use crate::integrations::docker::docker_container_manager::docker_container_get_host_port_to_connect;
+use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
@@ -79,7 +79,7 @@ pub async fn run_tools_remotely(
         style: style.clone(),
     };
 
-    let port = docker_container_get_host_port_to_connect(ccx.clone()).await?;
+    let port = docker_container_get_host_lsp_port_to_connect(ccx.clone()).await?;
     info!("run_tools_remotely: connecting to port {}", port);
 
     let client = Client::builder().build().map_err(|e| e.to_string())?;

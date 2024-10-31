@@ -1,5 +1,6 @@
 use std::{sync::Arc, sync::Weak, time::SystemTime};
 use async_process::Command;
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
@@ -25,9 +26,29 @@ pub struct DockerContainerSession {
     weak_gcx: Weak<ARwLock<GlobalContext>>,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct Port {
+    #[serde(rename = "local_port", deserialize_with = "string_or_number")]
+    pub external: String,
+    #[serde(rename = "container_port", deserialize_with = "string_or_number")]
+    pub internal: String,
+}
+
+fn string_or_number<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = serde::Deserialize::deserialize(deserializer)?;
+    Ok(match value {
+        serde_json::Value::String(s) => s,
+        serde_json::Value::Number(n) => n.to_string(),
+        _ => return Err(serde::de::Error::custom("expected a string or an integer")),
+    })
+}
+
 enum DockerContainerConnectionEnum {
     SshTunnel(SshTunnel),
-    LocalPort(u16),
+    LocalPort(String),
 }
 
 impl Drop for DockerContainerSession {
@@ -82,7 +103,7 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
                             warn!("SSH tunnel error: {}, restarting tunnel..", e);
                             let ssh_config = docker.integration_docker.ssh_config.clone().ok_or_else(|| "No ssh config for docker container".to_string())?;
                             docker_container_session.connection = DockerContainerConnectionEnum::SshTunnel(
-                                ssh_tunnel_open(&ssh_tunnel.remote_port_or_socket, &ssh_config).await?
+                                ssh_tunnel_open(&mut ssh_tunnel.forwarded_ports, &ssh_config).await?
                             );
                         }
                     }
@@ -94,22 +115,43 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
             Ok(())
         }
         None => {
-            let internal_port: u16 = 8001;
+            let ssh_config_maybe = docker.integration_docker.ssh_config.clone();
+            
+            const LSP_PORT: &str = "8001";
+            let mut ports_to_forward = if ssh_config_maybe.is_some() {
+                docker.integration_docker.ports.iter()
+                    .map(|p| Port {external: "0".to_string(), internal: p.internal.clone()}).collect::<Vec<_>>()
+            } else {
+                docker.integration_docker.ports.clone()
+            };
+            ports_to_forward.insert(0, Port {external: "0".to_string(), internal: LSP_PORT.to_string()});
 
-            let container_id = docker_container_start(&docker, &chat_id, &internal_port, gcx.clone()).await?;
+            let container_id = docker_container_start(&docker, &chat_id, &ports_to_forward, LSP_PORT, gcx.clone()).await?;
             docker_container_sync_yaml_configs(&docker, &container_id, gcx.clone()).await?;
             docker_container_sync_workspace(&docker, &container_id, gcx.clone()).await?;
-            let host_port = docker_container_get_host_port(&docker, &container_id, &internal_port, gcx.clone()).await?;
+            let exposed_ports = docker_container_get_exposed_ports(&docker, &container_id, &ports_to_forward, gcx.clone()).await?;
+            let host_lsp_port = exposed_ports.iter().find(|p| p.internal == LSP_PORT)
+                .ok_or_else(|| "No LSP port exposed".to_string())?.external.clone();
 
-            let ssh_config_maybe = docker.integration_docker.ssh_config.clone();
             let keep_containers_alive_for_x_minutes = docker.integration_docker.keep_containers_alive_for_x_minutes;
 
             let connection = match ssh_config_maybe {
                 Some(ssh_config) => {
-                    let ssh_tunnel = ssh_tunnel_open(&format!("127.0.0.1:{}", host_port.to_string()), &ssh_config).await?;
+                    let mut ports_to_forward_through_ssh = exposed_ports.into_iter()
+                        .map(|exposed_port| {
+                            let matched_external_port = ports_to_forward
+                                .iter()
+                                .find(|forwarded_port| forwarded_port.internal == exposed_port.internal)
+                                .map_or_else(|| "0".to_string(), |forwarded_port| forwarded_port.external.clone());
+                            Port {
+                                external: matched_external_port,
+                                internal: exposed_port.external,
+                            }
+                        }).collect::<Vec<_>>();
+                    let ssh_tunnel = ssh_tunnel_open(&mut ports_to_forward_through_ssh, &ssh_config).await?;
                     DockerContainerConnectionEnum::SshTunnel(ssh_tunnel)
                 },
-                None => DockerContainerConnectionEnum::LocalPort(host_port),
+                None => DockerContainerConnectionEnum::LocalPort(host_lsp_port),
             };
 
             let session: Arc<AMutex<Box<dyn IntegrationSession>>> = Arc::new(AMutex::new(Box::new(DockerContainerSession {
@@ -129,7 +171,7 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
     }
 }
 
-pub async fn docker_container_get_host_port_to_connect(ccx: Arc<AMutex<AtCommandsContext>>) -> Result<u16, String> {
+pub async fn docker_container_get_host_lsp_port_to_connect(ccx: Arc<AMutex<AtCommandsContext>>) -> Result<String, String> {
     let (gcx, chat_id) = {
         let ccx_locked = ccx.lock().await;
         (ccx_locked.global_context.clone(), ccx_locked.chat_id.clone())
@@ -148,10 +190,10 @@ pub async fn docker_container_get_host_port_to_connect(ccx: Arc<AMutex<AtCommand
 
             return match &docker_container_session.connection {
                 DockerContainerConnectionEnum::SshTunnel(ssh_tunnel) => {
-                    Ok(ssh_tunnel.local_port)
+                    ssh_tunnel.get_first_external_port()
                 },
                 DockerContainerConnectionEnum::LocalPort(internal_port) => {
-                    Ok(*internal_port)
+                    Ok(internal_port.to_string())
                 },
             };
         },
@@ -164,7 +206,8 @@ pub async fn docker_container_get_host_port_to_connect(ccx: Arc<AMutex<AtCommand
 async fn docker_container_start(
     docker: &ToolDocker,
     chat_id: &str,
-    internal_port: &u16,
+    ports_to_forward: &Vec<Port>,
+    lsp_port: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
     let docker_image_id = docker.integration_docker.docker_image_id.clone();
@@ -180,14 +223,16 @@ async fn docker_container_start(
     };
 
     let lsp_command = format!(
-        "mkdir -p $HOME/.cache/refact/ && {DEFAULT_CONTAINER_LSP_PATH} --http-port {internal_port} --logs-stderr \
+        "mkdir -p $HOME/.cache/refact/ && {DEFAULT_CONTAINER_LSP_PATH} --http-port {lsp_port} --logs-stderr \
         --address-url {address_url} --api-key {api_key} --vecdb --reset-memory --ast --experimental \
         --inside-container --workspace-folder {workspace_folder}",
     );
-
+    
+    let ports_to_forward_as_arg_list = ports_to_forward.iter()
+        .map(|p| format!("--publish={}:{}", p.external, p.internal)).collect::<Vec<_>>().join(" ");
     let run_command = format!(
         "run --detach --name=refact-{chat_id} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
-        --publish=0:{internal_port} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
+        {ports_to_forward_as_arg_list} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
     );
 
     info!("Executing docker command: {}", &run_command);
@@ -312,12 +357,12 @@ async fn docker_container_sync_workspace(
     Ok(())
 }
 
-async fn docker_container_get_host_port(
+async fn docker_container_get_exposed_ports(
     docker: &ToolDocker,
     container_id: &str,
-    internal_port: &u16,
+    ports_to_forward: &Vec<Port>,
     gcx: Arc<ARwLock<GlobalContext>>,
-) -> Result<u16, String> {
+) -> Result<Vec<Port>, String> {
     let inspect_command = "inspect --format '{{json .NetworkSettings.Ports}}' ".to_string() + &container_id;
     let (inspect_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true).await?;
     tracing::info!("{}:\n{}", inspect_command, inspect_output);
@@ -325,10 +370,14 @@ async fn docker_container_get_host_port(
     let inspect_data: Value = serde_json::from_str(&inspect_output)
         .map_err(|e| format!("Error parsing JSON output from docker inspect: {}", e))?;
 
-    inspect_data[&format!("{}/tcp", internal_port)][0]["HostPort"].as_str()
-        .ok_or_else(|| "Error getting host port from docker inspect output.".to_string())?
-        .parse::<u16>()
-        .map_err(|e| format!("Error parsing host port as u16: {}", e))
+    let mut exposed_ports = Vec::new();
+    for port in ports_to_forward {
+        let host_port = inspect_data[&format!("{}/tcp", port.internal)][0]["HostPort"]
+            .as_str()
+            .ok_or_else(|| "Error getting host port from docker inspect output.".to_string())?;
+        exposed_ports.push(Port { external: host_port.to_string(), internal: port.internal.to_string() });
+    }
+    Ok(exposed_ports)
 }
 
 async fn docker_container_kill(

@@ -11,6 +11,7 @@ use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::tools::tools_description::{read_integrations_yaml, Tool};
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
+use crate::integrations::docker::docker_container_manager::Port;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct IntegrationDocker {
@@ -33,6 +34,8 @@ pub struct IntegrationDocker {
     pub command: String,
     #[serde(default = "default_keep_containers_alive_for_x_minutes")]
     pub keep_containers_alive_for_x_minutes: u64,
+    #[serde(default)]
+    pub ports: Vec<Port>,
 }
 fn default_connect_to_daemon_at() -> String { "unix:///var/run/docker.sock".to_string() }
 fn default_docker_cli_path() -> String { "docker".to_string() }
