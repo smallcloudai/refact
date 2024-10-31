@@ -64,7 +64,9 @@ function useCommandCompletion() {
   };
 }
 
-function useGetCommandPreviewQuery(query: string): ChatContextFile[] {
+function useGetCommandPreviewQuery(
+  query: string,
+): (ChatContextFile | string)[] {
   const hasCaps = useHasCaps();
   const { data } = commandsApi.useGetCommandPreviewQuery(query, {
     skip: !hasCaps,

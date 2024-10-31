@@ -80,7 +80,7 @@ export const commandsApi = createApi({
         }
       },
     }),
-    getCommandPreview: builder.query<ChatContextFile[], string>({
+    getCommandPreview: builder.query<(ChatContextFile | string)[], string>({
       queryFn: async (query, api, _opts, baseQuery) => {
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;
@@ -112,13 +112,15 @@ export const commandsApi = createApi({
           return { data: [] };
         }
 
-        const files = response.data.messages.reduce<ChatContextFile[]>(
-          (acc, { content }) => {
-            const fileData = parseOrElse<ChatContextFile[]>(content, []);
+        const files = response.data.messages.reduce<
+          (ChatContextFile | string)[]
+        >((acc, curr) => {
+          if (curr.role === "context_file") {
+            const fileData = parseOrElse<ChatContextFile[]>(curr.content, []);
             return [...acc, ...fileData];
-          },
-          [],
-        );
+          }
+          return [...acc, curr.content];
+        }, []);
 
         return { data: files };
       },
@@ -155,8 +157,19 @@ export function isDetailMessage(json: unknown): json is DetailMessage {
 
 export type CommandPreviewContent = {
   content: string;
-  role: "context_file";
+  role: "context_file" | "plain_text";
 };
+
+function isCommandPreviewContent(json: unknown): json is CommandPreviewContent {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("content" in json)) return false;
+  if (typeof json.content !== "string") return false;
+  if (!("role" in json)) return false;
+  if (json.role === "context_file") return true;
+  if (json.role === "plain_text") return true;
+  return false;
+}
 export type CommandPreviewResponse = {
   messages: CommandPreviewContent[];
 };
@@ -171,13 +184,5 @@ export function isCommandPreviewResponse(
 
   if (!json.messages.length) return true;
 
-  const firstMessage: unknown = json.messages[0];
-  if (!firstMessage) return false;
-  if (typeof firstMessage !== "object") return false;
-  if (!("role" in firstMessage)) return false;
-  if (firstMessage.role !== "context_file") return false;
-  if (!("content" in firstMessage)) return false;
-  if (typeof firstMessage.content !== "string") return false;
-
-  return true;
+  return json.messages.some(isCommandPreviewContent);
 }
