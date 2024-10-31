@@ -118,7 +118,13 @@ export const ToolContent: React.FC<{
 
   return (
     <Container>
-      <Collapsible.Root open={open} onOpenChange={setOpen}>
+      <Collapsible.Root
+        open={open}
+        onOpenChange={setOpen}
+        style={{
+          overflow: "hidden",
+        }}
+      >
         <Collapsible.Trigger asChild>
           <Flex gap="2" align="end">
             <Flex gap="1" align="start" direction="column">
