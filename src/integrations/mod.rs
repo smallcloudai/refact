@@ -104,6 +104,11 @@ docker:
   # Image ID for running containers, which can later be selected in the UI before starting a chat thread.
   # docker_image_id: "079b939b3ea1"
 
+  # Map container ports to local ports
+  # ports:
+  #   - local_port: 4000
+  #     container_port: 3000
+
   # Path to the LSP binary on the host machine, to be bound into the containers.
   host_lsp_path: "/opt/refact/bin/refact-lsp"
 
