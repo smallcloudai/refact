@@ -16,7 +16,7 @@ from refact import cli_settings
 from refact import cli_main
 from refact import chat_client
 
-STREAM = False
+STREAM = True
 
 
 response_text = ""
