@@ -28,9 +28,11 @@ import {
   Button,
   Flex,
   Card,
+  Table,
 } from "@radix-ui/themes";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import "katex/dist/katex.min.css";
 import { usePatchActions } from "../../hooks";
 
@@ -251,12 +253,30 @@ const _Markdown: React.FC<MarkdownProps> = ({
       i({ color: _color, ref: _ref, node: _node, ...props }) {
         return <Em {...props} />;
       },
+      table({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Table.Root my="2" variant="surface" {...props} />;
+      },
+      tbody({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Table.Body {...props} />;
+      },
+      thead({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Table.Header {...props} />;
+      },
+      tr({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Table.Row {...props} />;
+      },
+      th({ color: _color, ref: _ref, node: _node, ...props }) {
+        return <Table.ColumnHeaderCell {...props} />;
+      },
+      td({ color: _color, ref: _ref, node: _node, width: _width, ...props }) {
+        return <Table.Cell {...props} />;
+      },
     };
   }, [rest, canHavePins]);
   return (
     <ReactMarkdown
       className={styles.markdown}
-      remarkPlugins={[remarkBreaks, remarkMath]}
+      remarkPlugins={[remarkBreaks, remarkMath, remarkGfm]}
       rehypePlugins={[rehypeKatex]}
       allowedElements={allowedElements}
       unwrapDisallowed={unwrapDisallowed}

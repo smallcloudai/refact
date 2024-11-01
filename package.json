@@ -105,6 +105,7 @@
     "redux-persist": "^6.0.0",
     "rehype-katex": "^7.0.0",
     "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
     "storybook": "^7.6.4",
     "textarea-caret": "^3.1.0",
