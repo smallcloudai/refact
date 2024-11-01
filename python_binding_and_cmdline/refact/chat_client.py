@@ -234,8 +234,10 @@ async def ask_using_http(
                         usage=j.get("usage") if i == 0 else None,
                     )
                     choices[index] = msg
+                if callback is not None:
+                    callback(choices[0], None)
             else:
-                choice_collector = ChoiceDeltaCollector(n_answers)
+                deltas_collector = ChoiceDeltaCollector(n_answers)
                 buffer = b""
                 async for data, end_of_http_chunk in response.content.iter_chunks():
                     buffer += data
@@ -255,7 +257,7 @@ async def ask_using_http(
                     # print(">>>", line_str)
                     if "choices" in j:
                         if j["choices"]:
-                            choice_collector.add_deltas(j["choices"])
+                            deltas_collector.add_deltas(j["choices"])
                     elif "role" in j:
                         deterministic.append(Message(**j))
                     elif "subchat_id" in j:
@@ -266,17 +268,17 @@ async def ask_using_http(
                     else:
                         print("unrecognized streaming data (2):", j)
                     if callback is not None:
-                        callback(j, choice_collector)
+                        callback(j, deltas_collector)
                 end_str = buffer.decode('utf-8').strip()
                 if end_str.startswith("{"):  # server whats to tell us something!
                     something_from_server = json.loads(end_str)
                     if "detail" in something_from_server:
                         raise RuntimeError(something_from_server["detail"])
                     print("SERVER SAYS:", end_str)
-                for x in choice_collector.choices:
+                for x in deltas_collector.choices:
                     if x.content is not None and len(x.content) == 0:
                         x.content = None
-                choices = [(x if x.content is not None or x.tool_calls is not None else None) for x in choice_collector.choices]
+                choices = [(x if x.content is not None or x.tool_calls is not None else None) for x in deltas_collector.choices]
                 # when streaming, subchats are streamed too
                 has_home = set()
                 for d in deterministic:
@@ -290,6 +292,9 @@ async def ask_using_http(
                                 d.subchats[subchat_id] = msglist
                                 has_home.add(k)
                 assert set(has_home) == set(subchats.keys()), f"Whoops, not all subchats {subchats.keys()} are attached to a tool result."
+                if callback is not None:
+                    if choices[0] is not None:
+                        callback(choices[0], None)
     return join_messages_and_choices(messages, deterministic, choices, verbose)
 
 
