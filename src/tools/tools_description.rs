@@ -227,7 +227,7 @@ tools:
       ### FIXME
 
   - name: "cat"
-    description: "Like cat in console, but better: it can read multiple files (texts, images, etc.) and skeletonize them. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full."
+    description: "Like cat in console, but better: it can read multiple files and skeletonize them. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full. It can also read images just fine."
     parameters:
       - name: "paths"
         type: "string"
