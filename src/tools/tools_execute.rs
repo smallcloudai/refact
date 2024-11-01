@@ -123,10 +123,10 @@ pub async fn run_tools(
             }
 
             if let Some(rules) = &confirmation_rules {
-                let (is_denied, reason) = command_should_be_denied(&command_to_match, &rules.commands_deny, false);
+                let (is_denied, _) = command_should_be_denied(&command_to_match, &rules.commands_deny);
                 if is_denied {
                     let tool_failed_message = tool_answer(
-                        format!("tool use: {}", reason), t_call.id.to_string()
+                        format!("tool use: command '{}' is denied", command_to_match), t_call.id.to_string()
                     );
                     generated_tool.push(tool_failed_message);
                     continue;
@@ -330,7 +330,7 @@ pub fn command_should_be_confirmed_by_user(
         let pattern = Pattern::new(glob).unwrap();
         pattern.matches(&command)
     }) {
-        return (true, format!("Command {} needs confirmation due to rule {}", command, rule));
+        return (true, rule.clone());
     }
     (false, "".to_string())
 }
@@ -338,18 +338,12 @@ pub fn command_should_be_confirmed_by_user(
 pub fn command_should_be_denied(
     command: &String,
     commands_deny_rules: &Vec<String>,
-    detailed: bool,
 ) -> (bool, String) {
     if let Some(rule) = commands_deny_rules.iter().find(|glob| {
         let pattern = Pattern::new(glob).unwrap();
         pattern.matches(&command)
     }) {
-        let message = if detailed {
-            format!("Command {} is denied due to rule {}", command, rule)
-        } else {
-            format!("Command {} is denied", command)
-        };
-        return (true, message);
+        return (true, rule.clone());
     }
 
     (false, "".to_string())

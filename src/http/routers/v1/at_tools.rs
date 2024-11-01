@@ -19,6 +19,22 @@ struct ToolsPermissionCheckPost {
     pub tool_calls: Vec<ChatToolCall>,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "lowercase")]
+enum PauseReasonType { 
+    Confirmation,
+    Denial,
+}
+
+#[derive(Serialize)]
+struct PauseReason {
+    #[serde(rename = "type")]
+    reason_type: PauseReasonType,
+    command: String,
+    rule: String,
+    tool_call_id: String,
+}
+
 
 pub async fn handle_v1_tools(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
@@ -105,13 +121,25 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             }
 
             if let Some(rules) = &confirmation_rules {
-                let (is_denied, deny_reason) = command_should_be_denied(&command_to_match, &rules.commands_deny, true);
+                let (is_denied, deny_rule) = command_should_be_denied(&command_to_match, &rules.commands_deny);
                 if is_denied {
-                    result_messages.push(deny_reason);
+                    result_messages.push(PauseReason {
+                        reason_type: PauseReasonType::Denial,
+                        command: command_to_match.clone(),
+                        rule: deny_rule.clone(),
+                        tool_call_id: tool_call.id.clone(),
+                    });
+                    continue;
                 }
-                let (needs_confirmation, confirmation_reason) = command_should_be_confirmed_by_user(&command_to_match, &rules.commands_need_confirmation);
+                let (needs_confirmation, confirmation_rule) = command_should_be_confirmed_by_user(&command_to_match, &rules.commands_need_confirmation);
                 if needs_confirmation {
-                    result_messages.push(confirmation_reason);
+                    result_messages.push(PauseReason {
+                        reason_type: PauseReasonType::Confirmation,
+                        command: command_to_match.clone(),
+                        rule: confirmation_rule.clone(),
+                        tool_call_id: tool_call.id.clone(),
+                    });
+                    continue;
                 }
             }
         }
