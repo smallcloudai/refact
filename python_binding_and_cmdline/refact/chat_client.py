@@ -253,8 +253,6 @@ async def ask_using_http(
                         break
                     j = json.loads(line_str)
                     # print(">>>", line_str)
-                    if callback is not None:
-                        callback(j)
                     if "choices" in j:
                         if j["choices"]:
                             choice_collector.add_deltas(j["choices"])
@@ -267,6 +265,8 @@ async def ask_using_http(
                         pass
                     else:
                         print("unrecognized streaming data (2):", j)
+                    if callback is not None:
+                        callback(j, choice_collector)
                 end_str = buffer.decode('utf-8').strip()
                 if end_str.startswith("{"):  # server whats to tell us something!
                     something_from_server = json.loads(end_str)

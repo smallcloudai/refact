@@ -74,6 +74,9 @@ def to_markdown(text: str, width: int) -> Tokens:
             while i < len(text) and text[i] == "`":
                 i += 1
 
+        if not (i < len(text)):
+            break
+
         # ### headers
         if text[i] == "#":
             result.append((get_format(), text[last + 1:i]))

@@ -23,7 +23,7 @@ entertainment_box = FormattedTextControl(text=[])
 streaming_messages: List[chat_client.Message] = []
 tool_calls: Dict[str, chat_client.ToolCallDict] = {}
 subchat_stuff: DefaultDict[str, Any] = defaultdict(dict)
-streaming_toolcall: List[Any] = []
+streaming_toolcall: List[chat_client.ToolCallDict] = []
 _is_streaming = False
 
 
@@ -86,13 +86,11 @@ def print_response(to_print: str):
     update_entertainment_box()
 
 
-def process_streaming_data(data):
+def process_streaming_data(data: Dict[str, Any], choice_collector: chat_client.ChoiceDeltaCollector):
     global streaming_messages
     global streaming_toolcall
     global tool_calls
     term_width = get_terminal_width()
-
-    # TODO: remake callback to use entities from chat_client
 
     if "choices" in data:
         if not data.get("choices") and data.get("usage"):
@@ -104,23 +102,16 @@ def process_streaming_data(data):
         # streaming tool calls
         if delta.get("tool_calls"):
             for tool_call in delta["tool_calls"]:
-                # XXX doesn't work for BYOK
-                # {'index': 0, 'id': 'call_RwbNYLiACAgUXzFR9967dWmf', 'type': 'function', 'function': {'name': 'cargo_check', 'arguments': ''}}
-                # {'index': 0, 'function': {'arguments': '{"'}}
-                # need to collect deltas properly
-                id = tool_call["id"]
-                index = tool_call["index"]
-                if id is not None:
-                    streaming_toolcall.append(tool_call)
-                else:
-                    streaming_toolcall[index]["function"]["arguments"] += tool_call["function"]["arguments"]
+                assert choice_collector.choices[0].tool_calls is not None
+                streaming_toolcall = choice_collector.choices[0].tool_calls
                 update_entertainment_box()
         finish_reason = choices[0]['finish_reason']
         if finish_reason == "stop":
             print_response("\n")
         if finish_reason == "tool_calls":
             for tool_call in streaming_toolcall:
-                tool_calls[tool_call["id"]] = chat_client.ToolCallDict.model_validate(tool_call)
+                assert isinstance(tool_call, chat_client.ToolCallDict)
+                tool_calls[tool_call.id] = tool_call
             update_entertainment_box()
         if content is None:
             return
@@ -241,9 +232,9 @@ async def the_chatting_loop(model, max_auto_resubmit):
 
     N = 1
     for step_n in range(max_auto_resubmit):
-        def callback(data):
+        def callback(data, choice_collector):
             if _is_streaming:
-                process_streaming_data(data)
+                process_streaming_data(data, choice_collector)
 
         messages = list(streaming_messages)
         tools = await chat_client.tools_fetch_and_filter(base_url=cli_main.lsp_runner.base_url(), tools_turn_on=None)
