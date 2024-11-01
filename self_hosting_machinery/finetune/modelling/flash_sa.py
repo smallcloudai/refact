@@ -212,8 +212,8 @@ def apply_flash_mha_to_starcoder2_model(model):
         k = einops.rearrange(k, "b t (h d) -> b h t d", h=self.num_key_value_heads)
         v = einops.rearrange(v, "b t (h d) -> b t h d", h=self.num_key_value_heads)
 
-        cos, sin = self.rotary_emb(v, seq_len=k.shape[-2])
-        q, k = apply_rotary_pos_emb(q, k, cos, sin, position_ids)
+        cos, sin = self.rotary_emb(v, position_ids)
+        q, k = apply_rotary_pos_emb(q, k, cos, sin)
 
         q = einops.rearrange(q, "b h t d -> b t h d")
         k = einops.rearrange(k, "b h t d -> b t h d")
