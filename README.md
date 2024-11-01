@@ -38,9 +38,7 @@ https://github.com/user-attachments/assets/e69ee31d-6308-4050-9ee9-9de1b2af040e
 - [Custom Installation](#custom-installation-%EF%B8%8F)
   - [Running Refact Self-Hosted in a Docker Container](#running-refact-self-hosted-in-a-docker-container-)
 - [Getting Started with Plugins](#getting-started-with-plugins-)
-- [Progess/Future Plans](#progress-and-future-plans-)
 - [Supported Models](#supported-models-)
-- [Architecture](#architecture-%EF%B8%8F)
 - [Contributing](#contributing-)
 - [Follow Us/FAQ](#follow-us-and-faq-)
 - [License](#license-)
@@ -137,12 +135,6 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 
 ---
 
-# Progress and Future Plans 🚧
-
-*Details about progress and future plans will be added here.*
-
----
-
 ## Supported Models 📊
 
 | Model                                                                                             | Completion | Chat | Fine-tuning | [Deprecated](## "Will be removed in next versions") |
@@ -163,11 +155,6 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 
 ---
 
-# Architecture 🏗️
-
-*Details about the architecture will be added here.*
-
----
 
 # Contributing 🤝
 
