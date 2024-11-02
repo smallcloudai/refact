@@ -208,7 +208,7 @@ async fn vectorize_thread(
             }
             if work_on_one.is_none() {
                 let doc_to_remove = last_updated.iter()
-                    .find(|(_, time)| time.elapsed().unwrap().as_secs() > COOLDOWN_SECONDS)
+                    .find(|(_, time)| time.elapsed().unwrap_or_default().as_secs() > COOLDOWN_SECONDS)
                     .map(|(doc, _)| doc.clone());
 
                 if let Some(doc) = doc_to_remove {
