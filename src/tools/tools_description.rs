@@ -137,8 +137,8 @@ pub async fn tools_merged_and_filtered(
     }
 
     if let Some(cmdline) = integrations_value.get("cmdline") {
-        let blocking_cmdline_tools = crate::tools::tool_cmdline::cmdline_tool_from_yaml_value(cmdline)?;
-        tools_all.extend(blocking_cmdline_tools);
+        let cmdline_tools = crate::tools::tool_cmdline::cmdline_tool_from_yaml_value(cmdline)?;
+        tools_all.extend(cmdline_tools);
     }
 
     let mut filtered_tools = IndexMap::new();
