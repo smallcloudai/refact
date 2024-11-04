@@ -165,7 +165,7 @@ line6
         assert_eq!(result, "...3 lines skipped...\nline4\nline5\nline6\n");
 
         let result = output_mini_postprocessing(&CmdlineOutputFilter {
-            limit_lines: 3,
+            limit_lines: 2,
             limit_chars: 1000,
             valuable_top_or_bottom: "".to_string(),
             grep: "line4".to_string(),
