@@ -30,6 +30,7 @@ use crate::http::routers::v1::customization::handle_v1_config_path;
 use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
 use crate::http::routers::v1::patch::handle_v1_patch_single_file_from_ticket;
 use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_single};
+use crate::http::routers::v1::system_prompt::handle_v1_system_prompt;
 
 #[cfg(feature="vecdb")]
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
@@ -52,8 +53,8 @@ mod at_commands;
 mod ast;
 pub mod at_tools;
 mod status;
-
 mod subchat;
+pub mod system_prompt;
 mod gui_help_handlers;
 mod patch;
 
@@ -103,6 +104,8 @@ pub fn make_v1_router() -> Router {
         .route("/customization", telemetry_get!(handle_v1_customization))
 
         .route("/code-completion-prompt", telemetry_post!(handle_v1_code_completion_prompt))
+
+        .route("/system-prompt", telemetry_post!(handle_v1_system_prompt))
 
         .route("/patch-single-file-from-ticket", telemetry_post!(handle_v1_patch_single_file_from_ticket))
 

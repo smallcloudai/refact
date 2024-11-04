@@ -16,7 +16,7 @@ use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
-use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, system_prompt_add_workspace_info};
+use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_default_system_prompt_from_remote, system_prompt_add_workspace_info};
 use crate::tools::tools_execute::{run_tools_locally, run_tools_remotely};
 
 
@@ -95,7 +95,11 @@ impl ScratchpadAbstract for ChatPassthrough {
         agentic_tools: bool,
         should_execute_remotely: bool,
     ) -> Result<(), String> {
-        self.default_system_message = get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await;
+        self.default_system_message = if should_execute_remotely {
+            get_default_system_prompt_from_remote(self.global_context.clone(), exploration_tools, agentic_tools, &self.post.chat_id).await?
+        } else {
+            get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await
+        };
         Ok(())
     }
 

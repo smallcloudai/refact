@@ -1,7 +1,12 @@
 use std::sync::Arc;
 use std::path::PathBuf;
+use reqwest::Client;
 use tokio::sync::RwLock as ARwLock;
+use tracing::info;
+
 use crate::global_context::GlobalContext;
+use crate::http::routers::v1::system_prompt::{SystemPromptPost, SystemPromptResponse};
+use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 
 
 pub async fn get_default_system_prompt(
@@ -27,6 +32,35 @@ pub async fn get_default_system_prompt(
         tracing::error!("cannot find system prompt `{}`", prompt_key);
         String::new()
     },|x| x.text.clone())
+}
+
+pub async fn get_default_system_prompt_from_remote(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    have_exploration_tools: bool,
+    have_agentic_tools: bool,
+    chat_id: &str,
+) -> Result<String, String> 
+{
+    let post = SystemPromptPost {
+        have_exploration_tools,
+        have_agentic_tools
+    };
+
+    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), chat_id).await?;
+    
+    let client = Client::builder().build().map_err(|e| e.to_string())?;
+    let post_result = client.post(format!("http://localhost:{port}/v1/system-prompt"))
+        .json(&post).send().await.map_err(|e| e.to_string())?;
+
+    if !post_result.status().is_success() {
+        let status = post_result.status();
+        let error_text = post_result.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        return Err(format!("HTTP request failed with status {}: {}", status, error_text));
+    }
+
+    let response = post_result.json::<SystemPromptResponse>().await.map_err(|e| e.to_string())?;
+    info!("get_default_system_prompt_from_remote: got response: {:?}", response);
+    Ok(response.system_prompt)
 }
 
 async fn _workspace_info(

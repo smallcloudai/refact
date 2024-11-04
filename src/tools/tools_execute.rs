@@ -56,30 +56,29 @@ pub async fn run_tools_remotely(
     stream_back_to_user: &mut HasRagResults,
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
-    let (n_ctx, subchat_tool_parameters, postprocess_parameters, chat_id, context_messages) = {
+    let (n_ctx, subchat_tool_parameters, postprocess_parameters, gcx, chat_id) = {
         let ccx_locked = ccx.lock().await;
         (
             ccx_locked.n_ctx,
             ccx_locked.subchat_tool_parameters.clone(),
             ccx_locked.postprocess_parameters.clone(),
+            ccx_locked.global_context.clone(),
             ccx_locked.chat_id.clone(),
-            ccx_locked.messages.clone(),
         )
     };
 
     let tools_execute_post = ToolsExecutePost {
-        context_messages,
         messages: original_messages.clone(),
         n_ctx,
         maxgen,
         subchat_tool_parameters,
         postprocess_parameters,
         model_name: model_name.to_string(),
-        chat_id,
+        chat_id: chat_id.clone(),
         style: style.clone(),
     };
 
-    let port = docker_container_get_host_lsp_port_to_connect(ccx.clone()).await?;
+    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_id).await?;
     info!("run_tools_remotely: connecting to port {}", port);
 
     let client = Client::builder().build().map_err(|e| e.to_string())?;
