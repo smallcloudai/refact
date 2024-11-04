@@ -1,3 +1,22 @@
+use std::path::PathBuf;
+use std::sync::Arc;
+use indexmap::IndexMap;
+use serde_json::json;
+use tracing::{info, warn};
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+
+use crate::global_context::GlobalContext;
+use crate::integrations::integr::Integration;
+use crate::integrations::integr_chrome::ToolChrome;
+use crate::integrations::integr_github::ToolGithub;
+use crate::integrations::integr_gitlab::ToolGitlab;
+use crate::integrations::integr_pdb::ToolPdb;
+use crate::integrations::integr_postgres::ToolPostgres;
+use crate::tools::tools_description::Tool;
+use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
+
+pub mod sessions;
+pub mod process_io_utils;
 pub mod integr_github;
 pub mod integr_gitlab;
 pub mod integr_pdb;
@@ -6,6 +25,217 @@ pub mod docker;
 pub mod sessions;
 pub mod process_io_utils;
 pub mod integr_postgres;
+mod integr;
+
+
+<<<<<<< HEAD
+// hint: when adding integration, update:
+// DEFAULT_INTEGRATION_VALUES, INTEGRATION_ICONS, integrations_paths, validate_integration_value, load_integration_tools, load_integration_schema_and_json
+=======
+// when adding integration, update: get_empty_integrations (2 occurrences)
+>>>>>>> 9b1345a1 (simplified code)
+
+
+pub fn get_empty_integrations() -> IndexMap<String, Box<dyn Integration + Send + Sync>> {
+    let integration_names = ["github", "gitlab", "pdb", "postgres", "chrome"];
+    let mut integrations = IndexMap::new();
+    for i_name in integration_names {
+        let i = match i_name {
+            "github" => Box::new(ToolGithub {..Default::default()} ) as Box<dyn Integration + Send + Sync>,
+            "gitlab" => Box::new(ToolGitlab {..Default::default()} ) as Box<dyn Integration + Send + Sync>,
+            "pdb" => Box::new(ToolPdb {..Default::default()} ) as Box<dyn Integration + Send + Sync>,
+            "postgres" => Box::new(ToolPostgres {..Default::default()} ) as Box<dyn Integration + Send + Sync>,
+            "chrome" => Box::new(ToolChrome {..Default::default()} ) as Box<dyn Integration + Send + Sync>,
+            _ => panic!("Unknown integration name: {}", i_name)
+        };
+        integrations.insert(i_name.to_string(), i);
+    }
+    integrations
+}
+
+pub fn get_integration_path(cache_dir: &PathBuf, name: &str) -> PathBuf {
+    cache_dir.join("integrations.d").join(format!("{}.yaml", name))
+}
+
+pub async fn get_integrations(
+    gcx: Arc<ARwLock<GlobalContext>>,
+) -> Result<IndexMap<String, Box<dyn Integration + Send + Sync>>, String> {
+    let integrations = get_empty_integrations();
+    let cache_dir = gcx.read().await.cache_dir.clone();
+
+    let integrations_yaml_value = read_yaml_into_value(&cache_dir.join("integrations.yaml")).await?;
+
+    let mut results = IndexMap::new();
+    for (i_name, mut i) in integrations {
+        let path = get_integration_path(&cache_dir, &i_name);
+        let j_value = json_for_integration(&path, integrations_yaml_value.get(&i_name), &i).await?;
+
+        if j_value.get("detail").is_some() {
+            warn!("failed to load integration {}: {}", i_name, j_value.get("detail").unwrap());
+        } else {
+            if let Err(e) = i.update_from_json(&j_value) {
+                warn!("failed to load integration {}: {}", i_name, e);
+            };
+        }
+        results.insert(i_name.clone(), i);
+    }
+
+    Ok(results)
+}
+
+pub async fn validate_integration_value(name: &str, value: serde_yaml::Value) -> Result<serde_yaml::Value, String> {
+    let integrations = get_empty_integrations();
+
+    match integrations.get(name) {
+        Some(i) => {
+            let j_value = i.from_yaml_validate_to_json(&value)?;
+            let yaml_value = serde_yaml::to_value(&j_value).map_err(|e| e.to_string())?;
+            Ok(yaml_value)
+        },
+        None => Err(format!("Integration {} is not defined", name))
+    }
+}
+
+pub async fn load_integration_tools(
+    gcx: Arc<ARwLock<GlobalContext>>,
+) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>> {
+    let paths = integrations_paths(gcx.clone()).await;
+    let integrations_yaml_value = {
+        let cache_dir = gcx.read().await.cache_dir.clone();
+        let yaml_path = cache_dir.join("integrations.yaml");
+        read_yaml_into_value(&yaml_path).await?
+    };
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    let enabled_path = cache_dir.join("integrations-enabled.yaml");
+    let enabled = match integrations_enabled_cfg(&enabled_path).await {
+        serde_yaml::Value::Mapping(map) => map.into_iter().filter_map(|(k, v)| {
+            if let (serde_yaml::Value::String(key), serde_yaml::Value::Bool(value)) = (k, v) {
+                Some((key, value))
+            } else {
+                None
+            }
+        }).collect::<std::collections::HashMap<String, bool>>(),
+        _ => std::collections::HashMap::new(),
+    };
+
+    let integrations = get_integrations(gcx.clone()).await?;
+
+    let mut tools = IndexMap::new();
+    for (i_name, i) in integrations.iter() {
+        if !enabled.get(i_name).unwrap_or(&false) {
+            info!("Integration {} is disabled", i_name);
+            continue;
+        }
+        let tool = i.to_tool();
+        tools.insert(i_name.clone(), Arc::new(AMutex::new(tool)));
+    }
+    Ok(tools)
+}
+
+pub async fn json_for_integration(
+    yaml_path: &PathBuf,
+    value_from_integrations: Option<&serde_yaml::Value>,
+    integration: &Box<dyn Integration + Send + Sync>,
+) -> Result<serde_json::Value, String> {
+    let tool_name = integration.name().clone();
+
+    let value = if yaml_path.exists() {
+        match read_yaml_into_value(yaml_path).await {
+            Ok(value) => integration.from_yaml_validate_to_json(&value).unwrap_or_else(|e| {
+                let e = format!("Problem converting integration to JSON: {}", e);
+                json!({"detail": e.to_string()})
+            }),
+            Err(e) => {
+                let e = format!("Problem reading YAML from {}: {}", yaml_path.display(), e);
+                json!({"detail": e.to_string()})
+            }
+        }
+    } else {
+        json!({"detail": format!("Cannot read {}. Probably, file does not exist", yaml_path.display())})
+    };
+
+    let value_from_integrations = value_from_integrations.map_or(json!({"detail": format!("tool {tool_name} is not defined in integrations.yaml")}), |value| {
+        integration.from_yaml_validate_to_json(value).unwrap_or_else(|e| {
+            let e = format!("Problem converting integration to JSON: {}", e);
+            json!({"detail": e.to_string()})
+        })
+    });
+
+    match (value.get("detail"), value_from_integrations.get("detail")) {
+        (None, None) => {
+            Err(format!("Tool {tool_name} exists in both {tool_name}.yaml and integrations.yaml. Consider removing one of them."))
+        },
+        (Some(_), None) => {
+            Ok(value_from_integrations)
+        },
+        (None, Some(_)) => {
+            Ok(value)
+        }
+        (Some(_), Some(_)) => {
+            Ok(value)
+        }
+    }
+<<<<<<< HEAD
+
+    Ok(())
+}
+
+async fn load_tool_from_yaml<T: Tool + Integration + Send + 'static>(
+    yaml_path: Option<&PathBuf>,
+    tool_constructor: fn(&serde_yaml::Value) -> Result<T, String>,
+    value_from_integrations: Option<&serde_yaml::Value>,
+    enabled: Option<&bool>,
+    integrations: &mut IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
+) -> Result<(), String> {
+    let yaml_path = yaml_path.as_ref().expect("No yaml path");
+    let tool_name = yaml_path.file_stem().expect("No file name").to_str().expect("No file name").to_string();
+    if !enabled.unwrap_or(&false) {
+        info!("Integration {} is disabled", tool_name);
+        return Ok(());
+    }
+    let tool = if yaml_path.exists() {
+        match read_yaml_into_value(yaml_path).await {
+            Ok(value) => {
+                match tool_constructor(&value) {
+                    Ok(tool) => {
+                        // integrations.insert(tool_name, Arc::new(AMutex::new(Box::new(tool) as Box<dyn Tool + Send>)));
+                        Some(tool)
+                    }
+                    Err(e) => {
+                        warn!("Problem in {}: {}", yaml_path.display(), e);
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                warn!("Problem reading {:?}: {}", yaml_path, e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    let tool_from_integrations = value_from_integrations
+        .and_then(|value| match tool_constructor(&value) {
+            Ok(tool) => Some(tool),
+            Err(_) => None
+        });
+
+    match (tool, tool_from_integrations) {
+        (Some(_), Some(_)) => {
+            return Err(format!("Tool {tool_name} exists in both {tool_name}.yaml and integrations.yaml. Consider removing one of them."));
+        },
+        (Some(tool), None) | (None, Some(tool)) => {
+            integrations.insert(tool_name.clone(), Arc::new(AMutex::new(Box::new(tool) as Box<dyn Tool + Send>)));
+        },
+        _ => {}
+    }
+
+    Ok(())
+=======
+>>>>>>> 9b1345a1 (simplified code)
+}
 
 pub const INTEGRATIONS_DEFAULT_YAML: &str = r#"# This file is used to configure integrations in Refact Agent.
 # If there is a syntax error in this file, no integrations will work.
@@ -27,41 +257,6 @@ commands_deny:
   - "docker* kill *"
   - "gh auth token*"
   - "glab auth token*"
-
-
-# GitHub integration
-#github:
-#   GH_TOKEN: "GH_xxx"                      # To get a token, check out https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
-#   gh_binary_path: "/opt/homebrew/bin/gh"  # Uncomment to set a custom path for the gh binary, defaults to "gh"
-
-
-# GitLab integration: install on mac using "brew install glab"
-#gitlab:
-#   GITLAB_TOKEN: "glpat-xxx"                   # To get a token, check out https://docs.gitlab.com/ee/user/profile/personal_access_tokens
-#   glab_binary_path: "/opt/homebrew/bin/glab"  # Uncomment to set a custom path for the glab binary, defaults to "glab"
-
-
-# Python debugger
-#pdb:
-#  python_path: "/opt/homebrew/bin/python3"  # Uncomment to set a custom python path, defaults to "python3"
-
-
-# Chrome web browser
-chrome:
-  # This can be path to your chrome binary. You can install with "npx @puppeteer/browsers install chrome@stable", read
-  # more here https://developer.chrome.com/blog/chrome-for-testing/?utm_source=Fibery&utm_medium=iframely
-  #chrome_path: "/Users/me/my_path/chrome/mac_arm-130.0.6723.69/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
-  # Or you can give it ws:// path, read more here https://developer.chrome.com/docs/devtools/remote-debugging/local-server/
-  # In that case start chrome with --remote-debugging-port
-  chrome_path: "ws://127.0.0.1:6006/"
-  window_size: [1024, 768]
-  idle_browser_timeout: 600
-
-
-# Postgres database
-#postgres:
-#  psql_binary_path: "/path/to/psql"  # Uncomment to set a custom path for the psql binary, defaults to "psql"
-#  connection_string: "postgresql://username:password@localhost/dbname"  # To get a connection string, check out https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
 
 
 # Command line: things you can call and immediately get an answer

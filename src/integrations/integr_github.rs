@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use tokio::sync::Mutex as AMutex;
 use tokio::process::Command;
 use async_trait::async_trait;
+use schemars::JsonSchema;
 use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
@@ -11,28 +12,57 @@ use crate::call_validation::{ContextEnum, ChatMessage, ChatContent};
 
 use crate::tools::tools_description::Tool;
 use serde_json::Value;
+use crate::integrations::integr::{json_schema, Integration};
 
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, JsonSchema, Default)]
 #[allow(non_snake_case)]
 pub struct IntegrationGitHub {
+    #[schemars(description = "Path to the GitHub CLI binary.")]
     pub gh_binary_path: Option<String>,
+    #[schemars(description = "GitHub token for authentication.")]
     pub GH_TOKEN: String,
 }
 
+#[derive(Default)]
 pub struct ToolGithub {
-    integration_github: IntegrationGitHub,
+    pub integration_github: IntegrationGitHub,
 }
 
-impl ToolGithub {
-    pub fn new_from_yaml(gh_config: &serde_yaml::Value) -> Result<Self, String> {
-        let integration_github = serde_yaml::from_value::<IntegrationGitHub>(gh_config.clone())
-            .map_err(|e| {
-                let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-                format!("{}{}", e.to_string(), location)
-            })?;
-        Ok(Self { integration_github })
+impl Integration for ToolGithub {
+    fn name(&self) -> String {
+        "github".to_string()
     }
+
+    fn update_from_json(&mut self, value: &Value) -> Result<(), String> {
+        let integration_github = serde_json::from_value::<IntegrationGitHub>(value.clone())
+            .map_err(|e|e.to_string())?;
+        self.integration_github = integration_github;
+        Ok(())
+    }
+
+    fn from_yaml_validate_to_json(&self, value: &serde_yaml::Value) -> Result<Value, String> {
+        let integration_github = serde_yaml::from_value::<IntegrationGitHub>(value.clone()).map_err(|e| {
+            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+            format!("{}{}", e.to_string(), location)
+        })?;
+        serde_json::to_value(&integration_github).map_err(|e| e.to_string())
+    }
+
+    fn to_tool(&self) -> Box<dyn Tool + Send> {
+        Box::new(ToolGithub {integration_github: self.integration_github.clone()}) as Box<dyn Tool + Send>
+    }
+
+    fn to_json(&self) -> Result<Value, String> {
+        serde_json::to_value(&self.integration_github).map_err(|e| e.to_string())
+    }
+
+    fn to_schema_json(&self) -> Value {
+        json_schema::<IntegrationGitHub>().unwrap()
+    }
+
+    fn default_value(&self) -> String { DEFAULT_GITHUB_INTEGRATION_YAML.to_string() }
+    fn icon_link(&self) -> String { "https://cdn-icons-png.flaticon.com/512/25/25231.png".to_string() }
 }
 
 #[async_trait]
@@ -122,3 +152,10 @@ fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, Stri
 
     Ok(parsed_args)
 }
+
+const DEFAULT_GITHUB_INTEGRATION_YAML: &str = r#"
+# GitHub integration
+
+# GH_TOKEN: "GH_xxx"                      # To get a token, check out https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+# gh_binary_path: "/opt/homebrew/bin/gh"  # Uncomment to set a custom path for the gh binary, defaults to "gh"
+"#;

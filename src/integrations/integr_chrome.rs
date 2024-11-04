@@ -20,16 +20,28 @@ use headless_chrome::{Browser, LaunchOptions, Tab};
 use headless_chrome::browser::tab::point::Point;
 use headless_chrome::protocol::cdp::Page;
 use headless_chrome::protocol::cdp::Emulation;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use crate::integrations::integr::{json_schema, Integration};
 
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, JsonSchema, Default)]
 pub struct IntegrationChrome {
+    #[schemars(description = "Path to the Chrome binary or WebSocket URL for remote debugging.")]
     pub chrome_path: Option<String>,
-    pub window_size: Option<Vec<u32>>,
+    #[schemars(description = "Window width for the Chrome browser.")]
+    pub window_width: Option<u32>,
+    #[schemars(description = "Window height for the Chrome browser.")]
+    pub window_height: Option<u32>,
+    #[schemars(description = "Idle timeout for the Chrome browser in seconds.")]
     pub idle_browser_timeout: Option<u32>,
     #[serde(default = "default_headless")]
     pub headless: bool,
+}
+
+#[derive(Default)]
+pub struct ToolChrome {
+    pub integration_chrome: IntegrationChrome,
 }
 
 fn default_headless() -> bool { true }
@@ -65,17 +77,40 @@ impl IntegrationSession for ChromeSession
     fn is_expired(&self) -> bool { false }
 }
 
-impl ToolChrome {
-    pub fn new_from_yaml(v: &serde_yaml::Value, supports_clicks: bool,) -> Result<Self, String> {
-        let integration_chrome = serde_yaml::from_value::<IntegrationChrome>(v.clone()).map_err(|e| {
+impl Integration for ToolChrome {
+    fn name(&self) -> String {
+        "chrome".to_string()
+    }
+
+    fn update_from_json(&mut self, value: &Value) -> Result<(), String> {
+        let integration_github = serde_json::from_value::<IntegrationChrome>(value.clone())
+            .map_err(|e|e.to_string())?;
+        self.integration_chrome = integration_github;
+        Ok(())
+    }
+
+    fn from_yaml_validate_to_json(&self, value: &serde_yaml::Value) -> Result<Value, String> {
+        let integration_github = serde_yaml::from_value::<IntegrationChrome>(value.clone()).map_err(|e| {
             let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
             format!("{}{}", e.to_string(), location)
         })?;
-        Ok(Self {
-            integration_chrome,
-            supports_clicks,
-        })
+        serde_json::to_value(&integration_github).map_err(|e| e.to_string())
     }
+
+    fn to_tool(&self) -> Box<dyn Tool + Send> {
+        Box::new(ToolChrome {integration_chrome: self.integration_chrome.clone()}) as Box<dyn Tool + Send>
+    }
+
+    fn to_json(&self) -> Result<Value, String> {
+        serde_json::to_value(&self.integration_chrome).map_err(|e| e.to_string())
+    }
+
+    fn to_schema_json(&self) -> Value {
+        json_schema::<IntegrationChrome>().unwrap()
+    }
+
+    fn default_value(&self) -> String { DEFAULT_CHROME_INTEGRATION_YAML.to_string() }
+    fn icon_link(&self) -> String { "https://cdn-icons-png.flaticon.com/512/732/732205.png".to_string() }
 }
 
 #[async_trait]
@@ -170,6 +205,25 @@ async fn setup_chrome_session(
     session_hashmap_key: &String,
 ) -> Result<Vec<String>, String> {
     let mut setup_log = vec![];
+    if !is_chrome_session_active(&session_hashmap_key, gcx.clone()).await {
+        let mut is_connection = false;
+        if let Some(chrome_path) = args.chrome_path.clone() {
+            is_connection = chrome_path.starts_with("ws://");
+        }
+
+        let window_size = if args.window_width.is_some() && args.window_height.is_some() {
+            Some((args.window_width.unwrap(), args.window_height.unwrap()))
+        } else if args.window_width.is_some() {
+            Some((args.window_width.unwrap(), args.window_width.unwrap()))
+        } else {
+            None
+        };
+
+        let mut idle_browser_timeout = Duration::from_secs(600);
+        if let Some(timeout) = args.idle_browser_timeout.clone() {
+            idle_browser_timeout = Duration::from_secs(timeout as u64);
+        }
+    }
 
     let session_entry  = {
         let gcx_locked = gcx.read().await;
@@ -534,3 +588,17 @@ async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -
 
     MultimodalElement::new("image/jpeg".to_string(), jpeg_data)
 }
+
+const DEFAULT_CHROME_INTEGRATION_YAML: &str = r#"
+# Chrome integration
+
+# This can be path to your chrome binary. You can install with "npx @puppeteer/browsers install chrome@stable", read
+# more here https://developer.chrome.com/blog/chrome-for-testing/?utm_source=Fibery&utm_medium=iframely
+#chrome_path: "/Users/me/my_path/chrome/mac_arm-130.0.6723.69/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+# Or you can give it ws:// path, read more here https://developer.chrome.com/docs/devtools/remote-debugging/local-server/
+# In that case start chrome with --remote-debugging-port
+# chrome_path: "ws://127.0.0.1:6006/"
+# window_width: 1024
+# window_height: 768
+# idle_browser_timeout: 600
+"#;
