@@ -30,6 +30,7 @@ async fn create_chat_post_and_scratchpad(
     tools: Option<Vec<Value>>,
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
+    should_execute_remotely: bool,
 ) -> Result<(ChatPost, Box<dyn ScratchpadAbstract>), String> {
     let caps = try_load_caps_quickly_if_not_present(
         global_context.clone(), 0,
@@ -90,6 +91,7 @@ async fn create_chat_post_and_scratchpad(
         &scratchpad_patch,
         false,
         supports_tools,
+        should_execute_remotely,
     ).await?;
 
     Ok((chat_post, scratchpad))
@@ -253,8 +255,10 @@ pub async fn subchat_single(
     tx_toolid_mb: Option<String>,
     tx_chatid_mb: Option<String>,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
-    let gcx = ccx.lock().await.global_context.clone();
-
+    let (gcx, should_execute_remotely) = {
+        let ccx_locked = ccx.lock().await;
+        (ccx_locked.global_context.clone(), ccx_locked.should_execute_remotely)
+    };
     // this ignores customized tools
     let tools_turned_on_by_cmdline = tools_merged_and_filtered(gcx.clone()).await?;
     let tools_turn_on_set: HashSet<String> = tools_subset.iter().cloned().collect();
@@ -283,6 +287,7 @@ pub async fn subchat_single(
         Some(tools),
         tool_choice.clone(),
         only_deterministic_messages,
+        should_execute_remotely,
     ).await?;
 
     let chat_response_msgs = chat_interaction(ccx.clone(), spad, &mut chat_post).await?;

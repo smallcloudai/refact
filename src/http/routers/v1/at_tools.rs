@@ -41,7 +41,6 @@ struct PauseReason {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ToolsExecutePost {
-    pub context_messages: Vec<ChatMessage>,
     pub messages: Vec<ChatMessage>,
     pub n_ctx: usize,
     pub maxgen: usize,
@@ -195,8 +194,9 @@ pub async fn handle_v1_tools_execute(
         tools_execute_post.n_ctx,
         CHAT_TOP_N,
         false,
-        tools_execute_post.context_messages.clone(),
+        tools_execute_post.messages.clone(),
         tools_execute_post.chat_id.clone(),
+        false,
     ).await;
     ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();

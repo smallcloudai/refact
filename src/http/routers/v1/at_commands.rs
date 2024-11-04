@@ -68,6 +68,7 @@ pub async fn handle_v1_command_completion(
         true,
         vec![],
         "".to_string(),
+        false,
     ).await));
 
     let at_commands = {
@@ -138,6 +139,7 @@ pub async fn handle_v1_command_preview(
         true,
         vec![],
         "".to_string(),
+        false,
     ).await));
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(

@@ -17,6 +17,7 @@ pub trait ScratchpadAbstract: Send {
         patch: &Value,
         exploration_tools: bool,
         agentic_tools: bool,
+        should_execute_remotely: bool,
     ) -> Result<(), String>;
 
     async fn prompt(

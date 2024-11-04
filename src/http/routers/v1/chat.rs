@@ -13,6 +13,7 @@ use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::global_context::SharedGlobalContext;
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
+use crate::integrations::docker::integr_docker::docker_tool_load;
 use crate::{caps, scratchpads};
 
 
@@ -143,6 +144,18 @@ async fn chat(
         }
     }
 
+    let docker_tool_maybe = docker_tool_load(global_context.clone()).await
+        .map_err(|e| info!("No docker tool available: {e}")).ok().map(Arc::new);
+    let run_chat_threads_inside_container = docker_tool_maybe.clone()
+        .map(|docker_tool| docker_tool.integration_docker.run_chat_threads_inside_container)
+        .unwrap_or(false);
+    let should_execute_remotely = run_chat_threads_inside_container && !global_context.read().await.cmdline.inside_container;
+
+    if should_execute_remotely {
+        docker_container_check_status_or_start(global_context.clone(), docker_tool_maybe.clone(), &chat_post.chat_id).await
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    }
+
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
     let mut scratchpad = scratchpads::create_chat_scratchpad(
         global_context.clone(),
@@ -154,6 +167,7 @@ async fn chat(
         &scratchpad_patch,
         allow_at,
         supports_tools,
+        should_execute_remotely,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
@@ -177,20 +191,11 @@ async fn chat(
         false,
         messages.clone(),
         chat_post.chat_id.clone(),
+        should_execute_remotely,
     ).await;
     ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = chat_post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));
-
-    let is_inside_container = global_context.read().await.cmdline.inside_container;
-    let run_chat_threads_inside_container = ccx_arc.lock().await.docker_tool.clone()
-        .map(|docker_tool| docker_tool.integration_docker.run_chat_threads_inside_container)
-        .unwrap_or(false);
-
-    if run_chat_threads_inside_container && !is_inside_container {
-        docker_container_check_status_or_start(ccx_arc.clone()).await
-            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-    }
 
     if chat_post.stream.is_some() && !chat_post.stream.unwrap() {
         crate::restream::scratchpad_interaction_not_stream(

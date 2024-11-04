@@ -51,7 +51,7 @@ pub async fn create_code_completion_scratchpad(
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
     }
-    result.apply_model_adaptation_patch(scratchpad_patch, false, false).await?;
+    result.apply_model_adaptation_patch(scratchpad_patch, false, false, false).await?;
     verify_has_send(&result);
     Ok(result)
 }
@@ -66,6 +66,7 @@ pub async fn create_chat_scratchpad(
     scratchpad_patch: &serde_json::Value,
     allow_at: bool,
     supports_tools: bool,
+    should_execute_remotely: bool,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
     let tokenizer_arc = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
@@ -95,7 +96,7 @@ pub async fn create_chat_scratchpad(
             }
         }
     }
-    result.apply_model_adaptation_patch(scratchpad_patch, exploration_tools, agentic_tools).await?;
+    result.apply_model_adaptation_patch(scratchpad_patch, exploration_tools, agentic_tools, should_execute_remotely).await?;
     verify_has_send(&result);
     Ok(result)
 }

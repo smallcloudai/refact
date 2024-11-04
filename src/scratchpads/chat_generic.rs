@@ -74,6 +74,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         patch: &Value,
         exploration_tools: bool,
         agentic_tools: bool,
+        _should_execute_remotely: bool,
     ) -> Result<(), String> {
         self.token_bos = patch.get("token_bos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();

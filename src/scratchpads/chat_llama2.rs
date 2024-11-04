@@ -68,6 +68,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         patch: &Value,
         exploration_tools: bool,
         agentic_tools: bool,
+        _should_execute_remotely: bool,
     ) -> Result<(), String> {
         self.keyword_s = patch.get("s").and_then(|x| x.as_str()).unwrap_or("<s>").to_string();
         self.keyword_slash_s = patch.get("slash_s").and_then(|x| x.as_str()).unwrap_or("</s>").to_string();

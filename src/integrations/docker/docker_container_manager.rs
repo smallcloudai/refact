@@ -10,7 +10,7 @@ use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::last_n_lines;
 use crate::integrations::sessions::get_session_hashmap_key;
-use crate::{at_commands::at_commands::AtCommandsContext, integrations::sessions::IntegrationSession};
+use crate::integrations::sessions::IntegrationSession;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel};
 use crate::integrations::docker::integr_docker::{docker_tool_load, ToolDocker};
 
@@ -77,12 +77,12 @@ impl IntegrationSession for DockerContainerSession {
     }
 }
 
-pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsContext>>) -> Result<(), String>
+pub async fn docker_container_check_status_or_start(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    docker_tool_maybe: Option<Arc<ToolDocker>>,
+    chat_id: &str,
+) -> Result<(), String>
 {
-    let (gcx, chat_id, docker_tool_maybe) = {
-        let ccx_locked = ccx.lock().await;
-        (ccx_locked.global_context.clone(), ccx_locked.chat_id.clone(), ccx_locked.docker_tool.clone())
-    };
     let docker = docker_tool_maybe.ok_or_else(|| "Docker tool not found".to_string())?;
     let docker_container_session_maybe = {
         let gcx_locked = gcx.read().await;
@@ -170,12 +170,11 @@ pub async fn docker_container_check_status_or_start(ccx: Arc<AMutex<AtCommandsCo
     }
 }
 
-pub async fn docker_container_get_host_lsp_port_to_connect(ccx: Arc<AMutex<AtCommandsContext>>) -> Result<String, String> {
-    let (gcx, chat_id) = {
-        let ccx_locked = ccx.lock().await;
-        (ccx_locked.global_context.clone(), ccx_locked.chat_id.clone())
-    };
-
+pub async fn docker_container_get_host_lsp_port_to_connect(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    chat_id: &str,
+) -> Result<String, String> 
+{
     let docker_container_session_maybe = {
         let gcx_locked = gcx.read().await;
         gcx_locked.integration_sessions.get(&get_session_hashmap_key("docker", &chat_id)).cloned()
