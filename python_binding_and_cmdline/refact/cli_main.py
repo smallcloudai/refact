@@ -290,7 +290,7 @@ async def chat_main():
 
     async with lsp_runner:
         caps = await cli_settings.fetch_caps(lsp_runner.base_url())
-        cli_settings.args = cli_settings.CmdlineArgs(caps, args_parsed)
+        cli_settings.args = cli_settings.CmdlineArgs(caps, args_parsed.model, args_parsed.path_to_project, args_parsed.always_pause)
         await actual_chat(lsp_runner, caps=caps, arg_question=arg_question, run_compressor=args_parsed.compressor)
 
 
