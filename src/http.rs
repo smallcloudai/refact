@@ -7,6 +7,8 @@ use hyper::Server;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::{error, info};
+use reqwest::{Client, Response};
+use serde::Serialize;
 
 use crate::global_context::GlobalContext;
 use crate::http::routers::make_refact_http_server;
@@ -57,4 +59,34 @@ pub async fn start_server(
             }
         }
     }));
+}
+
+async fn _make_http_post<T: Serialize>(
+    url: &str,
+    body: &T,
+) -> Result<Response, String> {
+    let client = Client::builder().build().map_err(|e| e.to_string())?;
+    let post_result = client.post(url).json(body).send().await.map_err(|e| e.to_string())?;
+
+    if !post_result.status().is_success() {
+        let status = post_result.status();
+        let error_text = post_result.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        return Err(format!("HTTP request failed with status {}: {}", status, error_text));
+    }
+    Ok(post_result)
+}
+
+pub async fn http_post_json<T: Serialize, R: for<'de> serde::Deserialize<'de>>(
+    url: &str,
+    body: &T,
+) -> Result<R, String> {
+    let post_result = _make_http_post(url, body).await?;
+    post_result.json::<R>().await.map_err(|e| e.to_string())
+}
+
+pub async fn http_post<T: Serialize>(
+    url: &str,
+    body: &T,
+) -> Result<(), String> {
+    _make_http_post(url, body).await.map(|_| ())
 }

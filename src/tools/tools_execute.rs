@@ -5,11 +5,11 @@ use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tracing::{info, warn};
-use reqwest::Client;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile, SubchatParameters};
+use crate::http::http_post_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
@@ -81,25 +81,8 @@ pub async fn run_tools_remotely(
     let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_id).await?;
     info!("run_tools_remotely: connecting to port {}", port);
 
-    let client = Client::builder().build().map_err(|e| e.to_string())?;
-    let post_result = client
-        .post(format!("http://localhost:{port}/v1/tools-execute", port=port))
-        .json(&tools_execute_post)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    if !post_result.status().is_success() {
-        let status = post_result.status();
-        let error_text = post_result.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-        return Err(format!("HTTP request failed with status {}: {}", status, error_text));
-    }
-
-    let response = post_result
-      .json::<ToolExecuteResponse>()
-      .await
-      .map_err(|e| e.to_string())?;
-
+    let url = format!("http://localhost:{port}/v1/tools-execute");
+    let response: ToolExecuteResponse = http_post_json(&url, &tools_execute_post).await?;
     info!("run_tools_remotely: got response: {:?}", response);
 
     let mut all_messages = original_messages.to_vec();
