@@ -1,14 +1,20 @@
+use std::path::PathBuf;
 use std::{sync::Arc, sync::Weak, time::SystemTime};
-use async_process::Command;
+use async_tar::Builder;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
+use tempfile::Builder as TempfileBuilder;
+use tokio::fs::File;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
+use tokio_util::compat::TokioAsyncWriteCompatExt;
 use tracing::{error, info, warn};
 
 use crate::files_correction::get_project_dirs;
+use crate::files_in_workspace::retrieve_files_in_workspace_folders;
 use crate::global_context::GlobalContext;
-use crate::integrations::process_io_utils::last_n_lines;
+use crate::http::http_post;
+use crate::http::routers::v1::sync_files::SyncFilesExtractTarPost;
 use crate::integrations::sessions::get_session_hashmap_key;
 use crate::integrations::sessions::IntegrationSession;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel};
@@ -127,8 +133,6 @@ pub async fn docker_container_check_status_or_start(
             ports_to_forward.insert(0, Port {external: "0".to_string(), internal: LSP_PORT.to_string()});
 
             let container_id = docker_container_start(&docker, &chat_id, &ports_to_forward, LSP_PORT, gcx.clone()).await?;
-            docker_container_sync_yaml_configs(&docker, &container_id, gcx.clone()).await?;
-            docker_container_sync_workspace(&docker, &container_id, gcx.clone()).await?;
             let exposed_ports = docker_container_get_exposed_ports(&docker, &container_id, &ports_to_forward, gcx.clone()).await?;
             let host_lsp_port = exposed_ports.iter().find(|p| p.internal == LSP_PORT)
                 .ok_or_else(|| "No LSP port exposed".to_string())?.external.clone();
@@ -152,6 +156,17 @@ pub async fn docker_container_check_status_or_start(
                 },
                 None => DockerContainerConnectionEnum::LocalPort(host_lsp_port),
             };
+
+            let lsp_port_to_connect = match &connection {
+                DockerContainerConnectionEnum::SshTunnel(ssh_tunnel) => {
+                    ssh_tunnel.get_first_external_port()?
+                },
+                DockerContainerConnectionEnum::LocalPort(internal_port) => {
+                    internal_port.to_string()
+                }
+            };
+            docker_container_sync_yaml_configs(&docker, &container_id, gcx.clone()).await?;
+            docker_container_sync_workspace(gcx.clone(), &docker, &container_id, &lsp_port_to_connect).await?;
 
             let session: Arc<AMutex<Box<dyn IntegrationSession>>> = Arc::new(AMutex::new(Box::new(DockerContainerSession {
                 container_id,
@@ -282,76 +297,68 @@ async fn docker_container_sync_yaml_configs(
 }
 
 async fn docker_container_sync_workspace(
+    gcx: Arc<ARwLock<GlobalContext>>,
     docker: &ToolDocker,
     container_id: &str,
-    gcx: Arc<ARwLock<GlobalContext>>,
+    lsp_port_to_connect: &str,
 ) -> Result<(), String> {
-    let _ = Command::new("rsync").output().await.map_err(|e| format!("Error copying workspace folder, rsync not found locally: {}", e))?;
+    let workspace_folder = get_project_dirs(gcx.clone())
+        .await
+        .into_iter()
+        .next()
+        .ok_or_else(|| "No workspace folders found".to_string())?;
+    let container_workspace_folder = PathBuf::from(&docker.integration_docker.container_workspace_folder);
+
+    let temp_tar_file = TempfileBuilder::new().suffix(".tar").tempfile()
+        .map_err(|e| format!("Error creating temporary tar file: {}", e))?.into_temp_path();
+    let tar_file_name = temp_tar_file.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let tar_async_file = File::create(&temp_tar_file).await
+        .map_err(|e| format!("Error opening temporary tar file: {}", e))?;
+
+    let mut tar_builder = Builder::new(tar_async_file.compat_write());
+    tar_builder.follow_symlinks(true);
+    tar_builder.mode(async_tar::HeaderMode::Complete);
+
+    let files = retrieve_files_in_workspace_folders(vec![workspace_folder.clone()]).await;
+    for file in &files {
+        let relative_path = file.strip_prefix(&workspace_folder)
+           .map_err(|e| format!("Error stripping prefix: {}", e))?;
+
+        tar_builder.append_path_with_name(file, relative_path).await
+           .map_err(|e| format!("Error adding file to tar archive: {}", e))?;
+    }
     
-    // TODO: There could be more than one workspace folder, to decide which one we'll sync we should 
-    // get the active one, probably from the IDE.
-    let mut workspace_folder = get_project_dirs(gcx.clone()).await.into_iter().next().ok_or_else(|| "No workspace folders found".to_string())?;
-    workspace_folder.push("");
-    let container_workspace_folder = &docker.integration_docker.container_workspace_folder;
-
-    const COMMAND_TO_CHECK_IF_RSYNC_IS_INSTALLED: &str = r#"rsync --version > /dev/null 2>&1 && echo "rsync is installed""#;
-    let (is_rsync_installed_output, _) = docker.command_execute(&format!("container exec {container_id} {COMMAND_TO_CHECK_IF_RSYNC_IS_INSTALLED}"), gcx.clone(), true).await?;
-    info!("Is rsync installed output: {is_rsync_installed_output}");
-
-    if is_rsync_installed_output.trim() != "rsync is installed" {
-        const INSTALL_RSYNC_SHELL_COMMAND: &str = r#"sh -c 'sudo apt install -y rsync || \
-            sudo yum install -y rsync || \
-            sudo dnf install -y rsync || \
-            sudo zypper install -y rsync || \
-            sudo pacman -S --noconfirm rsync || \
-            sudo apk add --no-cache rsync || \
-            sudo microdnf install -y rsync || \
-            sudo apt-get install -y rsync || \
-            apt install -y rsync || \
-            yum install -y rsync || \
-            dnf install -y rsync || \
-            zypper install -y rsync || \
-            pacman -S --noconfirm rsync || \
-            apk add --no-cache rsync || \
-            microdnf install -y rsync || \
-            apt-get install -y rsync && echo "_success_"'"#;
-        
-        let rsync_install_command = format!("container exec {container_id} {INSTALL_RSYNC_SHELL_COMMAND}");
-            
-        match docker.command_execute(&rsync_install_command, gcx.clone(), false).await {
-            Ok((stdout, _)) if stdout.trim().ends_with("_success_") => {
-                info!("Rsync has been installed");
-            }
-            Ok((_, stderr)) => {
-                return Err(format!("Error installing rsync, please install it in the image: {stderr}"));
-            }
-            Err(e) => {
-                return Err(format!("Error installing rsync, please install it in the image: {e}"));
-            }
-        }
+    if workspace_folder.join(".git").exists() {
+        let git_folder = workspace_folder.join(".git").to_path_buf();
+        tar_builder.append_path_with_name(git_folder, ".git").await
+            .map_err(|e| format!("Error adding .git to tar archive: {}", e))?;
+    }
+    if workspace_folder.join(".hg").exists() {
+        let hg_folder = workspace_folder.join(".hg").to_path_buf();
+        tar_builder.append_path_with_name(hg_folder, ".hg").await
+           .map_err(|e| format!("Error adding .hg to tar archive: {}", e))?;
+    }
+    if workspace_folder.join(".svn").exists() {
+        let svn_folder = workspace_folder.join(".svn").to_path_buf();
+        tar_builder.append_path_with_name(svn_folder, ".svn").await
+          .map_err(|e| format!("Error adding .svn to tar archive: {}", e))?;
     }
 
-    let docker_cli_command = &docker.integration_docker.docker_cli_path;
-    let docker_host = docker.get_docker_host(gcx.clone()).await?;
-    let docker_exec_command = format!("{docker_cli_command} -H={docker_host} exec -i");
+    tar_builder.finish().await.map_err(|e| format!("Error finishing tar archive: {}", e))?;
 
-    let copy_from = workspace_folder.to_string_lossy().to_string();
-    let copy_to = format!("{container_id}:{container_workspace_folder}");
-    let args = ["--rsh", &docker_exec_command, "--checksum", "--recursive", "--links", "--perms", 
-        "--executability", "--itemize-changes", "--filter", ":- .gitignore", &copy_from, &copy_to];
-    // TODO: Copying .git folder can take a lot of time, we should try to not to copy it fully later.
+    let cp_command = format!("container cp {} {}:{}", temp_tar_file.to_string_lossy(), container_id, container_workspace_folder.to_string_lossy());
+    docker.command_execute(&cp_command, gcx.clone(), true).await?;
 
-    let rsync_output = Command::new("rsync").args(args).output().await
-        .map_err(|e| format!("Error executing rsync: {e}"))?;
+    let post = SyncFilesExtractTarPost {
+        tar_path: container_workspace_folder.join(&tar_file_name).to_string_lossy().to_string(),
+        extract_to: container_workspace_folder.to_string_lossy().to_string(),
+    };
+    http_post(&format!("http://localhost:{lsp_port_to_connect}/v1/sync-files-extract-tar"), &post).await?;
 
-    let stderr = String::from_utf8_lossy(&rsync_output.stderr).to_string();
-    let stdout = String::from_utf8_lossy(&rsync_output.stdout).to_string();
+    tokio::fs::remove_file(&temp_tar_file).await
+        .map_err(|e| format!("Error removing temporary archive: {}", e))?;
 
-    if !stderr.is_empty() {
-        return Err(format!("Error syncing workspace: {stderr}"));
-    }
-
-    info!("Synced workspace: {}", last_n_lines(&stdout, 10));
+    info!("Workspace synced successfully.");
     Ok(())
 }
 
