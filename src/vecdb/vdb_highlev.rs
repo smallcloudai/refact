@@ -19,7 +19,14 @@ use crate::vecdb::vdb_lance::VecDBHandler;
 use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, OngoingWork, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
 use crate::vecdb::vdb_thread::{vecdb_start_background_tasks, vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
 
-const VECDB_DISTANCE_REJECT_COMPLETELY: f32 = 0.25;  // XXX: it's actually a constant per embedding model, not universal for all models
+
+fn model_to_rejection_threshold(embedding_model: &str) -> f32 {
+    match embedding_model {
+        "text-embedding-3-small" => 0.55,
+        "thenlper_gte" => 0.25,
+        _ => 0.60,
+    }
+}
 
 
 pub struct VecDb {
@@ -590,13 +597,15 @@ impl VecdbSearch for VecDb {
         info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
         let mut dist0 = 0.0;
         let mut filtered_results = Vec::new();
+        let rejection_threshold = model_to_rejection_threshold(self.constants.embedding_model.as_str());
+        info!("rejection_threshold {:.3}", rejection_threshold);
         for rec in results.iter_mut() {
             if dist0 == 0.0 {
                 dist0 = rec.distance.abs();
             }
             let last_35_chars = crate::nicer_logs::last_n_chars(&rec.file_path.display().to_string(), 35);
             rec.usefulness = 100.0 - 75.0 * ((rec.distance.abs() - dist0) / (dist0 + 0.01)).max(0.0).min(1.0);
-            if rec.distance.abs() >= VECDB_DISTANCE_REJECT_COMPLETELY {
+            if rec.distance.abs() >= rejection_threshold {
                 info!("distance {:.3} -> dropped {}:{}-{}", rec.distance, last_35_chars, rec.start_line, rec.end_line);
             } else {
                 info!("distance {:.3} -> useful {:.1}, found {}:{}-{}", rec.distance, rec.usefulness, last_35_chars, rec.start_line, rec.end_line);
@@ -612,4 +621,3 @@ impl VecdbSearch for VecDb {
         )
     }
 }
-
