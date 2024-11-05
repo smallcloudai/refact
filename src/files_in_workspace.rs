@@ -185,7 +185,7 @@ pub async fn read_file_from_disk(
     read_file_from_disk_without_privacy_check(path).await
 }
 
-async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<PathBuf>> {
+async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf, filter_out_status: bool) -> Option<Vec<PathBuf>> {
     info!("{} EXEC {} {}", path.display(), cmd, args.join(" "));
     let output = async_process::Command::new(cmd)
         .args(args)
@@ -200,19 +200,28 @@ async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf) -> Option<Vec<Pa
 
     String::from_utf8(output.stdout.clone())
         .ok()
-        .map(|s| s.lines().map(|line| path.join(line)).collect())
+        .map(|s| s.lines().map(|line| {
+            let trimmed = line.trim();
+            if filter_out_status && trimmed.len() > 1 {
+                path.join(&trimmed[1..].trim())
+            } else {
+                path.join(line)
+            }
+        }).collect())
 }
 
 async fn ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>> {
     if path.join(".git").exists() && which("git").is_ok() {
         // Git repository
-        _run_command("git", &["ls-files"], path).await
+        _run_command("git", &["ls-files", "--cached", "--modified", "--others", "--exclude-standard"], path, false).await
     } else if path.join(".hg").exists() && which("hg").is_ok() {
         // Mercurial repository
-        _run_command("hg", &["status", "-c"], path).await
+        _run_command("hg", &["status", "--added", "--modified", "--clean", "--unknown", "--no-status"], path, false).await
     } else if path.join(".svn").exists() && which("svn").is_ok() {
         // SVN repository
-        _run_command("svn", &["list", "-R"], path).await
+        let files_under_vc = _run_command("svn", &["list", "-R"], path, false).await;
+        let files_changed = _run_command("svn", &["status"], path, true).await;
+        Some(files_under_vc.unwrap_or_default().into_iter().chain(files_changed.unwrap_or_default().into_iter()).collect())
     } else {
         None
     }
