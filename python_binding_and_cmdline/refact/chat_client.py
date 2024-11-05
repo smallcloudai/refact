@@ -525,7 +525,7 @@ def print_messages(
                     message_str.append(message)
                     con(_wrap_color(message, "red"))
 
-        elif m.role in ["tool", "user", "assistant", "system"]:
+        elif m.role in ["tool", "user", "assistant", "system", "cd_instruction"]:
             if m.subchats is not None:  # actually subchats can only appear in role="tool", but code is the same anyway
                 for subchat_id, subchat_msgs in m.subchats.items():
                     subchats_strs = print_messages(subchat_msgs, also_print_to_console=also_print_to_console)
