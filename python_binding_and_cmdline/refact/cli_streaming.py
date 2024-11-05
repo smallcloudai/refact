@@ -60,7 +60,6 @@ def flush_response():
 
 
 def update_entertainment_box():
-    assert cli_settings.cli_yaml is not None
     entertainment_box.text = [("", response_text)]
 
 

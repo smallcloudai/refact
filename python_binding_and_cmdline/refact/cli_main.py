@@ -39,7 +39,9 @@ app: Optional[Application] = None
 
 async def answer_question_in_arguments(settings, arg_question):
     cli_streaming.add_streaming_message(chat_client.Message(role="user", content=arg_question))
+    cli_streaming.start_streaming()
     await the_chatting_loop(settings.model, max_auto_resubmit=4)
+    cli_streaming.flush_response()
 
 
 tips_of_the_day = '''
@@ -224,8 +226,6 @@ def on_submit(buffer):
 
 
 async def chat_main():
-    global lsp_runner, app
-
     args = sys.argv[1:]
     if '--' in args:
         split_index = args.index('--')
@@ -248,39 +248,7 @@ async def chat_main():
     args_parsed = parser.parse_args(before_minus_minus)
     arg_question = " ".join(after_minus_minus)
 
-    history_fn = os.path.expanduser("~/.cache/refact/cli_history")
-    session: PromptSession = PromptSession(history=FileHistory(history_fn))
-
-    tool_completer = ToolsCompleter()
-    text_area = TextArea(
-        height=10,
-        multiline=True,
-        accept_handler=on_submit,
-        completer=tool_completer,
-        focusable=True,
-        focus_on_click=True,
-        history=session.history,
-    )
-    vsplit = VSplit([
-        Window(content=FormattedTextControl(text="chat> "), width=6),
-        text_area,
-    ])
-    hsplit = HSplit([
-        Window(content=get_entertainment_box(), dont_extend_height=True),
-        ConditionalContainer(
-            content=FloatContainer(content=vsplit, floats=[
-                Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
-            ),
-            filter=is_not_streaming_condition,
-        ),
-        Window(),
-        cli_statusbar.StatusBar(),
-    ])
-    layout = Layout(hsplit)
-    app = Application(key_bindings=kb, layout=layout)
-
     cli_settings.cli_yaml = cli_settings.load_cli_or_auto_configure()
-    app.editing_mode = cli_settings.cli_yaml.get_editing_mode()
 
     refact_args = [
         os.path.join(os.path.dirname(__file__), "bin", "refact-lsp"),
@@ -319,30 +287,75 @@ async def chat_main():
         ]))
 
     lsp_runner.set_xdebug(args_parsed.xdebug)
+
     async with lsp_runner:
         caps = await cli_settings.fetch_caps(lsp_runner.base_url())
         cli_settings.args = cli_settings.CmdlineArgs(caps, args_parsed)
+        await actual_chat(lsp_runner, caps=caps, arg_question=arg_question, run_compressor=args_parsed.compressor)
 
-        if cli_settings.args.model not in caps.code_chat_models:
-            known_models = list(caps.code_chat_models.keys())
-            print(f"model {cli_settings.args.model} is unknown, pick one of {known_models}")
-            return
 
-        cli_statusbar.model_section = f"model {cli_settings.args.model} context {cli_settings.args.n_ctx()}"
+async def actual_chat(
+    lsp_runner_,
+    *,
+    caps: cli_settings.Caps,
+    arg_question: str = "",
+    run_compressor: bool = False
+):
+    global lsp_runner
+    lsp_runner = lsp_runner_
+    history_fn = os.path.expanduser("~/.cache/refact/cli_history")
+    session: PromptSession = PromptSession(history=FileHistory(history_fn))
+    tool_completer = ToolsCompleter()
+    text_area = TextArea(
+        height=10,
+        multiline=True,
+        accept_handler=on_submit,
+        completer=tool_completer,
+        focusable=True,
+        focus_on_click=True,
+        history=session.history,
+    )
+    vsplit = VSplit([
+        Window(content=FormattedTextControl(text="chat> "), width=6),
+        text_area,
+    ])
+    hsplit = HSplit([
+        Window(content=get_entertainment_box(), dont_extend_height=True),
+        ConditionalContainer(
+            content=FloatContainer(content=vsplit, floats=[
+                Float(xcursor=True, ycursor=True, content=CompletionsMenu())]
+            ),
+            filter=is_not_streaming_condition,
+        ),
+        Window(),
+        cli_statusbar.StatusBar(),
+    ])
 
-        if args_parsed.compressor:
-            await traj_compressor.trajectory_compressor(cli_streaming.streaming_messages)
-            return
+    layout = Layout(hsplit)
+    global app
+    app = Application(key_bindings=kb, layout=layout)
+    app.editing_mode = cli_settings.cli_yaml.get_editing_mode()
 
-        await welcome_message(cli_settings.args, random.choice(tips_of_the_day))
+    if cli_settings.args.model not in caps.code_chat_models:
+        known_models = list(caps.code_chat_models.keys())
+        print(f"model {cli_settings.args.model} is unknown, pick one of {known_models}")
+        return
 
-        if arg_question:
-            print(arg_question)
-            await answer_question_in_arguments(cli_settings.args, arg_question)
-            return
+    cli_statusbar.model_section = f"model {cli_settings.args.model} context {cli_settings.args.n_ctx()}"
 
-        asyncio.create_task(cli_statusbar.statusbar_background_task())
-        await start_app(app)
+    if run_compressor:
+        await traj_compressor.trajectory_compressor(cli_streaming.streaming_messages)
+        return
+
+    await welcome_message(cli_settings.args, random.choice(tips_of_the_day))
+
+    if arg_question:
+        print(arg_question)
+        await answer_question_in_arguments(cli_settings.args, arg_question)
+        return
+
+    asyncio.create_task(cli_statusbar.statusbar_background_task())
+    await start_app(app)
 
 
 def entrypoint():
