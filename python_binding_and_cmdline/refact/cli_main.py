@@ -284,9 +284,11 @@ async def chat_main():
 
     refact_args = [
         os.path.join(os.path.dirname(__file__), "bin", "refact-lsp"),
-        "--address-url", cli_settings.cli_yaml.address_url,
-        "--api-key", cli_settings.cli_yaml.api_key,
     ]
+    if cli_settings.cli_yaml.address_url:
+        refact_args.extend(["--address-url", cli_settings.cli_yaml.address_url])
+    if cli_settings.cli_yaml.api_key:
+        refact_args.extend(["--api-key", cli_settings.cli_yaml.api_key])
     if cli_settings.cli_yaml.insecure_ssl:
         refact_args.append("--insecure-ssl")
     if cli_settings.cli_yaml.basic_telemetry:
@@ -294,16 +296,11 @@ async def chat_main():
     if cli_settings.cli_yaml.experimental:
         refact_args.append("--experimental")
     if cli_settings.cli_yaml.ast:
-        refact_args.append("--ast")
-        refact_args.append("--ast-max-files")
-        refact_args.append(str(cli_settings.cli_yaml.ast_max_files))
+        refact_args.extend(["--ast", "--ast-max-files", str(cli_settings.cli_yaml.ast_max_files)])
     if cli_settings.cli_yaml.vecdb:
-        refact_args.append("--vecdb")
-        refact_args.append("--vecdb-max-files")
-        refact_args.append(str(cli_settings.cli_yaml.vecdb_max_files))
+        refact_args.extend(["--vecdb", "--vecdb-max-files", str(cli_settings.cli_yaml.vecdb_max_files)])
     if args_parsed.path_to_project:
-        refact_args.append("--workspace-folder")
-        refact_args.append(args_parsed.path_to_project)
+        refact_args.extend(["--workspace-folder", args_parsed.path_to_project])
     lsp_runner = LSPServerRunner(
         refact_args,
         wait_for_ast_vecdb=False,

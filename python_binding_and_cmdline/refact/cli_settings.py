@@ -20,8 +20,8 @@ class Caps(BaseModel):
 
 
 class SettingsCLI(BaseModel):
-    address_url: str
-    api_key: str
+    address_url: Optional[str] = None
+    api_key: Optional[str] = None
     insecure_ssl: bool = False
     ast: bool = True
     ast_max_files: int = 20000
@@ -103,7 +103,7 @@ def load_cli_or_auto_configure():
         try:
             return SettingsCLI.model_validate(data)
         except ValidationError as exc:
-            print(f'Warning: Invalid configuration found in {cli_yaml_path}.')
+            print(f'Warning: Invalid configuration found in {cli_yaml_path}')
             print('The following errors were detected:')
             for err in exc.errors():
                 print(f'  - {err["type"]}: {err["loc"][0]}')
