@@ -207,8 +207,6 @@ pub async fn try_load_caps_quickly_if_not_present(
                 Ok(caps) => {
                     gcx_locked.caps = Some(caps.clone());
                     gcx_locked.caps_last_error = "".to_string();
-                    info!("quick load caps successful");
-                    let _ = write!(std::io::stderr(), "CAPS\n");
                     Ok(caps)
                 },
                 Err(e) => {

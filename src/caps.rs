@@ -314,7 +314,7 @@ async fn load_caps_buf_from_file(
         };
         let caps_path = PathBuf::from(cache_dir).join("bring-your-own-key.yaml");
         caps_url = caps_path.to_string_lossy().into_owned();
-        info!("will use {} as the caps file", caps_url);
+        // info!("will use {} as the caps file", caps_url);
     }
     let mut buffer = String::new();
     let mut file = File::open(caps_url.clone()).map_err(|_| format!("failed to open file '{}'", caps_url))?;
