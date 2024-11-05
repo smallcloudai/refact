@@ -11,8 +11,8 @@ mod tool_cat;
 
 #[cfg(feature="vecdb")]
 mod tool_search;
-#[cfg(feature="vecdb")]
-mod tool_knowledge;
+// #[cfg(feature="vecdb")]
+// mod tool_knowledge;
 #[cfg(feature="vecdb")]
 mod tool_locate_search;
 pub mod tool_patch;

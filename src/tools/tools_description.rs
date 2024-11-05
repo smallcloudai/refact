@@ -121,8 +121,8 @@ pub async fn tools_merged_and_filtered(gcx: Arc<ARwLock<GlobalContext>>) -> Resu
         if let Some(docker_config) = integrations_value.get("docker") {
             tools_all.insert("docker".to_string(), Arc::new(AMutex::new(Box::new(ToolDocker::new_from_yaml(docker_config)?) as Box<dyn Tool + Send>)));
         }
-        #[cfg(feature="vecdb")]
-        tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
+        // #[cfg(feature="vecdb")]
+        // tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
     }
 
     if let Some(cmdline) = integrations_value.get("cmdline") {
@@ -213,22 +213,6 @@ tools:
         description: "URL of the web page to fetch."
     parameters_required:
       - "url"
-
-  - name: "knowledge"
-    description: "What kind of knowledge you will need to accomplish this task? Call each time you have a new task or topic."
-    experimental: true
-    parameters:
-      - name: "im_going_to_use_tools"
-        type: "string"
-        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, github, gitlab, rust debugger, patch"
-      - name: "im_going_to_apply_to"
-        type: "string"
-        description: "What your future actions will be applied to? List all you can identify, starting from the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
-    parameters_required:
-      - "im_going_to_use_tools"
-      - "im_going_to_apply_to"
-
-      ### FIXME
 
   - name: "cat"
     description: "Like cat in console, but better: it can read multiple files and skeletonize them. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full. It can also read images just fine."
@@ -350,6 +334,22 @@ tools:
       - "project_dir"
       - "command"
 "####;
+
+
+// - name: "knowledge"
+//   description: "What kind of knowledge you will need to accomplish this task? Call each time you have a new task or topic."
+//   experimental: true
+//   parameters:
+//     - name: "im_going_to_use_tools"
+//       type: "string"
+//       description: "Which tools are you about to use? Comma-separated list, examples: hg, git, github, gitlab, rust debugger, patch"
+//     - name: "im_going_to_apply_to"
+//       type: "string"
+//       description: "What your future actions will be applied to? List all you can identify, starting from the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
+//   parameters_required:
+//     - "im_going_to_use_tools"
+//     - "im_going_to_apply_to"
+
 
 #[allow(dead_code)]
 const NOT_READY_TOOLS: &str = r####"
