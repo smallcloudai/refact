@@ -22,8 +22,6 @@ def is_beginning_of_line(text: str, i: int) -> bool:
 
 
 def to_markdown(text: str, width: int) -> Tokens:
-    assert cli_settings.cli_yaml is not None
-    nerd_font = cli_settings.cli_yaml.nerd_font
     result = []
     last = -1
     i = 0
@@ -51,10 +49,7 @@ def to_markdown(text: str, width: int) -> Tokens:
         if text[i] == "`" and text[i + 1] != "`":
             result.append((get_format(), text[last + 1:i]))
             if header_level == 0:
-                if nerd_font:
-                    result.append((gray, ""))
-                else:
-                    result.append((f"bg:{gray}", " "))
+                result.append((f"bg:{gray}", " "))
             last = i
             i += 1
             is_inline_code = True
@@ -62,10 +57,7 @@ def to_markdown(text: str, width: int) -> Tokens:
                 i += 1
             result.append((get_format(), text[last + 1:i]))
             if header_level == 0:
-                if nerd_font:
-                    result.append((gray, ""))
-                else:
-                    result.append((f"bg:{gray}", " "))
+                result.append((f"bg:{gray}", " "))
             is_inline_code = False
             last = i
 
