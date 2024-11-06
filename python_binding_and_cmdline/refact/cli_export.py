@@ -46,13 +46,12 @@ async def think_of_good_filename_and_export(msglist: List[chat_client.Message]):
             verbose=False,
             temperature=0.0,
             max_tokens=100,
-            chat_id=cli_settings.args.chat_id,
         )
         choice0 = good_name_choices[0]
         fn = choice0[-1].content.strip()
     except Exception as e:
-        print(f"Failed to get a good filename using chat: {e}")
-        fn = f"{time.time()}.json"
+        print(f"\n\nFailed to get a good filename using chat: {e}\n\n")
+        fn = f"{int(time.time())}.json"
 
     long_fn = os.path.join(TRAJ_DIR, fn)
     print_formatted_text("\nExport to %r" % long_fn)

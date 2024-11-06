@@ -266,6 +266,7 @@ async def ask_using_http(
             else:
                 deltas_collector = ChoiceDeltaCollector(n_answers)
                 buffer = b""
+                have_usage = None
                 async for data, end_of_http_chunk in response.content.iter_chunks():
                     buffer += data
                     if not end_of_http_chunk:
@@ -282,16 +283,15 @@ async def ask_using_http(
                         break
                     j = json.loads(line_str)
                     # print(">>>", line_str)
-                    if "choices" in j:
-                        if j["choices"]:
-                            deltas_collector.add_deltas(j["choices"])
+                    if "choices" in j and len(j["choices"]) > 0:
+                        deltas_collector.add_deltas(j["choices"])
                     elif "role" in j:
                         deterministic.append(Message(**j))
                     elif "subchat_id" in j:
                         map_key = j["tool_call_id"] + "__" + j["subchat_id"]
                         subchats[map_key].append(Message(**j["add_message"]))
-                    elif not j.get("choices") and j.get("usage"):
-                        pass
+                    elif j.get("usage") is not None:
+                        have_usage = Usage(**j["usage"])
                     else:
                         print("unrecognized streaming data (2):", j)
                     if callback is not None:
@@ -305,6 +305,7 @@ async def ask_using_http(
                 for x in deltas_collector.choices:
                     if x.content is not None and len(x.content) == 0:
                         x.content = None
+                    x.usage = have_usage
                 choices = [(x if x.content is not None or x.tool_calls is not None else None) for x in deltas_collector.choices]
                 # when streaming, subchats are streamed too
                 has_home = set()

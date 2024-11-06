@@ -95,6 +95,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "stream": true,
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
+        "stream_options": {"include_usage": true},
         // "stop": sampling_parameters.stop, // openai does not like stop: []
     });
     if let Some(n) = sampling_parameters.n{
