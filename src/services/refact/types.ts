@@ -53,7 +53,13 @@ export type ToolResult = {
 
 interface BaseMessage {
   role: ChatRole;
-  content: string | ChatContextFile[] | ToolResult | DiffChunk[] | null;
+  content:
+    | string
+    | ChatContextFile[]
+    | ToolResult
+    | DiffChunk[]
+    | null
+    | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
@@ -61,11 +67,28 @@ export interface ChatContextFileMessage extends BaseMessage {
   content: ChatContextFile[];
 }
 
+export type UserImage = {
+  type: "image_url";
+  image_url: { url: string };
+};
+
+export type UserMessageContentWithImage =
+  | {
+      type: "text";
+      text: string;
+    }
+  | UserImage;
 export interface UserMessage extends BaseMessage {
   role: "user";
-  content: string;
+  content:
+    | string
+    | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
 }
 
+export type ProcessedUserMessageContentWithImages = {
+  m_type: string;
+  m_content: string;
+};
 export interface AssistantMessage extends BaseMessage {
   role: "assistant";
   content: string | null;
@@ -241,11 +264,22 @@ export type ChatChoice = {
   index: number;
 };
 
-export type ChatUserMessageResponse = {
-  id: string;
-  role: "user" | "context_file" | "context_memory";
-  content: string;
-};
+export type ChatUserMessageResponse =
+  | {
+      id: string;
+      role: "user" | "context_file" | "context_memory";
+      content: string;
+    }
+  | {
+      id: string;
+      role: "user";
+      content:
+        | string
+        | (
+            | UserMessageContentWithImage
+            | ProcessedUserMessageContentWithImages
+          )[];
+    };
 
 export type ToolResponse = {
   id: string;
@@ -279,7 +313,7 @@ export function isChatGetTitleResponse(
   const requiredKeys = [
     "id",
     "choices",
-    "metering_balance",
+    // "metering_balance", // not in BYOK
     "model",
     "object",
     "system_fingerprint",
