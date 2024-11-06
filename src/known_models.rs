@@ -179,6 +179,7 @@ pub const KNOWN_MODELS: &str = r####"
         "claude-3-5-sonnet": {
             "n_ctx": 16384,
             "supports_tools": true,
+            "supports_multimodality": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
