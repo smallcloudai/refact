@@ -15,3 +15,7 @@
   background: none;
   padding: 0;
 }
+
+.isInsideScrollArea {
+  width: fit-content;
+}
