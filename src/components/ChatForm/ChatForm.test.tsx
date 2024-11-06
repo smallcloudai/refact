@@ -45,6 +45,7 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
     onTextAreaHeightChange: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
+    onToolConfirm: noop,
     selectedSystemPrompt: {},
     ...props,
   };

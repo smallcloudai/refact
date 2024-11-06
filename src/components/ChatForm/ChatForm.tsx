@@ -25,6 +25,8 @@ import {
   getInformationMessage,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
+import { ToolConfirmation } from "./ToolConfirmation";
+import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { AttachFileButton, FileList } from "../Dropzone";
 
 export type ChatFormProps = {
@@ -47,6 +49,7 @@ export type ChatFormProps = {
   onSetSystemPrompt: (prompt: SystemPrompts) => void;
   selectedSystemPrompt: SystemPrompts;
   chatId: string;
+  onToolConfirm: () => void;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
@@ -63,11 +66,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   prompts,
   onSetSystemPrompt,
   selectedSystemPrompt,
+  onToolConfirm,
 }) => {
   const dispatch = useAppDispatch();
   const config = useConfig();
   const error = useAppSelector(getErrorMessage);
   const information = useAppSelector(getInformationMessage);
+  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
   const {
@@ -166,6 +171,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [handleHelpInfo, setValue, setFileInteracted, setLineSelectionInteracted],
   );
 
+  const handleToolConfirmation = useCallback(() => {
+    onToolConfirm();
+  }, [onToolConfirm]);
+
   useEffect(() => {
     if (isSendImmediately) {
       handleSubmit();
@@ -189,6 +198,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       <InformationCallout mt="2" onClick={onClearInformation} timeout={2000}>
         {information}
       </InformationCallout>
+    );
+  }
+
+  if (!isStreaming && pauseReasonsWithPause.pause) {
+    return (
+      <ToolConfirmation
+        pauseReasons={pauseReasonsWithPause.pauseReasons}
+        onConfirm={handleToolConfirmation}
+      />
     );
   }
 

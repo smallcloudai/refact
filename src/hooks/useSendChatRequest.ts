@@ -6,12 +6,16 @@ import {
   selectChatError,
   selectChatId,
   selectIsStreaming,
+  selectIsWaiting,
   selectMessages,
   selectPreventSend,
   selectSendImmediately,
   selectToolUse,
 } from "../features/Chat/Thread/selectors";
-import { useGetToolsLazyQuery } from "./useGetToolsQuery";
+import {
+  useCheckForConfirmationMutation,
+  useGetToolsLazyQuery,
+} from "./useGetToolsQuery";
 import {
   ChatMessage,
   ChatMessages,
@@ -26,8 +30,15 @@ import {
   setToolUse,
 } from "../features/Chat/Thread/actions";
 import { isToolUse } from "../features/Chat";
-import { useAbortControllers } from "./useAbortControllers";
 import { selectAllImages } from "../features/AttachedImages";
+import { useAbortControllers } from "./useAbortControllers";
+import {
+  clearPauseReasonsAndConfirmTools,
+  getToolsConfirmationStatus,
+  setPauseReasons,
+} from "../features/ToolConfirmation/confirmationSlice";
+
+let recallCounter = 0;
 
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
@@ -35,6 +46,7 @@ export const useSendChatRequest = () => {
   const abortControllers = useAbortControllers();
 
   const [triggerGetTools] = useGetToolsLazyQuery();
+  const [triggerCheckForConfirmation] = useCheckForConfirmationMutation();
 
   const chatId = useAppSelector(selectChatId);
   const streaming = useAppSelector(selectIsStreaming);
@@ -42,12 +54,15 @@ export const useSendChatRequest = () => {
 
   const errored: boolean = !!hasError || !!chatError;
   const preventSend = useAppSelector(selectPreventSend);
+  const isWaiting = useAppSelector(selectIsWaiting);
 
   const currentMessages = useAppSelector(selectMessages);
   const systemPrompt = useAppSelector(getSelectedSystemPrompt);
   const sendImmediately = useAppSelector(selectSendImmediately);
   const toolUse = useAppSelector(selectToolUse);
   const attachedImages = useAppSelector(selectAllImages);
+
+  const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
 
   const messagesWithSystemPrompt = useMemo(() => {
     const prompts = Object.entries(systemPrompt);
@@ -76,6 +91,23 @@ export const useSendChatRequest = () => {
         const { agentic: _, ...remaining } = t.function;
         return { ...t, function: { ...remaining } };
       });
+
+      const lastMessage = messages.slice(-1)[0];
+      if (
+        !isWaiting &&
+        !areToolsConfirmed &&
+        isAssistantMessage(lastMessage) &&
+        lastMessage.tool_calls
+      ) {
+        const toolCalls = lastMessage.tool_calls;
+        const confirmationResponse =
+          await triggerCheckForConfirmation(toolCalls).unwrap();
+        if (confirmationResponse.pause) {
+          dispatch(setPauseReasons(confirmationResponse.pause_reasons));
+          return;
+        }
+      }
+
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
@@ -88,7 +120,16 @@ export const useSendChatRequest = () => {
       const dispatchedAction = dispatch(action);
       abortControllers.addAbortController(chatId, dispatchedAction.abort);
     },
-    [triggerGetTools, toolUse, dispatch, chatId, abortControllers],
+    [
+      triggerGetTools,
+      triggerCheckForConfirmation,
+      toolUse,
+      dispatch,
+      chatId,
+      abortControllers,
+      areToolsConfirmed,
+      isWaiting,
+    ],
   );
 
   const maybeAddImagesToQuestion = useCallback(
@@ -127,6 +168,10 @@ export const useSendChatRequest = () => {
     [maybeAddImagesToQuestion, messagesWithSystemPrompt, sendMessages],
   );
 
+  const abort = useCallback(() => {
+    abortControllers.abort(chatId);
+  }, [abortControllers, chatId]);
+
   useEffect(() => {
     if (sendImmediately) {
       void sendMessages(messagesWithSystemPrompt);
@@ -134,6 +179,7 @@ export const useSendChatRequest = () => {
   }, [sendImmediately, sendMessages, messagesWithSystemPrompt]);
 
   // TODO: Automatically calls tool calls. This means that this hook can only be used once :/
+  // TODO: Think of better way to manage useEffect calls, not with outer counter
   useEffect(() => {
     if (!streaming && currentMessages.length > 0 && !errored && !preventSend) {
       const lastMessage = currentMessages.slice(-1)[0];
@@ -142,22 +188,40 @@ export const useSendChatRequest = () => {
         lastMessage.tool_calls &&
         lastMessage.tool_calls.length > 0
       ) {
+        if (!areToolsConfirmed) {
+          abort();
+          if (recallCounter < 1) {
+            recallCounter++;
+            return;
+          }
+        }
         void sendMessages(currentMessages);
+        recallCounter = 0;
       }
     }
-  }, [errored, currentMessages, preventSend, sendMessages, streaming]);
-
-  const abort = useCallback(() => {
-    abortControllers.abort(chatId);
-  }, [abortControllers, chatId]);
+  }, [
+    errored,
+    currentMessages,
+    preventSend,
+    sendMessages,
+    abort,
+    streaming,
+    areToolsConfirmed,
+  ]);
 
   const retry = useCallback(
     (messages: ChatMessages) => {
       abort();
+      dispatch(clearPauseReasonsAndConfirmTools(false));
       void sendMessages(messages);
     },
-    [abort, sendMessages],
+    [abort, sendMessages, dispatch],
   );
+
+  const confirmToolUsage = useCallback(() => {
+    abort();
+    dispatch(clearPauseReasonsAndConfirmTools(true));
+  }, [abort, dispatch]);
 
   const retryFromIndex = useCallback(
     (index: number, question: UserMessage["content"]) => {
@@ -175,5 +239,6 @@ export const useSendChatRequest = () => {
     abort,
     retry,
     retryFromIndex,
+    confirmToolUsage,
   };
 };
