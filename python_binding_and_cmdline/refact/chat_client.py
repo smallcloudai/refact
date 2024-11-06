@@ -39,15 +39,34 @@ class Usage(BaseModel):
     completion_tokens: int
 
 
+class MultimodalElement(BaseModel):
+    m_type: str
+    m_content: str
+
+
 class Message(BaseModel):
     role: Literal["system", "assistant", "user", "tool", "context_file", "diff", "plain_text", "cd_instruction"]
-    content: Optional[Union[str, List]] = None
+    content: Optional[Union[str, List[MultimodalElement]]] = None
     tool_calls: Optional[List[ToolCallDict]] = None
     finish_reason: str = ""
     tool_call_id: str = ""
     usage: Optional[Usage] = None
     subchats: Optional[DefaultDict[str, List[Message]]] = None
     model_config = ConfigDict()
+
+
+def format_multimodal(content: List[MultimodalElement]) -> str:
+    assert isinstance(content, list)
+    result = []
+    for i, element in enumerate(content):
+        result.append("multimodal[%d] m_type=%r" % (i, element.m_type))
+        if element.m_type == "text":
+            result.append("%s" % element.m_content.strip())
+        elif element.m_type.startswith("image"):
+            result.append("%s..." % element.m_content[:50])
+        else:
+            assert 0, element.m_type
+    return "\n".join(result)
 
 
 def messages_to_dicts(
@@ -110,6 +129,11 @@ def join_messages_and_choices(
         if verbose and isinstance(msg.content, str):
             print("result[%d]" % i,
                   termcolor.colored(msg.content, "yellow"),
+                  termcolor.colored(msg.finish_reason, "red"))
+        elif verbose and isinstance(msg.content, list):
+            formatted_content = format_multimodal(msg.content)
+            print("result[%d]" % i,
+                  termcolor.colored(formatted_content, "yellow"),
                   termcolor.colored(msg.finish_reason, "red"))
         if verbose and isinstance(msg.tool_calls, list):
             for tcall in msg.tool_calls:
@@ -536,11 +560,16 @@ def print_messages(
                     subchats_str = "\n".join([f" - {subchat_id} -   {line}" for line in subchats_str.splitlines()])
                     message_str.append(subchats_str)
             if m.content is not None:
-                message_str.append(m.content)
-                if m.content.startswith("[") or m.content.startswith("{"):
-                    con(m.content)
-                else:
-                    con(Markdown(m.content))
+                if isinstance(m.content, list):
+                    mm = format_multimodal(m.content)
+                    message_str.append(mm)
+                    con(mm)
+                elif isinstance(m.content, str):
+                    message_str.append(m.content)
+                    if m.content.startswith("[") or m.content.startswith("{"):
+                        con(m.content)
+                    else:
+                        con(Markdown(m.content))
 
         else:
             t = "unknown message role=\"%s\"" % m.role
