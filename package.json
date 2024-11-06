@@ -97,6 +97,7 @@
     "lodash.groupby": "^4.6.0",
     "lodash.isequal": "^4.5.0",
     "msw": "^2.3.4",
+    "msw-storybook-addon": "^2.0.3",
     "prettier": "3.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -125,5 +126,10 @@
       "eslint --cache --fix"
     ],
     "*.{js,css,md}": "prettier --write"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

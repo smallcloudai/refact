@@ -95,6 +95,7 @@ export const goodUser: HttpHandler = http.get(
       inference_url: "https://www.smallcloud.ai/v1",
       inference: "PRO",
       metering_balance: -100000,
+      questionnaire: {},
     });
   },
 );
