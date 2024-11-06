@@ -33,6 +33,7 @@ import { Toolbar } from "../components/Toolbar";
 import { Tab } from "../components/Toolbar/Toolbar";
 import { PageWrapper } from "../components/PageWrapper";
 import { ThreadHistory } from "./ThreadHistory";
+import { UserSurvey } from "./UserSurvey";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -157,6 +158,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
       }}
     >
       <PageWrapper host={config.host}>
+        <UserSurvey />
         {activeTab && <Toolbar activeTab={activeTab} />}
         {page.name === "initial setup" && (
           <InitialSetup onPressNext={onPressNext} />

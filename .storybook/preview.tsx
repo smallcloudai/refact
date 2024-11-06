@@ -1,7 +1,8 @@
-import React from "react";
 import type { Preview } from "@storybook/react";
 import "@radix-ui/themes/styles.css";
-import { Theme } from "../src/components/Theme";
+import { initialize, mswLoader } from "msw-storybook-addon";
+
+initialize();
 
 const preview: Preview = {
   parameters: {
@@ -14,13 +15,7 @@ const preview: Preview = {
     },
     layout: "fullscreen",
   },
-  // decorators: [
-  //   (Page) => (
-  //     <Theme accentColor="gray">
-  //       <Page />
-  //     </Theme>
-  //   ),
-  // ],
+  loaders: [mswLoader],
 };
 
 export default preview;

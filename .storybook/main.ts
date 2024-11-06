@@ -25,5 +25,6 @@ const config: StorybookConfig = {
 
     return { ...config, server };
   },
+  staticDirs: ["../public", "../dist"],
 };
 export default config;
