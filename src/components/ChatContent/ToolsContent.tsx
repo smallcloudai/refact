@@ -8,12 +8,26 @@ import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
 import { useAppSelector } from "../../hooks";
 import { selectToolResultById } from "../../features/Chat/Thread/selectors";
+import { ScrollArea } from "../ScrollArea";
 
-const Result: React.FC<{ children: string }> = ({ children }) => {
+type ResultProps = {
+  children: string;
+  isInsideScrollArea?: boolean;
+};
+
+const Result: React.FC<ResultProps> = ({
+  children,
+  isInsideScrollArea = false,
+}) => {
   const lines = children.split("\n");
   return (
     <Reveal defaultOpen={lines.length < 9}>
-      <ResultMarkdown className={styles.tool_result}>{children}</ResultMarkdown>
+      <ResultMarkdown
+        className={styles.tool_result}
+        isInsideScrollArea={isInsideScrollArea}
+      >
+        {children}
+      </ResultMarkdown>
     </Reveal>
   );
 };
@@ -56,8 +70,18 @@ const ToolMessage: React.FC<{
 
   return (
     <Flex direction="column">
-      <CommandMarkdown>{functionCalled}</CommandMarkdown>
-      <Result>{"```\n" + escapedBackticks + "\n```"}</Result>
+      <ScrollArea scrollbars="horizontal" style={{ width: "100%" }}>
+        <Box>
+          <CommandMarkdown isInsideScrollArea>{functionCalled}</CommandMarkdown>
+        </Box>
+      </ScrollArea>
+      <ScrollArea scrollbars="horizontal" style={{ width: "100%" }} asChild>
+        <Box>
+          <Result isInsideScrollArea>
+            {"```\n" + escapedBackticks + "\n```"}
+          </Result>
+        </Box>
+      </ScrollArea>
     </Flex>
   );
 };
@@ -118,13 +142,7 @@ export const ToolContent: React.FC<{
 
   return (
     <Container>
-      <Collapsible.Root
-        open={open}
-        onOpenChange={setOpen}
-        style={{
-          overflow: "hidden",
-        }}
-      >
+      <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
           <Flex gap="2" align="end">
             <Flex gap="1" align="start" direction="column">
