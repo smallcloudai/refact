@@ -25,6 +25,7 @@ import {
   getInformationMessage,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
+import { AttachFileButton, FileList } from "../Dropzone";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -261,6 +262,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 onClick={onClose}
               />
             )}
+            <AttachFileButton />
             {/* TODO: Reserved space for microphone button coming later on */}
             <PaperPlaneButton
               disabled={isStreaming || !isOnline}
@@ -271,7 +273,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           </Flex>
         </Form>
       </Flex>
-
+      <FileList />
       <ChatControls
         host={config.host}
         checkboxes={checkboxes}

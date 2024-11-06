@@ -1,13 +1,16 @@
 import { CHAT_URL } from "./consts";
 import { ToolCommand } from "./tools";
-import { ChatRole, ToolCall } from "./types";
+import { ChatRole, ToolCall, UserMessage } from "./types";
 
-export type LspChatMessage = {
-  role: ChatRole;
-  content: string | null;
-  tool_calls?: Omit<ToolCall, "index">[];
-  tool_call_id?: string;
-};
+export type LspChatMessage =
+  | {
+      role: ChatRole;
+      // TODO make this a union type for usermessage
+      content: string | null;
+      tool_calls?: Omit<ToolCall, "index">[];
+      tool_call_id?: string;
+    }
+  | UserMessage;
 
 type StreamArgs =
   | {

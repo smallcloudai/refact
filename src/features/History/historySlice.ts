@@ -35,6 +35,33 @@ export type HistoryState = Record<string, ChatHistoryItem>;
 
 const initialState: HistoryState = {};
 
+function getFirstUserContentFromChat(messages: ChatThread["messages"]): string {
+  const message = messages.find(isUserMessage);
+  if (!message) return "New Chat";
+  if (typeof message.content === "string") {
+    return message.content.replace(/^\s+/, "");
+  }
+
+  const firstUserInput = message.content.find((message) => {
+    if ("m_type" in message && message.m_type === "text") {
+      return true;
+    }
+    if ("type" in message && message.type === "text") {
+      return true;
+    }
+    return false;
+  });
+  if (!firstUserInput) return "New Chat";
+  const text =
+    "m_content" in firstUserInput
+      ? firstUserInput.m_content
+      : "text" in firstUserInput
+        ? firstUserInput.text
+        : "New Chat";
+
+  return text.replace(/^\s+/, "");
+}
+
 export const historySlice = createSlice({
   name: "history",
   initialState,
@@ -47,9 +74,7 @@ export const historySlice = createSlice({
         ...action.payload,
         title: action.payload.title
           ? action.payload.title
-          : action.payload.messages
-              .find(isUserMessage)
-              ?.content.replace(/^\s+/, "") ?? "New Chat",
+          : getFirstUserContentFromChat(action.payload.messages),
         createdAt: action.payload.createdAt ?? now,
         updatedAt: now,
         isTitleGenerated: action.payload.isTitleGenerated,
@@ -173,10 +198,11 @@ startHistoryListening({
             })
             .catch(() => {
               // TODO: handle error in case if not generated, now returning user message as a title
+              const title = getFirstUserContentFromChat([firstUserMessage]);
               listenerApi.dispatch(
                 saveChat({
                   ...thread,
-                  title: firstUserMessage.content,
+                  title: title,
                 }),
               );
             });

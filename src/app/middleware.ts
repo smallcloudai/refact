@@ -5,8 +5,9 @@ import {
   isRejected,
 } from "@reduxjs/toolkit";
 import {
-  chatAskQuestionThunk,
+  doneStreaming,
   newChatAction,
+  chatAskQuestionThunk,
   restoreChat,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
@@ -18,6 +19,7 @@ import { diffApi } from "../services/refact/diffs";
 import { pingApi } from "../services/refact/ping";
 import { clearError, setError } from "../features/Errors/errorsSlice";
 import { updateConfig } from "../features/Config/configSlice";
+import { resetAttachedImagesSlice } from "../features/AttachedImages";
 
 export const listenerMiddleware = createListenerMiddleware();
 const startListening = listenerMiddleware.startListening.withTypes<
@@ -34,13 +36,14 @@ startListening({
   ),
   effect: (_action, listenerApi) => {
     [
+      pingApi.util.resetApiState(),
       statisticsApi.util.resetApiState(),
       capsApi.util.resetApiState(),
       promptsApi.util.resetApiState(),
       toolsApi.util.resetApiState(),
       commandsApi.util.resetApiState(),
       diffApi.util.resetApiState(),
-      pingApi.util.resetApiState(),
+      resetAttachedImagesSlice(),
     ].forEach((api) => listenerApi.dispatch(api));
 
     listenerApi.dispatch(clearError());
@@ -101,6 +104,16 @@ startListening({
       action.payload.lspPort !== state.config.lspPort
     ) {
       pingApi.util.resetApiState();
+    }
+  },
+});
+
+startListening({
+  actionCreator: doneStreaming,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    if (action.payload.id === state.chat.thread.id) {
+      listenerApi.dispatch(resetAttachedImagesSlice());
     }
   },
 });

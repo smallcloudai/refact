@@ -336,6 +336,10 @@ function finishToolCallInMessages(
 
 export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
   return messages.reduce<LspChatMessage[]>((acc, message) => {
+    if (isUserMessage(message)) {
+      return acc.concat([message]);
+    }
+
     if (isAssistantMessage(message)) {
       return acc.concat([
         {
