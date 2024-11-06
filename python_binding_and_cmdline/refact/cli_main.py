@@ -202,10 +202,9 @@ def on_submit(buffer):
 
     start_streaming()
 
-    # print_response("\nwait\n")
-
+    chat_id = ''.join(random.choices('0123456789abcdef', k=10))
     async def asyncfunc():
-        await the_chatting_loop(cli_settings.args.model, cli_settings.args.chat_id, max_auto_resubmit=(1 if cli_settings.args.always_pause else 6))
+        await the_chatting_loop(cli_settings.args.model, chat_id, max_auto_resubmit=(1 if cli_settings.args.always_pause else 6))
         if len(cli_streaming.streaming_messages) == 0:
             return
         # cli_streaming.print_response("\n")  # flush_response inside
