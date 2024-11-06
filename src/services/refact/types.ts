@@ -48,7 +48,12 @@ function isToolCall(call: unknown): call is ToolCall {
 export type ToolResult = {
   tool_call_id: string;
   finish_reason?: string; // "call_failed" | "call_worked";
-  content: string;
+  content: string | ToolImage[];
+};
+
+type ToolImage = {
+  m_type: string; // "image/*"
+  m_content: string; // base64
 };
 
 interface BaseMessage {
