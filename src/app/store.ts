@@ -38,6 +38,7 @@ import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
 import { informationSlice } from "../features/Errors/informationSlice";
+import { confirmationSlice } from "../features/ToolConfirmation/confirmationSlice";
 import { attachedImagesSlice } from "../features/AttachedImages";
 
 const tipOfTheDayPersistConfig = {
@@ -76,6 +77,7 @@ const rootReducer = combineSlices(
   errorSlice,
   informationSlice,
   pagesSlice,
+  confirmationSlice,
   attachedImagesSlice,
 );
 
@@ -103,7 +105,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
     reducer: persistedReducer,
     preloadedState: initialState,
     devTools: {
-      maxAge: 500,
+      maxAge: 50,
     },
     middleware: (getDefaultMiddleware) => {
       const production = import.meta.env.MODE === "production";

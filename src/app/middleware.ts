@@ -74,6 +74,15 @@ startListening({
       listenerApi.dispatch(setError(errorMessage));
     }
     if (
+      toolsApi.endpoints.checkForConfirmation.matchRejected(action) &&
+      !action.meta.condition
+    ) {
+      const errorMessage = isDetailMessage(action.payload?.data)
+        ? action.payload.data.detail
+        : "confirmation check from lsp";
+      listenerApi.dispatch(setError(errorMessage));
+    }
+    if (
       promptsApi.endpoints.getPrompts.matchRejected(action) &&
       !action.meta.condition
     ) {

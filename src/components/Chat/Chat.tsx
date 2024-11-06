@@ -50,7 +50,8 @@ export const Chat: React.FC<ChatProps> = ({
   const isWaiting = useAppSelector(selectIsWaiting);
 
   const chatId = useAppSelector(selectChatId);
-  const { submit, abort, retryFromIndex } = useSendChatRequest();
+  const { submit, abort, retryFromIndex, confirmToolUsage } =
+    useSendChatRequest();
   const chatModel = useAppSelector(getSelectedChatModel);
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const dispatch = useAppDispatch();
@@ -154,6 +155,7 @@ export const Chat: React.FC<ChatProps> = ({
           prompts={promptsRequest.data ?? {}}
           onSetSystemPrompt={onSetSelectedSystemPrompt}
           selectedSystemPrompt={selectedSystemPrompt}
+          onToolConfirm={confirmToolUsage}
         />
         <Flex justify="between" pl="1" pr="1" pt="1">
           {/* Two flexboxes are left for the future UI element on the right side */}

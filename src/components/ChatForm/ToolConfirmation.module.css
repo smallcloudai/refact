@@ -1,0 +1,35 @@
+.ToolConfirmationCard {
+  padding: 15px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 8px;
+  background-color: var(--color-surface);
+  margin-top: 20px;
+  min-height: fit-content;
+  & pre {
+    margin: 0;
+  }
+}
+
+.ToolConfirmationHeading {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.ToolConfirmationText {
+  display: inline-block;
+  max-width: 100%;
+  font-size: 15px;
+  white-space: pre-wrap;
+  color: white;
+}
+
+.ToolConfirmationTool {
+  font-weight: 700;
+}
+
+.ToolConfirmationRule {
+  display: block;
+  font-weight: 700;
+}

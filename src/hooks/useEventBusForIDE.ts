@@ -45,6 +45,7 @@ export const ideChatPageChange = createAction<string>("ide/chatPageChange");
 export const ideEscapeKeyPressed = createAction<string>("ide/escapeKeyPressed");
 
 export const ideIsChatStreaming = createAction<boolean>("ide/isChatStreaming");
+export const ideIsChatReady = createAction<boolean>("ide/isChatReady");
 
 import { pathApi } from "../services/refact/path";
 
@@ -175,7 +176,16 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const setIsChatReady = useCallback(
+    (state: boolean) => {
+      const action = ideIsChatReady(state);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
+  const [getIntegrationsPath] = pathApi.useLazyIntegrationsPathQuery();
   const [getPrivacyPath] = pathApi.useLazyPrivacyPathQuery();
   const [getBringYourOwnKeyPath] = pathApi.useLazyBringYourOwnKeyPathQuery();
 
@@ -198,7 +208,10 @@ export const useEventsBusForIDE = () => {
 
   const openCustomizationFile = () =>
     openFileFromPathQuery(getCustomizationPath);
+
   const openPrivacyFile = () => openFileFromPathQuery(getPrivacyPath);
+  const openIntegrationsFile = () => openFileFromPathQuery(getIntegrationsPath);
+
   const openBringYourOwnKeyFile = () =>
     openFileFromPathQuery(getBringYourOwnKeyPath);
 
@@ -215,6 +228,7 @@ export const useEventsBusForIDE = () => {
     openCustomizationFile,
     openPrivacyFile,
     openBringYourOwnKeyFile,
+    openIntegrationsFile,
     // canPaste,
     stopFileAnimation,
     startFileAnimation,
@@ -222,5 +236,6 @@ export const useEventsBusForIDE = () => {
     chatPageChange,
     escapeKeyPressed,
     setIsChatStreaming,
+    setIsChatReady,
   };
 };

@@ -61,6 +61,7 @@ export {
   ideChatPageChange,
   ideEscapeKeyPressed,
   ideIsChatStreaming,
+  ideIsChatReady,
 } from "../hooks/useEventBusForIDE";
 
 export const fim = {
