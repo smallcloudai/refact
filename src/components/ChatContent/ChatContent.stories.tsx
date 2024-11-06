@@ -106,3 +106,9 @@ export const AssistantMarkdown: Story = {
     messages: [{ role: "assistant", content: MarkdownMessage }],
   },
 };
+
+export const ToolImages: Story = {
+  args: {
+    ...meta.args,
+  },
+};
