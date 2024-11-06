@@ -202,9 +202,8 @@ def on_submit(buffer):
 
     start_streaming()
 
-    chat_id = ''.join(random.choices('0123456789abcdef', k=10))
     async def asyncfunc():
-        await the_chatting_loop(cli_settings.args.model, chat_id, max_auto_resubmit=(1 if cli_settings.args.always_pause else 6))
+        await the_chatting_loop(cli_settings.args.model, cli_settings.args.chat_id, max_auto_resubmit=(1 if cli_settings.args.always_pause else 6))
         if len(cli_streaming.streaming_messages) == 0:
             return
         # cli_streaming.print_response("\n")  # flush_response inside
@@ -287,10 +286,17 @@ async def chat_main():
         ]))
 
     lsp_runner.set_xdebug(args_parsed.xdebug)
+    chat_id = args_parsed.chat_id or ("cli-" + ''.join(random.choices('0123456789abcdef', k=10)))
 
     async with lsp_runner:
         caps = await cli_settings.fetch_caps(lsp_runner.base_url())
-        cli_settings.args = cli_settings.CmdlineArgs(caps, args_parsed.model, args_parsed.path_to_project, args_parsed.always_pause)
+        cli_settings.args = cli_settings.CmdlineArgs(
+            caps,
+            model=args_parsed.model,
+            path_to_project=args_parsed.path_to_project,
+            always_pause=args_parsed.always_pause,
+            chat_id=chat_id,
+        )
         await actual_chat(lsp_runner, caps=caps, arg_question=arg_question, run_compressor=args_parsed.compressor)
 
 
