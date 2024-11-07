@@ -90,6 +90,9 @@ pub struct CommandLine {
     pub experimental: bool,
     #[structopt(long, help="Pass true to tell this binary it can run more tools without confirmation.")]
     pub inside_container: bool,
+
+    #[structopt(long, short="s", default_value="", help="Read a competency.yaml file that turns on specialization for a particular area, such as creating websites.")]
+    pub competency: String,
 }
 
 impl CommandLine {

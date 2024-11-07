@@ -28,10 +28,12 @@ pub async fn get_default_system_prompt(
     } else {
         "default"
     };
-    tconfig.system_prompts.get(prompt_key).map_or_else(|| {
+    let system_prompt = tconfig.system_prompts.get(prompt_key).map_or_else(|| {
         tracing::error!("cannot find system prompt `{}`", prompt_key);
         String::new()
-    },|x| x.text.clone())
+    }, |x| x.text.clone());
+    // tracing::info!("system_prompt:\n{}", system_prompt);
+    system_prompt
 }
 
 pub async fn get_default_system_prompt_from_remote(
@@ -39,7 +41,7 @@ pub async fn get_default_system_prompt_from_remote(
     have_exploration_tools: bool,
     have_agentic_tools: bool,
     chat_id: &str,
-) -> Result<String, String> 
+) -> Result<String, String>
 {
     let post = SystemPromptPost {
         have_exploration_tools,
@@ -47,7 +49,7 @@ pub async fn get_default_system_prompt_from_remote(
     };
 
     let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), chat_id).await?;
-    
+
     let client = Client::builder().build().map_err(|e| e.to_string())?;
     let post_result = client.post(format!("http://localhost:{port}/v1/system-prompt"))
         .json(&post).send().await.map_err(|e| e.to_string())?;
