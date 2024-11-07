@@ -296,17 +296,19 @@ tools:
     experimental: true
     description: "A real web browser with graphical interface."
     parameters:
-      - name: "command"
+      - name: "commands"
         type: "string"
         description: |
-          Supports these commands:
+          List of commands separated by comma.
+          Commands will be executed sequentially.
+          Supported commands:
           navigate_to <uri> <tab_id>
           screenshot <tab_id>
           html <tab_id>
           reload <tab_id>
           device <desktop|mobile> <tab_id>
     parameters_required:
-      - "command"
+      - "commands"
 
   - name: "postgres"
     agentic: true

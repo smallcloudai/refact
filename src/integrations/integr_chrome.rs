@@ -86,19 +86,42 @@ impl Tool for ToolChrome {
             (ccx_lock.global_context.clone(), ccx_lock.chat_id.clone())
         };
 
-        let command = match args.get("command") {
+        let commands_str = match args.get("commands") {
             Some(Value::String(s)) => s,
-            Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
-            None => return Err("Missing argument `command`".to_string())
+            Some(v) => return Err(format!("argument `commands` is not a string: {:?}", v)),
+            None => return Err("Missing argument `commands`".to_string())
         };
-        let command = parse_command(command)?;
 
-        let content = interact_with_chrome(
-            gcx.clone(),
-            &chat_id,
-            &self.integration_chrome,
-            &command,
-        ).await?;
+        let mut content = vec![];
+        for command in commands_str.split(',').map(|s| s.trim()).collect::<Vec<&str>>() {
+            let parsed_command = match parse_single_command(&command.to_string()) {
+                Ok(command) => command,
+                Err(e) => {
+                    content.push(MultimodalElement::new(
+                        "text".to_string(),
+                        format!("Failed to parse command: {}. Error: {}.", command, e)
+                    )?);
+                    break
+                }
+            };
+            match interact_with_chrome(
+                gcx.clone(),
+                &chat_id,
+                &self.integration_chrome,
+                &parsed_command,
+            ).await {
+                Ok(command_content) => {
+                    content.extend(command_content);
+                },
+                Err(e) => {
+                    content.push(MultimodalElement::new(
+                        "text".to_string(),
+                        format!("Failed to execute command: {}. Error: {}.", command, e)
+                    )?);
+                    break
+                }
+            };
+        }
 
         let msg = ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
@@ -317,7 +340,7 @@ pub struct DeviceArgs {
     pub tab_id: String,
 }
 
-fn parse_command(command: &String) -> Result<Command, String> {
+fn parse_single_command(command: &String) -> Result<Command, String> {
     let args = shell_words::split(&command).map_err(|e| e.to_string())?;
     if args.is_empty() {
         return Err("Command is empty".to_string());
