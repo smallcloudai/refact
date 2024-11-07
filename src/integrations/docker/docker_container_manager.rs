@@ -132,7 +132,9 @@ pub async fn docker_container_check_status_or_start(
             };
             ports_to_forward.insert(0, Port {external: "0".to_string(), internal: LSP_PORT.to_string()});
 
-            let container_id = docker_container_start(&docker, &chat_id, &ports_to_forward, LSP_PORT, gcx.clone()).await?;
+            let container_id = docker_container_create(&docker, &chat_id, &ports_to_forward, LSP_PORT, gcx.clone()).await?;
+            docker_container_sync_yaml_configs(&docker, &container_id, gcx.clone()).await?;
+            docker_container_start(gcx.clone(), &docker, &container_id).await?;
             let exposed_ports = docker_container_get_exposed_ports(&docker, &container_id, &ports_to_forward, gcx.clone()).await?;
             let host_lsp_port = exposed_ports.iter().find(|p| p.internal == LSP_PORT)
                 .ok_or_else(|| "No LSP port exposed".to_string())?.external.clone();
@@ -165,8 +167,15 @@ pub async fn docker_container_check_status_or_start(
                     internal_port.to_string()
                 }
             };
-            docker_container_sync_yaml_configs(&docker, &container_id, gcx.clone()).await?;
             docker_container_sync_workspace(gcx.clone(), &docker, &container_id, &lsp_port_to_connect).await?;
+
+            if !docker.integration_docker.command.is_empty() {
+                let cmd_to_execute = format!("exec --detach {} {}", container_id, docker.integration_docker.command);
+                match docker.command_execute(&cmd_to_execute, gcx.clone(), false).await {
+                    Ok((cmd_stdout, cmd_stderr)) => { info!("Command executed: {cmd_stdout}\n{cmd_stderr}") },
+                    Err(e) => { error!("Command execution failed: {}", e) },
+                };
+            }
 
             let session: Arc<AMutex<Box<dyn IntegrationSession>>> = Arc::new(AMutex::new(Box::new(DockerContainerSession {
                 container_id,
@@ -216,7 +225,7 @@ pub async fn docker_container_get_host_lsp_port_to_connect(
     }
 }
 
-async fn docker_container_start(
+async fn docker_container_create(
     docker: &ToolDocker,
     chat_id: &str,
     ports_to_forward: &Vec<Port>,
@@ -236,7 +245,7 @@ async fn docker_container_start(
     };
 
     let lsp_command = format!(
-        "mkdir -p $HOME/.cache/refact/ && {DEFAULT_CONTAINER_LSP_PATH} --http-port {lsp_port} --logs-stderr \
+        "{DEFAULT_CONTAINER_LSP_PATH} --http-port {lsp_port} --logs-stderr \
         --address-url {address_url} --api-key {api_key} --vecdb --reset-memory --ast --experimental \
         --inside-container --workspace-folder {workspace_folder}",
     );
@@ -244,7 +253,7 @@ async fn docker_container_start(
     let ports_to_forward_as_arg_list = ports_to_forward.iter()
         .map(|p| format!("--publish={}:{}", p.external, p.internal)).collect::<Vec<_>>().join(" ");
     let run_command = format!(
-        "run --detach --name=refact-{chat_id} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
+        "container create --name=refact-{chat_id} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
         {ports_to_forward_as_arg_list} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
     );
 
@@ -256,22 +265,6 @@ async fn docker_container_start(
         return Err("Docker run error: no container ID returned.".into());
     }
 
-    // If docker container is not running, print last lines of logs.
-    let inspect_command = "inspect --format '{{json .State.Running}}' ".to_string() + &container_id;
-    let (inspect_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true).await?;
-    if inspect_output.trim() != "true" {
-        let (logs_output, _) = docker.command_execute(&format!("container logs --tail 10 {container_id}"), gcx.clone(), true).await?;
-        return Err(format!("Docker container is not running: \n{logs_output}"));
-    }
-
-    if !docker.integration_docker.command.is_empty() {
-        let cmd_to_execute = format!("exec --detach {} {}", container_id, docker.integration_docker.command);
-        match docker.command_execute(&cmd_to_execute, gcx.clone(), false).await {
-            Ok((cmd_stdout, cmd_stderr)) => { info!("Command executed: {cmd_stdout}\n{cmd_stderr}") },
-            Err(e) => { error!("Command execution failed: {}", e) },
-        };
-    }
-
     Ok(container_id[..12].to_string())
 }
 
@@ -281,16 +274,59 @@ async fn docker_container_sync_yaml_configs(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(), String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
+    let container_home_dir = docker_container_get_home_dir(&docker, &container_id, gcx.clone()).await?;
 
-    let home_cmd = format!("container exec {container_id} sh -c 'echo $HOME'");
-    let (stdout, _) = docker.command_execute(&home_cmd, gcx.clone(), true).await?;
-    let container_home_dir = stdout.trim();
+    // Creating intermediate folders one by one, as docker cp does not support --parents
+    let temp_dir = TempfileBuilder::new().tempdir()
+        .map_err(|e| format!("Error creating temporary directory: {}", e))?;
+    let temp_dir_path = temp_dir.path().to_string_lossy().to_string();
+    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/"), gcx.clone(), true).await?;
+    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/refact"), gcx.clone(), true).await?;
 
-    let config_files_to_sync = ["privacy.yaml", "integrations.yaml"];
+    let config_files_to_sync = ["privacy.yaml", "integrations.yaml", "bring-your-own-key.yaml"];
     for file in &config_files_to_sync {
         let local_path = cache_dir.join(file).to_string_lossy().to_string();
         let container_path = format!("{container_id}:{container_home_dir}/.cache/refact/{file}");
         docker.command_execute(&format!("container cp {local_path} {container_path}"), gcx.clone(), true).await?;
+    }
+
+    Ok(())
+}
+
+async fn docker_container_get_home_dir(
+    docker: &ToolDocker,
+    container_id: &str,
+    gcx: Arc<ARwLock<GlobalContext>>,
+) -> Result<String, String> {
+    let inspect_config_command = "container inspect --format '{{json .Config}}' ".to_string() + &container_id;
+    let (inspect_config_output, _) = docker.command_execute(&inspect_config_command, gcx.clone(), true).await?;
+
+    let config_json: Value = serde_json::from_str(&inspect_config_output)
+        .map_err(|e| format!("Error parsing docker config: {}", e))?;
+
+    if let Some(home_env) = config_json.get("Env").and_then(|env| env.as_array())
+        .and_then(|env| env.iter().find_map(|e| e.as_str()?.strip_prefix("HOME="))) {
+        return Ok(home_env.to_string());
+    }
+
+    let user = config_json.get("User").and_then(Value::as_str).unwrap_or("");
+    Ok(if user.is_empty() || user == "root" { "root".to_string() } else { format!("/home/{user}") })
+}
+
+async fn docker_container_start(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    docker: &ToolDocker,
+    container_id: &str,
+) -> Result<(), String> {
+    let start_command = "container start ".to_string() + &container_id;
+    docker.command_execute(&start_command, gcx.clone(), true).await?;
+
+    // If docker container is not running, print last lines of logs.
+    let inspect_command = "container inspect --format '{{json .State.Running}}' ".to_string() + &container_id;
+    let (inspect_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true).await?;
+    if inspect_output.trim() != "true" {
+        let (logs_output, _) = docker.command_execute(&format!("container logs --tail 10 {container_id}"), gcx.clone(), true).await?;
+        return Err(format!("Docker container is not running: \n{logs_output}"));
     }
 
     Ok(())
