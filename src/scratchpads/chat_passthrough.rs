@@ -6,17 +6,18 @@ use serde_json::Value;
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ContextFile, SamplingParameters};
+use crate::call_validation::{ChatContent, ChatMessage, ChatPost, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_default_system_prompt_from_remote, system_prompt_add_workspace_info};
+use crate::scratchpads::passthrough_convert_messages::convert_messages_to_openai_format;
 use crate::tools::tools_execute::{run_tools_locally, run_tools_remotely};
 
 
@@ -139,78 +140,11 @@ impl ScratchpadAbstract for ChatPassthrough {
         if DEBUG {
             info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", messages.len(), limited_msgs.len());
         }
-        let mut filtered_msgs = vec![];
-        let mut filtered_msgs_push_back = vec![];
-        for msg in &limited_msgs {
-            if msg.role == "tool" {
-                match &msg.content {
-                    ChatContent::Multimodal(multimodal_content) => {
-                        let texts = multimodal_content.iter().filter(|x|x.is_text()).collect::<Vec<_>>();
-                        let images = multimodal_content.iter().filter(|x|x.is_image()).collect::<Vec<_>>();
-                        let text = if texts.is_empty() {
-                            "attached images below".to_string()
-                        } else {
-                            texts.iter().map(|x|x.m_content.clone()).collect::<Vec<_>>().join("\n")
-                        };
-                        let mut msg_cloned = msg.clone();
-                        msg_cloned.content = ChatContent::SimpleText(text);
-                        filtered_msgs.push(msg_cloned.into_value(&style));
-                        if !images.is_empty() {
-                            let msg_img = ChatMessage {
-                                role: "user".to_string(),
-                                content: ChatContent::Multimodal(images.into_iter().cloned().collect()),
-                               ..Default::default()
-                            };
-                            filtered_msgs_push_back.push(msg_img.into_value(&style));
-                        }
-                    },
-                    ChatContent::SimpleText(_) => {
-                        filtered_msgs.push(msg.into_value(&style));
-                    }
-                }
-
-            } else if msg.role == "assistant" || msg.role == "system" || msg.role == "user" {
-                filtered_msgs.push(msg.into_value(&style));
-
-            } else if msg.role == "diff" {
-                let tool_msg = ChatMessage {
-                    role: "tool".to_string(),
-                    content: msg.content.clone(),
-                    tool_calls: None,
-                    tool_call_id: msg.tool_call_id.clone(),
-                    ..Default::default()
-                };
-                filtered_msgs.push(tool_msg.into_value(&style));
-
-            } else if msg.role == "plain_text" || msg.role == "cd_instruction" {
-                filtered_msgs.push(ChatMessage::new(
-                    "user".to_string(),
-                    msg.content.content_text_only(),
-                ).into_value(&style));
-
-            } else if msg.role == "context_file" {
-                match serde_json::from_str::<Vec<ContextFile>>(&msg.content.content_text_only()) {
-                    Ok(vector_of_context_files) => {
-                        for context_file in vector_of_context_files {
-                            filtered_msgs.push(ChatMessage::new(
-                                "user".to_string(),
-                                format!("{}:{}-{}\n```\n{}```",
-                                        context_file.file_name,
-                                        context_file.line1,
-                                        context_file.line2,
-                                        context_file.file_content),
-                            ).into_value(&style));
-                        }
-                    },
-                    Err(e) => { error!("error parsing context file: {}", e); }
-                }
-            } else {
-                warn!("unknown role: {}", msg.role);
-            }
-        }
-        filtered_msgs.extend(filtered_msgs_push_back);
+        
+        let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
+        
         let mut big_json = serde_json::json!({
-            "messages": filtered_msgs,
+            "messages": converted_messages,
         });
         if self.supports_tools {
             let tools = if let Some(tools) = &self.post.tools {
