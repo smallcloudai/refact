@@ -98,8 +98,13 @@ PROMPT_AGENTIC_TOOLS: |
   * Related to the project, and user gives a code snippet to rewrite or explain => maybe quickly call definition() for symbols needed,
   and immediately rewrite user's code, that's an interactive use case.
 
-  * Related to the project, user doesn't give specific pointers to code => call locate() for a reliable files list,
-  then write the changes yourself using 📍-notation, then call patch() in parallel for each file to change,
+  * Related to the project, user describes an issue that appears to be local => call locate() to find where exactly in the code that is.
+
+  * Related to the project, user want a major change  => call tree() to see what files the project has, use cat("file2,file1", skeleton=True) with
+  comma-separated paths to relevant files, you can get images this way, too. The skeleton flag that helps to take a quick look
+  inside many files. You might need to cat() a file you want to change in full later.
+
+  If user wants changes, write the changes yourself using 📍-notation, then call patch() in parallel for each file to change,
   and put all tickets you want to apply to a file in a comma-separated list.
 
   %CD_INSTRUCTIONS%
