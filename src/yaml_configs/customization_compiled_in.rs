@@ -22,13 +22,13 @@ PROMPT_PINS: |
   Before any code block, you need to write one of: 📍REWRITE_ONE_SYMBOL, 📍REWRITE_WHOLE_FILE, 📍PARTIAL_EDIT, 📍OTHER followed by a
   unique ticket (3-digit number that you need to start from 000 and increase by one each code block) and the absolute path to the file the
   changes apply to, then write the code block. Explanation:
-  📍REWRITE_ONE_SYMBOL <ticket> <absolute_path_to_file> SYMBOL_NAME <namespace::class::method>  -- when you need to rewrite a single function or class
-  📍REWRITE_WHOLE_FILE <ticket> <absolute_path_to_file>                                         -- when you need to create or rewrite the whole file
-  📍PARTIAL_EDIT <ticket> <absolute_path_to_file>                                               -- for an edit doesn't start at the top and end at the bottom
+  📍REWRITE_ONE_SYMBOL <ticket> "<absolute_path_to_file>" SYMBOL_NAME <namespace::class::method>  -- when you need to rewrite a single function or class
+  📍REWRITE_WHOLE_FILE <ticket> "<absolute_path_to_file>"                                         -- when you need to create or rewrite the whole file
+  📍PARTIAL_EDIT <ticket> "<absolute_path_to_file>"                                               -- for an edit doesn't start at the top and end at the bottom
   📍OTHER <ticket>                                             -- command line, pseudo code, examples, answers to questions unrelated to the project
 
   Examples:
-  📍PARTIAL_EDIT 000 c:/Users/UserName/code/my_project/my_file.py
+  📍PARTIAL_EDIT 000 "c:/Users/UserName/code/my_project/my_file.py"
   ```python
   [some portion of the original code]
   def f(): pass
@@ -40,12 +40,12 @@ PROMPT_PINS: |
   python my_file.py
   ```
 
-  📍REWRITE_ONE_SYMBOL 002 /home/user/code/my_project/my_other_file.py SYMBOL_NAME g
+  📍REWRITE_ONE_SYMBOL 002 "/home/user/code/my_project/my_other_file.py" SYMBOL_NAME g
   ```python
   def g(): pass
   ```
 
-  📍REWRITE_ONE_SYMBOL 003 c:/Users/UserName/some_project/my_other_file.py SYMBOL_NAME Test
+  📍REWRITE_ONE_SYMBOL 003 "c:/Users/UserName/some_project/my_other_file.py" SYMBOL_NAME Test
   ```python
   class Test():
       # to be implemented
