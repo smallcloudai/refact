@@ -111,7 +111,7 @@ fn get_file_type(path: &PathBuf) -> String {
     if ["png", "svg", "jpeg"].contains(&extension.as_str()) {
         return format!("image/{extension}");
     }
-    if ["jpg"].contains(&extension.as_str()) {
+    if ["jpg", "JPG", "JPEG"].contains(&extension.as_str()) {
         return "image/jpeg".to_string();
     }
     return "text".to_string();
