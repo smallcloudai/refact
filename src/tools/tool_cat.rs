@@ -14,6 +14,10 @@ use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs};
 use crate::files_in_workspace::{get_file_text_from_memory_or_disk, ls_files};
 use crate::scratchpads::multimodality::MultimodalElement;
 
+use std::io::Cursor;
+use image::imageops::FilterType;
+use image::{ImageFormat, ImageReader};
+
 pub struct ToolCat;
 
 
@@ -117,9 +121,20 @@ async fn load_image(path: &String, f_type: &String) -> Result<MultimodalElement,
     let extension = path.split(".").last().unwrap().to_string();
     let mut f_type = f_type.clone();
 
+    let max_dimension = 800;
     let data = match f_type.as_str() {
         "image/png" | "image/jpeg" => {
-            std::fs::read(path).map_err(|_| format!("{} read failed", path))
+            let reader = ImageReader::open(path).map_err(|_| format!("{} image read failed", path))?;
+            let mut image = reader.decode().map_err(|_| format!("{} image decode failed", path))?;
+            let scale_factor = max_dimension as f32 / std::cmp::max(image.width(), image.height()) as f32;
+            if scale_factor < 1.0 {
+                let (nwidth, nheight) = (scale_factor * image.width() as f32, scale_factor * image.height() as f32);
+                image = image.resize(nwidth as u32, nheight as u32, FilterType::Lanczos3);
+            }
+            let mut data = Vec::new();
+            image.write_to(&mut Cursor::new(&mut data), ImageFormat::Png).map_err(|_| format!("{} image encode failed", path))?;
+            f_type = "image/png".to_string();
+            Ok(data)
         },
         "image/svg" => {
             f_type = "image/png".to_string();
@@ -134,16 +149,13 @@ async fn load_image(path: &String, f_type: &String) -> Result<MultimodalElement,
                 usvg::Tree::from_data(&svg_data, &opt).unwrap()
             };
 
-            let pixmap_size = tree.size().to_int_size();
-            let max_dimension = 800;
-            let scale_factor = if pixmap_size.width() > pixmap_size.height() {
-                max_dimension as f32 / pixmap_size.width() as f32
-            } else {
-                max_dimension as f32 / pixmap_size.height() as f32
-            };
-            let scaled_width = (pixmap_size.width() as f32 * scale_factor) as u32;
-            let scaled_height = (pixmap_size.height() as f32 * scale_factor) as u32;
-            let mut pixmap = tiny_skia::Pixmap::new(scaled_width, scaled_height).unwrap();
+            let mut pixmap_size = tree.size().to_int_size();
+            let scale_factor = max_dimension as f32 / std::cmp::max(pixmap_size.width(), pixmap_size.height()) as f32;
+            if scale_factor < 1.0 {
+                let (nwidth, nheight) = (pixmap_size.width() as f32 * scale_factor, pixmap_size.height() as f32 * scale_factor);
+                pixmap_size = tiny_skia::IntSize::from_wh(nwidth as u32, nheight as u32).unwrap();
+            }
+            let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height()).unwrap();
 
             resvg::render(&tree, tiny_skia::Transform::default(), &mut pixmap.as_mut());
             pixmap.encode_png().map_err(|_| format!("{} encode_png failed", path))
