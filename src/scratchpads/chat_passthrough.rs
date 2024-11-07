@@ -140,6 +140,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", messages.len(), limited_msgs.len());
         }
         let mut filtered_msgs = vec![];
+        let mut filtered_msgs_push_back = vec![];
         for msg in &limited_msgs {
             if msg.role == "tool" {
                 match &msg.content {
@@ -160,7 +161,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                                 content: ChatContent::Multimodal(images.into_iter().cloned().collect()),
                                ..Default::default()
                             };
-                            filtered_msgs.push(msg_img.into_value(&style));
+                            filtered_msgs_push_back.push(msg_img.into_value(&style));
                         }
                     },
                     ChatContent::SimpleText(_) => {
@@ -207,6 +208,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                 warn!("unknown role: {}", msg.role);
             }
         }
+        filtered_msgs.extend(filtered_msgs_push_back);
         let mut big_json = serde_json::json!({
             "messages": filtered_msgs,
         });
