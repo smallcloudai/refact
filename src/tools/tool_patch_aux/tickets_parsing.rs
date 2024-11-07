@@ -132,17 +132,51 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
     Ok(())
 }
 
+fn split_preserving_quotes(s: &str) -> Vec<String> {
+    let mut result = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+    let mut chars = s.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => {
+                if in_quotes {
+                    result.push(current);
+                    current = String::new();
+                    in_quotes = false;
+                } else {
+                    if !current.is_empty() {
+                        result.push(current);
+                        current = String::new();
+                    }
+                    in_quotes = true;
+                }
+            }
+            ' ' if !in_quotes => {
+                if !current.is_empty() {
+                    result.push(current);
+                    current = String::new();
+                }
+            }
+            _ => {
+                current.push(c);
+            }
+        }
+    }
+
+    if !current.is_empty() {
+        result.push(current);
+    }
+
+    result
+}
+
 async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<TicketToApply> {
     async fn process_ticket(gcx: Arc<ARwLock<GlobalContext>>, lines: &[&str], line_num: usize) -> Result<(usize, TicketToApply), String> {
         let mut ticket = TicketToApply::default();
         let header = if let Some(idx) = lines[line_num].find("📍") {
-            lines[line_num]
-                .split_at(idx)
-                .1.to_string()
-                .trim()
-                .split(" ")
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>()
+            split_preserving_quotes(&lines[line_num][idx..].trim())
         } else {
             return Err("failed to parse ticket, 📍 is missing".to_string());
         };
