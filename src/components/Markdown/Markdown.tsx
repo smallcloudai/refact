@@ -39,6 +39,7 @@ import { usePatchActions } from "../../hooks";
 import { ErrorCallout, DiffWarningCallout } from "../Callout";
 
 import { TruncateLeft } from "../Text";
+import { extractFilePathFromPin } from "../../utils";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -109,7 +110,7 @@ const PinMessages: React.FC<{
     return null;
   }
 
-  const [_cmd, _ticket, filePath, ..._rest] = children.split(" ");
+  const filePath = extractFilePathFromPin(children);
   return (
     <Card
       className={styles.patch_title}

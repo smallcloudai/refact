@@ -6,3 +6,4 @@ export * from "./parseOrElse";
 export * from "./takeWhile";
 export * from "./takeFromEndWhile";
 export * from "./scanForDuplicates";
+export * from "./extractFilePathFromPin";
