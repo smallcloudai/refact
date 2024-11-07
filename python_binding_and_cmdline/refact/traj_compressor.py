@@ -17,8 +17,8 @@ towards entities in the project. If something is junk according to the user, tha
 fluff, explanations for the user. Write one sentense: the evidence (specifics and facts), the thought process, motivated decision.
 4. Each tool call should be a separate record. Write all the parameters. Summarize facts about output of a tool, especially the facts
 useful for the goal, what the assistant learned, what was surprising to see?
-5. Each 📍-ticket should become a separate record, starts with "coding". The second starts with pin emoji and ticket number (but don't
-repeat all caps action), facts how the new code is different, in less than 15 words.
+5. Each 📍-ticket should become a separate record, starts with "coding". Start with 📍REWRITE_ONE_SYMBOL, 📍REWRITE_WHOLE_FILE, 📍PARTIAL_EDIT, 📍NEW_FILE, 📍OTHER and
+the three digit ticket number, summarize what the assistant wrote, give some stats, how is the new code different.
 6. Skip unsuccesful calls that are later corrected. Keep the corrected one.
 7. When writing paths to files, only output short relative paths from the project dir.
 8. The last line is the outcome, pick SUCCESS/FAIL/PROGRESS
@@ -30,12 +30,12 @@ OR     (1) goal/thinking/coding/outcome (2) string according to the guidelines
 Example:
 
 [
-["goal", "rename my_function1 to my_function2"],
-["thinking", "there are definition(), search() and locate() tools, all can be used to find my_function1, system prompt says I need to start with locate()"],
-["locate(problem_statement=\"rename my_function1 to my_function2\")", "file my_script.py (1337 lines) has my_function1 on line 42"],
-["thinking", "I can rewrite my_function1 inside my_script.py using 📍-notation, so I'll do that"],
-["coding", "📍000 replace my_function1, my new version has the new name"],
-["patch(path=\"my_script\", tickets=\"000\")", "The output of patch() has 15 lines_add and 15 lines_remove, confirming the operation"],
+["goal", "Rename my_function1 to my_function2"],
+["thinking", "There are definition(), search() and locate() tools, all can be used to find my_function1, system prompt says I need to start with locate()."],
+["locate(problem_statement=\"Rename my_function1 to my_function2\")", "The file my_script.py (1337 lines) has my_function1 on line 42."],
+["thinking", "I can rewrite my_function1 inside my_script.py using 📍-notation, so I'll do that."],
+["coding", "📍REWRITE_ONE_SYMBOL 000 wrote my_function1 replacement, in my new version the name is my_function2."],
+["patch(path=\"my_script\", tickets=\"000\")", "The output of patch() has 15 lines_add and 15 lines_remove, confirming the operation."],
 ["outcome", "SUCCESS"]
 ]
 
