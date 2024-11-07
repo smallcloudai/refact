@@ -16,7 +16,6 @@ use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_tree::AtTree;
 use crate::at_commands::at_web::AtWeb;
 use crate::at_commands::execute_at::AtCommandMember;
-use crate::integrations::docker::integr_docker::ToolDocker;
 
 
 pub struct AtCommandsContext {
