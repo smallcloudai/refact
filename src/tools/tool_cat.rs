@@ -133,8 +133,18 @@ async fn load_image(path: &String, f_type: &String) -> Result<MultimodalElement,
                 let svg_data = std::fs::read(&path).unwrap();
                 usvg::Tree::from_data(&svg_data, &opt).unwrap()
             };
+
             let pixmap_size = tree.size().to_int_size();
-            let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height()).unwrap();
+            let max_dimension = 800;
+            let scale_factor = if pixmap_size.width() > pixmap_size.height() {
+                max_dimension as f32 / pixmap_size.width() as f32
+            } else {
+                max_dimension as f32 / pixmap_size.height() as f32
+            };
+            let scaled_width = (pixmap_size.width() as f32 * scale_factor) as u32;
+            let scaled_height = (pixmap_size.height() as f32 * scale_factor) as u32;
+            let mut pixmap = tiny_skia::Pixmap::new(scaled_width, scaled_height).unwrap();
+
             resvg::render(&tree, tiny_skia::Transform::default(), &mut pixmap.as_mut());
             pixmap.encode_png().map_err(|_| format!("{} encode_png failed", path))
         },
