@@ -220,7 +220,7 @@ pub async fn execute_blocks_of_code_patch(
         &last_messages,
         false,
     ).await;
-    if chunks.iter().any(|x| x.is_ok()) {
+    if chunks.is_empty() || chunks.iter().any(|x| x.is_ok()) {
         return Ok(chunks
             .iter()
             .map(|x| x.clone().ok())
@@ -271,7 +271,7 @@ pub async fn execute_blocks_of_code_patch(
         &last_messages,
         false,
     ).await;
-    if chunks.iter().any(|x| x.is_ok()) {
+    if chunks.is_empty() || chunks.iter().any(|x| x.is_ok()) {
         Ok(chunks
             .iter()
             .map(|x| x.clone().ok())

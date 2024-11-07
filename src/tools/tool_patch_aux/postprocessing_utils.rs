@@ -1,7 +1,7 @@
 use crate::ast::ast_db::doc_defs;
 use crate::ast::ast_structs::AstDefinition;
 use crate::call_validation::DiffChunk;
-use crate::diffs::{apply_diff_chunks_to_text, correct_and_validate_chunks, unwrap_diff_apply_outputs};
+use crate::diffs::{apply_diff_chunks_to_text, correct_and_validate_chunks, unwrap_diff_apply_outputs, ApplyDiffResult};
 use crate::global_context::GlobalContext;
 use crate::tools::tool_patch_aux::ast_lint::{lint_and_get_error_messages, parse_and_get_error_symbols};
 use std::collections::HashMap;
@@ -12,17 +12,6 @@ use tracing::warn;
 use crate::ast::ast_indexer_thread::{ast_indexer_block_until_finished, ast_indexer_enqueue_files};
 use crate::tools::tool_patch_aux::fs_utils::read_file;
 
-pub fn vec_contains_vec<T: PartialEq>(vec: &[T], subvec: &[T]) -> usize {
-    if subvec.is_empty() {
-        return 0;
-    }
-    if subvec.len() > vec.len() {
-        return 0;
-    }
-    vec.windows(subvec.len())
-        .filter(|window| *window == subvec)
-        .count()
-}
 
 pub fn minimal_common_indent(symbol_lines: &[&str]) -> (usize, usize) {
     let mut common_spaces = vec![];
@@ -185,3 +174,29 @@ pub async fn postprocess_diff_chunks(
     }
     Ok(chunks.to_vec())
 }
+
+
+pub async fn fill_out_already_applied_status(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    application_results: &mut Vec<ApplyDiffResult>,
+) {
+    for r in application_results.iter_mut() {
+        let file_text_after = match &r.file_text {
+            Some(text) => text,
+            None => {
+                continue;
+            }
+        };
+        let filename = r.file_name_edit.clone()
+            .unwrap_or(r.file_name_add.clone()
+                .unwrap_or(r.file_name_delete.clone()
+                    .unwrap_or(String::from(""))
+                ));
+        if !filename.is_empty() {
+            if let Some(file_text_before) = read_file(gcx.clone(), filename.clone()).await.ok() {
+                r.already_applied = file_text_before.file_content == *file_text_after;
+            };
+        }
+    }
+}
+

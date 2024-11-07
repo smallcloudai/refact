@@ -8,7 +8,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, DiffChunk, SubchatParameters};
 use crate::tools::tool_patch_aux::diff_apply::diff_apply;
 use crate::tools::tool_patch_aux::model_based_edit::partial_edit::partial_edit_tickets_to_chunks;
-use crate::tools::tool_patch_aux::no_model_edit::{full_rewrite_diff, new_file_diff, rewrite_symbol_diff};
+use crate::tools::tool_patch_aux::no_model_edit::{full_rewrite_diff, rewrite_symbol_diff};
 use crate::tools::tool_patch_aux::postprocessing_utils::postprocess_diff_chunks;
 use crate::tools::tool_patch_aux::tickets_parsing::{get_and_correct_active_tickets, get_tickets_from_messages, good_error_text, PatchAction, TicketToApply};
 use crate::tools::tools_description::Tool;
@@ -63,10 +63,6 @@ pub async fn process_tickets(
                 }
                 Err(err) => Err(err)
             }
-        }
-        PatchAction::NewFile => {
-            let mut chunks = new_file_diff(&active_tickets[0]);
-            postprocess_diff_chunks(gcx.clone(), &mut chunks).await
         }
         _ => Err(good_error_text(&format!("unknown action provided: '{:?}'.", action), &ticket_ids, None))
     };
@@ -125,6 +121,7 @@ impl Tool for ToolPatch {
         let gcx = ccx_subchat.lock().await.global_context.clone();
         let all_tickets_from_above = get_tickets_from_messages(ccx.clone()).await;
         let mut active_tickets = get_and_correct_active_tickets(gcx.clone(), tickets.clone(), all_tickets_from_above.clone()).await?;
+        assert!(!active_tickets.is_empty());
 
         if active_tickets[0].filename_before != path {
             return Err(good_error_text(
@@ -152,17 +149,18 @@ impl Tool for ToolPatch {
         diff_apply(gcx.clone(), &mut diff_chunks).await.map_err(
             |err| format!("Couldn't apply the diff: {}", err)
         )?;
-
-        let mut results = vec![];
-        results.push(ChatMessage {
-            role: "diff".to_string(),
-            content: ChatContent::SimpleText(json!(diff_chunks).to_string()),
-            tool_calls: None,
-            tool_call_id: tool_call_id.clone(),
-            usage: Some(usage),
-        });
-
-        let results = results.into_iter().map(|x| ContextEnum::ChatMessage(x)).collect::<Vec<_>>();
+        let results = vec![
+            ChatMessage {
+                role: "diff".to_string(),
+                content: ChatContent::SimpleText(json!(diff_chunks).to_string()),
+                tool_calls: None,
+                tool_call_id: tool_call_id.clone(),
+                usage: Some(usage),
+            }
+        ]
+            .into_iter()
+            .map(|x| ContextEnum::ChatMessage(x))
+            .collect::<Vec<_>>();
         Ok((false, results))
     }
 

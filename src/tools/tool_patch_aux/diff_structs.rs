@@ -88,10 +88,6 @@ pub fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk
                 .filter(|x| x.line_type == LineType::Plus)
                 .map(|x| format!("{}\n", x.line.clone()))
                 .join("");
-            if lines_remove == lines_add {
-                warn!("Lines are the same in diff block, skipping it");
-                return None;
-            }
             Some(DiffChunk {
                 file_name: filename,
                 file_name_rename: filename_rename,

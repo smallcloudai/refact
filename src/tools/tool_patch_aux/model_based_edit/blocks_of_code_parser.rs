@@ -6,10 +6,11 @@ use crate::tools::tool_patch_aux::diff_structs::{diff_blocks_to_diff_chunks, Dif
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
-use tracing::error;
+use tracing::{error, warn};
 
 use crate::global_context::GlobalContext;
 use crate::tools::tool_patch_aux::fs_utils::read_file;
+use crate::tools::tool_patch_aux::postprocessing_utils::{minimal_common_indent, place_indent};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum SectionType {
@@ -145,8 +146,8 @@ async fn sections_to_diff_blocks(
             .map(|x| x.trim_start().to_string())
             .collect::<Vec<_>>();
         let mut start_offset = None;
-        for file_line_idx in 0..=file_lines.len() - orig_section.hunk.len() {
-            let file_lines_span = file_lines[file_line_idx..file_line_idx + orig_section.hunk.len()]
+        for file_line_idx in 0..=file_lines.len().saturating_sub(orig_section.hunk.len()) {
+            let file_lines_span = file_lines[file_line_idx..(file_line_idx + orig_section.hunk.len()).min(file_lines.len())]
                 .iter()
                 .map(|x| x.trim_start().to_string())
                 .collect::<Vec<_>>();
@@ -156,6 +157,9 @@ async fn sections_to_diff_blocks(
             }
         }
         if let Some(start_offset) = start_offset {
+            let file_section = file_lines[start_offset..start_offset + orig_section.hunk.len()].to_vec();
+            let (indent_spaces, indent_tabs) = minimal_common_indent(&file_section.iter().map(|x| x.as_str()).collect::<Vec<_>>());
+            let modified_section_hunk = place_indent(&modified_section.hunk.iter().map(|x| x.as_str()).collect::<Vec<_>>(), indent_spaces, indent_tabs);
             diff_blocks.push(DiffBlock {
                 file_name_before: filename.clone(),
                 file_name_after: filename.clone(),
@@ -170,8 +174,7 @@ async fn sections_to_diff_blocks(
                         file_line_num_idx: Some(start_offset + idx),
                         correct_spaces_offset: None,
                     })
-                    .chain(modified_section
-                        .hunk
+                    .chain(modified_section_hunk
                         .iter()
                         .map(|x| DiffLine {
                             line: x.clone(),
@@ -216,20 +219,23 @@ pub struct BlocksOfCodeParser {}
 
 impl BlocksOfCodeParser {
     pub fn prompt() -> String {
-        let prompt = r#"You will receive a file containing code with one or more modified sections. Your task is to identify, describe, and extract all sections of the original code that correspond to the modified sections provided. Follow the steps below to ensure accuracy and clarity in your response. Carefully read the hints if they're given, they contain important information about the changes (i.e. exact spots where to paste new code).
+        let prompt = r#"You will receive an original file, modified sections within that file and extra hint messages. 
+Your task is to identify and extract all original sections that correspond to the provided modified sections and output them in the desired format. 
+Carefully read the hints if they're given, they contain important information about the changes (i.e. exact spots where to paste those sections).
+Follow the steps below to ensure accuracy and clarity in your response.
 
 ## Steps
-1. **Locate Modified Sections:** Carefully review the provided code file and identify all sections that differ between the original and modified versions.
-2. **Output Modifications:** Prepare the output using the format specified below. Ensure the original formatting is preserved for both the original and modified sections.
+1. **Locate Modified Sections:** Carefully review the provided file and identify all sections that differ between the original and modified versions.
+2. **Output Modifications:** Prepare the output using the format specified below. Ensure the original formatting (indents especially) is preserved for both the original and modified sections.
 
-## Output Format
+## Output Format:
 ### Original Section (to be replaced)
 ```
-[Original code section]
+[an original section content]
 ```
 ### Modified Section (to replace with)
 ```
-[Modified code section]
+[a modified section content]
 ```
 
 ## Notes
@@ -240,24 +246,25 @@ impl BlocksOfCodeParser {
 - If there is new code added without any modifications, use this format:
 ### Original Section (to be replaced)
 ```
-[an old section of the code where you need to insert new code]
+[an old section where you need to insert new text]
 ```
 ### Modified Section (to replace with)
 ```
-[an old section of the code + new code]
+[an old section + new section]
 ```"#.to_string();
         prompt
     }
 
     pub fn followup_prompt(error_message: &String) -> String {
         let prompt = r#"{error_message}
-1. Provide your thoughts why these sections couldn't be found. 
-2. Rewrite those sections. The best way to do that correctly is to split them into smaller pieces. 
-I.e., if there are many functions in a single section - make a separate section for each function
-3. Copy other correct sections without any changes
-4. Follow the hints to find the spot where to paste the code
-5. Keep the output format the same is in the initial prompt and don't forget to replace [Modified code section] with the real modified code:
-## Output Format
+
+1. List potential reasons why the specified sections couldn't be found.
+2. Rewrite the missing sections: Break down each large section into smaller components. 
+If there are multiple functions in one section, create individual sections for each function to improve clarity.
+3. Copy the correct sections: For sections that are correct, replicate them exactly as they are.
+4. Use the hints: Follow any hints provided to identify the precise location for the revised code sections.
+5. Maintain the original output format: Ensure your output format mirrors the initial structure. Replace [Modified code section] with the actual modified code as follows:
+## Output Format:
 ### Original Section (to be replaced)
 ```
 [Original code section]
@@ -276,16 +283,14 @@ I.e., if there are many functions in a single section - make a separate section 
     ) -> Result<Vec<DiffChunk>, String> {
         let sections = get_edit_sections(content);
         if sections.is_empty() {
-            return Err("no sections found, probably an empty diff".to_string());
+            warn!("no sections found, probably an empty diff");
+            return Ok(vec![]);
         }
         let diff_blocks = sections_to_diff_blocks(gcx, &sections, &filename).await?;
         let chunks = diff_blocks_to_diff_chunks(&diff_blocks)
             .into_iter()
             .unique()
             .collect::<Vec<_>>();
-        if chunks.is_empty() {
-            return Err("no chunks found, probably an empty diff".to_string());
-        }
         Ok(chunks)
     }
 }

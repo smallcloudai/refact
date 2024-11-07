@@ -137,6 +137,14 @@ fn winpath_normalize(p: &str) -> PathBuf {
     }
 }
 
+pub fn to_pathbuf_normalize(path: &String) -> PathBuf {
+    if cfg!(target_os = "windows") {
+        PathBuf::from(winpath_normalize(path))
+    } else {
+        PathBuf::from(path)
+    }
+}
+
 async fn complete_path_with_project_dir(
     gcx: Arc<ARwLock<GlobalContext>>,
     correction_candidate: &String,
@@ -145,11 +153,7 @@ async fn complete_path_with_project_dir(
     fn path_exists(path: &PathBuf, is_dir: bool) -> bool {
         (is_dir && path.is_dir()) || (!is_dir && path.is_file())
     }
-    let candidate_path = if cfg!(target_os = "windows") {
-        PathBuf::from(winpath_normalize(&correction_candidate))
-    } else {
-        PathBuf::from(correction_candidate)
-    };
+    let candidate_path = to_pathbuf_normalize(&correction_candidate);
     let project_dirs = get_project_dirs(gcx.clone()).await;
     for p in project_dirs {
         if path_exists(&candidate_path, is_dir) && candidate_path.starts_with(&p) {

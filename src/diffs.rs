@@ -11,7 +11,6 @@ use crate::call_validation::DiffChunk;
 use crate::files_correction::{get_project_dirs, correct_to_nearest_dir_path};
 use crate::global_context::GlobalContext;
 
-
 const DEBUG: usize = 0;
 
 
@@ -31,6 +30,7 @@ pub enum ApplyDiffOutput {
 #[derive(Default, PartialEq, Clone, Debug, Serialize)]
 pub struct ApplyDiffResult {
     pub file_text: Option<String>,
+    pub already_applied: bool,
     pub file_name_edit: Option<String>,
     pub file_name_delete: Option<String>,
     pub file_name_add: Option<String>,

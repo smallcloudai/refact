@@ -21,6 +21,7 @@ const MAX_NEW_TOKENS: usize = 4096;
 
 async fn create_chat_post_and_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
+    ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
     messages: Vec<&ChatMessage>,
     temperature: Option<f32>,
@@ -73,6 +74,11 @@ async fn create_chat_post_and_scratchpad(
 
     chat_post.max_tokens = n_ctx;
     chat_post.scratchpad = scratchpad_name.clone();
+
+    {
+        let mut ccx_locked = ccx.lock().await;
+        ccx_locked.current_model = model_name.to_string();
+    }
 
     let scratchpad = crate::scratchpads::create_chat_scratchpad(
         global_context.clone(),
@@ -268,6 +274,7 @@ pub async fn subchat_single(
     let max_new_tokens = max_new_tokens.unwrap_or(MAX_NEW_TOKENS);
     let (mut chat_post, spad) = create_chat_post_and_scratchpad(
         gcx.clone(),
+        ccx.clone(),
         model_name,
         messages.iter().collect::<Vec<_>>(),
         temperature,

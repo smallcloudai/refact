@@ -36,19 +36,11 @@ async fn write_results_on_disk(
                 err
             })?;
         }
-        if path.extension().is_some() {
-            fs::write(&path, file_text).map_err(|e| {
-                let err = format!("Failed to write file: {:?}\nERROR: {}", path, e);
-                warn!("{err}");
-                err
-            })
-        } else {
-            fs::create_dir_all(&path).map_err(|e| {
-                let err = format!("Failed to create dir: {:?}\nERROR: {}", path, e);
-                warn!("{err}");
-                err
-            })
-        }
+        fs::write(&path, file_text).map_err(|e| {
+            let err = format!("Failed to write file: {:?}\nERROR: {}", path, e);
+            warn!("{err}");
+            err
+        })
     }
     fn apply_remove_action(path_str: &String) -> Result<(), String> {
         let path = PathBuf::from(path_str);

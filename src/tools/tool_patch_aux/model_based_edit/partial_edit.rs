@@ -91,7 +91,11 @@ pub async fn partial_edit_tickets_to_chunks(
     }?;
     let mut chunks_for_answers = vec![];
     for chunks in all_chunks.iter_mut() {
-        let diffs = postprocess_diff_chunks(gcx.clone(), chunks).await;
+        let diffs = if !chunks.is_empty() {
+            postprocess_diff_chunks(gcx.clone(), chunks).await
+        } else {
+            Ok(vec![])
+        };
         chunks_for_answers.push(diffs);
     }
     partial_edit_choose_correct_chunk(chunks_for_answers).map_err(|e| (e, None))

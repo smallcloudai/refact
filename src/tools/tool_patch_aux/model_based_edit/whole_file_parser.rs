@@ -53,12 +53,12 @@ pub struct WholeFileParser {}
 
 impl WholeFileParser {
     pub fn prompt() -> String {
-        let prompt = r#"You will receive a file containing code and one or more modified sections of this file. 
-Modified sections could contain unfinished code, could be out of order of the original file, or could constitute complete functions. 
-Your task is to modify the original file according all modified sections. 
-You must introduce all listed changes event if they are minor or contain errors! 
-Before the modification, you must list all the changes you must introduce to the file
+        let prompt = r#"You will receive an original file, modified sections within that file and extra hint messages.
+Your task is to integrate each of these modified sections into the original file, applying every specified change exactly as provided, even if they seem minor or contain errors.
+Output the whole modified file!
+Before modifying the file, list each required change.
 Output Format:
+[a list of required changes]
 # Modified file
 ```
 [code]

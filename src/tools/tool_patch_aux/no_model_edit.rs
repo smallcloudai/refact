@@ -13,12 +13,27 @@ pub async fn full_rewrite_diff(
     gcx: Arc<ARwLock<GlobalContext>>,
     ticket: &TicketToApply,
 ) -> Result<Vec<DiffChunk>, String> {
-    let context_file = read_file(gcx.clone(), ticket.filename_before.clone()).await
-        .map_err(|e| format!("cannot read file to modify: {}.\nError: {e}", ticket.filename_before))?;
-    let file_path = PathBuf::from(&context_file.file_name);
-
-    let diffs = diff::lines(&context_file.file_content, &ticket.code);
-    chunks_from_diffs(file_path, diffs)
+    match read_file(gcx.clone(), ticket.filename_before.clone()).await {
+        Ok(context_file) => {
+            let file_path = PathBuf::from(&context_file.file_name);
+            let diffs = diff::lines(&context_file.file_content, &ticket.code);
+            chunks_from_diffs(file_path, diffs)
+        }
+        Err(_) => {
+            Ok(vec![
+                DiffChunk {
+                    file_name: ticket.filename_before.clone(),
+                    file_name_rename: None,
+                    file_action: "add".to_string(),
+                    line1: 1,
+                    line2: 1,
+                    lines_remove: "".to_string(),
+                    lines_add: ticket.code.clone(),
+                    ..Default::default()
+                }
+            ])
+        }
+    }
 }
 
 pub async fn rewrite_symbol_diff(
@@ -33,7 +48,7 @@ pub async fn rewrite_symbol_diff(
     let file_text = context_file.file_content.clone();
     let line_ending = if file_text.contains("\r\n") { "\r\n" } else { "\n" };
     let file_lines = file_text.split(line_ending).collect::<Vec<&str>>();
-    let symbol_lines = file_lines[symbol.full_line1() - 1 .. symbol.full_line2()].to_vec();
+    let symbol_lines = file_lines[symbol.full_line1() - 1..symbol.full_line2()].to_vec();
     let (indent_spaces, indent_tabs) = minimal_common_indent(&symbol_lines);
 
     let ticket_code = ticket.code.clone();
@@ -41,10 +56,10 @@ pub async fn rewrite_symbol_diff(
     let ticket_code_lines = ticket_code.split(ticket_line_ending).collect::<Vec<&str>>();
     let ticket_code_lines = place_indent(&ticket_code_lines, indent_spaces, indent_tabs);
 
-    let new_code_lines = file_lines[.. symbol.full_line1() - 1].iter()
+    let new_code_lines = file_lines[..symbol.full_line1() - 1].iter()
         .map(|s| s.to_string())
         .chain(ticket_code_lines.iter().cloned())
-        .chain(file_lines[symbol.full_line2() ..].iter().map(|s| s.to_string()))
+        .chain(file_lines[symbol.full_line2()..].iter().map(|s| s.to_string()))
         .collect::<Vec<_>>();
 
     let new_code = new_code_lines.join(line_ending);
@@ -53,21 +68,3 @@ pub async fn rewrite_symbol_diff(
 
     chunks_from_diffs(context_file_path, diffs)
 }
-
-pub fn new_file_diff(
-    ticket: &TicketToApply,
-) -> Vec<DiffChunk> {
-    vec![
-        DiffChunk {
-            file_name: ticket.filename_before.clone(),
-            file_name_rename: None,
-            file_action: "add".to_string(),
-            line1: 1,
-            line2: 1,
-            lines_remove: "".to_string(),
-            lines_add: ticket.code.clone(),
-            ..Default::default()
-        }
-    ]
-}
-

@@ -24,7 +24,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
         let params = ccx_locked.subchat_tool_parameters.get(tool_name).cloned();
         (gcx, params)
     };
-    let params = match params_mb {
+    let mut params = match params_mb {
         Some(params) => params,
         None => {
             let tconfig = load_customization(gcx.clone(), true).await?;
@@ -32,7 +32,16 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
                 .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
         }
     };
-    let _ = get_model_record(gcx, &params.subchat_model).await?; // check if the model exists
+
+    // check if the models exist otherwise use the external chat model
+    match get_model_record(gcx, &params.subchat_model).await {
+        Ok(_) => {}
+        Err(err) => {
+            let current_model = ccx.lock().await.current_model.clone();
+            warn!("subchat_model {} is not available: {}. Using {} model as a fallback", params.subchat_model, err, current_model);
+            params.subchat_model = current_model;
+        }
+    }
     Ok(params)
 }
 
