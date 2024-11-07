@@ -15,6 +15,7 @@ import {
 } from "../features/Chat";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { useAppSelector } from "./useAppSelector";
+import { extractFilePathFromPin } from "../utils";
 
 export const usePatchActions = () => {
   const {
@@ -73,7 +74,7 @@ export const usePatchActions = () => {
 
   const handleShow = useCallback(
     (pin: string) => {
-      const [, , fileName] = pin.split(" ");
+      const fileName = extractFilePathFromPin(pin);
       const cleanedFileName = fileName.replace(/\\\?\\|^\\+/g, "");
 
       startFileAnimation(cleanedFileName);
