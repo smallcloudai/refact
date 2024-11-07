@@ -275,16 +275,6 @@ async def chat_main():
         verbose=False
     )
 
-    if args_parsed.start_with:
-        with open(args_parsed.start_with, "r") as f:
-            startwith = json.loads(f.read())
-        for msg_j in startwith:
-            cli_streaming.process_streaming_data(msg_j)
-        cli_streaming.flush_response()
-        cli_printing.print_formatted_text(FormattedText([
-            (f"fg:#808080", "\n\n -- started with %d messages --\n" % len(cli_streaming.streaming_messages)),
-        ]))
-
     lsp_runner.set_xdebug(args_parsed.xdebug)
     chat_id = args_parsed.chat_id or ("cli-" + ''.join(random.choices('0123456789abcdef', k=10)))
 
@@ -297,7 +287,7 @@ async def chat_main():
             always_pause=args_parsed.always_pause,
             chat_id=chat_id,
         )
-        await actual_chat(lsp_runner, caps=caps, arg_question=arg_question, run_compressor=args_parsed.compressor)
+        await actual_chat(lsp_runner, start_with=args_parsed.start_with, caps=caps, arg_question=arg_question, run_compressor=args_parsed.compressor)
 
 
 async def actual_chat(
@@ -305,8 +295,19 @@ async def actual_chat(
     *,
     caps: cli_settings.Caps,
     arg_question: str = "",
-    run_compressor: bool = False
+    run_compressor: bool = False,
+    start_with: str,
 ):
+    if start_with:
+        with open(start_with, "r") as f:
+            startwith = json.loads(f.read())
+        for msg_j in startwith:
+            cli_streaming.process_streaming_data(msg_j, None)
+        cli_streaming.flush_response()
+        cli_printing.print_formatted_text(FormattedText([
+            (f"fg:#808080", "\n\n -- started with %d messages --\n" % len(cli_streaming.streaming_messages)),
+        ]))
+
     global lsp_runner
     lsp_runner = lsp_runner_
     history_fn = os.path.expanduser("~/.cache/refact/cli_history")

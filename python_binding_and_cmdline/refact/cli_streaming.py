@@ -160,6 +160,7 @@ def process_streaming_data(data: Dict[str, Any], deltas_collector: Optional[chat
         elif msg.role in ["plain_text", "cd_instruction", "user"]:
             if replace_last_user:
                 return
+            print_response("\n")
             if isinstance(msg.content, str):
                 print_response(msg.content.strip())
             elif isinstance(msg.content, list):
@@ -179,6 +180,10 @@ def process_streaming_data(data: Dict[str, Any], deltas_collector: Optional[chat
             if msg.content is not None:
                 if not STREAM:
                     print_response("\n" + msg.content.strip() + "\n")
+            if msg.tool_calls is not None:
+                for tool_call in msg.tool_calls:
+                    assert isinstance(tool_call, chat_client.ToolCallDict)
+                    tool_calls[tool_call.id] = tool_call
 
         elif msg.role in ["tool", "diff"]:
             print_response("\n")
