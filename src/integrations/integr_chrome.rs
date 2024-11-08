@@ -22,7 +22,7 @@ use headless_chrome::browser::tab::point::Point;
 use headless_chrome::protocol::cdp::Page;
 use headless_chrome::protocol::cdp::Emulation;
 use serde::{Deserialize, Serialize};
-
+use std::fmt;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct IntegrationChrome {
@@ -40,9 +40,37 @@ pub struct ToolChrome {
     supports_clicks: bool,
 }
 
+#[derive(Clone, Debug)]
+enum DeviceType {
+    DESKTOP,
+    MOBILE,
+}
+
+impl fmt::Display for DeviceType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            DeviceType::DESKTOP => write!(f, "desktop"),
+            DeviceType::MOBILE => write!(f, "mobile"),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ChromeTab {
+    instance: Arc<Tab>,
+    device: DeviceType,
+    tab_id: String,
+}
+
+impl ChromeTab {
+    pub fn state_string(&self) -> String {
+        format!("tab_id `{}` device `{}` uri `{}`", self.tab_id.clone(), self.device, self.instance.get_url())
+    }
+}
+
 struct ChromeSession {
     browser: Browser,
-    tabs: HashMap<String, Arc<Tab>>,
+    tabs: HashMap<String, ChromeTab>,
 }
 
 impl ChromeSession {
@@ -144,15 +172,23 @@ impl Tool for ToolChrome {
     }
 
     fn tool_description(&self) -> ToolDesc {
-        let mut commands_desc = r#"One or several commands separated by newline. The <tab_id> is an integer, for example 10, for you to identify the tab later. Supported commands:
-navigate_to <uri> <tab_id>
-screenshot <tab_id>
-html <tab_id>
-reload <tab_id>
-device <desktop|mobile> <tab_id>"#.to_string();
+        let mut supported_commands = vec![
+            "open_tab <desktop|mobile> <tab_id>",
+            "navigate_to <uri> <tab_id>",
+            "screenshot <tab_id>",
+            "html <tab_id>",
+            "reload <tab_id>",
+        ];
         if self.supports_clicks {
-            commands_desc = format!("{}\nclick <x> <y> <tab_id>\ninsert_text <text> <tab_id>\n", commands_desc);
+            supported_commands.extend(vec![
+                "click <x> <y> <tab_id>",
+                "insert_text <text> <tab_id>",
+            ]);
         }
+        let description = format!(
+            "One or several commands separated by newline. \
+             The <tab_id> is an integer, for example 10, for you to identify the tab later. \
+             Supported commands:\n{}", supported_commands.join("\n"));
         ToolDesc {
             name: "chrome".to_string(),
             agentic: true,
@@ -161,7 +197,7 @@ device <desktop|mobile> <tab_id>"#.to_string();
             parameters: vec![ToolParam {
                 name: "commands".to_string(),
                 param_type: "string".to_string(),
-                description: commands_desc,
+                description,
             }],
             parameters_required: vec!["commands".to_string()],
         }
@@ -228,49 +264,103 @@ async fn setup_chrome_session(
     Ok(setup_log)
 }
 
-async fn navigate_to(tab: &Arc<Tab>, url: &String) -> Result<String, String> {
-    tab.navigate_to(url.as_str()).map_err(|e| e.to_string())?;
-    tab.wait_until_navigated().map_err(|e| e.to_string())?;
-    Ok(format!("Chrome tab navigated to {}", tab.get_url()))
+async fn navigate_to(instance: &Arc<Tab>, url: &String) -> Result<(), String> {
+    instance.navigate_to(url.as_str()).map_err(|e| e.to_string())?;
+    instance.wait_until_navigated().map_err(|e| e.to_string())?;
+    Ok(())
 }
 
-async fn click_on_point(tab: &Arc<Tab>, point: &Point) -> Result<String, String> {
-    tab.click_point(point.clone()).map_err(|e| e.to_string())?;
-    tab.wait_until_navigated().map_err(|e| e.to_string())?;
-    Ok(format!("clicked on `{} {}`", point.x, point.y))
+async fn screenshot_jpeg_base64(instance: &Arc<Tab>, capture_beyond_viewport: bool) -> Result<MultimodalElement, String> {
+    let jpeg_data = instance.call_method(Page::CaptureScreenshot {
+        format: Some(Page::CaptureScreenshotFormatOption::Jpeg),
+        clip: None,
+        quality: Some(75),
+        from_surface: Some(true),
+        capture_beyond_viewport: Some(capture_beyond_viewport),
+    }).map_err(|e| e.to_string())?.data;
+    MultimodalElement::new("image/jpeg".to_string(), jpeg_data)
 }
 
-async fn insert_text(tab: &Arc<Tab>, text: &String) -> Result<String, String> {
-    tab.type_str(text.as_str()).map_err(|e| e.to_string())?;
-    Ok(format!("inserted text `{}`", text.clone()))
+async fn inner_html(url: String) -> Result<String, String> {
+    let client = Client::builder()
+        .build()
+        .map_err(|e| e.to_string())?;
+    let response = client.get(url.clone()).send().await.map_err(|e| e.to_string())?;
+    if response.status().is_success() {
+        let html = response.text().await.map_err(|e| e.to_string())?;
+        Ok(html)
+    } else {
+        Err(format!("status: {}", response.status()))
+    }
+}
+
+async fn click_on_point(instance: &Arc<Tab>, point: &Point) -> Result<(), String> {
+    instance.click_point(point.clone()).map_err(|e| e.to_string())?;
+    instance.wait_until_navigated().map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 async fn session_open_tab(
     chrome_session: &mut ChromeSession,
-    tab_name: &String,
-) -> Result<(Arc<Tab>, String), String> {
-    match chrome_session.tabs.get(tab_name) {
+    tab_id: &String,
+    device: &DeviceType,
+) -> Result<String, String> {
+    match chrome_session.tabs.get(tab_id) {
         Some(tab) => {
-            Ok((tab.clone(), format!("Using opened tab {}\n", tab_name.clone())))
+            Err(format!("Tab is already opened: {}\n", tab.state_string()))
         },
         None => {
-            let tab = chrome_session.browser.new_tab().map_err(|e| e.to_string())?;
-            chrome_session.tabs.insert(tab_name.clone(), tab.clone());
-            Ok((tab, format!("Opened new tab {}\n", tab_name.clone())))
+            let instance = chrome_session.browser.new_tab().map_err(|e| e.to_string())?;
+            match device {
+                DeviceType::MOBILE => {
+                    instance.call_method(Emulation::SetDeviceMetricsOverride {
+                        width: 375,
+                        height: 812,
+                        device_scale_factor: 0.0,
+                        mobile: true,
+                        scale: None,
+                        screen_width: None,
+                        screen_height: None,
+                        position_x: None,
+                        position_y: None,
+                        dont_set_visible_size: None,
+                        screen_orientation: None,
+                        viewport: None,
+                        display_feature: None,
+                    }).map_err(|e| e.to_string())?;
+                },
+                DeviceType::DESKTOP => {
+                    instance.call_method(Emulation::ClearDeviceMetricsOverride(None)).map_err(|e| e.to_string())?;
+                }
+            }
+            let tab = ChromeTab{
+                instance,
+                tab_id: tab_id.clone(),
+                device: device.clone(),
+            };
+            chrome_session.tabs.insert(tab_id.clone(), tab.clone());
+            Ok(format!("opened a new tab: {}\n", tab.state_string()))
         }
+    }
+}
+
+async fn session_get_tab(
+    chrome_session: &mut ChromeSession,
+    tab_id: &String,
+) -> Result<ChromeTab, String> {
+    match chrome_session.tabs.get(tab_id) {
+        Some(tab) => Ok(tab.clone()),
+        None => Err(format!("tab_id {} is not opened", tab_id)),
     }
 }
 
 #[derive(Debug)]
 enum Command {
-    // TODO: probably we need connect command
-    // if we're tying to operate on non-existing tab (no connection or something like this)
-    // we should not auto-open connection again
+    OpenTab(OpenTabArgs),
     NavigateTo(NavigateToArgs),
     Screenshot(ScreenshotArgs),
     Html(HtmlArgs),
     Reload(ReloadArgs),
-    Device(DeviceArgs),
     Click(ClickArgs),
     InsertText(InsertTextArgs),
 }
@@ -278,91 +368,77 @@ enum Command {
 impl Command {
     pub async fn execute(
         &self,
-        chrome_session: &mut ChromeSession
+        chrome_session: &mut ChromeSession,
     ) -> Result<(Vec<String>, Vec<MultimodalElement>), String> {
         let mut tool_log = vec![];
         let mut multimodal_els = vec![];
 
         match self {
+            Command::OpenTab(args) => {
+                let log = session_open_tab(chrome_session, &args.tab_id, &args.device).await?;
+                tool_log.push(log);
+            },
             Command::NavigateTo(args) => {
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
-                tool_log.push(open_tab_log);
-                let content = navigate_to(&tab, &args.uri).await.map_err(
-                    |e| format!("Can't navigate_to `{}` on tab `{}`: {}. If you're trying to open a local file, add a file:// prefix.", args.uri, args.tab_id, e)
-                )?;
-                tool_log.push(content);
+                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
+                let log = match navigate_to(&tab.instance, &args.uri).await {
+                    Ok(_) => format!("navigate_to successful: {}", tab.state_string()),
+                    Err(e) => format!("navigate_to `{}` failed: {}. If you're trying to open a local file, add a file:// prefix.", args.uri, e.to_string()),
+                };
+                tool_log.push(log);
             },
             Command::Screenshot(args) => {
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
-                tool_log.push(open_tab_log);
-                let screenshot = screenshot_jpeg_base64(&tab, false).await?;
-                tool_log.push(format!("Made a screenshot of {}", tab.get_url()));
-                multimodal_els.push(screenshot);
+                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
+                let log = match screenshot_jpeg_base64(&tab.instance, false).await {
+                    Ok(multimodal_el) => {
+                        multimodal_els.push(multimodal_el);
+                        format!("made a screenshot of {}", tab.state_string())
+                    },
+                    Err(e) => format!("screenshot failed for {}: {}", tab.state_string(), e.to_string()),
+                };
+                tool_log.push(log);
             },
             Command::Html(args) => {
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
-                tool_log.push(open_tab_log);
-                let client = Client::builder()
-                    .build()
-                    .map_err(|e| e.to_string())?;
-                let url = tab.get_url();
-                let response = client.get(url.clone()).send().await.map_err(|e| e.to_string())?;
-                if !response.status().is_success() {
-                    tool_log.push(format!("Unable to fetch url: {}; status: {}", url, response.status()));
-                } else {
-                    tool_log.push(response.text().await.map_err(|e| e.to_string())?);
-                }
+                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
+                let log = match inner_html(tab.instance.get_url()).await {
+                    Ok(html) => format!("innerHtml of {}:\n\n{}", tab.state_string(), html),
+                    Err(e) => format!("can't fetch innerHtml of {}: {}", tab.state_string(), e.to_string()),
+                };
+                tool_log.push(log);
             },
             Command::Reload(args) => {
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
-                tool_log.push(open_tab_log);
-                tab.reload(false, None).map_err(|e| e.to_string())?;
-                tool_log.push(format!("Page `{}` on tab `{}` reloaded", tab.get_url(), args.tab_id));
-            },
-            Command::Device(args) => {
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
-                tool_log.push(open_tab_log);
-                match args.device {
-                    DeviceType::MOBILE => {
-                        tab.call_method(Emulation::SetDeviceMetricsOverride {
-                            width: 375,
-                            height: 812,
-                            device_scale_factor: 0.0,
-                            mobile: true,
-                            scale: None,
-                            screen_width: None,
-                            screen_height: None,
-                            position_x: None,
-                            position_y: None,
-                            dont_set_visible_size: None,
-                            screen_orientation: None,
-                            viewport: None,
-                            display_feature: None,
-                        }).map_err(|e| e.to_string())?;
-                        tool_log.push(format!("Tab `{}` set to mobile view", args.tab_id));
-                    },
-                    DeviceType::DESKTOP => {
-                        tab.call_method(Emulation::ClearDeviceMetricsOverride(None)).map_err(|e| e.to_string())?;
-                        tool_log.push(format!("Tab `{}` set to desktop view", args.tab_id));
-                    }
-                }
+                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
+                let log = match tab.instance.reload(false, None) {
+                    Ok(_) => format!("reload of {} successful", tab.state_string()),
+                    Err(e) => format!("reload of {} failed: {}", tab.state_string(), e.to_string()),
+                };
+                tool_log.push(log);
             },
             Command::Click(args) => {
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
-                tool_log.push(open_tab_log);
-                let content = click_on_point(&tab, &args.point).await?;
-                tool_log.push(content);
+                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
+                let log = match click_on_point(&tab.instance, &args.point).await {
+                    Ok(_) => format!("clicked on `{} {}` at {}", args.point.x, args.point.y, tab.state_string()),
+                    Err(e) => format!("clicked on `{} {}` failed at {}: {}", args.point.x, args.point.y, tab.state_string(), e.to_string()),
+                };
+                tool_log.push(log);
             },
             Command::InsertText(args) => {
-                let (tab, open_tab_log) = session_open_tab(chrome_session, &args.tab_id).await?;
-                tool_log.push(open_tab_log);
-                let content = insert_text(&tab, &args.text).await?;
-                tool_log.push(content);
+                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
+                let log = match tab.instance.type_str(args.text.as_str()) {
+                    Ok(_) => format!("insert_text `{}` to {}", args.text, tab.state_string()),
+                    Err(e) => format!("insert_text failed to {}: {}", tab.state_string(), e.to_string()),
+                };
+                tool_log.push(log);
             },
         }
 
         Ok((tool_log, multimodal_els))
     }
+}
+
+#[derive(Debug)]
+struct OpenTabArgs {
+    device: DeviceType,
+    tab_id: String,
 }
 
 #[derive(Debug)]
@@ -398,19 +474,6 @@ struct InsertTextArgs {
     tab_id: String,
 }
 
-
-#[derive(Debug)]
-enum DeviceType {
-    DESKTOP,
-    MOBILE,
-}
-
-#[derive(Debug)]
-struct DeviceArgs {
-    device: DeviceType,
-    tab_id: String,
-}
-
 fn parse_single_command(command: &String) -> Result<Command, String> {
     let args = shell_words::split(&command).map_err(|e| e.to_string())?;
     if args.is_empty() {
@@ -420,6 +483,20 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
     let (command_name, parsed_args) = (args[0].clone(), args[1..].to_vec());
 
     match command_name.as_str() {
+        "open_tab" => {
+            if parsed_args.len() < 2 {
+                return Err(format!("`open_tab` requires 2 arguments: `<device|mobile>` and `tab_id`. Provided: {:?}", parsed_args));
+            }
+            let device = match parsed_args[0].as_str() {
+                "desktop" => DeviceType::DESKTOP,
+                "mobile" => DeviceType::MOBILE,
+                _ => return Err(format!("unknown device type: {}. Should be either `desktop` or `mobile`.", parsed_args[0]))
+            };
+            Ok(Command::OpenTab(OpenTabArgs {
+                device,
+                tab_id: parsed_args[1].clone(),
+            }))
+        },
         "navigate_to" => {
             if parsed_args.len() < 2 {
                 return Err(format!("`navigate_to` requires 2 arguments: `uri` and `tab_id`. Provided: {:?}", parsed_args));
@@ -451,19 +528,6 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
             }
             Ok(Command::Reload(ReloadArgs {
                 tab_id: parsed_args[0].clone(),
-            }))
-        },
-        "device" => {
-            if parsed_args.len() < 2 {
-                return Err(format!("`device` requires 2 arguments: `desktop|mobile` and `tab_id`. Provided: {:?}", parsed_args));
-            }
-            Ok(Command::Device(DeviceArgs {
-                device: match parsed_args[0].as_str() {
-                    "desktop" => DeviceType::DESKTOP,
-                    "mobile" => DeviceType::MOBILE,
-                    _ => return Err(format!("Unknown device type: {}. Should be either `desktop` or `mobile`.", parsed_args[0]))
-                },
-                tab_id: parsed_args[1].clone(),
             }))
         },
         "click" => {
@@ -525,16 +589,4 @@ async fn interact_with_chrome(
     )?);
 
     Ok(multimodal_els)
-}
-
-async fn screenshot_jpeg_base64(tab: &Arc<Tab>, capture_beyond_viewport: bool) -> Result<MultimodalElement, String> {
-    let jpeg_data = tab.call_method(Page::CaptureScreenshot {
-        format: Some(Page::CaptureScreenshotFormatOption::Jpeg),
-        clip: None,
-        quality: Some(75),
-        from_surface: Some(true),
-        capture_beyond_viewport: Some(capture_beyond_viewport),
-    }).map_err(|e| e.to_string())?.data;
-
-    MultimodalElement::new("image/jpeg".to_string(), jpeg_data)
 }
