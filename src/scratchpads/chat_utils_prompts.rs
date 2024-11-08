@@ -32,7 +32,7 @@ pub async fn get_default_system_prompt(
         tracing::error!("cannot find system prompt `{}`", prompt_key);
         String::new()
     }, |x| x.text.clone());
-    // tracing::info!("system_prompt:\n{}", system_prompt);
+    tracing::info!("system_prompt:\n{}", system_prompt);
     system_prompt
 }
 

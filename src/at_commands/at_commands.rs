@@ -29,6 +29,7 @@ pub struct AtCommandsContext {
     pub pp_skeleton: bool,
     pub correction_only_up_to_step: usize,  // suppresses context_file messages, writes a correction message instead
     pub chat_id: String,
+    pub current_model: String,
     pub should_execute_remotely: bool,
 
     pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
@@ -60,6 +61,7 @@ impl AtCommandsContext {
             pp_skeleton: false,
             correction_only_up_to_step: 0,
             chat_id,
+            current_model: "".to_string(),
             should_execute_remotely,
 
             at_commands: at_commands_dict(global_context.clone()).await,
