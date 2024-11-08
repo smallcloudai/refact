@@ -140,14 +140,14 @@ impl Tool for ToolChrome {
     }
 
     fn tool_description(&self) -> ToolDesc {
-        let mut command_desc = r#"One or several commands separated by newline. The <tab_id> is an integer, for example 10, for you to identify the tab later. Supported commands:
+        let mut commands_desc = r#"One or several commands separated by newline. The <tab_id> is an integer, for example 10, for you to identify the tab later. Supported commands:
 navigate_to <uri> <tab_id>
 screenshot <tab_id>
 html <tab_id>
 reload <tab_id>
 device <desktop|mobile> <tab_id>"#.to_string();
         if self.supports_clicks {
-            command_desc = format!("{}\nclick <x> <y> <tab_id>\ninsert_text <text> <tab_id>\n", command_desc);
+            commands_desc = format!("{}\nclick <x> <y> <tab_id>\ninsert_text <text> <tab_id>\n", commands_desc);
         }
         ToolDesc {
             name: "chrome".to_string(),
@@ -155,11 +155,11 @@ device <desktop|mobile> <tab_id>"#.to_string();
             experimental: true,
             description: "A real web browser with graphical interface.".to_string(),
             parameters: vec![ToolParam {
-                name: "command".to_string(),
+                name: "commands".to_string(),
                 param_type: "string".to_string(),
-                description: command_desc,
+                description: commands_desc,
             }],
-            parameters_required: vec!["command".to_string()],
+            parameters_required: vec!["commands".to_string()],
         }
     }
 }
