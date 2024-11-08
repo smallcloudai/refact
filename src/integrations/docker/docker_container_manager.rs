@@ -19,6 +19,7 @@ use crate::integrations::sessions::get_session_hashmap_key;
 use crate::integrations::sessions::IntegrationSession;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel};
 use crate::integrations::docker::integr_docker::{docker_tool_load, ToolDocker};
+use crate::tools::tools_description::get_integrations_yaml_path;
 
 use super::docker_ssh_tunnel_utils::ssh_tunnel_check_status;
 
@@ -285,7 +286,11 @@ async fn docker_container_sync_yaml_configs(
 
     let config_files_to_sync = ["privacy.yaml", "integrations.yaml", "bring-your-own-key.yaml"];
     for file in &config_files_to_sync {
-        let local_path = cache_dir.join(file).to_string_lossy().to_string();
+        let local_path = if *file == "integrations.yaml" {
+            get_integrations_yaml_path(gcx.clone()).await.to_string_lossy().to_string()
+        } else {
+            cache_dir.join(file).to_string_lossy().to_string()
+        };
         let container_path = format!("{container_id}:{container_home_dir}/.cache/refact/{file}");
         docker.command_execute(&format!("container cp {local_path} {container_path}"), gcx.clone(), true).await?;
     }
