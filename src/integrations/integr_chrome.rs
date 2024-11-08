@@ -129,36 +129,44 @@ impl Tool for ToolChrome {
             None => return Err("Missing argument `commands`".to_string())
         };
 
-        let mut content = vec![];
+        let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
+        let mut tool_log = setup_chrome_session(gcx.clone(), &self.integration_chrome, &session_hashmap_key).await?;
+
+        let command_session = {
+            let gcx_locked = gcx.read().await;
+            gcx_locked.integration_sessions.get(&session_hashmap_key)
+                .ok_or(format!("Error getting chrome session for chat: {}", chat_id))?
+                .clone()
+        };
+        let mut command_session_locked = command_session.lock().await;
+        let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+
+        let mut mutlimodal_els = vec![];
         for command in commands_str.lines().map(|s| s.trim()).collect::<Vec<&str>>() {
             let parsed_command = match parse_single_command(&command.to_string()) {
                 Ok(command) => command,
                 Err(e) => {
-                    content.push(MultimodalElement::new(
-                        "text".to_string(),
-                        format!("Failed to parse command: {}. Error: {}.", command, e)
-                    )?);
+                    tool_log.push(format!("failed to parse command `{}`: {}.", command, e));
                     break
                 }
             };
-            match interact_with_chrome(
-                gcx.clone(),
-                &chat_id,
-                &self.integration_chrome,
-                &parsed_command,
-            ).await {
-                Ok(command_content) => {
-                    content.extend(command_content);
+            match parsed_command.execute(chrome_session).await {
+                Ok((execute_log, command_multimodal_els)) => {
+                    tool_log.extend(execute_log);
+                    mutlimodal_els.extend(command_multimodal_els);
                 },
                 Err(e) => {
-                    content.push(MultimodalElement::new(
-                        "text".to_string(),
-                        format!("Failed to execute command: {}. Error: {}.", command, e)
-                    )?);
+                    tool_log.push(format!("failed to execute command `{}`: {}.", command, e));
                     break
                 }
             };
         }
+
+        let mut content= vec![];
+        content.push(MultimodalElement::new(
+            "text".to_string(), tool_log.join("\n")
+        )?);
+        content.extend(mutlimodal_els);
 
         let msg = ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
@@ -561,32 +569,4 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
         },
         _ => Err(format!("Unknown command: {:?}.", command_name)),
     }
-}
-
-async fn interact_with_chrome(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    chat_id: &String,
-    integration_chrome: &IntegrationChrome,
-    command: &Command,
-) -> Result<Vec<MultimodalElement>, String> {
-    let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
-    let setup_log = setup_chrome_session(gcx.clone(), &integration_chrome, &session_hashmap_key).await?;
-
-    let command_session = {
-        let gcx_locked = gcx.read().await;
-        gcx_locked.integration_sessions.get(&session_hashmap_key)
-            .ok_or(format!("Error getting chrome session for chat: {}", chat_id))?
-            .clone()
-    };
-    let mut command_session_locked = command_session.lock().await;
-    let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
-
-    let (execute_log, mut multimodal_els) = command.execute(chrome_session).await?;
-
-    let tool_log = setup_log.iter().chain(execute_log.iter()).map(|s| s.clone()).collect::<Vec<_>>();
-    multimodal_els.push(MultimodalElement::new(
-        "text".to_string(), tool_log.join("\n")
-    )?);
-
-    Ok(multimodal_els)
 }
