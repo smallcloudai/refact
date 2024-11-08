@@ -203,8 +203,8 @@ impl Tool for ToolChrome {
         ];
         if self.supports_clicks {
             supported_commands.extend(vec![
-                "click <x> <y> <tab_id>",
-                "insert_text <text> <tab_id>",
+                "click_at <x> <y> <tab_id>",
+                "type_text_at <text> <tab_id>",
             ]);
         }
         let description = format!(
@@ -337,7 +337,7 @@ async fn inner_html(url: String) -> Result<String, String> {
     }
 }
 
-async fn click_on_point(tab: &ChromeTab, point: &Point) -> Result<(), String> {
+async fn click_point(tab: &ChromeTab, point: &Point) -> Result<(), String> {
     let mapped_point = Point {
         x: point.x / tab.screenshot_scale_factor,
         y: point.y / tab.screenshot_scale_factor,
@@ -404,8 +404,8 @@ enum Command {
     Screenshot(ScreenshotArgs),
     Html(HtmlArgs),
     Reload(ReloadArgs),
-    Click(ClickArgs),
-    InsertText(InsertTextArgs),
+    ClickAt(ClickAtArgs),
+    TypeTextAt(TypeTextAtArgs),
 }
 
 impl Command {
@@ -456,19 +456,19 @@ impl Command {
                 };
                 tool_log.push(log);
             },
-            Command::Click(args) => {
+            Command::ClickAt(args) => {
                 let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
-                let log = match click_on_point(&tab, &args.point).await {
-                    Ok(_) => format!("clicked on `{} {}` at {}", args.point.x, args.point.y, tab.state_string()),
-                    Err(e) => format!("clicked on `{} {}` failed at {}: {}", args.point.x, args.point.y, tab.state_string(), e.to_string()),
+                let log = match click_point(&tab, &args.point).await {
+                    Ok(_) => format!("clicked `{} {}` at {}", args.point.x, args.point.y, tab.state_string()),
+                    Err(e) => format!("clicked `{} {}` failed at {}: {}", args.point.x, args.point.y, tab.state_string(), e.to_string()),
                 };
                 tool_log.push(log);
             },
-            Command::InsertText(args) => {
+            Command::TypeTextAt(args) => {
                 let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
                 let log = match tab.instance.type_str(args.text.as_str()) {
-                    Ok(_) => format!("insert_text `{}` to {}", args.text, tab.state_string()),
-                    Err(e) => format!("insert_text failed to {}: {}", tab.state_string(), e.to_string()),
+                    Ok(_) => format!("type `{}` at {}", args.text, tab.state_string()),
+                    Err(e) => format!("type text failed at {}: {}", tab.state_string(), e.to_string()),
                 };
                 tool_log.push(log);
             },
@@ -506,13 +506,13 @@ struct ReloadArgs {
 }
 
 #[derive(Debug)]
-struct ClickArgs {
+struct ClickAtArgs {
     point: Point,
     tab_id: String,
 }
 
 #[derive(Debug)]
-struct InsertTextArgs {
+struct TypeTextAtArgs {
     text: String,
     tab_id: String,
 }
@@ -573,13 +573,13 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                 tab_id: parsed_args[0].clone(),
             }))
         },
-        "click" => {
+        "click_at" => {
             match parsed_args.as_slice() {
                 [x_str, y_str, tab_id] => {
                     let x = x_str.parse::<f64>().map_err(|e| format!("Failed to parse x: {}", e))?;
                     let y = y_str.parse::<f64>().map_err(|e| format!("Failed to parse y: {}", e))?;
                     let point = Point { x, y };
-                    Ok(Command::Click(ClickArgs {
+                    Ok(Command::ClickAt(ClickAtArgs {
                         point,
                         tab_id: tab_id.clone(),
                     }))
@@ -589,10 +589,10 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                 }
             }
         },
-        "insert_text" => {
+        "type_text_at" => {
             match parsed_args.as_slice() {
                 [text, tab_id] => {
-                    Ok(Command::InsertText(InsertTextArgs {
+                    Ok(Command::TypeTextAt(TypeTextAtArgs {
                         text: text.clone(),
                         tab_id: tab_id.clone(),
                     }))
