@@ -93,7 +93,7 @@ impl Tool for ToolChrome {
         };
 
         let mut content = vec![];
-        for command in commands_str.split(',').map(|s| s.trim()).collect::<Vec<&str>>() {
+        for command in commands_str.lines().map(|s| s.trim()).collect::<Vec<&str>>() {
             let parsed_command = match parse_single_command(&command.to_string()) {
                 Ok(command) => command,
                 Err(e) => {

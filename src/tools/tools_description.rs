@@ -299,9 +299,7 @@ tools:
       - name: "commands"
         type: "string"
         description: |
-          List of commands separated by comma.
-          Commands will be executed sequentially.
-          Supported commands:
+          One or several commands separated by newline. The <tab_id> is an integer, for example 10, for you to identify the tab later. Supported commands:
           navigate_to <uri> <tab_id>
           screenshot <tab_id>
           html <tab_id>
