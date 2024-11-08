@@ -205,6 +205,7 @@ impl Tool for ToolChrome {
             supported_commands.extend(vec![
                 "click_at <x> <y> <tab_id>",
                 "type_text_at <text> <tab_id>",
+                "press_key_at <enter|esc|pageup|pagedown> <tab_id>",
             ]);
         }
         let description = format!(
@@ -406,6 +407,7 @@ enum Command {
     Reload(ReloadArgs),
     ClickAt(ClickAtArgs),
     TypeTextAt(TypeTextAtArgs),
+    PressKeyAt(PressKeyAtArgs),
 }
 
 impl Command {
@@ -472,6 +474,14 @@ impl Command {
                 };
                 tool_log.push(log);
             },
+            Command::PressKeyAt(args) => {
+                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
+                let log = match tab.instance.press_key(args.key.to_string().as_str()) {
+                    Ok(_) => format!("press `{}` at {}", args.key, tab.state_string()),
+                    Err(e) => format!("press `{}` failed at {}: {}", args.key, tab.state_string(), e.to_string()),
+                };
+                tool_log.push(log);
+            }
         }
 
         Ok((tool_log, multimodal_els))
@@ -514,6 +524,31 @@ struct ClickAtArgs {
 #[derive(Debug)]
 struct TypeTextAtArgs {
     text: String,
+    tab_id: String,
+}
+
+#[derive(Clone, Debug)]
+enum Key {
+    ENTER,
+    ESC,
+    PAGEUP,
+    PAGEDOWN,
+}
+
+impl fmt::Display for Key {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Key::ENTER => write!(f, "Enter"),
+            Key::ESC => write!(f, "Escape"),
+            Key::PAGEUP => write!(f, "PageUp"),
+            Key::PAGEDOWN => write!(f, "PageDown"),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct PressKeyAtArgs {
+    key: Key,
     tab_id: String,
 }
 
@@ -599,6 +634,26 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                 },
                 _ => {
                     Err("Missing one or several arguments 'text', 'tab_id'".to_string())
+                }
+            }
+        },
+        "press_key_at" => {
+            match parsed_args.as_slice() {
+                [key_str, tab_id] => {
+                    let key = match key_str.to_lowercase().as_str() {
+                        "enter" => Key::ENTER,
+                        "esc" => Key::ESC,
+                        "pageup" => Key::PAGEUP,
+                        "pagedown" => Key::PAGEDOWN,
+                        _ => return Err(format!("Unknown key: {}", key_str)),
+                    };
+                    Ok(Command::PressKeyAt(PressKeyAtArgs {
+                        key,
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments 'key', 'tab_id'".to_string())
                 }
             }
         },
