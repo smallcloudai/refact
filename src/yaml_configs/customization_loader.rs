@@ -204,7 +204,13 @@ pub async fn load_customization(
     let competency_yaml = if !competency_path.is_empty() {
         std::fs::read_to_string(&competency_path).map_err(|e| format!("Failed to read file: {}", e))?
     } else {
-        String::new()
+        let global_competency_path = cache_dir.join("competency.yaml");
+        if let Ok(content) = std::fs::read_to_string(&global_competency_path) {
+            content
+        } else {
+            tracing::info!("there is no competency.yaml supplied in the command line, and couldn't read {} either", global_competency_path.display());
+            String::new()
+        }
     };
 
     let system_prompt_vars = if competency_yaml.is_empty() {
