@@ -24,6 +24,11 @@ use headless_chrome::protocol::cdp::Emulation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use base64::Engine;
+use std::io::Cursor;
+use image::imageops::FilterType;
+use image::{ImageFormat, ImageReader};
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct IntegrationChrome {
     pub chrome_path: Option<String>,
@@ -60,9 +65,18 @@ pub struct ChromeTab {
     instance: Arc<Tab>,
     device: DeviceType,
     tab_id: String,
+    screenshot_scale_factor: f64,
 }
 
 impl ChromeTab {
+    fn new(instance: Arc<Tab>, device: &DeviceType, tab_id: &String) -> Self {
+        Self {
+            instance,
+            device: device.clone(),
+            tab_id: tab_id.clone(),
+            screenshot_scale_factor: 1.0,
+        }
+    }
     pub fn state_string(&self) -> String {
         format!("tab_id `{}` device `{}` uri `{}`", self.tab_id.clone(), self.device, self.instance.get_url())
     }
@@ -278,15 +292,36 @@ async fn navigate_to(instance: &Arc<Tab>, url: &String) -> Result<(), String> {
     Ok(())
 }
 
-async fn screenshot_jpeg_base64(instance: &Arc<Tab>, capture_beyond_viewport: bool) -> Result<MultimodalElement, String> {
-    let jpeg_data = instance.call_method(Page::CaptureScreenshot {
+async fn screenshot_jpeg_base64(
+    tab: &mut ChromeTab,
+    capture_beyond_viewport: bool,
+) -> Result<MultimodalElement, String> {
+    let jpeg_base64_data = tab.instance.call_method(Page::CaptureScreenshot {
         format: Some(Page::CaptureScreenshotFormatOption::Jpeg),
         clip: None,
         quality: Some(75),
         from_surface: Some(true),
         capture_beyond_viewport: Some(capture_beyond_viewport),
     }).map_err(|e| e.to_string())?.data;
-    MultimodalElement::new("image/jpeg".to_string(), jpeg_data)
+
+    let mut data = base64::prelude::BASE64_STANDARD
+        .decode(jpeg_base64_data).map_err(|e| e.to_string())?;
+    let reader = ImageReader::with_format(Cursor::new(data), ImageFormat::Jpeg);
+    let mut image = reader.decode().map_err(|e| e.to_string())?;
+
+    let max_dimension = 800.0;
+    let scale_factor = max_dimension / std::cmp::max(image.width(), image.height()) as f32;
+    if scale_factor < 1.0 {
+        // NOTE: the tool operates on resized image well without a special model notification
+        let (nwidth, nheight) = (scale_factor * image.width() as f32, scale_factor * image.height() as f32);
+        image = image.resize(nwidth as u32, nheight as u32, FilterType::Lanczos3);
+        tab.screenshot_scale_factor = scale_factor as f64;
+    }
+
+    data = Vec::new();
+    image.write_to(&mut Cursor::new(&mut data), ImageFormat::Jpeg).map_err(|e| e.to_string())?;
+
+    MultimodalElement::new("image/jpeg".to_string(), base64::prelude::BASE64_STANDARD.encode(data))
 }
 
 async fn inner_html(url: String) -> Result<String, String> {
@@ -302,9 +337,13 @@ async fn inner_html(url: String) -> Result<String, String> {
     }
 }
 
-async fn click_on_point(instance: &Arc<Tab>, point: &Point) -> Result<(), String> {
-    instance.click_point(point.clone()).map_err(|e| e.to_string())?;
-    instance.wait_until_navigated().map_err(|e| e.to_string())?;
+async fn click_on_point(tab: &ChromeTab, point: &Point) -> Result<(), String> {
+    let mapped_point = Point {
+        x: point.x / tab.screenshot_scale_factor,
+        y: point.y / tab.screenshot_scale_factor,
+    };
+    tab.instance.click_point(mapped_point).map_err(|e| e.to_string())?;
+    tab.instance.wait_until_navigated().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -341,23 +380,19 @@ async fn session_open_tab(
                     instance.call_method(Emulation::ClearDeviceMetricsOverride(None)).map_err(|e| e.to_string())?;
                 }
             }
-            let tab = ChromeTab{
-                instance,
-                tab_id: tab_id.clone(),
-                device: device.clone(),
-            };
-            chrome_session.tabs.insert(tab_id.clone(), tab.clone());
+            let tab = ChromeTab::new(instance, device, tab_id);
+            chrome_session.tabs.insert(tab.tab_id.clone(), tab.clone());
             Ok(format!("opened a new tab: {}\n", tab.state_string()))
         }
     }
 }
 
-async fn session_get_tab(
-    chrome_session: &mut ChromeSession,
+async fn session_get_tab_mut<'a>(
+    chrome_session: &'a mut ChromeSession,
     tab_id: &String,
-) -> Result<ChromeTab, String> {
-    match chrome_session.tabs.get(tab_id) {
-        Some(tab) => Ok(tab.clone()),
+) -> Result<&'a mut ChromeTab, String> {
+    match chrome_session.tabs.get_mut(tab_id) {
+        Some(tab) => Ok(tab),
         None => Err(format!("tab_id {} is not opened", tab_id)),
     }
 }
@@ -387,7 +422,7 @@ impl Command {
                 tool_log.push(log);
             },
             Command::NavigateTo(args) => {
-                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
+                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
                 let log = match navigate_to(&tab.instance, &args.uri).await {
                     Ok(_) => format!("navigate_to successful: {}", tab.state_string()),
                     Err(e) => format!("navigate_to `{}` failed: {}. If you're trying to open a local file, add a file:// prefix.", args.uri, e.to_string()),
@@ -395,8 +430,8 @@ impl Command {
                 tool_log.push(log);
             },
             Command::Screenshot(args) => {
-                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
-                let log = match screenshot_jpeg_base64(&tab.instance, false).await {
+                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
+                let log = match screenshot_jpeg_base64(tab, false).await {
                     Ok(multimodal_el) => {
                         multimodal_els.push(multimodal_el);
                         format!("made a screenshot of {}", tab.state_string())
@@ -406,7 +441,7 @@ impl Command {
                 tool_log.push(log);
             },
             Command::Html(args) => {
-                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
+                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
                 let log = match inner_html(tab.instance.get_url()).await {
                     Ok(html) => format!("innerHtml of {}:\n\n{}", tab.state_string(), html),
                     Err(e) => format!("can't fetch innerHtml of {}: {}", tab.state_string(), e.to_string()),
@@ -414,7 +449,7 @@ impl Command {
                 tool_log.push(log);
             },
             Command::Reload(args) => {
-                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
+                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
                 let log = match tab.instance.reload(false, None) {
                     Ok(_) => format!("reload of {} successful", tab.state_string()),
                     Err(e) => format!("reload of {} failed: {}", tab.state_string(), e.to_string()),
@@ -422,15 +457,15 @@ impl Command {
                 tool_log.push(log);
             },
             Command::Click(args) => {
-                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
-                let log = match click_on_point(&tab.instance, &args.point).await {
+                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
+                let log = match click_on_point(&tab, &args.point).await {
                     Ok(_) => format!("clicked on `{} {}` at {}", args.point.x, args.point.y, tab.state_string()),
                     Err(e) => format!("clicked on `{} {}` failed at {}: {}", args.point.x, args.point.y, tab.state_string(), e.to_string()),
                 };
                 tool_log.push(log);
             },
             Command::InsertText(args) => {
-                let tab = session_get_tab(chrome_session, &args.tab_id).await?;
+                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
                 let log = match tab.instance.type_str(args.text.as_str()) {
                     Ok(_) => format!("insert_text `{}` to {}", args.text, tab.state_string()),
                     Err(e) => format!("insert_text failed to {}: {}", tab.state_string(), e.to_string()),
