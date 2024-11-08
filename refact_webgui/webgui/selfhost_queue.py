@@ -64,6 +64,10 @@ class InferenceQueue:
                 _add_models_for_passthrough_provider('openai')
             if j.get("anthropic_api_enable"):
                 _add_models_for_passthrough_provider('anthropic')
+            if j.get("groq_api_enable"):
+                _add_models_for_passthrough_provider('groq')
+            if j.get("cerebras_api_enable"):
+                _add_models_for_passthrough_provider('cerebras')
 
         return self._models_available
 
