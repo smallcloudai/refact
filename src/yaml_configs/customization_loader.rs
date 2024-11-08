@@ -230,19 +230,19 @@ mod tests {
         let cyaml_vars = HashMap::new();
         let _config = load_and_mix_with_users_config(COMPILED_IN_INITIAL_USER_YAML, "", "", false, true, &cyaml_vars);
     }
-    
-    // commented. Reason: cyaml_vars not found in this scope
-    // #[test]
-    // fn are_all_system_prompts_present() {
-    //     let config = load_and_mix_with_users_config(
-    //         COMPILED_IN_INITIAL_USER_YAML, "", "", true, true, &cyaml_vars,
-    //     );
-    //     assert_eq!(config.is_ok(), true);
-    //     let config = config.unwrap();
-    // 
-    //     assert_eq!(config.system_prompts.get("default").is_some(), true);
-    //     assert_eq!(config.system_prompts.get("exploration_tools").is_some(), true);
-    //     assert_eq!(config.system_prompts.get("agentic_tools").is_some(), true);
-    //     assert_eq!(config.system_prompts.get("agentic_experimental_knowledge").is_some(), true);
-    // }
+
+    #[test]
+    fn are_all_system_prompts_present() {
+        let cyaml_vars = HashMap::new();
+        let config = load_and_mix_with_users_config(
+            COMPILED_IN_INITIAL_USER_YAML, "", "", true, true, &cyaml_vars,
+        );
+        assert_eq!(config.is_ok(), true);
+        let config = config.unwrap();
+
+        assert_eq!(config.system_prompts.get("default").is_some(), true);
+        assert_eq!(config.system_prompts.get("exploration_tools").is_some(), true);
+        assert_eq!(config.system_prompts.get("agentic_tools").is_some(), true);
+        assert_eq!(config.system_prompts.get("agentic_experimental_knowledge").is_some(), true);
+    }
 }

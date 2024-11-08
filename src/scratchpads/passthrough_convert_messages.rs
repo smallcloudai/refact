@@ -5,7 +5,12 @@ use crate::call_validation::{ChatContent, ChatMessage, ContextFile};
 
 pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Option<String>) -> Vec<Value> {
     let mut results = vec![];
-    let mut buffer_push_back = vec![];
+    let mut delay_images = vec![];
+
+    let flush_delayed_images = |results: &mut Vec<Value>, delay_images: &mut Vec<Value>| {
+        results.extend(delay_images.clone());
+        delay_images.clear();
+    };
 
     for msg in messages {
         if msg.role == "tool" {
@@ -27,7 +32,7 @@ pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Opt
                             content: ChatContent::Multimodal(images.into_iter().cloned().collect()),
                             ..Default::default()
                         };
-                        buffer_push_back.push(msg_img.into_value(&style));
+                        delay_images.push(msg_img.into_value(&style));
                     }
                 },
                 ChatContent::SimpleText(_) => {
@@ -36,11 +41,11 @@ pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Opt
             }
 
         } else if msg.role == "assistant" || msg.role == "system" {
+            flush_delayed_images(&mut results, &mut delay_images);
             results.push(msg.into_value(&style));
 
         } else if msg.role == "user" {
-            results.extend(buffer_push_back.clone());
-            buffer_push_back.clear();
+            flush_delayed_images(&mut results, &mut delay_images);
             results.push(msg.into_value(&style));
 
         } else if msg.role == "diff" {
@@ -54,12 +59,14 @@ pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Opt
             results.push(tool_msg.into_value(&style));
 
         } else if msg.role == "plain_text" || msg.role == "cd_instruction" {
+            flush_delayed_images(&mut results, &mut delay_images);
             results.push(ChatMessage::new(
                 "user".to_string(),
                 msg.content.content_text_only(),
             ).into_value(&style));
 
         } else if msg.role == "context_file" {
+            flush_delayed_images(&mut results, &mut delay_images);
             match serde_json::from_str::<Vec<ContextFile>>(&msg.content.content_text_only()) {
                 Ok(vector_of_context_files) => {
                     for context_file in vector_of_context_files {
@@ -79,7 +86,7 @@ pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Opt
             warn!("unknown role: {}", msg.role);
         }
     }
-    results.extend(buffer_push_back);
+    flush_delayed_images(&mut results, &mut delay_images);
 
     results
 }
