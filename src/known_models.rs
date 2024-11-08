@@ -187,6 +187,15 @@ pub const KNOWN_MODELS: &str = r####"
                 "claude-3-5-sonnet-20240620"
             ]
         },
+        "claude-3-5-sonnet-20241022": {
+            "n_ctx": 16384,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_clicks": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            }
+        },
         "llama3/8b/instruct": {
             "n_ctx": 4096,
             "supports_scratchpads": {
@@ -330,6 +339,7 @@ pub const KNOWN_MODELS: &str = r####"
         "openai/gpt-4o-mini":     "Xenova/gpt-4o",
         "claude-3-5-sonnet":          "Xenova/claude-tokenizer",
         "claude-3-5-sonnet-20240620": "Xenova/claude-tokenizer",
+        "claude-3-5-sonnet-20241022": "Xenova/claude-tokenizer",
         "groq-llama-3.1-8b":      "Xenova/Meta-Llama-3.1-Tokenizer",
         "groq-llama-3.1-70b":     "Xenova/Meta-Llama-3.1-Tokenizer"
     }

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use glob::Pattern;
+use indexmap::IndexMap;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -14,7 +15,7 @@ use crate::integrations::docker::docker_container_manager::docker_container_get_
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
-use crate::tools::tools_description::commands_require_confirmation_rules_from_integrations_yaml;
+use crate::tools::tools_description::{commands_require_confirmation_rules_from_integrations_yaml, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::get_model_record;
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
@@ -96,13 +97,16 @@ pub async fn run_tools_remotely(
 
 pub async fn run_tools_locally(
     ccx: Arc<AMutex<AtCommandsContext>>,
+    at_tools: IndexMap<String, Arc<AMutex<Box<dyn Tool+Send>>>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
-    let (new_messages, tools_runned) = run_tools(ccx, tokenizer, maxgen, original_messages, style).await?;
+    let (new_messages, tools_runned) = run_tools( // todo: fix typo "runned"
+        ccx, at_tools, tokenizer, maxgen, original_messages, style
+    ).await?;
 
     let mut all_messages = original_messages.to_vec();
     for msg in new_messages {
@@ -115,13 +119,13 @@ pub async fn run_tools_locally(
 
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
+    at_tools: IndexMap<String, Arc<AMutex<Box<dyn Tool+Send>>>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let gcx = ccx.lock().await.global_context.clone();
-    let at_tools = crate::tools::tools_description::tools_merged_and_filtered(gcx.clone()).await?;
     let n_ctx = ccx.lock().await.n_ctx;
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     let tokens_for_rag = reserve_for_context;

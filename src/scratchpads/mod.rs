@@ -67,6 +67,7 @@ pub async fn create_chat_scratchpad(
     scratchpad_patch: &serde_json::Value,
     allow_at: bool,
     supports_tools: bool,
+    supports_clicks: bool,
     should_execute_remotely: bool,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
@@ -76,7 +77,7 @@ pub async fn create_chat_scratchpad(
     } else if scratchpad_name == "CHAT-LLAMA2" {
         result = Box::new(chat_llama2::ChatLlama2::new(tokenizer_arc.clone(), post, messages, global_context.clone(), allow_at));
     } else if scratchpad_name == "PASSTHROUGH" {
-        result = Box::new(chat_passthrough::ChatPassthrough::new(tokenizer_arc.clone(), post, messages, global_context.clone(), allow_at, supports_tools));
+        result = Box::new(chat_passthrough::ChatPassthrough::new(tokenizer_arc.clone(), post, messages, global_context.clone(), allow_at, supports_tools, supports_clicks));
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
     }

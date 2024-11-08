@@ -22,7 +22,7 @@ pub const CHAT_TOP_N: usize = 7;
 pub async fn lookup_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     chat_post: &ChatPost,
-) -> Result<(String, String, serde_json::Value, usize, bool, bool), String> {
+) -> Result<(String, String, serde_json::Value, usize, bool, bool, bool), String> {
     let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
         caps::which_model_to_use(
@@ -42,6 +42,7 @@ pub async fn lookup_chat_scratchpad(
         recommended_model_record.n_ctx,
         recommended_model_record.supports_tools,
         recommended_model_record.supports_multimodality,
+        recommended_model_record.supports_clicks,
     ))
 }
 
@@ -82,9 +83,18 @@ async fn chat(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
+    
+    // converts tools into openai style
+    if let Some(tools) = &mut chat_post.tools {
+        for tool in tools {
+            if let Some(function) = tool.get_mut("function") {
+                function.as_object_mut().unwrap().remove("agentic");
+            }
+        }
+    }
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, supports_multimodality) = lookup_chat_scratchpad(
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
     ).await.map_err(|e| {
@@ -167,6 +177,7 @@ async fn chat(
         &scratchpad_patch,
         allow_at,
         supports_tools,
+        supports_clicks,
         should_execute_remotely,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)

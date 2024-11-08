@@ -34,6 +34,8 @@ pub struct ModelRecord {
     pub supports_tools: bool,
     #[serde(default)]
     pub supports_multimodality: bool,
+    #[serde(default)]
+    pub supports_clicks: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -426,6 +428,9 @@ fn apply_models_dict_patch(caps: &mut CodeAssistantCaps) {
         }
         if rec_patched.supports_multimodality {
             rec.supports_multimodality = rec_patched.supports_multimodality;
+        }
+        if rec_patched.supports_tools {
+            rec.supports_tools = rec_patched.supports_tools;
         }
     }
 

@@ -64,7 +64,7 @@ async fn create_chat_post_and_scratchpad(
         style: None,
     };
 
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, _supports_multimodality) = lookup_chat_scratchpad(
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, _supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
     ).await?;
@@ -91,6 +91,7 @@ async fn create_chat_post_and_scratchpad(
         &scratchpad_patch,
         false,
         supports_tools,
+        supports_clicks,
         should_execute_remotely,
     ).await?;
 
@@ -260,7 +261,7 @@ pub async fn subchat_single(
         (ccx_locked.global_context.clone(), ccx_locked.should_execute_remotely)
     };
     // this ignores customized tools
-    let tools_turned_on_by_cmdline = tools_merged_and_filtered(gcx.clone()).await?;
+    let tools_turned_on_by_cmdline = tools_merged_and_filtered(gcx.clone(), false).await?;
     let tools_turn_on_set: HashSet<String> = tools_subset.iter().cloned().collect();
     let tools_turned_on_by_cmdline_set: HashSet<String> = tools_turned_on_by_cmdline.keys().cloned().collect();
     let tools_on_intersection: Vec<String> = tools_turn_on_set.intersection(&tools_turned_on_by_cmdline_set).cloned().collect();
