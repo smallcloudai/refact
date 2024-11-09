@@ -49,7 +49,7 @@ impl Tool for ToolDeepThinking {
                     previous_stuff.push_str(&message.content.content_text_only());
                     previous_stuff.push_str("\n\n");
                 }
-                "context_files" => {
+                "context_file" => {
                     let context_files: Vec<ContextFile> = serde_json::from_str(&message.content.content_text_only())
                         .map_err(|e| format!("Failed to decode context_files JSON: {:?}", e))?;
                     for context_file in context_files {
@@ -65,6 +65,7 @@ impl Tool for ToolDeepThinking {
                 }
             }
         }
+        tracing::info!("previous_stuff:\n{}", previous_stuff);
 
         let mut msgs = vec![];
         msgs.push(ChatMessage::new("user".to_string(), previous_stuff));
@@ -105,6 +106,7 @@ impl Tool for ToolDeepThinking {
             .ok_or("No messages from model")?
             .content
             .content_text_only();
+        tracing::info!("deep thinking response:\n{}", final_message);
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
