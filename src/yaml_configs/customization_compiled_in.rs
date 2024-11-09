@@ -181,7 +181,7 @@ subchat_tool_parameters:
     subchat_model: "o1-mini"
     subchat_tokens_for_rag: 0
     subchat_n_ctx: 32000
-    subchat_max_new_tokens: 5000
+    subchat_max_new_tokens: 6000
 
 
 code_lens:
