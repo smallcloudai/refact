@@ -141,6 +141,9 @@ impl ScratchpadAbstract for ChatPassthrough {
             if first_msg.role == "system" {
                 first_msg.content = ChatContent::SimpleText(system_prompt_add_workspace_info(gcx.clone(), &first_msg.content.content_text_only()).await);
             }
+            if self.post.model == "o1-mini" && first_msg.role == "system" {
+                limited_msgs.remove(0);
+            }
         }
         if DEBUG {
             info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", messages.len(), limited_msgs.len());

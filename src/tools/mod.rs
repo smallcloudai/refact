@@ -9,6 +9,8 @@ mod tool_tree;
 mod tool_relevant_files;
 mod tool_cat;
 
+mod tool_deep_thinking;
+
 #[cfg(feature="vecdb")]
 mod tool_search;
 // #[cfg(feature="vecdb")]

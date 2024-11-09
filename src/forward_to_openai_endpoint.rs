@@ -50,7 +50,7 @@ pub async fn forward_to_openai_style_endpoint(
     }
     info!("NOT STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {
-        passthrough_messages_to_json(&mut data, prompt);
+        passthrough_messages_to_json(&mut data, prompt, model_name);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
         data["echo"] = serde_json::Value::Bool(false);
@@ -112,7 +112,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     }
     info!("STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {
-        passthrough_messages_to_json(&mut data, prompt);
+        passthrough_messages_to_json(&mut data, prompt, model_name);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
     }
@@ -128,6 +128,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
 fn passthrough_messages_to_json(
     data: &mut serde_json::Value,
     prompt: &str,
+    model_name: &str,
 ) {
     assert!(prompt.starts_with("PASSTHROUGH "));
     let messages_str = &prompt[12..];
@@ -135,7 +136,9 @@ fn passthrough_messages_to_json(
 
     data["messages"] = big_json["messages"].clone();
     if let Some(tools) = big_json.get("tools") {
-        data["tools"] = tools.clone();
+        if model_name != "o1-mini" {
+            data["tools"] = tools.clone();
+        }
     }
 }
 

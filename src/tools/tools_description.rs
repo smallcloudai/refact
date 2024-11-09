@@ -123,6 +123,7 @@ pub async fn tools_merged_and_filtered(
         if let Some(docker_config) = integrations_value.get("docker") {
             tools_all.insert("docker".to_string(), Arc::new(AMutex::new(Box::new(ToolDocker::new_from_yaml(docker_config)?) as Box<dyn Tool + Send>)));
         }
+        tools_all.insert("deep_thinking".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>)));
         // #[cfg(feature="vecdb")]
         // tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
     }
@@ -242,6 +243,17 @@ tools:
         description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words."
     parameters_required:
       - "problem_statement"
+
+  - name: "deep_thinking"
+    agentic: true
+    experimental: true
+    description: "Access to an expensive model that can think deeply."
+    parameters:
+      - name: "what_to_think_about"
+        type: "string"
+        description: "What's the topic and what kind of result do you want?"
+    parameters_required:
+      - "what_to_think_about"
 
   - name: "patch"
     agentic: true
