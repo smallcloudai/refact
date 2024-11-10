@@ -180,8 +180,8 @@ subchat_tool_parameters:
   deep_thinking:
     subchat_model: "o1-mini"
     subchat_tokens_for_rag: 0
-    subchat_n_ctx: 32000
-    subchat_max_new_tokens: 6000
+    subchat_n_ctx: 64000
+    subchat_max_new_tokens: 20000
 
 
 code_lens:

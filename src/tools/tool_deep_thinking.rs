@@ -106,7 +106,8 @@ impl Tool for ToolDeepThinking {
             .ok_or("No messages from model")?
             .content
             .content_text_only();
-        tracing::info!("deep thinking response:\n{}", final_message);
+        tracing::info!("deep thinking response1:\n{:?}", model_says.last());
+        tracing::info!("deep thinking response2:\n{}", final_message);
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
