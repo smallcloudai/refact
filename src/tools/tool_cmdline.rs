@@ -20,21 +20,6 @@ use crate::integrations::sessions::IntegrationSession;
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 
 
-#[derive(Deserialize, Clone)]
-struct CmdlineToolBackground {
-    #[serde(default)]
-    startup_wait_port: Option<u16>,
-    #[serde(default)]
-    startup_wait_keyword: Option<String>,
-    #[serde(default)]
-    startup_timeout: u64,
-}
-
-#[derive(Deserialize, Clone)]
-struct CmdToolBlocking {
-    timeout: u64,
-}
-
 #[derive(Deserialize)]
 struct CmdlineToolConfig {
     description: String,
@@ -42,20 +27,30 @@ struct CmdlineToolConfig {
     parameters_required: Option<Vec<String>>,
     command: String,
     command_workdir: String,
+
+    // blocking
     #[serde(default)]
-    blocking: Option<CmdToolBlocking>,
-    #[serde(default)]
-    background: Option<CmdlineToolBackground>,
+    timeout: u64,
     #[serde(default)]
     output_filter: CmdlineOutputFilter,
+
+    // background
+    #[serde(default)]
+    startup_wait_port: Option<u16>,
+    #[serde(default)]
+    startup_wait_keyword: Option<String>,
 }
 
 pub struct ToolCmdline {
+    a_service: bool,
     name: String,
     cfg: CmdlineToolConfig,
 }
 
-pub fn cmdline_tool_from_yaml_value(cfg_cmdline_value: &serde_yaml::Value) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
+pub fn cmdline_tool_from_yaml_value(
+    cfg_cmdline_value: &serde_yaml::Value,
+    background: bool,
+) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
     let mut result = IndexMap::new();
     let cfgmap = match serde_yaml::from_value::<IndexMap<String, CmdlineToolConfig>>(cfg_cmdline_value.clone()) {
         Ok(cfgmap) => cfgmap,
@@ -65,15 +60,16 @@ pub fn cmdline_tool_from_yaml_value(cfg_cmdline_value: &serde_yaml::Value) -> Re
         }
     };
     for (c_name, mut c_cmd_tool) in cfgmap.into_iter() {
-        if c_cmd_tool.background.is_some() {
+        if background {
             c_cmd_tool.parameters.push(ToolParam {
                 name: "action".to_string(),
                 param_type: "string".to_string(),
-                description: "(start=default |stop | restart | status | communicate)".to_string(),
+                description: "start | stop | restart | status".to_string(),
             });
         }
         let tool = Arc::new(AMutex::new(Box::new(
             ToolCmdline {
+                a_service: background,
                 name: c_name.clone(),
                 cfg: c_cmd_tool,
             }
@@ -137,9 +133,8 @@ async fn create_command_from_string(
 
 async fn execute_blocking_command(
     command: &str,
-    cfg: &CmdToolBlocking,
+    cfg: &CmdlineToolConfig,
     command_workdir: &String,
-    output_filter: &CmdlineOutputFilter,
 ) -> Result<String, String> {
     info!("EXEC: {command}, workdir: '{command_workdir}'");
     let command_future = async {
@@ -162,8 +157,8 @@ async fn execute_blocking_command(
             }
         };
 
-        let stdout = output_mini_postprocessing(output_filter, &String::from_utf8_lossy(&output.stdout).to_string());
-        let stderr = output_mini_postprocessing(output_filter, &String::from_utf8_lossy(&output.stderr).to_string());
+        let stdout = output_mini_postprocessing(&cfg.output_filter, &String::from_utf8_lossy(&output.stdout).to_string());
+        let stderr = output_mini_postprocessing(&cfg.output_filter, &String::from_utf8_lossy(&output.stderr).to_string());
 
         let mut out = format_output(&stdout, &stderr);
         let exit_code = output.status.code().unwrap_or_default();
@@ -222,7 +217,7 @@ async fn execute_background_command(
     service_name: &str,
     command_str: &str,
     command_workdir: &String,
-    bg_cfg: CmdlineToolBackground,
+    cfg: &CmdlineToolConfig,
     action: &str,
 ) -> Result<String, String> {
     let session_key = format!("custom_service_{service_name}");
@@ -261,7 +256,7 @@ async fn execute_background_command(
         }
     }
 
-    if let Some(wait_port) = bg_cfg.startup_wait_port {
+    if let Some(wait_port) = cfg.startup_wait_port {
         if let Ok(_) = wait_until_port_gets_occupied(wait_port, &Duration::from_millis(1)).await {
             return Err(format!("port '{}' is already occupied", wait_port));
         }
@@ -279,10 +274,10 @@ async fn execute_background_command(
         let mut stdout_reader = BufReader::new(process.stdout.take().ok_or("Failed to open stdout")?);
         let mut stderr_reader = BufReader::new(process.stderr.take().ok_or("Failed to open stderr")?);
 
-        let wait_timeout = Duration::from_secs(bg_cfg.startup_timeout);
+        let wait_timeout = Duration::from_secs(cfg.timeout);
 
         // todo: does not work for npm run
-        let (stdout_out, stderr_out) = if let Some(wait_port) = bg_cfg.startup_wait_port {
+        let (stdout_out, stderr_out) = if let Some(wait_port) = cfg.startup_wait_port {
             let resp = wait_until_port_gets_occupied(wait_port, &wait_timeout).await;
             let (s1, e1) = get_stdout_and_stderr(100, &mut stdout_reader, &mut stderr_reader).await?;
             resp?;
@@ -290,7 +285,7 @@ async fn execute_background_command(
         } else {
             read_until_text_in_output_or_timeout(
                 wait_timeout, &mut stdout_reader, &mut stderr_reader,
-                bg_cfg.startup_wait_keyword.clone().unwrap_or_default().as_str()
+                cfg.startup_wait_keyword.clone().unwrap_or_default().as_str()
             ).await?
         };
 
@@ -349,21 +344,18 @@ impl Tool for ToolCmdline {
         let command = _replace_args(self.cfg.command.as_str(), &args_str);
         let workdir = _replace_args(self.cfg.command_workdir.as_str(), &args_str);
 
-        let resp = if let Some(background_cfg) = &self.cfg.background {
+        let resp = if self.a_service {
             let action = args_str.get("action").cloned().unwrap_or("start".to_string());
             if !["start", "restart", "stop", "status", "communicate"].contains(&action.as_str()) {
                 return Err("Tool call is invalid. Param 'action' must be one of 'start', 'restart', 'stop', 'status', 'communicate'. Try again".to_string());
             }
             execute_background_command(
-                gcx, &self.name, &command, &workdir, background_cfg.clone(), action.as_str()
-            ).await
-
-        } else if let Some(blocking_cfg) = &self.cfg.blocking {
-            execute_blocking_command(&command, &blocking_cfg, &workdir, &self.cfg.output_filter).await
+                gcx, &self.name, &command, &workdir, &self.cfg, action.as_str()
+            ).await?
 
         } else {
-            Err(format!("background command '{}' has invalid configuration. One of (blocking | background) is required. Must be fixed by user", command))
-        }?;
+            execute_blocking_command(&command, &self.cfg, &workdir).await?
+        };
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
