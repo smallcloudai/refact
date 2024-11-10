@@ -35,7 +35,7 @@ struct CmdToolBlocking {
     timeout: u64,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize)]
 struct CmdlineToolConfig {
     description: String,
     parameters: Vec<ToolParam>,
@@ -57,14 +57,14 @@ pub struct ToolCmdline {
 
 pub fn cmdline_tool_from_yaml_value(cfg_cmdline_value: &serde_yaml::Value) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
     let mut result = IndexMap::new();
-    let mut cfgmap = match serde_yaml::from_value::<IndexMap<String, CmdlineToolConfig>>(cfg_cmdline_value.clone()) {
+    let cfgmap = match serde_yaml::from_value::<IndexMap<String, CmdlineToolConfig>>(cfg_cmdline_value.clone()) {
         Ok(cfgmap) => cfgmap,
         Err(e) => {
             let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
             return Err(format!("failed to parse cmdline section: {:?}{}", e, location));
         }
     };
-    for (c_name, c_cmd_tool) in cfgmap.iter_mut() {
+    for (c_name, mut c_cmd_tool) in cfgmap.into_iter() {
         if c_cmd_tool.background.is_some() {
             c_cmd_tool.parameters.push(ToolParam {
                 name: "action".to_string(),
@@ -75,10 +75,10 @@ pub fn cmdline_tool_from_yaml_value(cfg_cmdline_value: &serde_yaml::Value) -> Re
         let tool = Arc::new(AMutex::new(Box::new(
             ToolCmdline {
                 name: c_name.clone(),
-                cfg: c_cmd_tool.clone(),
+                cfg: c_cmd_tool,
             }
         ) as Box<dyn Tool + Send>));
-        result.insert(c_name.clone(), tool);
+        result.insert(c_name, tool);
     }
     Ok(result)
 }
@@ -236,7 +236,7 @@ async fn execute_background_command(
     if session_mb.is_none() && (action == "status" || action == "communicate") {
         return Err(format!("cannot execute this action on service '{service_name}'. Reason: service '{service_name}' is not running.\n"));
     }
-    
+
     if action == "restart" || action == "stop" || action == "status" || action == "communicate" {
         let session = session_mb.clone().unwrap();
         let mut session_lock = session.lock().await;
@@ -260,7 +260,7 @@ async fn execute_background_command(
             return Ok(format!("service '{service_name}' is stopped.\n"));
         }
     }
-    
+
     if let Some(wait_port) = bg_cfg.startup_wait_port {
         if let Ok(_) = wait_until_port_gets_occupied(wait_port, &Duration::from_millis(1)).await {
             return Err(format!("port '{}' is already occupied", wait_port));
@@ -280,7 +280,7 @@ async fn execute_background_command(
         let mut stderr_reader = BufReader::new(process.stderr.take().ok_or("Failed to open stderr")?);
 
         let wait_timeout = Duration::from_secs(bg_cfg.startup_timeout);
-        
+
         // todo: does not work for npm run
         let (stdout_out, stderr_out) = if let Some(wait_port) = bg_cfg.startup_wait_port {
             let resp = wait_until_port_gets_occupied(wait_port, &wait_timeout).await;
@@ -289,7 +289,7 @@ async fn execute_background_command(
             (s1, e1)
         } else {
             read_until_text_in_output_or_timeout(
-                wait_timeout, &mut stdout_reader, &mut stderr_reader, 
+                wait_timeout, &mut stdout_reader, &mut stderr_reader,
                 bg_cfg.startup_wait_keyword.clone().unwrap_or_default().as_str()
             ).await?
         };
@@ -360,7 +360,7 @@ impl Tool for ToolCmdline {
 
         } else if let Some(blocking_cfg) = &self.cfg.blocking {
             execute_blocking_command(&command, &blocking_cfg, &workdir, &self.cfg.output_filter).await
-            
+
         } else {
             Err(format!("background command '{}' has invalid configuration. One of (blocking | background) is required. Must be fixed by user", command))
         }?;

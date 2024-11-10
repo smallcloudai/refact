@@ -2,7 +2,7 @@ use serde::Deserialize;
 use regex::Regex;
 
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize)]
 pub struct CmdlineOutputFilter {
     #[serde(default = "default_limit_lines")]
     pub limit_lines: usize,
