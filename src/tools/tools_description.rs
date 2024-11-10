@@ -123,7 +123,15 @@ pub async fn tools_merged_and_filtered(
         if let Some(docker_config) = integrations_value.get("docker") {
             tools_all.insert("docker".to_string(), Arc::new(AMutex::new(Box::new(ToolDocker::new_from_yaml(docker_config)?) as Box<dyn Tool + Send>)));
         }
-        tools_all.insert("deep_thinking".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>)));
+        if let Ok(caps) = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+            let have_thinking_model = {
+                let caps_locked = caps.read().unwrap();
+                caps_locked.running_models.contains(&"o1-mini".to_string())
+            };
+            if have_thinking_model {
+                tools_all.insert("deep_thinking".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>)));
+            }
+        }
         // #[cfg(feature="vecdb")]
         // tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
     }

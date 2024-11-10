@@ -139,7 +139,7 @@ pub struct CodeAssistantCaps {
     #[serde(default)]
     pub embedding_n_ctx: usize,
     #[serde(default)]
-    pub running_models: Vec<String>,
+    pub running_models: Vec<String>,  // check there if a model is available or not, not in other places
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
     #[serde(default)]
