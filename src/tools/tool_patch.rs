@@ -91,7 +91,7 @@ pub async fn process_tickets(
 }
 
 fn return_cd_instruction_or_error(
-    err: &String, 
+    err: &String,
     cd_instruction: &Option<String>,
     tool_call_id: &String,
     usage: &ChatUsage,
@@ -173,7 +173,8 @@ impl Tool for ToolPatch {
         if active_tickets[0].filename_before != path {
             let (err, cd_instruction) = good_error_text(
                 &format!("ticket(s) have different filename from what you provided: '{}'!='{}'.", active_tickets[0].filename_before, path),
-                &tickets, Some("recreate the ticket with correct filename in 📍-notation or change path argument".to_string()),
+                &tickets,
+                Some("recreate the ticket with correct filename in 📍-notation or change path argument".to_string()),
             );
             return return_cd_instruction_or_error(&err, &cd_instruction, &tool_call_id, &usage);
         }

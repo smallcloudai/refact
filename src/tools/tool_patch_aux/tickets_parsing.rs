@@ -81,7 +81,7 @@ pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<S
 }
 
 async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ticket: &mut TicketToApply) -> Result<(), String> {
-    fn good_error_text(reason: &str, ticket: &TicketToApply) -> String {
+    fn _error_text(reason: &str, ticket: &TicketToApply) -> String {
         format!("Failed to validate TICKET '{}': {}", ticket.id, reason)
     }
     async fn resolve_path(gcx: Arc<ARwLock<GlobalContext>>, path_str: &String) -> Result<String, String> {
@@ -93,7 +93,7 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
     match ticket.action {
         PatchAction::RewriteSymbol => {
             ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
-                .map_err(|e| good_error_text(
+                .map_err(|e| _error_text(
                     &format!("failed to resolve filename_before: '{}'. Error:\n{}. If you wanted to create a new file, use REWRITE_WHOLE_FILE ticket type", ticket.filename_before, e),
                     ticket))?;
             ticket.fallback_action = Some(PatchAction::PartialEdit);
@@ -111,7 +111,7 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
         }
         PatchAction::PartialEdit => {
             ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
-                .map_err(|e| good_error_text(
+                .map_err(|e| _error_text(
                     &format!("failed to resolve filename_before: '{}'. Error:\n{}. If you wanted to create a new file, use REWRITE_WHOLE_FILE ticket type", ticket.filename_before, e),
                     ticket))?;
         }
@@ -121,7 +121,7 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
                 Err(_) => {
                     // consider that as a new file
                     if path_before.is_relative() {
-                        return Err(good_error_text(&format!("filename_before: '{}' must be absolute.", ticket.filename_before), ticket));
+                        return Err(_error_text(&format!("filename_before: '{}' must be absolute.", ticket.filename_before), ticket));
                     } else {
                         let path_before = crate::files_correction::to_pathbuf_normalize(&ticket.filename_before);
                         path_before.to_string_lossy().to_string()
