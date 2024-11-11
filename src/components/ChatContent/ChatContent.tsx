@@ -141,11 +141,9 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
         <Flex direction="column" className={styles.content} p="2" gap="1">
           {messages.length === 0 && <PlaceHolderText />}
           {renderMessages(messages, onRetryWrapper)}
-          {isWaiting && (
-            <Container py="4">
-              <Spinner />
-            </Container>
-          )}
+          <Container py="4">
+            <Spinner spinning={isWaiting} />
+          </Container>
           <div ref={innerRef} />
         </Flex>
         {!isScrolledTillBottom && (
