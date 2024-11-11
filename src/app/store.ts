@@ -23,7 +23,7 @@ import {
 import { smallCloudApi } from "../services/smallcloud";
 import { reducer as fimReducer } from "../features/FIM/reducer";
 import { tourReducer } from "../features/Tour";
-import { tipOfTheDayReducer } from "../features/TipOfTheDay";
+import { tipOfTheDaySlice } from "../features/TipOfTheDay";
 import { reducer as configReducer } from "../features/Config/configSlice";
 import { activeFileReducer } from "../features/Chat/activeFile";
 import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
@@ -48,8 +48,8 @@ const tipOfTheDayPersistConfig = {
 };
 
 const persistedTipOfTheDayReducer = persistReducer<
-  ReturnType<typeof tipOfTheDayReducer>
->(tipOfTheDayPersistConfig, tipOfTheDayReducer);
+  ReturnType<typeof tipOfTheDaySlice.reducer>
+>(tipOfTheDayPersistConfig, tipOfTheDaySlice.reducer);
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -58,7 +58,8 @@ const rootReducer = combineSlices(
   {
     fim: fimReducer,
     tour: tourReducer,
-    tipOfTheDay: persistedTipOfTheDayReducer,
+    // tipOfTheDay: persistedTipOfTheDayReducer,
+    [tipOfTheDaySlice.reducerPath]: persistedTipOfTheDayReducer,
     config: configReducer,
     active_file: activeFileReducer,
     selected_snippet: selectedSnippetReducer,

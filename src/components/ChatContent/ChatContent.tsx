@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import {
   ChatMessages,
   isChatContextFileMessage,
@@ -16,9 +16,7 @@ import { AssistantInput } from "./AssistantInput";
 import { useAutoScroll } from "./useAutoScroll";
 import { PlainText } from "./PlainText";
 import { useConfig, useEventsBusForIDE } from "../../hooks";
-import { useAppSelector, useAppDispatch } from "../../hooks";
-import { RootState } from "../../app/store";
-import { next } from "../../features/TipOfTheDay";
+import { useAppSelector } from "../../hooks";
 import {
   selectIsStreaming,
   selectIsWaiting,
@@ -27,25 +25,18 @@ import {
 import { takeWhile } from "../../utils";
 import { GroupedDiffs } from "./DiffContent";
 import { ScrollToBottomButton } from "./ScrollToBottomButton";
+import { currentTipOfTheDay } from "../../features/TipOfTheDay";
 
-export const TipOfTheDay: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const config = useConfig();
-  const state = useAppSelector((state: RootState) => state.tipOfTheDay);
-
-  // TODO: find out what this is about.
-  useEffect(() => {
-    dispatch(next(config));
-  }, [dispatch, config]);
+const TipOfTheDay: React.FC = () => {
+  const tip = useAppSelector(currentTipOfTheDay);
 
   return (
     <Text>
-      💡 <b>Tip of the day</b>: {state.tip}
+      💡 <b>Tip of the day</b>: {tip}
     </Text>
   );
 };
 
-// TODO: turn this into a component
 const PlaceHolderText: React.FC = () => {
   const config = useConfig();
   const hasVecDB = config.features?.vecdb ?? false;

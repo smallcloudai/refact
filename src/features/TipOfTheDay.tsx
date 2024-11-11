@@ -1,4 +1,4 @@
-import { createAction, createReducer } from "@reduxjs/toolkit";
+import { createSlice } from "@reduxjs/toolkit";
 import type { Config } from "../features/Config/configSlice";
 
 type TipHost = "all" | "vscode";
@@ -45,52 +45,55 @@ export const tips: [TipHost, string][] = [
 ];
 
 export type TipOfTheDayState = {
-  next: number;
+  current: number;
   tip: string;
 };
 
 const initialState: TipOfTheDayState = {
-  next: 0,
-  tip: "",
+  current: 0,
+  tip: "", //tips[0][1], // make sure can be all
 };
 
-export const next = createAction<Config>("tipOfTheDay/next");
-
-export const tipOfTheDayReducer = createReducer<TipOfTheDayState>(
+export const tipOfTheDaySlice = createSlice({
+  name: "tipOfTheDay",
   initialState,
-  (builder) => {
-    builder.addCase(next, (state, action) => {
-      const keyBindings = action.payload.keyBindings;
-      const host = action.payload.host;
+  reducers: (create) => ({
+    nextTip: create.reducer<{ host: Config["host"]; completeManual?: string }>(
+      (state, action) => {
+        const { host, completeManual } = action.payload;
 
-      let tip: string | undefined = undefined;
-      let next = state.next;
+        let tip: string | undefined = undefined;
+        let nextIndex = (state.current + 1) % tips.length;
 
-      while (tip === undefined) {
-        const [tipHost, curTip] = tips[next];
-        next = (next + 1) % tips.length;
+        while (tip === undefined) {
+          const [tipHost, curTip] = tips[nextIndex];
+          nextIndex = (nextIndex + 1) % tips.length;
 
-        if (!matchesHost(tipHost, host)) {
-          continue;
+          if (!matchesHost(tipHost, host)) {
+            continue;
+          }
+
+          if (completeManual !== undefined) {
+            tip = curTip.replace("[MANUAL_COMPLETION]", completeManual);
+          } else {
+            tip = curTip.replace(
+              "[MANUAL_COMPLETION]",
+              "the key binding for manual completion",
+            );
+          }
         }
 
-        if (keyBindings?.completeManual !== undefined) {
-          tip = curTip.replace(
-            "[MANUAL_COMPLETION]",
-            keyBindings.completeManual,
-          );
-        } else {
-          tip = curTip.replace(
-            "[MANUAL_COMPLETION]",
-            "the key binding for manual completion",
-          );
-        }
-      }
-
-      return {
-        next,
-        tip,
-      };
-    });
+        return {
+          current: nextIndex,
+          tip,
+        };
+      },
+    ),
+  }),
+  selectors: {
+    currentTipOfTheDay: (state) => state.tip,
   },
-);
+});
+
+export const { nextTip } = tipOfTheDaySlice.actions;
+export const { currentTipOfTheDay } = tipOfTheDaySlice.selectors;
