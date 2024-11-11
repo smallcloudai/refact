@@ -1,16 +1,16 @@
 # This dockerfile can be used to compile refact-lsp for development purposes, 
 # for example, to get refact-lsp to bind into docker containers to start threads in containers
 
-FROM ubuntu:24.04
+FROM alpine:3.18
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
+RUN apk add --no-cache \
+    build-base \
     curl \
     git \
-    libssl-dev \
-    pkg-config \
-    protobuf-compiler \
-    && rm -rf /var/lib/apt/lists/*
+    openssl-dev \
+    pkgconfig \
+    protobuf-dev \
+    zlib-static
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH=/root/.cargo/bin:$PATH
