@@ -73,8 +73,7 @@ pub struct TicketToApply {
 pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> (String, Option<String>) {
     let mut text = format!("Couldn't create patch for tickets: '{}'.\nReason: {reason}", tickets.join(", "));
     if let Some(resolution) = resolution {
-        text.push_str(&format!("\nResolution: {}", resolution));
-        let cd_format = format!("💿 patch() got the error: {reason}.\n{resolution}");
+        let cd_format = format!("💿 {resolution}");
         return (text, Some(cd_format))
     }
     (text, None)
@@ -281,9 +280,7 @@ pub async fn get_tickets_from_messages(
         (ccx_lock.global_context.clone(), ccx_lock.messages.clone())
     };
     let mut tickets: HashMap<String, TicketToApply> = HashMap::new();
-    for message in messages
-        .iter()
-        .filter(|x| x.role == "assistant") {
+    for message in messages.iter().filter(|x| x.role == "assistant") {
         for ticket in parse_tickets(gcx.clone(), &message.content.content_text_only()).await.into_iter() {
             tickets.insert(ticket.id.clone(), ticket);
         }
@@ -300,7 +297,8 @@ pub async fn get_and_correct_active_tickets(
     let mut active_tickets = ticket_ids.iter().map(|t| all_tickets_from_above.get(t).cloned()
         .ok_or(good_error_text(
             &format!("No code block found for the ticket {:?}, did you forget to write it using 📍-notation?", t),
-            &ticket_ids, Some("Write the code you want to apply using 📍-notation. Do not prompt user. Follow the system prompt.".to_string()),
+            &ticket_ids,
+            Some("Write the code you want to apply using 📍-notation. Do not prompt user. Follow the system prompt.".to_string()),
         ))).collect::<Result<Vec<_>, _>>()?;
 
     if active_tickets.iter().map(|x| x.filename_before.clone()).unique().count() > 1 {
