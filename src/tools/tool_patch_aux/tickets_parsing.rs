@@ -70,12 +70,14 @@ pub struct TicketToApply {
     pub hint_message: String,
 }
 
-pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> String {
+pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> (String, Option<String>) {
     let mut text = format!("Couldn't create patch for tickets: '{}'.\nReason: {reason}", tickets.join(", "));
     if let Some(resolution) = resolution {
         text.push_str(&format!("\nResolution: {}", resolution));
+        let cd_format = format!("💿 patch() got the error: {reason}.\n{resolution}");
+        return (text, Some(cd_format))
     }
-    text
+    (text, None)
 }
 
 async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ticket: &mut TicketToApply) -> Result<(), String> {
@@ -293,7 +295,7 @@ pub async fn get_and_correct_active_tickets(
     gcx: Arc<ARwLock<GlobalContext>>,
     ticket_ids: Vec<String>,
     all_tickets_from_above: HashMap<String, TicketToApply>,
-) -> Result<Vec<TicketToApply>, String> {
+) -> Result<Vec<TicketToApply>, (String, Option<String>)> {
     // XXX: this is a useless message the model doesn't listen to anyway. We need cd_instruction and a better text.
     let mut active_tickets = ticket_ids.iter().map(|t| all_tickets_from_above.get(t).cloned()
         .ok_or(good_error_text(

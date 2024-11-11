@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, DiffChunk, SubchatParameters};
+use crate::call_validation::{ChatContent, ChatMessage, ChatUsage, ContextEnum, DiffChunk, SubchatParameters};
 use crate::tools::tool_patch_aux::diff_apply::diff_apply;
 use crate::tools::tool_patch_aux::model_based_edit::partial_edit::partial_edit_tickets_to_chunks;
 use crate::tools::tool_patch_aux::no_model_edit::{full_rewrite_diff, rewrite_symbol_diff};
@@ -34,7 +34,7 @@ pub async fn process_tickets(
     params: &SubchatParameters,
     tool_call_id: &String,
     usage: &mut ChatUsage,
-) -> Result<Vec<DiffChunk>, String> {
+) -> Result<Vec<DiffChunk>, (String, Option<String>)> {
     if active_tickets.is_empty() {
         return Ok(vec![]);
     }
@@ -44,27 +44,35 @@ pub async fn process_tickets(
         PatchAction::RewriteSymbol => {
             match rewrite_symbol_diff(gcx.clone(), &active_tickets[0]).await {
                 Ok(mut chunks) => {
-                    postprocess_diff_chunks(gcx.clone(), &mut chunks).await
+                    postprocess_diff_chunks(gcx.clone(), &mut chunks)
+                        .await
+                        .map_err(|err| (err, None))
                 }
-                Err(err) => Err(err)
+                Err(err) => {
+                    Err((err, None))
+                }
             }
         }
         PatchAction::PartialEdit => {
             partial_edit_tickets_to_chunks(
                 ccx_subchat.clone(), active_tickets.clone(), params, tool_call_id, usage,
-            )
-                .await
-                .map_err(|(e, r)| good_error_text(e.as_str(), &ticket_ids, r))
+            ).await
         }
         PatchAction::RewriteWholeFile => {
             match full_rewrite_diff(gcx.clone(), &active_tickets[0]).await {
                 Ok(mut chunks) => {
-                    postprocess_diff_chunks(gcx.clone(), &mut chunks).await
+                    postprocess_diff_chunks(gcx.clone(), &mut chunks)
+                        .await.
+                        map_err(|err| (err, None))
                 }
-                Err(err) => Err(err)
+                Err(err) => {
+                    Err((err, None))
+                }
             }
         }
-        _ => Err(good_error_text(&format!("unknown action provided: '{:?}'.", action), &ticket_ids, None))
+        _ => {
+            Err(good_error_text(&format!("unknown action provided: '{:?}'.", action), &ticket_ids, None))
+        }
     };
     // todo: add multiple attempts for PartialEdit tickets (3)
     match res {
@@ -81,6 +89,28 @@ pub async fn process_tickets(
     }
     res
 }
+
+fn return_cd_instruction_or_error(
+    err: &String, 
+    cd_instruction: &Option<String>,
+    tool_call_id: &String,
+    usage: &ChatUsage,
+) -> Result<(bool, Vec<ContextEnum>), String> {
+    if let Some(inst) = cd_instruction {
+        tracing::info!("\n{}", inst);
+        Ok((false, vec![(ContextEnum::ChatMessage(ChatMessage {
+            role: "cd_instruction".to_string(),
+            content: ChatContent::SimpleText(inst.to_string()),
+            tool_calls: None,
+            tool_call_id: "".to_string(),
+            usage: Some(usage.clone()),
+            ..Default::default()
+        }))]))
+    } else {
+        Err(err.to_string())
+    }
+}
+
 
 #[async_trait]
 impl Tool for ToolPatch {
@@ -121,16 +151,22 @@ impl Tool for ToolPatch {
 
         let gcx = ccx_subchat.lock().await.global_context.clone();
         let all_tickets_from_above = get_tickets_from_messages(ccx.clone()).await;
-        let mut active_tickets = get_and_correct_active_tickets(gcx.clone(), tickets.clone(), all_tickets_from_above.clone()).await?;
+        let mut active_tickets = match get_and_correct_active_tickets(gcx.clone(), tickets.clone(), all_tickets_from_above.clone())
+            .await {
+            Ok(res) => res,
+            Err((err, cd_instruction)) => {
+                return return_cd_instruction_or_error(&err, &cd_instruction, &tool_call_id, &usage);
+            }
+        };
         assert!(!active_tickets.is_empty());
 
         if active_tickets[0].filename_before != path {
-            return Err(good_error_text(
+            let (err, cd_instruction) = good_error_text(
                 &format!("ticket(s) have different filename from what you provided: '{}'!='{}'.", active_tickets[0].filename_before, path),
                 &tickets, Some("recreate the ticket with correct filename in 📍-notation or change path argument".to_string()),
-            ));
+            );
+            return return_cd_instruction_or_error(&err, &cd_instruction, &tool_call_id, &usage);
         }
-
         let mut res;
         loop {
             let diff_chunks = process_tickets(
@@ -146,7 +182,12 @@ impl Tool for ToolPatch {
                 break;
             }
         }
-        let mut diff_chunks = res?;
+        let mut diff_chunks = match res {
+            Ok(res) => res,
+            Err((err, cd_instruction)) => {
+                return return_cd_instruction_or_error(&err, &cd_instruction, &tool_call_id, &usage);
+            }
+        };
         diff_apply(gcx.clone(), &mut diff_chunks).await.map_err(
             |err| format!("Couldn't apply the diff: {}", err)
         )?;

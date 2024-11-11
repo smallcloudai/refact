@@ -85,7 +85,7 @@ pub async fn handle_v1_patch_single_file_from_ticket(
     let all_tickets_from_above = get_tickets_from_messages(ccx.clone()).await;
     let mut active_tickets = get_and_correct_active_tickets(
         global_context.clone(), post.ticket_ids.clone(), all_tickets_from_above.clone(),
-    ).await.map_err(|e| {
+    ).await.map_err(|(e, _)| {
         ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
     })?;
 
@@ -106,7 +106,7 @@ pub async fn handle_v1_patch_single_file_from_ticket(
             break;
         }
     }
-    let mut diff_chunks = res.map_err(|e|
+    let mut diff_chunks = res.map_err(|(e, _)|
         ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
     )?;
     correct_and_validate_chunks(global_context.clone(), &mut diff_chunks).await
