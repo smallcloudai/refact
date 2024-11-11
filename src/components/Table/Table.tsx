@@ -23,7 +23,7 @@ export const Table: React.FC<{
   refactImpactTable: RefactTableImpactLanguagesRow[] | null;
 }> = ({ refactImpactTable }) => {
   if (refactImpactTable === null) {
-    return <Spinner />;
+    return <Spinner spinning />;
   }
 
   return (

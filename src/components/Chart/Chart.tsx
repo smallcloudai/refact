@@ -30,7 +30,7 @@ export const Chart: React.FC<{
   const { isDarkMode } = useAppearance();
 
   if (refactImpactDatesWeekly === null) {
-    return <Spinner />;
+    return <Spinner spinning />;
   }
 
   const dates: string[] = Object.keys(refactImpactDatesWeekly).map((date) => {
