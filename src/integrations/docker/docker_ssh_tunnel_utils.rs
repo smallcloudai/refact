@@ -4,7 +4,7 @@ use tokio::{net::{TcpListener, TcpStream}, process::{Child, ChildStderr, Command
 use tracing::{info, warn};
 
 use crate::global_context::GlobalContext;
-use crate::integrations::process_io_utils::read_until_token_or_timeout;
+use crate::integrations::process_io_utils::blocking_read_until_token_or_timeout;
 use crate::integrations::docker::docker_container_manager::Port;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -71,7 +71,7 @@ pub async fn ssh_tunnel_check_status(ssh_tunnel: &mut SshTunnel) -> Result<(), S
         return Err(format!("SSH tunnel process exited with status: {:?}", status));
     }
 
-    let stderr_output = read_until_token_or_timeout(&mut ssh_tunnel.stderr, 50, "").await?;
+    let (stderr_output, _) = blocking_read_until_token_or_timeout(&mut ssh_tunnel.stderr, 50, "").await;
     if !stderr_output.is_empty() {
         return Err(format!("SSH tunnel error: {}", stderr_output));
     }
@@ -109,7 +109,7 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
     let mut process = command.spawn().map_err(|e| format!("Failed to start ssh process: {}", e))?;
     let mut stderr = process.stderr.take().ok_or("Failed to open stderr for ssh process")?;
 
-    let output_stderr = read_until_token_or_timeout(&mut stderr, 100, "").await?;
+    let (output_stderr, _) = blocking_read_until_token_or_timeout(&mut stderr, 100, "").await;
     if !output_stderr.is_empty() {
         return Err(format!("SSH error: {}", output_stderr));
     }
@@ -127,7 +127,7 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
             }
             Err(e) => {
                 info!("this should eventually work: connect to 127.0.0.1:{} attempt {}: {}", port_to_test_connection.external, attempt + 1, e);
-                let stderr_output = read_until_token_or_timeout(&mut stderr, 300, "").await?;
+                let (stderr_output, _) = blocking_read_until_token_or_timeout(&mut stderr, 300, "").await;
                 if !stderr_output.is_empty() {
                     return Err(format!("Failed to open ssh tunnel: {}", stderr_output));
                 }

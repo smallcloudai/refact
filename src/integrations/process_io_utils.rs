@@ -1,7 +1,7 @@
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::process::{Child, ChildStdin};
-use tokio::time::{timeout, Duration, sleep};
+use std::time::Instant;
 use tracing::error;
 
 
@@ -19,53 +19,61 @@ pub async fn write_to_stdin_and_flush(stdin: &mut ChildStdin, text_to_write: &st
     Ok(())
 }
 
-pub async fn read_until_token_or_timeout<R>(buffer: &mut R, timeout_ms: u64, token: &str) -> Result<String, String>
+pub async fn blocking_read_until_token_or_timeout<R>(buffer: &mut R, timeout_ms: u64, token: &str) -> (String, bool)
 where
     R: AsyncReadExt + Unpin,
 {
+    //
+    // WARNING: this will block forever if timeout_ms==0 and stream does not end (no EOF)
+    //
+    // TODO: check what will happen in both stdout and stderr have a lot of data. Will one block the entire process when we're reading the other?
+    //
+    assert!(timeout_ms > 0);
+    let start_time = Instant::now();
+    let timeout_duration = tokio::time::Duration::from_millis(timeout_ms);
     let mut output = Vec::new();
     let mut buf = [0u8; 1024];
+    let mut have_the_token = false;
 
     loop {
+        if timeout_ms > 0 && start_time.elapsed() >= timeout_duration {
+            error!("timeout reached while reading from buffer");
+            break;
+        }
+
         let read_result = if timeout_ms > 0 {
-            timeout(Duration::from_millis(timeout_ms), buffer.read(&mut buf)).await
+            tokio::time::timeout(tokio::time::Duration::from_millis(timeout_ms), buffer.read(&mut buf)).await
         } else {
             Ok(buffer.read(&mut buf).await)
         };
 
-        let bytes_read = match read_result {
-            Ok(Ok(bytes)) => bytes,                      // Successfully read
-            Ok(Err(e)) => return Err(e.to_string()),     // Read error
-            Err(_) => return Ok(String::from_utf8_lossy(&output).to_string()), // Timeout, return current output
-        };
-
-        if bytes_read == 0 { break; }
-
-        output.extend_from_slice(&buf[..bytes_read]);
-
-        if !token.is_empty() && output.trim_ascii_end().ends_with(token.as_bytes()) { break; }
-    }
-
-    Ok(String::from_utf8_lossy(&output).to_string())
-}
-
-pub async fn wait_until_port_gets_occupied(port: u16, timeout_duration: &Duration) -> Result<(), String> {
-    let addr = format!("127.0.0.1:{}", port);
-
-    let result: Result<_, _> = timeout(timeout_duration.clone(), async {
-        loop {
-            match TcpStream::connect(&addr).await {
-                Ok(_) => {
-                    return Ok::<(), std::io::Error>(());
-                },
-                Err(_) => sleep(Duration::from_millis(500)).await,
+        match read_result {
+            Ok(Ok(0)) | Err(_) => break, // End of stream or timeout
+            Ok(Ok(bytes_read)) => {
+                output.extend_from_slice(&buf[..bytes_read]);
+                if !token.is_empty() && output.trim_ascii_end().ends_with(token.as_bytes()) {
+                    have_the_token = true;
+                    break;
+                }
+            }
+            Ok(Err(e)) => {
+                error!("Error reading from buffer: {}", e);
+                break;
             }
         }
-    }).await;
+    }
 
-    match result {
-        Ok(_) => Ok(()),
-        Err(_) => Err(format!("port {} didn't turn occupied after {:?}", port, timeout_duration)),
+    (String::from_utf8_lossy(&output).to_string(), have_the_token)
+}
+
+pub async fn is_someone_listening_on_that_tcp_port(port: u16, timeout: tokio::time::Duration) -> bool {
+    match tokio::time::timeout(timeout, TcpStream::connect(&format!("127.0.0.1:{}", port))).await {
+        Ok(Ok(_)) => true,    // Connection successful
+        Ok(Err(_)) => false,  // Connection failed, refused
+        Err(e) => {  // Timeout occurred
+            tracing::error!("Timeout occurred while checking port {}: {}", port, e);
+            false             // still no one is listening, as far as we can tell
+        }
     }
 }
 

@@ -17,7 +17,7 @@ use crate::call_validation::{ContextEnum, ChatMessage, ChatContent};
 use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::global_context::GlobalContext;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
-use crate::integrations::process_io_utils::{first_n_chars, last_n_chars, last_n_lines, write_to_stdin_and_flush, read_until_token_or_timeout};
+use crate::integrations::process_io_utils::{first_n_chars, last_n_chars, last_n_lines, write_to_stdin_and_flush, blocking_read_until_token_or_timeout};
 
 const SESSION_TIMEOUT_AFTER_INACTIVITY: Duration = Duration::from_secs(30 * 60);
 const PDB_TOKEN: &str = "(Pdb)";
@@ -164,8 +164,8 @@ async fn start_pdb_session(python_command: &String, command_args: &mut Vec<Strin
     let mut stdout = BufReader::new(process.stdout.take().ok_or("Failed to open stdout for pdb process")?);
     let mut stderr = BufReader::new(process.stderr.take().ok_or("Failed to open stderr for pdb process")?);
 
-    let output = read_until_token_or_timeout(&mut stdout, 0, PDB_TOKEN).await?;
-    let error = read_until_token_or_timeout(&mut stderr, 100, "").await?;
+    let (output, have_the_token) = blocking_read_until_token_or_timeout(&mut stdout, 5000, PDB_TOKEN).await;
+    let (error, _) = blocking_read_until_token_or_timeout(&mut stderr, 100, "").await;
 
     let exit_status = process.try_wait().map_err(|e| e.to_string())?;
     if exit_status.is_some() {
@@ -231,8 +231,8 @@ async fn interact_with_pdb(
 async fn send_command_and_get_output_and_error(pdb_session: &mut PdbSession, input_command: &str, session_hashmap_key: &str, gcx: Arc<ARwLock<GlobalContext>>) -> Result<(String, String), String>
 {
     write_to_stdin_and_flush(&mut pdb_session.stdin, input_command).await?;
-    let output = read_until_token_or_timeout(&mut pdb_session.stdout, 0, PDB_TOKEN).await?;
-    let error = read_until_token_or_timeout(&mut pdb_session.stderr, 50, "").await?;
+    let (output, have_the_token) = blocking_read_until_token_or_timeout(&mut pdb_session.stdout, 5000, PDB_TOKEN).await;
+    let (error, _) = blocking_read_until_token_or_timeout(&mut pdb_session.stderr, 50, "").await;
 
     let exit_status = pdb_session.process.try_wait().map_err(|e| e.to_string())?;
     if let Some(exit_status) = exit_status {
