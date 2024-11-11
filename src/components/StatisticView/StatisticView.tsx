@@ -12,7 +12,7 @@ export const StatisticView: React.FC<{
   error?: string;
 }> = ({ statisticData, isLoading, error }) => {
   if (isLoading || !statisticData) {
-    return <Spinner />;
+    return <Spinner spinning />;
   }
 
   if (error ?? !statisticData) {
