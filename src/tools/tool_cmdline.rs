@@ -382,8 +382,8 @@ impl Tool for ToolCmdline {
 
         let tool_ouput = if self.a_service {
             let action = args_str.get("action").cloned().unwrap_or("start".to_string());
-            if !["start", "restart", "stop", "status", "communicate"].contains(&action.as_str()) {
-                return Err("Tool call is invalid. Param 'action' must be one of 'start', 'restart', 'stop', 'status', 'communicate'. Try again".to_string());
+            if !["start", "restart", "stop", "status"].contains(&action.as_str()) {
+                return Err("Tool call is invalid. Param 'action' must be one of 'start', 'restart', 'stop', 'status'. Try again".to_string());
             }
             execute_background_command(
                 gcx, &self.name, &command, &workdir, &self.cfg, action.as_str()
