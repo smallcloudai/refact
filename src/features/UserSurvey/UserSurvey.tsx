@@ -49,8 +49,13 @@ const RadioInput: React.FC<RadioInputProps> = ({
 };
 
 export const UserSurvey = () => {
-  const { questionRequest, postSurvey, postSurveyResult, open, setOpen } =
-    useGetUserSurvey();
+  const {
+    questionRequest,
+    postSurvey,
+    postSurveyResult,
+    open,
+    handleOpenChange,
+  } = useGetUserSurvey();
 
   const handleSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -63,22 +68,28 @@ export const UserSurvey = () => {
     [postSurvey],
   );
 
-  const close = React.useCallback(() => setOpen(false), [setOpen]);
+  const close = React.useCallback(
+    () => handleOpenChange(false),
+    [handleOpenChange],
+  );
 
   if (!questionRequest.data) return null; // Loading
 
+  // TODO: move the dialog to the top of the screen
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Content>
-        {postSurveyResult.isUninitialized ? (
-          <SurveyForm
-            onSubmit={handleSubmit}
-            questions={questionRequest.data}
-            isFetching={postSurveyResult.isLoading}
-          />
-        ) : (
-          <DoneMessage timeout={1000} closeFn={close} />
-        )}
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
+      <Dialog.Content asChild>
+        <Box mt="0">
+          {postSurveyResult.isUninitialized ? (
+            <SurveyForm
+              onSubmit={handleSubmit}
+              questions={questionRequest.data}
+              isFetching={postSurveyResult.isLoading}
+            />
+          ) : (
+            <DoneMessage timeout={1000} closeFn={close} />
+          )}
+        </Box>
       </Dialog.Content>
     </Dialog.Root>
   );

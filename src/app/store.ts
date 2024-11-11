@@ -40,6 +40,7 @@ import { listenerMiddleware } from "./middleware";
 import { informationSlice } from "../features/Errors/informationSlice";
 import { confirmationSlice } from "../features/ToolConfirmation/confirmationSlice";
 import { attachedImagesSlice } from "../features/AttachedImages";
+import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -80,12 +81,13 @@ const rootReducer = combineSlices(
   pagesSlice,
   confirmationSlice,
   attachedImagesSlice,
+  userSurveySlice,
 );
 
 const rootPersistConfig = {
   key: "root",
   storage: storage(),
-  whitelist: [historySlice.reducerPath, "tour"],
+  whitelist: [historySlice.reducerPath, "tour", userSurveySlice.reducerPath],
   stateReconciler: mergeInitialState,
 };
 
