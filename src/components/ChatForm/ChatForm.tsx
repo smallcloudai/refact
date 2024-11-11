@@ -8,7 +8,6 @@ import { TextArea, TextAreaProps } from "../TextArea";
 import { Form } from "./Form";
 import { useOnPressedEnter, useIsOnline, useConfig } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
-import { Button } from "@radix-ui/themes";
 import { ComboBox } from "../ComboBox";
 import { CodeChatModel, SystemPrompts } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
@@ -42,7 +41,6 @@ export type ChatFormProps = {
   model: string;
   onSetChatModel: (model: string) => void;
   isStreaming: boolean;
-  onStopStreaming: () => void;
   onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
   showControls: boolean;
   prompts: SystemPrompts;
@@ -60,7 +58,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   model,
   onSetChatModel,
   isStreaming,
-  onStopStreaming,
   onTextAreaHeightChange,
   showControls,
   prompts,
@@ -213,17 +210,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   return (
     <Card mt="1" style={{ flexShrink: 0, position: "static" }}>
       {!isOnline && <Callout type="info" message="Offline" />}
-
-      {isStreaming && (
-        <Button
-          ml="auto"
-          color="red"
-          title="stop streaming"
-          onClick={onStopStreaming}
-        >
-          Stop
-        </Button>
-      )}
 
       <Flex
         ref={(x) => refs.setChat(x)}

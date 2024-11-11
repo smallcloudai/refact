@@ -9,7 +9,7 @@ import {
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
-import { Flex, Text, Container, Link } from "@radix-ui/themes";
+import { Flex, Text, Container, Link, Button } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
@@ -103,6 +103,7 @@ const PlaceHolderText: React.FC = () => {
 
 export type ChatContentProps = {
   onRetry: (index: number, question: UserMessage["content"]) => void;
+  onStopStreaming: () => void;
 };
 
 export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
@@ -148,6 +149,18 @@ export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
         </Flex>
         {!isScrolledTillBottom && (
           <ScrollToBottomButton onClick={handleScrollButtonClick} />
+        )}
+
+        {isStreaming && (
+          <Button
+            ml="auto"
+            color="red"
+            title="stop streaming"
+            onClick={props.onStopStreaming}
+            style={{ position: "absolute", bottom: 15 }}
+          >
+            Stop
+          </Button>
         )}
       </ScrollArea>
     );

@@ -40,7 +40,7 @@ const MockedStore: React.FC<{
     <Provider store={store}>
       <Theme>
         <AbortControllerProvider>
-          <ChatContent onRetry={() => ({})} />
+          <ChatContent onRetry={() => ({})} onStopStreaming={() => ({})} />
         </AbortControllerProvider>
       </Theme>
     </Provider>

@@ -59,7 +59,6 @@ const meta: Meta<typeof ChatForm> = {
       console.log("onclose called");
     },
     isStreaming: false,
-    onStopStreaming: noop,
     onSetChatModel: noop,
     caps: {
       fetching: false,

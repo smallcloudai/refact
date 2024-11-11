@@ -129,6 +129,7 @@ export const Chat: React.FC<ChatProps> = ({
           key={`chat-content-${chatId}`}
           ref={chatContentRef}
           onRetry={retryFromIndex}
+          onStopStreaming={abort}
         />
         {!isStreaming && preventSend && unCalledTools && (
           <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
@@ -140,6 +141,7 @@ export const Chat: React.FC<ChatProps> = ({
             </Card>
           </Container>
         )}
+
         <ChatForm
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
           chatId={chatId}
@@ -149,7 +151,6 @@ export const Chat: React.FC<ChatProps> = ({
           model={chatModel}
           onSetChatModel={onSetChatModel}
           caps={caps}
-          onStopStreaming={abort}
           onClose={maybeSendToSidebar}
           onTextAreaHeightChange={onTextAreaHeightChange}
           prompts={promptsRequest.data ?? {}}
@@ -157,6 +158,7 @@ export const Chat: React.FC<ChatProps> = ({
           selectedSystemPrompt={selectedSystemPrompt}
           onToolConfirm={confirmToolUsage}
         />
+
         <Flex justify="between" pl="1" pr="1" pt="1">
           {/* Two flexboxes are left for the future UI element on the right side */}
           {messages.length > 0 && (
