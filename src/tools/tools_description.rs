@@ -88,6 +88,16 @@ pub async fn tools_merged_and_filtered(
         Err(e) => return Err(format!("Problem in integrations.yaml: {}", e)),
     };
 
+    if let Some(env_vars) = integrations_value.get("environment_variables") {
+        if let Some(env_vars_map) = env_vars.as_mapping() {
+            for (key, value) in env_vars_map {
+                if let (Some(key_str), Some(value_str)) = (key.as_str(), value.as_str()) {
+                    std::env::set_var(key_str, value_str);
+                }
+            }
+        }
+    }
+
     let mut tools_all = IndexMap::from([
         ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>))),
         ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>))),
