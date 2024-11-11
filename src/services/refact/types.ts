@@ -168,6 +168,11 @@ export interface PlainTextMessage extends BaseMessage {
   content: string;
 }
 
+export interface CDInstructionMessage extends BaseMessage {
+  role: "cd_instruction";
+  content: string;
+}
+
 export type ChatMessage =
   | UserMessage
   | AssistantMessage
@@ -175,7 +180,8 @@ export type ChatMessage =
   | SystemMessage
   | ToolMessage
   | DiffMessage
-  | PlainTextMessage;
+  | PlainTextMessage
+  | CDInstructionMessage;
 
 export type ChatMessages = ChatMessage[];
 
@@ -205,7 +211,7 @@ export function isToolCallMessage(
   if (!isAssistantMessage(message)) return false;
   const tool_calls = message.tool_calls;
   if (!tool_calls) return false;
-  // TODO: check browser support of evey
+  // TODO: check browser support of every
   return tool_calls.every(isToolCall);
 }
 
@@ -213,6 +219,12 @@ export function isPlainTextMessage(
   message: ChatMessage,
 ): message is PlainTextMessage {
   return message.role === "plain_text";
+}
+
+export function isCDInstructionMessage(
+  message: ChatMessage,
+): message is CDInstructionMessage {
+  return message.role === "cd_instruction";
 }
 
 interface BaseDelta {
@@ -432,6 +444,15 @@ export function isSubchatResponse(json: unknown): json is SubchatResponse {
   if (!("subchat_id" in json)) return false;
   if (!("tool_call_id" in json)) return false;
   return true;
+}
+
+export function isCDInstructionResponse(
+  json: unknown,
+): json is CDInstructionMessage {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("role" in json)) return false;
+  return json.role === "cd_instruction";
 }
 
 type ChatResponseChoice = {

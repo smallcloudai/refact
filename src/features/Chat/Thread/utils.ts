@@ -11,6 +11,7 @@ import {
   UserMessage,
   isAssistantDelta,
   isAssistantMessage,
+  isCDInstructionResponse,
   isChatContextFileDelta,
   isChatResponseChoice,
   isContextFileResponse,
@@ -158,6 +159,10 @@ export function formatChatResponse(
   }
 
   if (isPlainTextResponse(response)) {
+    return [...messages, { role: response.role, content: response.content }];
+  }
+
+  if (isCDInstructionResponse(response)) {
     return [...messages, { role: response.role, content: response.content }];
   }
 
