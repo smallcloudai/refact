@@ -98,14 +98,24 @@ fn return_cd_instruction_or_error(
 ) -> Result<(bool, Vec<ContextEnum>), String> {
     if let Some(inst) = cd_instruction {
         tracing::info!("\n{}", inst);
-        Ok((false, vec![(ContextEnum::ChatMessage(ChatMessage {
-            role: "cd_instruction".to_string(),
-            content: ChatContent::SimpleText(inst.to_string()),
-            tool_calls: None,
-            tool_call_id: "".to_string(),
-            usage: Some(usage.clone()),
-            ..Default::default()
-        }))]))
+        Ok((false, vec![
+            ContextEnum::ChatMessage(ChatMessage {
+                role: "tool".to_string(),
+                content: ChatContent::SimpleText(err.to_string()),
+                tool_calls: None,
+                tool_call_id: tool_call_id.to_string(),
+                usage: Some(usage.clone()),
+                ..Default::default()
+            }),
+            ContextEnum::ChatMessage(ChatMessage {
+                role: "cd_instruction".to_string(),
+                content: ChatContent::SimpleText(inst.to_string()),
+                tool_calls: None,
+                tool_call_id: "".to_string(),
+                usage: Some(usage.clone()),
+                ..Default::default()
+            })
+        ]))
     } else {
         Err(err.to_string())
     }
