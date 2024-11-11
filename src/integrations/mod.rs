@@ -82,6 +82,17 @@ chrome:
 #      grep_context_lines: 5          # leave that many lines around a grep match (default 5)
 #      remove_from_output: "process didn't exit"    # some lines and very long and unwanted, this is also a regular expression (default "")
 
+#cmdline_services:
+#  manage_py_runserver:
+#    command: "python manage.py runserver"
+#    command_workdir: "%project_path%"
+#    description: "Start or stop `python manage.py runserver` running in the background"
+#    parameters:
+#      - name: "project_path"
+#        description: "absolute path to the project"
+#    startup_wait: 10
+#    startup_wait_port: 8000
+
 
 # --- Docker integration ---
 docker:
@@ -94,12 +105,12 @@ docker:
   #   host: "<your_server_domain_or_ip_here>"
   #   user: "root"
   #   port: 22
-  #   identity_file: "~/.ssh/id_rsa" 
+  #   identity_file: "~/.ssh/id_rsa"
 
   run_chat_threads_inside_container: false
 
   # The folder inside the container where the workspace is mounted, refact-lsp will start there, defaults to "/app"
-  # container_workspace_folder: "/app"  
+  # container_workspace_folder: "/app"
 
   # Image ID for running containers, which can later be selected in the UI before starting a chat thread.
   # docker_image_id: "079b939b3ea1"
@@ -119,5 +130,5 @@ docker:
   # command: "npm run dev"
 
   # The time in minutes that the containers will be kept alive while not interacting with the chat thread, defaults to 60.
-  keep_containers_alive_for_x_minutes: 60  
+  keep_containers_alive_for_x_minutes: 60
 "#;
