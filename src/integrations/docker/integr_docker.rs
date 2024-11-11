@@ -139,7 +139,8 @@ impl Tool for ToolDocker {
 }
 
 pub async fn docker_tool_load(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolDocker, String> {
-    let integrations_yaml = read_integrations_yaml(gcx.clone()).await?;
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    let integrations_yaml = read_integrations_yaml(&cache_dir).await?;
     let docker_config = integrations_yaml.get("docker")
         .ok_or_else(|| "No docker integration found in integrations.yaml".to_string())?;
     Ok(ToolDocker::new_from_yaml(docker_config)?)

@@ -90,8 +90,8 @@ pub struct CommandLine {
     pub experimental: bool,
     #[structopt(long, help="Pass true to tell this binary it can run more tools without confirmation.")]
     pub inside_container: bool,
-    #[structopt(long, default_value="", help="Read a integrations.yaml file to enable and configure integrations, if not set, it will use integrations from '~/.cache/refact/integrations.yaml'.")]
-    pub integrations: String,
+    #[structopt(long, default_value="", help="Specify a different configuration for integrations to be used inside remote containers.")]
+    pub remote_integrations: String,
     #[structopt(long, short="s", default_value="", help="Read a competency.yaml file that turns on specialization for a particular area, such as creating websites.")]
     pub competency: String,
 }
