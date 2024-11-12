@@ -17,7 +17,7 @@ use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 
 use reqwest::Client;
 use std::path::PathBuf;
-use headless_chrome::{Browser, LaunchOptions, Tab};
+use headless_chrome::{Browser, LaunchOptions, Tab as HeadlessTab};
 use headless_chrome::browser::tab::point::Point;
 use headless_chrome::protocol::cdp::Page;
 use headless_chrome::protocol::cdp::Emulation;
@@ -62,29 +62,29 @@ impl fmt::Display for DeviceType {
 
 #[derive(Clone)]
 pub struct ChromeTab {
-    instance: Arc<Tab>,
+    headless_tab: Arc<HeadlessTab>,
     device: DeviceType,
     tab_id: String,
     screenshot_scale_factor: f64,
 }
 
 impl ChromeTab {
-    fn new(instance: Arc<Tab>, device: &DeviceType, tab_id: &String) -> Self {
+    fn new(headless_tab: Arc<HeadlessTab>, device: &DeviceType, tab_id: &String) -> Self {
         Self {
-            instance,
+            headless_tab,
             device: device.clone(),
             tab_id: tab_id.clone(),
             screenshot_scale_factor: 1.0,
         }
     }
     pub fn state_string(&self) -> String {
-        format!("tab_id `{}` device `{}` uri `{}`", self.tab_id.clone(), self.device, self.instance.get_url())
+        format!("tab_id `{}` device `{}` uri `{}`", self.tab_id.clone(), self.device, self.headless_tab.get_url())
     }
 }
 
 struct ChromeSession {
     browser: Browser,
-    tabs: HashMap<String, ChromeTab>,
+    tabs: HashMap<String, Arc<AMutex<ChromeTab>>>,
 }
 
 impl ChromeSession {
@@ -152,8 +152,6 @@ impl Tool for ToolChrome {
                 .ok_or(format!("Error getting chrome session for chat: {}", chat_id))?
                 .clone()
         };
-        let mut command_session_locked = command_session.lock().await;
-        let chrome_session = command_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
 
         let mut mutlimodal_els = vec![];
         for command in commands_str.lines().map(|s| s.trim()).collect::<Vec<&str>>() {
@@ -164,7 +162,7 @@ impl Tool for ToolChrome {
                     break
                 }
             };
-            match parsed_command.execute(chrome_session).await {
+            match chrome_command_exec(&parsed_command, command_session.clone()).await {
                 Ok((execute_log, command_multimodal_els)) => {
                     tool_log.extend(execute_log);
                     mutlimodal_els.extend(command_multimodal_els);
@@ -287,17 +285,26 @@ async fn setup_chrome_session(
     Ok(setup_log)
 }
 
-async fn navigate_to(instance: &Arc<Tab>, url: &String) -> Result<(), String> {
-    instance.navigate_to(url.as_str()).map_err(|e| e.to_string())?;
-    instance.wait_until_navigated().map_err(|e| e.to_string())?;
+async fn navigate_to(tab: Arc<AMutex<ChromeTab>>, url: &String) -> Result<(), String> {
+    let tab_instance = {
+        let tab_lock = tab.lock().await;
+        tab_lock.headless_tab.clone()
+    };
+    tab_instance.navigate_to(url.as_str()).map_err(|e| e.to_string())?;
+    tab_instance.wait_until_navigated().map_err(|e| e.to_string())?;
     Ok(())
 }
 
 async fn screenshot_jpeg_base64(
-    tab: &mut ChromeTab,
+    tab: Arc<AMutex<ChromeTab>>,
     capture_beyond_viewport: bool,
 ) -> Result<MultimodalElement, String> {
-    let jpeg_base64_data = tab.instance.call_method(Page::CaptureScreenshot {
+    let chrome_tab = {
+        let tab_lock = tab.lock().await;
+        tab_lock.headless_tab.clone()
+    };
+
+    let jpeg_base64_data = chrome_tab.call_method(Page::CaptureScreenshot {
         format: Some(Page::CaptureScreenshotFormatOption::Jpeg),
         clip: None,
         quality: Some(75),
@@ -316,7 +323,8 @@ async fn screenshot_jpeg_base64(
         // NOTE: the tool operates on resized image well without a special model notification
         let (nwidth, nheight) = (scale_factor * image.width() as f32, scale_factor * image.height() as f32);
         image = image.resize(nwidth as u32, nheight as u32, FilterType::Lanczos3);
-        tab.screenshot_scale_factor = scale_factor as f64;
+        let mut tab_lock = tab.lock().await;
+        tab_lock.screenshot_scale_factor = scale_factor as f64;
     }
 
     data = Vec::new();
@@ -338,13 +346,18 @@ async fn inner_html(url: String) -> Result<String, String> {
     }
 }
 
-async fn click_point(tab: &ChromeTab, point: &Point) -> Result<(), String> {
-    let mapped_point = Point {
-        x: point.x / tab.screenshot_scale_factor,
-        y: point.y / tab.screenshot_scale_factor,
+async fn click_point(tab: Arc<AMutex<ChromeTab>>, point: &Point) -> Result<(), String> {
+    let (mapped_point, headless_tab) = {
+        let tab_lock = tab.lock().await;
+        let mapped_point = Point {
+            x: point.x / tab_lock.screenshot_scale_factor,
+            y: point.y / tab_lock.screenshot_scale_factor,
+        };
+        let headless_tab = tab_lock.headless_tab.clone();
+        (mapped_point, headless_tab)
     };
-    tab.instance.click_point(mapped_point).map_err(|e| e.to_string())?;
-    tab.instance.wait_until_navigated().map_err(|e| e.to_string())?;
+    headless_tab.click_point(mapped_point).map_err(|e| e.to_string())?;
+    headless_tab.wait_until_navigated().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -355,13 +368,14 @@ async fn session_open_tab(
 ) -> Result<String, String> {
     match chrome_session.tabs.get(tab_id) {
         Some(tab) => {
-            Err(format!("Tab is already opened: {}\n", tab.state_string()))
+            let tab_lock = tab.lock().await;
+            Err(format!("Tab is already opened: {}\n", tab_lock.state_string()))
         },
         None => {
-            let instance = chrome_session.browser.new_tab().map_err(|e| e.to_string())?;
+            let headless_tab = chrome_session.browser.new_tab().map_err(|e| e.to_string())?;
             match device {
                 DeviceType::MOBILE => {
-                    instance.call_method(Emulation::SetDeviceMetricsOverride {
+                    headless_tab.call_method(Emulation::SetDeviceMetricsOverride {
                         width: 375,
                         height: 812,
                         device_scale_factor: 0.0,
@@ -378,22 +392,23 @@ async fn session_open_tab(
                     }).map_err(|e| e.to_string())?;
                 },
                 DeviceType::DESKTOP => {
-                    instance.call_method(Emulation::ClearDeviceMetricsOverride(None)).map_err(|e| e.to_string())?;
+                    headless_tab.call_method(Emulation::ClearDeviceMetricsOverride(None)).map_err(|e| e.to_string())?;
                 }
             }
-            let tab = ChromeTab::new(instance, device, tab_id);
-            chrome_session.tabs.insert(tab.tab_id.clone(), tab.clone());
-            Ok(format!("opened a new tab: {}\n", tab.state_string()))
+            let tab = Arc::new(AMutex::new(ChromeTab::new(headless_tab, device, tab_id)));
+            let tab_lock = tab.lock().await;
+            chrome_session.tabs.insert(tab_id.clone(), tab.clone());
+            Ok(format!("opened a new tab: {}\n", tab_lock.state_string()))
         }
     }
 }
 
-async fn session_get_tab_mut<'a>(
-    chrome_session: &'a mut ChromeSession,
+async fn session_get_tab_arc(
+    chrome_session: &ChromeSession,
     tab_id: &String,
-) -> Result<&'a mut ChromeTab, String> {
-    match chrome_session.tabs.get_mut(tab_id) {
-        Some(tab) => Ok(tab),
+) -> Result<Arc<AMutex<ChromeTab>>, String> {
+    match chrome_session.tabs.get(tab_id) {
+        Some(tab) => Ok(tab.clone()),
         None => Err(format!("tab_id {} is not opened", tab_id)),
     }
 }
@@ -410,82 +425,152 @@ enum Command {
     PressKeyAt(PressKeyAtArgs),
 }
 
-impl Command {
-    pub async fn execute(
-        &self,
-        chrome_session: &mut ChromeSession,
-    ) -> Result<(Vec<String>, Vec<MultimodalElement>), String> {
-        let mut tool_log = vec![];
-        let mut multimodal_els = vec![];
+async fn chrome_command_exec(
+    cmd: &Command,
+    chrome_session: Arc<AMutex<Box<dyn IntegrationSession>>>,
+) -> Result<(Vec<String>, Vec<MultimodalElement>), String> {
+    let mut tool_log = vec![];
+    let mut multimodal_els = vec![];
 
-        match self {
-            Command::OpenTab(args) => {
-                let log = session_open_tab(chrome_session, &args.tab_id, &args.device).await?;
-                tool_log.push(log);
-            },
-            Command::NavigateTo(args) => {
-                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
-                let log = match navigate_to(&tab.instance, &args.uri).await {
-                    Ok(_) => format!("navigate_to successful: {}", tab.state_string()),
-                    Err(e) => format!("navigate_to `{}` failed: {}. If you're trying to open a local file, add a file:// prefix.", args.uri, e.to_string()),
-                };
-                tool_log.push(log);
-            },
-            Command::Screenshot(args) => {
-                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
-                let log = match screenshot_jpeg_base64(tab, false).await {
-                    Ok(multimodal_el) => {
-                        multimodal_els.push(multimodal_el);
-                        format!("made a screenshot of {}", tab.state_string())
-                    },
-                    Err(e) => format!("screenshot failed for {}: {}", tab.state_string(), e.to_string()),
-                };
-                tool_log.push(log);
-            },
-            Command::Html(args) => {
-                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
-                let log = match inner_html(tab.instance.get_url()).await {
-                    Ok(html) => format!("innerHtml of {}:\n\n{}", tab.state_string(), html),
-                    Err(e) => format!("can't fetch innerHtml of {}: {}", tab.state_string(), e.to_string()),
-                };
-                tool_log.push(log);
-            },
-            Command::Reload(args) => {
-                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
-                let log = match tab.instance.reload(false, None) {
-                    Ok(_) => format!("reload of {} successful", tab.state_string()),
-                    Err(e) => format!("reload of {} failed: {}", tab.state_string(), e.to_string()),
-                };
-                tool_log.push(log);
-            },
-            Command::ClickAt(args) => {
-                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
-                let log = match click_point(&tab, &args.point).await {
-                    Ok(_) => format!("clicked `{} {}` at {}", args.point.x, args.point.y, tab.state_string()),
-                    Err(e) => format!("clicked `{} {}` failed at {}: {}", args.point.x, args.point.y, tab.state_string(), e.to_string()),
-                };
-                tool_log.push(log);
-            },
-            Command::TypeTextAt(args) => {
-                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
-                let log = match tab.instance.type_str(args.text.as_str()) {
-                    Ok(_) => format!("type `{}` at {}", args.text, tab.state_string()),
-                    Err(e) => format!("type text failed at {}: {}", tab.state_string(), e.to_string()),
-                };
-                tool_log.push(log);
-            },
-            Command::PressKeyAt(args) => {
-                let tab = session_get_tab_mut(chrome_session, &args.tab_id).await?;
-                let log = match tab.instance.press_key(args.key.to_string().as_str()) {
-                    Ok(_) => format!("press `{}` at {}", args.key, tab.state_string()),
-                    Err(e) => format!("press `{}` failed at {}: {}", args.key, tab.state_string(), e.to_string()),
-                };
-                tool_log.push(log);
-            }
+    match cmd {
+        Command::OpenTab(args) => {
+            let log = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_open_tab(chrome_session, &args.tab_id, &args.device).await?
+            };
+            tool_log.push(log);
+        },
+        Command::NavigateTo(args) => {
+            let tab: Arc<AMutex<ChromeTab>> = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = match navigate_to(tab.clone(), &args.uri).await {
+                Ok(_) => {
+                    let tab_lock = tab.lock().await;
+                    format!("navigate_to successful: {}", tab_lock.state_string())
+                },
+                Err(e) => {
+                    // let tab_lock = tab.lock().await;
+                    format!("navigate_to `{}` failed: {}. If you're trying to open a local file, add a file:// prefix.", args.uri, e.to_string())
+                },
+            };
+            tool_log.push(log);
+        },
+        Command::Screenshot(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = match screenshot_jpeg_base64(tab.clone(), false).await {
+                Ok(multimodal_el) => {
+                    multimodal_els.push(multimodal_el);
+                    let tab_lock = tab.lock().await;
+                    format!("made a screenshot of {}", tab_lock.state_string())
+                },
+                Err(e) => {
+                    let tab_lock = tab.lock().await;
+                    format!("screenshot failed for {}: {}", tab_lock.state_string(), e.to_string())
+                },
+            };
+            tool_log.push(log);
+        },
+        Command::Html(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = match inner_html(tab.lock().await.headless_tab.get_url()).await {
+                Ok(html) => {
+                    let tab_lock = tab.lock().await;
+                    format!("innerHtml of {}:\n\n{}", tab_lock.state_string(), html)
+                },
+                Err(e) => {
+                    let tab_lock = tab.lock().await;
+                    format!("can't fetch innerHtml of {}: {}", tab_lock.state_string(), e.to_string())
+                },
+            };
+            tool_log.push(log);
+        },
+        Command::Reload(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = match tab.lock().await.headless_tab.reload(false, None) {
+                Ok(_) => {
+                    let tab_lock = tab.lock().await;
+                    format!("reload of {} successful", tab_lock.state_string())
+                },
+                Err(e) => {
+                    let tab_lock = tab.lock().await;
+                    format!("reload of {} failed: {}", tab_lock.state_string(), e.to_string())
+                },
+            };
+            tool_log.push(log);
+        },
+        Command::ClickAt(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = match click_point(tab.clone(), &args.point).await {
+                Ok(_) => {
+                    let tab_lock = tab.lock().await;
+                    format!("clicked `{} {}` at {}", args.point.x, args.point.y, tab_lock.state_string())
+                },
+                Err(e) => {
+                    let tab_lock = tab.lock().await;
+                    format!("clicked `{} {}` failed at {}: {}", args.point.x, args.point.y, tab_lock.state_string(), e.to_string())
+                },
+            };
+            tool_log.push(log);
+        },
+        Command::TypeTextAt(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = match tab.lock().await.headless_tab.type_str(args.text.as_str()) {
+                Ok(_) => {
+                    let tab_lock = tab.lock().await;
+                    format!("type `{}` at {}", args.text, tab_lock.state_string())
+                },
+                Err(e) => {
+                    let tab_lock = tab.lock().await;
+                    format!("type text failed at {}: {}", tab_lock.state_string(), e.to_string())
+                },
+            };
+            tool_log.push(log);
+        },
+        Command::PressKeyAt(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = match tab.lock().await.headless_tab.press_key(args.key.to_string().as_str()) {
+                Ok(_) => {
+                    let tab_lock = tab.lock().await;
+                    format!("press `{}` at {}", args.key, tab_lock.state_string())
+                },
+                Err(e) => {
+                    let tab_lock = tab.lock().await;
+                    format!("press `{}` failed at {}: {}", args.key, tab_lock.state_string(), e.to_string())
+                },
+            };
+            tool_log.push(log);
         }
-
-        Ok((tool_log, multimodal_els))
     }
+
+    Ok((tool_log, multimodal_els))
 }
 
 #[derive(Debug)]
