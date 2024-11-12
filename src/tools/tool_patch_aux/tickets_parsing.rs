@@ -71,7 +71,7 @@ pub struct TicketToApply {
 }
 
 pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> (String, Option<String>) {
-    let mut text = format!("Couldn't create patch for tickets: '{}'.\nReason: {reason}", tickets.join(", "));
+    let text = format!("Couldn't create patch for tickets: '{}'.\nReason: {reason}", tickets.join(", "));
     if let Some(resolution) = resolution {
         let cd_format = format!("💿 {resolution}");
         return (text, Some(cd_format))
