@@ -484,7 +484,8 @@ async fn chrome_command_exec(
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
                 session_get_tab_arc(chrome_session, &args.tab_id).await?
             };
-            let log = match inner_html(tab.lock().await.headless_tab.get_url()).await {
+            let url = tab.lock().await.headless_tab.get_url();
+            let log = match inner_html(url).await {
                 Ok(html) => {
                     let tab_lock = tab.lock().await;
                     format!("innerHtml of {}:\n\n{}", tab_lock.state_string(), html)
