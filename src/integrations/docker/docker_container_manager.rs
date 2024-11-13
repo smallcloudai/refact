@@ -283,13 +283,16 @@ async fn docker_container_sync_yaml_configs(
     docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/"), gcx.clone(), true).await?;
     docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/refact"), gcx.clone(), true).await?;
 
-    let config_files_to_sync = ["privacy.yaml", "integrations.yaml", "bring-your-own-key.yaml"];
-    let remote_integrations_path = gcx.read().await.cmdline.remote_integrations.clone();
+    let config_files_to_sync = ["privacy.yaml", "integrations.yaml", "bring-your-own-key.yaml", "competency.yaml"];
+    let (remote_integrations_path, competency_path) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.cmdline.remote_integrations.clone(), gcx_locked.cmdline.competency.clone())
+    };
     for file in &config_files_to_sync {
-        let local_path = if *file == "integrations.yaml" && !remote_integrations_path.is_empty() {
-            remote_integrations_path.clone()
-        } else {
-            cache_dir.join(file).to_string_lossy().to_string()
+        let local_path = match *file {
+            "integrations.yaml" if !remote_integrations_path.is_empty() => remote_integrations_path.clone(),
+            "competency.yaml" if !competency_path.is_empty() => competency_path.clone(),
+            _ => cache_dir.join(file).to_string_lossy().to_string(),
         };
         let container_path = format!("{container_id}:{container_home_dir}/.cache/refact/{file}");
         docker.command_execute(&format!("container cp {local_path} {container_path}"), gcx.clone(), true).await?;
