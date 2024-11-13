@@ -113,8 +113,10 @@ def join_messages_and_choices(
     verbose: bool
 ) -> List[List[Message]]:
     messages = list(orig_messages)
-    while len(messages) > 0 and messages[-1].role == "user":
-        messages.pop()
+    # If at commands replaced user messages, remove original ones to avoid duplication
+    if len(deterministic_messages) > 0 and deterministic_messages[-1].role == "user":
+        while len(messages) > 0 and messages[-1].role == "user":
+            messages.pop()
     messages.extend(deterministic_messages)
     msg: Optional[Message]
     if verbose:
