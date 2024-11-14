@@ -119,6 +119,27 @@ pub const KNOWN_MODELS: &str = r####"
                 "llama3.2/1b/instruct/vllm"
             ]
         },
+        "qwen2.5/coder/0.5b/instruct": {
+            "n_ctx": 8192,
+            "supports_scratchpads": {
+                "REPLACE": {
+                    "token_bos": "",
+                    "token_esc": "",
+                    "keyword_system": "<|im_start|>system\n",
+                    "keyword_user": "<|im_start|>user\n",
+                    "keyword_assistant": "<|im_start|>assistant\n",
+                    "eot": "<|im_end|>"
+                }
+            },
+            "default_scratchpad": "REPLACE",
+            "similar_models": [
+                "qwen2.5/coder/1.5b/instruct",
+                "qwen2.5/coder/3b/instruct",
+                "qwen2.5/coder/7b/instruct",
+                "qwen2.5/coder/14b/instruct",
+                "qwen2.5/coder/32b/instruct"
+            ]
+        },
         "qwen2.5/coder/0.5b/base": {
             "n_ctx": 8192,
             "supports_scratchpads": {
