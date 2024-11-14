@@ -315,7 +315,11 @@ pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf,
 //         .unwrap_or(false)
 // }
 
-async fn ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf> {
+async fn ls_files_under_version_control_recursive(
+    path: PathBuf, 
+    allow_files_in_hidden_folders: bool, 
+    ignore_size_thresholds: bool
+) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = vec![];
     let mut candidates: Vec<PathBuf> = vec![path];
     let mut rejected_reasons: HashMap<String, usize> = HashMap::new();
@@ -323,7 +327,8 @@ async fn ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf>
     while !candidates.is_empty() {
         let local_path = candidates.pop().unwrap();
         if local_path.is_file() {
-            let maybe_valid = is_valid_file(&local_path);
+            let maybe_valid = is_valid_file(
+                &local_path, allow_files_in_hidden_folders, ignore_size_thresholds);
             match maybe_valid {
                 Ok(_) => {
                     paths.push(local_path.clone());
@@ -342,7 +347,8 @@ async fn ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf>
             let maybe_files = ls_files_under_version_control(&local_path).await;
             if let Some(v) = maybe_files {
                 for x in v.iter() {
-                    let maybe_valid = is_valid_file(x);
+                    let maybe_valid = is_valid_file(
+                        x, allow_files_in_hidden_folders, ignore_size_thresholds);
                     match maybe_valid {
                         Ok(_) => {
                             paths.push(x.clone());
@@ -374,10 +380,15 @@ async fn ls_files_under_version_control_recursive(path: PathBuf) -> Vec<PathBuf>
     paths
 }
 
-pub async fn retrieve_files_in_workspace_folders(proj_folders: Vec<PathBuf>) -> Vec<PathBuf> {
+pub async fn retrieve_files_in_workspace_folders(
+    proj_folders: Vec<PathBuf>, 
+    allow_files_in_hidden_folders: bool, 
+    ignore_size_thresholds: bool,
+) -> Vec<PathBuf> {
     let mut all_files: Vec<PathBuf> = Vec::new();
     for proj_folder in proj_folders {
-        let files = ls_files_under_version_control_recursive(proj_folder.clone()).await;
+        let files = ls_files_under_version_control_recursive(
+            proj_folder.clone(), allow_files_in_hidden_folders, ignore_size_thresholds).await;
         all_files.extend(files);
     }
     all_files
@@ -445,7 +456,8 @@ pub async fn enqueue_all_files_from_workspace_folders(
     let folders: Vec<PathBuf> = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
 
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
-    let paths = retrieve_files_in_workspace_folders(folders).await;
+    let paths = retrieve_files_in_workspace_folders(
+        folders, false, false).await;
     info!("enqueue_all_files_from_workspace_folders found {} files => workspace_files", paths.len());
 
     let mut documents: Vec<Document> = vec![];
@@ -546,7 +558,7 @@ pub async fn on_did_change(
 
     let mut go_ahead = true;
     {
-        let is_it_good = is_valid_file(path);
+        let is_it_good = is_valid_file(path, false, false);
         if is_it_good.is_err() {
             info!("{:?} ignoring changes: {}", path, is_it_good.err().unwrap());
             go_ahead = false;
@@ -600,7 +612,8 @@ pub async fn add_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         documents_state.workspace_folders.lock().unwrap().push(path.clone());
         let _ = documents_state.fs_watcher.write().await.watch(&path.clone(), RecursiveMode::Recursive);
     }
-    let paths = retrieve_files_in_workspace_folders(vec![path.clone()]).await;
+    let paths = retrieve_files_in_workspace_folders(
+        vec![path.clone()], false, false).await;
     let docs: Vec<Document> = paths.into_iter().map(|p| Document { doc_path: p, doc_text: None }).collect();
     enqueue_some_docs(gcx, &docs, false).await;
 }
@@ -626,7 +639,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 
             let mut go_ahead = true;
             {
-                let is_it_good = is_valid_file(p);
+                let is_it_good = is_valid_file(p, false, false);
                 if is_it_good.is_err() {
                     // info!("{:?} ignoring changes: {}", p, is_it_good.err().unwrap());
                     go_ahead = false;
