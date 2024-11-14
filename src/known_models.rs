@@ -362,6 +362,31 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "cerebras-llama3.1-70b"
             ]
+        },  
+        "qwen2.5/coder/0.5b/instruct": {
+            "n_ctx": 8192,
+            "supports_tools": false,
+            "supports_multimodality": false,
+            "supports_scratchpads": {
+                "CHAT-GENERIC": {
+                    "token_bos": "",
+                    "token_esc": "",
+                    "keyword_system": "<|im_start|>system\n",
+                    "keyword_user": "<|im_start|>user\n",
+                    "keyword_assistant": "<|im_start|>assistant\n",
+                    "eot": "<|im_end|>",
+                    "stop_list": [
+                        "<|im_end|>"
+                    ]
+                }
+            },
+            "similar_models": [
+                "qwen2.5/coder/1.5b/instruct"
+                "qwen2.5/coder/3b/instruct"
+                "qwen2.5/coder/7b/instruct"
+                "qwen2.5/coder/14b/instruct"
+                "qwen2.5/coder/32b/instruct"
+            ]
         }
     },
     "tokenizer_rewrite_path": {
