@@ -118,6 +118,30 @@ pub const KNOWN_MODELS: &str = r####"
                 "llama3.2/1b/instruct",
                 "llama3.2/1b/instruct/vllm"
             ]
+        },
+        "qwen2.5/coder/0.5b/base": {
+            "n_ctx": 8192,
+            "supports_scratchpads": {
+                "FIM-PSM": {
+                    "fim_prefix": "<|fim_prefix|>",
+                    "fim_suffix": "<|fim_suffix|>",
+                    "fim_middle": "<|fim_middle|>",
+                    "eot": "<|endoftext|>"
+                }
+            },
+            "default_scratchpad": "FIM-PSM",
+            "similar_models": [
+                "qwen2.5/coder/1.5b/base",
+                "qwen2.5/coder/3b/base",
+                "qwen2.5/coder/7b/base",
+                "qwen2.5/coder/14b/base",
+                "qwen2.5/coder/32b/base",
+                "qwen2.5/coder/1.5b/base/vllm",
+                "qwen2.5/coder/3b/base/vllm",
+                "qwen2.5/coder/7b/base/vllm",
+                "qwen2.5/coder/14b/base/vllm",
+                "qwen2.5/coder/32b/base/vllm"
+            ]
         }
     },
     "code_chat_models": {
