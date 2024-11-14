@@ -133,4 +133,92 @@ passthrough_mini_db = {
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2024 oct)
         "filter_caps": ["chat", "tools"],
     },
+    "groq-llama-3.1-8b": {
+        "backend": "litellm",
+        "provider": "groq",
+        "tokenizer_path": "Xenova/Meta-Llama-3.1-Tokenizer",
+        "resolve_as": "groq/llama-3.1-8b-instant",
+        "T": 128_000,
+        "T_out": 8000,
+        "pp1000t_prompt": 150,
+        "pp1000t_generated": 600,  # TODO: don't know the price
+        "filter_caps": ["chat"],
+    },
+    "groq-llama-3.1-70b": {
+        "backend": "litellm",
+        "provider": "groq",
+        "tokenizer_path": "Xenova/Meta-Llama-3.1-Tokenizer",
+        "resolve_as": "groq/llama-3.1-70b-versatile",
+        "T": 128_000,
+        "T_out": 8000,
+        "pp1000t_prompt": 150,
+        "pp1000t_generated": 600,  # TODO: don't know the price
+        "filter_caps": ["chat"],
+    },
+    "groq-llama-3.2-1b": {
+        "backend": "litellm",
+        "provider": "groq",
+        "tokenizer_path": "Xenova/Meta-Llama-3.1-Tokenizer",
+        "resolve_as": "groq/llama-3.2-1b-preview",
+        "T": 128_000,
+        "T_out": 8000,
+        "pp1000t_prompt": 150,
+        "pp1000t_generated": 600,  # TODO: don't know the price
+        "filter_caps": ["chat"],
+    },
+    "groq-llama-3.2-3b": {
+        "backend": "litellm",
+        "provider": "groq",
+        "tokenizer_path": "Xenova/Meta-Llama-3.1-Tokenizer",
+        "resolve_as": "groq/llama-3.2-3b-preview",
+        "T": 128_000,
+        "T_out": 8000,
+        "pp1000t_prompt": 150,
+        "pp1000t_generated": 600,  # TODO: don't know the price
+        "filter_caps": ["chat"],
+    },
+    "groq-llama-3.2-11b-vision": {
+        "backend": "litellm",
+        "provider": "groq",
+        "tokenizer_path": "Xenova/Meta-Llama-3.1-Tokenizer",
+        "resolve_as": "groq/llama-3.2-11b-vision-preview",
+        "T": 128_000,
+        "T_out": 8000,
+        "pp1000t_prompt": 150,
+        "pp1000t_generated": 600,  # TODO: don't know the price
+        "filter_caps": ["chat"],
+    },
+    "groq-llama-3.2-90b-vision": {
+        "backend": "litellm",
+        "provider": "groq",
+        "tokenizer_path": "Xenova/Meta-Llama-3.1-Tokenizer",
+        "resolve_as": "groq/llama-3.2-90b-vision-preview",
+        "T": 128_000,
+        "T_out": 8000,
+        "pp1000t_prompt": 150,
+        "pp1000t_generated": 600,  # TODO: don't know the price
+        "filter_caps": ["chat"],
+    },
+    "cerebras-llama3.1-8b": {
+        "backend": "litellm",
+        "provider": "cerebras",
+        "tokenizer_path": "Xenova/Meta-Llama-3.1-Tokenizer",
+        "resolve_as": "cerebras/llama3.1-8b",
+        "T": 8192,
+        "T_out": 4096,
+        "pp1000t_prompt": 150,
+        "pp1000t_generated": 600,  # TODO: don't know the price
+        "filter_caps": ["chat"],
+    },
+    "cerebras-llama3.1-70b": {
+        "backend": "litellm",
+        "provider": "cerebras",
+        "tokenizer_path": "Xenova/Meta-Llama-3.1-Tokenizer",
+        "resolve_as": "cerebras/llama3.1-70b",
+        "T": 8192,
+        "T_out": 4096,
+        "pp1000t_prompt": 150,
+        "pp1000t_generated": 600,  # TODO: don't know the price
+        "filter_caps": ["chat"],
+    }
 }

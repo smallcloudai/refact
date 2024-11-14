@@ -107,6 +107,12 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
     if data.get('anthropic_api_enable'):
         _add_results_for_passthrough_provider('anthropic')
 
+    if data.get('cerebras_api_enable'):
+        _add_results_for_passthrough_provider('cerebras')
+
+    if data.get('groq_api_enable'):
+        _add_results_for_passthrough_provider('groq')
+
     for k, v in data.get("model_assign", {}).items():
         if model_dict := [d for d in data['models'] if d['name'] == k]:
             model_dict = model_dict[0]

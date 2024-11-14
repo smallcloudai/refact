@@ -42,6 +42,8 @@ class TabHostModelsAssign(BaseModel):
     # integrations
     openai_api_enable: bool = False
     anthropic_api_enable: bool = False
+    groq_api_enable: bool = False
+    cerebras_api_enable: bool = False
 
     model_config = ConfigDict(protected_namespaces=())  # avoiding model_ namespace protection
 
