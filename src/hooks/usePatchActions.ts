@@ -53,8 +53,9 @@ export const usePatchActions = () => {
     setErrorMessage(null);
   }, []);
 
-  const [getPatch, patchResult] =
-    diffApi.usePatchSingleFileFromTicketMutation();
+  const [getPatch, patchResult] = diffApi.usePatchSingleFileFromTicketMutation(
+    {},
+  );
 
   const disable = useMemo(() => {
     return !!errorMessage || isStreaming || isWaiting || patchResult.isLoading;
@@ -89,7 +90,15 @@ export const usePatchActions = () => {
         })
         .then((patch) => {
           stopFileAnimation(cleanedFileName);
-          diffPreview(patch, pin, pinMessages);
+
+          if (patch.results.every((result) => result.already_applied)) {
+            setErrorMessage({
+              type: "warning",
+              text: "Already applied, no significant changes generated.",
+            });
+          } else {
+            diffPreview(patch, pin, pinMessages);
+          }
         })
         .catch((error: Error | { data: { detail: string } }) => {
           stopFileAnimation(cleanedFileName);
@@ -118,7 +127,7 @@ export const usePatchActions = () => {
 
   const handleApply = useCallback(
     (pin: string) => {
-      const [, , fileName] = pin.split(" ");
+      const fileName = extractFilePathFromPin(pin);
       startFileAnimation(fileName);
 
       getPatch({ pin, messages })
@@ -132,7 +141,14 @@ export const usePatchActions = () => {
         })
         .then((patch) => {
           stopFileAnimation(fileName);
-          writeResultsToFile(patch.results);
+          if (patch.results.every((result) => result.already_applied)) {
+            setErrorMessage({
+              type: "warning",
+              text: "Already applied, no significant changes generated.",
+            });
+          } else {
+            writeResultsToFile(patch.results);
+          }
         })
         .catch((error: Error | { data: { detail: string } }) => {
           stopFileAnimation(fileName);

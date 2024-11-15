@@ -28,6 +28,7 @@ function isPatchState(json: unknown): json is PatchState {
 
 export type PatchResult = {
   file_text: string;
+  already_applied: boolean;
   file_name_edit: string | null;
   file_name_delete: string | null;
   file_name_add: string | null;
@@ -35,20 +36,31 @@ export type PatchResult = {
 
 function isPatchResult(json: unknown): json is PatchResult {
   if (!json || typeof json !== "object") return false;
+
   if (!("file_text" in json)) return false;
   if (typeof json.file_text !== "string") return false;
+
+  if (!("already_applied" in json)) return false;
+  if (typeof json.already_applied !== "boolean") return false;
+
   if (!("file_name_edit" in json)) return false;
-  if (typeof json.file_name_edit !== "string" && json.file_name_edit !== null)
+  if (typeof json.file_name_edit !== "string" && json.file_name_edit !== null) {
     return false;
+  }
+
   if (!("file_name_delete" in json)) return false;
   if (
     typeof json.file_name_delete !== "string" &&
     json.file_name_delete !== null
-  )
+  ) {
     return false;
+  }
+
   if (!("file_name_add" in json)) return false;
-  if (typeof json.file_name_add !== "string" && json.file_name_add !== null)
+  if (typeof json.file_name_add !== "string" && json.file_name_add !== null) {
     return false;
+  }
+
   return true;
 }
 
