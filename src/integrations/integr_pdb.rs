@@ -242,18 +242,19 @@ async fn send_command_and_get_output_and_error(
     }
     let (output, have_the_token) = blocking_read_until_token_or_timeout(&mut pdb_session.stdout, timeout_ms, PDB_TOKEN).await;
     let (mut error, _) = blocking_read_until_token_or_timeout(&mut pdb_session.stderr, 50, "").await;
+    
+    let exit_status = pdb_session.process.try_wait().map_err(|e| e.to_string())?;
+    if let Some(exit_status) = exit_status {
+        gcx.write().await.integration_sessions.remove(session_hashmap_key);
+        return Err(format!("Pdb process exited with status: {:?}", exit_status));
+    }
+    
     if !have_the_token && error.is_empty() {
         error = format!("Command {} timed out after {} seconds.", input_command, timeout_ms / 1000);
         if ask_for_continuation_if_timeout {
             error = error + " Call pdb tool again with \"wait n_seconds\" command to wait for n seconds for the process to finish, or \"kill\" command to forcedly stop it.";
             return Err(error);
         }
-    }
-
-    let exit_status = pdb_session.process.try_wait().map_err(|e| e.to_string())?;
-    if let Some(exit_status) = exit_status {
-        gcx.write().await.integration_sessions.remove(session_hashmap_key);
-        return Err(format!("Pdb process exited with status: {:?}", exit_status));
     }
 
     Ok((output, error))
