@@ -38,6 +38,12 @@ pub struct PdbSession {
     last_usage_ts: u64,
 }
 
+impl Drop for PdbSession {
+    fn drop(&mut self) {
+        self.process.start_kill().map_err(|e| error!("Failed to kill process: {}", e)).ok();
+    }
+}
+
 impl IntegrationSession for PdbSession
 {
     fn as_any_mut(&mut self) -> &mut dyn Any {
