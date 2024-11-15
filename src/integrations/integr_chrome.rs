@@ -196,7 +196,7 @@ impl Tool for ToolChrome {
             "open_tab <desktop|mobile> <tab_id>",
             "navigate_to <uri> <tab_id>",
             "screenshot <tab_id>",
-            "html <tab_id>",
+            // "html <tab_id>",
             "reload <tab_id>",
         ];
         if self.supports_clicks {
@@ -448,6 +448,7 @@ async fn chrome_command_exec(
             tool_log.push(log);
         },
         Command::Html(args) => {
+            // NOTE: removed from commands list, please rewrite me...
             let tab = {
                 let mut chrome_session_locked = chrome_session.lock().await;
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
