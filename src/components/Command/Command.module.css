@@ -22,4 +22,5 @@
 
 .isInsideScrollArea {
   width: fit-content;
+  min-width: 100%;
 }
