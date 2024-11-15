@@ -137,9 +137,20 @@ pub struct ChatUsage {
 pub struct ChatMessage {
     pub role: String,
     pub content: ChatContent,
+    #[serde(default, skip_serializing_if="is_none")]
     pub tool_calls: Option<Vec<ChatToolCall>>,
+    #[serde(default, skip_serializing_if="is_empty_string")]
     pub tool_call_id: String,
+    #[serde(default, skip_serializing_if="is_none")]
     pub usage: Option<ChatUsage>,
+}
+
+fn is_none<T>(opt: &Option<T>) -> bool {
+    opt.is_none()
+}
+
+fn is_empty_string(something: &String) -> bool {
+    something.is_empty()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -154,7 +165,7 @@ pub struct SubchatParameters {
     pub subchat_max_new_tokens: usize,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct ChatPost {
     pub messages: Vec<serde_json::Value>,
     #[serde(default)]
@@ -179,9 +190,11 @@ pub struct ChatPost {
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
     #[serde(default="PostprocessSettings::new")]
     pub postprocess_parameters: PostprocessSettings,
-    #[allow(dead_code)]
+    // #[allow(dead_code)]
     #[serde(default)]
     pub chat_id: String,
+    #[serde(default)]
+    pub current_config_file: String,
     #[serde(default)]
     pub style: Option<String>,
 }

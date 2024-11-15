@@ -1,20 +1,19 @@
-use indexmap::IndexMap;
+use std::path::PathBuf;
 use std::collections::HashMap;
 use std::sync::Arc;
+use indexmap::IndexMap;
 use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
-use tracing::error;
+
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
-
-use crate::integrations::load_integration_tools;
 use crate::yaml_configs::create_configs::read_yaml_into_value;
+// use crate::integrations::docker::integr_docker::ToolDocker;
 
-use crate::integrations::docker::integr_docker::ToolDocker;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CommandsRequireConfirmationConfig {
@@ -69,7 +68,7 @@ pub async fn read_integrations_yaml(cache_dir: &PathBuf) -> Result<serde_yaml::V
 
 pub async fn tools_merged_and_filtered(
     gcx: Arc<ARwLock<GlobalContext>>,
-    supports_clicks: bool,
+    _supports_clicks: bool,  // XXX
 ) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
     let (ast_on, vecdb_on, allow_experimental, cache_dir) = {
         let gcx_locked = gcx.read().await;
@@ -112,33 +111,33 @@ pub async fn tools_merged_and_filtered(
 
     if allow_experimental {
         // The approach here: if it exists, it shouldn't have syntax errors, note the "?"
-        if let Some(gh_config) = integrations_value.get("github") {
-            tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(ToolGithub::new_from_yaml(gh_config)?) as Box<dyn Tool + Send>)));
-        }
-        if let Some(gl_config) = integrations_value.get("gitlab") {
-            tools_all.insert("gitlab".to_string(), Arc::new(AMutex::new(Box::new(ToolGitlab::new_from_yaml(gl_config)?) as Box<dyn Tool + Send>)));
-        }
-        if let Some(pdb_config) = integrations_value.get("pdb") {
-            tools_all.insert("pdb".to_string(), Arc::new(AMutex::new(Box::new(ToolPdb::new_from_yaml(pdb_config)?) as Box<dyn Tool + Send>)));
-        }
-        if let Some(chrome_config) = integrations_value.get("chrome") {
-            tools_all.insert("chrome".to_string(), Arc::new(AMutex::new(Box::new(ToolChrome::new_from_yaml(chrome_config, supports_clicks)?) as Box<dyn Tool + Send>)));
-        }
-        if let Some(postgres_config) = integrations_value.get("postgres") {
-            tools_all.insert("postgres".to_string(), Arc::new(AMutex::new(Box::new(ToolPostgres::new_from_yaml(postgres_config)?) as Box<dyn Tool + Send>)));
-        }
-        if let Some(docker_config) = integrations_value.get("docker") {
-            tools_all.insert("docker".to_string(), Arc::new(AMutex::new(Box::new(ToolDocker::new_from_yaml(docker_config)?) as Box<dyn Tool + Send>)));
-        }
-        if let Ok(caps) = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-            let have_thinking_model = {
-                let caps_locked = caps.read().unwrap();
-                caps_locked.running_models.contains(&"o1-mini".to_string())
-            };
-            if have_thinking_model {
-                tools_all.insert("deep_thinking".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>)));
-            }
-        }
+        // if let Some(gh_config) = integrations_value.get("github") {
+        //     tools_all.insert("github".to_string(), Arc::new(AMutex::new(Box::new(ToolGithub::new_from_yaml(gh_config)?) as Box<dyn Tool + Send>)));
+        // }
+        // if let Some(gl_config) = integrations_value.get("gitlab") {
+        //     tools_all.insert("gitlab".to_string(), Arc::new(AMutex::new(Box::new(ToolGitlab::new_from_yaml(gl_config)?) as Box<dyn Tool + Send>)));
+        // }
+        // if let Some(pdb_config) = integrations_value.get("pdb") {
+        //     tools_all.insert("pdb".to_string(), Arc::new(AMutex::new(Box::new(ToolPdb::new_from_yaml(pdb_config)?) as Box<dyn Tool + Send>)));
+        // }
+        // if let Some(chrome_config) = integrations_value.get("chrome") {
+        //     tools_all.insert("chrome".to_string(), Arc::new(AMutex::new(Box::new(ToolChrome::new_from_yaml(chrome_config, supports_clicks)?) as Box<dyn Tool + Send>)));
+        // }
+        // if let Some(postgres_config) = integrations_value.get("postgres") {
+        //     tools_all.insert("postgres".to_string(), Arc::new(AMutex::new(Box::new(ToolPostgres::new_from_yaml(postgres_config)?) as Box<dyn Tool + Send>)));
+        // }
+        // if let Some(docker_config) = integrations_value.get("docker") {
+        //     tools_all.insert("docker".to_string(), Arc::new(AMutex::new(Box::new(ToolDocker::new_from_yaml(docker_config)?) as Box<dyn Tool + Send>)));
+        // }
+        // if let Ok(caps) = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        //     let have_thinking_model = {
+        //         let caps_locked = caps.read().unwrap();
+        //         caps_locked.running_models.contains(&"o1-mini".to_string())
+        //     };
+        //     if have_thinking_model {
+        //         tools_all.insert("deep_thinking".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>)));
+        //     }
+        // }
         // #[cfg(feature="vecdb")]
         // tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
         // match load_integration_tools(gcx.clone()).await {
@@ -161,11 +160,12 @@ pub async fn tools_merged_and_filtered(
         tools_all.extend(cmdline_tools);
     }
 
-    //     let integrations = load_integration_tools(gcx.clone()).await;
-    //     tools_all.extend(integrations);
-    //     #[cfg(feature="vecdb")]
-    //     tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
-    // }
+    let integrations = crate::integrations::running_integrations::load_integration_tools(
+        gcx.clone(),
+        "".to_string(),
+        allow_experimental,
+    ).await;
+    tools_all.extend(integrations);
 
     let mut filtered_tools = IndexMap::new();
     for (tool_name, tool_arc) in tools_all {
@@ -185,6 +185,8 @@ pub async fn tools_merged_and_filtered(
 
 pub async fn commands_require_confirmation_rules_from_integrations_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> Result<CommandsRequireConfirmationConfig, String>
 {
+    // XXX
+    // let integrations_value = read_integrations_yaml(gcx.clone()).await?;
     let cache_dir = gcx.read().await.cache_dir.clone();
     let integrations_value = read_integrations_yaml(&cache_dir).await?;
 

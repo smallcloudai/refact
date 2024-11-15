@@ -1,241 +1,222 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-use indexmap::IndexMap;
-use serde_json::json;
-use tracing::{info, warn};
-use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+// use std::path::PathBuf;
+// use std::sync::Arc;
+// use indexmap::IndexMap;
+// use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
-use crate::global_context::GlobalContext;
-use crate::integrations::integr::Integration;
-use crate::integrations::integr_chrome::ToolChrome;
-use crate::integrations::integr_github::ToolGithub;
-use crate::integrations::integr_gitlab::ToolGitlab;
-use crate::integrations::integr_pdb::ToolPdb;
-use crate::integrations::integr_postgres::ToolPostgres;
-use crate::tools::tools_description::Tool;
-use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
+// use crate::global_context::GlobalContext;
+// use crate::tools::tools_description::Tool;
+// use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
 
-pub mod sessions;
+
+pub mod integr_abstract;
+// pub mod integr_github;
+// pub mod integr_gitlab;
+// pub mod integr_pdb;
+// pub mod integr_chrome;
+pub mod integr_postgres;
+
 pub mod process_io_utils;
-pub mod integr_github;
-pub mod integr_gitlab;
-pub mod integr_pdb;
-pub mod integr_chrome;
 pub mod docker;
 pub mod sessions;
-pub mod process_io_utils;
-pub mod integr_postgres;
-mod integr;
+pub mod config_chat;
+pub mod yaml_schema;
+pub mod setting_up_integrations;
+pub mod running_integrations;
+
+use integr_abstract::IntegrationTrait;
 
 
-<<<<<<< HEAD
-// hint: when adding integration, update:
-// DEFAULT_INTEGRATION_VALUES, INTEGRATION_ICONS, integrations_paths, validate_integration_value, load_integration_tools, load_integration_schema_and_json
-=======
-// when adding integration, update: get_empty_integrations (2 occurrences)
->>>>>>> 9b1345a1 (simplified code)
-
-
-pub fn get_empty_integrations() -> IndexMap<String, Box<dyn Integration + Send + Sync>> {
-    let integration_names = ["github", "gitlab", "pdb", "postgres", "chrome"];
-    let mut integrations = IndexMap::new();
-    for i_name in integration_names {
-        let i = match i_name {
-            "github" => Box::new(ToolGithub {..Default::default()} ) as Box<dyn Integration + Send + Sync>,
-            "gitlab" => Box::new(ToolGitlab {..Default::default()} ) as Box<dyn Integration + Send + Sync>,
-            "pdb" => Box::new(ToolPdb {..Default::default()} ) as Box<dyn Integration + Send + Sync>,
-            "postgres" => Box::new(ToolPostgres {..Default::default()} ) as Box<dyn Integration + Send + Sync>,
-            "chrome" => Box::new(ToolChrome {..Default::default()} ) as Box<dyn Integration + Send + Sync>,
-            _ => panic!("Unknown integration name: {}", i_name)
-        };
-        integrations.insert(i_name.to_string(), i);
-    }
-    integrations
-}
-
-pub fn get_integration_path(cache_dir: &PathBuf, name: &str) -> PathBuf {
-    cache_dir.join("integrations.d").join(format!("{}.yaml", name))
-}
-
-pub async fn get_integrations(
-    gcx: Arc<ARwLock<GlobalContext>>,
-) -> Result<IndexMap<String, Box<dyn Integration + Send + Sync>>, String> {
-    let integrations = get_empty_integrations();
-    let cache_dir = gcx.read().await.cache_dir.clone();
-
-    let integrations_yaml_value = read_yaml_into_value(&cache_dir.join("integrations.yaml")).await?;
-
-    let mut results = IndexMap::new();
-    for (i_name, mut i) in integrations {
-        let path = get_integration_path(&cache_dir, &i_name);
-        let j_value = json_for_integration(&path, integrations_yaml_value.get(&i_name), &i).await?;
-
-        if j_value.get("detail").is_some() {
-            warn!("failed to load integration {}: {}", i_name, j_value.get("detail").unwrap());
-        } else {
-            if let Err(e) = i.update_from_json(&j_value) {
-                warn!("failed to load integration {}: {}", i_name, e);
-            };
-        }
-        results.insert(i_name.clone(), i);
-    }
-
-    Ok(results)
-}
-
-pub async fn validate_integration_value(name: &str, value: serde_yaml::Value) -> Result<serde_yaml::Value, String> {
-    let integrations = get_empty_integrations();
-
-    match integrations.get(name) {
-        Some(i) => {
-            let j_value = i.from_yaml_validate_to_json(&value)?;
-            let yaml_value = serde_yaml::to_value(&j_value).map_err(|e| e.to_string())?;
-            Ok(yaml_value)
-        },
-        None => Err(format!("Integration {} is not defined", name))
+pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send + Sync>, String>
+{
+    match n {
+        // "github" => Ok(Box::new(ToolGithub { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
+        // "gitlab" => Ok(Box::new(ToolGitlab { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
+        // "pdb" => Ok(Box::new(ToolPdb { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
+        "postgres" => Ok(Box::new(integr_postgres::ToolPostgres { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
+        // "chrome" => Ok(Box::new(ToolChrome { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
+        _ => Err(format!("Unknown integration name: {}", n)),
     }
 }
 
-pub async fn load_integration_tools(
-    gcx: Arc<ARwLock<GlobalContext>>,
-) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>> {
-    let paths = integrations_paths(gcx.clone()).await;
-    let integrations_yaml_value = {
-        let cache_dir = gcx.read().await.cache_dir.clone();
-        let yaml_path = cache_dir.join("integrations.yaml");
-        read_yaml_into_value(&yaml_path).await?
-    };
-    let cache_dir = gcx.read().await.cache_dir.clone();
-    let enabled_path = cache_dir.join("integrations-enabled.yaml");
-    let enabled = match integrations_enabled_cfg(&enabled_path).await {
-        serde_yaml::Value::Mapping(map) => map.into_iter().filter_map(|(k, v)| {
-            if let (serde_yaml::Value::String(key), serde_yaml::Value::Bool(value)) = (k, v) {
-                Some((key, value))
-            } else {
-                None
-            }
-        }).collect::<std::collections::HashMap<String, bool>>(),
-        _ => std::collections::HashMap::new(),
-    };
-
-    let integrations = get_integrations(gcx.clone()).await?;
-
-    let mut tools = IndexMap::new();
-    for (i_name, i) in integrations.iter() {
-        if !enabled.get(i_name).unwrap_or(&false) {
-            info!("Integration {} is disabled", i_name);
-            continue;
-        }
-        let tool = i.to_tool();
-        tools.insert(i_name.clone(), Arc::new(AMutex::new(tool)));
-    }
-    Ok(tools)
+pub fn icon_from_name(n: &str) -> String
+{
+    // match n {
+    //     // "github" => Box::new(ToolGithub { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>,
+    //     // "gitlab" => Box::new(ToolGitlab { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>,
+    //     // "pdb" => Box::new(ToolPdb { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>,
+    //     "postgres" => Box::new(integr_postgres::ToolPostgres { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>,
+    //     // "chrome" => Box::new(ToolChrome { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>,
+    //     _ => panic!("Unknown integration name: {}", n),
+    // }
+    return "".to_string();
 }
 
-pub async fn json_for_integration(
-    yaml_path: &PathBuf,
-    value_from_integrations: Option<&serde_yaml::Value>,
-    integration: &Box<dyn Integration + Send + Sync>,
-) -> Result<serde_json::Value, String> {
-    let tool_name = integration.name().clone();
-
-    let value = if yaml_path.exists() {
-        match read_yaml_into_value(yaml_path).await {
-            Ok(value) => integration.from_yaml_validate_to_json(&value).unwrap_or_else(|e| {
-                let e = format!("Problem converting integration to JSON: {}", e);
-                json!({"detail": e.to_string()})
-            }),
-            Err(e) => {
-                let e = format!("Problem reading YAML from {}: {}", yaml_path.display(), e);
-                json!({"detail": e.to_string()})
-            }
-        }
-    } else {
-        json!({"detail": format!("Cannot read {}. Probably, file does not exist", yaml_path.display())})
-    };
-
-    let value_from_integrations = value_from_integrations.map_or(json!({"detail": format!("tool {tool_name} is not defined in integrations.yaml")}), |value| {
-        integration.from_yaml_validate_to_json(value).unwrap_or_else(|e| {
-            let e = format!("Problem converting integration to JSON: {}", e);
-            json!({"detail": e.to_string()})
-        })
-    });
-
-    match (value.get("detail"), value_from_integrations.get("detail")) {
-        (None, None) => {
-            Err(format!("Tool {tool_name} exists in both {tool_name}.yaml and integrations.yaml. Consider removing one of them."))
-        },
-        (Some(_), None) => {
-            Ok(value_from_integrations)
-        },
-        (None, Some(_)) => {
-            Ok(value)
-        }
-        (Some(_), Some(_)) => {
-            Ok(value)
-        }
-    }
-<<<<<<< HEAD
-
-    Ok(())
+pub fn integrations_list() -> Vec<&'static str> {
+    vec![
+        // "github",
+        // "gitlab",
+        // "pdb",
+        "postgres",
+        // "chrome"
+    ]
 }
 
-async fn load_tool_from_yaml<T: Tool + Integration + Send + 'static>(
-    yaml_path: Option<&PathBuf>,
-    tool_constructor: fn(&serde_yaml::Value) -> Result<T, String>,
-    value_from_integrations: Option<&serde_yaml::Value>,
-    enabled: Option<&bool>,
-    integrations: &mut IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
-) -> Result<(), String> {
-    let yaml_path = yaml_path.as_ref().expect("No yaml path");
-    let tool_name = yaml_path.file_stem().expect("No file name").to_str().expect("No file name").to_string();
-    if !enabled.unwrap_or(&false) {
-        info!("Integration {} is disabled", tool_name);
-        return Ok(());
-    }
-    let tool = if yaml_path.exists() {
-        match read_yaml_into_value(yaml_path).await {
-            Ok(value) => {
-                match tool_constructor(&value) {
-                    Ok(tool) => {
-                        // integrations.insert(tool_name, Arc::new(AMutex::new(Box::new(tool) as Box<dyn Tool + Send>)));
-                        Some(tool)
-                    }
-                    Err(e) => {
-                        warn!("Problem in {}: {}", yaml_path.display(), e);
-                        None
-                    }
-                }
-            }
-            Err(e) => {
-                warn!("Problem reading {:?}: {}", yaml_path, e);
-                None
-            }
-        }
-    } else {
-        None
-    };
 
-    let tool_from_integrations = value_from_integrations
-        .and_then(|value| match tool_constructor(&value) {
-            Ok(tool) => Some(tool),
-            Err(_) => None
-        });
 
-    match (tool, tool_from_integrations) {
-        (Some(_), Some(_)) => {
-            return Err(format!("Tool {tool_name} exists in both {tool_name}.yaml and integrations.yaml. Consider removing one of them."));
-        },
-        (Some(tool), None) | (None, Some(tool)) => {
-            integrations.insert(tool_name.clone(), Arc::new(AMutex::new(Box::new(tool) as Box<dyn Tool + Send>)));
-        },
-        _ => {}
-    }
+// pub fn get_integration_path(cache_dir: &PathBuf, name: &str) -> PathBuf {
+//     cache_dir.join("integrations.d").join(format!("{}.yaml", name))
+// }
 
-    Ok(())
-=======
->>>>>>> 9b1345a1 (simplified code)
-}
+
+// pub async fn validate_integration_value(name: &str, value: serde_yaml::Value) -> Result<serde_yaml::Value, String> {
+//     let integrations = get_empty_integrations();
+//     match integrations.get(name) {
+//         Some(i) => {
+//             let j_value: serde_json::Value = i.integr_yaml2json(&value)?;
+//             let yaml_value: serde_yaml::Value = serde_yaml::to_value(&j_value).map_err(|e| e.to_string())?;
+//             Ok(yaml_value)
+//         },
+//         None => Err(format!("Integration {} is not defined", name))
+//     }
+// }
+
+// pub async fn load_integration_tools(
+//     gcx: Arc<ARwLock<GlobalContext>>,
+// ) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>> {
+//     let paths = integrations_paths(gcx.clone()).await;
+//     let integrations_yaml_value = {
+//         let cache_dir = gcx.read().await.cache_dir.clone();
+//         let yaml_path = cache_dir.join("integrations.yaml");
+//         read_yaml_into_value(&yaml_path).await?
+//     };
+//     let cache_dir = gcx.read().await.cache_dir.clone();
+//     // let enabled_path = cache_dir.join("integrations-enabled.yaml");
+//     // let enabled = match integrations_enabled_cfg(&enabled_path).await {
+//     //     serde_yaml::Value::Mapping(map) => map.into_iter().filter_map(|(k, v)| {
+//     //         if let (serde_yaml::Value::String(key), serde_yaml::Value::Bool(value)) = (k, v) {
+//     //             Some((key, value))
+//     //         } else {
+//     //             None
+//     //         }
+//     //     }).collect::<std::collections::HashMap<String, bool>>(),
+//     //     _ => std::collections::HashMap::new(),
+//     // };
+
+//     let integrations = get_integrations(gcx.clone()).await?;
+
+//     let mut tools = IndexMap::new();
+//     for (i_name, i) in integrations.iter() {
+//         // if !enabled.get(i_name).unwrap_or(&false) {
+//         //     info!("Integration {} is disabled", i_name);
+//         //     continue;
+//         // }
+//         let tool = i.integr_upgrade_to_tool();
+//         tools.insert(i_name.clone(), Arc::new(AMutex::new(tool)));
+//     }
+//     Ok(tools)
+// }
+
+// pub async fn json_for_integration(
+//     yaml_path: &PathBuf,
+//     value_from_integrations: Option<&serde_yaml::Value>,
+//     integration: &Box<dyn IntegrationTrait + Send + Sync>,
+// ) -> Result<serde_json::Value, String> {
+//     let tool_name = integration.integr_name().clone();
+
+//     let value = if yaml_path.exists() {
+//         match read_yaml_into_value(yaml_path).await {
+//             Ok(value) => integration.integr_yaml2json(&value).unwrap_or_else(|e| {
+//                 let e = format!("Problem converting integration to JSON: {}", e);
+//                 json!({"detail": e.to_string()})
+//             }),
+//             Err(e) => {
+//                 let e = format!("Problem reading YAML from {}: {}", yaml_path.display(), e);
+//                 json!({"detail": e.to_string()})
+//             }
+//         }
+//     } else {
+//         json!({"detail": format!("Cannot read {}. Probably, file does not exist", yaml_path.display())})
+//     };
+
+//     let value_from_integrations = value_from_integrations.map_or(json!({"detail": format!("tool {tool_name} is not defined in integrations.yaml")}), |value| {
+//         integration.integr_yaml2json(value).unwrap_or_else(|e| {
+//             let e = format!("Problem converting integration to JSON: {}", e);
+//             json!({"detail": e.to_string()})
+//         })
+//     });
+
+//     match (value.get("detail"), value_from_integrations.get("detail")) {
+//         (None, None) => {
+//             Err(format!("Tool {tool_name} exists in both {tool_name}.yaml and integrations.yaml. Consider removing one of them."))
+//         },
+//         (Some(_), None) => {
+//             Ok(value_from_integrations)
+//         },
+//         (None, Some(_)) => {
+//             Ok(value)
+//         }
+//         (Some(_), Some(_)) => {
+//             Ok(value)
+//         }
+//     }
+
+//     Ok(())
+// }
+
+// async fn load_tool_from_yaml<T: Tool + IntegrationTrait + Send + 'static>(
+//     yaml_path: Option<&PathBuf>,
+//     tool_constructor: fn(&serde_yaml::Value) -> Result<T, String>,
+//     value_from_integrations: Option<&serde_yaml::Value>,
+//     enabled: Option<&bool>,
+//     integrations: &mut IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
+// ) -> Result<(), String> {
+//     let yaml_path = yaml_path.as_ref().expect("No yaml path");
+//     let tool_name = yaml_path.file_stem().expect("No file name").to_str().expect("No file name").to_string();
+//     if !enabled.unwrap_or(&false) {
+//         tracing::info!("Integration {} is disabled", tool_name);
+//         return Ok(());
+//     }
+//     let tool = if yaml_path.exists() {
+//         match read_yaml_into_value(yaml_path).await {
+//             Ok(value) => {
+//                 match tool_constructor(&value) {
+//                     Ok(tool) => {
+//                         // integrations.insert(tool_name, Arc::new(AMutex::new(Box::new(tool) as Box<dyn Tool + Send>)));
+//                         Some(tool)
+//                     }
+//                     Err(e) => {
+//                         tracing::warn!("Problem in {}: {}", yaml_path.display(), e);
+//                         None
+//                     }
+//                 }
+//             }
+//             Err(e) => {
+//                 tracing::warn!("Problem reading {:?}: {}", yaml_path, e);
+//                 None
+//             }
+//         }
+//     } else {
+//         None
+//     };
+
+//     let tool_from_integrations = value_from_integrations
+//         .and_then(|value| match tool_constructor(&value) {
+//             Ok(tool) => Some(tool),
+//             Err(_) => None
+//         });
+
+//     match (tool, tool_from_integrations) {
+//         (Some(_), Some(_)) => {
+//             return Err(format!("Tool {tool_name} exists in both {tool_name}.yaml and integrations.yaml. Consider removing one of them."));
+//         },
+//         (Some(tool), None) | (None, Some(tool)) => {
+//             integrations.insert(tool_name.clone(), Arc::new(AMutex::new(Box::new(tool) as Box<dyn Tool + Send>)));
+//         },
+//         _ => {}
+//     }
+
+//     Ok(())
+// }
 
 pub const INTEGRATIONS_DEFAULT_YAML: &str = r#"# This file is used to configure integrations in Refact Agent.
 # If there is a syntax error in this file, no integrations will work.
@@ -275,7 +256,7 @@ commands_deny:
 #      valuable_top_or_bottom: "top"  # the useful infomation more likely to be at the top or bottom? (default "top")
 #      grep: "(?i)error|warning"      # in contrast to regular grep this doesn't remove other lines from output, just prefers matching when approaching limit_lines or limit_chars (default "(?i)error")
 #      grep_context_lines: 5          # leave that many lines around a grep match (default 5)
-#      remove_from_output: "process didn't exit"    # some lines and very long and unwanted, this is also a regular expression (default "")
+#      remove_from_output: "process didn't exit"    # some lines are very long and unwanted, this is also a regular expression (default "")
 
 #cmdline_services:
 #  manage_py_runserver:

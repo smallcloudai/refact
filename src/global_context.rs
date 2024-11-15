@@ -139,6 +139,7 @@ pub struct GlobalContext {
     pub http_client: reqwest::Client,
     pub http_client_slowdown: Arc<Semaphore>,
     pub cache_dir: PathBuf,
+    pub config_dir: PathBuf,
     pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
     pub caps_reading_lock: Arc<AMutex<bool>>,
     pub caps_last_error: String,
@@ -300,6 +301,7 @@ pub async fn block_until_signal(
 
 pub async fn create_global_context(
     cache_dir: PathBuf,
+    config_dir: PathBuf,
 ) -> (Arc<ARwLock<GlobalContext>>, std::sync::mpsc::Receiver<String>, Arc<AtomicBool>, CommandLine) {
     let cmdline = CommandLine::from_args();
     let (ask_shutdown_sender, ask_shutdown_receiver) = std::sync::mpsc::channel::<String>();
@@ -320,6 +322,7 @@ pub async fn create_global_context(
         http_client,
         http_client_slowdown: Arc::new(Semaphore::new(2)),
         cache_dir,
+        config_dir,
         caps: None,
         caps_reading_lock: Arc::new(AMutex::<bool>::new(false)),
         caps_last_error: String::new(),

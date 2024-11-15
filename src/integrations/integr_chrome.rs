@@ -20,35 +20,26 @@ use headless_chrome::{Browser, LaunchOptions, Tab};
 use headless_chrome::browser::tab::point::Point;
 use headless_chrome::protocol::cdp::Page;
 use headless_chrome::protocol::cdp::Emulation;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::integrations::integr::{json_schema, Integration};
+use crate::integrations::integr_abstract::Integration;
 
 
-#[derive(Clone, Serialize, Deserialize, Debug, JsonSchema, Default)]
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct IntegrationChrome {
-    #[schemars(description = "Path to the Chrome binary or WebSocket URL for remote debugging.")]
     pub chrome_path: Option<String>,
-    #[schemars(description = "Window width for the Chrome browser.")]
     pub window_width: Option<u32>,
-    #[schemars(description = "Window height for the Chrome browser.")]
     pub window_height: Option<u32>,
-    #[schemars(description = "Idle timeout for the Chrome browser in seconds.")]
     pub idle_browser_timeout: Option<u32>,
     #[serde(default = "default_headless")]
     pub headless: bool,
 }
 
-#[derive(Default)]
-pub struct ToolChrome {
-    pub integration_chrome: IntegrationChrome,
-}
-
 fn default_headless() -> bool { true }
 
+#[derive(Debug, Default)]
 pub struct ToolChrome {
-    integration_chrome: IntegrationChrome,
-    supports_clicks: bool,
+    pub integration_chrome: IntegrationChrome,
+    pub supports_clicks: bool,
 }
 
 struct ChromeSession {
@@ -78,18 +69,14 @@ impl IntegrationSession for ChromeSession
 }
 
 impl Integration for ToolChrome {
-    fn name(&self) -> String {
-        "chrome".to_string()
-    }
-
-    fn update_from_json(&mut self, value: &Value) -> Result<(), String> {
+    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
         let integration_github = serde_json::from_value::<IntegrationChrome>(value.clone())
             .map_err(|e|e.to_string())?;
         self.integration_chrome = integration_github;
         Ok(())
     }
 
-    fn from_yaml_validate_to_json(&self, value: &serde_yaml::Value) -> Result<Value, String> {
+    fn integr_yaml2json(&self, value: &serde_yaml::Value) -> Result<Value, String> {
         let integration_github = serde_yaml::from_value::<IntegrationChrome>(value.clone()).map_err(|e| {
             let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
             format!("{}{}", e.to_string(), location)
@@ -97,19 +84,18 @@ impl Integration for ToolChrome {
         serde_json::to_value(&integration_github).map_err(|e| e.to_string())
     }
 
-    fn to_tool(&self) -> Box<dyn Tool + Send> {
-        Box::new(ToolChrome {integration_chrome: self.integration_chrome.clone()}) as Box<dyn Tool + Send>
+    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
+        Box::new(ToolChrome {
+            integration_chrome: self.integration_chrome.clone(),
+            supports_clicks: false}
+        ) as Box<dyn Tool + Send>
     }
 
-    fn to_json(&self) -> Result<Value, String> {
+    fn integr_settings_as_json(&self) -> Result<Value, String> {
         serde_json::to_value(&self.integration_chrome).map_err(|e| e.to_string())
     }
 
-    fn to_schema_json(&self) -> Value {
-        json_schema::<IntegrationChrome>().unwrap()
-    }
-
-    fn default_value(&self) -> String { DEFAULT_CHROME_INTEGRATION_YAML.to_string() }
+    fn integr_settings_default(&self) -> String { DEFAULT_CHROME_INTEGRATION_YAML.to_string() }
     fn icon_link(&self) -> String { "https://cdn-icons-png.flaticon.com/512/732/732205.png".to_string() }
 }
 
@@ -205,25 +191,6 @@ async fn setup_chrome_session(
     session_hashmap_key: &String,
 ) -> Result<Vec<String>, String> {
     let mut setup_log = vec![];
-    if !is_chrome_session_active(&session_hashmap_key, gcx.clone()).await {
-        let mut is_connection = false;
-        if let Some(chrome_path) = args.chrome_path.clone() {
-            is_connection = chrome_path.starts_with("ws://");
-        }
-
-        let window_size = if args.window_width.is_some() && args.window_height.is_some() {
-            Some((args.window_width.unwrap(), args.window_height.unwrap()))
-        } else if args.window_width.is_some() {
-            Some((args.window_width.unwrap(), args.window_width.unwrap()))
-        } else {
-            None
-        };
-
-        let mut idle_browser_timeout = Duration::from_secs(600);
-        if let Some(timeout) = args.idle_browser_timeout.clone() {
-            idle_browser_timeout = Duration::from_secs(timeout as u64);
-        }
-    }
 
     let session_entry  = {
         let gcx_locked = gcx.read().await;
@@ -241,10 +208,12 @@ async fn setup_chrome_session(
         }
     }
 
-    let window_size = match args.window_size.as_deref() {
-        Some([width, height]) => Some((*width, *height)),
-        Some([size]) => Some((*size, *size)),
-        _ => None,
+    let window_size = if args.window_width.is_some() && args.window_height.is_some() {
+        Some((args.window_width.unwrap(), args.window_height.unwrap()))
+    } else if args.window_width.is_some() {
+        Some((args.window_width.unwrap(), args.window_width.unwrap()))
+    } else {
+        None
     };
 
     let idle_browser_timeout = args.idle_browser_timeout

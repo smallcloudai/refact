@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use tokio::sync::Mutex as AMutex;
 use tokio::process::Command;
 use async_trait::async_trait;
-use schemars::JsonSchema;
 use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
@@ -12,15 +11,13 @@ use crate::call_validation::{ContextEnum, ChatMessage, ChatContent};
 
 use crate::tools::tools_description::Tool;
 use serde_json::Value;
-use crate::integrations::integr::{json_schema, Integration};
+use crate::integrations::integr_abstract::Integration;
 
 
-#[derive(Clone, Serialize, Deserialize, Debug, JsonSchema, Default)]
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[allow(non_snake_case)]
 pub struct IntegrationGitHub {
-    #[schemars(description = "Path to the GitHub CLI binary.")]
     pub gh_binary_path: Option<String>,
-    #[schemars(description = "GitHub token for authentication.")]
     pub GH_TOKEN: String,
 }
 
@@ -30,18 +27,14 @@ pub struct ToolGithub {
 }
 
 impl Integration for ToolGithub {
-    fn name(&self) -> String {
-        "github".to_string()
-    }
-
-    fn update_from_json(&mut self, value: &Value) -> Result<(), String> {
+    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
         let integration_github = serde_json::from_value::<IntegrationGitHub>(value.clone())
             .map_err(|e|e.to_string())?;
         self.integration_github = integration_github;
         Ok(())
     }
 
-    fn from_yaml_validate_to_json(&self, value: &serde_yaml::Value) -> Result<Value, String> {
+    fn integr_yaml2json(&self, value: &serde_yaml::Value) -> Result<Value, String> {
         let integration_github = serde_yaml::from_value::<IntegrationGitHub>(value.clone()).map_err(|e| {
             let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
             format!("{}{}", e.to_string(), location)
@@ -49,19 +42,15 @@ impl Integration for ToolGithub {
         serde_json::to_value(&integration_github).map_err(|e| e.to_string())
     }
 
-    fn to_tool(&self) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
         Box::new(ToolGithub {integration_github: self.integration_github.clone()}) as Box<dyn Tool + Send>
     }
 
-    fn to_json(&self) -> Result<Value, String> {
+    fn integr_settings_as_json(&self) -> Result<Value, String> {
         serde_json::to_value(&self.integration_github).map_err(|e| e.to_string())
     }
 
-    fn to_schema_json(&self) -> Value {
-        json_schema::<IntegrationGitHub>().unwrap()
-    }
-
-    fn default_value(&self) -> String { DEFAULT_GITHUB_INTEGRATION_YAML.to_string() }
+    fn integr_settings_default(&self) -> String { DEFAULT_GITHUB_INTEGRATION_YAML.to_string() }
     fn icon_link(&self) -> String { "https://cdn-icons-png.flaticon.com/512/25/25231.png".to_string() }
 }
 

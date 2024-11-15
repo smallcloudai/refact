@@ -48,18 +48,41 @@ pub async fn lookup_chat_scratchpad(
 
 pub async fn handle_v1_chat_completions(
     // standard openai-style handler
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(gcx): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    chat(global_context, body_bytes, false).await
+    let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
+        info!("chat handler cannot parse input:\n{:?}", body_bytes);
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
+    _chat(gcx, &mut chat_post, &mut messages, false).await
+}
+
+pub async fn handle_v1_chat_configuration(
+    Extension(gcx): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
+        info!("chat handler cannot parse input:\n{:?}", body_bytes);
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
+    crate::integrations::config_chat::mix_config_messages(gcx.clone(), &mut messages, &chat_post.current_config_file).await;
+    _chat(gcx, &mut chat_post, &mut messages, true).await
 }
 
 pub async fn handle_v1_chat(
     // less-standard openai-style handler that sends role="context_*" messages first, rewrites the user message
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(gcx): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    chat(global_context, body_bytes, true).await
+    let mut chat_post: ChatPost = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
+        info!("chat handler cannot parse input:\n{:?}", body_bytes);
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
+    _chat(gcx, &mut chat_post, &mut messages, true).await
 }
 
 pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Result<Vec<ChatMessage>, ScratchError> {
@@ -73,17 +96,12 @@ pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Resu
     Ok(messages)
 }
 
-async fn chat(
-    global_context: SharedGlobalContext,
-    body_bytes: hyper::body::Bytes,
+async fn _chat(
+    gcx: SharedGlobalContext,
+    chat_post: &mut ChatPost,
+    messages: &mut Vec<ChatMessage>,
     allow_at: bool,
 ) -> Result<Response<Body>, ScratchError> {
-    let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
-        info!("chat handler cannot parse input:\n{:?}", body_bytes);
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-    let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
-    
     // converts tools into openai style
     if let Some(tools) = &mut chat_post.tools {
         for tool in tools {
@@ -93,7 +111,7 @@ async fn chat(
         }
     }
 
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
     let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
@@ -154,21 +172,21 @@ async fn chat(
         }
     }
 
-    let docker_tool_maybe = docker_tool_load(global_context.clone()).await
+    let docker_tool_maybe = docker_tool_load(gcx.clone()).await
         .map_err(|e| info!("No docker tool available: {e}")).ok().map(Arc::new);
     let run_chat_threads_inside_container = docker_tool_maybe.clone()
         .map(|docker_tool| docker_tool.integration_docker.run_chat_threads_inside_container)
         .unwrap_or(false);
-    let should_execute_remotely = run_chat_threads_inside_container && !global_context.read().await.cmdline.inside_container;
+    let should_execute_remotely = run_chat_threads_inside_container && !gcx.read().await.cmdline.inside_container;
 
     if should_execute_remotely {
-        docker_container_check_status_or_start(global_context.clone(), docker_tool_maybe.clone(), &chat_post.chat_id).await
+        docker_container_check_status_or_start(gcx.clone(), docker_tool_maybe.clone(), &chat_post.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     }
 
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
     let mut scratchpad = scratchpads::create_chat_scratchpad(
-        global_context.clone(),
+        gcx.clone(),
         caps,
         model_name.clone(),
         &chat_post,
@@ -184,7 +202,7 @@ async fn chat(
     )?;
     // if !chat_post.chat_id.is_empty() {
     //     let cache_dir = {
-    //         let gcx_locked = global_context.read().await;
+    //         let gcx_locked = gcx.read().await;
     //         gcx_locked.cache_dir.clone()
     //     };
     //     let notes_dir_path = cache_dir.join("chats");
@@ -196,7 +214,7 @@ async fn chat(
     //     let _ = std::fs::write(&notes_path, serde_json::to_string_pretty(&chat_post.messages).unwrap());
     // }
     let mut ccx = AtCommandsContext::new(
-        global_context.clone(),
+        gcx.clone(),
         n_ctx,
         CHAT_TOP_N,
         false,

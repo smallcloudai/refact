@@ -275,12 +275,13 @@ async def ask_using_http(
                     if not end_of_http_chunk:
                         continue
                     line_str = buffer.decode('utf-8').strip()
-                    buffer = b""
                     if not line_str:
+                        buffer = b""
                         continue
                     if not line_str.startswith("data: "):
                         print("unrecognized streaming data (1):", line_str)
                         continue
+                    buffer = b""
                     line_str = line_str[6:]
                     if line_str == "[DONE]":
                         break

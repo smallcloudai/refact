@@ -118,7 +118,7 @@ fn _replace_variables_in_system_prompts(config: &mut CustomizationYaml, variable
     }
 }
 
-fn load_and_mix_with_users_config(
+pub fn load_and_mix_with_users_config(
     user_yaml: &str,
     caps_yaml: &str,
     caps_default_system_prompt: &str,
@@ -250,5 +250,6 @@ mod tests {
         assert_eq!(config.system_prompts.get("exploration_tools").is_some(), true);
         assert_eq!(config.system_prompts.get("agentic_tools").is_some(), true);
         assert_eq!(config.system_prompts.get("agentic_experimental_knowledge").is_some(), true);
+        assert_eq!(config.system_prompts.get("configurator").is_some(), true);
     }
 }
