@@ -24,11 +24,9 @@ where
     R: AsyncReadExt + Unpin,
 {
     //
-    // WARNING: this will block forever if timeout_ms==0 and stream does not end (no EOF)
-    //
     // TODO: check what will happen in both stdout and stderr have a lot of data. Will one block the entire process when we're reading the other?
     //
-    assert!(timeout_ms > 0);
+    assert!(timeout_ms > 0, "Timeout in ms is required to be positive, to not block if stream does not end (no EOF).");
     let start_time = Instant::now();
     let timeout_duration = tokio::time::Duration::from_millis(timeout_ms);
     let mut output = Vec::new();
@@ -36,18 +34,12 @@ where
     let mut have_the_token = false;
 
     loop {
-        if timeout_ms > 0 && start_time.elapsed() >= timeout_duration {
+        if start_time.elapsed() >= timeout_duration {
             error!("timeout reached while reading from buffer");
             break;
         }
 
-        let read_result = if timeout_ms > 0 {
-            tokio::time::timeout(tokio::time::Duration::from_millis(timeout_ms), buffer.read(&mut buf)).await
-        } else {
-            Ok(buffer.read(&mut buf).await)
-        };
-
-        match read_result {
+        match tokio::time::timeout(timeout_duration, buffer.read(&mut buf)).await {
             Ok(Ok(0)) | Err(_) => break, // End of stream or timeout
             Ok(Ok(bytes_read)) => {
                 output.extend_from_slice(&buf[..bytes_read]);
