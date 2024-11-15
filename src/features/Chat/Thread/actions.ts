@@ -7,6 +7,7 @@ import {
 } from "./types";
 import {
   isAssistantMessage,
+  isCDInstructionMessage,
   isChatGetTitleResponse,
   isToolCallMessage,
   isToolMessage,
@@ -147,7 +148,11 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
 
 function checkForToolLoop(message: ChatMessages): boolean {
   const assistantOrToolMessages = takeFromEndWhile(message, (message) => {
-    return isToolMessage(message) || isToolCallMessage(message);
+    return (
+      isToolMessage(message) ||
+      isToolCallMessage(message) ||
+      isCDInstructionMessage(message)
+    );
   });
 
   if (assistantOrToolMessages.length === 0) return false;
