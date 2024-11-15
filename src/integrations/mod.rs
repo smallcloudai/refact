@@ -54,7 +54,7 @@ chrome:
   # Or you can give it ws:// path, read more here https://developer.chrome.com/docs/devtools/remote-debugging/local-server/
   # In that case start chrome with --remote-debugging-port
   chrome_path: "ws://127.0.0.1:6006/"
-  window_size: [1024, 768]
+  window_size: [800, 600]
   idle_browser_timeout: 600
 
 
