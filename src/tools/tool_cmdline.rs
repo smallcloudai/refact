@@ -198,8 +198,7 @@ async fn get_stdout_and_stderr(
     stdout: &mut BufReader<tokio::process::ChildStdout>,
     stderr: &mut BufReader<tokio::process::ChildStderr>,
 ) -> Result<(String, String), String> {
-    let (stdout_out, _) = blocking_read_until_token_or_timeout(stdout, timeout_ms, "").await;
-    let (stderr_out, _) = blocking_read_until_token_or_timeout(stderr, timeout_ms, "").await;
+    let (stdout_out, stderr_out, _) = blocking_read_until_token_or_timeout(stdout, stderr, timeout_ms, "").await?;
     Ok((stdout_out, stderr_out))
 }
 

@@ -1,6 +1,6 @@
 use std::{ops::DerefMut, process::Stdio, sync::Arc};
 use serde::{Deserialize, Serialize};
-use tokio::{net::{TcpListener, TcpStream}, process::{Child, ChildStderr, Command}, sync::RwLock as ARwLock};
+use tokio::{net::{TcpListener, TcpStream}, process::{Child, ChildStderr, ChildStdout, Command}, sync::RwLock as ARwLock};
 use tracing::{info, warn};
 
 use crate::global_context::GlobalContext;
@@ -22,6 +22,7 @@ fn default_port() -> u16 { 22 }
 pub struct SshTunnel {
     pub forwarded_ports: Vec<Port>,
     pub process: Child,
+    pub stdout: ChildStdout,
     pub stderr: ChildStderr,
 }
 
@@ -71,7 +72,7 @@ pub async fn ssh_tunnel_check_status(ssh_tunnel: &mut SshTunnel) -> Result<(), S
         return Err(format!("SSH tunnel process exited with status: {:?}", status));
     }
 
-    let (stderr_output, _) = blocking_read_until_token_or_timeout(&mut ssh_tunnel.stderr, 50, "").await;
+    let (_, stderr_output, _) = blocking_read_until_token_or_timeout(&mut ssh_tunnel.stdout, &mut ssh_tunnel.stderr, 100, "").await?;
     if !stderr_output.is_empty() {
         return Err(format!("SSH tunnel error: {}", stderr_output));
     }
@@ -88,6 +89,7 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
     }
     command.arg("-p").arg(ssh_config.port.to_string());
     command.arg(&format!("{}@{}", ssh_config.user, ssh_config.host));
+    command.stdout(Stdio::piped());
     command.stderr(Stdio::piped());
 
     for port in ports_to_forward.iter_mut() {
@@ -107,9 +109,10 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
     }
 
     let mut process = command.spawn().map_err(|e| format!("Failed to start ssh process: {}", e))?;
+    let mut stdout = process.stdout.take().ok_or("Failed to open stdout for ssh process")?;
     let mut stderr = process.stderr.take().ok_or("Failed to open stderr for ssh process")?;
 
-    let (output_stderr, _) = blocking_read_until_token_or_timeout(&mut stderr, 100, "").await;
+    let (_, output_stderr, _) = blocking_read_until_token_or_timeout(&mut stdout, &mut stderr, 100, "").await?;
     if !output_stderr.is_empty() {
         return Err(format!("SSH error: {}", output_stderr));
     }
@@ -122,12 +125,13 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
                 return Ok(SshTunnel {
                     forwarded_ports: ports_to_forward.clone(),
                     process,
+                    stdout,
                     stderr,
                 });
             }
             Err(e) => {
                 info!("this should eventually work: connect to 127.0.0.1:{} attempt {}: {}", port_to_test_connection.external, attempt + 1, e);
-                let (stderr_output, _) = blocking_read_until_token_or_timeout(&mut stderr, 300, "").await;
+                let (_, stderr_output, _) = blocking_read_until_token_or_timeout(&mut stdout, &mut stderr, 300, "").await?;
                 if !stderr_output.is_empty() {
                     return Err(format!("Failed to open ssh tunnel: {}", stderr_output));
                 }

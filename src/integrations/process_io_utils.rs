@@ -1,6 +1,7 @@
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::process::{Child, ChildStdin};
+use tokio::time::Duration;
 use std::time::Instant;
 use tracing::error;
 
@@ -19,43 +20,54 @@ pub async fn write_to_stdin_and_flush(stdin: &mut ChildStdin, text_to_write: &st
     Ok(())
 }
 
-pub async fn blocking_read_until_token_or_timeout<R>(buffer: &mut R, timeout_ms: u64, token: &str) -> (String, bool)
-where
-    R: AsyncReadExt + Unpin,
-{
-    //
-    // TODO: check what will happen in both stdout and stderr have a lot of data. Will one block the entire process when we're reading the other?
-    //
-    assert!(timeout_ms > 0, "Timeout in ms is required to be positive, to not block if stream does not end (no EOF).");
+pub async fn blocking_read_until_token_or_timeout<
+    StdoutReader: AsyncRead + Unpin,
+    StderrReader: AsyncRead + Unpin,
+>(
+    stdout: &mut StdoutReader,
+    stderr: &mut StderrReader,
+    timeout_ms: u64,
+    output_token: &str,
+) -> Result<(String, String, bool), String> {
+    assert!(timeout_ms > 0, "Timeout in ms must be positive to prevent indefinite reading if the stream lacks an EOF");
     let start_time = Instant::now();
-    let timeout_duration = tokio::time::Duration::from_millis(timeout_ms);
+    let timeout_duration = Duration::from_millis(timeout_ms);
     let mut output = Vec::new();
-    let mut buf = [0u8; 1024];
+    let mut error = Vec::new();
+    let mut output_buf = [0u8; 1024];
+    let mut error_buf = [0u8; 1024];
     let mut have_the_token = false;
 
-    loop {
-        if start_time.elapsed() >= timeout_duration {
-            error!("timeout reached while reading from buffer");
-            break;
-        }
-
-        match tokio::time::timeout(timeout_duration, buffer.read(&mut buf)).await {
-            Ok(Ok(0)) | Err(_) => break, // End of stream or timeout
-            Ok(Ok(bytes_read)) => {
-                output.extend_from_slice(&buf[..bytes_read]);
-                if !token.is_empty() && output.trim_ascii_end().ends_with(token.as_bytes()) {
-                    have_the_token = true;
-                    break;
+    while start_time.elapsed() < timeout_duration {
+        let mut error_bytes_read = 0;
+        tokio::select! {
+            stdout_result = tokio::time::timeout(Duration::from_millis(50), stdout.read(&mut output_buf)) => {
+                match stdout_result {
+                    Ok(Ok(0)) | Err(_) => {},
+                    Ok(Ok(bytes_read)) => {
+                        output.extend_from_slice(&output_buf[..bytes_read]);
+                        if !output_token.is_empty() && output.trim_ascii_end().ends_with(output_token.as_bytes()) {
+                            have_the_token = true;
+                        }
+                    },
+                    Ok(Err(e)) => return Err(format!("Error reading from stdout: {}", e)),
                 }
-            }
-            Ok(Err(e)) => {
-                error!("Error reading from buffer: {}", e);
-                break;
-            }
+            },
+            stderr_result = tokio::time::timeout(Duration::from_millis(50), stderr.read(&mut error_buf)) => {
+                match stderr_result {
+                    Ok(Ok(0)) | Err(_) => {},
+                    Ok(Ok(bytes_read)) => {
+                        error.extend_from_slice(&error_buf[..bytes_read]);
+                        error_bytes_read = bytes_read;
+                    },
+                    Ok(Err(e)) => return Err(format!("Error reading from stderr: {}", e)),
+                }
+            },
         }
+        if have_the_token && error_bytes_read == 0 { break; }
     }
 
-    (String::from_utf8_lossy(&output).to_string(), have_the_token)
+    Ok((String::from_utf8_lossy(&output).to_string(), String::from_utf8_lossy(&error).to_string(), have_the_token))
 }
 
 pub async fn is_someone_listening_on_that_tcp_port(port: u16, timeout: tokio::time::Duration) -> bool {

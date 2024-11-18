@@ -211,6 +211,14 @@ async fn interact_with_pdb(
     gcx: Arc<ARwLock<GlobalContext>>,
     timeout_seconds: u64,
 ) -> Result<String, String> {
+    if !input_command.is_empty() {
+        let (prev_output, prev_error, _) = blocking_read_until_token_or_timeout(
+            &mut pdb_session.stdout, &mut pdb_session.stderr, 100, PDB_TOKEN).await?;
+        if !prev_output.is_empty() || !prev_error.is_empty() {
+            return Err(format!("There is leftover output from previous commands, run pdb tool again with \"wait n_seconds\" to wait for it or \"kill\" command to kill the session.\nstdout:\n{}\nstderr:\n{}", prev_output, prev_error));
+        }
+    }
+    
     let (output_main_command, error_main_command) = send_command_and_get_output_and_error(
         pdb_session, input_command, session_hashmap_key, gcx.clone(), timeout_seconds * 1000, true).await?;
     let (output_list, error_list) = send_command_and_get_output_and_error(
@@ -240,21 +248,22 @@ async fn send_command_and_get_output_and_error(
     if !input_command.is_empty() {
         write_to_stdin_and_flush(&mut pdb_session.stdin, input_command).await?;
     }
-    let (output, have_the_token) = blocking_read_until_token_or_timeout(&mut pdb_session.stdout, timeout_ms, PDB_TOKEN).await;
-    let (mut error, _) = blocking_read_until_token_or_timeout(&mut pdb_session.stderr, 50, "").await;
-    
+    let (output, mut error, have_the_token) = blocking_read_until_token_or_timeout(
+        &mut pdb_session.stdout, &mut pdb_session.stderr, timeout_ms, PDB_TOKEN).await?;
+
     let exit_status = pdb_session.process.try_wait().map_err(|e| e.to_string())?;
     if let Some(exit_status) = exit_status {
         gcx.write().await.integration_sessions.remove(session_hashmap_key);
         return Err(format!("Pdb process exited with status: {:?}", exit_status));
     }
-    
-    if !have_the_token && error.is_empty() {
-        error = format!("Command {} timed out after {} seconds.", input_command, timeout_ms / 1000);
+
+    if !have_the_token {
+        let mut timeout_error = format!("Command {} timed out after {} seconds.", input_command, timeout_ms / 1000);
         if ask_for_continuation_if_timeout {
-            error = error + " Call pdb tool again with \"wait n_seconds\" command to wait for n seconds for the process to finish, or \"kill\" command to forcedly stop it.";
-            return Err(error);
+            timeout_error = timeout_error + " Call pdb tool again with \"wait n_seconds\" command to wait for n seconds for the process to finish, or \"kill\" command to forcedly stop it.";
+            return Err(timeout_error);
         }
+        error += &format!("\n{timeout_error}");
     }
 
     Ok((output, error))
@@ -279,7 +288,7 @@ fn format_all_output(output_main_command: &str, error_main_command: &str, output
     format!(
         "Command output:\n{}\n{}\nCurrent code section:\n{}{}\nStack trace:\n{}{}\nLocal variables:\n{}{}",
         last_n_chars(output_main_command, 5000),
-        format_error("Command error", error_main_command),
+        format_error("Command error", &last_n_chars(error_main_command, 5000)),
         output_list.replace(PDB_TOKEN, ""),
         format_error("list error", error_list),
         last_n_lines(&output_where.replace(PDB_TOKEN, ""), 8),
