@@ -5,7 +5,8 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ChatUsage, ContextEnum, DiffChunk, SubchatParameters};
+use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, DiffChunk, SubchatParameters};
+use crate::files_correction::to_pathbuf_normalize;
 use crate::tools::tool_patch_aux::diff_apply::diff_apply;
 use crate::tools::tool_patch_aux::model_based_edit::partial_edit::partial_edit_tickets_to_chunks;
 use crate::tools::tool_patch_aux::no_model_edit::{full_rewrite_diff, rewrite_symbol_diff};
@@ -173,7 +174,7 @@ impl Tool for ToolPatch {
         };
         assert!(!active_tickets.is_empty());
 
-        if active_tickets[0].filename_before != path {
+        if to_pathbuf_normalize(&active_tickets[0].filename_before) != to_pathbuf_normalize(&path) {
             let (err, cd_instruction) = good_error_text(
                 &format!("ticket(s) have different filename from what you provided: '{}'!='{}'.", active_tickets[0].filename_before, path),
                 &tickets,
