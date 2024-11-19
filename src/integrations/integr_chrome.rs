@@ -21,8 +21,12 @@ use headless_chrome::{Browser, LaunchOptions, Tab as HeadlessTab};
 use headless_chrome::browser::tab::point::Point;
 use headless_chrome::protocol::cdp::Page;
 use headless_chrome::protocol::cdp::Emulation;
+use headless_chrome::protocol::cdp::types::Event;
 use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
 use std::fmt;
+use tokio::time::sleep;
+use chrono::DateTime;
 
 use base64::Engine;
 use std::io::Cursor;
@@ -66,6 +70,8 @@ pub struct ChromeTab {
     device: DeviceType,
     tab_id: String,
     screenshot_scale_factor: f64,
+    // NOTE: logs vector should be at least limited
+    tab_log: Arc<Mutex<Vec<String>>>,
 }
 
 impl ChromeTab {
@@ -75,6 +81,7 @@ impl ChromeTab {
             device: device.clone(),
             tab_id: tab_id.clone(),
             screenshot_scale_factor: 1.0,
+            tab_log: Arc::new(Mutex::new(Vec::new())),
         }
     }
     pub fn state_string(&self) -> String {
@@ -198,6 +205,7 @@ impl Tool for ToolChrome {
             "screenshot <tab_id>",
             // "html <tab_id>",
             "reload <tab_id>",
+            "tab_log <tab_id>",
         ];
         if self.supports_clicks {
             supported_commands.extend(vec![
@@ -358,6 +366,17 @@ async fn session_open_tab(
             }
             let tab = Arc::new(AMutex::new(ChromeTab::new(headless_tab, device, tab_id)));
             let tab_lock = tab.lock().await;
+            let tab_log = Arc::clone(&tab_lock.tab_log);
+            tab_lock.headless_tab.enable_log().map_err(|e| e.to_string())?;
+            tab_lock.headless_tab.add_event_listener(Arc::new(move |event: &Event| {
+                if let Event::LogEntryAdded(e) = event {
+                    let formatted_ts = {
+                        let dt = DateTime::from_timestamp(e.params.entry.timestamp as i64, 0).unwrap();
+                        dt.format("%Y-%m-%d %H:%M:%S").to_string()
+                    };
+                    tab_log.lock().unwrap().push(format!("{} [{:?}]: {}", formatted_ts, e.params.entry.level, e.params.entry.text));
+                }
+            })).map_err(|e| e.to_string())?;
             chrome_session.tabs.insert(tab_id.clone(), tab.clone());
             Ok(format!("opened a new tab: {}\n", tab_lock.state_string()))
         }
@@ -384,6 +403,7 @@ enum Command {
     ClickAt(ClickAtArgs),
     TypeTextAt(TypeTextAtArgs),
     PressKeyAt(PressKeyAtArgs),
+    TabLog(TabLogArgs),
 }
 
 async fn chrome_command_exec(
@@ -563,6 +583,19 @@ async fn chrome_command_exec(
                 }
             };
             tool_log.push(log);
+        },
+        Command::TabLog(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let tab_lock = tab.lock().await;
+            // NOTE: we're waiting for log to be collected for 3 seconds
+            sleep(Duration::from_secs(3)).await;
+            let mut tab_log_lock = tab_lock.tab_log.lock().unwrap();
+            tool_log.extend(tab_log_lock.clone());
+            tab_log_lock.clear();
         }
     }
 
@@ -630,6 +663,12 @@ impl fmt::Display for Key {
 #[derive(Debug)]
 struct PressKeyAtArgs {
     key: Key,
+    tab_id: String,
+}
+
+#[derive(Debug)]
+struct TabLogArgs {
+    // wait_secs: u32,
     tab_id: String,
 }
 
@@ -735,6 +774,18 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                 },
                 _ => {
                     Err("Missing one or several arguments 'key', 'tab_id'".to_string())
+                }
+            }
+        },
+        "tab_log" => {
+            match parsed_args.as_slice() {
+                [tab_id] => {
+                    Ok(Command::TabLog(TabLogArgs {
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments 'tab_id'".to_string())
                 }
             }
         },
