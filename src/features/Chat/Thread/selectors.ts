@@ -32,5 +32,13 @@ export const selectToolResultById = createSelector(
       ?.content;
   },
 );
+
+export const selectManyToolResultsByIds = (ids: string[]) =>
+  createSelector(toolMessagesSelector, (messages) => {
+    return messages
+      .filter((message) => ids.includes(message.content.tool_call_id))
+      .map((toolMessage) => toolMessage.content);
+  });
+
 export const getSelectedToolUse = (state: RootState) =>
   state.chat.thread.tool_use;

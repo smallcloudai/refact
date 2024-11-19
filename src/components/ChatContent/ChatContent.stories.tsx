@@ -13,6 +13,7 @@ import {
   CHAT_WITH_DIFFS,
   FROG_CHAT,
   LARGE_DIFF,
+  CHAT_WITH_MULTI_MODAL,
 } from "../../__fixtures__";
 
 const MockedStore: React.FC<{
@@ -110,5 +111,11 @@ export const AssistantMarkdown: Story = {
 export const ToolImages: Story = {
   args: {
     ...meta.args,
+  },
+};
+
+export const MultiModal: Story = {
+  args: {
+    messages: CHAT_WITH_MULTI_MODAL.messages,
   },
 };

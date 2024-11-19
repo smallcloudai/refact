@@ -45,16 +45,53 @@ function isToolCall(call: unknown): call is ToolCall {
   return true;
 }
 
-export type ToolResult = {
+type ToolContent = string | MultiModalToolContent[];
+export interface BaseToolResult {
   tool_call_id: string;
   finish_reason?: string; // "call_failed" | "call_worked";
-  content: string | ToolImage[];
+  content: ToolContent;
+}
+
+export interface SingleModelToolResult extends BaseToolResult {
+  content: string;
+}
+export interface MultiModalToolResult extends BaseToolResult {
+  content: MultiModalToolContent[];
+}
+
+export type ToolResult = SingleModelToolResult | MultiModalToolResult;
+
+type MultiModalToolContent = {
+  m_type: string; // "image/*" | "text" ... maybe narrow this?
+  m_content: string; // base64 if image,
 };
 
-type ToolImage = {
-  m_type: string; // "image/*"
-  m_content: string; // base64
-};
+function isMultiModalToolContent(
+  content: unknown,
+): content is MultiModalToolContent {
+  if (!content) return false;
+  if (typeof content !== "object") return false;
+  if (!("m_type" in content)) return false;
+  if (typeof content.m_type !== "string") return false;
+  if (!("m_content" in content)) return false;
+  if (typeof content.m_content !== "string") return false;
+  return true;
+}
+
+export function isMultiModalToolContentArray(content: ToolContent) {
+  if (!Array.isArray(content)) return false;
+  return content.every(isMultiModalToolContent);
+}
+
+export function isMultiModalToolResult(
+  toolResult: ToolResult,
+): toolResult is MultiModalToolResult {
+  return isMultiModalToolContentArray(toolResult.content);
+}
+
+export function isSingleModelToolResult(toolResult: ToolResult) {
+  return typeof toolResult.content === "string";
+}
 
 interface BaseMessage {
   role: ChatRole;

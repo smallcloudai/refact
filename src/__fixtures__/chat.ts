@@ -1,6 +1,8 @@
 import type { RootState } from "../app/store";
 import { ChatHistoryItem } from "../features/History/historySlice";
 
+export * from "./some_chrome_screenshots";
+
 type ChatThread = RootState["chat"]["thread"];
 type ChatMessages = ChatThread["messages"];
 

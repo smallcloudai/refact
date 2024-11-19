@@ -146,7 +146,19 @@ export function formatChatResponse(
   if (isToolResponse(response)) {
     const { tool_call_id, content, finish_reason } = response;
     const filteredMessages = finishToolCallInMessages(messages, tool_call_id);
-    const toolResult: ToolResult = { tool_call_id, content, finish_reason };
+    const toolResult: ToolResult =
+      typeof content === "string"
+        ? {
+            tool_call_id,
+            content,
+            finish_reason,
+          }
+        : {
+            tool_call_id,
+            content,
+            finish_reason,
+          };
+
     return [...filteredMessages, { role: response.role, content: toolResult }];
   }
 
