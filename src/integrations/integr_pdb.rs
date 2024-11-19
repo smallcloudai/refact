@@ -226,7 +226,7 @@ async fn interact_with_pdb(
     let (output_where, error_where) = send_command_and_get_output_and_error(
         pdb_session, "where", session_hashmap_key, gcx.clone(), 2000, false).await?;
     let (output_locals, error_locals) = send_command_and_get_output_and_error(
-        pdb_session, "p {k: v for k, v in locals().items() if not k.startswith('__')}", session_hashmap_key, gcx.clone(), 5000, false).await?;
+        pdb_session, "p {k: __import__('reprlib').repr(v) for k, v in locals().items() if not k.startswith('__')}", session_hashmap_key, gcx.clone(), 5000, false).await?;
 
     pdb_session.last_usage_ts = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
