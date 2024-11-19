@@ -40,6 +40,7 @@ pub async fn blocking_read_until_token_or_timeout<
 
     while start_time.elapsed() < timeout_duration {
         let mut error_bytes_read = 0;
+        // XXX: verify how unfinished read() really works when timeout happens
         tokio::select! {
             stdout_result = tokio::time::timeout(Duration::from_millis(50), stdout.read(&mut output_buf)) => {
                 match stdout_result {
