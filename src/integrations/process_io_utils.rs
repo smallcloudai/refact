@@ -39,33 +39,35 @@ pub async fn blocking_read_until_token_or_timeout<
     let mut have_the_token = false;
 
     while start_time.elapsed() < timeout_duration {
+        let mut output_bytes_read = 0;
         let mut error_bytes_read = 0;
-        // XXX: verify how unfinished read() really works when timeout happens
         tokio::select! {
-            stdout_result = tokio::time::timeout(Duration::from_millis(50), stdout.read(&mut output_buf)) => {
+            stdout_result = stdout.read(&mut output_buf) => {
                 match stdout_result {
-                    Ok(Ok(0)) | Err(_) => {},
-                    Ok(Ok(bytes_read)) => {
+                    Ok(0) => {},
+                    Ok(bytes_read) => {
                         output.extend_from_slice(&output_buf[..bytes_read]);
                         if !output_token.is_empty() && output.trim_ascii_end().ends_with(output_token.as_bytes()) {
                             have_the_token = true;
                         }
+                        output_bytes_read = bytes_read;
                     },
-                    Ok(Err(e)) => return Err(format!("Error reading from stdout: {}", e)),
+                    Err(e) => return Err(format!("Error reading from stdout: {}", e)),
                 }
             },
-            stderr_result = tokio::time::timeout(Duration::from_millis(50), stderr.read(&mut error_buf)) => {
+            stderr_result = stderr.read(&mut error_buf) => {
                 match stderr_result {
-                    Ok(Ok(0)) | Err(_) => {},
-                    Ok(Ok(bytes_read)) => {
+                    Ok(0) => {},
+                    Ok(bytes_read) => {
                         error.extend_from_slice(&error_buf[..bytes_read]);
                         error_bytes_read = bytes_read;
                     },
-                    Ok(Err(e)) => return Err(format!("Error reading from stderr: {}", e)),
+                    Err(e) => return Err(format!("Error reading from stderr: {}", e)),
                 }
             },
+            _ = tokio::time::sleep(Duration::from_millis(50)) => {},
         }
-        if have_the_token && error_bytes_read == 0 { break; }
+        if have_the_token && output_bytes_read == 0 && error_bytes_read == 0 { break; }
     }
 
     Ok((String::from_utf8_lossy(&output).to_string(), String::from_utf8_lossy(&error).to_string(), have_the_token))
