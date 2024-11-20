@@ -1,14 +1,13 @@
 use std::path::PathBuf;
 use std::{sync::Arc, sync::Weak, time::SystemTime};
-use async_tar::Builder;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
-use tempfile::Builder as TempfileBuilder;
 use tokio::fs::File;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
-use tokio_util::compat::TokioAsyncWriteCompatExt;
+use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 use tracing::{error, info, warn};
+use walkdir::WalkDir;
 
 use crate::files_correction::get_project_dirs;
 use crate::files_in_workspace::retrieve_files_in_workspace_folders;
@@ -277,7 +276,7 @@ async fn docker_container_sync_yaml_configs(
     let container_home_dir = docker_container_get_home_dir(&docker, &container_id, gcx.clone()).await?;
 
     // Creating intermediate folders one by one, as docker cp does not support --parents
-    let temp_dir = TempfileBuilder::new().tempdir()
+    let temp_dir = tempfile::Builder::new().tempdir()
         .map_err(|e| format!("Error creating temporary directory: {}", e))?;
     let temp_dir_path = temp_dir.path().to_string_lossy().to_string();
     docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/"), gcx.clone(), true).await?;
@@ -353,13 +352,13 @@ async fn docker_container_sync_workspace(
         .ok_or_else(|| "No workspace folders found".to_string())?;
     let container_workspace_folder = PathBuf::from(&docker.settings_docker.container_workspace_folder);
 
-    let temp_tar_file = TempfileBuilder::new().suffix(".tar").tempfile()
+    let temp_tar_file = tempfile::Builder::new().suffix(".tar").tempfile()
         .map_err(|e| format!("Error creating temporary tar file: {}", e))?.into_temp_path();
     let tar_file_name = temp_tar_file.file_name().unwrap_or_default().to_string_lossy().to_string();
     let tar_async_file = File::create(&temp_tar_file).await
         .map_err(|e| format!("Error opening temporary tar file: {}", e))?;
 
-    let mut tar_builder = Builder::new(tar_async_file.compat_write());
+    let mut tar_builder = async_tar::Builder::new(tar_async_file.compat_write());
     tar_builder.follow_symlinks(true);
     tar_builder.mode(async_tar::HeaderMode::Complete);
 
@@ -372,22 +371,10 @@ async fn docker_container_sync_workspace(
         tar_builder.append_path_with_name(file, relative_path).await
            .map_err(|e| format!("Error adding file to tar archive: {}", e))?;
     }
-    
-    if workspace_folder.join(".git").exists() {
-        let git_folder = workspace_folder.join(".git").to_path_buf();
-        tar_builder.append_path_with_name(git_folder, ".git").await
-            .map_err(|e| format!("Error adding .git to tar archive: {}", e))?;
-    }
-    if workspace_folder.join(".hg").exists() {
-        let hg_folder = workspace_folder.join(".hg").to_path_buf();
-        tar_builder.append_path_with_name(hg_folder, ".hg").await
-           .map_err(|e| format!("Error adding .hg to tar archive: {}", e))?;
-    }
-    if workspace_folder.join(".svn").exists() {
-        let svn_folder = workspace_folder.join(".svn").to_path_buf();
-        tar_builder.append_path_with_name(svn_folder, ".svn").await
-          .map_err(|e| format!("Error adding .svn to tar archive: {}", e))?;
-    }
+
+    append_folder_if_exists(&mut tar_builder, &workspace_folder, ".git").await?;
+    append_folder_if_exists(&mut tar_builder, &workspace_folder, ".hg").await?;
+    append_folder_if_exists(&mut tar_builder, &workspace_folder, ".svn").await?;
 
     tar_builder.finish().await.map_err(|e| format!("Error finishing tar archive: {}", e))?;
 
@@ -404,6 +391,29 @@ async fn docker_container_sync_workspace(
         .map_err(|e| format!("Error removing temporary archive: {}", e))?;
 
     info!("Workspace synced successfully.");
+    Ok(())
+}
+
+async fn append_folder_if_exists(
+    tar_builder: &mut async_tar::Builder<Compat<File>>, 
+    workspace_folder: &PathBuf, 
+    folder_name: &str
+) -> Result<(), String> {
+    let folder_path = workspace_folder.join(folder_name);
+    let mut num_files = 0;
+    if folder_path.exists() {
+        for entry in WalkDir::new(&folder_path) {
+            let entry = entry.map_err(|e| format!("Error walking directory: {}", e))?;
+            let relative_path = entry.path().strip_prefix(&workspace_folder)
+              .map_err(|e| format!("Error stripping prefix: {}", e))?;
+            tar_builder.append_path_with_name(entry.path(), relative_path).await
+              .map_err(|e| format!("Error adding file to tar archive: {}", e))?;
+            num_files += 1;
+        }
+        info!("Added folder {folder_name}, with {num_files} files.");
+    } else {
+        info!("Folder {folder_name} does not exist.");
+    }
     Ok(())
 }
 
