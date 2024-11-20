@@ -205,13 +205,13 @@ impl Tool for ToolChrome {
             "screenshot <tab_id>",
             // "html <tab_id>",
             "reload <tab_id>",
+            "press_key_at <enter|esc|pageup|pagedown|home|end> <tab_id>",
+            "type_text_at <text> <tab_id>",
             "tab_log <tab_id>",
         ];
         if self.supports_clicks {
             supported_commands.extend(vec![
                 "click_at <x> <y> <tab_id>",
-                "type_text_at <text> <tab_id>",
-                "press_key_at <enter|esc|pageup|pagedown> <tab_id>",
             ]);
         }
         let description = format!(
@@ -573,7 +573,13 @@ async fn chrome_command_exec(
             };
             let log = {
                 let tab_lock = tab.lock().await;
-                match tab_lock.headless_tab.press_key(args.key.to_string().as_str()) {
+                match {
+                    tab_lock.headless_tab.press_key(args.key.to_string().as_str()).map_err(|e| e.to_string())?;
+                    tab_lock.headless_tab.wait_until_navigated().map_err(|e| e.to_string())?;
+                    // TODO: sometimes page isn't ready for next step
+                    sleep(Duration::from_secs(1)).await;
+                    Ok::<(), String>(())
+                } {
                     Ok(_) => {
                         format!("press `{}` at {}", args.key, tab_lock.state_string())
                     },
@@ -647,6 +653,8 @@ enum Key {
     ESC,
     PAGEUP,
     PAGEDOWN,
+    HOME,
+    END,
 }
 
 impl fmt::Display for Key {
@@ -656,6 +664,8 @@ impl fmt::Display for Key {
             Key::ESC => write!(f, "Escape"),
             Key::PAGEUP => write!(f, "PageUp"),
             Key::PAGEDOWN => write!(f, "PageDown"),
+            Key::HOME => write!(f, "Home"),
+            Key::END => write!(f, "End"),
         }
     }
 }
@@ -765,6 +775,8 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                         "esc" => Key::ESC,
                         "pageup" => Key::PAGEUP,
                         "pagedown" => Key::PAGEDOWN,
+                        "home" => Key::HOME,
+                        "end" => Key::END,
                         _ => return Err(format!("Unknown key: {}", key_str)),
                     };
                     Ok(Command::PressKeyAt(PressKeyAtArgs {
