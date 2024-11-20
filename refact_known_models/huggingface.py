@@ -22,6 +22,7 @@ huggingface_mini_db = {
         "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
         "filter_caps": ["chat"],
+        "deprecated": True
     },
     "mistral/7b/instruct-v0.1": {
         "backend": "autogptq",
@@ -30,6 +31,7 @@ huggingface_mini_db = {
         "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
         "filter_caps": ["chat"],
+        "deprecated": True
     },
     "mixtral/8x7b/instruct-v0.1": {
         "backend": "transformers",
@@ -50,6 +52,7 @@ huggingface_mini_db = {
         "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
         "filter_caps": ["chat"],
+        "deprecated": True
     },
     "deepseek-coder/33b/instruct": {
         "backend": "transformers",
@@ -164,14 +167,6 @@ huggingface_mini_db = {
         "T": 32768,
         "filter_caps": ["completion", "chat"],
     },
-    "qwen2.5/coder/32b/instruct/gptq8bit": {
-        "backend": "autogptq",
-        "model_path": "Qwen/Qwen2.5-Coder-32B-Instruct-GPTQ-Int8",
-        "model_class_kwargs": {"inject_fused_attention": False},
-        "required_memory_mb": 25000,
-        "T": 32768,
-        "filter_caps": ["completion", "chat"],
-    },
     "qwen2.5/coder/14b/instruct": {
         "backend": "transformers",
         "model_path": "Qwen/Qwen2.5-Coder-14B-Instruct",
@@ -180,27 +175,11 @@ huggingface_mini_db = {
         "T": 32768,
         "filter_caps": ["completion", "chat"],
     },
-    "qwen2.5/coder/14b/instruct/gptq8bit": {
-        "backend": "autogptq",
-        "model_path": "Qwen/Qwen2.5-Coder-14B-Instruct-GPTQ-Int8",
-        "model_class_kwargs": {"inject_fused_attention": False},
-        "required_memory_mb": 18000,
-        "T": 32768,
-        "filter_caps": ["completion", "chat"],
-    },
     "qwen2.5/coder/7b/instruct": {
         "backend": "transformers",
         "model_path": "Qwen/Qwen2.5-Coder-7B-Instruct",
         "model_class_kwargs": {},
         "required_memory_mb": 45000,
-        "T": 32768,
-        "filter_caps": ["completion", "chat"],
-    },
-    "qwen2.5/coder/7b/instruct/gptq8bit": {
-        "backend": "autogptq",
-        "model_path": "Qwen/Qwen2.5-Coder-7B-Instruct-GPTQ-Int8",
-        "model_class_kwargs": {"inject_fused_attention": False},
-        "required_memory_mb": 13000,
         "T": 32768,
         "filter_caps": ["completion", "chat"],
     },

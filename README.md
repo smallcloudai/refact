@@ -131,11 +131,8 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 | [qwen2.5/coder/1.5b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct)                  | +          | +    |             |                                                     |
 | [qwen2.5/coder/3b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct)                      | +          | +    |             |                                                     |
 | [qwen2.5/coder/7b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct)                      | +          | +    |             |                                                     |
-| [qwen2.5/coder/7b/instruct/gptq8bit](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GPTQ-Int8)   | +          | +    |             |                                                     |
 | [qwen2.5/coder/14b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct)                    | +          | +    |             |                                                     |
-| [qwen2.5/coder/14b/instruct/gptq8bit](https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct-GPTQ-Int8) | +          | +    |             |                                                     |
 | [qwen2.5/coder/32b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct)                    | +          | +    |             |                                                     |
-| [qwen2.5/coder/32b/instruct/gptq8bit](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-GPTQ-Int8) | +          | +    |             |                                                     |
 
 ## Usage
 
