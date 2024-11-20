@@ -110,6 +110,7 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "default_scratchpad": "REPLACE",
             "similar_models": [
+                "llama3/8b/instruct/neuron",
                 "llama3/8b/instruct/vllm",
                 "llama3.1/8b/instruct",
                 "llama3.1/8b/instruct/vllm",
