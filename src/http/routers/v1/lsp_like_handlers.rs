@@ -12,7 +12,7 @@ use crate::global_context::SharedGlobalContext;
 use crate::files_in_workspace;
 
 #[derive(Serialize, Deserialize, Clone)]
-struct LspLikeInit {
+pub struct LspLikeInit {
     pub project_roots: Vec<Url>,
 }
 

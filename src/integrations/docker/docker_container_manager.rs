@@ -7,12 +7,14 @@ use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
 use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 use tracing::{error, info, warn};
+use url::Url;
 use walkdir::WalkDir;
 
 use crate::files_correction::get_project_dirs;
 use crate::files_in_workspace::retrieve_files_in_workspace_folders;
 use crate::global_context::GlobalContext;
 use crate::http::http_post;
+use crate::http::routers::v1::lsp_like_handlers::LspLikeInit;
 use crate::http::routers::v1::sync_files::SyncFilesExtractTarPost;
 use crate::integrations::sessions::get_session_hashmap_key;
 use crate::integrations::sessions::IntegrationSession;
@@ -244,9 +246,8 @@ async fn docker_container_create(
     };
 
     let lsp_command = format!(
-        "{DEFAULT_CONTAINER_LSP_PATH} --http-port {lsp_port} --logs-stderr \
-        --address-url {address_url} --api-key {api_key} --vecdb --reset-memory --ast --experimental \
-        --inside-container --workspace-folder {workspace_folder}",
+        "{DEFAULT_CONTAINER_LSP_PATH} --http-port {lsp_port} --logs-stderr --inside-container \
+        --address-url {address_url} --api-key {api_key} --vecdb --reset-memory --ast --experimental",
     );
     
     let ports_to_forward_as_arg_list = ports_to_forward.iter()
@@ -381,16 +382,23 @@ async fn docker_container_sync_workspace(
     let cp_command = format!("container cp {} {}:{}", temp_tar_file.to_string_lossy(), container_id, container_workspace_folder.to_string_lossy());
     docker.command_execute(&cp_command, gcx.clone(), true).await?;
 
-    let post = SyncFilesExtractTarPost {
+    let sync_files_post = SyncFilesExtractTarPost {
         tar_path: container_workspace_folder.join(&tar_file_name).to_string_lossy().to_string(),
         extract_to: container_workspace_folder.to_string_lossy().to_string(),
     };
-    http_post(&format!("http://localhost:{lsp_port_to_connect}/v1/sync-files-extract-tar"), &post).await?;
+    http_post(&format!("http://localhost:{lsp_port_to_connect}/v1/sync-files-extract-tar"), &sync_files_post).await?;
 
     tokio::fs::remove_file(&temp_tar_file).await
         .map_err(|e| format!("Error removing temporary archive: {}", e))?;
 
     info!("Workspace synced successfully.");
+
+    let initialize_post = LspLikeInit {
+        project_roots: vec![Url::parse(&format!("file://{}", container_workspace_folder.to_string_lossy())).unwrap()],
+    };
+    http_post(&format!("http://localhost:{lsp_port_to_connect}/v1/lsp-initialize"), &initialize_post).await?;
+    info!("LSP initialized for workspace.");
+
     Ok(())
 }
 
