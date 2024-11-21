@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import {
   ChatMessages,
   isChatContextFileMessage,
@@ -106,68 +106,59 @@ export type ChatContentProps = {
   onStopStreaming: () => void;
 };
 
-export const ChatContent = React.forwardRef<HTMLDivElement, ChatContentProps>(
-  (props, ref) => {
-    const messages = useAppSelector(selectMessages);
-    const isStreaming = useAppSelector(selectIsStreaming);
-    const isWaiting = useAppSelector(selectIsWaiting);
+export const ChatContent: React.FC<ChatContentProps> = (props) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const messages = useAppSelector(selectMessages);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
 
-    const {
-      innerRef,
-      handleScroll,
-      handleWheel,
-      handleScrollButtonClick,
-      isScrolledTillBottom,
-    } = useAutoScroll({
-      ref,
-      messages,
-      isStreaming,
-    });
+  const {
+    handleScroll,
+    handleWheel,
+    handleScrollButtonClick,
+    showFollowButton,
+  } = useAutoScroll({
+    scrollRef,
+  });
 
-    const onRetryWrapper = (
-      index: number,
-      question: UserMessage["content"],
-    ) => {
-      props.onRetry(index, question);
-      handleScrollButtonClick();
-    };
+  const onRetryWrapper = (index: number, question: UserMessage["content"]) => {
+    props.onRetry(index, question);
+  };
 
-    return (
-      <ScrollArea
-        style={{ flexGrow: 1, height: "auto", position: "relative" }}
-        scrollbars="vertical"
-        onScroll={handleScroll}
-        onWheel={handleWheel}
-      >
-        <Flex direction="column" className={styles.content} p="2" gap="1">
-          {messages.length === 0 && <PlaceHolderText />}
-          {renderMessages(messages, onRetryWrapper)}
-          <Container py="4">
-            <Spinner spinning={isWaiting} />
-          </Container>
-          <div ref={innerRef} />
-        </Flex>
-        {!isScrolledTillBottom && (
-          <ScrollToBottomButton onClick={handleScrollButtonClick} />
-        )}
+  return (
+    <ScrollArea
+      ref={scrollRef}
+      style={{ flexGrow: 1, height: "auto", position: "relative" }}
+      scrollbars="vertical"
+      onScroll={handleScroll}
+      onWheel={handleWheel}
+      type={isWaiting || isStreaming ? "auto" : "hover"}
+    >
+      <Flex direction="column" className={styles.content} p="2" gap="1">
+        {messages.length === 0 && <PlaceHolderText />}
+        {renderMessages(messages, onRetryWrapper)}
+        <Container py="4">
+          <Spinner spinning={isWaiting} />
+        </Container>
+      </Flex>
+      {showFollowButton && (
+        <ScrollToBottomButton onClick={handleScrollButtonClick} />
+      )}
 
-        {isStreaming && (
-          <Button
-            ml="auto"
-            color="red"
-            title="stop streaming"
-            onClick={props.onStopStreaming}
-            style={{ position: "absolute", bottom: 15 }}
-          >
-            Stop
-          </Button>
-        )}
-      </ScrollArea>
-    );
-  },
-);
-
-ChatContent.displayName = "ChatContent";
+      {isStreaming && (
+        <Button
+          ml="auto"
+          color="red"
+          title="stop streaming"
+          onClick={props.onStopStreaming}
+          style={{ position: "absolute", bottom: 15 }}
+        >
+          Stop
+        </Button>
+      )}
+    </ScrollArea>
+  );
+};
 
 function renderMessages(
   messages: ChatMessages,

@@ -4,7 +4,7 @@ import { Flex, Card, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
-import { TextArea, TextAreaProps } from "../TextArea";
+import { TextArea } from "../TextArea";
 import { Form } from "./Form";
 import { useOnPressedEnter, useIsOnline, useConfig } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
@@ -41,7 +41,7 @@ export type ChatFormProps = {
   model: string;
   onSetChatModel: (model: string) => void;
   isStreaming: boolean;
-  onTextAreaHeightChange: TextAreaProps["onTextAreaHeightChange"];
+
   showControls: boolean;
   prompts: SystemPrompts;
   onSetSystemPrompt: (prompt: SystemPrompts) => void;
@@ -58,7 +58,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   model,
   onSetChatModel,
   isStreaming,
-  onTextAreaHeightChange,
   showControls,
   prompts,
   onSetSystemPrompt,
@@ -251,7 +250,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 required={true}
                 disabled={isStreaming}
                 {...props}
-                onTextAreaHeightChange={onTextAreaHeightChange}
                 autoFocus={true}
                 style={{ boxShadow: "none", outline: "none" }}
               />

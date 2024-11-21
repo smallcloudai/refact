@@ -88,90 +88,9 @@ const meta: Meta<typeof ChatForm> = {
       },
       error: "",
     },
-    // error: null,
-    // clearError: noop,
     showControls: true,
-    // hasContextFile: false,
-    // commands: {
-    //   completions: testCommands,
-    //   replace: [-1, -1],
-    //   is_cmd_executable: false,
-    // },
-    // attachFile: {
-    //   name: "todo.md",
-    //   can_paste: true,
-    //   // attach: false,
-    //   line1: 1,
-    //   line2: 100,
-    //   path: "/Users/refact/Projects/smallcloudai/refact-chat-js/todo.md",
-    //   cursor: 50,
-    // },
-    // filesInPreview: [
-    //   {
-    //     file_name:
-    //       "/Users/refact/Projects/smallcloudai/refact-chat-js/src/components/ChatForm/index.tsx",
-    //     file_content: "",
-    //     line1: 1,
-    //     line2: 100,
-    //   },
-    //   {
-    //     file_name:
-    //       "/Users/refact/Projects/smallcloudai/refact-chat-js/src/components/ChatForm/ChatForm.stories.tsx",
-    //     file_content: "",
-    //     line1: 1,
-    //     line2: 100,
-    //   },
-    //   {
-    //     file_name:
-    //       "/Users/refact/Projects/smallcloudai/refact-chat-js/src/components/ChatForm/FilesPreview.tsx",
-    //     file_content: "",
-    //     line1: 1,
-    //     line2: 100,
-    //   },
-    //   {
-    //     file_name:
-    //       "/Users/refact/Projects/smallcloudai/refact-chat-js/src/components/ChatForm/CharForm.test.tsx",
-    //     file_content: "",
-    //     line1: 1,
-    //     line2: 100,
-    //   },
-    //   {
-    //     file_name:
-    //       "/Users/refact/Projects/smallcloudai/refact-chat-js/src/components/ChatForm/RetryForm.tsx",
-    //     file_content: "",
-    //     line1: 1,
-    //     line2: 100,
-    //   },
-    //   {
-    //     file_name:
-    //       "/Users/refact/Projects/smallcloudai/refact-chat-js/src/components/ChatForm/ChatForm.module.css",
-    //     file_content: "",
-    //     line1: 1,
-    //     line2: 100,
-    //   },
-    //   {
-    //     file_name:
-    //       "/Users/refact/Projects/smallcloudai/refact-chat-js/src/components/ChatForm/ChatForm.tsx",
-    //     file_content: "",
-    //     line1: 1,
-    //     line2: 100,
-    //   },
-    //   {
-    //     file_name:
-    //       "/Users/refacts/Projects/smallcloudai/refact-chat-js/src/components/ChatForm/Form.tsx",
-    //     file_content: "",
-    //     line1: 1,
-    //     line2: 100,
-    //   },
-    // ],
-    // removePreviewFileByName: () => ({}),
-    // requestPreviewFiles: () => ({}),
-    // requestCommandsCompletion: () => ({}),
-    // setSelectedCommand: () => ({}),
-    onTextAreaHeightChange: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
-    // selectedSystemPrompt: null,
   },
   decorators: [
     (Children) => {

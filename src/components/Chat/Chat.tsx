@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
@@ -45,7 +45,6 @@ export const Chat: React.FC<ChatProps> = ({
   maybeSendToSidebar,
 }) => {
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
-  const chatContentRef = useRef<HTMLDivElement>(null);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
 
@@ -84,17 +83,6 @@ export const Chat: React.FC<ChatProps> = ({
     [submit, isViewingRawJSON],
   );
 
-  const onTextAreaHeightChange = useCallback(() => {
-    if (!chatContentRef.current) return;
-    // TODO: handle preventing scroll if the user is not on the bottom of the chat
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    chatContentRef.current.scrollIntoView &&
-      chatContentRef.current.scrollIntoView({
-        behavior: "instant",
-        block: "end",
-      });
-  }, [chatContentRef]);
-
   const focusTextarea = useCallback(() => {
     const textarea = document.querySelector<HTMLTextAreaElement>(
       '[data-testid="chat-form-textarea"]',
@@ -127,7 +115,6 @@ export const Chat: React.FC<ChatProps> = ({
       >
         <ChatContent
           key={`chat-content-${chatId}`}
-          ref={chatContentRef}
           onRetry={retryFromIndex}
           onStopStreaming={abort}
         />
@@ -152,7 +139,6 @@ export const Chat: React.FC<ChatProps> = ({
           onSetChatModel={onSetChatModel}
           caps={caps}
           onClose={maybeSendToSidebar}
-          onTextAreaHeightChange={onTextAreaHeightChange}
           prompts={promptsRequest.data ?? {}}
           onSetSystemPrompt={onSetSelectedSystemPrompt}
           selectedSystemPrompt={selectedSystemPrompt}
