@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from typing import List
 from prompt_toolkit import PromptSession, Application, print_formatted_text
 from refact import chat_client, cli_main, cli_settings
@@ -33,20 +34,25 @@ async def think_of_good_filename_and_export(msglist: List[chat_client.Message]):
     req += "\n"
     req += QUESTION
 
-    good_name_choices = await chat_client.ask_using_http(
-        cli_main.lsp_runner.base_url(),
-        [*msglist, chat_client.Message(
-            role="user",
-            content=req,
-        )],
-        1,
-        cli_settings.args.model,
-        verbose=False,
-        temperature=0.0,
-        max_tokens=100,
-    )
-    choice0 = good_name_choices[0]
-    fn = choice0[-1].content.strip()
+    try:
+        good_name_choices = await chat_client.ask_using_http(
+            cli_main.lsp_runner.base_url(),
+            [*msglist, chat_client.Message(
+                role="user",
+                content=req,
+            )],
+            1,
+            cli_settings.args.model,
+            verbose=False,
+            temperature=0.0,
+            max_tokens=100,
+        )
+        choice0 = good_name_choices[0]
+        fn = choice0[-1].content.strip()
+    except Exception as e:
+        print(f"\n\nFailed to get a good filename using chat: {e}\n\n")
+        fn = f"{int(time.time())}.json"
+
     long_fn = os.path.join(TRAJ_DIR, fn)
     print_formatted_text("\nExport to %r" % long_fn)
     assert " " not in fn

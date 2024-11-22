@@ -70,16 +70,17 @@ pub struct TicketToApply {
     pub hint_message: String,
 }
 
-pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> String {
+pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> (String, Option<String>) {
     let mut text = format!("Couldn't create patch for tickets: '{}'.\nReason: {reason}", tickets.join(", "));
     if let Some(resolution) = resolution {
-        text.push_str(&format!("\nResolution: {}", resolution));
+        let cd_format = format!("💿 {resolution}");
+        return (text, Some(cd_format))
     }
-    text
+    (text, None)
 }
 
 async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ticket: &mut TicketToApply) -> Result<(), String> {
-    fn good_error_text(reason: &str, ticket: &TicketToApply) -> String {
+    fn _error_text(reason: &str, ticket: &TicketToApply) -> String {
         format!("Failed to validate TICKET '{}': {}", ticket.id, reason)
     }
     async fn resolve_path(gcx: Arc<ARwLock<GlobalContext>>, path_str: &String) -> Result<String, String> {
@@ -91,8 +92,8 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
     match ticket.action {
         PatchAction::RewriteSymbol => {
             ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
-                .map_err(|e| good_error_text(
-                    &format!("failed to resolve filename_before: '{}'. Error:\n{}. If you wanted to create a new file, use REWRITE_WHOLE_FILE ticket type", ticket.filename_before, e), 
+                .map_err(|e| _error_text(
+                    &format!("failed to resolve filename_before: '{}'. Error:\n{}. If you wanted to create a new file, use REWRITE_WHOLE_FILE ticket type", ticket.filename_before, e),
                     ticket))?;
             ticket.fallback_action = Some(PatchAction::PartialEdit);
 
@@ -109,8 +110,8 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
         }
         PatchAction::PartialEdit => {
             ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
-                .map_err(|e| good_error_text(
-                    &format!("failed to resolve filename_before: '{}'. Error:\n{}. If you wanted to create a new file, use REWRITE_WHOLE_FILE ticket type", ticket.filename_before, e), 
+                .map_err(|e| _error_text(
+                    &format!("failed to resolve filename_before: '{}'. Error:\n{}. If you wanted to create a new file, use REWRITE_WHOLE_FILE ticket type", ticket.filename_before, e),
                     ticket))?;
         }
         PatchAction::RewriteWholeFile => {
@@ -119,7 +120,7 @@ async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ti
                 Err(_) => {
                     // consider that as a new file
                     if path_before.is_relative() {
-                        return Err(good_error_text(&format!("filename_before: '{}' must be absolute.", ticket.filename_before), ticket));
+                        return Err(_error_text(&format!("filename_before: '{}' must be absolute.", ticket.filename_before), ticket));
                     } else {
                         let path_before = crate::files_correction::to_pathbuf_normalize(&ticket.filename_before);
                         path_before.to_string_lossy().to_string()
@@ -279,9 +280,7 @@ pub async fn get_tickets_from_messages(
         (ccx_lock.global_context.clone(), ccx_lock.messages.clone())
     };
     let mut tickets: HashMap<String, TicketToApply> = HashMap::new();
-    for message in messages
-        .iter()
-        .filter(|x| x.role == "assistant") {
+    for message in messages.iter().filter(|x| x.role == "assistant") {
         for ticket in parse_tickets(gcx.clone(), &message.content.content_text_only()).await.into_iter() {
             tickets.insert(ticket.id.clone(), ticket);
         }
@@ -293,12 +292,13 @@ pub async fn get_and_correct_active_tickets(
     gcx: Arc<ARwLock<GlobalContext>>,
     ticket_ids: Vec<String>,
     all_tickets_from_above: HashMap<String, TicketToApply>,
-) -> Result<Vec<TicketToApply>, String> {
+) -> Result<Vec<TicketToApply>, (String, Option<String>)> {
     // XXX: this is a useless message the model doesn't listen to anyway. We need cd_instruction and a better text.
     let mut active_tickets = ticket_ids.iter().map(|t| all_tickets_from_above.get(t).cloned()
         .ok_or(good_error_text(
-            &format!("No code block found for the ticket {:?}, did you forget to write one using 📍-notation or the message is stripped?", t),
-            &ticket_ids, Some("wrap the block of code in a 📍-notation, create a ticket, make sure the message isn't stripped. Do not call patch() until you do it. Do not prompt user again this time".to_string()),
+            &format!("No code block found for the ticket {:?}, did you forget to write it using 📍-notation?", t),
+            &ticket_ids,
+            Some("Write the code you want to apply using 📍-notation. Do not prompt user. Follow the system prompt.".to_string()),
         ))).collect::<Result<Vec<_>, _>>()?;
 
     if active_tickets.iter().map(|x| x.filename_before.clone()).unique().count() > 1 {

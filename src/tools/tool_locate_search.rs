@@ -117,6 +117,7 @@ impl Tool for ToolLocateSearch {
                 false,
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
+                ccx_lock.should_execute_remotely,
             ).await;
             t.subchat_tx = ccx_lock.subchat_tx.clone();
             t.subchat_rx = ccx_lock.subchat_rx.clone();
@@ -216,10 +217,7 @@ async fn find_relevant_files_with_search(
     })?;
     let rejection = assistant_output1.get("rejection");
     if let Some(_rejection_message) = rejection {
-        let cd_instruction = format!(r###"💿 locate() looked inside of {} files, workspace has {} files.
-Complain briefly to the user that you cannot do that, ask for clarification.
-Answer in the language the user prefers. Follow the system prompt.
-"###, inspected_files.len(), total_files_in_project).replace("\n", " ");
+        let cd_instruction = format!("💿 locate() looked inside of {} files, workspace has {} files.", inspected_files.len(), total_files_in_project).replace("\n", " ");
         return Ok((results, usage, serde_json::to_string_pretty(&assistant_output1).unwrap(), cd_instruction));
     }
 

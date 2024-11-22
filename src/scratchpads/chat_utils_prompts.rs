@@ -1,7 +1,12 @@
 use std::sync::Arc;
 use std::path::PathBuf;
 use tokio::sync::RwLock as ARwLock;
+use tracing::info;
+
 use crate::global_context::GlobalContext;
+use crate::http::http_post_json;
+use crate::http::routers::v1::system_prompt::{SystemPromptPost, SystemPromptResponse};
+use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 
 
 pub async fn get_default_system_prompt(
@@ -23,10 +28,31 @@ pub async fn get_default_system_prompt(
     } else {
         "default"
     };
-    tconfig.system_prompts.get(prompt_key).map_or_else(|| {
+    let system_prompt = tconfig.system_prompts.get(prompt_key).map_or_else(|| {
         tracing::error!("cannot find system prompt `{}`", prompt_key);
         String::new()
-    },|x| x.text.clone())
+    }, |x| x.text.clone());
+    // tracing::info!("system_prompt:\n{}", system_prompt);
+    system_prompt
+}
+
+pub async fn get_default_system_prompt_from_remote(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    have_exploration_tools: bool,
+    have_agentic_tools: bool,
+    chat_id: &str,
+) -> Result<String, String>
+{
+    let post = SystemPromptPost {
+        have_exploration_tools,
+        have_agentic_tools
+    };
+
+    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), chat_id).await?;
+    let url = format!("http://localhost:{port}/v1/system-prompt");
+    let response: SystemPromptResponse = http_post_json(&url, &post).await?;
+    info!("get_default_system_prompt_from_remote: got response: {:?}", response);
+    Ok(response.system_prompt)
 }
 
 async fn _workspace_info(

@@ -1,7 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::Hasher;
-use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -20,6 +19,7 @@ use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::DocumentsState;
+use crate::integrations::docker::docker_ssh_tunnel_utils::SshTunnel;
 use crate::integrations::sessions::IntegrationSession;
 use crate::privacy::PrivacySettings;
 use crate::telemetry::telemetry_structs;
@@ -88,6 +88,12 @@ pub struct CommandLine {
 
     #[structopt(long, help="Enable experimental features, such as new integrations.")]
     pub experimental: bool,
+    #[structopt(long, help="Pass true to tell this binary it can run more tools without confirmation.")]
+    pub inside_container: bool,
+    #[structopt(long, default_value="", help="Specify a different configuration for integrations to be used inside remote containers.")]
+    pub remote_integrations: String,
+    #[structopt(long, short="s", default_value="", help="Read a competency.yaml file that turns on specialization for a particular area, such as creating websites.")]
+    pub competency: String,
 }
 
 impl CommandLine {
@@ -153,6 +159,7 @@ pub struct GlobalContext {
     pub privacy_settings: Arc<PrivacySettings>,
     pub integration_sessions: HashMap<String, Arc<AMutex<Box<dyn IntegrationSession>>>>,
     pub codelens_cache: Arc<AMutex<crate::http::routers::v1::code_lens::CodeLensCache>>,
+    pub docker_ssh_tunnel: Arc<AMutex<Option<SshTunnel>>>,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -333,6 +340,7 @@ pub async fn create_global_context(
         privacy_settings: Arc::new(PrivacySettings::default()),
         integration_sessions: HashMap::new(),
         codelens_cache: Arc::new(AMutex::new(crate::http::routers::v1::code_lens::CodeLensCache::default())),
+        docker_ssh_tunnel: Arc::new(AMutex::new(None)),
     };
     let gcx = Arc::new(ARwLock::new(cx));
     {

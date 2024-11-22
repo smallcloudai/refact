@@ -7,6 +7,8 @@ use hyper::Server;
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::{error, info};
+use reqwest::{Client, Response};
+use serde::Serialize;
 
 use crate::global_context::GlobalContext;
 use crate::http::routers::make_refact_http_server;
@@ -25,12 +27,15 @@ pub async fn start_server(
     ask_shutdown_receiver: std::sync::mpsc::Receiver<String>,
     shutdown_flag: Arc<AtomicBool>
 ) -> Option<JoinHandle<()>> {
-    let port = global_context.read().await.cmdline.http_port;
+    let (port, is_inside_container) = {
+        let gcx_locked= global_context.read().await;
+        (gcx_locked.cmdline.http_port, gcx_locked.cmdline.inside_container)
+    };
     if port == 0 {
         return None
     }
     return Some(tokio::spawn(async move {
-        let addr = ([127, 0, 0, 1], port).into();
+        let addr = if is_inside_container { ([0, 0, 0, 0], port).into() } else { ([127, 0, 0, 1], port).into() };
         let builder = Server::try_bind(&addr).map_err(|e| {
             let _ = write!(std::io::stderr(), "PORT_BUSY {}\n", e);
             format!("port busy, address {}: {}", addr, e)
@@ -54,4 +59,34 @@ pub async fn start_server(
             }
         }
     }));
+}
+
+async fn _make_http_post<T: Serialize>(
+    url: &str,
+    body: &T,
+) -> Result<Response, String> {
+    let client = Client::builder().build().map_err(|e| e.to_string())?;
+    let post_result = client.post(url).json(body).send().await.map_err(|e| e.to_string())?;
+
+    if !post_result.status().is_success() {
+        let status = post_result.status();
+        let error_text = post_result.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        return Err(format!("HTTP request failed with status {}: {}", status, error_text));
+    }
+    Ok(post_result)
+}
+
+pub async fn http_post_json<T: Serialize, R: for<'de> serde::Deserialize<'de>>(
+    url: &str,
+    body: &T,
+) -> Result<R, String> {
+    let post_result = _make_http_post(url, body).await?;
+    post_result.json::<R>().await.map_err(|e| e.to_string())
+}
+
+pub async fn http_post<T: Serialize>(
+    url: &str,
+    body: &T,
+) -> Result<(), String> {
+    _make_http_post(url, body).await.map(|_| ())
 }

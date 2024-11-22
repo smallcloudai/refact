@@ -24,12 +24,12 @@ pub(crate) const BLACKLISTED_DIRS: &[&str] = &[
     "_trajectories",
 ];
 
-pub fn is_valid_file(path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub fn is_valid_file(path: &PathBuf, allow_hidden_folders: bool, ignore_size_thresholds: bool) -> Result<(), Box<dyn std::error::Error>> {
     if !path.is_file() {
         return Err("Path is not a file".into());
     }
 
-    if path.ancestors().any(|ancestor| {
+    if !allow_hidden_folders && path.ancestors().any(|ancestor| {
         ancestor.file_name()
             .map(|name| name.to_string_lossy().starts_with('.'))
             .unwrap_or(false)
@@ -39,10 +39,10 @@ pub fn is_valid_file(path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
 
     if let Ok(metadata) = fs::metadata(path) {
         let file_size = metadata.len();
-        if file_size < SMALL_FILE_SIZE_THRESHOLD {
+        if !ignore_size_thresholds && file_size < SMALL_FILE_SIZE_THRESHOLD {
             return Err("File size is too small".into());
         }
-        if file_size > LARGE_FILE_SIZE_THRESHOLD {
+        if !ignore_size_thresholds && file_size > LARGE_FILE_SIZE_THRESHOLD {
             return Err("File size is too large".into());
         }
         #[cfg(not(windows))]

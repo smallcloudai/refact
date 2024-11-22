@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use glob::Pattern;
+use indexmap::IndexMap;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -9,12 +10,15 @@ use tracing::{info, warn};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile, SubchatParameters};
+use crate::http::http_post_json;
+use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
-use crate::tools::tools_description::commands_require_confirmation_rules_from_integrations_yaml;
+use crate::tools::tools_description::{commands_require_confirmation_rules_from_integrations_yaml, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::get_model_record;
+use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
 pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_name: &str) -> Result<SubchatParameters, String> {
@@ -45,16 +49,83 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
     Ok(params)
 }
 
-pub async fn run_tools(
+pub async fn run_tools_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
+    model_name: &str,
+    maxgen: usize,
+    original_messages: &Vec<ChatMessage>,
+    stream_back_to_user: &mut HasRagResults,
+    style: &Option<String>,
+) -> Result<(Vec<ChatMessage>, bool), String> {
+    let (n_ctx, subchat_tool_parameters, postprocess_parameters, gcx, chat_id) = {
+        let ccx_locked = ccx.lock().await;
+        (
+            ccx_locked.n_ctx,
+            ccx_locked.subchat_tool_parameters.clone(),
+            ccx_locked.postprocess_parameters.clone(),
+            ccx_locked.global_context.clone(),
+            ccx_locked.chat_id.clone(),
+        )
+    };
+
+    let tools_execute_post = ToolsExecutePost {
+        messages: original_messages.clone(),
+        n_ctx,
+        maxgen,
+        subchat_tool_parameters,
+        postprocess_parameters,
+        model_name: model_name.to_string(),
+        chat_id: chat_id.clone(),
+        style: style.clone(),
+    };
+
+    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_id).await?;
+    info!("run_tools_remotely: connecting to port {}", port);
+
+    let url = format!("http://localhost:{port}/v1/tools-execute");
+    let response: ToolExecuteResponse = http_post_json(&url, &tools_execute_post).await?;
+    info!("run_tools_remotely: got response: {:?}", response);
+
+    let mut all_messages = original_messages.to_vec();
+    for msg in response.messages {
+        all_messages.push(msg.clone());
+        stream_back_to_user.push_in_json(json!(msg));
+    }
+
+    Ok((all_messages, response.tools_runned))
+}
+
+pub async fn run_tools_locally(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    at_tools: IndexMap<String, Arc<AMutex<Box<dyn Tool+Send>>>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
+    let (new_messages, tools_runned) = run_tools( // todo: fix typo "runned"
+        ccx, at_tools, tokenizer, maxgen, original_messages, style
+    ).await?;
+
+    let mut all_messages = original_messages.to_vec();
+    for msg in new_messages {
+        all_messages.push(msg.clone());
+        stream_back_to_user.push_in_json(json!(msg));
+    }
+
+    Ok((all_messages, tools_runned))
+}
+
+pub async fn run_tools(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    at_tools: IndexMap<String, Arc<AMutex<Box<dyn Tool+Send>>>>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
+    maxgen: usize,
+    original_messages: &Vec<ChatMessage>,
+    style: &Option<String>,
+) -> Result<(Vec<ChatMessage>, bool), String> {
     let gcx = ccx.lock().await.global_context.clone();
-    let at_tools = crate::tools::tools_description::tools_merged_and_filtered(gcx.clone()).await?;
     let n_ctx = ccx.lock().await.n_ctx;
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     let tokens_for_rag = reserve_for_context;
@@ -63,15 +134,15 @@ pub async fn run_tools(
 
     if tokens_for_rag < MIN_RAG_CONTEXT_LIMIT {
         warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.");
-        return Ok((original_messages.clone(), false));
+        return Ok((vec![], false));
     }
 
     let last_msg_tool_calls = match original_messages.last().filter(|m|m.role=="assistant") {
         Some(m) => m.tool_calls.clone().unwrap_or(vec![]),
-        None => return Ok((original_messages.clone(), false)),
+        None => return Ok((vec![], false)),
     };
     if last_msg_tool_calls.is_empty() {
-        return Ok((original_messages.clone(), false));
+        return Ok((vec![], false));
     }
 
     let mut context_files_for_pp = vec![];
@@ -194,15 +265,12 @@ pub async fn run_tools(
         style,
     ).await;
 
-    let mut all_messages = original_messages.to_vec();
-    for msg in generated_tool.iter().chain(generated_other.iter()) {
-        all_messages.push(msg.clone());
-        stream_back_to_user.push_in_json(json!(msg));
-    }
+    let new_messages = generated_tool.into_iter().chain(generated_other.into_iter())
+        .collect::<Vec<_>>();
 
     ccx.lock().await.pp_skeleton = false;
 
-    Ok((all_messages, true))
+    Ok((new_messages, true))
 }
 
 async fn pp_run_tools(

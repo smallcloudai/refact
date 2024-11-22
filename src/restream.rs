@@ -483,6 +483,12 @@ pub fn try_insert_usage(msg_value: &mut serde_json::Value) -> bool {
         map.get(field).and_then(|v| v.as_u64()).map(|v| v as usize)
     };
 
+    if let Some(usage) = map.get("usage") {
+        if !usage.is_null() {
+            tracing::info!("model says usage: {:?}", usage);
+        }
+    }
+
     let metering_prompt_tokens_n = match get_field_as_usize("metering_prompt_tokens_n") {
         Some(value) => value,
         None => return false,

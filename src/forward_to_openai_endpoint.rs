@@ -32,16 +32,25 @@ pub async fn forward_to_openai_style_endpoint(
     let mut data = json!({
         "model": model_name,
         "stream": false,
-        "temperature": sampling_parameters.temperature,
-        "max_tokens": sampling_parameters.max_new_tokens,
         // "stop": sampling_parameters.stop, // openai does not like stop: []
     });
     if let Some(n) = sampling_parameters.n {
         data["n"] = serde_json::Value::from(n);
     }
+    if model_name != "o1-mini" {
+        data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
+        data["max_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
+    } else {
+        data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
+    }
+    if let Some(n) = sampling_parameters.n {
+        if n > 1 {
+            data["n"] = serde_json::Value::from(n);
+        }
+    }
     info!("NOT STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {
-        passthrough_messages_to_json(&mut data, prompt);
+        passthrough_messages_to_json(&mut data, prompt, model_name);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
         data["echo"] = serde_json::Value::Bool(false);
@@ -95,6 +104,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "stream": true,
         "temperature": sampling_parameters.temperature,
         "max_tokens": sampling_parameters.max_new_tokens,
+        "stream_options": {"include_usage": true},
         // "stop": sampling_parameters.stop, // openai does not like stop: []
     });
     if let Some(n) = sampling_parameters.n{
@@ -102,7 +112,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     }
     info!("STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
     if is_passthrough {
-        passthrough_messages_to_json(&mut data, prompt);
+        passthrough_messages_to_json(&mut data, prompt, model_name);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
     }
@@ -118,6 +128,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
 fn passthrough_messages_to_json(
     data: &mut serde_json::Value,
     prompt: &str,
+    model_name: &str,
 ) {
     assert!(prompt.starts_with("PASSTHROUGH "));
     let messages_str = &prompt[12..];
@@ -125,7 +136,9 @@ fn passthrough_messages_to_json(
 
     data["messages"] = big_json["messages"].clone();
     if let Some(tools) = big_json.get("tools") {
-        data["tools"] = tools.clone();
+        if model_name != "o1-mini" {
+            data["tools"] = tools.clone();
+        }
     }
 }
 

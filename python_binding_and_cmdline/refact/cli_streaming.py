@@ -1,5 +1,5 @@
 import json
-from typing import Dict, DefaultDict, List, Any
+from typing import Dict, DefaultDict, List, Any, Optional
 from collections import defaultdict
 
 from prompt_toolkit import print_formatted_text
@@ -16,6 +16,8 @@ from refact import cli_settings
 from refact import cli_main
 from refact import chat_client
 
+STREAM = True
+
 
 response_text = ""
 language_printing = None
@@ -23,7 +25,7 @@ entertainment_box = FormattedTextControl(text=[])
 streaming_messages: List[chat_client.Message] = []
 tool_calls: Dict[str, chat_client.ToolCallDict] = {}
 subchat_stuff: DefaultDict[str, Any] = defaultdict(dict)
-streaming_toolcall: List[Any] = []
+streaming_toolcall: List[chat_client.ToolCallDict] = []
 _is_streaming = False
 
 
@@ -58,12 +60,14 @@ def flush_response():
 
 
 def update_entertainment_box():
-    assert cli_settings.cli_yaml is not None
     entertainment_box.text = [("", response_text)]
+
+
+for index, tool_call in enumerate(streaming_toolcall):
+    # 🤔 🔨
+    for index, tool_call in enumerate(streaming_toolcall):
+        entertainment_box.text.append(("", f"\n🤔 {tool_call['function']['name']}({tool_call['function']['arguments']})"))
     for tool_call_id, subchat_in_tool in subchat_stuff.items():
-        # 🤔 🔨
-        for index, tool_call in enumerate(streaming_toolcall):
-            entertainment_box.text.append(("", f"\n🤔 {tool_call['function']['name']}({tool_call['function']['arguments']})"))
         if "context_files" in subchat_in_tool:
             context_files = subchat_in_tool["context_files"]
             if len(context_files) > 4:
@@ -86,58 +90,48 @@ def print_response(to_print: str):
     update_entertainment_box()
 
 
-def process_streaming_data(data):
+def process_streaming_data(data: Dict[str, Any], deltas_collector: Optional[chat_client.ChoiceDeltaCollector]):
     global streaming_messages
     global streaming_toolcall
     global tool_calls
     term_width = get_terminal_width()
 
-    # TODO: remake callback to use entities from chat_client
-
     if "choices" in data:
+        assert deltas_collector is not None
         if not data.get("choices") and data.get("usage"):
             return
         choices = data['choices']
         delta = choices[0]['delta']
-        content = delta.get('content', None)
+        delta_content = delta.get('content', None)
 
-        # streaming tool calls
         if delta.get("tool_calls"):
             for tool_call in delta["tool_calls"]:
-                # XXX doesn't work for BYOK
-                # {'index': 0, 'id': 'call_RwbNYLiACAgUXzFR9967dWmf', 'type': 'function', 'function': {'name': 'cargo_check', 'arguments': ''}}
-                # {'index': 0, 'function': {'arguments': '{"'}}
-                # need to collect deltas properly
-                id = tool_call["id"]
-                index = tool_call["index"]
-                if id is not None:
-                    streaming_toolcall.append(tool_call)
-                else:
-                    streaming_toolcall[index]["function"]["arguments"] += tool_call["function"]["arguments"]
+                assert deltas_collector.choices[0].tool_calls is not None
+                streaming_toolcall = list(deltas_collector.choices[0].tool_calls)
                 update_entertainment_box()
         finish_reason = choices[0]['finish_reason']
         if finish_reason == "stop":
             print_response("\n")
         if finish_reason == "tool_calls":
             for tool_call in streaming_toolcall:
-                tool_calls[tool_call["id"]] = chat_client.ToolCallDict.model_validate(tool_call)
+                assert isinstance(tool_call, chat_client.ToolCallDict)
+                tool_calls[tool_call.id] = tool_call
             update_entertainment_box()
-        if content is None:
-            return
-        if len(streaming_messages) == 0 or streaming_messages[-1].role != "assistant":
-            print_response("\n")
-            streaming_messages.append(chat_client.Message(role="assistant", content=content))
+        if delta_content is not None:
+            print_response(delta_content)
         else:
-            streaming_messages[-1].content += content
-        print_response(content)
+            update_entertainment_box()
 
-    elif "role" in data:
+    elif ("role" in data) or isinstance(data, chat_client.Message):
         streaming_toolcall.clear()
         subchat_stuff.clear()
         update_entertainment_box()
 
-        # print(data)
-        msg = chat_client.Message.model_validate(data)
+        if isinstance(data, chat_client.Message):
+            msg = data
+        else:
+            msg = chat_client.Message.model_validate(data)
+
         replace_last_user = False
         if msg.role == "user":
             if len(streaming_messages) > 0:
@@ -166,17 +160,29 @@ def process_streaming_data(data):
         elif msg.role in ["plain_text", "cd_instruction", "user"]:
             if replace_last_user:
                 return
-            if msg.content is not None:
+            print_response("\n")
+            if isinstance(msg.content, str):
                 print_response(msg.content.strip())
+            elif isinstance(msg.content, list):
+                collected_responses = ["multimodal["]
+                for content in msg.content:
+                    if content.get("m_type") == "text":
+                        collected_responses.append("text=%r" % content.get("m_content"))
+                    else:
+                        collected_responses.append("not_text=%r" % content.get("m_type"))
+                collected_responses = ["]"]
+                print_response("\n".join(collected_responses))
             else:
                 print_response("content is None, not normal\n")
             print_response("\n")
 
         elif msg.role in ["assistant"]:
             if msg.content is not None:
-                print_response(msg.content.strip())
+                if not STREAM:
+                    print_response("\n" + msg.content.strip() + "\n")
             if msg.tool_calls is not None:
                 for tool_call in msg.tool_calls:
+                    assert isinstance(tool_call, chat_client.ToolCallDict)
                     tool_calls[tool_call.id] = tool_call
 
         elif msg.role in ["tool", "diff"]:
@@ -219,7 +225,7 @@ def process_streaming_data(data):
         print_response("unknown streaming data:\n%s" % data)
 
 
-async def the_chatting_loop(model, max_auto_resubmit):
+async def the_chatting_loop(model, chat_id, max_auto_resubmit):
     global streaming_messages
     global _is_streaming
 
@@ -232,9 +238,9 @@ async def the_chatting_loop(model, max_auto_resubmit):
 
     N = 1
     for step_n in range(max_auto_resubmit):
-        def callback(data):
+        def callback(data, deltas_collector):
             if _is_streaming:
-                process_streaming_data(data)
+                process_streaming_data(data, deltas_collector)
 
         messages = list(streaming_messages)
         tools = await chat_client.tools_fetch_and_filter(base_url=cli_main.lsp_runner.base_url(), tools_turn_on=None)
@@ -246,10 +252,11 @@ async def the_chatting_loop(model, max_auto_resubmit):
             tools=tools,
             verbose=False,
             temperature=0.3,
-            stream=True,
+            stream=STREAM,
             max_tokens=2048,
             only_deterministic_messages=False,
             callback=callback,
+            chat_id=chat_id,
         )
         streaming_messages = choices[0]
 

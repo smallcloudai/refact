@@ -107,20 +107,11 @@ def print_lines(lines: Lines):
 
 
 def print_file_name(file_name: str):
-    assert cli_settings.cli_yaml is not None
-    nerd_font = cli_settings.cli_yaml.nerd_font
     tab_color = "#3e4957"
-    if nerd_font:
-        print_formatted_text(FormattedText([
-            (tab_color, " "),
-            (f"bg:{tab_color}", f" {file_name} "),
-            (tab_color, ""),
-        ]))
-    else:
-        print_formatted_text(FormattedText([
-            ("", " "),
-            (f"bg:{tab_color}", f"  {file_name}  "),
-        ]))
+    print_formatted_text(FormattedText([
+        ("", " "),
+        (f"bg:{tab_color}", f"  {file_name}  "),
+    ]))
 
 
 def print_header(text: str, width: int):

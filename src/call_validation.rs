@@ -205,7 +205,7 @@ pub struct DiffChunk {
     pub application_details: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct PostprocessSettings {
     pub useful_background: f32,          // first, fill usefulness of all lines with this

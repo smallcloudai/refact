@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Any
 
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.layout import HSplit
@@ -55,7 +55,7 @@ def generate_label() -> str:
     return "".join([alphabet[x] for x in base_26])
 
 
-def create_label(value: str) -> str:
+def create_label(value: Any) -> str:
     global labels
     new_label = generate_label()
     labels[new_label] = value
@@ -98,7 +98,7 @@ def always_true():
 def open_label(label: str) -> bool:
     if label in labels:
         text_area.read_only = False
-        text_area.text = labels[label]
+        text_area.text = str(labels[label])
         text_area.read_only = True
         return True
     return False

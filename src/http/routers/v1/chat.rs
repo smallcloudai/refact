@@ -12,6 +12,8 @@ use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::global_context::SharedGlobalContext;
+use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
+use crate::integrations::docker::integr_docker::docker_tool_load;
 use crate::{caps, scratchpads};
 
 
@@ -20,7 +22,7 @@ pub const CHAT_TOP_N: usize = 7;
 pub async fn lookup_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     chat_post: &ChatPost,
-) -> Result<(String, String, serde_json::Value, usize, bool, bool), String> {
+) -> Result<(String, String, serde_json::Value, usize, bool, bool, bool), String> {
     let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
         caps::which_model_to_use(
@@ -40,6 +42,7 @@ pub async fn lookup_chat_scratchpad(
         recommended_model_record.n_ctx,
         recommended_model_record.supports_tools,
         recommended_model_record.supports_multimodality,
+        recommended_model_record.supports_clicks,
     ))
 }
 
@@ -80,9 +83,18 @@ async fn chat(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
+    
+    // converts tools into openai style
+    if let Some(tools) = &mut chat_post.tools {
+        for tool in tools {
+            if let Some(function) = tool.get_mut("function") {
+                function.as_object_mut().unwrap().remove("agentic");
+            }
+        }
+    }
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, supports_multimodality) = lookup_chat_scratchpad(
+    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
     ).await.map_err(|e| {
@@ -142,6 +154,18 @@ async fn chat(
         }
     }
 
+    let docker_tool_maybe = docker_tool_load(global_context.clone()).await
+        .map_err(|e| info!("No docker tool available: {e}")).ok().map(Arc::new);
+    let run_chat_threads_inside_container = docker_tool_maybe.clone()
+        .map(|docker_tool| docker_tool.integration_docker.run_chat_threads_inside_container)
+        .unwrap_or(false);
+    let should_execute_remotely = run_chat_threads_inside_container && !global_context.read().await.cmdline.inside_container;
+
+    if should_execute_remotely {
+        docker_container_check_status_or_start(global_context.clone(), docker_tool_maybe.clone(), &chat_post.chat_id).await
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    }
+
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
     let mut scratchpad = scratchpads::create_chat_scratchpad(
         global_context.clone(),
@@ -153,6 +177,8 @@ async fn chat(
         &scratchpad_patch,
         allow_at,
         supports_tools,
+        supports_clicks,
+        should_execute_remotely,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
@@ -175,7 +201,8 @@ async fn chat(
         CHAT_TOP_N,
         false,
         messages.clone(),
-        chat_post.chat_id,
+        chat_post.chat_id.clone(),
+        should_execute_remotely,
     ).await;
     ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = chat_post.postprocess_parameters.clone();

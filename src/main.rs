@@ -176,6 +176,13 @@ async fn main() {
         let _ = main_handle.unwrap().await;
     }
 
+    // use nix::sys::signal::{kill, Signal};
+    // info!("sending SIGTERM to children");
+    // kill_children(gcx.clone(), Signal::SIGTERM).await;
+    // tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+    // info!("sending SIGKILL to children");
+    // kill_children(gcx.clone(), Signal::SIGKILL).await;
+
     background_tasks.abort().await;
     info!("saving telemetry without sending, so should be quick");
     basic_transmit::basic_telemetry_compress(gcx.clone()).await;

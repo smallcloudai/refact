@@ -72,7 +72,7 @@ pub fn parse_comments(text: &str, extension: &str) -> Vec<Comment> {
     let mut comments = Vec::new();
     let mut current_comment = String::new();
     let mut start_line = 1;
-    let mut end_line = 1;
+    let mut end_line;
     let mut is_inline = false;
 
     let chars: Vec<char> = text.chars().collect();

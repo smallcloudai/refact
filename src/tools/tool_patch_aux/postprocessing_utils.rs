@@ -67,7 +67,7 @@ pub async fn postprocess_diff_chunks(
     chunks: &mut Vec<DiffChunk>,
 ) -> Result<Vec<DiffChunk>, String> {
     if chunks.is_empty() {
-        return Err("No diff chunks were found".to_string());
+        return Err("No diff output, you might have written the same code again.".to_string());
     }
 
     correct_and_validate_chunks(gcx.clone(), chunks).await?;

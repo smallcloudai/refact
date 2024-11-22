@@ -22,7 +22,7 @@ use crate::vecdb::vdb_thread::{vecdb_start_background_tasks, vectorizer_enqueue_
 
 fn model_to_rejection_threshold(embedding_model: &str) -> f32 {
     match embedding_model {
-        "text-embedding-3-small" => 0.55,
+        "text-embedding-3-small" => 0.60,
         "thenlper_gte" => 0.25,
         _ => 0.60,
     }
