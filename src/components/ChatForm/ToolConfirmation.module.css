@@ -1,11 +1,16 @@
 .ToolConfirmationCard {
+  position: absolute;
+  width: calc(100% - 80px);
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+
   padding: 15px 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   border-radius: 8px;
   background-color: var(--color-surface);
-  margin-top: 20px;
   min-height: fit-content;
   & pre {
     margin: 0;
@@ -22,7 +27,6 @@
   max-width: 100%;
   font-size: 15px;
   white-space: pre-wrap;
-  color: white;
 }
 
 .ToolConfirmationTool {
