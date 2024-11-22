@@ -1,4 +1,31 @@
-use git2::{Branch, BranchType, IndexAddOption, Oid, Repository, Signature, Status};
+use std::path::PathBuf;
+use tracing::error;
+use git2::{Branch, BranchType, IndexAddOption, Oid, Repository, Signature, Status, StatusOptions};
+
+pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
+    let repository = Repository::open(repository_path)
+        .map_err(|e| error!("Failed to open repository: {}", e)).ok()?;
+    
+    let mut status_options = StatusOptions::new();
+    status_options
+        .include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .include_unmodified(true)
+        .exclude_submodules(false)
+        .include_ignored(false)
+        .recurse_ignored_dirs(false);
+
+    let statuses = repository.statuses(Some(&mut status_options))
+        .map_err(|e| error!("Failed to get statuses: {}", e)).ok()?;
+
+    let mut files = Vec::new();
+    for entry in statuses.iter() {
+        if let Some(path) = entry.path() {
+            files.push(repository_path.join(path));
+        }
+    }
+    if !files.is_empty() { Some(files) } else { None }
+}
 
 /// Similar to git checkout -b <branch_name>
 pub fn create_or_checkout_to_branch<'repo>(repository: &'repo Repository, branch_name: &str) -> Result<Branch<'repo>, String> {

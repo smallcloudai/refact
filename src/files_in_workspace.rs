@@ -12,6 +12,7 @@ use walkdir::WalkDir;
 use which::which;
 use tracing::info;
 
+use crate::git::git_ls_files;
 use crate::global_context::GlobalContext;
 use crate::telemetry;
 use crate::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS, SOURCE_FILE_EXTENSIONS};
@@ -211,9 +212,8 @@ async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf, filter_out_statu
 }
 
 async fn ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>> {
-    if path.join(".git").exists() && which("git").is_ok() {
-        // Git repository
-        _run_command("git", &["ls-files", "--cached", "--modified", "--others", "--exclude-standard"], path, false).await
+    if path.join(".git").exists() {
+        git_ls_files(path)
     } else if path.join(".hg").exists() && which("hg").is_ok() {
         // Mercurial repository
         _run_command("hg", &["status", "--added", "--modified", "--clean", "--unknown", "--no-status"], path, false).await
