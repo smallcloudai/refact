@@ -10,6 +10,7 @@ export const ScrollToBottomButton = ({
 }: ScrollToBottomButtonProps) => {
   return (
     <IconButton
+      title="Follow stream"
       style={{
         position: "absolute",
         width: 35,

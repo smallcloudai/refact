@@ -32,7 +32,6 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
     chatId: "chatId",
     onSubmit: (_str: string) => ({}),
     isStreaming: false,
-    onStopStreaming: noop,
     onSetChatModel: noop,
     model: "gpt-3.5-turbo",
     caps: {
@@ -42,9 +41,9 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
       error: "",
     },
     showControls: true,
-    onTextAreaHeightChange: noop,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
+    onToolConfirm: noop,
     selectedSystemPrompt: {},
     ...props,
   };

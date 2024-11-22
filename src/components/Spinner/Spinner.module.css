@@ -1,4 +1,14 @@
+.spinner {
+  margin: 0;
+}
+
 .spinner::after {
+  content: ".";
+  visibility: hidden;
+}
+
+.spinner.spinning::after {
+  visibility: inherit;
   display: inline-block;
   animation: dots steps(1, end) 1s infinite;
   content: "";

@@ -6,6 +6,8 @@ import {
   parseOrElse,
   takeFromEndWhile,
   scanFoDuplicatesWith,
+  partition,
+  fenceBackTicks,
 } from ".";
 
 const spaces = "    ";
@@ -118,6 +120,36 @@ describe("scanForDuplicates", () => {
 
   test.each(tests)("when given %s it should return %b", (input, expected) => {
     const result = scanFoDuplicatesWith(input, (a, b) => a === b);
+    expect(result).toEqual(expected);
+  });
+});
+
+describe("partition", () => {
+  const tests: [string[], (a: string) => boolean, string[][]][] = [
+    [
+      ["a", "a", "b", "b", "a", "b", "c"],
+      (a: string) => a === "a",
+      [
+        ["b", "b", "b", "c"],
+        ["a", "a", "a"],
+      ],
+    ],
+  ];
+
+  test.each(tests)(
+    "when given the array %j and function `%s` it should return %s",
+    (input, condition, expected) => {
+      const result = partition(input, condition);
+      expect(result).toEqual(expected);
+    },
+  );
+});
+
+describe("fencedBackTicks", () => {
+  test("it should wrap triple backticks with quadruple backticks", () => {
+    const input = "```python\nprint('hello')\n```";
+    const expected = "````\n```python\nprint('hello')\n````\n```";
+    const result = fenceBackTicks(input);
     expect(result).toEqual(expected);
   });
 });

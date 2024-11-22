@@ -1,9 +1,20 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { smallCloudApi } from "../services/smallcloud";
+import {
+  userSurveyWasAskedMoreThanADayAgo,
+  setLastAsked,
+} from "../features/UserSurvey/userSurveySlice";
 import { useGetUser } from "./useGetUser";
+import { useAppSelector } from "./useAppSelector";
+import { useAppDispatch } from "./useAppDispatch";
 
 export function useGetUserSurvey() {
   const userData = useGetUser();
+  const askedMoreThanADayAgo = useAppSelector(
+    userSurveyWasAskedMoreThanADayAgo,
+  );
+
+  const dispatch = useAppDispatch();
 
   const [open, setOpen] = useState(false);
 
@@ -11,9 +22,20 @@ export function useGetUserSurvey() {
     return (
       userData.data === undefined ||
       userData.data.retcode !== "OK" ||
-      userData.data.questionnaire !== false
+      userData.data.questionnaire !== false ||
+      !askedMoreThanADayAgo
     );
-  }, [userData.data]);
+  }, [userData.data, askedMoreThanADayAgo]);
+
+  const handleOpenChange = useCallback(
+    (value: boolean) => {
+      if (!value) {
+        dispatch(setLastAsked());
+      }
+      setOpen(value);
+    },
+    [dispatch],
+  );
 
   const questionRequest = smallCloudApi.useGetSurveyQuery(undefined, {
     skip: shouldSkip,
@@ -29,7 +51,7 @@ export function useGetUserSurvey() {
 
   return {
     open,
-    setOpen,
+    handleOpenChange,
     questionRequest,
     postSurvey,
     postSurveyResult,

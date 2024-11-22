@@ -1,6 +1,6 @@
 {
   "name": "refact-chat-js",
-  "version": "2.0.2-alpha.1",
+  "version": "2.0.2",
   "type": "module",
   "license": "BSD-3-Clause",
   "files": [
@@ -101,6 +101,7 @@
     "prettier": "3.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-dropzone": "^14.2.10",
     "react-markdown": "^9.0.1",
     "react-syntax-highlighter": "^15.5.0",
     "redux-persist": "^6.0.0",

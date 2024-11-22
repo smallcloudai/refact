@@ -4,6 +4,7 @@ import { Provider } from "react-redux";
 import { setUpStore } from "../../app/store";
 import { Theme } from "../../components/Theme";
 import { http, HttpResponse, type HttpHandler } from "msw";
+import { QUESTIONS_STUB } from "../../__fixtures__";
 
 const Component = () => {
   const store = setUpStore({
@@ -13,6 +14,9 @@ const Component = () => {
       lspPort: 8001,
       addressURL: "Refact",
       themeProps: { appearance: "dark" },
+    },
+    userSurvey: {
+      lastAsked: 0,
     },
   });
   return (
@@ -40,7 +44,11 @@ const meta = {
             inference_url: "https://www.smallcloud.ai/v1",
             inference: "PRO",
             metering_balance: -100000,
+            questionnaire: false,
           });
+        }),
+        http.get("https://www.smallcloud.ai/v1/questionnaire", () => {
+          return HttpResponse.json(QUESTIONS_STUB);
         }),
       ],
     },

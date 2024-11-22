@@ -21,6 +21,7 @@ import {
   useEventsBusForIDE,
 } from "../../hooks";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
+import { clearPauseReasonsAndConfirmTools } from "../../features/ToolConfirmation/confirmationSlice";
 
 export type DashboardTab = {
   type: "dashboard";
@@ -82,6 +83,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
 
   const onCreateNewChat = () => {
     dispatch(newChatAction());
+    dispatch(clearPauseReasonsAndConfirmTools(false));
     handleNavigation("chat");
   };
 

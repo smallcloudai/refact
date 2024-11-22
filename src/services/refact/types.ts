@@ -45,15 +45,63 @@ function isToolCall(call: unknown): call is ToolCall {
   return true;
 }
 
-export type ToolResult = {
+type ToolContent = string | MultiModalToolContent[];
+export interface BaseToolResult {
   tool_call_id: string;
   finish_reason?: string; // "call_failed" | "call_worked";
+  content: ToolContent;
+}
+
+export interface SingleModelToolResult extends BaseToolResult {
   content: string;
+}
+export interface MultiModalToolResult extends BaseToolResult {
+  content: MultiModalToolContent[];
+}
+
+export type ToolResult = SingleModelToolResult | MultiModalToolResult;
+
+type MultiModalToolContent = {
+  m_type: string; // "image/*" | "text" ... maybe narrow this?
+  m_content: string; // base64 if image,
 };
+
+function isMultiModalToolContent(
+  content: unknown,
+): content is MultiModalToolContent {
+  if (!content) return false;
+  if (typeof content !== "object") return false;
+  if (!("m_type" in content)) return false;
+  if (typeof content.m_type !== "string") return false;
+  if (!("m_content" in content)) return false;
+  if (typeof content.m_content !== "string") return false;
+  return true;
+}
+
+export function isMultiModalToolContentArray(content: ToolContent) {
+  if (!Array.isArray(content)) return false;
+  return content.every(isMultiModalToolContent);
+}
+
+export function isMultiModalToolResult(
+  toolResult: ToolResult,
+): toolResult is MultiModalToolResult {
+  return isMultiModalToolContentArray(toolResult.content);
+}
+
+export function isSingleModelToolResult(toolResult: ToolResult) {
+  return typeof toolResult.content === "string";
+}
 
 interface BaseMessage {
   role: ChatRole;
-  content: string | ChatContextFile[] | ToolResult | DiffChunk[] | null;
+  content:
+    | string
+    | ChatContextFile[]
+    | ToolResult
+    | DiffChunk[]
+    | null
+    | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
 }
 
 export interface ChatContextFileMessage extends BaseMessage {
@@ -61,11 +109,28 @@ export interface ChatContextFileMessage extends BaseMessage {
   content: ChatContextFile[];
 }
 
+export type UserImage = {
+  type: "image_url";
+  image_url: { url: string };
+};
+
+export type UserMessageContentWithImage =
+  | {
+      type: "text";
+      text: string;
+    }
+  | UserImage;
 export interface UserMessage extends BaseMessage {
   role: "user";
-  content: string;
+  content:
+    | string
+    | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
 }
 
+export type ProcessedUserMessageContentWithImages = {
+  m_type: string;
+  m_content: string;
+};
 export interface AssistantMessage extends BaseMessage {
   role: "assistant";
   content: string | null;
@@ -140,6 +205,11 @@ export interface PlainTextMessage extends BaseMessage {
   content: string;
 }
 
+export interface CDInstructionMessage extends BaseMessage {
+  role: "cd_instruction";
+  content: string;
+}
+
 export type ChatMessage =
   | UserMessage
   | AssistantMessage
@@ -147,7 +217,8 @@ export type ChatMessage =
   | SystemMessage
   | ToolMessage
   | DiffMessage
-  | PlainTextMessage;
+  | PlainTextMessage
+  | CDInstructionMessage;
 
 export type ChatMessages = ChatMessage[];
 
@@ -177,7 +248,7 @@ export function isToolCallMessage(
   if (!isAssistantMessage(message)) return false;
   const tool_calls = message.tool_calls;
   if (!tool_calls) return false;
-  // TODO: check browser support of evey
+  // TODO: check browser support of every
   return tool_calls.every(isToolCall);
 }
 
@@ -185,6 +256,12 @@ export function isPlainTextMessage(
   message: ChatMessage,
 ): message is PlainTextMessage {
   return message.role === "plain_text";
+}
+
+export function isCDInstructionMessage(
+  message: ChatMessage,
+): message is CDInstructionMessage {
+  return message.role === "cd_instruction";
 }
 
 interface BaseDelta {
@@ -241,11 +318,22 @@ export type ChatChoice = {
   index: number;
 };
 
-export type ChatUserMessageResponse = {
-  id: string;
-  role: "user" | "context_file" | "context_memory";
-  content: string;
-};
+export type ChatUserMessageResponse =
+  | {
+      id: string;
+      role: "user" | "context_file" | "context_memory";
+      content: string;
+    }
+  | {
+      id: string;
+      role: "user";
+      content:
+        | string
+        | (
+            | UserMessageContentWithImage
+            | ProcessedUserMessageContentWithImages
+          )[];
+    };
 
 export type ToolResponse = {
   id: string;
@@ -279,7 +367,7 @@ export function isChatGetTitleResponse(
   const requiredKeys = [
     "id",
     "choices",
-    "metering_balance",
+    // "metering_balance", // not in BYOK
     "model",
     "object",
     "system_fingerprint",
@@ -393,6 +481,15 @@ export function isSubchatResponse(json: unknown): json is SubchatResponse {
   if (!("subchat_id" in json)) return false;
   if (!("tool_call_id" in json)) return false;
   return true;
+}
+
+export function isCDInstructionResponse(
+  json: unknown,
+): json is CDInstructionMessage {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("role" in json)) return false;
+  return json.role === "cd_instruction";
 }
 
 type ChatResponseChoice = {

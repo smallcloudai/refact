@@ -23,7 +23,7 @@ import {
 import { smallCloudApi } from "../services/smallcloud";
 import { reducer as fimReducer } from "../features/FIM/reducer";
 import { tourReducer } from "../features/Tour";
-import { tipOfTheDayReducer } from "../features/TipOfTheDay";
+import { tipOfTheDaySlice } from "../features/TipOfTheDay";
 import { reducer as configReducer } from "../features/Config/configSlice";
 import { activeFileReducer } from "../features/Chat/activeFile";
 import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
@@ -38,6 +38,9 @@ import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
 import { informationSlice } from "../features/Errors/informationSlice";
+import { confirmationSlice } from "../features/ToolConfirmation/confirmationSlice";
+import { attachedImagesSlice } from "../features/AttachedImages";
+import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -46,8 +49,8 @@ const tipOfTheDayPersistConfig = {
 };
 
 const persistedTipOfTheDayReducer = persistReducer<
-  ReturnType<typeof tipOfTheDayReducer>
->(tipOfTheDayPersistConfig, tipOfTheDayReducer);
+  ReturnType<typeof tipOfTheDaySlice.reducer>
+>(tipOfTheDayPersistConfig, tipOfTheDaySlice.reducer);
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -56,7 +59,8 @@ const rootReducer = combineSlices(
   {
     fim: fimReducer,
     tour: tourReducer,
-    tipOfTheDay: persistedTipOfTheDayReducer,
+    // tipOfTheDay: persistedTipOfTheDayReducer,
+    [tipOfTheDaySlice.reducerPath]: persistedTipOfTheDayReducer,
     config: configReducer,
     active_file: activeFileReducer,
     selected_snippet: selectedSnippetReducer,
@@ -75,12 +79,15 @@ const rootReducer = combineSlices(
   errorSlice,
   informationSlice,
   pagesSlice,
+  confirmationSlice,
+  attachedImagesSlice,
+  userSurveySlice,
 );
 
 const rootPersistConfig = {
   key: "root",
   storage: storage(),
-  whitelist: [historySlice.reducerPath, "tour"],
+  whitelist: [historySlice.reducerPath, "tour", userSurveySlice.reducerPath],
   stateReconciler: mergeInitialState,
 };
 
@@ -101,7 +108,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
     reducer: persistedReducer,
     preloadedState: initialState,
     devTools: {
-      maxAge: 500,
+      maxAge: 50,
     },
     middleware: (getDefaultMiddleware) => {
       const production = import.meta.env.MODE === "production";

@@ -13,6 +13,7 @@ import {
   CHAT_WITH_DIFFS,
   FROG_CHAT,
   LARGE_DIFF,
+  CHAT_WITH_MULTI_MODAL,
 } from "../../__fixtures__";
 
 const MockedStore: React.FC<{
@@ -40,7 +41,7 @@ const MockedStore: React.FC<{
     <Provider store={store}>
       <Theme>
         <AbortControllerProvider>
-          <ChatContent onRetry={() => ({})} />
+          <ChatContent onRetry={() => ({})} onStopStreaming={() => ({})} />
         </AbortControllerProvider>
       </Theme>
     </Provider>
@@ -104,5 +105,17 @@ export const AssistantMarkdown: Story = {
   args: {
     ...meta.args,
     messages: [{ role: "assistant", content: MarkdownMessage }],
+  },
+};
+
+export const ToolImages: Story = {
+  args: {
+    ...meta.args,
+  },
+};
+
+export const MultiModal: Story = {
+  args: {
+    messages: CHAT_WITH_MULTI_MODAL.messages,
   },
 };

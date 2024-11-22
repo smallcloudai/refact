@@ -1,119 +1,98 @@
-import React, { useImperativeHandle, useEffect, useRef, useState } from "react";
-import { type ChatMessages } from "../../services/refact";
+import React, { useEffect, useState, useCallback } from "react";
+import { useAppSelector } from "../../hooks";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+  selectMessages,
+} from "../../features/Chat/Thread/selectors";
 
 type useAutoScrollProps = {
-  ref: React.ForwardedRef<HTMLDivElement>;
-  messages: ChatMessages;
-  isStreaming: boolean;
+  scrollRef: React.RefObject<HTMLDivElement>;
 };
 
-export function useAutoScroll({
-  ref,
-  messages,
-  isStreaming,
-}: useAutoScrollProps) {
-  const innerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  useImperativeHandle(ref, () => innerRef.current!, []);
+function isAtBottom(element: HTMLDivElement | null) {
+  if (element === null) return true;
+  const { scrollHeight, scrollTop, clientHeight } = element;
+  return Math.abs(scrollHeight - (scrollTop + clientHeight)) <= 1;
+}
 
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [lastScrollHeight, setLastScrollHeight] = useState(0);
-  const [isScrolledTillBottom, setIsScrolledTillBottom] = useState(true);
-  const [currentScrollHeight, setCurrentScrollHeight] = useState(0);
+function isOverflowing(element: HTMLDivElement | null) {
+  if (element === null) return false;
+  const { scrollHeight, clientHeight } = element;
+  return scrollHeight > clientHeight;
+}
 
-  /*
-    Parent state is needed to calculate new scroll height of scroll area, if user clicks the button instead of scrolling down.
-    Since the event is not giving us parent (click event is not giving a parent within `currentTarget`), 
-    we need to save it to state to get updated scrollHeight later on
-  */
-  const [parent, setParent] = useState<(EventTarget & HTMLDivElement) | null>(
-    null,
+export function useAutoScroll({ scrollRef }: useAutoScrollProps) {
+  const [followRef, setFollowRef] = useState(false);
+
+  const [isScrolledTillBottom, setIsScrolledTillBottom] = useState(false);
+
+  const messages = useAppSelector(selectMessages);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
+
+  const scrollIntoView = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop =
+        scrollRef.current.scrollHeight - scrollRef.current.clientHeight;
+    }
+  }, [scrollRef]);
+
+  const handleScrollButtonClick = useCallback(() => {
+    setFollowRef(isStreaming);
+    scrollIntoView();
+  }, [isStreaming, scrollIntoView]);
+
+  // Check if at the bottom of the page.
+  const handleScroll = useCallback(
+    (_event: React.UIEvent<HTMLDivElement>) => {
+      const bottom = isAtBottom(scrollRef.current);
+      setIsScrolledTillBottom(bottom);
+    },
+    [scrollRef],
   );
 
-  useEffect(() => {
-    setAutoScroll(isStreaming);
-  }, [isStreaming]);
+  const handleWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      if (followRef && event.deltaY < 0) {
+        setFollowRef(false);
+      }
+    },
+    [followRef],
+  );
 
+  // Scroll to the end of the chat when the user clicks on the scroll button
   useEffect(() => {
-    if (isStreaming && autoScroll && innerRef.current?.scrollIntoView) {
-      innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
+    if (followRef) {
+      scrollIntoView();
     }
-  }, [messages, autoScroll, isStreaming]);
+  }, [followRef, scrollIntoView]);
 
+  // Scroll when more messages come in
+  useEffect(() => {
+    if ((isWaiting || isStreaming) && followRef) {
+      scrollIntoView();
+    } else if ((isWaiting || isStreaming) && isOverflowing(scrollRef.current)) {
+      const bottom = isAtBottom(scrollRef.current);
+      setIsScrolledTillBottom(bottom);
+    }
+  }, [isStreaming, followRef, messages, scrollIntoView, isWaiting, scrollRef]);
+
+  // reset on unmount
   useEffect(() => {
     return () => {
-      setAutoScroll(true);
-      setCurrentScrollHeight(0);
+      setFollowRef(false);
+      setIsScrolledTillBottom(false);
     };
   }, []);
 
-  const handleScroll: React.UIEventHandler<HTMLDivElement> = (event) => {
-    if (!innerRef.current) return;
-
-    const currentTarget = event.currentTarget;
-    const scrollHeight = parent?.scrollHeight ?? currentTarget.scrollHeight;
-
-    if (!isStreaming) {
-      setLastScrollHeight(scrollHeight);
-    }
-
-    if (lastScrollHeight < scrollHeight) {
-      setCurrentScrollHeight(
-        lastScrollHeight === 0
-          ? lastScrollHeight
-          : scrollHeight - lastScrollHeight,
-      );
-    } else {
-      setLastScrollHeight(scrollHeight);
-      setCurrentScrollHeight(0);
-      setIsScrolledTillBottom(true);
-      setAutoScroll(true);
-    }
-
-    setParent(currentTarget);
-
-    const parentRect = currentTarget.getBoundingClientRect();
-    const { bottom, height, top } = innerRef.current.getBoundingClientRect();
-
-    const isBottomScrolled =
-      top <= parentRect.top
-        ? parentRect.top - top <= height + 20
-        : bottom - parentRect.bottom <= height + 20;
-
-    setIsScrolledTillBottom(isBottomScrolled);
-    setAutoScroll(isBottomScrolled);
-    if (currentScrollHeight > 630) {
-      setAutoScroll(false);
-      setIsScrolledTillBottom(false);
-    }
-  };
-
-  const handleWheel: React.WheelEventHandler<HTMLDivElement> = (event) => {
-    if (!isStreaming) return;
-
-    if (event.deltaY < 0) {
-      setAutoScroll(false);
-    } else {
-      setLastScrollHeight(event.currentTarget.scrollHeight);
-      setAutoScroll(isScrolledTillBottom);
-    }
-  };
-
-  const handleScrollButtonClick = () => {
-    if (!innerRef.current || !parent) return;
-
-    innerRef.current.scrollIntoView({ behavior: "instant", block: "end" });
-    setAutoScroll(true);
-    setIsScrolledTillBottom(true);
-    setCurrentScrollHeight(0);
-    setLastScrollHeight(parent.scrollHeight);
-  };
+  const showFollowButton =
+    !followRef && isOverflowing(scrollRef.current) && !isScrolledTillBottom;
 
   return {
     handleScroll,
     handleWheel,
-    innerRef,
-    isScrolledTillBottom,
     handleScrollButtonClick,
+    showFollowButton,
   };
 }
