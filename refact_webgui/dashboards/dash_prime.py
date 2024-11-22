@@ -13,7 +13,7 @@ def robot_human_ratio(robot: int, human: int) -> float:
     # in older versions of refact LSP negative values of human metric existed
     if robot + human == 0:
         return 0
-    return round(robot / (robot + human), 2)
+    return round(100 * robot / (robot + human), 2)
 
 
 def barplot_rh(
