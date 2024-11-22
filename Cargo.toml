@@ -16,12 +16,12 @@ default = ["vecdb"]
 vecdb = ["arrow", "arrow-array", "arrow-schema", "lance", "vectordb"]
 
 [build-dependencies]
-shadow-rs = "0.25.0"
+shadow-rs = "0.36.0"
 
 [dependencies]
 sled = { version = "0.34", default-features = false, features = [] }
 # all features = ["compression", "docs", "event_log", "failpoints", "io_uring", "lock_free_delays", "measure_allocs", "miri_optimizations", "mutex", "no_inline", "no_logs", "pretty_backtrace", "testing"]
-shadow-rs = { version = "0.25.0", features = [], default-features = false }
+shadow-rs = { version = "0.36.0", features = [], default-features = false }
 hyper = { version = "0.14", features = ["server", "stream"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls-webpki-roots", "charset", "http2"] }
 tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal", "process"] }
@@ -108,3 +108,4 @@ headless_chrome = "1.0.15"
 nix = { version = "0.29.0", features = ["signal"] }
 resvg = "0.44.0"
 async-tar = "0.5.0"
+git2 = "0.19.0"

@@ -21,6 +21,7 @@ use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions, handle_v1_chat_configuration};
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::docker::{handle_v1_docker_container_action, handle_v1_docker_container_list};
+use crate::http::routers::v1::git::handle_v1_git_stage_and_commit;
 use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
 use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
 use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
@@ -48,6 +49,7 @@ pub mod telemetry_network;
 pub mod snippet_accepted;
 pub mod caps;
 mod docker;
+mod git;
 pub mod graceful_shutdown;
 mod dashboard;
 pub mod lsp_like_handlers;
@@ -106,6 +108,8 @@ pub fn make_v1_router() -> Router {
         .route("/customization", telemetry_get!(handle_v1_customization))
 
         .route("/sync-files-extract-tar", telemetry_post!(handle_v1_sync_files_extract_tar))
+
+        .route("/git-stage-and-commit", telemetry_post!(handle_v1_git_stage_and_commit))
 
         .route("/system-prompt", telemetry_post!(handle_v1_system_prompt))  // because it works remotely
 
