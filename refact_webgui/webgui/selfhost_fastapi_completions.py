@@ -250,6 +250,7 @@ class BaseCompletionsRouter(APIRouter):
         running = running_models_and_loras(self._model_assigner)
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = self._inference_queue.completion_model()
+        multiline_code_completion_default_model, _ = self._inference_queue.multiline_completion_default_model()
         code_chat_default_model = ""
         embeddings_default_model = ""
         for model_name in models_available:
@@ -269,6 +270,7 @@ class BaseCompletionsRouter(APIRouter):
             "telemetry_basic_retrieve_my_own": "/stats/rh-stats",
             "running_models": [r for r in [*running['completion'], *running['chat']]],
             "code_completion_default_model": code_completion_default_model,
+            "multiline_code_completion_default_model": multiline_code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
             "models_dict_patch": self._models_available_dict_rewrite(models_available),
 

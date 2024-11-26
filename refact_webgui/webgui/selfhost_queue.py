@@ -80,3 +80,14 @@ class InferenceQueue:
                     return model, ""
 
         return "", f"completion model is not set"
+
+
+    def multiline_completion_default_model(self) -> Tuple[str, str]:
+
+        if os.path.exists(env.CONFIG_INFERENCE):
+            j = json.load(open(env.CONFIG_INFERENCE, 'r'))
+            for model in j["model_assign"]:
+                if "completion" in self._model_assigner.models_db.get(model, {}).get("filter_caps", {}):
+                    return model, ""
+
+        return "", f"completion model is not set"
