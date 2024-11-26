@@ -91,10 +91,6 @@ jobs:
         if: matrix.target == 'arm-unknown-linux-gnueabihf'
         run: sudo apt-get install gcc-arm-linux-gnueabihf
 
-      - name: Xcode Select Version
-        if: matrix.target == 'aarch64-apple-darwin'
-        run: sudo xcode-select -s '/Applications/Xcode_14.3.1.app/Contents/Developer'
-
       - name: Install toolchain dependencies (MacOS)
         if: startsWith(matrix.os, 'macos')
         run: brew install protobuf
