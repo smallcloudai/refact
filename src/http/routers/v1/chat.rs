@@ -175,7 +175,7 @@ async fn _chat(
     let docker_tool_maybe = docker_tool_load(gcx.clone()).await
         .map_err(|e| info!("No docker tool available: {e}")).ok().map(Arc::new);
     let run_chat_threads_inside_container = docker_tool_maybe.clone()
-        .map(|docker_tool| docker_tool.integration_docker.run_chat_threads_inside_container)
+        .map(|docker_tool| docker_tool.settings_docker.run_chat_threads_inside_container)
         .unwrap_or(false);
     let should_execute_remotely = run_chat_threads_inside_container && !gcx.read().await.cmdline.inside_container;
 

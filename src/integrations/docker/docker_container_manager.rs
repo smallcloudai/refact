@@ -107,7 +107,7 @@ pub async fn docker_container_check_status_or_start(
                         Ok(()) => {}
                         Err(e) => {
                             warn!("SSH tunnel error: {}, restarting tunnel..", e);
-                            let ssh_config = docker.integration_docker.ssh_config.clone().ok_or_else(|| "No ssh config for docker container".to_string())?;
+                            let ssh_config = docker.settings_docker.ssh_config.clone().ok_or_else(|| "No ssh config for docker container".to_string())?;
                             docker_container_session.connection = DockerContainerConnectionEnum::SshTunnel(
                                 ssh_tunnel_open(&mut ssh_tunnel.forwarded_ports, &ssh_config).await?
                             );
@@ -121,14 +121,14 @@ pub async fn docker_container_check_status_or_start(
             Ok(())
         }
         None => {
-            let ssh_config_maybe = docker.integration_docker.ssh_config.clone();
+            let ssh_config_maybe = docker.settings_docker.ssh_config.clone();
             
             const LSP_PORT: &str = "8001";
             let mut ports_to_forward = if ssh_config_maybe.is_some() {
-                docker.integration_docker.ports.iter()
+                docker.settings_docker.ports.iter()
                     .map(|p| Port {external: "0".to_string(), internal: p.internal.clone()}).collect::<Vec<_>>()
             } else {
-                docker.integration_docker.ports.clone()
+                docker.settings_docker.ports.clone()
             };
             ports_to_forward.insert(0, Port {external: "0".to_string(), internal: LSP_PORT.to_string()});
 
@@ -139,13 +139,13 @@ pub async fn docker_container_check_status_or_start(
             let host_lsp_port = exposed_ports.iter().find(|p| p.internal == LSP_PORT)
                 .ok_or_else(|| "No LSP port exposed".to_string())?.external.clone();
 
-            let keep_containers_alive_for_x_minutes = docker.integration_docker.keep_containers_alive_for_x_minutes;
+            let keep_containers_alive_for_x_minutes = docker.settings_docker.keep_containers_alive_for_x_minutes;
 
             let connection = match ssh_config_maybe {
                 Some(ssh_config) => {
                     let mut ports_to_forward_through_ssh = exposed_ports.into_iter()
                         .map(|exposed_port| {
-                            let matched_external_port = docker.integration_docker.ports.iter()
+                            let matched_external_port = docker.settings_docker.ports.iter()
                                 .find(|configured_port| configured_port.internal == exposed_port.internal)
                                 .map_or_else(|| "0".to_string(), |forwarded_port| forwarded_port.external.clone());
                             Port {
@@ -169,8 +169,8 @@ pub async fn docker_container_check_status_or_start(
             };
             docker_container_sync_workspace(gcx.clone(), &docker, &container_id, &lsp_port_to_connect).await?;
 
-            if !docker.integration_docker.command.is_empty() {
-                let cmd_to_execute = format!("exec --detach {} {}", container_id, docker.integration_docker.command);
+            if !docker.settings_docker.command.is_empty() {
+                let cmd_to_execute = format!("exec --detach {} {}", container_id, docker.settings_docker.command);
                 match docker.command_execute(&cmd_to_execute, gcx.clone(), false).await {
                     Ok((cmd_stdout, cmd_stderr)) => { info!("Command executed: {cmd_stdout}\n{cmd_stderr}") },
                     Err(e) => { error!("Command execution failed: {}", e) },
@@ -232,12 +232,12 @@ async fn docker_container_create(
     lsp_port: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
-    let docker_image_id = docker.integration_docker.docker_image_id.clone();
+    let docker_image_id = docker.settings_docker.docker_image_id.clone();
     if docker_image_id.is_empty() {
         return Err("No image ID to run container from, please specify one.".to_string());
     }
-    let workspace_folder = docker.integration_docker.container_workspace_folder.clone();
-    let host_lsp_path  = docker.integration_docker.host_lsp_path.clone();
+    let workspace_folder = docker.settings_docker.container_workspace_folder.clone();
+    let host_lsp_path  = docker.settings_docker.host_lsp_path.clone();
 
     let (address_url, api_key) = {
         let gcx_locked = gcx.read().await;
@@ -351,7 +351,7 @@ async fn docker_container_sync_workspace(
         .into_iter()
         .next()
         .ok_or_else(|| "No workspace folders found".to_string())?;
-    let container_workspace_folder = PathBuf::from(&docker.integration_docker.container_workspace_folder);
+    let container_workspace_folder = PathBuf::from(&docker.settings_docker.container_workspace_folder);
 
     let temp_tar_file = TempfileBuilder::new().suffix(".tar").tempfile()
         .map_err(|e| format!("Error creating temporary tar file: {}", e))?.into_temp_path();

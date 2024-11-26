@@ -9,55 +9,64 @@ use serde_json::Value;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
-use crate::tools::tools_description::{read_integrations_yaml, Tool};
+use crate::integrations::integr_abstract::IntegrationTrait;
+use crate::integrations::running_integrations::load_integration_tools;
+use crate::tools::tools_description::Tool;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
 use crate::integrations::docker::docker_container_manager::Port;
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct IntegrationDocker {
-    #[serde(default = "default_connect_to_daemon_at")]
+#[derive(Clone, Serialize, Deserialize, Default, Debug)]
+pub struct SettingsDocker {
     pub connect_to_daemon_at: String,
-    #[serde(default = "default_docker_cli_path")]
     pub docker_cli_path: String,
     pub ssh_config: Option<SshConfig>,
-    #[serde(default = "default_container_workspace_folder")]
     pub container_workspace_folder: String,
-    #[serde(default)]
     pub docker_image_id: String,
-    #[serde(default = "default_host_lsp_path")]
     pub host_lsp_path: String,
-    #[serde(default)]
     pub run_chat_threads_inside_container: bool,
-    #[serde(default = "default_label")]
     pub label: String,
-    #[serde(default)]
     pub command: String,
-    #[serde(default = "default_keep_containers_alive_for_x_minutes")]
     pub keep_containers_alive_for_x_minutes: u64,
-    #[serde(default)]
     pub ports: Vec<Port>,
 }
-fn default_connect_to_daemon_at() -> String { "unix:///var/run/docker.sock".to_string() }
-fn default_docker_cli_path() -> String { "docker".to_string() }
-fn default_container_workspace_folder() -> String { "/app".to_string() }
-fn default_host_lsp_path() -> String { "/opt/refact/bin/refact-lsp".to_string() }
-fn default_label() -> String { "refact".to_string() }
-fn default_keep_containers_alive_for_x_minutes() -> u64 { 60 }
 
+#[derive(Clone, Default, Debug)]
 pub struct ToolDocker {
-    pub integration_docker: IntegrationDocker,
+    pub settings_docker: SettingsDocker,
+}
+
+impl IntegrationTrait for ToolDocker {
+    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+        match serde_json::from_value::<SettingsDocker>(value.clone()) {
+            Ok(settings_docker) => {
+                tracing::info!("Docker settings applied: {:?}", settings_docker);
+                self.settings_docker = settings_docker
+            },
+            Err(e) => {
+                tracing::error!("Failed to apply settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
+        Ok(())
+    }
+
+    fn integr_settings_as_json(&self) -> Value {
+        serde_json::to_value(&self.settings_docker).unwrap()
+    }
+
+    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
+        Box::new(ToolDocker {
+            settings_docker: self.settings_docker.clone()
+        }) as Box<dyn Tool + Send>
+    }
+
+    fn integr_schema(&self) -> &str
+    {
+        DOCKER_INTEGRATION_SCHEMA
+    }
 }
 
 impl ToolDocker {
-    pub fn new_from_yaml(docker_config: &serde_yaml::Value) -> Result<Self, String> {
-        let integration_docker = serde_yaml::from_value::<IntegrationDocker>(docker_config.clone())
-            .map_err(|e| {
-                let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-                format!("{}{}", e.to_string(), location)
-            })?;
-        Ok(Self { integration_docker })
-    }
-
     pub async fn command_execute(&self, command: &str, gcx: Arc<ARwLock<GlobalContext>>, fail_if_stderr_is_not_empty: bool) -> Result<(String, String), String> 
     {
         let mut command_args = split_command(&command)?;
@@ -66,10 +75,10 @@ impl ToolDocker {
             return Err("Docker commands that are interactive or blocking are not supported".to_string());
         }
 
-        command_append_label_if_creates_resource(&mut command_args, &self.integration_docker.label);
+        command_append_label_if_creates_resource(&mut command_args, &self.settings_docker.label);
 
         let docker_host = self.get_docker_host(gcx.clone()).await?;
-        let output = Command::new(&self.integration_docker.docker_cli_path)
+        let output = Command::new(&self.settings_docker.docker_cli_path)
             .arg("-H")
             .arg(&docker_host)
             .args(&command_args)
@@ -88,12 +97,12 @@ impl ToolDocker {
 
     pub async fn get_docker_host(&self, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String>
     {
-        match &self.integration_docker.ssh_config {
+        match &self.settings_docker.ssh_config {
             Some(ssh_config) => {
-                let local_port = forward_remote_docker_if_needed(&self.integration_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
+                let local_port = forward_remote_docker_if_needed(&self.settings_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
                 Ok(format!("127.0.0.1:{}", local_port))
             },
-            None => Ok(self.integration_docker.connect_to_daemon_at.clone()),
+            None => Ok(self.settings_docker.connect_to_daemon_at.clone()),
         }
     }
 }
@@ -141,11 +150,10 @@ impl Tool for ToolDocker {
 }
 
 pub async fn docker_tool_load(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolDocker, String> {
-    let cache_dir = gcx.read().await.cache_dir.clone();
-    let integrations_yaml = read_integrations_yaml(&cache_dir).await?;
-    let docker_config = integrations_yaml.get("docker")
-        .ok_or_else(|| "No docker integration found in integrations.yaml".to_string())?;
-    Ok(ToolDocker::new_from_yaml(docker_config)?)
+    let tools = load_integration_tools(gcx.clone(), "".to_string(), true).await;
+    let docker_tool = tools.get("docker").cloned().ok_or("Docker integration not found")?
+        .lock().await.as_any().downcast_ref::<ToolDocker>().cloned().unwrap();
+    Ok(docker_tool)
 }
 
 fn parse_command(args: &HashMap<String, Value>) -> Result<String, String>{
@@ -235,3 +243,73 @@ fn command_append_label_if_creates_resource(command_args: &mut Vec<String>, labe
         }
     }
 }
+
+pub const DOCKER_INTEGRATION_SCHEMA: &str = r#"
+fields:
+  connect_to_daemon_at:
+    f_type: string
+    f_desc: "The address to connect to the Docker daemon."
+    f_default: "unix:///var/run/docker.sock"
+  docker_cli_path:
+    f_type: string
+    f_desc: "Path to the Docker CLI executable."
+    f_default: "docker"
+  ssh_config:
+    f_type: object
+    f_desc: "SSH configuration for connecting to remote Docker daemons."
+    f_fields:
+      host:
+        f_type: string
+        f_desc: "The SSH host."
+      user:
+        f_type: string
+        f_desc: "The SSH user."
+        f_default: "root"
+      port:
+        f_type: int
+        f_desc: "The SSH port."
+        f_default: "22"
+      identity_file:
+        f_type: string
+        f_desc: "Path to the SSH identity file."
+  container_workspace_folder:
+    f_type: string
+    f_desc: "The workspace folder inside the container."
+    f_default: "/app"
+  docker_image_id:
+    f_type: string
+    f_desc: "The Docker image ID to use."
+  host_lsp_path:
+    f_type: string
+    f_desc: "Path to the LSP on the host."
+    f_default: "/opt/refact/bin/refact-lsp"
+  run_chat_threads_inside_container:
+    f_type: bool
+    f_desc: "Whether to run chat threads inside the container."
+    f_default: "false"
+  label:
+    f_type: string
+    f_desc: "Label for the Docker container."
+    f_default: "refact"
+  command:
+    f_type: string
+    f_desc: "Command to run inside the Docker container."
+  keep_containers_alive_for_x_minutes:
+    f_type: int
+    f_desc: "How long to keep containers alive in minutes."
+    f_default: "60"
+  ports:
+    f_type: array
+    f_desc: "Ports to expose."
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: false
+smartlinks:
+  - sl_label: "Test"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 The docker tool should be visible now. To test the tool, list the running containers, briefly describe the containers and express
+          satisfaction and relief if it works, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+          The current config file is %CURRENT_CONFIG%.
+"#;

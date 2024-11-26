@@ -21,6 +21,8 @@ pub struct ISchemaField {
     pub f_placeholder: String,
     #[serde(default, skip_serializing_if="is_empty")]
     pub smartlinks: Vec<ISmartLink>,
+    #[serde(default, skip_serializing_if="is_indexmap_empty")]
+    pub f_fields: IndexMap<String, ISchemaField>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -49,7 +51,8 @@ pub struct ISchema {
     pub fields: IndexMap<String, ISchemaField>,
     pub available: ISchemaAvailable,
     pub smartlinks: Vec<ISmartLink>,
-    pub docker: ISchemaDocker,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub docker: Option<ISchemaDocker>,
 }
 
 fn is_default<T: Default + PartialEq>(t: &T) -> bool {
@@ -57,5 +60,9 @@ fn is_default<T: Default + PartialEq>(t: &T) -> bool {
 }
 
 fn is_empty<T>(t: &Vec<T>) -> bool {
+    t.is_empty()
+}
+
+fn is_indexmap_empty<T>(t: &IndexMap<String, T>) -> bool {
     t.is_empty()
 }

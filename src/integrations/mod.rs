@@ -34,6 +34,7 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
         // "pdb" => Ok(Box::new(ToolPdb { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         "postgres" => Ok(Box::new(integr_postgres::ToolPostgres { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         // "chrome" => Ok(Box::new(ToolChrome { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
+        "docker" => Ok(Box::new(docker::integr_docker::ToolDocker {..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         _ => Err(format!("Unknown integration name: {}", n)),
     }
 }
@@ -57,7 +58,8 @@ pub fn integrations_list() -> Vec<&'static str> {
         // "gitlab",
         // "pdb",
         "postgres",
-        // "chrome"
+        // "chrome",
+        "docker"
     ]
 }
 
