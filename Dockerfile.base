@@ -1,7 +1,7 @@
 FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 ENV INSTALL_OPTIONAL=TRUE
-ENV MAX_JOBS=8
+ENV MAX_JOBS=32
 
 RUN apt-get update
 RUN DEBIAN_FRONTEND="noninteractive" TZ=Etc/UTC apt-get install -y  \
