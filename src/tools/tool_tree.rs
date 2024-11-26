@@ -23,6 +23,8 @@ fn preformat_path(path: &String) -> String {
 
 #[async_trait]
 impl Tool for ToolTree {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

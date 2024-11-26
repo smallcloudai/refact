@@ -55,6 +55,8 @@ impl Integration for ToolGitlab{
 
 #[async_trait]
 impl Tool for ToolGitlab {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,

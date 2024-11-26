@@ -125,6 +125,8 @@ fn return_cd_instruction_or_error(
 
 #[async_trait]
 impl Tool for ToolPatch {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

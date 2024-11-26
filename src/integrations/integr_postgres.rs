@@ -98,6 +98,8 @@ impl ToolPostgres {
 
 #[async_trait]
 impl Tool for ToolPostgres {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,

@@ -11,7 +11,6 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
-use crate::yaml_configs::create_configs::read_yaml_into_value;
 // use crate::integrations::docker::integr_docker::ToolDocker;
 
 
@@ -23,6 +22,8 @@ pub struct CommandsRequireConfirmationConfig {
 
 #[async_trait]
 pub trait Tool: Send + Sync {
+    fn as_any(&self) -> &dyn std::any::Any;
+
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

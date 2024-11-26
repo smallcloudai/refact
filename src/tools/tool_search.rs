@@ -58,6 +58,8 @@ async fn execute_att_search(
 
 #[async_trait]
 impl Tool for ToolSearch {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
