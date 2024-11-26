@@ -42,6 +42,8 @@ pub struct ISchemaAvailable {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ISchemaDocker {
+    pub filter_label: String,
+    pub filter_image: String,
     pub new_container_default: DockerService,
     pub smartlinks: Vec<ISmartLink>,
 }

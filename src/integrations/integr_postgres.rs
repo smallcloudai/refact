@@ -212,6 +212,8 @@ smartlinks:
           satisfaction and relief if it works, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
           The current config file is %CURRENT_CONFIG%.
 docker:
+  filter_label: ""
+  filter_image: "postgres"
   new_container_default:
     image: "postgres:13"
     environment:
