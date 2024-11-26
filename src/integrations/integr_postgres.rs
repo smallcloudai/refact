@@ -16,7 +16,7 @@ use crate::integrations::integr_abstract::IntegrationTrait;
 pub struct SettingsPostgres {
     pub psql_binary_path: String,
     pub host: String,
-    pub port: usize,
+    pub port: String,
     pub user: String,
     pub password: String,
     pub database: String,
@@ -67,7 +67,7 @@ impl ToolPostgres {
             .env("PGPASSWORD", &self.settings_postgres.password)
             .env("PGHOST", &self.settings_postgres.host)
             .env("PGUSER", &self.settings_postgres.user)
-            .env("PGPORT", &format!("{}", self.settings_postgres.port))
+            .env("PGPORT", &self.settings_postgres.port)
             .env("PGDATABASE", &self.settings_postgres.database)
             .arg("-v")
             .arg("ON_ERROR_STOP=1")
