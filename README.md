@@ -111,10 +111,10 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 | [starcoder2/15b/base](https://huggingface.co/bigcode/starcoder2-15b)                                    | +          |      | +           |                                                     |
 | [deepseek-coder/1.3b/base](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-base)                 | +          |      | +           |                                                     |
 | [deepseek-coder/5.7b/mqa-base](https://huggingface.co/deepseek-ai/deepseek-coder-5.7bmqa-base)          | +          |      | +           |                                                     |
-| [magicoder/6.7b](https://huggingface.co/TheBloke/Magicoder-S-DS-6.7B-GPTQ)                              |            | +    |             |                                                     |
-| [mistral/7b/instruct-v0.1](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GPTQ)               |            | +    |             |                                                     |
+| [magicoder/6.7b](https://huggingface.co/TheBloke/Magicoder-S-DS-6.7B-GPTQ)                              |            | +    |             | +                                                   |
+| [mistral/7b/instruct-v0.1](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GPTQ)               |            | +    |             | +                                                   |
 | [mixtral/8x7b/instruct-v0.1](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1)               |            | +    |             |                                                     |
-| [deepseek-coder/6.7b/instruct](https://huggingface.co/TheBloke/deepseek-coder-6.7B-instruct-GPTQ)       |            | +    |             |                                                     |
+| [deepseek-coder/6.7b/instruct](https://huggingface.co/TheBloke/deepseek-coder-6.7B-instruct-GPTQ)       |            | +    |             | +                                                   |
 | [deepseek-coder/33b/instruct](https://huggingface.co/deepseek-ai/deepseek-coder-33b-instruct)           |            | +    |             |                                                     |
 | [deepseek-coder-v2/16b/instruct](https://huggingface.co/deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct)    |            | +    |             |                                                     |
 | [stable/3b/code](https://huggingface.co/stabilityai/stable-code-3b)                                     | +          |      |             |                                                     |
