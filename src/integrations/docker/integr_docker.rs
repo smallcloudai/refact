@@ -247,11 +247,11 @@ fn command_append_label_if_creates_resource(command_args: &mut Vec<String>, labe
 pub const DOCKER_INTEGRATION_SCHEMA: &str = r#"
 fields:
   connect_to_daemon_at:
-    f_type: string
+    f_type: string_long
     f_desc: "The address to connect to the Docker daemon."
     f_default: "unix:///var/run/docker.sock"
   docker_cli_path:
-    f_type: string
+    f_type: string_long
     f_desc: "Path to the Docker CLI executable."
     f_default: "docker"
   ssh_config:
@@ -259,28 +259,28 @@ fields:
     f_desc: "SSH configuration for connecting to remote Docker daemons."
     f_fields:
       host:
-        f_type: string
+        f_type: string_long
         f_desc: "The SSH host."
       user:
-        f_type: string
+        f_type: string_short
         f_desc: "The SSH user."
         f_default: "root"
       port:
-        f_type: int
+        f_type: string_short
         f_desc: "The SSH port."
         f_default: "22"
       identity_file:
-        f_type: string
+        f_type: string_short
         f_desc: "Path to the SSH identity file."
   container_workspace_folder:
-    f_type: string
+    f_type: string_long
     f_desc: "The workspace folder inside the container."
     f_default: "/app"
   docker_image_id:
-    f_type: string
+    f_type: string_long
     f_desc: "The Docker image ID to use."
   host_lsp_path:
-    f_type: string
+    f_type: string_long
     f_desc: "Path to the LSP on the host."
     f_default: "/opt/refact/bin/refact-lsp"
   run_chat_threads_inside_container:
@@ -288,14 +288,14 @@ fields:
     f_desc: "Whether to run chat threads inside the container."
     f_default: "false"
   label:
-    f_type: string
+    f_type: string_short
     f_desc: "Label for the Docker container."
     f_default: "refact"
   command:
-    f_type: string
+    f_type: string_long
     f_desc: "Command to run inside the Docker container."
   keep_containers_alive_for_x_minutes:
-    f_type: int
+    f_type: string_short
     f_desc: "How long to keep containers alive in minutes."
     f_default: "60"
   ports:
