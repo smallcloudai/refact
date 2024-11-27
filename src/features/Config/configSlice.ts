@@ -15,6 +15,7 @@ export type Config = {
     statistics?: boolean;
     vecdb?: boolean;
     ast?: boolean;
+    images?: boolean;
   };
   keyBindings?: {
     completeManual?: string;
@@ -32,6 +33,7 @@ const initialState: Config = {
     statistics: true,
     vecdb: true,
     ast: true,
+    images: true,
   },
   themeProps: {
     appearance: "dark",
@@ -49,7 +51,11 @@ export const reducer = createReducer<Config>(initialState, (builder) => {
   // TODO: toggle darkmode for web host?
   builder.addCase(updateConfig, (state, action) => {
     state.dev = action.payload.dev ?? state.dev;
-    state.features = action.payload.features ?? state.features;
+
+    state.features = action.payload.features
+      ? { ...state.features, ...action.payload.features }
+      : state.features;
+
     state.host = action.payload.host ?? state.host;
     state.lspUrl = action.payload.lspUrl ?? state.lspUrl;
     state.tabbed = action.payload.tabbed ?? state.tabbed;
