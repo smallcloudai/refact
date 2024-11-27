@@ -112,6 +112,9 @@ pub struct CodeAssistantCaps {
     #[serde(default)]
     #[serde(alias = "completion_model")]
     pub code_completion_default_model: String,
+    #[serde(default)]
+    #[serde(alias = "multiline_completion_model")]
+    pub multiline_code_completion_default_model: String,
     #[serde(default = "default_code_completion_n_ctx")]
     #[serde(alias = "completion_n_ctx")]
     pub code_completion_n_ctx: usize,
@@ -186,6 +189,9 @@ fn load_caps_from_buf(
     }
     if !r1.code_completion_default_model.is_empty() && !r1.running_models.contains(&r1.code_completion_default_model) {
         r1.running_models.push(r1.code_completion_default_model.clone());
+    }
+    if !r1.multiline_code_completion_default_model.is_empty() && !r1.running_models.contains(&r1.multiline_code_completion_default_model) {
+        r1.running_models.push(r1.multiline_code_completion_default_model.clone());
     }
     if !r1.embedding_model.is_empty() && !r1.running_models.contains(&r1.embedding_model) {
         r1.running_models.push(r1.embedding_model.clone());

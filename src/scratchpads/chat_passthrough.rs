@@ -7,13 +7,11 @@ use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use tracing::{error, info};
-
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ChatPost, SamplingParameters};
 use crate::global_context::GlobalContext;
-use crate::scratchpad_abstract::HasTokenizerAndEot;
-use crate::scratchpad_abstract::ScratchpadAbstract;
+use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_default_system_prompt_from_remote, system_prompt_add_workspace_info};
@@ -36,15 +34,16 @@ impl DeltaSender {
         }
     }
 
-    pub fn feed_delta(&mut self, role: &str, delta: &str, finish_reason: &str, tool_calls: Option<Value>) -> Value {
-        let x = serde_json::json!([{
+    pub fn feed_delta(&mut self, role: &str, _json: &Value, finish_reason: &FinishReason, tool_calls: Option<Value>) -> Value {
+        // TODO: correctly implement it
+        let x = json!([{
             "index": 0,
             "delta": {
-                "role": if role != self.role_sent.as_str() { serde_json::Value::String(role.to_string()) } else { serde_json::Value::Null },
-                "content": delta,
-                "tool_calls": tool_calls.unwrap_or(serde_json::Value::Null),
+                "role": if role != self.role_sent.as_str() { Value::String(role.to_string()) } else { Value::Null },
+                "content": "",
+                "tool_calls": tool_calls.unwrap_or(Value::Null),
             },
-            "finish_reason": if finish_reason == "" { serde_json::Value::Null } else { serde_json::Value::String(finish_reason.to_string()) }
+            "finish_reason": finish_reason.to_json_val()
         }]);
         self.role_sent = role.to_string();
         x
@@ -204,35 +203,47 @@ impl ScratchpadAbstract for ChatPassthrough {
         Ok(prompt.to_string())
     }
 
-    fn response_n_choices(  // result of old-school OpenAI with text (not messages) which is not possible when using passthrough (means messages)
+    fn response_n_choices(
         &mut self,
         _choices: Vec<String>,
-        _stopped: Vec<bool>,
-    ) -> Result<serde_json::Value, String> {
-        todo!();
+        _finish_reasons: Vec<FinishReason>,
+    ) -> Result<Value, String> {
+        Err("not implemented".to_string())
     }
 
     fn response_streaming(
         &mut self,
-        delta: String,
-        stop_toks: bool,
-        stop_length: bool,
-    ) -> Result<(serde_json::Value, bool), String> {
-        let finished = stop_toks || stop_length;
-        let finish_reason = if finished {
-            if stop_toks { "stop".to_string() } else { "length".to_string() }
-        } else {
-            "".to_string()
-        };
-        let json_choices = self.delta_sender.feed_delta("assistant", &delta, &finish_reason, None);
-        let ans = serde_json::json!({
-            "choices": json_choices,
-            "object": "chat.completion.chunk",
-        });
-        Ok((ans, finished))
+        _delta: String,
+        _finish_reason: FinishReason
+    ) -> Result<(Value, FinishReason), String> {
+        Err("not implemented".to_string())
+    }
+
+    fn response_message_n_choices(
+        &mut self,
+        _choices: Vec<String>,
+        _finish_reasons: Vec<FinishReason>,
+    ) -> Result<Value, String> {
+        Err("not implemented".to_string())
+    }
+
+    fn response_message_streaming(
+        &mut self,
+        json: &Value,
+        finish_reason: FinishReason,
+    ) -> Result<(Value, FinishReason), String> {
+        Ok((json.clone(), finish_reason))
     }
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
         self.has_rag_results.response_streaming()
+    }
+
+    fn streaming_finished(&mut self, finish_reason: FinishReason) -> Result<Value, String> {
+        let json_choices = self.delta_sender.feed_delta("assistant", &json!({}), &finish_reason, None);
+        Ok(json!({
+            "choices": json_choices,
+            "object": "chat.completion.chunk",
+        }))
     }
 }

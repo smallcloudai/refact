@@ -11,8 +11,7 @@ use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::global_context::GlobalContext;
-use crate::scratchpad_abstract::HasTokenizerAndEot;
-use crate::scratchpad_abstract::ScratchpadAbstract;
+use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
@@ -158,22 +157,40 @@ impl ScratchpadAbstract for ChatLlama2 {
     fn response_n_choices(
         &mut self,
         choices: Vec<String>,
-        stopped: Vec<bool>,
-    ) -> Result<serde_json::Value, String> {
-        self.dd.response_n_choices(choices, stopped)
+        finish_reasons: Vec<FinishReason>,
+    ) -> Result<Value, String> {
+        self.dd.response_n_choices(choices, finish_reasons)
     }
 
     fn response_streaming(
         &mut self,
         delta: String,
-        stop_toks: bool,
-        _stop_length: bool,
-    ) -> Result<(serde_json::Value, bool), String> {
-        self.dd.response_streaming(delta, stop_toks)
+        finish_reason: FinishReason
+    ) -> Result<(Value, FinishReason), String> {
+        self.dd.response_streaming(delta, finish_reason)
+    }
+    fn response_message_n_choices(
+        &mut self,
+        _choices: Vec<String>,
+        _finish_reasons: Vec<FinishReason>
+    ) -> Result<Value, String> {
+        Err("not implemented".to_string())
+    }
+
+    fn response_message_streaming(
+        &mut self,
+        _delta: &Value,
+        _finish_reason: FinishReason
+    ) -> Result<(Value, FinishReason), String> {
+        Err("not implemented".to_string())
     }
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
-        return self.has_rag_results.response_streaming();
+        self.has_rag_results.response_streaming()
+    }
+
+    fn streaming_finished(&mut self, finish_reason: FinishReason) -> Result<Value, String> {
+        self.dd.streaming_finished(finish_reason)
     }
 }
 
