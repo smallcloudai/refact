@@ -264,7 +264,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 onClick={onClose}
               />
             )}
-            <AttachFileButton />
+            {config.features?.images !== false && <AttachFileButton />}
             {/* TODO: Reserved space for microphone button coming later on */}
             <PaperPlaneButton
               disabled={isStreaming || !isOnline}
