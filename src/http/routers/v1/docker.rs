@@ -35,6 +35,7 @@ pub struct DockerContainerListPost {
 pub struct DockerContainerListOutput {
     id: String,
     status: String,
+    name: String,
     created: Option<String>,
     user: Option<String>,
     #[serde(default)]
@@ -120,9 +121,13 @@ pub async fn handle_v1_docker_container_list(
 
     let response_body: Vec<DockerContainerListOutput> = inspect_output.into_iter()
         .map(|container| {
+            let mut container_name = extract_string_field(&container, &["Name"], "Missing container name")?;
+            if container_name.starts_with('/') { container_name = container_name[1..].to_string() };
+
             Ok(DockerContainerListOutput {
                 id: extract_string_field(&container, &["Id"], "Missing container ID")?
                     .get(0..12).unwrap_or("").to_string(),
+                name: container_name,
                 status: extract_string_field(&container, &["State", "Status"], "Missing container status")?,
                 created: container["Created"].as_str().map(ToString::to_string),
                 user: container["Config"]["User"].as_str().map(ToString::to_string),
