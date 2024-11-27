@@ -100,8 +100,8 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
         for k, v in model_assigner.passthrough_mini_db.items():
             if v.get('provider') == provider:
                 result['chat'].append(k)
-            if 'completion' in v.get('filter_caps', []):
-                result['completion'].append(k)
+                if 'completion' in v.get('filter_caps', []):
+                    result['completion'].append(k)
 
     if data.get("openai_api_enable"):
         _add_results_for_passthrough_provider('openai')

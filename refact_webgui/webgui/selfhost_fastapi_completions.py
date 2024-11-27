@@ -307,6 +307,10 @@ class BaseCompletionsRouter(APIRouter):
             data["code_completion_default_model"],
             running['completion'],
         )
+        data["multiline_code_completion_default_model"] = _select_default_lora_if_exists(
+            data["multiline_code_completion_default_model"],
+            running['completion'],
+        )
         data["code_chat_default_model"] = _select_default_lora_if_exists(
             data["code_chat_default_model"],
             running['chat'],
