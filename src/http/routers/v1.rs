@@ -29,7 +29,7 @@ use crate::http::routers::v1::status::handle_v1_rag_status;
 use crate::http::routers::v1::customization::handle_v1_customization;
 use crate::http::routers::v1::customization::handle_v1_config_path;
 use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
-use crate::http::routers::v1::patch::handle_v1_patch_single_file_from_ticket;
+use crate::http::routers::v1::patch::{handle_v1_patch_apply_all, handle_v1_patch_single_file_from_ticket};
 use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_single};
 use crate::http::routers::v1::sync_files::handle_v1_sync_files_extract_tar;
 use crate::http::routers::v1::system_prompt::handle_v1_system_prompt;
@@ -122,7 +122,7 @@ pub fn make_v1_router() -> Router {
         .route("/docker-container-action", telemetry_post!(handle_v1_docker_container_action))
 
         .route("/patch-single-file-from-ticket", telemetry_post!(handle_v1_patch_single_file_from_ticket))
-        // .route("/patch-apply-all", telemetry_post!(handle_v1_patch_single_file_from_ticket))
+        .route("/patch-apply-all", telemetry_post!(handle_v1_patch_apply_all))
 
         // experimental
         .route("/get-dashboard-plots", telemetry_get!(get_dashboard_plots))

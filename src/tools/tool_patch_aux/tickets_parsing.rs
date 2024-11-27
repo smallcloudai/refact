@@ -58,6 +58,7 @@ pub struct TicketToApply {
     pub orig_action: PatchAction,
     #[serde(default)]
     pub fallback_action: Option<PatchAction>,
+    pub message_idx: usize,
     pub id: String,
     pub filename_before: String,
     #[serde(default)]
@@ -79,7 +80,7 @@ pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<S
     (text, None)
 }
 
-async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ticket: &mut TicketToApply) -> Result<(), String> {
+pub async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>, ticket: &mut TicketToApply) -> Result<(), String> {
     fn _error_text(reason: &str, ticket: &TicketToApply) -> String {
         format!("Failed to validate TICKET '{}': {}", ticket.id, reason)
     }
@@ -173,8 +174,8 @@ fn split_preserving_quotes(s: &str) -> Vec<String> {
     result
 }
 
-async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<TicketToApply> {
-    async fn process_ticket(gcx: Arc<ARwLock<GlobalContext>>, lines: &[&str], line_num: usize) -> Result<(usize, TicketToApply), String> {
+async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str, message_idx: usize) -> Vec<TicketToApply> {
+    async fn process_ticket(gcx: Arc<ARwLock<GlobalContext>>, lines: &[&str], line_num: usize, message_idx: usize) -> Result<(usize, TicketToApply), String> {
         let mut ticket = TicketToApply::default();
         let header = if let Some(idx) = lines[line_num].find("📍") {
             split_preserving_quotes(&lines[line_num][idx..].trim())
@@ -182,6 +183,7 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<T
             return Err("failed to parse ticket, 📍 is missing".to_string());
         };
 
+        ticket.message_idx = message_idx;
         ticket.action = match header.get(0) {
             Some(action) => {
                 match PatchAction::from_string(action) {
@@ -247,7 +249,7 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str) -> Vec<T
             if line_num_before_first_block.is_none() {
                 line_num_before_first_block = Some(line_num);
             }
-            match process_ticket(gcx.clone(), &lines, line_num).await {
+            match process_ticket(gcx.clone(), &lines, line_num, message_idx).await {
                 Ok((new_line_num, mut ticket)) => {
                     // if there is something to put to the extra context
                     if let Some(l) = line_num_before_first_block {
@@ -280,8 +282,8 @@ pub async fn get_tickets_from_messages(
         (ccx_lock.global_context.clone(), ccx_lock.messages.clone())
     };
     let mut tickets: HashMap<String, TicketToApply> = HashMap::new();
-    for message in messages.iter().filter(|x| x.role == "assistant") {
-        for ticket in parse_tickets(gcx.clone(), &message.content.content_text_only()).await.into_iter() {
+    for (idx, message) in messages.iter().enumerate().filter(|(_, x)| x.role == "assistant") {
+        for ticket in parse_tickets(gcx.clone(), &message.content.content_text_only(), idx).await.into_iter() {
             tickets.insert(ticket.id.clone(), ticket);
         }
     }
