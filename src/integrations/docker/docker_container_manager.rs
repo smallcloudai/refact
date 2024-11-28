@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::{sync::Arc, sync::Weak, time::SystemTime};
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
 use tokio::fs::File;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
@@ -23,7 +22,29 @@ use crate::integrations::docker::integr_docker::{docker_tool_load, ToolDocker};
 
 use super::docker_ssh_tunnel_utils::ssh_tunnel_check_status;
 
-const DEFAULT_CONTAINER_LSP_PATH: &str = "/usr/local/bin/refact-lsp";
+pub const DEFAULT_CONTAINER_LSP_PATH: &str = "/usr/local/bin/refact-lsp";
+pub const TARGET_LSP_PORT: &str = "8001";
+
+#[derive(Clone, Debug)]
+pub struct Port {
+    pub published: String,
+    pub target: String,
+}
+
+impl<'de> Deserialize<'de> for Port {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        let (published, target) = s.split_once(':')
+            .ok_or_else(|| serde::de::Error::custom("expected format '8080:3000'"))?;
+        Ok(Port { published: published.to_string(), target: target.to_string() })
+    }
+}
+
+impl Serialize for Port {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&format!("{}:{}", self.published, self.target))
+    }
+}
 
 pub struct DockerContainerSession {
     container_id: String,
@@ -33,27 +54,7 @@ pub struct DockerContainerSession {
     weak_gcx: Weak<ARwLock<GlobalContext>>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct Port {
-    #[serde(rename = "local_port", deserialize_with = "string_or_number")]
-    pub external: String,
-    #[serde(rename = "container_port", deserialize_with = "string_or_number")]
-    pub internal: String,
-}
-
-fn string_or_number<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = serde::Deserialize::deserialize(deserializer)?;
-    Ok(match value {
-        serde_json::Value::String(s) => s,
-        serde_json::Value::Number(n) => n.to_string(),
-        _ => return Err(serde::de::Error::custom("expected a string or an integer")),
-    })
-}
-
-enum DockerContainerConnectionEnum {
+pub enum DockerContainerConnectionEnum {
     SshTunnel(SshTunnel),
     LocalPort(String),
 }
@@ -74,9 +75,7 @@ impl Drop for DockerContainerSession {
 }
 
 impl IntegrationSession for DockerContainerSession {
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
 
     fn is_expired(&self) -> bool {
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
@@ -127,18 +126,18 @@ pub async fn docker_container_check_status_or_start(
             const LSP_PORT: &str = "8001";
             let mut ports_to_forward = if ssh_config_maybe.is_some() {
                 docker.settings_docker.ports.iter()
-                    .map(|p| Port {external: "0".to_string(), internal: p.internal.clone()}).collect::<Vec<_>>()
+                    .map(|p| Port {published: "0".to_string(), target: p.target.clone()}).collect::<Vec<_>>()
             } else {
                 docker.settings_docker.ports.clone()
             };
-            ports_to_forward.insert(0, Port {external: "0".to_string(), internal: LSP_PORT.to_string()});
+            ports_to_forward.insert(0, Port {published: "0".to_string(), target: LSP_PORT.to_string()});
 
             let container_id = docker_container_create(&docker, &chat_id, &ports_to_forward, LSP_PORT, gcx.clone()).await?;
             docker_container_sync_yaml_configs(&docker, &container_id, gcx.clone()).await?;
             docker_container_start(gcx.clone(), &docker, &container_id).await?;
             let exposed_ports = docker_container_get_exposed_ports(&docker, &container_id, &ports_to_forward, gcx.clone()).await?;
-            let host_lsp_port = exposed_ports.iter().find(|p| p.internal == LSP_PORT)
-                .ok_or_else(|| "No LSP port exposed".to_string())?.external.clone();
+            let host_lsp_port = exposed_ports.iter().find(|p| p.target == LSP_PORT)
+                .ok_or_else(|| "No LSP port exposed".to_string())?.published.clone();
 
             let keep_containers_alive_for_x_minutes = docker.settings_docker.keep_containers_alive_for_x_minutes;
 
@@ -147,11 +146,11 @@ pub async fn docker_container_check_status_or_start(
                     let mut ports_to_forward_through_ssh = exposed_ports.into_iter()
                         .map(|exposed_port| {
                             let matched_external_port = docker.settings_docker.ports.iter()
-                                .find(|configured_port| configured_port.internal == exposed_port.internal)
-                                .map_or_else(|| "0".to_string(), |forwarded_port| forwarded_port.external.clone());
+                                .find(|configured_port| configured_port.target == exposed_port.target)
+                                .map_or_else(|| "0".to_string(), |forwarded_port| forwarded_port.published.clone());
                             Port {
-                                external: matched_external_port,
-                                internal: exposed_port.external,
+                                published: matched_external_port,
+                                target: exposed_port.published,
                             }
                         }).collect::<Vec<_>>();
                     let ssh_tunnel = ssh_tunnel_open(&mut ports_to_forward_through_ssh, &ssh_config).await?;
@@ -162,7 +161,7 @@ pub async fn docker_container_check_status_or_start(
 
             let lsp_port_to_connect = match &connection {
                 DockerContainerConnectionEnum::SshTunnel(ssh_tunnel) => {
-                    ssh_tunnel.get_first_external_port()?
+                    ssh_tunnel.get_first_published_port()?
                 },
                 DockerContainerConnectionEnum::LocalPort(internal_port) => {
                     internal_port.to_string()
@@ -213,7 +212,7 @@ pub async fn docker_container_get_host_lsp_port_to_connect(
 
             return match &docker_container_session.connection {
                 DockerContainerConnectionEnum::SshTunnel(ssh_tunnel) => {
-                    ssh_tunnel.get_first_external_port()
+                    ssh_tunnel.get_first_published_port()
                 },
                 DockerContainerConnectionEnum::LocalPort(internal_port) => {
                     Ok(internal_port.to_string())
@@ -251,7 +250,7 @@ async fn docker_container_create(
     );
     
     let ports_to_forward_as_arg_list = ports_to_forward.iter()
-        .map(|p| format!("--publish={}:{}", p.external, p.internal)).collect::<Vec<_>>().join(" ");
+        .map(|p| format!("--publish={}:{}", p.published, p.target)).collect::<Vec<_>>().join(" ");
     let run_command = format!(
         "container create --name=refact-{chat_id} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
         {ports_to_forward_as_arg_list} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
@@ -309,7 +308,7 @@ async fn docker_container_get_home_dir(
     let inspect_config_command = "container inspect --format '{{json .Config}}' ".to_string() + &container_id;
     let (inspect_config_output, _) = docker.command_execute(&inspect_config_command, gcx.clone(), true).await?;
 
-    let config_json: Value = serde_json::from_str(&inspect_config_output)
+    let config_json: serde_json::Value = serde_json::from_str(&inspect_config_output)
         .map_err(|e| format!("Error parsing docker config: {}", e))?;
 
     if let Some(home_env) = config_json.get("Env").and_then(|env| env.as_array())
@@ -317,7 +316,7 @@ async fn docker_container_get_home_dir(
         return Ok(home_env.to_string());
     }
 
-    let user = config_json.get("User").and_then(Value::as_str).unwrap_or("");
+    let user = config_json.get("User").and_then(serde_json::Value::as_str).unwrap_or("");
     Ok(if user.is_empty() || user == "root" { "root".to_string() } else { format!("/home/{user}") })
 }
 
@@ -435,15 +434,15 @@ async fn docker_container_get_exposed_ports(
     let (inspect_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true).await?;
     tracing::info!("{}:\n{}", inspect_command, inspect_output);
 
-    let inspect_data: Value = serde_json::from_str(&inspect_output)
+    let inspect_data: serde_json::Value = serde_json::from_str(&inspect_output)
         .map_err(|e| format!("Error parsing JSON output from docker inspect: {}", e))?;
 
     let mut exposed_ports = Vec::new();
     for port in ports_to_forward {
-        let host_port = inspect_data[&format!("{}/tcp", port.internal)][0]["HostPort"]
+        let host_port = inspect_data[&format!("{}/tcp", port.target)][0]["HostPort"]
             .as_str()
             .ok_or_else(|| "Error getting host port from docker inspect output.".to_string())?;
-        exposed_ports.push(Port { external: host_port.to_string(), internal: port.internal.to_string() });
+        exposed_ports.push(Port { published: host_port.to_string(), target: port.target.to_string() });
     }
     Ok(exposed_ports)
 }

@@ -23,9 +23,9 @@ pub struct SshTunnel {
 }
 
 impl SshTunnel {
-    pub fn get_first_external_port(&self) -> Result<String, String> {
+    pub fn get_first_published_port(&self) -> Result<String, String> {
         self.forwarded_ports.iter().next()
-          .map(|port| port.external.clone())
+          .map(|port| port.published.clone())
           .ok_or_else(|| "Internal error: No forwarded ports found.".to_string())
     }
 }
@@ -40,7 +40,7 @@ pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_con
 
     if let Some(ssh_tunnel) = ssh_tunnel_locked.deref_mut() {
         match ssh_tunnel_check_status(ssh_tunnel).await {
-            Ok(()) => return ssh_tunnel.get_first_external_port(),
+            Ok(()) => return ssh_tunnel.get_first_published_port(),
             Err(e) => {
                 warn!("{}, restarting...", e);
                 *ssh_tunnel_locked = None;
@@ -54,8 +54,8 @@ pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_con
         connect_to_daemon_at.split(":").last().unwrap_or_default().to_string()
     };
 
-    let ssh_tunnel = ssh_tunnel_open(&mut vec![Port { external: "0".to_string(), internal: remote_port_or_socket }], ssh_config).await?;
-    let port = ssh_tunnel.get_first_external_port()?;
+    let ssh_tunnel = ssh_tunnel_open(&mut vec![Port { published: "0".to_string(), target: remote_port_or_socket }], ssh_config).await?;
+    let port = ssh_tunnel.get_first_published_port()?;
     *ssh_tunnel_locked = Some(ssh_tunnel);
     info!("Forwarding remote docker to local port {port}");
     Ok(port)
@@ -89,17 +89,17 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
     command.stderr(Stdio::piped());
 
     for port in ports_to_forward.iter_mut() {
-        if port.external == "0" {
+        if port.published == "0" {
             // Bind to port 0, so the OS will assign a free port.
             let listener = TcpListener::bind("127.0.0.1:0").await.map_err(|e| format!("Failed to bind to address: {}", e))?;
             let local_addr = listener.local_addr().map_err(|e| format!("Failed to get local address: {}", e))?;
-            port.external = local_addr.port().to_string();
+            port.published = local_addr.port().to_string();
         }
-        let local_addr = format!("127.0.0.1:{}", port.external);
-        let remote_addr = if port.internal.parse::<u16>().is_ok() {
-            format!("127.0.0.1:{}", port.internal)
+        let local_addr = format!("127.0.0.1:{}", port.published);
+        let remote_addr = if port.target.parse::<u16>().is_ok() {
+            format!("127.0.0.1:{}", port.target)
         } else {
-            port.internal.clone()
+            port.target.clone()
         };
         command.arg("-L").arg(format!("{local_addr}:{remote_addr}"));
     }
@@ -115,9 +115,9 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
 
     let port_to_test_connection = ports_to_forward.iter().next().ok_or_else(|| "Failed to get port to test connection".to_string())?;
     for attempt in 0..10 {
-        match TcpStream::connect(format!("127.0.0.1:{}", &port_to_test_connection.external)).await {
+        match TcpStream::connect(format!("127.0.0.1:{}", &port_to_test_connection.published)).await {
             Ok(_) => {
-                info!("huzzah, it worked: connect to 127.0.0.1:{}", port_to_test_connection.external);
+                info!("huzzah, it worked: connect to 127.0.0.1:{}", port_to_test_connection.published);
                 return Ok(SshTunnel {
                     forwarded_ports: ports_to_forward.clone(),
                     process,
@@ -126,7 +126,7 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
                 });
             }
             Err(e) => {
-                info!("this should eventually work: connect to 127.0.0.1:{} attempt {}: {}", port_to_test_connection.external, attempt + 1, e);
+                info!("this should eventually work: connect to 127.0.0.1:{} attempt {}: {}", port_to_test_connection.published, attempt + 1, e);
                 let (_, stderr_output, _) = blocking_read_until_token_or_timeout(&mut stdout, &mut stderr, 300, "").await?;
                 if !stderr_output.is_empty() {
                     return Err(format!("Failed to open ssh tunnel: {}", stderr_output));
@@ -135,5 +135,5 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
         }
     }
 
-    return Err(format!("Failed to connect to 127.0.0.1:{}, max attempts reached", &port_to_test_connection.external));
+    return Err(format!("Failed to connect to 127.0.0.1:{}, max attempts reached", &port_to_test_connection.published));
 }
