@@ -161,7 +161,7 @@ fn prepare_cursor_file(
 ) -> Result<(String, usize, (usize, usize)), String> {
     let mut output_lines: VecDeque<String> = VecDeque::new();
     let mut tokens_used: usize = 0;
-    let mut line_idx_offset: usize = 1;
+    let mut line_idx_offset: i32 = 1;
 
     if let Some(line) = file_text.line(cursor_pos.line as usize).as_str() {
         output_lines.push_front(line.to_string());
