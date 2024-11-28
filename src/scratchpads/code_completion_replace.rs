@@ -255,9 +255,6 @@ fn skip_similar_rows(pred_text: &Vec<String>, text_to_remove: &Vec<String>) -> V
         if pred_text_trimmed.is_empty() {
             return pred_text_trimmed;
         }
-        // if is_ambiguous(to_remove_row.trim_start(), &pred_text_trimmed) {
-        //     continue;
-        // }
         for idx in 0..(if to_remove_row.trim().is_empty() {1} else {pred_text_trimmed.len()}) {
             if to_remove_row.trim_start() == pred_text_trimmed[idx].trim_start() {
                 pred_text_trimmed = pred_text_trimmed[idx + 1..].to_vec();
@@ -364,7 +361,7 @@ fn process_n_choices(
                         cc = cc.split_at(idx + before_lines_str.trim().len()).1.to_string();
                     } else {
                         let pred_lines = cc.lines().map(|x| x.to_string()).collect::<Vec<_>>();
-                        let text_to_remove_lines = before_lines_str.lines().rev().map(|x| x.to_string()).collect::<Vec<_>>();
+                        let text_to_remove_lines = before_lines_str.lines().map(|x| x.to_string()).collect::<Vec<_>>();
                         let pred_lines_stripped = skip_similar_rows(&pred_lines, &text_to_remove_lines);
                         if pred_lines.len() == pred_lines_stripped.len() {
                             return json!({
@@ -384,12 +381,9 @@ fn process_n_choices(
                 })
             }
 
-            cc = skip_similar_letters_from_a(subblock_ref.cursor_line.as_str(), cc.as_str());
             // vscode cannot correctly handle a completion if it has spaces in front of it
-            if !cc.starts_with(&subblock_ref.cursor_line) {
-                if subblock_ref.cursor_line.replace(" ", "").replace("\t", "").is_empty() {
-                    cc = format!("{}{}", subblock_ref.cursor_line, cc);
-                }
+            if !subblock_ref.cursor_line.replace("\n", "").replace(" ", "").replace("\t", "").is_empty() {
+                 cc = skip_similar_letters_from_a(subblock_ref.cursor_line.as_str(), cc.as_str());
             }
 
             // Removing the suffix
@@ -399,7 +393,7 @@ fn process_n_choices(
                 } else if let Some(idx) = cc.find(after_lines_str.trim()) {
                     cc = cc.split_at(idx).0.to_string();
                 } else {
-                    let pred_lines = cc.lines().map(|x| x.to_string()).collect::<Vec<_>>();
+                    let pred_lines = cc.lines().rev().map(|x| x.to_string()).collect::<Vec<_>>();
                     let text_to_remove_lines = after_lines_str.lines().rev().map(|x| x.to_string()).collect::<Vec<_>>();
                     let pred_lines_stripped = skip_similar_rows(&pred_lines, &text_to_remove_lines).iter().rev().cloned().collect::<Vec<_>>();
                     cc = pred_lines_stripped.join("\n");
