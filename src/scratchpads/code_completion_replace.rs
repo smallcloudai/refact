@@ -1,4 +1,4 @@
-use crate::ast::ast_indexer_thread::AstIndexService;
+use crate::ast::ast_indexer_thread::{ast_indexer_block_until_finished, ast_indexer_enqueue_files, AstIndexService};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{
     ChatContent, ChatMessage, CodeCompletionPost, CursorPosition, SamplingParameters,
@@ -22,18 +22,18 @@ use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
+use crate::ast::ast_db::doc_defs;
+use crate::ast::ast_structs::AstDefinition;
 use crate::scratchpads::completon_rag::retrieve_ast_based_extra_context;
 
 const DEBUG: bool = true;
 const SYSTEM_PROMPT: &str = r#"You are given a code file, <BLOCK_OF_CODE> from that file and an extra context from other files. 
 An unfinished line in the <BLOCK_OF_CODE> is marked with the <CURSOR>. 
-Your task is to complete the code after the <CURSOR> by rewriting the <BLOCK_OF_CODE> using the provided context.
-Produce a single <REWRITTEN_BLOCK_OF_CODE> containing all introduced changes and nothing more.
-Ensure the <REWRITTEN_BLOCK_OF_CODE> includes all necessary updates such as code completion, function definitions, or comments."#;
+Your task is to complete the code after the <CURSOR> by rewriting the <BLOCK_OF_CODE> using the provided context and make the <REWRITTEN_BLOCK_OF_CODE>.
+Ensure the <REWRITTEN_BLOCK_OF_CODE> introduces all necessary updates to the <BLOCK_OF_CODE> such as code completion, function definitions, or comments."#;
 const SYSTEM_PROMPT_USERS_INTENTION: &str = r#"You are given a code file, <BLOCK_OF_CODE> from that file, an extra context from other files, and a user's intention.
-Rewrite the <BLOCK_OF_CODE> to fulfill the user's intention, starting from the <CURSOR> position using the provided context.
-Produce a SINGLE <REWRITTEN_BLOCK_OF_CODE> containing all changes and nothing more.
-Ensure the rewritten block includes all necessary updates such as code completion, function definitions, or comments.
+Rewrite the <BLOCK_OF_CODE> to fulfill the user's intention, starting from the <CURSOR> position using the provided context and make the <REWRITTEN_BLOCK_OF_CODE>.
+Ensure the <REWRITTEN_BLOCK_OF_CODE> introduces all necessary updates to the <BLOCK_OF_CODE> such as code completion, function definitions, or comments.
 Strictly follow the user's intention.
 User's intention:
 <comment>"#;
@@ -151,9 +151,31 @@ fn prepare_cursor_file(
     Ok((data, tokens_used, (line1, line2)))
 }
 
-fn prepare_subblock(
+pub async fn get_cursor_symbol_from_doc(
+    ast_service: Option<Arc<AMutex<AstIndexService>>>,
+    cpath: &PathBuf,
+    cursor_pos: &CursorPosition,
+) -> Option<Arc<AstDefinition>> {
+    let ast_service = ast_service?;
+    let ast_index = ast_service.lock().await.ast_index.clone();
+    let cpath_str = cpath.to_string_lossy().to_string();
+    ast_indexer_enqueue_files(ast_service.clone(), vec![cpath_str.clone()], true).await;
+    ast_indexer_block_until_finished(ast_service.clone(), 20, true).await;
+    let doc_syms = doc_defs(ast_index, &cpath_str).await;
+    doc_syms
+        .iter()
+        .filter(
+            |s| cursor_pos.line >= s.full_line1().saturating_sub(1) as i32 && cursor_pos.line <= s.full_line2() as i32
+        )
+        .cloned()
+        .min_by_key(|x| x.full_line2().saturating_sub(x.full_line1()))
+}
+
+async fn prepare_subblock(
+    ast_service: Option<Arc<AMutex<AstIndexService>>>,
     tokenizer: &HasTokenizerAndEot,
     max_tokens: usize,
+    cpath: &PathBuf,
     file_text: &Rope,
     cursor_pos: &CursorPosition,
     max_rows_up_or_downs: usize,
@@ -174,46 +196,60 @@ fn prepare_subblock(
         return Err("Tokens limit is too small to fit the code subblock".to_string());
     }
 
-    for (c, i) in (cursor_pos.line - max_rows_up_or_downs as i32..cursor_pos.line).rev().enumerate() {
-        if i >= 0 {
-            let line = file_text.line(i as usize).to_string();
-            if c >= min_rows_to_skip_caret && line.trim().is_empty() {
-                break;
-            }
+    if let Some(symbol) = get_cursor_symbol_from_doc(ast_service.clone(), cpath, cursor_pos).await {
+        for idx in symbol.full_line1().saturating_sub(1)..symbol.full_line2() {
+            let line = file_text.line(idx).to_string();
             tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
-            subblock.before_lines.insert(0, line);
-            if tokens_used > max_tokens {
-                return Err(
-                    "Tokens limit is too small to fit the context for the code subblock"
-                        .to_string(),
-                );
+            if idx < cursor_pos.line as usize {
+                subblock.before_lines.insert(0, line);
+            } else if idx > cursor_pos.line as usize {
+                subblock.after_lines_extra.push(line.clone());
+                if tokens_used <= max_tokens {
+                    subblock.after_lines.push(line);
+                }
             }
         }
-    }
-
-    for (c, i) in (cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32).enumerate() {
-        if i < file_text.len_lines() as i32 {
-            let line = file_text.line(i as usize).to_string();
-            if c >= min_rows_to_skip_caret && line.trim().is_empty() {
-                break;
+    } else {
+        for (c, i) in (cursor_pos.line - max_rows_up_or_downs as i32..cursor_pos.line).rev().enumerate() {
+            if i >= 0 {
+                let line = file_text.line(i as usize).to_string();
+                if c >= min_rows_to_skip_caret && line.trim().is_empty() {
+                    break;
+                }
+                tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+                subblock.before_lines.insert(0, line);
+                if tokens_used > max_tokens {
+                    return Err(
+                        "Tokens limit is too small to fit the context for the code subblock"
+                            .to_string(),
+                    );
+                }
             }
-            tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
-            if tokens_used > max_tokens {
-                break;
-            }
-            subblock.after_lines.push(line);
         }
-    }
+        for (c, i) in (cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32).enumerate() {
+            if i < file_text.len_lines() as i32 {
+                let line = file_text.line(i as usize).to_string();
+                if c >= min_rows_to_skip_caret && line.trim().is_empty() {
+                    break;
+                }
+                tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+                if tokens_used > max_tokens {
+                    break;
+                }
+                subblock.after_lines.push(line);
+            }
+        }
 
-    for i in cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32 {
-        if i < file_text.len_lines() as i32 {
-            subblock.after_lines_extra.push(file_text.line(i as usize).to_string());
+        for i in cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32 {
+            if i < file_text.len_lines() as i32 {
+                subblock.after_lines_extra.push(file_text.line(i as usize).to_string());
+            }
         }
     }
     Ok((subblock, tokens_used))
 }
 
-fn skip_similar_letters_from_a(a: &str, b: &str) -> String {
+fn skip_similar_letters(a: &str, b: &str) -> String {
     let mut found_idx = None;
     for (idx, (ch_a, ch_b)) in a.chars().zip(b.chars()).enumerate() {
         if ch_a != ch_b {
@@ -233,11 +269,31 @@ fn skip_similar_letters_from_a(a: &str, b: &str) -> String {
 }
 
 fn skip_similar_rows(pred_text: &Vec<String>, text_to_remove: &Vec<String>) -> Vec<String> {
+    // fn is_too_simple_to_compare(s: &String) -> bool {
+    //     if s.trim().is_empty() {
+    //         return true;
+    //     }
+    //     let simple_tokens = vec![
+    //         ")", "(", "{", "}", "[", "]",  // Parentheses, braces, brackets
+    //         "+", "-", "*", "/", "%",       // Arithmetic operators
+    //         "=", "==", "!=", ">", "<",     // Comparison operators
+    //         "&&", "||", "!",               // Logical operators
+    //         ",", ".", ";", ":", "?",       // Punctuation
+    //         "|", "&", "^", "~", ">>", "<<" // Bitwise operators
+    //     ];
+    //     simple_tokens.contains(&s.as_str())
+    // }
+
+    
     let mut pred_text_trimmed = pred_text.clone();
     for to_remove_row in text_to_remove.iter() {
         if pred_text_trimmed.is_empty() {
             return pred_text_trimmed;
         }
+        // if is_too_simple_to_compare(to_remove_row) {
+        //     continue
+        // }
+        
         for idx in 0..(if to_remove_row.trim().is_empty() {1} else {pred_text_trimmed.len()}) {
             if to_remove_row.trim_start() == pred_text_trimmed[idx].trim_start() {
                 pred_text_trimmed = pred_text_trimmed[idx + 1..].to_vec();
@@ -305,6 +361,9 @@ fn process_n_choices(
         .expect("cursor_subblock must be initialized in the prompt");
     let after_lines_str = subblock_ref.after_lines_str();
     let before_lines_str = subblock_ref.before_lines_str();
+    let cursor_line = subblock_ref.cursor_line.trim_end().to_string();
+    let cursor_line_is_empty = cursor_line.replace(" ", "").replace("\t", "").is_empty();
+    
     let json_choices = choices
         .iter()
         .enumerate()
@@ -337,23 +396,40 @@ fn process_n_choices(
                         cc = cc[start_idx..].to_string();
                     }
                 }
-                if !before_lines_str.trim().is_empty() {
-                    if let Some(idx) = cc.find(before_lines_str.as_str()) {
-                        cc = cc.split_at(idx + before_lines_str.len()).1.to_string();
-                    } else if let Some(idx) = cc.find(before_lines_str.trim()) {
-                        cc = cc.split_at(idx + before_lines_str.trim().len()).1.to_string();
-                    } else {
-                        let pred_lines = cc.lines().map(|x| x.to_string()).collect::<Vec<_>>();
-                        let text_to_remove_lines = before_lines_str.lines().map(|x| x.to_string()).collect::<Vec<_>>();
-                        let pred_lines_stripped = skip_similar_rows(&pred_lines, &text_to_remove_lines);
-                        if pred_lines.len() == pred_lines_stripped.len() {
-                            return json!({
-                                "index": i,
-                                "code_completion": "",
-                                "finish_reason": finish_reasons[i].to_json_val()
-                            })
+                
+                // First, we're trying to locate cursor position and remove everything above it
+                let pred_lines = cc.lines().map(|x| x.to_string()).collect::<Vec<_>>();
+                let cursor_idx_mb = if !cursor_line_is_empty {
+                    let cursor_matches = pred_lines
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, x)| **x == cursor_line)
+                        .map(|(idx, _)| idx)
+                        .collect::<Vec<_>>();
+                    if cursor_matches.len() != 1 { None } else { cursor_matches.get(0).copied() }
+                } else { None };
+                
+                if let Some(idx) = cursor_idx_mb {
+                    cc = pred_lines[idx + 1..].join("\n")
+                } else {
+                    // If we don't find the cursor index, we try to cut lines by the file context
+                    if !before_lines_str.trim().is_empty() {
+                        if let Some(idx) = cc.find(before_lines_str.as_str()) {
+                            cc = cc.split_at(idx + before_lines_str.len()).1.to_string();
+                        } else if let Some(idx) = cc.find(before_lines_str.trim()) {
+                            cc = cc.split_at(idx + before_lines_str.trim().len()).1.to_string();
+                        } else {
+                            let text_to_remove_lines = before_lines_str.lines().map(|x| x.to_string()).collect::<Vec<_>>();
+                            let pred_lines_stripped = skip_similar_rows(&pred_lines, &text_to_remove_lines);
+                            if pred_lines.len() == pred_lines_stripped.len() {
+                                return json!({
+                                    "index": i,
+                                    "code_completion": "",
+                                    "finish_reason": finish_reasons[i].to_json_val()
+                                })
+                            }
+                            cc = pred_lines_stripped.join("\n");
                         }
-                        cc = pred_lines_stripped.join("\n");
                     }
                 }
             } else {
@@ -365,11 +441,11 @@ fn process_n_choices(
             }
 
             // vscode cannot correctly handle a completion if it has spaces in front of it
-            if !subblock_ref.cursor_line.replace("\n", "").replace(" ", "").replace("\t", "").is_empty() {
+            if !cursor_line_is_empty {
                 cc = if let Some(idx) = cc.find(subblock_ref.cursor_line.trim()) {
                     cc.split_at(idx + subblock_ref.cursor_line.trim().len()).1.to_string()
                 } else {
-                    skip_similar_letters_from_a(subblock_ref.cursor_line.as_str(), cc.as_str())
+                    skip_similar_letters(subblock_ref.cursor_line.as_str(), cc.as_str())
                 }
             }
 
@@ -568,7 +644,6 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         sampling_parameters_to_patch.max_new_tokens = MAX_NEW_TOKENS;
         sampling_parameters_to_patch.temperature = if !self.post.no_cache { Some(TEMPERATURE_INITIAL) } else { Some(TEMPERATURE_NOCACHE) };
         sampling_parameters_to_patch.stop = vec![self.t.eot.clone()];
-        self.post.inputs.multiline |= self.post.no_cache;
         if !self.post.inputs.multiline {
             sampling_parameters_to_patch.stop.push("\n".to_string());
         }
@@ -618,13 +693,15 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
             &self.post.inputs.cursor,
         )?;
         let (subblock, _) = prepare_subblock(
+            self.ast_service.clone(),
             &self.t,
             subblock_required_tokens,
+            &cpath,
             &text,
             &self.post.inputs.cursor,
             MAX_ROWS_UP_OR_DOWNS,
             MIN_ROWS_TO_SKIP_CARET
-        )?;
+        ).await?;
         if use_rag {
             let pp_settings = {
                 let ccx_locked = ccx.lock().await;
@@ -804,7 +881,6 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
         sampling_parameters_to_patch.max_new_tokens = MAX_NEW_TOKENS;
         sampling_parameters_to_patch.temperature = if !self.post.no_cache { Some(TEMPERATURE_INITIAL) } else { Some(TEMPERATURE_NOCACHE) };
         sampling_parameters_to_patch.stop = vec![self.t.eot.clone()];
-        self.post.inputs.multiline |= self.post.no_cache;
         if !self.post.inputs.multiline {
             sampling_parameters_to_patch.stop.push("\n".to_string());
         }
@@ -864,13 +940,15 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
             &self.post.inputs.cursor,
         )?;
         let (subblock, _subblock_tokens_count) = prepare_subblock(
+            self.ast_service.clone(),
             &self.t,
             subblock_required_tokens,
+            &cpath,
             &text,
             &self.post.inputs.cursor,
             MAX_ROWS_UP_OR_DOWNS,
             MIN_ROWS_TO_SKIP_CARET
-        )?;
+        ).await?;
         if use_rag {
             let pp_settings = {
                 let ccx_locked = ccx.lock().await;
