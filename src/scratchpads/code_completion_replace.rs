@@ -24,12 +24,12 @@ use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 use crate::scratchpads::completon_rag::retrieve_ast_based_extra_context;
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 const SYSTEM_PROMPT: &str = r#"You are given a code file, <BLOCK_OF_CODE> from that file and an extra context from other files. 
 An unfinished line in the <BLOCK_OF_CODE> is marked with the <CURSOR>. 
 Your task is to complete the code after the <CURSOR> by rewriting the <BLOCK_OF_CODE> using the provided context.
-Produce a single <REWRITTEN_BLOCK_OF_CODE> containing all changes and nothing more.
-Ensure the rewritten block includes all necessary updates such as code completion, function definitions, or comments."#;
+Produce a single <REWRITTEN_BLOCK_OF_CODE> containing all introduced changes and nothing more.
+Ensure the <REWRITTEN_BLOCK_OF_CODE> includes all necessary updates such as code completion, function definitions, or comments."#;
 const SYSTEM_PROMPT_USERS_INTENTION: &str = r#"You are given a code file, <BLOCK_OF_CODE> from that file, an extra context from other files, and a user's intention.
 Rewrite the <BLOCK_OF_CODE> to fulfill the user's intention, starting from the <CURSOR> position using the provided context.
 Produce a SINGLE <REWRITTEN_BLOCK_OF_CODE> containing all changes and nothing more.
@@ -37,7 +37,6 @@ Ensure the rewritten block includes all necessary updates such as code completio
 Strictly follow the user's intention.
 User's intention:
 <comment>"#;
-const SUBBLOCK_CUT_TOKENS_N: usize = 3;
 const SUBBLOCK_REQUIRED_TOKENS: usize = 128;
 const CURSORFILE_MIN_TOKENS: usize = 128;
 const MAX_NEW_TOKENS: usize = 1024;  // it's quite high since we want to avoid having a stripped message
@@ -49,11 +48,11 @@ pub struct SubBlock {
     before_lines: Vec<String>,
     cursor_line: String,
     after_lines: Vec<String>,
-    cut_part: Option<String>,
+    after_lines_extra: Vec<String>,
 }
 
 impl SubBlock {
-    fn prompt(&self, tokenizer: &HasTokenizerAndEot) -> Result<String, String> {
+    fn prompt(&self) -> Result<String, String> {
         let mut code = self
             .before_lines
             .iter()
@@ -61,30 +60,7 @@ impl SubBlock {
             .collect::<Vec<_>>()
             .join("");
 
-        let (new_cursor_line, _cut_part) = if !self.cursor_line.is_empty() {
-            let tokenizer_ref = tokenizer.tokenizer.write().map_err(|x| x.to_string())?;
-            let cursor_line = self
-                .cursor_line
-                .replace("\r\n", "\n")
-                .strip_suffix("\n")
-                .unwrap_or(&self.cursor_line)
-                .to_string();
-            let cursor_line_tokens = tokenizer_ref
-                .encode(&*cursor_line, false)
-                .map_err(|x| x.to_string())?;
-            let cut_until = cursor_line_tokens.len().saturating_sub(0);
-            (
-                tokenizer_ref
-                    .decode(&cursor_line_tokens.get_ids()[..cut_until], true)
-                    .map_err(|x| x.to_string())?,
-                tokenizer_ref
-                    .decode(&cursor_line_tokens.get_ids()[cut_until..], true)
-                    .map_err(|x| x.to_string())?,
-            )
-        } else {
-            (self.cursor_line.clone(), "".to_string())
-        };
-        code.push_str(format!("{}<CURSOR>\n", new_cursor_line).as_str());
+        code.push_str(format!("{}<CURSOR>\n", self.cursor_line).as_str());
         code.push_str(
             self.after_lines
                 .iter()
@@ -96,45 +72,6 @@ impl SubBlock {
         Ok(format!("<BLOCK_OF_CDDE>:\n```\n{code}\n```"))
     }
 
-    fn prefilling_prompt(&mut self, tokenizer: &HasTokenizerAndEot) -> Result<String, String> {
-        let mut code = self
-            .before_lines
-            .iter()
-            .map(|x| x.replace("\r\n", "\n"))
-            .collect::<Vec<_>>()
-            .join("");
-        let (new_cursor_line, cut_part) = if !self.cursor_line.trim().is_empty()
-            || self.cursor_line.len() < SUBBLOCK_CUT_TOKENS_N
-        {
-            let tokenizer_ref = tokenizer.tokenizer.write().map_err(|x| x.to_string())?;
-            let cursor_line = self
-                .cursor_line
-                .replace("\r\n", "\n")
-                .strip_suffix("\n")
-                .unwrap_or(&self.cursor_line)
-                .to_string();
-            let cursor_line_tokens = tokenizer_ref
-                .encode(&*cursor_line, false)
-                .map_err(|x| x.to_string())?;
-            let cut_until = cursor_line_tokens
-                .len()
-                .saturating_sub(SUBBLOCK_CUT_TOKENS_N);
-            (
-                tokenizer_ref
-                    .decode(&cursor_line_tokens.get_ids()[..cut_until], true)
-                    .map_err(|x| x.to_string())?,
-                tokenizer_ref
-                    .decode(&cursor_line_tokens.get_ids()[cut_until..], true)
-                    .map_err(|x| x.to_string())?,
-            )
-        } else {
-            (self.cursor_line.clone(), "".to_string())
-        };
-        code.push_str(&new_cursor_line);
-        self.cut_part = Some(cut_part);
-        Ok(format!("<REWRITTEN_BLOCK_OF_CODE>:\n```\n{code}"))
-    }
-
     fn before_lines_str(&self) -> String {
         self.before_lines
             .iter()
@@ -144,7 +81,7 @@ impl SubBlock {
     }
 
     fn after_lines_str(&self) -> String {
-        self.after_lines
+        self.after_lines_extra
             .iter()
             .map(|x| x.replace("\r\n", "\n"))
             .collect::<Vec<_>>()
@@ -230,7 +167,7 @@ fn prepare_subblock(
         before_lines: vec![],
         cursor_line: String::new(),
         after_lines: vec![],
-        cut_part: None,
+        after_lines_extra: vec![]
     };
     let mut tokens_used: usize = 0;
 
@@ -263,17 +200,26 @@ fn prepare_subblock(
     }
 
     for i in cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32 {
+        let mut meet_the_break = false;
         if i < file_text.len_lines() as i32 {
             let line = file_text.line(i as usize);
             if let Some(line) = line.as_str() {
                 if line.trim().is_empty() {
-                    break;
+                    meet_the_break = true;
+                    subblock.after_lines_extra.push(line.to_string());
+                    continue;
                 }
-                tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
-                if tokens_used > max_tokens {
-                    break;
+                if meet_the_break {
+                    subblock.after_lines_extra.push(line.to_string());
+                } else {
+                    tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
+                    if tokens_used > max_tokens {
+                        meet_the_break = true;
+                        continue;
+                    }
+                    subblock.after_lines_extra.push(line.to_string());
+                    subblock.after_lines.push(line.to_string());
                 }
-                subblock.after_lines.push(line.to_string());
             }
         }
     }
@@ -299,23 +245,27 @@ fn skip_similar_letters_from_a(a: &str, b: &str) -> String {
     }
 }
 
-fn skip_similar_letters_from_a_rev(a: &str, b: &str) -> String {
-    let mut found_idx = None;
-    for (idx, (ch_a, ch_b)) in a.chars().rev().zip(b.chars().rev()).enumerate() {
-        if ch_a != ch_b {
-            found_idx = Some(idx);
-            break;
+fn skip_similar_rows(pred_text: &Vec<String>, text_to_remove: &Vec<String>) -> Vec<String> {
+    fn is_ambiguous(line: &str, arr: &Vec<String>) -> bool {
+        arr.iter().map(|x| if line == x.trim_start() {1} else {0}).sum::<usize>() >= 2
+    }
+    
+    let mut pred_text_trimmed = pred_text.clone();
+    for to_remove_row in text_to_remove.iter() {
+        if pred_text_trimmed.is_empty() {
+            return pred_text_trimmed;
+        }
+        // if is_ambiguous(to_remove_row.trim_start(), &pred_text_trimmed) {
+        //     continue;
+        // }
+        for idx in 0..(if to_remove_row.trim().is_empty() {1} else {pred_text_trimmed.len()}) {
+            if to_remove_row.trim_start() == pred_text_trimmed[idx].trim_start() {
+                pred_text_trimmed = pred_text_trimmed[idx + 1..].to_vec();
+                break;
+            }
         }
     }
-    if let Some(idx) = found_idx {
-        b.split_at(b.len() - idx).0.to_string()
-    } else {
-        if b.len() >= a.len() {
-            b.split_at(a.len()).1.to_string()
-        } else {
-            b.to_string()
-        }
-    }
+    pred_text_trimmed
 }
 
 fn retrieve_a_comment(source: &String, cpath: &PathBuf, cursor: &CursorPosition) -> Option<String> {
@@ -373,21 +323,8 @@ fn process_n_choices(
     let subblock_ref = subblock
         .as_mut()
         .expect("cursor_subblock must be initialized in the prompt");
-    let cut_part = subblock_ref
-        .cut_part
-        .clone()
-        .expect("cut_part must be initialized in the prompt");
     let mut after_lines_str = subblock_ref.after_lines_str();
     let mut before_lines_str = subblock_ref.before_lines_str();
-    if !is_multiline {
-        before_lines_str = before_lines_str
-            .lines()
-            .rev()
-            .next()
-            .unwrap_or("")
-            .to_string();
-        after_lines_str = after_lines_str.lines().next().unwrap_or("").to_string();
-    }
     let json_choices = choices
         .iter()
         .enumerate()
@@ -405,8 +342,6 @@ fn process_n_choices(
 
             let mut cc = x.clone();
 
-            // This can happen if the model doesn't support prefilling, it will output the whole message
-            // Stripping it here to leave the completion part only
             let ticks_count = cc.matches("```").count();
             if x.contains("<REWRITTEN_BLOCK_OF_CODE>")
                 || ticks_count >= 2
@@ -422,40 +357,35 @@ fn process_n_choices(
                         cc = cc[start_idx..].to_string();
                     }
                 }
-
-                cc = skip_similar_letters_from_a(before_lines_str.as_str(), cc.as_str());
                 if !before_lines_str.trim().is_empty() {
                     if let Some(idx) = cc.find(before_lines_str.as_str()) {
                         cc = cc.split_at(idx + before_lines_str.len()).1.to_string();
                     } else if let Some(idx) = cc.find(before_lines_str.trim()) {
-                        cc = cc
-                            .split_at(idx + before_lines_str.trim().len())
-                            .1
-                            .to_string();
+                        cc = cc.split_at(idx + before_lines_str.trim().len()).1.to_string();
                     } else {
-                        cc = skip_similar_letters_from_a(before_lines_str.as_str(), cc.as_str())
+                        let pred_lines = cc.lines().map(|x| x.to_string()).collect::<Vec<_>>();
+                        let text_to_remove_lines = before_lines_str.lines().rev().map(|x| x.to_string()).collect::<Vec<_>>();
+                        let pred_lines_stripped = skip_similar_rows(&pred_lines, &text_to_remove_lines);
+                        if pred_lines.len() == pred_lines_stripped.len() {
+                            return json!({
+                                "index": i,
+                                "code_completion": "",
+                                "finish_reason": finish_reasons[i].to_json_val()
+                            })
+                        }
+                        cc = pred_lines_stripped.join("\n");
                     }
                 }
+            } else {
+                return json!({
+                    "index": i,
+                    "code_completion": "",
+                    "finish_reason": finish_reasons[i].to_json_val()
+                })
             }
 
-            // Removing the cut part
-            if let Some(idx) = cc.find(cut_part.as_str()) {
-                if !cut_part.trim().is_empty() || idx == 0 {
-                    cc = cc.split_at(idx + cut_part.len()).1.to_string();
-                }
-            } else if !cut_part.trim().is_empty() {
-                if let Some(idx) = cc.find(cut_part.trim()) {
-                    cc = cc.split_at(idx + cut_part.trim().len()).1.to_string();
-                } else {
-                    cc = skip_similar_letters_from_a(cut_part.as_str(), cc.as_str())
-                }
-            }
+            cc = skip_similar_letters_from_a(subblock_ref.cursor_line.as_str(), cc.as_str());
             // vscode cannot correctly handle a completion if it has spaces in front of it
-            if !cc.starts_with(&cut_part) {
-                if cut_part.replace(" ", "").replace("\t", "").is_empty() {
-                    cc = format!("{}{}", cut_part, cc);
-                }
-            }
             if !cc.starts_with(&subblock_ref.cursor_line) {
                 if subblock_ref.cursor_line.replace(" ", "").replace("\t", "").is_empty() {
                     cc = format!("{}{}", subblock_ref.cursor_line, cc);
@@ -468,14 +398,12 @@ fn process_n_choices(
                     cc = cc.split_at(idx).0.to_string();
                 } else if let Some(idx) = cc.find(after_lines_str.trim()) {
                     cc = cc.split_at(idx).0.to_string();
-                } else if is_multiline {
-                    cc = skip_similar_letters_from_a_rev(after_lines_str.as_str(), &cc);
+                } else {
+                    let pred_lines = cc.lines().map(|x| x.to_string()).collect::<Vec<_>>();
+                    let text_to_remove_lines = after_lines_str.lines().rev().map(|x| x.to_string()).collect::<Vec<_>>();
+                    let pred_lines_stripped = skip_similar_rows(&pred_lines, &text_to_remove_lines).iter().rev().cloned().collect::<Vec<_>>();
+                    cc = pred_lines_stripped.join("\n");
                 }
-            }
-
-            // Sometimes models write some text after the code block, stripping it here
-            if let Some(start_idx) = cc.find("```") {
-                cc = cc.split_at(start_idx).0.to_string();
             }
 
             let predicted_single_line = cc.matches("\n").count() == 1;
@@ -742,17 +670,8 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         };
         // Editing file and the subblock within it to rewrite by the model
         prompt.push_str(self.keyword_user.as_str());
-        prompt.push_str(format!("{file_content}\n{}", self.cursor_subblock.as_ref().unwrap().prompt(&self.t)?).as_str());
+        prompt.push_str(format!("{file_content}\n{}", self.cursor_subblock.as_ref().unwrap().prompt()?).as_str());
         prompt.push_str(self.token_esc.as_str());
-        // Prefilling part
-        prompt.push_str(self.keyword_asst.as_str());
-        prompt.push_str(
-            self.cursor_subblock
-                .as_mut()
-                .unwrap()
-                .prefilling_prompt(&self.t)?
-                .as_str()
-        );
 
         let completion_ms = completion_t0.elapsed().as_millis() as i32;
         self.context_used["fim_ms"] = Value::from(completion_ms);
@@ -1000,19 +919,8 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
             role: "user".to_string(),
             content: ChatContent::SimpleText(format!(
                 "{file_content}\n{}",
-                self.cursor_subblock.as_ref().unwrap().prompt(&self.t)?
+                self.cursor_subblock.as_ref().unwrap().prompt()?
             )),
-            ..Default::default()
-        });
-        // Prefilling part
-        messages.push(ChatMessage {
-            role: "assistant".to_string(),
-            content: ChatContent::SimpleText(
-                self.cursor_subblock
-                    .as_mut()
-                    .unwrap()
-                    .prefilling_prompt(&self.t)?,
-            ),
             ..Default::default()
         });
 
