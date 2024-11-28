@@ -272,7 +272,10 @@ async fn docker_container_sync_yaml_configs(
     container_id: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(), String> {
-    let cache_dir = gcx.read().await.cache_dir.clone();
+    let (cache_dir, config_dir) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.cache_dir.clone(), gcx_locked.config_dir.clone())
+    };
     let container_home_dir = docker_container_get_home_dir(&docker, &container_id, gcx.clone()).await?;
 
     // Creating intermediate folders one by one, as docker cp does not support --parents
@@ -281,7 +284,7 @@ async fn docker_container_sync_yaml_configs(
     let temp_dir_path = temp_dir.path().to_string_lossy().to_string();
     docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/"), gcx.clone(), true).await?;
     docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/refact"), gcx.clone(), true).await?;
-
+    
     let config_files_to_sync = ["privacy.yaml", "integrations.yaml", "bring-your-own-key.yaml", "competency.yaml"];
     let (remote_integrations_path, competency_path) = {
         let gcx_locked = gcx.read().await;
@@ -296,6 +299,11 @@ async fn docker_container_sync_yaml_configs(
         let container_path = format!("{container_id}:{container_home_dir}/.cache/refact/{file}");
         docker.command_execute(&format!("container cp {local_path} {container_path}"), gcx.clone(), true).await?;
     }
+
+    // Copying config folder
+    let config_dir_string = config_dir.to_string_lossy().to_string();
+    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.config/"), gcx.clone(), true).await?;
+    docker.command_execute(&format!("container cp {config_dir_string} {container_id}:{container_home_dir}/.config/refact"), gcx.clone(), true).await?;
 
     Ok(())
 }
