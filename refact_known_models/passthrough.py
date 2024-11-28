@@ -23,17 +23,6 @@ passthrough_mini_db = {
         "pp1000t_generated": 30_000,  # $30.00 / 1M tokens (2024 may)
         "filter_caps": ["chat", "tools", "completion"],
     },
-    "gpt-4": {
-        "backend": "litellm",
-        "provider": "openai",
-        "tokenizer_path": "Xenova/gpt-4",
-        "resolve_as": "gpt-4-0125-preview",
-        "T": 128_000,
-        "T_out": 4096,
-        "pp1000t_prompt": 10_000,
-        "pp1000t_generated": 30_000,
-        "filter_caps": ["chat", "tools", "completion"],
-    },
     "gpt-3.5-turbo": {
         "backend": "litellm",
         "provider": "openai",
