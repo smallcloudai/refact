@@ -4,7 +4,6 @@ use std::time::Instant;
 use std::vec;
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
-use futures_util::StreamExt;
 use ropey::Rope;
 use serde_json::{Value, json};
 use tokenizers::Tokenizer;

@@ -200,26 +200,27 @@ fn prepare_subblock(
     }
 
     for i in cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32 {
-        let mut meet_the_break = false;
         if i < file_text.len_lines() as i32 {
             let line = file_text.line(i as usize);
             if let Some(line) = line.as_str() {
                 if line.trim().is_empty() {
-                    meet_the_break = true;
-                    subblock.after_lines_extra.push(line.to_string());
-                    continue;
+                    break;
                 }
-                if meet_the_break {
-                    subblock.after_lines_extra.push(line.to_string());
-                } else {
-                    tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
-                    if tokens_used > max_tokens {
-                        meet_the_break = true;
-                        continue;
-                    }
-                    subblock.after_lines_extra.push(line.to_string());
-                    subblock.after_lines.push(line.to_string());
+                tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
+                if tokens_used > max_tokens {
+                    break;
                 }
+                subblock.after_lines.push(line.to_string());
+            }
+        }
+    }
+
+    for i in cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32 {
+        if i < file_text.len_lines() as i32 {
+            if let Some(line) = file_text.line(i as usize).as_str() {
+                subblock.after_lines_extra.push(line.to_string());
+            } else {
+                break
             }
         }
     }
@@ -246,10 +247,6 @@ fn skip_similar_letters_from_a(a: &str, b: &str) -> String {
 }
 
 fn skip_similar_rows(pred_text: &Vec<String>, text_to_remove: &Vec<String>) -> Vec<String> {
-    fn is_ambiguous(line: &str, arr: &Vec<String>) -> bool {
-        arr.iter().map(|x| if line == x.trim_start() {1} else {0}).sum::<usize>() >= 2
-    }
-    
     let mut pred_text_trimmed = pred_text.clone();
     for to_remove_row in text_to_remove.iter() {
         if pred_text_trimmed.is_empty() {
@@ -320,8 +317,8 @@ fn process_n_choices(
     let subblock_ref = subblock
         .as_mut()
         .expect("cursor_subblock must be initialized in the prompt");
-    let mut after_lines_str = subblock_ref.after_lines_str();
-    let mut before_lines_str = subblock_ref.before_lines_str();
+    let after_lines_str = subblock_ref.after_lines_str();
+    let before_lines_str = subblock_ref.before_lines_str();
     let json_choices = choices
         .iter()
         .enumerate()
