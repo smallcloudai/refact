@@ -114,7 +114,7 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
     }
 
     let port_to_test_connection = ports_to_forward.iter().next().ok_or_else(|| "Failed to get port to test connection".to_string())?;
-    for attempt in 0..10 {
+    for attempt in 0..25 {
         match TcpStream::connect(format!("127.0.0.1:{}", &port_to_test_connection.published)).await {
             Ok(_) => {
                 info!("huzzah, it worked: connect to 127.0.0.1:{}", port_to_test_connection.published);
@@ -127,7 +127,7 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
             }
             Err(e) => {
                 info!("this should eventually work: connect to 127.0.0.1:{} attempt {}: {}", port_to_test_connection.published, attempt + 1, e);
-                let (_, stderr_output, _) = blocking_read_until_token_or_timeout(&mut stdout, &mut stderr, 300, "").await?;
+                let (_, stderr_output, _) = blocking_read_until_token_or_timeout(&mut stdout, &mut stderr, 400, "").await?;
                 if !stderr_output.is_empty() {
                     return Err(format!("Failed to open ssh tunnel: {}", stderr_output));
                 }
