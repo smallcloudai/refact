@@ -37,6 +37,8 @@ Ensure the rewritten block includes all necessary updates such as code completio
 Strictly follow the user's intention.
 User's intention:
 <comment>"#;
+const MAX_ROWS_UP_OR_DOWNS: usize = 10;
+const MIN_ROWS_TO_SKIP_CARET: usize = 2;
 const SUBBLOCK_REQUIRED_TOKENS: usize = 128;
 const CURSORFILE_MIN_TOKENS: usize = 128;
 const MAX_NEW_TOKENS: usize = 1024;  // it's quite high since we want to avoid having a stripped message
@@ -100,39 +102,32 @@ fn prepare_cursor_file(
     let mut tokens_used: usize = 0;
     let mut line_idx_offset: i32 = 1;
 
-    if let Some(line) = file_text.line(cursor_pos.line as usize).as_str() {
-        output_lines.push_front(line.to_string());
-        tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
-        if tokens_used > max_tokens {
-            return Err("Tokens limit is too small to fit the cursor file".to_string());
-        }
-    } else {
-        return Err("Cannot retrieve the cursor line from the given file".to_string());
+    let line = file_text.line(cursor_pos.line as usize).to_string();
+    output_lines.push_front(line.to_string());
+    tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+    if tokens_used > max_tokens {
+        return Err("Tokens limit is too small to fit the cursor file".to_string());
     }
-    let mut line1: usize = usize::MAX;
+    let mut line1: usize = usize::MIN;
     let mut line2: usize = usize::MIN;
     loop {
         if cursor_pos.line - line_idx_offset >= 0 {
-            let line = file_text.line((cursor_pos.line - line_idx_offset) as usize);
-            if let Some(line) = line.as_str() {
-                tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
-                if tokens_used > max_tokens {
-                    break;
-                }
-                output_lines.push_front(line.to_string());
-                line1 = (cursor_pos.line - line_idx_offset) as usize;
+            let line = file_text.line((cursor_pos.line - line_idx_offset) as usize).to_string();
+            tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+            if tokens_used > max_tokens {
+                break;
             }
+            output_lines.push_front(line);
+            line1 = (cursor_pos.line - line_idx_offset) as usize;
         }
         if cursor_pos.line + line_idx_offset < file_text.len_lines() as i32 {
-            let line = file_text.line((cursor_pos.line + line_idx_offset) as usize);
-            if let Some(line) = line.as_str() {
-                tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
-                if tokens_used > max_tokens {
-                    break;
-                }
-                output_lines.push_back(line.to_string());
-                line2 = (cursor_pos.line + line_idx_offset) as usize;
+            let line = file_text.line((cursor_pos.line + line_idx_offset) as usize).to_string();
+            tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+            if tokens_used > max_tokens {
+                break;
             }
+            output_lines.push_back(line);
+            line2 = (cursor_pos.line + line_idx_offset) as usize;
         }
 
         if cursor_pos.line - line_idx_offset < 0
@@ -162,6 +157,7 @@ fn prepare_subblock(
     file_text: &Rope,
     cursor_pos: &CursorPosition,
     max_rows_up_or_downs: usize,
+    min_rows_to_skip_caret: usize,
 ) -> Result<(SubBlock, usize), String> {
     let mut subblock: SubBlock = SubBlock {
         before_lines: vec![],
@@ -171,57 +167,47 @@ fn prepare_subblock(
     };
     let mut tokens_used: usize = 0;
 
-    if let Some(line) = file_text.line(cursor_pos.line as usize).as_str() {
-        subblock.cursor_line = line.to_string();
-        tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
-        if tokens_used > max_tokens {
-            return Err("Tokens limit is too small to fit the code subblock".to_string());
-        }
-    } else {
-        return Err("Cannot retrieve the cursor line from the given file".to_string());
+    let line = file_text.line(cursor_pos.line as usize).to_string();
+    subblock.cursor_line = line.to_string();
+    tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+    if tokens_used > max_tokens {
+        return Err("Tokens limit is too small to fit the code subblock".to_string());
     }
 
-    for i in (cursor_pos.line - max_rows_up_or_downs as i32..cursor_pos.line).rev() {
+    for (c, i) in (cursor_pos.line - max_rows_up_or_downs as i32..cursor_pos.line).rev().enumerate() {
         if i >= 0 {
-            if let Some(line) = file_text.line(i as usize).as_str() {
-                if line.trim().is_empty() {
-                    break;
-                }
-                subblock.before_lines.insert(0, line.to_string());
-                tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
-                if tokens_used > max_tokens {
-                    return Err(
-                        "Tokens limit is too small to fit the context for the code subblock"
-                            .to_string(),
-                    );
-                }
+            let line = file_text.line(i as usize).to_string();
+            if c >= min_rows_to_skip_caret && line.trim().is_empty() {
+                break;
             }
+            tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+            subblock.before_lines.insert(0, line);
+            if tokens_used > max_tokens {
+                return Err(
+                    "Tokens limit is too small to fit the context for the code subblock"
+                        .to_string(),
+                );
+            }
+        }
+    }
+
+    for (c, i) in (cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32).enumerate() {
+        if i < file_text.len_lines() as i32 {
+            let line = file_text.line(i as usize).to_string();
+            if c >= min_rows_to_skip_caret && line.trim().is_empty() {
+                break;
+            }
+            tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+            if tokens_used > max_tokens {
+                break;
+            }
+            subblock.after_lines.push(line);
         }
     }
 
     for i in cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32 {
         if i < file_text.len_lines() as i32 {
-            let line = file_text.line(i as usize);
-            if let Some(line) = line.as_str() {
-                if line.trim().is_empty() {
-                    break;
-                }
-                tokens_used += tokenizer.count_tokens(line).unwrap_or(0) as usize;
-                if tokens_used > max_tokens {
-                    break;
-                }
-                subblock.after_lines.push(line.to_string());
-            }
-        }
-    }
-
-    for i in cursor_pos.line + 1..cursor_pos.line + max_rows_up_or_downs as i32 {
-        if i < file_text.len_lines() as i32 {
-            if let Some(line) = file_text.line(i as usize).as_str() {
-                subblock.after_lines_extra.push(line.to_string());
-            } else {
-                break
-            }
+            subblock.after_lines_extra.push(file_text.line(i as usize).to_string());
         }
     }
     Ok((subblock, tokens_used))
@@ -380,7 +366,11 @@ fn process_n_choices(
 
             // vscode cannot correctly handle a completion if it has spaces in front of it
             if !subblock_ref.cursor_line.replace("\n", "").replace(" ", "").replace("\t", "").is_empty() {
-                 cc = skip_similar_letters_from_a(subblock_ref.cursor_line.as_str(), cc.as_str());
+                cc = if let Some(idx) = cc.find(subblock_ref.cursor_line.trim()) {
+                    cc.split_at(idx + subblock_ref.cursor_line.trim().len()).1.to_string()
+                } else {
+                    skip_similar_letters_from_a(subblock_ref.cursor_line.as_str(), cc.as_str())
+                }
             }
 
             // Removing the suffix
@@ -578,6 +568,7 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         sampling_parameters_to_patch.max_new_tokens = MAX_NEW_TOKENS;
         sampling_parameters_to_patch.temperature = if !self.post.no_cache { Some(TEMPERATURE_INITIAL) } else { Some(TEMPERATURE_NOCACHE) };
         sampling_parameters_to_patch.stop = vec![self.t.eot.clone()];
+        self.post.inputs.multiline |= self.post.no_cache;
         if !self.post.inputs.multiline {
             sampling_parameters_to_patch.stop.push("\n".to_string());
         }
@@ -631,7 +622,8 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
             subblock_required_tokens,
             &text,
             &self.post.inputs.cursor,
-            10
+            MAX_ROWS_UP_OR_DOWNS,
+            MIN_ROWS_TO_SKIP_CARET
         )?;
         if use_rag {
             let pp_settings = {
@@ -812,6 +804,7 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
         sampling_parameters_to_patch.max_new_tokens = MAX_NEW_TOKENS;
         sampling_parameters_to_patch.temperature = if !self.post.no_cache { Some(TEMPERATURE_INITIAL) } else { Some(TEMPERATURE_NOCACHE) };
         sampling_parameters_to_patch.stop = vec![self.t.eot.clone()];
+        self.post.inputs.multiline |= self.post.no_cache;
         if !self.post.inputs.multiline {
             sampling_parameters_to_patch.stop.push("\n".to_string());
         }
@@ -875,7 +868,8 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
             subblock_required_tokens,
             &text,
             &self.post.inputs.cursor,
-            10,
+            MAX_ROWS_UP_OR_DOWNS,
+            MIN_ROWS_TO_SKIP_CARET
         )?;
         if use_rag {
             let pp_settings = {
