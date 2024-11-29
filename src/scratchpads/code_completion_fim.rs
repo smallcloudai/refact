@@ -4,6 +4,7 @@ use std::time::Instant;
 use std::vec;
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
+use futures_util::StreamExt;
 use ropey::Rope;
 use serde_json::{Value, json};
 use tokenizers::Tokenizer;
@@ -29,6 +30,7 @@ pub struct FillInTheMiddleScratchpad {
     pub fim_prefix: String,
     pub fim_suffix: String,
     pub fim_middle: String,
+    pub extra_stop_tokens: Vec<String>,
     pub context_used: Value,
     pub data4cache: completion_cache::CompletionSaveToCache,
     pub data4snippet: snippets_collection::SaveSnippet,
@@ -53,7 +55,9 @@ impl FillInTheMiddleScratchpad {
             post: post.clone(),
             order,
             fim_prefix: String::new(),
-            fim_suffix: String::new(), fim_middle: String::new(),
+            fim_suffix: String::new(),
+            fim_middle: String::new(),
+            extra_stop_tokens: vec![],
             context_used: json!({}),
             data4cache,
             data4snippet,
@@ -84,6 +88,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         self.fim_prefix = patch.get("fim_prefix").and_then(|x| x.as_str()).unwrap_or("<fim_prefix>").to_string();
         self.fim_suffix = patch.get("fim_suffix").and_then(|x| x.as_str()).unwrap_or("<fim_suffix>").to_string();
         self.fim_middle = patch.get("fim_middle").and_then(|x| x.as_str()).unwrap_or("<fim_middle>").to_string();
+        self.extra_stop_tokens = patch.get("extra_stop_tokens").map(|x| x.as_array().unwrap().into_iter().map(|x| x.as_str().unwrap().to_string()).collect::<Vec<String>>()).unwrap_or(vec![]);
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
         self.t.eos = patch.get("eos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.t.context_format = patch.get("context_format").and_then(|x| x.as_str()).unwrap_or_default().to_string();
@@ -134,6 +139,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             if !self.post.inputs.multiline {
                 stop_list.push("\n".to_string());  // This doesn't stop hf inference, only whole tokens do
             }
+            stop_list.extend(self.extra_stop_tokens.clone());
             sampling_parameters_to_patch.stop = stop_list;
         }
         let mut source = self.post.inputs.sources.get(
@@ -271,7 +277,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         finish_reasons: Vec<FinishReason>
     ) -> Result<Value, String> {
         let json_choices = choices.iter().enumerate().map(|(i, x)| {
-            let cc = _cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
+            let cc = _cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline, &self.extra_stop_tokens);
             if i==0 {
                 self.data4cache.completion0_text = cc.clone();
                 self.data4cache.completion0_finish_reason = finish_reasons[i].to_string();
@@ -302,7 +308,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         finish_reason: FinishReason
     ) -> Result<(Value, FinishReason), String> {
         let json_choices= if !delta.is_empty() || finish_reason == FinishReason::Stop {
-            let mut s: String = _cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
+            let mut s: String = _cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline, &self.extra_stop_tokens);
             if finish_reason.is_finished() {
                 s = s.trim_end().to_string();
             }
@@ -362,10 +368,15 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
     }
 }
 
-fn _cut_result(text: &str, eot_token: &str, multiline: bool) -> String {
+fn _cut_result(text: &str, eot_token: &str, multiline: bool, extra_stop_tokens: &Vec<String>) -> String {
     let mut cut_at = vec![];
     if let Some(x) = text.find(eot_token) {
         cut_at.push(x);
+    }
+    for token in extra_stop_tokens {
+        if let Some(x) = text.find(token) {
+            cut_at.push(x);
+        }
     }
     if let Some(x) = text.find("\n\n") {
         cut_at.push(x);
