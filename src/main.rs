@@ -184,6 +184,7 @@ async fn main() {
     // kill_children(gcx.clone(), Signal::SIGKILL).await;
 
     background_tasks.abort().await;
+    integrations::sessions::stop_sessions(gcx.clone()).await;
     info!("saving telemetry without sending, so should be quick");
     basic_transmit::basic_telemetry_compress(gcx.clone()).await;
     info!("bb\n");

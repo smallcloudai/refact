@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::sync::Arc;
 use std::collections::HashMap;
+use std::future::Future;
 use std::time::Duration;
 use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
@@ -63,6 +64,9 @@ impl IntegrationSession for ChromeSession
         self
     }
     fn is_expired(&self) -> bool { false }
+    fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_> {
+        Box::new(async { "".to_string() })
+    }
 }
 
 impl ToolChrome {

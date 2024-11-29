@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::collections::HashMap;
 use std::time::SystemTime;
 use std::fmt::Debug;
+use std::future::Future;
 use serde_json::Value;
 use tokio::io::BufReader;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
@@ -53,6 +54,10 @@ impl IntegrationSession for PdbSession
     fn is_expired(&self) -> bool {
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
         self.last_usage_ts + SESSION_TIMEOUT_AFTER_INACTIVITY.as_secs() < current_time
+    }
+
+    fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_> {
+        Box::new(async { "".to_string() })
     }
 }
 
