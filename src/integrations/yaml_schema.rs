@@ -19,6 +19,8 @@ pub struct ISchemaField {
     pub f_default: String,
     #[serde(default, skip_serializing_if="is_default")]
     pub f_placeholder: String,
+    #[serde(default, skip_serializing_if="is_default")]
+    pub f_label: String,
     #[serde(default, skip_serializing_if="is_empty")]
     pub smartlinks: Vec<ISmartLink>,
     #[serde(default, skip_serializing_if="is_indexmap_empty")]
