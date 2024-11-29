@@ -107,7 +107,7 @@ pub async fn docker_container_check_status_or_start(
                         Ok(()) => {}
                         Err(e) => {
                             warn!("SSH tunnel error: {}, restarting tunnel..", e);
-                            let ssh_config = docker.settings_docker.ssh_config.clone().ok_or_else(|| "No ssh config for docker container".to_string())?;
+                            let ssh_config = docker.settings_docker.get_ssh_config().ok_or_else(|| "No ssh config for docker container".to_string())?;
                             docker_container_session.connection = DockerContainerConnectionEnum::SshTunnel(
                                 ssh_tunnel_open(&mut ssh_tunnel.forwarded_ports, &ssh_config).await?
                             );
@@ -121,7 +121,7 @@ pub async fn docker_container_check_status_or_start(
             Ok(())
         }
         None => {
-            let ssh_config_maybe = docker.settings_docker.ssh_config.clone();
+            let ssh_config_maybe = docker.settings_docker.get_ssh_config();
             
             const LSP_PORT: &str = "8001";
             let mut ports_to_forward = if ssh_config_maybe.is_some() {

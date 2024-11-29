@@ -274,7 +274,7 @@ commands_deny:
 
 # --- Docker integration ---
 docker:
-  connect_to_daemon_at: "unix:///var/run/docker.sock"  # Path to the Docker daemon. For remote Docker, the path to the daemon on the remote server.
+  docker_daemon_address: "unix:///var/run/docker.sock"  # Path to the Docker daemon. For remote Docker, the path to the daemon on the remote server.
   # docker_cli_path: "/usr/local/bin/docker"  # Uncomment to set a custom path for the docker cli, defaults to "docker"
 
   # Uncomment the following to connect to a remote Docker daemon

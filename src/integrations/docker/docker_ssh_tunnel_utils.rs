@@ -30,7 +30,7 @@ impl SshTunnel {
     }
 }
 
-pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_config: &SshConfig, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String>
+pub async fn forward_remote_docker_if_needed(docker_daemon_address: &str, ssh_config: &SshConfig, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String>
 {
     let ssh_tunnel_arc = {
         let gcx_locked = gcx.read().await;
@@ -48,10 +48,10 @@ pub async fn forward_remote_docker_if_needed(connect_to_daemon_at: &str, ssh_con
         }
     }
 
-    let remote_port_or_socket = if connect_to_daemon_at.starts_with("unix://") || connect_to_daemon_at.starts_with("npipe://") {
-        connect_to_daemon_at.split("://").nth(1).unwrap_or_default().to_string()
+    let remote_port_or_socket = if docker_daemon_address.starts_with("unix://") || docker_daemon_address.starts_with("npipe://") {
+        docker_daemon_address.split("://").nth(1).unwrap_or_default().to_string()
     } else {
-        connect_to_daemon_at.split(":").last().unwrap_or_default().to_string()
+        docker_daemon_address.split(":").last().unwrap_or_default().to_string()
     };
 
     let ssh_tunnel = ssh_tunnel_open(&mut vec![Port { published: "0".to_string(), target: remote_port_or_socket }], ssh_config).await?;

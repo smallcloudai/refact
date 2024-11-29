@@ -17,17 +17,49 @@ use crate::integrations::docker::docker_container_manager::Port;
 
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 pub struct SettingsDocker {
-    pub connect_to_daemon_at: String,
+    pub docker_daemon_address: String,
     pub docker_cli_path: String,
-    pub ssh_config: Option<SshConfig>,
+    pub remote_docker: bool,
+    pub ssh_host: String,
+    pub ssh_user: String,
+    #[serde(serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
+    pub ssh_port: u16,
+    pub ssh_identity_file: String,
     pub container_workspace_folder: String,
     pub docker_image_id: String,
     pub host_lsp_path: String,
     pub run_chat_threads_inside_container: bool,
     pub label: String,
     pub command: String,
+    #[serde(serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
     pub keep_containers_alive_for_x_minutes: u64,
     pub ports: Vec<Port>,
+}
+
+fn serialize_num_to_str<T: ToString, S: serde::Serializer>(num: &T, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&num.to_string())
+}
+fn deserialize_str_to_num<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: std::str::FromStr, T::Err: std::fmt::Display, D: serde::Deserializer<'de>,
+{
+    String::deserialize(deserializer)?.parse().map_err(serde::de::Error::custom)
+}
+
+impl SettingsDocker {
+    pub fn get_ssh_config(&self) -> Option<SshConfig> {
+        if self.remote_docker {
+            Some(SshConfig {
+                host: self.ssh_host.clone(),
+                user: self.ssh_user.clone(),
+                port: self.ssh_port.clone(),
+                identity_file: if !self.ssh_identity_file.is_empty() 
+                    { Some(self.ssh_identity_file.clone()) } else { None },
+            })
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Default, Debug)]
@@ -97,12 +129,12 @@ impl ToolDocker {
 
     pub async fn get_docker_host(&self, gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String>
     {
-        match &self.settings_docker.ssh_config {
+        match &self.settings_docker.get_ssh_config() {
             Some(ssh_config) => {
-                let local_port = forward_remote_docker_if_needed(&self.settings_docker.connect_to_daemon_at, ssh_config, gcx.clone()).await?;
+                let local_port = forward_remote_docker_if_needed(&self.settings_docker.docker_daemon_address, ssh_config, gcx.clone()).await?;
                 Ok(format!("127.0.0.1:{}", local_port))
             },
-            None => Ok(self.settings_docker.connect_to_daemon_at.clone()),
+            None => Ok(self.settings_docker.docker_daemon_address.clone()),
         }
     }
 }
@@ -246,7 +278,7 @@ fn command_append_label_if_creates_resource(command_args: &mut Vec<String>, labe
 
 pub const DOCKER_INTEGRATION_SCHEMA: &str = r#"
 fields:
-  connect_to_daemon_at:
+  docker_daemon_address:
     f_type: string_long
     f_desc: "The address to connect to the Docker daemon."
     f_default: "unix:///var/run/docker.sock"
@@ -254,24 +286,27 @@ fields:
     f_type: string_long
     f_desc: "Path to the Docker CLI executable."
     f_default: "docker"
-  ssh_config:
-    f_type: object
-    f_desc: "SSH configuration for connecting to remote Docker daemons."
-    f_fields:
-      host:
-        f_type: string_long
-        f_desc: "The SSH host."
-      user:
-        f_type: string_short
-        f_desc: "The SSH user."
-        f_default: "root"
-      port:
-        f_type: string_short
-        f_desc: "The SSH port."
-        f_default: "22"
-      identity_file:
-        f_type: string_short
-        f_desc: "Path to the SSH identity file."
+  remote_docker:
+    f_type: bool
+    f_desc: "Use SSH to connect to remote Docker."
+  ssh_host:
+    f_type: string_long
+    f_desc: "SSH host to connect to remote Docker."
+    f_label: "SSH Host"
+  ssh_user:
+    f_type: string_short
+    f_desc: "SSH user to connect to remote Docker."
+    f_default: "root"
+    f_label: "SSH User"
+  ssh_port:
+    f_type: string_short
+    f_desc: "The SSH port to connect to remote Docker."
+    f_default: "22"
+    f_label: "SSH Port"
+  ssh_identity_file:
+    f_type: string_long
+    f_desc: "Path to the SSH identity file to connect to remote Docker."
+    f_label: "SSH Identity File"
   container_workspace_folder:
     f_type: string_long
     f_desc: "The workspace folder inside the container."
