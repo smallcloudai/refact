@@ -13,6 +13,7 @@ use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key}
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::multimodality::MultimodalElement;
+use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 
 use reqwest::Client;
@@ -64,13 +65,14 @@ impl fmt::Display for DeviceType {
     }
 }
 
+const MAX_CACHED_LOG_LINES: usize = 1000;
+
 #[derive(Clone)]
 pub struct ChromeTab {
     headless_tab: Arc<HeadlessTab>,
     device: DeviceType,
     tab_id: String,
     screenshot_scale_factor: f64,
-    // NOTE: logs vector should be at least limited
     tab_log: Arc<Mutex<Vec<String>>>,
 }
 
@@ -374,7 +376,11 @@ async fn session_open_tab(
                         let dt = DateTime::from_timestamp(e.params.entry.timestamp as i64, 0).unwrap();
                         dt.format("%Y-%m-%d %H:%M:%S").to_string()
                     };
-                    tab_log.lock().unwrap().push(format!("{} [{:?}]: {}", formatted_ts, e.params.entry.level, e.params.entry.text));
+                    let mut tab_log_lock = tab_log.lock().unwrap();
+                    tab_log_lock.push(format!("{} [{:?}]: {}", formatted_ts, e.params.entry.level, e.params.entry.text));
+                    if tab_log_lock.len() > MAX_CACHED_LOG_LINES {
+                        tab_log_lock.remove(0);
+                    }
                 }
             })).map_err(|e| e.to_string())?;
             chrome_session.tabs.insert(tab_id.clone(), tab.clone());
@@ -596,12 +602,18 @@ async fn chrome_command_exec(
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
                 session_get_tab_arc(chrome_session, &args.tab_id).await?
             };
-            let tab_lock = tab.lock().await;
-            // NOTE: we're waiting for log to be collected for 3 seconds
-            sleep(Duration::from_secs(3)).await;
-            let mut tab_log_lock = tab_lock.tab_log.lock().unwrap();
-            tool_log.extend(tab_log_lock.clone());
-            tab_log_lock.clear();
+            let tab_log = {
+                let tab_lock = tab.lock().await;
+                // NOTE: we're waiting for log to be collected for 3 seconds
+                sleep(Duration::from_secs(3)).await;
+                let mut tab_log_lock = tab_lock.tab_log.lock().unwrap();
+                let tab_log = tab_log_lock.join("\n");
+                tab_log_lock.clear();
+                tab_log
+            };
+            let filter = CmdlineOutputFilter::default();
+            let filtered_log = output_mini_postprocessing(&filter, tab_log.as_str());
+            tool_log.push(filtered_log.clone());
         }
     }
 
