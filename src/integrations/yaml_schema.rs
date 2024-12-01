@@ -64,7 +64,3 @@ fn is_default<T: Default + PartialEq>(t: &T) -> bool {
 fn is_empty<T>(t: &Vec<T>) -> bool {
     t.is_empty()
 }
-
-fn is_indexmap_empty<T>(t: &IndexMap<String, T>) -> bool {
-    t.is_empty()
-}

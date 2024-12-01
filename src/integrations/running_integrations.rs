@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+// use std::path::PathBuf;
 use std::sync::Arc;
 use indexmap::IndexMap;
 use tokio::sync::RwLock as ARwLock;
@@ -11,19 +11,15 @@ use crate::global_context::GlobalContext;
 pub async fn load_integration_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
     _current_project: String,
-    allow_experimental: bool,
+    _allow_experimental: bool,
 ) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>> {
-    let (global_dir, _workspace_folders_arc) = {
-        let gcx_locked = gcx.read().await;
-        (gcx_locked.config_dir.clone(), gcx_locked.documents_state.workspace_folders.clone())
-    };
-    let mut config_folders: Vec<PathBuf> = Vec::new();
     // XXX filter _workspace_folders_arc that fit _current_project
-    config_folders.push(global_dir);
+    let config_folders= crate::integrations::setting_up_integrations::config_dirs(gcx.clone()).await;
+    let integrations_yaml_path = crate::integrations::setting_up_integrations::get_integrations_yaml_path(gcx.clone()).await;
 
     let mut error_log: Vec<crate::integrations::setting_up_integrations::YamlError> = Vec::new();
     let lst: Vec<&str> = crate::integrations::integrations_list();
-    let records = crate::integrations::setting_up_integrations::read_integrations_d(&config_folders, &lst, &mut error_log);
+    let records = crate::integrations::setting_up_integrations::read_integrations_d(&config_folders, &integrations_yaml_path, &lst, &mut error_log);
 
     let mut tools = IndexMap::new();
     for rec in records {

@@ -65,7 +65,7 @@ struct IntegrationSavePost {
 }
 
 pub async fn handle_v1_integration_save(
-    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    Extension(_gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<IntegrationSavePost>(&body_bytes)

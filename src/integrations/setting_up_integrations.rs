@@ -39,6 +39,7 @@ pub struct IntegrationWithIconResult {
 
 pub fn read_integrations_d(
     config_folders: &Vec<PathBuf>,
+    integrations_yaml_path: &String,
     lst: &[&str],
     error_log: &mut Vec<YamlError>,
 ) -> Vec<IntegrationRecord> {
@@ -55,7 +56,7 @@ pub fn read_integrations_d(
                     continue;
                 }
             };
-            let short_pp = crate::nicer_logs::last_n_chars(&project_path, 10);
+            let short_pp = if project_path.is_empty() { format!("global") } else { crate::nicer_logs::last_n_chars(&project_path, 15) };
             rec.project_path = project_path.clone();
             rec.integr_name = integr_name.to_string();
             rec.integr_config_path = path_str.clone();
@@ -65,12 +66,6 @@ pub fn read_integrations_d(
                     Ok(file_content) => match serde_yaml::from_str::<serde_yaml::Value>(&file_content) {
                         Ok(yaml_value) => {
                             rec.config_unparsed = serde_json::to_value(yaml_value.clone()).unwrap();
-                            if let Some(available) = yaml_value.get("available").and_then(|v| v.as_mapping()) {
-                                rec.on_your_laptop = available.get("on_your_laptop").and_then(|v| v.as_bool()).unwrap_or(false);
-                                rec.when_isolated = available.get("when_isolated").and_then(|v| v.as_bool()).unwrap_or(false);
-                            } else {
-                                tracing::info!("{} no 'available' mapping in `{}`", short_pp, integr_name);
-                            }
                         }
                         Err(e) => {
                             let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
@@ -97,7 +92,69 @@ pub fn read_integrations_d(
             integrations.push(rec);
         }
     }
+
+    let short_yaml = crate::nicer_logs::last_n_chars(integrations_yaml_path, 15);
+    match fs::read_to_string(integrations_yaml_path) {
+        Ok(content) => match serde_yaml::from_str::<serde_yaml::Value>(&content) {
+            Ok(y) => {
+                for integr_name in lst.iter() {
+                    if let Some(config) = y.get(integr_name) {
+                        let mut rec: IntegrationRecord = Default::default();
+                        rec.integr_config_path = integrations_yaml_path.clone();
+                        rec.integr_name = integr_name.to_string();
+                        rec.integr_config_exists = true;
+                        rec.config_unparsed = serde_json::to_value(config.clone()).unwrap();
+                        integrations.push(rec);
+                        tracing::info!("{} has `{}`", short_yaml, integr_name);
+                    } else {
+                        tracing::info!("{} no section `{}`", short_yaml, integr_name);
+                    }
+                }
+            }
+            Err(e) => {
+                error_log.push(YamlError {
+                    integr_config_path: integrations_yaml_path.clone(),
+                    error_line: e.location().map(|loc| loc.line()).unwrap_or(0),
+                    error_msg: e.to_string(),
+                });
+                tracing::warn!("failed to parse {}: {}", integrations_yaml_path, e);
+            }
+        },
+        Err(e) => {
+            error_log.push(YamlError {
+                integr_config_path: integrations_yaml_path.clone(),
+                error_line: 0,
+                error_msg: e.to_string(),
+            });
+            tracing::warn!("failed to read {}: {}", integrations_yaml_path, e);
+        }
+    };
+
+    for rec in &mut integrations {
+        if !rec.integr_config_exists {
+            continue;
+        }
+        if let Some(available) = rec.config_unparsed.get("available").and_then(|v| v.as_object()) {
+            rec.on_your_laptop = available.get("on_your_laptop").and_then(|v| v.as_bool()).unwrap_or(false);
+            rec.when_isolated = available.get("when_isolated").and_then(|v| v.as_bool()).unwrap_or(false);
+        } else {
+            let short_pp = if rec.project_path.is_empty() { format!("global") } else { crate::nicer_logs::last_n_chars(&rec.project_path, 15) };
+            tracing::info!("{} no 'available' mapping in `{}`", short_pp, rec.integr_name);
+        }
+    }
+
     integrations
+}
+
+
+pub async fn get_integrations_yaml_path(gcx: Arc<ARwLock<GlobalContext>>) -> String {
+    let gcx_locked = gcx.read().await;
+    let r = gcx_locked.cmdline.integrations_yaml.clone();
+    if r.is_empty() {
+        let config_dir = gcx_locked.config_dir.join("integrations.yaml");
+        return config_dir.to_string_lossy().to_string();
+    }
+    r
 }
 
 pub fn join_config_path(config_dir: &PathBuf, integr_name: &str) -> String {
@@ -107,13 +164,15 @@ pub fn join_config_path(config_dir: &PathBuf, integr_name: &str) -> String {
 pub async fn config_dirs(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Vec<PathBuf> {
-    let (global_dir, workspace_folders_arc) = {
+    let (global_dir, workspace_folders_arc, integrations_yaml) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.config_dir.clone(), gcx_locked.documents_state.workspace_folders.clone())
+        (gcx_locked.config_dir.clone(), gcx_locked.documents_state.workspace_folders.clone(), gcx_locked.cmdline.integrations_yaml.clone())
     };
     let mut config_folders = workspace_folders_arc.lock().unwrap().clone();
     config_folders = config_folders.iter().map(|folder| folder.join(".refact")).collect();
-    config_folders.push(global_dir);
+    if integrations_yaml.is_empty() {
+        config_folders.push(global_dir);
+    }
     config_folders
 }
 
@@ -137,10 +196,11 @@ pub fn split_path_into_project_and_integration(cfg_path: &PathBuf) -> Result<(St
 pub async fn integrations_all_with_icons(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> IntegrationWithIconResult {
-    let config_folders = config_dirs(gcx).await;
+    let config_folders = config_dirs(gcx.clone()).await;
     let lst: Vec<&str> = crate::integrations::integrations_list();
     let mut error_log: Vec<YamlError> = Vec::new();
-    let integrations = read_integrations_d(&config_folders, &lst, &mut error_log);
+    let integrations_yaml_path = get_integrations_yaml_path(gcx.clone()).await;
+    let integrations = read_integrations_d(&config_folders, &integrations_yaml_path, &lst, &mut error_log);
     // rec.integr_icon = crate::integrations::icon_from_name(integr_name);
     IntegrationWithIconResult {
         integrations,

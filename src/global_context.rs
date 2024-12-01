@@ -88,10 +88,12 @@ pub struct CommandLine {
 
     #[structopt(long, help="Enable experimental features, such as new integrations.")]
     pub experimental: bool,
+
     #[structopt(long, help="A way to tell this binary it can run more tools without confirmation.")]
     pub inside_container: bool,
-    #[structopt(long, default_value="", help="Specify a different configuration for integrations to be used inside remote containers.")]
-    pub remote_integrations: String,
+
+    #[structopt(long, default_value="", help="Specify an alternative integrations.yaml, this also disables the global integrations.d")]
+    pub integrations_yaml: String,
 }
 
 impl CommandLine {

@@ -288,7 +288,7 @@ async fn docker_container_sync_yaml_configs(
     let config_files_to_sync = ["privacy.yaml", "integrations.yaml", "bring-your-own-key.yaml", "competency.yaml"];
     let remote_integrations_path = {
         let gcx_locked = gcx.read().await;
-        gcx_locked.cmdline.remote_integrations.clone()
+        gcx_locked.cmdline.integrations_yaml.clone()
     };
     for file in &config_files_to_sync {
         let local_path = match *file {

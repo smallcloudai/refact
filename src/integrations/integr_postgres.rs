@@ -14,6 +14,7 @@ use crate::integrations::integr_abstract::IntegrationTrait;
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct SettingsPostgres {
+    #[serde(default)]
     pub psql_binary_path: String,
     pub host: String,
     pub port: String,
@@ -99,7 +100,7 @@ impl ToolPostgres {
 #[async_trait]
 impl Tool for ToolPostgres {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    
+
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,
