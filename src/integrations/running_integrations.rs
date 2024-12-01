@@ -19,7 +19,8 @@ pub async fn load_integration_tools(
 
     let mut error_log: Vec<crate::integrations::setting_up_integrations::YamlError> = Vec::new();
     let lst: Vec<&str> = crate::integrations::integrations_list();
-    let records = crate::integrations::setting_up_integrations::read_integrations_d(&config_folders, &integrations_yaml_path, &lst, &mut error_log);
+    let vars_for_replacements = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
+    let records = crate::integrations::setting_up_integrations::read_integrations_d(&config_folders, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log);
 
     let mut tools = IndexMap::new();
     for rec in records {

@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::collections::HashMap;
 use regex::Regex;
 use serde::Serialize;
 use tokio::sync::RwLock as ARwLock;
@@ -40,6 +41,7 @@ pub struct IntegrationWithIconResult {
 pub fn read_integrations_d(
     config_folders: &Vec<PathBuf>,
     integrations_yaml_path: &String,
+    vars_for_replacements: &HashMap<String, String>,
     lst: &[&str],
     error_log: &mut Vec<YamlError>,
 ) -> Vec<IntegrationRecord> {
@@ -134,6 +136,16 @@ pub fn read_integrations_d(
         if !rec.integr_config_exists {
             continue;
         }
+        if let serde_json::Value::Object(map) = &mut rec.config_unparsed {
+            for (key, value) in map.iter_mut() {
+                if let Some(str_value) = value.as_str() {
+                    let replaced_value = vars_for_replacements.iter().fold(str_value.to_string(), |acc, (var, replacement)| {
+                        acc.replace(&format!("${}", var), replacement)
+                    });
+                    *value = serde_json::Value::String(replaced_value);
+                }
+            }
+        }
         if let Some(available) = rec.config_unparsed.get("available").and_then(|v| v.as_object()) {
             rec.on_your_laptop = available.get("on_your_laptop").and_then(|v| v.as_bool()).unwrap_or(false);
             rec.when_isolated = available.get("when_isolated").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -155,6 +167,32 @@ pub async fn get_integrations_yaml_path(gcx: Arc<ARwLock<GlobalContext>>) -> Str
         return config_dir.to_string_lossy().to_string();
     }
     r
+}
+
+pub async fn get_vars_for_replacements(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, String> {
+    let gcx_locked = gcx.read().await;
+    let secrets_yaml_path = gcx_locked.config_dir.join("secrets.yaml");
+    let variables_yaml_path = gcx_locked.config_dir.join("variables.yaml");
+    let mut variables = HashMap::new();
+    if let Ok(secrets_content) = fs::read_to_string(&secrets_yaml_path) {
+        if let Ok(secrets_yaml) = serde_yaml::from_str::<HashMap<String, String>>(&secrets_content) {
+            variables.extend(secrets_yaml);
+        } else {
+            tracing::warn!("cannot parse secrets.yaml");
+        }
+    } else {
+        tracing::info!("cannot read secrets.yaml");
+    }
+    if let Ok(variables_content) = fs::read_to_string(&variables_yaml_path) {
+        if let Ok(variables_yaml) = serde_yaml::from_str::<HashMap<String, String>>(&variables_content) {
+            variables.extend(variables_yaml);
+        } else {
+            tracing::warn!("cannot parse variables.yaml");
+        }
+    } else {
+        tracing::info!("cannot read variables.yaml");
+    }
+    variables
 }
 
 pub fn join_config_path(config_dir: &PathBuf, integr_name: &str) -> String {
@@ -200,7 +238,9 @@ pub async fn integrations_all_with_icons(
     let lst: Vec<&str> = crate::integrations::integrations_list();
     let mut error_log: Vec<YamlError> = Vec::new();
     let integrations_yaml_path = get_integrations_yaml_path(gcx.clone()).await;
-    let integrations = read_integrations_d(&config_folders, &integrations_yaml_path, &lst, &mut error_log);
+    let vars_for_replacements = get_vars_for_replacements(gcx.clone()).await;
+    let integrations = read_integrations_d(&config_folders, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log);
+
     // rec.integr_icon = crate::integrations::icon_from_name(integr_name);
     IntegrationWithIconResult {
         integrations,
