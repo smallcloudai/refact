@@ -110,6 +110,9 @@ pub async fn tools_merged_and_filtered(
         ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>))),
     ]);
 
+    #[cfg(feature="vecdb")]
+    tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
+
     if allow_experimental {
         // The approach here: if it exists, it shouldn't have syntax errors, note the "?"
         // if let Some(gh_config) = integrations_value.get("github") {
@@ -139,16 +142,6 @@ pub async fn tools_merged_and_filtered(
         //         tools_all.insert("deep_thinking".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>)));
         //     }
         // }
-        // #[cfg(feature="vecdb")]
-        // tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
-        // match load_integration_tools(gcx.clone()).await {
-        //     Ok(integrations) => {
-        //         tools_all.extend(integrations);
-        //     }
-        //     Err(e) => error!("Failed to load integrations: {}", e),
-        // }
-        // #[cfg(feature="vecdb")]
-        // tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
     }
 
     if let Some(cmdline) = integrations_value.get("cmdline") {
@@ -367,22 +360,28 @@ tools:
     parameters_required:
       - "project_dir"
       - "command"
+
+  - name: "knowledge"
+    agentic: true
+    description: "Fetches successful trajectories to help you accomplish your task. Call each time you have a new task to increase your chances of success."
+    experimental: true
+    parameters:
+      - name: "im_going_to_use_tools"
+        type: "string"
+        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, github, gitlab, rust debugger, patch"
+      - name: "im_going_to_apply_to"
+        type: "string"
+        description: "What your actions will be applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
+      - name: "language_slash_framework"
+        type: "string"
+        description: "What programming language and framework is the current project using? Use lowercase, dashes and dots. Examples: python/django, typescript/node.js, rust/tokio, ruby/rails, php/laravel, c++/boost-asio"
+    parameters_required:
+      - "im_going_to_use_tools"
+      - "im_going_to_apply_to"
+      - "language_slash_framework"
+
 "####;
 
-
-// - name: "knowledge"
-//   description: "What kind of knowledge you will need to accomplish this task? Call each time you have a new task or topic."
-//   experimental: true
-//   parameters:
-//     - name: "im_going_to_use_tools"
-//       type: "string"
-//       description: "Which tools are you about to use? Comma-separated list, examples: hg, git, github, gitlab, rust debugger, patch"
-//     - name: "im_going_to_apply_to"
-//       type: "string"
-//       description: "What your future actions will be applied to? List all you can identify, starting from the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
-//   parameters_required:
-//     - "im_going_to_use_tools"
-//     - "im_going_to_apply_to"
 
 
 #[allow(dead_code)]

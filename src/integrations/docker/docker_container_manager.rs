@@ -122,7 +122,7 @@ pub async fn docker_container_check_status_or_start(
         }
         None => {
             let ssh_config_maybe = docker.settings_docker.get_ssh_config();
-            
+
             const LSP_PORT: &str = "8001";
             let mut ports_to_forward = if ssh_config_maybe.is_some() {
                 docker.settings_docker.ports.iter()
@@ -197,7 +197,7 @@ pub async fn docker_container_check_status_or_start(
 pub async fn docker_container_get_host_lsp_port_to_connect(
     gcx: Arc<ARwLock<GlobalContext>>,
     chat_id: &str,
-) -> Result<String, String> 
+) -> Result<String, String>
 {
     let docker_container_session_maybe = {
         let gcx_locked = gcx.read().await;
@@ -248,7 +248,7 @@ async fn docker_container_create(
         "{DEFAULT_CONTAINER_LSP_PATH} --http-port {lsp_port} --logs-stderr --inside-container \
         --address-url {address_url} --api-key {api_key} --vecdb --reset-memory --ast --experimental",
     );
-    
+
     let ports_to_forward_as_arg_list = ports_to_forward.iter()
         .map(|p| format!("--publish={}:{}", p.published, p.target)).collect::<Vec<_>>().join(" ");
     let run_command = format!(
@@ -284,16 +284,16 @@ async fn docker_container_sync_yaml_configs(
     let temp_dir_path = temp_dir.path().to_string_lossy().to_string();
     docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/"), gcx.clone(), true).await?;
     docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/refact"), gcx.clone(), true).await?;
-    
+
     let config_files_to_sync = ["privacy.yaml", "integrations.yaml", "bring-your-own-key.yaml", "competency.yaml"];
-    let (remote_integrations_path, competency_path) = {
+    let remote_integrations_path = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.cmdline.remote_integrations.clone(), gcx_locked.cmdline.competency.clone())
+        gcx_locked.cmdline.remote_integrations.clone()
     };
     for file in &config_files_to_sync {
         let local_path = match *file {
             "integrations.yaml" if !remote_integrations_path.is_empty() => remote_integrations_path.clone(),
-            "competency.yaml" if !competency_path.is_empty() => competency_path.clone(),
+            // "competency.yaml" if !competency_path.is_empty() => competency_path.clone(),
             _ => cache_dir.join(file).to_string_lossy().to_string(),
         };
         let container_path = format!("{container_id}:{container_home_dir}/.cache/refact/{file}");
@@ -410,8 +410,8 @@ async fn docker_container_sync_workspace(
 }
 
 async fn append_folder_if_exists(
-    tar_builder: &mut async_tar::Builder<Compat<File>>, 
-    workspace_folder: &PathBuf, 
+    tar_builder: &mut async_tar::Builder<Compat<File>>,
+    workspace_folder: &PathBuf,
     folder_name: &str
 ) -> Result<(), String> {
     let folder_path = workspace_folder.join(folder_name);

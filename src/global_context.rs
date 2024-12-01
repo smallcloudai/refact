@@ -37,7 +37,7 @@ pub struct CommandLine {
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
-    #[structopt(long, help="Trust self-signed SSL certificates")]
+    #[structopt(long, help="Trust self-signed SSL certificates, when connecting to an inference server.")]
     pub insecure: bool,
 
     #[structopt(long, short="p", default_value="0", help="Bind 127.0.0.1:<port> to listen for HTTP requests, such as /v1/code-completion, /v1/chat, /v1/caps.")]
@@ -88,12 +88,10 @@ pub struct CommandLine {
 
     #[structopt(long, help="Enable experimental features, such as new integrations.")]
     pub experimental: bool,
-    #[structopt(long, help="Pass true to tell this binary it can run more tools without confirmation.")]
+    #[structopt(long, help="A way to tell this binary it can run more tools without confirmation.")]
     pub inside_container: bool,
     #[structopt(long, default_value="", help="Specify a different configuration for integrations to be used inside remote containers.")]
     pub remote_integrations: String,
-    #[structopt(long, short="s", default_value="", help="Read a competency.yaml file that turns on specialization for a particular area, such as creating websites.")]
-    pub competency: String,
 }
 
 impl CommandLine {
