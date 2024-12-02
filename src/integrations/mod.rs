@@ -35,6 +35,16 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
         "postgres" => Ok(Box::new(integr_postgres::ToolPostgres { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         // "chrome" => Ok(Box::new(ToolChrome { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         "docker" => Ok(Box::new(docker::integr_docker::ToolDocker {..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
+        cmdline if cmdline.starts_with("cmdline_") => {
+            let tool_name = cmdline.strip_prefix("cmdline_").unwrap();
+            tracing::info!("todo finish me tool_name={}", tool_name);
+            Err("todo finish me".to_string())
+        },
+        service if service.starts_with("service_") => {
+            let tool_name = service.strip_prefix("service_").unwrap();
+            tracing::info!("todo finish me service tool_name={}", tool_name);
+            Err("todo finish me".to_string())
+        },
         _ => Err(format!("Unknown integration name: {}", n)),
     }
 }

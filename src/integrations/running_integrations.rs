@@ -14,13 +14,13 @@ pub async fn load_integration_tools(
     _allow_experimental: bool,
 ) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>> {
     // XXX filter _workspace_folders_arc that fit _current_project
-    let config_folders= crate::integrations::setting_up_integrations::config_dirs(gcx.clone()).await;
+    let (config_dirs, global_config_dir) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone()).await;
     let integrations_yaml_path = crate::integrations::setting_up_integrations::get_integrations_yaml_path(gcx.clone()).await;
 
     let mut error_log: Vec<crate::integrations::setting_up_integrations::YamlError> = Vec::new();
     let lst: Vec<&str> = crate::integrations::integrations_list();
     let vars_for_replacements = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
-    let records = crate::integrations::setting_up_integrations::read_integrations_d(&config_folders, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log);
+    let records = crate::integrations::setting_up_integrations::read_integrations_d(&config_dirs, &global_config_dir, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log);
 
     let mut tools = IndexMap::new();
     for rec in records {
@@ -33,7 +33,7 @@ pub async fn load_integration_tools(
         let mut integr = match crate::integrations::integration_from_name(&rec.integr_name) {
             Ok(x) => x,
             Err(e) => {
-                tracing::error!("Failed to load integration {}: {}", rec.integr_name, e);
+                tracing::error!("don't have integration {}: {}", rec.integr_name, e);
                 continue;
             }
         };
