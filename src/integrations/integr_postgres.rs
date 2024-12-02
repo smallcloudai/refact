@@ -203,6 +203,11 @@ fields:
     f_placeholder: "psql"
     f_label: "PSQL Binary Path"
     f_extra: true
+description: |
+  The Postgres tool is for the AI model to call, when it wants to look at data inside your database, or make any changes.
+  On this page you can also see Docker containers with Postgres servers.
+  You can ask model to create a new container with a new database for you,
+  or ask model to configure the tool to use an existing container with existing database.
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
