@@ -1,6 +1,7 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ContextEnum;
 use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
+use crate::integrations::go_to_configuration_message;
 use crate::tools::tools_description::Tool;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -79,7 +80,7 @@ impl ToolPostgres {
             if output.is_err() {
                 let err_text = format!("{}", output.unwrap_err());
                 tracing::error!("psql didn't work:\n{}\n{}", query, err_text);
-                return Err(format!("psql failed:\n{}", err_text));
+                return Err(format!("{}, psql failed:\n{}", go_to_configuration_message("postgres"), err_text));
             }
             let output = output.unwrap();
             if output.status.success() {
@@ -88,7 +89,7 @@ impl ToolPostgres {
                 // XXX: limit stderr, can be infinite
                 let stderr_string = String::from_utf8_lossy(&output.stderr);
                 tracing::error!("psql didn't work:\n{}\n{}", query, stderr_string);
-                Err(format!("psql failed:\n{}", stderr_string))
+                Err(format!("{}, psql failed:\n{}", go_to_configuration_message("postgres"), stderr_string))
             }
         } else {
             tracing::error!("psql timed out:\n{}", query);

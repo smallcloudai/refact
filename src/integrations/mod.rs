@@ -74,6 +74,10 @@ pub fn integrations_list() -> Vec<&'static str> {
     ]
 }
 
+pub fn go_to_configuration_message(integration_name: &str) -> String {
+    format!("🧩 for configuration go to SETTINGS:{integration_name}")
+}
+
 
 
 // pub fn get_integration_path(cache_dir: &PathBuf, name: &str) -> PathBuf {
