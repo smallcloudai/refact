@@ -202,6 +202,7 @@ fields:
     f_desc: "If it can't find a path to `psql` you can provide it here, leave blank if not sure."
     f_placeholder: "psql"
     f_label: "PSQL Binary Path"
+    f_extra: true
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
