@@ -172,6 +172,8 @@ function throw_int_saved_success_toast(msg) {
 function save_integration_api_keys() {
     const openai_api_key = document.getElementById('openai_api_key');
     const anthropic_api_key = document.getElementById('anthropic_api_key');
+    const groq_api_key = document.getElementById('groq_api_key');
+    const cerebras_api_key = document.getElementById('cerebras_api_key');
     const huggingface_api_key = document.getElementById('huggingface_api_key');
     fetch("/tab-settings-integrations-save", {
         method: "POST",
@@ -181,6 +183,8 @@ function save_integration_api_keys() {
         body: JSON.stringify({
             openai_api_key: openai_api_key.getAttribute('data-value'),
             anthropic_api_key: anthropic_api_key.getAttribute('data-value'),
+            groq_api_key: groq_api_key.getAttribute('data-value'),
+            cerebras_api_key: cerebras_api_key.getAttribute('data-value'),
             huggingface_api_key: huggingface_api_key.getAttribute('data-value'),
         })
     })
@@ -189,6 +193,8 @@ function save_integration_api_keys() {
         throw_int_saved_success_toast('API Key saved')
         openai_api_key.setAttribute('data-saved-value', openai_api_key.getAttribute('data-value'))
         anthropic_api_key.setAttribute('data-saved-value', anthropic_api_key.getAttribute('data-value'))
+        groq_api_key.setAttribute('data-saved-value', groq_api_key.getAttribute('data-value'))
+        cerebras_api_key.setAttribute('data-saved-value', cerebras_api_key.getAttribute('data-value'))
         huggingface_api_key.setAttribute('data-saved-value', huggingface_api_key.getAttribute('data-value'))
     });
 }
@@ -222,6 +228,8 @@ export function tab_settings_integrations_get() {
         .then(function(data) {
             integrations_input_init(document.getElementById('openai_api_key'), data['openai_api_key']);
             integrations_input_init(document.getElementById('anthropic_api_key'), data['anthropic_api_key']);
+            integrations_input_init(document.getElementById('groq_api_key'), data['groq_api_key']);
+            integrations_input_init(document.getElementById('cerebras_api_key'), data['cerebras_api_key']);
             integrations_input_init(document.getElementById('huggingface_api_key'), data['huggingface_api_key']);
         });
 }

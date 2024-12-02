@@ -22,6 +22,7 @@ huggingface_mini_db = {
         "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
         "filter_caps": ["chat"],
+        "deprecated": True
     },
     "mistral/7b/instruct-v0.1": {
         "backend": "autogptq",
@@ -30,6 +31,7 @@ huggingface_mini_db = {
         "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
         "filter_caps": ["chat"],
+        "deprecated": True
     },
     "mixtral/8x7b/instruct-v0.1": {
         "backend": "transformers",
@@ -50,6 +52,7 @@ huggingface_mini_db = {
         "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
         "filter_caps": ["chat"],
+        "deprecated": True
     },
     "deepseek-coder/33b/instruct": {
         "backend": "transformers",
@@ -113,16 +116,126 @@ huggingface_mini_db = {
         },
         "required_memory_mb": 20000,
         "T": 8192,
-        "filter_caps": ["chat"],
+        "filter_caps": ["completion", "chat"],
     },
-    "deepseek-coder-v2/16b/instruct": {
+    "llama3.1/8b/instruct": {
         "backend": "transformers",
-        "model_path": "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct",
+        "model_path": "meta-llama/Llama-3.1-8B-Instruct",
         "model_class_kwargs": {
             "torch_dtype": "bf16",
         },
-        "required_memory_mb": 80000,
+        "required_memory_mb": 20000,
         "T": 16384,  # in fact this model can handle 128K context
         "filter_caps": ["completion", "chat"],
+    },
+    "llama3.2/3b/instruct": {
+        "backend": "transformers",
+        "model_path": "meta-llama/Llama-3.2-3B-Instruct",
+        "model_class_kwargs": {
+            "torch_dtype": "bf16",
+        },
+        "required_memory_mb": 12000,
+        "T": 16384,  # in fact this model can handle 128K context
+        "filter_caps": ["completion", "chat"],
+    },
+    "llama3.2/1b/instruct": {
+        "backend": "transformers",
+        "model_path": "meta-llama/Llama-3.2-1B-Instruct",
+        "model_class_kwargs": {
+            "torch_dtype": "bf16",
+        },
+        "required_memory_mb": 8000,
+        "T": 16384,  # in fact this model can handle 128K context
+        "filter_caps": ["completion", "chat"],
+    },
+    # qwen 2.5-coder instruct models
+    "qwen2.5/coder/32b/instruct": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-32B-Instruct",
+        "model_class_kwargs": {},
+        "required_memory_mb": 45000,
+        "T": 32768,
+        "filter_caps": ["completion", "chat"],
+    },
+    "qwen2.5/coder/14b/instruct": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-14B-Instruct",
+        "model_class_kwargs": {},
+        "required_memory_mb": 45000,
+        "T": 32768,
+        "filter_caps": ["completion", "chat"],
+    },
+    "qwen2.5/coder/7b/instruct": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "model_class_kwargs": {},
+        "required_memory_mb": 45000,
+        "T": 32768,
+        "filter_caps": ["completion", "chat"],
+    },
+    "qwen2.5/coder/3b/instruct": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-3B-Instruct",
+        "model_class_kwargs": {},
+        "required_memory_mb": 45000,
+        "T": 32768,
+        "filter_caps": ["completion", "chat"],
+    },
+    "qwen2.5/coder/1.5b/instruct": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+        "model_class_kwargs": {},
+        "required_memory_mb": 45000,
+        "T": 32768,
+        "filter_caps": ["completion", "chat"],
+    },
+    # qwen 2.5-coder completion models
+    "qwen2.5/coder/32b/base": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-32B",
+        "model_class_kwargs": {},
+        "required_memory_mb": 45000,
+        "T": 32768,
+        "filter_caps": ["completion", "finetune"],
+    },
+    "qwen2.5/coder/14b/base": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-14B",
+        "model_class_kwargs": {},
+        "required_memory_mb": 35000,
+        "T": 32768,
+        "filter_caps": ["completion", "finetune"],
+    },
+    "qwen2.5/coder/7b/base": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-7B",
+        "model_class_kwargs": {},
+        "required_memory_mb": 20000,
+        "T": 32768,
+        "filter_caps": ["completion", "finetune"],
+    },
+    "qwen2.5/coder/3b/base": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-3B",
+        "model_class_kwargs": {},
+        "required_memory_mb": 15000,
+        "T": 32768,
+        "filter_caps": ["completion", "finetune"],
+    },
+    "qwen2.5/coder/1.5b/base": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-1.5B",
+        "model_class_kwargs": {},
+        "required_memory_mb": 10000,
+        "T": 32768,
+        "filter_caps": ["completion", "finetune"],
+    },
+    "qwen2.5/coder/0.5b/base": {
+        "backend": "transformers",
+        "model_path": "Qwen/Qwen2.5-Coder-0.5B",
+        "model_class_kwargs": {},
+        "required_memory_mb": 7000,
+        "T": 32768,
+        "filter_caps": ["completion", "finetune"],
     },
 }

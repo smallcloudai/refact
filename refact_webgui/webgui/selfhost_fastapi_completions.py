@@ -231,6 +231,8 @@ class BaseCompletionsRouter(APIRouter):
         litellm.modify_params = True  # NOTE: for Anthropic API
         _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
         _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
+        _integrations_env_setup("GROQ_API_KEY", "groq_api_key", "groq_api_enable")
+        _integrations_env_setup("CEREBRAS_API_KEY", "cerebras_api_key", "cerebras_api_enable")
 
     def _models_available_dict_rewrite(self, models_available: List[str]) -> Dict[str, Any]:
         rewrite_dict = {}
@@ -248,6 +250,7 @@ class BaseCompletionsRouter(APIRouter):
         running = running_models_and_loras(self._model_assigner)
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = self._inference_queue.completion_model()
+        multiline_code_completion_default_model, _ = self._inference_queue.multiline_completion_default_model()
         code_chat_default_model = ""
         embeddings_default_model = ""
         for model_name in models_available:
@@ -267,6 +270,7 @@ class BaseCompletionsRouter(APIRouter):
             "telemetry_basic_retrieve_my_own": "/stats/rh-stats",
             "running_models": [r for r in [*running['completion'], *running['chat']]],
             "code_completion_default_model": code_completion_default_model,
+            "multiline_code_completion_default_model": multiline_code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
             "models_dict_patch": self._models_available_dict_rewrite(models_available),
 
@@ -301,6 +305,10 @@ class BaseCompletionsRouter(APIRouter):
 
         data["code_completion_default_model"] = _select_default_lora_if_exists(
             data["code_completion_default_model"],
+            running['completion'],
+        )
+        data["multiline_code_completion_default_model"] = _select_default_lora_if_exists(
+            data["multiline_code_completion_default_model"],
             running['completion'],
         )
         data["code_chat_default_model"] = _select_default_lora_if_exists(
@@ -609,7 +617,10 @@ class BaseCompletionsRouter(APIRouter):
                     log(err_msg)
                     yield prefix + json.dumps({"error": err_msg}) + postfix
 
-        if model_dict.get('backend') == 'litellm' and (model_name := model_dict.get('resolve_as', post.model)) in litellm.model_list:
+        if model_dict.get('backend') == 'litellm':
+            model_name = model_dict.get('resolve_as', post.model)
+            if model_name not in litellm.model_list:
+                log(f"warning: requested model {model_name} is not in the litellm.model_list (this might not be the issue for some providers)")
             log(f"chat/completions: model resolve {post.model} -> {model_name}")
             prompt_tokens_n = litellm.token_counter(model_name, messages=messages)
             if post.tools:

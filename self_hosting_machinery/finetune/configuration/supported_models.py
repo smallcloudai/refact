@@ -90,6 +90,36 @@ _deepseek_base = {
     ],
     "force_enable_checkpointing": False
 }
+_qwen_base = {
+    "lora_target_modules_mapping": {
+        "qkv": ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj"],
+        "out": ["self_attn.o_proj"],
+        "backproj": ["self_attn.o_proj"],
+        "mlp": ["mlp.gate_proj", "mlp.up_proj", "mlp.down_proj"],
+    },
+    "freeze_exceptions_mapping": {
+        "wte": ["embed_tokens"],
+        "lm_head": ["lm_head"],
+        "lora": ["lora"]
+    },
+    "tokenizer": {
+        "eot_idx": 151643,  # `<|endoftext|>`
+        "padding_idx": 151662,  # `<|fim_pad|>`
+        "fim_prefix": 151659,  # `<|fim_prefix|>`
+        "fim_middle": 151660,  # `<|fim_middle|>`
+        "fim_suffix": 151661,  # `<|fim_suffix|>`
+        "escape": 32013,  # using `<｜begin▁of▁sentence｜>` token for now
+    },
+    "train_ds_pipeline": {
+        "ds_opts": f"{_fim_train_ds_pipeline['ds_opts']},spm_prob=0.0",
+        "ds_name": _fim_train_ds_pipeline["ds_name"]
+    },
+    "test_ds_pipeline": _fim_test_ds_pipeline,
+    "train_model_modifiers": [
+        "flash_sa.apply_flash_mha_to_codellama_model"
+    ],
+    "force_enable_checkpointing": False
+}
 
 config = {
     "Refact/1.6B": {
@@ -179,5 +209,31 @@ config = {
     "deepseek-coder/6.7b/base": {
         **_deepseek_base,
         "force_enable_checkpointing": True
+    },
+
+    # qwen models
+    "qwen2.5/coder/32b/base": {
+        **_qwen_base,
+        "force_enable_checkpointing": True
+    },
+    "qwen2.5/coder/14b/base": {
+        **_qwen_base,
+        "force_enable_checkpointing": True
+    },
+    "qwen2.5/coder/7b/base": {
+        **_qwen_base,
+        "force_enable_checkpointing": True
+    },
+    "qwen2.5/coder/3b/base": {
+        **_qwen_base,
+        "force_enable_checkpointing": False
+    },
+    "qwen2.5/coder/1.5b/base": {
+        **_qwen_base,
+        "force_enable_checkpointing": False
+    },
+    "qwen2.5/coder/0.5b/base": {
+        **_qwen_base,
+        "force_enable_checkpointing": False
     }
 }

@@ -117,6 +117,8 @@ function get_models()
 
         integration_switch_init('enable_chat_gpt', models_data['openai_api_enable']);
         integration_switch_init('enable_anthropic', models_data['anthropic_api_enable']);
+        integration_switch_init('enable_groq', models_data['groq_api_enable']);
+        integration_switch_init('enable_cerebras', models_data['cerebras_api_enable']);
 
         const more_gpus_notification = document.querySelector('.model-hosting-error');
         if(data.hasOwnProperty('more_models_than_gpus') && data.more_models_than_gpus) {
@@ -140,12 +142,16 @@ function get_models()
 function save_model_assigned() {
     const openai_enable = document.querySelector('#enable_chat_gpt');
     const anthropic_enable = document.querySelector('#enable_anthropic');
+    const groq_enable = document.querySelector('#enable_groq');
+    const cerebras_enable = document.querySelector('#enable_cerebras');
     const data = {
         model_assign: {
             ...models_data.model_assign,
         },
         openai_api_enable: openai_enable.checked,
         anthropic_api_enable: anthropic_enable.checked,
+        groq_api_enable: groq_enable.checked,
+        cerebras_api_enable: cerebras_enable.checked,
     };
     console.log(data);
     fetch("/tab-host-models-assign", {

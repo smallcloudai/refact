@@ -103,21 +103,35 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 
 ## Supported models
 
-| Model                                                                                             | Completion | Chat | Fine-tuning | [Deprecated](## "Will be removed in next versions") |
-|---------------------------------------------------------------------------------------------------|------------|------|-------------|-----------------------------------------------------|
-| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                                | +          |      | +           |                                                     |
-| [starcoder2/3b/base](https://huggingface.co/bigcode/starcoder2-3b)                                | +          |      | +           |                                                     |
-| [starcoder2/7b/base](https://huggingface.co/bigcode/starcoder2-7b)                                | +          |      | +           |                                                     |
-| [starcoder2/15b/base](https://huggingface.co/bigcode/starcoder2-15b)                              | +          |      | +           |                                                     |
-| [deepseek-coder/1.3b/base](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-base)           | +          |      | +           |                                                     |
-| [deepseek-coder/5.7b/mqa-base](https://huggingface.co/deepseek-ai/deepseek-coder-5.7bmqa-base)    | +          |      | +           |                                                     |
-| [magicoder/6.7b](https://huggingface.co/TheBloke/Magicoder-S-DS-6.7B-GPTQ)                        |            | +    |             |                                                     |
-| [mistral/7b/instruct-v0.1](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GPTQ)         |            | +    |             |                                                     |
-| [mixtral/8x7b/instruct-v0.1](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1)         |            | +    |             |                                                     |
-| [deepseek-coder/6.7b/instruct](https://huggingface.co/TheBloke/deepseek-coder-6.7B-instruct-GPTQ) |            | +    |             |                                                     |
-| [deepseek-coder/33b/instruct](https://huggingface.co/deepseek-ai/deepseek-coder-33b-instruct)     |            | +    |             |                                                     |
-| [stable/3b/code](https://huggingface.co/stabilityai/stable-code-3b)                               | +          |      |             |                                                     |
-| [llama3/8b/instruct](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct)                  |            | +    |             |                                                     |
+| Model                                                                                                   | Completion | Chat | Fine-tuning | [Deprecated](## "Will be removed in next versions") |
+|---------------------------------------------------------------------------------------------------------|------------|------|-------------|-----------------------------------------------------|
+| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                                      | +          |      | +           |                                                     |
+| [starcoder2/3b/base](https://huggingface.co/bigcode/starcoder2-3b)                                      | +          |      | +           |                                                     |
+| [starcoder2/7b/base](https://huggingface.co/bigcode/starcoder2-7b)                                      | +          |      | +           |                                                     |
+| [starcoder2/15b/base](https://huggingface.co/bigcode/starcoder2-15b)                                    | +          |      | +           |                                                     |
+| [deepseek-coder/1.3b/base](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-base)                 | +          |      | +           |                                                     |
+| [deepseek-coder/5.7b/mqa-base](https://huggingface.co/deepseek-ai/deepseek-coder-5.7bmqa-base)          | +          |      | +           |                                                     |
+| [magicoder/6.7b](https://huggingface.co/TheBloke/Magicoder-S-DS-6.7B-GPTQ)                              |            | +    |             | +                                                   |
+| [mistral/7b/instruct-v0.1](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GPTQ)               |            | +    |             | +                                                   |
+| [mixtral/8x7b/instruct-v0.1](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1)               |            | +    |             |                                                     |
+| [deepseek-coder/6.7b/instruct](https://huggingface.co/TheBloke/deepseek-coder-6.7B-instruct-GPTQ)       |            | +    |             | +                                                   |
+| [deepseek-coder/33b/instruct](https://huggingface.co/deepseek-ai/deepseek-coder-33b-instruct)           |            | +    |             |                                                     |
+| [stable/3b/code](https://huggingface.co/stabilityai/stable-code-3b)                                     | +          |      |             |                                                     |
+| [llama3/8b/instruct](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct)                        | +          | +    |             |                                                     |
+| [llama3.1/8b/instruct](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct)                    | +          | +    |             |                                                     |
+| [llama3.2/1b/instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)                         | +          | +    |             |                                                     |
+| [llama3.2/3b/instruct](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)                         | +          | +    |             |                                                     |
+| [qwen2.5/coder/0.5b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B)                               | +          |      | +           |                                                     |
+| [qwen2.5/coder/1.5b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B)                               | +          |      | +           |                                                     |
+| [qwen2.5/coder/3b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-3B)                                   | +          |      | +           |                                                     |
+| [qwen2.5/coder/7b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-7B)                                   | +          |      | +           |                                                     |
+| [qwen2.5/coder/14b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-14B)                                 | +          |      | +           |                                                     |
+| [qwen2.5/coder/32b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-32B)                                 | +          |      | +           |                                                     |
+| [qwen2.5/coder/1.5b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct)                  | +          | +    |             |                                                     |
+| [qwen2.5/coder/3b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct)                      | +          | +    |             |                                                     |
+| [qwen2.5/coder/7b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct)                      | +          | +    |             |                                                     |
+| [qwen2.5/coder/14b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct)                    | +          | +    |             |                                                     |
+| [qwen2.5/coder/32b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct)                    | +          | +    |             |                                                     |
 
 ## Usage
 
