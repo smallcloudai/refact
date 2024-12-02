@@ -26,6 +26,7 @@ use crate::http::routers::v1::git::handle_v1_git_stage_and_commit;
 use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
 use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
 use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
+use crate::http::routers::v1::links::handle_v1_links;
 use crate::http::routers::v1::lsp_like_handlers::{handle_v1_lsp_did_change, handle_v1_lsp_add_folder, handle_v1_lsp_initialize, handle_v1_lsp_remove_folder, handle_v1_set_active_document};
 use crate::http::routers::v1::status::handle_v1_rag_status;
 use crate::http::routers::v1::customization::handle_v1_customization;
@@ -53,6 +54,7 @@ mod docker;
 mod git;
 pub mod graceful_shutdown;
 mod dashboard;
+pub mod links;
 pub mod lsp_like_handlers;
 pub mod customization;
 mod at_commands;
@@ -138,6 +140,8 @@ pub fn make_v1_router() -> Router {
 
         .route("/subchat", telemetry_post!(handle_v1_subchat))
         .route("/subchat-single", telemetry_post!(handle_v1_subchat_single))
+
+        .route("/links", telemetry_post!(handle_v1_links))
         ;
 
     #[cfg(feature="vecdb")]
