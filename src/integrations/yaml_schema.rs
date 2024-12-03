@@ -48,6 +48,7 @@ pub struct ISchemaDocker {
     pub filter_image: String,
     pub new_container_default: DockerService,
     pub smartlinks: Vec<ISmartLink>,
+    pub smartlinks_for_each_container: Vec<ISmartLink>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]

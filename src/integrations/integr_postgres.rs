@@ -233,7 +233,13 @@ docker:
       sl_chat:
         - role: "user"
           content: |
-            🔧 Your job is to create a new section under "docker" that will define a new postgres container, inside the current config file %CURRENT_CONFIG%. Follow the system prompt.
+            🔧 Your job is to create a postgres container, using the image and environment from new_container_default section in the current config file: %CURRENT_CONFIG%. Follow the system prompt.
+  smartlinks_for_each_container:
+    - sl_label: "Use for integration"
+      sl_chat:
+        - role: "user"
+          content: |
+            🔧 Your job is to modify postgres connection config in the current file to match the variables from the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
 "#;
 
 
