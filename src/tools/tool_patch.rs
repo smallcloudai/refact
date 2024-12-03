@@ -162,8 +162,11 @@ impl Tool for ToolPatch {
             ).await))
         };
 
-        let gcx = ccx_subchat.lock().await.global_context.clone();
-        let all_tickets_from_above = get_tickets_from_messages(ccx.clone()).await;
+        let (gcx, messages) = {
+            let ccx_lock = ccx_subchat.lock().await;
+            (ccx_lock.global_context.clone(), ccx_lock.messages.clone())
+        };
+        let all_tickets_from_above = get_tickets_from_messages(gcx.clone(), &messages).await;
         let mut active_tickets = match get_and_correct_active_tickets(
             gcx.clone(),
             tickets.clone(),

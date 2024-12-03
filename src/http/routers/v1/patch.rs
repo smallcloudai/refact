@@ -82,7 +82,7 @@ pub async fn handle_v1_patch_single_file_from_ticket(
         8096,
         10,
         false,
-        messages,
+        messages.clone(),
         "".to_string(),
         false,
     ).await));
@@ -94,7 +94,7 @@ pub async fn handle_v1_patch_single_file_from_ticket(
         ccx_lock.n_ctx = params.subchat_n_ctx;
     }
 
-    let all_tickets_from_above = get_tickets_from_messages(ccx.clone()).await;
+    let all_tickets_from_above = get_tickets_from_messages(global_context.clone(), &messages).await;
     let mut active_tickets = get_and_correct_active_tickets(
         global_context.clone(), post.ticket_ids.clone(), all_tickets_from_above.clone(),
     ).await.map_err(|(e, _)| {
@@ -159,7 +159,7 @@ pub async fn handle_v1_patch_apply_all(
         8096,
         10,
         false,
-        messages,
+        messages.clone(),
         "".to_string(),
         false,
     ).await));
@@ -172,7 +172,7 @@ pub async fn handle_v1_patch_apply_all(
     }
 
     // leave only the latest ticket for each file
-    let all_tickets = get_tickets_from_messages(ccx.clone()).await;
+    let all_tickets = get_tickets_from_messages(global_context.clone(), &messages).await;
     let mut filename_by_ticket: HashMap<String, TicketToApply> = HashMap::new();
     for ticket in all_tickets.values() {
         if let Some(el) = filename_by_ticket.get(&ticket.filename_before) {

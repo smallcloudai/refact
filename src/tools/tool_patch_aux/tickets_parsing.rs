@@ -3,12 +3,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
 
 use crate::ast::ast_structs::AstDefinition;
-use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
+use crate::call_validation::ChatMessage;
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
 use crate::tools::tool_patch_aux::postprocessing_utils::does_doc_have_symbol;
@@ -275,12 +275,9 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str, message_
 }
 
 pub async fn get_tickets_from_messages(
-    ccx: Arc<AMutex<AtCommandsContext>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
+    messages: &Vec<ChatMessage>,
 ) -> HashMap<String, TicketToApply> {
-    let (gcx, messages) = {
-        let ccx_lock = ccx.lock().await;
-        (ccx_lock.global_context.clone(), ccx_lock.messages.clone())
-    };
     let mut tickets: HashMap<String, TicketToApply> = HashMap::new();
     for (idx, message) in messages.iter().enumerate().filter(|(_, x)| x.role == "assistant") {
         for ticket in parse_tickets(gcx.clone(), &message.content.content_text_only(), idx).await.into_iter() {
