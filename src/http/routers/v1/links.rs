@@ -3,16 +3,19 @@ use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock as ARwLock;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
+use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ChatMessage;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
+use crate::subchat::subchat_single;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LinksPost {
     messages: Vec<ChatMessage>,
+    model_name: String,
     chat_id: String,
 }
 
@@ -43,7 +46,7 @@ pub async fn handle_v1_links(
 
     let mut links = Vec::new();
 
-    if project_summarization_is_missing(gcx.clone()).await {
+    if project_summarization_is_missing(gcx.clone()).await && post.messages.is_empty() {
         links.push(Link {
             action: LinkAction::SummarizeProject,
             text: "Investigate Project".to_string(),
@@ -57,6 +60,17 @@ pub async fn handle_v1_links(
             text: format!("Configure {failed_tool_name}"),
             goto: Some(format!("SETTINGS:{failed_tool_name}")),
         })
+    }
+
+    // TODO: Only do this for "Explore", "Agent" or configuration chats.
+    if links.is_empty() {
+        let follow_up_message = generate_follow_up_message(
+            post.messages.clone(), gcx.clone(), &post.model_name, &post.chat_id).await?;
+        links.push(Link {
+            action: LinkAction::FollowUp,
+            text: follow_up_message,
+            goto: None,
+        });
     }
     
     Ok(Response::builder()
@@ -98,4 +112,44 @@ fn failed_tool_names_after_last_user_message(messages: &Vec<ChatMessage>) -> Vec
     result.sort();
     result.dedup();
     result
+}
+
+async fn generate_follow_up_message(
+    mut messages: Vec<ChatMessage>, 
+    gcx: Arc<ARwLock<GlobalContext>>, 
+    model_name: &str, 
+    chat_id: &str,
+) -> Result<String, String> {
+    if messages.first().map(|m| m.role == "system").unwrap_or(false) {
+        messages.remove(0);
+    }
+    messages.insert(0, ChatMessage::new(
+        "system".to_string(),
+        "Generate a 2-3 word user response, like 'Can you fix it?' for errors or 'Proceed' for plan validation".to_string(),
+    ));
+    let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
+        gcx.clone(),
+        1024,
+        1,
+        false,
+        messages.clone(),
+        chat_id.to_string(),
+        false,
+    ).await));
+    let new_messages = subchat_single(
+        ccx.clone(),
+        model_name,
+        messages,
+        vec![],
+        None,
+        false,
+        Some(0.5),
+        None,
+        1,
+        None,
+        None,
+        None,
+    ).await?;
+    new_messages.into_iter().next().map(|x| x.into_iter().last().map(|last_m| {
+        last_m.content.content_text_only() })).flatten().ok_or("No commit message found".to_string())
 }
