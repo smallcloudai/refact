@@ -210,7 +210,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "fim_suffix": "<|fim_suffix|>",
                     "fim_middle": "<|fim_middle|>",
                     "eot": "<|endoftext|>",
-                    "extra_stop_tokens": ["<|repo_name|>", "<|file_sep|>"],
+                    "extra_stop_tokens": ["<|repo_name|>", "<|file_sep|>", "<|fim_pad|>"],
                     "context_format": "qwen2.5",
                     "rag_ratio": 0.5
                 }
