@@ -236,7 +236,14 @@ impl ScratchpadAbstract for ChatPassthrough {
     }
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
-        self.has_rag_results.response_streaming()
+        let mut deterministic: Vec<Value> = vec![];
+        let have_system_prompt_in_post = !self.post.messages.is_empty() && self.post.messages[0].get("role") == Some(&serde_json::Value::String("system".to_string()));
+        let have_system_prompt_in_messages = !self.messages.is_empty() && self.messages[0].role == "system";
+        if !have_system_prompt_in_post && have_system_prompt_in_messages {
+            self.has_rag_results.in_json.insert(0, json!(self.messages[0]));
+        }
+        deterministic.extend(self.has_rag_results.response_streaming()?);
+        Ok(deterministic)
     }
 
     fn streaming_finished(&mut self, finish_reason: FinishReason) -> Result<Value, String> {

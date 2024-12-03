@@ -174,14 +174,49 @@ async fn _chat(
 
     let docker_tool_maybe = docker_tool_load(gcx.clone()).await
         .map_err(|e| info!("No docker tool available: {e}")).ok().map(Arc::new);
+    // XXX change this for post.isolation, not docker settings
     let run_chat_threads_inside_container = docker_tool_maybe.clone()
         .map(|docker_tool| docker_tool.settings_docker.run_chat_threads_inside_container)
         .unwrap_or(false);
     let should_execute_remotely = run_chat_threads_inside_container && !gcx.read().await.cmdline.inside_container;
-
     if should_execute_remotely {
         docker_container_check_status_or_start(gcx.clone(), docker_tool_maybe.clone(), &chat_post.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    }
+
+    let have_system = !messages.is_empty() && messages[0].role == "system";
+    if !have_system {
+        // XXX: make it explicit instead of auto-detector
+        let mut exploration_tools: bool = false;
+        let mut agentic_tools: bool = false;
+        if chat_post.tools.is_some() {
+            for t in chat_post.tools.as_ref().unwrap() {
+                let tobj = t.as_object().unwrap();
+                if let Some(function) = tobj.get("function") {
+                    if let Some(name) = function.get("name") {
+                        if name.as_str() == Some("web") {  // anything that will still be on without ast and vecdb
+                            exploration_tools = true;
+                        }
+                        if name.as_str() == Some("patch") {
+                            agentic_tools = true;
+                        }
+                    }
+                }
+            }
+        }
+        use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_default_system_prompt_from_remote, system_prompt_add_workspace_info};
+        let system_message_content = if should_execute_remotely {
+            get_default_system_prompt_from_remote(gcx.clone(), exploration_tools, agentic_tools, &chat_post.chat_id).await.map_err(|e|
+                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
+            )?
+        } else {
+            get_default_system_prompt(gcx.clone(), exploration_tools, agentic_tools).await
+        };
+        messages.insert(0, ChatMessage {
+            role: "tool".to_string(),
+            content: ChatContent::SimpleText(system_message_content),
+            ..Default::default()
+        })
     }
 
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
