@@ -18,10 +18,11 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::time::Instant;
 use std::vec;
+use nix::NixPath;
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
-use tracing::info;
+use tracing::{info, warn};
 use crate::ast::ast_db::doc_defs;
 use crate::ast::ast_structs::AstDefinition;
 use crate::scratchpads::completon_rag::retrieve_ast_based_extra_context;
@@ -440,6 +441,7 @@ fn process_n_choices(
                             let text_to_remove_lines = before_lines_str.lines().map(|x| x.to_string()).collect::<Vec<_>>();
                             let pred_lines_stripped = skip_similar_rows(&pred_lines, &text_to_remove_lines);
                             if pred_lines.len() == pred_lines_stripped.len() {
+                                warn!("couldn't cut prefix part from the predicted code, return an empty completion");
                                 return json!({
                                     "index": i,
                                     "code_completion": "",
@@ -451,6 +453,7 @@ fn process_n_choices(
                     }
                 }
             } else {
+                warn!("no code blocks found in the model reply, return an empty completion");
                 return json!({
                     "index": i,
                     "code_completion": "",
@@ -460,10 +463,19 @@ fn process_n_choices(
 
             // vscode cannot correctly handle a completion if it has spaces in front of it
             if !cursor_line_is_empty {
+                let cc_before = cc.clone();
                 cc = if let Some(idx) = cc.find(&subblock_ref.cursor_line) {
                     cc.split_at(idx + subblock_ref.cursor_line.len()).1.to_string()
                 } else {
                     skip_similar_letters(subblock_ref.cursor_line.as_str(), cc.as_str())
+                };
+                if !subblock_ref.cursor_line.trim().is_empty() && cc == cc_before {
+                    warn!("couldn't cut cursor prefix line, return an empty completion");
+                    return json!({
+                        "index": i,
+                        "code_completion": "",
+                        "finish_reason": finish_reasons[i].to_json_val()
+                    })
                 }
             }
 
