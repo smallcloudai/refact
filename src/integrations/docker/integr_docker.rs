@@ -115,7 +115,7 @@ impl IntegrationTrait for ToolDocker {
 }
 
 impl ToolDocker {
-    pub async fn command_execute(&self, command: &str, gcx: Arc<ARwLock<GlobalContext>>, fail_if_stderr_is_not_empty: bool) -> Result<(String, String), String> 
+    pub async fn command_execute(&self, command: &str, gcx: Arc<ARwLock<GlobalContext>>, fail_if_stderr_is_not_empty: bool, verbose_error: bool) -> Result<(String, String), String> 
     {
         let mut command_args = split_command(&command)?;
 
@@ -137,7 +137,12 @@ impl ToolDocker {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
         if fail_if_stderr_is_not_empty && !stderr.is_empty() {
-            return Err(format!("Error executing command {command}: \n{stderr}"));
+            let error_message = if verbose_error {
+                format!("Command `{}` failed: {}", command, stderr)
+            } else {
+                stderr
+            };
+            return Err(error_message);
         }
 
         Ok((stdout, stderr))
@@ -173,7 +178,7 @@ impl Tool for ToolDocker {
             ccx_locked.global_context.clone()
         };
         
-        let (stdout, _) = self.command_execute(&command, gcx.clone(), true).await?;
+        let (stdout, _) = self.command_execute(&command, gcx.clone(), true, false).await?;
 
         Ok((false, vec![
             ContextEnum::ChatMessage(ChatMessage {

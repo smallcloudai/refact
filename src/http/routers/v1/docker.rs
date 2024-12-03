@@ -64,7 +64,7 @@ pub async fn handle_v1_docker_container_action(
         DockerAction::Remove => format!("container remove --volumes {}", post.container),
         DockerAction::Stop => format!("container stop {}", post.container),
     };
-    let (output, _) = docker.command_execute(&docker_command, gcx.clone(), true).await
+    let (output, _) = docker.command_execute(&docker_command, gcx.clone(), true, false).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Command {} failed: {}", docker_command, e)))?;
 
     Ok(Response::builder().status(StatusCode::OK).body(Body::from(
@@ -87,7 +87,7 @@ pub async fn handle_v1_docker_container_list(
         None => "container list --all --no-trunc --format json".to_string(),
     };
 
-    let (unparsed_output, _) = docker.command_execute(&docker_command, gcx.clone(), true).await
+    let (unparsed_output, _) = docker.command_execute(&docker_command, gcx.clone(), true, false).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Command {} failed: {}", docker_command, e)))?;
 
     let mut output: Vec<Value> = unparsed_output.lines().map(|line| serde_json::from_str(line)).collect::<Result<Vec<_>, _>>()
@@ -113,7 +113,7 @@ pub async fn handle_v1_docker_container_list(
     }
 
     let inspect_command = format!("container inspect --format json {}", container_ids.join(" "));
-    let (inspect_unparsed_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true).await
+    let (inspect_unparsed_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true, false).await
        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Command {} failed: {}", inspect_command, e)))?;
 
     let inspect_output = serde_json::from_str::<Vec<serde_json::Value>>(&inspect_unparsed_output)

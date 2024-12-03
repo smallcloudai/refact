@@ -156,7 +156,7 @@ pub async fn docker_container_check_status_or_start(
 
             if !docker.settings_docker.command.is_empty() {
                 let cmd_to_execute = format!("exec --detach {} {}", container_id, docker.settings_docker.command);
-                match docker.command_execute(&cmd_to_execute, gcx.clone(), false).await {
+                match docker.command_execute(&cmd_to_execute, gcx.clone(), false, true).await {
                     Ok((cmd_stdout, cmd_stderr)) => { info!("Command executed: {cmd_stdout}\n{cmd_stderr}") },
                     Err(e) => { error!("Command execution failed: {}", e) },
                 };
@@ -242,7 +242,7 @@ async fn docker_container_create(
     );
 
     info!("Executing docker command: {}", &run_command);
-    let (run_output, _) = docker.command_execute(&run_command, gcx.clone(), true).await?;
+    let (run_output, _) = docker.command_execute(&run_command, gcx.clone(), true, true).await?;
 
     let container_id = run_output.trim();
     if container_id.len() < 12 {
@@ -267,8 +267,8 @@ async fn docker_container_sync_yaml_configs(
     let temp_dir = tempfile::Builder::new().tempdir()
         .map_err(|e| format!("Error creating temporary directory: {}", e))?;
     let temp_dir_path = temp_dir.path().to_string_lossy().to_string();
-    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/"), gcx.clone(), true).await?;
-    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/refact"), gcx.clone(), true).await?;
+    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/"), gcx.clone(), true, true).await?;
+    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/refact"), gcx.clone(), true, true).await?;
 
     let config_files_to_sync = ["privacy.yaml", "integrations.yaml", "bring-your-own-key.yaml", "competency.yaml"];
     let remote_integrations_path = {
@@ -282,13 +282,13 @@ async fn docker_container_sync_yaml_configs(
             _ => cache_dir.join(file).to_string_lossy().to_string(),
         };
         let container_path = format!("{container_id}:{container_home_dir}/.cache/refact/{file}");
-        docker.command_execute(&format!("container cp {local_path} {container_path}"), gcx.clone(), true).await?;
+        docker.command_execute(&format!("container cp {local_path} {container_path}"), gcx.clone(), true, true).await?;
     }
 
     // Copying config folder
     let config_dir_string = config_dir.to_string_lossy().to_string();
-    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.config/"), gcx.clone(), true).await?;
-    docker.command_execute(&format!("container cp {config_dir_string} {container_id}:{container_home_dir}/.config/refact"), gcx.clone(), true).await?;
+    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.config/"), gcx.clone(), true, true).await?;
+    docker.command_execute(&format!("container cp {config_dir_string} {container_id}:{container_home_dir}/.config/refact"), gcx.clone(), true, true).await?;
 
     Ok(())
 }
@@ -299,7 +299,7 @@ async fn docker_container_get_home_dir(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
     let inspect_config_command = "container inspect --format '{{json .Config}}' ".to_string() + &container_id;
-    let (inspect_config_output, _) = docker.command_execute(&inspect_config_command, gcx.clone(), true).await?;
+    let (inspect_config_output, _) = docker.command_execute(&inspect_config_command, gcx.clone(), true, true).await?;
 
     let config_json: serde_json::Value = serde_json::from_str(&inspect_config_output)
         .map_err(|e| format!("Error parsing docker config: {}", e))?;
@@ -319,13 +319,13 @@ async fn docker_container_start(
     container_id: &str,
 ) -> Result<(), String> {
     let start_command = "container start ".to_string() + &container_id;
-    docker.command_execute(&start_command, gcx.clone(), true).await?;
+    docker.command_execute(&start_command, gcx.clone(), true, true).await?;
 
     // If docker container is not running, print last lines of logs.
     let inspect_command = "container inspect --format '{{json .State.Running}}' ".to_string() + &container_id;
-    let (inspect_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true).await?;
+    let (inspect_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true, true).await?;
     if inspect_output.trim() != "true" {
-        let (logs_output, _) = docker.command_execute(&format!("container logs --tail 10 {container_id}"), gcx.clone(), true).await?;
+        let (logs_output, _) = docker.command_execute(&format!("container logs --tail 10 {container_id}"), gcx.clone(), true, true).await?;
         return Err(format!("Docker container is not running: \n{logs_output}"));
     }
 
@@ -372,7 +372,7 @@ async fn docker_container_sync_workspace(
     tar_builder.finish().await.map_err(|e| format!("Error finishing tar archive: {}", e))?;
 
     let cp_command = format!("container cp {} {}:{}", temp_tar_file.to_string_lossy(), container_id, container_workspace_folder.to_string_lossy());
-    docker.command_execute(&cp_command, gcx.clone(), true).await?;
+    docker.command_execute(&cp_command, gcx.clone(), true, true).await?;
 
     let sync_files_post = SyncFilesExtractTarPost {
         tar_path: container_workspace_folder.join(&tar_file_name).to_string_lossy().to_string(),
@@ -424,7 +424,7 @@ async fn docker_container_get_exposed_ports(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<Vec<Port>, String> {
     let inspect_command = "inspect --format '{{json .NetworkSettings.Ports}}' ".to_string() + &container_id;
-    let (inspect_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true).await?;
+    let (inspect_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true, true).await?;
     tracing::info!("{}:\n{}", inspect_command, inspect_output);
 
     let inspect_data: serde_json::Value = serde_json::from_str(&inspect_output)
@@ -446,9 +446,9 @@ async fn docker_container_kill(
 ) -> Result<(), String> {
     let docker = docker_tool_load(gcx.clone()).await?;
 
-    docker.command_execute(&format!("container stop {container_id}"), gcx.clone(), true).await?;
+    docker.command_execute(&format!("container stop {container_id}"), gcx.clone(), true, true).await?;
     info!("Stopped docker container {container_id}.");
-    docker.command_execute(&format!("container remove {container_id}"), gcx.clone(), true).await?;
+    docker.command_execute(&format!("container remove {container_id}"), gcx.clone(), true, true).await?;
     info!("Removed docker container {container_id}.");
     Ok(())
 }
