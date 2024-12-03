@@ -80,3 +80,40 @@ curl -X POST http://localhost:8001/v1/links \
         "model_name": "gpt-4o-mini",
         "messages": []
     }'
+
+# Example of Save and return in configuration chat
+curl -X POST http://localhost:8001/v1/links \
+    -H "Content-Type: application/json" \
+    -d '{
+        "chat_id": "chat-example",
+        "model_name": "gpt-4o-mini",
+        "messages": [
+            {
+                "role": "system",
+                "content": "[mode3config] You are a refact coding agent working on improving configuration files",
+                "tool_calls": null,
+                "finish_reason": "",
+                "tool_call_id": "",
+                "usage": null,
+                "subchats": null
+            },
+            {
+                "role": "user",
+                "content": "create a new file called \"hello_world.py\"",
+                "tool_calls": null,
+                "finish_reason": "",
+                "tool_call_id": "",
+                "usage": null,
+                "subchats": null
+            },
+            {
+                "role": "assistant",
+                "content": "📍REWRITE_WHOLE_FILE 000 \"/app/hello_world.py\"\n```python\nprint(\"Hello, World!\")\n```",
+                "tool_calls": null,
+                "finish_reason": "",
+                "tool_call_id": "",
+                "usage": null,
+                "subchats": null
+            }
+        ]
+    }'

@@ -11,6 +11,7 @@ use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
 use crate::subchat::subchat_single;
+use crate::tools::tool_patch_aux::tickets_parsing::get_tickets_from_messages;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LinksPost {
@@ -46,7 +47,7 @@ pub async fn handle_v1_links(
 
     let mut links = Vec::new();
 
-    if project_summarization_is_missing(gcx.clone()).await && post.messages.is_empty() {
+    if post.messages.is_empty() && project_summarization_is_missing(gcx.clone()).await {
         links.push(Link {
             action: LinkAction::SummarizeProject,
             text: "Investigate Project".to_string(),
@@ -54,6 +55,16 @@ pub async fn handle_v1_links(
         });
     }
 
+    // TODO: Only do this for configuration chats, detect it in system prompt.
+    if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
+        links.push(Link {
+            action: LinkAction::PatchAll,
+            text: "Save and return".to_string(),
+            goto: Some("SETTINGS:DEFAULT".to_string()),
+        });
+    }
+
+    // TODO: This probably should not appear in configuration chats, unless we can know that this is not the main one being configured
     for failed_tool_name in failed_tool_names_after_last_user_message(&post.messages) {
         links.push(Link {
             action: LinkAction::Goto,
@@ -62,7 +73,7 @@ pub async fn handle_v1_links(
         })
     }
 
-    // TODO: Only do this for "Explore", "Agent" or configuration chats.
+    // TODO: Only do this for "Explore", "Agent" or configuration chats, detect it in system prompt.
     if links.is_empty() {
         let follow_up_message = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
