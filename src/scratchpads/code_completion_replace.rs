@@ -30,10 +30,12 @@ const DEBUG: bool = true;
 const SYSTEM_PROMPT: &str = r#"You are given a code file, <BLOCK_OF_CODE> from that file and an extra context from other files. 
 An unfinished line in the <BLOCK_OF_CODE> is marked with the <CURSOR>. 
 Your task is to complete the code after the <CURSOR> by rewriting the <BLOCK_OF_CODE> using the provided context and make the <REWRITTEN_BLOCK_OF_CODE>.
-Ensure the <REWRITTEN_BLOCK_OF_CODE> introduces all necessary updates to the <BLOCK_OF_CODE> such as code completion, function definitions, or comments."#;
+Ensure the <REWRITTEN_BLOCK_OF_CODE> introduces all necessary updates to the <BLOCK_OF_CODE> such as code completion, function definitions, or comments.
+Keep identation symbols unchanged. Do not output multiple <REWRITTEN_BLOCK_OF_CODE> blocks and make sure changes are made only after the <CURSOR>"#;
 const SYSTEM_PROMPT_USERS_INTENTION: &str = r#"You are given a code file, <BLOCK_OF_CODE> from that file, an extra context from other files, and a user's intention.
 Rewrite the <BLOCK_OF_CODE> to fulfill the user's intention, starting from the <CURSOR> position using the provided context and make the <REWRITTEN_BLOCK_OF_CODE>.
 Ensure the <REWRITTEN_BLOCK_OF_CODE> introduces all necessary updates to the <BLOCK_OF_CODE> such as code completion, function definitions, or comments.
+Keep identation symbols unchanged. Do not output multiple <REWRITTEN_BLOCK_OF_CODE> blocks and make sure changes are made only after the <CURSOR>.
 Strictly follow the user's intention.
 User's intention:
 <comment>"#;
@@ -201,7 +203,7 @@ async fn prepare_subblock(
             let line = file_text.line(idx).to_string();
             tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
             if idx < cursor_pos.line as usize {
-                subblock.before_lines.insert(0, line);
+                subblock.before_lines.push(line);
             } else if idx > cursor_pos.line as usize {
                 subblock.after_lines_extra.push(line.clone());
                 if tokens_used <= max_tokens {
@@ -269,21 +271,20 @@ fn skip_similar_letters(a: &str, b: &str) -> String {
 }
 
 fn skip_similar_rows(pred_text: &Vec<String>, text_to_remove: &Vec<String>) -> Vec<String> {
-    // fn is_too_simple_to_compare(s: &String) -> bool {
-    //     if s.trim().is_empty() {
-    //         return true;
-    //     }
-    //     let simple_tokens = vec![
-    //         ")", "(", "{", "}", "[", "]",  // Parentheses, braces, brackets
-    //         "+", "-", "*", "/", "%",       // Arithmetic operators
-    //         "=", "==", "!=", ">", "<",     // Comparison operators
-    //         "&&", "||", "!",               // Logical operators
-    //         ",", ".", ";", ":", "?",       // Punctuation
-    //         "|", "&", "^", "~", ">>", "<<" // Bitwise operators
-    //     ];
-    //     simple_tokens.contains(&s.as_str())
-    // }
-
+    fn is_too_simple_to_compare(s: &String) -> bool {
+        if s.trim().is_empty() {
+            return true;
+        }
+        let simple_tokens = vec![
+            ")", "(", "{", "}", "[", "]",  // Parentheses, braces, brackets
+            "+", "-", "*", "/", "%",       // Arithmetic operators
+            "=", "==", "!=", ">", "<",     // Comparison operators
+            "&&", "||", "!",               // Logical operators
+            ",", ".", ";", ":", "?",       // Punctuation
+            "|", "&", "^", "~", ">>", "<<" // Bitwise operators
+        ];
+        simple_tokens.contains(&s.as_str())
+    }
     
     let mut pred_text_trimmed = pred_text.clone();
     for to_remove_row in text_to_remove.iter() {
@@ -296,6 +297,12 @@ fn skip_similar_rows(pred_text: &Vec<String>, text_to_remove: &Vec<String>) -> V
         
         for idx in 0..(if to_remove_row.trim().is_empty() {1} else {pred_text_trimmed.len()}) {
             if *to_remove_row == pred_text_trimmed[idx] {
+                pred_text_trimmed = pred_text_trimmed[idx + 1..].to_vec();
+                break;
+            }
+            if !is_too_simple_to_compare(&to_remove_row)
+                && !to_remove_row.trim().is_empty()
+                && to_remove_row.trim_start() == pred_text_trimmed[idx].trim_start() {
                 pred_text_trimmed = pred_text_trimmed[idx + 1..].to_vec();
                 break;
             }
@@ -349,6 +356,31 @@ fn retrieve_a_comment(source: &String, cpath: &PathBuf, cursor: &CursorPosition)
     }
 }
 
+fn unfence_the_last_code_block(text: &String) -> Option<String> {
+    let mut blocks: Vec<String> = vec![];
+    let mut current_block: Option<String> = None;
+    for line in Rope::from_str(text).lines() {
+        if line.to_string().starts_with("```") {
+            if let Some(block) = current_block {
+                blocks.push(block);
+                current_block = None;
+            } else {
+                current_block = Some(String::new());
+            }
+        } else {
+            if let Some(block) = &mut current_block {
+                block.push_str(&line.to_string());
+            }
+        }
+    }
+    // if there is a block without a closing ```
+    if let Some(block) = current_block {
+        blocks.push(block);
+    }
+    
+    blocks.iter().last().cloned()
+}
+
 fn process_n_choices(
     subblock: &mut Option<SubBlock>,
     choices: &Vec<String>,
@@ -380,22 +412,8 @@ fn process_n_choices(
             }
 
             let mut cc = x.clone();
-
-            let ticks_count = cc.matches("```").count();
-            if x.contains("<REWRITTEN_BLOCK_OF_CODE>")
-                || ticks_count >= 2
-                || (ticks_count == 1 && finish_reasons[i] == FinishReason::Length)
-            {
-                if let Some(start_idx) = cc.find("```") {
-                    let start_idx = cc[start_idx + 3..]
-                        .find('\n')
-                        .map_or(start_idx + 3, |i| start_idx + i + 4);
-                    if let Some(end_idx) = cc[start_idx..].find("```") {
-                        cc = cc[start_idx..start_idx + end_idx].to_string();
-                    } else {
-                        cc = cc[start_idx..].to_string();
-                    }
-                }
+            if let Some(last_fenced_block) = unfence_the_last_code_block(&cc) {
+                cc = last_fenced_block;
                 
                 // First, we're trying to locate cursor position and remove everything above it
                 let pred_lines = cc.lines().map(|x| x.to_string()).collect::<Vec<_>>();
@@ -442,8 +460,8 @@ fn process_n_choices(
 
             // vscode cannot correctly handle a completion if it has spaces in front of it
             if !cursor_line_is_empty {
-                cc = if let Some(idx) = cc.find(subblock_ref.cursor_line.trim()) {
-                    cc.split_at(idx + subblock_ref.cursor_line.trim().len()).1.to_string()
+                cc = if let Some(idx) = cc.find(&subblock_ref.cursor_line) {
+                    cc.split_at(idx + subblock_ref.cursor_line.len()).1.to_string()
                 } else {
                     skip_similar_letters(subblock_ref.cursor_line.as_str(), cc.as_str())
                 }
