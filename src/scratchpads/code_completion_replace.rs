@@ -428,7 +428,7 @@ fn process_n_choices(
                 } else { None };
                 
                 if let Some(idx) = cursor_idx_mb {
-                    cc = pred_lines[idx + 1..].join("\n")
+                    cc = pred_lines[idx..].join("\n")
                 } else {
                     // If we don't find the cursor index, we try to cut lines by the file context
                     if !before_lines_str.trim().is_empty() {
@@ -440,7 +440,7 @@ fn process_n_choices(
                             let text_to_remove_lines = before_lines_str.lines().map(|x| x.to_string()).collect::<Vec<_>>();
                             let pred_lines_stripped = skip_similar_rows(&pred_lines, &text_to_remove_lines);
                             if pred_lines.len() == pred_lines_stripped.len() {
-                                warn!("couldn't cut prefix part from the predicted code, return an empty completion");
+                                warn!("couldn't cut the prefix part from the predicted code, return an empty completion");
                                 return json!({
                                     "index": i,
                                     "code_completion": "",
@@ -462,14 +462,15 @@ fn process_n_choices(
 
             // vscode cannot correctly handle a completion if it has spaces in front of it
             if !cursor_line_is_empty {
+                let cursor_line = subblock_ref.cursor_line.replace("\n", "").replace("\r", "");
                 let cc_before = cc.clone();
-                cc = if let Some(idx) = cc.find(&subblock_ref.cursor_line) {
-                    cc.split_at(idx + subblock_ref.cursor_line.len()).1.to_string()
+                cc = if let Some(idx) = cc.find(&cursor_line) {
+                    cc.split_at(idx + cursor_line.len()).1.to_string()
                 } else {
-                    skip_similar_letters(subblock_ref.cursor_line.as_str(), cc.as_str())
+                    skip_similar_letters(cursor_line.as_str(), cc.as_str())
                 };
-                if !subblock_ref.cursor_line.trim().is_empty() && cc == cc_before {
-                    warn!("couldn't cut cursor prefix line, return an empty completion");
+                if !cursor_line.trim().is_empty() && cc == cc_before {
+                    warn!("couldn't cut the cursor prefix line, return an empty completion");
                     return json!({
                         "index": i,
                         "code_completion": "",
