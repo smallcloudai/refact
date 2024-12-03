@@ -64,8 +64,8 @@ pub async fn handle_v1_links(
 
     // TODO: Only do this for "Explore", "Agent" or configuration chats.
     if links.is_empty() {
-        let follow_up_message = generate_follow_up_message(
-            post.messages.clone(), gcx.clone(), &post.model_name, &post.chat_id).await?;
+        let follow_up_message = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.chat_id).await
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
         links.push(Link {
             action: LinkAction::FollowUp,
             text: follow_up_message,
