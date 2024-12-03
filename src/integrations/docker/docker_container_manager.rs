@@ -31,21 +31,6 @@ pub struct Port {
     pub target: String,
 }
 
-impl<'de> Deserialize<'de> for Port {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let s = String::deserialize(deserializer)?;
-        let (published, target) = s.split_once(':')
-            .ok_or_else(|| serde::de::Error::custom("expected format '8080:3000'"))?;
-        Ok(Port { published: published.to_string(), target: target.to_string() })
-    }
-}
-
-impl Serialize for Port {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&format!("{}:{}", self.published, self.target))
-    }
-}
-
 pub struct DockerContainerSession {
     container_id: String,
     connection: DockerContainerConnectionEnum,

@@ -33,6 +33,7 @@ pub struct SettingsDocker {
     pub command: String,
     #[serde(serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
     pub keep_containers_alive_for_x_minutes: u64,
+    #[serde(serialize_with = "serialize_ports", deserialize_with = "deserialize_ports")]
     pub ports: Vec<Port>,
 }
 
@@ -44,6 +45,21 @@ where
     T: std::str::FromStr, T::Err: std::fmt::Display, D: serde::Deserializer<'de>,
 {
     String::deserialize(deserializer)?.parse().map_err(serde::de::Error::custom)
+}
+
+fn serialize_ports<S: serde::Serializer>(ports: &Vec<Port>, serializer: S) -> Result<S::Ok, S::Error> {
+    let ports_str = ports.iter().map(|port| format!("{}:{}", port.published, port.target))
+        .collect::<Vec<_>>().join(",");
+    serializer.serialize_str(&ports_str)
+}
+
+fn deserialize_ports<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Vec<Port>, D::Error> {
+    let ports_str = String::deserialize(deserializer)?;
+    ports_str.split(',').filter(|s| !s.is_empty()).map(|port_str| {
+        let (published, target) = port_str.split_once(':')
+            .ok_or_else(|| serde::de::Error::custom("expected format 'published:target'"))?;
+        Ok(Port { published: published.to_string(), target: target.to_string() })
+    }).collect()
 }
 
 impl SettingsDocker {
@@ -334,8 +350,8 @@ fields:
     f_desc: "How long to keep containers alive in minutes."
     f_default: "60"
   ports:
-    f_type: array
-    f_desc: "Ports to expose."
+    f_type: string_long
+    f_desc: "Comma separated published:target notation for ports to publish, example '8080:3000,5000:5432'"
 available:
   on_your_laptop_possible: true
   when_isolated_possible: false
