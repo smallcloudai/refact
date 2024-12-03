@@ -295,7 +295,7 @@ fn skip_similar_rows(pred_text: &Vec<String>, text_to_remove: &Vec<String>) -> V
         // }
         
         for idx in 0..(if to_remove_row.trim().is_empty() {1} else {pred_text_trimmed.len()}) {
-            if to_remove_row.trim_start() == pred_text_trimmed[idx].trim_start() {
+            if *to_remove_row == pred_text_trimmed[idx] {
                 pred_text_trimmed = pred_text_trimmed[idx + 1..].to_vec();
                 break;
             }
