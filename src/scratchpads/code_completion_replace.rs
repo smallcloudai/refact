@@ -18,7 +18,6 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use std::time::Instant;
 use std::vec;
-use nix::NixPath;
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
