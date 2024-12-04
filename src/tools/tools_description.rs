@@ -144,15 +144,15 @@ pub async fn tools_merged_and_filtered(
         // }
     }
 
-    if let Some(cmdline) = integrations_value.get("cmdline") {
-        let cmdline_tools = crate::tools::tool_cmdline::cmdline_tool_from_yaml_value(cmdline, false)?;
-        tools_all.extend(cmdline_tools);
-    }
+    // if let Some(cmdline) = integrations_value.get("cmdline") {
+    //     let cmdline_tools = crate::tools::tool_cmdline::cmdline_tool_from_yaml_value(cmdline, false)?;
+    //     tools_all.extend(cmdline_tools);
+    // }
 
-    if let Some(cmdline) = integrations_value.get("cmdline_services") {
-        let cmdline_tools = crate::tools::tool_cmdline::cmdline_tool_from_yaml_value(cmdline, true)?;
-        tools_all.extend(cmdline_tools);
-    }
+    // if let Some(cmdline) = integrations_value.get("cmdline_services") {
+    //     let cmdline_tools = crate::tools::tool_cmdline::cmdline_tool_from_yaml_value(cmdline, true)?;
+    //     tools_all.extend(cmdline_tools);
+    // }
 
     let integrations = crate::integrations::running_integrations::load_integration_tools(
         gcx.clone(),

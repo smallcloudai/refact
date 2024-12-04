@@ -7,6 +7,7 @@ use indexmap::IndexMap;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::io::BufReader;
 use serde::Deserialize;
+use serde::Serialize;
 use async_trait::async_trait;
 use tokio::process::Command;
 use tracing::info;
@@ -19,18 +20,20 @@ use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::{blocking_read_until_token_or_timeout, is_someone_listening_on_that_tcp_port};
 use crate::integrations::sessions::IntegrationSession;
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
+use crate::integrations::integr_abstract::IntegrationTrait;
 
 
 const REALLY_HORRIBLE_ROUNDTRIP: u64 = 3000;   // 3000 should be a really bad ping via internet, just in rare case it's a remote port
 
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Clone)]
 struct CmdlineToolConfig {
+    command: String,
+    command_workdir: String,
+
     description: String,
     parameters: Vec<ToolParam>,
     parameters_required: Option<Vec<String>>,
-    command: String,
-    command_workdir: String,
 
     // blocking
     #[serde(default = "_default_timeout")]
@@ -56,9 +59,39 @@ fn _default_startup_wait() -> u64 {
 }
 
 pub struct ToolCmdline {
-    a_service: bool,
+    is_service: bool,
     name: String,
     cfg: CmdlineToolConfig,
+}
+
+impl IntegrationTrait for ToolCmdline {
+    fn integr_settings_apply(&mut self, value: &serde_json::Value) -> Result<(), String> {
+        match serde_json::from_value::<CmdlineToolConfig>(value.clone()) {
+            Ok(x) => self.cfg = x,
+            Err(e) => {
+                tracing::error!("Failed to apply settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
+        Ok(())
+    }
+
+    fn integr_settings_as_json(&self) -> serde_json::Value {
+        serde_json::to_value(&self.cfg).unwrap()
+    }
+
+    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
+        Box::new(ToolCmdline {
+            is_service: self.is_service,
+            name: self.name.clone(),
+            cfg: self.cfg.clone(),
+        }) as Box<dyn Tool + Send>
+    }
+
+    fn integr_schema(&self) -> &str
+    {
+        CMDLINE_INTEGRATION_SCHEMA
+    }
 }
 
 pub fn cmdline_tool_from_yaml_value(
@@ -83,7 +116,7 @@ pub fn cmdline_tool_from_yaml_value(
         }
         let tool = Arc::new(AMutex::new(Box::new(
             ToolCmdline {
-                a_service: background,
+                is_service: background,
                 name: c_name.clone(),
                 cfg: c_cmd_tool,
             }
@@ -394,7 +427,7 @@ impl Tool for ToolCmdline {
         let command = _replace_args(self.cfg.command.as_str(), &args_str);
         let workdir = _replace_args(self.cfg.command_workdir.as_str(), &args_str);
 
-        let tool_ouput = if self.a_service {
+        let tool_ouput = if self.is_service {
             let action = args_str.get("action").cloned().unwrap_or("start".to_string());
             if !["start", "restart", "stop", "status"].contains(&action.as_str()) {
                 return Err("Tool call is invalid. Param 'action' must be one of 'start', 'restart', 'stop', 'status'. Try again".to_string());
@@ -436,3 +469,36 @@ impl Tool for ToolCmdline {
         }
     }
 }
+
+pub const CMDLINE_INTEGRATION_SCHEMA: &str = r#"
+fields:
+  command:
+    f_type: string_long
+    f_desc: "The command to execute."
+    f_placeholder: "echo Hello World"
+  command_workdir:
+    f_type: string_long
+    f_desc: "The working directory for the command."
+    f_placeholder: "/path/to/workdir"
+  description:
+    f_type: string_long
+    f_desc: "The model will see this description, why the model should call this?"
+    f_placeholder: ""
+  parameters:
+    f_type: "tool_parameters"
+    f_desc: "The model will fill in those parameters."
+  timeout:
+    f_type: integer
+    f_desc: "The command must immediately return the results, it can't be interactive. If the command runs for too long, it will be terminated and stderr/stdout collected will be presented to the model."
+    f_default: 10
+  output_filter:
+    f_type: "output_filter"
+    f_desc: "The output from the command can be long or even quasi-infinite. This section allows to set limits, prioritize top or bottom, or use regexp to show the model the relevant part."
+    f_placeholder: "filter"
+description: |
+  There you can adapt any command line tool for use by AI model. You can give the model instructions why to call it, which parameters to provide,
+  set a timeout and restrict the output. If you want a tool that runs in the background such as a web server, use service_* instead.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+"#;

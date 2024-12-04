@@ -14,6 +14,7 @@ pub mod integr_abstract;
 // pub mod integr_pdb;
 // pub mod integr_chrome;
 pub mod integr_postgres;
+pub mod integr_cmdline;
 
 pub mod process_io_utils;
 pub mod docker;

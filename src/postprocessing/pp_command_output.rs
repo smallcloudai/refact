@@ -1,8 +1,9 @@
+use serde::Serialize;
 use serde::Deserialize;
 use regex::Regex;
 
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct CmdlineOutputFilter {
     #[serde(default = "default_limit_lines")]
     pub limit_lines: usize,
