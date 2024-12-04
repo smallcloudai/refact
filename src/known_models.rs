@@ -7,8 +7,7 @@ pub const KNOWN_MODELS: &str = r####"
                 "FIM-PSM": {
                     "context_format": "starcoder",
                     "rag_ratio": 0.5
-                },
-                "FIM-SPM": {}
+                }
             },
             "default_scratchpad": "FIM-PSM",
             "similar_models": [
@@ -42,11 +41,7 @@ pub const KNOWN_MODELS: &str = r####"
         "smallcloudai/Refact-1_6B-fim": {
             "n_ctx": 4096,
             "supports_scratchpads": {
-                "FIM-PSM": {},
-                "FIM-SPM": {
-                    "context_format": "default",
-                    "rag_ratio": 0
-                }
+                "FIM-SPM": { }
             },
             "default_scratchpad": "FIM-SPM",
             "similar_models": [
@@ -90,8 +85,7 @@ pub const KNOWN_MODELS: &str = r####"
         "stable/3b/code": {
             "n_ctx": 4096,
             "supports_scratchpads": {
-                "FIM-PSM": {},
-                "FIM-SPM": {}
+                "FIM-PSM": {}
             },
             "default_scratchpad": "FIM-PSM",
             "similar_models": []
@@ -105,7 +99,9 @@ pub const KNOWN_MODELS: &str = r####"
                     "keyword_system": "<|start_header_id|>system<|end_header_id|>\n\n",
                     "keyword_user": "<|start_header_id|>user<|end_header_id|>\n\n",
                     "keyword_assistant": "<|start_header_id|>assistant<|end_header_id|>\n\n",
-                    "eot": "<|eot_id|>"
+                    "eot": "<|eot_id|>",
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
                 }
             },
             "default_scratchpad": "REPLACE",
@@ -120,6 +116,60 @@ pub const KNOWN_MODELS: &str = r####"
                 "llama3.2/1b/instruct/vllm"
             ]
         },
+        "gpt-4o": {
+            "n_ctx": 128000,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": { 
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            },
+            "similar_models": [
+                "gpt-4o-2024-05-13",
+                "gpt-4o-2024-08-06",
+                "openai/gpt-4o"
+            ]
+        },
+        "gpt-4o-mini": {
+            "n_ctx": 128000,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": { 
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            },
+            "similar_models": [
+                "gpt-4o-mini-2024-07-18"
+            ]
+        },
+        "groq-llama-3.1-8b": {
+            "n_ctx": 128000,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": { 
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            },
+            "similar_models": [
+                "groq-llama-3.1-70b",
+                "groq-llama-3.2-1b",
+                "groq-llama-3.2-3b",
+                "groq-llama-3.2-11b-vision",
+                "groq-llama-3.2-90b-vision"
+            ]
+        },        
+        "cerebras-llama3.1-8b": {
+            "n_ctx": 8192,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": { 
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            },
+            "similar_models": [
+                "cerebras-llama3.1-70b"
+            ]
+        },
         "qwen2.5/coder/0.5b/instruct": {
             "n_ctx": 8192,
             "supports_scratchpads": {
@@ -129,11 +179,14 @@ pub const KNOWN_MODELS: &str = r####"
                     "keyword_system": "<|im_start|>system\n",
                     "keyword_user": "<|im_start|>user\n",
                     "keyword_assistant": "<|im_start|>assistant\n",
-                    "eot": "<|im_end|>"
+                    "eot": "<|im_end|>",
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
                 }
             },
             "default_scratchpad": "REPLACE",
             "similar_models": [
+                "qwen2.5/coder/0.5b/instruct/vllm",
                 "qwen2.5/coder/1.5b/instruct",
                 "qwen2.5/coder/1.5b/instruct/vllm",
                 "qwen2.5/coder/3b/instruct",
@@ -156,7 +209,10 @@ pub const KNOWN_MODELS: &str = r####"
                     "fim_prefix": "<|fim_prefix|>",
                     "fim_suffix": "<|fim_suffix|>",
                     "fim_middle": "<|fim_middle|>",
-                    "eot": "<|endoftext|>"
+                    "eot": "<|endoftext|>",
+                    "extra_stop_tokens": ["<|repo_name|>", "<|file_sep|>", "<|fim_pad|>"],
+                    "context_format": "qwen2.5",
+                    "rag_ratio": 0.5
                 }
             },
             "default_scratchpad": "FIM-PSM",
@@ -166,6 +222,7 @@ pub const KNOWN_MODELS: &str = r####"
                 "qwen2.5/coder/7b/base",
                 "qwen2.5/coder/14b/base",
                 "qwen2.5/coder/32b/base",
+                "qwen2.5/coder/0.5b/base/vllm",
                 "qwen2.5/coder/1.5b/base/vllm",
                 "qwen2.5/coder/3b/base/vllm",
                 "qwen2.5/coder/7b/base/vllm",

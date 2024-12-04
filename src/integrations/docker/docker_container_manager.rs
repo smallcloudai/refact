@@ -44,27 +44,32 @@ pub enum DockerContainerConnectionEnum {
     LocalPort(String),
 }
 
-impl Drop for DockerContainerSession {
-    fn drop(&mut self) {
-        if let Some(gcx) = self.weak_gcx.upgrade() {
-            let container_id = self.container_id.clone();
-            tokio::spawn(async move {
-                if let Err(e) = docker_container_kill(gcx, &container_id).await {
-                    error!("Failed to cleanup docker container session: {}", e);
-                }
-            });
-        } else {
-            info!("Detected program shutdown, quit.");
-        }
-    }
-}
-
 impl IntegrationSession for DockerContainerSession {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
 
     fn is_expired(&self) -> bool {
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
         self.last_usage_ts + self.session_timeout_after_inactivity.as_secs() < current_time
+    }
+
+    fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_> {
+        Box::new(async {
+            if let Some(gcx) = self.weak_gcx.upgrade() {
+                let container_id = self.container_id.clone();
+                match docker_container_kill(gcx, &container_id).await {
+                    Ok(()) => format!("Cleanup docker container session: {}", container_id),
+                    Err(e) => {
+                        let message = format!("Failed to cleanup docker container session: {}", e);
+                        error!(message);
+                        message
+                    }
+                }
+            } else {
+                let message = "Detected program shutdown, quit.".to_string();
+                info!(message);
+                message
+            }
+        })
     }
 }
 

@@ -19,6 +19,7 @@ use crate::http::routers::v1::at_tools::{handle_v1_tools, handle_v1_tools_check_
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions, handle_v1_chat_configuration};
+use crate::http::routers::v1::chat_based_handlers::handle_v1_commit_message_from_diff;
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::docker::{handle_v1_docker_container_action, handle_v1_docker_container_list};
 use crate::http::routers::v1::git::handle_v1_git_stage_and_commit;
@@ -63,6 +64,7 @@ pub mod system_prompt;
 pub mod sync_files;
 mod gui_help_handlers;
 mod patch;
+pub mod chat_based_handlers;
 
 #[cfg(feature="vecdb")]
 pub mod handlers_memdb;
@@ -132,6 +134,7 @@ pub fn make_v1_router() -> Router {
         .route("/get-dashboard-plots", telemetry_get!(get_dashboard_plots))
 
         .route("/code-completion-prompt", telemetry_post!(handle_v1_code_completion_prompt))
+        .route("/commit-message-from-diff", telemetry_post!(handle_v1_commit_message_from_diff))
 
         .route("/subchat", telemetry_post!(handle_v1_subchat))
         .route("/subchat-single", telemetry_post!(handle_v1_subchat_single))

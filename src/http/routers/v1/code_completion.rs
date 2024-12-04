@@ -6,7 +6,7 @@ use tokio::sync::Mutex as AMutex;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-
+use tracing::info;
 use crate::call_validation::{CodeCompletionPost, code_completion_post_validate};
 use crate::caps;
 use crate::caps::CodeAssistantCaps;
@@ -24,14 +24,24 @@ const CODE_COMPLETION_TOP_N: usize = 5;
 async fn _lookup_code_completion_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     code_completion_post: &CodeCompletionPost,
+    look_for_multiline_model: bool,
 ) -> Result<(String, String, serde_json::Value, usize), String> {
     let caps_locked = caps.read().unwrap();
-    let (model_name, modelrec) =
+
+    let (model_name, modelrec) = if !look_for_multiline_model 
+        || caps_locked.multiline_code_completion_default_model.is_empty() {
         caps::which_model_to_use(
             &caps_locked.code_completion_models,
             &code_completion_post.model,
             &caps_locked.code_completion_default_model,
-        )?;
+        )?
+    } else {
+        caps::which_model_to_use(
+            &caps_locked.code_completion_models,
+            &code_completion_post.model,
+            &caps_locked.multiline_code_completion_default_model,
+        )?
+    };
     let (sname, patch) = caps::which_scratchpad_to_use(
         &modelrec.supports_scratchpads,
         &code_completion_post.scratchpad,
@@ -60,6 +70,7 @@ pub async fn handle_v1_code_completion(
     let maybe = _lookup_code_completion_scratchpad(
         caps.clone(),
         &code_completion_post,
+        code_completion_post.inputs.multiline
     ).await;
     if maybe.is_err() {
         // On error, this will also invalidate caps each 10 seconds, allows to overcome empty caps situation
@@ -76,6 +87,7 @@ pub async fn handle_v1_code_completion(
     if code_completion_post.scratchpad == "" {
         code_completion_post.scratchpad = scratchpad_name.clone();
     }
+    info!("chosen completion model: {}, scratchpad: {}", code_completion_post.model, code_completion_post.scratchpad);
     code_completion_post.parameters.temperature = Some(code_completion_post.parameters.temperature.unwrap_or(0.2));
     let (cache_arc, tele_storage) = {
         let gcx_locked = gcx.write().await;
@@ -149,7 +161,7 @@ pub async fn handle_v1_code_completion_prompt(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
-    let maybe = _lookup_code_completion_scratchpad(caps.clone(), &post).await;
+    let maybe = _lookup_code_completion_scratchpad(caps.clone(), &post, post.inputs.multiline).await;
     if maybe.is_err() {
         return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", maybe.unwrap_err())))
     }

@@ -9,24 +9,18 @@ use serde_json::{Value, json};
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
-use std::collections::HashSet;
-
 use crate::ast::ast_indexer_thread::AstIndexService;
-use crate::ast::ast_structs::{AstDB, AstDefinition};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{CodeCompletionPost, ContextFile, SamplingParameters};
+use crate::call_validation::{CodeCompletionPost, SamplingParameters};
 use crate::global_context::GlobalContext;
 use crate::completion_cache;
-use crate::scratchpad_abstract::HasTokenizerAndEot;
-use crate::scratchpad_abstract::ScratchpadAbstract;
-use crate::postprocessing::pp_context_files::postprocess_context_files;
+use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
+use crate::scratchpads::completon_rag::retrieve_ast_based_extra_context;
 use crate::telemetry::snippets_collection;
 use crate::telemetry::telemetry_structs;
 
 
 const DEBUG: bool = false;
-const TAKE_USAGES_AROUND_CURSOR: usize = 20;
-
 
 pub struct FillInTheMiddleScratchpad {
     pub t: HasTokenizerAndEot,
@@ -35,6 +29,7 @@ pub struct FillInTheMiddleScratchpad {
     pub fim_prefix: String,
     pub fim_suffix: String,
     pub fim_middle: String,
+    pub extra_stop_tokens: Vec<String>,
     pub context_used: Value,
     pub data4cache: completion_cache::CompletionSaveToCache,
     pub data4snippet: snippets_collection::SaveSnippet,
@@ -59,7 +54,9 @@ impl FillInTheMiddleScratchpad {
             post: post.clone(),
             order,
             fim_prefix: String::new(),
-            fim_suffix: String::new(), fim_middle: String::new(),
+            fim_suffix: String::new(),
+            fim_middle: String::new(),
+            extra_stop_tokens: vec![],
             context_used: json!({}),
             data4cache,
             data4snippet,
@@ -77,38 +74,6 @@ impl FillInTheMiddleScratchpad {
     }
 }
 
-fn add_context_to_prompt(
-    context_format: &String,
-    prompt: &String,
-    postprocessed_messages: &Vec<ContextFile>,
-) -> String {
-    let mut context_files = vec![];
-    if context_format == "starcoder" {
-        for m in postprocessed_messages {
-            let s = format!(
-                "{}{}{}{}",
-                "<file_sep>",
-                m.file_name,
-                "\n",
-                m.file_content
-            );
-            context_files.push(s);
-        }
-        if !context_files.is_empty() {
-            context_files.insert(0, "<repo_name>default_repo".to_string());
-            context_files.push("<file_sep>".to_string())
-        }
-        format!(
-            "{}{}",
-            context_files.join(""),
-            prompt,
-        )
-    } else {
-        tracing::warn!("context_format \"{}\" not recognized", context_format);
-        return prompt.clone();
-    }
-}
-
 #[async_trait]
 impl ScratchpadAbstract for FillInTheMiddleScratchpad {
     async fn apply_model_adaptation_patch(
@@ -122,6 +87,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         self.fim_prefix = patch.get("fim_prefix").and_then(|x| x.as_str()).unwrap_or("<fim_prefix>").to_string();
         self.fim_suffix = patch.get("fim_suffix").and_then(|x| x.as_str()).unwrap_or("<fim_suffix>").to_string();
         self.fim_middle = patch.get("fim_middle").and_then(|x| x.as_str()).unwrap_or("<fim_middle>").to_string();
+        self.extra_stop_tokens = patch.get("extra_stop_tokens").map(|x| x.as_array().unwrap().into_iter().map(|x| x.as_str().unwrap().to_string()).collect::<Vec<String>>()).unwrap_or(vec![]);
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
         self.t.eos = patch.get("eos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.t.context_format = patch.get("context_format").and_then(|x| x.as_str()).unwrap_or_default().to_string();
@@ -172,6 +138,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             if !self.post.inputs.multiline {
                 stop_list.push("\n".to_string());  // This doesn't stop hf inference, only whole tokens do
             }
+            stop_list.extend(self.extra_stop_tokens.clone());
             sampling_parameters_to_patch.stop = stop_list;
         }
         let mut source = self.post.inputs.sources.get(
@@ -269,76 +236,29 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             return Err(format!("order \"{}\" not recognized", self.order));
         }
         let fim_ms = fim_t0.elapsed().as_millis() as i32;
+        self.context_used["fim_ms"] = Value::from(fim_ms);
+        self.context_used["n_ctx".to_string()] = Value::from(n_ctx as i64);
+        self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
+        info!(" -- /post fim {}ms-- ", fim_ms);
+
 
         if use_rag && rag_tokens_n > 0 {
-            info!(" -- rag search starts --");
-            self.context_used = serde_json::json!({});
-
-            let rag_t0 = Instant::now();
-            let mut ast_context_file_vec: Vec<ContextFile> = if let Some(ast) = &self.ast_service {
-                let ast_index = ast.lock().await.ast_index.clone();
-                _cursor_position_to_context_file(ast_index.clone(), cpath.to_string_lossy().to_string(), pos.line, &mut self.context_used).await
-            } else {
-                vec![]
-            };
-
-            let to_buckets_ms = rag_t0.elapsed().as_millis() as i32;
-
-            if fim_line1 != i32::MAX && fim_line2 != i32::MIN {
-                // disable (usefulness==-1) the FIM region around the cursor from getting into the results
-                let fim_ban = ContextFile {
-                    file_name: cpath.to_string_lossy().to_string(),
-                    file_content: "".to_string(),
-                    line1: (fim_line1 + 1) as usize,
-                    line2: (fim_line2 + 1) as usize,
-                    symbols: vec![],
-                    gradient_type: -1,
-                    usefulness: -1.0,
-                };
-                ast_context_file_vec.push(fim_ban);
-            }
-
-            info!(" -- post processing starts --");
-            let post_t0 = Instant::now();
-            let mut pp_settings = {
+            let pp_settings = {
                 let ccx_locked = ccx.lock().await;
                 ccx_locked.postprocess_parameters.clone()
             };
-            if pp_settings.max_files_n == 0 {
-                pp_settings.max_files_n = 5;
-            }
-            let postprocessed_messages = postprocess_context_files(
+            let extra_context = retrieve_ast_based_extra_context(
                 self.global_context.clone(),
-                &mut ast_context_file_vec,
-                self.t.tokenizer.clone(),
+                self.ast_service.clone(),
+                &self.t,
+                &cpath,
+                &pos,
+                (fim_line1, fim_line2),
+                pp_settings,
                 rag_tokens_n,
-                false,
-                &pp_settings,
+                &mut self.context_used
             ).await;
-
-            prompt = add_context_to_prompt(&self.t.context_format, &prompt, &postprocessed_messages);
-            let rag_ms = rag_t0.elapsed().as_millis() as i32;
-            let post_ms = post_t0.elapsed().as_millis() as i32;
-            info!(" -- /post fim {}ms, buckets {}ms, post {}ms -- ",
-                fim_ms,
-                to_buckets_ms, post_ms
-            );
-
-            // Done, only reporting is left
-            //context_to_fim_debug_page(&postprocessed_messages);
-            let attached_files: Vec<_> = postprocessed_messages.iter().map(|x| {
-                json!({
-                    "file_name": x.file_name,
-                    "file_content": x.file_content,
-                    "line1": x.line1,
-                    "line2": x.line2,
-                })
-            }).collect();
-            self.context_used["attached_files"] = Value::Array(attached_files);
-            self.context_used["fim_ms"] = Value::from(fim_ms);
-            self.context_used["rag_ms"] = Value::from(rag_ms);
-            self.context_used["n_ctx".to_string()] = Value::from(n_ctx as i64);
-            self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
+            prompt = format!("{extra_context}{prompt}");
         }
 
         if DEBUG {
@@ -353,95 +273,109 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
     fn response_n_choices(
         &mut self,
         choices: Vec<String>,
-        stopped: Vec<bool>
+        finish_reasons: Vec<FinishReason>
     ) -> Result<Value, String> {
         let json_choices = choices.iter().enumerate().map(|(i, x)| {
-            let (mut cc, mut finished) = _cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline);
-            finished |= stopped[i];
-            let finish_reason = if finished {
-                cc = cc.trim_end().to_string();
-                "stop"
-            } else {
-                "length"
-            }.to_string();
+            let cc = _cut_result(&x, self.t.eot.as_str(), self.post.inputs.multiline, &self.extra_stop_tokens);
             if i==0 {
                 self.data4cache.completion0_text = cc.clone();
-                self.data4cache.completion0_finish_reason = finish_reason.clone();
+                self.data4cache.completion0_finish_reason = finish_reasons[i].to_string();
             }
             json!({
                 "index": i,
                 "code_completion": cc,
-                "finish_reason": finish_reason.clone(),
+                "finish_reason": finish_reasons[i].to_json_val(),
             })
         }).collect::<Vec<_>>();
         if DEBUG {
             info!("response_n_choices\n{:?}", json_choices);
         }
-
         snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
-        return Ok(json!(
+        Ok(json!(
             {
                 "choices": json_choices,
                 "snippet_telemetry_id": self.data4cache.completion0_snippet_telemetry_id,
                 "model": self.post.model.clone(),
                 "context": self.context_used,
             }
-        ));
+        ))
     }
 
     fn response_streaming(
         &mut self,
         delta: String,
-        stop_toks: bool,
-        stop_length: bool,
-    ) -> Result<(Value, bool), String> {
-        let mut finished;
-        let json_choices;
-        // info!("XXXXX delta: {:?}", delta);
-        // info!("XXXXX stop_toks: {:?}", stop_toks);
-        // info!("XXXXX stop_length: {:?}", stop_length);
-        if !delta.is_empty() || stop_toks {
-            let mut s: String;
-            (s, finished) = _cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline);
-            finished |= stop_toks;
-            if finished {
-                // can stay consistent with trim() only if that's the final iteration
+        finish_reason: FinishReason
+    ) -> Result<(Value, FinishReason), String> {
+        let json_choices= if !delta.is_empty() || finish_reason == FinishReason::Stop {
+            let mut s: String = _cut_result(&delta, self.t.eot.as_str(), self.post.inputs.multiline, &self.extra_stop_tokens);
+            if finish_reason.is_finished() {
                 s = s.trim_end().to_string();
-                self.data4cache.completion0_finish_reason = if finished { "stop".to_string() } else { "".to_string() };
             }
             self.data4cache.completion0_text.push_str(&s);
-            json_choices = json!([{
+            json!([{
                 "index": 0,
                 "code_completion": s,
-                "finish_reason": if finished { serde_json::Value::String("stop".to_string()) } else { serde_json::Value::Null },
-            }]);
+                "finish_reason": finish_reason.to_json_val(),
+            }])
         } else {
-            assert!(stop_length);
-            json_choices = json!([{
+            assert_eq!(finish_reason, FinishReason::Length);
+            json!([{
                 "index": 0,
                 "code_completion": "",
-                "finish_reason": "length"
-            }]);
-            self.data4cache.completion0_finish_reason = "length".to_string();
-            finished = true;
-        }
+                "finish_reason": finish_reason.to_json_val()
+            }])
+        };
+        self.data4cache.completion0_finish_reason = finish_reason.to_string();
         snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
-        let ans = json!({
+        Ok((json!({
             "choices": json_choices,
             "snippet_telemetry_id": self.data4cache.completion0_snippet_telemetry_id,
-        });
-        Ok((ans, finished))
+        }), finish_reason))
+    }
+
+    fn response_message_n_choices(
+        &mut self, 
+        _choices: Vec<String>, 
+        _finish_reasons: Vec<FinishReason>
+    ) -> Result<Value, String> {
+        Err("not implemented".to_string())
+    }
+
+    fn response_message_streaming(
+        &mut self,
+        _delta: &Value,
+        _finish_reason: FinishReason,
+    ) -> Result<(Value, FinishReason), String> {
+        Err("not implemented".to_string())
     }
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
-        return Err("".to_string());
+        Err("".to_string())
+    }
+
+    fn streaming_finished(&mut self, finish_reason: FinishReason) -> Result<Value, String> {
+        self.data4cache.completion0_finish_reason = finish_reason.to_string();
+        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
+        Ok(json!({
+            "choices": [{
+                "index": 0,
+                "code_completion": "",
+                "finish_reason": finish_reason.to_json_val()
+            }],
+            "snippet_telemetry_id": self.data4cache.completion0_snippet_telemetry_id,
+        }))
     }
 }
 
-fn _cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
+fn _cut_result(text: &str, eot_token: &str, multiline: bool, extra_stop_tokens: &Vec<String>) -> String {
     let mut cut_at = vec![];
     if let Some(x) = text.find(eot_token) {
         cut_at.push(x);
+    }
+    for token in extra_stop_tokens {
+        if let Some(x) = text.find(token) {
+            cut_at.push(x);
+        }
     }
     if let Some(x) = text.find("\n\n") {
         cut_at.push(x);
@@ -455,76 +389,9 @@ fn _cut_result(text: &str, eot_token: &str, multiline: bool) -> (String, bool) {
         }
     }
     if cut_at.is_empty() {
-        return (text.to_string().replace("\r", ""), false);
+        return text.to_string().replace("\r", "");
     }
     let cut_at = cut_at.into_iter().min().unwrap_or(text.len());
     let ans = text.split_at(cut_at).0.to_string();
-    return (ans.replace("\r", ""), true);
+    ans.replace("\r", "")
 }
-
-async fn _cursor_position_to_context_file(
-    ast_index: Arc<AMutex<AstDB>>,
-    cpath: String,
-    cursor_line: i32,
-    context_used: &mut Value,
-) -> Vec<ContextFile> {
-    if cursor_line < 0 || cursor_line > 65535 {
-        tracing::error!("cursor line {} out of range", cursor_line);
-        return vec![]
-    }
-    let cursor_line = (cursor_line + 1) as usize;  // count from 1
-    let usages: Vec<(usize, String)> = crate::ast::ast_db::doc_usages(ast_index.clone(), &cpath).await;
-    // uline in usage counts from 1
-
-    let mut distances: Vec<(i32, String, usize)> = usages.into_iter().map(|(line, usage)| {
-        let distance = (line as i32 - cursor_line as i32).abs();
-        (distance, usage, line)
-    }).collect();
-    distances.sort_by_key(|&(distance, _, _)| distance);
-    let nearest_usages: Vec<(usize, String)> = distances.into_iter().take(TAKE_USAGES_AROUND_CURSOR).map(|(_, usage, line)| (line, usage)).collect();
-
-    if DEBUG {
-        info!("nearest_usages\n{:#?}", nearest_usages);
-    }
-
-    let unique_paths: HashSet<_> = nearest_usages.into_iter().map(|(_line, double_colon_path)| double_colon_path).collect();
-    let mut output = vec![];
-    let mut bucket_declarations = vec![];
-    for double_colon_path in unique_paths {
-        if DEBUG {
-            info!("adding {} to context", double_colon_path);
-        }
-        let defs: Vec<Arc<AstDefinition>> = crate::ast::ast_db::definitions(ast_index.clone(), double_colon_path.as_str()).await;
-        if defs.len() != 1 {
-            tracing::warn!("hmm, number of definitions for {} is {} which is not one", double_colon_path, defs.len());
-        }
-        for def in defs {
-            output.push(ContextFile {
-                file_name: def.cpath.clone(),
-                file_content: "".to_string(),
-                line1: def.full_line1(),
-                line2: def.full_line2(),
-                symbols: vec![def.path_drop0()],
-                gradient_type: -1,
-                usefulness: 100.,
-            });
-            let usage_dict = json!({
-                "file_path": def.cpath.clone(),
-                "line1": def.full_line1(),
-                "line2": def.full_line2(),
-                "name": def.path_drop0(),
-            });
-            bucket_declarations.push(usage_dict);
-        }
-    }
-    context_used["bucket_declarations"] = json!(bucket_declarations);
-
-    info!("FIM context\n{:#?}", output);
-    output
-}
-
-//     // context["cursor_symbols"] = Value::Array(search_traces.cursor_symbols.iter()
-//     // context["bucket_declarations"] = Value::Array(search_traces.bucket_declarations.iter()
-//     // context["bucket_usage_of_same_stuff"] = Value::Array(search_traces.bucket_usage_of_same_stuff.iter()
-//     // context["bucket_high_overlap"] = Value::Array(search_traces.bucket_high_overlap.iter()
-//     // context["bucket_imports"] = Value::Array(search_traces.bucket_imports.iter()

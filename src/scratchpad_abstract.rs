@@ -9,6 +9,62 @@ use serde_json::Value;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::SamplingParameters;
 
+use tracing::warn;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FinishReason {
+    None,
+    Stop,
+    Length,
+    ScratchpadStop,
+}
+
+impl FinishReason {
+    pub fn from_str(s: &str) -> FinishReason {
+        match s {
+            "" => FinishReason::None,
+            "stop" => FinishReason::Stop,
+            "length" => FinishReason::Length,
+            "scratchpad-stop" => FinishReason::ScratchpadStop,
+            _ => {
+                warn!("Unknown finish reason: {}, interpreting it as a stop", s);
+                FinishReason::Stop
+            }
+        }
+    }
+    
+    pub fn from_json_val(json: &Value) -> Result<FinishReason, String> {
+        if json.is_null() {
+            return Ok(FinishReason::None);
+        }
+        if let Some(val) = json.as_str() {
+            Ok(FinishReason::from_str(val))
+        } else {
+            Err(format!("expected string, got {}", json))
+        }
+    }
+    
+    pub fn to_string(&self) -> String {
+        match self {
+            FinishReason::None => "".to_string(),
+            FinishReason::Stop => "stop".to_string(),
+            FinishReason::Length => "length".to_string(),
+            // track this reason only inside the refact-lsp
+            FinishReason::ScratchpadStop => "stop".to_string(),
+        }
+    }
+    
+    pub fn to_json_val(&self) -> Value {
+        match self {
+            FinishReason::None => Value::Null,
+            _ => Value::String(self.to_string()),
+        }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self != &FinishReason::None
+    }
+}
 
 #[async_trait]
 pub trait ScratchpadAbstract: Send {
@@ -26,22 +82,36 @@ pub trait ScratchpadAbstract: Send {
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String>;
 
-    fn response_n_choices(   // Not streaming, convert what model says (choices) to final result
+    // Not streaming, convert what model says (choices) to final result
+    fn response_n_choices(
         &mut self,
         choices: Vec<String>,
-        stopped: Vec<bool>,
+        finish_reasons: Vec<FinishReason>,
     ) -> Result<Value, String>;
 
-    fn response_streaming(   // Only 1 choice, but streaming. Returns delta the user should see, and finished flag
+    // Only 1 choice, but streaming. Returns delta the user should see, and finished flag
+    fn response_streaming(
         &mut self,
-        delta: String,       // if delta is empty, there is no more input, add final fields if needed
-        stop_toks: bool,
-        stop_length: bool,
-    ) -> Result<(Value, bool), String>;
+        delta: String,
+        finish_reason: FinishReason
+    ) -> Result<(Value, FinishReason), String>;
+
+    fn response_message_n_choices(
+        &mut self,
+        choices: Vec<String>,
+        finish_reasons: Vec<FinishReason>,
+    ) -> Result<Value, String>;
+
+    fn response_message_streaming(
+        &mut self,
+        delta: &Value,
+        finish_reason: FinishReason
+    ) -> Result<(Value, FinishReason), String>;
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>;
-}
 
+    fn streaming_finished(&mut self, finish_reason: FinishReason) -> Result<Value, String>;
+}
 
 // aggregate this struct to make scratchpad implementation easier
 #[derive(Debug, Clone)]

@@ -189,7 +189,7 @@ async fn _chat(
         gcx.clone(),
         caps,
         model_name.clone(),
-        &chat_post,
+        &mut chat_post,
         &messages,
         &scratchpad_name,
         &scratchpad_patch,
