@@ -172,15 +172,9 @@ async fn _chat(
         }
     }
 
-    let docker_tool_maybe = docker_tool_load(gcx.clone()).await
-        .map_err(|e| info!("No docker tool available: {e}")).ok().map(Arc::new);
-    // XXX change this for post.isolation, not docker settings
-    let run_chat_threads_inside_container = docker_tool_maybe.clone()
-        .map(|docker_tool| docker_tool.settings_docker.run_chat_threads_inside_container)
-        .unwrap_or(false);
-    let should_execute_remotely = run_chat_threads_inside_container && !gcx.read().await.cmdline.inside_container;
+    let should_execute_remotely = chat_post.meta.chat_remote && !gcx.read().await.cmdline.inside_container;
     if should_execute_remotely {
-        docker_container_check_status_or_start(gcx.clone(), docker_tool_maybe.clone(), &chat_post.meta.chat_id).await
+        docker_container_check_status_or_start(gcx.clone(), &chat_post.meta.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     }
 

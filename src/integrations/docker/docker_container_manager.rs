@@ -76,11 +76,10 @@ impl IntegrationSession for DockerContainerSession {
 
 pub async fn docker_container_check_status_or_start(
     gcx: Arc<ARwLock<GlobalContext>>,
-    docker_tool_maybe: Option<Arc<ToolDocker>>,
     chat_id: &str,
 ) -> Result<(), String>
 {
-    let docker = docker_tool_maybe.ok_or_else(|| "Docker tool not found".to_string())?;
+    let docker = docker_tool_load(gcx.clone()).await?;
     let docker_container_session_maybe = {
         let gcx_locked = gcx.read().await;
         gcx_locked.integration_sessions.get(&get_session_hashmap_key("docker", &chat_id)).cloned()
