@@ -188,13 +188,14 @@ async fn _chat(
                 ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
             )?
         } else {
-            get_default_system_prompt(gcx.clone(), exploration_tools, agentic_tools).await
+            system_prompt_add_workspace_info(gcx.clone(),
+                &get_default_system_prompt(gcx.clone(), exploration_tools, agentic_tools).await
+            ).await
         };
 
         messages.insert(0, ChatMessage {
             role: "system".to_string(),
-            // XXX: need remote %WORKSPACE_INFO% as well
-            content: ChatContent::SimpleText(system_prompt_add_workspace_info(gcx.clone(), &system_message_content).await),
+            content: ChatContent::SimpleText(system_message_content),
             ..Default::default()
         })
     }
