@@ -190,13 +190,38 @@ pub struct ChatPost {
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
     #[serde(default="PostprocessSettings::new")]
     pub postprocess_parameters: PostprocessSettings,
-    // #[allow(dead_code)]
+    #[serde(default)]
+    pub meta: ChatMeta,
+    #[serde(default)]
+    pub style: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct ChatMeta {
     #[serde(default)]
     pub chat_id: String,
     #[serde(default)]
-    pub current_config_file: String,
+    pub chat_remote: bool,
     #[serde(default)]
-    pub style: Option<String>,
+    pub chat_mode: ChatMode,
+    #[serde(default)]
+    pub current_config_file: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum ChatMode {
+    NoTools,
+    Explore,
+    Agent,
+    Configure,
+    ProjectSummary,
+}
+
+impl Default for ChatMode {
+    fn default() -> Self {
+        ChatMode::NoTools
+    }
 }
 
 fn default_true() -> bool {

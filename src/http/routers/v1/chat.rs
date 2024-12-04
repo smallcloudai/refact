@@ -68,7 +68,7 @@ pub async fn handle_v1_chat_configuration(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
-    crate::integrations::config_chat::mix_config_messages(gcx.clone(), &mut messages, &chat_post.current_config_file).await;
+    crate::integrations::config_chat::mix_config_messages(gcx.clone(), &mut messages, &chat_post.meta.current_config_file).await;
     _chat(gcx, &mut chat_post, &mut messages, true).await
 }
 
@@ -180,7 +180,7 @@ async fn _chat(
         .unwrap_or(false);
     let should_execute_remotely = run_chat_threads_inside_container && !gcx.read().await.cmdline.inside_container;
     if should_execute_remotely {
-        docker_container_check_status_or_start(gcx.clone(), docker_tool_maybe.clone(), &chat_post.chat_id).await
+        docker_container_check_status_or_start(gcx.clone(), docker_tool_maybe.clone(), &chat_post.meta.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     }
 
@@ -206,7 +206,7 @@ async fn _chat(
         }
         use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_default_system_prompt_from_remote, system_prompt_add_workspace_info};
         let system_message_content = if should_execute_remotely {
-            get_default_system_prompt_from_remote(gcx.clone(), exploration_tools, agentic_tools, &chat_post.chat_id).await.map_err(|e|
+            get_default_system_prompt_from_remote(gcx.clone(), exploration_tools, agentic_tools, &chat_post.meta.chat_id).await.map_err(|e|
                 ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
             )?
         } else {
@@ -256,7 +256,7 @@ async fn _chat(
         CHAT_TOP_N,
         false,
         messages.clone(),
-        chat_post.chat_id.clone(),
+        chat_post.meta.chat_id.clone(),
         should_execute_remotely,
     ).await;
     ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
