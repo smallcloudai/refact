@@ -7,18 +7,18 @@ use tokio::sync::RwLock as ARwLock;
 use tracing::error;
 
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
-use crate::call_validation::ChatMessage;
+use crate::call_validation::{ChatMessage, ChatMeta, ChatMode};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tool_patch_aux::tickets_parsing::get_tickets_from_messages;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct LinksPost {
     messages: Vec<ChatMessage>,
     model_name: String,
-    chat_id: String,
+    meta: ChatMeta,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -39,38 +39,12 @@ pub struct Link {
     goto: Option<String>,
 }
 
-// TODO: Move this to a more appropiate file
-#[derive(PartialEq, Debug)]
-pub enum ChatMode {
-    Quick,
-    Exploration,
-    Agentic,
-    Configuration,
-}
-
-// TODO: Move this to a more appropiate file
-pub async fn get_chat_mode(messages: &Vec<ChatMessage>) -> Result<ChatMode, String> {
-    let system_prompt_content = messages.first().filter(|m| m.role == "system")
-        .ok_or("No system prompt found")?.content.content_text_only();
-
-    match system_prompt_content.as_str() {
-        content if content.contains("[mode1]") => Ok(ChatMode::Quick),
-        content if content.contains("[mode2]") => Ok(ChatMode::Exploration),
-        content if content.contains("[mode3]") => Ok(ChatMode::Agentic),
-        content if content.contains("[mode3config]") => Ok(ChatMode::Configuration),
-        _ => Err("No valid mode found in system prompt".to_string()),
-    }
-}
-
 pub async fn handle_v1_links(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<LinksPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-
-    let chat_mode = get_chat_mode(&post.messages).await.map_err(|e| error!(e)).ok().unwrap_or(ChatMode::Quick);
-
     let mut links = Vec::new();
 
     if post.messages.is_empty() && project_summarization_is_missing(gcx.clone()).await {
@@ -81,7 +55,7 @@ pub async fn handle_v1_links(
         });
     }
 
-    if chat_mode == ChatMode::Configuration && !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
+    if post.meta.chat_mode == ChatMode::Configure && !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
         links.push(Link {
             action: LinkAction::PatchAll,
             text: "Save and return".to_string(),
@@ -89,7 +63,7 @@ pub async fn handle_v1_links(
         });
     }
 
-    if chat_mode == ChatMode::Agentic {
+    if post.meta.chat_mode == ChatMode::Agent {
         if let Ok(commit_msg) = generate_commit_messages_with_current_changes(gcx.clone())
             .await.map_err(|e| error!(e)) {
             links.push(Link {
@@ -100,7 +74,7 @@ pub async fn handle_v1_links(
         }
     }
 
-    if chat_mode != ChatMode::Configuration {
+    if post.meta.chat_mode != ChatMode::Configure {
         for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
             links.push(Link {
                 action: LinkAction::Goto,
@@ -110,8 +84,8 @@ pub async fn handle_v1_links(
         }
     }
 
-    if chat_mode != ChatMode::Quick && links.is_empty() {
-        let follow_up_message = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.chat_id).await
+    if post.meta.chat_mode != ChatMode::NoTools && links.is_empty() {
+        let follow_up_message = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
         links.push(Link {
             action: LinkAction::FollowUp,

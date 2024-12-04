@@ -2,7 +2,11 @@
 curl -X POST http://localhost:8001/v1/links \
     -H "Content-Type: application/json" \
     -d '{
-        "chat_id": "chat-example",
+        "meta": {
+            "chat_id": "chat-example",
+            "chat_remote": false,
+            "chat_mode": "EXPLORE"
+        },
         "model_name": "gpt-4o-mini",
         "messages": [
             {
@@ -39,7 +43,11 @@ curl -X POST http://localhost:8001/v1/links \
 curl -X POST http://localhost:8001/v1/links \
     -H "Content-Type: application/json" \
     -d '{
-        "chat_id": "chat-example",
+        "meta": {
+            "chat_id": "chat-example",
+            "chat_remote": false,
+            "chat_mode": "AGENT"
+        },
         "model_name": "gpt-4o-mini",
         "messages": [
             {
@@ -94,7 +102,11 @@ curl -X POST http://localhost:8001/v1/links \
 curl -X POST http://localhost:8001/v1/links \
     -H "Content-Type: application/json" \
     -d '{
-        "chat_id": "chat-example",
+        "meta": {
+            "chat_id": "chat-example",
+            "chat_remote": false,
+            "chat_mode": "NOTOOLS"
+        },
         "model_name": "gpt-4o-mini",
         "messages": []
     }'
@@ -103,7 +115,11 @@ curl -X POST http://localhost:8001/v1/links \
 curl -X POST http://localhost:8001/v1/links \
     -H "Content-Type: application/json" \
     -d '{
-        "chat_id": "chat-example",
+        "meta": {
+            "chat_id": "chat-example",
+            "chat_remote": false,
+            "chat_mode": "CONFIGURE"
+        },
         "model_name": "gpt-4o-mini",
         "messages": [
             {
