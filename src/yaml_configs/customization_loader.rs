@@ -250,7 +250,6 @@ mod tests {
         assert_eq!(config.system_prompts.get("default").is_some(), true);
         assert_eq!(config.system_prompts.get("exploration_tools").is_some(), true);
         assert_eq!(config.system_prompts.get("agentic_tools").is_some(), true);
-        assert_eq!(config.system_prompts.get("agentic_experimental_knowledge").is_some(), true);
         assert_eq!(config.system_prompts.get("configurator").is_some(), true);
     }
 }

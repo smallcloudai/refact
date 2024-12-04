@@ -54,6 +54,8 @@ pub struct ISchemaDocker {
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ISchema {
     pub fields: IndexMap<String, ISchemaField>,
+    #[serde(default, skip_serializing_if="is_default")]
+    pub description: String,
     pub available: ISchemaAvailable,
     pub smartlinks: Vec<ISmartLink>,
     #[serde(skip_serializing_if = "Option::is_none")]
