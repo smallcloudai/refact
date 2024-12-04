@@ -1,20 +1,18 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use tokio::sync::RwLock as ARwLock;
 use tracing::error;
 
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
-use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ChatMessage;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
-use crate::subchat::subchat_single;
 use crate::tools::tool_patch_aux::tickets_parsing::get_tickets_from_messages;
+use crate::agentic::generate_follow_up_message::generate_follow_up_message;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LinksPost {
@@ -41,12 +39,37 @@ pub struct Link {
     goto: Option<String>,
 }
 
+// TODO: Move this to a more appropiate file
+#[derive(PartialEq, Debug)]
+pub enum ChatMode {
+    Quick,
+    Exploration,
+    Agentic,
+    Configuration,
+}
+
+// TODO: Move this to a more appropiate file
+pub async fn get_chat_mode(messages: &Vec<ChatMessage>) -> Result<ChatMode, String> {
+    let system_prompt_content = messages.first().filter(|m| m.role == "system")
+        .ok_or("No system prompt found")?.content.content_text_only();
+
+    match system_prompt_content.as_str() {
+        content if content.contains("[mode1]") => Ok(ChatMode::Quick),
+        content if content.contains("[mode2]") => Ok(ChatMode::Exploration),
+        content if content.contains("[mode3]") => Ok(ChatMode::Agentic),
+        content if content.contains("[mode3config]") => Ok(ChatMode::Configuration),
+        _ => Err("No valid mode found in system prompt".to_string()),
+    }
+}
+
 pub async fn handle_v1_links(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<LinksPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+
+    let chat_mode = get_chat_mode(&post.messages).await.map_err(|e| error!(e)).ok().unwrap_or(ChatMode::Quick);
 
     let mut links = Vec::new();
 
@@ -58,8 +81,7 @@ pub async fn handle_v1_links(
         });
     }
 
-    // TODO: Only do this for configuration chats, detect it in system prompt.
-    if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
+    if chat_mode == ChatMode::Configuration && !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
         links.push(Link {
             action: LinkAction::PatchAll,
             text: "Save and return".to_string(),
@@ -67,9 +89,9 @@ pub async fn handle_v1_links(
         });
     }
 
-    // TODO: Only do this for "Agent" chat.
-    if let Ok(diff) = get_diff_with_all_changes_in_current_project(gcx.clone()).await.map_err(|e| error!(e)) {
-        if let Ok(commit_msg) = generate_commit_message_by_diff(gcx.clone(), &diff, &None).await.map_err(|e| error!(e)) {
+    if chat_mode == ChatMode::Agentic {
+        if let Ok(commit_msg) = generate_commit_messages_with_current_changes(gcx.clone())
+            .await.map_err(|e| error!(e)) {
             links.push(Link {
                 action: LinkAction::Commit,
                 text: format!("git commit -m \"{}\"", commit_msg),
@@ -78,17 +100,17 @@ pub async fn handle_v1_links(
         }
     }
 
-    // TODO: This probably should not appear in configuration chats, unless we can know that this is not the main one being configured
-    for failed_tool_name in failed_tool_names_after_last_user_message(&post.messages) {
-        links.push(Link {
-            action: LinkAction::Goto,
-            text: format!("Configure {failed_tool_name}"),
-            goto: Some(format!("SETTINGS:{failed_tool_name}")),
-        })
+    if chat_mode != ChatMode::Configuration {
+        for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
+            links.push(Link {
+                action: LinkAction::Goto,
+                text: format!("Configure {failed_integr_name}"),
+                goto: Some(format!("SETTINGS:{failed_integr_name}")),
+            })
+        }
     }
 
-    // TODO: Only do this for "Explore", "Agent" or configuration chats, detect it in system prompt.
-    if links.is_empty() {
+    if chat_mode != ChatMode::Quick && links.is_empty() {
         let follow_up_message = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
         links.push(Link {
@@ -105,24 +127,17 @@ pub async fn handle_v1_links(
         .unwrap())
 }
 
-async fn get_diff_with_all_changes_in_current_project(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
-    let active_project_path = get_active_project_path(gcx.clone()).await.ok_or("No active project found".to_string())?;
+async fn generate_commit_messages_with_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
+    let active_project_path = crate::files_correction::get_active_project_path(gcx.clone()).await.ok_or("No active project found".to_string())?;
     let repository = git2::Repository::open(&active_project_path).map_err(|e| e.to_string())?;
-    crate::git::git_diff_from_all_changes(&repository)
+    let diff = crate::git::git_diff_from_all_changes(&repository)?;
+    let commit_msg = generate_commit_message_by_diff(gcx.clone(), &diff, &None).await.map_err(|e| e.to_string())?;
+    Ok(commit_msg)
 }
 
-async fn get_active_project_path(gcx: Arc<ARwLock<GlobalContext>>) -> Option<PathBuf> {
-    let active_file = gcx.read().await.documents_state.active_file_path.clone();
-    let workspace_folders = crate::files_correction::get_project_dirs(gcx.clone()).await;
-    if workspace_folders.is_empty() { return None; }
-
-    Some(crate::files_in_workspace::detect_vcs_for_a_file_path(
-        &active_file.unwrap_or_else(|| workspace_folders[0].clone())
-    ).await.map(|(path, _)| path).unwrap_or_else(|| workspace_folders[0].clone()))
-}
-
+// TODO: Move all logic below to more appropiate files
 async fn project_summarization_is_missing(gcx: Arc<ARwLock<GlobalContext>>) -> bool {
-    match get_active_project_path(gcx.clone()).await {
+    match crate::files_correction::get_active_project_path(gcx.clone()).await {
         Some(active_project_path) => {
             !active_project_path.join(".refact").join("project_summary.yaml").exists()
         }
@@ -133,7 +148,7 @@ async fn project_summarization_is_missing(gcx: Arc<ARwLock<GlobalContext>>) -> b
     }
 }
 
-fn failed_tool_names_after_last_user_message(messages: &Vec<ChatMessage>) -> Vec<String> {
+fn failed_integration_names_after_last_user_message(messages: &Vec<ChatMessage>) -> Vec<String> {
     let last_user_msg_index = messages.iter().rposition(|m| m.role == "user").unwrap_or(0);
     let tool_calls = messages[last_user_msg_index..].iter().filter(|m| m.role == "assistant")
         .filter_map(|m| m.tool_calls.as_ref()).flatten().collect::<Vec<_>>();
@@ -151,44 +166,4 @@ fn failed_tool_names_after_last_user_message(messages: &Vec<ChatMessage>) -> Vec
     result.sort();
     result.dedup();
     result
-}
-
-async fn generate_follow_up_message(
-    mut messages: Vec<ChatMessage>, 
-    gcx: Arc<ARwLock<GlobalContext>>, 
-    model_name: &str, 
-    chat_id: &str,
-) -> Result<String, String> {
-    if messages.first().map(|m| m.role == "system").unwrap_or(false) {
-        messages.remove(0);
-    }
-    messages.insert(0, ChatMessage::new(
-        "system".to_string(),
-        "Generate a 2-3 word user response, like 'Can you fix it?' for errors or 'Proceed' for plan validation".to_string(),
-    ));
-    let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
-        gcx.clone(),
-        1024,
-        1,
-        false,
-        messages.clone(),
-        chat_id.to_string(),
-        false,
-    ).await));
-    let new_messages = subchat_single(
-        ccx.clone(),
-        model_name,
-        messages,
-        vec![],
-        None,
-        false,
-        Some(0.5),
-        None,
-        1,
-        None,
-        None,
-        None,
-    ).await?;
-    new_messages.into_iter().next().map(|x| x.into_iter().last().map(|last_m| {
-        last_m.content.content_text_only() })).flatten().ok_or("No commit message found".to_string())
 }

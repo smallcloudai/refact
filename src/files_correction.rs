@@ -4,6 +4,8 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
+
+use crate::files_in_workspace::detect_vcs_for_a_file_path;
 use crate::global_context::GlobalContext;
 use crate::fuzzy_search::fuzzy_search;
 
@@ -269,6 +271,15 @@ pub async fn get_project_dirs(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> 
     let gcx_locked = gcx.write().await;
     let workspace_folders = gcx_locked.documents_state.workspace_folders.lock().unwrap();
     workspace_folders.iter().cloned().collect::<Vec<_>>()
+}
+
+pub async fn get_active_project_path(gcx: Arc<ARwLock<GlobalContext>>) -> Option<PathBuf> {
+    let active_file = gcx.read().await.documents_state.active_file_path.clone();
+    let workspace_folders = get_project_dirs(gcx.clone()).await;
+    if workspace_folders.is_empty() { return None; }
+
+    Some(detect_vcs_for_a_file_path(&active_file.unwrap_or_else(|| workspace_folders[0].clone()))
+        .await.map(|(path, _)| path).unwrap_or_else(|| workspace_folders[0].clone()))
 }
 
 pub async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: &Vec<String>) -> Vec<String> {

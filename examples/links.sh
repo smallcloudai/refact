@@ -6,6 +6,15 @@ curl -X POST http://localhost:8001/v1/links \
         "model_name": "gpt-4o-mini",
         "messages": [
             {
+                "role": "system",
+                "content": "[mode2] You are a refact exploration assistant",
+                "tool_calls": null,
+                "finish_reason": "",
+                "tool_call_id": "",
+                "usage": null,
+                "subchats": null
+            },
+            {
                 "role": "user",
                 "content": "List all containers",
                 "tool_calls": null,
@@ -33,6 +42,15 @@ curl -X POST http://localhost:8001/v1/links \
         "chat_id": "chat-example",
         "model_name": "gpt-4o-mini",
         "messages": [
+            {
+                "role": "system",
+                "content": "[mode3] You are a refact agentic assistant",
+                "tool_calls": null,
+                "finish_reason": "",
+                "tool_call_id": "",
+                "usage": null,
+                "subchats": null
+            },
             {
                 "role": "user",
                 "content": "use psql tool to list all tables",
@@ -88,6 +106,15 @@ curl -X POST http://localhost:8001/v1/links \
         "chat_id": "chat-example",
         "model_name": "gpt-4o-mini",
         "messages": [
+            {
+                "role": "system",
+                "content": "[mode3config] You are a refact configuration assistant",
+                "tool_calls": null,
+                "finish_reason": "",
+                "tool_call_id": "",
+                "usage": null,
+                "subchats": null
+            },
             {
                 "role": "system",
                 "content": "[mode3config] You are a refact coding agent working on improving configuration files",
