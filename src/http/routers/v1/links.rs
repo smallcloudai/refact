@@ -1,10 +1,13 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use tracing::error;
 
+use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ChatMessage;
 use crate::custom_error::ScratchError;
@@ -64,6 +67,17 @@ pub async fn handle_v1_links(
         });
     }
 
+    // TODO: Only do this for "Agent" chat.
+    if let Ok(diff) = get_diff_with_all_changes_in_current_project(gcx.clone()).await.map_err(|e| error!(e)) {
+        if let Ok(commit_msg) = generate_commit_message_by_diff(gcx.clone(), &diff, &None).await.map_err(|e| error!(e)) {
+            links.push(Link {
+                action: LinkAction::Commit,
+                text: format!("git commit -m \"{}\"", commit_msg),
+                goto: None,
+            });
+        }
+    }
+
     // TODO: This probably should not appear in configuration chats, unless we can know that this is not the main one being configured
     for failed_tool_name in failed_tool_names_after_last_user_message(&post.messages) {
         links.push(Link {
@@ -91,18 +105,32 @@ pub async fn handle_v1_links(
         .unwrap())
 }
 
-async fn project_summarization_is_missing(gcx: Arc<ARwLock<GlobalContext>>) -> bool {
+async fn get_diff_with_all_changes_in_current_project(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
+    let active_project_path = get_active_project_path(gcx.clone()).await.ok_or("No active project found".to_string())?;
+    let repository = git2::Repository::open(&active_project_path).map_err(|e| e.to_string())?;
+    crate::git::git_diff_from_all_changes(&repository)
+}
+
+async fn get_active_project_path(gcx: Arc<ARwLock<GlobalContext>>) -> Option<PathBuf> {
     let active_file = gcx.read().await.documents_state.active_file_path.clone();
     let workspace_folders = crate::files_correction::get_project_dirs(gcx.clone()).await;
-    if workspace_folders.is_empty() {
-        tracing::info!("No projects found, project summarization is not relevant.");
-        return false;
+    if workspace_folders.is_empty() { return None; }
+
+    Some(crate::files_in_workspace::detect_vcs_for_a_file_path(
+        &active_file.unwrap_or_else(|| workspace_folders[0].clone())
+    ).await.map(|(path, _)| path).unwrap_or_else(|| workspace_folders[0].clone()))
+}
+
+async fn project_summarization_is_missing(gcx: Arc<ARwLock<GlobalContext>>) -> bool {
+    match get_active_project_path(gcx.clone()).await {
+        Some(active_project_path) => {
+            !active_project_path.join(".refact").join("project_summary.yaml").exists()
+        }
+        None => {
+            tracing::info!("No projects found, project summarization is not relevant.");
+            false
+        }
     }
-
-    let (active_project_path, _) = crate::files_in_workspace::detect_vcs_for_a_file_path(&active_file.unwrap_or_default())
-        .await.unwrap_or_else(|| (workspace_folders.first().unwrap().clone(), ""));
-
-    !active_project_path.join(".refact").join("project_summary.yaml").exists()
 }
 
 fn failed_tool_names_after_last_user_message(messages: &Vec<ChatMessage>) -> Vec<String> {

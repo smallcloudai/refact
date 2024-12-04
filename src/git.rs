@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use tracing::error;
-use git2::{Branch, BranchType, IndexAddOption, Oid, Repository, Signature, Status, StatusOptions};
+use git2::{Branch, BranchType, DiffOptions, IndexAddOption, Oid, Repository, Signature, Status, StatusOptions};
 
 pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
     let repository = Repository::open(repository_path)
@@ -107,3 +107,31 @@ pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_na
     ).map_err(|e| format!("Failed to create commit: {}", e))
 }
 
+/// Similar to `git diff`, but including untracked files.
+pub fn git_diff_from_all_changes(repository: &Repository) -> Result<String, String> {
+    let mut diff_options = DiffOptions::new();
+    diff_options.include_untracked(true);
+    diff_options.recurse_untracked_dirs(true);
+
+    // Create a new temporary tree, with all changes staged
+    let mut index = repository.index().map_err(|e| format!("Failed to get repository index: {}", e))?;
+    index.add_all(["*"].iter(), IndexAddOption::DEFAULT, None)
+        .map_err(|e| format!("Failed to add files to index: {}", e))?;
+    let oid = index.write_tree().map_err(|e| format!("Failed to write tree: {}", e))?;
+    let new_tree = repository.find_tree(oid).map_err(|e| format!("Failed to find tree: {}", e))?;
+
+    let head = repository.head().and_then(|head_ref| head_ref.peel_to_tree())
+        .map_err(|e| format!("Failed to get HEAD tree: {}", e))?;
+
+    let diff = repository.diff_tree_to_tree(Some(&head), Some(&new_tree), Some(&mut diff_options))
+        .map_err(|e| format!("Failed to generate diff: {}", e))?;
+
+    let mut diff_str = String::new();
+    diff.print(git2::DiffFormat::Patch, |_, _, line| {
+        diff_str.push(line.origin());
+        diff_str.push_str(std::str::from_utf8(line.content()).unwrap_or(""));
+        true
+    }).map_err(|e| format!("Failed to print diff: {}", e))?;
+
+    Ok(diff_str)
+}
