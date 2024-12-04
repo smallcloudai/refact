@@ -9,7 +9,6 @@ pub fn limit_messages_history(
     last_user_msg_starts: usize,
     max_new_tokens: usize,
     context_size: usize,
-    default_system_message: &String,
 ) -> Result<Vec<ChatMessage>, String>
 {
     let tokens_limit: i32 = context_size as i32 - max_new_tokens as i32;
@@ -30,11 +29,6 @@ pub fn limit_messages_history(
             message_take[i] = true;
             tokens_used += tcnt;
         }
-    }
-    let need_default_system_msg = !have_system && default_system_message.len() > 0;
-    if need_default_system_msg {
-        let tcnt = t.count_tokens(default_system_message.as_str())? as i32;
-        tokens_used += tcnt;
     }
     let mut log_buffer = Vec::new();
     let mut dropped = false;
@@ -83,10 +77,6 @@ pub fn limit_messages_history(
         }
     }
 
-    let mut messages_out: Vec<ChatMessage> = messages.iter().enumerate().filter(|(i, _)| message_take[*i]).map(|(_, x)| x.clone()).collect();
-    if need_default_system_msg {
-        messages_out.insert(0, ChatMessage::new("system".to_string(), default_system_message.clone()));
-    }
-    // info!("messages_out: {:?}", messages_out);
+    let messages_out: Vec<ChatMessage> = messages.iter().enumerate().filter(|(i, _)| message_take[*i]).map(|(_, x)| x.clone()).collect();
     Ok(messages_out)
 }

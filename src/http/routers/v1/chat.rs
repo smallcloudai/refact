@@ -212,9 +212,11 @@ async fn _chat(
         } else {
             get_default_system_prompt(gcx.clone(), exploration_tools, agentic_tools).await
         };
+
         messages.insert(0, ChatMessage {
-            role: "tool".to_string(),
-            content: ChatContent::SimpleText(system_message_content),
+            role: "system".to_string(),
+            // XXX: need remote %WORKSPACE_INFO% as well
+            content: ChatContent::SimpleText(system_prompt_add_workspace_info(gcx.clone(), &system_message_content).await),
             ..Default::default()
         })
     }

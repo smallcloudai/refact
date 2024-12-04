@@ -16,7 +16,6 @@ use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbs
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
-use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, system_prompt_add_workspace_info};
 
 
 const DEBUG: bool = true;
@@ -34,7 +33,6 @@ pub struct GenericChatScratchpad {
     // "SYSTEM:" keyword means it's not one token
     pub keyword_user: String,
     pub keyword_asst: String,
-    pub default_system_message: String,
     pub has_rag_results: HasRagResults,
     pub global_context: Arc<ARwLock<GlobalContext>>,
     pub allow_at: bool,
@@ -58,7 +56,6 @@ impl GenericChatScratchpad {
             keyword_syst: "".to_string(),
             keyword_user: "".to_string(),
             keyword_asst: "".to_string(),
-            default_system_message: "".to_string(),
             has_rag_results: HasRagResults::new(),
             global_context,
             allow_at,
@@ -80,7 +77,6 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         self.keyword_syst = patch.get("keyword_system").and_then(|x| x.as_str()).unwrap_or("SYSTEM:").to_string();
         self.keyword_user = patch.get("keyword_user").and_then(|x| x.as_str()).unwrap_or("USER:").to_string();
         self.keyword_asst = patch.get("keyword_assistant").and_then(|x| x.as_str()).unwrap_or("ASSISTANT:").to_string();
-        self.default_system_message = get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await;
 
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
 
@@ -115,16 +111,9 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         } else {
             (self.messages.clone(), self.messages.len(), false)
         };
-        let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, n_ctx, &self.default_system_message)?;
+        let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, n_ctx)?;
         // if self.supports_tools {
         // };
-        if let Some(first_msg) = limited_msgs.first_mut() {
-            if first_msg.role == "system" {
-                first_msg.content = ChatContent::SimpleText(
-                    system_prompt_add_workspace_info(gcx.clone(), &first_msg.content.content_text_only()).await
-                );
-            }
-        }
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = self.token_bos.to_string();

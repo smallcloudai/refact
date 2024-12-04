@@ -56,7 +56,6 @@ pub struct ChatPassthrough {
     pub t: HasTokenizerAndEot,
     pub post: ChatPost,
     pub messages: Vec<ChatMessage>,
-    pub default_system_message: String,
     pub has_rag_results: HasRagResults,
     pub delta_sender: DeltaSender,
     pub global_context: Arc<ARwLock<GlobalContext>>,
@@ -79,7 +78,6 @@ impl ChatPassthrough {
             t: HasTokenizerAndEot::new(tokenizer),
             post: post.clone(),
             messages: messages.clone(),
-            default_system_message: "".to_string(),
             has_rag_results: HasRagResults::new(),
             delta_sender: DeltaSender::new(),
             global_context,
@@ -99,11 +97,6 @@ impl ScratchpadAbstract for ChatPassthrough {
         agentic_tools: bool,
         should_execute_remotely: bool,
     ) -> Result<(), String> {
-        self.default_system_message = if should_execute_remotely {
-            get_default_system_prompt_from_remote(self.global_context.clone(), exploration_tools, agentic_tools, &self.post.chat_id).await?
-        } else {
-            get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await
-        };
         Ok(())
     }
 
@@ -132,21 +125,10 @@ impl ScratchpadAbstract for ChatPassthrough {
                 run_tools_locally(ccx.clone(), at_tools.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             }
         };
-        let mut limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message).unwrap_or_else(|e| {
+        let mut limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
         });
-        if let Some(first_msg) = limited_msgs.first_mut() {
-            if first_msg.role == "system" {
-                first_msg.content = ChatContent::SimpleText(system_prompt_add_workspace_info(gcx.clone(), &first_msg.content.content_text_only()).await);
-            }
-            if self.post.model == "o1-mini" && first_msg.role == "system" {
-                limited_msgs.remove(0);
-            }
-        }
-        if DEBUG {
-            info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", messages.len(), limited_msgs.len());
-        }
 
         let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
 
