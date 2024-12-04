@@ -126,13 +126,11 @@ impl ToolDocker {
         command_append_label_if_creates_resource(&mut command_args, &self.settings_docker.label);
 
         let docker_host = self.get_docker_host(gcx.clone()).await?;
-        let output = Command::new(&self.settings_docker.docker_cli_path)
-            .arg("-H")
-            .arg(&docker_host)
-            .args(&command_args)
-            .output()
-            .await
-            .map_err(|e| e.to_string())?;
+        let mut command_process = Command::new(&self.settings_docker.docker_cli_path);
+        if !docker_host.is_empty() {
+            command_process.arg("-H").arg(&docker_host);
+        }
+        let output = command_process.args(&command_args).output().await.map_err(|e| e.to_string())?;
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
@@ -301,8 +299,8 @@ pub const DOCKER_INTEGRATION_SCHEMA: &str = r#"
 fields:
   docker_daemon_address:
     f_type: string_long
-    f_desc: "The address to connect to the Docker daemon."
-    f_default: "unix:///var/run/docker.sock"
+    f_desc: "The address to connect to the Docker daemon; specify only if not using the default."
+    f_default: ""
   docker_cli_path:
     f_type: string_long
     f_desc: "Path to the Docker CLI executable."

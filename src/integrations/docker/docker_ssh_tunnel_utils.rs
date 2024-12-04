@@ -48,10 +48,14 @@ pub async fn forward_remote_docker_if_needed(docker_daemon_address: &str, ssh_co
         }
     }
 
-    let remote_port_or_socket = if docker_daemon_address.starts_with("unix://") || docker_daemon_address.starts_with("npipe://") {
-        docker_daemon_address.split("://").nth(1).unwrap_or_default().to_string()
-    } else {
-        docker_daemon_address.split(":").last().unwrap_or_default().to_string()
+    let remote_port_or_socket = match docker_daemon_address {
+        "" => "/var/run/docker.sock".to_string(),
+        _ if docker_daemon_address.starts_with("unix://") || docker_daemon_address.starts_with("npipe://") => {
+            docker_daemon_address.split("://").nth(1).unwrap_or_default().to_string()
+        },
+        _ => {
+            docker_daemon_address.split(":").last().unwrap_or_default().to_string()
+        }
     };
 
     let ssh_tunnel = ssh_tunnel_open(&mut vec![Port { published: "0".to_string(), target: remote_port_or_socket }], ssh_config).await?;
