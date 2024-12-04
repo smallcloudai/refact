@@ -212,7 +212,7 @@ pub async fn load_customization(
     //         String::new()
     //     }
     // };
-    let mut system_prompt_vars = HashMap::new();
+    let system_prompt_vars = HashMap::new();
 
     // let system_prompt_vars = if competency_yaml.is_empty() {
     //     let mut map = HashMap::new();

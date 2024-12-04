@@ -57,7 +57,6 @@ pub struct ChatPassthrough {
     pub messages: Vec<ChatMessage>,
     pub has_rag_results: HasRagResults,
     pub delta_sender: DeltaSender,
-    pub global_context: Arc<ARwLock<GlobalContext>>,
     pub allow_at: bool,
     pub supports_tools: bool,
     pub supports_clicks: bool,
@@ -68,7 +67,6 @@ impl ChatPassthrough {
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: &ChatPost,
         messages: &Vec<ChatMessage>,
-        global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
         supports_tools: bool,
         supports_clicks: bool,
@@ -79,7 +77,6 @@ impl ChatPassthrough {
             messages: messages.clone(),
             has_rag_results: HasRagResults::new(),
             delta_sender: DeltaSender::new(),
-            global_context,
             allow_at,
             supports_tools,
             supports_clicks,
@@ -94,7 +91,6 @@ impl ScratchpadAbstract for ChatPassthrough {
         _patch: &Value,
         exploration_tools: bool,
         agentic_tools: bool,
-        should_execute_remotely: bool,
     ) -> Result<(), String> {
         Ok(())
     }
@@ -124,7 +120,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                 run_tools_locally(ccx.clone(), at_tools.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             }
         };
-        let mut limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
+        let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
         });

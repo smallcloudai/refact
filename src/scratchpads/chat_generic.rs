@@ -34,7 +34,6 @@ pub struct GenericChatScratchpad {
     pub keyword_user: String,
     pub keyword_asst: String,
     pub has_rag_results: HasRagResults,
-    pub global_context: Arc<ARwLock<GlobalContext>>,
     pub allow_at: bool,
 }
 
@@ -43,7 +42,6 @@ impl GenericChatScratchpad {
         tokenizer: Arc<RwLock<Tokenizer>>,
         post: &ChatPost,
         messages: &Vec<ChatMessage>,
-        global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
     ) -> Self {
         GenericChatScratchpad {
@@ -57,7 +55,6 @@ impl GenericChatScratchpad {
             keyword_user: "".to_string(),
             keyword_asst: "".to_string(),
             has_rag_results: HasRagResults::new(),
-            global_context,
             allow_at,
         }
     }
@@ -70,7 +67,6 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         patch: &Value,
         exploration_tools: bool,
         agentic_tools: bool,
-        _should_execute_remotely: bool,
     ) -> Result<(), String> {
         self.token_bos = patch.get("token_bos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();

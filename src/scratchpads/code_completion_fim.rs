@@ -81,7 +81,6 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         patch: &Value,
         _exploration_tools: bool,
         _agentic_tools: bool,
-        _should_execute_remotely: bool,
     ) -> Result<(), String> {
         // That will work for some models (starcoder) without patching
         self.fim_prefix = patch.get("fim_prefix").and_then(|x| x.as_str()).unwrap_or("<fim_prefix>").to_string();
@@ -334,8 +333,8 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
     }
 
     fn response_message_n_choices(
-        &mut self, 
-        _choices: Vec<String>, 
+        &mut self,
+        _choices: Vec<String>,
         _finish_reasons: Vec<FinishReason>
     ) -> Result<Value, String> {
         Err("not implemented".to_string())

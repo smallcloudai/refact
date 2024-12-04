@@ -91,7 +91,6 @@ async fn create_chat_post_and_scratchpad(
         false,
         supports_tools,
         supports_clicks,
-        should_execute_remotely,
     ).await?;
 
     Ok((chat_post, scratchpad))

@@ -32,7 +32,7 @@ impl FinishReason {
             }
         }
     }
-    
+
     pub fn from_json_val(json: &Value) -> Result<FinishReason, String> {
         if json.is_null() {
             return Ok(FinishReason::None);
@@ -43,7 +43,7 @@ impl FinishReason {
             Err(format!("expected string, got {}", json))
         }
     }
-    
+
     pub fn to_string(&self) -> String {
         match self {
             FinishReason::None => "".to_string(),
@@ -53,7 +53,7 @@ impl FinishReason {
             FinishReason::ScratchpadStop => "stop".to_string(),
         }
     }
-    
+
     pub fn to_json_val(&self) -> Value {
         match self {
             FinishReason::None => Value::Null,
@@ -73,7 +73,6 @@ pub trait ScratchpadAbstract: Send {
         patch: &Value,
         exploration_tools: bool,
         agentic_tools: bool,
-        should_execute_remotely: bool,
     ) -> Result<(), String>;
 
     async fn prompt(

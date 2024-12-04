@@ -185,7 +185,7 @@ pub fn read_integrations_d(
     // 3. Replace vars in config_unparsed
     for rec in &mut result {
         if let serde_json::Value::Object(map) = &mut rec.config_unparsed {
-            for (key, value) in map.iter_mut() {
+            for (_key, value) in map.iter_mut() {
                 if let Some(str_value) = value.as_str() {
                     let replaced_value = vars_for_replacements.iter().fold(str_value.to_string(), |acc, (var, replacement)| {
                         acc.replace(&format!("${}", var), replacement)

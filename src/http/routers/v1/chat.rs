@@ -233,7 +233,6 @@ async fn _chat(
         allow_at,
         supports_tools,
         supports_clicks,
-        should_execute_remotely,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;

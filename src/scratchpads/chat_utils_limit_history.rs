@@ -16,16 +16,13 @@ pub fn limit_messages_history(
     let mut tokens_used: i32 = 0;
     let mut message_token_count: Vec<i32> = vec![0; messages.len()];
     let mut message_take: Vec<bool> = vec![false; messages.len()];
-    let mut have_system = false;
     for (i, msg) in messages.iter().enumerate() {
         let tcnt = 3 + msg.content.count_tokens(t.tokenizer.clone(), &None)?;
         message_token_count[i] = tcnt;
         if i==0 && msg.role == "system" {
             message_take[i] = true;
             tokens_used += tcnt;
-            have_system = true;
-        }
-        if i >= last_user_msg_starts {
+        } else if i >= last_user_msg_starts {
             message_take[i] = true;
             tokens_used += tcnt;
         }
