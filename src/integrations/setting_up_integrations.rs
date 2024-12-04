@@ -226,7 +226,8 @@ pub async fn get_integrations_yaml_path(gcx: Arc<ARwLock<GlobalContext>>) -> Str
     r
 }
 
-pub async fn get_vars_for_replacements(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, String> {
+pub async fn get_vars_for_replacements(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, String>
+{
     let gcx_locked = gcx.read().await;
     let secrets_yaml_path = gcx_locked.config_dir.join("secrets.yaml");
     let variables_yaml_path = gcx_locked.config_dir.join("variables.yaml");
@@ -252,7 +253,8 @@ pub async fn get_vars_for_replacements(gcx: Arc<ARwLock<GlobalContext>>) -> Hash
     variables
 }
 
-pub fn join_config_path(config_dir: &PathBuf, integr_name: &str) -> String {
+pub fn join_config_path(config_dir: &PathBuf, integr_name: &str) -> String
+{
     config_dir.join("integrations.d").join(format!("{}.yaml", integr_name)).to_string_lossy().into_owned()
 }
 

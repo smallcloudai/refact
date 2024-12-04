@@ -39,7 +39,7 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
         cmdline if cmdline.starts_with("cmdline_") => {
             let tool_name = cmdline.strip_prefix("cmdline_").unwrap();
             tracing::info!("todo finish me tool_name={}", tool_name);
-            Err("todo finish me".to_string())
+            Ok(Box::new(integr_cmdline::ToolCmdline {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
         },
         service if service.starts_with("service_") => {
             let tool_name = service.strip_prefix("service_").unwrap();

@@ -1,32 +1,23 @@
-use std::any::Any;
 use std::collections::HashMap;
-use std::future::Future;
 use std::sync::Arc;
 use std::process::Stdio;
-use indexmap::IndexMap;
-use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
+use tokio::sync::Mutex as AMutex;
 use tokio::io::BufReader;
 use serde::Deserialize;
 use serde::Serialize;
 use async_trait::async_trait;
 use tokio::process::Command;
 use tracing::info;
-use process_wrap::tokio::*;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::global_context::GlobalContext;
-use crate::integrations::process_io_utils::{blocking_read_until_token_or_timeout, is_someone_listening_on_that_tcp_port};
-use crate::integrations::sessions::IntegrationSession;
+use crate::integrations::process_io_utils::blocking_read_until_token_or_timeout;
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::integrations::integr_abstract::IntegrationTrait;
 
 
-const REALLY_HORRIBLE_ROUNDTRIP: u64 = 3000;   // 3000 should be a really bad ping via internet, just in rare case it's a remote port
-
-
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Default)]
 struct CmdlineToolConfig {
     command: String,
     command_workdir: String,
@@ -58,10 +49,11 @@ fn _default_startup_wait() -> u64 {
     10
 }
 
+#[derive(Default)]
 pub struct ToolCmdline {
-    is_service: bool,
-    name: String,
-    cfg: CmdlineToolConfig,
+    // is_service: bool,
+    pub name: String,
+    pub cfg: CmdlineToolConfig,
 }
 
 impl IntegrationTrait for ToolCmdline {
@@ -82,7 +74,7 @@ impl IntegrationTrait for ToolCmdline {
 
     fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
         Box::new(ToolCmdline {
-            is_service: self.is_service,
+            // is_service: self.is_service,
             name: self.name.clone(),
             cfg: self.cfg.clone(),
         }) as Box<dyn Tool + Send>
@@ -94,70 +86,37 @@ impl IntegrationTrait for ToolCmdline {
     }
 }
 
-pub fn cmdline_tool_from_yaml_value(
-    cfg_cmdline_value: &serde_yaml::Value,
-    background: bool,
-) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
-    let mut result = IndexMap::new();
-    let cfgmap = match serde_yaml::from_value::<IndexMap<String, CmdlineToolConfig>>(cfg_cmdline_value.clone()) {
-        Ok(cfgmap) => cfgmap,
-        Err(e) => {
-            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-            return Err(format!("failed to parse cmdline section: {:?}{}", e, location));
-        }
-    };
-    for (c_name, mut c_cmd_tool) in cfgmap.into_iter() {
-        if background {
-            c_cmd_tool.parameters.push(ToolParam {
-                name: "action".to_string(),
-                param_type: "string".to_string(),
-                description: "start | stop | restart | status".to_string(),
-            });
-        }
-        let tool = Arc::new(AMutex::new(Box::new(
-            ToolCmdline {
-                is_service: background,
-                name: c_name.clone(),
-                cfg: c_cmd_tool,
-            }
-        ) as Box<dyn Tool + Send>));
-        result.insert(c_name, tool);
-    }
-    Ok(result)
-}
-
-pub struct CmdlineSession {
-    cmdline_string: String,
-    cmdline_workdir: String,
-    cmdline_process: Box<dyn TokioChildWrapper>,
-    #[allow(dead_code)]
-    cmdline_stdout: BufReader<tokio::process::ChildStdout>,
-    #[allow(dead_code)]
-    cmdline_stderr: BufReader<tokio::process::ChildStderr>,
-    service_name: String,
-}
-
-impl IntegrationSession for CmdlineSession {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-    fn is_expired(&self) -> bool { false }
-    fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_> {
-        Box::new(async {
-            info!("SERVICE STOP workdir {}:\n{:?}", self.cmdline_workdir, self.cmdline_string);
-            let t0 = tokio::time::Instant::now();
-            match Box::into_pin(self.cmdline_process.kill()).await {
-                Ok(_) => {
-                    format!("Success, it took {:.3}s to stop it.\n\n", t0.elapsed().as_secs_f64())
-                },
-                Err(e) => {
-                    tracing::warn!("Failed to kill service '{}'. Error: {}. Assuming process died on its own.", self.service_name, e);
-                    format!("Failed to kill service. Error: {}.\nAssuming process died on its own, let's continue.\n\n", e)
-                }
-            }
-        })
-    }
-}
+// pub fn cmdline_tool_from_yaml_value(
+//     cfg_cmdline_value: &serde_yaml::Value,
+//     background: bool,
+// ) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
+//     let mut result = IndexMap::new();
+//     let cfgmap = match serde_yaml::from_value::<IndexMap<String, CmdlineToolConfig>>(cfg_cmdline_value.clone()) {
+//         Ok(cfgmap) => cfgmap,
+//         Err(e) => {
+//             let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+//             return Err(format!("failed to parse cmdline section: {:?}{}", e, location));
+//         }
+//     };
+//     for (c_name, mut c_cmd_tool) in cfgmap.into_iter() {
+//         // if background {
+//         //     c_cmd_tool.parameters.push(ToolParam {
+//         //         name: "action".to_string(),
+//         //         param_type: "string".to_string(),
+//         //         description: "start | stop | restart | status".to_string(),
+//         //     });
+//         // }
+//         let tool = Arc::new(AMutex::new(Box::new(
+//             ToolCmdline {
+//                 // is_service: background,
+//                 name: c_name.clone(),
+//                 cfg: c_cmd_tool,
+//             }
+//         ) as Box<dyn Tool + Send>));
+//         result.insert(c_name, tool);
+//     }
+//     Ok(result)
+// }
 
 fn _replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
     let mut result = x.to_string();
@@ -253,146 +212,6 @@ async fn get_stdout_and_stderr(
     Ok((stdout_out, stderr_out))
 }
 
-async fn execute_background_command(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    service_name: &str,
-    command_str: &str,
-    cmdline_workdir: &String,
-    cfg: &CmdlineToolConfig,
-    action: &str,
-) -> Result<String, String> {
-    let session_key = format!("custom_service_{service_name}");
-    let mut session_mb = gcx.read().await.integration_sessions.get(&session_key).cloned();
-    let command_str = command_str.to_string();
-    let mut actions_log = String::new();
-
-    if session_mb.is_some() {
-        let session_arc = session_mb.clone().unwrap();
-        let mut session_locked = session_arc.lock().await;
-        let session = session_locked.as_any_mut().downcast_mut::<CmdlineSession>().unwrap();
-        actions_log.push_str(&format!("Currently have service running, workdir {}:\n{}\n", session.cmdline_workdir, session.cmdline_string));
-        let (stdout_out, stderr_out) = get_stdout_and_stderr(100, &mut session.cmdline_stdout, &mut session.cmdline_stderr).await?;
-        let filtered_stdout = output_mini_postprocessing(&cfg.output_filter, &stdout_out);
-        let filtered_stderr = output_mini_postprocessing(&cfg.output_filter, &stderr_out);
-        actions_log.push_str(&format!("Here are stdin/stderr since the last checking out on the service:\n{}\n\n", format_output(&filtered_stdout, &filtered_stderr)));
-    } else {
-        actions_log.push_str(&format!("Service is currently not running\n"));
-    }
-
-    if session_mb.is_some() && (action == "restart" || action == "stop") {
-        let session_arc = session_mb.clone().unwrap();
-        {
-            let mut session_locked = session_arc.lock().await;
-            let session = session_locked.as_any_mut().downcast_mut::<CmdlineSession>().unwrap();
-            actions_log.push_str(&format!("Stopping it...\n"));
-            let stop_log = Box::into_pin(session.try_stop()).await;
-            actions_log.push_str(&stop_log);
-        }
-        gcx.write().await.integration_sessions.remove(&session_key);
-        session_mb = None;
-    }
-
-    if session_mb.is_none() && (action == "restart" || action == "start") {
-        let mut port_already_open = false;
-        if let Some(wait_port) = cfg.startup_wait_port {
-            port_already_open = is_someone_listening_on_that_tcp_port(wait_port, tokio::time::Duration::from_millis(REALLY_HORRIBLE_ROUNDTRIP)).await;
-            if port_already_open {
-                actions_log.push_str(&format!(
-                    "This service startup sequence requires to wait until a TCP port gets occupied, but this port {} is already busy even before the service start is attempted. Not good, but let's try to run it anyway.\n\n",
-                    wait_port,
-                ));
-            }
-        }
-        info!("SERVICE START workdir {}:\n{:?}", cmdline_workdir, command_str);
-        actions_log.push_str(&format!("Starting service with the following command line:\n{}\n", command_str));
-
-        let mut command = create_command_from_string(&command_str, cmdline_workdir).await?;
-        command.stdout(Stdio::piped());
-        command.stderr(Stdio::piped());
-        let mut command_wrap = TokioCommandWrap::from(command);
-        #[cfg(unix)]
-        command_wrap.wrap(ProcessGroup::leader());
-        #[cfg(windows)]
-        command_wrap.wrap(JobObject);
-        let mut process = command_wrap.spawn().map_err(|e| format!("failed to create process: {e}"))?;
-
-        let mut stdout_reader = BufReader::new(process.stdout().take().ok_or("Failed to open stdout")?);
-        let mut stderr_reader = BufReader::new(process.stderr().take().ok_or("Failed to open stderr")?);
-
-        let t0 = tokio::time::Instant::now();
-
-        let mut accumulated_stdout = String::new();
-        let mut accumulated_stderr = String::new();
-        let mut exit_code: i32 = -100000;
-
-        loop {
-            if t0.elapsed() >= tokio::time::Duration::from_secs(cfg.startup_wait) {
-                actions_log.push_str(&format!("Timeout {:.2}s reached while waiting for the service to start.\n\n", t0.elapsed().as_secs_f64()));
-                break;
-            }
-
-            let (stdout_out, stderr_out) = get_stdout_and_stderr(100, &mut stdout_reader, &mut stderr_reader).await?;
-            accumulated_stdout.push_str(&stdout_out);
-            accumulated_stderr.push_str(&stderr_out);
-
-            // XXX rename keyword to phrase or something
-            if let Some(keyword) = &cfg.startup_wait_keyword {
-                if accumulated_stdout.contains(keyword) || accumulated_stderr.contains(keyword) {
-                    actions_log.push_str(&format!("Startup keyword '{}' found in output, success!\n\n", keyword));
-                    break;
-                }
-            }
-
-            let exit_status = process.try_wait().map_err(|e| e.to_string())?;
-            if let Some(status) = exit_status {
-                exit_code = status.code().unwrap_or(-1);
-                actions_log.push_str(&format!("Service process exited prematurely with exit code: {}\nService did not start.\n\n", exit_code));
-                break;
-            }
-
-            if let Some(wait_port) = cfg.startup_wait_port {
-                match is_someone_listening_on_that_tcp_port(wait_port, tokio::time::Duration::from_millis(REALLY_HORRIBLE_ROUNDTRIP)).await {
-                    true => {
-                        if !port_already_open {
-                            actions_log.push_str(&format!("Port {} is now busy, success!\n", wait_port));
-                            break;
-                        }
-                    },
-                    false => {
-                        if port_already_open {
-                            port_already_open = false;
-                            actions_log.push_str(&format!("Port {} is now free\n", wait_port));
-                        }
-                    }
-                }
-            }
-
-            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-        }
-
-        let filtered_stdout = output_mini_postprocessing(&cfg.output_filter, &accumulated_stdout);
-        let filtered_stderr = output_mini_postprocessing(&cfg.output_filter, &accumulated_stderr);
-        let out = format_output(&filtered_stdout, &filtered_stderr);
-        actions_log.push_str(&out);
-
-        if exit_code == -100000 {
-            let session: Box<dyn IntegrationSession> = Box::new(CmdlineSession {
-                cmdline_process: process,
-                cmdline_string: command_str,
-                cmdline_workdir: cmdline_workdir.clone(),
-                cmdline_stdout: stdout_reader,
-                cmdline_stderr: stderr_reader,
-                service_name: service_name.to_string(),
-            });
-            gcx.write().await.integration_sessions.insert(session_key.to_string(), Arc::new(AMutex::new(session)));
-        }
-
-        info!("SERVICE START LOG:\n{}", actions_log);
-    }
-
-    Ok(actions_log)
-}
-
 #[async_trait]
 impl Tool for ToolCmdline {
     fn as_any(&self) -> &dyn std::any::Any { self }
@@ -427,18 +246,19 @@ impl Tool for ToolCmdline {
         let command = _replace_args(self.cfg.command.as_str(), &args_str);
         let workdir = _replace_args(self.cfg.command_workdir.as_str(), &args_str);
 
-        let tool_ouput = if self.is_service {
-            let action = args_str.get("action").cloned().unwrap_or("start".to_string());
-            if !["start", "restart", "stop", "status"].contains(&action.as_str()) {
-                return Err("Tool call is invalid. Param 'action' must be one of 'start', 'restart', 'stop', 'status'. Try again".to_string());
-            }
-            execute_background_command(
-                gcx, &self.name, &command, &workdir, &self.cfg, action.as_str()
-            ).await?
+        // let tool_ouput = if self.is_service {
+        //     let action = args_str.get("action").cloned().unwrap_or("start".to_string());
+        //     if !["start", "restart", "stop", "status"].contains(&action.as_str()) {
+        //         return Err("Tool call is invalid. Param 'action' must be one of 'start', 'restart', 'stop', 'status'. Try again".to_string());
+        //     }
+        //     execute_background_command(
+        //         gcx, &self.name, &command, &workdir, &self.cfg, action.as_str()
+        //     ).await?
 
-        } else {
-            execute_blocking_command(&command, &self.cfg, &workdir).await?
-        };
+        // } else {
+        // };
+
+        let tool_ouput = execute_blocking_command(&command, &self.cfg, &workdir).await?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
