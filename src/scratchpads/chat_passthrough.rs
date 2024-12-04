@@ -1,16 +1,14 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-
-use async_trait::async_trait;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
-use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
+use async_trait::async_trait;
 use tracing::{error, info};
+
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, SamplingParameters};
-use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
@@ -89,8 +87,8 @@ impl ScratchpadAbstract for ChatPassthrough {
     async fn apply_model_adaptation_patch(
         &mut self,
         _patch: &Value,
-        exploration_tools: bool,
-        agentic_tools: bool,
+        _exploration_tools: bool,
+        _agentic_tools: bool,
     ) -> Result<(), String> {
         Ok(())
     }

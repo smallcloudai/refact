@@ -30,7 +30,7 @@ async fn create_chat_post_and_scratchpad(
     tools: Option<Vec<Value>>,
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
-    should_execute_remotely: bool,
+    _should_execute_remotely: bool,
 ) -> Result<(ChatPost, Box<dyn ScratchpadAbstract>), String> {
     let caps = try_load_caps_quickly_if_not_present(
         global_context.clone(), 0,

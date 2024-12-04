@@ -3,14 +3,12 @@ use std::sync::RwLock as StdRwLock;
 use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
-use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use tracing::{info, error};
 
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ContextFile, SamplingParameters};
-use crate::global_context::GlobalContext;
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
@@ -30,7 +28,6 @@ pub struct ChatLlama2 {
     pub keyword_s: String, // "SYSTEM:" keyword means it's not one token
     pub keyword_slash_s: String,
     pub has_rag_results: HasRagResults,
-    pub global_context: Arc<ARwLock<GlobalContext>>,
     pub allow_at: bool,
 }
 
@@ -40,7 +37,6 @@ impl ChatLlama2 {
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: &ChatPost,
         messages: &Vec<ChatMessage>,
-        global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
     ) -> Self {
         ChatLlama2 {
@@ -52,7 +48,6 @@ impl ChatLlama2 {
             keyword_slash_s: "</s>".to_string(),
             // default_system_message: "".to_string(),
             has_rag_results: HasRagResults::new(),
-            global_context,
             allow_at,
         }
     }
@@ -63,8 +58,8 @@ impl ScratchpadAbstract for ChatLlama2 {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        exploration_tools: bool,
-        agentic_tools: bool,
+        _exploration_tools: bool,
+        _agentic_tools: bool,
     ) -> Result<(), String> {
         self.keyword_s = patch.get("s").and_then(|x| x.as_str()).unwrap_or("<s>").to_string();
         self.keyword_slash_s = patch.get("slash_s").and_then(|x| x.as_str()).unwrap_or("</s>").to_string();
@@ -82,16 +77,13 @@ impl ScratchpadAbstract for ChatLlama2 {
         ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let (n_ctx, gcx) = {
-            let ccx_locked = ccx.lock().await;
-            (ccx_locked.n_ctx, ccx_locked.global_context.clone())
-        };
+        let n_ctx = ccx.lock().await.n_ctx;
         let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
             run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
         } else {
             (self.messages.clone(), self.messages.len(), false)
         };
-        let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx)?;
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx)?;
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // loosely adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();
