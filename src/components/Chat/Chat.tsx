@@ -7,6 +7,7 @@ import {
   useAppDispatch,
   useSendChatRequest,
   useGetPromptsQuery,
+  useAutoSend,
 } from "../../hooks";
 import type { Config } from "../../features/Config/configSlice";
 import {
@@ -101,6 +102,8 @@ export const Chat: React.FC<ChatProps> = ({
       focusTextarea();
     }
   }, [isWaiting, isStreaming, focusTextarea]);
+
+  useAutoSend();
 
   return (
     <DropzoneProvider asChild>

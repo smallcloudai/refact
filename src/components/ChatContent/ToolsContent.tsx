@@ -31,7 +31,7 @@ const Result: React.FC<ResultProps> = ({
 }) => {
   const lines = children.split("\n");
   return (
-    <Reveal defaultOpen={lines.length < 9}>
+    <Reveal defaultOpen={lines.length < 9} isRevealingCode>
       <ResultMarkdown
         className={styles.tool_result}
         isInsideScrollArea={isInsideScrollArea}
@@ -167,44 +167,14 @@ export const SingleModelToolContent: React.FC<{
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
-          {/**TODO: reuse this */}
-          <Flex gap="2" align="end">
-            <Flex gap="1" align="start" direction="column">
-              <Text weight="light" size="1">
-                🔨{" "}
-                {toolUsageAmount.map(
-                  ({ functionName, amountOfCalls }, index) => (
-                    <span key={functionName}>
-                      <ToolUsageDisplay
-                        functionName={functionName}
-                        amountOfCalls={amountOfCalls}
-                      />
-                      {index === toolUsageAmount.length - 1 ? "" : ", "}
-                    </span>
-                  ),
-                )}
-              </Text>
-              {hiddenFiles > 0 && (
-                <Text weight="light" size="1" ml="4">
-                  {`🔎 <${hiddenFiles} files hidden>`}
-                </Text>
-              )}
-              {shownAttachedFiles.map((file, index) => (
-                <Text weight="light" size="1" key={index} ml="4">
-                  🔎 {file}
-                </Text>
-              ))}
-              {subchat && (
-                <Flex ml="4">
-                  <Spinner />
-                  <Text weight="light" size="1" ml="4px">
-                    {subchat}
-                  </Text>
-                </Flex>
-              )}
-            </Flex>
-            <Chevron open={open} />
-          </Flex>
+          <ToolUsageSummary
+            toolUsageAmount={toolUsageAmount}
+            hiddenFiles={hiddenFiles}
+            shownAttachedFiles={shownAttachedFiles}
+            subchat={subchat}
+            open={open}
+            onClick={() => setOpen((prev) => !prev)}
+          />
         </Collapsible.Trigger>
         <Collapsible.Content>
           {toolCalls.map((toolCall) => {
@@ -331,27 +301,12 @@ const MultiModalToolContent: React.FC<{
   return (
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
-        <Collapsible.Trigger asChild>
-          {/**TODO: duplicated */}
-          <Flex gap="2" align="end">
-            <Flex gap="1" align="start" direction="column">
-              <Text weight="light" size="1">
-                🔨{" "}
-                {toolUsageAmount.map(
-                  ({ functionName, amountOfCalls }, index) => (
-                    <span key={`${functionName}-${index}`}>
-                      <ToolUsageDisplay
-                        functionName={functionName}
-                        amountOfCalls={amountOfCalls}
-                      />
-                      {index === toolUsageAmount.length - 1 ? "" : ", "}
-                    </span>
-                  ),
-                )}
-              </Text>
-            </Flex>
-            <Chevron open={open} />
-          </Flex>
+        <Collapsible.Trigger>
+          <ToolUsageSummary
+            toolUsageAmount={toolUsageAmount}
+            open={open}
+            onClick={() => setOpen((prev) => !prev)}
+          />
         </Collapsible.Trigger>
         <Collapsible.Content>
           {/** TODO: tool call name and text result */}
@@ -428,5 +383,63 @@ const MultiModalToolContent: React.FC<{
         </Flex>
       )}
     </Container>
+  );
+};
+
+const ToolUsageSummary: React.FC<{
+  toolUsageAmount: ToolUsage[];
+  hiddenFiles?: number;
+  shownAttachedFiles?: (string | undefined)[];
+  subchat?: string;
+  open: boolean;
+  onClick?: () => void;
+}> = ({
+  toolUsageAmount,
+  hiddenFiles,
+  shownAttachedFiles,
+  subchat,
+  open,
+  onClick,
+}) => {
+  return (
+    <Flex gap="2" align="end" onClick={onClick}>
+      <Flex gap="1" align="start" direction="column">
+        <Text weight="light" size="1">
+          🔨{" "}
+          {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
+            <span key={functionName}>
+              <ToolUsageDisplay
+                functionName={functionName}
+                amountOfCalls={amountOfCalls}
+              />
+              {index === toolUsageAmount.length - 1 ? "" : ", "}
+            </span>
+          ))}
+        </Text>
+        {hiddenFiles && hiddenFiles > 0 && (
+          <Text weight="light" size="1" ml="4">
+            {`🔎 <${hiddenFiles} files hidden>`}
+          </Text>
+        )}
+        {shownAttachedFiles?.map((file, index) => {
+          if (!file) return null;
+
+          return (
+            <Text weight="light" size="1" key={index} ml="4">
+              🔎 {file}
+            </Text>
+          );
+        })}
+        {subchat && (
+          <Flex ml="4">
+            <Spinner />
+            <Text weight="light" size="1" ml="4px">
+              {subchat}
+            </Text>
+          </Flex>
+        )}
+      </Flex>
+      <Chevron open={open} />
+    </Flex>
   );
 };

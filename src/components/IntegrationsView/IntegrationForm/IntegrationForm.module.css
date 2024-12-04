@@ -1,0 +1,15 @@
+.button {
+  cursor: pointer;
+  padding: 0 0.75rem;
+  transition: all 0.3s ease-in-out;
+}
+
+.disabledButton {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.DockerIcon {
+  max-width: 40px;
+  object-fit: cover;
+}

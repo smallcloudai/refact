@@ -7,11 +7,24 @@ export type LspChatMessage =
       role: ChatRole;
       // TODO make this a union type for user message
       content: string | null;
-      tool_calls?: Omit<ToolCall, "index">[];
+      // TBD: why was index omitted ?
+      // tool_calls?: Omit<ToolCall, "index">[];
+      tool_calls?: ToolCall[];
       tool_call_id?: string;
     }
   | UserMessage
   | { role: "tool"; content: ToolResult["content"]; tool_call_id: string };
+
+// could be more narrow.
+export function isLspChatMessage(json: unknown): json is LspChatMessage {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("role" in json)) return false;
+  if (typeof json.role !== "string") return false;
+  if (!("content" in json)) return false;
+  if (json.content !== null && typeof json.content !== "string") return false;
+  return true;
+}
 
 type StreamArgs =
   | {
@@ -30,6 +43,7 @@ type SendChatArgs = {
   tools: ToolCommand[] | null;
   port?: number;
   apiKey?: string | null;
+  isConfig?: boolean;
 } & StreamArgs;
 
 type GetChatTitleArgs = {
@@ -83,7 +97,7 @@ export type Usage = {
   prompt_tokens: number;
   total_tokens: number;
 };
-
+// TODO: add config url
 export async function sendChat({
   messages,
   model,
@@ -96,6 +110,7 @@ export async function sendChat({
   tools,
   port = 8001,
   apiKey,
+  isConfig = false,
 }: SendChatArgs): Promise<Response> {
   // const toolsResponse = await getAvailableTools();
 
@@ -126,7 +141,9 @@ export async function sendChat({
     ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
   };
 
-  const url = `http://127.0.0.1:${port}${CHAT_URL}`;
+  const url = `http://127.0.0.1:${port}${
+    isConfig ? "/v1/chat-configuration" : CHAT_URL
+  }`;
 
   return fetch(url, {
     method: "POST",

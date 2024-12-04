@@ -6,12 +6,24 @@ import styles from "./Chevron.module.css";
 export type ChevronProps = {
   open: boolean;
   className?: string;
+  isUpDownChevron?: boolean;
 };
 
-export const Chevron: React.FC<ChevronProps> = ({ open, className }) => {
+export const Chevron: React.FC<ChevronProps> = ({
+  open,
+  className,
+  isUpDownChevron = false,
+}) => {
   return (
     <ChevronDownIcon
-      className={classNames(open ? styles.down : styles.right, className)}
+      className={classNames(
+        {
+          [styles.down]: open,
+          [styles.right]: !open && !isUpDownChevron,
+          [styles.up]: !open && isUpDownChevron,
+        },
+        className,
+      )}
       style={{ minWidth: 16, minHeight: 16 }}
     />
   );

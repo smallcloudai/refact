@@ -210,7 +210,7 @@ const _Markdown: React.FC<MarkdownProps> = ({
         if (canHavePins) {
           return <MaybePinButton {...props} />;
         }
-        return <Text my="2" as="p" {...props} />;
+        return <Text as="p" {...props} />;
       },
       h1({ color: _color, ref: _ref, node: _node, ...props }) {
         return <Heading my="4" size="4" as="h1" {...props} />;

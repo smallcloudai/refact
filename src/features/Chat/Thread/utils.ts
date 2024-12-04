@@ -1,12 +1,14 @@
 import {
   AssistantMessage,
   ChatContextFile,
+  ChatContextFileMessage,
   ChatMessage,
   ChatMessages,
   ChatResponse,
   DiffChunk,
   SubchatResponse,
   ToolCall,
+  ToolMessage,
   ToolResult,
   UserMessage,
   isAssistantDelta,
@@ -15,12 +17,14 @@ import {
   isChatContextFileDelta,
   isChatResponseChoice,
   isContextFileResponse,
+  isDiffChunk,
   isDiffMessage,
   isDiffResponse,
   isPlainTextResponse,
   isSubchatContextFileResponse,
   isSubchatResponse,
   isToolCallDelta,
+  isToolContent,
   isToolMessage,
   isToolResponse,
   isUserMessage,
@@ -391,6 +395,84 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
         ? message.content
         : JSON.stringify(message.content);
     return [...acc, { role: message.role, content }];
+  }, []);
+}
+
+export function formatMessagesForChat(
+  messages: LspChatMessage[],
+): ChatMessages {
+  return messages.reduce<ChatMessages>((acc, message) => {
+    if (message.role === "user" && typeof message.content === "string") {
+      const userMessage: UserMessage = {
+        role: message.role,
+        content: message.content,
+      };
+      return acc.concat(userMessage);
+    }
+
+    if (message.role === "assistant") {
+      // TODO: why type cast this.
+      const assistantMessage = message as AssistantMessage;
+      return acc.concat(assistantMessage);
+    }
+
+    if (
+      message.role === "context_file" &&
+      typeof message.content === "string"
+    ) {
+      const files = parseOrElse<ChatContextFile[]>(message.content, []);
+      const contextFileMessage: ChatContextFileMessage = {
+        role: message.role,
+        content: files,
+      };
+      return acc.concat(contextFileMessage);
+    }
+
+    if (message.role === "system" && typeof message.content === "string") {
+      return acc.concat({ role: message.role, content: message.content });
+    }
+
+    if (message.role === "plain_text" && typeof message.content === "string") {
+      return acc.concat({ role: message.role, content: message.content });
+    }
+
+    if (
+      message.role === "cd_instruction" &&
+      typeof message.content === "string"
+    ) {
+      return acc.concat({ role: message.role, content: message.content });
+    }
+
+    if (
+      message.role === "tool" &&
+      (typeof message.content === "string" || isToolContent(message.content)) &&
+      typeof message.tool_call_id === "string"
+    ) {
+      // TODO: why type cast this
+      return acc.concat(message as unknown as ToolMessage);
+    }
+
+    if (
+      message.role === "cd_instruction" &&
+      typeof message.content === "string"
+    ) {
+      return acc.concat({ role: message.role, content: message.content });
+    }
+
+    if (
+      message.role === "diff" &&
+      Array.isArray(message.content) &&
+      message.content.every(isDiffChunk) &&
+      typeof message.tool_call_id === "string"
+    ) {
+      return acc.concat({
+        role: message.role,
+        content: message.content,
+        tool_call_id: message.tool_call_id,
+      });
+    }
+
+    return acc;
   }, []);
 }
 

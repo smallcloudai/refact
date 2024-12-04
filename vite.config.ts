@@ -26,6 +26,7 @@ function makeConfig(library: "browser" | "node") {
           semver: process.env.npm_package_version,
           commit: commitHash,
         }),
+        "process.env.DEBUG": JSON.stringify(process.env.DEBUG),
       },
       mode,
       build: {

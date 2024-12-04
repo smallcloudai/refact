@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { PATCH_URL } from "./consts";
+import { PATCH_URL, APPLY_ALL_URL } from "./consts";
 import { ChatMessages, DiffChunk, isDiffChunk } from "./types";
 import { RootState } from "../../app/store";
 import { createAction } from "@reduxjs/toolkit";
@@ -83,6 +83,16 @@ function isPatchResponse(json: unknown): json is PatchResponse {
   if (!json.chunks.every(isDiffChunk)) return false;
   return true;
 }
+type ApplyAllResponse = {
+  chunks: DiffChunk[];
+};
+function isApplyAllResponse(json: unknown): json is ApplyAllResponse {
+  if (!json || typeof json !== "object") return false;
+  if (!("chunks" in json)) return false;
+  if (!Array.isArray(json.chunks)) return false;
+  if (!json.chunks.every(isDiffChunk)) return false;
+  return true;
+}
 
 type PatchRequest = {
   pin: string;
@@ -140,6 +150,45 @@ export const diffApi = createApi({
         return { data: result.data };
       },
     }),
+
+    applyAllPatchesInMessages: builder.mutation<ApplyAllResponse, ChatMessages>(
+      {
+        async queryFn(messages, api, extraOptions, baseQuery) {
+          const state = api.getState() as RootState;
+          const port = state.config.lspPort as unknown as number;
+          const url = `http://127.0.0.1:${port}${APPLY_ALL_URL}`;
+          const formattedMessage = formatMessagesForLsp(messages);
+          const result = await baseQuery({
+            ...extraOptions,
+            url,
+            credentials: "same-origin",
+            redirect: "follow",
+            method: "POST",
+            body: {
+              messages: formattedMessage,
+            },
+          });
+
+          if (result.error) {
+            return { error: result.error };
+          }
+
+          if (!isApplyAllResponse(result.data)) {
+            return {
+              error: {
+                status: "CUSTOM_ERROR",
+                error: "Failed to parse apply all response",
+                data: result.data,
+              },
+            };
+          }
+
+          return {
+            data: result.data,
+          };
+        },
+      },
+    ),
   }),
 });
 

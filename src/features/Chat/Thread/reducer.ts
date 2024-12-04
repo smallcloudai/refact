@@ -16,24 +16,33 @@ import {
   restoreChat,
   setPreventSend,
   saveTitle,
+  newIntegrationChat,
+  setSendImmediately,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 
-const createChatThread = (tool_use: ToolUse): ChatThread => {
+const createChatThread = (
+  tool_use: ToolUse,
+  integration?: { name: string; path: string } | null,
+): ChatThread => {
   const chat: ChatThread = {
     id: uuidv4(),
     messages: [],
     title: "",
     model: "",
     tool_use,
+    integration,
   };
   return chat;
 };
 
-const createInitialState = (tool_use: ToolUse = "explore"): Chat => {
+const createInitialState = (
+  tool_use: ToolUse = "explore",
+  integration?: { name: string; path: string } | null,
+): Chat => {
   return {
     streaming: false,
-    thread: createChatThread(tool_use),
+    thread: createChatThread(tool_use, integration),
     error: null,
     prevent_send: false,
     waiting_for_response: false,
@@ -181,5 +190,27 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (state.thread.id !== action.payload.id) return state;
     state.thread.title = action.payload.title;
     state.thread.isTitleGenerated = action.payload.isTitleGenerated;
+  });
+
+  builder.addCase(newIntegrationChat, (state, action) => {
+    // TODO: find out about tool use
+    const next = createInitialState("agent", action.payload.integration);
+    next.thread.integration = action.payload.integration;
+    next.thread.messages = action.payload.messages;
+
+    next.thread.model = state.thread.model;
+    next.system_prompt = state.system_prompt;
+    next.cache = { ...state.cache };
+    if (state.streaming) {
+      next.cache[state.thread.id] = { ...state.thread, read: false };
+    }
+    // TBD: this might not be needed.
+    // next.thread.model = state.thread.model;
+    // next.system_prompt = state.system_prompt;
+    return next;
+  });
+
+  builder.addCase(setSendImmediately, (state, action) => {
+    state.send_immediately = action.payload;
   });
 });

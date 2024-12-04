@@ -20,6 +20,7 @@ export type DropdownNavigationOptions =
   | "hot keys"
   | "restart tour"
   | "cloud login"
+  | "integrations"
   | "";
 
 type DropdownProps = {
@@ -171,6 +172,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
             Edit Bring Your Own Key
           </DropdownMenu.Item>
         )}
+        <DropdownMenu.Item onSelect={() => handleNavigation("integrations")}>
+          Setup Integrations
+        </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
           Hot Keys...

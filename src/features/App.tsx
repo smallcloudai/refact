@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Host, InitialSetup } from "../components/InitialSetup";
 import { CloudLogin } from "../components/CloudLogin";
 import { EnterpriseSetup } from "../components/EnterpriseSetup";
@@ -33,7 +33,9 @@ import { Toolbar } from "../components/Toolbar";
 import { Tab } from "../components/Toolbar/Toolbar";
 import { PageWrapper } from "../components/PageWrapper";
 import { ThreadHistory } from "./ThreadHistory";
+import { Integrations } from "./Integrations";
 import { UserSurvey } from "./UserSurvey";
+import { integrationsApi } from "../services/refact";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -58,6 +60,12 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   useEventBusForWeb();
   useEventBusForApp();
 
+  const [isPaddingApplied, setIsPaddingApplied] = useState<boolean>(false);
+
+  const handlePaddingShift = (state: boolean) => {
+    setIsPaddingApplied(state);
+  };
+
   const config = useConfig();
 
   const isLoggedIn =
@@ -78,7 +86,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
       }
     }
     if (!config.apiKey && !config.addressURL && isLoggedIn) {
-      dispatch(popBackTo("initial setup"));
+      dispatch(popBackTo({ name: "initial setup" }));
     }
   }, [
     config.apiKey,
@@ -136,6 +144,11 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     dispatch(pop());
   };
 
+  const goBackFromIntegrations = () => {
+    dispatch(pop());
+    dispatch(integrationsApi.util.resetApiState());
+  };
+
   const page = pages[pages.length - 1];
 
   const activeTab: Tab | undefined = useMemo(() => {
@@ -157,11 +170,19 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
       style={{
         flexDirection: "column",
         alignItems: "stretch",
-        height: "100vh",
+        height:
+          page.name === "integrations page" && isPaddingApplied
+            ? "calc(100vh - 80px)"
+            : "100vh",
         ...style,
       }}
     >
-      <PageWrapper host={config.host}>
+      <PageWrapper
+        host={config.host}
+        style={{
+          paddingRight: page.name === "integrations page" ? 0 : undefined,
+        }}
+      >
         <UserSurvey />
         {activeTab && <Toolbar activeTab={activeTab} />}
         {page.name === "initial setup" && (
@@ -205,6 +226,15 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             tabbed={config.tabbed}
             host={config.host}
             onCloseStatistic={goBack}
+          />
+        )}
+        {page.name === "integrations page" && (
+          <Integrations
+            backFromIntegrations={goBackFromIntegrations}
+            tabbed={config.tabbed}
+            host={config.host}
+            onCloseIntegrations={goBackFromIntegrations}
+            handlePaddingShift={handlePaddingShift}
           />
         )}
         {page.name === "thread history page" && (

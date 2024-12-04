@@ -46,6 +46,13 @@ function isToolCall(call: unknown): call is ToolCall {
 }
 
 type ToolContent = string | MultiModalToolContent[];
+
+export function isToolContent(json: unknown): json is ToolContent {
+  if (!json) return false;
+  if (typeof json === "string") return true;
+  if (Array.isArray(json)) return json.every(isMultiModalToolContent);
+  return false;
+}
 export interface BaseToolResult {
   tool_call_id: string;
   finish_reason?: string; // "call_failed" | "call_worked";
