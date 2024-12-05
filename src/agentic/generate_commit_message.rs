@@ -147,7 +147,7 @@ Simplify age check logic for accessing permissions by using a single expression
 const N_CTX: usize = 32000;
 const TEMPERATURE: f32 = 0.5;
 
-fn remove_fencing(message: &String) -> String {
+pub fn remove_fencing(message: &String) -> String {
     let trimmed_message = message.trim();
     let without_leading_fence = if trimmed_message.starts_with("```") {
         let mut lines = trimmed_message.lines();
