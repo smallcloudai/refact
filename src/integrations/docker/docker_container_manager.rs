@@ -17,13 +17,12 @@ use crate::http::routers::v1::lsp_like_handlers::LspLikeInit;
 use crate::http::routers::v1::sync_files::SyncFilesExtractTarPost;
 use crate::integrations::sessions::get_session_hashmap_key;
 use crate::integrations::sessions::IntegrationSession;
-use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel};
-use crate::integrations::docker::integr_docker::{docker_tool_load, ToolDocker};
-
-use super::docker_ssh_tunnel_utils::ssh_tunnel_check_status;
+use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel, ssh_tunnel_check_status};
+use crate::integrations::docker::integr_docker::ToolDocker;
+use crate::integrations::docker::docker_and_isolation_load;
+use crate::integrations::docker::integr_isolation::SettingsIsolation;
 
 pub const DEFAULT_CONTAINER_LSP_PATH: &str = "/usr/local/bin/refact-lsp";
-pub const TARGET_LSP_PORT: &str = "8001";
 
 
 #[derive(Clone, Debug)]
@@ -79,7 +78,8 @@ pub async fn docker_container_check_status_or_start(
     chat_id: &str,
 ) -> Result<(), String>
 {
-    let docker = docker_tool_load(gcx.clone()).await?;
+    let (docker, isolation_maybe) = docker_and_isolation_load(gcx.clone()).await?;
+    let isolation = isolation_maybe.ok_or_else(|| "No isolation tool available".to_string())?;
     let docker_container_session_maybe = {
         let gcx_locked = gcx.read().await;
         gcx_locked.integration_sessions.get(&get_session_hashmap_key("docker", &chat_id)).cloned()
@@ -115,27 +115,25 @@ pub async fn docker_container_check_status_or_start(
 
             const LSP_PORT: &str = "8001";
             let mut ports_to_forward = if ssh_config_maybe.is_some() {
-                docker.settings_docker.ports.iter()
+                isolation.ports.iter()
                     .map(|p| Port {published: "0".to_string(), target: p.target.clone()}).collect::<Vec<_>>()
             } else {
-                docker.settings_docker.ports.clone()
+                isolation.ports.clone()
             };
             ports_to_forward.insert(0, Port {published: "0".to_string(), target: LSP_PORT.to_string()});
 
-            let container_id = docker_container_create(&docker, &chat_id, &ports_to_forward, LSP_PORT, gcx.clone()).await?;
+            let container_id = docker_container_create(&docker, &isolation, &chat_id, &ports_to_forward, LSP_PORT, gcx.clone()).await?;
             docker_container_sync_yaml_configs(&docker, &container_id, gcx.clone()).await?;
             docker_container_start(gcx.clone(), &docker, &container_id).await?;
             let exposed_ports = docker_container_get_exposed_ports(&docker, &container_id, &ports_to_forward, gcx.clone()).await?;
             let host_lsp_port = exposed_ports.iter().find(|p| p.target == LSP_PORT)
                 .ok_or_else(|| "No LSP port exposed".to_string())?.published.clone();
 
-            let keep_containers_alive_for_x_minutes = docker.settings_docker.keep_containers_alive_for_x_minutes;
-
             let connection = match ssh_config_maybe {
                 Some(ssh_config) => {
                     let mut ports_to_forward_through_ssh = exposed_ports.into_iter()
                         .map(|exposed_port| {
-                            let matched_external_port = docker.settings_docker.ports.iter()
+                            let matched_external_port = isolation.ports.iter()
                                 .find(|configured_port| configured_port.target == exposed_port.target)
                                 .map_or_else(|| "0".to_string(), |forwarded_port| forwarded_port.published.clone());
                             Port {
@@ -157,21 +155,13 @@ pub async fn docker_container_check_status_or_start(
                     internal_port.to_string()
                 }
             };
-            docker_container_sync_workspace(gcx.clone(), &docker, &container_id, &lsp_port_to_connect).await?;
-
-            if !docker.settings_docker.command.is_empty() {
-                let cmd_to_execute = format!("exec --detach {} {}", container_id, docker.settings_docker.command);
-                match docker.command_execute(&cmd_to_execute, gcx.clone(), false, true).await {
-                    Ok((cmd_stdout, cmd_stderr)) => { info!("Command executed: {cmd_stdout}\n{cmd_stderr}") },
-                    Err(e) => { error!("Command execution failed: {}", e) },
-                };
-            }
+            docker_container_sync_workspace(gcx.clone(), &docker, &isolation, &container_id, &lsp_port_to_connect).await?;
 
             let session: Arc<AMutex<Box<dyn IntegrationSession>>> = Arc::new(AMutex::new(Box::new(DockerContainerSession {
                 container_id,
                 connection,
                 last_usage_ts: SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
-                session_timeout_after_inactivity: Duration::from_secs(60 * keep_containers_alive_for_x_minutes),
+                session_timeout_after_inactivity: Duration::from_secs(60 * isolation.keep_containers_alive_for_x_minutes),
                 weak_gcx: Arc::downgrade(&gcx),
             })));
 
@@ -217,17 +207,17 @@ pub async fn docker_container_get_host_lsp_port_to_connect(
 
 async fn docker_container_create(
     docker: &ToolDocker,
+    isolation: &SettingsIsolation,
     chat_id: &str,
     ports_to_forward: &Vec<Port>,
     lsp_port: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
-    let docker_image_id = docker.settings_docker.docker_image_id.clone();
+    let docker_image_id = isolation.docker_image_id.clone();
     if docker_image_id.is_empty() {
         return Err("No image ID to run container from, please specify one.".to_string());
     }
-    let workspace_folder = docker.settings_docker.container_workspace_folder.clone();
-    let host_lsp_path  = docker.settings_docker.host_lsp_path.clone();
+    let host_lsp_path  = isolation.host_lsp_path.clone();
 
     let (address_url, api_key) = {
         let gcx_locked = gcx.read().await;
@@ -340,6 +330,7 @@ async fn docker_container_start(
 async fn docker_container_sync_workspace(
     gcx: Arc<ARwLock<GlobalContext>>,
     docker: &ToolDocker,
+    isolation: &SettingsIsolation,
     container_id: &str,
     lsp_port_to_connect: &str,
 ) -> Result<(), String> {
@@ -348,7 +339,7 @@ async fn docker_container_sync_workspace(
         .into_iter()
         .next()
         .ok_or_else(|| "No workspace folders found".to_string())?;
-    let container_workspace_folder = PathBuf::from(&docker.settings_docker.container_workspace_folder);
+    let container_workspace_folder = PathBuf::from(&isolation.container_workspace_folder);
 
     let temp_tar_file = tempfile::Builder::new().suffix(".tar").tempfile()
         .map_err(|e| format!("Error creating temporary tar file: {}", e))?.into_temp_path();
@@ -449,7 +440,7 @@ async fn docker_container_kill(
     gcx: Arc<ARwLock<GlobalContext>>,
     container_id: &str,
 ) -> Result<(), String> {
-    let docker = docker_tool_load(gcx.clone()).await?;
+    let (docker, _) = docker_and_isolation_load(gcx.clone()).await?;
 
     docker.command_execute(&format!("container stop {container_id}"), gcx.clone(), true, true).await?;
     info!("Stopped docker container {container_id}.");

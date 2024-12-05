@@ -45,6 +45,7 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
             // let tool_name = service.strip_prefix("service_").unwrap();
             Ok(Box::new(integr_cmdline_service::ToolService {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
         },
+        "isolation" => Ok(Box::new(docker::integr_isolation::IntegrationIsolation {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>),
         _ => Err(format!("Unknown integration name: {}", n)),
     }
 }
@@ -71,7 +72,9 @@ pub fn integrations_list() -> Vec<&'static str> {
         "chrome",
         "cmdline_TEMPLATE",
         "service_TEMPLATE",
-        "docker"
+        // "chrome",
+        "docker",
+        "isolation"
     ]
 }
 

@@ -10,13 +10,12 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationTrait;
-use crate::integrations::running_integrations::load_integration_tools;
 use crate::tools::tools_description::Tool;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
-use crate::integrations::docker::docker_container_manager::Port;
 
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 pub struct SettingsDocker {
+    pub label: String,
     pub docker_daemon_address: String,
     pub docker_cli_path: String,
     pub remote_docker: bool,
@@ -25,41 +24,16 @@ pub struct SettingsDocker {
     #[serde(serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
     pub ssh_port: u16,
     pub ssh_identity_file: String,
-    pub container_workspace_folder: String,
-    pub docker_image_id: String,
-    pub host_lsp_path: String,
-    pub run_chat_threads_inside_container: bool,
-    pub label: String,
-    pub command: String,
-    #[serde(serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
-    pub keep_containers_alive_for_x_minutes: u64,
-    #[serde(serialize_with = "serialize_ports", deserialize_with = "deserialize_ports")]
-    pub ports: Vec<Port>,
 }
 
-fn serialize_num_to_str<T: ToString, S: serde::Serializer>(num: &T, serializer: S) -> Result<S::Ok, S::Error> {
+pub fn serialize_num_to_str<T: ToString, S: serde::Serializer>(num: &T, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&num.to_string())
 }
-fn deserialize_str_to_num<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+pub fn deserialize_str_to_num<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where
     T: std::str::FromStr, T::Err: std::fmt::Display, D: serde::Deserializer<'de>,
 {
     String::deserialize(deserializer)?.parse().map_err(serde::de::Error::custom)
-}
-
-fn serialize_ports<S: serde::Serializer>(ports: &Vec<Port>, serializer: S) -> Result<S::Ok, S::Error> {
-    let ports_str = ports.iter().map(|port| format!("{}:{}", port.published, port.target))
-        .collect::<Vec<_>>().join(",");
-    serializer.serialize_str(&ports_str)
-}
-
-fn deserialize_ports<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Vec<Port>, D::Error> {
-    let ports_str = String::deserialize(deserializer)?;
-    ports_str.split(',').filter(|s| !s.is_empty()).map(|port_str| {
-        let (published, target) = port_str.split_once(':')
-            .ok_or_else(|| serde::de::Error::custom("expected format 'published:target'"))?;
-        Ok(Port { published: published.to_string(), target: target.to_string() })
-    }).collect()
 }
 
 impl SettingsDocker {
@@ -84,6 +58,8 @@ pub struct ToolDocker {
 }
 
 impl IntegrationTrait for ToolDocker {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
         match serde_json::from_value::<SettingsDocker>(value.clone()) {
             Ok(settings_docker) => {
@@ -102,7 +78,7 @@ impl IntegrationTrait for ToolDocker {
         serde_json::to_value(&self.settings_docker).unwrap()
     }
 
-    fn integr_upgrade_to_tool(&self, _integr_name: &String) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolDocker {
             settings_docker: self.settings_docker.clone()
         }) as Box<dyn Tool + Send>
@@ -200,13 +176,6 @@ impl Tool for ToolDocker {
     }
 }
 
-pub async fn docker_tool_load(gcx: Arc<ARwLock<GlobalContext>>) -> Result<ToolDocker, String> {
-    let tools = load_integration_tools(gcx.clone(), "".to_string(), true).await;
-    let docker_tool = tools.get("docker").cloned().ok_or("Docker integration not found")?
-        .lock().await.as_any().downcast_ref::<ToolDocker>().cloned().unwrap();
-    Ok(docker_tool)
-}
-
 fn parse_command(args: &HashMap<String, Value>) -> Result<String, String>{
     return match args.get("command") {
         Some(Value::String(s)) => Ok(s.to_string()),
@@ -297,6 +266,10 @@ fn command_append_label_if_creates_resource(command_args: &mut Vec<String>, labe
 
 pub const DOCKER_INTEGRATION_SCHEMA: &str = r#"
 fields:
+  label:
+    f_type: string_short
+    f_desc: "Label for the Docker container."
+    f_default: "refact"
   docker_daemon_address:
     f_type: string_long
     f_desc: "The address to connect to the Docker daemon; specify only if not using the default."
@@ -326,35 +299,6 @@ fields:
     f_type: string_long
     f_desc: "Path to the SSH identity file to connect to remote Docker."
     f_label: "SSH Identity File"
-  container_workspace_folder:
-    f_type: string_long
-    f_desc: "The workspace folder inside the container."
-    f_default: "/app"
-  docker_image_id:
-    f_type: string_long
-    f_desc: "The Docker image ID to use."
-  host_lsp_path:
-    f_type: string_long
-    f_desc: "Path to the LSP on the host."
-    f_default: "/opt/refact/bin/refact-lsp"
-  run_chat_threads_inside_container:
-    f_type: bool
-    f_desc: "Whether to run chat threads inside the container."
-    f_default: "false"
-  label:
-    f_type: string_short
-    f_desc: "Label for the Docker container."
-    f_default: "refact"
-  command:
-    f_type: string_long
-    f_desc: "Command to run inside the Docker container."
-  keep_containers_alive_for_x_minutes:
-    f_type: string_short
-    f_desc: "How long to keep containers alive in minutes."
-    f_default: "60"
-  ports:
-    f_type: string_long
-    f_desc: "Comma separated published:target notation for ports to publish, example '8080:3000,5000:5432'"
 available:
   on_your_laptop_possible: true
   when_isolated_possible: false

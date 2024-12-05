@@ -8,7 +8,7 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
-use crate::integrations::docker::integr_docker::docker_tool_load;
+use crate::integrations::docker::docker_and_isolation_load;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "lowercase")]
@@ -55,7 +55,7 @@ pub async fn handle_v1_docker_container_action(
     let post = serde_json::from_slice::<DockerContainerActionPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    let docker = docker_tool_load(gcx.clone()).await
+    let (docker, _) = docker_and_isolation_load(gcx.clone()).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot load docker tool: {}", e)))?;
 
     let docker_command = match post.action {
@@ -79,7 +79,7 @@ pub async fn handle_v1_docker_container_list(
     let post = serde_json::from_slice::<DockerContainerListPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    let docker = docker_tool_load(gcx.clone()).await
+    let (docker, _) = docker_and_isolation_load(gcx.clone()).await
        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot load docker tool: {}", e)))?;
 
     let docker_command = match post.label {
