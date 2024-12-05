@@ -5,6 +5,7 @@ import {
   type PayloadWithId,
   type ToolUse,
   IntegrationMeta,
+  LspChatMode,
 } from "./types";
 import {
   isAssistantMessage,
@@ -87,6 +88,8 @@ export const saveTitle = createAction<PayloadWithIdAndTitle>(
 export const setSendImmediately = createAction<boolean>(
   "chatThread/setSendImmediately",
 );
+
+export const setChatMode = createAction<LspChatMode>("chatThread/setChatMode");
 
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
@@ -201,18 +204,18 @@ function checkForToolLoop(message: ChatMessages): boolean {
 }
 // TODO: add props for config chat
 
-export function chatModeToLspMode(mode?: ToolUse) {
-  if (mode === "agent") return "AGENT";
-  if (mode === "quick") return "NOTOOLS";
-  return "EXPLORE";
-}
+// export function chatModeToLspMode(mode?: ToolUse) {
+//   if (mode === "agent") return "AGENT";
+//   if (mode === "quick") return "NOTOOLS";
+//   return "EXPLORE";
+// }
 export const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
     messages: ChatMessages;
     chatId: string;
     tools: ToolCommand[] | null;
-    mode?: string; // used for actions
+    mode?: LspChatMode; // used once for actions
     // TODO: make a separate function for this... and it'll need to be saved.
   }
 >("chatThread/sendChat", ({ messages, chatId, tools, mode }, thunkAPI) => {
@@ -233,13 +236,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
 
   const messagesForLsp = formatMessagesForLsp(messages);
 
-  const maybeMode = mode
-    ? mode
-    : thread?.integration
-      ? "CONFIGURE"
-      : thread?.tool_use
-        ? chatModeToLspMode(thread.tool_use)
-        : chatModeToLspMode(state.chat.tool_use);
+  const maybeMode = mode ?? state.chat.thread.mode;
 
   return sendChat({
     messages: messagesForLsp,

@@ -1,5 +1,12 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { Chat, ChatThread, IntegrationMeta, ToolUse } from "./types";
+import {
+  Chat,
+  ChatThread,
+  IntegrationMeta,
+  ToolUse,
+  LspChatMode,
+  chatModeToLspMode,
+} from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { chatResponse, chatAskedQuestion } from ".";
 import {
@@ -24,6 +31,7 @@ import { formatChatResponse } from "./utils";
 const createChatThread = (
   tool_use: ToolUse,
   integration?: IntegrationMeta | null,
+  mode?: LspChatMode,
 ): ChatThread => {
   const chat: ChatThread = {
     id: uuidv4(),
@@ -32,6 +40,7 @@ const createChatThread = (
     model: "",
     tool_use,
     integration,
+    mode,
   };
   return chat;
 };
@@ -40,9 +49,13 @@ const createInitialState = (
   tool_use: ToolUse = "explore",
   integration?: IntegrationMeta | null,
 ): Chat => {
+  const mode = chatModeToLspMode(
+    tool_use,
+    integration ? "CONFIGURE" : undefined,
+  );
   return {
     streaming: false,
-    thread: createChatThread(tool_use, integration),
+    thread: createChatThread(tool_use, integration, mode),
     error: null,
     prevent_send: false,
     waiting_for_response: false,

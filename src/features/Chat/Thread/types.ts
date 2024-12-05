@@ -14,6 +14,7 @@ export type ChatThread = {
   read?: boolean;
   isTitleGenerated?: boolean;
   integration?: IntegrationMeta | null;
+  mode?: LspChatMode;
 };
 
 export type ToolUse = "quick" | "explore" | "agent";
@@ -54,4 +55,21 @@ export function isToolUse(str: string): str is ToolUse {
   if (!str) return false;
   if (typeof str !== "string") return false;
   return str === "quick" || str === "explore" || str === "agent";
+}
+
+export type LspChatMode =
+  | "NOTOOLS"
+  | "EXPLORE"
+  | "AGENT"
+  | "CONFIGURE"
+  | "PROJECTSUMMARY";
+
+export function chatModeToLspMode(
+  toolUse?: ToolUse,
+  mode?: LspChatMode,
+): LspChatMode {
+  if (mode) return mode;
+  if (toolUse === "agent") return "AGENT";
+  if (toolUse === "quick") return "NOTOOLS";
+  return "EXPLORE";
 }
