@@ -1,4 +1,4 @@
-import { Box, Flex, Heading } from "@radix-ui/themes";
+import { Box, Flex, Heading, Text } from "@radix-ui/themes";
 import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { FC, FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -489,6 +489,10 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         )}
         {!currentIntegration && (
           <Flex direction="column" width="100%" gap="4">
+            <Text my="2">
+              Integrations allow Refact.ai Agent to interact with other services
+              and tools
+            </Text>
             <Flex
               align="start"
               direction="column"
@@ -511,6 +515,10 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
                     ? "integrations"
                     : "integration")}
               </Heading>
+              <Text size="2" color="gray">
+                Global configurations are shared in your IDE and available for
+                all your projects.
+              </Text>
               {globalIntegrations && (
                 <Flex direction="column" align="start" gap="3" width="100%">
                   {globalIntegrations.map((integration, index) => (
@@ -551,6 +559,10 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
                             : "integration"}
                         </Flex>
                       </Heading>
+                      <Text size="2" color="gray">
+                        Folder-specific integrations are local integrations,
+                        which are shared only in folder-specific scope.
+                      </Text>
                       <Flex
                         direction="column"
                         align="start"
