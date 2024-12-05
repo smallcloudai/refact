@@ -172,6 +172,7 @@ export const useSendChatRequest = () => {
       const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
       // Save the mode
       const mode = chatModeToLspMode(toolUse, maybeMode ?? maybeConfigure);
+
       dispatch(setChatMode(mode));
 
       void sendMessages(messages);
