@@ -222,7 +222,7 @@ impl Tool for ToolCmdline {
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let gcx = ccx.lock().await.global_context.clone();
+        // let gcx = ccx.lock().await.global_context.clone();
 
         let mut args_str: HashMap<String, String> = HashMap::new();
         let valid_params: Vec<String> = self.cfg.parameters.iter().map(|p| p.name.clone()).collect();

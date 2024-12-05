@@ -13,7 +13,6 @@ use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::global_context::SharedGlobalContext;
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
-use crate::integrations::docker::integr_docker::docker_tool_load;
 use crate::{caps, scratchpads};
 
 
