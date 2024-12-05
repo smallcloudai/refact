@@ -608,8 +608,9 @@ def print_messages(
 
 
 async def compress_trajectory(base_url: str, messages: List[Message]):
-    url = f"{base_url}/compress-trajectory"
+    url = f"{base_url}/trajectory-save"
     data = {
+        "project": "",  # TODO: required field
         "messages": messages_to_dicts(
             messages, verbose=False,
             tools=[], temperature=0, model_name="",

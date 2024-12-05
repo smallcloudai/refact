@@ -21,7 +21,7 @@ use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions};
 use crate::http::routers::v1::chat_based_handlers::handle_v1_commit_message_from_diff;
-use crate::http::routers::v1::chat_based_handlers::handle_v1_compress_trajectory;
+use crate::http::routers::v1::chat_based_handlers::handle_v1_trajectory_save;
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::docker::{handle_v1_docker_container_action, handle_v1_docker_container_list};
 use crate::http::routers::v1::git::{handle_v1_git_commit, handle_v1_restore_checkpoints};
@@ -154,7 +154,6 @@ pub fn make_v1_router() -> Router {
 
         .route("/code-completion-prompt", telemetry_post!(handle_v1_code_completion_prompt))
         .route("/commit-message-from-diff", telemetry_post!(handle_v1_commit_message_from_diff))
-        .route("/compress-trajectory", telemetry_post!(handle_v1_compress_trajectory))
 
         // to remove
         .route("/subchat", telemetry_post!(handle_v1_subchat))
@@ -171,6 +170,7 @@ pub fn make_v1_router() -> Router {
         .route("/mem-update-used", telemetry_post!(handle_mem_update_used))
         .route("/mem-block-until-vectorized", telemetry_get!(handle_mem_block_until_vectorized))
         .route("/mem-sub", telemetry_post!(handle_mem_sub))
+        .route("/trajectory-save", telemetry_post!(handle_v1_trajectory_save))
         ;
 
     builder.layer(CorsLayer::very_permissive())

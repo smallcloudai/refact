@@ -6,6 +6,7 @@ use crate::agentic::generate_commit_message::remove_fencing;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
+use crate::caps::strip_model_from_finetune;
 
 const COMPRESSION_MESSAGE: &str = r#"
 Compress the chat above.
@@ -43,22 +44,39 @@ Example:
 
 Write only the json and nothing else.
 "#;
-// TODO: N_CTX, probably from model max?
-const N_CTX: usize = 32000;
 const TEMPERATURE: f32 = 0.3;
+
+fn parse_goal(trajectory: &String) -> Result<String, String> {
+    let traj_message_parsed: Vec<(String, String)> = serde_json::from_str(trajectory.as_str())
+        .map_err(|e| format!("Error while parsing: {}\nTrajectory:\n{}", e, trajectory))?;
+    let (name, content) = traj_message_parsed.first().ok_or("Empty trajectory".to_string())?;
+    if name != "goal" {
+        Err("Goal should be first item in trajectory".to_string())
+    } else {
+        Ok(content.clone())
+    }
+}
 
 pub async fn compress_trajectory(
     gcx: Arc<ARwLock<GlobalContext>>,
     messages: &Vec<ChatMessage>,
-) -> Result<String, String> {
+) -> Result<(String, String), String> {
     if messages.is_empty() {
         return Err("The provided chat is empty".to_string());
     }
-    let model_name = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => caps
-            .read()
-            .map(|x| Ok(x.code_chat_default_model.clone()))
-            .map_err(|_| "Caps are not available".to_string())?,
+    let (model_name, n_ctx) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => {
+            let caps_locked = caps.read().unwrap();
+            let model_name = caps_locked.code_chat_default_model.clone();
+            if let Some(model_rec) = caps_locked.code_completion_models.get(&strip_model_from_finetune(&model_name)) {
+                Ok((model_name, model_rec.n_ctx))
+            } else {
+                Err(format!(
+                    "Model '{}' not found. Server has these models: {:?}",
+                    model_name, caps_locked.code_completion_models.keys()
+                ))
+            }
+        },
         Err(_) => Err("No caps available".to_string()),
     }?;
     let mut messages_compress = messages.clone();
@@ -72,7 +90,7 @@ pub async fn compress_trajectory(
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(
         AtCommandsContext::new(
             gcx.clone(),
-            N_CTX,
+            n_ctx,
             1,
             false,
             messages_compress.clone(),
@@ -95,7 +113,7 @@ pub async fn compress_trajectory(
         None,
     ).await.map_err(|e| format!("Error: {}", e))?;
 
-    let commit_message = new_messages
+    let content = new_messages
         .into_iter()
         .next()
         .map(|x| {
@@ -106,7 +124,9 @@ pub async fn compress_trajectory(
         })
         .flatten()
         .flatten()
-        .ok_or("No commit message was generated".to_string())?;
+        .ok_or("No traj message was generated".to_string())?;
+    let trajectory = remove_fencing(&content);
+    let goal = parse_goal(&trajectory)?;
 
-    Ok(remove_fencing(&commit_message))
+    Ok((goal, trajectory))
 }
