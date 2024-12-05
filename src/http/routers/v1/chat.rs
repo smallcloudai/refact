@@ -71,6 +71,19 @@ pub async fn handle_v1_chat_configuration(
     _chat(gcx, &mut chat_post, &mut messages, true).await
 }
 
+pub async fn handle_v1_chat_project_summary(
+    Extension(gcx): Extension<SharedGlobalContext>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
+        info!("chat handler cannot parse input:\n{:?}", body_bytes);
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
+    crate::integrations::project_summary_chat::mix_config_messages(gcx.clone(), &mut messages, &chat_post.meta.current_config_file).await;
+    _chat(gcx, &mut chat_post, &mut messages, true).await
+}
+
 pub async fn handle_v1_chat(
     // less-standard openai-style handler that sends role="context_*" messages first, rewrites the user message
     Extension(gcx): Extension<SharedGlobalContext>,

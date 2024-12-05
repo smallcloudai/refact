@@ -18,7 +18,7 @@ use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle
 use crate::http::routers::v1::at_tools::{handle_v1_tools, handle_v1_tools_check_if_confirmation_needed, handle_v1_tools_execute};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
-use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions, handle_v1_chat_configuration};
+use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions, handle_v1_chat_configuration, handle_v1_chat_project_summary};
 use crate::http::routers::v1::chat_based_handlers::handle_v1_commit_message_from_diff;
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::docker::{handle_v1_docker_container_action, handle_v1_docker_container_list};
@@ -86,6 +86,7 @@ pub fn make_v1_router() -> Router {
         .route("/chat", telemetry_post!(handle_v1_chat))
         .route("/chat/completions", telemetry_post!(handle_v1_chat_completions))  // standard
         .route("/chat-configuration", telemetry_post!(handle_v1_chat_configuration))
+        .route("/chat-project-summary", telemetry_post!(handle_v1_chat_project_summary))
 
         .route("/telemetry-network", telemetry_post!(handle_v1_telemetry_network))
         .route("/snippet-accepted", telemetry_post!(handle_v1_snippet_accepted))
