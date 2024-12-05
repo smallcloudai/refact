@@ -1,4 +1,5 @@
-# Follow up example
+echo
+echo Follow up example
 curl -X POST http://localhost:8001/v1/links \
     -H "Content-Type: application/json" \
     -d '{
@@ -39,7 +40,8 @@ curl -X POST http://localhost:8001/v1/links \
         ]
     }'
 
-# Configuration goto example
+echo
+echo Configuration goto example
 curl -X POST http://localhost:8001/v1/links \
     -H "Content-Type: application/json" \
     -d '{
@@ -98,7 +100,8 @@ curl -X POST http://localhost:8001/v1/links \
         ]
     }'
 
-# Summarize project example
+echo
+echo Summarize project example
 curl -X POST http://localhost:8001/v1/links \
     -H "Content-Type: application/json" \
     -d '{
@@ -111,7 +114,8 @@ curl -X POST http://localhost:8001/v1/links \
         "messages": []
     }'
 
-# Example of Save and return in configuration chat
+echo
+echo Example of Save and return in configuration chat
 curl -X POST http://localhost:8001/v1/links \
     -H "Content-Type: application/json" \
     -d '{

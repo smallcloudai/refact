@@ -93,11 +93,11 @@ pub async fn handle_v1_links(
             goto: None,
         });
     }
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::json!({"links": links}).to_string()))
+        .body(Body::from(serde_json::to_string_pretty(&serde_json::json!({"links": links})).unwrap()))
         .unwrap())
 }
 
