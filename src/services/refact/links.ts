@@ -56,13 +56,15 @@ export const linksApi = createApi({
   }),
   endpoints: (builder) => ({
     getLinksForChat: builder.mutation<LinksForChatResponse, LinksApiRequest>({
-      async queryFn(args, _api, extraOptions, baseQuery) {
+      async queryFn(args, api, extraOptions, baseQuery) {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
         const messageFotLsp = formatMessagesForLsp(args.messages);
 
         const response = await baseQuery({
           ...extraOptions,
           method: "POST",
-          url: CHAT_LINKS_URL,
+          url: `http://127.0.0.1:${port}${CHAT_LINKS_URL}`,
           body: {
             meta: {
               chat_id: args.chat_id,
