@@ -65,7 +65,7 @@ pub fn stage_all_changes(repository: &Repository) -> Result<(), String> {
 /// Returns:
 /// 
 /// A tuple containing the number of new files, modified files, and deleted files.
-pub fn count_file_changes(repository: &Repository) -> Result<(usize, usize, usize), String> {
+pub fn count_file_changes(repository: &Repository, include_unstaged: bool) -> Result<(usize, usize, usize), String> {
     let (mut new_files, mut modified_files, mut deleted_files) = (0, 0, 0);
 
     let statuses = repository.statuses(None)
@@ -75,6 +75,11 @@ pub fn count_file_changes(repository: &Repository) -> Result<(usize, usize, usiz
         if status.contains(Status::INDEX_NEW) { new_files += 1; }
         if status.contains(Status::INDEX_MODIFIED) { modified_files += 1;}
         if status.contains(Status::INDEX_DELETED) { deleted_files += 1; }
+        if include_unstaged {
+            if status.contains(Status::WT_NEW) { new_files += 1; }
+            if status.contains(Status::WT_MODIFIED) { modified_files += 1;}
+            if status.contains(Status::WT_DELETED) { deleted_files += 1; }
+        }
     }
 
     Ok((new_files, modified_files, deleted_files))

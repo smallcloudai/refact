@@ -36,7 +36,7 @@ pub async fn handle_v1_git_stage_and_commit(
     stage_all_changes(&repository)
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
-    let (new_files, modified_files, deleted_files) = count_file_changes(&repository)
+    let (new_files, modified_files, deleted_files) = count_file_changes(&repository, false)
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
     let commit_oid = if new_files + modified_files + deleted_files != 0 {
