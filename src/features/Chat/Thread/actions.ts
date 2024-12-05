@@ -215,10 +215,10 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     messages: ChatMessages;
     chatId: string;
     tools: ToolCommand[] | null;
-    mode?: LspChatMode; // used once for actions
+    // mode?: LspChatMode; // used once for actions
     // TODO: make a separate function for this... and it'll need to be saved.
   }
->("chatThread/sendChat", ({ messages, chatId, tools, mode }, thunkAPI) => {
+>("chatThread/sendChat", ({ messages, chatId, tools }, thunkAPI) => {
   const state = thunkAPI.getState();
 
   const thread =
@@ -236,8 +236,6 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
 
   const messagesForLsp = formatMessagesForLsp(messages);
 
-  const maybeMode = mode ?? state.chat.thread.mode;
-
   return sendChat({
     messages: messagesForLsp,
     model: state.chat.thread.model,
@@ -249,7 +247,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     port: state.config.lspPort,
     onlyDeterministicMessages,
     integration: thread?.integration,
-    mode: maybeMode,
+    mode: thread?.mode,
   })
     .then((response) => {
       if (!response.ok) {

@@ -250,7 +250,7 @@ startListening({
     );
     toolsRequest.unsubscribe();
     const toolResult = await toolsRequest.unwrap();
-
+    // TODO: set mode to configure ? or infer it later
     // TODO: create a dedicated thunk for this.
     await listenerApi.dispatch(
       chatAskQuestionThunk({

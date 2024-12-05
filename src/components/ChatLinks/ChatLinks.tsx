@@ -10,14 +10,13 @@ import {
   useSendChatRequest,
 } from "../../hooks";
 import {
-  chatModeToLspMode,
   selectChatId,
   selectIntegration,
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
   selectModel,
-  selectThreadToolUse,
+  selectThreadMode,
 } from "../../features/Chat";
 import { popBackTo } from "../../features/Pages/pagesSlice";
 
@@ -48,7 +47,7 @@ export const ChatLinks: React.FC = () => {
   const messages = useAppSelector(selectMessages);
   const chatId = useAppSelector(selectChatId);
   const maybeIntegration = useAppSelector(selectIntegration);
-  const chatMode = useAppSelector(selectThreadToolUse);
+  const threadMode = useAppSelector(selectThreadMode);
 
   // TODO: add the model
   const caps = useGetCapsQuery();
@@ -150,13 +149,12 @@ export const ChatLinks: React.FC = () => {
         chat_id: chatId,
         messages: messages,
         model,
-        mode: maybeIntegration ? "CONFIGURE" : chatModeToLspMode(chatMode),
+        mode: threadMode,
         current_config_file: maybeIntegration?.path,
       });
     }
   }, [
     chatId,
-    chatMode,
     isStreaming,
     isWaiting,
     linksRequest,
@@ -164,6 +162,7 @@ export const ChatLinks: React.FC = () => {
     maybeIntegration?.path,
     messages,
     model,
+    threadMode,
     unCalledTools,
   ]);
 

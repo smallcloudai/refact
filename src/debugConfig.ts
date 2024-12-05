@@ -7,15 +7,15 @@ export const debugApp = createDebug("app");
 export const debugComponent = createDebug("component");
 export const debugIntegrations = createDebug("integrations");
 
-createDebug.enable("root");
+// createDebug.enable("root");
 debugRoot(`Debugging: ${debugNamespaces ? "enabled" : "disabled"}`);
 
-if (debugNamespaces) {
-  if (debugNamespaces === "*") {
-    debugRoot("Enabling debug logging for all namespaces");
-    createDebug.enable("*");
-  } else {
-    debugRoot(`Enabling debug logging for namespaces [${debugNamespaces}]`);
-    createDebug.enable(debugNamespaces);
-  }
-}
+// if (debugNamespaces) {
+//   if (debugNamespaces === "*") {
+//     debugRoot("Enabling debug logging for all namespaces");
+//     createDebug.enable("*");
+//   } else {
+//     debugRoot(`Enabling debug logging for namespaces [${debugNamespaces}]`);
+//     createDebug.enable(debugNamespaces);
+//   }
+// }

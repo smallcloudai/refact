@@ -25,6 +25,7 @@ import {
   saveTitle,
   newIntegrationChat,
   setSendImmediately,
+  setChatMode,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 
@@ -48,11 +49,10 @@ const createChatThread = (
 const createInitialState = (
   tool_use: ToolUse = "explore",
   integration?: IntegrationMeta | null,
+  maybeMode?: LspChatMode,
 ): Chat => {
-  const mode = chatModeToLspMode(
-    tool_use,
-    integration ? "CONFIGURE" : undefined,
-  );
+  const mode =
+    maybeMode ?? integration ? "CONFIGURE" : chatModeToLspMode(tool_use);
   return {
     streaming: false,
     thread: createChatThread(tool_use, integration, mode),
@@ -72,6 +72,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(setToolUse, (state, action) => {
     state.thread.tool_use = action.payload;
     state.tool_use = action.payload;
+    state.thread.mode = chatModeToLspMode(action.payload, state.thread.mode);
   });
 
   builder.addCase(setPreventSend, (state, action) => {
@@ -208,7 +209,11 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(newIntegrationChat, (state, action) => {
     // TODO: find out about tool use
     // TODO: should be CONFIGURE ?
-    const next = createInitialState("agent", action.payload.integration);
+    const next = createInitialState(
+      "agent",
+      action.payload.integration,
+      "CONFIGURE",
+    );
     next.thread.integration = action.payload.integration;
     next.thread.messages = action.payload.messages;
 
@@ -223,5 +228,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setSendImmediately, (state, action) => {
     state.send_immediately = action.payload;
+  });
+
+  builder.addCase(setChatMode, (state, action) => {
+    state.thread.mode = action.payload;
   });
 });
