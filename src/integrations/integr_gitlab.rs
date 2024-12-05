@@ -26,6 +26,8 @@ pub struct ToolGitlab {
 }
 
 impl Integration for ToolGitlab{
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
         let integration_gitlab = serde_json::from_value::<IntegrationGitLab>(value.clone())
             .map_err(|e|e.to_string())?;
@@ -41,7 +43,7 @@ impl Integration for ToolGitlab{
         serde_json::to_value(&integration_gitlab).map_err(|e| e.to_string())
     }
 
-    fn integr_upgrade_to_tool(&self, integr_name: &String) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolGitlab {integration_gitlab: self.integration_gitlab.clone()}) as Box<dyn Tool + Send>
     }
 

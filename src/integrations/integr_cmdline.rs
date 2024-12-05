@@ -55,6 +55,8 @@ pub struct ToolCmdline {
 }
 
 impl IntegrationTrait for ToolCmdline {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
     fn integr_settings_apply(&mut self, value: &serde_json::Value) -> Result<(), String> {
         match serde_json::from_value::<CmdlineToolConfig>(value.clone()) {
             Ok(x) => self.cfg = x,
@@ -70,10 +72,10 @@ impl IntegrationTrait for ToolCmdline {
         serde_json::to_value(&self.cfg).unwrap()
     }
 
-    fn integr_upgrade_to_tool(&self, integr_name: &String) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolCmdline {
             // is_service: self.is_service,
-            name: integr_name.clone(),
+            name: integr_name.to_string(),
             cfg: self.cfg.clone(),
         }) as Box<dyn Tool + Send>
     }

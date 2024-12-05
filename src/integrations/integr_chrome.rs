@@ -124,6 +124,8 @@ impl IntegrationSession for ChromeSession
 }
 
 impl IntegrationTrait for ToolChrome {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
         match serde_json::from_value::<SettingsChrome>(value.clone()) {
             Ok(settings_chrome) => self.settings_chrome = settings_chrome,
@@ -139,7 +141,7 @@ impl IntegrationTrait for ToolChrome {
         serde_json::to_value(&self.settings_chrome).unwrap()
     }
 
-    fn integr_upgrade_to_tool(&self, _integr_name: &String) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolChrome {
             settings_chrome: self.settings_chrome.clone(),
             supports_clicks: false,

@@ -67,6 +67,8 @@ impl IntegrationSession for PdbSession
 }
 
 impl Integration for ToolPdb {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
         let settings_pdb = serde_json::from_value::<SettingsPdb>(value.clone())
             .map_err(|e|e.to_string())?;
@@ -82,7 +84,7 @@ impl Integration for ToolPdb {
         serde_json::to_value(&integration_github).map_err(|e| e.to_string())
     }
 
-    fn integr_upgrade_to_tool(&self, integr_name: &String) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolPdb {settings_pdb: self.settings_pdb.clone()}) as Box<dyn Tool + Send>
     }
 

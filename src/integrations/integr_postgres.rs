@@ -30,6 +30,8 @@ pub struct ToolPostgres {
 }
 
 impl IntegrationTrait for ToolPostgres {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
         match serde_json::from_value::<SettingsPostgres>(value.clone()) {
             Ok(settings_postgres) => self.settings_postgres = settings_postgres,
@@ -45,7 +47,7 @@ impl IntegrationTrait for ToolPostgres {
         serde_json::to_value(&self.settings_postgres).unwrap()
     }
 
-    fn integr_upgrade_to_tool(&self, _integr_name: &String) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolPostgres {
             settings_postgres: self.settings_postgres.clone()
         }) as Box<dyn Tool + Send>

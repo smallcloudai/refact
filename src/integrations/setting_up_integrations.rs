@@ -20,7 +20,7 @@ pub struct YamlError {
     pub error_msg: String,
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct IntegrationRecord {
     pub project_path: String,
     pub integr_name: String,
@@ -416,10 +416,8 @@ pub async fn integration_config_save(
 #[cfg(test)]
 mod tests {
     // use super::*;
-    use crate::integrations::integr_abstract::IntegrationTrait;
     use crate::integrations::yaml_schema::ISchema;
     use serde_yaml;
-    use indexmap::IndexMap;
     use std::fs::File;
     use std::io::Write;
 
