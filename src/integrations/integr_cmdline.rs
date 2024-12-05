@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::process::Stdio;
 use tokio::sync::Mutex as AMutex;
-use tokio::io::BufReader;
 use serde::Deserialize;
 use serde::Serialize;
 use async_trait::async_trait;
@@ -12,33 +11,32 @@ use tracing::info;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::integrations::process_io_utils::blocking_read_until_token_or_timeout;
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::integrations::integr_abstract::IntegrationTrait;
 
 
 #[derive(Deserialize, Serialize, Clone, Default)]
-struct CmdlineToolConfig {
-    command: String,
-    command_workdir: String,
+pub struct CmdlineToolConfig {
+    pub command: String,
+    pub command_workdir: String,
 
-    description: String,
-    parameters: Vec<ToolParam>,
-    parameters_required: Option<Vec<String>>,
+    pub description: String,
+    pub parameters: Vec<ToolParam>,
+    pub parameters_required: Option<Vec<String>>,
 
     // blocking
     #[serde(default = "_default_timeout")]
-    timeout: u64,
+    pub timeout: u64,
     #[serde(default)]
-    output_filter: CmdlineOutputFilter,
+    pub output_filter: CmdlineOutputFilter,
 
     // background
     #[serde(default)]
-    startup_wait_port: Option<u16>,
+    pub startup_wait_port: Option<u16>,
     #[serde(default = "_default_startup_wait")]
-    startup_wait: u64,
+    pub startup_wait: u64,
     #[serde(default)]
-    startup_wait_keyword: Option<String>,
+    pub startup_wait_keyword: Option<String>,
 }
 
 fn _default_timeout() -> u64 {
@@ -86,39 +84,7 @@ impl IntegrationTrait for ToolCmdline {
     }
 }
 
-// pub fn cmdline_tool_from_yaml_value(
-//     cfg_cmdline_value: &serde_yaml::Value,
-//     background: bool,
-// ) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
-//     let mut result = IndexMap::new();
-//     let cfgmap = match serde_yaml::from_value::<IndexMap<String, CmdlineToolConfig>>(cfg_cmdline_value.clone()) {
-//         Ok(cfgmap) => cfgmap,
-//         Err(e) => {
-//             let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-//             return Err(format!("failed to parse cmdline section: {:?}{}", e, location));
-//         }
-//     };
-//     for (c_name, mut c_cmd_tool) in cfgmap.into_iter() {
-//         // if background {
-//         //     c_cmd_tool.parameters.push(ToolParam {
-//         //         name: "action".to_string(),
-//         //         param_type: "string".to_string(),
-//         //         description: "start | stop | restart | status".to_string(),
-//         //     });
-//         // }
-//         let tool = Arc::new(AMutex::new(Box::new(
-//             ToolCmdline {
-//                 // is_service: background,
-//                 name: c_name.clone(),
-//                 cfg: c_cmd_tool,
-//             }
-//         ) as Box<dyn Tool + Send>));
-//         result.insert(c_name, tool);
-//     }
-//     Ok(result)
-// }
-
-fn _replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
+pub fn replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
     let mut result = x.to_string();
     for (key, value) in args_str {
         result = result.replace(&format!("%{}%", key), value);
@@ -126,7 +92,7 @@ fn _replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
     result
 }
 
-fn format_output(stdout_out: &str, stderr_out: &str) -> String {
+pub fn format_output(stdout_out: &str, stderr_out: &str) -> String {
     let mut out = String::new();
     if !stdout_out.is_empty() && stderr_out.is_empty() {
         // special case: just clean output, nice
@@ -142,7 +108,7 @@ fn format_output(stdout_out: &str, stderr_out: &str) -> String {
     out
 }
 
-async fn create_command_from_string(
+pub fn _create_command_from_string(
     cmd_string: &str,
     command_workdir: &String,
 ) -> Result<Command, String> {
@@ -159,14 +125,14 @@ async fn create_command_from_string(
     Ok(cmd)
 }
 
-async fn execute_blocking_command(
+pub async fn execute_blocking_command(
     command: &str,
     cfg: &CmdlineToolConfig,
     command_workdir: &String,
 ) -> Result<String, String> {
     info!("EXEC workdir {}:\n{:?}", command_workdir, command);
     let command_future = async {
-        let mut cmd = create_command_from_string(command, command_workdir).await?;
+        let mut cmd = _create_command_from_string(command, command_workdir)?;
         let t0 = tokio::time::Instant::now();
         let result = cmd
             .stdout(Stdio::piped())
@@ -203,26 +169,16 @@ async fn execute_blocking_command(
     }
 }
 
-async fn get_stdout_and_stderr(
-    timeout_ms: u64,
-    stdout: &mut BufReader<tokio::process::ChildStdout>,
-    stderr: &mut BufReader<tokio::process::ChildStderr>,
-) -> Result<(String, String), String> {
-    let (stdout_out, stderr_out, _) = blocking_read_until_token_or_timeout(stdout, stderr, timeout_ms, "").await?;
-    Ok((stdout_out, stderr_out))
-}
-
 #[async_trait]
 impl Tool for ToolCmdline {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
     async fn tool_execute(
         &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        // let gcx = ccx.lock().await.global_context.clone();
 
         let mut args_str: HashMap<String, String> = HashMap::new();
         let valid_params: Vec<String> = self.cfg.parameters.iter().map(|p| p.name.clone()).collect();
@@ -243,20 +199,8 @@ impl Tool for ToolCmdline {
             }
         }
 
-        let command = _replace_args(self.cfg.command.as_str(), &args_str);
-        let workdir = _replace_args(self.cfg.command_workdir.as_str(), &args_str);
-
-        // let tool_ouput = if self.is_service {
-        //     let action = args_str.get("action").cloned().unwrap_or("start".to_string());
-        //     if !["start", "restart", "stop", "status"].contains(&action.as_str()) {
-        //         return Err("Tool call is invalid. Param 'action' must be one of 'start', 'restart', 'stop', 'status'. Try again".to_string());
-        //     }
-        //     execute_background_command(
-        //         gcx, &self.name, &command, &workdir, &self.cfg, action.as_str()
-        //     ).await?
-
-        // } else {
-        // };
+        let command = replace_args(self.cfg.command.as_str(), &args_str);
+        let workdir = replace_args(self.cfg.command_workdir.as_str(), &args_str);
 
         let tool_ouput = execute_blocking_command(&command, &self.cfg, &workdir).await?;
 
