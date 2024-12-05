@@ -37,6 +37,14 @@ pub struct Link {
     text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     goto: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    projects: Option<Vec<ProjectCommit>>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ProjectCommit {
+    path: String,
+    commit_message: String,
 }
 
 pub async fn handle_v1_links(
@@ -52,6 +60,7 @@ pub async fn handle_v1_links(
             action: LinkAction::SummarizeProject,
             text: "Investigate Project".to_string(),
             goto: None,
+            projects: None,
         });
     }
 
@@ -60,16 +69,18 @@ pub async fn handle_v1_links(
             action: LinkAction::PatchAll,
             text: "Save and return".to_string(),
             goto: Some("SETTINGS:DEFAULT".to_string()),
+            projects: None,
         });
     }
 
     if post.meta.chat_mode == ChatMode::Agent {
-        if let Ok(commit_msg) = generate_commit_messages_with_current_changes(gcx.clone())
-            .await.map_err(|e| error!(e)) {
+        let (project_commits, files_changed) = generate_commit_messages_with_current_changes(gcx.clone()).await;
+        if !project_commits.is_empty() {
             links.push(Link {
                 action: LinkAction::Commit,
-                text: format!("git commit -m \"{}\"", commit_msg),
+                text: format!("Commit {files_changed} files"),
                 goto: None,
+                projects: Some(project_commits),
             });
         }
     }
@@ -80,6 +91,7 @@ pub async fn handle_v1_links(
                 action: LinkAction::Goto,
                 text: format!("Configure {failed_integr_name}"),
                 goto: Some(format!("SETTINGS:{failed_integr_name}")),
+                projects: None,
             })
         }
     }
@@ -91,6 +103,7 @@ pub async fn handle_v1_links(
             action: LinkAction::FollowUp,
             text: follow_up_message,
             goto: None,
+            projects: None,
         });
     }
 
@@ -101,12 +114,41 @@ pub async fn handle_v1_links(
         .unwrap())
 }
 
-async fn generate_commit_messages_with_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, String> {
-    let active_project_path = crate::files_correction::get_active_project_path(gcx.clone()).await.ok_or("No active project found".to_string())?;
-    let repository = git2::Repository::open(&active_project_path).map_err(|e| e.to_string())?;
-    let diff = crate::git::git_diff_from_all_changes(&repository)?;
-    let commit_msg = generate_commit_message_by_diff(gcx.clone(), &diff, &None).await.map_err(|e| e.to_string())?;
-    Ok(commit_msg)
+async fn generate_commit_messages_with_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> (Vec<ProjectCommit>, usize) {
+    let mut project_commits = Vec::new();
+    let mut total_file_changes = 0;
+
+    for project_path in crate::files_correction::get_project_dirs(gcx.clone()).await {
+        let repository = match git2::Repository::open(&project_path) {
+            Ok(repo) => repo,
+            Err(e) => { error!("{}", e); continue; }
+        };
+
+        let (added, modified, deleted) = match crate::git::count_file_changes(&repository, true) {
+            Ok((0, 0, 0)) => { continue; }
+            Ok(changes) => changes,
+            Err(e) => { error!("{}", e); continue; }
+        };
+
+        let diff = match crate::git::git_diff_from_all_changes(&repository) {
+            Ok(d) if d.is_empty() => { continue; }
+            Ok(d) => d,
+            Err(e) => { error!("{}", e); continue; }
+        };
+
+        let commit_msg = match generate_commit_message_by_diff(gcx.clone(), &diff, &None).await {
+            Ok(msg) => msg,
+            Err(e) => { error!("{}", e); continue; }
+        };
+
+        project_commits.push(ProjectCommit {
+            path: project_path.to_string_lossy().to_string(),
+            commit_message: commit_msg,
+        });
+        total_file_changes += added + modified + deleted;
+    }
+
+    (project_commits, total_file_changes)
 }
 
 // TODO: Move all logic below to more appropiate files
