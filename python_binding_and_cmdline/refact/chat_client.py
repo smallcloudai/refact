@@ -241,8 +241,11 @@ async def ask_using_http(
     }
     if postprocess_parameters is not None:
         post_me["postprocess_parameters"] = postprocess_parameters
+    meta = {}
     if chat_id is not None:
-        post_me["chat_id"] = chat_id
+        meta["chat_id"] = chat_id
+        meta["chat_mode"] = "AGENT"
+    post_me["meta"] = meta
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:
         async with session.post(base_url + "/chat", json=post_me) as response:

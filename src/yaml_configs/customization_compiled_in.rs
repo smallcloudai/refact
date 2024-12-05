@@ -167,7 +167,10 @@ system_prompts:
     show: never
   configurator:
     text: "%PROMPT_CONFIGURATOR%"
-    show: experimental
+    show: never
+  project_summary:
+    text: "TBD"
+    show: never
 
 
 subchat_tool_parameters:

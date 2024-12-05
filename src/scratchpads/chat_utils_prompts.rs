@@ -11,8 +11,7 @@ use crate::integrations::docker::docker_container_manager::docker_container_get_
 
 pub async fn get_default_system_prompt(
     gcx: Arc<ARwLock<GlobalContext>>,
-    have_exploration_tools: bool,
-    have_agentic_tools: bool,
+    chat_mode: crate::call_validation::ChatMode,
 ) -> String {
     let tconfig = match crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true).await {
         Ok(tconfig) => tconfig,
@@ -21,18 +20,17 @@ pub async fn get_default_system_prompt(
             return String::new();
         },
     };
-    let prompt_key = if have_agentic_tools {
-        "agentic_tools"
-    } else if have_exploration_tools {
-        "exploration_tools"
-    } else {
-        "default"
+    let prompt_key = match chat_mode {
+        crate::call_validation::ChatMode::NoTools => "default",
+        crate::call_validation::ChatMode::Explore => "exploration_tools",
+        crate::call_validation::ChatMode::Agent => "agentic_tools",
+        crate::call_validation::ChatMode::Configure => "configurator",
+        crate::call_validation::ChatMode::ProjectSummary => "project_summary",
     };
     let system_prompt = tconfig.system_prompts.get(prompt_key).map_or_else(|| {
         tracing::error!("cannot find system prompt `{}`", prompt_key);
         String::new()
     }, |x| x.text.clone());
-    // tracing::info!("system_prompt:\n{}", system_prompt);
     system_prompt
 }
 

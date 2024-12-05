@@ -96,10 +96,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let (n_ctx, gcx) = {
-            let ccx_locked = ccx.lock().await;
-            (ccx_locked.n_ctx, ccx_locked.global_context.clone())
-        };
+        let n_ctx = ccx.lock().await.n_ctx;
         let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
             run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
         } else {

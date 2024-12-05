@@ -145,19 +145,19 @@ async fn update_checksum(cache_dir: &Path, config_name: String, checksum: &str) 
 //     read_yaml_into_value(integrations_enabled_path).await.unwrap_or_else(|_| serde_yaml::Value::Mapping(Default::default()))
 // }
 
-pub async fn read_yaml_into_value(yaml_path: &PathBuf) -> Result<serde_yaml::Value, String> {
-    let file = std::fs::File::open(&yaml_path).map_err(
-        |e| format!("Failed to open {}: {}", yaml_path.display(), e)
-    )?;
+// pub async fn read_yaml_into_value(yaml_path: &PathBuf) -> Result<serde_yaml::Value, String> {
+//     let file = std::fs::File::open(&yaml_path).map_err(
+//         |e| format!("Failed to open {}: {}", yaml_path.display(), e)
+//     )?;
 
-    let reader = std::io::BufReader::new(file);
-    serde_yaml::from_reader(reader).map_err(
-        |e| {
-            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-            format!("Failed to parse {}{}: {}", yaml_path.display(), location, e)
-        }
-    )
-}
+//     let reader = std::io::BufReader::new(file);
+//     serde_yaml::from_reader(reader).map_err(
+//         |e| {
+//             let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
+//             format!("Failed to parse {}{}: {}", yaml_path.display(), location, e)
+//         }
+//     )
+// }
 
 // pub async fn write_yaml_value(path: &Path, value: &serde_yaml::Value) -> Result<(), String> {
 //     let content = serde_yaml::to_string(value).map_err(|e| format!("Failed to serialize YAML: {}", e))?;

@@ -37,7 +37,10 @@ pub async fn load_integration_tools(
                 continue;
             }
         };
-        integr.integr_settings_apply(&rec.config_unparsed);
+        let should_be_fine = integr.integr_settings_apply(&rec.config_unparsed);
+        if should_be_fine.is_err() {
+            tracing::error!("failed to apply settings for integration {}: {:?}", rec.integr_name, should_be_fine.err());
+        }
         tools.insert(rec.integr_name.clone(), Arc::new(AMutex::new(integr.integr_upgrade_to_tool(&rec.integr_name))));
     }
 

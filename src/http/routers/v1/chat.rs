@@ -7,13 +7,13 @@ use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use tracing::info;
 
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost};
+use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::global_context::SharedGlobalContext;
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
-use crate::{caps, scratchpads};
+use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_default_system_prompt_from_remote, system_prompt_add_workspace_info};
 
 
 pub const CHAT_TOP_N: usize = 7;
@@ -24,12 +24,12 @@ pub async fn lookup_chat_scratchpad(
 ) -> Result<(String, String, serde_json::Value, usize, bool, bool, bool), String> {
     let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
-        caps::which_model_to_use(
+        crate::caps::which_model_to_use(
             &caps_locked.code_chat_models,
             &chat_post.model,
             &caps_locked.code_chat_default_model,
         )?;
-    let (sname, patch) = caps::which_scratchpad_to_use(
+    let (sname, patch) = crate::caps::which_scratchpad_to_use(
         &recommended_model_record.supports_scratchpads,
         &chat_post.scratchpad,
         &recommended_model_record.default_scratchpad,
@@ -179,16 +179,16 @@ async fn _chat(
 
     let have_system = !messages.is_empty() && messages[0].role == "system";
     if !have_system {
-        use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_default_system_prompt_from_remote, system_prompt_add_workspace_info};
-        let exploration_tools = chat_post.meta.chat_mode.has_exploration_tools();
-        let agentic_tools = chat_post.meta.chat_mode.has_agentic_tools();
+        let exploration_tools = chat_post.meta.chat_mode != ChatMode::NoTools;
+        let agentic_tools = matches!(chat_post.meta.chat_mode, ChatMode::Agent | ChatMode::Configure | ChatMode::ProjectSummary);
         let system_message_content = if should_execute_remotely {
+            // XXX pass chat_post.meta.chat_mode
             get_default_system_prompt_from_remote(gcx.clone(), exploration_tools, agentic_tools, &chat_post.meta.chat_id).await.map_err(|e|
                 ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
             )?
         } else {
             system_prompt_add_workspace_info(gcx.clone(),
-                &get_default_system_prompt(gcx.clone(), exploration_tools, agentic_tools).await
+                &get_default_system_prompt(gcx.clone(), chat_post.meta.chat_mode.clone()).await
             ).await
         };
 
@@ -200,7 +200,7 @@ async fn _chat(
     }
 
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
-    let mut scratchpad = scratchpads::create_chat_scratchpad(
+    let mut scratchpad = crate::scratchpads::create_chat_scratchpad(
         gcx.clone(),
         caps,
         model_name.clone(),

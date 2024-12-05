@@ -218,16 +218,6 @@ pub enum ChatMode {
     ProjectSummary,
 }
 
-impl ChatMode {
-    pub fn has_exploration_tools(&self) -> bool {
-        *self != ChatMode::NoTools
-    }
-
-    pub fn has_agentic_tools(&self) -> bool {
-        matches!(self, ChatMode::Agent | ChatMode::Configure | ChatMode::ProjectSummary)
-    }
-}
-
 impl Default for ChatMode {
     fn default() -> Self {
         ChatMode::NoTools

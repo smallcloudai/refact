@@ -261,7 +261,7 @@ pub fn join_config_path(config_dir: &PathBuf, integr_name: &str) -> String
 pub async fn get_config_dirs(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> (Vec<PathBuf>, PathBuf) {
-    let (global_config_dir, workspace_folders_arc, integrations_yaml) = {
+    let (global_config_dir, workspace_folders_arc, _integrations_yaml) = {
         let gcx_locked = gcx.read().await;
         (gcx_locked.config_dir.clone(), gcx_locked.documents_state.workspace_folders.clone(), gcx_locked.cmdline.integrations_yaml.clone())
     };

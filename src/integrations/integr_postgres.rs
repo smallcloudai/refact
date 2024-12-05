@@ -217,7 +217,7 @@ smartlinks:
     sl_chat:
       - role: "user"
         content: |
-          🔧 The postgres tool should be visible now. To test the tool, list the tables available, briefly desctibe the tables and express
+          🔧 The postgres tool should be visible now. To test the tool, list the tables available, briefly describe the tables and express
           satisfaction and relief if it works, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
           The current config file is %CURRENT_CONFIG%.
 docker:
