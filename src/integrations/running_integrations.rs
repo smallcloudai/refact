@@ -38,7 +38,7 @@ pub async fn load_integration_tools(
             }
         };
         integr.integr_settings_apply(&rec.config_unparsed);
-        tools.insert(rec.integr_name.clone(), Arc::new(AMutex::new(integr.integr_upgrade_to_tool())));
+        tools.insert(rec.integr_name.clone(), Arc::new(AMutex::new(integr.integr_upgrade_to_tool(&rec.integr_name))));
     }
 
     for e in error_log {

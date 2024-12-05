@@ -41,7 +41,7 @@ impl Integration for ToolGitlab{
         serde_json::to_value(&integration_gitlab).map_err(|e| e.to_string())
     }
 
-    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, integr_name: &String) -> Box<dyn Tool + Send> {
         Box::new(ToolGitlab {integration_gitlab: self.integration_gitlab.clone()}) as Box<dyn Tool + Send>
     }
 
@@ -56,7 +56,7 @@ impl Integration for ToolGitlab{
 #[async_trait]
 impl Tool for ToolGitlab {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    
+
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,

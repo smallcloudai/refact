@@ -38,7 +38,6 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
         "docker" => Ok(Box::new(docker::integr_docker::ToolDocker {..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         cmdline if cmdline.starts_with("cmdline_") => {
             let tool_name = cmdline.strip_prefix("cmdline_").unwrap();
-            tracing::info!("todo finish me tool_name={}", tool_name);
             Ok(Box::new(integr_cmdline::ToolCmdline {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
         },
         service if service.starts_with("service_") => {

@@ -69,7 +69,7 @@ impl SettingsDocker {
                 host: self.ssh_host.clone(),
                 user: self.ssh_user.clone(),
                 port: self.ssh_port.clone(),
-                identity_file: if !self.ssh_identity_file.is_empty() 
+                identity_file: if !self.ssh_identity_file.is_empty()
                     { Some(self.ssh_identity_file.clone()) } else { None },
             })
         } else {
@@ -102,7 +102,7 @@ impl IntegrationTrait for ToolDocker {
         serde_json::to_value(&self.settings_docker).unwrap()
     }
 
-    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, _integr_name: &String) -> Box<dyn Tool + Send> {
         Box::new(ToolDocker {
             settings_docker: self.settings_docker.clone()
         }) as Box<dyn Tool + Send>
@@ -115,7 +115,7 @@ impl IntegrationTrait for ToolDocker {
 }
 
 impl ToolDocker {
-    pub async fn command_execute(&self, command: &str, gcx: Arc<ARwLock<GlobalContext>>, fail_if_stderr_is_not_empty: bool, verbose_error: bool) -> Result<(String, String), String> 
+    pub async fn command_execute(&self, command: &str, gcx: Arc<ARwLock<GlobalContext>>, fail_if_stderr_is_not_empty: bool, verbose_error: bool) -> Result<(String, String), String>
     {
         let mut command_args = split_command(&command)?;
 
@@ -177,7 +177,7 @@ impl Tool for ToolDocker {
             let ccx_locked = ccx.lock().await;
             ccx_locked.global_context.clone()
         };
-        
+
         let (stdout, _) = self.command_execute(&command, gcx.clone(), true, false).await?;
 
         Ok((false, vec![
@@ -228,7 +228,7 @@ fn split_command(command: &str) -> Result<Vec<String>, String> {
     Ok(parsed_args)
 }
 
-fn command_is_interactive_or_blocking(command_args: &Vec<String>) -> bool 
+fn command_is_interactive_or_blocking(command_args: &Vec<String>) -> bool
 {
     const COMMANDS_THAT_CAN_BE_INTERACTIVE: &[&str] = &["run", "exec"];
     const COMMANDS_ALWAYS_BLOCKING: &[&str] = &["attach", "events", "wait"];
@@ -255,13 +255,13 @@ fn command_is_interactive_or_blocking(command_args: &Vec<String>) -> bool
         subcommand_generic
     };
 
-    if COMMANDS_THAT_CAN_BE_INTERACTIVE.contains(&subcommand_specific) && 
-        command_contains_flag(command_args, "i", "interactive") 
+    if COMMANDS_THAT_CAN_BE_INTERACTIVE.contains(&subcommand_specific) &&
+        command_contains_flag(command_args, "i", "interactive")
     {
         return true;
     }
 
-    if subcommand_specific == "logs" && command_contains_flag(command_args, "f", "follow") { 
+    if subcommand_specific == "logs" && command_contains_flag(command_args, "f", "follow") {
         return true;
     }
 
@@ -274,14 +274,14 @@ fn command_is_interactive_or_blocking(command_args: &Vec<String>) -> bool
 
 fn command_append_label_if_creates_resource(command_args: &mut Vec<String>, label: &str) -> () {
     const COMMANDS_FOR_RESOURCE_CREATION: &[&[&str]] = &[
-        &["build"], 
-        &["buildx", "build"], 
-        &["image", "build"], 
-        &["builder", "build"], 
-        &["buildx", "b"], 
+        &["build"],
+        &["buildx", "build"],
+        &["image", "build"],
+        &["builder", "build"],
+        &["buildx", "b"],
         &["create"],
         &["container", "create"],
-        &["network", "create"], 
+        &["network", "create"],
         &["volume", "create"],
         &["run"],
         &["container", "run"],

@@ -45,7 +45,7 @@ impl IntegrationTrait for ToolPostgres {
         serde_json::to_value(&self.settings_postgres).unwrap()
     }
 
-    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, _integr_name: &String) -> Box<dyn Tool + Send> {
         Box::new(ToolPostgres {
             settings_postgres: self.settings_postgres.clone()
         }) as Box<dyn Tool + Send>

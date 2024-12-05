@@ -82,7 +82,7 @@ impl Integration for ToolPdb {
         serde_json::to_value(&integration_github).map_err(|e| e.to_string())
     }
 
-    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, integr_name: &String) -> Box<dyn Tool + Send> {
         Box::new(ToolPdb {settings_pdb: self.settings_pdb.clone()}) as Box<dyn Tool + Send>
     }
 
@@ -97,7 +97,7 @@ impl Integration for ToolPdb {
 #[async_trait]
 impl Tool for ToolPdb {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    
+
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -119,14 +119,14 @@ impl Tool for ToolPdb {
             let output = start_pdb_session(&python_command, &mut command_args, &session_hashmap_key, gcx.clone(), 10).await?;
             return Ok(tool_answer(output, tool_call_id));
         }
-        
+
         let command_session = {
             let gcx_locked = gcx.read().await;
             gcx_locked.integration_sessions.get(&session_hashmap_key)
                 .ok_or("There is no active pdb session in this chat, you can open it by running pdb(\"python -m pdb my_script.py\")")?
                 .clone()
         };
-    
+
         let mut command_session_locked = command_session.lock().await;
         let mut pdb_session = command_session_locked.as_any_mut().downcast_mut::<PdbSession>()
             .ok_or("Failed to downcast to PdbSession")?;
@@ -135,7 +135,7 @@ impl Tool for ToolPdb {
             "kill" => {
                 let mut gcx_locked = gcx.write().await;
                 gcx_locked.integration_sessions.remove(&session_hashmap_key);
-                "Pdb session has been killed".to_string() 
+                "Pdb session has been killed".to_string()
             },
             "wait" => {
                 if command_args.len() < 2 {
@@ -194,10 +194,10 @@ fn split_command(command: &str) -> Result<Vec<String>, String> {
 }
 
 async fn start_pdb_session(
-    python_command: &String, 
-    command_args: &mut Vec<String>, 
-    session_hashmap_key: &String, 
-    gcx: Arc<ARwLock<GlobalContext>>, 
+    python_command: &String,
+    command_args: &mut Vec<String>,
+    session_hashmap_key: &String,
+    gcx: Arc<ARwLock<GlobalContext>>,
     timeout_seconds: u64,
 ) -> Result<String, String> {
     if !(command_args.len() >= 3 && command_args[0] == "python" && command_args[1] == "-m" && command_args[2] == "pdb") {
@@ -248,7 +248,7 @@ async fn interact_with_pdb(
             return Err(format!("There is leftover output from previous commands, run pdb tool again with \"wait n_seconds\" to wait for it or \"kill\" command to kill the session.\nstdout:\n{}\nstderr:\n{}", prev_output, prev_error));
         }
     }
-    
+
     let (output_main_command, error_main_command) = send_command_and_get_output_and_error(
         pdb_session, input_command, session_hashmap_key, gcx.clone(), timeout_seconds * 1000, true).await?;
     let (output_list, error_list) = send_command_and_get_output_and_error(
@@ -268,9 +268,9 @@ async fn interact_with_pdb(
 }
 
 async fn send_command_and_get_output_and_error(
-    pdb_session: &mut PdbSession, 
-    input_command: &str, 
-    session_hashmap_key: &str, 
+    pdb_session: &mut PdbSession,
+    input_command: &str,
+    session_hashmap_key: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
     timeout_ms: u64,
     ask_for_continuation_if_timeout: bool,

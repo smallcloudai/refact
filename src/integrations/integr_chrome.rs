@@ -138,7 +138,7 @@ impl Integration for ToolChrome {
         serde_json::to_value(&integration_github).map_err(|e| e.to_string())
     }
 
-    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, integr_name: &String) -> Box<dyn Tool + Send> {
         Box::new(ToolChrome {
             integration_chrome: self.integration_chrome.clone(),
             supports_clicks: false}

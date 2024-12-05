@@ -80,7 +80,7 @@ impl IntegrationTrait for ToolCmdline {
         serde_json::to_value(&self.cfg).unwrap()
     }
 
-    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, integr_name: &String) -> Box<dyn Tool + Send> {
         Box::new(ToolCmdline {
             is_service: self.is_service,
             name: self.name.clone(),

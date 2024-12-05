@@ -42,7 +42,7 @@ impl Integration for ToolGithub {
         serde_json::to_value(&integration_github).map_err(|e| e.to_string())
     }
 
-    fn integr_upgrade_to_tool(&self) -> Box<dyn Tool + Send> {
+    fn integr_upgrade_to_tool(&self, integr_name: &String) -> Box<dyn Tool + Send> {
         Box::new(ToolGithub {integration_github: self.integration_github.clone()}) as Box<dyn Tool + Send>
     }
 
@@ -57,7 +57,7 @@ impl Integration for ToolGithub {
 #[async_trait]
 impl Tool for ToolGithub {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    
+
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,
