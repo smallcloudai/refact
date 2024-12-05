@@ -4,6 +4,7 @@ import {
   type ChatThread,
   type PayloadWithId,
   type ToolUse,
+  IntegrationMeta,
 } from "./types";
 import {
   isAssistantMessage,
@@ -17,7 +18,7 @@ import {
   type ChatResponse,
 } from "../../../services/refact/types";
 import type { AppDispatch, RootState } from "../../../app/store";
-import type { SystemPrompts } from "../../../services/refact/prompts";
+import { type SystemPrompts } from "../../../services/refact/prompts";
 import { formatMessagesForLsp, consumeStream } from "./utils";
 import { generateChatTitle, sendChat } from "../../../services/refact/chat";
 import { ToolCommand } from "../../../services/refact/tools";
@@ -26,7 +27,7 @@ import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 export const newChatAction = createAction("chatThread/new");
 
 export const newIntegrationChat = createAction<{
-  integration: { name: string; path: string };
+  integration: IntegrationMeta;
   messages: ChatMessages;
 }>("chatThread/newIntegrationChat");
 
@@ -199,15 +200,22 @@ function checkForToolLoop(message: ChatMessages): boolean {
   return hasDuplicates;
 }
 // TODO: add props for config chat
+
+export function chatModeToLspMode(mode?: ToolUse) {
+  if (mode === "agent") return "AGENT";
+  if (mode === "quick") return "NOTOOLS";
+  return "EXPLORE";
+}
 export const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
     messages: ChatMessages;
     chatId: string;
     tools: ToolCommand[] | null;
+    mode?: string; // used for actions
     // TODO: make a separate function for this... and it'll need to be saved.
   }
->("chatThread/sendChat", ({ messages, chatId, tools }, thunkAPI) => {
+>("chatThread/sendChat", ({ messages, chatId, tools, mode }, thunkAPI) => {
   const state = thunkAPI.getState();
 
   const thread =
@@ -217,11 +225,21 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         ? state.chat.thread
         : null;
 
-  const isConfig = !!thread?.integration;
+  // TODO: stops the stream.
+  // const onlyDeterministicMessages =
+  //   checkForToolLoop(messages) || !messages.some(isSystemMessage);
 
   const onlyDeterministicMessages = checkForToolLoop(messages);
 
   const messagesForLsp = formatMessagesForLsp(messages);
+
+  const maybeMode = mode
+    ? mode
+    : thread?.integration
+      ? "CONFIGURE"
+      : thread?.tool_use
+        ? chatModeToLspMode(thread.tool_use)
+        : chatModeToLspMode(state.chat.tool_use);
 
   return sendChat({
     messages: messagesForLsp,
@@ -233,7 +251,8 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     apiKey: state.config.apiKey,
     port: state.config.lspPort,
     onlyDeterministicMessages,
-    isConfig,
+    integration: thread?.integration,
+    mode: maybeMode,
   })
     .then((response) => {
       if (!response.ok) {

@@ -30,6 +30,7 @@ import { GroupedDiffs } from "./DiffContent";
 import { ScrollToBottomButton } from "./ScrollToBottomButton";
 import { currentTipOfTheDay } from "../../features/TipOfTheDay";
 import { popBackTo } from "../../features/Pages/pagesSlice";
+import { ChatLinks } from "../ChatLinks";
 
 const TipOfTheDay: React.FC = () => {
   const tip = useAppSelector(currentTipOfTheDay);
@@ -150,22 +151,23 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   };
 
   const handleReturnToConfigurationClick = useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.log(`[DEBUG]: going back to configuration page`);
+    // console.log(`[DEBUG]: going back to configuration page`);
     // TBD: should it be allowed to run in the background?
     onStopStreaming();
     dispatch(
       popBackTo({
         name: "integrations page",
-        projectPath: thread.integration?.path,
+        projectPath: thread.integration?.project,
         integrationName: thread.integration?.name,
+        integrationPath: thread.integration?.path,
       }),
     );
   }, [
+    onStopStreaming,
     dispatch,
+    thread.integration?.project,
     thread.integration?.name,
     thread.integration?.path,
-    onStopStreaming,
   ]);
 
   const handleSaveAndReturn = useCallback(async () => {
@@ -187,6 +189,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
       <Flex direction="column" className={styles.content} p="2" gap="1">
         {messages.length === 0 && <PlaceHolderText />}
         {renderMessages(messages, onRetryWrapper)}
+
+        <ChatLinks />
+
         <Container py="4">
           <Spinner spinning={isWaiting} />
         </Container>

@@ -73,7 +73,7 @@ export const useSendChatRequest = () => {
   }, [currentMessages, systemPrompt]);
 
   const sendMessages = useCallback(
-    async (messages: ChatMessages) => {
+    async (messages: ChatMessages, mode?: string) => {
       let tools = await triggerGetTools(undefined).unwrap();
       // TODO: save tool use to state.chat
       // if (toolUse && isToolUse(toolUse)) {
@@ -112,6 +112,7 @@ export const useSendChatRequest = () => {
         messages,
         tools,
         chatId,
+        mode,
       });
 
       const dispatchedAction = dispatch(action);
@@ -156,11 +157,11 @@ export const useSendChatRequest = () => {
   );
 
   const submit = useCallback(
-    (question: string) => {
+    (question: string, mode?: string) => {
       // const message: ChatMessage = { role: "user", content: question };
       const message: UserMessage = maybeAddImagesToQuestion(question);
       const messages = messagesWithSystemPrompt.concat(message);
-      void sendMessages(messages);
+      void sendMessages(messages, mode);
     },
     [maybeAddImagesToQuestion, messagesWithSystemPrompt, sendMessages],
   );

@@ -2,6 +2,7 @@ import { SystemPrompts } from "../../../services/refact/prompts";
 import { ChatMessages } from "../../../services/refact/types";
 import { parseOrElse } from "../../../utils/parseOrElse";
 
+export type IntegrationMeta = { name: string; path: string; project: string };
 export type ChatThread = {
   id: string;
   messages: ChatMessages;
@@ -12,7 +13,7 @@ export type ChatThread = {
   tool_use?: ToolUse;
   read?: boolean;
   isTitleGenerated?: boolean;
-  integration?: { name: string; path: string } | null;
+  integration?: IntegrationMeta | null;
 };
 
 export type ToolUse = "quick" | "explore" | "agent";

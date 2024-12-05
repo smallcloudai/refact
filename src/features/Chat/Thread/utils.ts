@@ -23,6 +23,7 @@ import {
   isPlainTextResponse,
   isSubchatContextFileResponse,
   isSubchatResponse,
+  isSystemResponse,
   isToolCallDelta,
   isToolContent,
   isToolMessage,
@@ -180,6 +181,11 @@ export function formatChatResponse(
 
   if (isCDInstructionResponse(response)) {
     return [...messages, { role: response.role, content: response.content }];
+  }
+
+  // system messages go to the front
+  if (isSystemResponse(response)) {
+    return [{ role: response.role, content: response.content }, ...messages];
   }
 
   if (!isChatResponseChoice(response)) {
@@ -450,13 +456,6 @@ export function formatMessagesForChat(
     ) {
       // TODO: why type cast this
       return acc.concat(message as unknown as ToolMessage);
-    }
-
-    if (
-      message.role === "cd_instruction" &&
-      typeof message.content === "string"
-    ) {
-      return acc.concat({ role: message.role, content: message.content });
     }
 
     if (

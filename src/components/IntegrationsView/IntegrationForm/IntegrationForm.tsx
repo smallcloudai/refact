@@ -149,7 +149,8 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                   values: integration.data.integr_values,
                   field: integration.data.integr_schema.fields[fieldKey],
                   integrationName: integration.data.integr_name,
-                  integrationPath: integration.data.project_path,
+                  integrationPath: integration.data.integr_config_path,
+                  integrationProject: integration.data.project_path,
                 });
               }
             })}
@@ -160,7 +161,8 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                   values: integration.data.integr_values,
                   field: integration.data.integr_schema.fields[fieldKey],
                   integrationName: integration.data.integr_name,
-                  integrationPath: integration.data.project_path,
+                  integrationPath: integration.data.integr_config_path,
+                  integrationProject: integration.data.project_path,
                   isFieldVisible: areExtraFieldsRevealed,
                 });
               }
@@ -203,7 +205,10 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                       key={`smartlink-${index}`}
                       smartlink={smartlink}
                       integrationName={integration.data?.integr_name ?? ""}
-                      integrationPath={integration.data?.project_path ?? ""}
+                      integrationProject={integration.data?.project_path ?? ""}
+                      integrationPath={
+                        integration.data?.integr_config_path ?? ""
+                      }
                     />
                   );
                 },
@@ -227,7 +232,8 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           <IntegrationDocker
             dockerData={integration.data.integr_schema.docker}
             integrationName={integration.data.integr_name}
-            integrationPath={integration.data.project_path}
+            integrationProject={integration.data.project_path}
+            integrationPath={integration.data.integr_config_path}
           />
         </Flex>
       )}

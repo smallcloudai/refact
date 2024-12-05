@@ -16,6 +16,7 @@ export const DOCUMENTATION_REMOVE = `/v1/docs-remove`;
 export const PING_URL = `/v1/ping`;
 export const PATCH_URL = `/v1/patch-single-file-from-ticket`;
 export const APPLY_ALL_URL = "/v1/patch-apply-all";
+export const CHAT_LINKS_URL = "/v1/links";
 // Integrations
 export const INTEGRATIONS_URL = "/v1/integrations";
 export const INTEGRATION_GET_URL = "/v1/integration-get";

@@ -58,6 +58,7 @@ export interface IntegrationsSetupPage {
   name: "integrations page";
   projectPath?: string;
   integrationName?: string;
+  integrationPath?: string;
 }
 
 export type Page =

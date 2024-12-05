@@ -30,6 +30,7 @@ type DockerContainerCardProps = {
   integrationData: {
     integrationName: string;
     integrationPath: string;
+    integrationProject: string;
   };
   container: DockerContainer;
   currentContainerAction: DockerActionPayload | null;
@@ -186,6 +187,9 @@ export const DockerContainerCard: FC<DockerContainerCardProps> = ({
                               smartlink={link}
                               integrationName={integrationData.integrationName}
                               integrationPath={integrationData.integrationPath}
+                              integrationProject={
+                                integrationData.integrationProject
+                              }
                               isDockerSmartlink
                             />
                           ))}

@@ -76,8 +76,8 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     return (
       integrationsMap.integrations.find(
         (integration) =>
-          integration.project_path === currentThreadIntegration.projectPath &&
-          integration.integr_name === currentThreadIntegration.integrationName,
+          integration.integr_config_path ===
+          currentThreadIntegration.integrationPath,
       ) ?? null
     );
   }, [currentThreadIntegration, integrationsMap]);

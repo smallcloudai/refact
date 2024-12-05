@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { Chat, ChatThread, ToolUse } from "./types";
+import { Chat, ChatThread, IntegrationMeta, ToolUse } from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { chatResponse, chatAskedQuestion } from ".";
 import {
@@ -23,7 +23,7 @@ import { formatChatResponse } from "./utils";
 
 const createChatThread = (
   tool_use: ToolUse,
-  integration?: { name: string; path: string } | null,
+  integration?: IntegrationMeta | null,
 ): ChatThread => {
   const chat: ChatThread = {
     id: uuidv4(),
@@ -38,7 +38,7 @@ const createChatThread = (
 
 const createInitialState = (
   tool_use: ToolUse = "explore",
-  integration?: { name: string; path: string } | null,
+  integration?: IntegrationMeta | null,
 ): Chat => {
   return {
     streaming: false,
@@ -194,6 +194,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(newIntegrationChat, (state, action) => {
     // TODO: find out about tool use
+    // TODO: should be CONFIGURE ?
     const next = createInitialState("agent", action.payload.integration);
     next.thread.integration = action.payload.integration;
     next.thread.messages = action.payload.messages;
@@ -204,9 +205,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (state.streaming) {
       next.cache[state.thread.id] = { ...state.thread, read: false };
     }
-    // TBD: this might not be needed.
-    // next.thread.model = state.thread.model;
-    // next.system_prompt = state.system_prompt;
     return next;
   });
 

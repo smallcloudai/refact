@@ -249,6 +249,12 @@ export function isDiffMessage(message: ChatMessage): message is DiffMessage {
   return message.role === "diff";
 }
 
+export function isSystemMessage(
+  message: ChatMessage,
+): message is SystemMessage {
+  return message.role === "system";
+}
+
 export function isToolCallMessage(
   message: ChatMessage,
 ): message is ToolCallMessage {
@@ -488,6 +494,13 @@ export function isSubchatResponse(json: unknown): json is SubchatResponse {
   if (!("subchat_id" in json)) return false;
   if (!("tool_call_id" in json)) return false;
   return true;
+}
+
+export function isSystemResponse(json: unknown): json is SystemMessage {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("role" in json)) return false;
+  return json.role === "system";
 }
 
 export function isCDInstructionResponse(
