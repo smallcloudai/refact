@@ -222,7 +222,8 @@ async def ask_using_http(
     only_deterministic_messages: bool = False,
     postprocess_parameters: Optional[Dict[str, Any]] = None,
     callback: Optional[Callable] = None,
-    chat_id: Optional[str] = None
+    chat_id: Optional[str] = None,
+    chat_remote: bool = False,
 ) -> List[List[Message]]:
     deterministic: List[Message] = []
     subchats: DefaultDict[str, List[Message]] = collections.defaultdict(list)
@@ -245,6 +246,7 @@ async def ask_using_http(
     if chat_id is not None:
         meta["chat_id"] = chat_id
         meta["chat_mode"] = "AGENT"
+        meta["chat_remote"] = chat_remote
     post_me["meta"] = meta
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:

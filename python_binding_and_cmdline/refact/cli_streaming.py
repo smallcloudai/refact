@@ -226,7 +226,7 @@ def process_streaming_data(data: Dict[str, Any], deltas_collector: Optional[chat
         print_response("unknown streaming data:\n%s" % data)
 
 
-async def the_chatting_loop(model, chat_id, max_auto_resubmit):
+async def the_chatting_loop(model, chat_id, chat_remote, max_auto_resubmit):
     global streaming_messages
     global _is_streaming
 
@@ -258,6 +258,7 @@ async def the_chatting_loop(model, chat_id, max_auto_resubmit):
             only_deterministic_messages=False,
             callback=callback,
             chat_id=chat_id,
+            chat_remote=chat_remote,
         )
         streaming_messages = choices[0]
 

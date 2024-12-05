@@ -203,7 +203,7 @@ def on_submit(buffer):
     start_streaming()
 
     async def asyncfunc():
-        await the_chatting_loop(cli_settings.args.model, cli_settings.args.chat_id, max_auto_resubmit=(1 if cli_settings.args.always_pause else 6))
+        await the_chatting_loop(cli_settings.args.model, cli_settings.args.chat_id, cli_settings.args.chat_remote, max_auto_resubmit=(1 if cli_settings.args.always_pause else 6))
         if len(cli_streaming.streaming_messages) == 0:
             return
         # cli_streaming.print_response("\n")  # flush_response inside
@@ -243,6 +243,7 @@ async def chat_main():
     parser.add_argument('--start-with', type=str, default=False, help="Start with messages in a .json file, the format is [msg, msg, ...]")
     parser.add_argument('--compressor', action='store_true', help="Compress trajectory that comes from reading --start-with and exit")
     parser.add_argument('--chat-id', type=str, default=None, help="Optional unique id of the chat")
+    parser.add_argument('--chat-remote', type=bool, default=False, help="Run the chat on isolation in docker")
     parser.add_argument('question', nargs=argparse.REMAINDER, help="You can continue your question in the command line after --")
     args_parsed = parser.parse_args(before_minus_minus)
     arg_question = " ".join(after_minus_minus)
@@ -286,6 +287,7 @@ async def chat_main():
             path_to_project=args_parsed.path_to_project,
             always_pause=args_parsed.always_pause,
             chat_id=chat_id,
+            chat_remote=args_parsed.chat_remote,
         )
         await actual_chat(lsp_runner, start_with=args_parsed.start_with, caps=caps, arg_question=arg_question, run_compressor=args_parsed.compressor)
 

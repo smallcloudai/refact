@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 echo
 echo Follow up example
 curl -X POST http://localhost:8001/v1/links \
