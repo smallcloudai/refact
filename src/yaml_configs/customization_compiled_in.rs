@@ -174,7 +174,6 @@ PROMPT_PROJECT_SUMMARY: |
 
   %PROMPT_PINS%
   %WORKSPACE_INFO%
-  %PROJECT_INFO%
 
   Plan to follow:
   1. Explore the Project Structure:
