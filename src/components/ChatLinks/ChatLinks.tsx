@@ -98,10 +98,7 @@ export const ChatLinks: React.FC = () => {
   };
   const handleLinkAction = (link: ChatLink) => {
     if (!("action" in link)) return;
-    if (link.action === "goto" && "goto" in link) {
-      handleGoTo(link.goto);
-      return;
-    }
+
     if (link.action === "patch-all") {
       void applyPatches(messages);
       return;
@@ -121,10 +118,16 @@ export const ChatLinks: React.FC = () => {
       return;
     }
 
-    // if (link.action === "commit") {
-    // ???
-    //   return;
-    // }
+    if (link.action === "commit") {
+      // TODO: there should be an endpoint for this
+      void applyPatches(messages).then(() => {
+        if ("goto" in link && link.goto) {
+          handleGoTo(link.goto);
+        }
+      });
+
+      return;
+    }
 
     // eslint-disable-next-line no-console
     console.warn(`unknown action: ${JSON.stringify(link)}`);
