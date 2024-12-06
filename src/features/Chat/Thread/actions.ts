@@ -91,6 +91,10 @@ export const setSendImmediately = createAction<boolean>(
 
 export const setChatMode = createAction<LspChatMode>("chatThread/setChatMode");
 
+export const setIntegrationData = createAction<Partial<IntegrationMeta>>(
+  "chatThread/setIntegrationData",
+);
+
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;
@@ -247,7 +251,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     port: state.config.lspPort,
     onlyDeterministicMessages,
     integration: thread?.integration,
-    mode: mode,
+    mode: mode ?? thread?.mode,
   })
     .then((response) => {
       if (!response.ok) {

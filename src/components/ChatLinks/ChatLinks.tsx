@@ -17,6 +17,7 @@ import {
   selectMessages,
   selectModel,
   selectThreadMode,
+  setIntegrationData,
 } from "../../features/Chat";
 import { popBackTo } from "../../features/Pages/pagesSlice";
 
@@ -112,6 +113,10 @@ export const ChatLinks: React.FC = () => {
     }
 
     if (link.action === "summarize-project") {
+      if ("current_config_file" in link && link.current_config_file) {
+        dispatch(setIntegrationData({ path: link.current_config_file }));
+        // set the integration fata
+      }
       submit(link.text, "PROJECTSUMMARY");
       return;
     }

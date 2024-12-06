@@ -9,7 +9,8 @@ export type ChatLink =
   | { text: string; goto: string; action: string }
   | { text: string; goto: string /* action: undefined */ }
   | { text: string; /* goto: undefined; */ action: string }
-  | { text: string; goto: string; action: "go-to" };
+  | { text: string; goto: string; action: "go-to" }
+  | { text: string; action: "summarize-project"; current_config_file?: string };
 
 function isChatLink(json: unknown): json is ChatLink {
   if (!json || typeof json !== "object") return false;

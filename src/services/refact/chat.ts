@@ -154,13 +154,21 @@ export async function sendChat({
     ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
   };
 
-  const url = `http://127.0.0.1:${port}${
-    integration
-      ? "/v1/chat-configuration"
-      : mode === "PROJECTSUMMARY"
-        ? "/v1/chat-project-summary"
-        : CHAT_URL
-  }`;
+  const endpoint =
+    mode === "PROJECTSUMMARY"
+      ? "/v1/chat-project-summary"
+      : mode === "CONFIGURE"
+        ? "/v1/chat-configuration"
+        : CHAT_URL;
+
+  const url = `http://127.0.0.1:${port}${endpoint}`;
+  // const url = `http://127.0.0.1:${port}${
+  //   integration
+  //     ? "/v1/chat-configuration"
+  //     : mode === "PROJECTSUMMARY"
+  //       ? "/v1/chat-project-summary"
+  //       : CHAT_URL
+  // }`;
 
   return fetch(url, {
     method: "POST",

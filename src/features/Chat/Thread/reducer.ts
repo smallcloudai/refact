@@ -26,6 +26,7 @@ import {
   newIntegrationChat,
   setSendImmediately,
   setChatMode,
+  setIntegrationData,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 
@@ -232,5 +233,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setChatMode, (state, action) => {
     state.thread.mode = action.payload;
+  });
+
+  builder.addCase(setIntegrationData, (state, action) => {
+    state.thread.integration = action.payload;
   });
 });

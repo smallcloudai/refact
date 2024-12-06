@@ -2,7 +2,11 @@ import { SystemPrompts } from "../../../services/refact/prompts";
 import { ChatMessages } from "../../../services/refact/types";
 import { parseOrElse } from "../../../utils/parseOrElse";
 
-export type IntegrationMeta = { name: string; path: string; project: string };
+export type IntegrationMeta = {
+  name?: string;
+  path?: string;
+  project?: string;
+};
 export type ChatThread = {
   id: string;
   messages: ChatMessages;
