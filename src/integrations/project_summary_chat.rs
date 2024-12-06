@@ -1,10 +1,9 @@
 use std::sync::Arc;
-use std::fs;
 use tokio::sync::RwLock as ARwLock;
 use std::collections::HashMap;
 use itertools::Itertools;
 use crate::global_context::GlobalContext;
-use crate::call_validation::{ChatContent, ChatMessage, ContextFile};
+use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::chat_utils_prompts::system_prompt_add_workspace_info;
 
 pub async fn mix_config_messages(
@@ -21,34 +20,37 @@ pub async fn mix_config_messages(
                 "", "", true, true, &HashMap::new(),
             ).unwrap()
         }
-    };
-    let sp: &crate::yaml_configs::customization_loader::SystemPrompt = custom.system_prompts.get("project_summary").unwrap();
-    let mut sp_text = sp.text.clone();
-    sp_text = system_prompt_add_workspace_info(gcx.clone(), &sp_text.replace("%CONFIG_PATH%", current_config_file)).await;
-    
+    };    
     let available_integrations = crate::integrations::setting_up_integrations::integrations_all_with_icons(
         gcx.clone()
     ).await;
     let mut available_integrations_text: String = "Choose tools from this list:\n".to_string();
-    for integration in available_integrations.integrations.iter().map(|x| x.integr_name.clone()).unique() {
+    for integration in available_integrations.integrations
+        .iter()
+        .map(|x| x.integr_name.clone())
+        .filter(|x| !x.contains("_TEMPLATE"))
+        .unique() {
         available_integrations_text.push_str(&format!("- {}\n", integration))
     }
-    
-    if messages.is_empty() {
-        messages.push(ChatMessage {
-            role: "system".to_string(),
-            content: ChatContent::SimpleText(sp_text),
-            tool_calls: None,
-            tool_call_id: String::new(),
-            usage: None,
-        });
-        messages.push(ChatMessage {
-            role: "user".to_string(),
-            content: ChatContent::SimpleText(available_integrations_text),
-            tool_calls: None,
-            tool_call_id: String::new(),
-            usage: None,
-        });
+    let sp: &crate::yaml_configs::customization_loader::SystemPrompt = custom.system_prompts.get("project_summary").unwrap();
+    let mut sp_text = sp.text.clone();
+    sp_text = system_prompt_add_workspace_info(gcx.clone(), &sp_text
+        .replace("%CONFIG_PATH%", current_config_file)
+        .replace("%AVAILABLE_INTEGRATIONS%", &available_integrations_text)
+    ).await;
+
+    let system_message = ChatMessage {
+        role: "system".to_string(),
+        content: ChatContent::SimpleText(sp_text),
+        tool_calls: None,
+        tool_call_id: String::new(),
+        usage: None,
     };
+
+    if !messages.is_empty() {
+        messages[0] = system_message;
+    } else {
+        messages.push(system_message)
+    }
 }
 

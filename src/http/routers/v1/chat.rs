@@ -1,20 +1,41 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use tracing::info;
+use serde_json::Value;
+use tracing::{info};
 
 use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::global_context::SharedGlobalContext;
+use crate::global_context::{GlobalContext, SharedGlobalContext};
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
 use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_default_system_prompt_from_remote, system_prompt_add_workspace_info};
 
+
+pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatMode) -> Vec<Value> {
+    match chat_mode {
+        ChatMode::Explore | ChatMode::Agent | ChatMode::NoTools => current_tools,
+        ChatMode::Configure | ChatMode::ProjectSummary => {
+            let valid_tool_names = ["cat", "tree", "patch", "search", "knowledge"];
+            current_tools
+                .into_iter()
+                .filter(|x| {
+                    x.get("function")
+                        .and_then(|x| x.get("name"))
+                        .and_then(|tool_name| tool_name.as_str())
+                        .map(|tool_name_str| valid_tool_names.contains(&tool_name_str))
+                        .unwrap_or(false)
+                })
+                .collect()
+        }
+    }
+}
 
 pub const CHAT_TOP_N: usize = 7;
 
@@ -50,38 +71,21 @@ pub async fn handle_v1_chat_completions(
     Extension(gcx): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
-        info!("chat handler cannot parse input:\n{:?}", body_bytes);
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-    let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
-    _chat(gcx, &mut chat_post, &mut messages, false).await
+    _chat(gcx, &body_bytes, false).await
 }
 
 pub async fn handle_v1_chat_configuration(
     Extension(gcx): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
-        info!("chat handler cannot parse input:\n{:?}", body_bytes);
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-    let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
-    crate::integrations::config_chat::mix_config_messages(gcx.clone(), &mut messages, &chat_post.meta.current_config_file).await;
-    _chat(gcx, &mut chat_post, &mut messages, true).await
+    _chat(gcx, &body_bytes, true).await
 }
 
 pub async fn handle_v1_chat_project_summary(
     Extension(gcx): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
-        info!("chat handler cannot parse input:\n{:?}", body_bytes);
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-    let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
-    crate::integrations::project_summary_chat::mix_config_messages(gcx.clone(), &mut messages, &chat_post.meta.current_config_file).await;
-    _chat(gcx, &mut chat_post, &mut messages, true).await
+    _chat(gcx, &body_bytes, true).await
 }
 
 pub async fn handle_v1_chat(
@@ -89,12 +93,7 @@ pub async fn handle_v1_chat(
     Extension(gcx): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let mut chat_post: ChatPost = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
-        info!("chat handler cannot parse input:\n{:?}", body_bytes);
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-    let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
-    _chat(gcx, &mut chat_post, &mut messages, true).await
+    _chat(gcx, &body_bytes, true).await
 }
 
 pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Result<Vec<ChatMessage>, ScratchError> {
@@ -109,18 +108,41 @@ pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Resu
 }
 
 async fn _chat(
-    gcx: SharedGlobalContext,
-    chat_post: &mut ChatPost,
-    messages: &mut Vec<ChatMessage>,
-    allow_at: bool,
+    gcx: Arc<ARwLock<GlobalContext>>,
+    body_bytes: &hyper::body::Bytes,
+    allow_at: bool
 ) -> Result<Response<Body>, ScratchError> {
+    let mut chat_post: ChatPost = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
+        info!("chat handler cannot parse input:\n{:?}", body_bytes);
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+    let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
+    match chat_post.meta.chat_mode {
+        ChatMode::Explore | ChatMode::Agent | ChatMode::NoTools => {},
+        ChatMode::Configure => {
+            crate::integrations::config_chat::mix_config_messages(
+                gcx.clone(), 
+                &mut messages, 
+                &chat_post.meta.current_config_file
+            ).await;
+        }
+        ChatMode::ProjectSummary => {
+            crate::integrations::project_summary_chat::mix_config_messages(
+                gcx.clone(),
+                &mut messages,
+                &chat_post.meta.current_config_file
+            ).await;
+        }
+    }
+    
     // converts tools into openai style
     if let Some(tools) = &mut chat_post.tools {
-        for tool in tools {
+        for tool in &mut *tools {
             if let Some(function) = tool.get_mut("function") {
                 function.as_object_mut().unwrap().remove("agentic");
             }
         }
+        chat_post.tools = Some(available_tools_by_chat_mode(tools.clone(), &chat_post.meta.chat_mode));
     }
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
@@ -217,7 +239,7 @@ async fn _chat(
         gcx.clone(),
         caps,
         model_name.clone(),
-        chat_post,
+        &mut chat_post,
         &messages,
         &scratchpad_name,
         &scratchpad_patch,
