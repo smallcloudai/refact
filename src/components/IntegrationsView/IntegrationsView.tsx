@@ -28,6 +28,7 @@ import {
   IntegrationWithIconRecord,
   IntegrationWithIconResponse,
   isDetailMessage,
+  NotConfiguredIntegrationWithIconRecord,
 } from "../../services/refact";
 import { ErrorCallout } from "../Callout";
 import { InformationCallout } from "../Callout/Callout";
@@ -158,48 +159,16 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
 
   const nonConfiguredIntegrations = useMemo(() => {
     if (integrationsMap?.integrations) {
-      return integrationsMap.integrations.reduce<
-        Record<string, IntegrationWithIconResponse["integrations"]>
-      >((acc, integration) => {
-        if (
-          !integration.integr_config_exists &&
-          !integration.integr_name.startsWith("cmdline") &&
-          !integration.integr_name.startsWith("service")
-        ) {
-          if (!(integration.project_path in acc)) {
-            acc[integration.project_path] = [];
-          }
-          acc[integration.project_path].push(integration);
-        }
-        return acc;
-      }, {});
-    }
-  }, [integrationsMap]);
-
-  const nonConfiguredCmdlinesIntegrations = useMemo(() => {
-    if (integrationsMap?.integrations) {
       const groupedIntegrations = integrationsMap.integrations.reduce<
-        Record<
-          string,
-          Omit<
-            IntegrationWithIconRecord,
-            "project_path" | "integr_config_path"
-          > & {
-            project_path: string[];
-            integr_config_path: string[];
-          }
-        >
+        Record<string, NotConfiguredIntegrationWithIconRecord>
       >((acc, integration) => {
-        if (
-          !integration.integr_config_exists &&
-          (integration.integr_name.startsWith("cmdline") ||
-            integration.integr_name.startsWith("service"))
-        ) {
+        if (!integration.integr_config_exists) {
           if (!(integration.integr_name in acc)) {
             acc[integration.integr_name] = {
               ...integration,
               project_path: [integration.project_path],
               integr_config_path: [integration.integr_config_path],
+              integr_config_exists: false,
             };
           } else {
             if (
@@ -225,10 +194,10 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
 
   useEffect(() => {
     debugIntegrations(
-      `[DEBUG]: nonConfiguredCmdlinesIntegrations: `,
-      nonConfiguredCmdlinesIntegrations,
+      `[DEBUG]: nonConfiguredIntegrations: `,
+      nonConfiguredIntegrations,
     );
-  }, [nonConfiguredCmdlinesIntegrations]);
+  }, [nonConfiguredIntegrations]);
 
   const handleSetCurrentIntegrationSchema = (
     schema: Integration["integr_schema"],
@@ -641,51 +610,38 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
                 },
               )}
 
-            {nonConfiguredIntegrations &&
-              Object.entries(nonConfiguredIntegrations).map(
-                ([_projectPath, integrations], index) => {
-                  return (
-                    <Flex
-                      key={`project-group-${index}`}
-                      direction="column"
-                      gap="4"
-                      align="start"
-                    >
-                      <Heading as="h4" size="3">
-                        <Flex align="start" gap="3" justify="center">
-                          Add new integration
-                        </Flex>
-                      </Heading>
-                      <Flex wrap="wrap" align="start" gap="3" width="100%">
-                        {integrations.map((integration, subIndex) => (
-                          <IntegrationCard
-                            isInline
-                            key={`project-${index}-${subIndex}-${integration.integr_config_path}`}
-                            integration={integration}
-                            handleIntegrationShowUp={
-                              handleNotSetupIntegrationShowUp
-                            }
-                          />
-                        ))}
-                        {nonConfiguredCmdlinesIntegrations?.map(
-                          (integration, subIndex) => (
-                            <IntegrationCard
-                              isInline
-                              key={`project-${index}-${subIndex}-${JSON.stringify(
-                                integration.integr_config_path,
-                              )}`}
-                              integration={integration}
-                              handleIntegrationShowUp={
-                                handleNotSetupIntegrationShowUp
-                              }
-                            />
-                          ),
-                        )}
-                      </Flex>
-                    </Flex>
-                  );
-                },
-              )}
+            <Flex
+              // key={`project-group-${index}`}
+              direction="column"
+              gap="4"
+              align="start"
+            >
+              <Heading as="h4" size="3">
+                <Flex align="start" gap="3" justify="center">
+                  Add new integration
+                </Flex>
+              </Heading>
+              <Flex wrap="wrap" align="start" gap="3" width="100%">
+                {nonConfiguredIntegrations &&
+                  Object.entries(nonConfiguredIntegrations).map(
+                    ([_projectPath, integration], index) => {
+                      return (
+                        <IntegrationCard
+                          isInline
+                          isNotConfigured
+                          key={`project-${index}-${JSON.stringify(
+                            integration.integr_config_path,
+                          )}`}
+                          integration={integration}
+                          handleIntegrationShowUp={
+                            handleNotSetupIntegrationShowUp
+                          }
+                        />
+                      );
+                    },
+                  )}
+              </Flex>
+            </Flex>
           </Flex>
         )}
       </Flex>

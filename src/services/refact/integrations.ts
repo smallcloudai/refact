@@ -450,6 +450,16 @@ export type IntegrationWithIconRecord = {
   // unparsed: unknown;
 };
 
+export type NotConfiguredIntegrationWithIconRecord = {
+  project_path: string[];
+  integr_name: string;
+  integr_config_path: string[];
+  integr_config_exists: false;
+  on_your_laptop: boolean;
+  when_isolated: boolean;
+  // unparsed: unknown;
+};
+
 function isInterIntegrationWithIconRecord(
   json: unknown,
 ): json is IntegrationWithIconRecord {
