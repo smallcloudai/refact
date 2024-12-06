@@ -12,7 +12,7 @@ pub mod integr_abstract;
 // pub mod integr_github;
 // pub mod integr_gitlab;
 // pub mod integr_pdb;
-// pub mod integr_chrome;
+pub mod integr_chrome;
 pub mod integr_postgres;
 pub mod integr_cmdline;
 pub mod integr_cmdline_service;
@@ -35,7 +35,7 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
         // "gitlab" => Ok(Box::new(ToolGitlab { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         // "pdb" => Ok(Box::new(ToolPdb { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         "postgres" => Ok(Box::new(integr_postgres::ToolPostgres { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
-        // "chrome" => Ok(Box::new(ToolChrome { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
+        "chrome" => Ok(Box::new(integr_chrome::ToolChrome { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         "docker" => Ok(Box::new(docker::integr_docker::ToolDocker {..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>),
         cmdline if cmdline.starts_with("cmdline_") => {
             // let tool_name = cmdline.strip_prefix("cmdline_").unwrap();
@@ -68,9 +68,9 @@ pub fn integrations_list() -> Vec<&'static str> {
         // "gitlab",
         // "pdb",
         "postgres",
+        "chrome",
         "cmdline_TEMPLATE",
         "service_TEMPLATE",
-        // "chrome",
         "docker"
     ]
 }
