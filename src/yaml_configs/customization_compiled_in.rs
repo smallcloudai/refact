@@ -104,7 +104,8 @@ PROMPT_AGENTIC_TOOLS: |
   * Related to the project, and user gives a code snippet to rewrite or explain => maybe quickly call definition() for symbols needed,
   and immediately rewrite user's code, that's an interactive use case.
 
-  * Related to the project, user describes an issue that appears to be somewhere in the code => call locate() to find where exactly in the code that is.
+  * Related to the project, user describes an issue that appears to be somewhere in the code => call knowledge() first, and locate() after that to find where
+  exactly in the code that is.
 
   * User's request likely involves several steps, function calls, agentic tools like browser, database, debugger => then you need to call knowledge() first
   to get access to the latest and best trajectories accomplishing a similar thing.
@@ -114,7 +115,7 @@ PROMPT_AGENTIC_TOOLS: |
 
   %CD_INSTRUCTIONS%
 
-  WHEN USING EXPLORATION TOOLS, USE SEVERAL IN PARALLEL! USE 📍 BEFORE ANY CODE BLOCK!
+  WHEN USING EXPLORATION TOOLS, USE SEVERAL IN PARALLEL! USE 📍 BEFORE ANY CODE BLOCK! FOR COMPLEX TASKS, CALL knowledege() BEFORE DOING ANYTHING!
 
 
 PROMPT_CONFIGURATOR: |
