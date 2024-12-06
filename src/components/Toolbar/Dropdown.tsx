@@ -173,7 +173,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
           </DropdownMenu.Item>
         )}
         <DropdownMenu.Item onSelect={() => handleNavigation("integrations")}>
-          Setup Integrations
+          Setup Agent Integrations
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
