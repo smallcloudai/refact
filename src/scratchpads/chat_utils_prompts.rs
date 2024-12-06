@@ -1,3 +1,4 @@
+use std::fs;
 use std::sync::Arc;
 use std::path::PathBuf;
 use tokio::sync::RwLock as ARwLock;
@@ -99,14 +100,36 @@ pub async fn system_prompt_add_workspace_info(
         (workspace_dirs, active_file_path)
     }
 
-    let mut system_prompt = system_prompt.clone();
+    async fn read_project_info(
+        gcx: Arc<ARwLock<GlobalContext>>,
+    ) -> Option<String> {
+        let (config_dirs, _) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone()).await;
+        let mut project_info = None;
+        for config_path in config_dirs
+            .iter()
+            .map(|x| x.join("project_summary.yaml"))
+            .filter(|x| !x.exists()) {
+            if let Some(text) = fs::read_to_string(&config_path).ok() {
+                project_info = Some(text);
+                break;
+            }
+        }
+        project_info
+    }
 
+    let mut system_prompt = system_prompt.clone();
     if system_prompt.contains("%WORKSPACE_INFO%") {
         let (workspace_dirs, active_file_path) = workspace_files_info(&gcx).await;
         let info = _workspace_info(&workspace_dirs, &active_file_path).await;
         system_prompt = system_prompt.replace("%WORKSPACE_INFO%", &info);
     }
+    if system_prompt.contains("%PROJECT_INFO%") {
+        if let Some(project_info) = read_project_info(gcx.clone()).await {
+            system_prompt = system_prompt.replace("%PROJECT_INFO%", &project_info);
+        } else {
+            system_prompt = system_prompt.replace("%PROJECT_INFO%", "");
+        }
+    }
 
     system_prompt
 }
-
