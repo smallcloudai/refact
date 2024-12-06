@@ -36,15 +36,16 @@ use image::{ImageFormat, ImageReader};
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct SettingsChrome {
-    pub chrome_path: Option<String>,
-    pub window_width: Option<u32>,
-    pub window_height: Option<u32>,
-    pub idle_browser_timeout: Option<u32>,
-    #[serde(default = "default_headless")]
-    pub headless: bool,
+    pub chrome_path: String,
+    #[serde(default )]
+    pub window_width: String,
+    #[serde(default)]
+    pub window_height: String,
+    #[serde(default)]
+    pub idle_browser_timeout: String,
+    #[serde(default)]
+    pub headless: String,
 }
-
-fn default_headless() -> bool { true }
 
 #[derive(Debug, Default)]
 pub struct ToolChrome {
@@ -278,37 +279,35 @@ async fn setup_chrome_session(
         }
     }
 
-    let window_size = if args.window_width.is_some() && args.window_height.is_some() {
-        Some((args.window_width.unwrap(), args.window_height.unwrap()))
-    } else if args.window_width.is_some() {
-        Some((args.window_width.unwrap(), args.window_width.unwrap()))
-    } else {
-        None
+    let window_size = match (args.window_width.parse::<u32>(), args.window_height.parse::<u32>()) {
+        (Ok(width), Ok(height)) => Some((width, height)),
+        _ => None,
     };
 
     let idle_browser_timeout = args.idle_browser_timeout
-        .map(|timeout| Duration::from_secs(timeout as u64))
+        .parse::<u64>()
+        .map(Duration::from_secs)
         .unwrap_or(Duration::from_secs(600));
 
-    let browser = if args.chrome_path.clone().unwrap_or_default().starts_with("ws://") {
-        let debug_ws_url: String = args.chrome_path.clone().unwrap();
+    let browser = if args.chrome_path.clone().starts_with("ws://") {
+        let debug_ws_url: String = args.chrome_path.clone();
         setup_log.push("Connect to existing web socket.".to_string());
         Browser::connect_with_timeout(debug_ws_url, idle_browser_timeout).map_err(|e| e.to_string())
     } else {
-        let path = args.chrome_path.clone().map(PathBuf::from);
+        let path = PathBuf::from(args.chrome_path.clone());
         let launch_options = LaunchOptions {
-            path,
+            path: Some(path),
             window_size,
             idle_browser_timeout,
-            headless: args.headless,
+            headless: args.headless.parse::<bool>().unwrap_or(true),
             ..Default::default()
         };
-        setup_log.push("Start new chrome process.".to_string());
+        setup_log.push("Started new chrome process.".to_string());
         Browser::new(launch_options).map_err(|e| e.to_string())
     }?;
 
     // NOTE: we're not register any tabs because they can be used by another chat
-    setup_log.push("No opened tabs.".to_string());
+    setup_log.push("No opened tabs at this moment.".to_string());
 
     let command_session: Box<dyn IntegrationSession> = Box::new(ChromeSession { browser, tabs: HashMap::new() });
     gcx.write().await.integration_sessions.insert(
@@ -406,7 +405,7 @@ async fn session_open_tab(
                 }
             })).map_err(|e| e.to_string())?;
             chrome_session.tabs.insert(tab_id.clone(), tab.clone());
-            Ok(format!("opened a new tab: {}\n", tab_lock.state_string()))
+            Ok(format!("Opened a new tab: {}\n", tab_lock.state_string()))
         }
     }
 }
@@ -485,11 +484,11 @@ async fn chrome_command_exec(
                     Ok(multimodal_el) => {
                         multimodal_els.push(multimodal_el);
                         let tab_lock = tab.lock().await;
-                        format!("made a screenshot of {}", tab_lock.state_string())
+                        format!("Made a screenshot of {}", tab_lock.state_string())
                     },
                     Err(e) => {
                         let tab_lock = tab.lock().await;
-                        format!("screenshot failed for {}: {}", tab_lock.state_string(), e.to_string())
+                        format!("Screenshot failed for {}: {}", tab_lock.state_string(), e.to_string())
                     },
                 }
             };
@@ -849,18 +848,22 @@ fields:
     f_type: string_short
     f_desc: "Width of the browser window."
     f_default: "1024"
+    f_extra: true
   window_height:
     f_type: string_short
     f_desc: "Height of the browser window."
     f_default: "768"
+    f_extra: true
   idle_browser_timeout:
     f_type: string_short
     f_desc: "Idle timeout for the browser in seconds."
     f_default: "600"
+    f_extra: true
   headless:
-    f_type: bool
+    f_type: string_short
     f_desc: "Run Chrome in headless mode."
     f_default: "true"
+    f_extra: true
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
@@ -869,7 +872,17 @@ smartlinks:
     sl_chat:
       - role: "user"
         content: |
-          🔧 The chrome tool should be visible now. To test the tool, navigate to a website, take a screenshot, and express satisfaction and relief if it works. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt. The current config file is %CURRENT_CONFIG%.
+          🔧 The chrome tool should be visible now. To test the tool, navigate to a website, take a screenshot, and express happiness if it works. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt. The current config file is %CURRENT_CONFIG%.
+  - sl_label: "Help me install Chrome for Testing"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 Help user to install Chrome for Testing using npm, once that done rewrite the current config file %CURRENT_CONFIG% to use it.
+  - sl_label: "Help me connect regular Chrome via ws:// protocol"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 Help user to connect regular Chrome via ws:// protocol, rewrite the current config file %CURRENT_CONFIG% to use it. The `chrome_path` accepts the "ws://..." notation.
 docker:
   filter_label: ""
   filter_image: "standalone-chrome"
