@@ -33,7 +33,7 @@ pub struct DockerContainerListPost {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DockerContainerListResponse {
-    pub container_list: Vec<DockerContainerListOutput>,
+    pub containers: Vec<DockerContainerListOutput>,
     pub has_connection_to_docker_daemon: bool,
     pub docker_error: String,
 }
@@ -128,7 +128,7 @@ pub async fn handle_v1_docker_container_list(
     let inspect_output = serde_json::from_str::<Vec<serde_json::Value>>(&inspect_unparsed_output)
        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Container inspect JSON problem: {}", e)))?;
 
-    let response_body: Vec<DockerContainerListOutput> = inspect_output.into_iter()
+    let containers: Vec<DockerContainerListOutput> = inspect_output.into_iter()
         .map(|container| {
             let mut container_name = extract_string_field(&container, &["Name"], "Missing container name")?;
             if container_name.starts_with('/') { container_name = container_name[1..].to_string() };
@@ -149,20 +149,16 @@ pub async fn handle_v1_docker_container_list(
             })
         }).collect::<Result<Vec<_>, ScratchError>>()?;
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&serde_json::json!({"containers": response_body})).unwrap()))
-        .unwrap())
+    Ok(docker_container_list_response(containers, true, ""))
 }
 
 fn docker_container_list_response(
-    container_list: Vec<DockerContainerListOutput>, 
+    containers: Vec<DockerContainerListOutput>, 
     has_connection_to_daemon: bool,
     error: &str, 
 ) -> Response<Body> {
     let response = DockerContainerListResponse {
-        container_list,
+        containers,
         has_connection_to_docker_daemon: has_connection_to_daemon,
         docker_error: error.to_string(),
     };
