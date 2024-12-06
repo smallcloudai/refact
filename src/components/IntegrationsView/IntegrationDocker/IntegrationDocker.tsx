@@ -75,7 +75,7 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
   }
 
   if (!dockerContainersList || dockerContainersList.length === 0) {
-    return <DockerErrorCard errorType="unexpected" />;
+    return <DockerErrorCard errorType="no-containers" />;
   }
 
   const handleDockerContainerActionClick = async (
@@ -158,10 +158,51 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
 };
 
 type DockerErrorCardProps = {
-  errorType: "no-connection" | "unexpected";
+  errorType: "no-connection" | "unexpected" | "no-containers";
+};
+
+const NoConnectionError: FC = () => (
+  <>
+    <Text size="3" weight="bold">
+      No connection
+    </Text>
+    <Text size="2">
+      Seems, that there is no connection to Docker Daemon. Please, setup Docker
+      properly or launch Docker Engine
+    </Text>
+  </>
+);
+
+const UnexpectedError: FC = () => (
+  <>
+    <Text size="3" weight="bold">
+      Unexpected error
+    </Text>
+    <Text size="2">
+      Something went wrong during connection or listing containers
+    </Text>
+  </>
+);
+
+const NoContainersError: FC = () => (
+  <>
+    <Text size="3" weight="bold">
+      No containers
+    </Text>
+    <Text size="2">
+      No Docker containers found. Please, ensure that containers are running.
+    </Text>
+  </>
+);
+
+const errorComponents = {
+  "no-connection": NoConnectionError,
+  unexpected: UnexpectedError,
+  "no-containers": NoContainersError,
 };
 
 const DockerErrorCard: FC<DockerErrorCardProps> = ({ errorType }) => {
+  const ErrorComponent = errorComponents[errorType];
   return (
     <Card
       style={{
@@ -175,14 +216,7 @@ const DockerErrorCard: FC<DockerErrorCardProps> = ({ errorType }) => {
         gap="4"
         width="100%"
       >
-        <Text size="3" weight="bold">
-          {errorType === "no-connection" ? "No connection" : "Unexpected error"}
-        </Text>
-        <Text size="2">
-          {errorType === "no-connection"
-            ? "Seems, that there is no connection to Docker Daemon. Please, setup Docker properly or launch Docker Engine"
-            : "Something went wrong during connection or listing containers"}
-        </Text>
+        <ErrorComponent />
       </Flex>
     </Card>
   );

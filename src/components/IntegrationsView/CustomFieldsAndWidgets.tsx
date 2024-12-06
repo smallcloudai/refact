@@ -8,7 +8,7 @@ import {
   Switch,
 } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
-import { useState } from "react";
+import { type ChangeEventHandler, useState } from "react";
 
 // Custom Input Field
 export const CustomInputField = ({
@@ -20,6 +20,8 @@ export const CustomInputField = ({
   name,
   width,
   size = "long",
+  color = "gray",
+  onChange,
 }: {
   id?: string;
   type?:
@@ -42,6 +44,8 @@ export const CustomInputField = ({
   placeholder?: string;
   size?: string;
   width?: string;
+  color?: TextField.RootProps["color"];
+  onChange?: ChangeEventHandler<HTMLInputElement>;
 }) => {
   return (
     <Box
@@ -64,9 +68,10 @@ export const CustomInputField = ({
           size="2"
           value={value}
           variant="soft"
-          color="gray"
+          color={color}
           defaultValue={defaultValue}
           placeholder={placeholder}
+          onChange={onChange}
         />
       ) : (
         <TextArea

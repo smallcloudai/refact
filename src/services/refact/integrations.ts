@@ -460,6 +460,30 @@ export type NotConfiguredIntegrationWithIconRecord = {
   // unparsed: unknown;
 };
 
+export function isNotConfiguredIntegrationWithIconRecord(
+  json: unknown,
+): json is NotConfiguredIntegrationWithIconRecord {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("project_path" in json)) return false;
+  if (!Array.isArray(json.project_path)) return false;
+  if (!json.project_path.every((item) => typeof item === "string"))
+    return false;
+  if (!("integr_name" in json)) return false;
+  if (typeof json.integr_name !== "string") return false;
+  if (!("integr_config_path" in json)) return false;
+  if (!Array.isArray(json.integr_config_path)) return false;
+  if (!json.integr_config_path.every((item) => typeof item === "string"))
+    return false;
+  if (!("integr_config_exists" in json)) return false;
+  if (json.integr_config_exists !== false) return false;
+  if (!("on_your_laptop" in json)) return false;
+  if (typeof json.on_your_laptop !== "boolean") return false;
+  if (!("when_isolated" in json)) return false;
+  if (typeof json.when_isolated !== "boolean") return false;
+  return true;
+}
+
 function isInterIntegrationWithIconRecord(
   json: unknown,
 ): json is IntegrationWithIconRecord {

@@ -13,9 +13,10 @@ type IntegrationCardProps = {
   integration:
     | IntegrationWithIconRecord
     | NotConfiguredIntegrationWithIconRecord;
-  handleIntegrationShowUp: (integration: IntegrationWithIconRecord) => void;
-  handleNotConfiguredIntegrationShowUp?: (
-    integration: NotConfiguredIntegrationWithIconRecord,
+  handleIntegrationShowUp: (
+    integration:
+      | IntegrationWithIconRecord
+      | NotConfiguredIntegrationWithIconRecord,
   ) => void;
   isNotConfigured?: boolean;
 };
@@ -25,7 +26,6 @@ const INTEGRATIONS_WITH_TERMINAL_ICON = ["cmdline", "service"];
 export const IntegrationCard: FC<IntegrationCardProps> = ({
   integration,
   handleIntegrationShowUp,
-  handleNotConfiguredIntegrationShowUp,
   isNotConfigured = false,
 }) => {
   const integrationLogo = INTEGRATIONS_WITH_TERMINAL_ICON.includes(
@@ -39,13 +39,7 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
       className={classNames(styles.integrationCard, {
         [styles.integrationCardInline]: isNotConfigured,
       })}
-      onClick={() =>
-        isNotConfigured && handleNotConfiguredIntegrationShowUp
-          ? handleNotConfiguredIntegrationShowUp(
-              integration as NotConfiguredIntegrationWithIconRecord,
-            )
-          : handleIntegrationShowUp(integration as IntegrationWithIconRecord)
-      }
+      onClick={() => handleIntegrationShowUp(integration)}
     >
       <Flex
         gap="4"
