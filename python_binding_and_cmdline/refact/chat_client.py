@@ -622,6 +622,6 @@ async def compress_trajectory(base_url: str, messages: List[Message]):
             async with session.post(url, json=data) as response:
                 text = await response.text()
                 assert response.status == 200, f"unable to compress trajectory: {response.status}, Text:\n{text}"
-                return json.loads(text)
+                return json.loads(text)["trajectory"]
 
     return await _compress_trajectory()
