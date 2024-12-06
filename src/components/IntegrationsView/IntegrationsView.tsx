@@ -126,7 +126,8 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
   const globalIntegrations = useMemo(() => {
     if (integrationsMap?.integrations) {
       return integrationsMap.integrations.filter(
-        (integration) => integration.project_path === "",
+        (integration) =>
+          integration.project_path === "" && integration.integr_config_exists,
       );
     }
   }, [integrationsMap]);
@@ -160,7 +161,11 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       return integrationsMap.integrations.reduce<
         Record<string, IntegrationWithIconResponse["integrations"]>
       >((acc, integration) => {
-        if (!integration.integr_config_exists) {
+        if (
+          !integration.integr_config_exists &&
+          !integration.integr_name.startsWith("cmdline") &&
+          !integration.integr_name.startsWith("service")
+        ) {
           if (!(integration.project_path in acc)) {
             acc[integration.project_path] = [];
           }
@@ -170,6 +175,60 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       }, {});
     }
   }, [integrationsMap]);
+
+  const nonConfiguredCmdlinesIntegrations = useMemo(() => {
+    if (integrationsMap?.integrations) {
+      const groupedIntegrations = integrationsMap.integrations.reduce<
+        Record<
+          string,
+          Omit<
+            IntegrationWithIconRecord,
+            "project_path" | "integr_config_path"
+          > & {
+            project_path: string[];
+            integr_config_path: string[];
+          }
+        >
+      >((acc, integration) => {
+        if (
+          !integration.integr_config_exists &&
+          (integration.integr_name.startsWith("cmdline") ||
+            integration.integr_name.startsWith("service"))
+        ) {
+          if (!(integration.integr_name in acc)) {
+            acc[integration.integr_name] = {
+              ...integration,
+              project_path: [integration.project_path],
+              integr_config_path: [integration.integr_config_path],
+            };
+          } else {
+            if (
+              !acc[integration.integr_name].project_path.includes(
+                integration.project_path,
+              )
+            ) {
+              acc[integration.integr_name].project_path.push(
+                integration.project_path,
+              );
+            }
+            acc[integration.integr_name].integr_config_path.push(
+              integration.integr_config_path,
+            );
+          }
+        }
+        return acc;
+      }, {});
+
+      return Object.values(groupedIntegrations);
+    }
+  }, [integrationsMap]);
+
+  useEffect(() => {
+    debugIntegrations(
+      `[DEBUG]: nonConfiguredCmdlinesIntegrations: `,
+      nonConfiguredCmdlinesIntegrations,
+    );
+  }, [nonConfiguredCmdlinesIntegrations]);
 
   const handleSetCurrentIntegrationSchema = (
     schema: Integration["integr_schema"],
@@ -608,6 +667,20 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
                             }
                           />
                         ))}
+                        {nonConfiguredCmdlinesIntegrations?.map(
+                          (integration, subIndex) => (
+                            <IntegrationCard
+                              isInline
+                              key={`project-${index}-${subIndex}-${JSON.stringify(
+                                integration.integr_config_path,
+                              )}`}
+                              integration={integration}
+                              handleIntegrationShowUp={
+                                handleNotSetupIntegrationShowUp
+                              }
+                            />
+                          ),
+                        )}
                       </Flex>
                     </Flex>
                   );
