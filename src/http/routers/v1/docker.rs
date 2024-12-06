@@ -31,6 +31,13 @@ pub struct DockerContainerListPost {
     pub image: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DockerContainerListResponse {
+    pub container_list: Vec<DockerContainerListOutput>,
+    pub has_connection_to_docker_daemon: bool,
+    pub docker_error: String,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct DockerContainerListOutput {
     id: String,
@@ -79,16 +86,20 @@ pub async fn handle_v1_docker_container_list(
     let post = serde_json::from_slice::<DockerContainerListPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    let (docker, _) = docker_and_isolation_load(gcx.clone()).await
-       .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Cannot load docker tool: {}", e)))?;
+    let docker = match docker_and_isolation_load(gcx.clone()).await {
+        Ok((docker, _)) => docker,
+        Err(e) => return Ok(docker_container_list_response(vec![], false, &e)),
+    };
 
     let docker_command = match post.label {
         Some(label) => format!("container list --all --no-trunc --format json --filter label={label}"),
         None => "container list --all --no-trunc --format json".to_string(),
     };
 
-    let (unparsed_output, _) = docker.command_execute(&docker_command, gcx.clone(), true, false).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Command {} failed: {}", docker_command, e)))?;
+    let unparsed_output = match docker.command_execute(&docker_command, gcx.clone(), true, false).await {
+        Ok((unparsed_output, _)) => unparsed_output,
+        Err(e) => return Ok(docker_container_list_response(vec![], false, &e)),
+    };
 
     let mut output: Vec<Value> = unparsed_output.lines().map(|line| serde_json::from_str(line)).collect::<Result<Vec<_>, _>>()
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Container list JSON problem: {}", e)))?;
@@ -105,16 +116,14 @@ pub async fn handle_v1_docker_container_list(
     }).collect::<Result<Vec<String>, ScratchError>>()?;
 
     if container_ids.len() == 0 {
-        return Ok(Response::builder()
-           .status(StatusCode::OK)
-           .header("Content-Type", "application/json")
-           .body(Body::from(serde_json::to_string(&serde_json::json!({"containers": Vec::<Value>::new()})).unwrap()))
-           .unwrap())
+        return Ok(docker_container_list_response(vec![], true, ""));
     }
 
     let inspect_command = format!("container inspect --format json {}", container_ids.join(" "));
-    let (inspect_unparsed_output, _) = docker.command_execute(&inspect_command, gcx.clone(), true, false).await
-       .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Command {} failed: {}", inspect_command, e)))?;
+    let inspect_unparsed_output = match docker.command_execute(&inspect_command, gcx.clone(), true, false).await {
+        Ok((inspect_unparsed_output, _)) => inspect_unparsed_output,
+        Err(e) => return Ok(docker_container_list_response(vec![], false, &e)),
+    };
 
     let inspect_output = serde_json::from_str::<Vec<serde_json::Value>>(&inspect_unparsed_output)
        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Container inspect JSON problem: {}", e)))?;
@@ -145,6 +154,20 @@ pub async fn handle_v1_docker_container_list(
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string(&serde_json::json!({"containers": response_body})).unwrap()))
         .unwrap())
+}
+
+fn docker_container_list_response(
+    container_list: Vec<DockerContainerListOutput>, 
+    has_connection_to_daemon: bool,
+    error: &str, 
+) -> Response<Body> {
+    let response = DockerContainerListResponse {
+        container_list,
+        has_connection_to_docker_daemon: has_connection_to_daemon,
+        docker_error: error.to_string(),
+    };
+    Response::builder().status(StatusCode::OK).header("Content-Type", "application/json")
+           .body(Body::from(serde_json::to_string(&response).unwrap())).unwrap()
 }
 
 fn extract_string_field<'a>(container: &'a serde_json::Value, field_path: &[&str], error_message: &str) -> Result<String, ScratchError> {
