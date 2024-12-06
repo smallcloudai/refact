@@ -77,7 +77,7 @@ export const useSendChatRequest = () => {
   }, [currentMessages, systemPrompt]);
 
   const sendMessages = useCallback(
-    async (messages: ChatMessages) => {
+    async (messages: ChatMessages, maybeMode?: LspChatMode) => {
       let tools = await triggerGetTools(undefined).unwrap();
       // TODO: save tool use to state.chat
       // if (toolUse && isToolUse(toolUse)) {
@@ -112,8 +112,7 @@ export const useSendChatRequest = () => {
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
-      // TODO: this is calculated twice.
-      const mode = chatModeToLspMode(toolUse, threadMode);
+      const mode = maybeMode ?? chatModeToLspMode(toolUse, threadMode);
 
       const action = chatAskQuestionThunk({
         messages,
@@ -175,7 +174,7 @@ export const useSendChatRequest = () => {
 
       dispatch(setChatMode(mode));
 
-      void sendMessages(messages);
+      void sendMessages(messages, maybeMode);
     },
     [
       dispatch,
