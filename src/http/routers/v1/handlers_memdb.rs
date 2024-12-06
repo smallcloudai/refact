@@ -145,11 +145,10 @@ pub async fn handle_mem_query(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let vec_db = gcx.read().await.vec_db.clone();
     let memories = crate::vecdb::vdb_highlev::memories_search(
-        vec_db,
+        gcx.clone(),
         &post.goal,
-        post.top_n
+        post.top_n,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{e}"))
     })?;

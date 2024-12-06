@@ -218,7 +218,14 @@ smartlinks:
       - role: "user"
         content: |
           🔧 The postgres tool should be visible now. To test the tool, list the tables available, briefly describe the tables and express
-          satisfaction and relief if it works, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+          happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+          The current config file is %CURRENT_CONFIG%.
+  - sl_label: "Look at the project, fill in automatically"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 Your goal is to set up postgres client. Look at the project, especially files like "docker-compose.yaml" or ".env". Call tree() to see what files the project has.
+          After that is completed, go through the usual plan in the system prompt.
           The current config file is %CURRENT_CONFIG%.
 docker:
   filter_label: ""
@@ -242,10 +249,3 @@ docker:
           content: |
             🔧 Your job is to modify postgres connection config in the current file to match the variables from the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
 "#;
-
-
-// available:
-//   on_your_laptop:
-//     possible: true
-//   when_isolated:
-//     possible: true

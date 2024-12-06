@@ -58,14 +58,14 @@ async fn _create_vecdb(
 ) -> Result<(), String> {
     info!("vecdb: attempting to launch");
     let api_key = get_custom_embedding_api_key(gcx.clone()).await;
+    if let Err(err) = api_key {
+        return Err(err.message);
+    }
 
     let (cache_dir, cmdline) = {
         let gcx_locked = gcx.read().await;
         (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone())
     };
-    if let Err(err) = api_key {
-        return Err(err.message);
-    }
     let api_key = api_key.unwrap();
 
     let base_dir: PathBuf = match cmdline.vecdb_force_path.as_str() {
@@ -418,26 +418,31 @@ pub async fn memories_update(
 }
 
 pub async fn memories_search(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     query: &String,
     top_n: usize,
 ) -> Result<MemoSearchResult, String> {
+    let vec_db = gcx.read().await.vec_db.clone();
     fn calculate_score(distance: f32, _times_used: i32) -> f32 {
         distance
         // distance - (times_used as f32) * 0.01
     }
 
     let t0 = std::time::Instant::now();
-    let (memdb, vecdb_emb_client, constants, cmdline) = {
+    let (memdb, vecdb_emb_client, constants) = {
         let vec_db_guard = vec_db.lock().await;
         let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
         (
             vec_db.memdb.clone(),
             vec_db.vecdb_emb_client.clone(),
             vec_db.constants.clone(),
-            vec_db.cmdline.clone(),
         )
     };
+
+    let api_key = get_custom_embedding_api_key(gcx.clone()).await;
+    if let Err(err) = api_key {
+        return Err(err.message);
+    }
 
     let embedding = fetch_embedding::get_embedding_with_retry(
         vecdb_emb_client,
@@ -445,7 +450,7 @@ pub async fn memories_search(
         &constants.embedding_model,
         &constants.endpoint_embeddings_template,
         vec![query.clone()],
-        &cmdline.api_key,
+        &api_key.unwrap(),
         5,
     ).await?;
     if embedding.is_empty() {

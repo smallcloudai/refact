@@ -266,47 +266,20 @@ pub async fn get_api_key(
 
 #[allow(dead_code)]
 async fn get_custom_chat_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
-    let caps = try_load_caps_quickly_if_not_present(
-        gcx.clone(), 0,
-    ).await;
-
-    if let Err(err) = caps {
-        return Err(err);
-    }
-    let caps = caps?;
-
-    let api_key = get_api_key_macro!(gcx, caps, chat_apikey);
-    Ok(api_key)
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    Ok(get_api_key_macro!(gcx, caps, chat_apikey))
 }
 
 #[cfg(feature="vecdb")]
 pub async fn get_custom_embedding_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
-    let caps = try_load_caps_quickly_if_not_present(
-        gcx.clone(), 0,
-    ).await;
-
-    if let Err(err) = caps {
-        return Err(err);
-    }
-    let caps = caps?;
-
-    let api_key = get_api_key_macro!(gcx, caps, embedding_apikey);
-    Ok(api_key)
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    Ok(get_api_key_macro!(gcx, caps, embedding_apikey))
 }
 
 #[allow(dead_code)]
 async fn get_custom_completion_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
-    let caps = try_load_caps_quickly_if_not_present(
-        gcx.clone(), 0,
-    ).await;
-
-    if let Err(err) = caps {
-        return Err(err);
-    }
-    let caps = caps?;
-
-    let api_key = get_api_key_macro!(gcx, caps, completion_apikey);
-    Ok(api_key)
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    Ok(get_api_key_macro!(gcx, caps, completion_apikey))
 }
 
 

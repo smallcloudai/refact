@@ -287,7 +287,6 @@ tools:
 
   - name: "patch"
     agentic: true
-    experimental: true
     description: |
       Collect context first, then write the necessary changes using the 📍-notation before code blocks, then call this function to apply the changes.
       To make this call correctly, you only need the tickets.
@@ -307,7 +306,6 @@ tools:
 
   - name: "github"
     agentic: true
-    experimental: true
     description: "Access to gh command line command, to fetch issues, review PRs."
     parameters:
       - name: "project_dir"
@@ -322,7 +320,6 @@ tools:
 
   - name: "gitlab"
     agentic: true
-    experimental: true
     description: "Access to glab command line command, to fetch issues, review PRs."
     parameters:
       - name: "project_dir"
@@ -337,7 +334,6 @@ tools:
 
   - name: "postgres"
     agentic: true
-    experimental: true
     description: "PostgreSQL integration, can run a single query per call."
     parameters:
       - name: "query"
@@ -368,18 +364,21 @@ tools:
     parameters:
       - name: "im_going_to_use_tools"
         type: "string"
-        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, github, gitlab, rust debugger, patch"
+        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger, patch"
       - name: "im_going_to_apply_to"
         type: "string"
         description: "What your actions will be applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
+      - name: "goal"
+        type: "string"
+        description: "What is your goal here?"
       - name: "language_slash_framework"
         type: "string"
         description: "What programming language and framework is the current project using? Use lowercase, dashes and dots. Examples: python/django, typescript/node.js, rust/tokio, ruby/rails, php/laravel, c++/boost-asio"
     parameters_required:
       - "im_going_to_use_tools"
       - "im_going_to_apply_to"
+      - "goal"
       - "language_slash_framework"
-
 "####;
 
 
