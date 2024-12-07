@@ -455,6 +455,32 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     [currentNotConfiguredIntegration, integrationsMap],
   );
 
+  const handleNavigateToIntegrationSetup = useCallback(
+    (integrationName: string, integrationConfigPath: string) => {
+      if (!integrationsMap) return;
+      if (!currentIntegration) return;
+      debugIntegrations(
+        `[DEBUG]: integrationConfigPath: `,
+        integrationConfigPath,
+      );
+      // TODO: this should be probably made not in hardcoded style, user needs to choose which docker he wants to setup
+      const maybeIntegration = integrationsMap.integrations.find(
+        (integration) =>
+          integration.integr_name === integrationName &&
+          integration.project_path === "",
+      );
+      if (!maybeIntegration) {
+        debugIntegrations(
+          `[DEBUG]: desired integration was not found in the list of all available ones :/`,
+        );
+        return;
+      }
+      setIsDisabledIntegrationForm(true);
+      setCurrentIntegration(maybeIntegration);
+    },
+    [currentIntegration, integrationsMap],
+  );
+
   const integrationLogo = useMemo(() => {
     if (!currentIntegration && !currentNotConfiguredIntegration) {
       return "https://placehold.jp/150x150.png";
@@ -585,6 +611,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
               handleChange={handleIntegrationFormChange}
               availabilityValues={availabilityValues}
               setAvailabilityValues={setAvailabilityValues}
+              handleSwitchIntegration={handleNavigateToIntegrationSetup}
             />
             {information && (
               <InformationCallout

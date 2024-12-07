@@ -1,9 +1,6 @@
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import {
-  useGetDockerContainersByImageQuery,
-  // useGetDockerContainersQuery,
-} from "../../../hooks/useGetDockerContainersQuery";
+import { useGetDockerContainersByImageQuery } from "../../../hooks/useGetDockerContainersQuery";
 import { dockerApi } from "../../../services/refact";
 import type {
   DockerActionResponse,
@@ -16,7 +13,7 @@ import { useExecuteActionForDockerContainerMutation } from "../../../hooks/useEx
 import { useAppDispatch } from "../../../hooks";
 import { setInformation } from "../../../features/Errors/informationSlice";
 import { setError } from "../../../features/Errors/errorsSlice";
-import { Card, Flex, Text } from "@radix-ui/themes";
+import { Button, Card, Flex, Heading, Text } from "@radix-ui/themes";
 import { DockerContainerCard } from "./DockerContainerCard";
 import { SmartLink } from "../../SmartLink";
 
@@ -25,6 +22,10 @@ type IntegrationDockerProps = {
   integrationName: string;
   integrationPath: string;
   integrationProject: string;
+  handleSwitchIntegration: (
+    integrationName: string,
+    integrationConfigPath: string,
+  ) => void;
 };
 
 export const IntegrationDocker: FC<IntegrationDockerProps> = ({
@@ -32,14 +33,14 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
   integrationName,
   integrationPath,
   integrationProject,
+  handleSwitchIntegration,
 }) => {
   const dispatch = useAppDispatch();
-  const { dockerContainers } = useGetDockerContainersByImageQuery(
+  const { dockerContainersResponse } = useGetDockerContainersByImageQuery(
     dockerData.filter_image,
   );
   const [areContainersLoaded, setAreContainersLoaded] = useState(false);
 
-  // const { dockerContainers } = useGetDockerContainersQuery();
   const [dockerContainerActionTrigger] =
     useExecuteActionForDockerContainerMutation();
   const [isActionInProgress, setIsActionInProgress] = useState(false);
@@ -52,9 +53,9 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    if (!dockerContainers.isLoading) {
-      if (dockerContainers.data) {
-        setDockerContainersList(dockerContainers.data.containers);
+    if (!dockerContainersResponse.isLoading) {
+      if (dockerContainersResponse.data) {
+        setDockerContainersList(dockerContainersResponse.data.containers);
       }
       timeoutId = setTimeout(() => {
         setAreContainersLoaded(true);
@@ -64,18 +65,33 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [dockerContainers, areContainersLoaded]);
+  }, [dockerContainersResponse, areContainersLoaded]);
 
-  if (dockerContainers.isLoading || !areContainersLoaded) {
+  if (dockerContainersResponse.isLoading || !areContainersLoaded) {
     return <Spinner spinning />;
   }
 
-  if (dockerContainers.error ?? !dockerContainers.data) {
-    return <DockerErrorCard errorType="no-connection" />;
+  if (
+    !dockerContainersResponse.data ||
+    !dockerContainersResponse.data.has_connection_to_docker_daemon
+  ) {
+    return (
+      <DockerErrorCard
+        errorType="no-connection"
+        integrationPath={integrationPath}
+        handleSwitchIntegration={handleSwitchIntegration}
+      />
+    );
   }
 
   if (!dockerContainersList || dockerContainersList.length === 0) {
-    return <DockerErrorCard errorType="no-containers" />;
+    return (
+      <DockerErrorCard
+        errorType="no-containers"
+        integrationPath={integrationPath}
+        handleSwitchIntegration={handleSwitchIntegration}
+      />
+    );
   }
 
   const handleDockerContainerActionClick = async (
@@ -159,25 +175,43 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
 
 type DockerErrorCardProps = {
   errorType: "no-connection" | "unexpected" | "no-containers";
+  handleSwitchIntegration: (
+    integrationName: string,
+    integrationConfigPath: string,
+  ) => void;
+  integrationPath: string;
 };
 
-const NoConnectionError: FC = () => (
+const NoConnectionError: FC<{
+  handleSwitchIntegration: (
+    integrationName: string,
+    integrationConfigPath: string,
+  ) => void;
+  integrationPath: string;
+}> = ({ handleSwitchIntegration, integrationPath }) => (
   <>
-    <Text size="3" weight="bold">
-      No connection
-    </Text>
+    <Heading as="h6" size="3" weight="bold" align="center">
+      No connection to Docker Daemon
+    </Heading>
     <Text size="2">
       Seems, that there is no connection to Docker Daemon. Please, setup Docker
-      properly or launch Docker Engine
+      properly or check if Docker Engine is running
     </Text>
+    <Button
+      variant="outline"
+      color="gray"
+      onClick={() => handleSwitchIntegration("docker", integrationPath)}
+    >
+      Setup docker
+    </Button>
   </>
 );
 
 const UnexpectedError: FC = () => (
   <>
-    <Text size="3" weight="bold">
+    <Heading as="h6" size="3" weight="bold" align="center">
       Unexpected error
-    </Text>
+    </Heading>
     <Text size="2">
       Something went wrong during connection or listing containers
     </Text>
@@ -186,9 +220,9 @@ const UnexpectedError: FC = () => (
 
 const NoContainersError: FC = () => (
   <>
-    <Text size="3" weight="bold">
+    <Heading as="h6" size="3" weight="bold" align="center">
       No containers
-    </Text>
+    </Heading>
     <Text size="2">
       No Docker containers found. Please, ensure that containers are running.
     </Text>
@@ -201,22 +235,30 @@ const errorComponents = {
   "no-containers": NoContainersError,
 };
 
-const DockerErrorCard: FC<DockerErrorCardProps> = ({ errorType }) => {
+const DockerErrorCard: FC<DockerErrorCardProps> = ({
+  errorType,
+  integrationPath,
+  handleSwitchIntegration,
+}) => {
   const ErrorComponent = errorComponents[errorType];
   return (
     <Card
       style={{
         margin: "1rem auto 0",
+        width: "100%",
       }}
     >
       <Flex
         direction="column"
-        align="center"
+        align="stretch"
         justify="center"
         gap="4"
         width="100%"
       >
-        <ErrorComponent />
+        <ErrorComponent
+          handleSwitchIntegration={handleSwitchIntegration}
+          integrationPath={integrationPath}
+        />
       </Flex>
     </Card>
   );

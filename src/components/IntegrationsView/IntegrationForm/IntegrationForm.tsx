@@ -32,6 +32,10 @@ type IntegrationFormProps = {
   setAvailabilityValues: Dispatch<
     React.SetStateAction<Record<string, boolean>>
   >;
+  handleSwitchIntegration: (
+    integrationName: string,
+    integrationConfigPath: string,
+  ) => void;
 };
 
 export const IntegrationForm: FC<IntegrationFormProps> = ({
@@ -44,6 +48,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   onSchema,
   onValues,
   setAvailabilityValues,
+  handleSwitchIntegration,
 }) => {
   const [areExtraFieldsRevealed, setAreExtraFieldsRevealed] = useState(false);
 
@@ -234,6 +239,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
             integrationName={integration.data.integr_name}
             integrationProject={integration.data.project_path}
             integrationPath={integration.data.integr_config_path}
+            handleSwitchIntegration={handleSwitchIntegration}
           />
         </Flex>
       )}
