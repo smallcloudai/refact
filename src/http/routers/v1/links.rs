@@ -63,6 +63,7 @@ pub async fn handle_v1_links(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let mut links = Vec::new();
     tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
+    let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), true).await;
 
     if post.messages.is_empty() {
         let (already_exists, summary_path_option) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
@@ -85,6 +86,9 @@ pub async fn handle_v1_links(
                                 if let Some(recommended_tools) = yaml.get("recommended_tools").and_then(|rt| rt.as_sequence()) {
                                     for tool in recommended_tools {
                                         if let Some(tool_name) = tool.get("tool_name").and_then(|tn| tn.as_str()) {
+
+                                            // integrations_map
+
                                             links.push(Link {
                                                 action: LinkAction::Goto,
                                                 text: format!("Configure {tool_name}"),
@@ -145,7 +149,6 @@ pub async fn handle_v1_links(
         }
     }
 
-    let (_, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), true).await;
     for e in integration_yaml_errors {
         links.push(Link {
             action: LinkAction::Goto,
@@ -156,17 +159,22 @@ pub async fn handle_v1_links(
         });
     }
 
-    if post.meta.chat_mode != ChatMode::NO_TOOLS && links.is_empty() {
-        let follow_up_message = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
+    if post.meta.chat_mode != ChatMode::NO_TOOLS && links.is_empty() && post.messages.len() > 2 {
+        let follow_up_messages: Vec<String> = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
-        links.push(Link {
-            action: LinkAction::FollowUp,
-            text: follow_up_message,
-            goto: None,
-            current_config_file: None,
-            link_tooltip: format!(""),
-        });
+        for follow_up_message in follow_up_messages {
+            tracing::info!("follow-up {:?}", follow_up_message);
+            links.push(Link {
+                action: LinkAction::FollowUp,
+                text: follow_up_message,
+                goto: None,
+                current_config_file: None,
+                link_tooltip: format!(""),
+            });
+        }
     }
+
+    tracing::info!("generated links2: {:?}", links);
 
     Ok(Response::builder()
         .status(StatusCode::OK)
