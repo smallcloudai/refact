@@ -73,20 +73,6 @@ pub async fn handle_v1_chat_completions(
     _chat(gcx, &body_bytes, false).await
 }
 
-pub async fn handle_v1_chat_configuration(
-    Extension(gcx): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    _chat(gcx, &body_bytes, true).await
-}
-
-pub async fn handle_v1_chat_project_summary(
-    Extension(gcx): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    _chat(gcx, &body_bytes, true).await
-}
-
 pub async fn handle_v1_chat(
     // less-standard openai-style handler that sends role="context_*" messages first, rewrites the user message
     Extension(gcx): Extension<SharedGlobalContext>,
