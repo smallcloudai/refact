@@ -105,42 +105,36 @@ pub async fn dig_for_project_summarization_file(gcx: Arc<ARwLock<GlobalContext>>
 }
 
 async fn _read_project_summary(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    summary_path: String,
 ) -> Option<String> {
-    let (exists, summary_path_option) = dig_for_project_summarization_file(gcx).await;
-    if exists {
-        if let Some(summary_path) = summary_path_option {
-            match fs::read_to_string(summary_path) {
-                Ok(content) => {
-                    match serde_yaml::from_str::<serde_yaml::Value>(&content) {
-                        Ok(yaml) => {
-                            if let Some(project_summary) = yaml.get("project_summary") {
-                                match serde_yaml::to_string(project_summary) {
-                                    Ok(summary_str) => return Some(summary_str),
-                                    Err(e) => {
-                                        tracing::error!("Failed to convert project summary to string: {}", e);
-                                        return None;
-                                    }
-                                }
-                            } else {
-                                tracing::error!("Key 'project_summary' not found in YAML file.");
+    match fs::read_to_string(summary_path) {
+        Ok(content) => {
+            match serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                Ok(yaml) => {
+                    if let Some(project_summary) = yaml.get("project_summary") {
+                        match serde_yaml::to_string(project_summary) {
+                            Ok(summary_str) => return Some(summary_str),
+                            Err(e) => {
+                                tracing::error!("Failed to convert project summary to string: {}", e);
                                 return None;
                             }
-                        },
-                        Err(e) => {
-                            tracing::error!("Failed to parse project summary YAML file: {}", e);
-                            return None;
                         }
+                    } else {
+                        tracing::error!("Key 'project_summary' not found in YAML file.");
+                        return None;
                     }
                 },
                 Err(e) => {
-                    tracing::error!("Failed to read project summary file: {}", e);
+                    tracing::error!("Failed to parse project summary YAML file: {}", e);
                     return None;
                 }
             }
+        },
+        Err(e) => {
+            tracing::error!("Failed to read project summary file: {}", e);
+            return None;
         }
     }
-    None
 }
 
 pub async fn system_prompt_add_workspace_info(
@@ -164,8 +158,15 @@ pub async fn system_prompt_add_workspace_info(
     }
 
     if system_prompt.contains("%PROJECT_SUMMARY%") {
-        if let Some(project_info) = _read_project_summary(gcx.clone()).await {
-            system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", &project_info);
+        let (exists, summary_path_option) = dig_for_project_summarization_file(gcx.clone()).await;
+        if exists {
+            if let Some(summary_path) = summary_path_option {
+                if let Some(project_info) = _read_project_summary(summary_path).await {
+                    system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", &project_info);
+                } else {
+                    system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", "");
+                }
+            }
         } else {
             system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", "");
         }

@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::fs;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
@@ -64,16 +65,47 @@ pub async fn handle_v1_links(
     tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
 
     if post.messages.is_empty() {
-
-        let (already_exists, summary_path) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
+        let (already_exists, summary_path_option) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
         if !already_exists {
+            // doesn't exist
             links.push(Link {
                 action: LinkAction::SummarizeProject,
                 text: "Initial project summarization".to_string(),
                 goto: None,
-                current_config_file: summary_path,
+                current_config_file: summary_path_option,
                 link_tooltip: format!("Project summary is a starting point for Refact Agent."),
             });
+        } else {
+            // exists
+            if let Some(summary_path) = summary_path_option {
+                match fs::read_to_string(&summary_path) {
+                    Ok(content) => {
+                        match serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                            Ok(yaml) => {
+                                if let Some(recommended_tools) = yaml.get("recommended_tools").and_then(|rt| rt.as_sequence()) {
+                                    for tool in recommended_tools {
+                                        if let Some(tool_name) = tool.get("tool_name").and_then(|tn| tn.as_str()) {
+                                            links.push(Link {
+                                                action: LinkAction::Goto,
+                                                text: format!("Configure {tool_name}"),
+                                                goto: Some(format!("SETTINGS:{tool_name}")),
+                                                current_config_file: None,
+                                                link_tooltip: format!(""),
+                                            });
+                                        }
+                                    }
+                                }
+                            },
+                            Err(e) => {
+                                tracing::error!("Failed to parse project summary YAML file: {}", e);
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        tracing::error!("Failed to read project summary file: {}", e);
+                    }
+                }
+            }
         }
     }
 
