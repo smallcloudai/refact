@@ -33,13 +33,19 @@ enum LinkAction {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Link {
+    // XXX rename:
+    // link_action
+    // link_text
+    // link_goto
+    // link_tooltip
     action: LinkAction,
     text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     goto: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    projects: Option<Vec<ProjectCommit>>,
-    tooltip: String,
+    // projects: Option<Vec<ProjectCommit>>,
+    current_config_file: Option<String>,   // XXX rename
+    link_tooltip: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -55,15 +61,19 @@ pub async fn handle_v1_links(
     let post = serde_json::from_slice::<LinksPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let mut links = Vec::new();
+    tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
 
-    if post.messages.is_empty() && project_summarization_is_missing(gcx.clone()).await {
-        links.push(Link {
-            action: LinkAction::SummarizeProject,
-            text: "Initial project summarization".to_string(),
-            goto: None,
-            projects: None,
-            tooltip: format!("Project summary is a starting point for Refact Agent."),
-        });
+    if post.messages.is_empty() {
+        let (is_missing, summary_path) = project_summarization_is_missing(gcx.clone()).await;
+        if is_missing {
+            links.push(Link {
+                action: LinkAction::SummarizeProject,
+                text: "Initial project summarization".to_string(),
+                goto: None,
+                current_config_file: summary_path,
+                link_tooltip: format!("Project summary is a starting point for Refact Agent."),
+            });
+        }
     }
 
     if post.meta.chat_mode == ChatMode::CONFIGURE && !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
@@ -71,8 +81,8 @@ pub async fn handle_v1_links(
             action: LinkAction::PatchAll,
             text: "Save and return".to_string(),
             goto: Some("SETTINGS:DEFAULT".to_string()),
-            projects: None,
-            tooltip: format!(""),
+            current_config_file: None,
+            link_tooltip: format!(""),
         });
     }
 
@@ -83,8 +93,9 @@ pub async fn handle_v1_links(
                 action: LinkAction::Commit,
                 text: format!("Commit {files_changed} files"),
                 goto: None,
-                projects: Some(project_commits),
-                tooltip: format!(""),
+                // projects: Some(project_commits),
+                current_config_file: None,
+                link_tooltip: format!(""),
             });
         }
     }
@@ -95,8 +106,8 @@ pub async fn handle_v1_links(
                 action: LinkAction::Goto,
                 text: format!("Configure {failed_integr_name}"),
                 goto: Some(format!("SETTINGS:{failed_integr_name}")),
-                projects: None,
-                tooltip: format!(""),
+                current_config_file: None,
+                link_tooltip: format!(""),
             })
         }
     }
@@ -107,8 +118,8 @@ pub async fn handle_v1_links(
             action: LinkAction::Goto,
             text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.integr_config_path, 20)),
             goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
-            projects: None,
-            tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
+            current_config_file: None,
+            link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
         });
     }
 
@@ -119,8 +130,8 @@ pub async fn handle_v1_links(
             action: LinkAction::FollowUp,
             text: follow_up_message,
             goto: None,
-            projects: None,
-            tooltip: format!(""),
+            current_config_file: None,
+            link_tooltip: format!(""),
         });
     }
 
@@ -169,14 +180,19 @@ async fn generate_commit_messages_with_current_changes(gcx: Arc<ARwLock<GlobalCo
 }
 
 // TODO: Move all logic below to more appropiate files
-async fn project_summarization_is_missing(gcx: Arc<ARwLock<GlobalContext>>) -> bool {
+async fn project_summarization_is_missing(gcx: Arc<ARwLock<GlobalContext>>) -> (bool, Option<String>) {
     match crate::files_correction::get_active_project_path(gcx.clone()).await {
         Some(active_project_path) => {
-            !active_project_path.join(".refact").join("project_summary.yaml").exists()
+            let summary_path = active_project_path.join(".refact").join("project_summary.yaml");
+            if !summary_path.exists() {
+                (true, Some(summary_path.to_string_lossy().to_string()))
+            } else {
+                (false, Some(summary_path.to_string_lossy().to_string()))
+            }
         }
         None => {
             tracing::info!("No projects found, project summarization is not relevant.");
-            false
+            (false, None)
         }
     }
 }
