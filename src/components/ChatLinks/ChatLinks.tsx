@@ -114,7 +114,7 @@ export const ChatLinks: React.FC = () => {
         dispatch(setIntegrationData({ path: link.current_config_file }));
         // set the integration fata
       }
-      submit(link.text, "PROJECTSUMMARY");
+      submit(link.text, "PROJECT_SUMMARY");
       return;
     }
 

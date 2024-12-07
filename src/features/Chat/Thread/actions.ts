@@ -210,9 +210,10 @@ function checkForToolLoop(message: ChatMessages): boolean {
 
 // export function chatModeToLspMode(mode?: ToolUse) {
 //   if (mode === "agent") return "AGENT";
-//   if (mode === "quick") return "NOTOOLS";
+//   if (mode === "quick") return "NO_TOOLS";
 //   return "EXPLORE";
 // }
+
 export const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
