@@ -51,7 +51,7 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
     }
 }
 
-pub fn icon_from_name(n: &str) -> String
+pub fn icon_from_name(_n: &str) -> String
 {
     // match n {
     //     // "github" => Box::new(ToolGithub { ..Default::default() }) as Box<dyn IntegrationTrait + Send + Sync>,

@@ -175,7 +175,7 @@ async fn execute_background_command(
         let mut exit_code: i32 = -100000;
 
         loop {
-            if t0.elapsed() >= tokio::time::Duration::from_secs(cfg.startup_wait) {
+            if t0.elapsed() >= tokio::time::Duration::from_secs(cfg.startup_wait.to_string().parse::<u64>().unwrap_or(10)) {
                 actions_log.push_str(&format!("Timeout {:.2}s reached while waiting for the service to start.\n\n", t0.elapsed().as_secs_f64()));
                 break;
             }
@@ -339,7 +339,7 @@ fields:
   startup_wait:
     f_type: string_short
     f_desc: "Max time to wait for service to start."
-    f_default: 10
+    f_default: "10"
   startup_wait_keyword:
     f_type: string
     f_desc: "Wait until a keyword appears in stdout or stderr at startup."
@@ -354,20 +354,3 @@ available:
   on_your_laptop_possible: true
   when_isolated_possible: true
 "#;
-
-
-// #[serde(default)]
-// pub startup_wait_port: Option<u16>,
-// #[serde(default = "_default_startup_wait")]
-// pub startup_wait: u64,
-// #[serde(default)]
-// pub startup_wait_keyword: Option<String>,
-
-// timeout:
-//     f_type: integer
-//     f_desc: "The command must immediately return the results, it can't be interactive. If the command runs for too long, it will be terminated and stderr/stdout collected will be presented to the model."
-//     f_default: 10
-//   output_filter:
-//     f_type: "output_filter"
-//     f_desc: "The output from the command can be long or even quasi-infinite. This section allows to set limits, prioritize top or bottom, or use regexp to show the model the relevant part."
-//     f_placeholder: "filter"

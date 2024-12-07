@@ -31,7 +31,7 @@ pub struct VecDb {
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
     pub vectorizer_service: Arc<AMutex<FileVectorizerService>>,
-    cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
+    // cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
     constants: VecdbConstants,
 }
 
@@ -245,7 +245,6 @@ impl VecDb {
             vecdb_emb_client: Arc::new(AMutex::new(reqwest::Client::new())),
             vecdb_handler,
             vectorizer_service,
-            cmdline: cmdline.clone(),
             constants: constants.clone(),
         })
     }

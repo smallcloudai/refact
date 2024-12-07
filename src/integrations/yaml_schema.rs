@@ -47,7 +47,9 @@ pub struct ISchemaDocker {
     pub filter_label: String,
     pub filter_image: String,
     pub new_container_default: DockerService,
+    #[serde(default, skip_serializing_if="is_empty")]
     pub smartlinks: Vec<ISmartLink>,
+    #[serde(default, skip_serializing_if="is_empty")]
     pub smartlinks_for_each_container: Vec<ISmartLink>,
 }
 
@@ -57,6 +59,7 @@ pub struct ISchema {
     #[serde(default, skip_serializing_if="is_default")]
     pub description: String,
     pub available: ISchemaAvailable,
+    #[serde(default, skip_serializing_if="is_empty")]
     pub smartlinks: Vec<ISmartLink>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub docker: Option<ISchemaDocker>,

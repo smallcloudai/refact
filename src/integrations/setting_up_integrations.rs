@@ -425,7 +425,7 @@ mod tests {
     async fn test_integration_schemas() {
         let integrations = crate::integrations::integrations_list();
         for name in integrations {
-            let mut integration_box = crate::integrations::integration_from_name(name).unwrap();
+            let integration_box = crate::integrations::integration_from_name(name).unwrap();
             let schema_json = {
                 let y: serde_yaml::Value = serde_yaml::from_str(integration_box.integr_schema()).unwrap();
                 let j = serde_json::to_value(y).unwrap();
@@ -433,6 +433,7 @@ mod tests {
             };
             let schema_yaml: serde_yaml::Value = serde_json::from_value(schema_json.clone()).unwrap();
             let compare_me1 = serde_yaml::to_string(&schema_yaml).unwrap();
+            eprintln!("schema_json {:?}", schema_json);
             let schema_struct: ISchema = serde_json::from_value(schema_json).unwrap();
             let schema_struct_yaml = serde_json::to_value(&schema_struct).unwrap();
             let compare_me2 = serde_yaml::to_string(&schema_struct_yaml).unwrap();

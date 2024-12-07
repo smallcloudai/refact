@@ -25,8 +25,8 @@ pub struct CmdlineToolConfig {
     pub parameters_required: Option<Vec<String>>,
 
     // blocking
-    #[serde(default = "_default_timeout")]
-    pub timeout: u64,
+    #[serde(default)]
+    pub timeout: String,
     #[serde(default)]
     pub output_filter: CmdlineOutputFilter,
 
@@ -37,10 +37,6 @@ pub struct CmdlineToolConfig {
     pub startup_wait: u64,
     #[serde(default)]
     pub startup_wait_keyword: Option<String>,
-}
-
-fn _default_timeout() -> u64 {
-    120
 }
 
 fn _default_startup_wait() -> u64 {
@@ -162,7 +158,7 @@ pub async fn execute_blocking_command(
         Ok(out)
     };
 
-    let timeout_duration = tokio::time::Duration::from_secs(cfg.timeout);
+    let timeout_duration = tokio::time::Duration::from_secs(cfg.timeout.parse::<u64>().unwrap_or(10));
     let result = tokio::time::timeout(timeout_duration, command_future).await;
 
     match result {
@@ -249,14 +245,13 @@ fields:
   description:
     f_type: string_long
     f_desc: "The model will see this description, why the model should call this?"
-    f_placeholder: ""
   parameters:
     f_type: "tool_parameters"
     f_desc: "The model will fill in those parameters."
   timeout:
-    f_type: integer
+    f_type: string_short
     f_desc: "The command must immediately return the results, it can't be interactive. If the command runs for too long, it will be terminated and stderr/stdout collected will be presented to the model."
-    f_default: 10
+    f_default: "10"
   output_filter:
     f_type: "output_filter"
     f_desc: "The output from the command can be long or even quasi-infinite. This section allows to set limits, prioritize top or bottom, or use regexp to show the model the relevant part."

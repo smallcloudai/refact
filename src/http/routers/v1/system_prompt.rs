@@ -27,7 +27,7 @@ pub async fn handle_v1_system_prompt(
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     // XXX receive ChatMode
-    let post = serde_json::from_slice::<SystemPromptPost>(&body_bytes)
+    let _post = serde_json::from_slice::<SystemPromptPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
     let prompt = get_default_system_prompt(gcx.clone(), crate::call_validation::ChatMode::Agent).await;
