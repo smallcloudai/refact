@@ -68,7 +68,8 @@ PROMPT_EXPLORATION_TOOLS: |
 
   %PROMPT_PINS%
   %WORKSPACE_INFO%
-  %PROJECT_INFO%
+
+  %PROJECT_SUMMARY%
 
   Good thinking strategy for the answers: is it a question related to the current project?
   Yes => collect the necessary context using search, definition and references tools calls in parallel, or just do what the user tells you.
@@ -86,7 +87,8 @@ PROMPT_AGENTIC_TOOLS: |
 
   %PROMPT_PINS%
   %WORKSPACE_INFO%
-  %PROJECT_INFO%
+
+  %PROJECT_SUMMARY%
 
   Good practice using knowledge(): it's the key to successfully completing complex tasks the user might present you with. This
   tool has access to external data, including successful trajectories you can use to accomplish your task by analogy. The knowledge()
@@ -126,7 +128,8 @@ PROMPT_CONFIGURATOR: |
 
   %PROMPT_PINS%
   %WORKSPACE_INFO%
-  %PROJECT_INFO%
+
+  %PROJECT_SUMMARY%
 
   The integration config format is the following YAML:
   ```
@@ -167,7 +170,7 @@ PROMPT_CONFIGURATOR: |
   - write updated configs using 📍REWRITE_WHOLE_FILE
 
 PROMPT_PROJECT_SUMMARY: |
-  You are Refact Agent, a coding assistant. 
+  You are Refact Agent, a coding assistant.
   Your task is to make a summary of the project you're working with and also choose tools from the given list which could be useful to work with the project.
   Select only those tools which are really using inside the project.
   %AVAILABLE_INTEGRATIONS%

@@ -87,6 +87,62 @@ async fn _workspace_info(
     info
 }
 
+pub async fn dig_for_project_summarization_file(gcx: Arc<ARwLock<GlobalContext>>) -> (bool, Option<String>) {
+    match crate::files_correction::get_active_project_path(gcx.clone()).await {
+        Some(active_project_path) => {
+            let summary_path = active_project_path.join(".refact").join("project_summary.yaml");
+            if !summary_path.exists() {
+                (false, Some(summary_path.to_string_lossy().to_string()))
+            } else {
+                (true, Some(summary_path.to_string_lossy().to_string()))
+            }
+        }
+        None => {
+            tracing::info!("No projects found, project summarization is not relevant.");
+            (false, None)
+        }
+    }
+}
+
+async fn _read_project_summary(
+    gcx: Arc<ARwLock<GlobalContext>>,
+) -> Option<String> {
+    let (exists, summary_path_option) = dig_for_project_summarization_file(gcx).await;
+    if exists {
+        if let Some(summary_path) = summary_path_option {
+            match fs::read_to_string(summary_path) {
+                Ok(content) => {
+                    match serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                        Ok(yaml) => {
+                            if let Some(project_summary) = yaml.get("project_summary") {
+                                match serde_yaml::to_string(project_summary) {
+                                    Ok(summary_str) => return Some(summary_str),
+                                    Err(e) => {
+                                        tracing::error!("Failed to convert project summary to string: {}", e);
+                                        return None;
+                                    }
+                                }
+                            } else {
+                                tracing::error!("Key 'project_summary' not found in YAML file.");
+                                return None;
+                            }
+                        },
+                        Err(e) => {
+                            tracing::error!("Failed to parse project summary YAML file: {}", e);
+                            return None;
+                        }
+                    }
+                },
+                Err(e) => {
+                    tracing::error!("Failed to read project summary file: {}", e);
+                    return None;
+                }
+            }
+        }
+    }
+    None
+}
+
 pub async fn system_prompt_add_workspace_info(
     gcx: Arc<ARwLock<GlobalContext>>,
     system_prompt: &String,
@@ -100,36 +156,22 @@ pub async fn system_prompt_add_workspace_info(
         (workspace_dirs, active_file_path)
     }
 
-    async fn read_project_info(
-        gcx: Arc<ARwLock<GlobalContext>>,
-    ) -> Option<String> {
-        let (config_dirs, _) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone()).await;
-        let mut project_info = None;
-        for config_path in config_dirs
-            .iter()
-            .map(|x| x.join("project_summary.yaml"))
-            .filter(|x| !x.exists()) {
-            if let Some(text) = fs::read_to_string(&config_path).ok() {
-                project_info = Some(text);
-                break;
-            }
-        }
-        project_info
-    }
-
     let mut system_prompt = system_prompt.clone();
     if system_prompt.contains("%WORKSPACE_INFO%") {
         let (workspace_dirs, active_file_path) = workspace_files_info(&gcx).await;
         let info = _workspace_info(&workspace_dirs, &active_file_path).await;
         system_prompt = system_prompt.replace("%WORKSPACE_INFO%", &info);
     }
-    if system_prompt.contains("%PROJECT_INFO%") {
-        if let Some(project_info) = read_project_info(gcx.clone()).await {
-            system_prompt = system_prompt.replace("%PROJECT_INFO%", &project_info);
+
+    if system_prompt.contains("%PROJECT_SUMMARY%") {
+        if let Some(project_info) = _read_project_summary(gcx.clone()).await {
+            system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", &project_info);
         } else {
-            system_prompt = system_prompt.replace("%PROJECT_INFO%", "");
+            system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", "");
         }
     }
+
+    tracing::info!("system_prompt\n{}", system_prompt);
 
     system_prompt
 }

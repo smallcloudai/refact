@@ -64,8 +64,9 @@ pub async fn handle_v1_links(
     tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
 
     if post.messages.is_empty() {
-        let (is_missing, summary_path) = project_summarization_is_missing(gcx.clone()).await;
-        if is_missing {
+
+        let (already_exists, summary_path) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
+        if !already_exists {
             links.push(Link {
                 action: LinkAction::SummarizeProject,
                 text: "Initial project summarization".to_string(),
@@ -177,24 +178,6 @@ async fn generate_commit_messages_with_current_changes(gcx: Arc<ARwLock<GlobalCo
     }
 
     (project_commits, total_file_changes)
-}
-
-// TODO: Move all logic below to more appropiate files
-async fn project_summarization_is_missing(gcx: Arc<ARwLock<GlobalContext>>) -> (bool, Option<String>) {
-    match crate::files_correction::get_active_project_path(gcx.clone()).await {
-        Some(active_project_path) => {
-            let summary_path = active_project_path.join(".refact").join("project_summary.yaml");
-            if !summary_path.exists() {
-                (true, Some(summary_path.to_string_lossy().to_string()))
-            } else {
-                (false, Some(summary_path.to_string_lossy().to_string()))
-            }
-        }
-        None => {
-            tracing::info!("No projects found, project summarization is not relevant.");
-            (false, None)
-        }
-    }
 }
 
 fn failed_integration_names_after_last_user_message(messages: &Vec<ChatMessage>) -> Vec<String> {
