@@ -30,7 +30,7 @@ pub async fn handle_v1_system_prompt(
     let _post = serde_json::from_slice::<SystemPromptPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    let prompt = get_default_system_prompt(gcx.clone(), crate::call_validation::ChatMode::Agent).await;
+    let prompt = get_default_system_prompt(gcx.clone(), crate::call_validation::ChatMode::AGENT).await;
 
     let prompt_with_workspace_info = system_prompt_add_workspace_info(gcx.clone(), &prompt).await;
 

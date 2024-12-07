@@ -19,8 +19,8 @@ use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_defa
 
 pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatMode) -> Vec<Value> {
     match chat_mode {
-        ChatMode::Explore | ChatMode::Agent | ChatMode::NoTools => current_tools,
-        ChatMode::Configure | ChatMode::ProjectSummary => {
+        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => current_tools,
+        ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY => {
             let valid_tool_names = ["cat", "tree", "patch", "search", "knowledge"];
             current_tools
                 .into_iter()
@@ -117,15 +117,15 @@ async fn _chat(
     })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
     match chat_post.meta.chat_mode {
-        ChatMode::Explore | ChatMode::Agent | ChatMode::NoTools => {},
-        ChatMode::Configure => {
+        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {},
+        ChatMode::CONFIGURE => {
             crate::integrations::config_chat::mix_config_messages(
                 gcx.clone(),
                 &mut messages,
                 &chat_post.meta.current_config_file
             ).await;
         }
-        ChatMode::ProjectSummary => {
+        ChatMode::PROJECT_SUMMARY => {
             crate::integrations::project_summary_chat::mix_config_messages(
                 gcx.clone(),
                 &mut messages,
@@ -213,8 +213,8 @@ async fn _chat(
 
     let have_system = !messages.is_empty() && messages[0].role == "system";
     if !have_system {
-        let exploration_tools = chat_post.meta.chat_mode != ChatMode::NoTools;
-        let agentic_tools = matches!(chat_post.meta.chat_mode, ChatMode::Agent | ChatMode::Configure | ChatMode::ProjectSummary);
+        let exploration_tools = chat_post.meta.chat_mode != ChatMode::NO_TOOLS;
+        let agentic_tools = matches!(chat_post.meta.chat_mode, ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY);
         let system_message_content = if should_execute_remotely {
             // XXX pass chat_post.meta.chat_mode
             get_default_system_prompt_from_remote(gcx.clone(), exploration_tools, agentic_tools, &chat_post.meta.chat_id).await.map_err(|e|

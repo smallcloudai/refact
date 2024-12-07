@@ -66,7 +66,7 @@ pub async fn handle_v1_links(
         });
     }
 
-    if post.meta.chat_mode == ChatMode::Configure && !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
+    if post.meta.chat_mode == ChatMode::CONFIGURE && !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
         links.push(Link {
             action: LinkAction::PatchAll,
             text: "Save and return".to_string(),
@@ -76,7 +76,7 @@ pub async fn handle_v1_links(
         });
     }
 
-    if post.meta.chat_mode == ChatMode::Agent {
+    if post.meta.chat_mode == ChatMode::AGENT {
         let (project_commits, files_changed) = generate_commit_messages_with_current_changes(gcx.clone()).await;
         if !project_commits.is_empty() {
             links.push(Link {
@@ -89,7 +89,7 @@ pub async fn handle_v1_links(
         }
     }
 
-    if post.meta.chat_mode != ChatMode::Configure {
+    if post.meta.chat_mode != ChatMode::CONFIGURE {
         for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
             links.push(Link {
                 action: LinkAction::Goto,
@@ -112,7 +112,7 @@ pub async fn handle_v1_links(
         });
     }
 
-    if post.meta.chat_mode != ChatMode::NoTools && links.is_empty() {
+    if post.meta.chat_mode != ChatMode::NO_TOOLS && links.is_empty() {
         let follow_up_message = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
         links.push(Link {

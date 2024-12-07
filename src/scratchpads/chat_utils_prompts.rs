@@ -22,11 +22,11 @@ pub async fn get_default_system_prompt(
         },
     };
     let prompt_key = match chat_mode {
-        crate::call_validation::ChatMode::NoTools => "default",
-        crate::call_validation::ChatMode::Explore => "exploration_tools",
-        crate::call_validation::ChatMode::Agent => "agentic_tools",
-        crate::call_validation::ChatMode::Configure => "configurator",
-        crate::call_validation::ChatMode::ProjectSummary => "project_summary",
+        crate::call_validation::ChatMode::NO_TOOLS => "default",
+        crate::call_validation::ChatMode::EXPLORE => "exploration_tools",
+        crate::call_validation::ChatMode::AGENT => "agentic_tools",
+        crate::call_validation::ChatMode::CONFIGURE => "configurator",
+        crate::call_validation::ChatMode::PROJECT_SUMMARY => "project_summary",
     };
     let system_prompt = tconfig.system_prompts.get(prompt_key).map_or_else(|| {
         tracing::error!("cannot find system prompt `{}`", prompt_key);

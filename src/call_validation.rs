@@ -209,18 +209,18 @@ pub struct ChatMeta {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-#[serde(rename_all = "UPPERCASE")]
+#[allow(non_camel_case_types)]
 pub enum ChatMode {
-    NoTools,
-    Explore,
-    Agent,
-    Configure,
-    ProjectSummary,
+    NO_TOOLS,
+    EXPLORE,
+    AGENT,
+    CONFIGURE,
+    PROJECT_SUMMARY,
 }
 
 impl Default for ChatMode {
     fn default() -> Self {
-        ChatMode::NoTools
+        ChatMode::NO_TOOLS
     }
 }
 
