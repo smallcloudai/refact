@@ -116,6 +116,8 @@ async fn _chat(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
+
+    tracing::info!("\n\n new chat_mode {:?}\n", chat_post.meta.chat_mode);
     match chat_post.meta.chat_mode {
         ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {},
         ChatMode::CONFIGURE => {
@@ -126,7 +128,7 @@ async fn _chat(
             ).await;
         }
         ChatMode::PROJECT_SUMMARY => {
-            crate::integrations::project_summary_chat::mix_config_messages(
+            crate::integrations::project_summary_chat::mix_project_summary_messages(
                 gcx.clone(),
                 &mut messages,
                 &chat_post.meta.current_config_file

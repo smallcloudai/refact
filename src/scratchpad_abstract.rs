@@ -24,6 +24,7 @@ impl FinishReason {
         match s {
             "" => FinishReason::None,
             "stop" => FinishReason::Stop,
+            "tool_calls" => FinishReason::Stop,
             "length" => FinishReason::Length,
             "scratchpad-stop" => FinishReason::ScratchpadStop,
             _ => {

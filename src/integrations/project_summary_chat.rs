@@ -6,7 +6,7 @@ use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::chat_utils_prompts::system_prompt_add_workspace_info;
 
-pub async fn mix_config_messages(
+pub async fn mix_project_summary_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
     messages: &mut Vec<ChatMessage>,
     current_config_file: &String,
@@ -20,7 +20,7 @@ pub async fn mix_config_messages(
                 "", "", true, true, &HashMap::new(),
             ).unwrap()
         }
-    };    
+    };
     let available_integrations = crate::integrations::setting_up_integrations::integrations_all_with_icons(
         gcx.clone()
     ).await;
@@ -38,6 +38,8 @@ pub async fn mix_config_messages(
         .replace("%CONFIG_PATH%", current_config_file)
         .replace("%AVAILABLE_INTEGRATIONS%", &available_integrations_text)
     ).await;
+
+    tracing::info!("PROJECT_SUMMARY PROMPT\n{}", sp_text);
 
     let system_message = ChatMessage {
         role: "system".to_string(),
