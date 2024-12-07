@@ -39,6 +39,7 @@ pub struct Link {
     goto: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     projects: Option<Vec<ProjectCommit>>,
+    tooltip: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -58,9 +59,10 @@ pub async fn handle_v1_links(
     if post.messages.is_empty() && project_summarization_is_missing(gcx.clone()).await {
         links.push(Link {
             action: LinkAction::SummarizeProject,
-            text: "Investigate Project".to_string(),
+            text: "Initial project summarization".to_string(),
             goto: None,
             projects: None,
+            tooltip: format!("Project summary is a starting point for Refact Agent."),
         });
     }
 
@@ -70,6 +72,7 @@ pub async fn handle_v1_links(
             text: "Save and return".to_string(),
             goto: Some("SETTINGS:DEFAULT".to_string()),
             projects: None,
+            tooltip: format!(""),
         });
     }
 
@@ -81,6 +84,7 @@ pub async fn handle_v1_links(
                 text: format!("Commit {files_changed} files"),
                 goto: None,
                 projects: Some(project_commits),
+                tooltip: format!(""),
             });
         }
     }
@@ -92,8 +96,20 @@ pub async fn handle_v1_links(
                 text: format!("Configure {failed_integr_name}"),
                 goto: Some(format!("SETTINGS:{failed_integr_name}")),
                 projects: None,
+                tooltip: format!(""),
             })
         }
+    }
+
+    let (_, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), true).await;
+    for e in integration_yaml_errors {
+        links.push(Link {
+            action: LinkAction::Goto,
+            text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.integr_config_path, 20)),
+            goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
+            projects: None,
+            tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
+        });
     }
 
     if post.meta.chat_mode != ChatMode::NoTools && links.is_empty() {
@@ -104,6 +120,7 @@ pub async fn handle_v1_links(
             text: follow_up_message,
             goto: None,
             projects: None,
+            tooltip: format!(""),
         });
     }
 

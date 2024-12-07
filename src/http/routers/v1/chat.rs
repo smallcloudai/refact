@@ -7,7 +7,6 @@ use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde_json::Value;
-use tracing::{info};
 
 use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
 use crate::caps::CodeAssistantCaps;
@@ -113,7 +112,7 @@ async fn _chat(
     allow_at: bool
 ) -> Result<Response<Body>, ScratchError> {
     let mut chat_post: ChatPost = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
-        info!("chat handler cannot parse input:\n{:?}", body_bytes);
+        tracing::warn!("chat handler cannot parse input:\n{:?}", body_bytes);
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
@@ -121,8 +120,8 @@ async fn _chat(
         ChatMode::Explore | ChatMode::Agent | ChatMode::NoTools => {},
         ChatMode::Configure => {
             crate::integrations::config_chat::mix_config_messages(
-                gcx.clone(), 
-                &mut messages, 
+                gcx.clone(),
+                &mut messages,
                 &chat_post.meta.current_config_file
             ).await;
         }
@@ -134,7 +133,7 @@ async fn _chat(
             ).await;
         }
     }
-    
+
     // converts tools into openai style
     if let Some(tools) = &mut chat_post.tools {
         for tool in &mut *tools {

@@ -51,6 +51,7 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
     }
 }
 
+#[allow(dead_code)]
 pub fn icon_from_name(_n: &str) -> String
 {
     // match n {
