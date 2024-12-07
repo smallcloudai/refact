@@ -112,7 +112,7 @@ export const useSendChatRequest = () => {
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
-      const mode = maybeMode ?? chatModeToLspMode(toolUse, threadMode);
+      const mode = maybeMode ?? chatModeToLspMode(toolUse);
 
       const action = chatAskQuestionThunk({
         messages,

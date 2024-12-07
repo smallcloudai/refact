@@ -155,7 +155,7 @@ export async function sendChat({
   };
 
   const endpoint =
-    mode === "PROJECTSUMMARY"
+    mode === "PROJECT_SUMMARY"
       ? "/v1/chat-project-summary"
       : mode === "CONFIGURE"
         ? "/v1/chat-configuration"

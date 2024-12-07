@@ -62,11 +62,11 @@ export function isToolUse(str: string): str is ToolUse {
 }
 
 export type LspChatMode =
-  | "NOTOOLS"
+  | "NO_TOOLS"
   | "EXPLORE"
   | "AGENT"
   | "CONFIGURE"
-  | "PROJECTSUMMARY";
+  | "PROJECT_SUMMARY";
 
 export function chatModeToLspMode(
   toolUse?: ToolUse,
@@ -74,6 +74,6 @@ export function chatModeToLspMode(
 ): LspChatMode {
   if (mode) return mode;
   if (toolUse === "agent") return "AGENT";
-  if (toolUse === "quick") return "NOTOOLS";
+  if (toolUse === "quick") return "NO_TOOLS";
   return "EXPLORE";
 }
