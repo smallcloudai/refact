@@ -89,7 +89,7 @@ pub fn read_integrations_d(
 
     for (path_str, integr_name, project_path) in files_to_read {
         let path = PathBuf::from(&path_str);
-        let short_pp = if project_path.is_empty() { format!("global") } else { crate::nicer_logs::last_n_chars(&project_path, 15) };
+        // let short_pp = if project_path.is_empty() { format!("global") } else { crate::nicer_logs::last_n_chars(&project_path, 15) };
         let mut rec: IntegrationRecord = Default::default();
         rec.project_path = project_path.clone();
         rec.integr_name = integr_name.clone();
@@ -99,7 +99,7 @@ pub fn read_integrations_d(
             match fs::read_to_string(&path) {
                 Ok(file_content) => match serde_yaml::from_str::<serde_yaml::Value>(&file_content) {
                     Ok(yaml_value) => {
-                        tracing::info!("{} has {}", short_pp, integr_name);
+                        // tracing::info!("{} has {}", short_pp, integr_name);
                         rec.config_unparsed = serde_json::to_value(yaml_value.clone()).unwrap();
                     }
                     Err(e) => {
@@ -122,7 +122,7 @@ pub fn read_integrations_d(
                 }
             }
         } else {
-            tracing::info!("{} no config file for {}", short_pp, integr_name);
+            // tracing::info!("{} no config file for {}", short_pp, integr_name);
         }
         result.push(rec);
     }
@@ -205,8 +205,8 @@ pub fn read_integrations_d(
             rec.on_your_laptop = available.get("on_your_laptop").and_then(|v| v.as_bool()).unwrap_or(false);
             rec.when_isolated = available.get("when_isolated").and_then(|v| v.as_bool()).unwrap_or(false);
         } else {
-            let short_pp = if rec.project_path.is_empty() { format!("global") } else { crate::nicer_logs::last_n_chars(&rec.project_path, 15) };
-            tracing::info!("{} no 'available' mapping in `{}` will default to true", short_pp, rec.integr_name);
+            // let short_pp = if rec.project_path.is_empty() { format!("global") } else { crate::nicer_logs::last_n_chars(&rec.project_path, 15) };
+            // tracing::info!("{} no 'available' mapping in `{}` will default to true", short_pp, rec.integr_name);
             rec.on_your_laptop = true;
             rec.when_isolated = true;
         }

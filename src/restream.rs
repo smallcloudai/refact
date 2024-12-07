@@ -449,8 +449,8 @@ pub async fn scratchpad_interaction_stream(
                                 try_insert_usage(&mut value);
                                 value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
                                 let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
-                                let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);
-                                info!("yield: {:?}", last_60_chars);
+                                // let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);
+                                // info!("yield: {:?}", last_60_chars);
                                 yield Result::<_, String>::Ok(value_str);
                             },
                             Err(err_str) => {
