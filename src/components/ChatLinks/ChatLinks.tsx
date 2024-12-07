@@ -113,7 +113,7 @@ export const ChatLinks: React.FC = () => {
     }
 
     if (link.action === "summarize-project") {
-      submit(link.text, "PROJECTSUMMARY");
+      submit(link.text, "PROJECT_SUMMARY");
       return;
     }
 
