@@ -5,12 +5,14 @@ import {
   getSelectedSystemPrompt,
   selectChatError,
   selectChatId,
+  selectIntegration,
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
   selectPreventSend,
   selectSendImmediately,
   selectThread,
+  selectThreadMode,
   selectThreadToolUse,
 } from "../features/Chat/Thread/selectors";
 import {
@@ -38,6 +40,7 @@ import {
   getToolsConfirmationStatus,
   setPauseReasons,
 } from "../features/ToolConfirmation/confirmationSlice";
+import { chatModeToLspMode, LspChatMode, setChatMode } from "../features/Chat";
 
 let recallCounter = 0;
 
@@ -57,7 +60,8 @@ export const useSendChatRequest = () => {
   const sendImmediately = useAppSelector(selectSendImmediately);
   const toolUse = useAppSelector(selectThreadToolUse);
   const attachedImages = useAppSelector(selectAllImages);
-
+  const threadMode = useAppSelector(selectThreadMode);
+  const threadIntegration = useAppSelector(selectIntegration);
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
 
   const messagesWithSystemPrompt = useMemo(() => {
@@ -73,7 +77,7 @@ export const useSendChatRequest = () => {
   }, [currentMessages, systemPrompt]);
 
   const sendMessages = useCallback(
-    async (messages: ChatMessages, mode?: string) => {
+    async (messages: ChatMessages, maybeMode?: LspChatMode) => {
       let tools = await triggerGetTools(undefined).unwrap();
       // TODO: save tool use to state.chat
       // if (toolUse && isToolUse(toolUse)) {
@@ -108,6 +112,8 @@ export const useSendChatRequest = () => {
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
+      const mode = maybeMode ?? chatModeToLspMode(toolUse, threadMode);
+
       const action = chatAskQuestionThunk({
         messages,
         tools,
@@ -120,13 +126,14 @@ export const useSendChatRequest = () => {
     },
     [
       triggerGetTools,
-      triggerCheckForConfirmation,
       toolUse,
+      isWaiting,
+      areToolsConfirmed,
       dispatch,
       chatId,
+      threadMode,
       abortControllers,
-      areToolsConfirmed,
-      isWaiting,
+      triggerCheckForConfirmation,
     ],
   );
 
@@ -157,13 +164,26 @@ export const useSendChatRequest = () => {
   );
 
   const submit = useCallback(
-    (question: string, mode?: string) => {
+    (question: string, maybeMode?: LspChatMode) => {
       // const message: ChatMessage = { role: "user", content: question };
       const message: UserMessage = maybeAddImagesToQuestion(question);
       const messages = messagesWithSystemPrompt.concat(message);
-      void sendMessages(messages, mode);
+      const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
+      // Save the mode
+      const mode = chatModeToLspMode(toolUse, maybeMode ?? maybeConfigure);
+
+      dispatch(setChatMode(mode));
+
+      void sendMessages(messages, maybeMode);
     },
-    [maybeAddImagesToQuestion, messagesWithSystemPrompt, sendMessages],
+    [
+      dispatch,
+      maybeAddImagesToQuestion,
+      messagesWithSystemPrompt,
+      sendMessages,
+      threadIntegration,
+      toolUse,
+    ],
   );
 
   const abort = useCallback(() => {

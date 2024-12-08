@@ -49,3 +49,8 @@ export const selectIntegration = createSelector(
   selectThread,
   (thread) => thread.integration,
 );
+
+export const selectThreadMode = createSelector(
+  selectThread,
+  (thread) => thread.mode,
+);

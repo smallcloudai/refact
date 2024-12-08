@@ -1,4 +1,4 @@
-import { IntegrationMeta } from "../../features/Chat";
+import { IntegrationMeta, LspChatMode } from "../../features/Chat";
 import { CHAT_URL } from "./consts";
 import { ToolCommand } from "./tools";
 import { ChatRole, ToolCall, ToolResult, UserMessage } from "./types";
@@ -46,7 +46,7 @@ type SendChatArgs = {
   apiKey?: string | null;
   // isConfig?: boolean;
   integration?: IntegrationMeta | null;
-  mode?: string; // used for chat actions
+  mode?: LspChatMode; // used for chat actions
 } & StreamArgs;
 
 type GetChatTitleArgs = {
@@ -154,9 +154,7 @@ export async function sendChat({
     ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
   };
 
-  const url = `http://127.0.0.1:${port}${
-    integration ? "/v1/chat-configuration" : CHAT_URL
-  }`;
+  const url = `http://127.0.0.1:${port}${CHAT_URL}`;
 
   return fetch(url, {
     method: "POST",

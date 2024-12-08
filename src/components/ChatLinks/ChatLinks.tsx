@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Flex, Button, Heading, Container } from "@radix-ui/themes";
+import { Flex, Button, Heading, Container, Box } from "@radix-ui/themes";
 import { linksApi, type ChatLink } from "../../services/refact/links";
 import { diffApi, isUserMessage } from "../../services/refact";
 import {
@@ -10,14 +10,14 @@ import {
   useSendChatRequest,
 } from "../../hooks";
 import {
-  chatModeToLspMode,
   selectChatId,
   selectIntegration,
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
   selectModel,
-  selectThreadToolUse,
+  selectThreadMode,
+  setIntegrationData,
 } from "../../features/Chat";
 import { popBackTo } from "../../features/Pages/pagesSlice";
 
@@ -48,7 +48,7 @@ export const ChatLinks: React.FC = () => {
   const messages = useAppSelector(selectMessages);
   const chatId = useAppSelector(selectChatId);
   const maybeIntegration = useAppSelector(selectIntegration);
-  const chatMode = useAppSelector(selectThreadToolUse);
+  const threadMode = useAppSelector(selectThreadMode);
 
   // TODO: add the model
   const caps = useGetCapsQuery();
@@ -98,10 +98,7 @@ export const ChatLinks: React.FC = () => {
   };
   const handleLinkAction = (link: ChatLink) => {
     if (!("action" in link)) return;
-    if (link.action === "goto" && "goto" in link) {
-      handleGoTo(link.goto);
-      return;
-    }
+
     if (link.action === "patch-all") {
       void applyPatches(messages);
       return;
@@ -113,14 +110,24 @@ export const ChatLinks: React.FC = () => {
     }
 
     if (link.action === "summarize-project") {
-      submit(link.text, "PROJECTSUMMARY");
+      if ("current_config_file" in link && link.current_config_file) {
+        dispatch(setIntegrationData({ path: link.current_config_file }));
+        // set the integration fata
+      }
+      submit(link.text, "PROJECT_SUMMARY");
       return;
     }
 
-    // if (link.action === "commit") {
-    // ???
-    //   return;
-    // }
+    if (link.action === "commit") {
+      // TODO: there should be an endpoint for this
+      void applyPatches(messages).then(() => {
+        if ("goto" in link && link.goto) {
+          handleGoTo(link.goto);
+        }
+      });
+
+      return;
+    }
 
     // eslint-disable-next-line no-console
     console.warn(`unknown action: ${JSON.stringify(link)}`);
@@ -150,13 +157,12 @@ export const ChatLinks: React.FC = () => {
         chat_id: chatId,
         messages: messages,
         model,
-        mode: maybeIntegration ? "CONFIGURE" : chatModeToLspMode(chatMode),
+        mode: threadMode,
         current_config_file: maybeIntegration?.path,
       });
     }
   }, [
     chatId,
-    chatMode,
     isStreaming,
     isWaiting,
     linksRequest,
@@ -164,6 +170,7 @@ export const ChatLinks: React.FC = () => {
     maybeIntegration?.path,
     messages,
     model,
+    threadMode,
     unCalledTools,
   ]);
 
@@ -173,8 +180,9 @@ export const ChatLinks: React.FC = () => {
     return null;
   }
 
+  const Wrapper = messages.length === 0 ? Box : Container;
   return (
-    <Container position="relative" mt="6">
+    <Wrapper position="relative" mt="6">
       <Heading as="h4" size="2" mb="2">
         Available Actions:{" "}
       </Heading>
@@ -185,7 +193,7 @@ export const ChatLinks: React.FC = () => {
           return <ChatLinkButton key={key} link={link} onClick={handleClick} />;
         })}
       </Flex>
-    </Container>
+    </Wrapper>
   );
 };
 
