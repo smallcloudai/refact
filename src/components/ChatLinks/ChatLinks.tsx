@@ -112,7 +112,7 @@ export const ChatLinks: React.FC = () => {
     if (link.action === "summarize-project") {
       if ("current_config_file" in link && link.current_config_file) {
         dispatch(setIntegrationData({ path: link.current_config_file }));
-        // set the integration fata
+        // set the integration data
       }
       submit(link.text, "PROJECT_SUMMARY");
       return;

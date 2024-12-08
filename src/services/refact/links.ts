@@ -5,6 +5,11 @@ import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 import { CHAT_LINKS_URL } from "./consts";
 
 // goto: can be an integration file to open in settings, a file to open in an idea or a global integration.
+// XXX rename to:
+// link_text
+// link_goto
+// link_action
+// link_tooltip
 export type ChatLink =
   | { text: string; goto: string; action: string }
   | { text: string; goto: string /* action: undefined */ }

@@ -9,7 +9,7 @@ export const useGetDockerContainersQuery = () => {
   });
 
   return {
-    dockerContainers: containers,
+    dockerContainersResponse: containers,
   };
 };
 
@@ -21,6 +21,6 @@ export const useGetDockerContainersByImageQuery = (image: string) => {
   });
 
   return {
-    dockerContainers: containers,
+    dockerContainersResponse: containers,
   };
 };

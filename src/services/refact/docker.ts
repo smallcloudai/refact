@@ -247,6 +247,8 @@ type DockerPorts = NonNullable<unknown>;
 // TODO: make type guards better
 type DockerContainersResponse = {
   containers: DockerContainer[];
+  has_connection_to_docker_daemon: boolean;
+  docker_error?: string;
 };
 
 function isDockerContainersResponse(
@@ -260,7 +262,21 @@ function isDockerContainersResponse(
     return false;
   }
   const containers = (json as DockerContainersResponse).containers;
-  return containers.every(isDockerContainer);
+  if (!containers.every(isDockerContainer)) {
+    return false;
+  }
+
+  if (
+    "has_connection_to_docker_daemon" in json &&
+    typeof json.has_connection_to_docker_daemon !== "boolean"
+  ) {
+    return false;
+  }
+
+  if ("docker_error" in json && typeof json.docker_error !== "string") {
+    return false;
+  }
+  return true;
 }
 
 function isDockerContainer(json: unknown): json is DockerContainer {

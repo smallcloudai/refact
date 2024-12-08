@@ -32,6 +32,10 @@ type IntegrationFormProps = {
   setAvailabilityValues: Dispatch<
     React.SetStateAction<Record<string, boolean>>
   >;
+  handleSwitchIntegration: (
+    integrationName: string,
+    integrationConfigPath: string,
+  ) => void;
 };
 
 export const IntegrationForm: FC<IntegrationFormProps> = ({
@@ -44,6 +48,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   onSchema,
   onValues,
   setAvailabilityValues,
+  handleSwitchIntegration,
 }) => {
   const [areExtraFieldsRevealed, setAreExtraFieldsRevealed] = useState(false);
 
@@ -197,23 +202,27 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                 {isApplying ? "Applying..." : "Apply"}
               </Button>
             </Flex>
-            <Flex align="center" gap="4">
-              {integration.data.integr_schema.smartlinks.map(
-                (smartlink, index) => {
-                  return (
-                    <SmartLink
-                      key={`smartlink-${index}`}
-                      smartlink={smartlink}
-                      integrationName={integration.data?.integr_name ?? ""}
-                      integrationProject={integration.data?.project_path ?? ""}
-                      integrationPath={
-                        integration.data?.integr_config_path ?? ""
-                      }
-                    />
-                  );
-                },
-              )}
-            </Flex>
+            {integration.data.integr_schema.smartlinks && (
+              <Flex align="center" gap="4">
+                {integration.data.integr_schema.smartlinks.map(
+                  (smartlink, index) => {
+                    return (
+                      <SmartLink
+                        key={`smartlink-${index}`}
+                        smartlink={smartlink}
+                        integrationName={integration.data?.integr_name ?? ""}
+                        integrationProject={
+                          integration.data?.project_path ?? ""
+                        }
+                        integrationPath={
+                          integration.data?.integr_config_path ?? ""
+                        }
+                      />
+                    );
+                  },
+                )}
+              </Flex>
+            )}
           </Flex>
         </Flex>
       </form>
@@ -234,6 +243,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
             integrationName={integration.data.integr_name}
             integrationProject={integration.data.project_path}
             integrationPath={integration.data.integr_config_path}
+            handleSwitchIntegration={handleSwitchIntegration}
           />
         </Flex>
       )}

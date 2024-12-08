@@ -12,11 +12,12 @@ import type {
 import { DataList, Flex } from "@radix-ui/themes";
 import { toPascalCase } from "../../utils/toPascalCase";
 import { SmartLink } from "../../components/SmartLink";
+import { Markdown } from "../../components/Markdown";
 
-type FieldType = "string" | "bool" | "int";
+type FieldType = "string" | "bool" | "int" | "tool" | "output";
 
 const isFieldType = (value: string): value is FieldType => {
-  return ["string", "bool", "int"].includes(value);
+  return ["string", "bool", "int", "tool", "output"].includes(value);
 };
 
 const getDefaultValue = ({
@@ -28,7 +29,7 @@ const getDefaultValue = ({
   fieldKey: string;
   values: Integration["integr_values"];
   field: IntegrationField<NonNullable<IntegrationPrimitive>>;
-  f_type: "bool" | "int" | "string";
+  f_type: FieldType;
 }) => {
   if (fieldKey in values) {
     return values[fieldKey]?.toString(); // Use the value from 'values' if present
@@ -40,6 +41,16 @@ const getDefaultValue = ({
 
   if (f_type === "bool") {
     return Boolean(field.f_default);
+  }
+
+  if (f_type === "tool") {
+    // TODO: special logic for this type
+    return JSON.stringify(field.f_default);
+  }
+
+  if (f_type === "output") {
+    // TODO: special logic for this type
+    return JSON.stringify(field.f_default);
   }
 
   return field.f_default?.toString(); // Otherwise, use the default value from the schema
@@ -99,7 +110,7 @@ export const renderIntegrationFormField = ({
         }}
       >
         <Flex direction="column" gap="2" align="start" width={"100%"}>
-          {f_type !== "bool" && (
+          {f_type !== "bool" && f_type !== "output" && f_type !== "tool" && (
             <CustomInputField
               {...commonProps}
               type={f_type === "int" ? "number" : "text"}
@@ -112,6 +123,20 @@ export const renderIntegrationFormField = ({
               {...commonProps}
               defaultValue={Boolean(commonProps.defaultValue)}
             />
+          )}
+          {(f_type === "output" || f_type === "tool") && (
+            <>
+              <Markdown>
+                {"```json\n" +
+                  JSON.stringify(values[fieldKey], null, 2) +
+                  "\n```"}
+              </Markdown>
+              <input
+                type="hidden"
+                value={JSON.stringify(values[fieldKey], null, 2)}
+                name={fieldKey}
+              />
+            </>
           )}
           {field.f_desc && (
             <CustomDescriptionField>{field.f_desc}</CustomDescriptionField>
