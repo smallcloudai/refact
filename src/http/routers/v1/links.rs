@@ -83,19 +83,21 @@ pub async fn handle_v1_links(
                     Ok(content) => {
                         match serde_yaml::from_str::<serde_yaml::Value>(&content) {
                             Ok(yaml) => {
-                                if let Some(recommended_tools) = yaml.get("recommended_tools").and_then(|rt| rt.as_sequence()) {
-                                    for tool in recommended_tools {
-                                        if let Some(tool_name) = tool.get("tool_name").and_then(|tn| tn.as_str()) {
-
-                                            // integrations_map
-
-                                            links.push(Link {
-                                                action: LinkAction::Goto,
-                                                text: format!("Configure {tool_name}"),
-                                                goto: Some(format!("SETTINGS:{tool_name}")),
-                                                current_config_file: None,
-                                                link_tooltip: format!(""),
-                                            });
+                                if let Some(recommended_integrations) = yaml.get("recommended_integrations").and_then(|rt| rt.as_sequence()) {
+                                    for igname_value in recommended_integrations {
+                                        if let Some(igname) = igname_value.as_str() {
+                                            if !integrations_map.contains_key(igname) {
+                                                tracing::info!("tool {} not present => link", igname);
+                                                links.push(Link {
+                                                    action: LinkAction::Goto,
+                                                    text: format!("Configure {igname}"),
+                                                    goto: Some(format!("SETTINGS:{igname}")),
+                                                    current_config_file: None,
+                                                    link_tooltip: format!(""),
+                                                });
+                                            } else {
+                                                tracing::info!("tool {} present => happy", igname);
+                                            }
                                         }
                                     }
                                 }
