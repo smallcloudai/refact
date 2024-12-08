@@ -36,8 +36,11 @@ pub async fn generate_follow_up_message(
         ChatMessage::new(
             "user".to_string(),
             concat!(
-                "Generate up to 3 most likely short follow-ups to the message above, in 3 words or less, like 'Yes' 'No' 'Fix it' 'Never mind' etc.\n",
-                "If there are no simple answers, or the conversation is over, just give an empty list. Output must be this simple json:\n",
+                "Generate up to 3 most likely short follow-ups by the user to the robot message above, in 3 words or less, like 'Fix it' 'Go ahead' 'Never mind' etc.\n",
+                "If the previous message is an open question, return empty list. If there are no simple answers, return empty list. If the is no question, or the conversation is over, return an empty list.\n",
+                "If you see clear options for the asnwer to the robot's question, put first the option that allows robot to continue.\n",
+                "\n",
+                "Output must be this simple json:\n",
                 "\n",
                 "[\"Follow up 1\", \"Follow up 2\"]\n",
                 "\n",
