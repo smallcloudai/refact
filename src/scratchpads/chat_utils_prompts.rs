@@ -4,15 +4,18 @@ use std::path::PathBuf;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
+use crate::call_validation;
 use crate::global_context::GlobalContext;
 use crate::http::http_post_json;
 use crate::http::routers::v1::system_prompt::{SystemPromptPost, SystemPromptResponse};
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
+use crate::scratchpads::scratchpad_utils::HasRagResults;
+use crate::call_validation::{ChatMessage, ChatContent, ChatMode};
 
 
 pub async fn get_default_system_prompt(
     gcx: Arc<ARwLock<GlobalContext>>,
-    chat_mode: crate::call_validation::ChatMode,
+    chat_mode: ChatMode,
 ) -> String {
     let tconfig = match crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true).await {
         Ok(tconfig) => tconfig,
@@ -22,11 +25,11 @@ pub async fn get_default_system_prompt(
         },
     };
     let prompt_key = match chat_mode {
-        crate::call_validation::ChatMode::NO_TOOLS => "default",
-        crate::call_validation::ChatMode::EXPLORE => "exploration_tools",
-        crate::call_validation::ChatMode::AGENT => "agentic_tools",
-        crate::call_validation::ChatMode::CONFIGURE => "configurator",
-        crate::call_validation::ChatMode::PROJECT_SUMMARY => "project_summary",
+        ChatMode::NO_TOOLS => "default",
+        ChatMode::EXPLORE => "exploration_tools",
+        ChatMode::AGENT => "agentic_tools",
+        ChatMode::CONFIGURE => "configurator",
+        ChatMode::PROJECT_SUMMARY => "project_summary",
     };
     let system_prompt = tconfig.system_prompts.get(prompt_key).map_or_else(|| {
         tracing::error!("cannot find system prompt `{}`", prompt_key);
@@ -175,4 +178,64 @@ pub async fn system_prompt_add_workspace_info(
     tracing::info!("system_prompt\n{}", system_prompt);
 
     system_prompt
+}
+
+pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    mut messages: Vec<call_validation::ChatMessage>,
+    chat_post: &call_validation::ChatPost,
+    stream_back_to_user: &mut HasRagResults,
+) -> Vec<call_validation::ChatMessage> {
+    let have_system = !messages.is_empty() && messages[0].role == "system";
+    if have_system {
+        return messages;
+    }
+    if messages.len() == 0 {
+        tracing::error!("What's that? Messages list is empty");
+        return messages;
+    }
+
+    let exploration_tools = chat_post.meta.chat_mode != ChatMode::NO_TOOLS;
+    let agentic_tools = matches!(chat_post.meta.chat_mode, ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY);
+
+    if chat_post.meta.chat_remote {
+        // XXX this should call a remote analog of prepend_the_right_system_prompt_and_maybe_more_initial_messages
+        let _ = get_default_system_prompt_from_remote(gcx.clone(), exploration_tools, agentic_tools, &chat_post.meta.chat_id).await.map_err(|e|
+            tracing::error!("failed to get default system prompt from remote: {}", e)
+        );
+        return messages;
+    }
+
+    match chat_post.meta.chat_mode {
+        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {
+            let system_message_content = system_prompt_add_workspace_info(gcx.clone(),
+                &get_default_system_prompt(gcx.clone(), chat_post.meta.chat_mode.clone()).await
+            ).await;
+            let msg = ChatMessage {
+                role: "system".to_string(),
+                content: ChatContent::SimpleText(system_message_content),
+                ..Default::default()
+            };
+            stream_back_to_user.push_in_json(serde_json::json!(msg));
+            messages.insert(0, msg);
+        },
+        ChatMode::CONFIGURE => {
+            crate::integrations::config_chat::mix_config_messages(
+                gcx.clone(),
+                &chat_post.meta,
+                &mut messages,
+                stream_back_to_user,
+            ).await;
+        },
+        ChatMode::PROJECT_SUMMARY => {
+            crate::integrations::project_summary_chat::mix_project_summary_messages(
+                gcx.clone(),
+                &chat_post.meta,
+                &mut messages,
+                stream_back_to_user,
+            ).await;
+        },
+    }
+    tracing::info!("\n\nSYSTEM PROMPT MIXER chat_mode={:?}\n{:#?}", chat_post.meta.chat_mode, messages);
+    messages
 }

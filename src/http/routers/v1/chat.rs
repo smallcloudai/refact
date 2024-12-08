@@ -14,12 +14,13 @@ use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::global_context::{GlobalContext, SharedGlobalContext};
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
-use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_default_system_prompt_from_remote, system_prompt_add_workspace_info};
 
 
 pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatMode) -> Vec<Value> {
     match chat_mode {
-        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => current_tools,
+        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {
+            current_tools
+        },
         ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY => {
             let config_tools_whitelist = ["cat", "tree", "bash"];
             current_tools
@@ -32,7 +33,7 @@ pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatM
                         .unwrap_or(false)
                 })
                 .collect()
-        }
+        },
     }
 }
 
@@ -104,32 +105,27 @@ async fn _chat(
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
 
     tracing::info!("\n\n new chat_mode {:?}\n", chat_post.meta.chat_mode);
-    match chat_post.meta.chat_mode {
-        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {},
-        ChatMode::CONFIGURE => {
-            crate::integrations::config_chat::mix_config_messages(
-                gcx.clone(),
-                &mut messages,
-                &chat_post.meta.current_config_file
-            ).await;
-        }
-        ChatMode::PROJECT_SUMMARY => {
-            crate::integrations::project_summary_chat::mix_project_summary_messages(
-                gcx.clone(),
-                &mut messages,
-                &chat_post.meta.current_config_file
-            ).await;
-        }
-    }
 
-    // converts tools into openai style
-    if let Some(tools) = &mut chat_post.tools {
-        for tool in &mut *tools {
-            if let Some(function) = tool.get_mut("function") {
-                function.as_object_mut().unwrap().remove("agentic");
+    if chat_post.meta.chat_mode == ChatMode::NO_TOOLS {
+        chat_post.tools = None;
+    } else {
+        if let Some(tools) = &mut chat_post.tools {
+            for tool in &mut *tools {
+                if let Some(function) = tool.get_mut("function") {
+                    function.as_object_mut().unwrap().remove("agentic");
+                }
             }
+            chat_post.tools = Some(available_tools_by_chat_mode(tools.clone(), &chat_post.meta.chat_mode));
+        } else {
+            // TODO at some point, get rid of /tools call on client, make so we can have chat_post.tools==None and just fill the tools here
+            chat_post.tools = Some(available_tools_by_chat_mode(vec![], &chat_post.meta.chat_mode));
         }
-        chat_post.tools = Some(available_tools_by_chat_mode(tools.clone(), &chat_post.meta.chat_mode));
+        tracing::info!("tools [{}]\n", chat_post.tools.as_ref().map_or("".to_string(), |tools| {
+            tools.iter()
+                .filter_map(|tool| tool.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()))
+                .collect::<Vec<&str>>()
+                .join(", ")
+        }));
     }
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
@@ -199,27 +195,9 @@ async fn _chat(
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     }
 
-    let have_system = !messages.is_empty() && messages[0].role == "system";
-    if !have_system {
-        let exploration_tools = chat_post.meta.chat_mode != ChatMode::NO_TOOLS;
-        let agentic_tools = matches!(chat_post.meta.chat_mode, ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY);
-        let system_message_content = if should_execute_remotely {
-            // XXX pass chat_post.meta.chat_mode
-            get_default_system_prompt_from_remote(gcx.clone(), exploration_tools, agentic_tools, &chat_post.meta.chat_id).await.map_err(|e|
-                ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
-            )?
-        } else {
-            system_prompt_add_workspace_info(gcx.clone(),
-                &get_default_system_prompt(gcx.clone(), chat_post.meta.chat_mode.clone()).await
-            ).await
-        };
 
-        messages.insert(0, ChatMessage {
-            role: "system".to_string(),
-            content: ChatContent::SimpleText(system_message_content),
-            ..Default::default()
-        })
-    }
+    // SYSTEM PROMPT WAS HERE
+
 
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
     let mut scratchpad = crate::scratchpads::create_chat_scratchpad(
