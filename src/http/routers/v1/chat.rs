@@ -21,14 +21,14 @@ pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatM
     match chat_mode {
         ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => current_tools,
         ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY => {
-            let valid_tool_names = ["cat", "tree", "patch", "search", "knowledge"];
+            let config_tools_whitelist = ["cat", "tree", "bash"];
             current_tools
                 .into_iter()
                 .filter(|x| {
                     x.get("function")
                         .and_then(|x| x.get("name"))
                         .and_then(|tool_name| tool_name.as_str())
-                        .map(|tool_name_str| valid_tool_names.contains(&tool_name_str))
+                        .map(|tool_name_str| config_tools_whitelist.contains(&tool_name_str))
                         .unwrap_or(false)
                 })
                 .collect()

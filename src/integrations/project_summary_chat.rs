@@ -5,6 +5,7 @@ use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::chat_utils_prompts::system_prompt_add_workspace_info;
 
+
 pub async fn mix_project_summary_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
     messages: &mut Vec<ChatMessage>,

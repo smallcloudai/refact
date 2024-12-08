@@ -49,7 +49,6 @@ pub async fn mix_config_messages(
     };
     let sp: &crate::yaml_configs::customization_loader::SystemPrompt = custom.system_prompts.get("configurator").unwrap();
 
-    // let json_vec = context_file_vec.iter().map(|p| serde_json::json!(p)).collect::<Vec<_>>();
     messages.insert(0, ChatMessage {
         role: "context_file".to_string(),
         content: ChatContent::SimpleText(serde_json::to_string(&context_file_vec).unwrap()),

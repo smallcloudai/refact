@@ -137,7 +137,7 @@ pub async fn handle_v1_links(
         }
     }
 
-    if post.meta.chat_mode != ChatMode::CONFIGURE {
+    if post.meta.chat_mode == ChatMode::AGENT {
         for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
             links.push(Link {
                 action: LinkAction::Goto,
@@ -159,6 +159,7 @@ pub async fn handle_v1_links(
         });
     }
 
+    // hmm maybe (post.meta.chat_mode == ChatMode::EXPLORE || post.meta.chat_mode == ChatMode::AGENT)
     if post.meta.chat_mode != ChatMode::NO_TOOLS && links.is_empty() && post.messages.len() > 2 {
         let follow_up_messages: Vec<String> = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
