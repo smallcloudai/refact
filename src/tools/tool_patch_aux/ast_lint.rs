@@ -14,7 +14,7 @@ pub async fn parse_and_get_error_symbols(
     let (mut parser, _language) = match get_ast_parser_by_filename(&path) {
         Ok(x) => x,
         Err(err) => {
-            tracing::error!("Error getting parser: {}", err.message);
+            tracing::info!("Error getting parser: {}", err.message);
             return Err(format!("Error getting parser: {}", err.message));
         }
     };

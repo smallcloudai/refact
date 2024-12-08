@@ -15,6 +15,8 @@ pub async fn mix_project_summary_messages(
 ) {
     assert!(messages[0].role != "system");  // we are here to add this, can't already exist
 
+
+    // XXX should be a better way to load the prompt
     let custom: crate::yaml_configs::customization_loader::CustomizationYaml = match crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true).await {
         Ok(x) => x,
         Err(why) => {
@@ -46,10 +48,12 @@ pub async fn mix_project_summary_messages(
         usage: None,
     };
 
-    if !messages.is_empty() {
-        messages[0] = system_message;
+    if messages.len() == 1 {
+        stream_back_to_user.push_in_json(serde_json::json!(system_message));
     } else {
-        messages.push(system_message)
+        tracing::error!("more than 1 message when mixing configurtion chat context, bad things might happen!");
     }
+
+    messages.splice(0..0, vec![system_message]);
 }
 

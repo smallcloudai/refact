@@ -71,7 +71,7 @@ pub async fn mix_config_messages(
                 msg.push_str(format!("\n\nThe file doesn't exist, so here is a sample YAML to give you an idea how this config might look in YAML:\n\n{}\n\n", serde_yaml::to_string(&yaml_value).unwrap()).as_str());
             }
             ChatMessage {
-                role: "user".to_string(),
+                role: "cd_instruction".to_string(),
                 content: ChatContent::SimpleText(msg),
                 tool_calls: None,
                 tool_call_id: String::new(),
