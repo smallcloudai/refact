@@ -247,6 +247,7 @@ async def ask_using_http(
         meta["chat_id"] = chat_id
         meta["chat_mode"] = "AGENT"
         meta["chat_remote"] = chat_remote
+        # meta["current_config_file"] = "/Users/user/.config/refact/integrations.d/postgres.yaml"
     post_me["meta"] = meta
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:

@@ -54,11 +54,12 @@ pub fn read_integrations_d(
     if integrations_yaml_path.is_empty() {
         project_config_dirs.push("".to_string());  // global
     }
+
     for project_config_dir in project_config_dirs {
         // Read config_folder/integr_name.yaml and make a record, even if the file doesn't exist
-        let dir_path = if project_config_dir == "" { global_config_dir.clone() } else { PathBuf::from(project_config_dir.clone()) };
+        let config_dir = if project_config_dir == "" { global_config_dir.clone() } else { PathBuf::from(project_config_dir.clone()) };
         for integr_name in lst.iter() {
-            let path_str = join_config_path(&dir_path, integr_name);
+            let path_str = join_config_path(&config_dir, integr_name);
             let path = PathBuf::from(path_str.clone());
             let (_integr_name, project_path) = match split_path_into_project_and_integration(&path) {
                 Ok(x) => x,
@@ -70,7 +71,7 @@ pub fn read_integrations_d(
             files_to_read.push((path_str, integr_name.to_string(), project_path));
         }
         // Find special files that start with cmdline_* and service_*
-        if let Ok(entries) = fs::read_dir(dir_path.join("integrations.d")) {
+        if let Ok(entries) = fs::read_dir(config_dir.join("integrations.d")) {
             let mut entries: Vec<_> = entries.filter_map(Result::ok).collect();
             entries.sort_by_key(|entry| entry.file_name());
             for entry in entries {

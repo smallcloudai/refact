@@ -309,5 +309,4 @@ smartlinks:
         content: |
           🔧 The docker tool should be visible now. To test the tool, list the running containers, briefly describe the containers and express
           satisfaction and relief if it works, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
-          The current config file is %CURRENT_CONFIG%.
 "#;

@@ -221,14 +221,13 @@ smartlinks:
         content: |
           🔧 The postgres tool should be visible now. To test the tool, list the tables available, briefly describe the tables and express
           happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
-          The current config file is %CURRENT_CONFIG%.
   - sl_label: "Look at the project, fill in automatically"
     sl_chat:
       - role: "user"
-        content: |
+        content: >
           🔧 Your goal is to set up postgres client. Look at the project, especially files like "docker-compose.yaml" or ".env". Call tree() to see what files the project has.
           After that is completed, go through the usual plan in the system prompt.
-          The current config file is %CURRENT_CONFIG%.
+          Keep POSTGRES_HOST POSTGRES_PORT POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB in variables.yaml so they can be reused by command line tools later.
 docker:
   filter_label: ""
   filter_image: "postgres"
@@ -251,3 +250,5 @@ docker:
           content: |
             🔧 Your job is to modify postgres connection config in the current file to match the variables from the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
 "#;
+
+// To think about: PGPASSWORD PGHOST PGUSER PGPORT PGDATABASE maybe tell the model to set that in variables.yaml as well

@@ -16,6 +16,7 @@ pub async fn mix_config_messages(
     stream_back_to_user: &mut HasRagResults,
 ) {
     assert!(messages[0].role != "system");  // we are here to add this, can't already exist
+    tracing::info!("post.integr_config_path {:?}", chat_meta.current_config_file);
 
     let mut context_file_vec = Vec::new();
     let all_integrations = crate::integrations::setting_up_integrations::integrations_all_with_icons(gcx.clone()).await;
@@ -42,7 +43,32 @@ pub async fn mix_config_messages(
         context_file_vec.push(context_file);
     }
 
-    tracing::info!("post.integr_config_path {:?}", chat_meta.current_config_file);
+    let (config_dirs, global_config_dir) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone()).await;
+    let mut variables_yaml_instruction = String::new();
+    for dir in config_dirs.iter().chain(std::iter::once(&global_config_dir)) {
+        let variables_path = dir.join("variables.yaml");
+        if variables_path.exists() {
+            match fs::read_to_string(&variables_path) {
+                Ok(file_content) => {
+                    let context_file = ContextFile {
+                        file_name: variables_path.to_string_lossy().to_string(),
+                        file_content,
+                        line1: 0,
+                        line2: 0,
+                        symbols: vec![],
+                        gradient_type: -1,
+                        usefulness: 100.0,
+                    };
+                    context_file_vec.push(context_file);
+                }
+                Err(err) => {
+                    tracing::error!("Failed to read variables.yaml in dir {}: {:?}", dir.display(), err);
+                }
+            }
+        } else {
+            variables_yaml_instruction.push_str(format!("{}\n", variables_path.display()).as_str());
+        }
+    }
 
     let schema_message = match crate::integrations::setting_up_integrations::integration_config_get(
         chat_meta.current_config_file.clone(),
@@ -59,7 +85,7 @@ pub async fn mix_config_messages(
                 serde_json::to_string(&schema_struct).unwrap(),
             );
             if the_get.integr_config_exists {
-                msg.push_str(format!("\n\nThis is how the system loads the YAML so you can detect which fields are not loaded in reality:\n\n{}\n\n", serde_json::to_string(&the_get.integr_values).unwrap()).as_str());
+                msg.push_str(format!("This is how the system loads the YAML so you can detect which fields are not loaded in reality:\n\n{}\n\n", serde_json::to_string(&the_get.integr_values).unwrap()).as_str());
             } else {
                 let mut yaml_value = serde_yaml::to_value(&the_get.integr_values).unwrap();
                 if let serde_yaml::Value::Mapping(ref mut map) = yaml_value {
@@ -68,7 +94,10 @@ pub async fn mix_config_messages(
                     available_map.insert(serde_yaml::Value::String("when_isolated".to_string()), serde_yaml::Value::Bool(schema_struct.available.when_isolated_possible));
                     map.insert(serde_yaml::Value::String("available".to_string()), serde_yaml::Value::Mapping(available_map));
                 }
-                msg.push_str(format!("\n\nThe file doesn't exist, so here is a sample YAML to give you an idea how this config might look in YAML:\n\n{}\n\n", serde_yaml::to_string(&yaml_value).unwrap()).as_str());
+                msg.push_str(format!("The file doesn't exist, so here is a sample YAML to give you an idea how this config might look in YAML:\n\n{}\n\n", serde_yaml::to_string(&yaml_value).unwrap()).as_str());
+            }
+            if !variables_yaml_instruction.is_empty() {
+                msg.push_str(format!("Pay attention to variables.yaml files, you see the existing ones above, but also here are all the other paths they can potentially exist:\n{}\n\n", variables_yaml_instruction).as_str());
             }
             ChatMessage {
                 role: "cd_instruction".to_string(),
@@ -79,7 +108,7 @@ pub async fn mix_config_messages(
             }
         },
         Err(e) => {
-            tracing::error!("Failed to load integrations: {}", e);
+            tracing::error!("Failed to load integration {}: {}", chat_meta.current_config_file, e);
             return;
         }
     };

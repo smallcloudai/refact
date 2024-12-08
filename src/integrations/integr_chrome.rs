@@ -874,7 +874,7 @@ smartlinks:
     sl_chat:
       - role: "user"
         content: |
-          🔧 The chrome tool should be visible now. To test the tool, navigate to a website, take a screenshot, and express happiness if it works. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt. The current config file is %CURRENT_CONFIG%.
+          🔧 The chrome tool should be visible now. To test the tool, navigate to a website, take a screenshot, and express happiness if it works. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
   - sl_label: "Help me install Chrome for Testing"
     sl_chat:
       - role: "user"
