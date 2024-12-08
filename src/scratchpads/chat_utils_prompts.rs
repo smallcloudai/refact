@@ -175,8 +175,6 @@ pub async fn system_prompt_add_workspace_info(
         }
     }
 
-    tracing::info!("system_prompt\n{}", system_prompt);
-
     system_prompt
 }
 

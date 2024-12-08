@@ -131,32 +131,7 @@ PROMPT_CONFIGURATOR: |
 
   %PROJECT_SUMMARY%
 
-  The integration config format is the following YAML:
-  ```
-  integration_name:
-    field1: "value1"
-    field2: "value2"
-    available:
-      on_your_laptop:
-        - project_pattern: "*my_workspace/my_project1"
-          enable: true
-        - project_pattern: "*my_project2"
-          enable: true
-      when_isolated:
-        - image_pattern: "docker_image_for_my_project1_*"
-          enable: true
-    docker:
-      new_container_default:
-        image: "name_like_on_docker_hub:latest"
-        environment:
-          VARIABLE1: "VALUE1"
-      existing_containers:
-        my_container1:
-          image: "my_image1:latest"
-          environment:
-            VARIABLE2: "VALUE2"
-  ```
-  The first user message will have all the exiting configs, docker images and containers.
+  The first couple of messages will have all the existing configs and the current config file schema.
 
   The next user message will start with 🔧 and it will specify your exact mission for this chat.
 

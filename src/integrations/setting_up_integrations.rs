@@ -309,6 +309,7 @@ pub struct IntegrationGetResult {
     pub project_path: String,
     pub integr_name: String,
     pub integr_config_path: String,
+    pub integr_config_exists: bool,
     pub integr_schema: serde_json::Value,
     pub integr_values: serde_json::Value,
     pub error_log: Vec<YamlError>,
@@ -318,6 +319,7 @@ pub async fn integration_config_get(
     integr_config_path: String,
 ) -> Result<IntegrationGetResult, String> {
     let sanitized_path = crate::files_correction::canonical_path(&integr_config_path);
+    let exists = sanitized_path.exists();
     let integr_name = sanitized_path.file_stem().and_then(|s| s.to_str()).unwrap_or_default().to_string();
     if integr_name.is_empty() {
         return Err(format!("can't derive integration name from file name"));
@@ -328,6 +330,7 @@ pub async fn integration_config_get(
         project_path: project_path.clone(),
         integr_name: integr_name.clone(),
         integr_config_path: integr_config_path.clone(),
+        integr_config_exists: exists,
         integr_schema: serde_json::Value::Null,
         integr_values: serde_json::Value::Null,
         error_log: Vec::new(),
@@ -344,7 +347,7 @@ pub async fn integration_config_get(
         "on_your_laptop": false,
         "when_isolated": false
     });
-    if sanitized_path.exists() {
+    if exists {
         match fs::read_to_string(&sanitized_path) {
             Ok(content) => {
                 match serde_yaml::from_str::<serde_yaml::Value>(&content) {

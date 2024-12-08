@@ -4,40 +4,88 @@ use tokio::sync::RwLock as ARwLock;
 use std::collections::HashMap;
 
 use crate::global_context::GlobalContext;
-use crate::call_validation::{ChatContent, ChatMessage, ContextFile};
+use crate::call_validation::{ChatContent, ChatMessage, ContextFile, ChatMeta};
+use crate::scratchpads::scratchpad_utils::HasRagResults;
+use crate::integrations::yaml_schema::ISchema;
 
 
 pub async fn mix_config_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
+    chat_meta: &ChatMeta,
     messages: &mut Vec<ChatMessage>,
-    current_config_file: &String,
+    stream_back_to_user: &mut HasRagResults,
 ) {
-    let config_dir = gcx.read().await.config_dir.clone();
-    let file_path = config_dir.join("integrations.d");
+    assert!(messages[0].role != "system");  // we are here to add this, can't already exist
 
     let mut context_file_vec = Vec::new();
-    if let Ok(entries) = fs::read_dir(&file_path) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if path.extension().and_then(|s| s.to_str()) == Some("yaml") {
-                    if let Ok(file_content) = fs::read_to_string(&path) {
-                        let context_file = ContextFile {
-                            file_name: path.to_string_lossy().to_string(),
-                            file_content,
-                            line1: 0,
-                            line2: 0,
-                            symbols: vec![],
-                            gradient_type: -1,
-                            usefulness: 100.0,
-                        };
-                        context_file_vec.push(context_file);
-                    }
-                }
-            }
+    let all_integrations = crate::integrations::setting_up_integrations::integrations_all_with_icons(gcx.clone()).await;
+    for ig in all_integrations.integrations {
+        if !ig.integr_config_exists {
+            continue;
         }
+        let file_content = match fs::read_to_string(&ig.integr_config_path) {
+            Ok(content) => content,
+            Err(err) => {
+                tracing::error!("Failed to read file for integration {}: {:?}", ig.integr_config_path, err);
+                continue;
+            }
+        };
+        let context_file = ContextFile {
+            file_name: ig.integr_name.clone(),
+            file_content,
+            line1: 0,
+            line2: 0,
+            symbols: vec![],
+            gradient_type: -1,
+            usefulness: 100.0,
+        };
+        context_file_vec.push(context_file);
     }
-    let custom: crate::yaml_configs::customization_loader::CustomizationYaml = match crate::yaml_configs::customization_loader::load_customization(gcx, true).await {
+
+    tracing::info!("post.integr_config_path {:?}", chat_meta.current_config_file);
+
+    let schema_message = match crate::integrations::setting_up_integrations::integration_config_get(
+        chat_meta.current_config_file.clone(),
+    ).await {
+        Ok(the_get) => {
+            let mut schema_struct: ISchema = serde_json::from_value(the_get.integr_schema).unwrap();   // will not fail because we have test_integration_schemas()
+            schema_struct.docker = None;
+            schema_struct.smartlinks.clear();
+            tracing::info!("schema_struct {}", serde_json::to_string_pretty(&schema_struct).unwrap());
+            tracing::info!("sample values {}", serde_json::to_string_pretty(&the_get.integr_values).unwrap());
+            let mut msg = format!(
+                "This is the data schema for the {}\n\n{}\n\n",
+                chat_meta.current_config_file,
+                serde_json::to_string(&schema_struct).unwrap(),
+            );
+            if the_get.integr_config_exists {
+                msg.push_str(format!("\n\nThis is how the system loads the YAML so you can detect which fields are not loaded in reality:\n\n{}\n\n", serde_json::to_string(&the_get.integr_values).unwrap()).as_str());
+            } else {
+                let mut yaml_value = serde_yaml::to_value(&the_get.integr_values).unwrap();
+                if let serde_yaml::Value::Mapping(ref mut map) = yaml_value {
+                    let mut available_map = serde_yaml::Mapping::new();
+                    available_map.insert(serde_yaml::Value::String("on_your_laptop".to_string()), serde_yaml::Value::Bool(schema_struct.available.on_your_laptop_possible));
+                    available_map.insert(serde_yaml::Value::String("when_isolated".to_string()), serde_yaml::Value::Bool(schema_struct.available.when_isolated_possible));
+                    map.insert(serde_yaml::Value::String("available".to_string()), serde_yaml::Value::Mapping(available_map));
+                }
+                msg.push_str(format!("\n\nThe file doesn't exist, so here is a sample YAML to give you an idea how this config might look in YAML:\n\n{}\n\n", serde_yaml::to_string(&yaml_value).unwrap()).as_str());
+            }
+            ChatMessage {
+                role: "user".to_string(),
+                content: ChatContent::SimpleText(msg),
+                tool_calls: None,
+                tool_call_id: String::new(),
+                usage: None,
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to load integrations: {}", e);
+            return;
+        }
+    };
+
+    // XXX should be a better way to load the prompt
+    let custom: crate::yaml_configs::customization_loader::CustomizationYaml = match crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true).await {
         Ok(x) => x,
         Err(why) => {
             tracing::error!("Failed to load customization.yaml, will use compiled-in default for the configurator system prompt:\n{:?}", why);
@@ -49,27 +97,37 @@ pub async fn mix_config_messages(
     };
     let sp: &crate::yaml_configs::customization_loader::SystemPrompt = custom.system_prompts.get("configurator").unwrap();
 
-    messages.insert(0, ChatMessage {
+    let context_file_message = ChatMessage {
         role: "context_file".to_string(),
         content: ChatContent::SimpleText(serde_json::to_string(&context_file_vec).unwrap()),
         tool_calls: None,
         tool_call_id: String::new(),
         usage: None,
-    });
-    messages.insert(0, ChatMessage {
+    };
+    let system_message = ChatMessage {
         role: "system".to_string(),
-        content: ChatContent::SimpleText(sp.text.clone()),
+        content: ChatContent::SimpleText(
+            crate::scratchpads::chat_utils_prompts::system_prompt_add_workspace_info(gcx.clone(), &sp.text).await
+        ),
         tool_calls: None,
         tool_call_id: String::new(),
         usage: None,
-    });
+    };
+
+    // Interestingly, here you can stream messages to user or not, and both options will work -- this function will be called or not called again the next chat call.
+    if messages.len() == 1 {
+        stream_back_to_user.push_in_json(serde_json::json!(system_message));
+        stream_back_to_user.push_in_json(serde_json::json!(context_file_message));
+        stream_back_to_user.push_in_json(serde_json::json!(schema_message));
+    } else {
+        tracing::error!("more than 1 message when mixing configurtion chat context, bad things might happen!");
+    }
+
+    messages.splice(0..0, vec![system_message, context_file_message, schema_message]);
 
     for msg in messages.iter_mut() {
         if let ChatContent::SimpleText(ref mut content) = msg.content {
-            *content = content.replace("%CURRENT_CONFIG%", current_config_file);
+            *content = content.replace("%CURRENT_CONFIG%", &chat_meta.current_config_file);
         }
     }
-
-    tracing::info!("AAAAA\n{:#?}", messages);
 }
-

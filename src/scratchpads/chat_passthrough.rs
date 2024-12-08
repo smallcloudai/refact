@@ -107,9 +107,8 @@ impl ScratchpadAbstract for ChatPassthrough {
         let at_tools = tools_merged_and_filtered(gcx.clone(), self.supports_clicks).await?;
 
         let messages = prepend_the_right_system_prompt_and_maybe_more_initial_messages(gcx.clone(), self.messages.clone(), &self.post, &mut self.has_rag_results).await;
-
         let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at && !should_execute_remotely {
-            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
+            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await
         } else {
             (self.messages.clone(), self.messages.len(), false)
         };

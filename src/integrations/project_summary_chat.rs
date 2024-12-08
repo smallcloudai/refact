@@ -2,15 +2,19 @@ use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 use std::collections::HashMap;
 use crate::global_context::GlobalContext;
-use crate::call_validation::{ChatContent, ChatMessage};
+use crate::call_validation::{ChatContent, ChatMessage, ChatMeta};
 use crate::scratchpads::chat_utils_prompts::system_prompt_add_workspace_info;
+use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 
 pub async fn mix_project_summary_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
+    chat_meta: &ChatMeta,
     messages: &mut Vec<ChatMessage>,
-    current_config_file: &String,
+    stream_back_to_user: &mut HasRagResults,
 ) {
+    assert!(messages[0].role != "system");  // we are here to add this, can't already exist
+
     let custom: crate::yaml_configs::customization_loader::CustomizationYaml = match crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true).await {
         Ok(x) => x,
         Err(why) => {
@@ -30,7 +34,7 @@ pub async fn mix_project_summary_messages(
 
     let sp: &crate::yaml_configs::customization_loader::SystemPrompt = custom.system_prompts.get("project_summary").unwrap();
     let mut sp_text = sp.text.clone();
-    sp_text = sp_text.replace("%CONFIG_PATH%", current_config_file);
+    sp_text = sp_text.replace("%CONFIG_PATH%", &chat_meta.current_config_file);
     sp_text = sp_text.replace("%AVAILABLE_INTEGRATIONS%", &available_integrations_text);
     sp_text = system_prompt_add_workspace_info(gcx.clone(), &sp_text).await;    // print inside
 
