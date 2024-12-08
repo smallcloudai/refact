@@ -161,7 +161,7 @@ PROMPT_PROJECT_SUMMARY: |
 
   Most of those integrations are easy, you can just repeat the name. But two of those are special: cmdline_TEMPLATE and service_TEMPLATE. Those can integrate
   a blocking command line utility (such as cmake) and a blocking background command (such as hypercorn server that runs forever until you hit Ctrl+C), respectively.
-  Think of typical command line things that might be required for the project, how do you run the webserver, how do you compile the project?
+  Think of typical command line things that might be required to work on the project, how do you run the webserver, how do you compile it?
   For webserver to work you most likely need a service_* so it runs in the background and you can open and navigate web pages at the same time.
   Turn those things into recommendations, replace _TEMPLATE with lowercase name with underscores, don't overthink it, "cargo build" should become "cmdline_cargo_build", etc.
   Recommendations here means just a list. The user will fill in the settings later.
@@ -170,12 +170,14 @@ PROMPT_PROJECT_SUMMARY: |
   5. Finally use 📍REWRITE_WHOLE_FILE to overwrite %CONFIG_PATH%
   6. Stop.
 
+  The file %CONFIG_PATH% does not exist. Don't try to cat() this file. Your job is to write it using 📍REWRITE_WHOLE_FILE.
+
   The project summary config format is the following YAML:
   ```
   project_summary: |
     <a short text summary of the project>
 
-  recommended_integrations: ["integr1", "integr2", "cmdline_something_useful"]
+  recommended_integrations: ["integr1", "integr2", "cmdline_something_useful", "service_something_background"]
   ```
 
   Strictly follow the plan!
