@@ -117,7 +117,7 @@ async fn _chat(
     })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
 
-    tracing::info!("\n\n new chat_mode {:?}\n", chat_post.meta.chat_mode);
+    tracing::info!("chat_mode {:?}\n", chat_post.meta.chat_mode);
 
     if chat_post.meta.chat_mode == ChatMode::NO_TOOLS {
         chat_post.tools = None;
@@ -133,7 +133,7 @@ async fn _chat(
             // TODO at some point, get rid of /tools call on client, make so we can have chat_post.tools==None and just fill the tools here
             chat_post.tools = Some(available_tools_by_chat_mode(vec![], &chat_post.meta.chat_mode));
         }
-        tracing::info!("tools [{}]\n", chat_post.tools.as_ref().map_or("".to_string(), |tools| {
+        tracing::info!("tools [{}]", chat_post.tools.as_ref().map_or("".to_string(), |tools| {
             tools.iter()
                 .filter_map(|tool| tool.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()))
                 .collect::<Vec<&str>>()

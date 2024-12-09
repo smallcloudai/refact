@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use process_wrap::tokio::*;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::{Tool, ToolDesc};
+use crate::tools::tools_description::{Tool, ToolParam, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::{blocking_read_until_token_or_timeout, is_someone_listening_on_that_tcp_port};
@@ -120,7 +120,7 @@ async fn execute_background_command(
         let session_arc = session_mb.clone().unwrap();
         let mut session_locked = session_arc.lock().await;
         let session = session_locked.as_any_mut().downcast_mut::<CmdlineSession>().unwrap();
-        actions_log.push_str(&format!("Currently have service running, workdir {}:\n{}\n", session.cmdline_workdir, session.cmdline_string));
+        actions_log.push_str(&format!("Currently the service is running.\nworkdir: {}\ncommand line: {}\n\n", session.cmdline_workdir, session.cmdline_string));
         let (stdout_out, stderr_out) = get_stdout_and_stderr(100, &mut session.cmdline_stdout, &mut session.cmdline_stderr).await?;
         let filtered_stdout = output_mini_postprocessing(&cfg.output_filter, &stdout_out);
         let filtered_stderr = output_mini_postprocessing(&cfg.output_filter, &stderr_out);
@@ -255,12 +255,8 @@ impl Tool for ToolService {
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
         let mut args_str: HashMap<String, String> = HashMap::new();
-        let valid_params: Vec<String> = self.cfg.parameters.iter().map(|p| p.name.clone()).collect();
 
         for (k, v) in args.iter() {
-            if !valid_params.contains(k) {
-                return Err(format!("Unexpected argument `{}`", k));
-            }
             match v {
                 serde_json::Value::String(s) => { args_str.insert(k.clone(), s.clone()); },
                 _ => return Err(format!("argument `{}` is not a string: {:?}", k, v)),
@@ -303,15 +299,23 @@ impl Tool for ToolService {
     }
 
     fn tool_description(&self) -> ToolDesc {
+        let mut parameters = self.cfg.parameters.clone();
+        parameters.push(ToolParam {
+            name: "action".to_string(),
+            param_type: "string".to_string(),
+            description: "Action to perform: start, restart, stop, status".to_string(),
+        });
+
         let parameters_required = self.cfg.parameters_required.clone().unwrap_or_else(|| {
             self.cfg.parameters.iter().map(|param| param.name.clone()).collect()
         });
+
         ToolDesc {
             name: self.name.clone(),
             agentic: true,
             experimental: false,
             description: self.cfg.description.clone(),
-            parameters: self.cfg.parameters.clone(),
+            parameters,
             parameters_required,
         }
     }
