@@ -254,7 +254,7 @@ fields:
     f_desc: "The model will see this description, why the model should call this?"
   parameters:
     f_type: "tool_parameters"
-    f_desc: "The model will fill in those parameters."
+    f_desc: "Enter a JSON array of parameters. Each parameter is a JSON object with a name, description (to guide the model), and an optional type (e.g. boolean, default: string). The model will fill these parameters to call the command."
   timeout:
     f_type: string_short
     f_desc: "The command must immediately return the results, it can't be interactive. If the command runs for too long, it will be terminated and stderr/stdout collected will be presented to the model."
