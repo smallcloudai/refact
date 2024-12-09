@@ -154,7 +154,8 @@ pub async fn return_one_candidate_or_a_good_error(
             }
         }
         if f_path.is_relative() {
-            let projpath_options = project_paths.iter().map(|x|x.join(&f_path)).filter(|x|x.is_file()).collect::<Vec<_>>();
+            let projpath_options = project_paths.iter().map(|x| x.join(&f_path))
+                .filter(|x| if dirs { x.is_dir() } else { x.is_file() }).collect::<Vec<_>>();
             if projpath_options.len() > 1 {
                 let projpath_options_str = projpath_options.iter().map(|x|x.to_string_lossy().to_string()).collect::<Vec<_>>().join("\n");
                 return Err(format!("The path {:?} is ambiguous. Adding project path, it might be:\n{:?}\nAlso, there are similar filepaths:\n{}", f_path, projpath_options_str, similar_paths_str));
