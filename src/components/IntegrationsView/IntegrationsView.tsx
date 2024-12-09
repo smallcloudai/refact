@@ -428,11 +428,10 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       ) {
         // making integration-get call and setting the result as currentIntegration
         const commandName = rawFormValues.command_name;
-        const configPath =
-          rawFormValues.integr_config_path.split("_")[0] +
-          "_" +
-          commandName +
-          ".yaml";
+        const configPath = rawFormValues.integr_config_path.replace(
+          "TEMPLATE",
+          commandName,
+        );
 
         debugIntegrations(
           `[DEBUG]: config path for \`v1/integration-get\`: `,
