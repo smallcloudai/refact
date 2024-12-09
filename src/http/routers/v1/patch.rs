@@ -188,36 +188,41 @@ pub async fn handle_v1_patch_apply_all(
         )?;
         filename_by_ticket.insert(ticket.filename_before.clone(), ticket);
     }
-    let mut active_tickets = filename_by_ticket.values().cloned().collect::<Vec<_>>();
-    let active_indices = active_tickets.iter().map(|ticket| ticket.id.clone()).collect::<Vec<_>>();
 
     let mut usage = ChatUsage { ..Default::default() };
-    let diff_chunks_maybe = process_tickets(
-        ccx.clone(),
-        &mut active_tickets,
-        active_indices,
-        &params,
-        &"patch_123".to_string(),
-        &mut usage,
-    ).await;
-    if !active_tickets.is_empty() {
-        let bad_ticket_ids = active_tickets.iter().map(|ticket| ticket.id.clone()).join(", ");
-        return Err(ScratchError::new(
-            StatusCode::UNPROCESSABLE_ENTITY, format!("Couldn't process some of the tickets: {bad_ticket_ids}"
-            )))
+    let mut all_diff_chunks = vec![];
+    for ticket in filename_by_ticket.into_values() {
+        let mut tickets = vec![ticket];
+        let indices = tickets.iter().map(|ticket| ticket.id.clone()).collect::<Vec<_>>();
+
+        let diff_chunks_maybe = process_tickets(
+            ccx.clone(),
+            &mut tickets,
+            indices,
+            &params,
+            &"patch_123".to_string(),
+            &mut usage,
+        ).await;
+        if !tickets.is_empty() {
+            let bad_ticket_ids = tickets.iter().map(|ticket| ticket.id.clone()).join(", ");
+            return Err(ScratchError::new(
+                StatusCode::UNPROCESSABLE_ENTITY, format!("Couldn't process some of the tickets: {bad_ticket_ids}"
+                )))
+        }
+        let mut diff_chunks = diff_chunks_maybe.map_err(|(e, _)|
+            ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
+        )?;
+        diff_apply(global_context.clone(), &mut diff_chunks).await.map_err(|err| ScratchError::new(
+            StatusCode::UNPROCESSABLE_ENTITY, format!("Couldn't apply the diff: {err}"))
+        )?;
+        all_diff_chunks.extend(diff_chunks);
     }
-    let mut diff_chunks = diff_chunks_maybe.map_err(|(e, _)|
-        ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
-    )?;
-    diff_apply(global_context.clone(), &mut diff_chunks).await.map_err(|err| ScratchError::new(
-        StatusCode::UNPROCESSABLE_ENTITY, format!("Couldn't apply the diff: {err}"))
-    )?;
 
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string_pretty(&PatchApplyAllResponse {
-            chunks: diff_chunks
+            chunks: all_diff_chunks
         }).unwrap()))
         .unwrap())
 }
