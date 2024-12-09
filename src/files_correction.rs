@@ -143,7 +143,7 @@ pub fn to_pathbuf_normalize(path: &String) -> PathBuf {
     if cfg!(target_os = "windows") {
         PathBuf::from(winpath_normalize(path))
     } else {
-        PathBuf::from(path)
+        PathBuf::from(canonical_path(path))
     }
 }
 
