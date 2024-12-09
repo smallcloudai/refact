@@ -29,6 +29,7 @@ import {
   IntegrationWithIconResponse,
   isDetailMessage,
   isNotConfiguredIntegrationWithIconRecord,
+  isPrimitive,
   NotConfiguredIntegrationWithIconRecord,
 } from "../../services/refact";
 import { ErrorCallout } from "../Callout";
@@ -287,14 +288,12 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             acc[key] = rawFormValues[key] === "on" ? true : false;
             break;
           case "tool":
-            // TODO: adjust types for data, it's not IntegrationPrimitive
             acc[key] = parseOrElse<Integration["integr_values"][number]>(
               rawFormValues[key] as string,
               {},
             );
             break;
           case "output":
-            // TODO: adjust types for data, it's not IntegrationPrimitive
             acc[key] = parseOrElse<Integration["integr_values"][number]>(
               rawFormValues[key] as string,
               {},
@@ -372,6 +371,18 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
           case "bool":
             acc[key] = rawFormValues[key] === "on" ? true : false;
             break;
+          case "tool":
+            acc[key] = parseOrElse<Integration["integr_values"][number]>(
+              rawFormValues[key] as string,
+              {},
+            );
+            break;
+          case "output":
+            acc[key] = parseOrElse<Integration["integr_values"][number]>(
+              rawFormValues[key] as string,
+              {},
+            );
+            break;
           default:
             acc[key] = rawFormValues[key] as string;
             break;
@@ -381,11 +392,26 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
 
       const eachFormValueIsNotChanged = Object.entries(formValues).every(
         ([fieldKey, fieldValue]) => {
-          return (
-            fieldKey in currentIntegrationValues &&
-            fieldValue === currentIntegrationValues[fieldKey]
-          );
+          if (isPrimitive(fieldValue)) {
+            return (
+              fieldKey in currentIntegrationValues &&
+              fieldValue === currentIntegrationValues[fieldKey]
+            );
+          }
+          // TODO: better comparison of objects?
+          if (typeof fieldValue === "object") {
+            return (
+              fieldKey in currentIntegrationValues &&
+              JSON.stringify(fieldValue) ===
+                JSON.stringify(currentIntegrationValues[fieldKey])
+            );
+          }
         },
+      );
+
+      debugIntegrations(
+        `[DEBUG]: eachFormValueIsNotChanged: `,
+        eachFormValueIsNotChanged,
       );
 
       const eachAvailabilityOptionIsNotChanged = Object.entries(
@@ -399,6 +425,17 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         }
         return false;
       });
+
+      debugIntegrations(`[DEBUG]: formValues: `, formValues);
+      debugIntegrations(
+        `[DEBUG]: currentIntegrationValues: `,
+        currentIntegrationValues,
+      );
+      debugIntegrations(
+        `[DEBUG]: eachAvailabilityOptionIsNotChanged: `,
+        eachAvailabilityOptionIsNotChanged,
+      );
+      debugIntegrations(`[DEBUG]: availabilityValues: `, availabilityValues);
       const maybeDisabled =
         eachFormValueIsNotChanged && eachAvailabilityOptionIsNotChanged;
       debugIntegrations(`[DEBUG CHANGE]: maybeDisabled: `, maybeDisabled);
