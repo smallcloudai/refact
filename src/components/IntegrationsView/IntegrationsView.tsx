@@ -24,6 +24,7 @@ import { useSaveIntegrationData } from "../../hooks/useSaveIntegrationData";
 import {
   dockerApi,
   Integration,
+  IntegrationPrimitive,
   integrationsApi,
   IntegrationWithIconRecord,
   IntegrationWithIconResponse,
@@ -41,7 +42,7 @@ import { IntegrationsHeader } from "./IntegrationsHeader";
 import styles from "./IntegrationsView.module.css";
 import { iconMap } from "./icons/iconMap";
 import { LeftRightPadding } from "../../features/Integrations/Integrations";
-import { IntegrationCmdline } from "./IntegrationCmdline";
+import { IntermediateIntegration } from "./IntermediateIntegration";
 
 type IntegrationViewProps = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -197,6 +198,14 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         return acc;
       }, {});
 
+      // Sort paths so that paths containing ".config" are first
+      Object.values(groupedIntegrations).forEach((integration) => {
+        integration.project_path.sort((a, _b) => (a === "" ? -1 : 1));
+        integration.integr_config_path.sort((a, _b) =>
+          a.includes(".config") ? -1 : 1,
+        );
+      });
+
       return Object.values(groupedIntegrations);
     }
   }, [integrationsMap]);
@@ -276,6 +285,18 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             break;
           case "bool":
             acc[key] = rawFormValues[key] === "on" ? true : false;
+            break;
+          case "tool":
+            // TODO: adjust types for data, it's not IntegrationPrimitive
+            acc[key] = JSON.parse(
+              rawFormValues[key] as string,
+            ) as IntegrationPrimitive;
+            break;
+          case "output":
+            // TODO: adjust types for data, it's not IntegrationPrimitive
+            acc[key] = JSON.parse(
+              rawFormValues[key] as string,
+            ) as IntegrationPrimitive;
             break;
           default:
             acc[key] = rawFormValues[key] as string;
@@ -585,7 +606,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             justify="between"
             height="100%"
           >
-            <IntegrationCmdline
+            <IntermediateIntegration
               handleSubmit={(event) =>
                 handleNotConfiguredIntegrationSubmit(event)
               }

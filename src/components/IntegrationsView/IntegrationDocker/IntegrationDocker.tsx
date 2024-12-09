@@ -158,16 +158,21 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
           />
         ))}
       </Flex>
-      <Flex gap="2" align="center">
-        {dockerData.smartlinks.map((smartlink) => (
-          <SmartLink
-            key={`docker-container-${dockerData.filter_image}`}
-            integrationName={integrationName}
-            integrationPath={integrationPath}
-            integrationProject={integrationProject}
-            smartlink={smartlink}
-          />
-        ))}
+      <Flex direction="column" width="100%" gap="3" mt="2">
+        <Heading size="4" as="h4">
+          Ask AI do it for you (experimental)
+        </Heading>
+        <Flex gap="2" align="center">
+          {dockerData.smartlinks.map((smartlink) => (
+            <SmartLink
+              key={`docker-container-${dockerData.filter_image}`}
+              integrationName={integrationName}
+              integrationPath={integrationPath}
+              integrationProject={integrationProject}
+              smartlink={smartlink}
+            />
+          ))}
+        </Flex>
       </Flex>
     </Flex>
   );

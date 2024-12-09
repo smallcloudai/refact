@@ -131,9 +131,10 @@ export const renderIntegrationFormField = ({
                   JSON.stringify(values[fieldKey], null, 2) +
                   "\n```"}
               </Markdown>
-              <input
-                type="hidden"
-                value={JSON.stringify(values[fieldKey], null, 2)}
+              <CustomInputField
+                type="text"
+                size="multiline"
+                defaultValue={JSON.stringify(values[fieldKey])}
                 name={fieldKey}
               />
             </>
@@ -141,20 +142,24 @@ export const renderIntegrationFormField = ({
           {field.f_desc && (
             <CustomDescriptionField>{field.f_desc}</CustomDescriptionField>
           )}
-          {maybeSmartlinks && (
-            <Flex align="center">
-              {maybeSmartlinks.map((smartlink, index) => (
-                <SmartLink
-                  isSmall
-                  key={`smartlink-${fieldKey}-${index}`}
-                  smartlink={smartlink}
-                  integrationName={integrationName}
-                  integrationPath={integrationPath}
-                  integrationProject={integrationProject}
-                />
-              ))}
-            </Flex>
-          )}
+          {/* TODO: implement EDITOR goto, and remove this condition */}
+          {maybeSmartlinks &&
+            !maybeSmartlinks.every(
+              (smartlink) => smartlink.sl_goto?.startsWith("EDITOR"),
+            ) && (
+              <Flex align="center">
+                {maybeSmartlinks.map((smartlink, index) => (
+                  <SmartLink
+                    isSmall
+                    key={`smartlink-${fieldKey}-${index}`}
+                    smartlink={smartlink}
+                    integrationName={integrationName}
+                    integrationPath={integrationPath}
+                    integrationProject={integrationProject}
+                  />
+                ))}
+              </Flex>
+            )}
         </Flex>
       </DataList.Value>
     </DataList.Item>

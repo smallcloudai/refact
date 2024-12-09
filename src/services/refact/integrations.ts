@@ -182,15 +182,20 @@ function isIntegration(json: unknown): json is Integration {
     return false;
   }
   const integrValues = json.integr_values as Record<string, unknown>;
-  if (
-    !Object.values(integrValues).every(
-      (value) =>
-        isPrimitive(value) ||
-        (typeof value === "object" &&
-          value !== null &&
-          Object.values(value).every(isPrimitive)),
-    )
-  ) {
+  debugIntegrations("integrValues:", integrValues); // Log the integrValues
+
+  function isValidNestedObject(value: unknown): boolean {
+    if (isPrimitive(value)) {
+      return true;
+    }
+    if (typeof value === "object" && value !== null) {
+      return Object.values(value).every(isValidNestedObject);
+    }
+    return false;
+  }
+
+  if (!Object.values(integrValues).every(isValidNestedObject)) {
+    debugIntegrations(`[DEBUG]: integr_values are not valid json`);
     return false;
   }
 

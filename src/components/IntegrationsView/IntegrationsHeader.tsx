@@ -4,6 +4,7 @@ import type { FC } from "react";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import styles from "./IntegrationsHeader.module.css";
 import { LeftRightPadding } from "../../features/Integrations/Integrations";
+import { toPascalCase } from "../../utils/toPascalCase";
 
 type IntegrationsHeaderProps = {
   handleFormReturn: () => void;
@@ -41,7 +42,12 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
             </IconButton>
           )}
           <Heading as="h5" size="5">
-            Setup {integrationName}
+            Setup{" "}
+            {integrationName.includes("TEMPLATE")
+              ? integrationName.startsWith("cmdline")
+                ? "Command Line Tool"
+                : "Command Line Service"
+              : toPascalCase(integrationName)}
           </Heading>
         </Flex>
         <img

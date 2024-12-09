@@ -50,7 +50,7 @@ const renderIntegrationCmdlineField = ({
 
 const CMDLINE_TOOLS = ["cmdline", "service"];
 
-export const IntegrationCmdline: FC<IntegrationCmdlineProps> = ({
+export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
   integration,
   handleSubmit,
 }) => {
@@ -83,7 +83,9 @@ export const IntegrationCmdline: FC<IntegrationCmdlineProps> = ({
             className={styles.integrationIcon}
           />
           {isIntegrationAComamndLine
-            ? "Command Line Tool"
+            ? `Command Line ${
+                integrationType.includes("cmdline") ? "Tool" : "Service"
+              }`
             : toPascalCase(integrationType)}
         </Flex>
       </Heading>
@@ -104,7 +106,9 @@ export const IntegrationCmdline: FC<IntegrationCmdlineProps> = ({
                   <Text as="label" size="2" key={path}>
                     {renderIntegrationCmdlineField({
                       path,
-                      label: !shouldPathBeFormatted ? "Global" : path,
+                      label: !shouldPathBeFormatted
+                        ? "Global (IDE level) configuration"
+                        : path,
                       shouldBeFormatted: shouldPathBeFormatted,
                     })}
                   </Text>

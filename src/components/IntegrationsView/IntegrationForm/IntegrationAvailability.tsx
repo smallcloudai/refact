@@ -25,7 +25,11 @@ export const IntegrationAvailability: FC<IntegrationAvailabilityProps> = ({
       }}
     >
       <DataList.Label>
-        <CustomLabel label={toPascalCase(fieldName)} />
+        <CustomLabel
+          label={toPascalCase(
+            fieldName === "on_your_laptop" ? "enabled" : "run_in_docker",
+          )}
+        />
       </DataList.Label>
       <DataList.Value>
         <Flex

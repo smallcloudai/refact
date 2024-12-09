@@ -12,6 +12,7 @@ export const iconMap: Record<string, string> = {
   postgres: postgresIcon,
   mysql: mysqlIcon,
   docker: dockerIcon,
+  isolation: dockerIcon,
   chrome: chromeIcon,
   pdb: pdbIcon,
   github: githubIcon,

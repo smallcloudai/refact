@@ -62,12 +62,11 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
             weight="medium"
             align={isNotConfigured ? "center" : "left"}
           >
-            {/* {toPascalCase(
-              integration.integr_name.startsWith("cmdline")
-                ? integration.integr_name.split("_")[0]
-                : integration.integr_name,
-            )} */}
-            {toPascalCase(integration.integr_name)}
+            {integration.integr_name.includes("TEMPLATE")
+              ? integration.integr_name.startsWith("cmdline")
+                ? "Command-line Tool"
+                : "Command-line Service"
+              : toPascalCase(integration.integr_name)}
           </Text>
           {!isNotConfigured && (
             <Badge
