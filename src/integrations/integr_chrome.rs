@@ -296,14 +296,20 @@ async fn setup_chrome_session(
         setup_log.push("Connect to existing web socket.".to_string());
         Browser::connect_with_timeout(debug_ws_url, idle_browser_timeout).map_err(|e| e.to_string())
     } else {
-        let path = PathBuf::from(args.chrome_path.clone());
+
+        // let path = PathBuf::from(args.chrome_path.clone());
+        let mut path: Option<PathBuf> = None;
+        if !args.chrome_path.is_empty() {
+            path = Some(PathBuf::from(args.chrome_path.clone()));
+        }
         let launch_options = LaunchOptions {
-            path: Some(path),
+            path,
             window_size,
             idle_browser_timeout,
             headless: args.headless.parse::<bool>().unwrap_or(true),
             ..Default::default()
         };
+       
         setup_log.push("Started new chrome process.".to_string());
         Browser::new(launch_options).map_err(|e| e.to_string())
     }?;
