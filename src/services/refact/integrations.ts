@@ -132,7 +132,10 @@ export type Integration = {
   integr_name: string;
   integr_config_path: string;
   integr_schema: IntegrationSchema;
-  integr_values: Record<string, IntegrationPrimitive | Record<string, boolean>>;
+  integr_values: Record<
+    string,
+    IntegrationPrimitive | Record<string, boolean> | Record<string, unknown>
+  >;
   error_log: null | YamlError[];
 };
 

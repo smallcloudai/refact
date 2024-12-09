@@ -24,7 +24,6 @@ import { useSaveIntegrationData } from "../../hooks/useSaveIntegrationData";
 import {
   dockerApi,
   Integration,
-  IntegrationPrimitive,
   integrationsApi,
   IntegrationWithIconRecord,
   IntegrationWithIconResponse,
@@ -43,6 +42,7 @@ import styles from "./IntegrationsView.module.css";
 import { iconMap } from "./icons/iconMap";
 import { LeftRightPadding } from "../../features/Integrations/Integrations";
 import { IntermediateIntegration } from "./IntermediateIntegration";
+import { parseOrElse } from "../../utils";
 
 type IntegrationViewProps = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -288,15 +288,17 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             break;
           case "tool":
             // TODO: adjust types for data, it's not IntegrationPrimitive
-            acc[key] = JSON.parse(
+            acc[key] = parseOrElse<Integration["integr_values"][number]>(
               rawFormValues[key] as string,
-            ) as IntegrationPrimitive;
+              {},
+            );
             break;
           case "output":
             // TODO: adjust types for data, it's not IntegrationPrimitive
-            acc[key] = JSON.parse(
+            acc[key] = parseOrElse<Integration["integr_values"][number]>(
               rawFormValues[key] as string,
-            ) as IntegrationPrimitive;
+              {},
+            );
             break;
           default:
             acc[key] = rawFormValues[key] as string;
