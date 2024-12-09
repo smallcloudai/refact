@@ -406,7 +406,12 @@ const ToolUsageSummary: React.FC<{
 }) => {
   return (
     <Flex gap="2" align="end" onClick={onClick}>
-      <Flex gap="1" align="start" direction="column">
+      <Flex
+        gap="1"
+        align="start"
+        direction="column"
+        style={{ cursor: "pointer" }}
+      >
         <Text weight="light" size="1">
           🔨{" "}
           {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (

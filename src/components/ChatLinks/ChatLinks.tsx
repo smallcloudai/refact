@@ -20,6 +20,7 @@ import {
   setIntegrationData,
 } from "../../features/Chat";
 import { popBackTo } from "../../features/Pages/pagesSlice";
+import { Spinner } from "@radix-ui/themes";
 import { TruncateRight } from "../Text/TruncateRight";
 
 function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
@@ -186,34 +187,46 @@ export const ChatLinks: React.FC = () => {
 
   // TODO: waiting, errors, maybe add a title
 
-  if (
-    !linksResult.data ||
-    isStreaming ||
-    isWaiting ||
-    unCalledTools ||
-    linksResult.data.links.length === 0
-  ) {
+  if (isStreaming || isWaiting || unCalledTools) {
     return null;
   }
 
   const Wrapper = messages.length === 0 ? Box : Container;
-  return (
-    <Wrapper position="relative" mt="6">
-      <Flex gap="2" wrap="wrap" direction="column" align="start">
-        {linksResult.data.links.map((link, index) => {
-          const key = `chat-link-${index}`;
-          return <ChatLinkButton key={key} link={link} onClick={handleClick} />;
-        })}
-      </Flex>
-    </Wrapper>
-  );
+
+  if (linksResult.isLoading) {
+    return (
+      <Wrapper position="relative" mt="6">
+        <Button variant="surface" disabled>
+          <Spinner loading />
+          Checking for actions
+        </Button>
+      </Wrapper>
+    );
+  }
+
+  if (linksResult.data && linksResult.data.links.length > 0) {
+    return (
+      <Wrapper position="relative" mt="6">
+        <Flex gap="2" wrap="wrap" direction="column" align="start">
+          {linksResult.data.links.map((link, index) => {
+            const key = `chat-link-${index}`;
+            return (
+              <ChatLinkButton key={key} link={link} onClick={handleClick} />
+            );
+          })}
+        </Flex>
+      </Wrapper>
+    );
+  }
+
+  return null;
 };
 
 const ChatLinkButton: React.FC<{
   link: ChatLink;
   onClick: (link: ChatLink) => void;
 }> = ({ link, onClick }) => {
-  const title = maybeConcatActionAndGoToStrings(link);
+  const title = link.link_tooltip || maybeConcatActionAndGoToStrings(link);
   const handleClick = React.useCallback(() => onClick(link), [link, onClick]);
 
   return (

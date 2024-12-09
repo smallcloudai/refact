@@ -145,6 +145,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
             active={isDashboardTab(activeTab)}
             ref={(x) => refs.setBack(x)}
             onClick={() => goToTab({ type: "dashboard" })}
+            style={{ cursor: "pointer" }}
           >
             {windowWidth < 400 || shouldCollapse ? <HomeIcon /> : "Home"}
           </TabNav.Link>
@@ -158,7 +159,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 active={isActive}
                 key={chat.id}
                 onClick={() => goToTab({ type: "chat", id: chat.id })}
-                style={{ minWidth: 0, maxWidth: "140px" }}
+                style={{ minWidth: 0, maxWidth: "140px", cursor: "pointer" }}
                 ref={isActive ? setFocus : undefined}
                 title={chat.title}
               >

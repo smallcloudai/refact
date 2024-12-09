@@ -1,8 +1,6 @@
-import React, { useCallback, useRef, useMemo } from "react";
+import React, { useCallback, useRef } from "react";
 import {
   ChatMessages,
-  diffApi,
-  isAssistantMessage,
   isChatContextFileMessage,
   isDiffMessage,
   isToolMessage,
@@ -122,20 +120,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const thread = useAppSelector(selectThread);
   const isConfig = !!thread.integration;
   const isWaiting = useAppSelector(selectIsWaiting);
-  const [applyAll, applyAllResult] =
-    diffApi.useApplyAllPatchesInMessagesMutation();
-
-  const hasPins = useMemo(
-    () =>
-      messages.some((message) => {
-        if (!isAssistantMessage(message)) return false;
-        if (!message.content) return false;
-        return message.content
-          .split("\n")
-          .some((line) => line.startsWith("📍"));
-      }),
-    [messages],
-  );
 
   const {
     handleScroll,
@@ -169,13 +153,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     thread.integration?.name,
     thread.integration?.path,
   ]);
-
-  const handleSaveAndReturn = useCallback(async () => {
-    const result = await applyAll(messages);
-    if (!result.error) {
-      handleReturnToConfigurationClick();
-    }
-  }, [applyAll, handleReturnToConfigurationClick, messages]);
 
   return (
     <ScrollArea
@@ -219,20 +196,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
             onClick={handleReturnToConfigurationClick}
           >
             Return
-          </Button>
-        )}
-
-        {isConfig && hasPins && (
-          <Button
-            ml="auto"
-            color="green"
-            title="Save and return"
-            disabled={isStreaming || applyAllResult.isLoading}
-            onClick={() => {
-              void handleSaveAndReturn();
-            }}
-          >
-            Save
           </Button>
         )}
       </Flex>
