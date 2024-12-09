@@ -125,19 +125,19 @@ pub async fn handle_v1_links(
         });
     }
 
-    if post.meta.chat_mode == ChatMode::AGENT {
-        let (project_commits, files_changed) = generate_commit_messages_with_current_changes(gcx.clone()).await;
-        if !project_commits.is_empty() {
-            links.push(Link {
-                action: LinkAction::Commit,
-                text: format!("Commit {files_changed} files"),
-                goto: None,
-                // projects: Some(project_commits),
-                current_config_file: None,
-                link_tooltip: format!(""),
-            });
-        }
-    }
+    // if post.meta.chat_mode == ChatMode::AGENT {
+    //     let (project_commits, files_changed) = generate_commit_messages_with_current_changes(gcx.clone()).await;
+    //     if !project_commits.is_empty() {
+    //         links.push(Link {
+    //             action: LinkAction::Commit,
+    //             text: format!("Commit {files_changed} files"),
+    //             goto: None,
+    //             // projects: Some(project_commits),
+    //             current_config_file: None,
+    //             link_tooltip: format!(""),
+    //         });
+    //     }
+    // }
 
     if post.meta.chat_mode == ChatMode::AGENT {
         for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {

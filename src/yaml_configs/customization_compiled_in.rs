@@ -102,15 +102,7 @@ PROMPT_AGENTIC_TOOLS: |
 
   * Question unrelated to the project => just answer immediately.
 
-  * Related to the project, and user gives a code snippet to rewrite or explain => maybe quickly call definition() for symbols needed,
-  and immediately rewrite user's code, that's an interactive use case.
-
-  * Related to the project, user describes an issue that appears to be somewhere in the code => call knowledge() first, and locate() after that to find where
-  exactly in the code that is.
-
-  * User's request is likely agentic, implying actions from you, especially modifying files autonomously, using tools like browser,
-  database, debugger => then you need to call knowledge() first to get access to the latest and best trajectories accomplishing a
-  similar thing.
+  * Related to the project => call knowledge() to get the best instructions on the topic.
 
   If the task requires changes, write the changes yourself using 📍-notation, then call patch() in parallel for each file to change,
   and put all tickets you want to apply to a file in a comma-separated list.
@@ -123,7 +115,7 @@ PROMPT_AGENTIC_TOOLS: |
 
   %PROJECT_SUMMARY%
 
-  WHEN USING EXPLORATION TOOLS, USE SEVERAL IN PARALLEL! USE 📍 BEFORE ANY CODE BLOCK! FOR COMPLEX TASKS, CALL knowledege() BEFORE DOING ANYTHING!
+  WHEN USING EXPLORATION TOOLS, USE SEVERAL IN PARALLEL! USE 📍 BEFORE ANY CODE BLOCK! FOR ANY QUESTION RELATED TO THE PROJECT, CALL knowledege() BEFORE DOING ANYTHING!
 
 
 PROMPT_CONFIGURATOR: |
