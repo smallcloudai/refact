@@ -3,9 +3,10 @@ use std::fs;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use tokio::sync::RwLock as ARwLock;
 use tracing::error;
+use url::Url;
 
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
 use crate::call_validation::{ChatMessage, ChatMeta, ChatMode};
@@ -14,6 +15,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tool_patch_aux::tickets_parsing::get_tickets_from_messages;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
+use crate::git::FileChange;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct LinksPost {
@@ -32,7 +34,7 @@ enum LinkAction {
     SummarizeProject,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct Link {
     // XXX rename:
     // link_action
@@ -44,15 +46,28 @@ pub struct Link {
     #[serde(skip_serializing_if = "Option::is_none")]
     goto: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    // projects: Option<Vec<ProjectCommit>>,
     current_config_file: Option<String>,   // XXX rename
     link_tooltip: String,
+    link_payload: Option<LinkPayload>,
+}
+
+#[derive(Debug)]
+pub enum LinkPayload {
+    CommitPayload(CommitInfo),
+}
+impl Serialize for LinkPayload {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            LinkPayload::CommitPayload(commit_payload) => commit_payload.serialize(serializer),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ProjectCommit {
-    path: String,
+pub struct CommitInfo {
+    project_path: Url,
     commit_message: String,
+    file_changes: Vec<FileChange>,
 }
 
 pub async fn handle_v1_links(
@@ -75,6 +90,7 @@ pub async fn handle_v1_links(
                 goto: None,
                 current_config_file: summary_path_option,
                 link_tooltip: format!("Project summary is a starting point for Refact Agent."),
+                link_payload: None,
             });
         } else {
             // exists
@@ -94,6 +110,7 @@ pub async fn handle_v1_links(
                                                     goto: Some(format!("SETTINGS:{igname}")),
                                                     current_config_file: None,
                                                     link_tooltip: format!(""),
+                                                    link_payload: None,
                                                 });
                                             } else {
                                                 tracing::info!("tool {} present => happy", igname);
@@ -122,6 +139,7 @@ pub async fn handle_v1_links(
             goto: Some("SETTINGS:DEFAULT".to_string()),
             current_config_file: None,
             link_tooltip: format!(""),
+            link_payload: None,
         });
         
         if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
@@ -131,23 +149,32 @@ pub async fn handle_v1_links(
                 goto: Some("SETTINGS:DEFAULT".to_string()),
                 current_config_file: None,
                 link_tooltip: format!(""),
+                link_payload: None,
             });
         }
     }
 
-    // if post.meta.chat_mode == ChatMode::AGENT {
-    //     let (project_commits, files_changed) = generate_commit_messages_with_current_changes(gcx.clone()).await;
-    //     if !project_commits.is_empty() {
-    //         links.push(Link {
-    //             action: LinkAction::Commit,
-    //             text: format!("Commit {files_changed} files"),
-    //             goto: None,
-    //             // projects: Some(project_commits),
-    //             current_config_file: None,
-    //             link_tooltip: format!(""),
-    //         });
-    //     }
-    // }
+    if post.meta.chat_mode == ChatMode::AGENT {
+        for commit in get_commit_information_from_current_changes(gcx.clone()).await {
+            let project_name = commit.project_path.to_file_path().ok()
+                .and_then(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
+                .unwrap_or_else(|| "".to_string());
+            let tooltip_message = format!(
+                "git commmit -m \"{}{}\"\n{}", 
+                commit.commit_message.lines().next().unwrap_or(""), 
+                if commit.commit_message.lines().count() > 1 { "..." } else { "" },
+                commit.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
+            );
+            links.push(Link {
+                action: LinkAction::Commit,
+                text: format!("Commit {} files in `{}`", commit.file_changes.len(), project_name),
+                goto: Some("LINKS_AGAIN".to_string()),
+                current_config_file: None,
+                link_tooltip: tooltip_message,
+                link_payload: Some(LinkPayload::CommitPayload(commit)),
+            });
+        }
+    }
 
     if post.meta.chat_mode == ChatMode::AGENT {
         for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
@@ -157,6 +184,7 @@ pub async fn handle_v1_links(
                 goto: Some(format!("SETTINGS:{failed_integr_name}")),
                 current_config_file: None,
                 link_tooltip: format!(""),
+                link_payload: None,
             })
         }
     }
@@ -168,6 +196,7 @@ pub async fn handle_v1_links(
             goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
             current_config_file: None,
             link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
+            link_payload: None,
         });
     }
 
@@ -183,6 +212,7 @@ pub async fn handle_v1_links(
                 goto: None,
                 current_config_file: None,
                 link_tooltip: format!(""),
+                link_payload: None,
             });
         }
     }
@@ -196,23 +226,23 @@ pub async fn handle_v1_links(
         .unwrap())
 }
 
-async fn generate_commit_messages_with_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> (Vec<ProjectCommit>, usize) {
-    let mut project_commits = Vec::new();
-    let mut total_file_changes = 0;
+async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo> {
+    let mut commits = Vec::new();
 
     for project_path in crate::files_correction::get_project_dirs(gcx.clone()).await {
         let repository = match git2::Repository::open(&project_path) {
             Ok(repo) => repo,
             Err(e) => { error!("{}", e); continue; }
         };
+        tracing::info!("repository opened");
 
-        let (added, modified, deleted) = match crate::git::count_file_changes(&repository, true) {
-            Ok((0, 0, 0)) => { continue; }
+        let file_changes = match crate::git::get_file_changes(&repository, true) {
+            Ok(changes) if changes.is_empty() => { continue; }
             Ok(changes) => changes,
             Err(e) => { error!("{}", e); continue; }
         };
 
-        let diff = match crate::git::git_diff_from_all_changes(&repository) {
+        let diff = match crate::git::git_diff(&repository, &file_changes) {
             Ok(d) if d.is_empty() => { continue; }
             Ok(d) => d,
             Err(e) => { error!("{}", e); continue; }
@@ -223,14 +253,14 @@ async fn generate_commit_messages_with_current_changes(gcx: Arc<ARwLock<GlobalCo
             Err(e) => { error!("{}", e); continue; }
         };
 
-        project_commits.push(ProjectCommit {
-            path: project_path.to_string_lossy().to_string(),
+        commits.push(CommitInfo {
+            project_path: Url::from_file_path(&project_path).ok().unwrap_or_else(|| Url::parse("file:///").unwrap()),
             commit_message: commit_msg,
+            file_changes,
         });
-        total_file_changes += added + modified + deleted;
     }
 
-    (project_commits, total_file_changes)
+    commits
 }
 
 fn failed_integration_names_after_last_user_message(messages: &Vec<ChatMessage>) -> Vec<String> {

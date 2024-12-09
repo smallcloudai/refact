@@ -1,6 +1,29 @@
 use std::path::PathBuf;
+use serde::{Serialize, Deserialize};
 use tracing::error;
 use git2::{Branch, BranchType, DiffOptions, IndexAddOption, Oid, Repository, Signature, Status, StatusOptions};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FileChange {
+    pub path: String,
+    pub status: FileChangeStatus,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum FileChangeStatus {
+    ADDED,
+    MODIFIED,
+    DELETED,
+}
+impl FileChangeStatus {
+    pub fn initial(&self) -> char {
+        match self {
+            FileChangeStatus::ADDED => 'A',
+            FileChangeStatus::MODIFIED => 'M',
+            FileChangeStatus::DELETED => 'D',
+        }
+    }
+}
 
 pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
     let repository = Repository::open(repository_path)
@@ -65,24 +88,36 @@ pub fn stage_all_changes(repository: &Repository) -> Result<(), String> {
 /// Returns:
 /// 
 /// A tuple containing the number of new files, modified files, and deleted files.
-pub fn count_file_changes(repository: &Repository, include_unstaged: bool) -> Result<(usize, usize, usize), String> {
-    let (mut new_files, mut modified_files, mut deleted_files) = (0, 0, 0);
+pub fn get_file_changes(repository: &Repository, include_unstaged: bool) -> Result<Vec<FileChange>, String> {
+    let mut result = Vec::new();
 
     let statuses = repository.statuses(None)
         .map_err(|e| format!("Failed to get statuses: {}", e))?;
     for entry in statuses.iter() {
         let status = entry.status();
-        if status.contains(Status::INDEX_NEW) { new_files += 1; }
-        if status.contains(Status::INDEX_MODIFIED) { modified_files += 1;}
-        if status.contains(Status::INDEX_DELETED) { deleted_files += 1; }
+        if status.contains(Status::INDEX_NEW) { 
+            result.push(FileChange {status: FileChangeStatus::ADDED, path: entry.path().unwrap().to_string()}) 
+        }
+        if status.contains(Status::INDEX_MODIFIED) { 
+            result.push(FileChange {status: FileChangeStatus::MODIFIED, path: entry.path().unwrap().to_string()}) 
+        }
+        if status.contains(Status::INDEX_DELETED) { 
+            result.push(FileChange {status: FileChangeStatus::DELETED, path: entry.path().unwrap().to_string()}) 
+        }
         if include_unstaged {
-            if status.contains(Status::WT_NEW) { new_files += 1; }
-            if status.contains(Status::WT_MODIFIED) { modified_files += 1;}
-            if status.contains(Status::WT_DELETED) { deleted_files += 1; }
+            if status.contains(Status::WT_NEW) { 
+                result.push(FileChange {status: FileChangeStatus::ADDED, path: entry.path().unwrap().to_string()}) 
+            }
+            if status.contains(Status::WT_MODIFIED) { 
+                result.push(FileChange {status: FileChangeStatus::MODIFIED, path: entry.path().unwrap().to_string()}) 
+            }
+            if status.contains(Status::WT_DELETED) { 
+                result.push(FileChange {status: FileChangeStatus::DELETED, path: entry.path().unwrap().to_string()}) 
+            }
         }
     }
 
-    Ok((new_files, modified_files, deleted_files))
+    Ok(result)
 }
 
 pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_name: &str, author_email: &str) -> Result<Oid, String> {
@@ -113,15 +148,20 @@ pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_na
 }
 
 /// Similar to `git diff`, but including untracked files.
-pub fn git_diff_from_all_changes(repository: &Repository) -> Result<String, String> {
+pub fn git_diff(repository: &Repository, file_changes: &Vec<FileChange>) -> Result<String, String> {
     let mut diff_options = DiffOptions::new();
     diff_options.include_untracked(true);
     diff_options.recurse_untracked_dirs(true);
+    for file_change in file_changes {
+        diff_options.pathspec(&file_change.path);
+    }
 
     // Create a new temporary tree, with all changes staged
     let mut index = repository.index().map_err(|e| format!("Failed to get repository index: {}", e))?;
-    index.add_all(["*"].iter(), IndexAddOption::DEFAULT, None)
-        .map_err(|e| format!("Failed to add files to index: {}", e))?;
+    for file_change in file_changes {
+        index.add_path(std::path::Path::new(&file_change.path))
+            .map_err(|e| format!("Failed to add file to index: {}", e))?;
+    }
     let oid = index.write_tree().map_err(|e| format!("Failed to write tree: {}", e))?;
     let new_tree = repository.find_tree(oid).map_err(|e| format!("Failed to find tree: {}", e))?;
 
