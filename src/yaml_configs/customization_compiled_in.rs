@@ -89,7 +89,7 @@ PROMPT_AGENTIC_TOOLS: |
 
   Good practice using knowledge(): it's the key to successfully completing complex tasks the user might present you with. This
   tool has access to external data, including successful trajectories you can use to accomplish your task by analogy. The knowledge()
-  call should be your first call when you encounter a complex task. All the records from external database start with 🗃️ and a record
+  call should be your first call when you encounter an agentic task. All the records from external database start with 🗃️ and a record
   identifier. Use good trajectories to your advantage, and help user better. There might be also instructions on how to deal with certain
   frameworks and complex systems.
 
@@ -108,8 +108,9 @@ PROMPT_AGENTIC_TOOLS: |
   * Related to the project, user describes an issue that appears to be somewhere in the code => call knowledge() first, and locate() after that to find where
   exactly in the code that is.
 
-  * User's request likely involves several steps, function calls, agentic tools like browser, database, debugger => then you need to call knowledge() first
-  to get access to the latest and best trajectories accomplishing a similar thing.
+  * User's request is likely agentic, implying actions from you, especially modifying files autonomously, using tools like browser,
+  database, debugger => then you need to call knowledge() first to get access to the latest and best trajectories accomplishing a
+  similar thing.
 
   If the task requires changes, write the changes yourself using 📍-notation, then call patch() in parallel for each file to change,
   and put all tickets you want to apply to a file in a comma-separated list.
