@@ -32,7 +32,7 @@ pub async fn mix_config_messages(
             }
         };
         let context_file = ContextFile {
-            file_name: ig.integr_name.clone(),
+            file_name: ig.integr_config_path.clone(),
             file_content,
             line1: 0,
             line2: 0,

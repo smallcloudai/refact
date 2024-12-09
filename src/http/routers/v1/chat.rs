@@ -22,7 +22,7 @@ pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatM
             current_tools
         },
         ChatMode::CONFIGURE => {
-            let blacklist = vec!["tree", "patch", "locate", "knowledge"];
+            let blacklist = vec!["tree", "patch", "locate", "knowledge", "search"];
             current_tools
                 .into_iter()
                 .filter(|x| {

@@ -190,7 +190,7 @@ impl Tool for ToolChrome {
             let parsed_command = match parse_single_command(&command.to_string()) {
                 Ok(command) => command,
                 Err(e) => {
-                    tool_log.push(format!("failed to parse command `{}`: {}.", command, e));
+                    tool_log.push(format!("Failed to parse command `{}`: {}.", command, e));
                     break
                 }
             };
@@ -200,7 +200,7 @@ impl Tool for ToolChrome {
                     mutlimodal_els.extend(command_multimodal_els);
                 },
                 Err(e) => {
-                    tool_log.push(format!("failed to execute command `{}`: {}.", command, e));
+                    tool_log.push(format!("Failed to execute command `{}`: {}.", command, e));
                     break
                 }
             };
@@ -849,17 +849,17 @@ fields:
   window_width:
     f_type: string_short
     f_desc: "Width of the browser window."
-    f_default: "1024"
+    f_default: ""
     f_extra: true
   window_height:
     f_type: string_short
     f_desc: "Height of the browser window."
-    f_default: "768"
+    f_default: ""
     f_extra: true
   idle_browser_timeout:
     f_type: string_short
     f_desc: "Idle timeout for the browser in seconds."
-    f_default: "600"
+    f_default: ""
     f_extra: true
   headless:
     f_type: string_short
@@ -874,7 +874,7 @@ smartlinks:
     sl_chat:
       - role: "user"
         content: |
-          🔧 The chrome tool should be visible now. To test the tool, navigate to a website, take a screenshot, and express happiness if it works. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+          🔧 The chrome tool should be visible now. To test the tool, navigate to a website like https://example.com/ take a screenshot, and express happiness if it works. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
   - sl_label: "Help me install Chrome for Testing"
     sl_chat:
       - role: "user"
