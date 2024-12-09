@@ -26,6 +26,8 @@ use headless_chrome::browser::tab::point::Point;
 use headless_chrome::protocol::cdp::Page;
 use headless_chrome::protocol::cdp::Emulation;
 use headless_chrome::protocol::cdp::types::Event;
+use headless_chrome::protocol::cdp::DOM::Enable as DOMEnable;
+use headless_chrome::protocol::cdp::CSS::Enable as CSSEnable;
 use serde::{Deserialize, Serialize};
 
 use base64::Engine;
@@ -225,18 +227,21 @@ impl Tool for ToolChrome {
 
     fn tool_description(&self) -> ToolDesc {
         let mut supported_commands = vec![
-            "open_tab <desktop|mobile> <tab_id>",
-            "navigate_to <uri> <tab_id>",
+            "open_tab <tab_id> <desktop|mobile>",
+            "navigate_to <tab_id> <uri>",
             "screenshot <tab_id>",
             // "html <tab_id>",
             "reload <tab_id>",
-            "press_key_at <enter|esc|pageup|pagedown|home|end> <tab_id>",
-            "type_text_at <text> <tab_id>",
+            "press_key_at <tab_id> <enter|esc|pageup|pagedown|home|end>",
+            "type_text_at <tab_id> <text>",
             "tab_log <tab_id>",
+            "eval <tab_id> <expression>",
+            "styles <tab_id> <element_selector>",
+            "click_at_element <tab_id> <element_selector>",
         ];
         if self.supports_clicks {
             supported_commands.extend(vec![
-                "click_at <x> <y> <tab_id>",
+                "click_at_point <tab_id> <x> <y>",
             ]);
         }
         let description = format!(
@@ -432,13 +437,16 @@ async fn session_get_tab_arc(
 enum Command {
     OpenTab(OpenTabArgs),
     NavigateTo(NavigateToArgs),
-    Screenshot(ScreenshotArgs),
-    Html(HtmlArgs),
-    Reload(ReloadArgs),
-    ClickAt(ClickAtArgs),
+    Screenshot(TabArgs),
+    Html(TabArgs),
+    Reload(TabArgs),
+    ClickAtPoint(ClickAtPointArgs),
+    ClickAtElement(TabElementArgs),
     TypeTextAt(TypeTextAtArgs),
     PressKeyAt(PressKeyAtArgs),
-    TabLog(TabLogArgs),
+    TabLog(TabArgs),
+    Eval(EvalArgs),
+    Styles(TabElementArgs),
 }
 
 async fn chrome_command_exec(
@@ -554,7 +562,7 @@ async fn chrome_command_exec(
             };
             tool_log.push(log);
         },
-        Command::ClickAt(args) => {
+        Command::ClickAtPoint(args) => {
             let tab = {
                 let mut chrome_session_locked = chrome_session.lock().await;
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
@@ -576,6 +584,29 @@ async fn chrome_command_exec(
                     },
                     Err(e) => {
                         format!("clicked `{} {}` failed at {}: {}", args.point.x, args.point.y, tab_lock.state_string(), e.to_string())
+                    },
+                }
+            };
+            tool_log.push(log);
+        },
+        Command::ClickAtElement(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = {
+                let tab_lock = tab.lock().await;
+                match {
+                    let element = tab_lock.headless_tab.find_element(&args.selector).map_err(|e| e.to_string())?;
+                    element.click().map_err(|e| e.to_string())?;
+                    Ok::<(), String>(())
+                } {
+                    Ok(_) => {
+                        format!("clicked `{}` at {}", args.selector, tab_lock.state_string())
+                    },
+                    Err(e) => {
+                        format!("click at element `{}` failed at {}: {}", args.selector, tab_lock.state_string(), e.to_string())
                     },
                 }
             };
@@ -643,10 +674,61 @@ async fn chrome_command_exec(
             let filter = CmdlineOutputFilter::default();
             let filtered_log = output_mini_postprocessing(&filter, tab_log.as_str());
             tool_log.push(filtered_log.clone());
-        }
+        },
+        Command::Eval(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = {
+                let tab_lock = tab.lock().await;
+                match tab_lock.headless_tab.evaluate(args.expression.as_str(), false) {
+                    Ok(result) => {
+                        format!("eval result at {}: {:?}", tab_lock.state_string(), result)
+                    },
+                    Err(e) => {
+                        format!("eval failed at {}: {}", tab_lock.state_string(), e.to_string())
+                    },
+                }
+            };
+            tool_log.push(log);
+        },
+        Command::Styles(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = {
+                let tab_lock = tab.lock().await;
+                match {
+                    tab_lock.headless_tab.call_method(DOMEnable(None)).map_err(|e| e.to_string())?;
+                    tab_lock.headless_tab.call_method(CSSEnable(None)).map_err(|e| e.to_string())?;
+                    let element = tab_lock.headless_tab.find_element(&args.selector).map_err(|e| e.to_string())?;
+                    let computed_styles = element.get_computed_styles().map_err(|e| e.to_string())?;
+                    Ok::<String, String>(computed_styles.iter()
+                        .map(|s| format!("{}: {}", s.name, s.value))
+                        .collect::<Vec<String>>().join("\n"))
+                } {
+                    Ok(styles_str) => {
+                        format!("styles for element `{}` at {}:\n{}", args.selector, tab_lock.state_string(), styles_str)
+                    },
+                    Err(e) => {
+                        format!("styles get failed at {}: {}", tab_lock.state_string(), e.to_string())
+                    },
+                }
+            };
+            tool_log.push(log);
+        },
     }
 
     Ok((tool_log, multimodal_els))
+}
+
+#[derive(Debug)]
+struct TabArgs {
+    tab_id: String,
 }
 
 #[derive(Debug)]
@@ -662,22 +744,7 @@ struct NavigateToArgs {
 }
 
 #[derive(Debug)]
-struct ScreenshotArgs {
-    tab_id: String,
-}
-
-#[derive(Debug)]
-struct HtmlArgs {
-    tab_id: String,
-}
-
-#[derive(Debug)]
-struct ReloadArgs {
-    tab_id: String,
-}
-
-#[derive(Debug)]
-struct ClickAtArgs {
+struct ClickAtPointArgs {
     point: Point,
     tab_id: String,
 }
@@ -718,9 +785,15 @@ struct PressKeyAtArgs {
 }
 
 #[derive(Debug)]
-struct TabLogArgs {
-    // wait_secs: u32,
+struct EvalArgs {
     tab_id: String,
+    expression: String,
+}
+
+#[derive(Debug)]
+struct TabElementArgs {
+    tab_id: String,
+    selector: String,
 }
 
 fn parse_single_command(command: &String) -> Result<Command, String> {
@@ -733,84 +806,117 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
 
     match command_name.as_str() {
         "open_tab" => {
-            if parsed_args.len() < 2 {
-                return Err(format!("`open_tab` requires 2 arguments: `<device|mobile>` and `tab_id`. Provided: {:?}", parsed_args));
+            match parsed_args.as_slice() {
+                [tab_id, device_str] => {
+                    let device = match device_str.as_str() {
+                        "desktop" => DeviceType::DESKTOP,
+                        "mobile" => DeviceType::MOBILE,
+                        _ => return Err(format!("unknown device type: {}. Should be either `desktop` or `mobile`.", parsed_args[0]))
+                    };
+                    Ok(Command::OpenTab(OpenTabArgs {
+                        device: device.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `<device|mobile>`".to_string())
+                }
             }
-            let device = match parsed_args[0].as_str() {
-                "desktop" => DeviceType::DESKTOP,
-                "mobile" => DeviceType::MOBILE,
-                _ => return Err(format!("unknown device type: {}. Should be either `desktop` or `mobile`.", parsed_args[0]))
-            };
-            Ok(Command::OpenTab(OpenTabArgs {
-                device,
-                tab_id: parsed_args[1].clone(),
-            }))
         },
         "navigate_to" => {
-            if parsed_args.len() < 2 {
-                return Err(format!("`navigate_to` requires 2 arguments: `uri` and `tab_id`. Provided: {:?}", parsed_args));
+            match parsed_args.as_slice() {
+                [tab_id, uri] => {
+                    Ok(Command::NavigateTo(NavigateToArgs {
+                        uri: uri.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `uri`".to_string())
+                }
             }
-            Ok(Command::NavigateTo(NavigateToArgs {
-                uri: parsed_args[0].clone(),
-                tab_id: parsed_args[1].clone(),
-            }))
         },
         "screenshot" => {
-            if parsed_args.len() < 1 {
-                return Err(format!("`screenshot` requires 1 argument: `tab_id`. Provided: {:?}", parsed_args));
+            match parsed_args.as_slice() {
+                [tab_id] => {
+                    Ok(Command::Screenshot(TabArgs {
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`".to_string())
+                }
             }
-            Ok(Command::Screenshot(ScreenshotArgs {
-                tab_id: parsed_args[0].clone(),
-            }))
         },
         "html" => {
-            if parsed_args.len() < 1 {
-                return Err(format!("`html` requires 1 argument: `tab_id`. Provided: {:?}", parsed_args));
+            match parsed_args.as_slice() {
+                [tab_id] => {
+                    Ok(Command::Html(TabArgs {
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`".to_string())
+                }
             }
-            Ok(Command::Html(HtmlArgs {
-                tab_id: parsed_args[0].clone(),
-            }))
         },
         "reload" => {
-            if parsed_args.len() < 1 {
-                return Err(format!("`reload` requires 1 argument: `tab_id`. Provided: {:?}", parsed_args));
-            }
-            Ok(Command::Reload(ReloadArgs {
-                tab_id: parsed_args[0].clone(),
-            }))
-        },
-        "click_at" => {
             match parsed_args.as_slice() {
-                [x_str, y_str, tab_id] => {
+                [tab_id] => {
+                    Ok(Command::Reload(TabArgs {
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`".to_string())
+                }
+            }
+        },
+        "click_at_point" => {
+            match parsed_args.as_slice() {
+                [tab_id, x_str, y_str] => {
                     let x = x_str.parse::<f64>().map_err(|e| format!("Failed to parse x: {}", e))?;
                     let y = y_str.parse::<f64>().map_err(|e| format!("Failed to parse y: {}", e))?;
                     let point = Point { x, y };
-                    Ok(Command::ClickAt(ClickAtArgs {
+                    Ok(Command::ClickAtPoint(ClickAtPointArgs {
                         point,
                         tab_id: tab_id.clone(),
                     }))
                 },
                 _ => {
-                    Err("Missing one or several arguments 'x', 'y', 'tab_id'".to_string())
+                    Err("Missing one or several arguments `tab_id`, `x`, 'y`".to_string())
+                }
+            }
+        },
+        "click_at_element" => {
+            match parsed_args.as_slice() {
+                [tab_id, selector] => {
+                    Ok(Command::ClickAtElement(TabElementArgs {
+                        selector: selector.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `selector`".to_string())
                 }
             }
         },
         "type_text_at" => {
             match parsed_args.as_slice() {
-                [text, tab_id] => {
+                [tab_id, text] => {
                     Ok(Command::TypeTextAt(TypeTextAtArgs {
                         text: text.clone(),
                         tab_id: tab_id.clone(),
                     }))
                 },
                 _ => {
-                    Err("Missing one or several arguments 'text', 'tab_id'".to_string())
+                    Err("Missing one or several arguments `tab_id`, `text`".to_string())
                 }
             }
         },
         "press_key_at" => {
             match parsed_args.as_slice() {
-                [key_str, tab_id] => {
+                [tab_id, key_str] => {
                     let key = match key_str.to_lowercase().as_str() {
                         "enter" => Key::ENTER,
                         "esc" => Key::ESC,
@@ -826,19 +932,45 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                     }))
                 },
                 _ => {
-                    Err("Missing one or several arguments 'key', 'tab_id'".to_string())
+                    Err("Missing one or several arguments `tab_id`, `key`".to_string())
                 }
             }
         },
         "tab_log" => {
             match parsed_args.as_slice() {
                 [tab_id] => {
-                    Ok(Command::TabLog(TabLogArgs {
+                    Ok(Command::TabLog(TabArgs {
                         tab_id: tab_id.clone(),
                     }))
                 },
                 _ => {
-                    Err("Missing one or several arguments 'tab_id'".to_string())
+                    Err("Missing one or several arguments `tab_id`".to_string())
+                }
+            }
+        },
+        "eval" => {
+            match parsed_args.as_slice() {
+                [tab_id, expression] => {
+                    Ok(Command::Eval(EvalArgs {
+                        expression: expression.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `expression`.".to_string())
+                }
+            }
+        },
+        "styles" => {
+            match parsed_args.as_slice() {
+                [tab_id, selector] => {
+                    Ok(Command::Styles(TabElementArgs {
+                        selector: selector.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `selector`.".to_string())
                 }
             }
         },
