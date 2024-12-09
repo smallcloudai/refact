@@ -1,6 +1,6 @@
 import React from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
-import { Container, Flex, Text, Box, Spinner, Avatar } from "@radix-ui/themes";
+import { Container, Flex, Text, Box, Spinner } from "@radix-ui/themes";
 import {
   isMultiModalToolResult,
   MultiModalToolResult,
@@ -19,6 +19,7 @@ import {
 } from "../../features/Chat/Thread/selectors";
 import { ScrollArea } from "../ScrollArea";
 import { takeWhile, fenceBackTicks } from "../../utils";
+import { DialogImage } from "../DialogImage";
 
 type ResultProps = {
   children: string;
@@ -301,7 +302,7 @@ const MultiModalToolContent: React.FC<{
   return (
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
-        <Collapsible.Trigger>
+        <Collapsible.Trigger asChild>
           <ToolUsageSummary
             toolUsageAmount={toolUsageAmount}
             open={open}
@@ -377,7 +378,9 @@ const MultiModalToolContent: React.FC<{
             return images.map((image, idx) => {
               const dataUrl = `data:${image.m_type};base64,${image.m_content}`;
               const key = `tool-image-${toolResult.tool_call_id}-${index}-${idx}`;
-              return <Avatar key={key} size="8" src={dataUrl} fallback="" />;
+              return (
+                <DialogImage key={key} size="8" src={dataUrl} fallback="" />
+              );
             });
           })}
         </Flex>

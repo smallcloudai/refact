@@ -27,6 +27,7 @@ import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
 import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { AttachFileButton, FileList } from "../Dropzone";
+import { useAttachedImages } from "../../hooks/useAttachedImages";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -71,6 +72,26 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
+
+  const { processAndInsertImages } = useAttachedImages();
+  const handlePastingFile = useCallback(
+    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const files: File[] = [];
+      const items = event.clipboardData.items;
+      for (const item of items) {
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          file && files.push(file);
+        }
+      }
+      if (files.length > 0) {
+        event.preventDefault();
+        processAndInsertImages(files);
+      }
+    },
+    [processAndInsertImages],
+  );
+
   const {
     checkboxes,
     onToggleCheckbox,
@@ -252,6 +273,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 {...props}
                 autoFocus={true}
                 style={{ boxShadow: "none", outline: "none" }}
+                onPaste={handlePastingFile}
               />
             )}
           />

@@ -1,22 +1,16 @@
 import React, { useCallback, useState } from "react";
-import {
-  Text,
-  Container,
-  Button,
-  Flex,
-  IconButton,
-  Avatar,
-} from "@radix-ui/themes";
+import { Text, Container, Button, Flex, IconButton } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
 import styles from "./ChatContent.module.css";
-import { Pencil2Icon, ImageIcon } from "@radix-ui/react-icons";
+import { Pencil2Icon } from "@radix-ui/react-icons";
 import {
   ProcessedUserMessageContentWithImages,
   UserMessageContentWithImage,
   type UserMessage,
 } from "../../services/refact";
 import { takeWhile } from "../../utils";
+import { DialogImage } from "../DialogImage";
 
 export type UserInputProps = {
   children: UserMessage["content"];
@@ -195,28 +189,12 @@ function processUserInputArray(
         if ("type" in image && image.type === "image_url") {
           const key = `user-input${memo.length}-${image.type}-${index}`;
           const content = image.image_url.url;
-          return (
-            <Avatar
-              radius="small"
-              key={key}
-              src={content}
-              size="8"
-              fallback={<ImageIcon />}
-            />
-          );
+          return <DialogImage src={content} key={key} />;
         }
         if ("m_type" in image && image.m_type.startsWith("image/")) {
           const key = `user-input${memo.length}-${image.m_type}-${index}`;
           const content = `data:${image.m_type};base64,${image.m_content}`;
-          return (
-            <Avatar
-              radius="small"
-              key={key}
-              src={content}
-              size="8"
-              fallback={<ImageIcon />}
-            />
-          );
+          return <DialogImage src={content} key={key} />;
         }
         return null;
       })}
