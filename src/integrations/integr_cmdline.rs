@@ -247,7 +247,7 @@ fields:
     f_placeholder: "echo Hello World"
   command_workdir:
     f_type: string_long
-    f_desc: "The working directory for the command."
+    f_desc: "The working directory for the command. If empty then workspace directory will be used."
     f_placeholder: "/path/to/workdir"
   description:
     f_type: string_long
@@ -259,10 +259,12 @@ fields:
     f_type: string_short
     f_desc: "The command must immediately return the results, it can't be interactive. If the command runs for too long, it will be terminated and stderr/stdout collected will be presented to the model."
     f_default: "10"
+    f_extra: true
   output_filter:
     f_type: "output_filter"
     f_desc: "The output from the command can be long or even quasi-infinite. This section allows to set limits, prioritize top or bottom, or use regexp to show the model the relevant part."
     f_placeholder: "filter"
+    f_extra: true
 description: |
   There you can adapt any command line tool for use by AI model. You can give the model instructions why to call it, which parameters to provide,
   set a timeout and restrict the output. If you want a tool that runs in the background such as a web server, use service_* instead.
