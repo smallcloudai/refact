@@ -26,6 +26,7 @@ pub struct IntegrationRecord {
     pub integr_name: String,
     pub integr_config_path: String,
     pub integr_config_exists: bool,
+    pub icon_path: String,
     pub on_your_laptop: bool,
     pub when_isolated: bool,
     #[serde(skip_serializing)]
@@ -33,7 +34,7 @@ pub struct IntegrationRecord {
 }
 
 #[derive(Serialize, Default)]
-pub struct IntegrationWithIconResult {
+pub struct IntegrationResult {
     pub integrations: Vec<IntegrationRecord>,
     pub error_log: Vec<YamlError>,
 }
@@ -94,6 +95,7 @@ pub fn read_integrations_d(
         let mut rec: IntegrationRecord = Default::default();
         rec.project_path = project_path.clone();
         rec.integr_name = integr_name.clone();
+        rec.icon_path = format!("/integration-icon/{integr_name}.png");
         rec.integr_config_path = path_str.clone();
         rec.integr_config_exists = path.exists();
         if rec.integr_config_exists {
@@ -142,6 +144,7 @@ pub fn read_integrations_d(
                                     let mut rec: IntegrationRecord = Default::default();
                                     rec.integr_config_path = integrations_yaml_path.clone();
                                     rec.integr_name = key_str.to_string();
+                                    rec.icon_path = format!("/integration-icon/{key_str}.png");
                                     rec.integr_config_exists = true;
                                     rec.config_unparsed = serde_json::to_value(value.clone()).unwrap();
                                     result.push(rec);
@@ -150,6 +153,7 @@ pub fn read_integrations_d(
                                     let mut rec: IntegrationRecord = Default::default();
                                     rec.integr_config_path = integrations_yaml_path.clone();
                                     rec.integr_name = key_str.to_string();
+                                    rec.icon_path = format!("/integration-icon/{key_str}.png");
                                     rec.integr_config_exists = true;
                                     rec.config_unparsed = serde_json::to_value(value.clone()).unwrap();
                                     result.push(rec);
@@ -288,18 +292,16 @@ pub fn split_path_into_project_and_integration(cfg_path: &PathBuf) -> Result<(St
     }
 }
 
-pub async fn integrations_all_with_icons(
+pub async fn integrations_all(
     gcx: Arc<ARwLock<GlobalContext>>,
-) -> IntegrationWithIconResult {
+) -> IntegrationResult {
     let (config_dirs, global_config_dir) = get_config_dirs(gcx.clone()).await;
     let lst: Vec<&str> = crate::integrations::integrations_list();
     let mut error_log: Vec<YamlError> = Vec::new();
     let integrations_yaml_path = get_integrations_yaml_path(gcx.clone()).await;
     let vars_for_replacements = get_vars_for_replacements(gcx.clone()).await;
     let integrations = read_integrations_d(&config_dirs, &global_config_dir, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log);
-
-    // rec.integr_icon = crate::integrations::icon_from_name(integr_name);
-    IntegrationWithIconResult {
+    IntegrationResult {
         integrations,
         error_log,
     }

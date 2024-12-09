@@ -3,24 +3,19 @@ use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
 use serde::Deserialize;
-// use url::Url;
-// #[allow(deprecated)]
-// use base64::encode;
-// use indexmap::IndexMap;
 use tokio::sync::RwLock as ARwLock;
+use axum::extract::Path;
 
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
-// use crate::integrations::{get_empty_integrations, get_integration_path};
-// use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value, write_yaml_value};
 
 
 pub async fn handle_v1_integrations(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     _: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
-    let with_icons = crate::integrations::setting_up_integrations::integrations_all_with_icons(gcx.clone()).await;
-    let payload = serde_json::to_string_pretty(&with_icons).map_err(|e| {
+    let integrations = crate::integrations::setting_up_integrations::integrations_all(gcx.clone()).await;
+    let payload = serde_json::to_string_pretty(&integrations).map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to serialize payload: {}", e))
     })?;
     Ok(Response::builder()
@@ -82,51 +77,26 @@ pub async fn handle_v1_integration_save(
        .unwrap())
 }
 
+mod generated {
+    include!(concat!(env!("OUT_DIR"), "/available_icons.rs"));
+}
 
-// async fn get_image_base64(
-//     cache_dir: &PathBuf,
-//     icon_name: &str,
-//     icon_url: &str,
-// ) -> Result<String, String> {
-//     let assets_path = cache_dir.join("assets/integrations");
-
-//     // Parse the URL to get the file extension
-//     let url = Url::parse(icon_url).map_err(|e| e.to_string())?;
-//     let extension = url
-//         .path_segments()
-//         .and_then(|segments| segments.last())
-//         .and_then(|name| name.split('.').last())
-//         .unwrap_or("png"); // Default to "png" if no extension is found
-
-//     let file_path = assets_path.join(format!("{}.{}", icon_name, extension));
-
-//     // Check if the file already exists
-//     if file_path.exists() {
-//         info!("Using image from cache: {}", file_path.display());
-//         let mut file = fs::File::open(&file_path).map_err(|e| e.to_string())?;
-//         let mut buffer = Vec::new();
-//         file.read_to_end(&mut buffer).map_err(|e| e.to_string())?;
-//         #[allow(deprecated)]
-//         let b64_image = encode(&buffer);
-//         let image_str = format!("data:{};base64,{}", extension, b64_image);
-//         return Ok(image_str);
-//     }
-
-//     // Create the cache directory if it doesn't exist
-//     async_fs::create_dir_all(&assets_path).await.map_err(|e| e.to_string())?;
-
-//     // Download the image
-//     info!("Downloading image from {}", icon_url);
-//     let client = Client::new();
-//     let response = client.get(icon_url).send().await.map_err(|e| e.to_string())?;
-//     let bytes = response.bytes().await.map_err(|e| e.to_string())?;
-
-//     // Save the image to the cache directory
-//     async_fs::write(&file_path, &bytes).await.map_err(|e| e.to_string())?;
-
-//     // Return the base64 string
-//     #[allow(deprecated)]
-//     let b64_image = encode(&bytes);
-//     let image_str = format!("data:{};base64,{}", extension, b64_image);
-//     Ok(image_str)
-// }
+pub async fn handle_v1_integration_icon(
+    Path(icon_name): Path<String>,
+) -> axum::response::Result<Response<Body>, ScratchError> {
+    let icons = generated::get_available_icons();
+    let sanitized_icon_name = icon_name
+        .split('/').last()
+        .map(|x| x.replace("_TEMPLATE", "")).ok_or(
+        ScratchError::new(StatusCode::BAD_REQUEST, "invalid file name".to_string())
+    )?;
+    if let Some(icon_bytes) = icons.get(sanitized_icon_name.as_str()) {
+        return Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "image/png")
+            .header("Content-Disposition", "inline")
+            .body(Body::from(*icon_bytes))
+            .unwrap());
+    }
+    Err(ScratchError::new(StatusCode::NOT_FOUND, "icon not found".to_string()))
+}
