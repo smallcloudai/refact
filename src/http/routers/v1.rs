@@ -41,7 +41,7 @@ use crate::http::routers::v1::system_prompt::handle_v1_system_prompt;
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
 #[cfg(feature="vecdb")]
 use crate::http::routers::v1::handlers_memdb::{handle_mem_query, handle_mem_add, handle_mem_erase, handle_mem_update_used, handle_mem_block_until_vectorized, handle_mem_list};
-use crate::http::routers::v1::v1_integrations::{handle_v1_integration_get, handle_v1_integration_icon, handle_v1_integration_save, handle_v1_integrations};
+use crate::http::routers::v1::v1_integrations::{handle_v1_integration_get, handle_v1_integration_icon, handle_v1_integration_save, handle_v1_integrations, handle_v1_integrations_filtered};
 use crate::http::utils::telemetry_wrapper;
 
 pub mod code_completion;
@@ -122,6 +122,7 @@ pub fn make_v1_router() -> Router {
         .route("/fullpath", telemetry_post!(handle_v1_fullpath))
 
         .route("/integrations", telemetry_get!(handle_v1_integrations))
+        .route("/integrations-filtered/:integr_name", get(handle_v1_integrations_filtered))
         .route("/integration-get", telemetry_post!(handle_v1_integration_get))
         .route("/integration-save", telemetry_post!(handle_v1_integration_save))
         .route("/integration-icon/:icon_name", get(handle_v1_integration_icon))
@@ -132,16 +133,17 @@ pub fn make_v1_router() -> Router {
         .route("/patch-single-file-from-ticket", telemetry_post!(handle_v1_patch_single_file_from_ticket))
         .route("/patch-apply-all", telemetry_post!(handle_v1_patch_apply_all))
 
+        .route("/links", telemetry_post!(handle_v1_links))
+
         // experimental
         .route("/get-dashboard-plots", telemetry_get!(get_dashboard_plots))
 
         .route("/code-completion-prompt", telemetry_post!(handle_v1_code_completion_prompt))
         .route("/commit-message-from-diff", telemetry_post!(handle_v1_commit_message_from_diff))
 
+        // to remove
         .route("/subchat", telemetry_post!(handle_v1_subchat))
         .route("/subchat-single", telemetry_post!(handle_v1_subchat_single))
-
-        .route("/links", telemetry_post!(handle_v1_links))
         ;
 
     #[cfg(feature="vecdb")]

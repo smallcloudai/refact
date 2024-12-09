@@ -20,7 +20,7 @@ pub struct YamlError {
     pub error_msg: String,
 }
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Serialize, Default, Debug, Clone)]
 pub struct IntegrationRecord {
     pub project_path: String,
     pub integr_name: String,

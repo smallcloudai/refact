@@ -4,6 +4,7 @@ use axum::http::{Response, StatusCode};
 use hyper::Body;
 use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
+use regex::Regex;
 use axum::extract::Path;
 
 use crate::custom_error::ScratchError;
@@ -18,6 +19,55 @@ pub async fn handle_v1_integrations(
     let payload = serde_json::to_string_pretty(&integrations).map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to serialize payload: {}", e))
     })?;
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(payload))
+        .unwrap())
+}
+
+pub async fn handle_v1_integrations_filtered(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    Path(integr_name): Path<String>,
+) -> axum::response::Result<Response<Body>, ScratchError> {
+    let integrations_result: crate::integrations::setting_up_integrations::IntegrationResult = crate::integrations::setting_up_integrations::integrations_all(gcx.clone()).await;
+    let mut filtered_integrations = Vec::new();
+
+    for integration in &integrations_result.integrations {
+        let pattern = integration.integr_name.replace("_TEMPLATE", "_.*");
+        match Regex::new(&pattern) {
+            Ok(re) => {
+                if re.is_match(&integr_name) {
+                    let mut integration_copy = integration.clone();
+                    integration_copy.integr_name = integr_name.clone();
+                    if let Some(pos) = integration.integr_config_path.rfind(&integration.integr_name) {
+                        let (start, end) = integration.integr_config_path.split_at(pos);
+                        integration_copy.integr_config_path = format!("{}{}{}", start, integr_name, &end[integration.integr_name.len()..]);
+                    }
+                    if integration.integr_name.find("_TEMPLATE").is_some() {
+                        let config_path_exists = integrations_result.integrations.iter().any(|existing_integration| {
+                            existing_integration.integr_config_path == integration_copy.integr_config_path
+                        });
+                        if config_path_exists {
+                            continue;
+                        }
+                    }
+                    filtered_integrations.push(integration_copy);
+                }
+            }
+            Err(e) => {
+                return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("Invalid regex pattern: {}", e)));
+            }
+        }
+    }
+
+    let payload = serde_json::to_string_pretty(&crate::integrations::setting_up_integrations::IntegrationResult {
+        integrations: filtered_integrations,
+        error_log: integrations_result.error_log,
+    }).map_err(|e| {
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to serialize payload: {}", e))
+    })?;
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
