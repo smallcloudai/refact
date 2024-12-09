@@ -32,6 +32,14 @@ function jsonHasWhenIsolated(
   );
 }
 
+function areAllFieldsBoolean(json: unknown): json is Record<string, boolean> {
+  return (
+    typeof json === "object" &&
+    json !== null &&
+    Object.entries(json).every((value) => typeof value === "boolean")
+  );
+}
+
 type IntegrationFormProps = {
   integrationPath: string;
   isApplying: boolean;
@@ -76,7 +84,8 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   useEffect(() => {
     if (
       integration.data?.integr_values.available &&
-      typeof integration.data.integr_values.available === "object"
+      typeof integration.data.integr_values.available === "object" &&
+      areAllFieldsBoolean(integration.data.integr_values.available)
     ) {
       Object.entries(integration.data.integr_values.available).forEach(
         ([key, value]) => {
