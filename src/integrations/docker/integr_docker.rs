@@ -12,6 +12,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationTrait;
 use crate::tools::tools_description::Tool;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
+use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num};
 
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 pub struct SettingsDocker {
@@ -24,16 +25,6 @@ pub struct SettingsDocker {
     #[serde(serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
     pub ssh_port: u16,
     pub ssh_identity_file: String,
-}
-
-pub fn serialize_num_to_str<T: ToString, S: serde::Serializer>(num: &T, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.serialize_str(&num.to_string())
-}
-pub fn deserialize_str_to_num<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-where
-    T: std::str::FromStr, T::Err: std::fmt::Display, D: serde::Deserializer<'de>,
-{
-    String::deserialize(deserializer)?.parse().map_err(serde::de::Error::custom)
 }
 
 impl SettingsDocker {

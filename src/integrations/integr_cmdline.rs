@@ -13,7 +13,7 @@ use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::integrations::integr_abstract::IntegrationTrait;
-
+use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_opt_num_to_str, deserialize_str_to_opt_num};
 
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct CmdlineToolConfig {
@@ -31,9 +31,9 @@ pub struct CmdlineToolConfig {
     pub output_filter: CmdlineOutputFilter,
 
     // background
-    #[serde(default)]
+    #[serde(default, serialize_with = "serialize_opt_num_to_str", deserialize_with = "deserialize_str_to_opt_num")]
     pub startup_wait_port: Option<u16>,
-    #[serde(default = "_default_startup_wait")]
+    #[serde(default = "_default_startup_wait", serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
     pub startup_wait: u64,
     #[serde(default)]
     pub startup_wait_keyword: Option<String>,

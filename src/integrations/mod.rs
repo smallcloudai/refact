@@ -25,6 +25,7 @@ pub mod project_summary_chat;
 pub mod yaml_schema;
 pub mod setting_up_integrations;
 pub mod running_integrations;
+pub mod utils;
 
 use integr_abstract::IntegrationTrait;
 
