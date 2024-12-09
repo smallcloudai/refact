@@ -20,6 +20,18 @@ import { toPascalCase } from "../../../utils/toPascalCase";
 import { debugIntegrations } from "../../../debugConfig";
 import { iconMap } from "../icons/iconMap";
 
+// TODO: should be extracted in the future
+function jsonHasWhenIsolated(
+  json: unknown,
+): json is Record<string, boolean> & { when_isolated: boolean } {
+  return (
+    typeof json === "object" &&
+    json !== null &&
+    "when_isolated" in json &&
+    typeof json.when_isolated === "boolean"
+  );
+}
+
 type IntegrationFormProps = {
   integrationPath: string;
   isApplying: boolean;
@@ -235,9 +247,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
         </Flex>
       )}
       {integration.data.integr_schema.docker &&
-        integration.data.integr_values.available &&
-        typeof integration.data.integr_values.available === "object" &&
-        "when_isolated" in integration.data.integr_values.available &&
+        jsonHasWhenIsolated(integration.data.integr_values.available) &&
         integration.data.integr_values.available.when_isolated && (
           <Flex mt="6" direction="column" align="start" gap="5">
             <Flex gap="2" align="center" justify="center" width="100%">
