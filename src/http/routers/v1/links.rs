@@ -115,14 +115,24 @@ pub async fn handle_v1_links(
         }
     }
 
-    if post.meta.chat_mode == ChatMode::CONFIGURE && !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
+    if post.meta.chat_mode == ChatMode::CONFIGURE {
         links.push(Link {
-            action: LinkAction::PatchAll,
-            text: "Save and return".to_string(),
+            action: LinkAction::Goto,
+            text: "Return".to_string(),
             goto: Some("SETTINGS:DEFAULT".to_string()),
             current_config_file: None,
             link_tooltip: format!(""),
         });
+        
+        if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
+            links.push(Link {
+                action: LinkAction::PatchAll,
+                text: "Save and return".to_string(),
+                goto: Some("SETTINGS:DEFAULT".to_string()),
+                current_config_file: None,
+                link_tooltip: format!(""),
+            });
+        }
     }
 
     // if post.meta.chat_mode == ChatMode::AGENT {
