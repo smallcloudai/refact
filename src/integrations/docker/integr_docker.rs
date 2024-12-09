@@ -266,6 +266,10 @@ fn command_append_label_if_creates_resource(command_args: &mut Vec<String>, labe
 
 pub const DOCKER_INTEGRATION_SCHEMA: &str = r#"
 fields:
+  docker_cli_path:
+    f_type: string_long
+    f_desc: "Path to the Docker CLI executable."
+    f_default: "docker"
   label:
     f_type: string_short
     f_desc: "Label for the Docker container."
@@ -274,31 +278,33 @@ fields:
     f_type: string_long
     f_desc: "The address to connect to the Docker daemon; specify only if not using the default."
     f_default: ""
-  docker_cli_path:
-    f_type: string_long
-    f_desc: "Path to the Docker CLI executable."
-    f_default: "docker"
+    f_extra: true
   remote_docker:
     f_type: bool
     f_desc: "Use SSH to connect to remote Docker."
+    f_extra: true
   ssh_host:
     f_type: string_long
     f_desc: "SSH host to connect to remote Docker."
     f_label: "SSH Host"
+    f_extra: true
   ssh_user:
     f_type: string_short
     f_desc: "SSH user to connect to remote Docker."
     f_default: "root"
     f_label: "SSH User"
+    f_extra: true
   ssh_port:
     f_type: string_short
     f_desc: "The SSH port to connect to remote Docker."
     f_default: "22"
     f_label: "SSH Port"
+    f_extra: true
   ssh_identity_file:
     f_type: string_long
     f_desc: "Path to the SSH identity file to connect to remote Docker."
     f_label: "SSH Identity File"
+    f_extra: true
 available:
   on_your_laptop_possible: true
   when_isolated_possible: false
