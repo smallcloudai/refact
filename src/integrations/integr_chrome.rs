@@ -982,8 +982,8 @@ const CHROME_INTEGRATION_SCHEMA: &str = r#"
 fields:
   chrome_path:
     f_type: string_long
-    f_desc: "Path to your chrome binary. You can install with \"npx @puppeteer/browsers install chrome@stable\", read more here https://developer.chrome.com/blog/chrome-for-testing. You can also give it ws:// path, in that case start chrome with --remote-debugging-port, read more here https://developer.chrome.com/docs/devtools/remote-debugging/local-server"
-    f_placeholder: "/Users/me/my_path/chrome/mac_arm-130.0.6723.69/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing or ws://127.0.0.1:4444/"
+    f_desc: "Path to Google Chrome or Chromium binary. If empty, it searches for Google Chrome in your system"
+    f_placeholder: ""
   window_width:
     f_type: string_short
     f_desc: "Width of the browser window."
