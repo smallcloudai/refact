@@ -70,7 +70,7 @@ export const linksApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    getLinksForChat: builder.mutation<LinksForChatResponse, LinksApiRequest>({
+    getLinksForChat: builder.query<LinksForChatResponse, LinksApiRequest>({
       async queryFn(args, api, extraOptions, baseQuery) {
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;

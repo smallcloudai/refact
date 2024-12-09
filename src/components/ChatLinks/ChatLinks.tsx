@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useMemo } from "react";
 import { Flex, Button, Container, Box } from "@radix-ui/themes";
 import { linksApi, type ChatLink } from "../../services/refact/links";
 import { diffApi, isUserMessage } from "../../services/refact";
@@ -151,39 +151,26 @@ export const ChatLinks: React.FC = () => {
     handleLinkAction(link);
   };
 
-  const [linksRequest, linksResult] = linksApi.useGetLinksForChatMutation();
-
-  useEffect(() => {
-    const isEmpty = messages.length === 0;
+  const skipLinksRequest = useMemo(() => {
     const lastMessageIsUserMessage =
-      !isEmpty && isUserMessage(messages[messages.length - 1]);
-    if (
-      !isStreaming &&
-      !isWaiting &&
-      !unCalledTools &&
-      !lastMessageIsUserMessage &&
-      model
-    ) {
-      void linksRequest({
-        chat_id: chatId,
-        messages: messages,
-        model,
-        mode: threadMode,
-        current_config_file: maybeIntegration?.path,
-      });
-    }
-  }, [
-    chatId,
-    isStreaming,
-    isWaiting,
-    linksRequest,
-    maybeIntegration,
-    maybeIntegration?.path,
-    messages,
-    model,
-    threadMode,
-    unCalledTools,
-  ]);
+      messages.length > 0 && isUserMessage(messages[messages.length - 1]);
+    if (!model) return true;
+    if (!caps.data) return true;
+    return (
+      isStreaming || isWaiting || unCalledTools || lastMessageIsUserMessage
+    );
+  }, [caps.data, isStreaming, isWaiting, messages, model, unCalledTools]);
+
+  const linksResult = linksApi.useGetLinksForChatQuery(
+    {
+      chat_id: chatId,
+      messages,
+      model: model ?? "",
+      mode: threadMode, // TODO: Changing thread mode invalidates the cache.
+      current_config_file: maybeIntegration?.path,
+    },
+    { skip: skipLinksRequest },
+  );
 
   // TODO: waiting, errors, maybe add a title
 
