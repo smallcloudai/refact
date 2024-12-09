@@ -814,14 +814,6 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         Err("not implemented".to_string())
     }
 
-    fn response_message_n_choices(
-        &mut self,
-        _choices: Vec<String>,
-        _token_limit_hit: Vec<FinishReason>,
-    ) -> Result<Value, String> {
-        Err("not implemented".to_string())
-    }
-
     fn response_message_streaming(
         &mut self,
         _delta: &Value,

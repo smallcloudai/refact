@@ -98,9 +98,11 @@ pub trait ScratchpadAbstract: Send {
 
     fn response_message_n_choices(
         &mut self,
-        choices: Vec<String>,
+        choices: Vec<String>,    // XXX replace with Value
         finish_reasons: Vec<FinishReason>,
-    ) -> Result<Value, String>;
+    ) -> Result<Value, String> {
+        Err("not implemented".to_string())
+    }
 
     fn response_message_streaming(
         &mut self,

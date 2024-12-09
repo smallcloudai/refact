@@ -170,14 +170,6 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         self.dd.response_streaming(delta, finish_reason)
     }
 
-    fn response_message_n_choices(
-        &mut self,
-        _choices: Vec<String>,
-        _finish_reasons: Vec<FinishReason>,
-    ) -> Result<Value, String> {
-        Err("not implemented".to_string())
-    }
-
     fn response_message_streaming(
         &mut self,
         _delta: &Value,

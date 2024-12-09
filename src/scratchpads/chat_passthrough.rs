@@ -195,14 +195,6 @@ impl ScratchpadAbstract for ChatPassthrough {
         Err("not implemented".to_string())
     }
 
-    fn response_message_n_choices(
-        &mut self,
-        _choices: Vec<String>,
-        _finish_reasons: Vec<FinishReason>,
-    ) -> Result<Value, String> {
-        Err("not implemented".to_string())
-    }
-
     fn response_message_streaming(
         &mut self,
         json: &Value,
