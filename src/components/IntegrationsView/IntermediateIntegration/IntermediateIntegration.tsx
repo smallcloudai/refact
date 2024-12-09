@@ -9,7 +9,7 @@ import {
   Text,
 } from "@radix-ui/themes";
 import { iconMap } from "../icons/iconMap";
-import styles from "./IntegrationCmdline.module.css";
+import styles from "./IntermediateIntegration.module.css";
 import { toPascalCase } from "../../../utils/toPascalCase";
 import { formatProjectName } from "../../../utils/formatProjectName";
 import { CustomInputField } from "../CustomFieldsAndWidgets";
