@@ -224,28 +224,31 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           </Flex>
         </Flex>
       </form>
-      {integration.data.integr_schema.smartlinks && (
-        <Flex width="100%" direction="column" gap="2" mt="4">
-          <Heading as="h4" size="4">
-            Ask AI do it for you (experimental)
-          </Heading>
-          <Flex align="center" gap="4" wrap="wrap">
-            {integration.data.integr_schema.smartlinks.map(
-              (smartlink, index) => {
-                return (
-                  <SmartLink
-                    key={`smartlink-${index}`}
-                    smartlink={smartlink}
-                    integrationName={integration.data?.integr_name ?? ""}
-                    integrationProject={integration.data?.project_path ?? ""}
-                    integrationPath={integration.data?.integr_config_path ?? ""}
-                  />
-                );
-              },
-            )}
+      {integration.data.integr_schema.smartlinks &&
+        integration.data.integr_schema.smartlinks.length > 0 && (
+          <Flex width="100%" direction="column" gap="2" mt="4">
+            <Heading as="h4" size="4">
+              Ask AI to do it for you (experimental)
+            </Heading>
+            <Flex align="center" gap="4" wrap="wrap">
+              {integration.data.integr_schema.smartlinks.map(
+                (smartlink, index) => {
+                  return (
+                    <SmartLink
+                      key={`smartlink-${index}`}
+                      smartlink={smartlink}
+                      integrationName={integration.data?.integr_name ?? ""}
+                      integrationProject={integration.data?.project_path ?? ""}
+                      integrationPath={
+                        integration.data?.integr_config_path ?? ""
+                      }
+                    />
+                  );
+                },
+              )}
+            </Flex>
           </Flex>
-        </Flex>
-      )}
+        )}
       {integration.data.integr_schema.docker &&
         jsonHasWhenIsolated(integration.data.integr_values.available) &&
         integration.data.integr_values.available.when_isolated && (

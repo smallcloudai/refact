@@ -160,7 +160,7 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
       </Flex>
       <Flex direction="column" width="100%" gap="3" mt="2">
         <Heading size="4" as="h4">
-          Ask AI do it for you (experimental)
+          Ask AI to do it for you (experimental)
         </Heading>
         <Flex gap="2" align="center">
           {dockerData.smartlinks.map((smartlink) => (
