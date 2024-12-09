@@ -109,6 +109,7 @@ async fn execute_background_command(
     cmdline_workdir: &String,
     cfg: &CmdlineToolConfig,
     action: &str,
+    env_variables: &HashMap<String, String>,
 ) -> Result<String, String> {
     let session_key = format!("custom_service_{service_name}");
     let mut session_mb = gcx.read().await.integration_sessions.get(&session_key).cloned();
@@ -155,7 +156,7 @@ async fn execute_background_command(
         tracing::info!("SERVICE START workdir {}:\n{:?}", cmdline_workdir, command_str);
         actions_log.push_str(&format!("Starting service with the following command line:\n{}\n", command_str));
 
-        let mut command = _create_command_from_string(&command_str, cmdline_workdir)?;
+        let mut command = create_command_from_string(&command_str, cmdline_workdir, env_variables)?;
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
         let mut command_wrap = TokioCommandWrap::from(command);
@@ -252,6 +253,7 @@ impl Tool for ToolService {
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let gcx = ccx.lock().await.global_context.clone();
         let mut args_str: HashMap<String, String> = HashMap::new();
         let valid_params: Vec<String> = self.cfg.parameters.iter().map(|p| p.name.clone()).collect();
 
@@ -273,15 +275,15 @@ impl Tool for ToolService {
 
         let command = replace_args(self.cfg.command.as_str(), &args_str);
         let workdir = replace_args(self.cfg.command_workdir.as_str(), &args_str);
+        let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
 
         let tool_ouput = {
-            let gcx = ccx.lock().await.global_context.clone();
             let action = args_str.get("action").cloned().unwrap_or("start".to_string());
             if !["start", "restart", "stop", "status"].contains(&action.as_str()) {
                 return Err("Tool call is invalid. Param 'action' must be one of 'start', 'restart', 'stop', 'status'. Try again".to_string());
             }
             execute_background_command(
-                gcx, &self.name, &command, &workdir, &self.cfg, action.as_str()
+                gcx, &self.name, &command, &workdir, &self.cfg, action.as_str(), &env_variables,
             ).await?
         };
 

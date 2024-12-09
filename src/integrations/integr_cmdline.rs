@@ -106,9 +106,10 @@ pub fn format_output(stdout_out: &str, stderr_out: &str) -> String {
     out
 }
 
-pub fn _create_command_from_string(
+pub fn create_command_from_string(
     cmd_string: &str,
     command_workdir: &String,
+    env_variables: &HashMap<String, String>,
 ) -> Result<Command, String> {
     let command_args = shell_words::split(cmd_string)
         .map_err(|e| format!("Failed to parse command: {}", e))?;
@@ -120,6 +121,9 @@ pub fn _create_command_from_string(
         cmd.args(&command_args[1..]);
     }
     cmd.current_dir(command_workdir);
+    for (key, value) in env_variables {
+        cmd.env(key, value);
+    }
     Ok(cmd)
 }
 
@@ -127,10 +131,12 @@ pub async fn execute_blocking_command(
     command: &str,
     cfg: &CmdlineToolConfig,
     command_workdir: &String,
+    env_variables: &HashMap<String, String>,
 ) -> Result<String, String> {
     info!("EXEC workdir {}:\n{:?}", command_workdir, command);
+
     let command_future = async {
-        let mut cmd = _create_command_from_string(command, command_workdir)?;
+        let mut cmd = create_command_from_string(command, command_workdir, env_variables)?;
         let t0 = tokio::time::Instant::now();
         let result = cmd
             .stdout(Stdio::piped())
@@ -173,11 +179,11 @@ impl Tool for ToolCmdline {
 
     async fn tool_execute(
         &mut self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-
+        let gcx = ccx.lock().await.global_context.clone();
         let mut args_str: HashMap<String, String> = HashMap::new();
         let valid_params: Vec<String> = self.cfg.parameters.iter().map(|p| p.name.clone()).collect();
 
@@ -199,8 +205,9 @@ impl Tool for ToolCmdline {
 
         let command = replace_args(self.cfg.command.as_str(), &args_str);
         let workdir = replace_args(self.cfg.command_workdir.as_str(), &args_str);
+        let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
 
-        let tool_ouput = execute_blocking_command(&command, &self.cfg, &workdir).await?;
+        let tool_ouput = execute_blocking_command(&command, &self.cfg, &workdir, &env_variables).await?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),

@@ -147,7 +147,8 @@ PROMPT_CONFIGURATOR: |
   - Write 1 paragraph explanation of what you are about to do
   - Ask the user if they want to change anything
   - Write updated configs using 📍REWRITE_WHOLE_FILE
-  - You can't check if the tool in question works or not in the same thread, user will have to accept the changes, and test again later by starting a new chat.
+
+  You can't check if the tool in question works or not in the same thread, user will have to accept the changes, and test again later by starting a new chat.
 
   The current config file is %CURRENT_CONFIG% but rewrite variables.yaml as neeeded, you can use $VARIABLE for any string fields in config files.
 
