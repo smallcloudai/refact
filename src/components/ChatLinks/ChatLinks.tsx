@@ -180,7 +180,7 @@ export const ChatLinks: React.FC = () => {
 
   const Wrapper = messages.length === 0 ? Box : Container;
 
-  if (linksResult.isLoading) {
+  if (linksResult.isLoading || linksResult.isFetching) {
     return (
       <Wrapper position="relative" mt="6">
         <Button variant="surface" disabled>
