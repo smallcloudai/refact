@@ -71,6 +71,7 @@ pub async fn handle_v1_links(
     let post = serde_json::from_slice::<LinksPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let mut links = Vec::new();
+    let mut uncommited_changes_warning = String::new();
     tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
     let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), gcx.read().await.cmdline.experimental).await;
 
@@ -149,6 +150,7 @@ pub async fn handle_v1_links(
     }
 
     if post.meta.chat_mode == ChatMode::AGENT {
+        let mut project_changes = Vec::new();
         for commit in get_commit_information_from_current_changes(gcx.clone()).await {
             let project_name = commit.project_path.to_file_path().ok()
                 .and_then(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
@@ -159,6 +161,11 @@ pub async fn handle_v1_links(
                 if commit.commit_message.lines().count() > 1 { "..." } else { "" },
                 commit.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
             );
+            project_changes.push(format!(
+                "In project {project_name}: {}{}",
+                commit.file_changes.iter().take(3).map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join(", "),
+                if commit.file_changes.len() > 3 { ", ..." } else { "" },
+            ));
             links.push(Link {
                 action: LinkAction::Commit,
                 text: format!("Commit {} files in `{}`", commit.file_changes.len(), project_name),
@@ -167,6 +174,13 @@ pub async fn handle_v1_links(
                 link_tooltip: tooltip_message,
                 link_payload: Some(LinkPayload::CommitPayload(GitCommitPost { commits: vec![commit] })),
             });
+        }
+        if !project_changes.is_empty() {
+            if project_changes.len() > 4 {
+                project_changes.truncate(4);
+                project_changes.push("...".to_string());
+            }
+            uncommited_changes_warning = format!("You have uncommitted changes, which may cause issues when rolling back agent changes:\n{}", project_changes.join("\n"));
         }
     }
 
@@ -216,8 +230,10 @@ pub async fn handle_v1_links(
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string_pretty(&serde_json::json!({"links": links})).unwrap()))
-        .unwrap())
+        .body(Body::from(serde_json::to_string_pretty(&serde_json::json!({
+            "links": links, 
+            "uncommited_changes_warning": uncommited_changes_warning,
+        })).unwrap())).unwrap())
 }
 
 async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo> {
@@ -228,7 +244,6 @@ async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalCont
             Ok(repo) => repo,
             Err(e) => { error!("{}", e); continue; }
         };
-        tracing::info!("repository opened");
 
         let file_changes = match crate::git::get_file_changes(&repository, true) {
             Ok(changes) if changes.is_empty() => { continue; }
