@@ -50,8 +50,7 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
         )
     };
     if vec_db.lock().await.is_none() {
-        info!("VecDb is not initialized");
-        return Ok(());
+        return Err("vecdb is not initialized".to_string());        
     }
     memories_block_until_vectorized(vec_db.clone(), 20_000).await?;
 
@@ -64,10 +63,8 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
         .await
         .map_err(|err| err.to_string())?;
     let response_json: Value = response.json().await.map_err(|err| err.to_string())?;
-
     if response_json["retcode"] != "OK" {
-        info!("failed to download trajectories: {:?}", response_json);
-        return Ok(());
+        return Err(format!("failed to download trajectories: {:?}", response_json));
     }
 
     let trajectories = response_json["data"].as_array().unwrap();
@@ -77,7 +74,7 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
         .map(|x| x.memid.clone())
         .collect::<HashSet<String>>();
     for trajectory in trajectories {
-        let m_memid = trajectory["memid"].as_str().ok_or("Failed to get memid")?;
+        let m_memid = trajectory["memid"].as_str().ok_or("the trajectory doesn't have memid field")?;
         if existing_trajectories.contains(m_memid) {
             info!("trajectory {} already exists in the vecdb", m_memid);            
             continue;
@@ -99,8 +96,8 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
             m_payload,
             Some(m_memid.to_string()),
         ).await {
-            Ok(memid) => info!("Memory added with ID: {}", memid),
-            Err(err) => info!("Failed to add memory: {}", err),
+            Ok(memid) => info!("memory added with ID: {}", memid),
+            Err(err) => info!("failed to add memory: {}", err),
         }
         info!(
             "downloaded trajectory: memid={}, type={}, goal={}, project={}, payload={}",
