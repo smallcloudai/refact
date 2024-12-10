@@ -98,8 +98,8 @@ pub trait ScratchpadAbstract: Send {
 
     fn response_message_n_choices(
         &mut self,
-        choices: Vec<String>,    // XXX replace with Value
-        finish_reasons: Vec<FinishReason>,
+        _choices: Vec<String>,    // XXX replace with Value
+        _finish_reasons: Vec<FinishReason>,
     ) -> Result<Value, String> {
         Err("not implemented".to_string())
     }
