@@ -19,9 +19,8 @@ use crate::integrations::integr_abstract::IntegrationTrait;
 
 use tokio::time::sleep;
 use chrono::DateTime;
-use reqwest::Client;
 use std::path::PathBuf;
-use headless_chrome::{Browser, LaunchOptions, Tab as HeadlessTab};
+use headless_chrome::{Browser, Element, LaunchOptions, Tab as HeadlessTab};
 use headless_chrome::browser::tab::point::Point;
 use headless_chrome::protocol::cdp::Page;
 use headless_chrome::protocol::cdp::Emulation;
@@ -32,6 +31,7 @@ use serde::{Deserialize, Serialize};
 
 use base64::Engine;
 use std::io::Cursor;
+use headless_chrome::protocol::cdp::Runtime::RemoteObject;
 use image::imageops::FilterType;
 use image::{ImageFormat, ImageReader};
 
@@ -39,14 +39,31 @@ use image::{ImageFormat, ImageReader};
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct SettingsChrome {
     pub chrome_path: String,
-    #[serde(default )]
-    pub window_width: String,
-    #[serde(default)]
-    pub window_height: String,
     #[serde(default)]
     pub idle_browser_timeout: String,
     #[serde(default)]
     pub headless: String,
+    // desktop
+    #[serde(default)]
+    pub window_width: String,
+    #[serde(default)]
+    pub window_height: String,
+    #[serde(default)]
+    pub scale_factor: String,
+    #[serde(default)]
+    // mobile
+    pub mobile_window_width: String,
+    #[serde(default)]
+    pub mobile_window_height: String,
+    #[serde(default)]
+    pub mobile_scale_factor: String,
+    // tablet
+    #[serde(default)]
+    pub tablet_window_width: String,
+    #[serde(default)]
+    pub tablet_window_height: String,
+    #[serde(default)]
+    pub tablet_scale_factor: String,
 }
 
 #[derive(Debug, Default)]
@@ -59,6 +76,7 @@ pub struct ToolChrome {
 enum DeviceType {
     DESKTOP,
     MOBILE,
+    TABLET,
 }
 
 impl std::fmt::Display for DeviceType {
@@ -66,6 +84,7 @@ impl std::fmt::Display for DeviceType {
         match self {
             DeviceType::DESKTOP => write!(f, "desktop"),
             DeviceType::MOBILE => write!(f, "mobile"),
+            DeviceType::TABLET => write!(f, "tablet"),
         }
     }
 }
@@ -196,7 +215,7 @@ impl Tool for ToolChrome {
                     break
                 }
             };
-            match chrome_command_exec(&parsed_command, command_session.clone()).await {
+            match chrome_command_exec(&parsed_command, command_session.clone(), &self.settings_chrome).await {
                 Ok((execute_log, command_multimodal_els)) => {
                     tool_log.extend(execute_log);
                     mutlimodal_els.extend(command_multimodal_els);
@@ -227,16 +246,17 @@ impl Tool for ToolChrome {
 
     fn tool_description(&self) -> ToolDesc {
         let mut supported_commands = vec![
-            "open_tab <tab_id> <desktop|mobile>",
+            "open_tab <tab_id> <desktop|mobile|tablet>",
             "navigate_to <tab_id> <uri>",
+            "scroll_to <tab_id> <element_selector>",
             "screenshot <tab_id>",
-            // "html <tab_id>",
+            "html <tab_id> <element_selector>",
             "reload <tab_id>",
             "press_key_at <tab_id> <enter|esc|pageup|pagedown|home|end>",
             "type_text_at <tab_id> <text>",
             "tab_log <tab_id>",
             "eval <tab_id> <expression>",
-            "styles <tab_id> <element_selector>",
+            "styles <tab_id> <element_selector> <property_filter>",
             "click_at_element <tab_id> <element_selector>",
         ];
         if self.supports_clicks {
@@ -301,8 +321,6 @@ async fn setup_chrome_session(
         setup_log.push("Connect to existing web socket.".to_string());
         Browser::connect_with_timeout(debug_ws_url, idle_browser_timeout).map_err(|e| e.to_string())
     } else {
-
-        // let path = PathBuf::from(args.chrome_path.clone());
         let mut path: Option<PathBuf> = None;
         if !args.chrome_path.is_empty() {
             path = Some(PathBuf::from(args.chrome_path.clone()));
@@ -314,7 +332,7 @@ async fn setup_chrome_session(
             headless: args.headless.parse::<bool>().unwrap_or(true),
             ..Default::default()
         };
-
+       
         setup_log.push("Started new chrome process.".to_string());
         Browser::new(launch_options).map_err(|e| e.to_string())
     }?;
@@ -366,10 +384,118 @@ async fn screenshot_jpeg_base64(
     MultimodalElement::new("image/jpeg".to_string(), base64::prelude::BASE64_STANDARD.encode(data))
 }
 
+fn get_inner_html(
+    element: &Element,
+) -> Result<String, String> {
+    let func = r"
+    function() {
+        function wrap_html(text, depth) {
+            return '  '.repeat(depth) + text + '\n';
+        }
+
+        function budget_html(el, max_depth, symbols_budget) {
+            let innerHtml = '';
+            let elements = [el]
+            for (let depth = 0; depth < max_depth; depth++) {
+                let expanded_html = '';
+                let expanded_elements = [];
+                elements.forEach(el => {
+                    if (typeof el === 'string') {
+                        expanded_html += el;
+                        expanded_elements.push(el);
+                    } else {
+                        if (el.innerHTML.length > 0) {
+                            let tagHtml = el.outerHTML.split(el.innerHTML);
+                            const tag_open = wrap_html(tagHtml[0], depth);
+                            expanded_html += tag_open;
+                            expanded_elements.push(tag_open);
+                            const children = Array.from(el.children);
+                            if (children.length > 0) {
+                                expanded_html += wrap_html('...', depth + 1)
+                                Array.from(el.children).forEach(child => {
+                                    expanded_elements.push(child);
+                                });
+                            } else if (el.innerText.length > 0) {
+                                const tag_text = wrap_html(el.innerText, depth + 1);
+                                expanded_html += tag_text;
+                                expanded_elements.push(tag_text);
+                            }
+                            if (tagHtml.length > 1) {
+                                const tag_close = wrap_html(tagHtml[1], depth);
+                                expanded_html += tag_close
+                                expanded_elements.push(tag_close);
+                            }
+                        } else {
+                            const tag = wrap_html(el.outerHTML, depth);
+                            expanded_html += tag;
+                            expanded_elements.push(tag);
+                        }
+                    }
+                });
+                if (expanded_html.length > symbols_budget) {
+                    break;
+                }
+                if (expanded_html.length === innerHtml.length) {
+                    break;
+                }
+                innerHtml = expanded_html;
+                elements = expanded_elements;
+            }
+            return innerHtml;
+        }
+        return budget_html(this, 100, 3000);
+    }";
+    let result = element.call_js_fn(func, vec![], false).map_err(|e| e.to_string())?;
+    Ok(result.value.unwrap().to_string())
+}
+
+fn format_remote_object(
+    remote_object: &RemoteObject,
+) -> String {
+    let mut result = vec![];
+    if let Some(subtype) = remote_object.subtype.clone() {
+        result.push(format!("subtype {:?}", subtype));
+    }
+    if let Some(class_name) = remote_object.class_name.clone() {
+        result.push(format!("class_name {:?}", class_name));
+    }
+    if let Some(value) = remote_object.value.clone() {
+        result.push(format!("value {:?}", value));
+    }
+    if let Some(unserializable_value) = remote_object.unserializable_value.clone() {
+        result.push(format!("unserializable_value {:?}", unserializable_value));
+    }
+    if let Some(description) = remote_object.description.clone() {
+        result.push(format!("description {:?}", description));
+    }
+    if let Some(preview) = remote_object.preview.clone() {
+        result.push(format!("preview {:?}", preview));
+    }
+    if let Some(custom_preview) = remote_object.custom_preview.clone() {
+        result.push(format!("custom_preview {:?}", custom_preview));
+    }
+    format!("result: {}", result.join(", "))
+}
+
+fn set_device_metrics_method(
+    width: u32,
+    height: u32,
+    device_scale_factor: f64,
+    mobile: bool,
+) -> Emulation::SetDeviceMetricsOverride {
+    Emulation::SetDeviceMetricsOverride {
+        width, height, device_scale_factor, mobile,
+        scale: None, screen_width: None, screen_height: None,
+        position_x: None, position_y: None, dont_set_visible_size: None,
+        screen_orientation: None, viewport: None, display_feature: None,
+    }
+}
+
 async fn session_open_tab(
     chrome_session: &mut ChromeSession,
     tab_id: &String,
     device: &DeviceType,
+    settings_chrome: &SettingsChrome,
 ) -> Result<String, String> {
     match chrome_session.tabs.get(tab_id) {
         Some(tab) => {
@@ -378,28 +504,42 @@ async fn session_open_tab(
         },
         None => {
             let headless_tab = chrome_session.browser.new_tab().map_err(|e| e.to_string())?;
-            match device {
-                DeviceType::MOBILE => {
-                    headless_tab.call_method(Emulation::SetDeviceMetricsOverride {
-                        width: 375,
-                        height: 812,
-                        device_scale_factor: 0.0,
-                        mobile: true,
-                        scale: None,
-                        screen_width: None,
-                        screen_height: None,
-                        position_x: None,
-                        position_y: None,
-                        dont_set_visible_size: None,
-                        screen_orientation: None,
-                        viewport: None,
-                        display_feature: None,
-                    }).map_err(|e| e.to_string())?;
-                },
+            let method = match device {
                 DeviceType::DESKTOP => {
-                    headless_tab.call_method(Emulation::ClearDeviceMetricsOverride(None)).map_err(|e| e.to_string())?;
-                }
-            }
+                    let (width, height) = match (settings_chrome.window_width.parse::<u32>(), settings_chrome.window_height.parse::<u32>()) {
+                        (Ok(width), Ok(height)) => (width, height),
+                        _ => (800, 600),
+                    };
+                    let scale_factor = match settings_chrome.scale_factor.parse::<f64>() {
+                        Ok(scale_factor) => scale_factor,
+                        _ => 0.0,
+                    };
+                    set_device_metrics_method(width, height, scale_factor, false)
+                },
+                DeviceType::MOBILE => {
+                    let (width, height) = match (settings_chrome.mobile_window_width.parse::<u32>(), settings_chrome.mobile_window_height.parse::<u32>()) {
+                        (Ok(width), Ok(height)) => (width, height),
+                        _ => (400, 800),
+                    };
+                    let scale_factor = match settings_chrome.mobile_scale_factor.parse::<f64>() {
+                        Ok(scale_factor) => scale_factor,
+                        _ => 0.0,
+                    };
+                    set_device_metrics_method(width, height, scale_factor, true)
+                },
+                DeviceType::TABLET => {
+                    let (width, height) = match (settings_chrome.tablet_window_width.parse::<u32>(), settings_chrome.tablet_window_height.parse::<u32>()) {
+                        (Ok(width), Ok(height)) => (width, height),
+                        _ => (600, 800),
+                    };
+                    let scale_factor = match settings_chrome.tablet_scale_factor.parse::<f64>() {
+                        Ok(scale_factor) => scale_factor,
+                        _ => 0.0,
+                    };
+                    set_device_metrics_method(width, height, scale_factor, true)
+                },
+            };
+            headless_tab.call_method(method).map_err(|e| e.to_string())?;
             let tab = Arc::new(AMutex::new(ChromeTab::new(headless_tab, device, tab_id)));
             let tab_lock = tab.lock().await;
             let tab_log = Arc::clone(&tab_lock.tab_log);
@@ -437,8 +577,9 @@ async fn session_get_tab_arc(
 enum Command {
     OpenTab(OpenTabArgs),
     NavigateTo(NavigateToArgs),
+    ScrollTo(TabElementArgs),
     Screenshot(TabArgs),
-    Html(TabArgs),
+    Html(TabElementArgs),
     Reload(TabArgs),
     ClickAtPoint(ClickAtPointArgs),
     ClickAtElement(TabElementArgs),
@@ -446,12 +587,13 @@ enum Command {
     PressKeyAt(PressKeyAtArgs),
     TabLog(TabArgs),
     Eval(EvalArgs),
-    Styles(TabElementArgs),
+    Styles(StylesArgs),
 }
 
 async fn chrome_command_exec(
     cmd: &Command,
     chrome_session: Arc<AMutex<Box<dyn IntegrationSession>>>,
+    settings_chrome: &SettingsChrome,
 ) -> Result<(Vec<String>, Vec<MultimodalElement>), String> {
     let mut tool_log = vec![];
     let mut multimodal_els = vec![];
@@ -461,7 +603,7 @@ async fn chrome_command_exec(
             let log = {
                 let mut chrome_session_locked = chrome_session.lock().await;
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
-                session_open_tab(chrome_session, &args.tab_id, &args.device).await?
+                session_open_tab(chrome_session, &args.tab_id, &args.device, &settings_chrome).await?
             };
             tool_log.push(log);
         },
@@ -483,6 +625,29 @@ async fn chrome_command_exec(
                     },
                     Err(e) => {
                         format!("navigate_to `{}` failed: {}. If you're trying to open a local file, add a file:// prefix.", args.uri, e.to_string())
+                    },
+                }
+            };
+            tool_log.push(log);
+        },
+        Command::ScrollTo(args) => {
+            let tab: Arc<AMutex<ChromeTab>> = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = {
+                let tab_lock = tab.lock().await;
+                match {
+                    let element = tab_lock.headless_tab.find_element(&args.selector).map_err(|e| e.to_string())?;
+                    element.scroll_into_view().map_err(|e| e.to_string())?;
+                    Ok::<(), String>(())
+                } {
+                    Ok(_) => {
+                        format!("scroll_to `{}` successful: {}.", args.selector, tab_lock.state_string())
+                    },
+                    Err(e) => {
+                        format!("scroll_to `{}` failed: {}.", args.selector, e.to_string())
                     },
                 }
             };
@@ -511,7 +676,6 @@ async fn chrome_command_exec(
             tool_log.push(log);
         },
         Command::Html(args) => {
-            // NOTE: removed from commands list, please rewrite me...
             let tab = {
                 let mut chrome_session_locked = chrome_session.lock().await;
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
@@ -519,24 +683,25 @@ async fn chrome_command_exec(
             };
             let log = {
                 let tab_lock = tab.lock().await;
-                let url = tab_lock.headless_tab.get_url();
                 match {
-                    let client = Client::builder()
-                        .build()
-                        .map_err(|e| e.to_string())?;
-                    let response = client.get(url.clone()).send().await.map_err(|e| e.to_string())?;
-                    if response.status().is_success() {
-                        let html = response.text().await.map_err(|e| e.to_string())?;
-                        Ok(html)
+                    let elements = tab_lock.headless_tab.find_elements(&args.selector).map_err(|e| e.to_string())?;
+                    if elements.len() == 0 {
+                        Err("No elements found".to_string())
                     } else {
-                        Err(format!("status: {}", response.status()))
+                        let mut elements_log = vec![];
+                        let first_element = elements.first().unwrap();
+                        elements_log.push(get_inner_html(first_element)?);
+                        if elements.len() > 2 {
+                            elements_log.push(format!("\n\nShown html for first of {} elements", elements.len()));
+                        }
+                        Ok::<String, String>(elements_log.join("\n"))
                     }
                 } {
                     Ok(html) => {
-                        format!("innerHtml of {}:\n\n{}", tab_lock.state_string(), html)
+                        format!("html of `{}`:\n\n{}", args.selector, html)
                     },
                     Err(e) => {
-                        format!("can't fetch innerHtml of {}: {}", tab_lock.state_string(), e.to_string())
+                        format!("can't fetch html of `{}`: {}", args.selector, e.to_string())
                     },
                 }
             };
@@ -684,8 +849,8 @@ async fn chrome_command_exec(
             let log = {
                 let tab_lock = tab.lock().await;
                 match tab_lock.headless_tab.evaluate(args.expression.as_str(), false) {
-                    Ok(result) => {
-                        format!("eval result at {}: {:?}", tab_lock.state_string(), result)
+                    Ok(remote_object) => {
+                        format_remote_object(&remote_object)
                     },
                     Err(e) => {
                         format!("eval failed at {}: {}", tab_lock.state_string(), e.to_string())
@@ -707,15 +872,26 @@ async fn chrome_command_exec(
                     tab_lock.headless_tab.call_method(CSSEnable(None)).map_err(|e| e.to_string())?;
                     let element = tab_lock.headless_tab.find_element(&args.selector).map_err(|e| e.to_string())?;
                     let computed_styles = element.get_computed_styles().map_err(|e| e.to_string())?;
-                    Ok::<String, String>(computed_styles.iter()
+                    let mut styles_filtered = computed_styles.iter()
+                        .filter(|s| s.name.contains(args.property_filter.as_str()))
                         .map(|s| format!("{}: {}", s.name, s.value))
-                        .collect::<Vec<String>>().join("\n"))
+                        .collect::<Vec<String>>();
+                    let max_lines_output = 30;
+                    if styles_filtered.len() > max_lines_output {
+                        let skipped_message = format!("Skipped {} properties. Specify filter if you need to see more.", styles_filtered.len() - max_lines_output);
+                        styles_filtered = styles_filtered[..max_lines_output].to_vec();
+                        styles_filtered.push(skipped_message)
+                    }
+                    if styles_filtered.is_empty() {
+                        styles_filtered.push("No properties for given filter.".to_string());
+                    }
+                    Ok::<String, String>(styles_filtered.join("\n"))
                 } {
                     Ok(styles_str) => {
-                        format!("styles for element `{}` at {}:\n{}", args.selector, tab_lock.state_string(), styles_str)
+                        format!("Style properties for element `{}` at {}:\n{}", args.selector, tab_lock.state_string(), styles_str)
                     },
                     Err(e) => {
-                        format!("styles get failed at {}: {}", tab_lock.state_string(), e.to_string())
+                        format!("Styles get failed at {}: {}", tab_lock.state_string(), e.to_string())
                     },
                 }
             };
@@ -796,6 +972,13 @@ struct TabElementArgs {
     selector: String,
 }
 
+#[derive(Debug)]
+struct StylesArgs {
+    tab_id: String,
+    selector: String,
+    property_filter: String,
+}
+
 fn parse_single_command(command: &String) -> Result<Command, String> {
     let args = shell_words::split(&command).map_err(|e| e.to_string())?;
     if args.is_empty() {
@@ -811,7 +994,8 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                     let device = match device_str.as_str() {
                         "desktop" => DeviceType::DESKTOP,
                         "mobile" => DeviceType::MOBILE,
-                        _ => return Err(format!("unknown device type: {}. Should be either `desktop` or `mobile`.", parsed_args[0]))
+                        "tablet" => DeviceType::TABLET,
+                        _ => return Err(format!("unknown device type: {}. Should be `desktop`, `mobile` or `tablet`.", parsed_args[0]))
                     };
                     Ok(Command::OpenTab(OpenTabArgs {
                         device: device.clone(),
@@ -819,7 +1003,7 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                     }))
                 },
                 _ => {
-                    Err("Missing one or several arguments `tab_id`, `<device|mobile>`".to_string())
+                    Err("Missing one or several arguments `tab_id`, `<device|mobile|tablet>`".to_string())
                 }
             }
         },
@@ -833,6 +1017,19 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                 },
                 _ => {
                     Err("Missing one or several arguments `tab_id`, `uri`".to_string())
+                }
+            }
+        },
+        "scroll_to" => {
+            match parsed_args.as_slice() {
+                [tab_id, selector] => {
+                    Ok(Command::ScrollTo(TabElementArgs {
+                        selector: selector.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `selector`".to_string())
                 }
             }
         },
@@ -850,13 +1047,14 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
         },
         "html" => {
             match parsed_args.as_slice() {
-                [tab_id] => {
-                    Ok(Command::Html(TabArgs {
+                [tab_id, selector] => {
+                    Ok(Command::Html(TabElementArgs {
+                        selector: selector.clone(),
                         tab_id: tab_id.clone(),
                     }))
                 },
                 _ => {
-                    Err("Missing one or several arguments `tab_id`".to_string())
+                    Err("Missing one or several arguments `tab_id`, `selector`".to_string())
                 }
             }
         },
@@ -963,10 +1161,11 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
         },
         "styles" => {
             match parsed_args.as_slice() {
-                [tab_id, selector] => {
-                    Ok(Command::Styles(TabElementArgs {
+                [tab_id, selector, property_filter] => {
+                    Ok(Command::Styles(StylesArgs {
                         selector: selector.clone(),
                         tab_id: tab_id.clone(),
+                        property_filter: property_filter.clone(),
                     }))
                 },
                 _ => {
@@ -983,14 +1182,6 @@ fields:
   chrome_path:
     f_type: string_long
     f_desc: "Path to Google Chrome or Chromium binary. If empty, it searches for Google Chrome in your system"
-  window_width:
-    f_type: string_short
-    f_desc: "Width of the browser window."
-    f_extra: true
-  window_height:
-    f_type: string_short
-    f_desc: "Height of the browser window."
-    f_extra: true
   idle_browser_timeout:
     f_type: string_short
     f_desc: "Idle timeout for the browser in seconds."
@@ -999,6 +1190,42 @@ fields:
     f_type: string_short
     f_desc: "Run Chrome in headless mode."
     f_default: "true"
+    f_extra: true
+  window_width:
+    f_type: string_short
+    f_desc: "Width of the browser window."
+    f_extra: true
+  window_height:
+    f_type: string_short
+    f_desc: "Height of the browser window."
+    f_extra: true
+  window_scale:
+    f_type: string_short
+    f_desc: "Scale factor of the browser window."
+    f_extra: true
+  mobile_window_width:
+    f_type: string_short
+    f_desc: "Width of the browser window in mobile mode."
+    f_extra: true
+  mobile_window_height:
+    f_type: string_short
+    f_desc: "Height of the browser window in mobile mode."
+    f_extra: true
+  mobile_window_scale:
+    f_type: string_short
+    f_desc: "Scale factor of the browser window in mobile mode."
+    f_extra: true
+  tablet_window_width:
+    f_type: string_short
+    f_desc: "Width of the browser window in tablet mode."
+    f_extra: true
+  tablet_window_height:
+    f_type: string_short
+    f_desc: "Height of the browser window in tablet mode."
+    f_extra: true
+  tablet_window_scale:
+    f_type: string_short
+    f_desc: "Scale factor of the browser window in tablet mode."
     f_extra: true
 available:
   on_your_laptop_possible: true
