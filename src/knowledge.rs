@@ -124,7 +124,7 @@ impl MemoriesDatabase {
         Ok(())
     }
 
-    pub fn permdb_add(&self, mem_type: &str, goal: &str, project: &str, payload: &str) -> Result<String, String> {
+    pub fn permdb_add(&self, mem_type: &str, goal: &str, project: &str, payload: &str, memid: Option<String>) -> Result<String, String> {
         fn generate_memid() -> String {
             rand::thread_rng()
                 .sample_iter(&rand::distributions::Uniform::new(0, 16))
@@ -132,14 +132,13 @@ impl MemoriesDatabase {
                 .map(|x| format!("{:x}", x))
                 .collect()
         }
-
+        let memid_str = memid.unwrap_or(generate_memid());
         let conn = self.conn.lock();
-        let memid = generate_memid();
         conn.execute(
             "INSERT INTO memories (memid, m_type, m_goal, m_project, m_payload) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![memid, mem_type, goal, project, payload],
+            params![memid_str, mem_type, goal, project, payload],
         ).map_err(|e| e.to_string())?;
-        Ok(memid)
+        Ok(memid_str)
     }
 
     pub fn permdb_erase(&self, memid: &str) -> Result<usize, String> {

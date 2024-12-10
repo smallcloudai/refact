@@ -66,7 +66,7 @@ mod privacy;
 mod privacy_compiled_in;
 mod git;
 mod agentic;
-
+mod trajectories;
 
 #[tokio::main]
 async fn main() {

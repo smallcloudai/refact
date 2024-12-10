@@ -53,7 +53,8 @@ pub async fn handle_mem_add(
         &post.mem_type,
         &post.goal,
         &post.project,
-        &post.payload
+        &post.payload,
+        None
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;

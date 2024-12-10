@@ -11,6 +11,7 @@ use crate::fetch_embedding;
 use crate::files_in_workspace::Document;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::knowledge::{lance_search, MemoriesDatabase};
+use crate::trajectories::try_to_download_trajectories;
 use crate::vecdb::vdb_cache::VecDBCache;
 use crate::vecdb::vdb_lance::VecDBHandler;
 use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
@@ -193,6 +194,7 @@ pub async fn vecdb_background_reload(
         return;
     }
 
+    let trajectories_updated_once: bool = false;
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
         let (need_reload, consts) = do_i_need_to_reload_vecdb(gcx.clone()).await;
@@ -216,6 +218,14 @@ pub async fn vecdb_background_reload(
                 }
             }
         }
+        if !trajectories_updated_once {
+            match try_to_download_trajectories(gcx.clone()).await {
+                Ok(_) => {}
+                Err(err) => {
+                    error!("trajectories download failed: {}", err);
+                }
+            };
+        } 
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
 }
@@ -275,6 +285,7 @@ pub async fn memories_add(
     m_goal: &str,
     m_project: &str,
     m_payload: &str,    // TODO: upgrade to serde_json::Value
+    m_memid: Option<String>
 ) -> Result<String, String> {
     let (memdb, vectorizer_service) = {
         let vec_db_guard = vec_db.lock().await;
@@ -284,14 +295,13 @@ pub async fn memories_add(
 
     let memid = {
         let mut memdb_locked = memdb.lock().await;
-        let x = memdb_locked.permdb_add(m_type, m_goal, m_project, m_payload)?;
+        let x = memdb_locked.permdb_add(m_type, m_goal, m_project, m_payload, m_memid)?;
         memdb_locked.dirty_memids.push(x.clone());
         x
     };
     vectorizer_enqueue_dirty_memory(vectorizer_service).await;  // sets queue_additions inside
     Ok(memid)
 }
-
 
 pub async fn memories_block_until_vectorized_from_vectorizer(
     vectorizer_service: Arc<AMutex<FileVectorizerService>>,
