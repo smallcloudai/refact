@@ -194,7 +194,7 @@ pub async fn vecdb_background_reload(
         return;
     }
 
-    let trajectories_updated_once: bool = false;
+    let mut trajectories_updated_once: bool = false;
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
         let (need_reload, consts) = do_i_need_to_reload_vecdb(gcx.clone()).await;
@@ -220,11 +220,12 @@ pub async fn vecdb_background_reload(
         }
         if !trajectories_updated_once {
             match try_to_download_trajectories(gcx.clone()).await {
-                Ok(_) => {}
+                Ok(_) => { }
                 Err(err) => {
                     error!("trajectories download failed: {}", err);
                 }
             };
+            trajectories_updated_once = true;
         } 
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
