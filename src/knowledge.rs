@@ -44,10 +44,15 @@ fn map_row_to_memo_record(row: &rusqlite::Row) -> rusqlite::Result<MemoRecord> {
         m_goal: row.get(2)?,
         m_project: row.get(3)?,
         m_payload: row.get(4)?,
-        mstat_correct: row.get(5)?,
-        mstat_relevant: row.get(6)?,
-        mstat_times_used: row.get(7)?,
+        m_origin: row.get(5)?,
+        mstat_correct: row.get(6)?,
+        mstat_relevant: row.get(7)?,
+        mstat_times_used: row.get(8)?,
     })
+}
+
+fn fields_ordered() -> String {
+    "memid,m_type,m_goal,m_project,m_payload,m_origin,mstat_correct,mstat_relevant,mstat_times_used".to_string()
 }
 
 impl MemoriesDatabase {
@@ -100,7 +105,26 @@ impl MemoriesDatabase {
             dirty_everything: true,
         };
         db._permdb_create_table(reset_memory)?;
+        db._migrate_add_m_origin()?;
         Ok(db)
+    }
+
+    fn _migrate_add_m_origin(&self) -> Result<(), String> {
+        let conn = self.conn.lock();
+        let mut stmt = conn.prepare("PRAGMA table_info(memories)").map_err(|e| e.to_string())?;
+        let column_exists = stmt.query_map([], |row| {
+            let column_name: String = row.get(1)?;
+            Ok(column_name)
+        })
+            .map_err(|e| e.to_string())?
+            .filter_map(|result| result.ok())
+            .any(|column_name| column_name == "m_origin");
+
+        if !column_exists {
+            conn.execute("ALTER TABLE memories ADD COLUMN m_origin TEXT NOT NULL DEFAULT 'refact-standard'", [])
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(())
     }
 
     fn _permdb_create_table(&self, reset_memory: bool) -> Result<(), String> {
@@ -115,6 +139,7 @@ impl MemoriesDatabase {
                 m_goal TEXT NOT NULL,
                 m_project TEXT NOT NULL,
                 m_payload TEXT NOT NULL,
+                m_origin TEXT NOT NULL,
                 mstat_correct REAL NOT NULL DEFAULT 0,
                 mstat_relevant REAL NOT NULL DEFAULT 0,
                 mstat_times_used INTEGER NOT NULL DEFAULT 0
@@ -124,7 +149,7 @@ impl MemoriesDatabase {
         Ok(())
     }
 
-    pub fn permdb_add(&self, mem_type: &str, goal: &str, project: &str, payload: &str, memid: Option<String>) -> Result<String, String> {
+    pub fn permdb_add(&self, mem_type: &str, goal: &str, project: &str, payload: &str, m_origin: &str) -> Result<String, String> {
         fn generate_memid() -> String {
             rand::thread_rng()
                 .sample_iter(&rand::distributions::Uniform::new(0, 16))
@@ -132,21 +157,32 @@ impl MemoriesDatabase {
                 .map(|x| format!("{:x}", x))
                 .collect()
         }
-        let memid_str = memid.unwrap_or(generate_memid());
+
         let conn = self.conn.lock();
+        let memid = generate_memid();
         conn.execute(
-            "INSERT INTO memories (memid, m_type, m_goal, m_project, m_payload) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![memid_str, mem_type, goal, project, payload],
+            "INSERT INTO memories (memid, m_type, m_goal, m_project, m_payload, m_origin) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![memid, mem_type, goal, project, payload, m_origin],
         ).map_err(|e| e.to_string())?;
-        Ok(memid_str)
+        Ok(memid)
     }
 
-    pub fn permdb_erase(&self, memid: &str) -> Result<usize, String> {
-        let conn = self.conn.lock();
-        let affected_rows = conn.execute(
-            "DELETE FROM memories WHERE memid = ?1",
-            params![memid],
-        ).map_err(|e| e.to_string())?;
+    pub async fn permdb_erase(&mut self, memid: &str) -> Result<usize, String> {
+        let affected_rows = {
+            let conn = self.conn.lock();
+            conn.execute(
+                "DELETE FROM memories WHERE memid = ?1",
+                params![memid],
+            ).map_err(|e| e.to_string())?
+        };
+
+        match self.memories_table.delete(&format!("memid IN ('{memid}')")).await {
+            Ok(_) => {}
+            Err(err) => {
+                tracing::error!("Error deleting from vecdb: {:?}", err);
+            }
+        }
+
         Ok(affected_rows)
     }
 
@@ -163,7 +199,7 @@ impl MemoriesDatabase {
     pub fn permdb_print_everything(&self) -> Result<String, String> {
         let mut table_contents = String::new();
         let conn = self.conn.lock();
-        let mut stmt = conn.prepare("SELECT * FROM memories")
+        let mut stmt = conn.prepare( &format!("SELECT {} FROM memories", fields_ordered()))
             .map_err(|e| e.to_string())?;
         let rows = stmt.query_map([], |row| {
             Ok((
@@ -172,17 +208,18 @@ impl MemoriesDatabase {
                 row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?,
                 row.get::<_, String>(4)?,
-                row.get::<_, f64>(5)?,
+                row.get::<_, String>(5)?,
                 row.get::<_, f64>(6)?,
-                row.get::<_, i32>(7)?,
+                row.get::<_, f64>(7)?,
+                row.get::<_, i32>(8)?,
             ))
         }).map_err(|e| e.to_string())?;
 
         for row in rows {
-            let (memid, m_type, m_goal, m_project, m_payload, mstat_correct, mstat_relevant, mstat_times_used) = row.map_err(|e| e.to_string())?;
+            let (memid, m_type, m_goal, m_project, m_payload, m_origin, mstat_correct, mstat_relevant, mstat_times_used) = row.map_err(|e| e.to_string())?;
             table_contents.push_str(&format!(
-                "memid={}, type={}, goal: {:?}, project: {:?}, payload: {:?}, correct={}, relevant={}, times_used={}\n",
-                memid, m_type, m_goal, m_project, m_payload, mstat_correct, mstat_relevant, mstat_times_used
+                "memid={}, type={}, goal: {:?}, project: {:?}, payload: {:?}, m_origin: {:?}, correct={}, relevant={}, times_used={}\n",
+                memid, m_type, m_goal, m_project, m_payload, m_origin, mstat_correct, mstat_relevant, mstat_times_used
             ));
         }
         Ok(table_contents)
@@ -191,8 +228,8 @@ impl MemoriesDatabase {
     pub async fn permdb_select_all(&self, filter: Option<&str>) -> Result<Vec<MemoRecord>, String> {
         let conn = self.conn.lock();
         let query = match filter {
-            Some(f) => format!("SELECT * FROM memories WHERE {}", f),
-            None => "SELECT * FROM memories".to_string(),
+            Some(f) => format!("SELECT {} FROM memories WHERE {f}", fields_ordered()),
+            None => format!("SELECT {} FROM memories", fields_ordered()),
         };
 
         let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
@@ -207,7 +244,7 @@ impl MemoriesDatabase {
 
         let memids: Vec<String> = input_records.iter().map(|record| record.memid.clone()).collect();
         let placeholders = memids.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
-        let query = format!("SELECT * FROM memories WHERE memid IN ({})", placeholders);
+        let query = format!("SELECT {} FROM memories WHERE memid IN ({})", fields_ordered(), placeholders);
         let params = rusqlite::params_from_iter(memids.iter());
         let mut statement = conn.prepare(&query).map_err(|e| e.to_string())?;
 
@@ -225,6 +262,7 @@ impl MemoriesDatabase {
                     record.m_goal = db_record.m_goal.clone();
                     record.m_project = db_record.m_project.clone();
                     record.m_payload = db_record.m_payload.clone();
+                    record.m_origin = db_record.m_origin.clone();
                     record.mstat_correct = db_record.mstat_correct;
                     record.mstat_relevant = db_record.mstat_relevant;
                     record.mstat_times_used = db_record.mstat_times_used;

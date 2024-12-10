@@ -1,9 +1,8 @@
-use std::collections::HashSet;
 use crate::global_context::GlobalContext;
-use crate::vecdb::vdb_highlev::{memories_add, memories_block_until_vectorized, memories_select_all};
+use crate::vecdb::vdb_highlev::{memories_add, memories_block_until_vectorized, memories_erase, memories_select_all, VecDb};
 use serde_json::Value;
 use std::sync::Arc;
-use tokio::sync::RwLock as ARwLock;
+use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use tracing::info;
 use chrono::{NaiveDateTime, Utc};
 
@@ -37,6 +36,17 @@ async fn is_time_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
     Ok(duration_since_last_download.num_days() >= TRAJECTORIES_UPDATE_EACH_N_DAYS)
 }
 
+async fn remove_legacy_trajectories(vecdb: Arc<AMutex<Option<VecDb>>>) -> Result<(), String> {
+    for memo in memories_select_all(vecdb.clone())
+        .await?
+        .iter()
+        .filter(|x| x.m_origin == "refact-standard") {
+        memories_erase(vecdb.clone(), &memo.memid).await?;
+        info!("removed legacy trajectory: {}", memo.memid);
+    }
+    Ok(())
+}
+
 pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> Result<(), String> {
     if !is_time_to_download_trajectories(gcx.clone()).await? {
         return Ok(());
@@ -68,24 +78,15 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
     }
 
     let trajectories = response_json["data"].as_array().unwrap();
-    let existing_trajectories = memories_select_all(vec_db.clone())
-        .await?
-        .iter()
-        .map(|x| x.memid.clone())
-        .collect::<HashSet<String>>();
+    remove_legacy_trajectories(vec_db.clone()).await?;
     for trajectory in trajectories {
-        let m_memid = trajectory["memid"].as_str().ok_or("the trajectory doesn't have memid field")?;
-        if existing_trajectories.contains(m_memid) {
-            info!("trajectory {} already exists in the vecdb", m_memid);            
-            continue;
-        }
-        
         let m_type = trajectory["kind"].as_str().unwrap_or("unknown");
         let m_goal = trajectory["goal"].as_str().unwrap_or("unknown");
         let m_project = trajectory["framework"].as_str().unwrap_or("unknown");
         let m_payload = trajectory["payload"].as_str().unwrap_or("");
+        let m_origin = trajectory["origin"].as_str().unwrap_or("refact-standard");
         if m_payload.is_empty() {
-            info!("empty or no payload for the trajectory: {}, skipping it", m_memid);
+            info!("empty or no payload for the trajectory, skipping it");
             continue;            
         }
         match memories_add(
@@ -94,14 +95,13 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
             m_goal,
             m_project,
             m_payload,
-            Some(m_memid.to_string()),
+            m_origin,
         ).await {
             Ok(memid) => info!("memory added with ID: {}", memid),
             Err(err) => info!("failed to add memory: {}", err),
         }
         info!(
-            "downloaded trajectory: memid={}, type={}, goal={}, project={}, payload={}",
-            m_memid,
+            "downloaded trajectory: type={}, goal={}, project={}, payload={}",
             m_type,
             m_goal,
             m_project,

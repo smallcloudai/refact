@@ -286,7 +286,7 @@ pub async fn memories_add(
     m_goal: &str,
     m_project: &str,
     m_payload: &str,    // TODO: upgrade to serde_json::Value
-    m_memid: Option<String>
+    m_origin: &str
 ) -> Result<String, String> {
     let (memdb, vectorizer_service) = {
         let vec_db_guard = vec_db.lock().await;
@@ -296,7 +296,7 @@ pub async fn memories_add(
 
     let memid = {
         let mut memdb_locked = memdb.lock().await;
-        let x = memdb_locked.permdb_add(m_type, m_goal, m_project, m_payload, m_memid)?;
+        let x = memdb_locked.permdb_add(m_type, m_goal, m_project, m_payload, m_origin)?;
         memdb_locked.dirty_memids.push(x.clone());
         x
     };
@@ -405,8 +405,8 @@ pub async fn memories_erase(
         vec_db.memdb.clone()
     };
 
-    let memdb_locked = memdb.lock().await;
-    let erased_cnt = memdb_locked.permdb_erase(memid)?;
+    let mut memdb_locked = memdb.lock().await;
+    let erased_cnt = memdb_locked.permdb_erase(memid).await?;
     Ok(erased_cnt)
 }
 

@@ -15,7 +15,8 @@ struct MemAddRequest {
     mem_type: String,
     goal: String,
     project: String,
-    payload: String,   // TODO: upgrade to serde_json::Value
+    payload: String,
+    origin: String,   // TODO: upgrade to serde_json::Value
 }
 
 #[derive(Deserialize)]
@@ -54,7 +55,7 @@ pub async fn handle_mem_add(
         &post.goal,
         &post.project,
         &post.payload,
-        None
+        &post.origin
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;

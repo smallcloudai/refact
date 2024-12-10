@@ -400,13 +400,14 @@ async def diff_apply(
             return await _better_response_json(response)
 
 
-async def mem_add(base_url: str, mem_type: str, goal: str, project: str, payload: str) -> Dict[str, Any]:
+async def mem_add(base_url: str, mem_type: str, goal: str, project: str, payload: str, origin: str = "local-committed") -> Dict[str, Any]:
     url = f"{base_url}/mem-add"
     data = {
         "mem_type": mem_type,
         "goal": goal,
         "project": project,
-        "payload": payload
+        "payload": payload,
+        "origin": origin,
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data) as response:
