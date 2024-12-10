@@ -5,17 +5,15 @@ use axum::http::{Response, StatusCode};
 use hyper::Body;
 use serde::{Deserialize, Serialize, Serializer};
 use tokio::sync::RwLock as ARwLock;
-use tracing::error;
-use url::Url;
 
-use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
 use crate::call_validation::{ChatMessage, ChatMeta, ChatMode};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tool_patch_aux::tickets_parsing::get_tickets_from_messages;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
-use crate::http::routers::v1::git::{CommitInfo, GitCommitPost};
+use crate::git::get_commit_information_from_current_changes;
+use crate::http::routers::v1::git::GitCommitPost;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct LinksPost {
@@ -234,42 +232,6 @@ pub async fn handle_v1_links(
             "links": links, 
             "uncommited_changes_warning": uncommited_changes_warning,
         })).unwrap())).unwrap())
-}
-
-async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo> {
-    let mut commits = Vec::new();
-
-    for project_path in crate::files_correction::get_project_dirs(gcx.clone()).await {
-        let repository = match git2::Repository::open(&project_path) {
-            Ok(repo) => repo,
-            Err(e) => { error!("{}", e); continue; }
-        };
-
-        let file_changes = match crate::git::get_file_changes(&repository, true) {
-            Ok(changes) if changes.is_empty() => { continue; }
-            Ok(changes) => changes,
-            Err(e) => { error!("{}", e); continue; }
-        };
-
-        let diff = match crate::git::git_diff(&repository, &file_changes) {
-            Ok(d) if d.is_empty() => { continue; }
-            Ok(d) => d,
-            Err(e) => { error!("{}", e); continue; }
-        };
-
-        let commit_msg = match generate_commit_message_by_diff(gcx.clone(), &diff, &None).await {
-            Ok(msg) => msg,
-            Err(e) => { error!("{}", e); continue; }
-        };
-
-        commits.push(CommitInfo {
-            project_path: Url::from_file_path(&project_path).ok().unwrap_or_else(|| Url::parse("file:///").unwrap()),
-            commit_message: commit_msg,
-            file_changes,
-        });
-    }
-
-    commits
 }
 
 fn failed_integration_names_after_last_user_message(messages: &Vec<ChatMessage>) -> Vec<String> {

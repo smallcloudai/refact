@@ -8,19 +8,12 @@ use tokio::sync::RwLock as ARwLock;
 use url::Url;
 
 use crate::custom_error::ScratchError;
-use crate::git::{FileChange, stage_changes, get_configured_author_email_and_name};
+use crate::git::{CommitInfo, stage_changes, get_configured_author_email_and_name};
 use crate::global_context::GlobalContext;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GitCommitPost {
     pub commits: Vec<CommitInfo>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CommitInfo {
-    pub project_path: Url,
-    pub commit_message: String,
-    pub file_changes: Vec<FileChange>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
