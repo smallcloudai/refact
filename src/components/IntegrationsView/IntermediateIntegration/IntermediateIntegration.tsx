@@ -95,7 +95,7 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
         </Flex>
       </Heading>
       {relatedIntegration.data?.integr_schema.description && (
-        <Text size="2" color="gray">
+        <Text size="2" color="gray" mb="2">
           {relatedIntegration.data.integr_schema.description}
         </Text>
       )}
