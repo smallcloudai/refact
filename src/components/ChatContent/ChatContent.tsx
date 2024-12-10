@@ -118,7 +118,8 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
-  const isConfig = !!thread.integration;
+
+  const isConfig = !!thread.integration?.project;
   const isWaiting = useAppSelector(selectIsWaiting);
 
   const {
