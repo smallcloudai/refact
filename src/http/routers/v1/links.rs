@@ -154,7 +154,7 @@ pub async fn handle_v1_links(
                 .and_then(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
                 .unwrap_or_else(|| "".to_string());
             let tooltip_message = format!(
-                "git commmit -m \"{}{}\"\n{}", 
+                "git commit -m \"{}{}\"\n{}", 
                 commit.commit_message.lines().next().unwrap_or(""), 
                 if commit.commit_message.lines().count() > 1 { "..." } else { "" },
                 commit.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
@@ -173,7 +173,7 @@ pub async fn handle_v1_links(
                 link_payload: Some(LinkPayload::CommitPayload(GitCommitPost { commits: vec![commit] })),
             });
         }
-        if !project_changes.is_empty() {
+        if !project_changes.is_empty() && post.messages.is_empty() {
             if project_changes.len() > 4 {
                 project_changes.truncate(4);
                 project_changes.push("...".to_string());
