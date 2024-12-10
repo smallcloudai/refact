@@ -57,7 +57,7 @@ export const SmartLink: FC<{
       onClick={handleClick}
       title={title ? title.join("\n") : ""}
     >
-      {smartlink.sl_label} 🪄
+      ✨ {smartlink.sl_label}
     </DropdownMenu.Item>
   ) : (
     <Button
@@ -68,8 +68,8 @@ export const SmartLink: FC<{
       type="button"
       variant="outline"
     >
+      {smartlink.sl_chat ? "✨ " : ""}
       {smartlink.sl_label}
-      {smartlink.sl_chat ? " 🪄" : ""}
     </Button>
   );
 

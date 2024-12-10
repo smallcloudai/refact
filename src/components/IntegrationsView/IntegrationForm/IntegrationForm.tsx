@@ -206,14 +206,16 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
               color="gray"
               size="2"
               onClick={() => setAreExtraFieldsRevealed((prev) => !prev)}
-              mb="2"
+              mb="1"
+              mt="3"
+              className={styles.advancedButton}
             >
               {areExtraFieldsRevealed
                 ? "Hide advanced configuration"
                 : "Show advanced configuration"}
             </Button>
           )}
-          <Flex justify="between" width="100%">
+          <Flex justify="end" width="100%">
             <Flex gap="4">
               <Button
                 color="green"
@@ -224,6 +226,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                 className={classNames(
                   { [styles.disabledButton]: isApplying || isDisabled },
                   styles.button,
+                  styles.applyButton,
                 )}
                 disabled={isDisabled}
               >

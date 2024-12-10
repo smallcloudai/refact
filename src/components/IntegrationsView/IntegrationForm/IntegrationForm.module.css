@@ -13,3 +13,33 @@
   max-width: 40px;
   object-fit: cover;
 }
+.advancedButton {
+  background-color: transparent;
+  border-top: 1px solid var(--accent-a5);
+  border-radius: 0;
+  cursor: pointer;
+}
+.applyButton {
+  min-width: 140px;
+  display: block;
+}
+
+@media (max-width: 538px) {
+  .applyButton {
+    width: 50%;
+  }
+}
+@media (max-width: 238px) {
+  .applyButton {
+    width: 100%;
+  }
+}
+.switchInline div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-right: 15px;
+}
+.switchInline div dd div {
+  margin-left: 5px;
+}
