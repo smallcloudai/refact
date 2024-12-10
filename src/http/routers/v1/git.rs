@@ -1,64 +1,102 @@
-// use std::sync::Arc;
-// use axum::Extension;
-// use axum::http::{Response, StatusCode};
-// use git2::Repository;
-// use hyper::Body;
-// use serde::{Deserialize, Serialize};
-// use tokio::sync::RwLock as ARwLock;
-// use url::Url;
+use std::sync::Arc;
+use axum::Extension;
+use axum::http::{Response, StatusCode};
+use git2::Repository;
+use hyper::Body;
+use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock as ARwLock;
+use url::Url;
 
-// use crate::custom_error::ScratchError;
-// use crate::git::{commit, create_or_checkout_to_branch, stage_all_changes};
-// use crate::global_context::GlobalContext;
+use crate::custom_error::ScratchError;
+use crate::git::{FileChange, stage_changes, get_configured_author_email_and_name};
+use crate::global_context::GlobalContext;
 
-// #[derive(Serialize, Deserialize, Clone, Debug)]
-// pub struct GitStageAndCommitPost {
-//     chat_id: String,
-//     repository_path: Url,
-// }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GitCommitPost {
+    pub commits: Vec<CommitInfo>,
+}
 
-// pub async fn handle_v1_git_stage_and_commit(
-//     Extension(_gcx): Extension<Arc<ARwLock<GlobalContext>>>,
-//     body_bytes: hyper::body::Bytes,
-// ) -> Result<Response<Body>, ScratchError> {
-//     let post = serde_json::from_slice::<GitStageAndCommitPost>(&body_bytes)
-//         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CommitInfo {
+    pub project_path: Url,
+    pub commit_message: String,
+    pub file_changes: Vec<FileChange>,
+}
 
-//     let repo_path = crate::files_correction::canonical_path(
-//         &post.repository_path.to_file_path().unwrap_or_default().to_string_lossy().to_string());
-//     let repository = Repository::open(&repo_path)
-//       .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Could not open repository: {}", e)))?;
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GitError {
+    pub error_message: String,
+    pub project_name: String,
+    pub project_path: Url,
+}
 
-//     let branch_name = format!("refact-{}", post.chat_id);
-//     let branch = create_or_checkout_to_branch(&repository, &branch_name)
-//         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+pub async fn handle_v1_git_commit(
+    Extension(_gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<GitCommitPost>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-//     stage_all_changes(&repository)
-//         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let mut error_log = Vec::new();
+    let mut commits_applied = Vec::new();
 
-//     let (new_files, modified_files, deleted_files) = count_file_changes(&repository, false)
-//         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    for commit in post.commits {
+        let repo_path = crate::files_correction::to_pathbuf_normalize(
+            &commit.project_path.to_file_path().unwrap_or_default().display().to_string());
 
-//     let commit_oid = if new_files + modified_files + deleted_files != 0 {
-//         Some(commit(
-//             &repository, 
-//             &branch,
-//             &format!("Refact agent commit in chat {} at {}", post.chat_id, chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")),
-//             "Refact Agent",
-//             "agent@refact.ai",
-//         ).map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?)
-//     } else {
-//         None
-//     };
+        let project_name = commit.project_path.to_file_path().ok()
+            .and_then(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
+            .unwrap_or_else(|| "".to_string());
+
+        let git_error = |msg: String| -> GitError {
+            GitError {
+                error_message: msg,
+                project_name: project_name.clone(),
+                project_path: commit.project_path.clone(),
+            }
+        };
+
+        let repository = match Repository::open(&repo_path) {
+            Ok(repo) => repo,
+            Err(e) => { error_log.push(git_error(format!("Failed to open repo: {}", e))); continue; }
+        };
+
+        if let Err(stage_err) = stage_changes(&repository, &commit.file_changes) {
+            error_log.push(git_error(stage_err));
+            continue;
+        }
+        
+        let (author_email, author_name) = match get_configured_author_email_and_name(&repository) {
+            Ok(email_and_name) => email_and_name,
+            Err(err) => { 
+                error_log.push(git_error(err));
+                continue; 
+            }
+        };
+        
+        let branch = match repository.head().map(|reference| git2::Branch::wrap(reference)) {
+            Ok(branch) => branch,
+            Err(e) => { error_log.push(git_error(format!("Failed to get current branch: {}", e))); continue; }
+        };
+        
+        let commit_oid = match crate::git::commit(&repository, &branch, &commit.commit_message, &author_name, &author_email) {
+            Ok(oid) => oid,
+            Err(e) => { error_log.push(git_error(e)); continue; }
+        };
+
+        commits_applied.push(serde_json::json!({
+            "project_name": project_name,
+            "project_path": commit.project_path.to_string(),
+            "commit_oid": commit_oid.to_string(),
+        }));
+    }
     
-//     Ok(Response::builder()
-//         .status(StatusCode::OK)
-//         .header("Content-Type", "application/json")
-//         .body(Body::from(serde_json::json!({
-//             "commit_oid": commit_oid.map(|x| x.to_string()),
-//             "new_files": new_files,
-//             "modified_files": modified_files,
-//             "deleted_files": deleted_files,
-//         }).to_string()))
-//         .unwrap())
-// }
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string(&serde_json::json!({
+            "commits_applied": commits_applied,
+            "error_log": error_log,
+        })).unwrap()))
+        .unwrap())
+}

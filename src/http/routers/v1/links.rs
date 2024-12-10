@@ -15,7 +15,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tool_patch_aux::tickets_parsing::get_tickets_from_messages;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
-use crate::git::FileChange;
+use crate::http::routers::v1::git::{CommitInfo, GitCommitPost};
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct LinksPost {
@@ -53,22 +53,16 @@ pub struct Link {
 
 #[derive(Debug)]
 pub enum LinkPayload {
-    CommitPayload(CommitInfo),
+    CommitPayload(GitCommitPost),
 }
 impl Serialize for LinkPayload {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
-            LinkPayload::CommitPayload(commit_payload) => commit_payload.serialize(serializer),
+            LinkPayload::CommitPayload(post) => post.serialize(serializer),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CommitInfo {
-    project_path: Url,
-    commit_message: String,
-    file_changes: Vec<FileChange>,
-}
 
 pub async fn handle_v1_links(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
@@ -171,7 +165,7 @@ pub async fn handle_v1_links(
                 goto: Some("LINKS_AGAIN".to_string()),
                 current_config_file: None,
                 link_tooltip: tooltip_message,
-                link_payload: Some(LinkPayload::CommitPayload(commit)),
+                link_payload: Some(LinkPayload::CommitPayload(GitCommitPost { commits: vec![commit] })),
             });
         }
     }
