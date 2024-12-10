@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
 use tracing::error;
-use git2::{Branch, BranchType, DiffOptions, IndexAddOption, Oid, Repository, Signature, Status, StatusOptions};
+use git2::{Branch, DiffOptions, Oid, Repository, Signature, Status, StatusOptions};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FileChange {
@@ -51,43 +51,52 @@ pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
 }
 
 /// Similar to git checkout -b <branch_name>
-pub fn create_or_checkout_to_branch<'repo>(repository: &'repo Repository, branch_name: &str) -> Result<Branch<'repo>, String> {
-    let branch = match repository.find_branch(branch_name, BranchType::Local) {
-        Ok(branch) => branch,
-        Err(_) => {
-            let head_commit = repository.head()
-                .and_then(|h| h.peel_to_commit())
-                .map_err(|e| format!("Failed to get HEAD commit: {}", e))?;
-            repository.branch(branch_name, &head_commit, false)
-                .map_err(|e| format!("Failed to create branch: {}", e))?
-        }
-    };
+// pub fn create_or_checkout_to_branch<'repo>(repository: &'repo Repository, branch_name: &str) -> Result<Branch<'repo>, String> {
+//     let branch = match repository.find_branch(branch_name, git2::BranchType::Local) {
+//         Ok(branch) => branch,
+//         Err(_) => {
+//             let head_commit = repository.head()
+//                 .and_then(|h| h.peel_to_commit())
+//                 .map_err(|e| format!("Failed to get HEAD commit: {}", e))?;
+//             repository.branch(branch_name, &head_commit, false)
+//                 .map_err(|e| format!("Failed to create branch: {}", e))?
+//         }
+//     };
 
-    // Checkout to the branch
-    let object = repository.revparse_single(&("refs/heads/".to_owned() + branch_name))
-        .map_err(|e| format!("Failed to revparse single: {}", e))?;
-    repository.checkout_tree(&object, None)
-        .map_err(|e| format!("Failed to checkout tree: {}", e))?;
-    repository.set_head(&format!("refs/heads/{}", branch_name))
-      .map_err(|e| format!("Failed to set head: {}", e))?;
+//     // Checkout to the branch
+//     let object = repository.revparse_single(&("refs/heads/".to_owned() + branch_name))
+//         .map_err(|e| format!("Failed to revparse single: {}", e))?;
+//     repository.checkout_tree(&object, None)
+//         .map_err(|e| format!("Failed to checkout tree: {}", e))?;
+//     repository.set_head(&format!("refs/heads/{}", branch_name))
+//       .map_err(|e| format!("Failed to set head: {}", e))?;
 
-    Ok(branch)
-}
+//     Ok(branch)
+// }
 
-/// Similar to git add .
-pub fn stage_all_changes(repository: &Repository) -> Result<(), String> {
+pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>) -> Result<(), String> {
     let mut index = repository.index()
         .map_err(|e| format!("Failed to get index: {}", e))?;
-    index.add_all(["*"].iter(), IndexAddOption::DEFAULT, None)
-        .map_err(|e| format!("Failed to add files to index: {}", e))?;
+    
+    for file_change in file_changes {
+        match file_change.status {
+            FileChangeStatus::ADDED | FileChangeStatus::MODIFIED => {
+                index.add_path(std::path::Path::new(&file_change.path))
+                    .map_err(|e| format!("Failed to add file to index: {}", e))?;
+            },
+            FileChangeStatus::DELETED => {
+                index.remove_path(std::path::Path::new(&file_change.path))
+                    .map_err(|e| format!("Failed to remove file from index: {}", e))?;
+            },
+        }
+    }
+    
     index.write()
         .map_err(|e| format!("Failed to write index: {}", e))?;
-    Ok(()) 
+    
+    Ok(())
 }
 
-/// Returns:
-/// 
-/// A tuple containing the number of new files, modified files, and deleted files.
 pub fn get_file_changes(repository: &Repository, include_unstaged: bool) -> Result<Vec<FileChange>, String> {
     let mut result = Vec::new();
 
@@ -120,6 +129,15 @@ pub fn get_file_changes(repository: &Repository, include_unstaged: bool) -> Resu
     Ok(result)
 }
 
+pub fn get_configured_author_email_and_name(repository: &Repository) -> Result<(String, String), String> {
+    let config = repository.config().map_err(|e| format!("Failed to get repository config: {}", e))?;
+    let author_email = config.get_string("user.email")
+       .map_err(|e| format!("Failed to get author email: {}", e))?;
+    let author_name = config.get_string("user.name")
+        .map_err(|e| format!("Failed to get author name: {}", e))?;
+    Ok((author_email, author_name))
+}
+
 pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_name: &str, author_email: &str) -> Result<Oid, String> {
     
     let mut index = repository.index()
@@ -139,7 +157,7 @@ pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_na
         repository.find_commit(target)
             .map_err(|e| format!("Failed to find branch commit: {}", e))?
     } else {
-        return Err("No parent commits found (initial commit is not supported)".to_string());
+        return Err("No parent commits found".to_string());
     };
 
     repository.commit(
@@ -147,7 +165,7 @@ pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_na
     ).map_err(|e| format!("Failed to create commit: {}", e))
 }
 
-/// Similar to `git diff`, but including untracked files.
+/// Similar to `git diff`, from specified file changes.
 pub fn git_diff(repository: &Repository, file_changes: &Vec<FileChange>) -> Result<String, String> {
     let mut diff_options = DiffOptions::new();
     diff_options.include_untracked(true);
