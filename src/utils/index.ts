@@ -9,3 +9,4 @@ export * from "./scanForDuplicates";
 export * from "./extractFilePathFromPin";
 export * from "./partition";
 export * from "./fencedBackticks";
+export * from "./isAbsolutePath";
