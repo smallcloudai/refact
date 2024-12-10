@@ -63,7 +63,7 @@ pub async fn handle_v1_links(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let mut links = Vec::new();
     tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
-    let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), true).await;
+    let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), gcx.read().await.cmdline.experimental).await;
 
     if post.messages.is_empty() {
         let (already_exists, summary_path_option) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;

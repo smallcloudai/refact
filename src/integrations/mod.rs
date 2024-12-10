@@ -65,8 +65,8 @@ pub fn icon_from_name(_n: &str) -> String
     return "".to_string();
 }
 
-pub fn integrations_list() -> Vec<&'static str> {
-    vec![
+pub fn integrations_list(allow_experimental: bool) -> Vec<&'static str> {
+    let mut integrations = vec![
         // "github",
         // "gitlab",
         // "pdb",
@@ -76,8 +76,13 @@ pub fn integrations_list() -> Vec<&'static str> {
         "service_TEMPLATE",
         // "chrome",
         "docker",
-        "isolation"
-    ]
+    ];
+    if allow_experimental {
+        integrations.extend(vec![
+            "isolation",
+        ]);
+    }
+    integrations
 }
 
 pub fn go_to_configuration_message(integration_name: &str) -> String {

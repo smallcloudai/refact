@@ -11,9 +11,9 @@ use crate::integrations::integr_abstract::IntegrationTrait;
 pub async fn load_integration_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
     _current_project: String,
-    _allow_experimental: bool,
+    allow_experimental: bool,
 ) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>> {
-    let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), _current_project, _allow_experimental).await;
+    let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), _current_project, allow_experimental).await;
     let mut tools = IndexMap::new();
     for (name, integr) in integraions_map {
         if integr.can_upgrade_to_tool() {
@@ -26,14 +26,14 @@ pub async fn load_integration_tools(
 pub async fn load_integrations(
     gcx: Arc<ARwLock<GlobalContext>>,
     _current_project: String,
-    _allow_experimental: bool,
+    allow_experimental: bool,
 ) -> (IndexMap<String, Box<dyn IntegrationTrait + Send + Sync>>, Vec<crate::integrations::setting_up_integrations::YamlError>) {
     // XXX filter _workspace_folders_arc that fit _current_project
     let (config_dirs, global_config_dir) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone()).await;
     let integrations_yaml_path = crate::integrations::setting_up_integrations::get_integrations_yaml_path(gcx.clone()).await;
 
     let mut error_log: Vec<crate::integrations::setting_up_integrations::YamlError> = Vec::new();
-    let lst: Vec<&str> = crate::integrations::integrations_list();
+    let lst: Vec<&str> = crate::integrations::integrations_list(allow_experimental);
     let vars_for_replacements = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
     let records = crate::integrations::setting_up_integrations::read_integrations_d(&config_dirs, &global_config_dir, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log);
 

@@ -296,7 +296,8 @@ pub async fn integrations_all(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> IntegrationResult {
     let (config_dirs, global_config_dir) = get_config_dirs(gcx.clone()).await;
-    let lst: Vec<&str> = crate::integrations::integrations_list();
+    let allow_experimental = gcx.read().await.cmdline.experimental;
+    let lst: Vec<&str> = crate::integrations::integrations_list(allow_experimental);
     let mut error_log: Vec<YamlError> = Vec::new();
     let integrations_yaml_path = get_integrations_yaml_path(gcx.clone()).await;
     let vars_for_replacements = get_vars_for_replacements(gcx.clone()).await;
@@ -429,7 +430,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_integration_schemas() {
-        let integrations = crate::integrations::integrations_list();
+        let integrations = crate::integrations::integrations_list(true);
         for name in integrations {
             let integration_box = crate::integrations::integration_from_name(name).unwrap();
             let schema_json = {

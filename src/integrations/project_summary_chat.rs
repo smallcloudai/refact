@@ -28,7 +28,8 @@ pub async fn mix_project_summary_messages(
         }
     };
 
-    let available_integrations: Vec<&str> = crate::integrations::integrations_list();
+    let allow_experimental = gcx.read().await.cmdline.experimental;
+    let available_integrations: Vec<&str> = crate::integrations::integrations_list(allow_experimental);
     let mut available_integrations_text = String::new();
     for integration in available_integrations.iter() {
         available_integrations_text.push_str(&format!("- {}\n", integration))
