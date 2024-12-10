@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::process::Stdio;
@@ -14,6 +15,7 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::integrations::integr_abstract::IntegrationTrait;
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_opt_num_to_str, deserialize_str_to_opt_num};
+
 
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct CmdlineToolConfig {
@@ -102,6 +104,9 @@ pub fn format_output(stdout_out: &str, stderr_out: &str) -> String {
         if !stderr_out.is_empty() {
             out.push_str(&format!("STDERR\n```\n{}```\n\n", stderr_out));
         }
+        if stdout_out.is_empty() && stderr_out.is_empty() {
+            out.push_str(&format!("Nothing in STDOUT/STDERR\n\n"));
+        }
     }
     out
 }
@@ -110,6 +115,7 @@ pub fn create_command_from_string(
     cmd_string: &str,
     command_workdir: &String,
     env_variables: &HashMap<String, String>,
+    project_dirs: Vec<PathBuf>,
 ) -> Result<Command, String> {
     let command_args = shell_words::split(cmd_string)
         .map_err(|e| format!("Failed to parse command: {}", e))?;
@@ -120,7 +126,17 @@ pub fn create_command_from_string(
     if command_args.len() > 1 {
         cmd.args(&command_args[1..]);
     }
-    cmd.current_dir(command_workdir);
+
+    if command_workdir.is_empty() {
+        if let Some(first_project_dir) = project_dirs.first() {
+            cmd.current_dir(first_project_dir);
+        } else {
+            tracing::warn!("no working directory, using whatever directory this binary is run :/");
+        }
+    } else {
+        cmd.current_dir(command_workdir);
+    }
+
     for (key, value) in env_variables {
         cmd.env(key, value);
     }
@@ -132,11 +148,12 @@ pub async fn execute_blocking_command(
     cfg: &CmdlineToolConfig,
     command_workdir: &String,
     env_variables: &HashMap<String, String>,
+    project_dirs: Vec<PathBuf>,
 ) -> Result<String, String> {
     info!("EXEC workdir {}:\n{:?}", command_workdir, command);
 
     let command_future = async {
-        let mut cmd = create_command_from_string(command, command_workdir, env_variables)?;
+        let mut cmd = create_command_from_string(command, command_workdir, env_variables, project_dirs)?;
         let t0 = tokio::time::Instant::now();
         let result = cmd
             .stdout(Stdio::piped())
@@ -206,8 +223,9 @@ impl Tool for ToolCmdline {
         let command = replace_args(self.cfg.command.as_str(), &args_str);
         let workdir = replace_args(self.cfg.command_workdir.as_str(), &args_str);
         let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
+        let project_dirs = crate::files_correction::get_project_dirs(gcx.clone()).await;
 
-        let tool_ouput = execute_blocking_command(&command, &self.cfg, &workdir, &env_variables).await?;
+        let tool_ouput = execute_blocking_command(&command, &self.cfg, &workdir, &env_variables, project_dirs).await?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),

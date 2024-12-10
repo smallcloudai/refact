@@ -155,8 +155,9 @@ async fn execute_background_command(
         }
         tracing::info!("SERVICE START workdir {}:\n{:?}", cmdline_workdir, command_str);
         actions_log.push_str(&format!("Starting service with the following command line:\n{}\n", command_str));
+        let project_dirs = crate::files_correction::get_project_dirs(gcx.clone()).await;
 
-        let mut command = create_command_from_string(&command_str, cmdline_workdir, env_variables)?;
+        let mut command = create_command_from_string(&command_str, cmdline_workdir, env_variables, project_dirs)?;
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
         let mut command_wrap = TokioCommandWrap::from(command);
