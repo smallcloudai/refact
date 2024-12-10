@@ -509,6 +509,22 @@ export type NotConfiguredIntegrationWithIconRecord = {
   // unparsed: unknown;
 };
 
+export type GroupedIntegrationWithIconRecord = {
+  project_path: string[];
+  integr_name: string;
+  integr_config_path: string[];
+  integr_config_exists: boolean;
+  on_your_laptop: boolean;
+  when_isolated: boolean;
+  // unparsed: unknown;
+};
+
+export function areIntegrationsNotConfigured(
+  json: GroupedIntegrationWithIconRecord,
+): json is NotConfiguredIntegrationWithIconRecord {
+  return !json.integr_config_exists;
+}
+
 export function isNotConfiguredIntegrationWithIconRecord(
   json: unknown,
 ): json is NotConfiguredIntegrationWithIconRecord {

@@ -17,6 +17,7 @@ import { Link } from "../../Link";
 import { useGetIntegrationDataByPathQuery } from "../../../hooks/useGetIntegrationDataByPathQuery";
 
 const validateSnakeCase = (value: string) => {
+  // TODO: include numbers 0-9
   const snakeCaseRegex = /^[a-z]+(_[a-z]+)*$/;
   return snakeCaseRegex.test(value);
 };
@@ -164,7 +165,7 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
               }
               title={
                 !!errorMessage || !commandName
-                  ? "Please, fix all issues with the data"
+                  ? "Please, fill out all required fields first"
                   : "Continue setting up integration"
               }
             >

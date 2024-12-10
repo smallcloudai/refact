@@ -22,7 +22,9 @@ import {
 import { useAppDispatch, useAppSelector } from "../../hooks";
 import { useSaveIntegrationData } from "../../hooks/useSaveIntegrationData";
 import {
+  areIntegrationsNotConfigured,
   dockerApi,
+  GroupedIntegrationWithIconRecord,
   Integration,
   integrationsApi,
   IntegrationWithIconRecord,
@@ -78,6 +80,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
   const maybeIntegration = useMemo(() => {
     if (!currentThreadIntegration) return null;
     if (!integrationsMap) return null;
+    // TODO: check for extra flag in currentThreadIntegration to return different find() call from notConfiguredGrouped integrations if it's set to true
     return (
       integrationsMap.integrations.find(
         (integration) =>
@@ -94,6 +97,19 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
 
   const [currentNotConfiguredIntegration, setCurrentNotConfiguredIntegration] =
     useState<NotConfiguredIntegrationWithIconRecord | null>(null);
+
+  // TODO: uncomment when ready
+  // useEffect(() => {
+  //   if (maybeIntegration) {
+  //     if (maybeIntegration.shouldBeOpenedOnIntermediatePage) {
+  //       setNotConfiguredIntegration(maybeIntegration);
+  //       setCurrentIntegration(null);
+  //     } else {
+  //       setCurrentIntegration(maybeIntegration);
+  //       setNotConfiguredIntegration(null);
+  //     }
+  //   }
+  // }, [maybeIntegration]);
 
   useEffect(() => {
     if (maybeIntegration) {
@@ -168,55 +184,50 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     }
   }, [projectSpecificIntegrations]);
 
-  const nonConfiguredIntegrations = useMemo(() => {
+  const availableIntegrationsToConfigure = useMemo(() => {
     if (integrationsMap?.integrations) {
       const groupedIntegrations = integrationsMap.integrations.reduce<
-        Record<string, NotConfiguredIntegrationWithIconRecord>
+        Record<string, GroupedIntegrationWithIconRecord>
       >((acc, integration) => {
-        if (!integration.integr_config_exists) {
-          if (!(integration.integr_name in acc)) {
-            acc[integration.integr_name] = {
-              ...integration,
-              project_path: [integration.project_path],
-              integr_config_path: [integration.integr_config_path],
-              integr_config_exists: false,
-            };
-          } else {
-            if (
-              !acc[integration.integr_name].project_path.includes(
-                integration.project_path,
-              )
-            ) {
-              acc[integration.integr_name].project_path.push(
-                integration.project_path,
-              );
-            }
-            acc[integration.integr_name].integr_config_path.push(
-              integration.integr_config_path,
-            );
-          }
+        if (!(integration.integr_name in acc)) {
+          acc[integration.integr_name] = {
+            ...integration,
+            project_path: [integration.project_path],
+            integr_config_path: [integration.integr_config_path],
+          };
+        } else {
+          acc[integration.integr_name].project_path.push(
+            integration.project_path,
+          );
+          acc[integration.integr_name].integr_config_path.push(
+            integration.integr_config_path,
+          );
         }
         return acc;
       }, {});
 
+      const filteredIntegrations = Object.values(groupedIntegrations).filter(
+        areIntegrationsNotConfigured,
+      );
+
       // Sort paths so that paths containing ".config" are first
-      Object.values(groupedIntegrations).forEach((integration) => {
+      Object.values(filteredIntegrations).forEach((integration) => {
         integration.project_path.sort((a, _b) => (a === "" ? -1 : 1));
         integration.integr_config_path.sort((a, _b) =>
           a.includes(".config") ? -1 : 1,
         );
       });
 
-      return Object.values(groupedIntegrations);
+      return Object.values(filteredIntegrations);
     }
   }, [integrationsMap]);
 
   useEffect(() => {
     debugIntegrations(
-      `[DEBUG]: nonConfiguredIntegrations: `,
-      nonConfiguredIntegrations,
+      `[DEBUG]: availableIntegrationsToConfigure: `,
+      availableIntegrationsToConfigure,
     );
-  }, [nonConfiguredIntegrations]);
+  }, [availableIntegrationsToConfigure]);
 
   const handleSetCurrentIntegrationSchema = (
     schema: Integration["integr_schema"],
@@ -795,8 +806,8 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
                 </Flex>
               </Heading>
               <Flex wrap="wrap" align="start" gap="3" width="100%">
-                {nonConfiguredIntegrations &&
-                  Object.entries(nonConfiguredIntegrations).map(
+                {availableIntegrationsToConfigure &&
+                  Object.entries(availableIntegrationsToConfigure).map(
                     ([_projectPath, integration], index) => {
                       return (
                         <IntegrationCard
