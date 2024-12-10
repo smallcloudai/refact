@@ -26,8 +26,8 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
       <Flex align="center" justify="between" width="100%" px={leftRightPadding}>
         <Flex
           gap={{
-            initial: "4",
-            xs: "6",
+            initial: "3",
+            xs: "4",
           }}
           align="center"
         >
@@ -41,6 +41,11 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
               <ArrowLeftIcon width="16" height="16" />
             </IconButton>
           )}
+          <img
+            src={icon}
+            className={styles.IntegrationsHeaderIcon}
+            alt={integrationName}
+          />
           <Heading as="h5" size="5">
             Setup{" "}
             {integrationName.includes("TEMPLATE")
@@ -50,11 +55,6 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
               : toPascalCase(integrationName)}
           </Heading>
         </Flex>
-        <img
-          src={icon}
-          className={styles.IntegrationsHeaderIcon}
-          alt={integrationName}
-        />
       </Flex>
     </Flex>
   );
