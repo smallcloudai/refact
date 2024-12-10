@@ -91,10 +91,10 @@ export const renderIntegrationFormField = ({
       style={{
         width: "100%",
         opacity: isFieldVisible ? 1 : 0,
-        transform: isFieldVisible ? "translateY(0px)" : "translateY(-10px)",
         height: isFieldVisible ? "auto" : 0,
         visibility: isFieldVisible ? "visible" : "hidden",
-        transition: "opacity 0.3s ease-in-out, tranform 0.3s ease-in-out",
+        position: isFieldVisible ? "inherit" : "absolute",
+        transition: "opacity 0.3s ease-in-out",
       }}
     >
       <DataList.Label>

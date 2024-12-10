@@ -14,6 +14,7 @@ import { toPascalCase } from "../../../utils/toPascalCase";
 import { formatProjectName } from "../../../utils/formatProjectName";
 import { CustomInputField } from "../CustomFieldsAndWidgets";
 import { Link } from "../../Link";
+import { useGetIntegrationDataByPathQuery } from "../../../hooks/useGetIntegrationDataByPathQuery";
 
 const validateSnakeCase = (value: string) => {
   const snakeCaseRegex = /^[a-z]+(_[a-z]+)*$/;
@@ -60,6 +61,10 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
   const [commandName, setCommandName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  const { integration: relatedIntegration } = useGetIntegrationDataByPathQuery(
+    integration.integr_config_path[0],
+  );
+
   const handleCommandNameChange: ChangeEventHandler<HTMLInputElement> = (
     event,
   ) => {
@@ -89,6 +94,11 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
             : toPascalCase(integrationType)}
         </Flex>
       </Heading>
+      {relatedIntegration.data?.integr_schema.description && (
+        <Text size="2" color="gray">
+          {relatedIntegration.data.integr_schema.description}
+        </Text>
+      )}
       <Text size="2" color="gray">
         Please, choose where you want to setup your integration
       </Text>
