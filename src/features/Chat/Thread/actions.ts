@@ -27,6 +27,7 @@ import { generateChatTitle, sendChat } from "../../../services/refact/chat";
 import { ToolCommand } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { debugApp } from "../../../debugConfig";
+import { sendTelemetryEvent } from "../../../utils/telemetryHelper";
 
 export const newChatAction = createAction("chatThread/new");
 
@@ -258,6 +259,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
   const onlyDeterministicMessages = checkForToolLoop(messages);
 
   const messagesForLsp = formatMessagesForLsp(messages);
+  const realMode = mode ?? thread?.mode;
 
   return sendChat({
     messages: messagesForLsp,
@@ -270,13 +272,12 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     port: state.config.lspPort,
     onlyDeterministicMessages,
     integration: thread?.integration,
-    mode: mode ?? thread?.mode,
+    mode: realMode,
   })
     .then((response) => {
       if (!response.ok) {
         return Promise.reject(new Error(response.statusText));
       }
-
       const reader = response.body?.getReader();
       if (!reader) return;
       const onAbort = () => thunkAPI.dispatch(setPreventSend({ id: chatId }));
@@ -286,10 +287,23 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       };
       return consumeStream(reader, thunkAPI.signal, onAbort, onChunk);
     })
+    .then((resp) => {
+      sendTelemetryEvent({
+        scope: `sendChat_${state.chat.thread.model}_${realMode}`,
+        success: true,
+        error_message: "",
+      });
+      return resp;
+    })
     .catch((err: Error) => {
       // console.log("Catch called");
       thunkAPI.dispatch(doneStreaming({ id: chatId }));
       thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
+      sendTelemetryEvent({
+        scope: `sendChat_${state.chat.thread.model}_${realMode}`,
+        success: false,
+        error_message: err.message,
+      });
       return thunkAPI.rejectWithValue(err.message);
     })
     .finally(() => {

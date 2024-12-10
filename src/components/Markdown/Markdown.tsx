@@ -41,6 +41,8 @@ import { ErrorCallout, DiffWarningCallout } from "../Callout";
 import { TruncateLeft } from "../Text";
 import { extractFilePathFromPin } from "../../utils";
 
+import { sendTelemetryEvent } from "../../utils/telemetryHelper";
+
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
   "children" | "allowedElements" | "unwrapDisallowed"
@@ -76,6 +78,12 @@ const PinMessages: React.FC<{
     if (markdown) {
       handlePaste(markdown);
     }
+    // find port here
+    sendTelemetryEvent({
+      scope: `replaceSelection`,
+      success: true,
+      error_message: "",
+    });
   }, [getMarkdown, handlePaste]);
 
   const handleAutoApply = useCallback(
