@@ -334,7 +334,6 @@ fields:
   description:
     f_type: string_long
     f_desc: "The model will see this description, why the model should call this?"
-    f_placeholder: ""
   parameters:
     f_type: "tool_parameters"
     f_desc: "The model will fill in those parameters."

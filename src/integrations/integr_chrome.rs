@@ -314,7 +314,7 @@ async fn setup_chrome_session(
             headless: args.headless.parse::<bool>().unwrap_or(true),
             ..Default::default()
         };
-       
+
         setup_log.push("Started new chrome process.".to_string());
         Browser::new(launch_options).map_err(|e| e.to_string())
     }?;
@@ -983,21 +983,17 @@ fields:
   chrome_path:
     f_type: string_long
     f_desc: "Path to Google Chrome or Chromium binary. If empty, it searches for Google Chrome in your system"
-    f_placeholder: ""
   window_width:
     f_type: string_short
     f_desc: "Width of the browser window."
-    f_default: ""
     f_extra: true
   window_height:
     f_type: string_short
     f_desc: "Height of the browser window."
-    f_default: ""
     f_extra: true
   idle_browser_timeout:
     f_type: string_short
     f_desc: "Idle timeout for the browser in seconds."
-    f_default: ""
     f_extra: true
   headless:
     f_type: string_short

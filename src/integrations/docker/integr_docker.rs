@@ -268,7 +268,6 @@ fields:
   docker_daemon_address:
     f_type: string_long
     f_desc: "The address to connect to the Docker daemon; specify only if not using the default."
-    f_default: ""
     f_extra: true
   remote_docker:
     f_type: bool

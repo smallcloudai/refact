@@ -81,5 +81,4 @@ fields:
 available:
   on_your_laptop_possible: true
   when_isolated_possible: false
-smartlinks: []
 "#;
