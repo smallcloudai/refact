@@ -41,7 +41,9 @@ export function useGoToLink() {
               integrationPath: isFile ? payload : maybeIntegration.path,
               projectPath: maybeIntegration.project,
               shouldIntermediatePageShowUp:
-                maybeIntegration.shouldIntermediatePageShowUp,
+                payload !== "DEFAULT"
+                  ? maybeIntegration.shouldIntermediatePageShowUp
+                  : false,
             }),
           );
           // TODO: open in the integrations

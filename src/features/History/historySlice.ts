@@ -77,6 +77,7 @@ export const historySlice = createSlice({
           : getFirstUserContentFromChat(action.payload.messages),
         createdAt: action.payload.createdAt ?? now,
         updatedAt: now,
+        integration: null,
         isTitleGenerated: action.payload.isTitleGenerated,
       };
 
