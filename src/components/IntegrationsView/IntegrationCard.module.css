@@ -6,7 +6,7 @@
 }
 
 .integrationCardInline {
-  width: calc(33% - 7px);
+  width: 100%;
   min-height: 140px;
   display: flex;
   align-items: center;

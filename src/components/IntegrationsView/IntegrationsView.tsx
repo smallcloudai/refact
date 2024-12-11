@@ -1,4 +1,4 @@
-import { Box, Flex, Heading, Text } from "@radix-ui/themes";
+import { Box, Flex, Heading, Text, Grid } from "@radix-ui/themes";
 import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { FC, FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -805,7 +805,12 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
                   Add new integration
                 </Flex>
               </Heading>
-              <Flex wrap="wrap" align="start" gap="3" width="100%">
+              <Grid
+                align="stretch"
+                gap="3"
+                columns={{ initial: "2", xs: "3", sm: "4", md: "5" }}
+                width="100%"
+              >
                 {availableIntegrationsToConfigure &&
                   Object.entries(availableIntegrationsToConfigure).map(
                     ([_projectPath, integration], index) => {
@@ -821,7 +826,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
                       );
                     },
                   )}
-              </Flex>
+              </Grid>
             </Flex>
           </Flex>
         )}
