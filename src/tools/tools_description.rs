@@ -51,8 +51,8 @@ pub trait Tool: Send + Sync {
     }
 }
 
-pub async fn read_integrations_yaml(cache_dir: &PathBuf) -> Result<serde_yaml::Value, String> {
-    let yaml_path = cache_dir.join("integrations.yaml");
+pub async fn read_integrations_yaml(config_dir: &PathBuf) -> Result<serde_yaml::Value, String> {
+    let yaml_path = config_dir.join("integrations.yaml");
 
     let file = std::fs::File::open(&yaml_path).map_err(
         |e| format!("Failed to open {}: {}", yaml_path.display(), e)
@@ -71,16 +71,16 @@ pub async fn tools_merged_and_filtered(
     gcx: Arc<ARwLock<GlobalContext>>,
     _supports_clicks: bool,  // XXX
 ) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
-    let (ast_on, vecdb_on, allow_experimental, cache_dir) = {
+    let (ast_on, vecdb_on, allow_experimental, config_dir) = {
         let gcx_locked = gcx.read().await;
         #[cfg(feature="vecdb")]
         let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
         #[cfg(not(feature="vecdb"))]
         let vecdb_on = false;
-        (gcx_locked.ast_service.is_some(), vecdb_on, gcx_locked.cmdline.experimental, gcx_locked.cache_dir.clone())
+        (gcx_locked.ast_service.is_some(), vecdb_on, gcx_locked.cmdline.experimental, gcx_locked.config_dir.clone())
     };
 
-    let integrations_value = match read_integrations_yaml(&cache_dir).await {
+    let integrations_value = match read_integrations_yaml(&config_dir).await {
         Ok(value) => value,
         Err(e) => return Err(format!("Problem in integrations.yaml: {}", e)),
     };
@@ -181,8 +181,8 @@ pub async fn commands_require_confirmation_rules_from_integrations_yaml(gcx: Arc
 {
     // XXX
     // let integrations_value = read_integrations_yaml(gcx.clone()).await?;
-    let cache_dir = gcx.read().await.cache_dir.clone();
-    let integrations_value = read_integrations_yaml(&cache_dir).await?;
+    let config_dir = gcx.read().await.config_dir.clone();
+    let integrations_value = read_integrations_yaml(&config_dir).await?;
 
     serde_yaml::from_value::<CommandsRequireConfirmationConfig>(integrations_value)
         .map_err(|e| format!("Failed to parse CommandsRequireConfirmationConfig: {}", e))

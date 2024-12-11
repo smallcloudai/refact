@@ -57,13 +57,13 @@ fn fields_ordered() -> String {
 
 impl MemoriesDatabase {
     pub async fn init(
-        cache_dir: &PathBuf,
+        config_dir: &PathBuf,
         // vecdb_cache: Arc<AMutex<VecDBCache>>,
         constants: &VecdbConstants,
         reset_memory: bool,
     ) -> Result<MemoriesDatabase, String> {
         // SQLite database for memories, permanent on disk
-        let dbpath = cache_dir.join("memories.sqlite");
+        let dbpath = config_dir.join("memories.sqlite");
         let cache_database = Connection::open_with_flags(
             dbpath,
             rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE

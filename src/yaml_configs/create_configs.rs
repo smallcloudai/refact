@@ -15,7 +15,7 @@ const DEFAULT_CHECKSUM_FILE: &str = "default-checksums.yaml";
 
 pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) -> String {
     let mut results = Vec::new();
-    let cache_dir = gcx.read().await.cache_dir.clone();
+    let config_dir = gcx.read().await.config_dir.clone();
 
     let files = vec![
         ("bring-your-own-key.yaml", crate::caps::BRING_YOUR_OWN_KEY_SAMPLE),
@@ -25,7 +25,7 @@ pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) -> St
     ];
 
     for (file_name, content) in files {
-        let file_path = cache_dir.join(file_name);
+        let file_path = config_dir.join(file_name);
         if let Err(e) = _yaml_file_exists_or_create(gcx.clone(), &file_path, content).await {
             tracing::warn!("{}", e);
             results.push(format!("Error processing {:?}: {}", file_path, e));
@@ -34,17 +34,17 @@ pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) -> St
         }
     }
 
-    let integrations_d = cache_dir.join("integrations.d");
+    let integrations_d = config_dir.join("integrations.d");
     if let Err(e) = tokio::fs::create_dir_all(&integrations_d).await {
         tracing::warn!("Failed to create directory {:?}: {}", integrations_d, e);
         results.push(format!("Error creating directory {:?}: {}", integrations_d, e));
     }
 
-    // let integrations_enabled = cache_dir.join("integrations-enabled.yaml");
+    // let integrations_enabled = config_dir.join("integrations-enabled.yaml");
     // let integrations = get_empty_integrations();
 
     // for (file_name, content) in integrations.iter().map(|(k, v)| (k.clone(), v.integr_settings_default())) {
-    //     let file_path = get_integration_path(&cache_dir, &file_name);
+    //     let file_path = get_integration_path(&config_dir, &file_name);
     //     if let Err(e) = _yaml_file_exists_or_create(gcx.clone(), &file_path, &content).await {
     //         tracing::warn!("{}", e);
     //         results.push(format!("Error processing {:?}: {}", file_path, e));
@@ -73,11 +73,11 @@ async fn _yaml_file_exists_or_create(
     the_default: &str
 ) -> Result<String, String>
 {
-    let cache_dir = gcx.read().await.cache_dir.clone();
+    let config_dir = gcx.read().await.config_dir.clone();
     let config_path_str = config_path.to_string_lossy().to_string();
     let config_name = config_path.file_name().ok_or_else(|| format!("{} is not a file", config_path.display()))?.to_string_lossy().to_string();
 
-    let checksums_dict = read_checksums(&cache_dir).await?;
+    let checksums_dict = read_checksums(&config_dir).await?;
 
     if config_path.exists() {
         let existing_content = tokio::fs::read_to_string(&config_path).await
@@ -102,7 +102,7 @@ async fn _yaml_file_exists_or_create(
     tracing::info!("created {}", config_path.display());
 
     let new_checksum = calculate_checksum(the_default);
-    update_checksum(&cache_dir, config_name.to_string(), &new_checksum).await?;
+    update_checksum(&config_dir, config_name.to_string(), &new_checksum).await?;
 
     Ok(config_path_str)
 }
@@ -113,8 +113,8 @@ fn calculate_checksum(content: &str) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-async fn read_checksums(cache_dir: &Path) -> Result<HashMap<String, String>, String> {
-    let checksum_path = cache_dir.join(DEFAULT_CHECKSUM_FILE);
+async fn read_checksums(config_dir: &Path) -> Result<HashMap<String, String>, String> {
+    let checksum_path = config_dir.join(DEFAULT_CHECKSUM_FILE);
     if checksum_path.exists() {
         let content = tokio::fs::read_to_string(&checksum_path).await
             .map_err(|e| format!("failed to read {}: {}", DEFAULT_CHECKSUM_FILE, e))?;
@@ -126,9 +126,9 @@ async fn read_checksums(cache_dir: &Path) -> Result<HashMap<String, String>, Str
     }
 }
 
-async fn update_checksum(cache_dir: &Path, config_name: String, checksum: &str) -> Result<(), String> {
-    let checksum_path = cache_dir.join(DEFAULT_CHECKSUM_FILE);
-    let mut checksums = read_checksums(&cache_dir).await?;
+async fn update_checksum(config_dir: &Path, config_name: String, checksum: &str) -> Result<(), String> {
+    let checksum_path = config_dir.join(DEFAULT_CHECKSUM_FILE);
+    let mut checksums = read_checksums(&config_dir).await?;
     checksums.insert(config_name.to_string(), checksum.to_string());
     let content = format!(
         "# This file allows to determine whether a config file still has the default text, so we can upgrade it.\n#\n{}",

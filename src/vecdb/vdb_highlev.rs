@@ -63,18 +63,19 @@ async fn _create_vecdb(
         return Err(err.message);
     }
 
-    let (cache_dir, cmdline) = {
+    let (cache_dir, config_dir, cmdline) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone())
+        (gcx_locked.cache_dir.clone(), gcx_locked.config_dir.clone(), gcx_locked.cmdline.clone())
     };
     let api_key = api_key.unwrap();
 
-    let base_dir: PathBuf = match cmdline.vecdb_force_path.as_str() {
-        "" => cache_dir,
-        path => PathBuf::from(path),
+    let (base_dir_cache, base_dir_config) = match cmdline.vecdb_force_path.as_str() {
+        "" => (cache_dir, config_dir),
+        path => (PathBuf::from(path), PathBuf::from(path)),
     };
     let vec_db_mb = match VecDb::init(
-        &base_dir,
+        &base_dir_cache,
+        &base_dir_config,
         cmdline.clone(),
         constants,
         &api_key
@@ -234,6 +235,7 @@ pub async fn vecdb_background_reload(
 impl VecDb {
     pub async fn init(
         cache_dir: &PathBuf,
+        config_dir: &PathBuf,
         cmdline: CommandLine,
         constants: VecdbConstants,
         api_key: &String
@@ -242,7 +244,7 @@ impl VecDb {
         let cache = VecDBCache::init(cache_dir, &constants.embedding_model, constants.embedding_size).await?;
         let vecdb_handler = Arc::new(AMutex::new(handler));
         let vecdb_cache = Arc::new(AMutex::new(cache));
-        let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(cache_dir, &constants, cmdline.reset_memory).await?));
+        let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(config_dir, &constants, cmdline.reset_memory).await?));
 
         let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),

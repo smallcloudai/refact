@@ -196,8 +196,8 @@ pub async fn load_customization(
     };
     // let competency_path = gcx.read().await.cmdline.competency.clone();
 
-    let cache_dir = gcx.read().await.cache_dir.clone();
-    let customization_yaml_path = cache_dir.join("customization.yaml");
+    let config_dir = gcx.read().await.config_dir.clone();
+    let customization_yaml_path = config_dir.join("customization.yaml");
 
     let user_config_text = std::fs::read_to_string(&customization_yaml_path).map_err(|e| format!("Failed to read file: {}", e))?;
 

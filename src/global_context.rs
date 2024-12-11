@@ -1,6 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::Hasher;
+use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -167,6 +168,27 @@ pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove thi
 
 const CAPS_RELOAD_BACKOFF: u64 = 60;       // seconds
 const CAPS_BACKGROUND_RELOAD: u64 = 3600;  // seconds
+
+
+pub async fn migrate_to_config_folder(
+    config_dir: &PathBuf,
+    cache_dir: &PathBuf
+) -> io::Result<()> {
+    let mut entries = tokio::fs::read_dir(cache_dir).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let path = entry.path();
+        let file_name = path.file_name().unwrap().to_string_lossy().into_owned();
+        let file_type = entry.file_type().await?;
+        let is_yaml_cfg = file_type.is_file() && path.extension().and_then(|e| e.to_str()) == Some("yaml");
+        if is_yaml_cfg {
+            let new_path = config_dir.join(&file_name);
+            tokio::fs::rename(&path, &new_path).await?;
+            print!("migrated {:?} to {:?}", path, new_path);
+        }
+    }
+    
+    Ok(())
+}
 
 pub async fn try_load_caps_quickly_if_not_present(
     gcx: Arc<ARwLock<GlobalContext>>,
