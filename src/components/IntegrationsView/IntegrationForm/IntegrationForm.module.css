@@ -15,7 +15,7 @@
 }
 .advancedButton {
   background-color: transparent;
-  border-top: 1px solid var(--accent-a5);
+  text-decoration: underline;
   border-radius: 0;
   cursor: pointer;
   overflow: hidden;
