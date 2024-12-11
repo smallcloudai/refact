@@ -134,7 +134,7 @@ pub async fn handle_v1_links(
             link_tooltip: format!(""),
             link_payload: None,
         });
-        
+
         if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
             links.push(Link {
                 action: LinkAction::PatchAll,
@@ -154,8 +154,8 @@ pub async fn handle_v1_links(
                 .and_then(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
                 .unwrap_or_else(|| "".to_string());
             let tooltip_message = format!(
-                "git commit -m \"{}{}\"\n{}", 
-                commit.commit_message.lines().next().unwrap_or(""), 
+                "git commit -m \"{}{}\"\n{}",
+                commit.commit_message.lines().next().unwrap_or(""),
                 if commit.commit_message.lines().count() > 1 { "..." } else { "" },
                 commit.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
             );
@@ -178,7 +178,7 @@ pub async fn handle_v1_links(
                 project_changes.truncate(4);
                 project_changes.push("...".to_string());
             }
-            uncommited_changes_warning = format!("You have uncommitted changes, which may cause issues when rolling back agent changes:\n{}", project_changes.join("\n"));
+            uncommited_changes_warning = format!("You have uncommitted changes:\n```\n{}\n```\n⚠️ You might have a problem rolling back agent's changes.", project_changes.join("\n"));
         }
     }
 
@@ -229,7 +229,7 @@ pub async fn handle_v1_links(
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string_pretty(&serde_json::json!({
-            "links": links, 
+            "links": links,
             "uncommited_changes_warning": uncommited_changes_warning,
         })).unwrap())).unwrap())
 }
