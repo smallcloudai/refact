@@ -36,7 +36,7 @@ function areAllFieldsBoolean(json: unknown): json is Record<string, boolean> {
   return (
     typeof json === "object" &&
     json !== null &&
-    Object.entries(json).every((value) => typeof value === "boolean")
+    Object.values(json).every((value) => typeof value === "boolean")
   );
 }
 

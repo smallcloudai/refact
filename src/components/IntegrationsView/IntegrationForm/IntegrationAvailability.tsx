@@ -18,6 +18,9 @@ export const IntegrationAvailability: FC<IntegrationAvailabilityProps> = ({
     onChange(fieldName, checked);
   };
 
+  // TODO: temporal solution to hide the switch for isolated mode
+  if (fieldName === "when_isolated") return null;
+
   return (
     <Flex style={{ marginBottom: "0.75rem" }}>
       <Flex align="center" justify="between">

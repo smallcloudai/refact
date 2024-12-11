@@ -254,6 +254,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       setCurrentNotConfiguredIntegration(null);
       setIsDisabledIntegrationForm(true);
     }
+    setAvailabilityValues({});
     information && dispatch(clearInformation());
     globalError && dispatch(clearError());
     dispatch(integrationsApi.util.resetApiState());
