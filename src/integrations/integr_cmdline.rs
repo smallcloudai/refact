@@ -24,6 +24,8 @@ pub struct CmdlineToolConfig {
 
     pub description: String,
     pub parameters: Vec<ToolParam>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters_required: Option<Vec<String>>,
 
     // blocking
