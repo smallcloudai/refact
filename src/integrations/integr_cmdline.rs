@@ -190,6 +190,32 @@ pub async fn execute_blocking_command(
     }
 }
 
+fn parse_command_args(args: &HashMap<String, serde_json::Value>, cfg: &CmdlineToolConfig) -> Result<(String, String), String>
+{
+    let mut args_str: HashMap<String, String> = HashMap::new();
+    let valid_params: Vec<String> = cfg.parameters.iter().map(|p| p.name.clone()).collect();
+
+    for (k, v) in args.iter() {
+        if !valid_params.contains(k) {
+            return Err(format!("Unexpected argument `{}`", k));
+        }
+        match v {
+            serde_json::Value::String(s) => { args_str.insert(k.clone(), s.clone()); },
+            _ => return Err(format!("argument `{}` is not a string: {:?}", k, v)),
+        }
+    }
+
+    for param in &cfg.parameters {
+        if cfg.parameters_required.as_ref().map_or(false, |req| req.contains(&param.name)) && !args_str.contains_key(&param.name) {
+            return Err(format!("Missing required argument `{}`", param.name));
+        }
+    }
+
+    let command = replace_args(cfg.command.as_str(), &args_str);
+    let workdir = replace_args(cfg.command_workdir.as_str(), &args_str);
+    Ok((command, workdir))
+}
+
 #[async_trait]
 impl Tool for ToolCmdline {
     fn as_any(&self) -> &dyn std::any::Any { self }
@@ -200,36 +226,17 @@ impl Tool for ToolCmdline {
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let (command, workdir) = parse_command_args(args, &self.cfg)?;
+
         let gcx = ccx.lock().await.global_context.clone();
-        let mut args_str: HashMap<String, String> = HashMap::new();
-        let valid_params: Vec<String> = self.cfg.parameters.iter().map(|p| p.name.clone()).collect();
-
-        for (k, v) in args.iter() {
-            if !valid_params.contains(k) {
-                return Err(format!("Unexpected argument `{}`", k));
-            }
-            match v {
-                serde_json::Value::String(s) => { args_str.insert(k.clone(), s.clone()); },
-                _ => return Err(format!("argument `{}` is not a string: {:?}", k, v)),
-            }
-        }
-
-        for param in &self.cfg.parameters {
-            if self.cfg.parameters_required.as_ref().map_or(false, |req| req.contains(&param.name)) && !args_str.contains_key(&param.name) {
-                return Err(format!("Missing required argument `{}`", param.name));
-            }
-        }
-
-        let command = replace_args(self.cfg.command.as_str(), &args_str);
-        let workdir = replace_args(self.cfg.command_workdir.as_str(), &args_str);
         let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
         let project_dirs = crate::files_correction::get_project_dirs(gcx.clone()).await;
 
-        let tool_ouput = execute_blocking_command(&command, &self.cfg, &workdir, &env_variables, project_dirs).await?;
+        let tool_output = execute_blocking_command(&command, &self.cfg, &workdir, &env_variables, project_dirs).await?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: ChatContent::SimpleText(tool_ouput),
+            content: ChatContent::SimpleText(tool_output),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
@@ -254,6 +261,14 @@ impl Tool for ToolCmdline {
             parameters: self.cfg.parameters.clone(),
             parameters_required,
         }
+    }
+
+    fn command_to_match_against_confirm_deny(
+        &self,
+        args: &HashMap<String, serde_json::Value>,
+    ) -> Result<String, String> {
+        let (command, _workdir) = parse_command_args(args, &self.cfg)?;
+        return Ok(command);
     }
 }
 
