@@ -20,18 +20,6 @@ import { toPascalCase } from "../../../utils/toPascalCase";
 import { debugIntegrations } from "../../../debugConfig";
 import { iconMap } from "../icons/iconMap";
 
-// TODO: should be extracted in the future
-function jsonHasWhenIsolated(
-  json: unknown,
-): json is Record<string, boolean> & { when_isolated: boolean } {
-  return (
-    typeof json === "object" &&
-    json !== null &&
-    "when_isolated" in json &&
-    typeof json.when_isolated === "boolean"
-  );
-}
-
 function areAllFieldsBoolean(json: unknown): json is Record<string, boolean> {
   return (
     typeof json === "object" &&
@@ -257,29 +245,27 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
             </Flex>
           </Flex>
         )}
-      {integration.data.integr_schema.docker &&
-        jsonHasWhenIsolated(integration.data.integr_values.available) &&
-        integration.data.integr_values.available.when_isolated && (
-          <Flex mt="6" direction="column" align="start" gap="5">
-            <Flex gap="2" align="center" justify="center" width="100%">
-              <img
-                src={iconMap.docker}
-                className={styles.DockerIcon}
-                alt={integration.data.integr_name}
-              />
-              <Heading as="h3" align="left">
-                {toPascalCase(integration.data.integr_name)} Containers
-              </Heading>
-            </Flex>
-            <IntegrationDocker
-              dockerData={integration.data.integr_schema.docker}
-              integrationName={integration.data.integr_name}
-              integrationProject={integration.data.project_path}
-              integrationPath={integration.data.integr_config_path}
-              handleSwitchIntegration={handleSwitchIntegration}
+      {integration.data.integr_schema.docker && (
+        <Flex mt="6" direction="column" align="start" gap="5">
+          <Flex gap="2" align="center" justify="center" width="100%">
+            <img
+              src={iconMap.docker}
+              className={styles.DockerIcon}
+              alt={integration.data.integr_name}
             />
+            <Heading as="h3" align="left">
+              {toPascalCase(integration.data.integr_name)} Containers
+            </Heading>
           </Flex>
-        )}
+          <IntegrationDocker
+            dockerData={integration.data.integr_schema.docker}
+            integrationName={integration.data.integr_name}
+            integrationProject={integration.data.project_path}
+            integrationPath={integration.data.integr_config_path}
+            handleSwitchIntegration={handleSwitchIntegration}
+          />
+        </Flex>
+      )}
     </Flex>
   );
 };

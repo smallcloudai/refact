@@ -317,3 +317,14 @@ function isDockerPorts(json: unknown): json is DockerPorts {
   // Since DockerPorts is defined as NonNullable<unknown>, we don't have specific structure to validate. Just checking, that it's not null | undefined
   return json !== null && json !== undefined;
 }
+
+export function jsonHasWhenIsolated(
+  json: unknown,
+): json is Record<string, boolean> & { when_isolated: boolean } {
+  return (
+    typeof json === "object" &&
+    json !== null &&
+    "when_isolated" in json &&
+    typeof json.when_isolated === "boolean"
+  );
+}
