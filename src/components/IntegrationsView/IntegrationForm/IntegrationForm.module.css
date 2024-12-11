@@ -45,14 +45,6 @@
 }
 
 .gridContainer {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(1, 1fr);
   gap: 10px;
-}
-.gridContainer div:nth-child(n + 5) {
-  grid-column: 1 / -1;
-}
-@media (max-width: 400px) {
-  .gridContainer {
-    grid-template-columns: repeat(1, 1fr);
-  }
 }
