@@ -22,11 +22,12 @@ import {
   getSelectedToolUse,
   getSelectedSystemPrompt,
   setSystemPrompt,
+  ToolUse,
 } from "../../features/Chat/Thread";
 import { ThreadHistoryButton } from "../Buttons";
 import { push } from "../../features/Pages/pagesSlice";
 import { DropzoneProvider } from "../Dropzone";
-import { SystemPrompts } from "../../services/refact";
+import { CodeChatModel, SystemPrompts } from "../../services/refact";
 
 export type ChatProps = {
   host: Config["host"];
@@ -105,6 +106,14 @@ export const Chat: React.FC<ChatProps> = ({
 
   useAutoSend();
 
+  // TODO: ideally this could be set when the chat is created.
+  useEffect(() => {
+    if (chatToolUse === "agent" && !modelSupportsAgent(chatModel)) {
+      const modelToUse = modelForMode(chatModel, caps, chatToolUse);
+      onSetChatModel(modelToUse);
+    }
+  }, [caps, chatModel, chatToolUse, onSetChatModel]);
+
   return (
     <DropzoneProvider asChild>
       <Flex
@@ -140,7 +149,10 @@ export const Chat: React.FC<ChatProps> = ({
           onSubmit={handleSummit}
           model={chatModel}
           onSetChatModel={onSetChatModel}
-          caps={caps}
+          caps={{
+            ...caps,
+            available_caps: capOptionsForMode(caps.available_caps, chatToolUse),
+          }}
           onClose={maybeSendToSidebar}
           prompts={promptsRequest.data ?? {}}
           onSetSystemPrompt={onSetSelectedSystemPrompt}
@@ -177,3 +189,39 @@ export const Chat: React.FC<ChatProps> = ({
     </DropzoneProvider>
   );
 };
+
+const AGENT_ALLOW_LIST = ["gpt-4o", "claude-3-5-sonnet"];
+function modelForMode(
+  model: string,
+  caps: ChatFormProps["caps"],
+  toolUse?: ToolUse,
+) {
+  if (toolUse !== "agent") return model;
+
+  if (AGENT_ALLOW_LIST.includes(model)) return model;
+
+  const available = Object.keys(caps.available_caps);
+
+  const hasModels = AGENT_ALLOW_LIST.find((agent) => available.includes(agent));
+  if (hasModels) return hasModels;
+
+  return model || caps.default_cap;
+}
+
+function modelSupportsAgent(model: string) {
+  return AGENT_ALLOW_LIST.includes(model);
+}
+
+function capOptionsForMode(
+  caps: Record<string, CodeChatModel>,
+  toolUse?: string,
+) {
+  if (toolUse !== "agent") return caps;
+  const agentEntries = Object.entries(caps).filter(([key]) =>
+    AGENT_ALLOW_LIST.includes(key),
+  );
+
+  if (agentEntries.length === 0) return caps;
+
+  return Object.fromEntries(agentEntries);
+}

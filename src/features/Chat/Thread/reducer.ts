@@ -48,7 +48,7 @@ const createChatThread = (
 };
 
 const createInitialState = (
-  tool_use: ToolUse = "explore",
+  tool_use: ToolUse = "agent",
   integration?: IntegrationMeta | null,
   maybeMode?: LspChatMode,
 ): Chat => {

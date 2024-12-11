@@ -228,7 +228,7 @@ describe("Chat", () => {
       // app.debug(select.parentElement?.parentElement, 10000);
       // expect(app.container.textContent).toContain("gpt-3.5-turbo");
 
-      expect(screen.findByText("gpt-4o-mini")).not.toBeNull();
+      expect(screen.findByText("gpt-4o")).not.toBeNull();
     });
 
     const textarea = screen.getByTestId("chat-form-textarea");
