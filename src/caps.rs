@@ -36,6 +36,8 @@ pub struct ModelRecord {
     pub supports_multimodality: bool,
     #[serde(default)]
     pub supports_clicks: bool,
+    #[serde(default)]
+    pub supports_agent: bool,
 }
 
 #[derive(Debug, Deserialize)]
