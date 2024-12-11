@@ -130,7 +130,7 @@ Go to plugin settings and set up a custom inference URL `http://127.0.0.1:8008`
 Settings > Tools > Refact.ai > Advanced > Inference URL
 </details>
 <details><summary>VSCode</summary>
-Extensions > Refact.ai Assistant > Settings > Infurl
+Extensions > Refact.ai Assistant > Settings > Address URL
 </details>
 
 ---
