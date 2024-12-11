@@ -82,8 +82,15 @@ pub fn read_integrations_d(
                     continue;
                 }
                 let file_name_str_no_yaml = file_name_str.trim_end_matches(".yaml").to_string();
+                let (_integr_name, project_path) = match split_path_into_project_and_integration(&entry.path()) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        tracing::error!("error deriving project path: {}", e);
+                        continue;
+                    }
+                };
                 if file_name_str.starts_with("cmdline_") || file_name_str.starts_with("service_") {
-                    files_to_read.push((entry.path().to_string_lossy().to_string(), file_name_str_no_yaml.to_string(), project_config_dir.clone()));
+                    files_to_read.push((entry.path().to_string_lossy().to_string(), file_name_str_no_yaml.to_string(), project_path));
                 }
             }
         }
