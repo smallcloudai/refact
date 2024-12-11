@@ -1,7 +1,7 @@
 .ToolConfirmationCard {
   position: absolute;
-  width: calc(100% - 80px);
-  bottom: 40px;
+  width: calc(100% - 100px);
+  bottom: 50px;
   left: 50%;
   transform: translateX(-50%);
 
@@ -10,7 +10,7 @@
   flex-direction: column;
   gap: 8px;
   border-radius: 8px;
-  background-color: var(--color-surface);
+  background-color: var(--gray-1);
   min-height: fit-content;
   & pre {
     margin: 0;

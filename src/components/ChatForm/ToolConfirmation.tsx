@@ -1,10 +1,14 @@
 import React from "react";
 import type { PauseReason } from "../../features/ToolConfirmation/confirmationSlice";
-import { useEventsBusForIDE } from "../../hooks";
+import {
+  useAppDispatch,
+  // useEventsBusForIDE
+} from "../../hooks";
 import { Card, Button, Text, Flex } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { Link } from "../Link";
 import styles from "./ToolConfirmation.module.css";
+import { push } from "../../features/Pages/pagesSlice";
 
 type ToolConfirmationProps = {
   pauseReasons: PauseReason[];
@@ -18,21 +22,29 @@ const getConfirmationalMessage = (
   confirmationalCommands: string[],
   denialCommands: string[],
 ) => {
-  const ruleText = `${rules.join(", ")} ${rules.length > 1 ? "rules" : "rule"}`;
+  const ruleText = `${rules.join(", ")}`;
   if (types.every((type) => type === "confirmation")) {
-    return `Following ${
-      commands.length > 1 ? "commands need" : "command needs"
-    } confirmation due to ${ruleText}.`;
+    return `${
+      commands.length > 1 ? "Commands need" : "Command needs"
+    } confirmation due to \`\`\`${ruleText}\`\`\` ${
+      rules.length > 1 ? "rules" : "rule"
+    }.`;
   } else if (types.every((type) => type === "denial")) {
-    return `Following ${
-      commands.length > 1 ? "commands were" : "command was"
-    } denied due to ${ruleText}.`;
+    return `${
+      commands.length > 1 ? "Commands were" : "Command was"
+    } denied due to \`\`\`${ruleText}\`\`\` ${
+      rules.length > 1 ? "rules" : "rule"
+    }.`;
   } else {
-    return `Following ${
-      confirmationalCommands.length > 1 ? "commands need" : "command needs"
+    return `${
+      confirmationalCommands.length > 1 ? "Commands need" : "Command needs"
     } confirmation: ${confirmationalCommands.join(", ")}.\n\nFollowing ${
       denialCommands.length > 1 ? "commands were" : "command was"
-    } denied: ${denialCommands.join(", ")}.\n\nAll due to ${ruleText}.`;
+    } denied: ${denialCommands.join(
+      ", ",
+    )}.\n\nAll due to \`\`\`${ruleText}\`\`\` ${
+      rules.length > 1 ? "rules" : "rule"
+    }.`;
   }
 };
 
@@ -40,7 +52,9 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
   pauseReasons,
   onConfirm,
 }) => {
-  const { openIntegrationsFile } = useEventsBusForIDE();
+  const dispatch = useAppDispatch();
+
+  // const { openIntegrationsFile } = useEventsBusForIDE();
 
   const commands = pauseReasons.map((reason) => reason.command);
   const rules = pauseReasons.map((reason) => reason.rule);
@@ -80,15 +94,15 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
             >{`${"```bash\n"}${command}${"\n```"}`}</Markdown>
           ))}
           <Text className={styles.ToolConfirmationText}>
-            {message.concat("\n\n")}
-            <Text className={styles.ToolConfirmationText}>
-              You can modify the ruleset in{" "}
+            <Markdown>{message.concat("\n\n")}</Markdown>
+            <Text className={styles.ToolConfirmationText} mt="3">
+              You can modify the ruleset on{" "}
               <Link
                 onClick={() => {
-                  void openIntegrationsFile();
+                  dispatch(push({ name: "integrations page" }));
                 }}
               >
-                integrations.yaml
+                Configuration Page
               </Link>
             </Text>
           </Text>
