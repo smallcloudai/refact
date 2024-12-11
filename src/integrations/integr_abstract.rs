@@ -14,18 +14,28 @@ pub trait IntegrationTrait: Send + Sync {
 
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct IntegrationAvailable {
+    #[serde(default = "default_true")]
     pub on_your_laptop: bool,
+    #[serde(default = "default_true")]
     pub when_isolated: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct IntegrationConfirmation {
+    #[serde(default)]
     pub ask_user: Vec<String>,
+    #[serde(default)]
     pub deny: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct IntegrationCommon {
+    #[serde(default)]
     pub available: IntegrationConfirmation,
+    #[serde(default)]
     pub confirmation: IntegrationAvailable,
 }
