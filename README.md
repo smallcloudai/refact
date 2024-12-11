@@ -29,7 +29,7 @@ This repository contains the Refact WebUI, designed for fine-tuning and self-hos
 
 # Demo Video 🎥
 
-https://github.com/user-attachments/assets/e69ee31d-6308-4050-9ee9-9de1b2af040e
+This would be added soon
 
 ---
 
@@ -142,16 +142,16 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 | [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                                | ✅          | ❌    | ✅           |                                                     |
 | [starcoder2/3b/base](https://huggingface.co/bigcode/starcoder2-3b)                                | ✅          | ❌    | ✅           |                                                     |
 | [starcoder2/7b/base](https://huggingface.co/bigcode/starcoder2-7b)                                | ✅          | ❌    | ✅           |                                                     |
-| [starcoder2/15b/base](https://huggingface.co/bigcode/starcoder2-15b)                              | ✅          | ❌    | ✅           |                                                     |
-| [deepseek-coder/1.3b/base](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-base)           | ✅          | ❌    | ✅           |                                                     |
-| [deepseek-coder/5.7b/mqa-base](https://huggingface.co/deepseek-ai/deepseek-coder-5.7bmqa-base)    | ✅          | ❌    | ✅           |                                                     |
-| [magicoder/6.7b](https://huggingface.co/TheBloke/Magicoder-S-DS-6.7B-GPTQ)                        | ❌          | ✅    | ❌           |                                                     |
-| [mistral/7b/instruct-v0.1](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GPTQ)         | ❌          | ✅    | ❌           |                                                     |
-| [mixtral/8x7b/instruct-v0.1](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1)         | ❌          | ✅    | ❌           |                                                     |
-| [deepseek-coder/6.7b/instruct](https://huggingface.co/TheBloke/deepseek-coder-6.7B-instruct-GPTQ) | ❌          | ✅    | ❌           |                                                     |
-| [deepseek-coder/33b/instruct](https://huggingface.co/deepseek-ai/deepseek-coder-33b-instruct)     | ❌          | ✅    | ❌           |                                                     |
-| [stable/3b/code](https://huggingface.co/stabilityai/stable-code-3b)                               | ✅          | ❌    | ❌           |                                                     |
-| [llama3/8b/instruct](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct)                  | ❌          | ✅    | ❌           |                                                     |
+| [starcoder2/15b/base](https://huggingface.co/bigcode/starcoder2-15b)                              | ✅          | ❌    | ✅           |      ✅                                              |
+| [deepseek-coder/1.3b/base](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-base)           | ✅          | ❌    | ✅           |      ✅                                              |
+| [deepseek-coder/5.7b/mqa-base](https://huggingface.co/deepseek-ai/deepseek-coder-5.7bmqa-base)    | ✅          | ❌    | ✅           |      ✅                                              |
+| [magicoder/6.7b](https://huggingface.co/TheBloke/Magicoder-S-DS-6.7B-GPTQ)                        | ❌          | ✅    | ❌           |      ✅                                              |
+| [mistral/7b/instruct-v0.1](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GPTQ)         | ❌          | ✅    | ❌           |      ✅                                              |
+| [mixtral/8x7b/instruct-v0.1](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1)         | ❌          | ✅    | ❌           |                                                      |
+| [deepseek-coder/6.7b/instruct](https://huggingface.co/TheBloke/deepseek-coder-6.7B-instruct-GPTQ) | ❌          | ✅    | ❌           |                                                      |
+| [deepseek-coder/33b/instruct](https://huggingface.co/deepseek-ai/deepseek-coder-33b-instruct)     | ❌          | ✅    | ❌           |                                                      |
+| [stable/3b/code](https://huggingface.co/stabilityai/stable-code-3b)                               | ✅          | ❌    | ❌           |                                                      |
+| [llama3/8b/instruct](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct)                  | ❌          | ✅    | ❌           |                                                      |
 
 ---
 
