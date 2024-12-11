@@ -26,3 +26,6 @@ export const INTEGRATION_DELETE_URL = "/v1/integration-delete";
 // Docker endpoints
 export const DOCKER_CONTAINER_LIST = "/v1/docker-container-list";
 export const DOCKER_CONTAINER_ACTION = "/v1/docker-container-action";
+
+export const TELEMETRY_CHAT_PATH = "/v1/telemetry-chat";
+export const TELEMETRY_NET_PATH = "/v1/telemetry-network";

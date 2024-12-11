@@ -16,7 +16,7 @@ import {
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { useAppSelector } from "./useAppSelector";
 import { extractFilePathFromPin } from "../utils";
-import { sendTelemetryEvent } from "../utils/telemetryHelper";
+
 export const usePatchActions = () => {
   const {
     diffPreview,
@@ -98,18 +98,8 @@ export const usePatchActions = () => {
               type: "warning",
               text: errorText,
             });
-            sendTelemetryEvent({
-              scope: `handleShow`,
-              success: false,
-              error_message: errorText,
-            });
           } else {
             diffPreview(patch, pin, pinMessages);
-            sendTelemetryEvent({
-              scope: `handleShow`,
-              success: true,
-              error_message: "",
-            });
           }
         })
         .catch((error: Error | { data: { detail: string } }) => {
@@ -123,11 +113,6 @@ export const usePatchActions = () => {
           setErrorMessage({
             type: "error",
             text: text,
-          });
-          sendTelemetryEvent({
-            scope: `handleShow`,
-            success: false,
-            error_message: text,
           });
         });
     },

@@ -25,6 +25,7 @@ import { clearError, setError } from "../features/Errors/errorsSlice";
 import { updateConfig } from "../features/Config/configSlice";
 import { resetAttachedImagesSlice } from "../features/AttachedImages";
 import { nextTip } from "../features/TipOfTheDay";
+import { telemetryApi } from "../services/refact/telemetry";
 
 export const listenerMiddleware = createListenerMiddleware();
 const startListening = listenerMiddleware.startListening.withTypes<
@@ -262,5 +263,69 @@ startListening({
         tools: toolResult,
       }),
     );
+  },
+});
+
+// Telemetry
+startListening({
+  // actionCreator: chatAskQuestionThunk.rejected,
+  // matcher: chatAskQuestionThunk.rejected.match,
+  matcher: isAnyOf(
+    chatAskQuestionThunk.rejected.match,
+    chatAskQuestionThunk.fulfilled.match,
+    diffApi.endpoints.patchSingleFileFromTicket.matchFulfilled,
+    diffApi.endpoints.patchSingleFileFromTicket.matchRejected,
+  ),
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    if (chatAskQuestionThunk.rejected.match(action)) {
+      const { chatId, mode } = action.meta.arg;
+      const thread =
+        chatId in state.chat.cache
+          ? state.chat.cache[chatId]
+          : state.chat.thread;
+      const scope = `sendChat_${thread.model}_${mode}`;
+
+      telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+        scope,
+        success: false,
+        error_message: action.error.message ?? JSON.stringify(action.error),
+      });
+    }
+
+    if (chatAskQuestionThunk.fulfilled.match(action)) {
+      const { chatId, mode } = action.meta.arg;
+      const thread =
+        chatId in state.chat.cache
+          ? state.chat.cache[chatId]
+          : state.chat.thread;
+      const scope = `sendChat_${thread.model}_${mode}`;
+      telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+        scope,
+        success: true,
+        error_message: "",
+      });
+    }
+
+    if (diffApi.endpoints.patchSingleFileFromTicket.matchFulfilled(action)) {
+      const success = !action.payload.results.every(
+        (result) => result.already_applied,
+      );
+      telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+        scope: "handleShow",
+        success: success,
+        error_message: success
+          ? ""
+          : "Already applied, no significant changes generated.",
+      });
+    }
+
+    if (diffApi.endpoints.patchSingleFileFromTicket.matchRejected(action)) {
+      telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+        scope: "handleShow",
+        success: false,
+        error_message: action.error.message ?? JSON.stringify(action.error),
+      });
+    }
   },
 });
