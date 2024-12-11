@@ -5,6 +5,7 @@ import { useAppDispatch } from "./useAppDispatch";
 import { popBackTo } from "../features/Pages/pagesSlice";
 import { useAppSelector } from "./useAppSelector";
 import { selectIntegration } from "../features/Chat/Thread/selectors";
+import { debugIntegrations } from "../debugConfig";
 
 export function useGoToLink() {
   const dispatch = useAppDispatch();
@@ -12,7 +13,7 @@ export function useGoToLink() {
   const maybeIntegration = useAppSelector(selectIntegration);
 
   const handleGoTo = useCallback(
-    (goto?: string) => {
+    ({ goto }: { goto?: string }) => {
       if (!goto) return;
       // TODO:  duplicated in smart links.
       const [action, payload] = goto.split(":");
@@ -24,6 +25,11 @@ export function useGoToLink() {
         }
         case "settings": {
           const isFile = isAbsolutePath(payload);
+          debugIntegrations(`[DEBUG]: maybeIntegration: `, maybeIntegration);
+          if (!maybeIntegration) {
+            debugIntegrations(`[DEBUG]: integration data is not available.`);
+            return;
+          }
           dispatch(
             popBackTo({
               name: "integrations page",
@@ -31,9 +37,11 @@ export function useGoToLink() {
               integrationName:
                 !isFile && payload !== "DEFAULT"
                   ? payload
-                  : maybeIntegration?.name,
-              integrationPath: isFile ? payload : maybeIntegration?.path,
-              projectPath: maybeIntegration?.project,
+                  : maybeIntegration.name,
+              integrationPath: isFile ? payload : maybeIntegration.path,
+              projectPath: maybeIntegration.project,
+              shouldIntermediatePageShowUp:
+                maybeIntegration.shouldIntermediatePageShowUp,
             }),
           );
           // TODO: open in the integrations
@@ -48,9 +56,11 @@ export function useGoToLink() {
     },
     [
       dispatch,
-      maybeIntegration?.name,
-      maybeIntegration?.path,
-      maybeIntegration?.project,
+      // maybeIntegration?.name,
+      // maybeIntegration?.path,
+      // maybeIntegration?.project,
+      // maybeIntegration?.shouldIntermediatePageShowUp,
+      maybeIntegration,
       queryPathThenOpenFile,
     ],
   );

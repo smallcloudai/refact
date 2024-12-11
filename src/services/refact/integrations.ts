@@ -499,6 +499,10 @@ export type IntegrationWithIconRecord = {
   // unparsed: unknown;
 };
 
+export type IntegrationWithIconRecordAndAddress = IntegrationWithIconRecord & {
+  shouldIntermediatePageShowUp?: boolean;
+};
+
 export type NotConfiguredIntegrationWithIconRecord = {
   project_path: string[];
   integr_name: string;

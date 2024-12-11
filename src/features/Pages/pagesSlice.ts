@@ -59,6 +59,7 @@ export interface IntegrationsSetupPage {
   projectPath?: string;
   integrationName?: string;
   integrationPath?: string;
+  shouldIntermediatePageShowUp?: boolean;
 }
 
 export type Page =

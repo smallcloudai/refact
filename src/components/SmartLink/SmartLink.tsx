@@ -26,7 +26,7 @@ export const SmartLink: FC<{
 
   const handleClick = useCallback(() => {
     if (sl_goto) {
-      handleGoTo(sl_goto);
+      handleGoTo({ goto: sl_goto });
       return;
     }
     if (sl_chat) {

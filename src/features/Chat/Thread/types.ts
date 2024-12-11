@@ -6,6 +6,7 @@ export type IntegrationMeta = {
   name?: string;
   path?: string;
   project?: string;
+  shouldIntermediatePageShowUp?: boolean;
 };
 export type ChatThread = {
   id: string;

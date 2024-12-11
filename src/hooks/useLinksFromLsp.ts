@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   diffApi,
   isUserMessage,
@@ -21,6 +21,7 @@ import {
   setIntegrationData,
 } from "../features/Chat";
 import { useGoToLink } from "./useGoToLink";
+import { debugIntegrations } from "../debugConfig";
 
 export function useLinksFromLsp() {
   const dispatch = useAppDispatch();
@@ -54,19 +55,47 @@ export function useLinksFromLsp() {
     return false;
   }, [messages]);
 
+  const [pendingIntegrationGoto, setPendingIntegrationGoto] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (
+      typeof maybeIntegration?.shouldIntermediatePageShowUp !== "undefined" &&
+      pendingIntegrationGoto
+    ) {
+      handleGoTo({ goto: pendingIntegrationGoto });
+      setPendingIntegrationGoto(null);
+    }
+  }, [pendingIntegrationGoto, handleGoTo, maybeIntegration]);
+
   const handleLinkAction = useCallback(
     (link: ChatLink) => {
       if (!("action" in link)) return;
-
       if (link.action === "goto" && "goto" in link) {
-        handleGoTo(link.goto);
+        const [action, payload] = link.goto.split(":");
+        if (action.toLowerCase() === "settings") {
+          debugIntegrations(
+            `[DEBUG]: this goto is integrations one, dispatching integration data`,
+          );
+          dispatch(
+            setIntegrationData({
+              name: payload,
+              shouldIntermediatePageShowUp: true,
+            }),
+          );
+          setPendingIntegrationGoto(link.goto);
+        }
+        handleGoTo({
+          goto: link.goto,
+        });
         return;
       }
 
       if (link.action === "patch-all") {
         void applyPatches(messages).then(() => {
           if ("goto" in link) {
-            handleGoTo(link.goto);
+            handleGoTo({ goto: link.goto });
           }
         });
         return;
