@@ -17,9 +17,8 @@ Welcome to the Refact.ai project! We’re excited to have you join our community
     - [Installation](#installation)
     - [Fork the Repository](#fork-the-repository)
     - [How to Create Good PR](#how-to-create-good-pr)
-    - [Adding Toolbox Function](#adding-toolbox-function)
     - [Install Linguist](#install-linguist)
-    - [Our Git Work Flow](#our-git-work-flow)
+   
 
 ---
      
@@ -34,7 +33,7 @@ Our GitHub project board is a treasure trove of ideas on how you can contribute.
 
 ## 🐛 Report Bugs
 
-Encountered an issue? Help us improve Refact.ai by reporting bugs in issue section, make sure you label the issue with correct tag! 
+Encountered an issue? Help us improve Refact.ai by reporting bugs in issue section, make sure you label the issue with correct tag [here](https://github.com/smallcloudai/refact/issues)! 
 
 A comprehensive bug report includes:
 
@@ -58,10 +57,11 @@ We’re constantly evolving, and your ideas matter, make sure you label the issu
 
 ## 📖 Improving Documentation
 
-Help us make Refact.ai more accessible by contributing to our documentation, make sure you label the issue with correct tag! Create issues [here]().
+Help us make Refact.ai more accessible by contributing to our documentation, make sure you label the issue with correct tag! Create issues [here](https://github.com/smallcloudai/web_docs_refact_ai/issues).
 
 ### Running the Documentation Server Locally
-Need help here
+Refer to this Repo : https://github.com/smallcloudai/web_docs_refact_ai
+
 
 ---
 
@@ -100,18 +100,13 @@ That should be enough to get started!
 
 If you plan to make changes, you need your own fork of the project -- clone that instead of
 the main repo. Once you have your changes ready, commit them and push them to your fork. After
-that you should be abloe to create a pull request for the main repository.
+that you should be able to create a pull request for the main repository.
 
 ---
 
 ### How to Create Good PR
 
-*Guidelines for creating a good pull request will be added here.*
-
-
-### Adding Toolbox Function
-
-UPDATE: toolbox is under reconstruction.
+Check out this here : https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/getting-started/helping-others-review-your-changes
 
 
 ### Install Linguist
@@ -122,4 +117,4 @@ to install it.
 
 If you don't plan to debug fine tuning, you can skip this step.
 
-### Our Git Work Flow
+
