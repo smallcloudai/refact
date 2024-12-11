@@ -6,6 +6,8 @@ use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
 use regex::Regex;
 use axum::extract::Path;
+use axum::extract::Query;
+
 
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
@@ -149,4 +151,31 @@ pub async fn handle_v1_integration_icon(
             .unwrap());
     }
     Err(ScratchError::new(StatusCode::NOT_FOUND, "icon not found".to_string()))
+}
+// Define a structure to match query parameters
+#[derive(Deserialize)]
+pub struct HTTPIntegrationDeleteQueryParams {
+    integration_path: String, // Optional field for flexibility
+}
+
+pub async fn handle_v1_integration_delete(
+    Query(params): Query<HTTPIntegrationDeleteQueryParams>,
+) -> axum::response::Result<Response<Body>, ScratchError> {   
+    
+    let integration_path = params.integration_path;
+    log::info!("Deleting integration path: {}", integration_path);
+
+    // If file path exists, delete it
+    if !std::path::Path::new(&integration_path).exists() {
+        return Err(ScratchError::new(StatusCode::NOT_FOUND, "integration_path not found".to_string()));
+    }
+
+    std::fs::remove_file(&integration_path).map_err(|e| {
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to delete file: {}", e))
+    })?;
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from(format!("File {} deleted ", integration_path)))
+        .unwrap())
 }
