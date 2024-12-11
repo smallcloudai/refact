@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::process::Command;
 use tokio::sync::Mutex as AMutex;
-use crate::integrations::integr_abstract::IntegrationTrait;
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
@@ -26,6 +26,7 @@ pub struct SettingsPostgres {
 
 #[derive(Default)]
 pub struct ToolPostgres {
+    pub common:  IntegrationCommon,
     pub settings_postgres: SettingsPostgres,
 }
 
@@ -40,6 +41,13 @@ impl IntegrationTrait for ToolPostgres {
                 return Err(e.to_string());
             }
         }
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
         Ok(())
     }
 
@@ -47,8 +55,13 @@ impl IntegrationTrait for ToolPostgres {
         serde_json::to_value(&self.settings_postgres).unwrap()
     }
 
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
+
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolPostgres {
+            common: self.common.clone(),
             settings_postgres: self.settings_postgres.clone()
         }) as Box<dyn Tool + Send>
     }

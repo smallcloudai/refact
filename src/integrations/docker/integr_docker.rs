@@ -9,7 +9,7 @@ use serde_json::Value;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
-use crate::integrations::integr_abstract::IntegrationTrait;
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 use crate::tools::tools_description::Tool;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num};
@@ -43,8 +43,9 @@ impl SettingsDocker {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default)]
 pub struct ToolDocker {
+    pub common:  IntegrationCommon,
     pub settings_docker: SettingsDocker,
 }
 
@@ -62,6 +63,13 @@ impl IntegrationTrait for ToolDocker {
                 return Err(e.to_string());
             }
         }
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
         Ok(())
     }
 
@@ -69,8 +77,13 @@ impl IntegrationTrait for ToolDocker {
         serde_json::to_value(&self.settings_docker).unwrap()
     }
 
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
+
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolDocker {
+            common: self.common.clone(),
             settings_docker: self.settings_docker.clone()
         }) as Box<dyn Tool + Send>
     }

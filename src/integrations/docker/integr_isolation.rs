@@ -3,8 +3,9 @@ use serde_json::Value;
 
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_ports, deserialize_ports};
 use crate::integrations::docker::docker_container_manager::Port;
-use crate::integrations::integr_abstract::IntegrationTrait;
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 use crate::tools::tools_description::Tool;
+
 
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 pub struct SettingsIsolation {
@@ -17,8 +18,9 @@ pub struct SettingsIsolation {
     pub keep_containers_alive_for_x_minutes: u64,
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default)]
 pub struct IntegrationIsolation {
+    pub common:  IntegrationCommon,
     pub settings_isolation: SettingsIsolation,
 }
 
@@ -36,11 +38,22 @@ impl IntegrationTrait for IntegrationIsolation {
                 return Err(e.to_string());
             }
         }
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
         Ok(())
     }
 
     fn integr_settings_as_json(&self) -> Value {
         serde_json::to_value(&self.settings_isolation).unwrap()
+    }
+
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
     }
 
     fn can_upgrade_to_tool(&self) -> bool { false }

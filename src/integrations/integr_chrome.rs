@@ -15,7 +15,7 @@ use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::multimodality::MultimodalElement;
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
-use crate::integrations::integr_abstract::IntegrationTrait;
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 
 use tokio::time::sleep;
 use chrono::DateTime;
@@ -66,8 +66,9 @@ pub struct SettingsChrome {
     pub tablet_scale_factor: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct ToolChrome {
+    pub common: IntegrationCommon,
     pub settings_chrome: SettingsChrome,
     pub supports_clicks: bool,
 }
@@ -155,6 +156,13 @@ impl IntegrationTrait for ToolChrome {
                 return Err(e.to_string());
             }
         }
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
         Ok(())
     }
 
@@ -162,8 +170,13 @@ impl IntegrationTrait for ToolChrome {
         serde_json::to_value(&self.settings_chrome).unwrap()
     }
 
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
+
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolChrome {
+            common: self.common.clone(),
             settings_chrome: self.settings_chrome.clone(),
             supports_clicks: false,
         }) as Box<dyn Tool + Send>
@@ -332,7 +345,7 @@ async fn setup_chrome_session(
             headless: args.headless.parse::<bool>().unwrap_or(true),
             ..Default::default()
         };
-       
+
         setup_log.push("Started new chrome process.".to_string());
         Browser::new(launch_options).map_err(|e| e.to_string())
     }?;

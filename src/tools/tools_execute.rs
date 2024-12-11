@@ -97,7 +97,7 @@ pub async fn run_tools_remotely(
 
 pub async fn run_tools_locally(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    at_tools: IndexMap<String, Arc<AMutex<Box<dyn Tool+Send>>>>,
+    tools: IndexMap<String, Arc<AMutex<Box<dyn Tool+Send>>>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
@@ -105,7 +105,7 @@ pub async fn run_tools_locally(
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let (new_messages, tools_runned) = run_tools( // todo: fix typo "runned"
-        ccx, at_tools, tokenizer, maxgen, original_messages, style
+        ccx, tools, tokenizer, maxgen, original_messages, style
     ).await?;
 
     let mut all_messages = original_messages.to_vec();
@@ -119,7 +119,7 @@ pub async fn run_tools_locally(
 
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    at_tools: IndexMap<String, Arc<AMutex<Box<dyn Tool+Send>>>>,
+    tools: IndexMap<String, Arc<AMutex<Box<dyn Tool+Send>>>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
@@ -152,7 +152,7 @@ pub async fn run_tools(
     let mut confirmation_rules = None;
 
     for t_call in last_msg_tool_calls {
-        let cmd = match at_tools.get(&t_call.function.name) {
+        let cmd = match tools.get(&t_call.function.name) {
             Some(cmd) => cmd.clone(),
             None => {
                 let tool_failed_message = tool_answer(

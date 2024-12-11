@@ -15,7 +15,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::{blocking_read_until_token_or_timeout, is_someone_listening_on_that_tcp_port};
 use crate::integrations::sessions::IntegrationSession;
 use crate::postprocessing::pp_command_output::output_mini_postprocessing;
-use crate::integrations::integr_abstract::IntegrationTrait;
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 use crate::integrations::integr_cmdline::*;
 
 
@@ -23,6 +23,7 @@ const REALLY_HORRIBLE_ROUNDTRIP: u64 = 3000;   // 3000 should be a really bad pi
 
 #[derive(Default)]
 pub struct ToolService {
+    pub common:  IntegrationCommon,
     pub name: String,
     pub cfg: CmdlineToolConfig,
 }
@@ -38,6 +39,13 @@ impl IntegrationTrait for ToolService {
                 return Err(e.to_string());
             }
         }
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
         Ok(())
     }
 
@@ -45,8 +53,13 @@ impl IntegrationTrait for ToolService {
         serde_json::to_value(&self.cfg).unwrap()
     }
 
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
+
     fn integr_upgrade_to_tool(&self, integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolService {
+            common: self.common.clone(),
             name: integr_name.to_string(),
             cfg: self.cfg.clone(),
         }) as Box<dyn Tool + Send>

@@ -13,7 +13,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
-use crate::integrations::integr_abstract::IntegrationTrait;
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_opt_num_to_str, deserialize_str_to_opt_num};
 
 
@@ -47,7 +47,7 @@ fn _default_startup_wait() -> u64 {
 
 #[derive(Default)]
 pub struct ToolCmdline {
-    // is_service: bool,
+    pub common: IntegrationCommon,
     pub name: String,
     pub cfg: CmdlineToolConfig,
 }
@@ -63,6 +63,13 @@ impl IntegrationTrait for ToolCmdline {
                 return Err(e.to_string());
             }
         }
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
         Ok(())
     }
 
@@ -70,9 +77,13 @@ impl IntegrationTrait for ToolCmdline {
         serde_json::to_value(&self.cfg).unwrap()
     }
 
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
+
     fn integr_upgrade_to_tool(&self, integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolCmdline {
-            // is_service: self.is_service,
+            common: self.common.clone(),
             name: integr_name.to_string(),
             cfg: self.cfg.clone(),
         }) as Box<dyn Tool + Send>
