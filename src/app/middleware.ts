@@ -268,8 +268,6 @@ startListening({
 
 // Telemetry
 startListening({
-  // actionCreator: chatAskQuestionThunk.rejected,
-  // matcher: chatAskQuestionThunk.rejected.match,
   matcher: isAnyOf(
     chatAskQuestionThunk.rejected.match,
     chatAskQuestionThunk.fulfilled.match,
@@ -286,11 +284,13 @@ startListening({
           : state.chat.thread;
       const scope = `sendChat_${thread.model}_${mode}`;
 
-      telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+      const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
         scope,
         success: false,
         error_message: action.error.message ?? JSON.stringify(action.error),
       });
+
+      void listenerApi.dispatch(thunk);
     }
 
     if (chatAskQuestionThunk.fulfilled.match(action)) {
@@ -300,32 +300,39 @@ startListening({
           ? state.chat.cache[chatId]
           : state.chat.thread;
       const scope = `sendChat_${thread.model}_${mode}`;
-      telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+
+      const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
         scope,
         success: true,
         error_message: "",
       });
+
+      void listenerApi.dispatch(thunk);
     }
 
     if (diffApi.endpoints.patchSingleFileFromTicket.matchFulfilled(action)) {
       const success = !action.payload.results.every(
         (result) => result.already_applied,
       );
-      telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+      const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
         scope: "handleShow",
         success: success,
         error_message: success
           ? ""
           : "Already applied, no significant changes generated.",
       });
+
+      void listenerApi.dispatch(thunk);
     }
 
     if (diffApi.endpoints.patchSingleFileFromTicket.matchRejected(action)) {
-      telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+      const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
         scope: "handleShow",
         success: false,
         error_message: action.error.message ?? JSON.stringify(action.error),
       });
+
+      void listenerApi.dispatch(thunk);
     }
   },
 });
