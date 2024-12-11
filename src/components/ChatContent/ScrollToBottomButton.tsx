@@ -17,6 +17,7 @@ export const ScrollToBottomButton = ({
         height: 35,
         bottom: 15,
         right: 15,
+        zIndex: 1,
       }}
       onClick={onClick}
     >

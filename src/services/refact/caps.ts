@@ -55,9 +55,11 @@ export type CodeChatModel = {
   supports_scratchpads: Record<
     string,
     {
-      default_system_message: string;
+      default_system_message?: string;
     }
   >;
+  supports_multimodality?: boolean;
+  supports_clicks?: boolean;
 };
 
 export type CodeCompletionModel = {
@@ -65,6 +67,9 @@ export type CodeCompletionModel = {
   n_ctx: number;
   similar_models: string[];
   supports_scratchpads: Record<string, Record<string, unknown>>;
+  supports_tools?: boolean;
+  supports_multimodality?: boolean;
+  supports_clicks?: boolean;
 };
 
 export type CapsResponse = {

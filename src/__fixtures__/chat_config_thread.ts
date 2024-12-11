@@ -3,6 +3,7 @@ import type { Chat } from "../features/Chat/Thread";
 export const CHAT_CONFIG_THREAD: Chat = {
   streaming: false,
   thread: {
+    mode: "CONFIGURE",
     id: "941fb8f4-409c-4430-a3b2-6450fafdb9f4",
     messages: [
       {

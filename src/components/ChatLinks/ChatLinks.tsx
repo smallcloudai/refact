@@ -1,8 +1,7 @@
 import React from "react";
-import { Flex, Button, Container, Box } from "@radix-ui/themes";
+import { Button } from "@radix-ui/themes";
 import { type ChatLink } from "../../services/refact/links";
-import { useAppSelector, useLinksFromLsp } from "../../hooks";
-import { selectMessages } from "../../features/Chat";
+import { useLinksFromLsp } from "../../hooks";
 import { Spinner } from "@radix-ui/themes";
 import { TruncateRight } from "../Text/TruncateRight";
 
@@ -16,43 +15,28 @@ function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
 }
 
 export const ChatLinks: React.FC = () => {
-  const messages = useAppSelector(selectMessages);
   const { linksResult, handleLinkAction, streaming } = useLinksFromLsp();
 
   if (streaming) return null;
-
-  const Wrapper = messages.length === 0 ? Box : Container;
 
   // TODO: waiting, errors, maybe add a title
 
   if (linksResult.isLoading || linksResult.isFetching) {
     return (
-      <Wrapper position="relative" mt="6">
-        <Button variant="surface" disabled>
-          <Spinner loading />
-          Checking for actions
-        </Button>
-      </Wrapper>
+      <Button variant="surface" disabled>
+        <Spinner loading />
+        Checking for actions
+      </Button>
     );
   }
 
   if (linksResult.data && linksResult.data.links.length > 0) {
-    return (
-      <Wrapper position="relative" mt="6">
-        <Flex gap="2" wrap="wrap" direction="column" align="start">
-          {linksResult.data.links.map((link, index) => {
-            const key = `chat-link-${index}`;
-            return (
-              <ChatLinkButton
-                key={key}
-                link={link}
-                onClick={handleLinkAction}
-              />
-            );
-          })}
-        </Flex>
-      </Wrapper>
-    );
+    return linksResult.data.links.map((link, index) => {
+      const key = `chat-link-${index}`;
+      return (
+        <ChatLinkButton key={key} link={link} onClick={handleLinkAction} />
+      );
+    });
   }
 
   return null;

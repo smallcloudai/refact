@@ -13,12 +13,18 @@ export const STUB_LINKS_FOR_CHAT_RESPONSE: LinksForChatResponse = {
       action: "follow-up",
       link_tooltip: "a nice tool tip message",
     },
-    { text: 'git commit -m "message"', action: "commit", link_tooltip: "" },
-    { text: "Save and return", goto: "SETTINGS:postgres", link_tooltip: "" },
+    // { text: 'git commit -m "message"', action: "commit", link_tooltip: "" },
+    // { text: "Save and return", goto: "SETTINGS:postgres", link_tooltip: "" },
     {
       text: "Investigate Project",
       action: "summarize-project",
       link_tooltip: "",
     },
+
+    // {
+    //   text: "long long long long long long long long long long long long long long long long long long ",
+    //   action: "summarize-project",
+    //   link_tooltip: "",
+    // },
   ],
 };

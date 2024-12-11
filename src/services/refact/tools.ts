@@ -90,8 +90,9 @@ export type ToolFunction = {
   agentic?: boolean;
   name: string;
   description: string;
-  parameters: ToolParams[];
-  parameters_required: string[];
+  // parameters: ToolParams[];
+  parameters: Record<string, unknown>;
+  parameters_required?: string[];
 };
 
 export type ToolCommand = {

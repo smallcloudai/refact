@@ -11,6 +11,7 @@ import {
   noCompletions,
   goodPing,
   goodUser,
+  chatLinks,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 
@@ -56,6 +57,7 @@ describe("Start a new chat", () => {
       goodUser,
       questionnaireMock,
       saveQuestionnaireMock,
+      chatLinks,
     );
 
     const { user, ...app } = render(<InnerApp />, {

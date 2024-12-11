@@ -133,7 +133,7 @@ export const IntegrationChat: Story = {
   parameters: {
     msw: {
       handlers: [
-        http.post(CHAT_LINKS_URL, () => {
+        http.post(`http://127.0.0.1:8001${CHAT_LINKS_URL}`, () => {
           return HttpResponse.json(STUB_LINKS_FOR_CHAT_RESPONSE);
         }),
       ],
