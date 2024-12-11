@@ -46,7 +46,7 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
             className={styles.IntegrationsHeaderIcon}
             alt={integrationName}
           />
-          <Heading as="h5" size="3" className={styles.IntegrationsTitle}>
+          <Heading as="h5" size="3">
             Setup{" "}
             {integrationName.includes("TEMPLATE")
               ? integrationName.startsWith("cmdline")

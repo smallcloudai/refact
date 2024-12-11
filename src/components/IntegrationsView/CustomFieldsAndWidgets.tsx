@@ -18,7 +18,6 @@ export const CustomInputField = ({
   type,
   id,
   name,
-  width,
   size = "long",
   color = "gray",
   onChange,
@@ -48,18 +47,7 @@ export const CustomInputField = ({
   onChange?: ChangeEventHandler<HTMLInputElement>;
 }) => {
   return (
-    <Box
-      width={
-        width
-          ? width
-          : size === "short"
-            ? {
-                xs: "50%",
-                initial: "100%",
-              }
-            : "100%"
-      }
-    >
+    <Box width="100%">
       {size !== "multiline" ? (
         <TextField.Root
           id={id}

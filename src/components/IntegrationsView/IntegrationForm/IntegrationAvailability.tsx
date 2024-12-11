@@ -1,4 +1,4 @@
-import { DataList, Flex, Switch } from "@radix-ui/themes";
+import { Flex, Switch } from "@radix-ui/themes";
 import type { FC } from "react";
 import { CustomLabel } from "../CustomFieldsAndWidgets";
 import { toPascalCase } from "../../../utils/toPascalCase";
@@ -19,35 +19,23 @@ export const IntegrationAvailability: FC<IntegrationAvailabilityProps> = ({
   };
 
   return (
-    <DataList.Item
-      style={{
-        marginBottom: "0.75rem",
-      }}
-    >
-      <DataList.Label>
-        <CustomLabel
-          label={toPascalCase(
-            fieldName === "on_your_laptop" ? "enabled" : "run_in_docker",
-          )}
-        />
-      </DataList.Label>
-      <DataList.Value>
-        <Flex
-          width="100%"
-          align="center"
-          gap="3"
-          mt={{
-            xs: "0",
-            initial: "2",
-          }}
-        >
-          <Switch
-            size="2"
-            checked={value}
-            onCheckedChange={handleSwitchChange}
+    <Flex style={{ marginBottom: "0.75rem" }}>
+      <Flex align="center" justify="between">
+        <label htmlFor={`switch-${fieldName}`}>
+          <CustomLabel
+            label={toPascalCase(
+              fieldName === "on_your_laptop" ? "enabled" : "run_in_docker",
+            )}
           />
-        </Flex>
-      </DataList.Value>
-    </DataList.Item>
+        </label>
+        <Switch
+          id={`switch-${fieldName}`}
+          size="2"
+          ml="2"
+          checked={value}
+          onCheckedChange={handleSwitchChange}
+        />
+      </Flex>
+    </Flex>
   );
 };

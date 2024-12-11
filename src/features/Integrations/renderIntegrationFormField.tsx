@@ -9,7 +9,8 @@ import type {
   IntegrationField,
   IntegrationPrimitive,
 } from "../../services/refact";
-import { DataList, Flex } from "@radix-ui/themes";
+import styles from "./renderIntegrationFormField.module.css";
+import { Flex } from "@radix-ui/themes";
 import { toPascalCase } from "../../utils/toPascalCase";
 import { SmartLink } from "../../components/SmartLink";
 import { Markdown } from "../../components/Markdown";
@@ -86,7 +87,8 @@ export const renderIntegrationFormField = ({
   const maybeSmartlinks = field.smartlinks;
 
   return (
-    <DataList.Item
+    <Flex
+      direction="column"
       key={fieldKey}
       style={{
         width: "100%",
@@ -96,72 +98,67 @@ export const renderIntegrationFormField = ({
         position: isFieldVisible ? "inherit" : "absolute",
         transition: "opacity 0.3s ease-in-out",
       }}
+      className={styles.flexField}
     >
-      <DataList.Label>
+      <Flex direction="column" width="100%" mb="2" className={styles.flexLabel}>
         <CustomLabel
           htmlFor={fieldKey}
           label={field.f_label ? field.f_label : toPascalCase(fieldKey)}
           mt="2"
         />
-      </DataList.Label>
-      <DataList.Value
-        style={{
-          width: "100%",
-        }}
-      >
-        <Flex direction="column" gap="2" align="start" width={"100%"}>
-          {f_type !== "bool" && f_type !== "output" && f_type !== "tool" && (
+      </Flex>
+      <Flex direction="column" gap="2" align="start" width="100%">
+        {f_type !== "bool" && f_type !== "output" && f_type !== "tool" && (
+          <CustomInputField
+            {...commonProps}
+            type={f_type === "int" ? "number" : "text"}
+            size={f_size}
+            defaultValue={commonProps.defaultValue?.toString()}
+          />
+        )}
+        {f_type === "bool" && (
+          <CustomBoolField
+            {...commonProps}
+            defaultValue={Boolean(commonProps.defaultValue)}
+          />
+        )}
+        {(f_type === "output" || f_type === "tool") && (
+          <>
+            <Markdown>
+              {"```json\n" +
+                JSON.stringify(values[fieldKey], null, 2) +
+                "\n```"}
+            </Markdown>
             <CustomInputField
-              {...commonProps}
-              type={f_type === "int" ? "number" : "text"}
-              size={f_size}
-              defaultValue={commonProps.defaultValue?.toString()}
+              type="text"
+              size="multiline"
+              defaultValue={JSON.stringify(values[fieldKey])}
+              name={fieldKey}
             />
+          </>
+        )}
+        {field.f_desc && (
+          <CustomDescriptionField>{field.f_desc}</CustomDescriptionField>
+        )}
+        {/* TODO: implement EDITOR goto, and remove this condition */}
+        {maybeSmartlinks &&
+          !maybeSmartlinks.every(
+            (smartlink) => smartlink.sl_goto?.startsWith("EDITOR"),
+          ) && (
+            <Flex align="center">
+              {maybeSmartlinks.map((smartlink, index) => (
+                <SmartLink
+                  isSmall
+                  key={`smartlink-${fieldKey}-${index}`}
+                  smartlink={smartlink}
+                  integrationName={integrationName}
+                  integrationPath={integrationPath}
+                  integrationProject={integrationProject}
+                />
+              ))}
+            </Flex>
           )}
-          {f_type === "bool" && (
-            <CustomBoolField
-              {...commonProps}
-              defaultValue={Boolean(commonProps.defaultValue)}
-            />
-          )}
-          {(f_type === "output" || f_type === "tool") && (
-            <>
-              <Markdown>
-                {"```json\n" +
-                  JSON.stringify(values[fieldKey], null, 2) +
-                  "\n```"}
-              </Markdown>
-              <CustomInputField
-                type="text"
-                size="multiline"
-                defaultValue={JSON.stringify(values[fieldKey])}
-                name={fieldKey}
-              />
-            </>
-          )}
-          {field.f_desc && (
-            <CustomDescriptionField>{field.f_desc}</CustomDescriptionField>
-          )}
-          {/* TODO: implement EDITOR goto, and remove this condition */}
-          {maybeSmartlinks &&
-            !maybeSmartlinks.every(
-              (smartlink) => smartlink.sl_goto?.startsWith("EDITOR"),
-            ) && (
-              <Flex align="center">
-                {maybeSmartlinks.map((smartlink, index) => (
-                  <SmartLink
-                    isSmall
-                    key={`smartlink-${fieldKey}-${index}`}
-                    smartlink={smartlink}
-                    integrationName={integrationName}
-                    integrationPath={integrationPath}
-                    integrationProject={integrationProject}
-                  />
-                ))}
-              </Flex>
-            )}
-        </Flex>
-      </DataList.Value>
-    </DataList.Item>
+      </Flex>
+    </Flex>
   );
 };

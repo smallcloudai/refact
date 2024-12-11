@@ -11,7 +11,7 @@ import type {
 
 import styles from "./IntegrationForm.module.css";
 import { Spinner } from "../../Spinner";
-import { Button, DataList, Flex, Heading, Text } from "@radix-ui/themes";
+import { Button, Flex, Grid, Heading, Text } from "@radix-ui/themes";
 import { IntegrationDocker } from "../IntegrationDocker";
 import { SmartLink } from "../../SmartLink";
 import { renderIntegrationFormField } from "../../../features/Integrations/renderIntegrationFormField";
@@ -153,52 +153,48 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
         id={`form-${integration.data.integr_name}`}
       >
         <Flex direction="column" gap="2">
-          <DataList.Root
-            mt="2"
-            mb="0"
-            size="1"
-            orientation={{
-              xs: "horizontal",
-              initial: "vertical",
-            }}
-          >
-            {integration.data.integr_values.available &&
-              Object.entries(integration.data.integr_values.available).map(
-                ([key, _]: [string, boolean]) => (
-                  <IntegrationAvailability
-                    key={key}
-                    fieldName={key}
-                    value={availabilityValues[key]}
-                    onChange={handleAvailabilityChange}
-                  />
-                ),
-              )}
-            {Object.keys(importantFields).map((fieldKey) => {
-              if (integration.data) {
-                return renderIntegrationFormField({
-                  fieldKey: fieldKey,
-                  values: integration.data.integr_values,
-                  field: integration.data.integr_schema.fields[fieldKey],
-                  integrationName: integration.data.integr_name,
-                  integrationPath: integration.data.integr_config_path,
-                  integrationProject: integration.data.project_path,
-                });
-              }
-            })}
-            {Object.keys(extraFields).map((fieldKey) => {
-              if (integration.data) {
-                return renderIntegrationFormField({
-                  fieldKey: fieldKey,
-                  values: integration.data.integr_values,
-                  field: integration.data.integr_schema.fields[fieldKey],
-                  integrationName: integration.data.integr_name,
-                  integrationPath: integration.data.integr_config_path,
-                  integrationProject: integration.data.project_path,
-                  isFieldVisible: areExtraFieldsRevealed,
-                });
-              }
-            })}
-          </DataList.Root>
+          <Grid mt="2" mb="0">
+            <Flex gap="4" mb="3" className={styles.switchInline}>
+              {integration.data.integr_values.available &&
+                Object.entries(integration.data.integr_values.available).map(
+                  ([key, _]: [string, boolean]) => (
+                    <IntegrationAvailability
+                      key={key}
+                      fieldName={key}
+                      value={availabilityValues[key]}
+                      onChange={handleAvailabilityChange}
+                    />
+                  ),
+                )}
+            </Flex>
+            <Grid gap="2" className={styles.gridContainer}>
+              {Object.keys(importantFields).map((fieldKey) => {
+                if (integration.data) {
+                  return renderIntegrationFormField({
+                    fieldKey: fieldKey,
+                    values: integration.data.integr_values,
+                    field: integration.data.integr_schema.fields[fieldKey],
+                    integrationName: integration.data.integr_name,
+                    integrationPath: integration.data.integr_config_path,
+                    integrationProject: integration.data.project_path,
+                  });
+                }
+              })}
+              {Object.keys(extraFields).map((fieldKey) => {
+                if (integration.data) {
+                  return renderIntegrationFormField({
+                    fieldKey: fieldKey,
+                    values: integration.data.integr_values,
+                    field: integration.data.integr_schema.fields[fieldKey],
+                    integrationName: integration.data.integr_name,
+                    integrationPath: integration.data.integr_config_path,
+                    integrationProject: integration.data.project_path,
+                    isFieldVisible: areExtraFieldsRevealed,
+                  });
+                }
+              })}
+            </Grid>
+          </Grid>
           {Object.values(extraFields).length > 0 && (
             <Button
               variant="soft"
@@ -242,7 +238,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
             <Heading as="h4" size="3">
               Ask AI to do it for you (experimental)
             </Heading>
-            <Flex align="center" gap="2" wrap="wrap">
+            <Flex align="center" gap="2" mt="2" wrap="wrap">
               {integration.data.integr_schema.smartlinks.map(
                 (smartlink, index) => {
                   return (

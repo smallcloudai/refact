@@ -36,12 +36,23 @@
     width: 100%;
   }
 }
-.switchInline div {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  margin-right: 15px;
+@media (max-width: 368px) {
+  .switchInline {
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 10px;
+  }
 }
-.switchInline div dd div {
-  margin-left: 5px;
+
+.gridContainer {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.gridContainer div:nth-child(n + 5) {
+  grid-column: 1 / -1;
+}
+@media (max-width: 400px) {
+  .gridContainer {
+    grid-template-columns: repeat(1, 1fr);
+  }
 }
