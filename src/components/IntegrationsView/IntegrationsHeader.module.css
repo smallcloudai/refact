@@ -8,6 +8,13 @@
   background-color: var(--color-background);
   z-index: 1000;
 }
+.IntegrationsTitle {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  width: calc(100% - 100px);
+  display: inline-block;
+}
 
 .IntegrationsHeaderIcon {
   max-width: 24px;

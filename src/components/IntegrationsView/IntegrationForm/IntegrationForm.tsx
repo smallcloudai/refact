@@ -239,10 +239,10 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
       {integration.data.integr_schema.smartlinks &&
         integration.data.integr_schema.smartlinks.length > 0 && (
           <Flex width="100%" direction="column" gap="2" mt="4">
-            <Heading as="h4" size="4">
+            <Heading as="h4" size="3">
               Ask AI to do it for you (experimental)
             </Heading>
-            <Flex align="center" gap="4" wrap="wrap">
+            <Flex align="center" gap="2" wrap="wrap">
               {integration.data.integr_schema.smartlinks.map(
                 (smartlink, index) => {
                   return (

@@ -3,6 +3,7 @@ import type { FC } from "react";
 import type { SmartLink as SmartLinkType } from "../../services/refact";
 import { Button, DropdownMenu } from "@radix-ui/themes";
 import { useSmartLinks } from "../../hooks";
+import styles from "./SmartLink.module.css";
 
 export const SmartLink: FC<{
   smartlink: SmartLinkType;
@@ -67,6 +68,7 @@ export const SmartLink: FC<{
       color="gray"
       type="button"
       variant="outline"
+      className={styles.magicButton}
     >
       {smartlink.sl_chat ? "✨ " : ""}
       {smartlink.sl_label}
