@@ -7,53 +7,66 @@ use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ContextEnum, ChatMessage, ChatContent};
+use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 
 use crate::tools::tools_description::Tool;
 use serde_json::Value;
-use crate::integrations::integr_abstract::Integration;
+use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[allow(non_snake_case)]
-pub struct IntegrationGitHub {
-    pub gh_binary_path: Option<String>,
-    pub GH_TOKEN: String,
+pub struct SettingsGitHub {
+    pub gh_binary_path: String,
+    pub gh_token: String,
 }
 
 #[derive(Default)]
 pub struct ToolGithub {
-    pub integration_github: IntegrationGitHub,
+    pub common:  IntegrationCommon,
+    pub settings_github: SettingsGitHub,
 }
 
-impl Integration for ToolGithub {
+impl IntegrationTrait for ToolGithub {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
-        let integration_github = serde_json::from_value::<IntegrationGitHub>(value.clone())
-            .map_err(|e|e.to_string())?;
-        self.integration_github = integration_github;
+        match serde_json::from_value::<SettingsGitHub>(value.clone()) {
+            Ok(settings_github) => {
+                info!("Github settings applied: {:?}", settings_github);
+                self.settings_github = settings_github;
+            },
+            Err(e) => {
+                error!("Failed to apply settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        };
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        };
         Ok(())
     }
 
-    fn integr_yaml2json(&self, value: &serde_yaml::Value) -> Result<Value, String> {
-        let integration_github = serde_yaml::from_value::<IntegrationGitHub>(value.clone()).map_err(|e| {
-            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-            format!("{}{}", e.to_string(), location)
-        })?;
-        serde_json::to_value(&integration_github).map_err(|e| e.to_string())
+    fn integr_settings_as_json(&self) -> Value {
+        serde_json::to_value(&self.settings_github).unwrap_or_default()
     }
 
-    fn integr_upgrade_to_tool(&self, integr_name: &str) -> Box<dyn Tool + Send> {
-        Box::new(ToolGithub {integration_github: self.integration_github.clone()}) as Box<dyn Tool + Send>
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
     }
 
-    fn integr_settings_as_json(&self) -> Result<Value, String> {
-        serde_json::to_value(&self.integration_github).map_err(|e| e.to_string())
+    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
+        Box::new(ToolGithub {
+            common: self.common.clone(),
+            settings_github: self.settings_github.clone()
+        }) as Box<dyn Tool + Send>
     }
 
-    fn integr_settings_default(&self) -> String { DEFAULT_GITHUB_INTEGRATION_YAML.to_string() }
-    fn icon_link(&self) -> String { "https://cdn-icons-png.flaticon.com/512/25/25231.png".to_string() }
+    fn integr_schema(&self) -> &str { GITHUB_INTEGRATION_SCHEMA }
 }
 
 #[async_trait]
@@ -73,11 +86,14 @@ impl Tool for ToolGithub {
         };
         let command_args = parse_command_args(args)?;
 
-        let gh_command = self.integration_github.gh_binary_path.as_deref().unwrap_or("gh");
-        let output = Command::new(gh_command)
+        let mut gh_binary_path = self.settings_github.gh_binary_path.clone();
+        if gh_binary_path.is_empty() {
+            gh_binary_path = "gh".to_string();
+        }
+        let output = Command::new(gh_binary_path)
             .args(&command_args)
             .current_dir(&project_dir)
-            .env("GH_TOKEN", &self.integration_github.GH_TOKEN)
+            .env("gh_token", &self.settings_github.gh_token)
             .output()
             .await
             .map_err(|e| e.to_string())?;
@@ -123,6 +139,20 @@ impl Tool for ToolGithub {
         command_args.insert(0, "gh".to_string());
         Ok(command_args.join(" "))
     }
+
+    fn tool_depends_on(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn usage(&mut self) -> &mut Option<ChatUsage> {
+        static mut DEFAULT_USAGE: Option<ChatUsage> = None;
+        #[allow(static_mut_refs)]
+        unsafe { &mut DEFAULT_USAGE }
+    }
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
+    }
 }
 
 fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, String> {
@@ -146,9 +176,31 @@ fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, Stri
     Ok(parsed_args)
 }
 
-const DEFAULT_GITHUB_INTEGRATION_YAML: &str = r#"
-# GitHub integration
-
-# GH_TOKEN: "GH_xxx"                      # To get a token, check out https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
-# gh_binary_path: "/opt/homebrew/bin/gh"  # Uncomment to set a custom path for the gh binary, defaults to "gh"
+const GITHUB_INTEGRATION_SCHEMA: &str = r#"
+fields:
+  gh_binary_path:
+    f_type: string_long
+    f_desc: "Path to the GitHub CLI binary. Leave empty to use the default 'gh' command."
+    f_placeholder: "/usr/local/bin/gh"
+    f_label: "GH Binary Path"
+  gh_token:
+    f_type: string_long
+    f_desc: "GitHub Personal Access Token for authentication."
+    f_placeholder: "ghp_xxxxxxxxxxxxxxxx"
+description: |
+  The GitHub integration allows interaction with GitHub repositories using the GitHub CLI.
+  It provides functionality for various GitHub operations such as creating issues, pull requests, and more.
+smartlinks:
+  - sl_label: "Test"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 The `github` (`gh`) tool should be visible now. To test the tool, list opened pull requests for `smallcloudai/refact-lsp`, and briefly describe them and express
+          happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: ["gh * delete *", "gh * close *"]
+  deny_default: ["gh auth token *"]
 "#;

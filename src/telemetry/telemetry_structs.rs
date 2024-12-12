@@ -150,13 +150,3 @@ pub struct TelemetryChat {
     pub success: bool,
     pub error_message: String, // empty if no error
 }
-
-impl TelemetryChat {
-    pub fn new(scope: String, success: bool, error_message: String) -> Self {
-        Self {
-            scope,
-            success,
-            error_message,
-        }
-    }    
-}

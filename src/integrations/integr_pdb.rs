@@ -14,10 +14,10 @@ use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ContextEnum, ChatMessage, ChatContent};
+use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::global_context::GlobalContext;
-use crate::integrations::integr_abstract::Integration;
+use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::integrations::process_io_utils::{first_n_chars, last_n_chars, last_n_lines, write_to_stdin_and_flush, blocking_read_until_token_or_timeout};
 
@@ -25,14 +25,14 @@ use crate::integrations::process_io_utils::{first_n_chars, last_n_chars, last_n_
 const SESSION_TIMEOUT_AFTER_INACTIVITY: Duration = Duration::from_secs(30 * 60);
 const PDB_TOKEN: &str = "(Pdb)";
 
-
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct SettingsPdb {
-    pub python_path: Option<String>,
+    pub python_path: String,
 }
 
 #[derive(Default)]
 pub struct ToolPdb {
+    pub common:  IntegrationCommon,
     pub settings_pdb: SettingsPdb,
 }
 
@@ -66,39 +66,51 @@ impl IntegrationSession for PdbSession
     }
 }
 
-impl Integration for ToolPdb {
-    fn as_any(&self) -> &dyn std::any::Any { self }
+impl IntegrationTrait for ToolPdb {
+    fn as_any(&self) -> &dyn Any { self }
 
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
-        let settings_pdb = serde_json::from_value::<SettingsPdb>(value.clone())
-            .map_err(|e|e.to_string())?;
-        self.settings_pdb = settings_pdb;
+        match serde_json::from_value::<SettingsPdb>(value.clone()) {
+            Ok(settings_pdb) => {
+                info!("PDB settings applied: {:?}", settings_pdb);
+                self.settings_pdb = settings_pdb;
+            },
+            Err(e) => {
+                error!("Failed to apply settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        };
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        };
         Ok(())
     }
 
-    fn integr_yaml2json(&self, value: &serde_yaml::Value) -> Result<Value, String> {
-        let integration_github = serde_yaml::from_value::<SettingsPdb>(value.clone()).map_err(|e| {
-            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-            format!("{}{}", e.to_string(), location)
-        })?;
-        serde_json::to_value(&integration_github).map_err(|e| e.to_string())
+    fn integr_settings_as_json(&self) -> Value {
+        serde_json::to_value(&self.settings_pdb).unwrap_or_default()
     }
 
-    fn integr_upgrade_to_tool(&self, integr_name: &str) -> Box<dyn Tool + Send> {
-        Box::new(ToolPdb {settings_pdb: self.settings_pdb.clone()}) as Box<dyn Tool + Send>
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
+    
+    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
+        Box::new(ToolPdb {
+            common: self.common.clone(),
+            settings_pdb: self.settings_pdb.clone()
+        }) as Box<dyn Tool + Send>
     }
 
-    fn integr_settings_as_json(&self) -> Result<Value, String> {
-        serde_json::to_value(&self.settings_pdb).map_err(|e| e.to_string())
-    }
-
-    fn integr_settings_default(&self) -> String { DEFAULT_PDB_INTEGRATION_YAML.to_string() }
-    fn icon_link(&self) -> String { "https://cdn-icons-png.flaticon.com/512/919/919852.png".to_string() }
+    fn integr_schema(&self) -> &str { PDB_INTEGRATION_SCHEMA }
 }
 
 #[async_trait]
 impl Tool for ToolPdb {
-    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn as_any(&self) -> &dyn Any { self }
 
     async fn tool_execute(
         &mut self,
@@ -115,8 +127,10 @@ impl Tool for ToolPdb {
         };
 
         let session_hashmap_key = get_session_hashmap_key("pdb", &chat_id);
-        let python_command = self.settings_pdb.python_path.clone().unwrap_or_else(|| "python3".to_string());
-
+        let mut python_command = self.settings_pdb.python_path.clone();
+        if python_command.is_empty() {
+            python_command = "python3".to_string();
+        }
         if command_args.windows(2).any(|w| w == ["-m", "pdb"]) {
             let output = start_pdb_session(&python_command, &mut command_args, &session_hashmap_key, gcx.clone(), 10).await?;
             return Ok(tool_answer(output, tool_call_id));
@@ -155,8 +169,8 @@ impl Tool for ToolPdb {
         &self,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        let commmand = parse_command(args)?; // todo: fix typo "commmand"
-        let command_args = split_command(&commmand)?;
+        let command = parse_command(args)?;
+        let command_args = split_command(&command)?;
         Ok(command_args.join(" "))
     }
 
@@ -175,6 +189,20 @@ impl Tool for ToolPdb {
             ],
             parameters_required: vec!["command".to_string()],
         }
+    }
+
+    fn tool_depends_on(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn usage(&mut self) -> &mut Option<ChatUsage> {
+        static mut DEFAULT_USAGE: Option<ChatUsage> = None;
+        #[allow(static_mut_refs)]
+        unsafe { &mut DEFAULT_USAGE }
+    }
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
     }
 }
 
@@ -339,8 +367,27 @@ fn format_error(error_title: &str, error: &str) -> String
     }
 }
 
-const DEFAULT_PDB_INTEGRATION_YAML: &str = r#"
-# Python debugger
-
-# python_path: "/opt/homebrew/bin/python3"  # Uncomment to set a custom python path, defaults to "python3"
+const PDB_INTEGRATION_SCHEMA: &str = r#"
+fields:
+  python_path:
+    f_type: string_long
+    f_desc: "Path to the Python interpreter. Leave empty to use the default 'python3' command."
+    f_placeholder: "/opt/homebrew/bin/python3"
+    f_label: "Python Interpreter Path"
+description: |
+  The PDB integration allows interaction with the Python debugger for inspecting variables and exploring program execution.
+  It provides functionality for debugging Python scripts and applications.
+smartlinks:
+  - sl_label: "Test"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 The pdb tool should be visible now. To test the tool, start a debugging session for a simple Python script, set a breakpoint, and inspect some variables.
+          If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: []
+  deny_default: []
 "#;

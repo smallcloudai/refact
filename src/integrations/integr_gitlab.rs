@@ -8,51 +8,63 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ContextEnum, ChatMessage};
+use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 use crate::tools::tools_description::Tool;
-use crate::integrations::integr_abstract::Integration;
-
+use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[allow(non_snake_case)]
-pub struct IntegrationGitLab {
-    pub glab_binary_path: Option<String>,
-    pub GITLAB_TOKEN: String,
+pub struct SettingsGitLab {
+    pub glab_binary_path: String,
+    pub glab_token: String,
 }
 
 #[derive(Default)]
 pub struct ToolGitlab {
-    pub integration_gitlab: IntegrationGitLab,
+    pub common:  IntegrationCommon,
+    pub settings_gitlab: SettingsGitLab,
 }
 
-impl Integration for ToolGitlab{
+impl IntegrationTrait for ToolGitlab {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
-        let integration_gitlab = serde_json::from_value::<IntegrationGitLab>(value.clone())
-            .map_err(|e|e.to_string())?;
-        self.integration_gitlab = integration_gitlab;
+        match serde_json::from_value::<SettingsGitLab>(value.clone()) {
+            Ok(settings_gitlab) => {
+                info!("GitLab settings applied: {:?}", settings_gitlab);
+                self.settings_gitlab = settings_gitlab;
+            },
+            Err(e) => {
+                error!("Failed to apply settings: {}\n{:?}", e, value);
+                return Err(e.to_string())
+            }
+        };
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        };
         Ok(())
     }
 
-    fn integr_yaml2json(&self, value: &serde_yaml::Value) -> Result<Value, String> {
-        let integration_gitlab = serde_yaml::from_value::<IntegrationGitLab>(value.clone()).map_err(|e| {
-            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-            format!("{}{}", e.to_string(), location)
-        })?;
-        serde_json::to_value(&integration_gitlab).map_err(|e| e.to_string())
+    fn integr_settings_as_json(&self) -> Value {
+        serde_json::to_value(&self.settings_gitlab).unwrap_or_default()
     }
 
-    fn integr_upgrade_to_tool(&self, integr_name: &str) -> Box<dyn Tool + Send> {
-        Box::new(ToolGitlab {integration_gitlab: self.integration_gitlab.clone()}) as Box<dyn Tool + Send>
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
+    
+    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
+        Box::new(ToolGitlab {
+            common: self.common.clone(),
+            settings_gitlab: self.settings_gitlab.clone()
+        }) as Box<dyn Tool + Send>
     }
 
-    fn integr_settings_as_json(&self) -> Result<Value, String> {
-        serde_json::to_value(&self.integration_gitlab).map_err(|e| e.to_string())
-    }
-
-    fn integr_settings_default(&self) -> String { DEFAULT_GITLAB_INTEGRATION_YAML.to_string() }
-    fn icon_link(&self) -> String { "https://cdn-icons-png.flaticon.com/512/5968/5968853.png".to_string() }
+    fn integr_schema(&self) -> &str { GITLAB_INTEGRATION_SCHEMA }
 }
 
 #[async_trait]
@@ -72,11 +84,14 @@ impl Tool for ToolGitlab {
         };
         let command_args = parse_command_args(args)?;
 
-        let glab_command = self.integration_gitlab.glab_binary_path.as_deref().unwrap_or("glab");
-        let output = Command::new(glab_command)
+        let mut glab_binary_path = self.settings_gitlab.glab_binary_path.clone();
+        if glab_binary_path.is_empty() {
+            glab_binary_path = "glab".to_string();
+        }
+        let output = Command::new(glab_binary_path)
             .args(&command_args)
             .current_dir(&project_dir)
-            .env("GITLAB_TOKEN", &self.integration_gitlab.GITLAB_TOKEN)
+            .env("GITLAB_TOKEN", &self.settings_gitlab.glab_token)
             .output()
             .await
             .map_err(|e| e.to_string())?;
@@ -105,7 +120,7 @@ impl Tool for ToolGitlab {
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: crate::call_validation::ChatContent::SimpleText(content),
+            content: ChatContent::SimpleText(content),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()
@@ -121,6 +136,20 @@ impl Tool for ToolGitlab {
         let mut command_args = parse_command_args(args)?;
         command_args.insert(0, "glab".to_string());
         Ok(command_args.join(" "))
+    }
+
+    fn tool_depends_on(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn usage(&mut self) -> &mut Option<ChatUsage> {
+        static mut DEFAULT_USAGE: Option<ChatUsage> = None;
+        #[allow(static_mut_refs)]
+        unsafe { &mut DEFAULT_USAGE }
+    }
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
     }
 }
 
@@ -145,9 +174,31 @@ fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, Stri
     Ok(parsed_args)
 }
 
-const DEFAULT_GITLAB_INTEGRATION_YAML: &str = r#"
-# GitLab integration: install on mac using "brew install glab"
-
-# GITLAB_TOKEN: "glpat-xxx"                   # To get a token, check out https://docs.gitlab.com/ee/user/profile/personal_access_tokens
-# glab_binary_path: "/opt/homebrew/bin/glab"  # Uncomment to set a custom path for the glab binary, defaults to "glab"
+const GITLAB_INTEGRATION_SCHEMA: &str = r#"
+fields:
+  glab_binary_path:
+    f_type: string_long
+    f_desc: "Path to the GitLab CLI binary. Leave empty to use the default 'glab' command."
+    f_placeholder: "/usr/local/bin/glab"
+    f_label: "GLAB Binary Path"
+  glab_token:
+    f_type: string_long
+    f_desc: "GitLab Personal Access Token for authentication."
+    f_placeholder: "glpat_xxxxxxxxxxxxxxxx"
+description: |
+  The GitLab integration allows interaction with GitLab repositories using the GitLab CLI.
+  It provides functionality for various GitLab operations such as creating issues, merge requests, and more.
+smartlinks:
+  - sl_label: "Test"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 The `gitlab` (`glab`) tool should be visible now. To test the tool, list opened merge requests for your GitLab project, and briefly describe them and express
+          happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: ["glab * delete *"]
+  deny_default: ["glab auth token *"]
 "#;

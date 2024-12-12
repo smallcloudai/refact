@@ -169,32 +169,6 @@ impl Tool for ToolPostgres {
     }
 }
 
-// const DEFAULT_POSTGRES_INTEGRATION_YAML: &str = r#"
-// postgres:
-//   enable: true
-//   psql_binary_path: "/path/to/psql"
-//   host: "my_postgres_for_django"
-//   user: "vasya1337"
-//   password: "$POSTGRES_PASSWORD"
-//   db: "mydjango"
-//   available:
-//     on_your_laptop:
-//       - project_pattern: "*web_workspace/project1"
-//         db: "mydjango2"
-//         enable: true
-//     when_isolated:
-//       user: "vasya1338"
-//       enable: true
-//   docker:
-//     my_postgres_for_django:
-//       image: "postgres:13"
-//       environment:
-//         POSTGRES_DB: "mydjango"
-//         POSTGRES_USER: "vasya1337"
-//         POSTGRES_PASSWORD: "$POSTGRES_PASSWORD"
-// "#;
-
-
 pub const POSTGRES_INTEGRATION_SCHEMA: &str = r#"
 fields:
   host:

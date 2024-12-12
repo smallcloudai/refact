@@ -20,8 +20,7 @@ pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) -> St
     let files = vec![
         ("bring-your-own-key.yaml", crate::caps::BRING_YOUR_OWN_KEY_SAMPLE),
         ("customization.yaml", crate::yaml_configs::customization_compiled_in::COMPILED_IN_INITIAL_USER_YAML),
-        ("privacy.yaml", crate::privacy_compiled_in::COMPILED_IN_INITIAL_PRIVACY_YAML),
-        ("integrations.yaml", crate::integrations::INTEGRATIONS_DEFAULT_YAML),
+        ("privacy.yaml", crate::privacy_compiled_in::COMPILED_IN_INITIAL_PRIVACY_YAML)
     ];
 
     for (file_name, content) in files {
