@@ -74,6 +74,91 @@ pub async fn handle_v1_links(
     tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
     let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), gcx.read().await.cmdline.experimental).await;
 
+    if post.meta.chat_mode == ChatMode::CONFIGURE {
+        // links.push(Link {
+        //     action: LinkAction::Goto,
+        //     text: "Return".to_string(),
+        //     goto: Some("SETTINGS:DEFAULT".to_string()),
+        //     current_config_file: None,
+        //     link_tooltip: format!(""),
+        //     link_payload: None,
+        // });
+
+        if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
+            links.push(Link {
+                action: LinkAction::PatchAll,
+                text: "Save and return".to_string(),
+                goto: Some("SETTINGS:DEFAULT".to_string()),
+                current_config_file: None,
+                link_tooltip: format!(""),
+                link_payload: None,
+            });
+        }
+    }
+
+    // GIT uncommitted
+    if post.meta.chat_mode == ChatMode::AGENT && false {
+        let mut project_changes = Vec::new();
+        for commit in get_commit_information_from_current_changes(gcx.clone()).await {
+            let project_name = commit.project_path.to_file_path().ok()
+                .and_then(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
+                .unwrap_or_else(|| "".to_string());
+            let tooltip_message = format!(
+                "git commit -m \"{}{}\"\n{}",
+                commit.commit_message.lines().next().unwrap_or(""),
+                if commit.commit_message.lines().count() > 1 { "..." } else { "" },
+                commit.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
+            );
+            project_changes.push(format!(
+                "In project {project_name}: {}{}",
+                commit.file_changes.iter().take(3).map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join(", "),
+                if commit.file_changes.len() > 3 { ", ..." } else { "" },
+            ));
+            links.push(Link {
+                action: LinkAction::Commit,
+                text: format!("Commit {} files in `{}`", commit.file_changes.len(), project_name),
+                goto: Some("LINKS_AGAIN".to_string()),
+                current_config_file: None,
+                link_tooltip: tooltip_message,
+                link_payload: Some(LinkPayload::CommitPayload(GitCommitPost { commits: vec![commit] })),
+            });
+        }
+        if !project_changes.is_empty() && post.messages.is_empty() {
+            if project_changes.len() > 4 {
+                project_changes.truncate(4);
+                project_changes.push("...".to_string());
+            }
+            uncommited_changes_warning = format!("You have uncommitted changes:\n```\n{}\n```\n⚠️ You might have a problem rolling back agent's changes.", project_changes.join("\n"));
+        }
+    }
+
+    // Failures above
+    if post.meta.chat_mode == ChatMode::AGENT {
+        for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
+            links.push(Link {
+                action: LinkAction::Goto,
+                text: format!("Configure {failed_integr_name}"),
+                goto: Some(format!("SETTINGS:{failed_integr_name}")),
+                current_config_file: None,
+                link_tooltip: format!(""),
+                link_payload: None,
+            })
+        }
+    }
+
+    // YAML problems
+    for e in integration_yaml_errors {
+        links.push(Link {
+            action: LinkAction::Goto,
+            text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.integr_config_path, 20)),
+            goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
+            current_config_file: None,
+            link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
+            link_payload: None,
+        });
+    }
+
+    // Tool recommendations
     if post.messages.is_empty() {
         let (already_exists, summary_path_option) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
         if !already_exists {
@@ -129,88 +214,7 @@ pub async fn handle_v1_links(
         }
     }
 
-    if post.meta.chat_mode == ChatMode::CONFIGURE {
-        links.push(Link {
-            action: LinkAction::Goto,
-            text: "Return".to_string(),
-            goto: Some("SETTINGS:DEFAULT".to_string()),
-            current_config_file: None,
-            link_tooltip: format!(""),
-            link_payload: None,
-        });
-
-        if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
-            links.push(Link {
-                action: LinkAction::PatchAll,
-                text: "Save and return".to_string(),
-                goto: Some("SETTINGS:DEFAULT".to_string()),
-                current_config_file: None,
-                link_tooltip: format!(""),
-                link_payload: None,
-            });
-        }
-    }
-
-    if post.meta.chat_mode == ChatMode::AGENT && false {
-        let mut project_changes = Vec::new();
-        for commit in get_commit_information_from_current_changes(gcx.clone()).await {
-            let project_name = commit.project_path.to_file_path().ok()
-                .and_then(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
-                .unwrap_or_else(|| "".to_string());
-            let tooltip_message = format!(
-                "git commit -m \"{}{}\"\n{}",
-                commit.commit_message.lines().next().unwrap_or(""),
-                if commit.commit_message.lines().count() > 1 { "..." } else { "" },
-                commit.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
-            );
-            project_changes.push(format!(
-                "In project {project_name}: {}{}",
-                commit.file_changes.iter().take(3).map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join(", "),
-                if commit.file_changes.len() > 3 { ", ..." } else { "" },
-            ));
-            links.push(Link {
-                action: LinkAction::Commit,
-                text: format!("Commit {} files in `{}`", commit.file_changes.len(), project_name),
-                goto: Some("LINKS_AGAIN".to_string()),
-                current_config_file: None,
-                link_tooltip: tooltip_message,
-                link_payload: Some(LinkPayload::CommitPayload(GitCommitPost { commits: vec![commit] })),
-            });
-        }
-        if !project_changes.is_empty() && post.messages.is_empty() {
-            if project_changes.len() > 4 {
-                project_changes.truncate(4);
-                project_changes.push("...".to_string());
-            }
-            uncommited_changes_warning = format!("You have uncommitted changes:\n```\n{}\n```\n⚠️ You might have a problem rolling back agent's changes.", project_changes.join("\n"));
-        }
-    }
-
-    if post.meta.chat_mode == ChatMode::AGENT {
-        for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
-            links.push(Link {
-                action: LinkAction::Goto,
-                text: format!("Configure {failed_integr_name}"),
-                goto: Some(format!("SETTINGS:{failed_integr_name}")),
-                current_config_file: None,
-                link_tooltip: format!(""),
-                link_payload: None,
-            })
-        }
-    }
-
-    for e in integration_yaml_errors {
-        links.push(Link {
-            action: LinkAction::Goto,
-            text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.integr_config_path, 20)),
-            goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
-            current_config_file: None,
-            link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
-            link_payload: None,
-        });
-    }
-
-    // hmm maybe (post.meta.chat_mode == ChatMode::EXPLORE || post.meta.chat_mode == ChatMode::AGENT)
+    // Follow-up
     if post.meta.chat_mode != ChatMode::NO_TOOLS && links.is_empty() && post.messages.len() > 2 {
         let follow_up_messages: Vec<String> = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
