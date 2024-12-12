@@ -26,5 +26,35 @@ export const STUB_LINKS_FOR_CHAT_RESPONSE: LinksForChatResponse = {
     //   action: "summarize-project",
     //   link_tooltip: "",
     // },
+    {
+      action: "commit",
+      text: "Commit 4 files in `refact-lsp`",
+      goto: "LINKS_AGAIN",
+      link_tooltip:
+        'git commmit -m "Add build script and test files for Docker image deployment and output generation..."\nA build-remote.sh\nA long-array.py\nA long-output.py\nA test.py',
+      link_payload: {
+        project_path: "file:///Users/humbertoyusta/refact/refact-lsp",
+        commit_message:
+          "Add build script and test files for Docker image deployment and output generation\n\nIntroduced `build-remote.sh` to streamline the process of building a Docker image and deploying it to a remote server. This script automates the image creation, temporary container management, and binary transfer steps, improving efficiency and reducing manual errors. Additionally, added `long-array.py`, `long-output.py`, and `test.py` to facilitate testing and output generation scenarios, ensuring the system can handle large data sets and multiple output streams effectively.",
+        file_changes: [
+          {
+            path: "build-remote.sh",
+            status: "ADDED",
+          },
+          {
+            path: "long-array.py",
+            status: "ADDED",
+          },
+          {
+            path: "long-output.py",
+            status: "ADDED",
+          },
+          {
+            path: "test.py",
+            status: "ADDED",
+          },
+        ],
+      },
+    },
   ],
 };

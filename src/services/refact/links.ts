@@ -2,7 +2,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { RootState } from "../../app/store";
 import { ChatMessages } from "./types";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
-import { CHAT_LINKS_URL } from "./consts";
+import { CHAT_COMMIT_LINK_URL, CHAT_LINKS_URL } from "./consts";
 
 // goto: can be an integration file to open in settings, a file to open in an idea or a global integration.
 // XXX rename to:
@@ -10,6 +10,7 @@ import { CHAT_LINKS_URL } from "./consts";
 // link_goto
 // link_action
 // link_tooltip
+
 export type ChatLink =
   | { text: string; goto: string; action: string; link_tooltip: string }
   | { text: string; goto: string; link_tooltip: string /* action: undefined */ }
@@ -24,7 +25,22 @@ export type ChatLink =
       action: "summarize-project";
       current_config_file?: string;
       link_tooltip: string;
-    };
+    }
+  | CommitLink;
+
+export type CommitLink = {
+  text: string;
+  action: "commit";
+  goto: string;
+  link_tooltip: string;
+  link_payload: CommitLinkPayload;
+};
+
+export type CommitLinkPayload = {
+  project_path: string;
+  commit_message: string;
+  file_changes: { path: string; status: string }[];
+};
 
 function isChatLink(json: unknown): json is ChatLink {
   if (!json || typeof json !== "object") return false;
@@ -37,6 +53,10 @@ function isChatLink(json: unknown): json is ChatLink {
   if ("action" in json && typeof json.action === "string") return true;
 
   return false;
+}
+
+export function isCommitLink(chatLink: ChatLink): chatLink is CommitLink {
+  return "action" in chatLink && chatLink.action === "commit";
 }
 
 export type LinksForChatResponse = {
@@ -60,6 +80,7 @@ function isLinksForChatResponse(json: unknown): json is LinksForChatResponse {
 
 export const linksApi = createApi({
   reducerPath: "linksApi",
+  tagTypes: ["Chat_Links"],
   baseQuery: fetchBaseQuery({
     prepareHeaders: (headers, { getState }) => {
       const token = (getState() as RootState).config.apiKey;
@@ -71,6 +92,7 @@ export const linksApi = createApi({
   }),
   endpoints: (builder) => ({
     getLinksForChat: builder.query<LinksForChatResponse, LinksApiRequest>({
+      providesTags: ["Chat_Links"],
       async queryFn(args, api, extraOptions, baseQuery) {
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;
@@ -104,9 +126,62 @@ export const linksApi = createApi({
             },
           };
         }
+
+        return { data: response.data };
+      },
+    }),
+
+    sendCommit: builder.mutation<CommitResponse, CommitLinkPayload>({
+      invalidatesTags: ["Chat_Links"],
+      async queryFn(arg, api, extraOptions, baseQuery) {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${CHAT_COMMIT_LINK_URL}`;
+        const response = await baseQuery({
+          ...extraOptions,
+          method: "POST",
+          url,
+          body: arg,
+        });
+        if (response.error) {
+          return { error: response.error };
+        }
+
+        if (!isCommitResponse(response.data)) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              data: response.data,
+              error: "Invalid response for commit",
+            },
+          };
+        }
+
         return { data: response.data };
       },
     }),
   }),
-  // refetchOnMountOrArgChange: true,
 });
+
+export type CommitResponse = {
+  commits_applied: {
+    project_path: string;
+    project_name: string;
+    commit_oid: string;
+  }[];
+  error_log: {
+    error_message: string;
+    project_path: string;
+    project_name: string;
+  }[];
+};
+
+function isCommitResponse(json: unknown): json is CommitResponse {
+  if (!json || typeof json !== "object") return false;
+  if (!("commits_applied" in json)) return false;
+  if (!Array.isArray(json.commits_applied)) return false;
+  if (!("error_log" in json)) return false;
+  if (!Array.isArray(json.error_log)) return false;
+  // TODO: type check the arrays if we use the data anywhere.
+  return true;
+}
