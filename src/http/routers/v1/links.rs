@@ -12,7 +12,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tool_patch_aux::tickets_parsing::get_tickets_from_messages;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
-use crate::git::get_commit_information_from_current_changes;
+use crate::git::{get_commit_information_from_current_changes, generate_commit_messages};
 use crate::http::routers::v1::git::GitCommitPost;
 
 #[derive(Deserialize, Clone, Debug)]
@@ -97,31 +97,17 @@ pub async fn handle_v1_links(
     }
 
     // GIT uncommitted
-    if post.meta.chat_mode == ChatMode::AGENT && false {
+    if post.meta.chat_mode == ChatMode::AGENT {
+        let commits = get_commit_information_from_current_changes(gcx.clone()).await;
+        
         let mut project_changes = Vec::new();
-        for commit in get_commit_information_from_current_changes(gcx.clone()).await {
-            let project_name = commit.project_path.to_file_path().ok()
-                .and_then(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
-                .unwrap_or_else(|| "".to_string());
-            let tooltip_message = format!(
-                "git commit -m \"{}{}\"\n{}",
-                commit.commit_message.lines().next().unwrap_or(""),
-                if commit.commit_message.lines().count() > 1 { "..." } else { "" },
-                commit.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
-            );
+        for commit in &commits {
             project_changes.push(format!(
-                "In project {project_name}: {}{}",
+                "In project {}: {}{}",
+                commit.get_project_name(),
                 commit.file_changes.iter().take(3).map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join(", "),
                 if commit.file_changes.len() > 3 { ", ..." } else { "" },
             ));
-            links.push(Link {
-                action: LinkAction::Commit,
-                text: format!("Commit {} files in `{}`", commit.file_changes.len(), project_name),
-                goto: Some("LINKS_AGAIN".to_string()),
-                current_config_file: None,
-                link_tooltip: tooltip_message,
-                link_payload: Some(LinkPayload::CommitPayload(GitCommitPost { commits: vec![commit] })),
-            });
         }
         if !project_changes.is_empty() && post.messages.is_empty() {
             if project_changes.len() > 4 {
@@ -129,6 +115,25 @@ pub async fn handle_v1_links(
                 project_changes.push("...".to_string());
             }
             uncommited_changes_warning = format!("You have uncommitted changes:\n```\n{}\n```\n⚠️ You might have a problem rolling back agent's changes.", project_changes.join("\n"));
+        }
+
+        if false {
+            for commit_with_msg in generate_commit_messages(gcx.clone(), commits).await {
+                let tooltip_message = format!(
+                    "git commit -m \"{}{}\"\n{}",
+                    commit_with_msg.commit_message.lines().next().unwrap_or(""),
+                    if commit_with_msg.commit_message.lines().count() > 1 { "..." } else { "" },
+                    commit_with_msg.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
+                );
+                links.push(Link {
+                    action: LinkAction::Commit,
+                    text: format!("Commit {} files in `{}`", commit_with_msg.file_changes.len(), commit_with_msg.get_project_name()),
+                    goto: Some("LINKS_AGAIN".to_string()),
+                    current_config_file: None,
+                    link_tooltip: tooltip_message,
+                    link_payload: Some(LinkPayload::CommitPayload(GitCommitPost { commits: vec![commit_with_msg] })),
+                });
+            }
         }
     }
 

@@ -15,6 +15,13 @@ pub struct CommitInfo {
     pub commit_message: String,
     pub file_changes: Vec<FileChange>,
 }
+impl CommitInfo {
+    pub fn get_project_name(&self) -> String {
+        self.project_path.to_file_path().ok()
+            .and_then(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
+            .unwrap_or_else(|| "".to_string())
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileChange {
@@ -225,7 +232,6 @@ pub fn git_diff(repository: &Repository, file_changes: &Vec<FileChange>, max_siz
 }
 
 pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo> {
-    const MAX_DIFF_SIZE: usize = 4096;
     let mut commits = Vec::new();
 
     for project_path in crate::files_correction::get_project_dirs(gcx.clone()).await {
@@ -240,7 +246,28 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
             Err(e) => { error!("{}", e); continue; }
         };
 
-        let diff = match git_diff(&repository, &file_changes, MAX_DIFF_SIZE) {
+        commits.push(CommitInfo {
+            project_path: Url::from_file_path(&project_path).ok().unwrap_or_else(|| Url::parse("file:///").unwrap()),
+            commit_message: "".to_string(),
+            file_changes,
+        });
+    }
+
+    commits
+}
+
+pub async fn generate_commit_messages(gcx: Arc<ARwLock<GlobalContext>>, commits: Vec<CommitInfo>) -> Vec<CommitInfo> {
+    const MAX_DIFF_SIZE: usize = 4096;
+    let mut commits_with_messages = Vec::new();
+    for commit in commits {
+        let project_path = commit.project_path.to_file_path().ok().unwrap_or_default();
+
+        let repository = match git2::Repository::open(&project_path) {
+            Ok(repo) => repo,
+            Err(e) => { error!("{}", e); continue; }
+        };
+
+        let diff = match git_diff(&repository, &commit.file_changes, MAX_DIFF_SIZE) {
             Ok(d) if d.is_empty() => { continue; }
             Ok(d) => d,
             Err(e) => { error!("{}", e); continue; }
@@ -251,12 +278,12 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
             Err(e) => { error!("{}", e); continue; }
         };
 
-        commits.push(CommitInfo {
-            project_path: Url::from_file_path(&project_path).ok().unwrap_or_else(|| Url::parse("file:///").unwrap()),
+        commits_with_messages.push(CommitInfo {
+            project_path: commit.project_path,
             commit_message: commit_msg,
-            file_changes,
+            file_changes: commit.file_changes,
         });
     }
 
-    commits
+    commits_with_messages
 }
