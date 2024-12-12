@@ -176,6 +176,7 @@ pub async fn handle_v1_integration_delete(
 
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(format!("File {} deleted ", integration_path)))
+        .header("Content-Type", "application/json")
+        .body(Body::from(format!("")))
         .unwrap())
 }
