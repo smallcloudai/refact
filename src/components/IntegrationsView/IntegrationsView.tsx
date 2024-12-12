@@ -99,6 +99,14 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
 
     const integrationWithFlag = {
       ...integration,
+      commandName:
+        currentThreadIntegration.integrationName?.startsWith("cmdline") ??
+        currentThreadIntegration.integrationName?.startsWith("service")
+          ? currentThreadIntegration.integrationName
+              .split("_")
+              .slice(1)
+              .join("_")
+          : undefined,
       shouldIntermediatePageShowUp:
         currentThreadIntegration.shouldIntermediatePageShowUp ?? false,
     } as IntegrationWithIconRecordAndAddress;
@@ -139,6 +147,9 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
           const integrationToConfigure: NotConfiguredIntegrationWithIconRecord =
             {
               ...maybeIntegration,
+              commandName: maybeIntegration.commandName
+                ? maybeIntegration.commandName
+                : undefined,
               integr_config_path: uniqueConfigPaths,
               project_path: uniqueProjectPaths,
               integr_config_exists: false,

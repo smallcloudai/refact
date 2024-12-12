@@ -501,6 +501,7 @@ export type IntegrationWithIconRecord = {
 
 export type IntegrationWithIconRecordAndAddress = IntegrationWithIconRecord & {
   shouldIntermediatePageShowUp?: boolean;
+  commandName?: string;
 };
 
 export type NotConfiguredIntegrationWithIconRecord = {
@@ -510,6 +511,7 @@ export type NotConfiguredIntegrationWithIconRecord = {
   integr_config_exists: false;
   on_your_laptop: boolean;
   when_isolated: boolean;
+  commandName?: string;
   // unparsed: unknown;
 };
 

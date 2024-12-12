@@ -1,4 +1,10 @@
-import { type FormEvent, type FC, useState, ChangeEventHandler } from "react";
+import {
+  type FormEvent,
+  type FC,
+  useState,
+  ChangeEventHandler,
+  useEffect,
+} from "react";
 import { NotConfiguredIntegrationWithIconRecord } from "../../../services/refact";
 import {
   Button,
@@ -15,6 +21,7 @@ import { formatProjectName } from "../../../utils/formatProjectName";
 import { CustomInputField } from "../CustomFieldsAndWidgets";
 import { Link } from "../../Link";
 import { useGetIntegrationDataByPathQuery } from "../../../hooks/useGetIntegrationDataByPathQuery";
+import { debugIntegrations } from "../../../debugConfig";
 
 const validateSnakeCase = (value: string) => {
   // TODO: include numbers 0-9
@@ -59,7 +66,11 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
   const [integrationType, integrationTemplate] =
     integration.integr_name.split("_");
   const isIntegrationAComamndLine = CMDLINE_TOOLS.includes(integrationType);
-  const [commandName, setCommandName] = useState("");
+  const [commandName, setCommandName] = useState(
+    integrationType === "cmdline" || integrationType === "service"
+      ? integration.commandName
+      : "",
+  );
   const [errorMessage, setErrorMessage] = useState("");
 
   const { integration: relatedIntegration } = useGetIntegrationDataByPathQuery(
@@ -77,6 +88,10 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
       setErrorMessage("");
     }
   };
+
+  useEffect(() => {
+    debugIntegrations(`[DEBUG]: integration (not configured): `, integration);
+  }, [integration]);
 
   return (
     <Flex direction="column" gap="4" width="100%">
