@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::process::Command;
 use tokio::sync::Mutex as AMutex;
-use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
@@ -163,6 +163,10 @@ impl Tool for ToolPostgres {
         #[allow(static_mut_refs)]
         unsafe { &mut DEFAULT_USAGE }
     }
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
+    }
 }
 
 // const DEFAULT_POSTGRES_INTEGRATION_YAML: &str = r#"
@@ -224,9 +228,6 @@ description: |
   On this page you can also see Docker containers with Postgres servers.
   You can ask model to create a new container with a new database for you,
   or ask model to configure the tool to use an existing container with existing database.
-available:
-  on_your_laptop_possible: true
-  when_isolated_possible: true
 smartlinks:
   - sl_label: "Test"
     sl_chat:
@@ -262,6 +263,12 @@ docker:
         - role: "user"
           content: |
             🔧 Your job is to modify postgres connection config in the current file to match the variables from the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: ["psql*[!SELECT]*"]
+  deny_default: []
 "#;
 
 // To think about: PGPASSWORD PGHOST PGUSER PGPORT PGDATABASE maybe tell the model to set that in variables.yaml as well

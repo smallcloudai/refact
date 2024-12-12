@@ -35,7 +35,7 @@ pub struct IntegrationConfirmation {
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct IntegrationCommon {
     #[serde(default)]
-    pub available: IntegrationConfirmation,
+    pub available: IntegrationAvailable,
     #[serde(default)]
-    pub confirmation: IntegrationAvailable,
+    pub confirmation: IntegrationConfirmation,
 }

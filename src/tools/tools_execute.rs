@@ -15,11 +15,10 @@ use crate::integrations::docker::docker_container_manager::docker_container_get_
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
-use crate::tools::tools_description::{commands_require_confirmation_rules_from_integrations_yaml, Tool};
+use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::get_model_record;
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
-
 
 pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_name: &str) -> Result<SubchatParameters, String> {
     let (gcx, params_mb) = {
@@ -125,7 +124,6 @@ pub async fn run_tools(
     original_messages: &Vec<ChatMessage>,
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
-    let gcx = ccx.lock().await.global_context.clone();
     let n_ctx = ccx.lock().await.n_ctx;
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
     let tokens_for_rag = reserve_for_context;
@@ -149,7 +147,6 @@ pub async fn run_tools(
     let mut generated_tool = vec![];  // tool results must go first
     let mut generated_other = vec![];
     let mut any_corrections = false;
-    let mut confirmation_rules = None;
 
     for t_call in last_msg_tool_calls {
         let cmd = match tools.get(&t_call.function.name) {
@@ -175,45 +172,29 @@ pub async fn run_tools(
             }
         };
         info!("tool use {}({:?})", &t_call.function.name, args);
-
-        let command_to_match = match {
+        
+        {
             let cmd_lock = cmd.lock().await;
-            cmd_lock.command_to_match_against_confirm_deny(&args)
-        } {
-            Ok(command_to_match) => command_to_match,
-            Err(e) => {
-                let tool_failed_message = tool_answer(
-                    format!("tool use: {}", e), t_call.id.to_string()
-                );
-                generated_tool.push(tool_failed_message);
-                continue;
-            }
-        };
-
-        if !command_to_match.is_empty() {
-            if confirmation_rules.is_none() {
-                confirmation_rules = match commands_require_confirmation_rules_from_integrations_yaml(gcx.clone()).await {
-                    Ok(g) => Some(g),
-                    Err(e) => {
-                        let tool_failed_message = tool_answer(format!("tool use: {}", e), t_call.id.to_string());
-                        generated_tool.push(tool_failed_message);
-                        continue;
+            match cmd_lock.match_against_confirm_deny(&args) {
+                Ok(res) => {
+                    match res.result {
+                        MatchConfirmDenyResult::DENY => {
+                            let command_to_match = cmd_lock
+                                .command_to_match_against_confirm_deny(&args)
+                                .unwrap_or("<error_command>".to_string());
+                            generated_tool.push(tool_answer(format!("tool use: command '{command_to_match}' is denied"), t_call.id.to_string()));
+                            continue;
+                        }
+                        _ => {}
                     }
-                };
-            }
-
-            if let Some(rules) = &confirmation_rules {
-                let (is_denied, _) = command_should_be_denied(&command_to_match, &rules.commands_deny);
-                if is_denied {
-                    let tool_failed_message = tool_answer(
-                        format!("tool use: command '{}' is denied", command_to_match), t_call.id.to_string()
-                    );
-                    generated_tool.push(tool_failed_message);
+                }
+                Err(err) => {
+                    generated_tool.push(tool_answer(format!("tool use: {}", err), t_call.id.to_string()));
                     continue;
                 }
             }
-        }
-
+        };
+        
         let (corrections, tool_execute_results) = {
             let mut cmd_lock = cmd.lock().await;
             match cmd_lock.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {

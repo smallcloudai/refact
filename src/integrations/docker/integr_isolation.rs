@@ -94,4 +94,7 @@ fields:
 available:
   on_your_laptop_possible: true
   when_isolated_possible: false
+confirmation:
+  ask_user_default: []
+  deny_default: ["docker* rm *", "docker* rmi *", "docker* pause *", "docker* stop *", "docker* kill *"]
 "#;

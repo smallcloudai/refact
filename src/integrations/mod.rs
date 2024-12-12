@@ -27,7 +27,7 @@ pub mod setting_up_integrations;
 pub mod running_integrations;
 pub mod utils;
 
-use integr_abstract::{IntegrationTrait, IntegrationCommon};
+use integr_abstract::IntegrationTrait;
 
 
 pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send + Sync>, String>
@@ -96,22 +96,6 @@ pub const INTEGRATIONS_DEFAULT_YAML: &str = r#"# This file is used to configure 
 #
 # Here you can set up which commands require confirmation or must be denied. If both apply, the command is denied.
 # Rules use glob patterns for wildcard matching (https://en.wikipedia.org/wiki/Glob_(programming))
-#
-
-commands_need_confirmation:
-  - "gh * delete*"
-  - "glab * delete*"
-  - "psql*[!SELECT]*"
-commands_deny:
-  - "docker* rm *"
-  - "docker* remove *"
-  - "docker* rmi *"
-  - "docker* pause *"
-  - "docker* stop *"
-  - "docker* kill *"
-  - "gh auth token*"
-  - "glab auth token*"
-
 
 # Command line: things you can call and immediately get an answer
 #cmdline:

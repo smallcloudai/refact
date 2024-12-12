@@ -13,7 +13,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
-use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_opt_num_to_str, deserialize_str_to_opt_num};
 
 
@@ -283,6 +283,10 @@ impl Tool for ToolCmdline {
         let (command, _workdir) = parse_command_args(args, &self.cfg)?;
         return Ok(command);
     }
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
+    }
 }
 
 pub const CMDLINE_INTEGRATION_SCHEMA: &str = r#"
@@ -319,5 +323,5 @@ available:
   when_isolated_possible: true
 confirmation:
   ask_user_default: ["*"]
-  deny_user_default: ["sudo*"]
+  deny_default: ["sudo*"]
 "#;

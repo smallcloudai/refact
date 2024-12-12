@@ -9,7 +9,7 @@ use serde_json::Value;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
-use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::tools::tools_description::Tool;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num};
@@ -178,6 +178,10 @@ impl Tool for ToolDocker {
         command_args.insert(0, "docker".to_string());
         Ok(command_args.join(" "))
     }
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
+    }
 }
 
 fn parse_command(args: &HashMap<String, Value>) -> Result<String, String>{
@@ -308,9 +312,6 @@ fields:
     f_desc: "Path to the SSH identity file to connect to remote Docker."
     f_label: "SSH Identity File"
     f_extra: true
-available:
-  on_your_laptop_possible: true
-  when_isolated_possible: false
 smartlinks:
   - sl_label: "Test"
     sl_chat:
@@ -318,4 +319,10 @@ smartlinks:
         content: |
           🔧 The docker tool should be visible now. To test the tool, list the running containers, briefly describe the containers and express
           satisfaction and relief if it works, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: false
+confirmation:
+  ask_user_default: []
+  deny_default: ["docker* rm *", "docker* rmi *", "docker* pause *", "docker* stop *", "docker* kill *"]
 "#;

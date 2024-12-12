@@ -15,7 +15,7 @@ use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::multimodality::MultimodalElement;
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
-use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 
 use tokio::time::sleep;
 use chrono::DateTime;
@@ -293,6 +293,11 @@ impl Tool for ToolChrome {
             }],
             parameters_required: vec!["commands".to_string()],
         }
+    }
+
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
     }
 }
 
@@ -1240,9 +1245,6 @@ fields:
     f_type: string_short
     f_desc: "Scale factor of the browser window in tablet mode."
     f_extra: true
-available:
-  on_your_laptop_possible: true
-  when_isolated_possible: true
 smartlinks:
   - sl_label: "Test"
     sl_chat:
@@ -1277,4 +1279,10 @@ docker:
         - role: "user"
           content: |
             🔧 Your job is to modify chrome config in the current file to connect through websockets to the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: []
+  deny_default: []
 "#;

@@ -11,15 +11,10 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
+use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
 // use crate::integrations::docker::integr_docker::ToolDocker;
 
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CommandsRequireConfirmationConfig {
-    pub commands_need_confirmation: Vec<String>,
-    pub commands_deny: Vec<String>,
-}
 
 #[derive(Clone, Debug)]
 pub enum MatchConfirmDenyResult {
@@ -48,16 +43,15 @@ pub trait Tool: Send + Sync {
 
     fn match_against_confirm_deny(
         &self,
-        args: &HashMap<String, Value>,
-        confirmation_rules: &Option<CommandsRequireConfirmationConfig>,
+        args: &HashMap<String, Value>
     ) -> Result<MatchConfirmDeny, String> {
         let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {
             format!("Error getting tool command to match: {}", e)
         })?;
 
         if !command_to_match.is_empty() {
-            if let Some(rules) = &confirmation_rules {
-                let (is_denied, deny_rule) = command_should_be_denied(&command_to_match, &rules.commands_deny);
+            if let Some(rules) = &self.confirmation_info() {
+                let (is_denied, deny_rule) = command_should_be_denied(&command_to_match, &rules.deny);
                 if is_denied {
                     return Ok(MatchConfirmDeny {
                         result: MatchConfirmDenyResult::DENY,
@@ -65,7 +59,7 @@ pub trait Tool: Send + Sync {
                         rule: deny_rule.clone(),
                     });
                 }
-                let (needs_confirmation, confirmation_rule) = command_should_be_confirmed_by_user(&command_to_match, &rules.commands_need_confirmation);
+                let (needs_confirmation, confirmation_rule) = command_should_be_confirmed_by_user(&command_to_match, &rules.ask_user);
                 if needs_confirmation {
                     return Ok(MatchConfirmDeny {
                         result: MatchConfirmDenyResult::CONFIRMATION,
@@ -87,6 +81,12 @@ pub trait Tool: Send + Sync {
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         Ok("".to_string())
+    }
+
+    fn confirmation_info(
+        &self,
+    ) -> Option<IntegrationConfirmation> {
+        None
     }
 
     fn tool_depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
@@ -226,17 +226,6 @@ pub async fn tools_merged_and_filtered(
     }
 
     Ok(filtered_tools)
-}
-
-pub async fn commands_require_confirmation_rules_from_integrations_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> Result<CommandsRequireConfirmationConfig, String>
-{
-    // XXX
-    // let integrations_value = read_integrations_yaml(gcx.clone()).await?;
-    let config_dir = gcx.read().await.config_dir.clone();
-    let integrations_value = read_integrations_yaml(&config_dir).await?;
-
-    serde_yaml::from_value::<CommandsRequireConfirmationConfig>(integrations_value)
-        .map_err(|e| format!("Failed to parse CommandsRequireConfirmationConfig: {}", e))
 }
 
 const BUILT_IN_TOOLS: &str = r####"

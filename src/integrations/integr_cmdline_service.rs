@@ -15,7 +15,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::{blocking_read_until_token_or_timeout, is_someone_listening_on_that_tcp_port};
 use crate::integrations::sessions::IntegrationSession;
 use crate::postprocessing::pp_command_output::output_mini_postprocessing;
-use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::integr_cmdline::*;
 
 
@@ -333,6 +333,10 @@ impl Tool for ToolService {
             parameters_required,
         }
     }
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
+    }
 }
 
 pub const CMDLINE_SERVICE_INTEGRATION_SCHEMA: &str = r#"
@@ -363,7 +367,6 @@ fields:
     f_type: string
     f_desc: "Wait until a keyword appears in stdout or stderr at startup."
     f_placeholder: "Ready"
-
 description: |
   As opposed to command line argumenets
 
@@ -372,4 +375,7 @@ description: |
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
+confirmation:
+  ask_user_default: ["*"]
+  deny_default: ["sudo*"]
 "#;

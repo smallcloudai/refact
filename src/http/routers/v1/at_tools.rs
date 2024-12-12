@@ -12,7 +12,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatToolCall, PostprocessSettings, SubchatParameters};
 use crate::http::routers::v1::chat::CHAT_TOP_N;
-use crate::tools::tools_description::{commands_require_confirmation_rules_from_integrations_yaml, tool_description_list_from_yaml, tools_merged_and_filtered, MatchConfirmDenyResult};
+use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered, MatchConfirmDenyResult};
 use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::tools::tools_execute::run_tools;
@@ -111,9 +111,6 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
     };
 
     let mut result_messages = vec![];
-    let confirmation_rules = Some(commands_require_confirmation_rules_from_integrations_yaml(gcx.clone()).await.map_err(|e| {
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading generic tool config: {}", e))
-    })?);
     for tool_call in &post.tool_calls {
         let tool = match all_tools.get(&tool_call.function.name) {
             Some(x) => x,
@@ -131,7 +128,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
 
         let result = {
             let tool_locked = tool.lock().await;
-            tool_locked.match_against_confirm_deny(&args, &confirmation_rules)
+            tool_locked.match_against_confirm_deny(&args)
         }.map_err(|e| {
             ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
         })?;
