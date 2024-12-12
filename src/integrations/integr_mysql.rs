@@ -10,13 +10,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::process::Command;
 use tokio::sync::Mutex as AMutex;
-use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
+use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
-pub struct SettingsPostgres {
+pub struct SettingsMysql {
     #[serde(default)]
-    pub psql_binary_path: String,
+    pub mysql_binary_path: String,
     pub host: String,
     pub port: String,
     pub user: String,
@@ -25,17 +25,17 @@ pub struct SettingsPostgres {
 }
 
 #[derive(Default)]
-pub struct ToolPostgres {
+pub struct ToolMysql {
     pub common:  IntegrationCommon,
-    pub settings_postgres: SettingsPostgres,
+    pub settings_mysql: SettingsMysql,
 }
 
-impl IntegrationTrait for ToolPostgres {
+impl IntegrationTrait for ToolMysql {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
-        match serde_json::from_value::<SettingsPostgres>(value.clone()) {
-            Ok(settings_postgres) => self.settings_postgres = settings_postgres,
+        match serde_json::from_value::<SettingsMysql>(value.clone()) {
+            Ok(settings_mysql) => self.settings_mysql = settings_mysql,
             Err(e) => {
                 tracing::error!("Failed to apply settings: {}\n{:?}", e, value);
                 return Err(e.to_string());
@@ -52,7 +52,7 @@ impl IntegrationTrait for ToolPostgres {
     }
 
     fn integr_settings_as_json(&self) -> Value {
-        serde_json::to_value(&self.settings_postgres).unwrap()
+        serde_json::to_value(&self.settings_mysql).unwrap()
     }
 
     fn integr_common(&self) -> IntegrationCommon {
@@ -60,59 +60,60 @@ impl IntegrationTrait for ToolPostgres {
     }
 
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
-        Box::new(ToolPostgres {
+        Box::new(ToolMysql {
             common: self.common.clone(),
-            settings_postgres: self.settings_postgres.clone()
+            settings_mysql: self.settings_mysql.clone()
         }) as Box<dyn Tool + Send>
     }
 
     fn integr_schema(&self) -> &str
     {
-        POSTGRES_INTEGRATION_SCHEMA
+      MYSQL_INTEGRATION_SCHEMA
     }
 }
 
-impl ToolPostgres {
-    async fn run_psql_command(&self, query: &str) -> Result<String, String> {
-        let mut psql_command = self.settings_postgres.psql_binary_path.clone();
-        if psql_command.is_empty() {
-            psql_command = "psql".to_string();
-        }
-        let output_future = Command::new(psql_command)
-            .env("PGPASSWORD", &self.settings_postgres.password)
-            .env("PGHOST", &self.settings_postgres.host)
-            .env("PGUSER", &self.settings_postgres.user)
-            .env("PGPORT", &self.settings_postgres.port)
-            .env("PGDATABASE", &self.settings_postgres.database)
-            .arg("-v")
-            .arg("ON_ERROR_STOP=1")
-            .arg("-c")
-            .arg(query)
-            .output();
-        if let Ok(output) = tokio::time::timeout(tokio::time::Duration::from_millis(10_000), output_future).await {
-            if output.is_err() {
-                let err_text = format!("{}", output.unwrap_err());
-                tracing::error!("psql didn't work:\n{}\n{}", query, err_text);
-                return Err(format!("{}, psql failed:\n{}", go_to_configuration_message("postgres"), err_text));
-            }
-            let output = output.unwrap();
-            if output.status.success() {
-                Ok(String::from_utf8_lossy(&output.stdout).to_string())
-            } else {
-                // XXX: limit stderr, can be infinite
-                let stderr_string = String::from_utf8_lossy(&output.stderr);
-                tracing::error!("psql didn't work:\n{}\n{}", query, stderr_string);
-                Err(format!("{}, psql failed:\n{}", go_to_configuration_message("postgres"), stderr_string))
-            }
-        } else {
-            tracing::error!("psql timed out:\n{}", query);
-            Err("psql command timed out".to_string())
-        }
-    }
+impl ToolMysql {
+  async fn run_mysql_command(&self, query: &str) -> Result<String, String> {
+      let mut mysql_command = self.settings_mysql.mysql_binary_path.clone();
+      if mysql_command.is_empty() {
+          mysql_command = "mysql".to_string();
+      }
+      let output_future = Command::new(mysql_command)
+          .arg("-h")
+          .arg(&self.settings_mysql.host)
+          .arg("-P")
+          .arg(&self.settings_mysql.port)
+          .arg("-u")
+          .arg(&self.settings_mysql.user)
+          .arg(format!("-p{}", &self.settings_mysql.password))
+          .arg(&self.settings_mysql.database)
+          .arg("-e")
+          .arg(query)
+          .output();
+      if let Ok(output) = tokio::time::timeout(tokio::time::Duration::from_millis(10_000), output_future).await {
+          if output.is_err() {
+              let err_text = format!("{}", output.unwrap_err());
+              tracing::error!("mysql didn't work:\n{}\n{}", query, err_text);
+              return Err(format!("{}, mysql failed:\n{}", go_to_configuration_message("mysql"), err_text));
+          }
+          let output = output.unwrap();
+          if output.status.success() {
+              Ok(String::from_utf8_lossy(&output.stdout).to_string())
+          } else {
+              // XXX: limit stderr, can be infinite
+              let stderr_string = String::from_utf8_lossy(&output.stderr);
+              tracing::error!("mysql didn't work:\n{}\n{}", query, stderr_string);
+              Err(format!("{}, mysql failed:\n{}", go_to_configuration_message("mysql"), stderr_string))
+          }
+      } else {
+          tracing::error!("mysql timed out:\n{}", query);
+          Err("mysql command timed out".to_string())
+      }
+  }
 }
 
 #[async_trait]
-impl Tool for ToolPostgres {
+impl Tool for ToolMysql {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
     async fn tool_execute(
@@ -127,7 +128,7 @@ impl Tool for ToolPostgres {
             None => return Err("no `query` argument found".to_string()),
         };
 
-        let result = self.run_psql_command(&query).await?;
+        let result = self.run_mysql_command(&query).await?;
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -149,7 +150,7 @@ impl Tool for ToolPostgres {
             Some(v) => return Err(format!("argument `query` is not a string: {:?}", v)),
             None => return Err("no `query` argument found".to_string()),
         };
-        Ok(format!("psql {}", query))
+        Ok(format!("mysql {}", query))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
@@ -167,7 +168,7 @@ impl Tool for ToolPostgres {
     }
 }
 
-pub const POSTGRES_INTEGRATION_SCHEMA: &str = r#"
+pub const MYSQL_INTEGRATION_SCHEMA: &str = r#"
 fields:
   host:
     f_type: string_long
@@ -182,22 +183,22 @@ fields:
     f_placeholder: john_doe
   password:
     f_type: string_short
-    f_default: "$POSTGRES_PASSWORD"
+    f_default: "$MYSQL_PASSWORD"
     smartlinks:
       - sl_label: "Open passwords.yaml"
         sl_goto: "EDITOR:passwords.yaml"
   database:
     f_type: string_short
     f_placeholder: marketing_db
-  psql_binary_path:
+  mysql_binary_path:
     f_type: string_long
-    f_desc: "If it can't find a path to `psql` you can provide it here, leave blank if not sure."
-    f_placeholder: "psql"
-    f_label: "PSQL Binary Path"
+    f_desc: "If it can't find a path to `mysql` you can provide it here, leave blank if not sure."
+    f_placeholder: "mysql"
+    f_label: "MYSQL Binary Path"
     f_extra: true
 description: |
-  The Postgres tool is for the AI model to call, when it wants to look at data inside your database, or make any changes.
-  On this page you can also see Docker containers with Postgres servers.
+  The Mysql tool is for the AI model to call, when it wants to look at data inside your database, or make any changes.
+  On this page you can also see Docker containers with Mysql servers.
   You can ask model to create a new container with a new database for you,
   or ask model to configure the tool to use an existing container with existing database.
 smartlinks:
@@ -205,42 +206,41 @@ smartlinks:
     sl_chat:
       - role: "user"
         content: |
-          🔧 The postgres tool should be visible now. To test the tool, list the tables available, briefly describe the tables and express
+          🔧 The mysql tool should be visible now. To test the tool, list the tables available, briefly describe the tables and express
           happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+          The current config file is %CURRENT_CONFIG%.
   - sl_label: "Look at the project, fill in automatically"
     sl_chat:
       - role: "user"
-        content: >
-          🔧 Your goal is to set up postgres client. Look at the project, especially files like "docker-compose.yaml" or ".env". Call tree() to see what files the project has.
+        content: |
+          🔧 Your goal is to set up mysql client. Look at the project, especially files like "docker-compose.yaml" or ".env". Call tree() to see what files the project has.
           After that is completed, go through the usual plan in the system prompt.
-          Keep POSTGRES_HOST POSTGRES_PORT POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB in variables.yaml so they can be reused by command line tools later.
+          The current config file is %CURRENT_CONFIG%.
 docker:
   filter_label: ""
-  filter_image: "postgres"
+  filter_image: "mysql"
   new_container_default:
-    image: "postgres:13"
+    image: "mysql:8.4"
     environment:
-      POSTGRES_DB: "marketing_db"
-      POSTGRES_USER: "john_doe"
-      POSTGRES_PASSWORD: "$POSTGRES_PASSWORD"
+      MYSQL_DATABASE: db_name
+      MYSQL_USER: $MYSQL_USER
+      MYSQL_PASSWORD: $MYSQL_PASSWORD
   smartlinks:
     - sl_label: "Add Database Container"
       sl_chat:
         - role: "user"
           content: |
-            🔧 Your job is to create a postgres container, using the image and environment from new_container_default section in the current config file: %CURRENT_CONFIG%. Follow the system prompt.
+            🔧 Your job is to create a mysql container, using the image and environment from new_container_default section in the current config file: %CURRENT_CONFIG%. Follow the system prompt.
   smartlinks_for_each_container:
     - sl_label: "Use for integration"
       sl_chat:
         - role: "user"
           content: |
-            🔧 Your job is to modify postgres connection config in the current file to match the variables from the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
+            🔧 Your job is to modify mysql connection config in the current file to match the variables from the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
 confirmation:
-  ask_user_default: ["psql*[!SELECT]*"]
+  ask_user_default: []
   deny_default: []
 "#;
-
-// To think about: PGPASSWORD PGHOST PGUSER PGPORT PGDATABASE maybe tell the model to set that in variables.yaml as well
