@@ -15,6 +15,7 @@ pub struct Storage {
     pub tele_snippet_next_id: u64,
     pub snippet_data_accumulators: Vec<TeleCompletionAccum>,
     pub last_seen_file_texts: HashMap<String, String>,
+    pub tele_chat: Vec<TelemetryChat>,
 }
 
 impl Storage {
@@ -27,6 +28,7 @@ impl Storage {
             tele_snippet_next_id: 100,
             snippet_data_accumulators: Vec::new(),
             last_seen_file_texts: HashMap::new(),
+            tele_chat: Vec::new(),
         }
     }
 }
@@ -140,4 +142,21 @@ impl TeleCompletionAccum {
             finished_ts: 0,
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct TelemetryChat {
+    pub scope: String,         // in relation to what
+    pub success: bool,
+    pub error_message: String, // empty if no error
+}
+
+impl TelemetryChat {
+    pub fn new(scope: String, success: bool, error_message: String) -> Self {
+        Self {
+            scope,
+            success,
+            error_message,
+        }
+    }    
 }

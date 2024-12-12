@@ -7,7 +7,7 @@ use tokio::sync::RwLock as ARwLock;
 use crate::caps::CodeAssistantCaps;
 
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
-use crate::telemetry::basic_network;
+use crate::telemetry::{basic_chat, basic_network};
 use crate::telemetry::basic_robot_human;
 use crate::telemetry::basic_comp_counters;
 use crate::telemetry::utils::{sorted_json_files, read_file, cleanup_old_files, telemetry_storage_dirs};
@@ -47,6 +47,8 @@ pub async fn send_telemetry_data(
     Ok(())
 }
 
+const TELEMETRY_FILES_SUFFIXES: [&str; 4] = ["-chat.json", "-net.json", "-rh.json", "-comp.json"];
+
 pub async fn send_telemetry_files_to_mothership(
     dir_compressed: PathBuf,
     dir_sent: PathBuf,
@@ -69,8 +71,7 @@ pub async fn send_telemetry_files_to_mothership(
         let contents = contents_maybe.unwrap();
         let path_str = path.to_str().unwrap();
         let filename = path.file_name().unwrap().to_str().unwrap();
-        if filename.starts_with(&file_prefix) &&
-            (path_str.ends_with("-net.json") || path_str.ends_with("-rh.json") || path_str.ends_with("-comp.json")) {
+        if filename.starts_with(&file_prefix) && TELEMETRY_FILES_SUFFIXES.iter().any(|s| path_str.ends_with(s)) {
             info!("sending telemetry file\n{}\nto url\n{}", path.to_str().unwrap(), telemetry_basic_dest);
             let resp = send_telemetry_data(contents, &telemetry_basic_dest,
                                            &api_key, gcx.clone()).await;
@@ -97,6 +98,7 @@ pub async fn basic_telemetry_compress(
 ) {
     info!("basic telemetry compression starts");
     basic_network::compress_basic_telemetry_to_file(global_context.clone()).await;
+    basic_chat::compress_basic_chat_telemetry_to_file(global_context.clone()).await;
     basic_robot_human::tele_robot_human_compress_to_file(global_context.clone()).await;
     basic_comp_counters::compress_tele_completion_to_file(global_context.clone()).await;
 }

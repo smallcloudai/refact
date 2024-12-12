@@ -6,3 +6,4 @@ pub mod snippets_transmit;
 mod basic_robot_human;
 mod basic_comp_counters;
 mod basic_network;
+mod basic_chat;

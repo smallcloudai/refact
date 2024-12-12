@@ -26,6 +26,7 @@ use crate::http::routers::v1::git::handle_v1_git_commit;
 use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
 use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
 use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
+use crate::http::routers::v1::telemetry_chat::handle_v1_telemetry_chat;
 use crate::http::routers::v1::links::handle_v1_links;
 use crate::http::routers::v1::lsp_like_handlers::{handle_v1_lsp_did_change, handle_v1_lsp_add_folder, handle_v1_lsp_initialize, handle_v1_lsp_remove_folder, handle_v1_set_active_document};
 use crate::http::routers::v1::status::handle_v1_rag_status;
@@ -48,6 +49,7 @@ pub mod code_completion;
 pub mod code_lens;
 pub mod chat;
 pub mod telemetry_network;
+pub mod telemetry_chat;
 pub mod snippet_accepted;
 pub mod caps;
 mod docker;
@@ -87,6 +89,7 @@ pub fn make_v1_router() -> Router {
         .route("/chat/completions", telemetry_post!(handle_v1_chat_completions))  // standard
 
         .route("/telemetry-network", telemetry_post!(handle_v1_telemetry_network))
+        .route("/telemetry-chat", telemetry_post!(handle_v1_telemetry_chat))
         .route("/snippet-accepted", telemetry_post!(handle_v1_snippet_accepted))
 
         .route("/caps", telemetry_get!(handle_v1_caps))
