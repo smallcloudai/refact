@@ -154,6 +154,8 @@ pub async fn cached_tokenizer(
     tokenizer.with_padding(None);
     let arc = Arc::new(StdRwLock::new(tokenizer));
 
+    info!("loading tokenizer done1");
     global_context.write().await.tokenizer_map.insert(model_name.clone(), arc.clone());
+    info!("loading tokenizer done2");
     Ok(arc)
 }
