@@ -119,7 +119,9 @@ export const renderIntegrationFormField = ({
         {f_type === "bool" && (
           <CustomBoolField
             {...commonProps}
-            defaultValue={Boolean(commonProps.defaultValue)}
+            defaultValue={Boolean(
+              field.f_default ? field.f_default : values[fieldKey],
+            )}
           />
         )}
         {(f_type === "output" || f_type === "tool") && (
