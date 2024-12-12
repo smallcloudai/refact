@@ -5,17 +5,15 @@ use tokio::sync::Mutex as AMutex;
 use serde::Deserialize;
 use serde::Serialize;
 use async_trait::async_trait;
-use itertools::Itertools;
 use serde_json::Value;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
+use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, MatchConfirmDeny, MatchConfirmDenyResult};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
-use crate::integrations::integr_abstract::IntegrationTrait;
+use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
 use crate::integrations::integr_cmdline::{execute_blocking_command, CmdlineToolConfig};
-
-use tracing::info;
+use crate::tools::tools_execute::command_should_be_denied;
 
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct SettingsShell {
@@ -27,11 +25,17 @@ pub struct SettingsShell {
 
 #[derive(Default)]
 pub struct ToolShell {
+    pub common: IntegrationCommon,
     pub cfg: SettingsShell,
 }
 
 impl IntegrationTrait for ToolShell {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn integr_schema(&self) -> &str
+    {
+        SHELL_INTEGRATION_SCHEMA
+    }
 
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
         match serde_json::from_value::<SettingsShell>(value.clone()) {
@@ -41,22 +45,28 @@ impl IntegrationTrait for ToolShell {
                 return Err(e.to_string());
             }
         }
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
         Ok(())
     }
 
     fn integr_settings_as_json(&self) -> Value {
         serde_json::to_value(&self.cfg).unwrap()
     }
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
 
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolShell {
+            common: self.common.clone(),
             cfg: self.cfg.clone(),
         }) as Box<dyn Tool + Send>
-    }
-
-    fn integr_schema(&self) -> &str
-    {
-        SHELL_INTEGRATION_SCHEMA
     }
 }
 
@@ -85,8 +95,7 @@ impl Tool for ToolShell {
             parameters: vec![], parameters_required: None,
             startup_wait_port: None, startup_wait: 0u64, startup_wait_keyword: None,
         };
-        // let tool_output = execute_blocking_command(&command, &cmdline_cfg, &workdir, &env_variables, project_dirs).await?;
-        let tool_output = "Waiting for rules logic to be implemented.".to_string();
+        let tool_output = execute_blocking_command(&command, &cmdline_cfg, &workdir, &env_variables, project_dirs).await?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
@@ -131,7 +140,34 @@ impl Tool for ToolShell {
         }
     }
 
-    // TODO: this tool needs strict confirmation/deny rules and we need to move this logic into tools itself
+    fn match_against_confirm_deny(
+        &self,
+        args: &HashMap<String, Value>
+    ) -> Result<MatchConfirmDeny, String> {
+        let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {
+            format!("Error getting tool command to match: {}", e)
+        })?;
+        if command_to_match.is_empty() {
+            return Err("Empty command to match".to_string());
+        }
+        if let Some(rules) = &self.confirmation_info() {
+            let (is_denied, deny_rule) = command_should_be_denied(&command_to_match, &rules.deny);
+            if is_denied {
+                return Ok(MatchConfirmDeny {
+                    result: MatchConfirmDenyResult::DENY,
+                    command: command_to_match.clone(),
+                    rule: deny_rule.clone(),
+                });
+            }
+        }
+        // NOTE: do not match command if not denied, always wait for confirmation from user
+        Ok(MatchConfirmDeny {
+            result: MatchConfirmDenyResult::CONFIRMATION,
+            command: command_to_match.clone(),
+            rule: "*".to_string(),
+        })
+    }
+
     fn command_to_match_against_confirm_deny(
         &self,
         args: &HashMap<String, Value>,
@@ -180,11 +216,14 @@ fields:
   output_filter:
     f_type: "output_filter"
     f_desc: "The output from the command can be long or even quasi-infinite. This section allows to set limits, prioritize top or bottom, or use regexp to show the model the relevant part."
-    f_placeholder: "filter"
+    f_default: "{\"limit_lines\":100,\"limit_chars\":10000,\"valuable_top_or_bottom\":\"bottom\",\"grep\":\"\",\"grep_context_lines\":0,\"remove_from_output\":\"\"}"
     f_extra: true
 description: |
   Allows to execute any command line tool with confirmation from the chat itself.
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
+confirmation:
+  ask_user_default: ["*"]
+  deny_default: ["sudo*", "rm*"]
 "#;
