@@ -3,6 +3,7 @@ import { RootState } from "../../app/store";
 import { ChatMessages } from "./types";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 import { CHAT_COMMIT_LINK_URL, CHAT_LINKS_URL } from "./consts";
+import { LspChatMode } from "../../features/Chat";
 
 // goto: can be an integration file to open in settings, a file to open in an idea or a global integration.
 // XXX rename to:
@@ -67,7 +68,7 @@ export type LinksApiRequest = {
   chat_id: string;
   messages: ChatMessages;
   model: string;
-  mode?: string;
+  mode?: LspChatMode;
   current_config_file?: string;
 };
 

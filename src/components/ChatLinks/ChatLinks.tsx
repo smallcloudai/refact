@@ -1,9 +1,10 @@
 import React from "react";
 import { Button } from "@radix-ui/themes";
 import { type ChatLink } from "../../services/refact/links";
-import { useLinksFromLsp } from "../../hooks";
+import { useAppSelector, useLinksFromLsp } from "../../hooks";
 import { Spinner } from "@radix-ui/themes";
 import { TruncateRight } from "../Text/TruncateRight";
+import { selectThreadToolUse } from "../../features/Chat";
 
 function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
   const hasAction = "action" in link;
@@ -16,8 +17,10 @@ function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
 
 export const ChatLinks: React.FC = () => {
   const { linksResult, handleLinkAction, streaming } = useLinksFromLsp();
+  const toolUse = useAppSelector(selectThreadToolUse);
 
   if (streaming) return null;
+  if (toolUse !== "agent") return null;
 
   // TODO: waiting, errors, maybe add a title
 
