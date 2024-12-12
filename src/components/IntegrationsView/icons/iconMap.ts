@@ -17,4 +17,5 @@ export const iconMap: Record<string, string> = {
   pdb: pdbIcon,
   github: githubIcon,
   gitlab: gitlabIcon,
+  shell: terminalIcon,
 };
