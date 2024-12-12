@@ -24,6 +24,7 @@ import { useGoToLink } from "./useGoToLink";
 import { setError } from "../features/Errors/errorsSlice";
 import { setInformation } from "../features/Errors/informationSlice";
 import { debugIntegrations } from "../debugConfig";
+import { telemetryApi } from "../services/refact/telemetry";
 
 export function useLinksFromLsp() {
   const dispatch = useAppDispatch();
@@ -33,6 +34,9 @@ export function useLinksFromLsp() {
   const [applyPatches, _applyPatchesResult] =
     diffApi.useApplyAllPatchesInMessagesMutation();
   const [applyCommit, _applyCommitResult] = linksApi.useSendCommitMutation();
+
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
 
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
@@ -75,6 +79,12 @@ export function useLinksFromLsp() {
   const handleLinkAction = useCallback(
     (link: ChatLink) => {
       if (!("action" in link)) return;
+      void sendTelemetryEvent({
+        scope: `handleLinkAction/${link.action}`,
+        success: true,
+        error_message: "",
+      });
+
       if (link.action === "goto" && "goto" in link) {
         const [action, payload] = link.goto.split(":");
         if (action.toLowerCase() === "settings") {
@@ -150,7 +160,7 @@ export function useLinksFromLsp() {
       // eslint-disable-next-line no-console
       console.warn(`unknown action: ${JSON.stringify(link)}`);
     },
-    [applyCommit, applyPatches, dispatch, handleGoTo, messages, submit],
+    [applyCommit, applyPatches, dispatch, handleGoTo, messages, submit, sendTelemetryEvent],
   );
 
   const skipLinksRequest = useMemo(() => {

@@ -296,13 +296,17 @@ startListening({
           : state.chat.thread;
       const scope = `sendChat_${thread.model}_${mode}`;
 
-      const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
-        scope,
-        success: false,
-        error_message: action.error.message ?? JSON.stringify(action.error),
-      });
-
-      void listenerApi.dispatch(thunk);
+      const errorMessage = isDetailMessage(action.payload)
+        ? action.payload.detail
+        : null;
+      if (errorMessage) {
+        const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
+          scope,
+          success: false,
+          error_message: errorMessage,
+        });
+        void listenerApi.dispatch(thunk);
+      }
     }
 
     if (chatAskQuestionThunk.fulfilled.match(action)) {
