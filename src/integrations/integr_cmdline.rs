@@ -139,6 +139,7 @@ pub fn create_command_from_string(
     if command_args.len() > 1 {
         cmd.args(&command_args[1..]);
     }
+    tracing::info!("command_args: {:?}", command_args);
 
     if command_workdir.is_empty() {
         if let Some(first_project_dir) = project_dirs.first() {
@@ -163,7 +164,7 @@ pub async fn execute_blocking_command(
     env_variables: &HashMap<String, String>,
     project_dirs: Vec<PathBuf>,
 ) -> Result<String, String> {
-    info!("EXEC workdir {}:\n{:?}", command_workdir, command);
+    info!("EXEC workdir {:?}:\n{:?}", command_workdir, command);
 
     let command_future = async {
         let mut cmd = create_command_from_string(command, command_workdir, env_variables, project_dirs)?;
@@ -321,6 +322,12 @@ description: |
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
+smartlinks:
+  - sl_label: "Auto Configure"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 Test the tool that corresponds to the current config file. If it works express happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
 confirmation:
   ask_user_default: ["*"]
   deny_default: ["sudo*"]
