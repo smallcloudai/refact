@@ -68,8 +68,9 @@ pub async fn handle_v1_links(
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<LinksPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-    let mut links = Vec::new();
+    let mut links: Vec<Link> = Vec::new();
     let mut uncommited_changes_warning = String::new();
+
     tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
     let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), gcx.read().await.cmdline.experimental).await;
 
@@ -95,6 +96,9 @@ pub async fn handle_v1_links(
                                 if let Some(recommended_integrations) = yaml.get("recommended_integrations").and_then(|rt| rt.as_sequence()) {
                                     for igname_value in recommended_integrations {
                                         if let Some(igname) = igname_value.as_str() {
+                                            if igname == "isolation" || igname == "docker" {
+                                                continue;
+                                            }
                                             if !integrations_map.contains_key(igname) {
                                                 tracing::info!("tool {} not present => link", igname);
                                                 links.push(Link {
@@ -147,7 +151,7 @@ pub async fn handle_v1_links(
         }
     }
 
-    if post.meta.chat_mode == ChatMode::AGENT {
+    if post.meta.chat_mode == ChatMode::AGENT && false {
         let mut project_changes = Vec::new();
         for commit in get_commit_information_from_current_changes(gcx.clone()).await {
             let project_name = commit.project_path.to_file_path().ok()
