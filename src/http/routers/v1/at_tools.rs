@@ -12,10 +12,10 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatToolCall, PostprocessSettings, SubchatParameters};
 use crate::http::routers::v1::chat::CHAT_TOP_N;
-use crate::tools::tools_description::{commands_require_confirmation_rules_from_integrations_yaml, tool_description_list_from_yaml, tools_merged_and_filtered};
+use crate::tools::tools_description::{commands_require_confirmation_rules_from_integrations_yaml, tool_description_list_from_yaml, tools_merged_and_filtered, MatchConfirmDenyResult};
 use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
-use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied, run_tools};
+use crate::tools::tools_execute::run_tools;
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -111,7 +111,9 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
     };
 
     let mut result_messages = vec![];
-    let mut confirmation_rules = None;
+    let confirmation_rules = Some(commands_require_confirmation_rules_from_integrations_yaml(gcx.clone()).await.map_err(|e| {
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading generic tool config: {}", e))
+    })?);
     for tool_call in &post.tool_calls {
         let tool = match all_tools.get(&tool_call.function.name) {
             Some(x) => x,
@@ -127,42 +129,31 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             }
         };
 
-        let command_to_match = {
+        let result = {
             let tool_locked = tool.lock().await;
-            tool_locked.command_to_match_against_confirm_deny(&args)
+            tool_locked.match_against_confirm_deny(&args, &confirmation_rules)
         }.map_err(|e| {
-            ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Error getting tool command to match: {}", e))
+            ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
         })?;
 
-        if !command_to_match.is_empty() {
-            if confirmation_rules.is_none() {
-                confirmation_rules = Some(commands_require_confirmation_rules_from_integrations_yaml(gcx.clone()).await.map_err(|e| {
-                    ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading generic tool config: {}", e))
-                })?);
-            }
-
-            if let Some(rules) = &confirmation_rules {
-                let (is_denied, deny_rule) = command_should_be_denied(&command_to_match, &rules.commands_deny);
-                if is_denied {
-                    result_messages.push(PauseReason {
-                        reason_type: PauseReasonType::Denial,
-                        command: command_to_match.clone(),
-                        rule: deny_rule.clone(),
-                        tool_call_id: tool_call.id.clone(),
-                    });
-                    continue;
-                }
-                let (needs_confirmation, confirmation_rule) = command_should_be_confirmed_by_user(&command_to_match, &rules.commands_need_confirmation);
-                if needs_confirmation {
-                    result_messages.push(PauseReason {
-                        reason_type: PauseReasonType::Confirmation,
-                        command: command_to_match.clone(),
-                        rule: confirmation_rule.clone(),
-                        tool_call_id: tool_call.id.clone(),
-                    });
-                    continue;
-                }
-            }
+        match result.result {
+            MatchConfirmDenyResult::DENY => {
+                result_messages.push(PauseReason {
+                    reason_type: PauseReasonType::Denial,
+                    command: result.command.clone(),
+                    rule: result.rule.clone(),
+                    tool_call_id: tool_call.id.clone(),
+                });
+            },
+            MatchConfirmDenyResult::CONFIRMATION => {
+                result_messages.push(PauseReason {
+                    reason_type: PauseReasonType::Confirmation,
+                    command: result.command.clone(),
+                    rule: result.rule.clone(),
+                    tool_call_id: tool_call.id.clone(),
+                });
+            },
+            _ => {},
         }
     }
 

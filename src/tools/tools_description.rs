@@ -11,6 +11,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::GlobalContext;
+use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
 // use crate::integrations::docker::integr_docker::ToolDocker;
 
 
@@ -18,6 +19,20 @@ use crate::global_context::GlobalContext;
 pub struct CommandsRequireConfirmationConfig {
     pub commands_need_confirmation: Vec<String>,
     pub commands_deny: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub enum MatchConfirmDenyResult {
+    PASS,
+    CONFIRMATION,
+    DENY,
+}
+
+#[derive(Clone, Debug)]
+pub struct MatchConfirmDeny {
+    pub result: MatchConfirmDenyResult,
+    pub command: String,
+    pub rule: String,
 }
 
 #[async_trait]
@@ -30,6 +45,42 @@ pub trait Tool: Send + Sync {
         tool_call_id: &String,
         args: &HashMap<String, Value>
     ) -> Result<(bool, Vec<ContextEnum>), String>;
+
+    fn match_against_confirm_deny(
+        &self,
+        args: &HashMap<String, Value>,
+        confirmation_rules: &Option<CommandsRequireConfirmationConfig>,
+    ) -> Result<MatchConfirmDeny, String> {
+        let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {
+            format!("Error getting tool command to match: {}", e)
+        })?;
+
+        if !command_to_match.is_empty() {
+            if let Some(rules) = &confirmation_rules {
+                let (is_denied, deny_rule) = command_should_be_denied(&command_to_match, &rules.commands_deny);
+                if is_denied {
+                    return Ok(MatchConfirmDeny {
+                        result: MatchConfirmDenyResult::DENY,
+                        command: command_to_match.clone(),
+                        rule: deny_rule.clone(),
+                    });
+                }
+                let (needs_confirmation, confirmation_rule) = command_should_be_confirmed_by_user(&command_to_match, &rules.commands_need_confirmation);
+                if needs_confirmation {
+                    return Ok(MatchConfirmDeny {
+                        result: MatchConfirmDenyResult::CONFIRMATION,
+                        command: command_to_match.clone(),
+                        rule: confirmation_rule.clone(),
+                    });
+                }
+            }
+        }
+        Ok(MatchConfirmDeny {
+            result: MatchConfirmDenyResult::PASS,
+            command: command_to_match.clone(),
+            rule: "".to_string(),
+        })
+    }
 
     fn command_to_match_against_confirm_deny(
         &self,
