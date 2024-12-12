@@ -183,10 +183,10 @@ pub async fn migrate_to_config_folder(
         if is_yaml_cfg {
             let new_path = config_dir.join(&file_name);
             tokio::fs::rename(&path, &new_path).await?;
-            print!("migrated {:?} to {:?}", path, new_path);
+            tracing::info!("migrated {:?} to {:?}", path, new_path);
         }
     }
-    
+
     Ok(())
 }
 
