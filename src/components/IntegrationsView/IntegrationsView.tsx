@@ -125,45 +125,44 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
 
   // TODO: uncomment when ready
   useEffect(() => {
-    if (maybeIntegration) {
-      if (maybeIntegration.shouldIntermediatePageShowUp) {
-        setCurrentNotConfiguredIntegration(() => {
-          const similarIntegrations = integrationsMap?.integrations.filter(
-            (integr) => integr.integr_name === maybeIntegration.integr_name,
-          );
-          if (!similarIntegrations) return null;
-          const uniqueConfigPaths = Array.from(
-            new Set(
-              similarIntegrations.map((integr) => integr.integr_config_path),
-            ),
-          );
-          const uniqueProjectPaths = Array.from(
-            new Set(similarIntegrations.map((integr) => integr.project_path)),
-          );
+    if (!maybeIntegration) return;
 
-          uniqueProjectPaths.sort((a, _b) => (a === "" ? -1 : 1));
-          uniqueConfigPaths.sort((a, _b) => (a.includes(".config") ? -1 : 1));
+    if (maybeIntegration.shouldIntermediatePageShowUp) {
+      setCurrentNotConfiguredIntegration(() => {
+        const similarIntegrations = integrationsMap?.integrations.filter(
+          (integr) => integr.integr_name === maybeIntegration.integr_name,
+        );
+        if (!similarIntegrations) return null;
 
-          const integrationToConfigure: NotConfiguredIntegrationWithIconRecord =
-            {
-              ...maybeIntegration,
-              commandName: maybeIntegration.commandName
-                ? maybeIntegration.commandName
-                : undefined,
-              wasOpenedThroughChat:
-                maybeIntegration.shouldIntermediatePageShowUp,
-              integr_config_path: uniqueConfigPaths,
-              project_path: uniqueProjectPaths,
-              integr_config_exists: false,
-            };
+        const uniqueConfigPaths = Array.from(
+          new Set(
+            similarIntegrations.map((integr) => integr.integr_config_path),
+          ),
+        );
+        const uniqueProjectPaths = Array.from(
+          new Set(similarIntegrations.map((integr) => integr.project_path)),
+        );
 
-          return integrationToConfigure;
-        });
-        setCurrentIntegration(null);
-      } else {
-        setCurrentIntegration(maybeIntegration);
-        setCurrentNotConfiguredIntegration(null);
-      }
+        uniqueProjectPaths.sort((a, _b) => (a === "" ? -1 : 1));
+        uniqueConfigPaths.sort((a, _b) => (a.includes(".config") ? -1 : 1));
+
+        const integrationToConfigure: NotConfiguredIntegrationWithIconRecord = {
+          ...maybeIntegration,
+          commandName: maybeIntegration.commandName
+            ? maybeIntegration.commandName
+            : undefined,
+          wasOpenedThroughChat: maybeIntegration.shouldIntermediatePageShowUp,
+          integr_config_path: uniqueConfigPaths,
+          project_path: uniqueProjectPaths,
+          integr_config_exists: false,
+        };
+
+        return integrationToConfigure;
+      });
+      setCurrentIntegration(null);
+    } else {
+      setCurrentIntegration(maybeIntegration);
+      setCurrentNotConfiguredIntegration(null);
     }
   }, [maybeIntegration, integrationsMap?.integrations]);
 

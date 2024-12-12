@@ -61,7 +61,7 @@ export function useLinksFromLsp() {
 
   useEffect(() => {
     if (
-      typeof maybeIntegration?.shouldIntermediatePageShowUp !== "undefined" &&
+      maybeIntegration?.shouldIntermediatePageShowUp !== undefined &&
       pendingIntegrationGoto
     ) {
       handleGoTo({ goto: pendingIntegrationGoto });
