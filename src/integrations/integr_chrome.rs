@@ -1199,7 +1199,7 @@ const CHROME_INTEGRATION_SCHEMA: &str = r#"
 fields:
   chrome_path:
     f_type: string_long
-    f_desc: "Path to Google Chrome or Chromium binary. If empty, it searches for Google Chrome in your system"
+    f_desc: "Path to Google Chrome, Chromium or Edge binary. If empty, it searches for binary in your system"
   idle_browser_timeout:
     f_type: string_short
     f_desc: "Idle timeout for the browser in seconds."
@@ -1217,7 +1217,7 @@ fields:
     f_type: string_short
     f_desc: "Height of the browser window."
     f_extra: true
-  window_scale:
+  scale_factor:
     f_type: string_short
     f_desc: "Scale factor of the browser window."
     f_extra: true
@@ -1229,7 +1229,7 @@ fields:
     f_type: string_short
     f_desc: "Height of the browser window in mobile mode."
     f_extra: true
-  mobile_window_scale:
+  mobile_scale_factor:
     f_type: string_short
     f_desc: "Scale factor of the browser window in mobile mode."
     f_extra: true
@@ -1241,7 +1241,7 @@ fields:
     f_type: string_short
     f_desc: "Height of the browser window in tablet mode."
     f_extra: true
-  tablet_window_scale:
+  tablet_scale_factor:
     f_type: string_short
     f_desc: "Scale factor of the browser window in tablet mode."
     f_extra: true
