@@ -55,6 +55,7 @@ export function useLinksFromLsp() {
     return false;
   }, [messages]);
 
+  // TODO: think of how to avoid batching and this useless state
   const [pendingIntegrationGoto, setPendingIntegrationGoto] = useState<
     string | null
   >(null);
