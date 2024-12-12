@@ -8,6 +8,13 @@ export type TelemetryChatEvent = {
   error_message: string;
 };
 
+export type TelemetryNetEvent = {
+  url: string; // relative path
+  scope: string;
+  success: boolean;
+  error_message: string;
+};
+
 export type TelemetryNetworkEvent = TelemetryChatEvent & { url: string };
 
 export const telemetryApi = createApi({
@@ -39,12 +46,25 @@ export const telemetryApi = createApi({
             ...extraOptions,
             url: `http://127.0.0.1:${port}${TELEMETRY_NET_PATH}`,
             method: "POST",
-            body: { ...arg, url },
+            body: { ...arg, url: TELEMETRY_NET_PATH },
           });
           return { data: netWorkErrorResponse.data };
         }
 
         return { data: response.data };
+      },
+    }),
+    sendTelemetryNetEvent: builder.query<unknown, TelemetryNetEvent>({
+      async queryFn(arg, api, extraOptions, baseQuery) {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const netWorkErrorResponse = await baseQuery({
+          ...extraOptions,
+          url: `http://127.0.0.1:${port}${TELEMETRY_NET_PATH}`,
+          method: "POST",
+          body: { ...arg },
+        });
+        return { data: netWorkErrorResponse.data };
       },
     }),
   }),

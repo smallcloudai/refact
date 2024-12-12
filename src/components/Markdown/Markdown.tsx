@@ -41,7 +41,6 @@ import { ErrorCallout, DiffWarningCallout } from "../Callout";
 import { TruncateLeft } from "../Text";
 import { extractFilePathFromPin } from "../../utils";
 
-// import { sendTelemetryEvent } from "../../utils/telemetryHelper";
 import { telemetryApi } from "../../services/refact/telemetry";
 
 export type MarkdownProps = Pick<
@@ -81,7 +80,7 @@ const PinMessages: React.FC<{
     if (markdown) {
       handlePaste(markdown);
     }
-    // find port here
+
     void sendTelemetryEvent({
       scope: `replaceSelection`,
       success: true,
