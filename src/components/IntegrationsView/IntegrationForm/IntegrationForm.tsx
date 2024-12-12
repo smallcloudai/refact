@@ -17,8 +17,9 @@ import { SmartLink } from "../../SmartLink";
 import { renderIntegrationFormField } from "../../../features/Integrations/renderIntegrationFormField";
 import { IntegrationAvailability } from "./IntegrationAvailability";
 import { toPascalCase } from "../../../utils/toPascalCase";
-import { debugIntegrations } from "../../../debugConfig";
 import { iconMap } from "../icons/iconMap";
+import { IntegrationDeletePopover } from "../IntegrationDeletePopover";
+import { debugIntegrations } from "../../../debugConfig";
 
 function areAllFieldsBoolean(json: unknown): json is Record<string, boolean> {
   return (
@@ -32,8 +33,10 @@ type IntegrationFormProps = {
   integrationPath: string;
   isApplying: boolean;
   isDisabled: boolean;
+  isDeletingIntegration: boolean;
   availabilityValues: Record<string, boolean>;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  handleDeleteIntegration: (path: string, name: string) => void;
   handleChange: (event: FormEvent<HTMLFormElement>) => void;
   onSchema: (schema: Integration["integr_schema"]) => void;
   onValues: (values: Integration["integr_values"]) => void;
@@ -50,8 +53,10 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   integrationPath,
   isApplying,
   isDisabled,
+  isDeletingIntegration,
   availabilityValues,
   handleSubmit,
+  handleDeleteIntegration,
   handleChange,
   onSchema,
   onValues,
@@ -201,6 +206,13 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           )}
           <Flex justify="end" width="100%">
             <Flex gap="4">
+              <IntegrationDeletePopover
+                integrationName={integration.data.integr_name}
+                integrationConfigPath={integration.data.integr_config_path}
+                isApplying={isApplying}
+                isDeletingIntegration={isDeletingIntegration}
+                handleDeleteIntegration={handleDeleteIntegration}
+              />
               <Button
                 color="green"
                 variant="solid"

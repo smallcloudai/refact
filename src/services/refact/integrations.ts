@@ -2,11 +2,13 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { RootState } from "../../app/store";
 import { isLspChatMessage, LspChatMessage } from "./chat";
 import {
+  INTEGRATION_DELETE_URL,
   INTEGRATION_GET_URL,
   INTEGRATION_SAVE_URL,
   INTEGRATIONS_URL,
 } from "./consts";
 import { debugIntegrations } from "../../debugConfig";
+import { isDetailMessage } from "./commands";
 
 // TODO: Cache invalidation logic.
 export const integrationsApi = createApi({
@@ -112,6 +114,40 @@ export const integrationsApi = createApi({
         });
 
         return response;
+      },
+    }),
+    deleteIntegration: builder.query<unknown, string>({
+      providesTags: (_result, _error, arg) => [
+        { type: "INTEGRATION", id: arg },
+      ],
+      async queryFn(arg, api, extraOptions, baseQuery) {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort;
+        const url = `http://127.0.0.1:${port}${INTEGRATION_DELETE_URL}?integration_path=${arg}`;
+
+        const response = await baseQuery({
+          ...extraOptions,
+          url,
+          method: "DELETE",
+        });
+
+        if (response.error) {
+          return { error: response.error };
+        }
+
+        if (isDetailMessage(response.data)) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: `Failed to delete integration by path: ${arg}. Details: ${response.data.detail}`,
+              data: response.data,
+            },
+          };
+        }
+
+        return {
+          data: response.data,
+        };
       },
     }),
   }),

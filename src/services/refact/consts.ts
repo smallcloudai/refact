@@ -22,6 +22,7 @@ export const CHAT_COMMIT_LINK_URL = "/v1/git-commit";
 export const INTEGRATIONS_URL = "/v1/integrations";
 export const INTEGRATION_GET_URL = "/v1/integration-get";
 export const INTEGRATION_SAVE_URL = "/v1/integration-save";
+export const INTEGRATION_DELETE_URL = "/v1/integration-delete";
 // Docker endpoints
 export const DOCKER_CONTAINER_LIST = "/v1/docker-container-list";
 export const DOCKER_CONTAINER_ACTION = "/v1/docker-container-action";

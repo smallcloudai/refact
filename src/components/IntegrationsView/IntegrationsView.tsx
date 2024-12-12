@@ -47,6 +47,8 @@ import { iconMap } from "./icons/iconMap";
 import { LeftRightPadding } from "../../features/Integrations/Integrations";
 import { IntermediateIntegration } from "./IntermediateIntegration";
 import { parseOrElse } from "../../utils";
+import { useDeleteIntegrationByPath } from "../../hooks/useDeleteIntegrationByPath";
+import { toPascalCase } from "../../utils/toPascalCase";
 
 type IntegrationViewProps = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -77,6 +79,8 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     if (!isIntegrationSetupPage(currentPage)) return null;
     return currentPage;
   }, [currentPage]);
+
+  const { deleteIntegrationTrigger } = useDeleteIntegrationByPath();
 
   const maybeIntegration = useMemo(() => {
     if (!currentThreadIntegration) return null;
@@ -175,6 +179,9 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
   >(null);
 
   const [isApplyingIntegrationForm, setIsApplyingIntegrationForm] =
+    useState<boolean>(false);
+
+  const [isDeletingIntegration, setIsDeletingIntegration] =
     useState<boolean>(false);
 
   const [isDisabledIntegrationForm, setIsDisabledIntegrationForm] =
@@ -403,6 +410,32 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       dispatch,
       availabilityValues,
     ],
+  );
+
+  const handleDeleteIntegration = useCallback(
+    async (configurationPath: string, integrationName: string) => {
+      // if (!currentIntegration) return;
+      setIsDeletingIntegration(true);
+      const response = await deleteIntegrationTrigger(configurationPath);
+      debugIntegrations("[DEBUG]: response: ", response);
+      if (response.error) {
+        debugIntegrations(`[DEBUG]: delete error: `, response.error);
+        return;
+      }
+      dispatch(
+        setInformation(
+          `${toPascalCase(
+            integrationName,
+          )} integration's configuration was deleted successfully!`,
+        ),
+      );
+      const timeoutId = setTimeout(() => {
+        setIsDeletingIntegration(false);
+        handleFormReturn();
+        clearTimeout(timeoutId);
+      }, 1200);
+    },
+    [dispatch, deleteIntegrationTrigger, handleFormReturn],
   );
 
   const handleIntegrationFormChange = useCallback(
@@ -730,8 +763,12 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             <IntegrationForm
               // TODO: on smart link click or pass the name down
               handleSubmit={(event) => void handleSubmit(event)}
+              handleDeleteIntegration={(path: string, name: string) =>
+                void handleDeleteIntegration(path, name)
+              }
               integrationPath={currentIntegration.integr_config_path}
               isApplying={isApplyingIntegrationForm}
+              isDeletingIntegration={isDeletingIntegration}
               isDisabled={isDisabledIntegrationForm}
               onSchema={handleSetCurrentIntegrationSchema}
               onValues={handleSetCurrentIntegrationValues}
@@ -742,7 +779,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             />
             {information && (
               <InformationCallout
-                timeout={3000}
+                timeout={isDeletingIntegration ? 1000 : 3000}
                 mx="0"
                 onClick={() => dispatch(clearInformation())}
                 className={styles.popup}

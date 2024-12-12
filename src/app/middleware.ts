@@ -72,7 +72,6 @@ startListening({
       toolsApi.endpoints.getTools.matchRejected(action) &&
       !action.meta.condition
     ) {
-      // getting error message from LSP
       const errorMessage = isDetailMessage(action.payload?.data)
         ? action.payload.data.detail
         : "fetching tools from lsp.";
@@ -91,7 +90,6 @@ startListening({
       promptsApi.endpoints.getPrompts.matchRejected(action) &&
       !action.meta.condition
     ) {
-      // getting first 2 lines of error message to show to user
       const errorMessage = isDetailMessage(action.payload?.data)
         ? action.payload.data.detail.split("\n").slice(0, 2).join("\n")
         : `fetching system prompts.`;
@@ -102,10 +100,19 @@ startListening({
       integrationsApi.endpoints.getAllIntegrations.matchRejected(action) &&
       !action.meta.condition
     ) {
-      // getting first 2 lines of error message to show to user
       const errorMessage = isDetailMessage(action.payload?.data)
         ? action.payload.data.detail
         : `fetching integrations.`;
+      listenerApi.dispatch(setError(errorMessage));
+    }
+
+    if (
+      integrationsApi.endpoints.deleteIntegration.matchRejected(action) &&
+      !action.meta.condition
+    ) {
+      const errorMessage = isDetailMessage(action.payload?.data)
+        ? action.payload.data.detail
+        : `deleting integration.`;
       listenerApi.dispatch(setError(errorMessage));
     }
 
@@ -123,7 +130,6 @@ startListening({
       dockerApi.endpoints.getAllDockerContainers.matchRejected(action) &&
       !action.meta.condition
     ) {
-      // getting first 2 lines of error message to show to user
       const errorMessage = isDetailMessage(action.payload?.data)
         ? action.payload.data.detail
         : `fetching docker containers.`;
@@ -134,7 +140,6 @@ startListening({
       dockerApi.endpoints.getDockerContainersByImage.matchRejected(action) &&
       !action.meta.condition
     ) {
-      // getting first 2 lines of error message to show to user
       const errorMessage = isDetailMessage(action.payload?.data)
         ? action.payload.data.detail
         : `fetching docker containers.`;
@@ -145,7 +150,6 @@ startListening({
       dockerApi.endpoints.getDockerContainersByLabel.matchRejected(action) &&
       !action.meta.condition
     ) {
-      // getting first 2 lines of error message to show to user
       const errorMessage = isDetailMessage(action.payload?.data)
         ? action.payload.data.detail
         : `fetching docker containers.`;
@@ -158,7 +162,6 @@ startListening({
       ) &&
       !action.meta.condition
     ) {
-      // getting first 2 lines of error message to show to user
       const errorMessage = isDetailMessage(action.payload?.data)
         ? action.payload.data.detail
         : `fetching docker containers.`;
