@@ -10,7 +10,6 @@ use tokio::fs as async_fs;
 use tokio::io::AsyncWriteExt;
 
 use crate::global_context::GlobalContext;
-use crate::integrations::integr_abstract::IntegrationTrait;
 // use crate::tools::tools_description::Tool;
 // use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
 
