@@ -101,7 +101,7 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
         </Text>
       )}
       <Text size="2" color="gray">
-        Please, choose where you want to setup your integration
+        Choose where you want to configure your integration:
       </Text>
       <form onSubmit={handleSubmit} id={`form-${integration.integr_name}`}>
         <Flex gap="5" direction="column" width="100%">
@@ -118,7 +118,7 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
                     {renderIntegrationCmdlineField({
                       path,
                       label: !shouldPathBeFormatted
-                        ? "Global (IDE level) configuration"
+                        ? "Global, available for all projects"
                         : path,
                       shouldBeFormatted: shouldPathBeFormatted,
                     })}
@@ -131,8 +131,7 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
             {integrationTemplate && (
               <Flex direction="column" gap="2">
                 <Text size="2" color="gray">
-                  Please, write a name of your command in the text field below,
-                  make sure that it&apos;s written in{" "}
+                  Name for your new command, make sure that it&apos;s written in{" "}
                   <Link
                     href="https://en.wikipedia.org/wiki/Snake_case"
                     target="_blank"
