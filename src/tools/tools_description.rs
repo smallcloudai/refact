@@ -400,7 +400,6 @@ tools:
   - name: "knowledge"
     agentic: true
     description: "Fetches successful trajectories to help you accomplish your task. Call each time you have a new task to increase your chances of success."
-    experimental: true
     parameters:
       - name: "im_going_to_use_tools"
         type: "string"

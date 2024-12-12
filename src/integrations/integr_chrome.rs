@@ -284,7 +284,7 @@ impl Tool for ToolChrome {
         ToolDesc {
             name: "chrome".to_string(),
             agentic: true,
-            experimental: true,
+            experimental: false,
             description: "A real web browser with graphical interface.".to_string(),
             parameters: vec![ToolParam {
                 name: "commands".to_string(),

@@ -97,7 +97,7 @@ impl IntegrationTrait for ToolPdb {
     fn integr_common(&self) -> IntegrationCommon {
         self.common.clone()
     }
-    
+
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolPdb {
             common: self.common.clone(),
@@ -178,7 +178,7 @@ impl Tool for ToolPdb {
         ToolDesc {
             name: "pdb".to_string(),
             agentic: true,
-            experimental: true,
+            experimental: false,
             description: "Python debugger for inspecting variables and exploring what the program really does. This tool executes only one command at a time. Start with python -m pdb ...".to_string(),
             parameters: vec![
                 ToolParam {
