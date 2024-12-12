@@ -220,21 +220,21 @@ pub async fn handle_v1_links(
     }
 
     // Follow-up
-    if post.meta.chat_mode != ChatMode::NO_TOOLS && links.is_empty() && post.messages.len() > 2 {
-        let follow_up_messages: Vec<String> = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
-            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
-        for follow_up_message in follow_up_messages {
-            tracing::info!("follow-up {:?}", follow_up_message);
-            links.push(Link {
-                action: LinkAction::FollowUp,
-                text: follow_up_message,
-                goto: None,
-                current_config_file: None,
-                link_tooltip: format!(""),
-                link_payload: None,
-            });
-        }
-    }
+    // if post.meta.chat_mode != ChatMode::NO_TOOLS && links.is_empty() && post.messages.len() > 2 {
+    //     let follow_up_messages: Vec<String> = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
+    //         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
+    //     for follow_up_message in follow_up_messages {
+    //         tracing::info!("follow-up {:?}", follow_up_message);
+    //         links.push(Link {
+    //             action: LinkAction::FollowUp,
+    //             text: follow_up_message,
+    //             goto: None,
+    //             current_config_file: None,
+    //             link_tooltip: format!(""),
+    //             link_payload: None,
+    //         });
+    //     }
+    // }
 
     tracing::info!("generated links2: {:?}", links);
 
