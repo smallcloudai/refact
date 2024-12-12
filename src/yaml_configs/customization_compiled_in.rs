@@ -165,7 +165,8 @@ PROMPT_PROJECT_SUMMARY: |
   Think of typical command line things that might be required to work on the project, how do you run the webserver, how do you compile it?
   For webserver to work you most likely need a service_* so it runs in the background and you can open and navigate web pages at the same time.
   Turn those things into recommendations, replace _TEMPLATE with lowercase name with underscores, don't overthink it, "cargo build" should become "cmdline_cargo_build", etc.
-  Recommendations here means just a list. The user will fill in the settings later.
+  If there's no web server detectable, skip it.
+  Recommendations here means just a list. Details will be filled later.
 
   4. Write a summary in natural language to the user, get their feedback, just ask if it looks alright, or if any of it needs improving.
   5. Finally use 📍REWRITE_WHOLE_FILE to overwrite %CONFIG_PATH%
