@@ -512,6 +512,7 @@ export type NotConfiguredIntegrationWithIconRecord = {
   on_your_laptop: boolean;
   when_isolated: boolean;
   commandName?: string;
+  wasOpenedThroughChat?: boolean; // to manage buttons, we need to address rather intermediate page was opened through chat or not
   // unparsed: unknown;
 };
 

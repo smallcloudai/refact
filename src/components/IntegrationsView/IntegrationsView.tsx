@@ -150,6 +150,8 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
               commandName: maybeIntegration.commandName
                 ? maybeIntegration.commandName
                 : undefined,
+              wasOpenedThroughChat:
+                maybeIntegration.shouldIntermediatePageShowUp,
               integr_config_path: uniqueConfigPaths,
               project_path: uniqueProjectPaths,
               integr_config_exists: false,
@@ -629,6 +631,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     goBack && goBack();
     dispatch(clearError());
     setCurrentIntegration(null);
+    setCurrentNotConfiguredIntegration(null);
   };
 
   const handleIntegrationShowUp = (
@@ -687,6 +690,12 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
           <IntegrationsHeader
             leftRightPadding={leftRightPadding}
             handleFormReturn={handleFormReturn}
+            handleInstantReturn={goBackAndClearError}
+            instantBackReturnment={
+              currentNotConfiguredIntegration
+                ? currentNotConfiguredIntegration.wasOpenedThroughChat
+                : false
+            }
             integrationName={
               currentIntegration
                 ? currentIntegration.integr_name

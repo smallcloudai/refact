@@ -11,6 +11,8 @@ type IntegrationsHeaderProps = {
   integrationName: string;
   leftRightPadding: LeftRightPadding;
   icon: string;
+  instantBackReturnment?: boolean;
+  handleInstantReturn?: () => void;
 };
 
 export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
@@ -18,8 +20,18 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
   integrationName,
   leftRightPadding,
   icon,
+  instantBackReturnment = false,
+  handleInstantReturn,
 }) => {
   const { width } = useWindowDimensions();
+
+  const handleButtonClick = () => {
+    if (instantBackReturnment && handleInstantReturn) {
+      handleInstantReturn();
+    } else {
+      handleFormReturn();
+    }
+  };
 
   return (
     <Flex className={styles.IntegrationsHeader} px={leftRightPadding}>
@@ -32,12 +44,12 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
           align="center"
         >
           {width > 500 ? (
-            <Button size="1" variant="surface" onClick={handleFormReturn}>
+            <Button size="1" variant="surface" onClick={handleButtonClick}>
               <ArrowLeftIcon width="16" height="16" />
-              Configurations
+              {instantBackReturnment ? "Back to chat" : "Configurations"}
             </Button>
           ) : (
-            <IconButton size="2" variant="surface" onClick={handleFormReturn}>
+            <IconButton size="2" variant="surface" onClick={handleButtonClick}>
               <ArrowLeftIcon width="16" height="16" />
             </IconButton>
           )}
