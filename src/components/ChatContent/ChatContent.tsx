@@ -158,8 +158,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   ]);
 
   const handleManualStopStreamingClick = useCallback(() => {
-    // console.log(`[DEBUG]: going back to configuration page`);
-    // TBD: should it be allowed to run in the background?
     onStopStreaming();
     void sendTelemetryEvent({
       scope: `stopStreaming`,
