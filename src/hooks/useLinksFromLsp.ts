@@ -160,7 +160,15 @@ export function useLinksFromLsp() {
       // eslint-disable-next-line no-console
       console.warn(`unknown action: ${JSON.stringify(link)}`);
     },
-    [applyCommit, applyPatches, dispatch, handleGoTo, messages, submit, sendTelemetryEvent],
+    [
+      applyCommit,
+      applyPatches,
+      dispatch,
+      handleGoTo,
+      messages,
+      submit,
+      sendTelemetryEvent,
+    ],
   );
 
   const skipLinksRequest = useMemo(() => {
