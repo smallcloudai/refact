@@ -27,7 +27,6 @@ import { generateChatTitle, sendChat } from "../../../services/refact/chat";
 import { ToolCommand } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { debugApp } from "../../../debugConfig";
-import { sendTelemetryEvent } from "../../../utils/telemetryHelper";
 
 export const newChatAction = createAction("chatThread/new");
 
