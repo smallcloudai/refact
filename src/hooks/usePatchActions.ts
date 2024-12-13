@@ -77,7 +77,6 @@ export const usePatchActions = () => {
     (pin: string) => {
       const fileName = extractFilePathFromPin(pin);
       const cleanedFileName = fileName.replace(/\\\?\\|^\\+/g, "");
-      // TODO find port here
       startFileAnimation(cleanedFileName);
       getPatch({ pin, messages })
         .unwrap()

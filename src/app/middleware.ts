@@ -288,7 +288,7 @@ startListening({
   ),
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
-    if (chatAskQuestionThunk.rejected.match(action)) {
+    if (chatAskQuestionThunk.rejected.match(action) && !action.meta.condition) {
       const { chatId, mode } = action.meta.arg;
       const thread =
         chatId in state.chat.cache
@@ -341,7 +341,10 @@ startListening({
       void listenerApi.dispatch(thunk);
     }
 
-    if (diffApi.endpoints.patchSingleFileFromTicket.matchRejected(action)) {
+    if (
+      diffApi.endpoints.patchSingleFileFromTicket.matchRejected(action) &&
+      !action.meta.condition
+    ) {
       const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
         scope: "handleShow",
         success: false,
@@ -361,7 +364,10 @@ startListening({
       void listenerApi.dispatch(thunk);
     }
 
-    if (pathApi.endpoints.getFullPath.matchRejected(action)) {
+    if (
+      pathApi.endpoints.getFullPath.matchRejected(action) &&
+      !action.meta.condition
+    ) {
       const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
         url: FULL_PATH_URL,
         scope: "getFullPath",
@@ -387,10 +393,11 @@ startListening({
     }
 
     if (
-      pathApi.endpoints.customizationPath.matchRejected(action) ||
-      pathApi.endpoints.privacyPath.matchRejected(action) ||
-      pathApi.endpoints.bringYourOwnKeyPath.matchRejected(action) ||
-      pathApi.endpoints.integrationsPath.matchRejected(action)
+      (pathApi.endpoints.customizationPath.matchRejected(action) ||
+        pathApi.endpoints.privacyPath.matchRejected(action) ||
+        pathApi.endpoints.bringYourOwnKeyPath.matchRejected(action) ||
+        pathApi.endpoints.integrationsPath.matchRejected(action)) &&
+      !action.meta.condition
     ) {
       const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
         url: CONFIG_PATH_URL,
