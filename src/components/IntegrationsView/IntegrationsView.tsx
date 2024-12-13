@@ -49,6 +49,7 @@ import { IntermediateIntegration } from "./IntermediateIntegration";
 import { parseOrElse } from "../../utils";
 import { useDeleteIntegrationByPath } from "../../hooks/useDeleteIntegrationByPath";
 import { toPascalCase } from "../../utils/toPascalCase";
+import { selectThemeMode } from "../../features/Config/configSlice";
 
 type IntegrationViewProps = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -634,6 +635,11 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     [currentIntegration, integrationsMap],
   );
 
+  const theme = useAppSelector(selectThemeMode);
+  const icons = iconMap(
+    theme ? (theme === "inherit" ? "light" : theme) : "light",
+  );
+
   const integrationLogo = useMemo(() => {
     if (!currentIntegration && !currentNotConfiguredIntegration) {
       return "https://placehold.jp/150x150.png";
@@ -645,15 +651,15 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
           ? currentNotConfiguredIntegration.integr_name.split("_")[0]
           : "https://placehold.jp/150x150.png",
     )
-      ? iconMap.cmdline
-      : iconMap[
+      ? icons.cmdline
+      : icons[
           currentIntegration
             ? currentIntegration.integr_name
             : currentNotConfiguredIntegration
               ? currentNotConfiguredIntegration.integr_name
               : ""
         ];
-  }, [currentIntegration, currentNotConfiguredIntegration]);
+  }, [currentIntegration, currentNotConfiguredIntegration, icons]);
 
   if (isLoading) {
     return <Spinner spinning />;

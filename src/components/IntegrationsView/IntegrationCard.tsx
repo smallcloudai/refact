@@ -8,6 +8,8 @@ import {
 import { FC } from "react";
 import classNames from "classnames";
 import { iconMap } from "./icons/iconMap";
+import { useAppSelector } from "../../hooks";
+import { selectThemeMode } from "../../features/Config/configSlice";
 
 type IntegrationCardProps = {
   integration:
@@ -28,11 +30,16 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
   handleIntegrationShowUp,
   isNotConfigured = false,
 }) => {
+  const theme = useAppSelector(selectThemeMode);
+  const icons = iconMap(
+    theme ? (theme === "inherit" ? "light" : theme) : "light",
+  );
+
   const integrationLogo = INTEGRATIONS_WITH_TERMINAL_ICON.includes(
     integration.integr_name.split("_")[0],
   )
-    ? iconMap.cmdline
-    : iconMap[integration.integr_name];
+    ? icons.cmdline
+    : icons[integration.integr_name];
 
   return (
     <Card

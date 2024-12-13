@@ -20,6 +20,8 @@ import { toPascalCase } from "../../../utils/toPascalCase";
 import { iconMap } from "../icons/iconMap";
 import { IntegrationDeletePopover } from "../IntegrationDeletePopover";
 import { debugIntegrations } from "../../../debugConfig";
+import { selectThemeMode } from "../../../features/Config/configSlice";
+import { useAppSelector } from "../../../hooks";
 
 function areAllFieldsBoolean(json: unknown): json is Record<string, boolean> {
   return (
@@ -66,6 +68,11 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   const [areExtraFieldsRevealed, setAreExtraFieldsRevealed] = useState(false);
 
   const { integration } = useGetIntegrationDataByPathQuery(integrationPath);
+
+  const theme = useAppSelector(selectThemeMode);
+  const icons = iconMap(
+    theme ? (theme === "inherit" ? "light" : theme) : "light",
+  );
 
   const handleAvailabilityChange = useCallback(
     (fieldName: string, value: boolean) => {
@@ -261,7 +268,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
         <Flex mt="6" direction="column" align="start" gap="5">
           <Flex gap="2" align="center" justify="center" width="100%">
             <img
-              src={iconMap.docker}
+              src={icons.docker}
               className={styles.DockerIcon}
               alt={integration.data.integr_name}
             />
