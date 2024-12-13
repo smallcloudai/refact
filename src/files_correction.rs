@@ -268,9 +268,9 @@ pub async fn correct_to_nearest_dir_path(
 }
 
 pub async fn get_project_dirs(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
-    let gcx_locked = gcx.write().await;
-    let workspace_folders = gcx_locked.documents_state.workspace_folders.lock().unwrap();
-    workspace_folders.iter().cloned().collect::<Vec<_>>()
+    let workspace_folders = gcx.read().await.documents_state.workspace_folders.clone();
+    let workspace_folders_locked = workspace_folders.lock().unwrap();
+    workspace_folders_locked.iter().cloned().collect::<Vec<_>>()
 }
 
 pub async fn get_active_project_path(gcx: Arc<ARwLock<GlobalContext>>) -> Option<PathBuf> {
