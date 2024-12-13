@@ -234,6 +234,7 @@ export const useSendChatRequest = () => {
 
 // NOTE: only use this once
 export function useAutoSend() {
+  const dispatch = useAppDispatch();
   const streaming = useAppSelector(selectIsStreaming);
   const currentMessages = useAppSelector(selectMessages);
   const errored = useAppSelector(selectChatError);
@@ -266,11 +267,13 @@ export function useAutoSend() {
             return;
           }
         }
+        dispatch(clearPauseReasonsAndConfirmTools(false));
         void sendMessages(currentMessages);
         recallCounter = 0;
       }
     }
   }, [
+    dispatch,
     errored,
     currentMessages,
     preventSend,
