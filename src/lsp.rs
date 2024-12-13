@@ -179,6 +179,29 @@ impl LspBackend {
         self.gcx.write().await.documents_state.active_file_path = Some(path);
         Ok(SuccessRes { success: true })
     }
+
+    async fn ping_http_server(&self) -> Result<()> {
+        let (port, http_client) = {
+            let gcx_locked = self.gcx.write().await;
+            (gcx_locked.cmdline.http_port, gcx_locked.http_client.clone())
+        };
+        
+        let url = "http://127.0.0.1:".to_string() + &port.to_string() + &"/v1/ping".to_string();
+        let mut attempts = 0;
+        while attempts < 15 {
+            let response = http_client.get(&url).send().await;
+            match response {
+                Ok(res) if res.status().is_success() => {
+                    return Ok(());
+                }
+                _ => {
+                    attempts += 1;
+                    tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+                }
+            }
+        }
+        Err(internal_error("HTTP server is not ready after 15 attempts"))
+    }
  }
 
 
@@ -220,6 +243,10 @@ impl LanguageServer for LspBackend {
                 }
             }],
         };
+        
+        
+        // wait for http server to be ready
+        self.ping_http_server().await?;      
 
         Ok(InitializeResult {
             server_info: Some(ServerInfo {
