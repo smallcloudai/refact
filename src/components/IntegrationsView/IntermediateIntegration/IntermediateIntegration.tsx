@@ -22,6 +22,8 @@ import { CustomInputField } from "../CustomFieldsAndWidgets";
 import { Link } from "../../Link";
 import { useGetIntegrationDataByPathQuery } from "../../../hooks/useGetIntegrationDataByPathQuery";
 import { debugIntegrations } from "../../../debugConfig";
+import { useAppSelector } from "../../../hooks";
+import { selectThemeMode } from "../../../features/Config/configSlice";
 
 const validateSnakeCase = (value: string) => {
   // TODO: include numbers 0-9
@@ -63,6 +65,11 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
   integration,
   handleSubmit,
 }) => {
+  const theme = useAppSelector(selectThemeMode);
+  const icons = iconMap(
+    theme ? (theme === "inherit" ? "light" : theme) : "light",
+  );
+
   const [integrationType, integrationTemplate] =
     integration.integr_name.split("_");
   const isIntegrationAComamndLine = CMDLINE_TOOLS.includes(integrationType);
@@ -98,9 +105,7 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
       <Heading as="h3" size="4">
         <Flex align="center" gap="3">
           <img
-            src={
-              iconMap[isIntegrationAComamndLine ? "cmdline" : integrationType]
-            }
+            src={icons[isIntegrationAComamndLine ? "cmdline" : integrationType]}
             className={styles.integrationIcon}
           />
           {isIntegrationAComamndLine
