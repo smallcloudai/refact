@@ -67,7 +67,8 @@ pub async fn handle_v1_links(
     let mut uncommited_changes_warning = String::new();
 
     tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
-    let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), gcx.read().await.cmdline.experimental).await;
+    let experimental = gcx.read().await.cmdline.experimental;
+    let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), experimental).await;
 
     if post.meta.chat_mode == ChatMode::CONFIGURE {
         // links.push(Link {
