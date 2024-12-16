@@ -7,12 +7,13 @@ import { TruncateRight } from "../Text/TruncateRight";
 import { selectThreadToolUse } from "../../features/Chat";
 
 function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
-  const hasAction = "action" in link;
-  const hasGoTo = "goto" in link;
+  const hasAction = "link_action" in link;
+  const hasGoTo = "link_goto" in link;
   if (!hasAction && !hasGoTo) return "";
-  if (hasAction && hasGoTo) return `action: ${link.action}\ngoto: ${link.goto}`;
-  if (hasAction) return `action: ${link.action}`;
-  return `goto: ${link.goto}`;
+  if (hasAction && hasGoTo) {
+    return `action: ${link.link_action}\ngoto: ${link.link_goto}`;
+  }
+  return `action: ${link.link_action}`;
 }
 
 export const ChatLinks: React.FC = () => {
@@ -49,7 +50,7 @@ const ChatLinkButton: React.FC<{
   link: ChatLink;
   onClick: (link: ChatLink) => void;
 }> = ({ link, onClick }) => {
-  const title = link.link_tooltip || maybeConcatActionAndGoToStrings(link);
+  const title = link.link_tooltip ?? maybeConcatActionAndGoToStrings(link);
   const handleClick = React.useCallback(() => onClick(link), [link, onClick]);
 
   return (
@@ -65,7 +66,7 @@ const ChatLinkButton: React.FC<{
       onClick={handleClick}
       style={{ maxWidth: "100%" }}
     >
-      <TruncateRight>{link.text}</TruncateRight>
+      <TruncateRight>{link.link_text}</TruncateRight>
     </Button>
   );
 };

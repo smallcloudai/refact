@@ -3,21 +3,21 @@ import { LinksForChatResponse } from "../services/refact/links";
 export const STUB_LINKS_FOR_CHAT_RESPONSE: LinksForChatResponse = {
   links: [
     {
-      text: "Save and return",
-      action: "patch-all",
-      goto: "SETTINGS:/path/to/config/file.yaml",
+      link_text: "Save and return",
+      link_action: "patch-all",
+      link_goto: "SETTINGS:/path/to/config/file.yaml",
       link_tooltip: "",
     },
     {
-      text: "Can you fix it?",
-      action: "follow-up",
+      link_text: "Can you fix it?",
+      link_action: "follow-up",
       link_tooltip: "a nice tool tip message",
     },
     // { text: 'git commit -m "message"', action: "commit", link_tooltip: "" },
     // { text: "Save and return", goto: "SETTINGS:postgres", link_tooltip: "" },
     {
-      text: "Investigate Project",
-      action: "summarize-project",
+      link_text: "Investigate Project",
+      link_action: "summarize-project",
       link_tooltip: "",
     },
 
@@ -27,9 +27,9 @@ export const STUB_LINKS_FOR_CHAT_RESPONSE: LinksForChatResponse = {
     //   link_tooltip: "",
     // },
     {
-      action: "commit",
-      text: "Commit 4 files in `refact-lsp`",
-      goto: "LINKS_AGAIN",
+      link_action: "commit",
+      link_text: "Commit 4 files in `refact-lsp`",
+      link_goto: "LINKS_AGAIN",
       link_tooltip:
         'git commmit -m "Add build script and test files for Docker image deployment and output generation..."\nA build-remote.sh\nA long-array.py\nA long-output.py\nA test.py',
       link_payload: {

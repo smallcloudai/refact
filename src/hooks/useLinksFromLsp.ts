@@ -80,13 +80,17 @@ export function useLinksFromLsp() {
     (link: ChatLink) => {
       if (!("action" in link)) return;
       void sendTelemetryEvent({
-        scope: `handleLinkAction/${link.action}`,
+        scope: `handleLinkAction/${link.link_action}`,
         success: true,
         error_message: "",
       });
 
-      if (link.action === "goto" && "goto" in link) {
-        const [action, payload] = link.goto.split(":");
+      if (
+        link.link_action === "goto" &&
+        "link_goto" in link &&
+        link.link_goto !== undefined
+      ) {
+        const [action, payload] = link.link_goto.split(":");
         if (action.toLowerCase() === "settings") {
           debugIntegrations(
             `[DEBUG]: this goto is integrations one, dispatching integration data`,
@@ -97,34 +101,34 @@ export function useLinksFromLsp() {
               shouldIntermediatePageShowUp: payload !== "DEFAULT",
             }),
           );
-          setPendingIntegrationGoto(link.goto);
+          setPendingIntegrationGoto(link.link_goto);
         }
         handleGoTo({
-          goto: link.goto,
+          goto: link.link_goto,
         });
         return;
       }
 
-      if (link.action === "patch-all") {
+      if (link.link_action === "patch-all") {
         void applyPatches(messages).then(() => {
           if ("goto" in link) {
-            handleGoTo({ goto: link.goto });
+            handleGoTo({ goto: link.link_goto });
           }
         });
         return;
       }
 
-      if (link.action === "follow-up") {
-        submit(link.text);
+      if (link.link_action === "follow-up") {
+        submit(link.link_text);
         return;
       }
 
-      if (link.action === "summarize-project") {
-        if ("current_config_file" in link && link.current_config_file) {
-          dispatch(setIntegrationData({ path: link.current_config_file }));
+      if (link.link_action === "summarize-project") {
+        if ("link_summary_path" in link && link.link_summary_path) {
+          dispatch(setIntegrationData({ path: link.link_summary_path }));
           // set the integration data
         }
-        submit(link.text, "PROJECT_SUMMARY");
+        submit(link.link_text, "PROJECT_SUMMARY");
         return;
       }
 
