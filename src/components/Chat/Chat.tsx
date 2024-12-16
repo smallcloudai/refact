@@ -8,26 +8,26 @@ import {
   useSendChatRequest,
   useGetPromptsQuery,
   useAutoSend,
+  useGetCapsQuery,
+  useCapsForToolUse,
 } from "../../hooks";
 import type { Config } from "../../features/Config/configSlice";
 import {
   enableSend,
-  getSelectedChatModel,
   selectIsStreaming,
   selectIsWaiting,
-  setChatModel,
   selectPreventSend,
   selectChatId,
   selectMessages,
   getSelectedToolUse,
   getSelectedSystemPrompt,
   setSystemPrompt,
-  ToolUse,
 } from "../../features/Chat/Thread";
 import { ThreadHistoryButton } from "../Buttons";
 import { push } from "../../features/Pages/pagesSlice";
 import { DropzoneProvider } from "../Dropzone";
-import { CodeChatModel, SystemPrompts } from "../../services/refact";
+import { SystemPrompts } from "../../services/refact";
+import { AgentUsage } from "../../features/AgentUsage";
 
 export type ChatProps = {
   host: Config["host"];
@@ -35,28 +35,27 @@ export type ChatProps = {
   backFromChat: () => void;
   style?: React.CSSProperties;
   unCalledTools: boolean;
-  // TODO: update this
-  caps: ChatFormProps["caps"];
   maybeSendToSidebar: ChatFormProps["onClose"];
 };
 
 export const Chat: React.FC<ChatProps> = ({
   style,
   unCalledTools,
-  caps,
   maybeSendToSidebar,
 }) => {
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
+  const caps = useGetCapsQuery();
 
   const chatId = useAppSelector(selectChatId);
   const { submit, abort, retryFromIndex, confirmToolUsage } =
     useSendChatRequest();
-  const chatModel = useAppSelector(getSelectedChatModel);
+
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectMessages);
+  const capsForToolUse = useCapsForToolUse();
 
   const promptsRequest = useGetPromptsQuery();
   const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
@@ -65,13 +64,6 @@ export const Chat: React.FC<ChatProps> = ({
   const [isDebugChatHistoryVisible, setIsDebugChatHistoryVisible] =
     useState(false);
 
-  const onSetChatModel = useCallback(
-    (value: string) => {
-      const model = caps.default_cap === value ? "" : value;
-      dispatch(setChatModel(model));
-    },
-    [caps.default_cap, dispatch],
-  );
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
@@ -106,14 +98,6 @@ export const Chat: React.FC<ChatProps> = ({
 
   useAutoSend();
 
-  // TODO: ideally this could be set when the chat is created.
-  useEffect(() => {
-    if (chatToolUse === "agent" && !modelSupportsAgent(chatModel)) {
-      const modelToUse = modelForMode(chatModel, caps, chatToolUse);
-      onSetChatModel(modelToUse);
-    }
-  }, [caps, chatModel, chatToolUse, onSetChatModel]);
-
   return (
     <DropzoneProvider asChild>
       <Flex
@@ -130,6 +114,8 @@ export const Chat: React.FC<ChatProps> = ({
           onRetry={retryFromIndex}
           onStopStreaming={abort}
         />
+
+        {!unCalledTools && <AgentUsage />}
         {!isStreaming && preventSend && unCalledTools && (
           <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
             <Card>
@@ -147,12 +133,6 @@ export const Chat: React.FC<ChatProps> = ({
           isStreaming={isStreaming}
           showControls={messages.length === 0 && !isStreaming}
           onSubmit={handleSummit}
-          model={chatModel}
-          onSetChatModel={onSetChatModel}
-          caps={{
-            ...caps,
-            available_caps: capOptionsForMode(caps.available_caps, chatToolUse),
-          }}
           onClose={maybeSendToSidebar}
           prompts={promptsRequest.data ?? {}}
           onSetSystemPrompt={onSetSelectedSystemPrompt}
@@ -165,7 +145,12 @@ export const Chat: React.FC<ChatProps> = ({
           {messages.length > 0 && (
             <Flex align="center" justify="between" width="100%">
               <Flex align="center" gap="1">
-                <Text size="1">model: {chatModel || caps.default_cap} </Text> •{" "}
+                <Text size="1">
+                  model:{" "}
+                  {capsForToolUse.currentModel ||
+                    caps.data?.code_chat_default_model}{" "}
+                </Text>{" "}
+                •{" "}
                 <Text
                   size="1"
                   onClick={() => setIsDebugChatHistoryVisible((prev) => !prev)}
@@ -189,39 +174,3 @@ export const Chat: React.FC<ChatProps> = ({
     </DropzoneProvider>
   );
 };
-
-const AGENT_ALLOW_LIST = ["gpt-4o", "claude-3-5-sonnet"];
-function modelForMode(
-  model: string,
-  caps: ChatFormProps["caps"],
-  toolUse?: ToolUse,
-) {
-  if (toolUse !== "agent") return model;
-
-  if (AGENT_ALLOW_LIST.includes(model)) return model;
-
-  const available = Object.keys(caps.available_caps);
-
-  const hasModels = AGENT_ALLOW_LIST.find((agent) => available.includes(agent));
-  if (hasModels) return hasModels;
-
-  return model || caps.default_cap;
-}
-
-function modelSupportsAgent(model: string) {
-  return AGENT_ALLOW_LIST.includes(model);
-}
-
-function capOptionsForMode(
-  caps: Record<string, CodeChatModel>,
-  toolUse?: string,
-) {
-  if (toolUse !== "agent") return caps;
-  const agentEntries = Object.entries(caps).filter(([key]) =>
-    AGENT_ALLOW_LIST.includes(key),
-  );
-
-  if (agentEntries.length === 0) return caps;
-
-  return Object.fromEntries(agentEntries);
-}

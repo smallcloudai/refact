@@ -11,23 +11,16 @@ import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
 import { ToolUse, selectToolUse, setToolUse } from "../../features/Chat/Thread";
-import { useCanUseTools } from "../../hooks/useCanUseTools";
-import { useAppSelector, useAppDispatch } from "../../hooks";
+import {
+  useAppSelector,
+  useAppDispatch,
+  useCapsForToolUse,
+  useCanUseTools,
+} from "../../hooks";
 
-type CapsSelectProps = {
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-  disabled?: boolean;
-};
-
-const CapsSelect: React.FC<CapsSelectProps> = ({
-  options,
-  value,
-  onChange,
-  disabled,
-}) => {
+const CapsSelect: React.FC = () => {
   const refs = useTourRefs();
+  const caps = useCapsForToolUse();
 
   return (
     <Flex
@@ -39,11 +32,11 @@ const CapsSelect: React.FC<CapsSelectProps> = ({
     >
       <Text size="2">Use model:</Text>
       <Select
-        disabled={disabled}
+        disabled={caps.loading}
         title="chat model"
-        options={options}
-        value={value}
-        onChange={onChange}
+        options={caps.usableModelsForPlan}
+        value={caps.currentModel}
+        onChange={caps.setCapModel}
       ></Select>
     </Flex>
   );
@@ -72,7 +65,6 @@ export type ChatControlsProps = {
     name: keyof ChatControlsProps["checkboxes"],
     checked: boolean | string,
   ) => void;
-  selectProps: CapsSelectProps;
   promptsProps: PromptSelectProps;
   host: Config["host"];
   showControls: boolean;
@@ -146,7 +138,6 @@ const ChatControlCheckBox: React.FC<{
 export const ChatControls: React.FC<ChatControlsProps> = ({
   checkboxes,
   onCheckedChange,
-  selectProps,
   promptsProps,
   host,
   showControls,
@@ -197,6 +188,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           </Flex>
         );
       })}
+
       {canUseTools && showControls && (
         <Flex
           ref={(x) => refs.setUseTools(x)}
@@ -208,7 +200,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
 
       {showControls && (
         <Flex style={{ alignSelf: "flex-start" }}>
-          <CapsSelect {...selectProps} />
+          <CapsSelect />
         </Flex>
       )}
       {showControls && (

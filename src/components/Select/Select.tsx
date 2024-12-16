@@ -5,7 +5,7 @@ import classnames from "classnames";
 
 export type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   onChange: (value: string) => void;
-  options: string[];
+  options: (string | ItemProps)[];
   title?: string;
   contentPosition?: "item-aligned" | "popper";
 };
@@ -48,10 +48,17 @@ export const Select: React.FC<SelectProps> = ({
     <Root {...props} onValueChange={onChange} size="1">
       <Trigger title={title} />
       <Content position={contentPosition ? contentPosition : "popper"}>
-        {options.map((option) => {
+        {options.map((option, index) => {
+          if (typeof option === "string") {
+            return (
+              <Item key={`select-item-${index}-${option}`} value={option}>
+                {option}
+              </Item>
+            );
+          }
           return (
-            <Item key={option} value={option}>
-              {option}
+            <Item key={`select-item-${index}-${option.value}`} {...option}>
+              {option.children ?? option.textValue ?? option.value}
             </Item>
           );
         })}

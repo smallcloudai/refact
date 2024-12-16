@@ -40,6 +40,7 @@ import {
   getToolsConfirmationStatus,
   setPauseReasons,
 } from "../features/ToolConfirmation/confirmationSlice";
+import { useAgentUsage } from "./useAgentUsage";
 import {
   chatModeToLspMode,
   LspChatMode,
@@ -55,6 +56,7 @@ export const useSendChatRequest = () => {
 
   const [triggerGetTools] = useGetToolsLazyQuery();
   const [triggerCheckForConfirmation] = useCheckForConfirmationMutation();
+  const { incrementIfLastMessageIsFromUser } = useAgentUsage();
 
   const chatId = useAppSelector(selectChatId);
 
@@ -130,6 +132,7 @@ export const useSendChatRequest = () => {
 
       const dispatchedAction = dispatch(action);
       abortControllers.addAbortController(chatId, dispatchedAction.abort);
+      incrementIfLastMessageIsFromUser(messages);
     },
     [
       triggerGetTools,
@@ -140,6 +143,7 @@ export const useSendChatRequest = () => {
       chatId,
       threadMode,
       abortControllers,
+      incrementIfLastMessageIsFromUser,
       triggerCheckForConfirmation,
     ],
   );

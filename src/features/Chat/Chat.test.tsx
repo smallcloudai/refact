@@ -221,16 +221,6 @@ describe("Chat", () => {
       { preloadedState: { pages: [{ name: "chat" }] } },
     );
 
-    // const select = await screen.findByTitle("chat model");
-
-    await waitFor(() => {
-      // TODO: find out why this is not near the select?
-      // app.debug(select.parentElement?.parentElement, 10000);
-      // expect(app.container.textContent).toContain("gpt-3.5-turbo");
-
-      expect(screen.findByText("gpt-4o")).not.toBeNull();
-    });
-
     const textarea = screen.getByTestId("chat-form-textarea");
 
     expect(textarea).not.toBeNull();

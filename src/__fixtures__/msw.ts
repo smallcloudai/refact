@@ -70,6 +70,20 @@ export const goodUser: HttpHandler = http.get(
   },
 );
 
+export const nonProUser: HttpHandler = http.get(
+  "https://www.smallcloud.ai/v1/login",
+  () => {
+    return HttpResponse.json({
+      retcode: "OK",
+      account: "party@refact.ai",
+      inference_url: "https://www.smallcloud.ai/v1",
+      inference: "FREE",
+      metering_balance: -100000,
+      questionnaire: {},
+    });
+  },
+);
+
 export const chatLinks: HttpHandler = http.post(
   `http://127.0.0.1:8001${CHAT_LINKS_URL}`,
   () => {

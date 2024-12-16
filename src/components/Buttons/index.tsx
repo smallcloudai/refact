@@ -4,4 +4,5 @@ export {
   BackToSideBarButton,
   RightButton,
   RightButtonGroup,
+  LinkButton,
 } from "./Buttons";

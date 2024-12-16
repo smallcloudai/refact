@@ -44,8 +44,6 @@ import { useDebounceCallback } from "usehooks-ts";
 
 const noop = () => ({});
 
-const long = "long".repeat(30);
-
 const meta: Meta<typeof ChatForm> = {
   title: "Chat Form",
   component: ChatForm,
@@ -59,35 +57,6 @@ const meta: Meta<typeof ChatForm> = {
       console.log("onclose called");
     },
     isStreaming: false,
-    onSetChatModel: noop,
-    caps: {
-      fetching: false,
-      default_cap: "foo",
-      available_caps: {
-        bar: {
-          default_scratchpad: "",
-          n_ctx: 2048,
-          similar_models: [],
-          supports_tools: false,
-          supports_scratchpads: {},
-        },
-        [long]: {
-          default_scratchpad: "",
-          n_ctx: 2048,
-          similar_models: [],
-          supports_tools: false,
-          supports_scratchpads: {},
-        },
-        baz: {
-          default_scratchpad: "",
-          n_ctx: 2048,
-          similar_models: [],
-          supports_tools: false,
-          supports_scratchpads: {},
-        },
-      },
-      error: "",
-    },
     showControls: true,
     prompts: SYSTEM_PROMPTS,
     onSetSystemPrompt: noop,
@@ -112,7 +81,5 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Primary: Story = {
-  args: {
-    model: "foo",
-  },
+  args: {},
 };
