@@ -78,7 +78,7 @@ export function useLinksFromLsp() {
 
   const handleLinkAction = useCallback(
     (link: ChatLink) => {
-      if (!("action" in link)) return;
+      if (!("link_action" in link)) return;
       void sendTelemetryEvent({
         scope: `handleLinkAction/${link.link_action}`,
         success: true,
@@ -111,7 +111,7 @@ export function useLinksFromLsp() {
 
       if (link.link_action === "patch-all") {
         void applyPatches(messages).then(() => {
-          if ("goto" in link) {
+          if ("link_goto" in link) {
             handleGoTo({ goto: link.link_goto });
           }
         });
