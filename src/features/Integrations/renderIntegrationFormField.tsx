@@ -134,7 +134,9 @@ export const renderIntegrationFormField = ({
         )}
         {f_type === "tool" && (
           <IntegrationsTable
-            initialData={values ? values[fieldKey] : []}
+            initialData={
+              values ? (values[fieldKey] as ToolParameterEntity[]) : []
+            }
             onToolParameters={onToolParameters}
           />
         )}
