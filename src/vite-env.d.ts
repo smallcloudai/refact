@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_REFACT_LSP_URL?: string;
+  readonly VITE_REFACT_LSP_PORT?: string;
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;
@@ -12,4 +12,5 @@ declare const __REFACT_CHAT_VERSION__: VersionInfo;
 
 interface Window {
   __REFACT_CHAT_VERSION__: VersionInfo;
+  __REFACT_LSP_PORT__?: number;
 }
