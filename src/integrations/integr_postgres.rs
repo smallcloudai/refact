@@ -172,23 +172,26 @@ fields:
   host:
     f_type: string_long
     f_desc: "Connect to this host, for example 127.0.0.1 or docker container name."
-    f_placeholder: marketing_db_container
+    f_default: "127.0.0.1"
   port:
     f_type: string_short
     f_desc: "Which port to use."
     f_default: "5432"
   user:
     f_type: string_short
-    f_placeholder: john_doe
+    f_placeholder: "$POSTGRES_USER"
+    smartlinks:
+      - sl_label: "Open variables.yaml"
+        sl_goto: "EDITOR:variables.yaml"
   password:
     f_type: string_short
     f_default: "$POSTGRES_PASSWORD"
     smartlinks:
-      - sl_label: "Open passwords.yaml"
-        sl_goto: "EDITOR:passwords.yaml"
+      - sl_label: "Open variables.yaml"
+        sl_goto: "EDITOR:variables.yaml"
   database:
     f_type: string_short
-    f_placeholder: marketing_db
+    f_placeholder: "postgres"
   psql_binary_path:
     f_type: string_long
     f_desc: "If it can't find a path to `psql` you can provide it here, leave blank if not sure."
@@ -218,11 +221,13 @@ docker:
   filter_label: ""
   filter_image: "postgres"
   new_container_default:
-    image: "postgres:13"
+    image: "postgres:latest"
     environment:
-      POSTGRES_DB: "marketing_db"
-      POSTGRES_USER: "john_doe"
+      POSTGRES_DB: "$POSTGRES_DB"
+      POSTGRES_USER: "$POSTGRES_USER"
       POSTGRES_PASSWORD: "$POSTGRES_PASSWORD"
+    ports:
+      - "5432:5432"
   smartlinks:
     - sl_label: "Add Database Container"
       sl_chat:
