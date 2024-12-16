@@ -24,6 +24,8 @@ class TabSettingsRouter(APIRouter):
         anthropic_api_key: Optional[str] = None
         groq_api_key: Optional[str] = None
         cerebras_api_key: Optional[str] = None
+        gemini_api_key: Optional[str] = None
+
         huggingface_api_key: Optional[str] = None
 
     def __init__(self, models_assigner: ModelAssigner, *args, **kwargs):

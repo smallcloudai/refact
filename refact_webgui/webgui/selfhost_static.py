@@ -23,6 +23,7 @@ class StaticRouter(APIRouter):
         ]
 
     async def _index(self):
+        print(self.static_folders)
         for spath in self.static_folders:
             fn = os.path.join(spath, "index.html")
             if os.path.exists(fn):
