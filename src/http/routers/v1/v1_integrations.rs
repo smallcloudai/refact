@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
@@ -11,7 +12,7 @@ use axum::extract::Query;
 
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
-
+use crate::integrations::setting_up_integrations::split_path_into_project_and_integration;
 
 pub async fn handle_v1_integrations(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
@@ -155,28 +156,30 @@ pub async fn handle_v1_integration_icon(
 // Define a structure to match query parameters
 #[derive(Deserialize)]
 pub struct HTTPIntegrationDeleteQueryParams {
-    integration_path: String, // Optional field for flexibility
+    integration_path: PathBuf
 }
 
 pub async fn handle_v1_integration_delete(
     Query(params): Query<HTTPIntegrationDeleteQueryParams>,
-) -> axum::response::Result<Response<Body>, ScratchError> {   
-    
+) -> axum::response::Result<Response<Body>, ScratchError> {
     let integration_path = params.integration_path;
-    log::info!("Deleting integration path: {}", integration_path);
+    log::info!("Deleting integration path: {:?}", integration_path);
 
-    // If file path exists, delete it
-    if !std::path::Path::new(&integration_path).exists() {
+    split_path_into_project_and_integration(&integration_path).map_err(
+        |_| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, "integration_path is invalid".to_string())
+    )?;
+
+    if !integration_path.exists() {
         return Err(ScratchError::new(StatusCode::NOT_FOUND, "integration_path not found".to_string()));
     }
 
     std::fs::remove_file(&integration_path).map_err(|e| {
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to delete file: {}", e))
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("failed to delete integration config: {}", e))
     })?;
 
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::from(format!("")))
+        .body(Body::from("{}"))
         .unwrap())
 }
