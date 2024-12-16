@@ -13,6 +13,7 @@ import traceback
 from fastapi import APIRouter, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
+from refact_utils.huggingface.utils import huggingface_hub_token
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
 from refact_webgui.webgui.selfhost_model_resolve import resolve_model_context_size
@@ -233,6 +234,7 @@ class BaseCompletionsRouter(APIRouter):
         _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
         _integrations_env_setup("GROQ_API_KEY", "groq_api_key", "groq_api_enable")
         _integrations_env_setup("CEREBRAS_API_KEY", "cerebras_api_key", "cerebras_api_enable")
+        _integrations_env_setup("GEMINI_API_KEY", "gemini_api_key", "gemini_api_enable")
 
     def _models_available_dict_rewrite(self, models_available: List[str]) -> Dict[str, Any]:
         rewrite_dict = {}
@@ -337,7 +339,10 @@ class BaseCompletionsRouter(APIRouter):
         try:
             async with aiohttp.ClientSession() as session:
                 tokenizer_url = f"https://huggingface.co/{model_path}/resolve/main/tokenizer.json"
-                async with session.get(tokenizer_url) as resp:
+                headers = {}
+                if hf_token := huggingface_hub_token():
+                    headers["Authorization"] = f"Bearer {hf_token}"
+                async with session.get(tokenizer_url, headers=headers) as resp:
                     return await resp.text()
         except:
             raise HTTPException(404, detail=f"can't load tokenizer.json for passthrough {model_path}")

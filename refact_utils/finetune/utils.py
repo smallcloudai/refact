@@ -112,6 +112,9 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
     if data.get('cerebras_api_enable'):
         _add_results_for_passthrough_provider('cerebras')
 
+    if data.get('gemini_api_enable'):
+        _add_results_for_passthrough_provider('gemini')
+
     if data.get('groq_api_enable'):
         _add_results_for_passthrough_provider('groq')
 

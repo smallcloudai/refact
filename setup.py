@@ -45,7 +45,7 @@ all_refact_packages = {
                   "bitsandbytes", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed>=0.15.3",
                   "sentence-transformers", "huggingface-hub>=0.26.2",
-                  "aiohttp", "setproctitle"],
+                  "aiohttp", "setproctitle", "google-auth>=2.37.0"],
         optional=["ninja", "flash-attn"],
         requires_packages=["refact_known_models", "refact_data_pipeline",
                            "refact_webgui", "refact_utils"],

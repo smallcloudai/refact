@@ -209,5 +209,54 @@ passthrough_mini_db = {
         "pp1000t_prompt": 150,
         "pp1000t_generated": 600,  # TODO: don't know the price
         "filter_caps": ["chat", "completion"],
+    },
+
+    # gemini and gemma bear the same tokenizer
+    # according to https://medium.com/google-cloud/a-gemini-and-gemma-tokenizer-in-java-e18831ac9677
+    # downloadable tokenizer.json does not exist for gemini, proposed solution to use vertexai lib in python uses web requests
+
+    "gemini-2.0-flash-exp": {
+        "backend": "litellm",
+        "provider": "gemini",
+        "tokenizer_path": "google/gemma-7b",
+        "resolve_as": "gemini-2.0-flash-exp",
+        "T": 1_048_576,
+        "T_out": 8_192,
+        "pp1000t_prompt": 10_000,  # Example price, adjust as needed
+        "pp1000t_generated": 30_000,  # Example price, adjust as needed
+        "filter_caps": ["chat", "tools", "completion", "multimodal"],
+    },
+    "gemini-1.5-flash": {
+        "backend": "litellm",
+        "provider": "gemini",
+        "tokenizer_path": "google/gemma-7b",
+        "resolve_as": "gemini-1.5-flash",
+        "T": 1_048_576,
+        "T_out": 8_192,
+        "pp1000t_prompt": 10_000,  # Example price, adjust as needed
+        "pp1000t_generated": 30_000,  # Example price, adjust as needed
+        "filter_caps": ["chat", "tools", "completion", "multimodal"],
+    },
+    "gemini-1.5-flash-8b": {
+        "backend": "litellm",
+        "provider": "gemini",
+        "tokenizer_path": "google/gemma-7b",
+        "resolve_as": "gemini-1.5-flash-8b",
+        "T": 1_048_576,
+        "T_out": 8_192,
+        "pp1000t_prompt": 10_000,  # Example price, adjust as needed
+        "pp1000t_generated": 30_000,  # Example price, adjust as needed
+        "filter_caps": ["chat", "tools", "completion", "multimodal"],
+    },
+    "gemini-1.5-pro": {
+        "backend": "litellm",
+        "provider": "gemini",
+        "tokenizer_path": "google/gemma-7b",
+        "resolve_as": "gemini-1.5-pro",
+        "T": 2_097_152,
+        "T_out": 8_192,
+        "pp1000t_prompt": 10_000,  # Example price, adjust as needed
+        "pp1000t_generated": 30_000,  # Example price, adjust as needed
+        "filter_caps": ["chat", "tools", "completion", "multimodal"],
     }
 }
