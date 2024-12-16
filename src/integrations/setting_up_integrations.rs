@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::collections::HashMap;
 use regex::Regex;
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
 use tokio::fs as async_fs;
 use tokio::io::AsyncWriteExt;
@@ -243,8 +243,8 @@ pub fn read_integrations_d(
     // 5. Fill confirmation in each record
     for rec in &mut result {
         if let Some(confirmation) = rec.config_unparsed.get("confirmation") {
-            rec.ask_user = get_array_of_str_or_empty(&confirmation, "ask_user");
-            rec.deny = get_array_of_str_or_empty(&confirmation, "deny");
+            rec.ask_user = get_array_of_str_or_empty(&confirmation, "/ask_user");
+            rec.deny = get_array_of_str_or_empty(&confirmation, "/deny");
         } else {
             let schema = match crate::integrations::integration_from_name(rec.integr_name.as_str()) {
                 Ok(i) => {
@@ -392,33 +392,27 @@ pub async fn integration_config_get(
         j
     };
 
-    let mut available = serde_json::json!({
-        "on_your_laptop": false,
-        "when_isolated": false
-    });  
-    let mut confirmation_ask_user = vec![];
-    let mut confirmation_deny = vec![];
     if exists {
         match fs::read_to_string(&sanitized_path) {
             Ok(content) => {
                 match serde_yaml::from_str::<serde_yaml::Value>(&content) {
                     Ok(y) => {
                         let j = serde_json::to_value(y).unwrap();
-                        available["on_your_laptop"] = j.get("available").and_then(|v| v.get("on_your_laptop")).and_then(|v| v.as_bool()).unwrap_or(false).into();
-                        available["when_isolated"] = j.get("available").and_then(|v| v.get("when_isolated")).and_then(|v| v.as_bool()).unwrap_or(false).into();
-                        confirmation_ask_user = if j.get("confirmation").is_some() { 
-                            get_array_of_str_or_empty(&j, "confirmation/ask_user") 
-                        } else { 
-                            get_array_of_str_or_empty(&result.integr_schema, "/confirmation/ask_user_default") 
-                        };
-                        confirmation_deny = if j.get("confirmation").is_some() {
-                            get_array_of_str_or_empty(&j, "confirmation/deny")
-                        } else {
-                            get_array_of_str_or_empty(&result.integr_schema, "/confirmation/deny_default")
-                        };
-                        let did_it_work = integration_box.integr_settings_apply(&j);
-                        if let Err(e) = did_it_work {
-                            tracing::error!("oops: {}", e);
+                        match integration_box.integr_settings_apply(&j) {
+                            Ok(_) => {
+                                let common_settings = integration_box.integr_common();
+                                result.integr_values["available"]["on_your_laptop"] = common_settings.available.on_your_laptop.into();
+                                result.integr_values["available"]["when_isolated"] = common_settings.available.when_isolated.into();
+                                result.integr_values["confirmation"]["ask_user"] = common_settings.confirmation.ask_user.into();
+                                result.integr_values["confirmation"]["deny"] = common_settings.confirmation.deny.into();
+                            }
+                            Err(err) => {
+                                tracing::error!("cannot deserialize some fields in the integration cfg correctly: `{err}`. Use default empty values instead");
+                                result.integr_values["available"]["on_your_laptop"] = false.into();
+                                result.integr_values["available"]["when_isolated"] = false.into();
+                                result.integr_values["confirmation"]["ask_user"] = Vec::<String>::new().into();
+                                result.integr_values["confirmation"]["deny"] = Vec::<String>::new().into();
+                            }
                         }
                     }
                     Err(e) => {
@@ -431,13 +425,6 @@ pub async fn integration_config_get(
             }
         };
     }
-
-    result.integr_values = integration_box.integr_settings_as_json();
-    result.integr_values["available"] = available;
-    result.integr_values["confirmation"] = serde_json::json!({
-        "ask_user": confirmation_ask_user,
-        "deny": confirmation_deny
-    });
     Ok(result)
 }
 
@@ -452,25 +439,12 @@ pub async fn integration_config_save(
         .map_err(|e| format!("Failed to load integrations: {}", e))?;
 
     integration_box.integr_settings_apply(integr_values)?;  // this will produce "no field XXX" errors
-    let schema_json = {
-        let y: serde_yaml::Value = serde_yaml::from_str(integration_box.integr_schema()).unwrap();
-        let j = serde_json::to_value(y).unwrap();
-        j
-    };
-
     let mut sanitized_json: serde_json::Value = integration_box.integr_settings_as_json();
-    tracing::info!("posted values:\n{}", serde_json::to_string_pretty(integr_values).unwrap());
-    if !sanitized_json.as_object_mut().unwrap().contains_key("available") {
-        sanitized_json["available"] = serde_json::Value::Object(serde_json::Map::new());
+    let common_settings = integration_box.integr_common();
+    if let (Value::Object(sanitized_json_m), Value::Object(common_settings_m)) = (&mut sanitized_json, json!(common_settings)) {
+        sanitized_json_m.extend(common_settings_m);
     }
-    sanitized_json["available"]["on_your_laptop"] = integr_values.pointer("/available/on_your_laptop").cloned().unwrap_or(serde_json::Value::Bool(false));
-    sanitized_json["available"]["when_isolated"] = integr_values.pointer("/available/when_isolated").cloned().unwrap_or(serde_json::Value::Bool(false));
-    sanitized_json["confirmation"]["ask_user"] = integr_values.pointer("/confirmation/ask_user").cloned().unwrap_or(
-        json!(get_array_of_str_or_empty(&schema_json, "/confirmation/ask_user_default"))
-    );
-    sanitized_json["confirmation"]["deny"] = integr_values.pointer("/confirmation/deny").cloned().unwrap_or(
-        json!(get_array_of_str_or_empty(&schema_json, "/confirmation/deny_default"))
-    );
+
     tracing::info!("writing to {}:\n{}", config_path.display(), serde_json::to_string_pretty(&sanitized_json).unwrap());
     let sanitized_yaml = serde_yaml::to_value(sanitized_json).unwrap();
 
