@@ -53,7 +53,7 @@ import { useDeleteIntegrationByPath } from "../../hooks/useDeleteIntegrationByPa
 import { toPascalCase } from "../../utils/toPascalCase";
 import { selectThemeMode } from "../../features/Config/configSlice";
 import type { ToolParameterEntity } from "../../services/refact";
-import { isEqual } from "../../utils/isEqual";
+import isEqual from "lodash.isequal";
 
 type IntegrationViewProps = {
   integrationsMap?: IntegrationWithIconResponse;
