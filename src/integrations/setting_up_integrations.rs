@@ -401,6 +401,7 @@ pub async fn integration_config_get(
                         match integration_box.integr_settings_apply(&j) {
                             Ok(_) => {
                                 let common_settings = integration_box.integr_common();
+                                result.integr_values = integration_box.integr_settings_as_json();
                                 result.integr_values["available"]["on_your_laptop"] = common_settings.available.on_your_laptop.into();
                                 result.integr_values["available"]["when_isolated"] = common_settings.available.when_isolated.into();
                                 result.integr_values["confirmation"]["ask_user"] = common_settings.confirmation.ask_user.into();
@@ -408,6 +409,7 @@ pub async fn integration_config_get(
                             }
                             Err(err) => {
                                 tracing::error!("cannot deserialize some fields in the integration cfg correctly: `{err}`. Use default empty values instead");
+                                result.integr_values = integration_box.integr_settings_as_json();
                                 result.integr_values["available"]["on_your_laptop"] = false.into();
                                 result.integr_values["available"]["when_isolated"] = false.into();
                                 result.integr_values["confirmation"]["ask_user"] = Vec::<String>::new().into();
