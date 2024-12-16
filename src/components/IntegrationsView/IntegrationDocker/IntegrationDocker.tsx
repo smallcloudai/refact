@@ -86,11 +86,32 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
 
   if (!dockerContainersList || dockerContainersList.length === 0) {
     return (
-      <DockerErrorCard
-        errorType="no-containers"
-        integrationPath={integrationPath}
-        handleSwitchIntegration={handleSwitchIntegration}
-      />
+      <>
+        <DockerErrorCard
+          errorType="no-containers"
+          integrationPath={integrationPath}
+          handleSwitchIntegration={handleSwitchIntegration}
+        />
+        {/* TODO: duplicative code */}
+        {dockerData.smartlinks.length > 0 && (
+          <Flex direction="column" width="100%" gap="3" mt="2">
+            <Heading size="4" as="h4">
+              Ask AI to do it for you (experimental)
+            </Heading>
+            <Flex gap="2" align="center">
+              {dockerData.smartlinks.map((smartlink) => (
+                <SmartLink
+                  key={`docker-container-${dockerData.filter_image}`}
+                  integrationName={integrationName}
+                  integrationPath={integrationPath}
+                  integrationProject={integrationProject}
+                  smartlink={smartlink}
+                />
+              ))}
+            </Flex>
+          </Flex>
+        )}
+      </>
     );
   }
 

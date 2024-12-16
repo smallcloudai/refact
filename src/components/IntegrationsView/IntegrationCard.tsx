@@ -78,16 +78,14 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
           {!isNotConfigured && (
             <Badge
               color={
-                integration.on_your_laptop || integration.when_isolated
-                  ? "jade"
-                  : "gray"
+                // TODO: get it back later integration.on_your_laptop || integration.when_isolated
+                integration.on_your_laptop ? "jade" : "gray"
               }
               variant="soft"
               radius="medium"
             >
-              {integration.on_your_laptop || integration.when_isolated
-                ? "On"
-                : "Off"}
+              {/* TODO: get it back later {integration.on_your_laptop || integration.when_isolated */}
+              {integration.on_your_laptop ? "On" : "Off"}
             </Badge>
           )}
         </Flex>

@@ -531,3 +531,13 @@ export type ChatResponse =
   | ChatUserMessageResponse
   | ToolResponse
   | PlainTextResponse;
+
+export function areAllFieldsBoolean(
+  json: unknown,
+): json is Record<string, boolean> {
+  return (
+    typeof json === "object" &&
+    json !== null &&
+    Object.values(json).every((value) => typeof value === "boolean")
+  );
+}

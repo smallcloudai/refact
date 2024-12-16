@@ -22,7 +22,9 @@ import {
 import { useAppDispatch, useAppSelector } from "../../hooks";
 import { useSaveIntegrationData } from "../../hooks/useSaveIntegrationData";
 import {
+  areAllFieldsBoolean,
   areIntegrationsNotConfigured,
+  areToolParameters,
   dockerApi,
   GroupedIntegrationWithIconRecord,
   Integration,
@@ -50,6 +52,8 @@ import { parseOrElse } from "../../utils";
 import { useDeleteIntegrationByPath } from "../../hooks/useDeleteIntegrationByPath";
 import { toPascalCase } from "../../utils/toPascalCase";
 import { selectThemeMode } from "../../features/Config/configSlice";
+import type { ToolParameterEntity } from "../../services/refact";
+import { isEqual } from "../../utils/isEqual";
 
 type IntegrationViewProps = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -192,6 +196,10 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     Record<string, boolean>
   >({});
 
+  const [toolParameters, setToolParameters] = useState<ToolParameterEntity[]>(
+    [],
+  );
+
   useEffect(() => {
     debugIntegrations(`[DEBUG]: integrationsData: `, integrationsMap);
   }, [integrationsMap]);
@@ -312,8 +320,11 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       setIsDisabledIntegrationForm(true);
     }
     setAvailabilityValues({});
+    setToolParameters([]);
     information && dispatch(clearInformation());
     globalError && dispatch(clearError());
+    currentIntegrationValues && setCurrentIntegrationValues(null);
+    currentIntegrationSchema && setCurrentIntegrationSchema(null);
     dispatch(integrationsApi.util.resetApiState());
     dispatch(dockerApi.util.resetApiState());
     // TODO: can cause a loop where integration pages goes back to form
@@ -325,6 +336,8 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     information,
     currentIntegration,
     currentNotConfiguredIntegration,
+    currentIntegrationValues,
+    currentIntegrationSchema,
   ]);
 
   const handleSubmit = useCallback(
@@ -341,9 +354,9 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       const rawFormValues = Object.fromEntries(formData.entries());
       debugIntegrations(`[DEBUG]: rawFormValues: `, rawFormValues);
       // Adjust types of data based on f_type of each field in schema
-      const formValues: Integration["integr_values"] = Object.keys(
+      const formValues: NonNullable<Integration["integr_values"]> = Object.keys(
         rawFormValues,
-      ).reduce<Integration["integr_values"]>((acc, key) => {
+      ).reduce<NonNullable<Integration["integr_values"]>>((acc, key) => {
         const field = currentIntegrationSchema.fields[key];
         const [f_type, _f_size] = (field.f_type as string).split("_");
         switch (f_type) {
@@ -357,13 +370,13 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             acc[key] = rawFormValues[key] === "on" ? true : false;
             break;
           case "tool":
-            acc[key] = parseOrElse<Integration["integr_values"][number]>(
+            acc[key] = parseOrElse<NonNullable<Integration["integr_values"]>>(
               rawFormValues[key] as string,
               {},
             );
             break;
           case "output":
-            acc[key] = parseOrElse<Integration["integr_values"][number]>(
+            acc[key] = parseOrElse<NonNullable<Integration["integr_values"]>>(
               rawFormValues[key] as string,
               {},
             );
@@ -378,6 +391,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       debugIntegrations(`[DEBUG]: formValues: `, formValues);
 
       formValues.available = availabilityValues;
+      formValues.parameters = toolParameters;
 
       const response = await saveIntegrationMutationTrigger(
         currentIntegration.integr_config_path,
@@ -410,6 +424,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       currentIntegrationSchema,
       dispatch,
       availabilityValues,
+      toolParameters,
     ],
   );
 
@@ -443,17 +458,17 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     (event: FormEvent<HTMLFormElement>) => {
       if (!currentIntegration) return;
       if (!currentIntegrationSchema) return;
-      if (!currentIntegrationValues) return;
-      if (!currentIntegrationValues.available) return;
+      // if (!currentIntegrationValues) return;
+      // if (!currentIntegrationValues.available) return;
       event.preventDefault();
 
       const formData = new FormData(event.currentTarget);
       const rawFormValues = Object.fromEntries(formData.entries());
 
       // Adjust types of data based on f_type of each field in schema
-      const formValues: Integration["integr_values"] = Object.keys(
+      const formValues: NonNullable<Integration["integr_values"]> = Object.keys(
         rawFormValues,
-      ).reduce<Integration["integr_values"]>((acc, key) => {
+      ).reduce<NonNullable<Integration["integr_values"]>>((acc, key) => {
         const field = currentIntegrationSchema.fields[key];
         const [f_type, _f_size] = (field.f_type as string).split("_");
         switch (f_type) {
@@ -467,16 +482,20 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             acc[key] = rawFormValues[key] === "on" ? true : false;
             break;
           case "tool":
-            acc[key] = parseOrElse<Integration["integr_values"][number]>(
+            acc[key] = parseOrElse<
+              NonNullable<Integration["integr_values"]>[number]
+            >(
               rawFormValues[key] as string,
-              {},
+              currentIntegrationValues &&
+                areToolParameters(currentIntegrationValues.parameters)
+                ? currentIntegrationValues.parameters
+                : [],
             );
             break;
           case "output":
-            acc[key] = parseOrElse<Integration["integr_values"][number]>(
-              rawFormValues[key] as string,
-              {},
-            );
+            acc[key] = parseOrElse<
+              NonNullable<Integration["integr_values"]>[number]
+            >(rawFormValues[key] as string, {});
             break;
           default:
             acc[key] = rawFormValues[key] as string;
@@ -485,42 +504,50 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         return acc;
       }, {});
 
-      const eachFormValueIsNotChanged = Object.entries(formValues).every(
-        ([fieldKey, fieldValue]) => {
-          if (isPrimitive(fieldValue)) {
-            return (
-              fieldKey in currentIntegrationValues &&
-              fieldValue === currentIntegrationValues[fieldKey]
-            );
-          }
-          // TODO: better comparison of objects?
-          if (typeof fieldValue === "object") {
-            return (
-              fieldKey in currentIntegrationValues &&
-              JSON.stringify(fieldValue) ===
-                JSON.stringify(currentIntegrationValues[fieldKey])
-            );
-          }
-        },
-      );
+      // formValues.parameters = toolParameters;
+
+      const eachFormValueIsNotChanged = currentIntegrationValues
+        ? Object.entries(formValues).every(([fieldKey, fieldValue]) => {
+            if (isPrimitive(fieldValue)) {
+              return (
+                fieldKey in currentIntegrationValues &&
+                fieldValue === currentIntegrationValues[fieldKey]
+              );
+            }
+            // TODO: better comparison of objects?
+            if (typeof fieldValue === "object" || Array.isArray(fieldValue)) {
+              return (
+                fieldKey in currentIntegrationValues &&
+                JSON.stringify(fieldValue) ===
+                  JSON.stringify(currentIntegrationValues[fieldKey])
+              );
+            }
+          })
+        : false;
 
       debugIntegrations(
         `[DEBUG]: eachFormValueIsNotChanged: `,
         eachFormValueIsNotChanged,
       );
 
-      const eachAvailabilityOptionIsNotChanged = Object.entries(
-        availabilityValues,
-      ).every(([fieldKey, fieldValue]) => {
-        const availableObj = currentIntegrationValues.available;
-        if (availableObj && typeof availableObj === "object") {
-          return (
-            fieldKey in availableObj && fieldValue === availableObj[fieldKey]
-          );
-        }
-        return false;
-      });
+      const eachAvailabilityOptionIsNotChanged = currentIntegrationValues
+        ? Object.entries(availabilityValues).every(([fieldKey, fieldValue]) => {
+            const availableObj = currentIntegrationValues.available;
+            if (availableObj && areAllFieldsBoolean(availableObj)) {
+              return (
+                fieldKey in availableObj &&
+                fieldValue === availableObj[fieldKey]
+              );
+            }
+            return false;
+          })
+        : true;
 
+      const eachToolParameterIsNotChanged =
+        currentIntegrationValues &&
+        areToolParameters(currentIntegrationValues.parameters)
+          ? isEqual(currentIntegrationValues.parameters, toolParameters)
+          : true;
       debugIntegrations(`[DEBUG]: formValues: `, formValues);
       debugIntegrations(
         `[DEBUG]: currentIntegrationValues: `,
@@ -530,9 +557,16 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         `[DEBUG]: eachAvailabilityOptionIsNotChanged: `,
         eachAvailabilityOptionIsNotChanged,
       );
+
+      debugIntegrations(
+        `[DEBUG]: eachToolParameterIsNotChanged: `,
+        eachToolParameterIsNotChanged,
+      );
       debugIntegrations(`[DEBUG]: availabilityValues: `, availabilityValues);
       const maybeDisabled =
-        eachFormValueIsNotChanged && eachAvailabilityOptionIsNotChanged;
+        eachFormValueIsNotChanged &&
+        eachAvailabilityOptionIsNotChanged &&
+        eachToolParameterIsNotChanged;
       debugIntegrations(`[DEBUG CHANGE]: maybeDisabled: `, maybeDisabled);
 
       setIsDisabledIntegrationForm(maybeDisabled);
@@ -542,8 +576,13 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       currentIntegrationValues,
       currentIntegrationSchema,
       availabilityValues,
+      toolParameters,
     ],
   );
+
+  useEffect(() => {
+    debugIntegrations(`[DEBUG PARAMETERS]: toolParameters: `, toolParameters);
+  }, [toolParameters]);
 
   const handleNotConfiguredIntegrationSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
@@ -781,6 +820,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
               handleChange={handleIntegrationFormChange}
               availabilityValues={availabilityValues}
               setAvailabilityValues={setAvailabilityValues}
+              setToolParameters={setToolParameters}
               handleSwitchIntegration={handleNavigateToIntegrationSetup}
             />
             {information && (

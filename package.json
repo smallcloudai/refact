@@ -48,6 +48,7 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.2.7",
+    "@tanstack/react-table": "^8.20.6",
     "@types/react": "^18.2.43",
     "debug": "^4.3.7",
     "react-redux": "^9.1.2"

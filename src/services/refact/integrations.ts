@@ -170,8 +170,11 @@ export type Integration = {
   integr_schema: IntegrationSchema;
   integr_values: Record<
     string,
-    IntegrationPrimitive | Record<string, boolean> | Record<string, unknown>
-  >;
+    | IntegrationPrimitive
+    | Record<string, boolean>
+    | Record<string, unknown>
+    | ToolParameterEntity[]
+  > | null;
   error_log: null | YamlError[];
 };
 
@@ -214,13 +217,10 @@ function isIntegration(json: unknown): json is Integration {
   if (!("integr_values" in json)) {
     return false;
   }
-  if (!json.integr_values) {
+  if (json.integr_values !== null && typeof json.integr_values !== "object") {
     return false;
   }
-  if (!(typeof json.integr_values === "object")) {
-    return false;
-  }
-  const integrValues = json.integr_values as Record<string, unknown>;
+  const integrValues = json.integr_values as Record<string, unknown> | null;
   debugIntegrations("integrValues:", integrValues); // Log the integrValues
 
   function isValidNestedObject(value: unknown): boolean {
@@ -233,7 +233,7 @@ function isIntegration(json: unknown): json is Integration {
     return false;
   }
 
-  if (!Object.values(integrValues).every(isValidNestedObject)) {
+  if (integrValues && !Object.values(integrValues).every(isValidNestedObject)) {
     debugIntegrations(`[DEBUG]: integr_values are not valid json`);
     return false;
   }
@@ -663,4 +663,24 @@ export function isIntegrationWithIconResponse(
   if (!Array.isArray(json.error_log)) return false;
   if (!json.error_log.every(isYamlError)) return false;
   return true;
+}
+
+export type ToolParameterEntity = {
+  name: string;
+  description: string;
+  type?: string;
+};
+
+export function areToolParameters(
+  json: unknown,
+): json is ToolParameterEntity[] {
+  if (!Array.isArray(json)) return false;
+  return json.every(
+    (value) =>
+      typeof value === "object" &&
+      value !== null &&
+      "name" in value &&
+      "type" in value &&
+      "description" in value,
+  );
 }

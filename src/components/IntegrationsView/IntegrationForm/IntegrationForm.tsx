@@ -22,14 +22,11 @@ import { IntegrationDeletePopover } from "../IntegrationDeletePopover";
 import { debugIntegrations } from "../../../debugConfig";
 import { selectThemeMode } from "../../../features/Config/configSlice";
 import { useAppSelector } from "../../../hooks";
-
-function areAllFieldsBoolean(json: unknown): json is Record<string, boolean> {
-  return (
-    typeof json === "object" &&
-    json !== null &&
-    Object.values(json).every((value) => typeof value === "boolean")
-  );
-}
+import type { ToolParameterEntity } from "../../../services/refact";
+import {
+  areAllFieldsBoolean,
+  areToolParameters,
+} from "../../../services/refact";
 
 type IntegrationFormProps = {
   integrationPath: string;
@@ -45,6 +42,7 @@ type IntegrationFormProps = {
   setAvailabilityValues: Dispatch<
     React.SetStateAction<Record<string, boolean>>
   >;
+  setToolParameters: Dispatch<React.SetStateAction<ToolParameterEntity[]>>;
   handleSwitchIntegration: (
     integrationName: string,
     integrationConfigPath: string,
@@ -63,6 +61,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   onSchema,
   onValues,
   setAvailabilityValues,
+  setToolParameters,
   handleSwitchIntegration,
 }) => {
   const [areExtraFieldsRevealed, setAreExtraFieldsRevealed] = useState(false);
@@ -81,9 +80,18 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
     [setAvailabilityValues],
   );
 
+  const handleToolParameters = useCallback(
+    (value: ToolParameterEntity[]) => {
+      debugIntegrations(`[DEBUG]: updating toolParameters!`);
+      setToolParameters(value);
+    },
+    [setToolParameters],
+  );
+
   useEffect(() => {
     if (
-      integration.data?.integr_values.available &&
+      integration.data?.integr_values &&
+      integration.data.integr_values.available &&
       typeof integration.data.integr_values.available === "object" &&
       areAllFieldsBoolean(integration.data.integr_values.available)
     ) {
@@ -94,6 +102,17 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
       );
     }
   }, [integration, handleAvailabilityChange]);
+
+  useEffect(() => {
+    if (
+      integration.data?.integr_values &&
+      integration.data.integr_values.parameters &&
+      Array.isArray(integration.data.integr_values.parameters) &&
+      areToolParameters(integration.data.integr_values.parameters)
+    ) {
+      handleToolParameters(integration.data.integr_values.parameters);
+    }
+  }, [integration, handleToolParameters]);
 
   useEffect(() => {
     if (integration.data?.integr_schema) {
@@ -154,19 +173,21 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
       >
         <Flex direction="column" gap="2">
           <Grid mt="2" mb="0">
-            <Flex gap="4" mb="3" className={styles.switchInline}>
-              {integration.data.integr_values.available &&
-                Object.entries(integration.data.integr_values.available).map(
-                  ([key, _]: [string, boolean]) => (
-                    <IntegrationAvailability
-                      key={key}
-                      fieldName={key}
-                      value={availabilityValues[key]}
-                      onChange={handleAvailabilityChange}
-                    />
-                  ),
-                )}
-            </Flex>
+            {integration.data.integr_values && (
+              <Flex gap="4" mb="3" className={styles.switchInline}>
+                {integration.data.integr_values.available &&
+                  Object.entries(integration.data.integr_values.available).map(
+                    ([key, _]: [string, boolean]) => (
+                      <IntegrationAvailability
+                        key={key}
+                        fieldName={key}
+                        value={availabilityValues[key]}
+                        onChange={handleAvailabilityChange}
+                      />
+                    ),
+                  )}
+              </Flex>
+            )}
             <Grid gap="2" className={styles.gridContainer}>
               {Object.keys(importantFields).map((fieldKey) => {
                 if (integration.data) {
@@ -177,6 +198,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                     integrationName: integration.data.integr_name,
                     integrationPath: integration.data.integr_config_path,
                     integrationProject: integration.data.project_path,
+                    onToolParameters: handleToolParameters,
                   });
                 }
               })}
@@ -190,6 +212,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                     integrationPath: integration.data.integr_config_path,
                     integrationProject: integration.data.project_path,
                     isFieldVisible: areExtraFieldsRevealed,
+                    onToolParameters: handleToolParameters,
                   });
                 }
               })}
@@ -213,13 +236,15 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           )}
           <Flex justify="end" width="100%">
             <Flex gap="4">
-              <IntegrationDeletePopover
-                integrationName={integration.data.integr_name}
-                integrationConfigPath={integration.data.integr_config_path}
-                isApplying={isApplying}
-                isDeletingIntegration={isDeletingIntegration}
-                handleDeleteIntegration={handleDeleteIntegration}
-              />
+              {integration.data.integr_values && (
+                <IntegrationDeletePopover
+                  integrationName={integration.data.integr_name}
+                  integrationConfigPath={integration.data.integr_config_path}
+                  isApplying={isApplying}
+                  isDeletingIntegration={isDeletingIntegration}
+                  handleDeleteIntegration={handleDeleteIntegration}
+                />
+              )}
               <Button
                 color="green"
                 variant="solid"

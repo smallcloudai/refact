@@ -1,36 +1,33 @@
-import React, { useState } from "react";
-import { useTable, flexRender, getCoreRowModel } from "@tanstack/react-table";
+import React, { useEffect, useState } from "react";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Button, Flex, Table, TextField } from "@radix-ui/themes";
+import { ToolParameterEntity } from "../../../services/refact";
+import { PlusIcon } from "@radix-ui/react-icons";
 
-// Определение типа данных, получаемых с сервера
-export type ToolParameterEntity = {
-  name: string;
-  description: string;
-  type?: string; // Это поле отображаться в таблице не будет
+type IntegrationsTableProps = {
+  initialData: ToolParameterEntity[];
+  onToolParameters: (data: ToolParameterEntity[]) => void;
 };
 
-// Пропсы для компонента
-interface EditableTableProps {
-  initialData: ToolParameterEntity[];
-}
-
-const IntegrationsTable: React.FC<EditableTableProps> = ({ initialData }) => {
-  // Состояние таблицы
+const IntegrationsTable: React.FC<IntegrationsTableProps> = ({
+  initialData,
+  onToolParameters,
+}) => {
   const [data, setData] = useState<ToolParameterEntity[]>(initialData);
 
-  // Добавить строку
   const addRow = () => {
-    setData((prev) => [
-      ...prev,
-      { name: "", description: "" }, // type не сохраняется, ибо без него сервер вернёт нам тип самостоятельно исходя из name и description
-    ]);
+    setData((prev) => [...prev, { name: "", description: "" }]);
   };
 
-  // Удалить строку
   const removeRow = (index: number) => {
     setData((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Обновить данные в строке
   const updateRow = (
     index: number,
     field: keyof ToolParameterEntity,
@@ -41,7 +38,6 @@ const IntegrationsTable: React.FC<EditableTableProps> = ({ initialData }) => {
     );
   };
 
-  // Обработка клавиши Enter
   const handleKeyPress = (
     e: React.KeyboardEvent<HTMLInputElement>,
     isLastRow: boolean,
@@ -61,96 +57,129 @@ const IntegrationsTable: React.FC<EditableTableProps> = ({ initialData }) => {
     }
   };
 
-  // Определение колонок таблицы
-  const columns = [
+  useEffect(() => {
+    onToolParameters(data);
+  }, [data, onToolParameters]);
+
+  const defaultColumn: Partial<ColumnDef<ToolParameterEntity>> = {
+    cell: ({ getValue, row: { index }, column: { id } }) => {
+      const initialValue = getValue() as string;
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const [value, setValue] = useState(initialValue);
+
+      const onBlur = () => {
+        updateRow(index, id as keyof ToolParameterEntity, value);
+      };
+
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      useEffect(() => {
+        setValue(initialValue);
+      }, [initialValue]);
+
+      return (
+        <TextField.Root
+          value={value}
+          size="1"
+          data-row-index={index}
+          data-field={id}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={onBlur}
+          onKeyDown={(e) =>
+            handleKeyPress(
+              e,
+              index === data.length - 1,
+              index,
+              id as keyof ToolParameterEntity,
+            )
+          }
+        />
+      );
+    },
+  };
+
+  const columns: ColumnDef<ToolParameterEntity>[] = [
     {
       accessorKey: "name",
       header: "Name",
-      cell: ({ row, getValue }: any) => {
-        const isLastRow = row.index === data.length - 1;
-        return (
-          <RadixInput.Root>
-            <RadixInput.Input
-              data-row-index={row.index}
-              data-field="name"
-              value={getValue()}
-              onChange={(e) => updateRow(row.index, "name", e.target.value)}
-              onKeyDown={(e) => handleKeyPress(e, isLastRow, row.index, "name")}
-            />
-          </RadixInput.Root>
-        );
-      },
     },
     {
       accessorKey: "description",
       header: "Description",
-      cell: ({ row, getValue }: any) => {
-        const isLastRow = row.index === data.length - 1;
-        return (
-          <RadixInput.Root>
-            <RadixInput.Input
-              data-row-index={row.index}
-              data-field="description"
-              value={getValue()}
-              onChange={(e) =>
-                updateRow(row.index, "description", e.target.value)
-              }
-              onKeyDown={(e) =>
-                handleKeyPress(e, isLastRow, row.index, "description")
-              }
-            />
-          </RadixInput.Root>
-        );
-      },
     },
     {
       id: "actions",
-      header: "Remove",
-      cell: ({ row }: any) => (
-        <RadixButton.Root onClick={() => removeRow(row.index)}>
+      header: "",
+      cell: ({ row }) => (
+        <Button
+          size="1"
+          type="button"
+          onClick={() => removeRow(row.index)}
+          variant="outline"
+          color="red"
+        >
           Remove
-        </RadixButton.Root>
+        </Button>
       ),
     },
   ];
 
-  const table = useTable({
+  const table = useReactTable({
     data,
     columns,
+    defaultColumn,
     getCoreRowModel: getCoreRowModel(),
   });
 
   return (
-    <div>
-      <RadixTable.Root>
-        <RadixTable.Header>
+    <Flex direction="column" gap="2" mb="1" width="100%">
+      <Table.Root size="1">
+        <Table.Header>
           {table.getHeaderGroups().map((headerGroup) => (
-            <RadixTable.Row key={headerGroup.id}>
+            <Table.Row key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
-                <RadixTable.ColumnHeader key={header.id}>
+                <Table.ColumnHeaderCell key={header.id}>
                   {flexRender(
                     header.column.columnDef.header,
                     header.getContext(),
                   )}
-                </RadixTable.ColumnHeader>
+                </Table.ColumnHeaderCell>
               ))}
-            </RadixTable.Row>
+            </Table.Row>
           ))}
-        </RadixTable.Header>
-        <RadixTable.Body>
-          {table.getRowModel().rows.map((row) => (
-            <RadixTable.Row key={row.id}>
-              {row.getVisibleCells().map((cell) => (
-                <RadixTable.Cell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </RadixTable.Cell>
-              ))}
-            </RadixTable.Row>
-          ))}
-        </RadixTable.Body>
-      </RadixTable.Root>
-      <RadixButton.Root onClick={addRow}>Add Row</RadixButton.Root>
-    </div>
+        </Table.Header>
+        <Table.Body>
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row) => (
+              <Table.Row key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <Table.Cell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </Table.Cell>
+                ))}
+              </Table.Row>
+            ))
+          ) : (
+            <Table.Row>
+              <Table.Cell colSpan={columns.length}>
+                No parameters set yet
+              </Table.Cell>
+            </Table.Row>
+          )}
+        </Table.Body>
+      </Table.Root>
+      <Button
+        onClick={addRow}
+        type="button"
+        size="1"
+        variant="surface"
+        color="gray"
+      >
+        <Flex align="stretch" gap="1">
+          <PlusIcon /> Add row
+        </Flex>
+      </Button>
+      <input type="hidden" name="parameters" />
+    </Flex>
   );
 };
 

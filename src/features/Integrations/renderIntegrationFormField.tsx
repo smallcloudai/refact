@@ -13,7 +13,9 @@ import styles from "./renderIntegrationFormField.module.css";
 import { Flex } from "@radix-ui/themes";
 import { toPascalCase } from "../../utils/toPascalCase";
 import { SmartLink } from "../../components/SmartLink";
-import { Markdown } from "../../components/Markdown";
+// import { Markdown } from "../../components/Markdown";
+import IntegrationsTable from "../../components/IntegrationsView/IntegrationsTable/IntegrationsTable";
+import type { ToolParameterEntity } from "../../services/refact";
 
 type FieldType = "string" | "bool" | "int" | "tool" | "output";
 
@@ -32,7 +34,7 @@ const getDefaultValue = ({
   field: IntegrationField<NonNullable<IntegrationPrimitive>>;
   f_type: FieldType;
 }) => {
-  if (fieldKey in values) {
+  if (values && fieldKey in values) {
     return values[fieldKey]?.toString(); // Use the value from 'values' if present
   }
 
@@ -65,6 +67,7 @@ export const renderIntegrationFormField = ({
   integrationPath,
   isFieldVisible = true,
   integrationProject,
+  onToolParameters,
 }: {
   fieldKey: string;
   values: Integration["integr_values"];
@@ -73,6 +76,7 @@ export const renderIntegrationFormField = ({
   integrationPath: string;
   integrationProject: string;
   isFieldVisible?: boolean;
+  onToolParameters: (data: ToolParameterEntity[]) => void;
 }) => {
   const [f_type_raw, f_size] = field.f_type.toString().split("_");
   const f_type = isFieldType(f_type_raw) ? f_type_raw : "string";
@@ -120,24 +124,19 @@ export const renderIntegrationFormField = ({
           <CustomBoolField
             {...commonProps}
             defaultValue={Boolean(
-              field.f_default ? field.f_default : values[fieldKey],
+              field.f_default
+                ? field.f_default
+                : values
+                  ? values[fieldKey]
+                  : "",
             )}
           />
         )}
-        {(f_type === "output" || f_type === "tool") && (
-          <>
-            <Markdown>
-              {"```json\n" +
-                JSON.stringify(values[fieldKey], null, 2) +
-                "\n```"}
-            </Markdown>
-            <CustomInputField
-              type="text"
-              size="multiline"
-              defaultValue={JSON.stringify(values[fieldKey])}
-              name={fieldKey}
-            />
-          </>
+        {f_type === "tool" && (
+          <IntegrationsTable
+            initialData={values ? values[fieldKey] : []}
+            onToolParameters={onToolParameters}
+          />
         )}
         {field.f_desc && (
           <CustomDescriptionField>{field.f_desc}</CustomDescriptionField>
