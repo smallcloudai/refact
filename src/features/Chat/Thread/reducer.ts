@@ -27,6 +27,7 @@ import {
   setSendImmediately,
   setChatMode,
   setIntegrationData,
+  setIsWaitingForResponse,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 
@@ -237,5 +238,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setIntegrationData, (state, action) => {
     state.thread.integration = action.payload;
+  });
+
+  builder.addCase(setIsWaitingForResponse, (state, action) => {
+    state.waiting_for_response = action.payload;
   });
 });

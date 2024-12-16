@@ -102,6 +102,10 @@ export const setIntegrationData = createAction<Partial<IntegrationMeta>>(
   "chatThread/setIntegrationData",
 );
 
+export const setIsWaitingForResponse = createAction<boolean>(
+  "chatThread/setIsWaiting",
+);
+
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;

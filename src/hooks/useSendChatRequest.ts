@@ -40,7 +40,12 @@ import {
   getToolsConfirmationStatus,
   setPauseReasons,
 } from "../features/ToolConfirmation/confirmationSlice";
-import { chatModeToLspMode, LspChatMode, setChatMode } from "../features/Chat";
+import {
+  chatModeToLspMode,
+  LspChatMode,
+  setChatMode,
+  setIsWaitingForResponse,
+} from "../features/Chat";
 
 let recallCounter = 0;
 
@@ -78,6 +83,8 @@ export const useSendChatRequest = () => {
 
   const sendMessages = useCallback(
     async (messages: ChatMessages, maybeMode?: LspChatMode) => {
+      dispatch(setIsWaitingForResponse(true));
+
       let tools = await triggerGetTools(undefined).unwrap();
       // TODO: save tool use to state.chat
       // if (toolUse && isToolUse(toolUse)) {
