@@ -34,17 +34,12 @@ enum LinkAction {
 
 #[derive(Serialize, Debug)]
 pub struct Link {
-    // XXX rename:
-    // link_action
-    // link_text
-    // link_goto
-    // link_tooltip
-    action: LinkAction,
-    text: String,
+    link_action: LinkAction,
+    link_text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    goto: Option<String>,
+    link_goto: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    current_config_file: Option<String>,   // XXX rename
+    link_summary_path: Option<String>,
     link_tooltip: String,
     link_payload: Option<LinkPayload>,
 }
@@ -76,20 +71,20 @@ pub async fn handle_v1_links(
 
     if post.meta.chat_mode == ChatMode::CONFIGURE {
         // links.push(Link {
-        //     action: LinkAction::Goto,
-        //     text: "Return".to_string(),
-        //     goto: Some("SETTINGS:DEFAULT".to_string()),
-        //     current_config_file: None,
+        //     link_action: LinkAction::Goto,
+        //     link_text: "Return".to_string(),
+        //     link_goto: Some("SETTINGS:DEFAULT".to_string()),
+        //     link_summary_path: None,
         //     link_tooltip: format!(""),
         //     link_payload: None,
         // });
 
         if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
             links.push(Link {
-                action: LinkAction::PatchAll,
-                text: "Save and return".to_string(),
-                goto: Some("SETTINGS:DEFAULT".to_string()),
-                current_config_file: None,
+                link_action: LinkAction::PatchAll,
+                link_text: "Save and return".to_string(),
+                link_goto: Some("SETTINGS:DEFAULT".to_string()),
+                link_summary_path: None,
                 link_tooltip: format!(""),
                 link_payload: None,
             });
@@ -126,10 +121,10 @@ pub async fn handle_v1_links(
                     commit_with_msg.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
                 );
                 links.push(Link {
-                    action: LinkAction::Commit,
-                    text: format!("Commit {} files in `{}`", commit_with_msg.file_changes.len(), commit_with_msg.get_project_name()),
-                    goto: Some("LINKS_AGAIN".to_string()),
-                    current_config_file: None,
+                    link_action: LinkAction::Commit,
+                    link_text: format!("Commit {} files in `{}`", commit_with_msg.file_changes.len(), commit_with_msg.get_project_name()),
+                    link_goto: Some("LINKS_AGAIN".to_string()),
+                    link_summary_path: None,
                     link_tooltip: tooltip_message,
                     link_payload: Some(LinkPayload::CommitPayload(GitCommitPost { commits: vec![commit_with_msg] })),
                 });
@@ -141,10 +136,10 @@ pub async fn handle_v1_links(
     if post.meta.chat_mode == ChatMode::AGENT {
         for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
             links.push(Link {
-                action: LinkAction::Goto,
-                text: format!("Configure {failed_integr_name}"),
-                goto: Some(format!("SETTINGS:{failed_integr_name}")),
-                current_config_file: None,
+                link_action: LinkAction::Goto,
+                link_text: format!("Configure {failed_integr_name}"),
+                link_goto: Some(format!("SETTINGS:{failed_integr_name}")),
+                link_summary_path: None,
                 link_tooltip: format!(""),
                 link_payload: None,
             })
@@ -154,10 +149,10 @@ pub async fn handle_v1_links(
     // YAML problems
     for e in integration_yaml_errors {
         links.push(Link {
-            action: LinkAction::Goto,
-            text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.integr_config_path, 20)),
-            goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
-            current_config_file: None,
+            link_action: LinkAction::Goto,
+            link_text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.integr_config_path, 20)),
+            link_goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
+            link_summary_path: None,
             link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
             link_payload: None,
         });
@@ -169,10 +164,10 @@ pub async fn handle_v1_links(
         if !already_exists {
             // doesn't exist
             links.push(Link {
-                action: LinkAction::SummarizeProject,
-                text: "Initial project summarization".to_string(),
-                goto: None,
-                current_config_file: summary_path_option,
+                link_action: LinkAction::SummarizeProject,
+                link_text: "Initial project summarization".to_string(),
+                link_goto: None,
+                link_summary_path: summary_path_option,
                 link_tooltip: format!("Project summary is a starting point for Refact Agent."),
                 link_payload: None,
             });
@@ -192,10 +187,10 @@ pub async fn handle_v1_links(
                                             if !integrations_map.contains_key(igname) {
                                                 tracing::info!("tool {} not present => link", igname);
                                                 links.push(Link {
-                                                    action: LinkAction::Goto,
-                                                    text: format!("Configure {igname}"),
-                                                    goto: Some(format!("SETTINGS:{igname}")),
-                                                    current_config_file: None,
+                                                    link_action: LinkAction::Goto,
+                                                    link_text: format!("Configure {igname}"),
+                                                    link_goto: Some(format!("SETTINGS:{igname}")),
+                                                    link_summary_path: None,
                                                     link_tooltip: format!(""),
                                                     link_payload: None,
                                                 });
@@ -220,21 +215,23 @@ pub async fn handle_v1_links(
     }
 
     // Follow-up
-    // if post.meta.chat_mode != ChatMode::NO_TOOLS && links.is_empty() && post.messages.len() > 2 {
-    //     let follow_up_messages: Vec<String> = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
-    //         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
-    //     for follow_up_message in follow_up_messages {
-    //         tracing::info!("follow-up {:?}", follow_up_message);
-    //         links.push(Link {
-    //             action: LinkAction::FollowUp,
-    //             text: follow_up_message,
-    //             goto: None,
-    //             current_config_file: None,
-    //             link_tooltip: format!(""),
-    //             link_payload: None,
-    //         });
-    //     }
-    // }
+    if false {
+        if post.meta.chat_mode != ChatMode::NO_TOOLS && links.is_empty() && post.messages.len() > 2 {
+            let follow_up_messages: Vec<String> = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
+                .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
+            for follow_up_message in follow_up_messages {
+                tracing::info!("follow-up {:?}", follow_up_message);
+                links.push(Link {
+                    link_action: LinkAction::FollowUp,
+                    link_text: follow_up_message,
+                    link_goto: None,
+                    link_summary_path: None,
+                    link_tooltip: format!(""),
+                    link_payload: None,
+                });
+            }
+        }
+    }
 
     tracing::info!("generated links2: {:?}", links);
 
