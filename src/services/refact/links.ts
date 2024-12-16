@@ -25,7 +25,7 @@ interface BaseLink {
   link_text: string;
   link_goto?: string;
   link_tooltip?: string;
-  link_payload?: CommitLinkPayload;
+  link_payload?: CommitLinkPayload | null;
   link_summary_path?: string;
 }
 export interface CommitLink extends BaseLink {

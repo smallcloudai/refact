@@ -27,9 +27,7 @@ function makeConfig(library: "browser" | "node") {
           commit: commitHash,
         }),
         "process.env.DEBUG": JSON.stringify(process.env.DEBUG),
-        ...(process.env.REFACT_LSP_PORT
-          ? { __REFACT_LSP_PORT__: process.env.REFACT_LSP_PORT }
-          : {}),
+        __REFACT_LSP_PORT__: process.env.REFACT_LSP_PORT,
       },
       mode,
       build: {
