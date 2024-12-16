@@ -182,6 +182,10 @@ pub async fn migrate_to_config_folder(
         let is_yaml_cfg = file_type.is_file() && path.extension().and_then(|e| e.to_str()) == Some("yaml");
         if is_yaml_cfg {
             let new_path = config_dir.join(&file_name);
+            if new_path.exists() {
+                tracing::info!("cannot migrate {:?} to {:?}: destination exists".to_string(), path, new_path);
+                continue;
+            }
             tokio::fs::rename(&path, &new_path).await?;
             tracing::info!("migrated {:?} to {:?}", path, new_path);
         }
