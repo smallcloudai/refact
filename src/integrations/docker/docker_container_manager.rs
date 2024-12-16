@@ -122,7 +122,7 @@ pub async fn docker_container_check_status_or_start(
             ports_to_forward.insert(0, Port {published: "0".to_string(), target: LSP_PORT.to_string()});
 
             let container_id = docker_container_create(&docker, &isolation, &chat_id, &ports_to_forward, LSP_PORT, gcx.clone()).await?;
-            docker_container_sync_yaml_configs(&docker, &container_id, gcx.clone()).await?;
+            docker_container_sync_config_folder(&docker, &container_id, gcx.clone()).await?;
             docker_container_start(gcx.clone(), &docker, &container_id).await?;
             let exposed_ports = docker_container_get_exposed_ports(&docker, &container_id, &ports_to_forward, gcx.clone()).await?;
             let host_lsp_port = exposed_ports.iter().find(|p| p.target == LSP_PORT)
@@ -246,42 +246,19 @@ async fn docker_container_create(
     Ok(container_id[..12].to_string())
 }
 
-async fn docker_container_sync_yaml_configs(
+async fn docker_container_sync_config_folder(
     docker: &ToolDocker,
     container_id: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(), String> {
-    let config_dir = {
-        let gcx_locked = gcx.read().await;
-        gcx_locked.config_dir.clone()
-    };
+    let config_dir = gcx.read().await.config_dir.clone();
+    let config_dir_string = config_dir.to_string_lossy().to_string();
     let container_home_dir = docker_container_get_home_dir(&docker, &container_id, gcx.clone()).await?;
 
     // Creating intermediate folders one by one, as docker cp does not support --parents
     let temp_dir = tempfile::Builder::new().tempdir()
         .map_err(|e| format!("Error creating temporary directory: {}", e))?;
     let temp_dir_path = temp_dir.path().to_string_lossy().to_string();
-    // XXX now we're using .config
-    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/"), gcx.clone(), true, true).await?;
-    docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.cache/refact"), gcx.clone(), true, true).await?;
-
-    let config_files_to_sync = ["privacy.yaml", "integrations.yaml", "bring-your-own-key.yaml", "competency.yaml"];
-    let remote_integrations_path = {
-        let gcx_locked = gcx.read().await;
-        gcx_locked.cmdline.integrations_yaml.clone()
-    };
-    for file in &config_files_to_sync {
-        let local_path = match *file {
-            "integrations.yaml" if !remote_integrations_path.is_empty() => remote_integrations_path.clone(),
-            // "competency.yaml" if !competency_path.is_empty() => competency_path.clone(),
-            _ => config_dir.join(file).to_string_lossy().to_string(),
-        };
-        let container_path = format!("{container_id}:{container_home_dir}/.cache/refact/{file}");
-        docker.command_execute(&format!("container cp {local_path} {container_path}"), gcx.clone(), true, true).await?;
-    }
-
-    // Copying config folder
-    let config_dir_string = config_dir.to_string_lossy().to_string();
     docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.config/"), gcx.clone(), true, true).await?;
     docker.command_execute(&format!("container cp {config_dir_string} {container_id}:{container_home_dir}/.config/refact"), gcx.clone(), true, true).await?;
 

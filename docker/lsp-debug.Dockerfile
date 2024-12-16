@@ -22,6 +22,7 @@ COPY Cargo.toml build.rs ./
 
 RUN mkdir src && echo 'fn main() { println!("Dummy main to satisfy Cargo"); }' > src/main.rs
 
+RUN mkdir -p assets/integrations
 RUN cargo fetch
 RUN cargo check
 
