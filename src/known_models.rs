@@ -453,6 +453,39 @@ pub const KNOWN_MODELS: &str = r####"
                 "cerebras-llama3.1-70b"
             ]
         },
+        "grok-beta": {
+            "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_multimodality": false,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            }
+        },
+        "grok-vision-beta": {
+            "n_ctx": 8192,
+            "supports_tools": false,
+            "supports_multimodality": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            }
+        },
+        "grok-2-vision-1212": {
+            "n_ctx": 32000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            }
+        },
+        "grok-2-1212": {
+            "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_multimodality": false,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            }
+        },
+
         "qwen2.5/coder/0.5b/instruct": {
             "n_ctx": 8192,
             "supports_tools": false,
@@ -512,7 +545,16 @@ pub const KNOWN_MODELS: &str = r####"
         "claude-3-5-sonnet-20240620": "Xenova/claude-tokenizer",
         "claude-3-5-sonnet-20241022": "Xenova/claude-tokenizer",
         "groq-llama-3.1-8b":      "Xenova/Meta-Llama-3.1-Tokenizer",
-        "cerebras-llama3.1-8b":     "Xenova/Meta-Llama-3.1-Tokenizer"
+        "cerebras-llama3.1-8b":     "Xenova/Meta-Llama-3.1-Tokenizer",
+        
+        "grok-beta": "Xenova/grok-1-tokenizer",
+        "grok-vision-beta": "Xenova/grok-1-tokenizer",
+        "grok-2-vision-1212": "Xenova/grok-1-tokenizer",
+        "grok-2-1212": "Xenova/grok-1-tokenizer"
     }
 }
 "####;
+
+// XAI WARNING: tokenizer is non-precise as there's no publicly available tokenizer for these models 
+// XAI says that for exact same model different tokenizers could be used
+// therefore, using tokenizer for grok-1 which may or may not provide proximate enough results
