@@ -54,6 +54,7 @@ import { selectThemeMode } from "../../features/Config/configSlice";
 import type { ToolParameterEntity } from "../../services/refact";
 import isEqual from "lodash.isequal";
 import { convertRawIntegrationFormValues } from "../../features/Integrations/convertRawIntegrationFormValues";
+import { validateSnakeCase } from "../../utils/validateSnakeCase";
 
 type IntegrationViewProps = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -349,6 +350,14 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
           },
         );
 
+        const allToolParametersNamesInSnakeCase = toolParameters.every(
+          (param) => validateSnakeCase(param.name),
+        );
+
+        if (!allToolParametersNamesInSnakeCase) {
+          return true; // Disabling form if any of tool parameters names are written not in snake case
+        }
+
         if (toolParametersChanged && isDisabled) {
           return false; // Enable form if toolParameters changed and form was disabled
         }
@@ -561,6 +570,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         : true;
 
       const eachToolParameterIsNotChanged =
+        toolParameters &&
         currentIntegrationValues &&
         areToolParameters(currentIntegrationValues.parameters)
           ? isEqual(currentIntegrationValues.parameters, toolParameters)
@@ -584,9 +594,16 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         eachFormValueIsNotChanged &&
         eachAvailabilityOptionIsNotChanged &&
         eachToolParameterIsNotChanged;
+
       debugIntegrations(`[DEBUG CHANGE]: maybeDisabled: `, maybeDisabled);
 
-      setIsDisabledIntegrationForm(maybeDisabled);
+      setIsDisabledIntegrationForm(
+        toolParameters
+          ? toolParameters.every((param) => validateSnakeCase(param.name))
+            ? maybeDisabled
+            : true
+          : maybeDisabled,
+      );
     },
     [
       currentIntegration,

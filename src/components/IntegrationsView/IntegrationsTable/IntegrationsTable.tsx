@@ -5,9 +5,11 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Flex, Table, TextField } from "@radix-ui/themes";
+import { Button, Flex, Table, Text, TextField } from "@radix-ui/themes";
 import { ToolParameterEntity } from "../../../services/refact";
 import { PlusIcon } from "@radix-ui/react-icons";
+import { validateSnakeCase } from "../../../utils/validateSnakeCase";
+import { debugIntegrations } from "../../../debugConfig";
 
 type IntegrationsTableProps = {
   initialData: ToolParameterEntity[];
@@ -19,6 +21,7 @@ const IntegrationsTable: React.FC<IntegrationsTableProps> = ({
   onToolParameters,
 }) => {
   const [data, setData] = useState<ToolParameterEntity[]>(initialData);
+  const [validateError, setValidateError] = useState<string | null>(null);
 
   const addRow = () => {
     setData((prev) => [...prev, { name: "", description: "", type: "string" }]);
@@ -33,6 +36,15 @@ const IntegrationsTable: React.FC<IntegrationsTableProps> = ({
     field: keyof ToolParameterEntity,
     value: string,
   ) => {
+    debugIntegrations(`[DEBUG UPDATE ROW]: updating row, field: ${field}`);
+    setValidateError(null);
+    if (field === "name" && !validateSnakeCase(value)) {
+      debugIntegrations(
+        `[DEBUG VALIDATION]: field ${field} is not written in snake case`,
+      );
+      setValidateError(`The field "${value}" must be written in snake case.`);
+    }
+
     setData((prev) =>
       prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
     );
@@ -132,52 +144,62 @@ const IntegrationsTable: React.FC<IntegrationsTableProps> = ({
 
   return (
     <Flex direction="column" gap="2" mb="1" width="100%">
-      <Table.Root size="1">
-        <Table.Header>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <Table.Row key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <Table.ColumnHeaderCell key={header.id}>
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext(),
-                  )}
-                </Table.ColumnHeaderCell>
-              ))}
-            </Table.Row>
-          ))}
-        </Table.Header>
-        <Table.Body>
-          {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row) => (
-              <Table.Row key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <Table.Cell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </Table.Cell>
+      <Flex direction="column" gap="2" mb="1" width="100%">
+        <Table.Root size="1">
+          <Table.Header>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <Table.Row key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <Table.ColumnHeaderCell key={header.id}>
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
+                  </Table.ColumnHeaderCell>
                 ))}
               </Table.Row>
-            ))
-          ) : (
-            <Table.Row>
-              <Table.Cell colSpan={columns.length}>
-                No parameters set yet
-              </Table.Cell>
-            </Table.Row>
-          )}
-        </Table.Body>
-      </Table.Root>
-      <Button
-        onClick={addRow}
-        type="button"
-        size="1"
-        variant="surface"
-        color="gray"
-      >
-        <Flex align="stretch" gap="1">
-          <PlusIcon /> Add row
-        </Flex>
-      </Button>
+            ))}
+          </Table.Header>
+          <Table.Body>
+            {table.getRowModel().rows.length ? (
+              table.getRowModel().rows.map((row) => (
+                <Table.Row key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <Table.Cell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </Table.Cell>
+                  ))}
+                </Table.Row>
+              ))
+            ) : (
+              <Table.Row>
+                <Table.Cell colSpan={columns.length}>
+                  No parameters set yet
+                </Table.Cell>
+              </Table.Row>
+            )}
+          </Table.Body>
+        </Table.Root>
+        <Button
+          onClick={addRow}
+          type="button"
+          size="1"
+          variant="surface"
+          color="gray"
+        >
+          <Flex align="stretch" gap="1">
+            <PlusIcon /> Add row
+          </Flex>
+        </Button>
+      </Flex>
+      {validateError && (
+        <Text color="red" size="2">
+          {validateError}
+        </Text>
+      )}
     </Flex>
   );
 };

@@ -24,12 +24,7 @@ import { useGetIntegrationDataByPathQuery } from "../../../hooks/useGetIntegrati
 import { debugIntegrations } from "../../../debugConfig";
 import { useAppSelector } from "../../../hooks";
 import { selectThemeMode } from "../../../features/Config/configSlice";
-
-const validateSnakeCase = (value: string) => {
-  // TODO: include numbers 0-9
-  const snakeCaseRegex = /^[a-z]+(_[a-z]+)*$/;
-  return snakeCaseRegex.test(value);
-};
+import { validateSnakeCase } from "../../../utils/validateSnakeCase";
 
 type IntegrationCmdlineProps = {
   integration: NotConfiguredIntegrationWithIconRecord;
