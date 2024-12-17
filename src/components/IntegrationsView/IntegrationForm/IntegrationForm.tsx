@@ -181,8 +181,8 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
             {integration.data.integr_values && (
               <Flex gap="4" mb="3" className={styles.switchInline}>
                 {integration.data.integr_values.available &&
-                  Object.entries(integration.data.integr_values.available).map(
-                    ([key, _]: [string, boolean]) => (
+                  Object.keys(integration.data.integr_values.available).map(
+                    (key) => (
                       <IntegrationAvailability
                         key={key}
                         fieldName={key}
