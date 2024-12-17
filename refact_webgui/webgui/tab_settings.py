@@ -25,6 +25,7 @@ class TabSettingsRouter(APIRouter):
         groq_api_key: Optional[str] = None
         cerebras_api_key: Optional[str] = None
         gemini_api_key: Optional[str] = None
+        xai_api_key: Optional[str] = None
 
         huggingface_api_key: Optional[str] = None
 

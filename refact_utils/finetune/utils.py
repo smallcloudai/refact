@@ -118,6 +118,9 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
     if data.get('groq_api_enable'):
         _add_results_for_passthrough_provider('groq')
 
+    if data.get('xai_api_enable'):
+        _add_results_for_passthrough_provider('xai')
+
     for k, v in data.get("model_assign", {}).items():
         if model_dict := [d for d in data['models'] if d['name'] == k]:
             model_dict = model_dict[0]
