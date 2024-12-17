@@ -42,7 +42,9 @@ type IntegrationFormProps = {
   setAvailabilityValues: Dispatch<
     React.SetStateAction<Record<string, boolean>>
   >;
-  setToolParameters: Dispatch<React.SetStateAction<ToolParameterEntity[]>>;
+  setToolParameters: Dispatch<
+    React.SetStateAction<ToolParameterEntity[] | null>
+  >;
   handleSwitchIntegration: (
     integrationName: string,
     integrationConfigPath: string,

@@ -21,7 +21,7 @@ const IntegrationsTable: React.FC<IntegrationsTableProps> = ({
   const [data, setData] = useState<ToolParameterEntity[]>(initialData);
 
   const addRow = () => {
-    setData((prev) => [...prev, { name: "", description: "" }]);
+    setData((prev) => [...prev, { name: "", description: "", type: "string" }]);
   };
 
   const removeRow = (index: number) => {
@@ -178,7 +178,6 @@ const IntegrationsTable: React.FC<IntegrationsTableProps> = ({
           <PlusIcon /> Add row
         </Flex>
       </Button>
-      <input type="hidden" name="parameters" />
     </Flex>
   );
 };
