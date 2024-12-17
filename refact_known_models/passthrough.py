@@ -220,7 +220,7 @@ passthrough_mini_db = {
     "gemini-2.0-flash-exp": {
         "backend": "litellm",
         "provider": "gemini",
-        "tokenizer_path": "google/gemma-7b",
+        "tokenizer_path": "Xenova/gemma2-tokenizer",
         "resolve_as": "gemini-2.0-flash-exp",
         "T": 1_048_576,
         "T_out": 8_192,
@@ -231,7 +231,7 @@ passthrough_mini_db = {
     "gemini-1.5-flash": {
         "backend": "litellm",
         "provider": "gemini",
-        "tokenizer_path": "google/gemma-7b",
+        "tokenizer_path": "Xenova/gemma2-tokenizer",
         "resolve_as": "gemini-1.5-flash",
         "T": 1_048_576,
         "T_out": 8_192,
@@ -242,7 +242,7 @@ passthrough_mini_db = {
     "gemini-1.5-flash-8b": {
         "backend": "litellm",
         "provider": "gemini",
-        "tokenizer_path": "google/gemma-7b",
+        "tokenizer_path": "Xenova/gemma2-tokenizer",
         "resolve_as": "gemini-1.5-flash-8b",
         "T": 1_048_576,
         "T_out": 8_192,
@@ -253,11 +253,12 @@ passthrough_mini_db = {
     "gemini-1.5-pro": {
         "backend": "litellm",
         "provider": "gemini",
-        "tokenizer_path": "google/gemma-7b",
+        "tokenizer_path": "Xenova/gemma2-tokenizer",
         "resolve_as": "gemini-1.5-pro",
         "T": 2_097_152,
         "T_out": 8_192,
         "pp1000t_prompt": 1250,  # $1.25 / 1M tokens
         "pp1000t_generated": 5000,  # $5.00 / 1M tokens
         "filter_caps": ["chat", "tools", "completion", "multimodal"],
-    }}
+    }
+}
