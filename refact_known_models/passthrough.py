@@ -221,44 +221,44 @@ passthrough_mini_db = {
         "backend": "litellm",
         "provider": "gemini",
         "tokenizer_path": "Xenova/gemma2-tokenizer",
-        "resolve_as": "gemini-2.0-flash-exp",
+        "resolve_as": "gemini/gemini-2.0-flash-exp",
         "T": 1_048_576,
         "T_out": 8_192,
         "pp1000t_prompt": 75,  # $0.075 / 1M tokens
         "pp1000t_generated": 300,  # $0.30 / 1M tokens
-        "filter_caps": ["chat", "tools", "completion", "multimodal"],
+        "filter_caps": ["chat", "tools", "completion", "vision"],
     },
     "gemini-1.5-flash": {
         "backend": "litellm",
         "provider": "gemini",
         "tokenizer_path": "Xenova/gemma2-tokenizer",
-        "resolve_as": "gemini-1.5-flash",
+        "resolve_as": "gemini/gemini-1.5-flash",
         "T": 1_048_576,
         "T_out": 8_192,
         "pp1000t_prompt": 75,  # $0.075 / 1M tokens
         "pp1000t_generated": 300,  # $0.30 / 1M tokens
-        "filter_caps": ["chat", "tools", "completion", "multimodal"],
+        "filter_caps": ["chat", "tools", "completion", "vision"],
     },
     "gemini-1.5-flash-8b": {
         "backend": "litellm",
         "provider": "gemini",
         "tokenizer_path": "Xenova/gemma2-tokenizer",
-        "resolve_as": "gemini-1.5-flash-8b",
+        "resolve_as": "gemini/gemini-1.5-flash-8b",
         "T": 1_048_576,
         "T_out": 8_192,
         "pp1000t_prompt": 37.5,  # $0.0375 / 1M tokens
         "pp1000t_generated": 150,  # $0.15 / 1M tokens
-        "filter_caps": ["chat", "tools", "completion", "multimodal"],
+        "filter_caps": ["chat", "tools", "completion", "vision"],
     },
     "gemini-1.5-pro": {
         "backend": "litellm",
         "provider": "gemini",
         "tokenizer_path": "Xenova/gemma2-tokenizer",
-        "resolve_as": "gemini-1.5-pro",
+        "resolve_as": "gemini/gemini-1.5-pro",
         "T": 2_097_152,
         "T_out": 8_192,
         "pp1000t_prompt": 1250,  # $1.25 / 1M tokens
         "pp1000t_generated": 5000,  # $5.00 / 1M tokens
-        "filter_caps": ["chat", "tools", "completion", "multimodal"],
+        "filter_caps": ["chat", "tools", "completion", "vision"],
     }
 }
