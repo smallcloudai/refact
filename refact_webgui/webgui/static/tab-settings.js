@@ -174,6 +174,8 @@ function save_integration_api_keys() {
     const anthropic_api_key = document.getElementById('anthropic_api_key');
     const groq_api_key = document.getElementById('groq_api_key');
     const cerebras_api_key = document.getElementById('cerebras_api_key');
+    const xai_api_key = document.getElementById('xai_api_key');
+
     const huggingface_api_key = document.getElementById('huggingface_api_key');
     fetch("/tab-settings-integrations-save", {
         method: "POST",
@@ -185,6 +187,8 @@ function save_integration_api_keys() {
             anthropic_api_key: anthropic_api_key.getAttribute('data-value'),
             groq_api_key: groq_api_key.getAttribute('data-value'),
             cerebras_api_key: cerebras_api_key.getAttribute('data-value'),
+            xai_api_key: xai_api_key.getAttribute('data-value'),
+
             huggingface_api_key: huggingface_api_key.getAttribute('data-value'),
         })
     })
@@ -195,6 +199,8 @@ function save_integration_api_keys() {
         anthropic_api_key.setAttribute('data-saved-value', anthropic_api_key.getAttribute('data-value'))
         groq_api_key.setAttribute('data-saved-value', groq_api_key.getAttribute('data-value'))
         cerebras_api_key.setAttribute('data-saved-value', cerebras_api_key.getAttribute('data-value'))
+        xai_api_key.setAttribute('data-saved-value', xai_api_key.getAttribute('data-value'))
+
         huggingface_api_key.setAttribute('data-saved-value', huggingface_api_key.getAttribute('data-value'))
     });
 }
@@ -230,6 +236,8 @@ export function tab_settings_integrations_get() {
             integrations_input_init(document.getElementById('anthropic_api_key'), data['anthropic_api_key']);
             integrations_input_init(document.getElementById('groq_api_key'), data['groq_api_key']);
             integrations_input_init(document.getElementById('cerebras_api_key'), data['cerebras_api_key']);
+            integrations_input_init(document.getElementById('xai_api_key'), data['xai_api_key']);
+
             integrations_input_init(document.getElementById('huggingface_api_key'), data['huggingface_api_key']);
         });
 }

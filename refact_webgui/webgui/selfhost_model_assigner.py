@@ -186,6 +186,7 @@ class ModelAssigner:
             "anthropic_api_enable": False,
             "groq_api_enable": False,
             "cerebras_api_enable": False,
+            "xai_api_enable": False,
         }
         self.models_to_watchdog_configs(default_config)
 
@@ -259,6 +260,7 @@ class ModelAssigner:
             j = json.load(open(env.CONFIG_INFERENCE, "r"))
             j["groq_api_enable"] = j.get("groq_api_enable", False)
             j["cerebras_api_enable"] = j.get("cerebras_api_enable", False)
+            j["xai_api_enable"] = j.get("xai_api_enable", False)
         else:
             j = {"model_assign": {}}
 
