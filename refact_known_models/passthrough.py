@@ -260,5 +260,55 @@ passthrough_mini_db = {
         "pp1000t_prompt": 1250,  # $1.25 / 1M tokens
         "pp1000t_generated": 5000,  # $5.00 / 1M tokens
         "filter_caps": ["chat", "tools", "completion", "vision"],
+    },
+    # XAI Models
+    # WARNING: tokenizer is non-precise as there's no publicly available tokenizer for these models
+    # XAI says that for exact same model different tokenizers could be used
+    # therefore, using tokenizer for grok-1 which may or may not provide proximate enough results
+    # T is decreased not to encounter tokens overflow
+
+    "grok-beta": {
+        "backend": "litellm",
+        "provider": "xai",
+        "tokenizer_path": "Xenova/grok-1-tokenizer",
+        "resolve_as": "xai/grok-beta",
+        "T": 128_000,
+        "T_out": 4096,
+        "pp1000t_prompt": 5_000,
+        "pp1000t_generated": 15_000,  # $15.00 / 1M tokens
+        "filter_caps": ["chat", "completion"],
+    },
+    "grok-vision-beta": {
+        "backend": "litellm",
+        "provider": "xai",
+        "tokenizer_path": "Xenova/grok-1-tokenizer",
+        "resolve_as": "xai/grok-vision-beta",
+        "T": 8_192,
+        "T_out": 4096,
+        "pp1000t_prompt": 5_000,
+        "pp1000t_generated": 15_000,  # $15.00 / 1M tokens
+        "filter_caps": ["chat", "completion", "vision"],
+    },
+    "grok-2-vision-1212": {
+        "backend": "litellm",
+        "provider": "xai",
+        "tokenizer_path": "Xenova/grok-1-tokenizer",
+        "resolve_as": "xai/grok-2-vision-1212",
+        "T": 32_000,
+        "T_out": 4096,
+        "pp1000t_prompt": 2_000,
+        "pp1000t_generated": 10_000,  # $10.00 / 1M tokens
+        "filter_caps": ["chat", "completion", "vision"],
+    },
+    "grok-2-1212": {
+        "backend": "litellm",
+        "provider": "xai",
+        "tokenizer_path": "Xenova/grok-1-tokenizer",
+        "resolve_as": "xai/grok-2-1212",
+        "T": 128_000,
+        "T_out": 4096,
+        "pp1000t_prompt": 2_000,
+        "pp1000t_generated": 10_000,  # $10.00 / 1M tokens
+        "filter_caps": ["chat", "completion"],
     }
 }

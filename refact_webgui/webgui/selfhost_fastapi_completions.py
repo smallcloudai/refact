@@ -234,6 +234,7 @@ class BaseCompletionsRouter(APIRouter):
         _integrations_env_setup("GROQ_API_KEY", "groq_api_key", "groq_api_enable")
         _integrations_env_setup("CEREBRAS_API_KEY", "cerebras_api_key", "cerebras_api_enable")
         _integrations_env_setup("GEMINI_API_KEY", "gemini_api_key", "gemini_api_enable")
+        _integrations_env_setup("XAI_API_KEY", "xai_api_key", "xai_api_enable")
 
     def _models_available_dict_rewrite(self, models_available: List[str]) -> Dict[str, Any]:
         rewrite_dict = {}
