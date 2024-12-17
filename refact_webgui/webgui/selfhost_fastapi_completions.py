@@ -339,10 +339,7 @@ class BaseCompletionsRouter(APIRouter):
         try:
             async with aiohttp.ClientSession() as session:
                 tokenizer_url = f"https://huggingface.co/{model_path}/resolve/main/tokenizer.json"
-                headers = {}
-                if hf_token := huggingface_hub_token():
-                    headers["Authorization"] = f"Bearer {hf_token}"
-                async with session.get(tokenizer_url, headers=headers) as resp:
+                async with session.get(tokenizer_url) as resp:
                     return await resp.text()
         except:
             raise HTTPException(404, detail=f"can't load tokenizer.json for passthrough {model_path}")
