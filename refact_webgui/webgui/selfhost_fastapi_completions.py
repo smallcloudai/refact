@@ -13,7 +13,6 @@ import traceback
 from fastapi import APIRouter, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
 
-from refact_utils.huggingface.utils import huggingface_hub_token
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
 from refact_webgui.webgui.selfhost_model_resolve import resolve_model_context_size
