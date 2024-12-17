@@ -7,10 +7,12 @@ import {
   useGetUser,
   useLogout,
   useAppSelector,
+  useAppDispatch,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import { DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
 import { HamburgerMenuIcon, DiscordLogoIcon } from "@radix-ui/react-icons";
+import { clearHistory } from "../../features/History/historySlice";
 //import { Coin } from "../../images";
 
 export type DropdownNavigationOptions =
@@ -55,6 +57,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const refs = useTourRefs();
   const user = useGetUser();
   const host = useAppSelector(selectHost);
+  const dispatch = useAppDispatch();
   const logout = useLogout();
   const { addressURL } = useConfig();
 
@@ -64,6 +67,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const openUrl = useOpenUrl();
   const { openBringYourOwnKeyFile, openCustomizationFile, openPrivacyFile } =
     useEventsBusForIDE();
+
+  const handleChatHistoryCleanUp = () => {
+    dispatch(clearHistory());
+  };
 
   return (
     <DropdownMenu.Root>
@@ -175,6 +182,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
         <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
           Your Stats
+        </DropdownMenu.Item>
+
+        <DropdownMenu.Item onSelect={handleChatHistoryCleanUp}>
+          Clear Chat History
         </DropdownMenu.Item>
 
         <DropdownMenu.Item

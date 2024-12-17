@@ -130,6 +130,9 @@ export const historySlice = createSlice({
         {},
       );
     },
+    clearHistory: () => {
+      return {};
+    },
   },
   selectors: {
     getChatById: (state, id: string): ChatHistoryItem | null => {
@@ -150,6 +153,7 @@ export const {
   markChatAsUnread,
   markChatAsRead,
   setTitleGenerationCompletionForChat,
+  clearHistory,
 } = historySlice.actions;
 export const { getChatById, getHistory } = historySlice.selectors;
 
