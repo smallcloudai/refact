@@ -22,6 +22,7 @@ use chrono::DateTime;
 use std::path::PathBuf;
 use headless_chrome::{Browser, Element, LaunchOptions, Tab as HeadlessTab};
 use headless_chrome::browser::tab::point::Point;
+use headless_chrome::browser::tab::ModifierKey;
 use headless_chrome::protocol::cdp::Page;
 use headless_chrome::protocol::cdp::Emulation;
 use headless_chrome::protocol::cdp::types::Event;
@@ -265,11 +266,12 @@ impl Tool for ToolChrome {
             "screenshot <tab_id>",
             "html <tab_id> <element_selector>",
             "reload <tab_id>",
-            "press_key_at <tab_id> <enter|esc|pageup|pagedown|home|end>",
+            "press_key <tab_id> <KeyName> [<Alt|Ctrl|Meta|Shift>,...]",
             "type_text_at <tab_id> <text>",
             "tab_log <tab_id>",
             "eval <tab_id> <expression>",
             "styles <tab_id> <element_selector> <property_filter>",
+            "wait_for <tab_id> <1-5>",
             "click_at_element <tab_id> <element_selector>",
         ];
         if self.supports_clicks {
@@ -280,6 +282,7 @@ impl Tool for ToolChrome {
         let description = format!(
             "One or several commands separated by newline. \
              The <tab_id> is an integer, for example 10, for you to identify the tab later. \
+             Most of web pages are dynamic. If you see that it's still loading try again with wait_for command. \
              Supported commands:\n{}", supported_commands.join("\n"));
         ToolDesc {
             name: "chrome".to_string(),
@@ -602,10 +605,11 @@ enum Command {
     ClickAtPoint(ClickAtPointArgs),
     ClickAtElement(TabElementArgs),
     TypeTextAt(TypeTextAtArgs),
-    PressKeyAt(PressKeyAtArgs),
+    PressKey(PressKeyArgs),
     TabLog(TabArgs),
     Eval(EvalArgs),
     Styles(StylesArgs),
+    WaitFor(WaitForArgs),
 }
 
 async fn chrome_command_exec(
@@ -814,7 +818,7 @@ async fn chrome_command_exec(
             };
             tool_log.push(log);
         },
-        Command::PressKeyAt(args) => {
+        Command::PressKey(args) => {
             let tab = {
                 let mut chrome_session_locked = chrome_session.lock().await;
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
@@ -823,17 +827,17 @@ async fn chrome_command_exec(
             let log = {
                 let tab_lock = tab.lock().await;
                 match {
-                    tab_lock.headless_tab.press_key(args.key.to_string().as_str()).map_err(|e| e.to_string())?;
+                    tab_lock.headless_tab.press_key_with_modifiers(
+                        args.key.as_str(), args.key_modifiers.as_deref())
+                        .map_err(|e| e.to_string())?;
                     tab_lock.headless_tab.wait_until_navigated().map_err(|e| e.to_string())?;
-                    // TODO: sometimes page isn't ready for next step
-                    sleep(Duration::from_secs(1)).await;
                     Ok::<(), String>(())
                 } {
                     Ok(_) => {
-                        format!("press `{}` at {}", args.key, tab_lock.state_string())
+                        format!("press_key at {}", tab_lock.state_string())
                     },
                     Err(e) => {
-                        format!("press `{}` failed at {}: {}", args.key, tab_lock.state_string(), e.to_string())
+                        format!("press_key failed at {}: {}", tab_lock.state_string(), e.to_string())
                     },
                 }
             };
@@ -847,14 +851,20 @@ async fn chrome_command_exec(
             };
             let tab_log = {
                 let tab_lock = tab.lock().await;
-                // NOTE: we're waiting for log to be collected for 3 seconds
-                sleep(Duration::from_secs(3)).await;
                 let mut tab_log_lock = tab_lock.tab_log.lock().unwrap();
                 let tab_log = tab_log_lock.join("\n");
                 tab_log_lock.clear();
                 tab_log
             };
-            let filter = CmdlineOutputFilter::default();
+            // let filter = CmdlineOutputFilter::default();
+            let filter = CmdlineOutputFilter {
+                limit_lines: 100,
+                limit_chars: 10000,
+                valuable_top_or_bottom: "top".to_string(),
+                grep: "".to_string(),
+                grep_context_lines: 0,
+                remove_from_output: "".to_string(),
+            };
             let filtered_log = output_mini_postprocessing(&filter, tab_log.as_str());
             tool_log.push(filtered_log.clone());
         },
@@ -915,6 +925,22 @@ async fn chrome_command_exec(
             };
             tool_log.push(log);
         },
+        Command::WaitFor(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = {
+                let tab_lock = tab.lock().await;
+                if args.seconds < 1.0 && args.seconds > 5.0 {
+                    return Err(format!("wait_for at {} failed: `seconds` should be integer in interval [1, 5]", tab_lock.state_string()))
+                }
+                sleep(Duration::from_secs(3)).await;
+                format!("wait_for {} seconds at {} successful.", args.seconds, tab_lock.state_string())
+            };
+            tool_log.push(log);
+        },
     }
 
     Ok((tool_log, multimodal_els))
@@ -949,32 +975,10 @@ struct TypeTextAtArgs {
     tab_id: String,
 }
 
-#[derive(Clone, Debug)]
-enum Key {
-    ENTER,
-    ESC,
-    PAGEUP,
-    PAGEDOWN,
-    HOME,
-    END,
-}
-
-impl std::fmt::Display for Key {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Key::ENTER => write!(f, "Enter"),
-            Key::ESC => write!(f, "Escape"),
-            Key::PAGEUP => write!(f, "PageUp"),
-            Key::PAGEDOWN => write!(f, "PageDown"),
-            Key::HOME => write!(f, "Home"),
-            Key::END => write!(f, "End"),
-        }
-    }
-}
-
 #[derive(Debug)]
-struct PressKeyAtArgs {
-    key: Key,
+struct PressKeyArgs {
+    key: String,
+    key_modifiers: Option<Vec<ModifierKey>>,
     tab_id: String,
 }
 
@@ -995,6 +999,12 @@ struct StylesArgs {
     tab_id: String,
     selector: String,
     property_filter: String,
+}
+
+#[derive(Debug)]
+struct WaitForArgs {
+    tab_id: String,
+    seconds: f64,
 }
 
 fn parse_single_command(command: &String) -> Result<Command, String> {
@@ -1130,22 +1140,34 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                 }
             }
         },
-        "press_key_at" => {
+        "press_key" => {
             match parsed_args.as_slice() {
-                [tab_id, key_str] => {
-                    let key = match key_str.to_lowercase().as_str() {
-                        "enter" => Key::ENTER,
-                        "esc" => Key::ESC,
-                        "pageup" => Key::PAGEUP,
-                        "pagedown" => Key::PAGEDOWN,
-                        "home" => Key::HOME,
-                        "end" => Key::END,
-                        _ => return Err(format!("Unknown key: {}", key_str)),
-                    };
-                    Ok(Command::PressKeyAt(PressKeyAtArgs {
-                        key,
+                [tab_id, key] => {
+                    Ok(Command::PressKey(PressKeyArgs {
+                        key: key.clone(),
+                        key_modifiers: None,
                         tab_id: tab_id.clone(),
                     }))
+                },
+                [tab_id, key, key_modifiers] => {
+                    let modifiers: Result<Vec<ModifierKey>, String> = key_modifiers.split(',')
+                        .map(|modifier_str| match modifier_str.trim() {
+                            "Alt" => Ok(ModifierKey::Alt),
+                            "Ctrl" => Ok(ModifierKey::Ctrl),
+                            "Meta" => Ok(ModifierKey::Meta),
+                            "Shift" => Ok(ModifierKey::Shift),
+                            _ => Err(format!("Unknown key modifier: {}", modifier_str)),
+                        })
+                        .collect();
+
+                    match modifiers {
+                        Ok(modifiers) => Ok(Command::PressKey(PressKeyArgs {
+                            key: key.clone(),
+                            key_modifiers: Some(modifiers),
+                            tab_id: tab_id.clone(),
+                        })),
+                        Err(e) => Err(e),
+                    }
                 },
                 _ => {
                     Err("Missing one or several arguments `tab_id`, `key`".to_string())
@@ -1188,6 +1210,20 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
                 },
                 _ => {
                     Err("Missing one or several arguments `tab_id`, `selector`.".to_string())
+                }
+            }
+        },
+        "wait_for" => {
+            match parsed_args.as_slice() {
+                [tab_id, seconds_str] => {
+                    let seconds = seconds_str.parse::<f64>().map_err(|e| format!("Failed to parse seconds: {}", e))?;
+                    Ok(Command::WaitFor(WaitForArgs {
+                        seconds: seconds.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `seconds`.".to_string())
                 }
             }
         },
