@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
 import { useGetIntegrationDataByPathQuery } from "../../../hooks/useGetIntegrationDataByPathQuery";
 
@@ -87,6 +87,11 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
     },
     [setToolParameters],
   );
+
+  const shouldIntegrationFormBeDisabled = useMemo(() => {
+    if (!integration.data?.integr_values) return false;
+    return isDisabled;
+  }, [isDisabled, integration]);
 
   useEffect(() => {
     if (
@@ -250,13 +255,20 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                 variant="solid"
                 type="submit"
                 size="2"
-                title={isDisabled ? "Cannot apply, no changes made" : "Apply"}
+                title={
+                  shouldIntegrationFormBeDisabled
+                    ? "Cannot apply, no changes made"
+                    : "Apply"
+                }
                 className={classNames(
-                  { [styles.disabledButton]: isApplying || isDisabled },
+                  {
+                    [styles.disabledButton]:
+                      isApplying || shouldIntegrationFormBeDisabled,
+                  },
                   styles.button,
                   styles.applyButton,
                 )}
-                disabled={isDisabled}
+                disabled={shouldIntegrationFormBeDisabled}
               >
                 {isApplying ? "Applying..." : "Apply"}
               </Button>
