@@ -68,6 +68,8 @@ class InferenceQueue:
                 _add_models_for_passthrough_provider('groq')
             if j.get("cerebras_api_enable"):
                 _add_models_for_passthrough_provider('cerebras')
+            if j.get("gemini_api_enable"):
+                _add_models_for_passthrough_provider('gemini')
 
         return self._models_available
 
