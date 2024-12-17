@@ -22,6 +22,11 @@ const CapsSelect: React.FC = () => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
 
+  const allDisabled = caps.usableModelsForPlan.every((option) => {
+    if (typeof option === "string") return false;
+    return option.disabled;
+  });
+
   return (
     <Flex
       gap="2"
@@ -30,14 +35,22 @@ const CapsSelect: React.FC = () => {
       ref={(x) => refs.setUseModel(x)}
       style={{ alignSelf: "flex-start" }}
     >
+      {/** TODO: loading state */}
       <Text size="2">Use model:</Text>
-      <Select
-        disabled={caps.loading}
-        title="chat model"
-        options={caps.usableModelsForPlan}
-        value={caps.currentModel}
-        onChange={caps.setCapModel}
-      ></Select>
+
+      {!caps.loading && allDisabled ? (
+        <Text size="1" color="gray">
+          No models available
+        </Text>
+      ) : (
+        <Select
+          disabled={caps.loading}
+          title="chat model"
+          options={caps.usableModelsForPlan}
+          value={caps.currentModel}
+          onChange={caps.setCapModel}
+        ></Select>
+      )}
     </Flex>
   );
 };

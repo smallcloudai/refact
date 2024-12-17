@@ -179,6 +179,7 @@ export const useSendChatRequest = () => {
       // const message: ChatMessage = { role: "user", content: question };
       const message: UserMessage = maybeAddImagesToQuestion(question);
       const messages = messagesWithSystemPrompt.concat(message);
+      // here
       const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
       // Save the mode
       const mode = chatModeToLspMode(toolUse, maybeMode ?? maybeConfigure);
@@ -279,7 +280,7 @@ export function useAutoSend() {
           }
         }
         dispatch(clearPauseReasonsAndConfirmTools(false));
-        void sendMessages(currentMessages);
+        void sendMessages(currentMessages, thread.mode);
         recallCounter = 0;
       }
     }
@@ -294,5 +295,6 @@ export function useAutoSend() {
     areToolsConfirmed,
     isWaiting,
     isIntegration,
+    thread.mode,
   ]);
 }
