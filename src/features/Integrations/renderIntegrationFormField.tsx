@@ -14,7 +14,7 @@ import { Flex } from "@radix-ui/themes";
 import { toPascalCase } from "../../utils/toPascalCase";
 import { SmartLink } from "../../components/SmartLink";
 // import { Markdown } from "../../components/Markdown";
-import IntegrationsTable from "../../components/IntegrationsView/IntegrationsTable/IntegrationsTable";
+import { ParametersTable } from "../../components/IntegrationsView/IntegrationsTable/ParametersTable";
 import type { ToolParameterEntity } from "../../services/refact";
 
 type FieldType = "string" | "bool" | "int" | "tool" | "output";
@@ -133,7 +133,7 @@ export const renderIntegrationFormField = ({
           />
         )}
         {f_type === "tool" && (
-          <IntegrationsTable
+          <ParametersTable
             initialData={
               values ? (values[fieldKey] as ToolParameterEntity[]) : []
             }

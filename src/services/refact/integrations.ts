@@ -163,6 +163,11 @@ export function isPrimitive(json: unknown): json is IntegrationPrimitive {
   );
 }
 
+export type ToolConfirmation = {
+  ask_user: string[];
+  deny: string[];
+};
+
 export type Integration = {
   project_path: string;
   integr_name: string;
@@ -174,6 +179,7 @@ export type Integration = {
     | Record<string, boolean>
     | Record<string, unknown>
     | ToolParameterEntity[]
+    | ToolConfirmation
   > | null;
   error_log: null | YamlError[];
 };
@@ -683,4 +689,26 @@ export function areToolParameters(
       "type" in value &&
       "description" in value,
   );
+}
+
+export function areToolConfirmation(json: unknown): json is ToolConfirmation {
+  if (typeof json !== "object" || json === null) return false;
+
+  const obj = json as Record<string, unknown>;
+
+  if (
+    !Array.isArray(obj.ask_user) ||
+    !obj.ask_user.every((v) => typeof v === "string")
+  ) {
+    return false;
+  }
+
+  if (
+    !Array.isArray(obj.deny) ||
+    !obj.deny.every((v) => typeof v === "string")
+  ) {
+    return false;
+  }
+
+  return true;
 }

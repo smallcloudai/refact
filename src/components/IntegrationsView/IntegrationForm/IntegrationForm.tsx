@@ -7,6 +7,7 @@ import type {
   Integration,
   IntegrationField,
   IntegrationPrimitive,
+  ToolConfirmation,
 } from "../../../services/refact";
 
 import styles from "./IntegrationForm.module.css";
@@ -25,8 +26,10 @@ import { useAppSelector } from "../../../hooks";
 import type { ToolParameterEntity } from "../../../services/refact";
 import {
   areAllFieldsBoolean,
+  areToolConfirmation,
   areToolParameters,
 } from "../../../services/refact";
+import { Confirmation } from "../Confirmation";
 
 type IntegrationFormProps = {
   integrationPath: string;
@@ -42,6 +45,7 @@ type IntegrationFormProps = {
   setAvailabilityValues: Dispatch<
     React.SetStateAction<Record<string, boolean>>
   >;
+  setConfirmationRules: Dispatch<React.SetStateAction<ToolConfirmation>>;
   setToolParameters: Dispatch<
     React.SetStateAction<ToolParameterEntity[] | null>
   >;
@@ -63,6 +67,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   onSchema,
   onValues,
   setAvailabilityValues,
+  setConfirmationRules,
   setToolParameters,
   handleSwitchIntegration,
 }) => {
@@ -80,6 +85,15 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
       setAvailabilityValues((prev) => ({ ...prev, [fieldName]: value }));
     },
     [setAvailabilityValues],
+  );
+
+  const handleConfirmationChange = useCallback(
+    (fieldName: string, values: string[]) => {
+      setConfirmationRules((prev) => {
+        return { ...prev, [fieldName as keyof ToolConfirmation]: values };
+      });
+    },
+    [setConfirmationRules],
   );
 
   const handleToolParameters = useCallback(
@@ -240,6 +254,21 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                 ? "Hide advanced configuration"
                 : "Show advanced configuration"}
             </Button>
+          )}
+          {integration.data.integr_values && (
+            <Flex gap="4" mb="3">
+              {integration.data.integr_values.confirmation &&
+                areToolConfirmation(
+                  integration.data.integr_values.confirmation,
+                ) && (
+                  <Confirmation
+                    confirmationObject={
+                      integration.data.integr_values.confirmation
+                    }
+                    onChange={handleConfirmationChange}
+                  />
+                )}
+            </Flex>
           )}
           <Flex justify="end" width="100%">
             <Flex gap="4">

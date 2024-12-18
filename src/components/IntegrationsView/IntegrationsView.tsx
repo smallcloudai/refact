@@ -36,6 +36,7 @@ import {
   isNotConfiguredIntegrationWithIconRecord,
   isPrimitive,
   NotConfiguredIntegrationWithIconRecord,
+  ToolConfirmation,
 } from "../../services/refact";
 import { ErrorCallout } from "../Callout";
 import { InformationCallout } from "../Callout/Callout";
@@ -197,6 +198,11 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     Record<string, boolean>
   >({});
 
+  const [confirmationRules, setConfirmationRules] = useState<ToolConfirmation>({
+    ask_user: [],
+    deny: [],
+  });
+
   const [toolParameters, setToolParameters] = useState<
     ToolParameterEntity[] | null
   >(null);
@@ -303,14 +309,6 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       currentIntegrationValues &&
       areToolParameters(currentIntegrationValues.parameters)
     ) {
-      debugIntegrations(
-        `[DEBUG]: handle change and disabled state of form, parameters got changed!`,
-      );
-      debugIntegrations(
-        `[DEBUG]: toolParameters === currentIntegrationValues.parameters`,
-        isEqual(toolParameters, currentIntegrationValues.parameters),
-      );
-
       setIsDisabledIntegrationForm((isDisabled) => {
         const toolParametersChanged = !isEqual(
           toolParameters,
@@ -350,6 +348,11 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
           },
         );
 
+        const confirmationRulesChanged = !isEqual(
+          confirmationRules,
+          currentIntegrationValues.confirmation,
+        );
+
         const allToolParametersNamesInSnakeCase = toolParameters.every(
           (param) => validateSnakeCase(param.name),
         );
@@ -358,15 +361,22 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
           return true; // Disabling form if any of tool parameters names are written not in snake case
         }
 
-        if (toolParametersChanged && isDisabled) {
+        if ((toolParametersChanged || confirmationRulesChanged) && isDisabled) {
           return false; // Enable form if toolParameters changed and form was disabled
         }
 
-        if (otherFieldsChanged && toolParametersChanged) {
+        if (
+          otherFieldsChanged &&
+          (toolParametersChanged || confirmationRulesChanged)
+        ) {
           return isDisabled; // Keep the form in the same condition
         }
 
-        if (!otherFieldsChanged && !toolParametersChanged) {
+        if (
+          !otherFieldsChanged &&
+          !toolParametersChanged &&
+          !confirmationRulesChanged
+        ) {
           return true; // Disable form if all fields are back to original state
         }
 
@@ -377,6 +387,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     toolParameters,
     currentIntegrationValues,
     currentIntegrationSchema,
+    confirmationRules,
     currentIntegration,
   ]);
 
@@ -451,6 +462,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
 
       formValues.available = availabilityValues;
       formValues.parameters = toolParameters;
+      formValues.confirmation = confirmationRules;
 
       const response = await saveIntegrationMutationTrigger(
         currentIntegration.integr_config_path,
@@ -484,6 +496,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       currentIntegrationValues,
       dispatch,
       availabilityValues,
+      confirmationRules,
       toolParameters,
     ],
   );
@@ -854,6 +867,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
               handleChange={handleIntegrationFormChange}
               availabilityValues={availabilityValues}
               setAvailabilityValues={setAvailabilityValues}
+              setConfirmationRules={setConfirmationRules}
               setToolParameters={setToolParameters}
               handleSwitchIntegration={handleNavigateToIntegrationSetup}
             />

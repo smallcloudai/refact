@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -11,12 +11,12 @@ import { PlusIcon } from "@radix-ui/react-icons";
 import { validateSnakeCase } from "../../../utils/validateSnakeCase";
 import { debugIntegrations } from "../../../debugConfig";
 
-type IntegrationsTableProps = {
+type ParametersTableProps = {
   initialData: ToolParameterEntity[];
   onToolParameters: (data: ToolParameterEntity[]) => void;
 };
 
-const IntegrationsTable: React.FC<IntegrationsTableProps> = ({
+export const ParametersTable: FC<ParametersTableProps> = ({
   initialData,
   onToolParameters,
 }) => {
@@ -203,5 +203,3 @@ const IntegrationsTable: React.FC<IntegrationsTableProps> = ({
     </Flex>
   );
 };
-
-export default IntegrationsTable;
