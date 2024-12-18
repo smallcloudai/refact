@@ -117,14 +117,17 @@ def join_messages_and_choices(
     if len(deterministic_messages) > 0 and deterministic_messages[-1].role == "user":
         while len(messages) > 0 and messages[-1].role == "user":
             messages.pop()
-    messages.extend(deterministic_messages)
     msg: Optional[Message]
-    if verbose:
-        for msg in deterministic_messages:
+    for msg in deterministic_messages:
+        if msg.role == "system":
+            messages.insert(0, msg)
+        else:
+            messages.append(msg)
+        if verbose:
             print("deterministic",
-                  termcolor.colored(str(msg.role), "yellow"),
-                  str(msg.content),
-                  termcolor.colored(str(msg.finish_reason), "red"))
+                    termcolor.colored(str(msg.role), "yellow"),
+                    str(msg.content),
+                    termcolor.colored(str(msg.finish_reason), "red"))
     output = [copy.deepcopy(messages) for _ in range(len(choices))]
     for i, msg in enumerate(choices):
         if msg is None:
