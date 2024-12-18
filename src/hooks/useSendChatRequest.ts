@@ -221,6 +221,8 @@ export const useSendChatRequest = () => {
   const confirmToolUsage = useCallback(() => {
     abort();
     dispatch(clearPauseReasonsAndConfirmTools(true));
+
+    dispatch(setIsWaitingForResponse(false));
   }, [abort, dispatch]);
 
   const retryFromIndex = useCallback(
