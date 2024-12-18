@@ -37,7 +37,7 @@ use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
 use crate::http::routers::v1::patch::{handle_v1_patch_apply_all, handle_v1_patch_single_file_from_ticket};
 use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_single};
 use crate::http::routers::v1::sync_files::handle_v1_sync_files_extract_tar;
-use crate::http::routers::v1::system_prompt::handle_v1_system_prompt;
+use crate::http::routers::v1::system_prompt::handle_v1_prepend_system_prompt_and_maybe_more_initial_messages;
 
 #[cfg(feature="vecdb")]
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
@@ -118,7 +118,8 @@ pub fn make_v1_router() -> Router {
 
         .route("/git-commit", telemetry_post!(handle_v1_git_commit))
 
-        .route("/system-prompt", telemetry_post!(handle_v1_system_prompt))  // because it works remotely
+        .route("/prepend-system-prompt-and-maybe-more-initial-messages", 
+            telemetry_post!(handle_v1_prepend_system_prompt_and_maybe_more_initial_messages)) // because it works remotely
 
         .route("/at-command-completion", telemetry_post!(handle_v1_command_completion))
         .route("/at-command-preview", telemetry_post!(handle_v1_command_preview))

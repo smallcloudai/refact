@@ -5,39 +5,38 @@ use hyper::Body;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 
+use crate::call_validation::{ChatMessage, ChatMeta};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
-use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, system_prompt_add_workspace_info};
+use crate::scratchpads::chat_utils_prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
+use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SystemPromptPost {
-    #[serde(default)]
-    pub have_exploration_tools: bool,
-    #[serde(default)]
-    pub have_agentic_tools: bool,
+pub struct PrependSystemPromptPost {
+    pub messages: Vec<ChatMessage>,
+    pub chat_meta: ChatMeta,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SystemPromptResponse {
-    pub system_prompt: String,
+pub struct PrependSystemPromptResponse {
+    pub messages: Vec<ChatMessage>,
+    pub messages_to_stream_back: Vec<serde_json::Value>,
 }
 
-pub async fn handle_v1_system_prompt(
+pub async fn handle_v1_prepend_system_prompt_and_maybe_more_initial_messages(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    // XXX receive ChatMode
-    let _post = serde_json::from_slice::<SystemPromptPost>(&body_bytes)
+    let post = serde_json::from_slice::<PrependSystemPromptPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+    let mut has_rag_results = HasRagResults::new();
 
-    let prompt = get_default_system_prompt(gcx.clone(), crate::call_validation::ChatMode::AGENT).await;
-
-    let prompt_with_workspace_info = system_prompt_add_workspace_info(gcx.clone(), &prompt).await;
-
-    let result = SystemPromptResponse { system_prompt: prompt_with_workspace_info };
+    let messages = prepend_the_right_system_prompt_and_maybe_more_initial_messages(
+        gcx.clone(), post.messages, &post.chat_meta, &mut has_rag_results).await;
+    let messages_to_stream_back = has_rag_results.in_json;
 
     Ok(Response::builder()
       .status(StatusCode::OK)
-      .body(Body::from(serde_json::to_string(&result).unwrap()))
+      .body(Body::from(serde_json::to_string(&PrependSystemPromptResponse { messages, messages_to_stream_back }).unwrap()))
       .unwrap())
 }
