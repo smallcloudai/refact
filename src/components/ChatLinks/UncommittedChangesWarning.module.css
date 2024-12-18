@@ -1,0 +1,15 @@
+.changes_warning {
+  overflow-wrap: anywhere;
+  position: absolute;
+  animation: rollin 0.2s ease-out;
+  z-index: 1;
+}
+
+@keyframes rollin {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}

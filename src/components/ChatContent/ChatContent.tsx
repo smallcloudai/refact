@@ -9,13 +9,13 @@ import {
 import { UserInput } from "./UserInput";
 import { ScrollArea } from "../ScrollArea";
 import { Spinner } from "../Spinner";
-import { Flex, Text, Container, Link, Button, Box } from "@radix-ui/themes";
+import { Flex, Container, Button, Box } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { useAutoScroll } from "./useAutoScroll";
 import { PlainText } from "./PlainText";
-import { useAppDispatch, useConfig, useEventsBusForIDE } from "../../hooks";
+import { useAppDispatch } from "../../hooks";
 import { useAppSelector } from "../../hooks";
 import {
   selectIsStreaming,
@@ -26,84 +26,10 @@ import {
 import { takeWhile } from "../../utils";
 import { GroupedDiffs } from "./DiffContent";
 import { ScrollToBottomButton } from "./ScrollToBottomButton";
-import { currentTipOfTheDay } from "../../features/TipOfTheDay";
 import { popBackTo } from "../../features/Pages/pagesSlice";
-import { ChatLinks } from "../ChatLinks";
+import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
 import { telemetryApi } from "../../services/refact/telemetry";
-
-const TipOfTheDay: React.FC = () => {
-  const tip = useAppSelector(currentTipOfTheDay);
-
-  return (
-    <Text>
-      💡 <b>Tip of the day</b>: {tip}
-    </Text>
-  );
-};
-
-const PlaceHolderText: React.FC = () => {
-  const config = useConfig();
-  const hasVecDB = config.features?.vecdb ?? false;
-  const hasAst = config.features?.ast ?? false;
-  const { openSettings } = useEventsBusForIDE();
-
-  const handleOpenSettings = useCallback(
-    (event: React.MouseEvent<HTMLAnchorElement>) => {
-      event.preventDefault();
-      openSettings();
-    },
-    [openSettings],
-  );
-
-  if (config.host === "web") {
-    <Flex direction="column" gap="4">
-      <Text>Welcome to Refact chat!</Text>;
-      <TipOfTheDay />
-    </Flex>;
-  }
-
-  if (!hasVecDB && !hasAst) {
-    return (
-      <Flex direction="column" gap="4">
-        <Text>Welcome to Refact chat!</Text>
-        <Text>
-          💡 You can turn on VecDB and AST in{" "}
-          <Link onClick={handleOpenSettings}>settings</Link>.
-        </Text>
-        <TipOfTheDay />
-      </Flex>
-    );
-  } else if (!hasVecDB) {
-    return (
-      <Flex direction="column" gap="4">
-        <Text>Welcome to Refact chat!</Text>
-        <Text>
-          💡 You can turn on VecDB in{" "}
-          <Link onClick={handleOpenSettings}>settings</Link>.
-        </Text>
-        <TipOfTheDay />
-      </Flex>
-    );
-  } else if (!hasAst) {
-    return (
-      <Flex direction="column" gap="4">
-        <Text>Welcome to Refact chat!</Text>
-        <Text>
-          💡 You can turn on AST in{" "}
-          <Link onClick={handleOpenSettings}>settings</Link>.
-        </Text>
-        <TipOfTheDay />
-      </Flex>
-    );
-  }
-
-  return (
-    <Flex direction="column" gap="4">
-      <Text>Welcome to Refact chat.</Text>
-      <TipOfTheDay />
-    </Flex>
-  );
-};
+import { PlaceHolderText } from "./PlaceHolderText";
 
 export type ChatContentProps = {
   onRetry: (index: number, question: UserMessage["content"]) => void;
@@ -176,7 +102,10 @@ export const ChatContent: React.FC<ChatContentProps> = ({
       type={isWaiting || isStreaming ? "auto" : "hover"}
     >
       <Flex direction="column" className={styles.content} p="2" gap="1">
-        {messages.length === 0 && <PlaceHolderText />}
+        <UncommittedChangesWarning>
+          {messages.length === 0 && <PlaceHolderText />}
+        </UncommittedChangesWarning>
+
         {renderMessages(messages, onRetryWrapper)}
 
         <Container py="4">

@@ -18,6 +18,7 @@ export type MarkdownControls = {
 export type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] & {
   node?: Element | undefined;
   style?: Record<string, CSSProperties> | SyntaxHighlighterProps["style"];
+  wrap?: boolean;
 } & Pick<
     SyntaxHighlighterProps,
     "showLineNumbers" | "startingLineNumber" | "useInlineStyles"
@@ -29,6 +30,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   className,
   style = hljsStyle,
   onCopyClick,
+  wrap = false,
 }) => {
   const codeRef = React.useRef<HTMLElement | null>(null);
   const match = /language-(\w+)/.exec(className ?? "");
@@ -56,7 +58,11 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
           CodeTag={(props) => (
             <Code
               {...props}
-              className={classNames(styles.code, styles.code_block)}
+              className={classNames(
+                styles.code,
+                styles.code_block,
+                wrap && styles.code_wrap,
+              )}
               ref={codeRef}
             />
           )}

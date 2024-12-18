@@ -1,6 +1,9 @@
 import { LinksForChatResponse } from "../services/refact/links";
 
 export const STUB_LINKS_FOR_CHAT_RESPONSE: LinksForChatResponse = {
+  uncommited_changes_warning:
+    "You have uncommitted changes:\n```\nIn project refact-lsp: A tests/emergency_frog_situation/.refact/project_summary.yaml, M tests/emergency_frog_situation/frog.py, M tests/emergency_frog_situation/jump_to_conclusions.py, ...\n```\n⚠️ You might have a problem rolling back agent's changes.",
+
   links: [
     {
       link_text: "Save and return",

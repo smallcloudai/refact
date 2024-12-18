@@ -27,6 +27,10 @@
   background: none;
 }
 
+.code_wrap {
+  white-space: pre-wrap !important;
+}
+
 .code_block::selection,
 .code_block ::selection {
   background-color: var(

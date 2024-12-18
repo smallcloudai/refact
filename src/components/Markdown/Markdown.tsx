@@ -50,7 +50,7 @@ export type MarkdownProps = Pick<
   Pick<
     MarkdownCodeBlockProps,
     "startingLineNumber" | "showLineNumbers" | "useInlineStyles" | "style"
-  > & { canHavePins?: boolean } & Partial<MarkdownControls>;
+  > & { canHavePins?: boolean; wrap?: boolean } & Partial<MarkdownControls>;
 
 const PinMessages: React.FC<{
   children: string;

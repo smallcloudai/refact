@@ -63,6 +63,7 @@ export function isCommitLink(chatLink: ChatLink): chatLink is CommitLink {
 
 export type LinksForChatResponse = {
   links: ChatLink[];
+  uncommited_changes_warning: string;
 };
 
 export type LinksApiRequest = {
