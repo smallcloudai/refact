@@ -93,7 +93,8 @@ impl Tool for ToolGithub {
         let output = Command::new(gh_binary_path)
             .args(&command_args)
             .current_dir(&project_dir)
-            .env("gh_token", &self.settings_github.gh_token)
+            .env("GH_TOKEN", &self.settings_github.gh_token)
+            .env("GITHUB_TOKEN", &self.settings_github.gh_token)
             .output()
             .await
             .map_err(|e| e.to_string())?;
