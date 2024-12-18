@@ -24,6 +24,7 @@ import { useSaveIntegrationData } from "../../hooks/useSaveIntegrationData";
 import {
   areAllFieldsBoolean,
   areIntegrationsNotConfigured,
+  areToolConfirmation,
   areToolParameters,
   dockerApi,
   GroupedIntegrationWithIconRecord,
@@ -92,10 +93,6 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
   const maybeIntegration = useMemo(() => {
     if (!currentThreadIntegration) return null;
     if (!integrationsMap) return null;
-    debugIntegrations(
-      `[DEBUG]: currentThreadIntegration: `,
-      currentThreadIntegration,
-    );
     // TODO: check for extra flag in currentThreadIntegration to return different find() call from notConfiguredGrouped integrations if it's set to true
     const integration =
       integrationsMap.integrations.find(
@@ -301,19 +298,19 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     );
   }, [availableIntegrationsToConfigure]);
 
+  // TODO: make this one in better way, too much of code
   useEffect(() => {
     if (
       currentIntegration &&
       currentIntegrationSchema &&
-      toolParameters &&
-      currentIntegrationValues &&
-      areToolParameters(currentIntegrationValues.parameters)
+      currentIntegrationValues
     ) {
       setIsDisabledIntegrationForm((isDisabled) => {
-        const toolParametersChanged = !isEqual(
-          toolParameters,
-          currentIntegrationValues.parameters,
-        );
+        const toolParametersChanged =
+          toolParameters &&
+          areToolParameters(currentIntegrationValues.parameters)
+            ? !isEqual(toolParameters, currentIntegrationValues.parameters)
+            : false;
 
         // Manually collecting data from the form
         const formElement = document.getElementById(
@@ -353,9 +350,14 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
           currentIntegrationValues.confirmation,
         );
 
-        const allToolParametersNamesInSnakeCase = toolParameters.every(
-          (param) => validateSnakeCase(param.name),
+        debugIntegrations(
+          `[DEBUG confirmationRulesChanged]: confirmationRulesChanged: `,
+          confirmationRulesChanged,
         );
+
+        const allToolParametersNamesInSnakeCase = toolParameters
+          ? toolParameters.every((param) => validateSnakeCase(param.name))
+          : true;
 
         if (!allToolParametersNamesInSnakeCase) {
           return true; // Disabling form if any of tool parameters names are written not in snake case
@@ -418,6 +420,10 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     }
     setAvailabilityValues({});
     setToolParameters([]);
+    setConfirmationRules({
+      ask_user: [],
+      deny: [],
+    });
     information && dispatch(clearInformation());
     globalError && dispatch(clearError());
     currentIntegrationValues && setCurrentIntegrationValues(null);
@@ -588,6 +594,12 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         areToolParameters(currentIntegrationValues.parameters)
           ? isEqual(currentIntegrationValues.parameters, toolParameters)
           : true;
+
+      const eachToolConfirmationIsNotChanged =
+        currentIntegrationValues &&
+        areToolConfirmation(currentIntegrationValues.confirmation)
+          ? isEqual(currentIntegrationValues.confirmation, confirmationRules)
+          : true;
       debugIntegrations(`[DEBUG]: formValues: `, formValues);
       debugIntegrations(
         `[DEBUG]: currentIntegrationValues: `,
@@ -602,11 +614,17 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         `[DEBUG]: eachToolParameterIsNotChanged: `,
         eachToolParameterIsNotChanged,
       );
+
+      debugIntegrations(
+        `[DEBUG]: eachToolConfirmationIsNotChanged: `,
+        eachToolConfirmationIsNotChanged,
+      );
       debugIntegrations(`[DEBUG]: availabilityValues: `, availabilityValues);
       const maybeDisabled =
         eachFormValueIsNotChanged &&
         eachAvailabilityOptionIsNotChanged &&
-        eachToolParameterIsNotChanged;
+        eachToolParameterIsNotChanged &&
+        eachToolConfirmationIsNotChanged;
 
       debugIntegrations(`[DEBUG CHANGE]: maybeDisabled: `, maybeDisabled);
 
@@ -624,6 +642,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       currentIntegrationSchema,
       availabilityValues,
       toolParameters,
+      confirmationRules,
     ],
   );
 
@@ -767,7 +786,6 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       handleNotSetupIntegrationShowUp(integration);
       return;
     }
-    debugIntegrations(`[DEBUG]: open form: `, integration);
     setCurrentIntegration(integration);
   };
   const handleNotSetupIntegrationShowUp = (
@@ -866,6 +884,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
               onValues={handleSetCurrentIntegrationValues}
               handleChange={handleIntegrationFormChange}
               availabilityValues={availabilityValues}
+              confirmationRules={confirmationRules}
               setAvailabilityValues={setAvailabilityValues}
               setConfirmationRules={setConfirmationRules}
               setToolParameters={setToolParameters}
@@ -940,7 +959,6 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             {groupedProjectIntegrations &&
               Object.entries(groupedProjectIntegrations).map(
                 ([projectPath, integrations], index) => {
-                  debugIntegrations(projectPath);
                   const formattedProjectName =
                     "```.../" +
                     projectPath.split(/[/\\]/)[

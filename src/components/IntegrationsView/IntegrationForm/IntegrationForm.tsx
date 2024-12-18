@@ -30,6 +30,7 @@ import {
   areToolParameters,
 } from "../../../services/refact";
 import { Confirmation } from "../Confirmation";
+import isEqual from "lodash.isequal";
 
 type IntegrationFormProps = {
   integrationPath: string;
@@ -37,6 +38,7 @@ type IntegrationFormProps = {
   isDisabled: boolean;
   isDeletingIntegration: boolean;
   availabilityValues: Record<string, boolean>;
+  confirmationRules: ToolConfirmation;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => void;
   handleDeleteIntegration: (path: string, name: string) => void;
   handleChange: (event: FormEvent<HTMLFormElement>) => void;
@@ -61,6 +63,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   isDisabled,
   isDeletingIntegration,
   availabilityValues,
+  confirmationRules,
   handleSubmit,
   handleDeleteIntegration,
   handleChange,
@@ -98,7 +101,6 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
 
   const handleToolParameters = useCallback(
     (value: ToolParameterEntity[]) => {
-      debugIntegrations(`[DEBUG]: updating toolParameters!`);
       setToolParameters(value);
     },
     [setToolParameters],
@@ -263,7 +265,12 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                 ) && (
                   <Confirmation
                     confirmationObject={
-                      integration.data.integr_values.confirmation
+                      isEqual(
+                        integration.data.integr_values.confirmation,
+                        confirmationRules,
+                      )
+                        ? integration.data.integr_values.confirmation
+                        : confirmationRules
                     }
                     onChange={handleConfirmationChange}
                   />

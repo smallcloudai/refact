@@ -36,7 +36,6 @@ export const ParametersTable: FC<ParametersTableProps> = ({
     field: keyof ToolParameterEntity,
     value: string,
   ) => {
-    debugIntegrations(`[DEBUG UPDATE ROW]: updating row, field: ${field}`);
     setValidateError(null);
     if (field === "name" && !validateSnakeCase(value)) {
       debugIntegrations(

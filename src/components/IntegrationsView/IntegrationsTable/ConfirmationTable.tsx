@@ -7,7 +7,6 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Flex, Table, TextField } from "@radix-ui/themes";
 import { PlusIcon } from "@radix-ui/react-icons";
-import { debugIntegrations } from "../../../debugConfig";
 import { toPascalCase } from "../../../utils/toPascalCase";
 
 type ConfirmationTableProps = {
@@ -33,11 +32,14 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
     setData((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateRow = (index: number, field: string, value: string) => {
-    debugIntegrations(`[DEBUG UPDATE ROW]: updating row, field: ${field}`);
-
+  const updateRow = (index: number, _field: string, value: string) => {
     setData((prev) => {
-      return prev.map((row, i) => (prev[i] === row ? value : row));
+      return prev.map((row, i) => {
+        if (i === index) {
+          return value;
+        }
+        return row;
+      });
     });
   };
 
@@ -61,16 +63,12 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
   };
 
   useEffect(() => {
-    debugIntegrations(`[CONFIRMATION TABLE]: tableName: `, tableName);
-  }, [tableName]);
-
-  useEffect(() => {
     onToolConfirmation(tableName, data);
   }, [tableName, data, onToolConfirmation]);
 
   const defaultColumn: Partial<ColumnDef<string>> = {
-    cell: ({ getValue, row: { index }, column: { id } }) => {
-      const initialValue = getValue() as string;
+    cell: ({ row: { index }, column: { id } }) => {
+      const initialValue = data[index];
       // eslint-disable-next-line react-hooks/rules-of-hooks
       const [value, setValue] = useState(initialValue);
 
