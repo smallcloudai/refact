@@ -179,14 +179,16 @@ export const useSendChatRequest = () => {
       // const message: ChatMessage = { role: "user", content: question };
       const message: UserMessage = maybeAddImagesToQuestion(question);
       const messages = messagesWithSystemPrompt.concat(message);
-      // here
-      const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
-      // Save the mode
-      const mode = chatModeToLspMode(toolUse, maybeMode ?? maybeConfigure);
 
+      // TODO: make a better way for setting / detecting thread mode.
+      const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
+      const mode = chatModeToLspMode(
+        toolUse,
+        maybeMode ?? threadMode ?? maybeConfigure,
+      );
       dispatch(setChatMode(mode));
 
-      void sendMessages(messages, maybeMode);
+      void sendMessages(messages, mode);
     },
     [
       dispatch,
@@ -194,6 +196,7 @@ export const useSendChatRequest = () => {
       messagesWithSystemPrompt,
       sendMessages,
       threadIntegration,
+      threadMode,
       toolUse,
     ],
   );
@@ -281,6 +284,7 @@ export function useAutoSend() {
             return;
           }
         }
+
         dispatch(clearPauseReasonsAndConfirmTools(false));
         void sendMessages(currentMessages, thread.mode);
         recallCounter = 0;
@@ -298,5 +302,6 @@ export function useAutoSend() {
     isWaiting,
     isIntegration,
     thread.mode,
+    thread,
   ]);
 }
