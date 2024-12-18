@@ -7,7 +7,7 @@ use tracing::info;
 use crate::call_validation;
 use crate::global_context::GlobalContext;
 use crate::http::http_post_json;
-use crate::http::routers::v1::system_prompt::{SystemPromptPost, SystemPromptResponse};
+use crate::http::routers::v1::system_prompt::{PrependSystemPromptPost, PrependSystemPromptResponse};
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::call_validation::{ChatMessage, ChatContent, ChatMode};
@@ -39,25 +39,6 @@ pub async fn get_default_system_prompt(
         String::new()
     }, |x| x.text.clone());
     system_prompt
-}
-
-pub async fn get_default_system_prompt_from_remote(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    have_exploration_tools: bool,
-    have_agentic_tools: bool,
-    chat_id: &str,
-) -> Result<String, String>
-{
-    let post = SystemPromptPost {
-        have_exploration_tools,
-        have_agentic_tools
-    };
-
-    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), chat_id).await?;
-    let url = format!("http://localhost:{port}/v1/system-prompt");
-    let response: SystemPromptResponse = http_post_json(&url, &post).await?;
-    info!("get_default_system_prompt_from_remote: got response: {:?}", response);
-    Ok(response.system_prompt)
 }
 
 async fn _workspace_info(
@@ -181,9 +162,10 @@ pub async fn system_prompt_add_workspace_info(
 pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
     mut messages: Vec<call_validation::ChatMessage>,
-    chat_post: &call_validation::ChatPost,
+    chat_meta: &call_validation::ChatMeta,
     stream_back_to_user: &mut HasRagResults,
 ) -> Vec<call_validation::ChatMessage> {
+    tracing::info!("messages__ {:?}", messages);
     let have_system = !messages.is_empty() && messages[0].role == "system";
     if have_system {
         return messages;
@@ -193,21 +175,22 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
         return messages;
     }
 
-    let exploration_tools = chat_post.meta.chat_mode != ChatMode::NO_TOOLS;
-    let agentic_tools = matches!(chat_post.meta.chat_mode, ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY);
-
-    if chat_post.meta.chat_remote {
-        // XXX this should call a remote analog of prepend_the_right_system_prompt_and_maybe_more_initial_messages
-        let _ = get_default_system_prompt_from_remote(gcx.clone(), exploration_tools, agentic_tools, &chat_post.meta.chat_id).await.map_err(|e|
-            tracing::error!("failed to get default system prompt from remote: {}", e)
-        );
+    let is_inside_container = gcx.read().await.cmdline.inside_container;
+    if chat_meta.chat_remote && !is_inside_container {
+        messages = match prepend_system_prompt_and_maybe_more_initial_messages_from_remote(gcx.clone(), &messages, chat_meta, stream_back_to_user).await {
+            Ok(messages_from_remote) => messages_from_remote,
+            Err(e) => {
+                tracing::error!("prepend_the_right_system_prompt_and_maybe_more_initial_messages_from_remote: {}", e);
+                messages
+            },
+        };
         return messages;
     }
 
-    match chat_post.meta.chat_mode {
+    match chat_meta.chat_mode {
         ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {
             let system_message_content = system_prompt_add_workspace_info(gcx.clone(),
-                &get_default_system_prompt(gcx.clone(), chat_post.meta.chat_mode.clone()).await
+                &get_default_system_prompt(gcx.clone(), chat_meta.chat_mode.clone()).await
             ).await;
             let msg = ChatMessage {
                 role: "system".to_string(),
@@ -220,7 +203,7 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
         ChatMode::CONFIGURE => {
             crate::integrations::config_chat::mix_config_messages(
                 gcx.clone(),
-                &chat_post.meta,
+                &chat_meta,
                 &mut messages,
                 stream_back_to_user,
             ).await;
@@ -228,12 +211,35 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
         ChatMode::PROJECT_SUMMARY => {
             crate::integrations::project_summary_chat::mix_project_summary_messages(
                 gcx.clone(),
-                &chat_post.meta,
+                &chat_meta,
                 &mut messages,
                 stream_back_to_user,
             ).await;
         },
     }
-    tracing::info!("\n\nSYSTEM PROMPT MIXER chat_mode={:?}\n{:#?}", chat_post.meta.chat_mode, messages);
+    tracing::info!("\n\nSYSTEM PROMPT MIXER chat_mode={:?}\n{:#?}", chat_meta.chat_mode, messages);
     messages
+}
+
+pub async fn prepend_system_prompt_and_maybe_more_initial_messages_from_remote(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    messages: &Vec<call_validation::ChatMessage>,
+    chat_meta: &call_validation::ChatMeta,
+    stream_back_to_user: &mut HasRagResults,
+) -> Result<Vec<call_validation::ChatMessage>, String> {
+    let post = PrependSystemPromptPost {
+        messages: messages.clone(),
+        chat_meta: chat_meta.clone(),
+    };
+
+    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_meta.chat_id).await?;
+    let url = format!("http://localhost:{port}/v1/prepend-system-prompt-and-maybe-more-initial-messages");
+    let response: PrependSystemPromptResponse = http_post_json(&url, &post).await?;
+    info!("prepend_the_right_system_prompt_and_maybe_more_initial_messages_from_remote response: {:?}", response);
+
+    for msg in response.messages_to_stream_back {
+        stream_back_to_user.push_in_json(msg);
+    }
+
+    Ok(response.messages)
 }
