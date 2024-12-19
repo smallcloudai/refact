@@ -93,16 +93,17 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
   const maybeIntegration = useMemo(() => {
     if (!currentThreadIntegration) return null;
     if (!integrationsMap) return null;
+    const integrationName = currentThreadIntegration.integrationName;
+    const isCmdline = integrationName?.startsWith("cmdline");
+    const isService = integrationName?.startsWith("service");
+
     // TODO: check for extra flag in currentThreadIntegration to return different find() call from notConfiguredGrouped integrations if it's set to true
     const integration =
-      integrationsMap.integrations.find(
-        (integration) =>
-          currentThreadIntegration.integrationName?.startsWith("cmdline")
-            ? integration.integr_name === "cmdline_TEMPLATE"
-            : integration.integr_name ===
-              currentThreadIntegration.integrationName,
-        // integration.integr_name === currentThreadIntegration.integrationName,
-      ) ?? null;
+      integrationsMap.integrations.find((integration) => {
+        if (isCmdline) return integration.integr_name === "cmdline_TEMPLATE";
+        if (isService) return integration.integr_name === "service_TEMPLATE";
+        return integration.integr_name === integrationName;
+      }) ?? null;
     if (!integration) return null;
 
     const integrationWithFlag = {
