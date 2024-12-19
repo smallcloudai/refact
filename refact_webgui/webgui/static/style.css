@@ -1,3 +1,30 @@
+@font-face {
+    font-family: 'Manrope';
+    src: url('assets/fonts/Manrope-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Manrope';
+    src: url('assets/fonts/Manrope-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Azeret Mono';
+    src: url('assets/fonts/AzeretMono-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Azeret Mono';
+    src: url('assets/fonts/AzeretMono-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+}
+
 html {
     min-height: 100%;
 }
