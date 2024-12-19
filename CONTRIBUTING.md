@@ -1,7 +1,19 @@
+# 🌟 Contribute to Refact.ai Agent
 
-# Contributing to Refact Agent
+Welcome to the Refact.ai project! We’re excited to have you join our community. Whether you’re a first-time contributor or a seasoned developer, here are some impactful ways to get involved.
 
-In short:
+
+## 📚 Table of Contents
+- [❤️ Ways to Contribute](#%EF%B8%8F-ways-to-contribute)
+  - [🐛 Report Bugs](#-report-bugs)
+  - [Contributing To Code](#contributing-to-code)
+    - [ What Can I Do](#what-can-i-do)
+    - [Coding Standards](#coding-standards)
+    - [Testing](#testing)
+    - [Contact](#contact)
+
+
+### ❤️ Ways to Contribute
 
 * Fork the repository
 * Create a feature branch
@@ -9,8 +21,15 @@ In short:
 * Create a pull request
 * Maintainers will review it
 
+### 🐛 Report Bugs
+Encountered an issue? Help us improve Refact.ai by reporting bugs in issue section, make sure you label the issue with correct tag [here](https://github.com/smallcloudai/refact-lsp/issues)! 
 
-## What Can I Do?
+### 📖 Improving Documentation
+Help us make Refact.ai more accessible by contributing to our documentation, make sure you label the issue with correct tag! Create issues [here](https://github.com/smallcloudai/web_docs_refact_ai/issues).
+
+### Contributing To Code
+
+#### What Can I Do?
 
 Before you start, create an issue with a title that begins with `[idea] ...`. The field of AI and agents is vast,
 and not every idea will benefit the project, even if it is a good idea in itself.
@@ -18,7 +37,7 @@ and not every idea will benefit the project, even if it is a good idea in itself
 Another rule of thumb: Only implement a feature you can test thoroughly.
 
 
-## Coding Standards
+#### Coding Standards
 
 Good practices for Rust are generally applicable to this project. There are a few points however:
 
@@ -80,7 +99,7 @@ pub fn lengthy_function2(s: Arc<AMutex<SmallStruct>>)
 Avoid nested locks, avoid RwLock unless you know what you are doing.
 
 
-## Testing
+#### Testing
 
 It's a good idea to have tests in source files, and run them using `cargo test`, and we
 have CI in place to run it automatically.
@@ -99,7 +118,7 @@ Running those tests is still manual. To make sure your work didn't break other f
 run tests for things you might have broken.
 
 
-## Contact
+#### Contact
 
 If you have any questions or concerns, please contact the project maintainers on Discord:
 https://www.smallcloud.ai/discord
