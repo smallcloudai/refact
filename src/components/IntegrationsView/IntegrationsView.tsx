@@ -94,10 +94,11 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     if (!currentThreadIntegration) return null;
     if (!integrationsMap) return null;
     const integrationName = currentThreadIntegration.integrationName;
+    const integrationPath = currentThreadIntegration.integrationPath;
     if (!integrationName) return null;
     const isCmdline = integrationName.startsWith("cmdline");
     const isService = integrationName.startsWith("service");
-    const shouldInterediatePageShowUp =
+    const shouldIntermediatePageShowUp =
       currentThreadIntegration.shouldIntermediatePageShowUp;
 
     // TODO: check for extra flag in currentThreadIntegration to return different find() call from notConfiguredGrouped integrations if it's set to true
@@ -105,9 +106,17 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       integrationsMap.integrations.find((integration) => {
         if (isCmdline) return integration.integr_name === "cmdline_TEMPLATE";
         if (isService) return integration.integr_name === "service_TEMPLATE";
+        if (!shouldIntermediatePageShowUp)
+          return (
+            integration.integr_name === integrationName &&
+            integration.integr_config_path === integrationPath
+          );
         return integration.integr_name === integrationName;
       }) ?? null;
-    if (!integration) return null;
+    if (!integration) {
+      debugIntegrations(`[DEBUG INTEGRATIONS] not found integration`);
+      return null;
+    }
 
     const integrationWithFlag = {
       ...integration,
@@ -115,7 +124,9 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         isCmdline || isService
           ? integrationName.split("_").slice(1).join("_")
           : undefined,
-      shouldIntermediatePageShowUp: shouldInterediatePageShowUp ?? false,
+      shouldIntermediatePageShowUp: shouldIntermediatePageShowUp ?? false,
+      wasOpenedThroughChat:
+        currentThreadIntegration.wasOpenedThroughChat ?? false,
     } as IntegrationWithIconRecordAndAddress;
     debugIntegrations(
       `[DEBUG NAVIGATE]: integrationWithFlag: `,
@@ -839,7 +850,9 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             instantBackReturnment={
               currentNotConfiguredIntegration
                 ? currentNotConfiguredIntegration.wasOpenedThroughChat
-                : false
+                : currentIntegration
+                  ? currentIntegration.wasOpenedThroughChat
+                  : false
             }
             integrationName={
               currentIntegration

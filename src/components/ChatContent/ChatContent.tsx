@@ -73,6 +73,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         projectPath: thread.integration?.project,
         integrationName: thread.integration?.name,
         integrationPath: thread.integration?.path,
+        wasOpenedThroughChat: true,
       }),
     );
   }, [

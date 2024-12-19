@@ -495,6 +495,7 @@ export type IntegrationWithIconRecord = {
   on_your_laptop: boolean;
   when_isolated: boolean;
   // unparsed: unknown;
+  wasOpenedThroughChat?: boolean;
 };
 
 export type IntegrationWithIconRecordAndAddress = IntegrationWithIconRecord & {

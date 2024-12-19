@@ -60,6 +60,7 @@ export interface IntegrationsSetupPage {
   integrationName?: string;
   integrationPath?: string;
   shouldIntermediatePageShowUp?: boolean;
+  wasOpenedThroughChat?: boolean;
 }
 
 export type Page =
