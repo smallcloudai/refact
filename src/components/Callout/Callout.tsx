@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Flex, Callout as RadixCallout } from "@radix-ui/themes";
+import { Flex, Callout as RadixCallout, Card } from "@radix-ui/themes";
 import {
   ExclamationTriangleIcon,
   InfoCircledIcon,
@@ -143,5 +143,25 @@ export const DiffWarningCallout: React.FC<Omit<CalloutProps, "type">> = ({
         {children}
       </Flex>
     </Callout>
+  );
+};
+
+export const CalloutFromTop: React.FC<
+  RadixCalloutProps & {
+    children?: React.ReactNode;
+  }
+> = ({ children }) => {
+  return (
+    <Card asChild>
+      <RadixCallout.Root color="amber" className={styles.changes_warning}>
+        <Flex direction="row" align="center" gap="4" position="relative">
+          <RadixCallout.Icon>
+            <InfoCircledIcon />
+          </RadixCallout.Icon>
+
+          {children}
+        </Flex>
+      </RadixCallout.Root>
+    </Card>
   );
 };

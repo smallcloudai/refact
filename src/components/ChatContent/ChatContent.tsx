@@ -103,11 +103,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
       type={isWaiting || isStreaming ? "auto" : "hover"}
     >
       <Flex direction="column" className={styles.content} p="2" gap="1">
-        <UncommittedChangesWarning>
-          {messages.length === 0 && <PlaceHolderText />}
-        </UncommittedChangesWarning>
-
+        {messages.length === 0 && <PlaceHolderText />}
         {renderMessages(messages, onRetryWrapper)}
+        <UncommittedChangesWarning />
 
         <Container py="4">
           <Spinner spinning={isWaiting} />
