@@ -6,7 +6,6 @@ import {
   useAppSelector,
   useAppDispatch,
   useSendChatRequest,
-  useGetPromptsQuery,
   useAutoSend,
   useGetCapsQuery,
   useCapsForToolUse,
@@ -20,13 +19,10 @@ import {
   selectChatId,
   selectMessages,
   getSelectedToolUse,
-  getSelectedSystemPrompt,
-  setSystemPrompt,
 } from "../../features/Chat/Thread";
 import { ThreadHistoryButton } from "../Buttons";
 import { push } from "../../features/Pages/pagesSlice";
 import { DropzoneProvider } from "../Dropzone";
-import { SystemPrompts } from "../../services/refact";
 import { AgentUsage } from "../../features/AgentUsage";
 
 export type ChatProps = {
@@ -57,10 +53,6 @@ export const Chat: React.FC<ChatProps> = ({
   const messages = useAppSelector(selectMessages);
   const capsForToolUse = useCapsForToolUse();
 
-  const promptsRequest = useGetPromptsQuery();
-  const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
-  const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
-    dispatch(setSystemPrompt(prompt));
   const [isDebugChatHistoryVisible, setIsDebugChatHistoryVisible] =
     useState(false);
 
@@ -131,12 +123,10 @@ export const Chat: React.FC<ChatProps> = ({
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
           chatId={chatId}
           isStreaming={isStreaming}
+          // TODO: move this
           showControls={messages.length === 0 && !isStreaming}
           onSubmit={handleSummit}
           onClose={maybeSendToSidebar}
-          prompts={promptsRequest.data ?? {}}
-          onSetSystemPrompt={onSetSelectedSystemPrompt}
-          selectedSystemPrompt={selectedSystemPrompt}
           onToolConfirm={confirmToolUsage}
         />
 

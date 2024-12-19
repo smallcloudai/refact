@@ -27,6 +27,7 @@ export const promptsApi = createApi({
           credentials: "same-origin",
           redirect: "follow",
         });
+
         if (result.error) {
           return {
             error: result.error,
@@ -41,6 +42,7 @@ export const promptsApi = createApi({
             },
           };
         }
+
         return { data: result.data.system_prompts };
       },
     }),

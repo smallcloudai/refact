@@ -1,22 +1,17 @@
 import React, { useCallback } from "react";
-import { Text, Flex, HoverCard, Link, Skeleton } from "@radix-ui/themes";
+import { Text, Flex, HoverCard, Link, Skeleton, Box } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
 import classNames from "classnames";
-import { PromptSelect, PromptSelectProps } from "./PromptSelect";
+import { PromptSelect } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
 import { ToolUse, selectToolUse, setToolUse } from "../../features/Chat/Thread";
-import {
-  useAppSelector,
-  useAppDispatch,
-  useCapsForToolUse,
-  useCanUseTools,
-} from "../../hooks";
+import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 
 const CapsSelect: React.FC = () => {
   const refs = useTourRefs();
@@ -35,22 +30,23 @@ const CapsSelect: React.FC = () => {
       ref={(x) => refs.setUseModel(x)}
       style={{ alignSelf: "flex-start" }}
     >
-      {/** TODO: loading state */}
       <Text size="2">Use model:</Text>
       <Skeleton loading={caps.loading}>
-        {allDisabled ? (
-          <Text size="1" color="gray">
-            No models available
-          </Text>
-        ) : (
-          <Select
-            disabled={caps.loading}
-            title="chat model"
-            options={caps.usableModelsForPlan}
-            value={caps.currentModel}
-            onChange={caps.setCapModel}
-          ></Select>
-        )}
+        <Box minWidth="50px">
+          {allDisabled ? (
+            <Text size="1" color="gray">
+              No models available
+            </Text>
+          ) : (
+            <Select
+              disabled={caps.loading}
+              title="chat model"
+              options={caps.usableModelsForPlan}
+              value={caps.currentModel}
+              onChange={caps.setCapModel}
+            />
+          )}
+        </Box>
       </Skeleton>
     </Flex>
   );
@@ -79,7 +75,7 @@ export type ChatControlsProps = {
     name: keyof ChatControlsProps["checkboxes"],
     checked: boolean | string,
   ) => void;
-  promptsProps: PromptSelectProps;
+
   host: Config["host"];
   showControls: boolean;
 };
@@ -152,12 +148,10 @@ const ChatControlCheckBox: React.FC<{
 export const ChatControls: React.FC<ChatControlsProps> = ({
   checkboxes,
   onCheckedChange,
-  promptsProps,
   host,
   showControls,
 }) => {
   const refs = useTourRefs();
-  const canUseTools = useCanUseTools();
   const dispatch = useAppDispatch();
   const toolUse = useAppSelector(selectToolUse);
   const onSetToolUse = useCallback(
@@ -203,7 +197,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
         );
       })}
 
-      {canUseTools && showControls && (
+      {showControls && (
         <Flex
           ref={(x) => refs.setUseTools(x)}
           style={{ alignSelf: "flex-start" }}
@@ -219,7 +213,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
       )}
       {showControls && (
         <Flex style={{ alignSelf: "flex-start" }}>
-          <PromptSelect {...promptsProps} />
+          <PromptSelect />
         </Flex>
       )}
     </Flex>

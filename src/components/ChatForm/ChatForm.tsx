@@ -14,7 +14,6 @@ import {
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
-import { SystemPrompts } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
 import { ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
@@ -40,11 +39,7 @@ export type ChatFormProps = {
   onClose?: () => void;
   className?: string;
   isStreaming: boolean;
-
   showControls: boolean;
-  prompts: SystemPrompts;
-  onSetSystemPrompt: (prompt: SystemPrompts) => void;
-  selectedSystemPrompt: SystemPrompts;
   chatId: string;
   onToolConfirm: () => void;
 };
@@ -55,9 +50,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   className,
   isStreaming,
   showControls,
-  prompts,
-  onSetSystemPrompt,
-  selectedSystemPrompt,
   onToolConfirm,
 }) => {
   const dispatch = useAppDispatch();
@@ -307,11 +299,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         checkboxes={checkboxes}
         showControls={showControls}
         onCheckedChange={onToggleCheckbox}
-        promptsProps={{
-          value: selectedSystemPrompt,
-          prompts: prompts,
-          onChange: onSetSystemPrompt,
-        }}
       />
     </Card>
   );

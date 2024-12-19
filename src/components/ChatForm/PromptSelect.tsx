@@ -1,63 +1,70 @@
 import React, { useCallback, useMemo } from "react";
-import { Flex, Text } from "@radix-ui/themes";
-import { Root, Trigger, Content, Item } from "../Select";
+import { Flex, Skeleton, Text, Box } from "@radix-ui/themes";
+import { Select } from "../Select";
 import type { SystemPrompts } from "../../services/refact";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useGetPromptsQuery,
+} from "../../hooks";
+import { getSelectedSystemPrompt } from "../../features/Chat/Thread/selectors";
+import { setSystemPrompt } from "../../features/Chat/Thread/actions";
 
-export type PromptSelectProps = {
-  value: SystemPrompts;
-  onChange: (value: SystemPrompts) => void;
-  prompts: SystemPrompts;
-  disabled?: boolean;
-  contentPosition?: "item-aligned" | "popper";
-};
+export const PromptSelect: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const promptsRequest = useGetPromptsQuery();
+  const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
+  const onSetSelectedSystemPrompt = useCallback(
+    (prompt: SystemPrompts) => dispatch(setSystemPrompt(prompt)),
+    [dispatch],
+  );
 
-export const PromptSelect: React.FC<PromptSelectProps> = ({
-  value,
-  prompts,
-  onChange,
-  disabled,
-  contentPosition,
-}) => {
-  // TODO: just use the hooks here
-  const promptKeysAndValues = Object.entries(prompts);
   const handleChange = useCallback(
     (key: string) => {
-      const item = promptKeysAndValues.find((p) => p[0] === key);
-      if (!item) return;
-      const prompt = { [item[0]]: item[1] };
-      onChange(prompt);
+      if (!promptsRequest.data) return;
+      if (!(key in promptsRequest.data)) return;
+      const promptValue = promptsRequest.data[key];
+      const prompt = { [key]: promptValue };
+      onSetSelectedSystemPrompt(prompt);
     },
-    [onChange, promptKeysAndValues],
+    [onSetSelectedSystemPrompt, promptsRequest.data],
   );
-  const val = useMemo(() => Object.keys(value)[0] ?? "default", [value]);
 
-  if (promptKeysAndValues.length === 0) return null;
+  const val = useMemo(
+    () => Object.keys(selectedSystemPrompt)[0] ?? "default",
+    [selectedSystemPrompt],
+  );
+
+  const options = useMemo(() => {
+    return Object.entries(promptsRequest.data ?? {}).map(([key, value]) => {
+      return {
+        value: key,
+        title: value.description || value.text,
+      };
+    });
+  }, [promptsRequest.data]);
 
   return (
-    <Flex gap="2" align="center" wrap="wrap">
-      <Text size="2">System Prompt:</Text>
-      <Root
-        name="system prompt"
-        disabled={disabled}
-        onValueChange={handleChange}
-        value={val}
-        size="1"
-      >
-        <Trigger title={val} />
-        <Content position={contentPosition ? contentPosition : "popper"}>
-          {Object.entries(prompts).map(([key, value]) => {
-            return (
-              <Item
-                key={key}
-                value={key}
-                title={value.description || value.text}
-              >
-                {key}
-              </Item>
-            );
-          })}
-        </Content>
-      </Root>
+    <Flex
+      gap="2"
+      align="center"
+      wrap="wrap"
+      style={{ alignSelf: "flex-start" }}
+    >
+      <Text size="2" wrap="nowrap">
+        System Prompt:
+      </Text>
+      <Skeleton loading={promptsRequest.isLoading || promptsRequest.isFetching}>
+        <Box minWidth="80px">
+          <Select
+            name="system prompt"
+            disabled={promptsRequest.isLoading}
+            onChange={handleChange}
+            value={val}
+            options={options}
+          />
+        </Box>
+      </Skeleton>
     </Flex>
   );
 };
