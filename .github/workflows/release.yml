@@ -6,7 +6,6 @@ on:
     tags:
       - '*'
 
-
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
@@ -110,8 +109,8 @@ jobs:
       - name: Build and test artifact
         if: matrix.cross == null && !startsWith(matrix.os, 'windows')
         run: |
-          cargo test --release --target ${{ matrix.target }} || exit 1
-          cargo build --release --target ${{ matrix.target }} || exit 1
+          OPENSSL_STATIC=1 cargo test --release --target ${{ matrix.target }} || exit 1
+          OPENSSL_STATIC=1 cargo build --release --target ${{ matrix.target }} || exit 1
           mkdir python_binding_and_cmdline/refact/bin
           cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
           cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} .
