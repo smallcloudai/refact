@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { Text, Flex, HoverCard, Link } from "@radix-ui/themes";
+import { Text, Flex, HoverCard, Link, Skeleton } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
@@ -37,20 +37,21 @@ const CapsSelect: React.FC = () => {
     >
       {/** TODO: loading state */}
       <Text size="2">Use model:</Text>
-
-      {!caps.loading && allDisabled ? (
-        <Text size="1" color="gray">
-          No models available
-        </Text>
-      ) : (
-        <Select
-          disabled={caps.loading}
-          title="chat model"
-          options={caps.usableModelsForPlan}
-          value={caps.currentModel}
-          onChange={caps.setCapModel}
-        ></Select>
-      )}
+      <Skeleton loading={caps.loading}>
+        {allDisabled ? (
+          <Text size="1" color="gray">
+            No models available
+          </Text>
+        ) : (
+          <Select
+            disabled={caps.loading}
+            title="chat model"
+            options={caps.usableModelsForPlan}
+            value={caps.currentModel}
+            onChange={caps.setCapModel}
+          ></Select>
+        )}
+      </Skeleton>
     </Flex>
   );
 };
