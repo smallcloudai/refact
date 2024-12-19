@@ -269,8 +269,8 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                         integration.data.integr_values.confirmation,
                         confirmationRules,
                       )
-                        ? integration.data.integr_values.confirmation
-                        : confirmationRules
+                        ? confirmationRules
+                        : integration.data.integr_values.confirmation
                     }
                     onChange={handleConfirmationChange}
                   />
