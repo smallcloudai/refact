@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 
+use crate::files_correction::to_pathbuf_normalize;
 use crate::tools::tools_description::Tool;
 use serde_json::Value;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
@@ -91,7 +92,7 @@ impl Tool for ToolGithub {
         }
         let output = Command::new(gh_binary_path)
             .args(&command_args)
-            .current_dir(&project_dir)
+            .current_dir(&to_pathbuf_normalize(&project_dir))
             .env("GH_TOKEN", &self.settings_github.gh_token)
             .env("GITHUB_TOKEN", &self.settings_github.gh_token)
             .output()
