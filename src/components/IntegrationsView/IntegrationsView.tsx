@@ -94,8 +94,11 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     if (!currentThreadIntegration) return null;
     if (!integrationsMap) return null;
     const integrationName = currentThreadIntegration.integrationName;
-    const isCmdline = integrationName?.startsWith("cmdline");
-    const isService = integrationName?.startsWith("service");
+    if (!integrationName) return null;
+    const isCmdline = integrationName.startsWith("cmdline");
+    const isService = integrationName.startsWith("service");
+    const shouldInterediatePageShowUp =
+      currentThreadIntegration.shouldIntermediatePageShowUp;
 
     // TODO: check for extra flag in currentThreadIntegration to return different find() call from notConfiguredGrouped integrations if it's set to true
     const integration =
@@ -109,16 +112,15 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     const integrationWithFlag = {
       ...integration,
       commandName:
-        currentThreadIntegration.integrationName?.startsWith("cmdline") ??
-        currentThreadIntegration.integrationName?.startsWith("service")
-          ? currentThreadIntegration.integrationName
-              .split("_")
-              .slice(1)
-              .join("_")
+        isCmdline || isService
+          ? integrationName.split("_").slice(1).join("_")
           : undefined,
-      shouldIntermediatePageShowUp:
-        currentThreadIntegration.shouldIntermediatePageShowUp ?? false,
+      shouldIntermediatePageShowUp: shouldInterediatePageShowUp ?? false,
     } as IntegrationWithIconRecordAndAddress;
+    debugIntegrations(
+      `[DEBUG NAVIGATE]: integrationWithFlag: `,
+      integrationWithFlag,
+    );
     return integrationWithFlag;
   }, [currentThreadIntegration, integrationsMap]);
 
