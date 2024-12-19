@@ -10,6 +10,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 
 use crate::files_correction::to_pathbuf_normalize;
+use crate::integrations::go_to_configuration_message;
 use crate::tools::tools_description::Tool;
 use serde_json::Value;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
@@ -90,23 +91,20 @@ impl Tool for ToolGithub {
         if gh_binary_path.is_empty() {
             gh_binary_path = "gh".to_string();
         }
-        let output = Command::new(gh_binary_path)
+        let output = Command::new(&gh_binary_path)
             .args(&command_args)
             .current_dir(&to_pathbuf_normalize(&project_dir))
             .env("GH_TOKEN", &self.settings_github.gh_token)
             .env("GITHUB_TOKEN", &self.settings_github.gh_token)
             .output()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("!{}, {} failed:\n{}", 
+                go_to_configuration_message("github"), gh_binary_path, e.to_string()))?;
+
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
-        if !stderr.is_empty() {
-            error!("Error: {:?}", stderr);
-            return Err(stderr);
-        }
-
-        let content = if stdout.starts_with("[") {
+        let stdout_content = if stdout.starts_with("[") {
             match serde_json::from_str::<Value>(&stdout) {
                 Ok(Value::Array(arr)) => {
                     let row_count = arr.len();
@@ -120,6 +118,15 @@ impl Tool for ToolGithub {
         } else {
             stdout
         };
+
+        let mut content = String::new();
+        if !stdout_content.is_empty() {
+            content.push_str(format!("stdout:\n{}\n", stdout_content).as_str());
+        }
+        if !stderr.is_empty() {
+            content.push_str(format!("stderr:\n{}\n", stderr).as_str());
+        }
+        
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
