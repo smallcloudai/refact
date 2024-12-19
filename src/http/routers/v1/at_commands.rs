@@ -1,6 +1,7 @@
 use axum::response::Result;
 use axum::Extension;
 use hyper::{Body, Response, StatusCode};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
@@ -12,15 +13,19 @@ use itertools::Itertools;
 use tokenizers::Tokenizer;
 use tracing::info;
 
+use crate::at_commands::execute_at::run_at_commands_locally;
 use crate::cached_tokenizers;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
+use crate::call_validation::{PostprocessSettings, SubchatParameters};
 use crate::custom_error::ScratchError;
+use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat;
+use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -50,6 +55,25 @@ struct Highlight {
     pos2: i64,
     ok: bool,
     reason: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CommandExecutePost {
+    pub messages: Vec<ChatMessage>,
+    pub n_ctx: usize,
+    pub maxgen: usize,
+    pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
+    pub postprocess_parameters: PostprocessSettings,
+    pub model_name: String,
+    pub chat_id: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CommandExecuteResponse {
+    pub messages: Vec<ChatMessage>,
+    pub undroppable_msg_number: usize,
+    pub any_context_produced: bool,
+    pub messages_to_stream_back: Vec<serde_json::Value>,
 }
 
 pub async fn handle_v1_command_completion(
@@ -200,6 +224,45 @@ pub async fn handle_v1_command_preview(
         .body(Body::from(serde_json::to_string_pretty(
             &json!({"messages": preview, "model": model_name, "highlight": highlights})
         ).unwrap()))
+        .unwrap())
+}
+
+pub async fn handle_v1_at_command_execute(
+    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<CommandExecutePost>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+
+    let caps = try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
+    let tokenizer = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), post.model_name.clone()).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
+    
+    let mut ccx = AtCommandsContext::new(
+        global_context.clone(),
+        post.n_ctx,
+        crate::http::routers::v1::chat::CHAT_TOP_N,
+        true,
+        vec![],
+        "".to_string(),
+        false,
+    ).await;
+    ccx.subchat_tool_parameters = post.subchat_tool_parameters.clone();
+    ccx.postprocess_parameters = post.postprocess_parameters.clone();
+    let ccx_arc = Arc::new(AMutex::new(ccx));
+
+    let mut has_rag_results = HasRagResults::new();
+    let (messages, undroppable_msg_number, any_context_produced) = run_at_commands_locally(
+        ccx_arc.clone(), tokenizer.clone(), post.maxgen, &post.messages, &mut has_rag_results).await;
+    let messages_to_stream_back = has_rag_results.in_json;
+
+    let response = CommandExecuteResponse { 
+        messages, messages_to_stream_back, undroppable_msg_number, any_context_produced };
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string_pretty(&response).unwrap()))
         .unwrap())
 }
 

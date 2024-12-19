@@ -7,7 +7,7 @@ use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use tracing::{info, error};
 
-use crate::at_commands::execute_at::run_at_commands;
+use crate::at_commands::execute_at::run_at_commands_locally;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
@@ -98,7 +98,7 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     ) -> Result<String, String> {
         let n_ctx = ccx.lock().await.n_ctx;
         let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
-            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
+            run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
         } else {
             (self.messages.clone(), self.messages.len(), false)
         };
