@@ -31,7 +31,7 @@ const CapsSelect: React.FC = () => {
       style={{ alignSelf: "flex-start" }}
     >
       <Text size="2">Use model:</Text>
-      <Skeleton loading={caps.loading}>
+      <Skeleton loading={caps.loading || !caps.data}>
         <Box minWidth="50px">
           {allDisabled ? (
             <Text size="1" color="gray">

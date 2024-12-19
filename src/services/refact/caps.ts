@@ -43,6 +43,7 @@ export const capsApi = createApi({
       },
     }),
   }),
+  // refetchOnMountOrArgChange: true,
 });
 
 export const capsEndpoints = capsApi.endpoints;
