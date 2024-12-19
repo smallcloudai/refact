@@ -7,6 +7,9 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam, filter_only_context_file_from_context_tool};
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
+use crate::http::http_post_json;
+use crate::http::routers::v1::at_commands::{CommandExecutePost, CommandExecuteResponse};
+use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
@@ -160,6 +163,47 @@ pub async fn run_at_commands_locally(
     ccx.lock().await.pp_skeleton = false;
 
     return (rebuilt_messages.clone(), user_msg_starts, any_context_produced)
+}
+
+pub async fn run_at_commands_remotely(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    model_name: &str,
+    maxgen: usize,
+    original_messages: &Vec<ChatMessage>,
+    stream_back_to_user: &mut HasRagResults,
+) -> Result<(Vec<ChatMessage>, usize, bool), String> {
+    let (gcx, n_ctx, subchat_tool_parameters, postprocess_parameters, chat_id) = {
+        let ccx_locked = ccx.lock().await;
+        (
+            ccx_locked.global_context.clone(),
+            ccx_locked.n_ctx,
+            ccx_locked.subchat_tool_parameters.clone(),
+            ccx_locked.postprocess_parameters.clone(),
+            ccx_locked.chat_id.clone()
+        )
+    };
+
+    let post = CommandExecutePost {
+        messages: original_messages.clone(),
+        n_ctx,
+        maxgen,
+        subchat_tool_parameters,
+        postprocess_parameters,
+        model_name: model_name.to_string(),
+        chat_id: chat_id.clone(),
+    };
+
+    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_id).await?;
+    tracing::info!("run_at_commands_remotely: connecting to port {}", port);
+
+    let url = format!("http://localhost:{port}/v1/at-command-execute");
+    let response: CommandExecuteResponse = http_post_json(&url, &post).await?;
+
+    for msg in response.messages_to_stream_back {
+        stream_back_to_user.push_in_json(msg);
+    }
+
+    Ok((response.messages, response.undroppable_msg_number, response.any_context_produced))
 }
 
 pub async fn correct_at_arg(
