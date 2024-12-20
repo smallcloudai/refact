@@ -986,11 +986,13 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
                 rag_tokens_n,
                 &mut self.context_used
             ).await;
-            messages.push(ChatMessage {
-                role: "user".to_string(),
-                content: ChatContent::SimpleText(extra_context),
-                ..Default::default()
-            });
+            if !extra_context.is_empty() {
+                messages.push(ChatMessage {
+                    role: "user".to_string(),
+                    content: ChatContent::SimpleText(extra_context),
+                    ..Default::default()
+                });
+            }
         }
         self.cursor_subblock = Some(subblock);
         self.new_line_symbol = if self.cursor_subblock.as_ref().unwrap().cursor_line.ends_with("\r\n") {
