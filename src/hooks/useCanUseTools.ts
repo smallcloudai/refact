@@ -10,6 +10,10 @@ export const useCanUseTools = () => {
   const toolsRequest = useGetToolsQuery();
   const chatModel = useAppSelector(selectModel);
 
+  const loading = useMemo(() => {
+    return capsRequest.isLoading || toolsRequest.isLoading;
+  }, [capsRequest, toolsRequest]);
+
   // TODO: loading state.
   const canUseTools = useMemo(() => {
     if (!capsRequest.data) return false;
@@ -22,5 +26,8 @@ export const useCanUseTools = () => {
     if ("supports_tools" in model && model.supports_tools) return true;
     return false;
   }, [capsRequest.data, toolsRequest.data, chatModel]);
-  return canUseTools;
+  return {
+    canUseTools,
+    loading,
+  };
 };

@@ -163,15 +163,19 @@ const useAttachSelectedSnippet = (
 
 const useSearchWorkSpace = (): [Checkbox, () => void] => {
   const vecdb = useAppSelector(selectVecdb);
-  const canUseTools = useCanUseTools();
+  const { canUseTools, loading } = useCanUseTools();
   const shouldShow = useAppSelector(shouldShowSelector);
+
+  const shouldHide = useMemo(() => {
+    return !vecdb || !shouldShow || loading || canUseTools;
+  }, [canUseTools, loading, shouldShow, vecdb]);
 
   const [searchWorkspace, setSearchWorkspace] = useState<Checkbox>({
     name: "search_workspace",
     checked: false,
     label: "Search workspace",
     disabled: false,
-    hide: !vecdb || !shouldShow || canUseTools,
+    hide: shouldHide,
     info: {
       text: "Searches all files in your workspace using vector database, uses the whole text in the input box as a search query. Setting this checkbox is equivalent to @workspace command in the text.",
       link: "https://docs.refact.ai/features/ai-chat/",
@@ -183,10 +187,10 @@ const useSearchWorkSpace = (): [Checkbox, () => void] => {
     setSearchWorkspace((prev) => {
       return {
         ...prev,
-        hide: !vecdb || !shouldShow || canUseTools,
+        hide: shouldHide,
       };
     });
-  }, [vecdb, shouldShow, canUseTools]);
+  }, [vecdb, shouldShow, canUseTools, shouldHide]);
 
   const onToggleSearchWorkspace = useCallback(() => {
     setSearchWorkspace((prev) => {
