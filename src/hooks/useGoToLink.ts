@@ -2,10 +2,12 @@ import { useCallback } from "react";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { isAbsolutePath } from "../utils/isAbsolutePath";
 import { useAppDispatch } from "./useAppDispatch";
-import { popBackTo } from "../features/Pages/pagesSlice";
+import { popBackTo, push } from "../features/Pages/pagesSlice";
 import { useAppSelector } from "./useAppSelector";
 import { selectIntegration } from "../features/Chat/Thread/selectors";
 import { debugIntegrations } from "../debugConfig";
+import { newChatAction } from "../features/Chat/Thread/actions";
+import { clearPauseReasonsAndConfirmTools } from "../features/ToolConfirmation/confirmationSlice";
 
 export function useGoToLink() {
   const dispatch = useAppDispatch();
@@ -47,6 +49,14 @@ export function useGoToLink() {
             }),
           );
           // TODO: open in the integrations
+          return;
+        }
+
+        case "newchat": {
+          dispatch(newChatAction());
+          dispatch(clearPauseReasonsAndConfirmTools(false));
+          dispatch(popBackTo({ name: "history" }));
+          dispatch(push({ name: "chat" }));
           return;
         }
         default: {

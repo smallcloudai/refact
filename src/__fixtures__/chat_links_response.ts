@@ -12,6 +12,12 @@ export const STUB_LINKS_FOR_CHAT_RESPONSE: LinksForChatResponse = {
       link_tooltip: "",
     },
     {
+      link_text: "Save and Continue",
+      link_action: "patch-all",
+      link_goto: "NEWCHAT",
+      link_tooltip: "",
+    },
+    {
       link_text: "Can you fix it?",
       link_action: "follow-up",
       link_tooltip: "a nice tool tip message",

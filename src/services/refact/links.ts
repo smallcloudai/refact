@@ -4,6 +4,8 @@ import { ChatMessages } from "./types";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 import { CHAT_COMMIT_LINK_URL, CHAT_LINKS_URL } from "./consts";
 import { LspChatMode } from "../../features/Chat";
+// useful for forcing specific links
+// import { STUB_LINKS_FOR_CHAT_RESPONSE } from "../../__fixtures__";
 
 // goto: can be an integration file to open in settings, a file to open in an idea or a global integration.
 // XXX rename to:
@@ -129,6 +131,8 @@ export const linksApi = createApi({
             },
           };
         }
+
+        // return { data: STUB_LINKS_FOR_CHAT_RESPONSE };
 
         return { data: response.data };
       },
