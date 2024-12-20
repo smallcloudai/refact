@@ -33,7 +33,6 @@ impl IntegrationTrait for ToolGithub {
     fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
         match serde_json::from_value::<SettingsGitHub>(value.clone()) {
             Ok(settings_github) => {
-                info!("Github settings applied: {:?}", settings_github);
                 self.settings_github = settings_github;
             },
             Err(e) => {
