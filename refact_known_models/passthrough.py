@@ -1,6 +1,7 @@
 # refer to https://docs.litellm.ai/docs/providers/
 
 passthrough_mini_db = {
+    # OpenAI models
     "gpt-4o": {
         "backend": "litellm",
         "provider": "openai",
@@ -12,28 +13,41 @@ passthrough_mini_db = {
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2024 may)
         "filter_caps": ["chat", "tools", "completion"],
     },
-    "gpt-4-turbo": {
+    "gpt-4o-2024-05-13": {
         "backend": "litellm",
         "provider": "openai",
-        "tokenizer_path": "Xenova/gpt-4",
-        "resolve_as": "gpt-4-turbo",
+        "tokenizer_path": "Xenova/gpt-4o",
+        "resolve_as": "gpt-4o-2024-05-13",
         "T": 128_000,
         "T_out": 4096,
-        "pp1000t_prompt": 10_000,
-        "pp1000t_generated": 30_000,  # $30.00 / 1M tokens (2024 may)
+        "pp1000t_prompt": 5_000,
+        "pp1000t_generated": 15_000,  # $15.00 / 1M tokens
         "filter_caps": ["chat", "tools", "completion"],
     },
-    "gpt-3.5-turbo": {
+    "gpt-4o-2024-08-06": {
         "backend": "litellm",
         "provider": "openai",
-        "tokenizer_path": "Xenova/gpt-3.5-turbo-16k",
-        "resolve_as": "gpt-3.5-turbo-1106",
-        "T": 16_000,
+        "tokenizer_path": "Xenova/gpt-4o",
+        "resolve_as": "gpt-4o-2024-08-06",
+        "T": 128_000,
         "T_out": 4096,
-        "pp1000t_prompt": 1000,
-        "pp1000t_generated": 2000,
+        "pp1000t_prompt": 2_500,
+        "pp1000t_generated": 10_000,  # $15.00 / 1M tokens
+        "filter_caps": ["chat", "tools", "completion"]
+    },
+    "gpt-4o-mini": {
+        "backend": "litellm",
+        "provider": "openai",
+        "tokenizer_path": "Xenova/gpt-4o",
+        "resolve_as": "gpt-4o-mini-2024-07-18",
+        "T": 128_000,
+        "T_out": 4096,
+        "pp1000t_prompt": 150,
+        "pp1000t_generated": 600,  # $0.60 / 1M tokens
         "filter_caps": ["chat", "tools", "completion"],
     },
+
+    # Anthropic models
     "claude-3-5-sonnet": {
         "backend": "litellm",
         "provider": "anthropic",
@@ -78,39 +92,6 @@ passthrough_mini_db = {
         "pp1000t_generated": 15_000,
         "filter_caps": ["chat", "tools", "completion"],
     },
-    "gpt-4o-2024-05-13": {
-        "backend": "litellm",
-        "provider": "openai",
-        "tokenizer_path": "Xenova/gpt-4o",
-        "resolve_as": "gpt-4o-2024-05-13",
-        "T": 128_000,
-        "T_out": 4096,
-        "pp1000t_prompt": 5_000,
-        "pp1000t_generated": 15_000,  # $15.00 / 1M tokens
-        "filter_caps": ["chat", "tools", "completion"],
-    },
-    "gpt-4o-2024-08-06": {
-        "backend": "litellm",
-        "provider": "openai",
-        "tokenizer_path": "Xenova/gpt-4o",
-        "resolve_as": "gpt-4o-2024-08-06",
-        "T": 128_000,
-        "T_out": 4096,
-        "pp1000t_prompt": 2_500,
-        "pp1000t_generated": 10_000,  # $15.00 / 1M tokens
-        "filter_caps": ["chat", "tools", "completion"]
-    },
-    "gpt-4o-mini": {
-        "backend": "litellm",
-        "provider": "openai",
-        "tokenizer_path": "Xenova/gpt-4o",
-        "resolve_as": "gpt-4o-mini-2024-07-18",
-        "T": 128_000,
-        "T_out": 4096,
-        "pp1000t_prompt": 150,
-        "pp1000t_generated": 600,  # $0.60 / 1M tokens
-        "filter_caps": ["chat", "tools", "completion"],
-    },
     "claude-3-5-sonnet-20241022": {
         "backend": "litellm",
         "provider": "anthropic",
@@ -122,6 +103,8 @@ passthrough_mini_db = {
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2024 oct)
         "filter_caps": ["chat", "tools", "completion"],
     },
+
+    # Groq models
     "groq-llama-3.1-8b": {
         "backend": "litellm",
         "provider": "groq",
@@ -188,6 +171,8 @@ passthrough_mini_db = {
         "pp1000t_generated": 600,  # TODO: don't know the price
         "filter_caps": ["chat", "completion"],
     },
+
+    # Cerebras models
     "cerebras-llama3.1-8b": {
         "backend": "litellm",
         "provider": "cerebras",
