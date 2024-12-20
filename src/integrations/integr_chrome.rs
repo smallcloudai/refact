@@ -1281,22 +1281,24 @@ fields:
     f_type: string_short
     f_desc: "Scale factor of the browser window in tablet mode."
     f_extra: true
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: []
+  deny_default: []
 smartlinks:
   - sl_label: "Test"
     sl_chat:
       - role: "user"
         content: |
           🔧 The chrome tool should be visible now. To test the tool, navigate to a website like https://example.com/ take a screenshot, and express happiness if it works. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+    sl_enable_only_with_tool: true
   - sl_label: "Help me install Chrome for Testing"
     sl_chat:
       - role: "user"
         content: |
-          🔧 Help user to install Chrome for Testing using npm, once that done rewrite the current config file %CURRENT_CONFIG% to use it.
-  - sl_label: "Help me connect regular Chrome via ws:// protocol"
-    sl_chat:
-      - role: "user"
-        content: |
-          🔧 Help user to connect regular Chrome via ws:// protocol, rewrite the current config file %CURRENT_CONFIG% to use it. The `chrome_path` accepts the "ws://..." notation.
+          🔧 Help the user to install Chrome for Testing using npm, once that is done rewrite the current config file %CURRENT_CONFIG% to use chrome_path to use it.
 docker:
   filter_label: ""
   filter_image: "standalone-chrome"
@@ -1315,10 +1317,4 @@ docker:
         - role: "user"
           content: |
             🔧 Your job is to modify chrome config in the current file to connect through websockets to the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
-available:
-  on_your_laptop_possible: true
-  when_isolated_possible: true
-confirmation:
-  ask_user_default: []
-  deny_default: []
 "#;

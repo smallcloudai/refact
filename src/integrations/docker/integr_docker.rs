@@ -312,6 +312,12 @@ fields:
     f_desc: "Path to the SSH identity file to connect to remote Docker."
     f_label: "SSH Identity File"
     f_extra: true
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: false
+confirmation:
+  ask_user_default: []
+  deny_default: ["docker* rm *", "docker* rmi *", "docker* pause *", "docker* stop *", "docker* kill *"]
 smartlinks:
   - sl_label: "Test"
     sl_chat:
@@ -319,10 +325,5 @@ smartlinks:
         content: |
           🔧 The docker tool should be visible now. To test the tool, list the running containers, briefly describe the containers and express
           satisfaction and relief if it works, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
-available:
-  on_your_laptop_possible: true
-  when_isolated_possible: false
-confirmation:
-  ask_user_default: []
-  deny_default: ["docker* rm *", "docker* rmi *", "docker* pause *", "docker* stop *", "docker* kill *"]
+    sl_enable_only_with_tool: true
 "#;

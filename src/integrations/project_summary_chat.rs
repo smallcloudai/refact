@@ -15,7 +15,6 @@ pub async fn mix_project_summary_messages(
 ) {
     assert!(messages[0].role != "system");  // we are here to add this, can't already exist
 
-
     // XXX should be a better way to load the prompt
     let custom: crate::yaml_configs::customization_loader::CustomizationYaml = match crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true).await {
         Ok(x) => x,

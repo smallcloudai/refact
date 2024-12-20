@@ -56,7 +56,7 @@ impl IntegrationTrait for ToolGitlab {
     fn integr_common(&self) -> IntegrationCommon {
         self.common.clone()
     }
-    
+
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolGitlab {
             common: self.common.clone(),
@@ -176,18 +176,28 @@ fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, Stri
 
 const GITLAB_INTEGRATION_SCHEMA: &str = r#"
 fields:
+  glab_token:
+    f_type: string_long
+    f_desc: "GitLab Personal Access Token, you can get one at https://gitlab.com/-/user_settings/personal_access_tokens. If you don't want to send your key to the AI model that helps you to configure the agent, put it into secrets.yaml and write $MY_SECRET_VARIABLE in this field."
+    f_placeholder: "glpat_xxxxxxxxxxxxxxxx"
+    smartlinks:
+      - sl_label: "Open secrets.yaml"
+        sl_goto: "EDITOR:secrets.yaml"
   glab_binary_path:
     f_type: string_long
     f_desc: "Path to the GitLab CLI binary. Leave empty to use the default 'glab' command."
     f_placeholder: "/usr/local/bin/glab"
-    f_label: "GLAB Binary Path"
-  glab_token:
-    f_type: string_long
-    f_desc: "GitLab Personal Access Token for authentication."
-    f_placeholder: "glpat_xxxxxxxxxxxxxxxx"
+    f_label: "glab binary path"
+    f_extra: true
 description: |
   The GitLab integration allows interaction with GitLab repositories using the GitLab CLI.
   It provides functionality for various GitLab operations such as creating issues, merge requests, and more.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: ["glab * delete *"]
+  deny_default: ["glab auth token *"]
 smartlinks:
   - sl_label: "Test"
     sl_chat:
@@ -195,10 +205,5 @@ smartlinks:
         content: |
           🔧 The `gitlab` (`glab`) tool should be visible now. To test the tool, list opened merge requests for your GitLab project, and briefly describe them and express
           happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
-available:
-  on_your_laptop_possible: true
-  when_isolated_possible: true
-confirmation:
-  ask_user_default: ["glab * delete *"]
-  deny_default: ["glab auth token *"]
+    sl_enable_only_with_tool: true
 "#;

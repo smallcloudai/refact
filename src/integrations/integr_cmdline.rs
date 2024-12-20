@@ -321,13 +321,14 @@ description: |
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
+confirmation:
+  ask_user_default: ["*"]
+  deny_default: ["sudo*"]
 smartlinks:
   - sl_label: "Auto Configure"
     sl_chat:
       - role: "user"
         content: |
           🔧 Test the tool that corresponds to the current config file. If it works express happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
-confirmation:
-  ask_user_default: ["*"]
-  deny_default: ["sudo*"]
+    sl_enable_only_with_tool: true
 "#;

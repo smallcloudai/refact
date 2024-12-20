@@ -191,7 +191,7 @@ fields:
         sl_goto: "EDITOR:variables.yaml"
   database:
     f_type: string_short
-    f_placeholder: "postgres"
+    f_placeholder: "my_marketing_db"
   psql_binary_path:
     f_type: string_long
     f_desc: "If it can't find a path to `psql` you can provide it here, leave blank if not sure."
@@ -203,6 +203,12 @@ description: |
   On this page you can also see Docker containers with Postgres servers.
   You can ask model to create a new container with a new database for you,
   or ask model to configure the tool to use an existing container with existing database.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: ["psql*[!SELECT]*"]
+  deny_default: []
 smartlinks:
   - sl_label: "Test"
     sl_chat:
@@ -210,6 +216,7 @@ smartlinks:
         content: |
           🔧 The postgres tool should be visible now. To test the tool, list the tables available, briefly describe the tables and express
           happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+    sl_enable_only_with_tool: true
   - sl_label: "Look at the project, fill in automatically"
     sl_chat:
       - role: "user"
@@ -240,12 +247,6 @@ docker:
         - role: "user"
           content: |
             🔧 Your job is to modify postgres connection config in the current file to match the variables from the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
-available:
-  on_your_laptop_possible: true
-  when_isolated_possible: true
-confirmation:
-  ask_user_default: ["psql*[!SELECT]*"]
-  deny_default: []
 "#;
 
 // To think about: PGPASSWORD PGHOST PGUSER PGPORT PGDATABASE maybe tell the model to set that in variables.yaml as well

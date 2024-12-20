@@ -8,7 +8,7 @@ pub struct DockerService {
     pub image: String,
     #[serde(default)]
     pub environment: IndexMap<String, String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if="is_empty")]
     pub ports: Vec<String>,
 }
 
@@ -36,6 +36,8 @@ pub struct ISmartLink {
     pub sl_chat: Vec<ChatMessage>,
     #[serde(default, skip_serializing_if="is_default")]
     pub sl_goto: String,
+    #[serde(default, skip_serializing_if="is_default")]
+    pub sl_enable_only_with_tool: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -56,11 +58,20 @@ pub struct ISchemaDocker {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
+pub struct ISchemaConfirmation {
+    #[serde(default)]
+    pub ask_user_default: Vec<String>,
+    #[serde(default)]
+    pub deny_default: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ISchema {
     pub fields: IndexMap<String, ISchemaField>,
     #[serde(default, skip_serializing_if="is_default")]
     pub description: String,
     pub available: ISchemaAvailable,
+    pub confirmation: ISchemaConfirmation,
     #[serde(default, skip_serializing_if="is_empty")]
     pub smartlinks: Vec<ISmartLink>,
     #[serde(skip_serializing_if = "Option::is_none")]

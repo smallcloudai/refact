@@ -179,18 +179,29 @@ fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, Stri
 
 const GITHUB_INTEGRATION_SCHEMA: &str = r#"
 fields:
-  gh_binary_path:
-    f_type: string_long
-    f_desc: "Path to the GitHub CLI binary. Leave empty to use the default 'gh' command."
-    f_placeholder: "/usr/local/bin/gh"
-    f_label: "GH Binary Path"
   gh_token:
     f_type: string_long
-    f_desc: "GitHub Personal Access Token for authentication."
+    f_desc: "GitHub Personal Access Token, you can create one at https://github.com/settings/tokens. If you don't want to send your key to the AI model that helps you to configure the agent, put it into secrets.yaml and write $MY_SECRET_VARIABLE in this field."
     f_placeholder: "ghp_xxxxxxxxxxxxxxxx"
+    f_label: "Token"
+    smartlinks:
+      - sl_label: "Open secrets.yaml"
+        sl_goto: "EDITOR:secrets.yaml"
+  gh_binary_path:
+    f_type: string_long
+    f_desc: "Path to the GitHub CLI binary. Leave empty if you have it in PATH."
+    f_placeholder: "/usr/local/bin/gh"
+    f_label: "GH Binary Path"
+    f_extra: true
 description: |
   The GitHub integration allows interaction with GitHub repositories using the GitHub CLI.
   It provides functionality for various GitHub operations such as creating issues, pull requests, and more.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: ["gh * delete *", "gh * close *"]
+  deny_default: ["gh auth token *"]
 smartlinks:
   - sl_label: "Test"
     sl_chat:
@@ -198,10 +209,5 @@ smartlinks:
         content: |
           🔧 The `github` (`gh`) tool should be visible now. To test the tool, list opened pull requests for `smallcloudai/refact-lsp`, and briefly describe them and express
           happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
-available:
-  on_your_laptop_possible: true
-  when_isolated_possible: true
-confirmation:
-  ask_user_default: ["gh * delete *", "gh * close *"]
-  deny_default: ["gh auth token *"]
+    sl_enable_only_with_tool: true
 "#;

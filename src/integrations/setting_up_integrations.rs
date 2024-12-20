@@ -474,7 +474,6 @@ mod tests {
     use std::io::Write;
 
     #[tokio::test]
-    #[ignore]
     async fn test_integration_schemas() {
         let integrations = crate::integrations::integrations_list(true);
         for name in integrations {

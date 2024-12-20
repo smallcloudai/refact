@@ -188,8 +188,8 @@ fields:
     f_type: string_short
     f_default: "$MYSQL_PASSWORD"
     smartlinks:
-      - sl_label: "Open passwords.yaml"
-        sl_goto: "EDITOR:passwords.yaml"
+      - sl_label: "Open secrets.yaml"
+        sl_goto: "EDITOR:secrets.yaml"
   database:
     f_type: string_short
     f_placeholder: "mysql"
@@ -204,6 +204,12 @@ description: |
   On this page you can also see Docker containers with Mysql servers.
   You can ask model to create a new container with a new database for you,
   or ask model to configure the tool to use an existing container with existing database.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: []
+  deny_default: []
 smartlinks:
   - sl_label: "Test"
     sl_chat:
@@ -212,13 +218,14 @@ smartlinks:
           🔧 The mysql tool should be visible now. To test the tool, list the tables available, briefly describe the tables and express
           happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
           The current config file is %CURRENT_CONFIG%.
-  - sl_label: "Look at the project, fill in automatically"
+    sl_enable_only_with_tool: true
+  - sl_label: "Look at the project, help me set it up"
     sl_chat:
       - role: "user"
         content: |
           🔧 Your goal is to set up mysql client. Look at the project, especially files like "docker-compose.yaml" or ".env". Call tree() to see what files the project has.
           After that is completed, go through the usual plan in the system prompt.
-          The current config file is %CURRENT_CONFIG%.
+          Keep MYSQL_HOST MYSQL_PORT MYSQL_USER MYSQL_PASSWORD MYSQL_DATABASE in variables.yaml so they can be reused by command line tools later.
 docker:
   filter_label: ""
   filter_image: "mysql"
@@ -242,10 +249,4 @@ docker:
         - role: "user"
           content: |
             🔧 Your job is to modify mysql connection config in the current file to match the variables from the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
-available:
-  on_your_laptop_possible: true
-  when_isolated_possible: true
-confirmation:
-  ask_user_default: []
-  deny_default: []
 "#;
