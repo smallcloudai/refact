@@ -123,7 +123,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         }}
       >
         <ScrollArea scrollbars="horizontal">
-          <Flex align="start" gap="3" pb="4">
+          <Flex align="start" gap="3" pb="2">
             {isStreaming && (
               <Button
                 // ml="auto"
