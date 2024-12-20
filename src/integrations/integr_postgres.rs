@@ -217,7 +217,7 @@ smartlinks:
           🔧 The postgres tool should be visible now. To test the tool, list the tables available, briefly describe the tables and express
           happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
     sl_enable_only_with_tool: true
-  - sl_label: "Look at the project, fill in automatically"
+  - sl_label: "Look at the project, help me set it up"
     sl_chat:
       - role: "user"
         content: >
