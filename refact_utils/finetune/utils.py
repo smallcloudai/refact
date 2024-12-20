@@ -103,6 +103,20 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
                 if 'completion' in v.get('filter_caps', []):
                     result['completion'].append(k)
 
+    for k, v in data.get("model_assign", {}).items():
+        if model_dict := [d for d in data['models'] if d['name'] == k]:
+            model_dict = model_dict[0]
+
+            add_result(k, model_dict)
+
+            if not model_dict.get('has_finetune'):
+                continue
+
+            finetune_info = model_dict.get('finetune_info', []) or []
+            for run in finetune_info:
+                val = f"{k}:{run['run_id']}:{run['checkpoint']}"
+                add_result(val, model_dict)
+
     if data.get("openai_api_enable"):
         _add_results_for_passthrough_provider('openai')
 
@@ -120,20 +134,6 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
 
     if data.get('xai_api_enable'):
         _add_results_for_passthrough_provider('xai')
-
-    for k, v in data.get("model_assign", {}).items():
-        if model_dict := [d for d in data['models'] if d['name'] == k]:
-            model_dict = model_dict[0]
-
-            add_result(k, model_dict)
-
-            if not model_dict.get('has_finetune'):
-                continue
-
-            finetune_info = model_dict.get('finetune_info', []) or []
-            for run in finetune_info:
-                val = f"{k}:{run['run_id']}:{run['checkpoint']}"
-                add_result(val, model_dict)
 
     return result
 
