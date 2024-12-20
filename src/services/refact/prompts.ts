@@ -47,7 +47,6 @@ export const promptsApi = createApi({
       },
     }),
   }),
-  // refetchOnMountOrArgChange: true,
 });
 
 export const promptsEndpoints = promptsApi.endpoints;

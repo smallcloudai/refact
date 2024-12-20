@@ -31,7 +31,7 @@ const CapsSelect: React.FC = () => {
       style={{ alignSelf: "flex-start" }}
     >
       <Text size="2">Use model:</Text>
-      <Skeleton loading={caps.loading || !caps.data}>
+      <Skeleton loading={caps.loading}>
         <Box minWidth="50px">
           {allDisabled ? (
             <Text size="1" color="gray">
@@ -39,7 +39,6 @@ const CapsSelect: React.FC = () => {
             </Text>
           ) : (
             <Select
-              disabled={caps.loading}
               title="chat model"
               options={caps.usableModelsForPlan}
               value={caps.currentModel}

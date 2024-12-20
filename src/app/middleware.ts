@@ -43,10 +43,10 @@ startListening({
   ),
   effect: (_action, listenerApi) => {
     [
-      pingApi.util.resetApiState(),
+      // pingApi.util.resetApiState(),
       statisticsApi.util.resetApiState(),
-      capsApi.util.resetApiState(),
-      promptsApi.util.resetApiState(),
+      // capsApi.util.resetApiState(),
+      // promptsApi.util.resetApiState(),
       toolsApi.util.resetApiState(),
       commandsApi.util.resetApiState(),
       diffApi.util.resetApiState(),

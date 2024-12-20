@@ -79,11 +79,10 @@ export function useCapsForToolUse() {
   }, [currentModel, setCapModel, usableModels, usableModelsForPlan]);
 
   return {
-    data: caps.data,
     usableModels,
     usableModelsForPlan,
     currentModel,
     setCapModel,
-    loading: caps.isFetching || caps.isLoading,
+    loading: !caps.data && (caps.isFetching || caps.isLoading),
   };
 }
