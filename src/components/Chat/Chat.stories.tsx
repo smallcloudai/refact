@@ -15,6 +15,7 @@ import {
   goodUser,
   chatLinks,
   goodTools,
+  noTools,
 } from "../../__fixtures__/msw";
 import { TourProvider } from "../../features/Tour";
 import { Flex } from "@radix-ui/themes";
@@ -95,14 +96,6 @@ export const Configuration: Story = {
   args: {
     thread: CHAT_CONFIG_THREAD.thread,
   },
-
-  //   parameters: {
-  //     parameters: {
-  //       msw: {
-  //         handlers: [goodCaps, goodPing, goodPrompts, goodUser, chatLinks],
-  //       },
-  //     },
-  //   },
 };
 
 export const IDE: Story = {
@@ -111,6 +104,13 @@ export const IDE: Story = {
       host: "ide",
       lspPort: 8001,
       themeProps: {},
+      features: { vecdb: true },
+    },
+  },
+
+  parameters: {
+    msw: {
+      handlers: [goodCaps, goodPing, goodPrompts, goodUser, chatLinks, noTools],
     },
   },
 };

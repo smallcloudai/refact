@@ -1,4 +1,4 @@
-import { render } from "../../utils/test-utils";
+import { render, fireEvent } from "../../utils/test-utils";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ChatForm, ChatFormProps } from "./ChatForm";
 import React from "react";
@@ -73,22 +73,26 @@ describe("ChatForm", () => {
     expect(fakeOnSubmit).not.toHaveBeenCalled();
   });
 
-  test("checkbox workspace", async () => {
-    const fakeOnSubmit = vi.fn();
-    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
+  test(
+    "checkbox workspace",
+    async () => {
+      const fakeOnSubmit = vi.fn();
+      const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
 
-    const label = app.queryByText("Search workspace");
-    expect(label).not.toBeNull();
-    const btn = label?.querySelector("button");
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await user.click(btn!);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const textarea = app.container.querySelector("textarea")!;
-    await user.type(textarea, "foo");
-    await user.keyboard("{Enter}");
-    const expected = "@workspace\nfoo\n";
-    expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
-  });
+      const btn = app.getByRole("checkbox", { name: /search workspace/i });
+
+      fireEvent.click(btn);
+      // screen.logTestingPlaygroundURL(app.container);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const textarea = app.container.querySelector("textarea")!;
+      await user.type(textarea, "foo");
+      await user.keyboard("{Enter}");
+      // app.debug(app.container, Infinity);
+      const expected = "@workspace\nfoo\n";
+      expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
+    },
+    { retry: 0 },
+  );
 
   test.skip("checkbox lookup symbols", async () => {
     const fakeOnSubmit = vi.fn();
