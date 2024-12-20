@@ -294,22 +294,23 @@ pub const CMDLINE_INTEGRATION_SCHEMA: &str = r#"
 fields:
   command:
     f_type: string_long
-    f_desc: "The command to execute."
+    f_desc: "The command to execute. To let model produce part of the command, use %param_name% notation."
     f_placeholder: "echo Hello World"
   command_workdir:
     f_type: string_long
-    f_desc: "The working directory for the command. If empty then workspace directory will be used."
+    f_desc: "The working directory for the command. If empty then workspace directory will be used. There you can use %param_name% as well."
     f_placeholder: "/path/to/workdir"
   description:
     f_type: string_long
     f_desc: "The model will see this description, why the model should call this?"
   parameters:
     f_type: "tool_parameters"
-    f_desc: "Enter a JSON array of parameters. Each parameter is a JSON object with a name, description (to guide the model). The model will fill these parameters to call the command."
+    f_desc: "The parameters that the model should fill out. Use description to tell the model what a parameter does. The only way you can use values coming from the model is to put them into %param_name% notation in the command or the working directory."
   timeout:
     f_type: string_short
     f_desc: "The command must immediately return the results, it can't be interactive. If the command runs for too long, it will be terminated and stderr/stdout collected will be presented to the model."
     f_default: "10"
+    f_extra: true
   output_filter:
     f_type: "output_filter"
     f_desc: "The output from the command can be long or even quasi-infinite. This section allows to set limits, prioritize top or bottom, or use regexp to show the model the relevant part."
@@ -329,6 +330,6 @@ smartlinks:
     sl_chat:
       - role: "user"
         content: |
-          🔧 Test the tool that corresponds to the current config file. If it works express happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
-    sl_enable_only_with_tool: true
+          🔧 Test the tool that corresponds to %CURRENT_CONFIG%
+          If the tool isn't available or doesn't work, go through the usual plan in the system prompt. If it works express happiness, and change nothing.
 "#;
