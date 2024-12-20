@@ -76,7 +76,7 @@ pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<Pri
         if !should_reload {
             return gcx_locked.privacy_settings.clone();
         }
-        gcx_locked.cache_dir.join("privacy.yaml")
+        gcx_locked.config_dir.join("privacy.yaml")
     };
 
     let mut new_privacy_settings = read_privacy_yaml(&path).await;

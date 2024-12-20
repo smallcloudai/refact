@@ -356,6 +356,18 @@ async fn vectorize_thread(
             vec![]
         });
 
+        // Adding the filename so it can also be searched
+        if let Some(filename) = doc.doc_path.file_name().map(|f| f.to_string_lossy().to_string()) {
+            splits.push(crate::vecdb::vdb_structs::SplitResult {
+                file_path: doc.doc_path.clone(),
+                window_text: filename.clone(),
+                window_text_hash: crate::ast::chunk_utils::official_text_hashing_function(&filename),
+                start_line: 0,
+                end_line: if let Some(text) = doc.doc_text { text.lines().count() as u64 - 1 } else { 0 },
+                symbol_path: "".to_string(),
+            });
+        }
+
         if DEBUG_WRITE_VECDB_FILES {
             let path_vecdb = doc.doc_path.with_extension("vecdb");
             if let Ok(mut file) = std::fs::File::create(path_vecdb) {

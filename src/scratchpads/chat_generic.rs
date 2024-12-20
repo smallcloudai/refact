@@ -4,19 +4,16 @@ use std::sync::RwLock;
 use async_trait::async_trait;
 use serde_json::Value;
 use tokenizers::Tokenizer;
-use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use tracing::{info, error};
 
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ContextFile, SamplingParameters};
-use crate::global_context::GlobalContext;
+use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
-use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, system_prompt_add_workspace_info};
 
 
 const DEBUG: bool = true;
@@ -34,9 +31,7 @@ pub struct GenericChatScratchpad {
     // "SYSTEM:" keyword means it's not one token
     pub keyword_user: String,
     pub keyword_asst: String,
-    pub default_system_message: String,
     pub has_rag_results: HasRagResults,
-    pub global_context: Arc<ARwLock<GlobalContext>>,
     pub allow_at: bool,
 }
 
@@ -45,7 +40,6 @@ impl GenericChatScratchpad {
         tokenizer: Arc<RwLock<Tokenizer>>,
         post: &ChatPost,
         messages: &Vec<ChatMessage>,
-        global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
     ) -> Self {
         GenericChatScratchpad {
@@ -58,9 +52,7 @@ impl GenericChatScratchpad {
             keyword_syst: "".to_string(),
             keyword_user: "".to_string(),
             keyword_asst: "".to_string(),
-            default_system_message: "".to_string(),
             has_rag_results: HasRagResults::new(),
-            global_context,
             allow_at,
         }
     }
@@ -71,16 +63,14 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        exploration_tools: bool,
-        agentic_tools: bool,
-        _should_execute_remotely: bool,
+        _exploration_tools: bool,
+        _agentic_tools: bool,
     ) -> Result<(), String> {
         self.token_bos = patch.get("token_bos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.keyword_syst = patch.get("keyword_system").and_then(|x| x.as_str()).unwrap_or("SYSTEM:").to_string();
         self.keyword_user = patch.get("keyword_user").and_then(|x| x.as_str()).unwrap_or("USER:").to_string();
         self.keyword_asst = patch.get("keyword_assistant").and_then(|x| x.as_str()).unwrap_or("ASSISTANT:").to_string();
-        self.default_system_message = get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await;
 
         self.t.eot = patch.get("eot").and_then(|x| x.as_str()).unwrap_or("<|endoftext|>").to_string();
 
@@ -106,25 +96,15 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let (n_ctx, gcx) = {
-            let ccx_locked = ccx.lock().await;
-            (ccx_locked.n_ctx, ccx_locked.global_context.clone())
-        };
+        let n_ctx = ccx.lock().await.n_ctx;
         let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
             run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
         } else {
             (self.messages.clone(), self.messages.len(), false)
         };
-        let mut limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, n_ctx, &self.default_system_message)?;
+        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, n_ctx)?;
         // if self.supports_tools {
         // };
-        if let Some(first_msg) = limited_msgs.first_mut() {
-            if first_msg.role == "system" {
-                first_msg.content = ChatContent::SimpleText(
-                    system_prompt_add_workspace_info(gcx.clone(), &first_msg.content.content_text_only()).await
-                );
-            }
-        }
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = self.token_bos.to_string();
@@ -188,14 +168,6 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         finish_reason: FinishReason
     ) -> Result<(Value, FinishReason), String> {
         self.dd.response_streaming(delta, finish_reason)
-    }
-
-    fn response_message_n_choices(
-        &mut self,
-        _choices: Vec<String>,
-        _finish_reasons: Vec<FinishReason>,
-    ) -> Result<Value, String> {
-        Err("not implemented".to_string())
     }
 
     fn response_message_streaming(

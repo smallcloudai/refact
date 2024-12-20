@@ -13,9 +13,8 @@ mod tool_deep_thinking;
 
 #[cfg(feature="vecdb")]
 mod tool_search;
-// #[cfg(feature="vecdb")]
-// mod tool_knowledge;
+#[cfg(feature="vecdb")]
+mod tool_knowledge;
 #[cfg(feature="vecdb")]
 mod tool_locate_search;
 pub mod tool_patch;
-mod tool_cmdline;

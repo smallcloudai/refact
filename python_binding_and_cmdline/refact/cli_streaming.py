@@ -133,7 +133,7 @@ def process_streaming_data(data: Dict[str, Any], deltas_collector: Optional[chat
             msg = chat_client.Message.model_validate(data)
 
         replace_last_user = False
-        if msg.role == "user":
+        if msg.role == "user" or msg.role == "system'":
             if len(streaming_messages) > 0:
                 if streaming_messages[-1].role == "user":
                     replace_last_user = True
@@ -157,10 +157,11 @@ def process_streaming_data(data: Dict[str, Any], deltas_collector: Optional[chat
             print_response("\n")
             flush_response()
 
-        elif msg.role in ["plain_text", "cd_instruction", "user"]:
+        elif msg.role in ["plain_text", "cd_instruction", "user", "system"]:
             if replace_last_user:
                 return
-            print_response("\n")
+            role_text = FormattedText([("fg:ansiblue", f"\n{msg.role}")])
+            print_formatted_text(role_text)
             if isinstance(msg.content, str):
                 print_response(msg.content.strip())
             elif isinstance(msg.content, list):
@@ -174,7 +175,7 @@ def process_streaming_data(data: Dict[str, Any], deltas_collector: Optional[chat
                 print_response("\n".join(collected_responses))
             else:
                 print_response("content is None, not normal\n")
-            print_response("\n")
+            print_response("\n\n")
 
         elif msg.role in ["assistant"]:
             if msg.content is not None:
@@ -225,7 +226,7 @@ def process_streaming_data(data: Dict[str, Any], deltas_collector: Optional[chat
         print_response("unknown streaming data:\n%s" % data)
 
 
-async def the_chatting_loop(model, chat_id, max_auto_resubmit):
+async def the_chatting_loop(model, chat_id, chat_remote, max_auto_resubmit):
     global streaming_messages
     global _is_streaming
 
@@ -257,6 +258,7 @@ async def the_chatting_loop(model, chat_id, max_auto_resubmit):
             only_deterministic_messages=False,
             callback=callback,
             chat_id=chat_id,
+            chat_remote=chat_remote,
         )
         streaming_messages = choices[0]
 

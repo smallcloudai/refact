@@ -1,8 +1,9 @@
+use serde::Serialize;
 use serde::Deserialize;
 use regex::Regex;
 
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct CmdlineOutputFilter {
     #[serde(default = "default_limit_lines")]
     pub limit_lines: usize,
@@ -62,7 +63,7 @@ pub fn output_mini_postprocessing(filter: &CmdlineOutputFilter, output: &str) ->
 
     if filter.valuable_top_or_bottom == "bottom" {
         for i in 0..lines.len() {
-            ratings[i] += 0.9 * (i as f64) / lines.len() as f64;
+            ratings[i] += 0.9 * ((i + 1) as f64) / lines.len() as f64;
         }
     } else {
         for i in 0..lines.len() {
@@ -173,6 +174,14 @@ line6
             remove_from_output: "".to_string(),
         }, output_to_filter);
         assert_eq!(result, "...2 lines skipped...\nline3\nline4\nline5\n...1 lines skipped...\n");
+
+        let result = output_mini_postprocessing(&CmdlineOutputFilter {
+            limit_lines: 100,
+            limit_chars: 8000,
+            valuable_top_or_bottom: "bottom".to_string(),
+            ..Default::default()
+        }, output_to_filter);
+        assert_eq!(result, "line1\nline2\nline3\nline4\nline5\nline6\n");
     }
 }
 

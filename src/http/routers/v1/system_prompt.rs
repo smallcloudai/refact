@@ -26,10 +26,11 @@ pub async fn handle_v1_system_prompt(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<SystemPromptPost>(&body_bytes)
+    // XXX receive ChatMode
+    let _post = serde_json::from_slice::<SystemPromptPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    let prompt = get_default_system_prompt(gcx.clone(), post.have_exploration_tools, post.have_agentic_tools).await;
+    let prompt = get_default_system_prompt(gcx.clone(), crate::call_validation::ChatMode::AGENT).await;
 
     let prompt_with_workspace_info = system_prompt_add_workspace_info(gcx.clone(), &prompt).await;
 

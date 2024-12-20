@@ -15,10 +15,10 @@ pub async fn handle_v1_config_path(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let cache_dir = global_context.read().await.cache_dir.clone();
+    let config_dir = global_context.read().await.config_dir.clone();
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(cache_dir.to_str().unwrap().to_string()))
+        .body(Body::from(config_dir.to_str().unwrap().to_string()))
         .unwrap())
 }
 

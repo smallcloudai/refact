@@ -7,36 +7,72 @@ use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ContextEnum, ChatMessage, ChatContent};
+use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 
 use crate::tools::tools_description::Tool;
 use serde_json::Value;
+use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[allow(non_snake_case)]
-pub struct IntegrationGitHub {
-    pub gh_binary_path: Option<String>,
-    pub GH_TOKEN: String,
+pub struct SettingsGitHub {
+    pub gh_binary_path: String,
+    pub gh_token: String,
 }
 
+#[derive(Default)]
 pub struct ToolGithub {
-    integration_github: IntegrationGitHub,
+    pub common:  IntegrationCommon,
+    pub settings_github: SettingsGitHub,
 }
 
-impl ToolGithub {
-    pub fn new_from_yaml(gh_config: &serde_yaml::Value) -> Result<Self, String> {
-        let integration_github = serde_yaml::from_value::<IntegrationGitHub>(gh_config.clone())
-            .map_err(|e| {
-                let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-                format!("{}{}", e.to_string(), location)
-            })?;
-        Ok(Self { integration_github })
+impl IntegrationTrait for ToolGithub {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+        match serde_json::from_value::<SettingsGitHub>(value.clone()) {
+            Ok(settings_github) => {
+                info!("Github settings applied: {:?}", settings_github);
+                self.settings_github = settings_github;
+            },
+            Err(e) => {
+                error!("Failed to apply settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        };
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        };
+        Ok(())
     }
+
+    fn integr_settings_as_json(&self) -> Value {
+        serde_json::to_value(&self.settings_github).unwrap_or_default()
+    }
+
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
+
+    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
+        Box::new(ToolGithub {
+            common: self.common.clone(),
+            settings_github: self.settings_github.clone()
+        }) as Box<dyn Tool + Send>
+    }
+
+    fn integr_schema(&self) -> &str { GITHUB_INTEGRATION_SCHEMA }
 }
 
 #[async_trait]
 impl Tool for ToolGithub {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,
@@ -50,11 +86,15 @@ impl Tool for ToolGithub {
         };
         let command_args = parse_command_args(args)?;
 
-        let gh_command = self.integration_github.gh_binary_path.as_deref().unwrap_or("gh");
-        let output = Command::new(gh_command)
+        let mut gh_binary_path = self.settings_github.gh_binary_path.clone();
+        if gh_binary_path.is_empty() {
+            gh_binary_path = "gh".to_string();
+        }
+        let output = Command::new(gh_binary_path)
             .args(&command_args)
             .current_dir(&project_dir)
-            .env("GH_TOKEN", &self.integration_github.GH_TOKEN)
+            .env("GH_TOKEN", &self.settings_github.gh_token)
+            .env("GITHUB_TOKEN", &self.settings_github.gh_token)
             .output()
             .await
             .map_err(|e| e.to_string())?;
@@ -100,6 +140,20 @@ impl Tool for ToolGithub {
         command_args.insert(0, "gh".to_string());
         Ok(command_args.join(" "))
     }
+
+    fn tool_depends_on(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn usage(&mut self) -> &mut Option<ChatUsage> {
+        static mut DEFAULT_USAGE: Option<ChatUsage> = None;
+        #[allow(static_mut_refs)]
+        unsafe { &mut DEFAULT_USAGE }
+    }
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
+    }
 }
 
 fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, String> {
@@ -122,3 +176,38 @@ fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, Stri
 
     Ok(parsed_args)
 }
+
+const GITHUB_INTEGRATION_SCHEMA: &str = r#"
+fields:
+  gh_token:
+    f_type: string_long
+    f_desc: "GitHub Personal Access Token, you can create one at https://github.com/settings/tokens. If you don't want to send your key to the AI model that helps you to configure the agent, put it into secrets.yaml and write $MY_SECRET_VARIABLE in this field."
+    f_placeholder: "ghp_xxxxxxxxxxxxxxxx"
+    f_label: "Token"
+    smartlinks:
+      - sl_label: "Open secrets.yaml"
+        sl_goto: "EDITOR:secrets.yaml"
+  gh_binary_path:
+    f_type: string_long
+    f_desc: "Path to the GitHub CLI binary. Leave empty if you have it in PATH."
+    f_placeholder: "/usr/local/bin/gh"
+    f_label: "GH Binary Path"
+    f_extra: true
+description: |
+  The GitHub integration allows interaction with GitHub repositories using the GitHub CLI.
+  It provides functionality for various GitHub operations such as creating issues, pull requests, and more.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: ["gh * delete *", "gh * close *"]
+  deny_default: ["gh auth token *"]
+smartlinks:
+  - sl_label: "Test"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 The `github` (`gh`) tool should be visible now. To test the tool, list opened pull requests for `smallcloudai/refact-lsp`, and briefly describe them and express
+          happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+    sl_enable_only_with_tool: true
+"#;

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use serde_json::Value;
 use tracing::warn;
 use async_trait::async_trait;
@@ -23,6 +22,8 @@ fn preformat_path(path: &String) -> String {
 
 #[async_trait]
 impl Tool for ToolTree {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -52,10 +53,17 @@ impl Tool for ToolTree {
                     return Err("Cannot execute tree() because 'path' provided refers to a file.".to_string());
                 }
 
+                let project_dirs = get_project_dirs(gcx.clone()).await;
                 let candidate = return_one_candidate_or_a_good_error(
-                    gcx.clone(), &path, &dir_candidates, &get_project_dirs(gcx.clone()).await, true
+                    gcx.clone(), &path, &dir_candidates, &project_dirs, true
                 ).await?;
-                let true_path = PathBuf::from(candidate);
+                let true_path = crate::files_correction::to_pathbuf_normalize(&candidate);
+
+                let is_within_project_dirs = project_dirs.iter().any(|p| true_path.starts_with(&p));
+                if !is_within_project_dirs && !gcx.read().await.cmdline.inside_container {
+                    return Err(format!("Cannot execute tree(), '{path}' is not within the project directories."));
+                }
+
                 let paths_in_dir = ls_files(&true_path, true).unwrap_or(vec![]);
                 construct_tree_out_of_flat_list_of_paths(&paths_in_dir)
             },

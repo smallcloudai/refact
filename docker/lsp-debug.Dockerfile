@@ -8,6 +8,7 @@ RUN apk add --no-cache \
     curl \
     git \
     openssl-dev \
+    openssl-libs-static \
     pkgconfig \
     protobuf-dev \
     zlib-static

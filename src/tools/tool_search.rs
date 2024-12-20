@@ -24,40 +24,47 @@ async fn execute_att_search(
 ) -> Result<Vec<ContextFile>, String> {
     let gcx = ccx.lock().await.global_context.clone();
     if scope == "workspace" {
-        return Ok(execute_at_search(ccx.clone(), &query, None).await?)
+        return execute_at_search(ccx.clone(), &query, None).await
     }
+    let scope_is_dir = scope.ends_with('/') || scope.ends_with('\\');
 
-    // XXX doesn't work for dirs
-    // "/Users/user/code/refact-lsp" does not exist. There are paths with similar names however:"
-    // maybe use this:
-    // let dir_candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
-
-    let filter = if scope.ends_with('/') {
-        let dir = return_one_candidate_or_a_good_error(
+    let filter = if scope_is_dir {
+        return_one_candidate_or_a_good_error(
             gcx.clone(),
             scope,
             &correct_to_nearest_dir_path(gcx.clone(), scope, false, 10).await,
             &get_project_dirs(gcx.clone()).await,
-            true
-        ).await?;
-        format!("(scope LIKE '{}%')", dir)
+            true,
+        ).await.map(|dir| format!("(scope LIKE '{}%')", dir))?
     } else {
-        let file_path = return_one_candidate_or_a_good_error(
+        match return_one_candidate_or_a_good_error(
             gcx.clone(),
             scope,
             &file_repair_candidates(gcx.clone(), scope, 10, false).await,
             &get_project_dirs(gcx.clone()).await,
-            false
-        ).await?;
-        format!("(scope = \"{}\")", file_path)
+            false,
+        ).await {
+            Ok(file) => format!("(scope = \"{}\")", file),
+            Err(file_err) => {
+                return_one_candidate_or_a_good_error(
+                    gcx.clone(),
+                    scope,
+                    &correct_to_nearest_dir_path(gcx.clone(), scope, false, 10).await,
+                    &get_project_dirs(gcx.clone()).await,
+                    true,
+                ).await.map(|dir| format!("(scope LIKE '{}%')", dir)).map_err(|_| file_err)?
+            },
+        }
     };
 
     info!("att-search: filter: {:?}", filter);
-    Ok(execute_at_search(ccx.clone(), &query, Some(filter)).await?)
+    execute_at_search(ccx.clone(), &query, Some(filter)).await
 }
 
 #[async_trait]
 impl Tool for ToolSearch {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

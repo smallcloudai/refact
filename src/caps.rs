@@ -36,6 +36,8 @@ pub struct ModelRecord {
     pub supports_multimodality: bool,
     #[serde(default)]
     pub supports_clicks: bool,
+    #[serde(default)]
+    pub supports_agent: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -233,7 +235,7 @@ macro_rules! get_api_key_macro {
             match std::env::var(env_var_name) {
                 Ok(env_value) => env_value,
                 Err(e) => {
-                    error!("tried to read API key from env var {}, but failed: {}\nTry editing ~/.cache/refact/bring-your-own-key.yaml", env_var_name, e);
+                    error!("tried to read API key from env var {}, but failed: {}\nTry editing ~/.config/refact/bring-your-own-key.yaml", env_var_name, e);
                     cx_locked.cmdline.api_key.clone()
                 }
             }
@@ -255,7 +257,7 @@ pub async fn get_api_key(
         match std::env::var(env_var_name) {
             Ok(env_value) => env_value,
             Err(e) => {
-                error!("tried to read API key from env var {}, but failed: {}\nTry editing ~/.cache/refact/bring-your-own-key.yaml", env_var_name, e);
+                error!("tried to read API key from env var {}, but failed: {}\nTry editing ~/.config/refact/bring-your-own-key.yaml", env_var_name, e);
                 gcx_locked.cmdline.api_key.clone()
             }
         }
@@ -266,47 +268,20 @@ pub async fn get_api_key(
 
 #[allow(dead_code)]
 async fn get_custom_chat_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
-    let caps = try_load_caps_quickly_if_not_present(
-        gcx.clone(), 0,
-    ).await;
-
-    if let Err(err) = caps {
-        return Err(err);
-    }
-    let caps = caps?;
-
-    let api_key = get_api_key_macro!(gcx, caps, chat_apikey);
-    Ok(api_key)
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    Ok(get_api_key_macro!(gcx, caps, chat_apikey))
 }
 
 #[cfg(feature="vecdb")]
 pub async fn get_custom_embedding_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
-    let caps = try_load_caps_quickly_if_not_present(
-        gcx.clone(), 0,
-    ).await;
-
-    if let Err(err) = caps {
-        return Err(err);
-    }
-    let caps = caps?;
-
-    let api_key = get_api_key_macro!(gcx, caps, embedding_apikey);
-    Ok(api_key)
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    Ok(get_api_key_macro!(gcx, caps, embedding_apikey))
 }
 
 #[allow(dead_code)]
 async fn get_custom_completion_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
-    let caps = try_load_caps_quickly_if_not_present(
-        gcx.clone(), 0,
-    ).await;
-
-    if let Err(err) = caps {
-        return Err(err);
-    }
-    let caps = caps?;
-
-    let api_key = get_api_key_macro!(gcx, caps, completion_apikey);
-    Ok(api_key)
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    Ok(get_api_key_macro!(gcx, caps, completion_apikey))
 }
 
 
@@ -316,11 +291,11 @@ async fn load_caps_buf_from_file(
 ) -> Result<(String, String), String> {
     let mut caps_url = cmdline.address_url.clone();
     if caps_url.is_empty() {
-        let cache_dir = {
+        let config_dir = {
             let gcx_locked = gcx.read().await;
-            gcx_locked.cache_dir.clone()
+            gcx_locked.config_dir.clone()
         };
-        let caps_path = PathBuf::from(cache_dir).join("bring-your-own-key.yaml");
+        let caps_path = PathBuf::from(config_dir).join("bring-your-own-key.yaml");
         caps_url = caps_path.to_string_lossy().into_owned();
         // info!("will use {} as the caps file", caps_url);
     }

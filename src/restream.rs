@@ -7,7 +7,7 @@ use futures::StreamExt;
 use hyper::{Body, Response, StatusCode};
 use reqwest_eventsource::Event;
 use serde_json::json;
-use tracing::{error, info, warn};
+use tracing::info;
 
 use crate::call_validation::SamplingParameters;
 use crate::custom_error::ScratchError;
@@ -149,15 +149,25 @@ pub async fn scratchpad_interaction_not_stream_json(
             model_says["choices"] = serde_json::Value::Array(vec![]);
         }
         scratchpad_result = Ok(model_says.clone());
+
     } else if let Some(hf_arr) = model_says.as_array() {
-        let choices = hf_arr.iter().map(|x| x.get("generated_text").unwrap().as_str().unwrap().to_string()).collect::<Vec<_>>();
+        let choices = hf_arr.iter().map(|x| {
+            x.get("generated_text")
+                .and_then(|val| val.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| {
+                    tracing::error!("Failed to get generated_text or convert to str");
+                    "".to_string()
+                })
+        }).collect::<Vec<_>>();
         let finish_reasons = vec![FinishReason::Length; choices.len()];
         scratchpad_result = scratchpad.response_n_choices(choices, finish_reasons);
+
     } else if let Some(oai_choices) = model_says.clone().get("choices") {
         let choice0 = oai_choices.as_array().unwrap().get(0).unwrap();
         let finish_reasons = oai_choices.clone().as_array().unwrap().iter().map(
             |x| FinishReason::from_json_val(x.get("finish_reason").unwrap_or(&json!(""))).unwrap_or_else(|err| {
-                warn!("Couldn't parse finish_reason: {err}. Fallback to finish_reason=null");
+                tracing::error!("Couldn't parse finish_reason: {err}. Fallback to finish_reason=null");
                 FinishReason::None
             })
         ).collect::<Vec<_>>();
@@ -165,14 +175,25 @@ pub async fn scratchpad_interaction_not_stream_json(
             if let Ok(det_msgs) = scratchpad.response_spontaneous() {
                 model_says["deterministic_messages"] = json!(det_msgs);
             }
-            let choices = oai_choices.clone().as_array().unwrap().iter().map(|x| x.get("message").unwrap().get("content").unwrap().as_str().unwrap().to_string()).collect::<Vec<_>>();
+            let choices = oai_choices.clone().as_array().unwrap().iter().map(|x| {
+                match (x.get("message"), x.get("message").and_then(|msg| msg.get("content")), x.get("message").and_then(|msg| msg.get("content")).and_then(|content| content.as_str())) {
+                    (Some(_), Some(_), Some(content)) => content.to_string(),
+                    (msg, content, as_str) => {
+                        tracing::error!(
+                            "Failed to get message content: msg={:?}, content={:?}, as_str={:?}",
+                            msg, content, as_str
+                        );
+                        "".to_string()
+                    }
+                }
+            }).collect::<Vec<_>>();
             scratchpad_result = match scratchpad.response_message_n_choices(choices, finish_reasons) {
                 Ok(res) => Ok(res),
                 Err(err) => {
                     if err == "not implemented" {
                         info!("scratchpad doesn't implement response_message_n_choices, passing the original message through");
                         Ok(model_says.clone())
-                    } else { 
+                    } else {
                         Err(err)
                     }
                 }
@@ -182,7 +203,15 @@ pub async fn scratchpad_interaction_not_stream_json(
             // for oai_choice in oai_choices.as_array().unwrap() {
             //     let index = oai_choice.get("index").unwrap().as_u64().unwrap() as usize;
             // }
-            let choices = oai_choices.as_array().unwrap().iter().map(|x| x.get("text").unwrap().as_str().unwrap().to_string()).collect::<Vec<_>>();
+            let choices = oai_choices.as_array().unwrap().iter().map(|x| {
+                x.get("text")
+                    .and_then(|val| val.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| {
+                        tracing::error!("Failed to get text or convert to str");
+                        "".to_string()
+                    })
+            }).collect::<Vec<_>>();
             scratchpad_result = scratchpad.response_n_choices(choices, finish_reasons);
         }
 
@@ -350,7 +379,7 @@ pub async fn scratchpad_interaction_stream(
                 }
             } else {
                 let err_str = value_maybe.unwrap_err();
-                error!("response_spontaneous error: {}", err_str);
+                tracing::error!("response_spontaneous error: {}", err_str);
                 let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
                 yield Result::<_, String>::Ok(value_str);
             }
@@ -390,7 +419,7 @@ pub async fn scratchpad_interaction_stream(
                         false,
                         e_str.to_string(),
                     ));
-                    error!(e_str);
+                    tracing::error!(e_str);
                     let value_str = serde_json::to_string(&json!({"detail": e_str})).unwrap();
                     yield Result::<_, String>::Ok(value_str);
                     break;
@@ -420,12 +449,12 @@ pub async fn scratchpad_interaction_stream(
                                 try_insert_usage(&mut value);
                                 value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
                                 let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
-                                let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);
-                                info!("yield: {:?}", last_60_chars);
+                                // let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);
+                                // info!("yield: {:?}", last_60_chars);
                                 yield Result::<_, String>::Ok(value_str);
                             },
                             Err(err_str) => {
-                                error!("unexpected error: {}", err_str);
+                                tracing::error!("unexpected error: {}", err_str);
                                 let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": err_str})).unwrap());
                                 yield Result::<_, String>::Ok(value_str);
                                 // TODO: send telemetry
@@ -439,7 +468,7 @@ pub async fn scratchpad_interaction_stream(
                             // "restream error: Stream ended"
                             break;
                         }
-                        error!("restream error: {}\n{:?}", err, err);
+                        tracing::error!("restream error: {}\n{:?}", err, err);
                         let problem_str = format!("restream error: {}", err);
                         {
                             tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
@@ -455,7 +484,7 @@ pub async fn scratchpad_interaction_stream(
                     },
                 }
             }
-            
+
             let mut value = my_scratchpad.streaming_finished(last_finish_reason)?;
             value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
             value["model"] = json!(model_name.clone());
@@ -538,7 +567,7 @@ fn _push_streaming_json_into_scratchpad(
         let choice0 = &choices[0];
         let mut value: serde_json::Value;
         let mut finish_reason = FinishReason::from_json_val(choice0.get("finish_reason").unwrap_or(&json!(""))).unwrap_or_else(|err| {
-            warn!("Couldn't parse finish_reason: {err}. Fallback to finish_reason=null");
+            tracing::error!("Couldn't parse finish_reason: {err}. Fallback to finish_reason=null");
             FinishReason::None
         });
         if let Some(_delta) = choice0.get("delta") {

@@ -222,7 +222,8 @@ async def ask_using_http(
     only_deterministic_messages: bool = False,
     postprocess_parameters: Optional[Dict[str, Any]] = None,
     callback: Optional[Callable] = None,
-    chat_id: Optional[str] = None
+    chat_id: Optional[str] = None,
+    chat_remote: bool = False,
 ) -> List[List[Message]]:
     deterministic: List[Message] = []
     subchats: DefaultDict[str, List[Message]] = collections.defaultdict(list)
@@ -241,8 +242,13 @@ async def ask_using_http(
     }
     if postprocess_parameters is not None:
         post_me["postprocess_parameters"] = postprocess_parameters
+    meta = {}
     if chat_id is not None:
-        post_me["chat_id"] = chat_id
+        meta["chat_id"] = chat_id
+        meta["chat_mode"] = "AGENT"
+        meta["chat_remote"] = chat_remote
+        # meta["current_config_file"] = "/Users/user/.config/refact/integrations.d/postgres.yaml"
+    post_me["meta"] = meta
     choices: List[Optional[Message]] = [None] * n_answers
     async with aiohttp.ClientSession() as session:
         async with session.post(base_url + "/chat", json=post_me) as response:
@@ -275,12 +281,13 @@ async def ask_using_http(
                     if not end_of_http_chunk:
                         continue
                     line_str = buffer.decode('utf-8').strip()
-                    buffer = b""
                     if not line_str:
+                        buffer = b""
                         continue
                     if not line_str.startswith("data: "):
                         print("unrecognized streaming data (1):", line_str)
                         continue
+                    buffer = b""
                     line_str = line_str[6:]
                     if line_str == "[DONE]":
                         break
@@ -390,20 +397,21 @@ async def diff_apply(
         async with session.post(base_url + "/diff-apply", json=post_me) as response:
             if response.status != 200:
                 raise Exception(f"unexpected response status {response.status}, response: {await response.text()}")
-            return await response.json(content_type=None)
+            return await _better_response_json(response)
 
 
-async def mem_add(base_url: str, mem_type: str, goal: str, project: str, payload: str) -> Dict[str, Any]:
+async def mem_add(base_url: str, mem_type: str, goal: str, project: str, payload: str, origin: str = "local-committed") -> Dict[str, Any]:
     url = f"{base_url}/mem-add"
     data = {
         "mem_type": mem_type,
         "goal": goal,
         "project": project,
-        "payload": payload
+        "payload": payload,
+        "origin": origin,
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data) as response:
-            return await response.json()
+            return await _better_response_json(response)
 
 
 async def mem_block_until_vectorized(base_url: str) -> Tuple[Dict[str, Any], float]:
@@ -411,7 +419,7 @@ async def mem_block_until_vectorized(base_url: str) -> Tuple[Dict[str, Any], flo
     t0 = time.time()
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
-            return (await response.json(), time.time() - t0)
+            return (await _better_response_json(response), time.time() - t0)
 
 
 async def mem_update_used(base_url: str, memid: str, correct: float, relevant: float) -> Dict[str, Any]:
@@ -423,7 +431,7 @@ async def mem_update_used(base_url: str, memid: str, correct: float, relevant: f
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data) as response:
-            return await response.json()
+            return await _better_response_json(response)
 
 
 async def mem_erase(base_url: str, memid: str) -> Dict[str, Any]:
@@ -433,7 +441,7 @@ async def mem_erase(base_url: str, memid: str) -> Dict[str, Any]:
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data) as response:
-            return await response.json()
+            return await _better_response_json(response)
 
 
 async def mem_query(base_url: str, goal: str, project: str, top_n: Optional[int] = 5) -> Tuple[int, Dict[str, Any]]:
@@ -445,20 +453,19 @@ async def mem_query(base_url: str, goal: str, project: str, top_n: Optional[int]
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data) as response:
-            return response.status, await response.json()
+            return response.status, await _better_response_json(response)
 
 
-async def ongoing_update(base_url: str, goal: str, progress: Dict[str, Any], actseq: Dict[str, Any], output: Dict[str, Any]):
-    url = f"{base_url}/ongoing-update"
-    data = {
-        "goal": goal,
-        "ongoing_progress": progress,
-        "ongoing_action_new_sequence": actseq,
-        "ongoing_output": output,
-    }
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=data) as response:
-            return await response.json()
+async def _better_response_json(response):
+    if response.status == 200:
+        return await response.json()
+    txt = await response.text()
+    if txt.startswith("{"):
+        j = json.loads(txt)
+        if "detail" in j:
+            raise ValueError(j['detail'])
+        return j
+    raise ValueError("Unexpected response: %r" % txt)
 
 
 def gen_function_call_id():

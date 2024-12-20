@@ -118,7 +118,7 @@ fn _replace_variables_in_system_prompts(config: &mut CustomizationYaml, variable
     }
 }
 
-fn load_and_mix_with_users_config(
+pub fn load_and_mix_with_users_config(
     user_yaml: &str,
     caps_yaml: &str,
     caps_default_system_prompt: &str,
@@ -194,34 +194,35 @@ pub async fn load_customization(
         let caps_locked = caps.read().unwrap();
         (caps_locked.customization.clone(), caps_locked.code_chat_default_system_prompt.clone())
     };
-    let competency_path = gcx.read().await.cmdline.competency.clone();
+    // let competency_path = gcx.read().await.cmdline.competency.clone();
 
-    let cache_dir = gcx.read().await.cache_dir.clone();
-    let customization_yaml_path = cache_dir.join("customization.yaml");
+    let config_dir = gcx.read().await.config_dir.clone();
+    let customization_yaml_path = config_dir.join("customization.yaml");
 
     let user_config_text = std::fs::read_to_string(&customization_yaml_path).map_err(|e| format!("Failed to read file: {}", e))?;
 
-    let competency_yaml = if !competency_path.is_empty() {
-        std::fs::read_to_string(&competency_path).map_err(|e| format!("Failed to read file: {}", e))?
-    } else {
-        let global_competency_path = cache_dir.join("competency.yaml");
-        if let Ok(content) = std::fs::read_to_string(&global_competency_path) {
-            content
-        } else {
-            tracing::info!("there is no competency.yaml supplied in the command line, and couldn't read {} either", global_competency_path.display());
-            String::new()
-        }
-    };
+    // let competency_yaml = if !competency_path.is_empty() {
+    //     std::fs::read_to_string(&competency_path).map_err(|e| format!("Failed to read file: {}", e))?
+    // } else {
+    //     let global_competency_path = cache_dir.join("competency.yaml");
+    //     if let Ok(content) = std::fs::read_to_string(&global_competency_path) {
+    //         content
+    //     } else {
+    //         tracing::info!("there is no competency.yaml supplied in the command line, and couldn't read {} either", global_competency_path.display());
+    //         String::new()
+    //     }
+    // };
+    let system_prompt_vars = HashMap::new();
 
-    let system_prompt_vars = if competency_yaml.is_empty() {
-        let mut map = HashMap::new();
-        map.insert("SPECIALIZATION".to_string(), "".to_string());
-        map
-    } else {
-        let competency: Competency = serde_yaml::from_str(&competency_yaml)
-            .map_err(|e| format!("Error parsing competency YAML: {}\n{}", e, competency_yaml))?;
-        competency.system_prompt_vars
-    };
+    // let system_prompt_vars = if competency_yaml.is_empty() {
+    //     let mut map = HashMap::new();
+    //     map.insert("SPECIALIZATION".to_string(), "".to_string());
+    //     map
+    // } else {
+    //     let competency: Competency = serde_yaml::from_str(&competency_yaml)
+    //         .map_err(|e| format!("Error parsing competency YAML: {}\n{}", e, competency_yaml))?;
+    //     competency.system_prompt_vars
+    // };
 
     load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt, skip_visibility_filtering, allow_experimental, &system_prompt_vars).map_err(|e| e.to_string())
 }
@@ -249,6 +250,7 @@ mod tests {
         assert_eq!(config.system_prompts.get("default").is_some(), true);
         assert_eq!(config.system_prompts.get("exploration_tools").is_some(), true);
         assert_eq!(config.system_prompts.get("agentic_tools").is_some(), true);
-        assert_eq!(config.system_prompts.get("agentic_experimental_knowledge").is_some(), true);
+        assert_eq!(config.system_prompts.get("configurator").is_some(), true);
+        assert_eq!(config.system_prompts.get("project_summary").is_some(), true);
     }
 }

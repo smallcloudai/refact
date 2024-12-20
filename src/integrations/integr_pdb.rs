@@ -14,21 +14,26 @@ use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ContextEnum, ChatMessage, ChatContent};
+use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::global_context::GlobalContext;
+use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::integrations::process_io_utils::{first_n_chars, last_n_chars, last_n_lines, write_to_stdin_and_flush, blocking_read_until_token_or_timeout};
+
 
 const SESSION_TIMEOUT_AFTER_INACTIVITY: Duration = Duration::from_secs(30 * 60);
 const PDB_TOKEN: &str = "(Pdb)";
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct IntegrationPdb {
-    pub python_path: Option<String>,
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+pub struct SettingsPdb {
+    pub python_path: String,
 }
+
+#[derive(Default)]
 pub struct ToolPdb {
-    integration_pdb: IntegrationPdb,
+    pub common:  IntegrationCommon,
+    pub settings_pdb: SettingsPdb,
 }
 
 pub struct PdbSession {
@@ -61,18 +66,52 @@ impl IntegrationSession for PdbSession
     }
 }
 
-impl ToolPdb {
-    pub fn new_from_yaml(v: &serde_yaml::Value) -> Result<Self, String> {
-        let integration_pdb = serde_yaml::from_value::<IntegrationPdb>(v.clone()).map_err(|e| {
-            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-            format!("{}{}", e.to_string(), location)
-        })?;
-        Ok(Self { integration_pdb })
+impl IntegrationTrait for ToolPdb {
+    fn as_any(&self) -> &dyn Any { self }
+
+    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+        match serde_json::from_value::<SettingsPdb>(value.clone()) {
+            Ok(settings_pdb) => {
+                info!("PDB settings applied: {:?}", settings_pdb);
+                self.settings_pdb = settings_pdb;
+            },
+            Err(e) => {
+                error!("Failed to apply settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        };
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        };
+        Ok(())
     }
+
+    fn integr_settings_as_json(&self) -> Value {
+        serde_json::to_value(&self.settings_pdb).unwrap_or_default()
+    }
+
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
+
+    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
+        Box::new(ToolPdb {
+            common: self.common.clone(),
+            settings_pdb: self.settings_pdb.clone()
+        }) as Box<dyn Tool + Send>
+    }
+
+    fn integr_schema(&self) -> &str { PDB_INTEGRATION_SCHEMA }
 }
 
 #[async_trait]
 impl Tool for ToolPdb {
+    fn as_any(&self) -> &dyn Any { self }
+
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -88,20 +127,22 @@ impl Tool for ToolPdb {
         };
 
         let session_hashmap_key = get_session_hashmap_key("pdb", &chat_id);
-        let python_command = self.integration_pdb.python_path.clone().unwrap_or_else(|| "python3".to_string());
-
+        let mut python_command = self.settings_pdb.python_path.clone();
+        if python_command.is_empty() {
+            python_command = "python3".to_string();
+        }
         if command_args.windows(2).any(|w| w == ["-m", "pdb"]) {
             let output = start_pdb_session(&python_command, &mut command_args, &session_hashmap_key, gcx.clone(), 10).await?;
             return Ok(tool_answer(output, tool_call_id));
         }
-        
+
         let command_session = {
             let gcx_locked = gcx.read().await;
             gcx_locked.integration_sessions.get(&session_hashmap_key)
                 .ok_or("There is no active pdb session in this chat, you can open it by running pdb(\"python -m pdb my_script.py\")")?
                 .clone()
         };
-    
+
         let mut command_session_locked = command_session.lock().await;
         let mut pdb_session = command_session_locked.as_any_mut().downcast_mut::<PdbSession>()
             .ok_or("Failed to downcast to PdbSession")?;
@@ -110,7 +151,7 @@ impl Tool for ToolPdb {
             "kill" => {
                 let mut gcx_locked = gcx.write().await;
                 gcx_locked.integration_sessions.remove(&session_hashmap_key);
-                "Pdb session has been killed".to_string() 
+                "Pdb session has been killed".to_string()
             },
             "wait" => {
                 if command_args.len() < 2 {
@@ -124,11 +165,20 @@ impl Tool for ToolPdb {
         Ok(tool_answer(output, tool_call_id))
     }
 
+    fn command_to_match_against_confirm_deny(
+        &self,
+        args: &HashMap<String, Value>,
+    ) -> Result<String, String> {
+        let command = parse_command(args)?;
+        let command_args = split_command(&command)?;
+        Ok(command_args.join(" "))
+    }
+
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "pdb".to_string(),
             agentic: true,
-            experimental: true,
+            experimental: false,
             description: "Python debugger for inspecting variables and exploring what the program really does. This tool executes only one command at a time. Start with python -m pdb ...".to_string(),
             parameters: vec![
                 ToolParam {
@@ -141,13 +191,18 @@ impl Tool for ToolPdb {
         }
     }
 
-    fn command_to_match_against_confirm_deny(
-        &self,
-        args: &HashMap<String, Value>,
-    ) -> Result<String, String> {
-        let commmand = parse_command(args)?;
-        let command_args = split_command(&commmand)?;
-        Ok(command_args.join(" "))
+    fn tool_depends_on(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn usage(&mut self) -> &mut Option<ChatUsage> {
+        static mut DEFAULT_USAGE: Option<ChatUsage> = None;
+        #[allow(static_mut_refs)]
+        unsafe { &mut DEFAULT_USAGE }
+    }
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
     }
 }
 
@@ -169,14 +224,14 @@ fn split_command(command: &str) -> Result<Vec<String>, String> {
 }
 
 async fn start_pdb_session(
-    python_command: &String, 
-    command_args: &mut Vec<String>, 
-    session_hashmap_key: &String, 
-    gcx: Arc<ARwLock<GlobalContext>>, 
+    python_command: &String,
+    command_args: &mut Vec<String>,
+    session_hashmap_key: &String,
+    gcx: Arc<ARwLock<GlobalContext>>,
     timeout_seconds: u64,
 ) -> Result<String, String> {
     if !(command_args.len() >= 3 && command_args[0] == "python" && command_args[1] == "-m" && command_args[2] == "pdb") {
-        return Err("Usage: python -m pdb ... To use a different Python environment, set `python_path` in `integrations.yaml`.".to_string());
+        return Err("Usage: python -m pdb ... To use a different Python environment, use a path to python binary.".to_string());
     }
     command_args.remove(0);
 
@@ -223,7 +278,7 @@ async fn interact_with_pdb(
             return Err(format!("There is leftover output from previous commands, run pdb tool again with \"wait n_seconds\" to wait for it or \"kill\" command to kill the session.\nstdout:\n{}\nstderr:\n{}", prev_output, prev_error));
         }
     }
-    
+
     let (output_main_command, error_main_command) = send_command_and_get_output_and_error(
         pdb_session, input_command, session_hashmap_key, gcx.clone(), timeout_seconds * 1000, true).await?;
     let (output_list, error_list) = send_command_and_get_output_and_error(
@@ -243,9 +298,9 @@ async fn interact_with_pdb(
 }
 
 async fn send_command_and_get_output_and_error(
-    pdb_session: &mut PdbSession, 
-    input_command: &str, 
-    session_hashmap_key: &str, 
+    pdb_session: &mut PdbSession,
+    input_command: &str,
+    session_hashmap_key: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
     timeout_ms: u64,
     ask_for_continuation_if_timeout: bool,
@@ -311,3 +366,29 @@ fn format_error(error_title: &str, error: &str) -> String
         "".to_string()
     }
 }
+
+const PDB_INTEGRATION_SCHEMA: &str = r#"
+fields:
+  python_path:
+    f_type: string_long
+    f_desc: "Path to the Python interpreter. Leave empty to use the default 'python3' command."
+    f_placeholder: "/opt/homebrew/bin/python3"
+    f_label: "Python Interpreter Path"
+description: |
+  The PDB integration allows interaction with the Python debugger for inspecting variables and exploring program execution.
+  It provides functionality for debugging Python scripts and applications.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: []
+  deny_default: []
+smartlinks:
+  - sl_label: "Test"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 The pdb tool should be visible now. To test the tool, start a debugging session for a simple Python script, set a breakpoint, and inspect some variables.
+          If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+    sl_enable_only_with_tool: true
+"#;

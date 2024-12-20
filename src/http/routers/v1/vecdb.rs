@@ -1,11 +1,14 @@
-use crate::caps::get_custom_embedding_api_key;
-use crate::custom_error::ScratchError;
-use crate::global_context::SharedGlobalContext;
-use crate::vecdb::vdb_structs::VecdbSearch;
 use axum::response::Result;
 use axum::Extension;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
+
+use crate::caps::get_custom_embedding_api_key;
+use crate::custom_error::ScratchError;
+use crate::global_context::SharedGlobalContext;
+use crate::vecdb::vdb_structs::VecdbSearch;
+
+
 #[derive(Serialize, Deserialize, Clone)]
 struct VecDBPost {
     query: String,
@@ -16,15 +19,15 @@ const NO_VECDB: &str = "Vector db is not running, check if you have --vecdb para
 
 
 pub async fn handle_v1_vecdb_search(
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(gcx): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<VecDBPost>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let api_key = get_custom_embedding_api_key(global_context.clone()).await?;
-    let cx_locked = global_context.read().await;
+    let api_key = get_custom_embedding_api_key(gcx.clone()).await?;
+    let cx_locked = gcx.read().await;
 
     let search_res = match *cx_locked.vec_db.lock().await {
         Some(ref db) => db.vecdb_search(post.query.to_string(), post.top_n, None, &api_key).await,
@@ -53,10 +56,10 @@ pub async fn handle_v1_vecdb_search(
 
 
 pub async fn handle_v1_vecdb_status(
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(gcx): Extension<SharedGlobalContext>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let vec_db = global_context.read().await.vec_db.clone();
+    let vec_db = gcx.read().await.vec_db.clone();
     let status_str = match crate::vecdb::vdb_highlev::get_status(vec_db).await {
         Ok(Some(status)) => serde_json::to_string_pretty(&status).unwrap(),
         Ok(None) => "{\"success\": 0, \"detail\": \"turned_off\"}".to_string(),

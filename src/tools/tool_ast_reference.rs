@@ -15,6 +15,8 @@ pub struct ToolAstReference;
 
 #[async_trait]
 impl Tool for ToolAstReference {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,

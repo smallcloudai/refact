@@ -1,6 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::Hasher;
+use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -37,7 +38,7 @@ pub struct CommandLine {
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
-    #[structopt(long, help="Trust self-signed SSL certificates")]
+    #[structopt(long, help="Trust self-signed SSL certificates, when connecting to an inference server.")]
     pub insecure: bool,
 
     #[structopt(long, short="p", default_value="0", help="Bind 127.0.0.1:<port> to listen for HTTP requests, such as /v1/code-completion, /v1/chat, /v1/caps.")]
@@ -81,19 +82,19 @@ pub struct CommandLine {
     #[structopt(long, short="w", default_value="", help="Workspace folder to find all the files. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
 
-    #[structopt(long, help="create manually bring-your-own-key.yaml, integrations.yaml, customization.yaml and privacy.yaml and EXIT")]
+    #[structopt(long, help="create manually bring-your-own-key.yaml, customization.yaml and privacy.yaml and exit.")]
     pub only_create_yaml_configs: bool,
     #[structopt(long, help="Print combined customization settings from both system defaults and customization.yaml.")]
     pub print_customization: bool,
 
     #[structopt(long, help="Enable experimental features, such as new integrations.")]
     pub experimental: bool,
-    #[structopt(long, help="Pass true to tell this binary it can run more tools without confirmation.")]
+
+    #[structopt(long, help="A way to tell this binary it can run more tools without confirmation.")]
     pub inside_container: bool,
-    #[structopt(long, default_value="", help="Specify a different configuration for integrations to be used inside remote containers.")]
-    pub remote_integrations: String,
-    #[structopt(long, short="s", default_value="", help="Read a competency.yaml file that turns on specialization for a particular area, such as creating websites.")]
-    pub competency: String,
+
+    #[structopt(long, default_value="", help="Specify the integrations.yaml, this also disables the global integrations.d")]
+    pub integrations_yaml: String,
 }
 
 impl CommandLine {
@@ -139,6 +140,7 @@ pub struct GlobalContext {
     pub http_client: reqwest::Client,
     pub http_client_slowdown: Arc<Semaphore>,
     pub cache_dir: PathBuf,
+    pub config_dir: PathBuf,
     pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
     pub caps_reading_lock: Arc<AMutex<bool>>,
     pub caps_last_error: String,
@@ -166,6 +168,31 @@ pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove thi
 
 const CAPS_RELOAD_BACKOFF: u64 = 60;       // seconds
 const CAPS_BACKGROUND_RELOAD: u64 = 3600;  // seconds
+
+
+pub async fn migrate_to_config_folder(
+    config_dir: &PathBuf,
+    cache_dir: &PathBuf
+) -> io::Result<()> {
+    let mut entries = tokio::fs::read_dir(cache_dir).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let path = entry.path();
+        let file_name = path.file_name().unwrap().to_string_lossy().into_owned();
+        let file_type = entry.file_type().await?;
+        let is_yaml_cfg = file_type.is_file() && path.extension().and_then(|e| e.to_str()) == Some("yaml");
+        if is_yaml_cfg {
+            let new_path = config_dir.join(&file_name);
+            if new_path.exists() {
+                tracing::info!("cannot migrate {:?} to {:?}: destination exists", path, new_path);
+                continue;
+            }
+            tokio::fs::rename(&path, &new_path).await?;
+            tracing::info!("migrated {:?} to {:?}", path, new_path);
+        }
+    }
+
+    Ok(())
+}
 
 pub async fn try_load_caps_quickly_if_not_present(
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -300,6 +327,7 @@ pub async fn block_until_signal(
 
 pub async fn create_global_context(
     cache_dir: PathBuf,
+    config_dir: PathBuf,
 ) -> (Arc<ARwLock<GlobalContext>>, std::sync::mpsc::Receiver<String>, Arc<AtomicBool>, CommandLine) {
     let cmdline = CommandLine::from_args();
     let (ask_shutdown_sender, ask_shutdown_receiver) = std::sync::mpsc::channel::<String>();
@@ -320,6 +348,7 @@ pub async fn create_global_context(
         http_client,
         http_client_slowdown: Arc::new(Semaphore::new(2)),
         cache_dir,
+        config_dir,
         caps: None,
         caps_reading_lock: Arc::new(AMutex::<bool>::new(false)),
         caps_last_error: String::new(),

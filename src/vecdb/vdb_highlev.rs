@@ -1,8 +1,5 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::Mutex as StdMutex;
-use indexmap::IndexMap;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::task::JoinHandle;
 use async_trait::async_trait;
@@ -14,17 +11,18 @@ use crate::fetch_embedding;
 use crate::files_in_workspace::Document;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::knowledge::{lance_search, MemoriesDatabase};
+use crate::trajectories::try_to_download_trajectories;
 use crate::vecdb::vdb_cache::VecDBCache;
 use crate::vecdb::vdb_lance::VecDBHandler;
-use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, OngoingWork, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
+use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
 use crate::vecdb::vdb_thread::{vecdb_start_background_tasks, vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
 
 
 fn model_to_rejection_threshold(embedding_model: &str) -> f32 {
     match embedding_model {
-        "text-embedding-3-small" => 0.60,
+        "text-embedding-3-small" => 0.63,
         "thenlper_gte" => 0.25,
-        _ => 0.60,
+        _ => 0.63,
     }
 }
 
@@ -34,9 +32,8 @@ pub struct VecDb {
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
     vecdb_handler: Arc<AMutex<VecDBHandler>>,
     pub vectorizer_service: Arc<AMutex<FileVectorizerService>>,
-    cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
+    // cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
     constants: VecdbConstants,
-    pub mem_ongoing: Arc<StdMutex<HashMap<String, OngoingWork>>>,
 }
 
 async fn vecdb_test_request(
@@ -62,22 +59,23 @@ async fn _create_vecdb(
 ) -> Result<(), String> {
     info!("vecdb: attempting to launch");
     let api_key = get_custom_embedding_api_key(gcx.clone()).await;
-
-    let (cache_dir, cmdline) = {
-        let gcx_locked = gcx.read().await;
-        (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone())
-    };
     if let Err(err) = api_key {
         return Err(err.message);
     }
+
+    let (cache_dir, config_dir, cmdline) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.cache_dir.clone(), gcx_locked.config_dir.clone(), gcx_locked.cmdline.clone())
+    };
     let api_key = api_key.unwrap();
 
-    let base_dir: PathBuf = match cmdline.vecdb_force_path.as_str() {
-        "" => cache_dir,
-        path => PathBuf::from(path),
+    let (base_dir_cache, base_dir_config) = match cmdline.vecdb_force_path.as_str() {
+        "" => (cache_dir, config_dir),
+        path => (PathBuf::from(path), PathBuf::from(path)),
     };
     let vec_db_mb = match VecDb::init(
-        &base_dir,
+        &base_dir_cache,
+        &base_dir_config,
         cmdline.clone(),
         constants,
         &api_key
@@ -197,6 +195,7 @@ pub async fn vecdb_background_reload(
         return;
     }
 
+    let mut trajectories_updated_once: bool = false;
     let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
         let (need_reload, consts) = do_i_need_to_reload_vecdb(gcx.clone()).await;
@@ -220,6 +219,15 @@ pub async fn vecdb_background_reload(
                 }
             }
         }
+        if !trajectories_updated_once {
+            match try_to_download_trajectories(gcx.clone()).await {
+                Ok(_) => { }
+                Err(err) => {
+                    error!("trajectories download failed: {}", err);
+                }
+            };
+            trajectories_updated_once = true;
+        } 
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
 }
@@ -227,6 +235,7 @@ pub async fn vecdb_background_reload(
 impl VecDb {
     pub async fn init(
         cache_dir: &PathBuf,
+        config_dir: &PathBuf,
         cmdline: CommandLine,
         constants: VecdbConstants,
         api_key: &String
@@ -235,7 +244,7 @@ impl VecDb {
         let cache = VecDBCache::init(cache_dir, &constants.embedding_model, constants.embedding_size).await?;
         let vecdb_handler = Arc::new(AMutex::new(handler));
         let vecdb_cache = Arc::new(AMutex::new(cache));
-        let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(cache_dir, &constants, cmdline.reset_memory).await?));
+        let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(config_dir, &constants, cmdline.reset_memory).await?));
 
         let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),
@@ -249,9 +258,7 @@ impl VecDb {
             vecdb_emb_client: Arc::new(AMutex::new(reqwest::Client::new())),
             vecdb_handler,
             vectorizer_service,
-            cmdline: cmdline.clone(),
             constants: constants.clone(),
-            mem_ongoing: Arc::new(StdMutex::new(HashMap::<String, OngoingWork>::new())),
         })
     }
 
@@ -281,6 +288,7 @@ pub async fn memories_add(
     m_goal: &str,
     m_project: &str,
     m_payload: &str,    // TODO: upgrade to serde_json::Value
+    m_origin: &str
 ) -> Result<String, String> {
     let (memdb, vectorizer_service) = {
         let vec_db_guard = vec_db.lock().await;
@@ -290,14 +298,13 @@ pub async fn memories_add(
 
     let memid = {
         let mut memdb_locked = memdb.lock().await;
-        let x = memdb_locked.permdb_add(m_type, m_goal, m_project, m_payload)?;
+        let x = memdb_locked.permdb_add(m_type, m_goal, m_project, m_payload, m_origin)?;
         memdb_locked.dirty_memids.push(x.clone());
         x
     };
     vectorizer_enqueue_dirty_memory(vectorizer_service).await;  // sets queue_additions inside
     Ok(memid)
 }
-
 
 pub async fn memories_block_until_vectorized_from_vectorizer(
     vectorizer_service: Arc<AMutex<FileVectorizerService>>,
@@ -400,8 +407,8 @@ pub async fn memories_erase(
         vec_db.memdb.clone()
     };
 
-    let memdb_locked = memdb.lock().await;
-    let erased_cnt = memdb_locked.permdb_erase(memid)?;
+    let mut memdb_locked = memdb.lock().await;
+    let erased_cnt = memdb_locked.permdb_erase(memid).await?;
     Ok(erased_cnt)
 }
 
@@ -423,26 +430,31 @@ pub async fn memories_update(
 }
 
 pub async fn memories_search(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
     query: &String,
     top_n: usize,
 ) -> Result<MemoSearchResult, String> {
+    let vec_db = gcx.read().await.vec_db.clone();
     fn calculate_score(distance: f32, _times_used: i32) -> f32 {
         distance
         // distance - (times_used as f32) * 0.01
     }
 
     let t0 = std::time::Instant::now();
-    let (memdb, vecdb_emb_client, constants, cmdline) = {
+    let (memdb, vecdb_emb_client, constants) = {
         let vec_db_guard = vec_db.lock().await;
         let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
         (
             vec_db.memdb.clone(),
             vec_db.vecdb_emb_client.clone(),
             vec_db.constants.clone(),
-            vec_db.cmdline.clone(),
         )
     };
+
+    let api_key = get_custom_embedding_api_key(gcx.clone()).await;
+    if let Err(err) = api_key {
+        return Err(err.message);
+    }
 
     let embedding = fetch_embedding::get_embedding_with_retry(
         vecdb_emb_client,
@@ -450,7 +462,7 @@ pub async fn memories_search(
         &constants.embedding_model,
         &constants.endpoint_embeddings_template,
         vec![query.clone()],
-        &cmdline.api_key,
+        &api_key.unwrap(),
         5,
     ).await?;
     if embedding.is_empty() {
@@ -471,37 +483,6 @@ pub async fn memories_search(
     Ok(MemoSearchResult { query_text: query.clone(), results })
 }
 
-pub async fn ongoing_update_or_create(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    goal: String,
-    ongoing_progress: IndexMap<String, serde_json::Value>,
-    ongoing_action_new_sequence: IndexMap<String, serde_json::Value>,
-    ongoing_output: IndexMap<String, IndexMap<String, serde_json::Value>>,
-) -> Result<(), String> {
-    let ongoing_map_arc = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.mem_ongoing.clone()
-    };
-    let mut ongoing_map = ongoing_map_arc.lock().unwrap();
-    if let Some(ongoing) = ongoing_map.get_mut(&goal) {
-        ongoing.ongoing_progress = ongoing_progress;
-        ongoing.ongoing_action_sequences.push(ongoing_action_new_sequence);
-        ongoing.ongoing_output.extend(ongoing_output);
-        ongoing.ongoing_attempt_n += 1;
-    } else {
-        let new_ongoing = OngoingWork {
-            ongoing_goal: goal.clone(),
-            ongoing_attempt_n: 1,
-            ongoing_progress,
-            ongoing_action_sequences: vec![ongoing_action_new_sequence],
-            ongoing_output,
-        };
-        ongoing_map.insert(goal, new_ongoing);
-    }
-    Ok(())
-}
-
 // pub async fn ongoing_find(
 //     vec_db: Arc<AMutex<Option<VecDb>>>,
 //     goal: String,
@@ -519,46 +500,46 @@ pub async fn ongoing_update_or_create(
 //     }
 // }
 
-pub async fn ongoing_dump(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-) -> Result<String, String> {
-    let ongoing_map_arc = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.mem_ongoing.clone()
-    };
-    let ongoing_map = ongoing_map_arc.lock().unwrap();
+// pub async fn ongoing_dump(
+//     vec_db: Arc<AMutex<Option<VecDb>>>,
+// ) -> Result<String, String> {
+//     let ongoing_map_arc = {
+//         let vec_db_guard = vec_db.lock().await;
+//         let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
+//         vec_db.mem_ongoing.clone()
+//     };
+//     let ongoing_map = ongoing_map_arc.lock().unwrap();
 
-    let mut output = String::new();
-    for (_, ongoing) in ongoing_map.iter() {
-        let mut ordered_map = IndexMap::new();
-        ordered_map.insert("PROGRESS".to_string(), serde_json::Value::Object(ongoing.ongoing_progress.clone().into_iter().collect()));
-        let action_sequences: Vec<serde_json::Value> = ongoing.ongoing_action_sequences
-            .iter()
-            .map(|map| serde_json::Value::Object(map.clone().into_iter().collect()))
-            .collect();
-        ordered_map.insert("TRIED_ACTION_SEQUENCES".to_string(), serde_json::Value::Array(action_sequences));
-        let output_value: serde_json::Value = serde_json::Value::Object(
-            ongoing.ongoing_output
-                .clone()
-                .into_iter()
-                .map(|(k, v)| (k, serde_json::Value::Object(v.into_iter().collect())))
-                .collect()
-        );
-        ordered_map.insert("OUTPUT".to_string(), output_value);
-        output.push_str(&format!(
-            "💿 Ongoing session with goal: {}\nAttempt number: {}\nSummary of progress:\n\n{}\n\n",
-            ongoing.ongoing_goal,
-            ongoing.ongoing_attempt_n,
-            serde_json::to_string_pretty(&ordered_map).unwrap()
-        ));
-    }
-    if output.is_empty() {
-        output = "No ongoing work found.\n".to_string();
-    }
+//     let mut output = String::new();
+//     for (_, ongoing) in ongoing_map.iter() {
+//         let mut ordered_map = IndexMap::new();
+//         ordered_map.insert("PROGRESS".to_string(), serde_json::Value::Object(ongoing.ongoing_progress.clone().into_iter().collect()));
+//         let action_sequences: Vec<serde_json::Value> = ongoing.ongoing_action_sequences
+//             .iter()
+//             .map(|map| serde_json::Value::Object(map.clone().into_iter().collect()))
+//             .collect();
+//         ordered_map.insert("TRIED_ACTION_SEQUENCES".to_string(), serde_json::Value::Array(action_sequences));
+//         let output_value: serde_json::Value = serde_json::Value::Object(
+//             ongoing.ongoing_output
+//                 .clone()
+//                 .into_iter()
+//                 .map(|(k, v)| (k, serde_json::Value::Object(v.into_iter().collect())))
+//                 .collect()
+//         );
+//         ordered_map.insert("OUTPUT".to_string(), output_value);
+//         output.push_str(&format!(
+//             "💿 Ongoing session with goal: {}\nAttempt number: {}\nSummary of progress:\n\n{}\n\n",
+//             ongoing.ongoing_goal,
+//             ongoing.ongoing_attempt_n,
+//             serde_json::to_string_pretty(&ordered_map).unwrap()
+//         ));
+//     }
+//     if output.is_empty() {
+//         output = "No ongoing work found.\n".to_string();
+//     }
 
-    Ok(output)
-}
+//     Ok(output)
+// }
 
 #[async_trait]
 impl VecdbSearch for VecDb {

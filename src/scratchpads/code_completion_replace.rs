@@ -27,8 +27,8 @@ use crate::ast::ast_structs::AstDefinition;
 use crate::scratchpads::completon_rag::retrieve_ast_based_extra_context;
 
 const DEBUG: bool = false;
-const SYSTEM_PROMPT: &str = r#"You are given a code file, <BLOCK_OF_CODE> from that file and an extra context from other files. 
-An unfinished line in the <BLOCK_OF_CODE> is marked with the <CURSOR>. 
+const SYSTEM_PROMPT: &str = r#"You are given a code file, <BLOCK_OF_CODE> from that file and an extra context from other files.
+An unfinished line in the <BLOCK_OF_CODE> is marked with the <CURSOR>.
 Your task is to complete the code after the <CURSOR> by rewriting the <BLOCK_OF_CODE> using the provided context and make the <REWRITTEN_BLOCK_OF_CODE>.
 Ensure the <REWRITTEN_BLOCK_OF_CODE> introduces all necessary updates to the <BLOCK_OF_CODE> such as code completion, function definitions, or comments.
 Keep identation symbols unchanged. Do not output multiple <REWRITTEN_BLOCK_OF_CODE> blocks and make sure changes are made only after the <CURSOR>"#;
@@ -286,7 +286,7 @@ fn skip_similar_rows(pred_text: &Vec<String>, text_to_remove: &Vec<String>) -> V
         ];
         simple_tokens.contains(&s.as_str())
     }
-    
+
     let mut pred_text_trimmed = pred_text.clone();
     for to_remove_row in text_to_remove.iter() {
         if pred_text_trimmed.is_empty() {
@@ -295,7 +295,7 @@ fn skip_similar_rows(pred_text: &Vec<String>, text_to_remove: &Vec<String>) -> V
         // if is_too_simple_to_compare(to_remove_row) {
         //     continue
         // }
-        
+
         for idx in 0..(if to_remove_row.trim().is_empty() {1} else {pred_text_trimmed.len()}) {
             if *to_remove_row == pred_text_trimmed[idx] {
                 pred_text_trimmed = pred_text_trimmed[idx + 1..].to_vec();
@@ -378,7 +378,7 @@ fn unfence_the_last_code_block(text: &String) -> Option<String> {
     if let Some(block) = current_block {
         blocks.push(block);
     }
-    
+
     blocks.iter().last().cloned()
 }
 
@@ -396,7 +396,7 @@ fn process_n_choices(
     let before_lines_str = subblock_ref.before_lines_str();
     let cursor_line = subblock_ref.cursor_line.trim_end().to_string();
     let cursor_line_is_empty = cursor_line.replace(" ", "").replace("\t", "").is_empty();
-    
+
     let json_choices = choices
         .iter()
         .enumerate()
@@ -415,7 +415,7 @@ fn process_n_choices(
             let mut cc = x.clone();
             if let Some(last_fenced_block) = unfence_the_last_code_block(&cc) {
                 cc = last_fenced_block;
-                
+
                 // First, we're trying to locate cursor position and remove everything above it
                 let pred_lines = cc.lines().map(|x| x.to_string()).collect::<Vec<_>>();
                 let cursor_idx_mb = if !cursor_line_is_empty {
@@ -427,7 +427,7 @@ fn process_n_choices(
                         .collect::<Vec<_>>();
                     if cursor_matches.len() != 1 { None } else { cursor_matches.get(0).copied() }
                 } else { None };
-                
+
                 if let Some(idx) = cursor_idx_mb {
                     cc = pred_lines[idx..].join("\n")
                 } else {
@@ -600,7 +600,6 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         patch: &Value,
         _exploration_tools: bool,
         _agentic_tools: bool,
-        _should_execute_remotely: bool,
     ) -> Result<(), String> {
         self.token_bos = patch
             .get("token_bos")
@@ -806,20 +805,12 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
             }
         ))
     }
-    
+
     fn response_streaming(
         &mut self,
         _delta: String,
         _finish_reason: FinishReason,
     ) -> Result<(Value, FinishReason), String> {
-        Err("not implemented".to_string())
-    }
-
-    fn response_message_n_choices(
-        &mut self,
-        _choices: Vec<String>,
-        _token_limit_hit: Vec<FinishReason>,
-    ) -> Result<Value, String> {
         Err("not implemented".to_string())
     }
 
@@ -884,7 +875,6 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
         patch: &Value,
         _exploration_tools: bool,
         _agentic_tools: bool,
-        _should_execute_remotely: bool,
     ) -> Result<(), String> {
         self.t.context_format = patch
             .get("context_format")
@@ -1023,13 +1013,13 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
         }))
         .unwrap();
         let prompt = format!("PASSTHROUGH {json_messages}").to_string();
-        
+
         let completion_ms = completion_t0.elapsed().as_millis() as i32;
         self.context_used["fim_ms"] = Value::from(completion_ms);
         self.context_used["n_ctx".to_string()] = Value::from(n_ctx as i64);
         self.context_used["rag_tokens_limit".to_string()] = Value::from(rag_tokens_n as i64);
         info!(" -- /post completion {}ms-- ", completion_ms);
-        
+
         if DEBUG {
             info!(
                 "chat re-encode whole prompt again gives {} tokens",
@@ -1038,7 +1028,7 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
         }
         Ok(prompt)
     }
-    
+
     fn response_n_choices(
         &mut self,
         _choices: Vec<String>,

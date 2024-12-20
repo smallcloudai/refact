@@ -30,7 +30,7 @@ async fn create_chat_post_and_scratchpad(
     tools: Option<Vec<Value>>,
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
-    should_execute_remotely: bool,
+    _should_execute_remotely: bool,
 ) -> Result<(ChatPost, Box<dyn ScratchpadAbstract>), String> {
     let caps = try_load_caps_quickly_if_not_present(
         global_context.clone(), 0,
@@ -60,8 +60,7 @@ async fn create_chat_post_and_scratchpad(
         only_deterministic_messages,
         subchat_tool_parameters: tconfig.subchat_tool_parameters.clone(),
         postprocess_parameters: PostprocessSettings::new(),
-        chat_id: "".to_string(),
-        style: None,
+        ..Default::default()
     };
 
     let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, _supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
@@ -92,7 +91,6 @@ async fn create_chat_post_and_scratchpad(
         false,
         supports_tools,
         supports_clicks,
-        should_execute_remotely,
     ).await?;
 
     Ok((chat_post, scratchpad))

@@ -1,20 +1,18 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-
-use async_trait::async_trait;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
-use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
+use async_trait::async_trait;
 use tracing::{error, info};
+
 use crate::at_commands::execute_at::run_at_commands;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost, SamplingParameters};
-use crate::global_context::GlobalContext;
+use crate::call_validation::{ChatMessage, ChatPost, SamplingParameters};
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
-use crate::scratchpads::chat_utils_prompts::{get_default_system_prompt, get_default_system_prompt_from_remote, system_prompt_add_workspace_info};
+use crate::scratchpads::chat_utils_prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
 use crate::scratchpads::passthrough_convert_messages::convert_messages_to_openai_format;
 use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered};
 use crate::tools::tools_execute::{run_tools_locally, run_tools_remotely};
@@ -56,10 +54,8 @@ pub struct ChatPassthrough {
     pub t: HasTokenizerAndEot,
     pub post: ChatPost,
     pub messages: Vec<ChatMessage>,
-    pub default_system_message: String,
     pub has_rag_results: HasRagResults,
     pub delta_sender: DeltaSender,
-    pub global_context: Arc<ARwLock<GlobalContext>>,
     pub allow_at: bool,
     pub supports_tools: bool,
     pub supports_clicks: bool,
@@ -70,7 +66,6 @@ impl ChatPassthrough {
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: &ChatPost,
         messages: &Vec<ChatMessage>,
-        global_context: Arc<ARwLock<GlobalContext>>,
         allow_at: bool,
         supports_tools: bool,
         supports_clicks: bool,
@@ -79,10 +74,8 @@ impl ChatPassthrough {
             t: HasTokenizerAndEot::new(tokenizer),
             post: post.clone(),
             messages: messages.clone(),
-            default_system_message: "".to_string(),
             has_rag_results: HasRagResults::new(),
             delta_sender: DeltaSender::new(),
-            global_context,
             allow_at,
             supports_tools,
             supports_clicks,
@@ -95,15 +88,9 @@ impl ScratchpadAbstract for ChatPassthrough {
     async fn apply_model_adaptation_patch(
         &mut self,
         _patch: &Value,
-        exploration_tools: bool,
-        agentic_tools: bool,
-        should_execute_remotely: bool,
+        _exploration_tools: bool,
+        _agentic_tools: bool,
     ) -> Result<(), String> {
-        self.default_system_message = if should_execute_remotely {
-            get_default_system_prompt_from_remote(self.global_context.clone(), exploration_tools, agentic_tools, &self.post.chat_id).await?
-        } else {
-            get_default_system_prompt(self.global_context.clone(), exploration_tools, agentic_tools).await
-        };
         Ok(())
     }
 
@@ -119,9 +106,9 @@ impl ScratchpadAbstract for ChatPassthrough {
         let style = self.post.style.clone();
         let at_tools = tools_merged_and_filtered(gcx.clone(), self.supports_clicks).await?;
 
-        // TODO? Maybe we should execute at commands remotely.
+        let messages = prepend_the_right_system_prompt_and_maybe_more_initial_messages(gcx.clone(), self.messages.clone(), &self.post, &mut self.has_rag_results).await;
         let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at && !should_execute_remotely {
-            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
+            run_at_commands(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await
         } else {
             (self.messages.clone(), self.messages.len(), false)
         };
@@ -132,21 +119,10 @@ impl ScratchpadAbstract for ChatPassthrough {
                 run_tools_locally(ccx.clone(), at_tools.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             }
         };
-        let mut limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx, &self.default_system_message).unwrap_or_else(|e| {
+        let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
         });
-        if let Some(first_msg) = limited_msgs.first_mut() {
-            if first_msg.role == "system" {
-                first_msg.content = ChatContent::SimpleText(system_prompt_add_workspace_info(gcx.clone(), &first_msg.content.content_text_only()).await);
-            }
-            if self.post.model == "o1-mini" && first_msg.role == "system" {
-                limited_msgs.remove(0);
-            }
-        }
-        if DEBUG {
-            info!("chat passthrough {} messages -> {} messages after applying at-commands and limits, possibly adding the default system message", messages.len(), limited_msgs.len());
-        }
 
         let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
 
@@ -219,14 +195,6 @@ impl ScratchpadAbstract for ChatPassthrough {
         Err("not implemented".to_string())
     }
 
-    fn response_message_n_choices(
-        &mut self,
-        _choices: Vec<String>,
-        _finish_reasons: Vec<FinishReason>,
-    ) -> Result<Value, String> {
-        Err("not implemented".to_string())
-    }
-
     fn response_message_streaming(
         &mut self,
         json: &Value,
@@ -236,6 +204,23 @@ impl ScratchpadAbstract for ChatPassthrough {
     }
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
+        // let mut deterministic: Vec<Value> = vec![];
+        // let mut cursor = 0;
+        // while cursor < self.messages.len() {
+
+        // }
+
+
+
+        // let have_system_prompt_in_post = !self.post.messages.is_empty() && self.post.messages[0].get("role") == Some(&serde_json::Value::String("system".to_string()));
+        // let have_system_prompt_in_messages = !self.messages.is_empty() && self.messages[0].role == "system";
+        // if !have_system_prompt_in_post && have_system_prompt_in_messages && self.post.messages.len() == 1 {  // only the user message present in request
+
+        //     self.has_rag_results.in_json.insert(0, json!(self.messages[0]));
+
+        // }
+        // deterministic.extend(self.has_rag_results.response_streaming()?);
+        // Ok(deterministic)
         self.has_rag_results.response_streaming()
     }
 

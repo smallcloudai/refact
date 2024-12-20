@@ -1,21 +1,54 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use tracing::info;
+use serde_json::Value;
 
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost};
+use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::global_context::SharedGlobalContext;
+use crate::global_context::{GlobalContext, SharedGlobalContext};
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
-use crate::integrations::docker::integr_docker::docker_tool_load;
-use crate::{caps, scratchpads};
 
+
+pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatMode) -> Vec<Value> {
+    match chat_mode {
+        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {
+            current_tools
+        },
+        ChatMode::CONFIGURE => {
+            let blacklist = vec!["tree", "patch", "locate", "knowledge", "search"];
+            current_tools
+                .into_iter()
+                .filter(|x| {
+                    x.get("function")
+                        .and_then(|x| x.get("name"))
+                        .and_then(|tool_name| tool_name.as_str())
+                        .map(|tool_name_str| !blacklist.contains(&tool_name_str))
+                        .unwrap_or(true)
+                })
+                .collect()
+        },
+        ChatMode::PROJECT_SUMMARY => {
+            let whitelist = vec!["cat", "tree", "bash"];
+            current_tools
+                .into_iter()
+                .filter(|x| {
+                    x.get("function")
+                        .and_then(|x| x.get("name"))
+                        .and_then(|tool_name| tool_name.as_str())
+                        .map(|tool_name_str| whitelist.contains(&tool_name_str))
+                        .unwrap_or(false)
+                })
+                .collect()
+        },
+    }
+}
 
 pub const CHAT_TOP_N: usize = 7;
 
@@ -25,12 +58,12 @@ pub async fn lookup_chat_scratchpad(
 ) -> Result<(String, String, serde_json::Value, usize, bool, bool, bool), String> {
     let caps_locked = caps.read().unwrap();
     let (model_name, recommended_model_record) =
-        caps::which_model_to_use(
+        crate::caps::which_model_to_use(
             &caps_locked.code_chat_models,
             &chat_post.model,
             &caps_locked.code_chat_default_model,
         )?;
-    let (sname, patch) = caps::which_scratchpad_to_use(
+    let (sname, patch) = crate::caps::which_scratchpad_to_use(
         &recommended_model_record.supports_scratchpads,
         &chat_post.scratchpad,
         &recommended_model_record.default_scratchpad,
@@ -48,18 +81,18 @@ pub async fn lookup_chat_scratchpad(
 
 pub async fn handle_v1_chat_completions(
     // standard openai-style handler
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(gcx): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    chat(global_context, body_bytes, false).await
+    _chat(gcx, &body_bytes, false).await
 }
 
 pub async fn handle_v1_chat(
     // less-standard openai-style handler that sends role="context_*" messages first, rewrites the user message
-    Extension(global_context): Extension<SharedGlobalContext>,
+    Extension(gcx): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    chat(global_context, body_bytes, true).await
+    _chat(gcx, &body_bytes, true).await
 }
 
 pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Result<Vec<ChatMessage>, ScratchError> {
@@ -73,27 +106,42 @@ pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Resu
     Ok(messages)
 }
 
-async fn chat(
-    global_context: SharedGlobalContext,
-    body_bytes: hyper::body::Bytes,
-    allow_at: bool,
+async fn _chat(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    body_bytes: &hyper::body::Bytes,
+    allow_at: bool
 ) -> Result<Response<Body>, ScratchError> {
-    let mut chat_post = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
-        info!("chat handler cannot parse input:\n{:?}", body_bytes);
+    let mut chat_post: ChatPost = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
+        tracing::warn!("chat handler cannot parse input:\n{:?}", body_bytes);
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
-    
-    // converts tools into openai style
-    if let Some(tools) = &mut chat_post.tools {
-        for tool in tools {
-            if let Some(function) = tool.get_mut("function") {
-                function.as_object_mut().unwrap().remove("agentic");
+
+    tracing::info!("chat_mode {:?}\n", chat_post.meta.chat_mode);
+
+    if chat_post.meta.chat_mode == ChatMode::NO_TOOLS {
+        chat_post.tools = None;
+    } else {
+        if let Some(tools) = &mut chat_post.tools {
+            for tool in &mut *tools {
+                if let Some(function) = tool.get_mut("function") {
+                    function.as_object_mut().unwrap().remove("agentic");
+                }
             }
+            chat_post.tools = Some(available_tools_by_chat_mode(tools.clone(), &chat_post.meta.chat_mode));
+        } else {
+            // TODO at some point, get rid of /tools call on client, make so we can have chat_post.tools==None and just fill the tools here
+            chat_post.tools = Some(available_tools_by_chat_mode(vec![], &chat_post.meta.chat_mode));
         }
+        tracing::info!("tools [{}]", chat_post.tools.as_ref().map_or("".to_string(), |tools| {
+            tools.iter()
+                .filter_map(|tool| tool.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()))
+                .collect::<Vec<&str>>()
+                .join(", ")
+        }));
     }
 
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
     let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
@@ -154,21 +202,19 @@ async fn chat(
         }
     }
 
-    let docker_tool_maybe = docker_tool_load(global_context.clone()).await
-        .map_err(|e| info!("No docker tool available: {e}")).ok().map(Arc::new);
-    let run_chat_threads_inside_container = docker_tool_maybe.clone()
-        .map(|docker_tool| docker_tool.integration_docker.run_chat_threads_inside_container)
-        .unwrap_or(false);
-    let should_execute_remotely = run_chat_threads_inside_container && !global_context.read().await.cmdline.inside_container;
-
+    let should_execute_remotely = chat_post.meta.chat_remote && !gcx.read().await.cmdline.inside_container;
     if should_execute_remotely {
-        docker_container_check_status_or_start(global_context.clone(), docker_tool_maybe.clone(), &chat_post.chat_id).await
+        docker_container_check_status_or_start(gcx.clone(), &chat_post.meta.chat_id).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     }
 
+
+    // SYSTEM PROMPT WAS HERE
+
+
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
-    let mut scratchpad = scratchpads::create_chat_scratchpad(
-        global_context.clone(),
+    let mut scratchpad = crate::scratchpads::create_chat_scratchpad(
+        gcx.clone(),
         caps,
         model_name.clone(),
         &mut chat_post,
@@ -178,13 +224,12 @@ async fn chat(
         allow_at,
         supports_tools,
         supports_clicks,
-        should_execute_remotely,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
     // if !chat_post.chat_id.is_empty() {
     //     let cache_dir = {
-    //         let gcx_locked = global_context.read().await;
+    //         let gcx_locked = gcx.read().await;
     //         gcx_locked.cache_dir.clone()
     //     };
     //     let notes_dir_path = cache_dir.join("chats");
@@ -196,12 +241,12 @@ async fn chat(
     //     let _ = std::fs::write(&notes_path, serde_json::to_string_pretty(&chat_post.messages).unwrap());
     // }
     let mut ccx = AtCommandsContext::new(
-        global_context.clone(),
+        gcx.clone(),
         n_ctx,
         CHAT_TOP_N,
         false,
         messages.clone(),
-        chat_post.chat_id.clone(),
+        chat_post.meta.chat_id.clone(),
         should_execute_remotely,
     ).await;
     ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();

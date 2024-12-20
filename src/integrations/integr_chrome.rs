@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::future::Future;
 use std::time::Duration;
@@ -15,52 +15,78 @@ use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::multimodality::MultimodalElement;
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 
-use reqwest::Client;
+use tokio::time::sleep;
+use chrono::DateTime;
 use std::path::PathBuf;
-use headless_chrome::{Browser, LaunchOptions, Tab as HeadlessTab};
+use headless_chrome::{Browser, Element, LaunchOptions, Tab as HeadlessTab};
 use headless_chrome::browser::tab::point::Point;
+use headless_chrome::browser::tab::ModifierKey;
 use headless_chrome::protocol::cdp::Page;
 use headless_chrome::protocol::cdp::Emulation;
 use headless_chrome::protocol::cdp::types::Event;
+use headless_chrome::protocol::cdp::DOM::Enable as DOMEnable;
+use headless_chrome::protocol::cdp::CSS::Enable as CSSEnable;
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
-use std::fmt;
-use tokio::time::sleep;
-use chrono::DateTime;
 
 use base64::Engine;
 use std::io::Cursor;
+use headless_chrome::protocol::cdp::Runtime::RemoteObject;
 use image::imageops::FilterType;
 use image::{ImageFormat, ImageReader};
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct IntegrationChrome {
-    pub chrome_path: Option<String>,
-    pub window_size: Option<Vec<u32>>,
-    pub idle_browser_timeout: Option<u32>,
-    #[serde(default = "default_headless")]
-    pub headless: bool,
+
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+pub struct SettingsChrome {
+    pub chrome_path: String,
+    #[serde(default)]
+    pub idle_browser_timeout: String,
+    #[serde(default)]
+    pub headless: String,
+    // desktop
+    #[serde(default)]
+    pub window_width: String,
+    #[serde(default)]
+    pub window_height: String,
+    #[serde(default)]
+    pub scale_factor: String,
+    #[serde(default)]
+    // mobile
+    pub mobile_window_width: String,
+    #[serde(default)]
+    pub mobile_window_height: String,
+    #[serde(default)]
+    pub mobile_scale_factor: String,
+    // tablet
+    #[serde(default)]
+    pub tablet_window_width: String,
+    #[serde(default)]
+    pub tablet_window_height: String,
+    #[serde(default)]
+    pub tablet_scale_factor: String,
 }
 
-fn default_headless() -> bool { true }
-
+#[derive(Default)]
 pub struct ToolChrome {
-    integration_chrome: IntegrationChrome,
-    supports_clicks: bool,
+    pub common: IntegrationCommon,
+    pub settings_chrome: SettingsChrome,
+    pub supports_clicks: bool,
 }
 
 #[derive(Clone, Debug)]
 enum DeviceType {
     DESKTOP,
     MOBILE,
+    TABLET,
 }
 
-impl fmt::Display for DeviceType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl std::fmt::Display for DeviceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             DeviceType::DESKTOP => write!(f, "desktop"),
             DeviceType::MOBILE => write!(f, "mobile"),
+            DeviceType::TABLET => write!(f, "tablet"),
         }
     }
 }
@@ -120,21 +146,53 @@ impl IntegrationSession for ChromeSession
     }
 }
 
-impl ToolChrome {
-    pub fn new_from_yaml(v: &serde_yaml::Value, supports_clicks: bool,) -> Result<Self, String> {
-        let integration_chrome = serde_yaml::from_value::<IntegrationChrome>(v.clone()).map_err(|e| {
-            let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-            format!("{}{}", e.to_string(), location)
-        })?;
-        Ok(Self {
-            integration_chrome,
-            supports_clicks,
-        })
+impl IntegrationTrait for ToolChrome {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+        match serde_json::from_value::<SettingsChrome>(value.clone()) {
+            Ok(settings_chrome) => self.settings_chrome = settings_chrome,
+            Err(e) => {
+                tracing::error!("Failed to apply settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
+        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
+            Ok(x) => self.common = x,
+            Err(e) => {
+                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
+                return Err(e.to_string());
+            }
+        }
+        Ok(())
+    }
+
+    fn integr_settings_as_json(&self) -> Value {
+        serde_json::to_value(&self.settings_chrome).unwrap()
+    }
+
+    fn integr_common(&self) -> IntegrationCommon {
+        self.common.clone()
+    }
+
+    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
+        Box::new(ToolChrome {
+            common: self.common.clone(),
+            settings_chrome: self.settings_chrome.clone(),
+            supports_clicks: false,
+        }) as Box<dyn Tool + Send>
+    }
+
+    fn integr_schema(&self) -> &str
+    {
+        CHROME_INTEGRATION_SCHEMA
     }
 }
 
 #[async_trait]
 impl Tool for ToolChrome {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -153,7 +211,7 @@ impl Tool for ToolChrome {
         };
 
         let session_hashmap_key = get_session_hashmap_key("chrome", &chat_id);
-        let mut tool_log = setup_chrome_session(gcx.clone(), &self.integration_chrome, &session_hashmap_key).await?;
+        let mut tool_log = setup_chrome_session(gcx.clone(), &self.settings_chrome, &session_hashmap_key).await?;
 
         let command_session = {
             let gcx_locked = gcx.read().await;
@@ -167,17 +225,17 @@ impl Tool for ToolChrome {
             let parsed_command = match parse_single_command(&command.to_string()) {
                 Ok(command) => command,
                 Err(e) => {
-                    tool_log.push(format!("failed to parse command `{}`: {}.", command, e));
+                    tool_log.push(format!("Failed to parse command `{}`: {}.", command, e));
                     break
                 }
             };
-            match chrome_command_exec(&parsed_command, command_session.clone()).await {
+            match chrome_command_exec(&parsed_command, command_session.clone(), &self.settings_chrome).await {
                 Ok((execute_log, command_multimodal_els)) => {
                     tool_log.extend(execute_log);
                     mutlimodal_els.extend(command_multimodal_els);
                 },
                 Err(e) => {
-                    tool_log.push(format!("failed to execute command `{}`: {}.", command, e));
+                    tool_log.push(format!("Failed to execute command `{}`: {}.", command, e));
                     break
                 }
             };
@@ -202,28 +260,34 @@ impl Tool for ToolChrome {
 
     fn tool_description(&self) -> ToolDesc {
         let mut supported_commands = vec![
-            "open_tab <desktop|mobile> <tab_id>",
-            "navigate_to <uri> <tab_id>",
+            "open_tab <tab_id> <desktop|mobile|tablet>",
+            "navigate_to <tab_id> <uri>",
+            "scroll_to <tab_id> <element_selector>",
             "screenshot <tab_id>",
-            // "html <tab_id>",
+            "html <tab_id> <element_selector>",
             "reload <tab_id>",
-            "press_key_at <enter|esc|pageup|pagedown|home|end> <tab_id>",
-            "type_text_at <text> <tab_id>",
+            "press_key <tab_id> <KeyName> [<Alt|Ctrl|Meta|Shift>,...]",
+            "type_text_at <tab_id> <text>",
             "tab_log <tab_id>",
+            "eval <tab_id> <expression>",
+            "styles <tab_id> <element_selector> <property_filter>",
+            "wait_for <tab_id> <1-5>",
+            "click_at_element <tab_id> <element_selector>",
         ];
         if self.supports_clicks {
             supported_commands.extend(vec![
-                "click_at <x> <y> <tab_id>",
+                "click_at_point <tab_id> <x> <y>",
             ]);
         }
         let description = format!(
             "One or several commands separated by newline. \
              The <tab_id> is an integer, for example 10, for you to identify the tab later. \
+             Most of web pages are dynamic. If you see that it's still loading try again with wait_for command. \
              Supported commands:\n{}", supported_commands.join("\n"));
         ToolDesc {
             name: "chrome".to_string(),
             agentic: true,
-            experimental: true,
+            experimental: false,
             description: "A real web browser with graphical interface.".to_string(),
             parameters: vec![ToolParam {
                 name: "commands".to_string(),
@@ -233,11 +297,16 @@ impl Tool for ToolChrome {
             parameters_required: vec!["commands".to_string()],
         }
     }
+
+
+    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
+    }
 }
 
 async fn setup_chrome_session(
     gcx: Arc<ARwLock<GlobalContext>>,
-    args: &IntegrationChrome,
+    args: &SettingsChrome,
     session_hashmap_key: &String,
 ) -> Result<Vec<String>, String> {
     let mut setup_log = vec![];
@@ -258,35 +327,39 @@ async fn setup_chrome_session(
         }
     }
 
-    let window_size = match args.window_size.as_deref() {
-        Some([width, height]) => Some((*width, *height)),
-        Some([size]) => Some((*size, *size)),
+    let window_size = match (args.window_width.parse::<u32>(), args.window_height.parse::<u32>()) {
+        (Ok(width), Ok(height)) => Some((width, height)),
         _ => None,
     };
 
     let idle_browser_timeout = args.idle_browser_timeout
-        .map(|timeout| Duration::from_secs(timeout as u64))
+        .parse::<u64>()
+        .map(Duration::from_secs)
         .unwrap_or(Duration::from_secs(600));
 
-    let browser = if args.chrome_path.clone().unwrap_or_default().starts_with("ws://") {
-        let debug_ws_url: String = args.chrome_path.clone().unwrap();
+    let browser = if args.chrome_path.clone().starts_with("ws://") {
+        let debug_ws_url: String = args.chrome_path.clone();
         setup_log.push("Connect to existing web socket.".to_string());
         Browser::connect_with_timeout(debug_ws_url, idle_browser_timeout).map_err(|e| e.to_string())
     } else {
-        let path = args.chrome_path.clone().map(PathBuf::from);
+        let mut path: Option<PathBuf> = None;
+        if !args.chrome_path.is_empty() {
+            path = Some(PathBuf::from(args.chrome_path.clone()));
+        }
         let launch_options = LaunchOptions {
             path,
             window_size,
             idle_browser_timeout,
-            headless: args.headless,
+            headless: args.headless.parse::<bool>().unwrap_or(true),
             ..Default::default()
         };
-        setup_log.push("Start new chrome process.".to_string());
+
+        setup_log.push("Started new chrome process.".to_string());
         Browser::new(launch_options).map_err(|e| e.to_string())
     }?;
 
     // NOTE: we're not register any tabs because they can be used by another chat
-    setup_log.push("No opened tabs.".to_string());
+    setup_log.push("No opened tabs at this moment.".to_string());
 
     let command_session: Box<dyn IntegrationSession> = Box::new(ChromeSession { browser, tabs: HashMap::new() });
     gcx.write().await.integration_sessions.insert(
@@ -332,10 +405,118 @@ async fn screenshot_jpeg_base64(
     MultimodalElement::new("image/jpeg".to_string(), base64::prelude::BASE64_STANDARD.encode(data))
 }
 
+fn get_inner_html(
+    element: &Element,
+) -> Result<String, String> {
+    let func = r"
+    function() {
+        function wrap_html(text, depth) {
+            return '  '.repeat(depth) + text + '\n';
+        }
+
+        function budget_html(el, max_depth, symbols_budget) {
+            let innerHtml = '';
+            let elements = [el]
+            for (let depth = 0; depth < max_depth; depth++) {
+                let expanded_html = '';
+                let expanded_elements = [];
+                elements.forEach(el => {
+                    if (typeof el === 'string') {
+                        expanded_html += el;
+                        expanded_elements.push(el);
+                    } else {
+                        if (el.innerHTML.length > 0) {
+                            let tagHtml = el.outerHTML.split(el.innerHTML);
+                            const tag_open = wrap_html(tagHtml[0], depth);
+                            expanded_html += tag_open;
+                            expanded_elements.push(tag_open);
+                            const children = Array.from(el.children);
+                            if (children.length > 0) {
+                                expanded_html += wrap_html('...', depth + 1)
+                                Array.from(el.children).forEach(child => {
+                                    expanded_elements.push(child);
+                                });
+                            } else if (el.innerText.length > 0) {
+                                const tag_text = wrap_html(el.innerText, depth + 1);
+                                expanded_html += tag_text;
+                                expanded_elements.push(tag_text);
+                            }
+                            if (tagHtml.length > 1) {
+                                const tag_close = wrap_html(tagHtml[1], depth);
+                                expanded_html += tag_close
+                                expanded_elements.push(tag_close);
+                            }
+                        } else {
+                            const tag = wrap_html(el.outerHTML, depth);
+                            expanded_html += tag;
+                            expanded_elements.push(tag);
+                        }
+                    }
+                });
+                if (expanded_html.length > symbols_budget) {
+                    break;
+                }
+                if (expanded_html.length === innerHtml.length) {
+                    break;
+                }
+                innerHtml = expanded_html;
+                elements = expanded_elements;
+            }
+            return innerHtml;
+        }
+        return budget_html(this, 100, 3000);
+    }";
+    let result = element.call_js_fn(func, vec![], false).map_err(|e| e.to_string())?;
+    Ok(result.value.unwrap().to_string())
+}
+
+fn format_remote_object(
+    remote_object: &RemoteObject,
+) -> String {
+    let mut result = vec![];
+    if let Some(subtype) = remote_object.subtype.clone() {
+        result.push(format!("subtype {:?}", subtype));
+    }
+    if let Some(class_name) = remote_object.class_name.clone() {
+        result.push(format!("class_name {:?}", class_name));
+    }
+    if let Some(value) = remote_object.value.clone() {
+        result.push(format!("value {:?}", value));
+    }
+    if let Some(unserializable_value) = remote_object.unserializable_value.clone() {
+        result.push(format!("unserializable_value {:?}", unserializable_value));
+    }
+    if let Some(description) = remote_object.description.clone() {
+        result.push(format!("description {:?}", description));
+    }
+    if let Some(preview) = remote_object.preview.clone() {
+        result.push(format!("preview {:?}", preview));
+    }
+    if let Some(custom_preview) = remote_object.custom_preview.clone() {
+        result.push(format!("custom_preview {:?}", custom_preview));
+    }
+    format!("result: {}", result.join(", "))
+}
+
+fn set_device_metrics_method(
+    width: u32,
+    height: u32,
+    device_scale_factor: f64,
+    mobile: bool,
+) -> Emulation::SetDeviceMetricsOverride {
+    Emulation::SetDeviceMetricsOverride {
+        width, height, device_scale_factor, mobile,
+        scale: None, screen_width: None, screen_height: None,
+        position_x: None, position_y: None, dont_set_visible_size: None,
+        screen_orientation: None, viewport: None, display_feature: None,
+    }
+}
+
 async fn session_open_tab(
     chrome_session: &mut ChromeSession,
     tab_id: &String,
     device: &DeviceType,
+    settings_chrome: &SettingsChrome,
 ) -> Result<String, String> {
     match chrome_session.tabs.get(tab_id) {
         Some(tab) => {
@@ -344,28 +525,42 @@ async fn session_open_tab(
         },
         None => {
             let headless_tab = chrome_session.browser.new_tab().map_err(|e| e.to_string())?;
-            match device {
-                DeviceType::MOBILE => {
-                    headless_tab.call_method(Emulation::SetDeviceMetricsOverride {
-                        width: 375,
-                        height: 812,
-                        device_scale_factor: 0.0,
-                        mobile: true,
-                        scale: None,
-                        screen_width: None,
-                        screen_height: None,
-                        position_x: None,
-                        position_y: None,
-                        dont_set_visible_size: None,
-                        screen_orientation: None,
-                        viewport: None,
-                        display_feature: None,
-                    }).map_err(|e| e.to_string())?;
-                },
+            let method = match device {
                 DeviceType::DESKTOP => {
-                    headless_tab.call_method(Emulation::ClearDeviceMetricsOverride(None)).map_err(|e| e.to_string())?;
-                }
-            }
+                    let (width, height) = match (settings_chrome.window_width.parse::<u32>(), settings_chrome.window_height.parse::<u32>()) {
+                        (Ok(width), Ok(height)) => (width, height),
+                        _ => (800, 600),
+                    };
+                    let scale_factor = match settings_chrome.scale_factor.parse::<f64>() {
+                        Ok(scale_factor) => scale_factor,
+                        _ => 0.0,
+                    };
+                    set_device_metrics_method(width, height, scale_factor, false)
+                },
+                DeviceType::MOBILE => {
+                    let (width, height) = match (settings_chrome.mobile_window_width.parse::<u32>(), settings_chrome.mobile_window_height.parse::<u32>()) {
+                        (Ok(width), Ok(height)) => (width, height),
+                        _ => (400, 800),
+                    };
+                    let scale_factor = match settings_chrome.mobile_scale_factor.parse::<f64>() {
+                        Ok(scale_factor) => scale_factor,
+                        _ => 0.0,
+                    };
+                    set_device_metrics_method(width, height, scale_factor, true)
+                },
+                DeviceType::TABLET => {
+                    let (width, height) = match (settings_chrome.tablet_window_width.parse::<u32>(), settings_chrome.tablet_window_height.parse::<u32>()) {
+                        (Ok(width), Ok(height)) => (width, height),
+                        _ => (600, 800),
+                    };
+                    let scale_factor = match settings_chrome.tablet_scale_factor.parse::<f64>() {
+                        Ok(scale_factor) => scale_factor,
+                        _ => 0.0,
+                    };
+                    set_device_metrics_method(width, height, scale_factor, true)
+                },
+            };
+            headless_tab.call_method(method).map_err(|e| e.to_string())?;
             let tab = Arc::new(AMutex::new(ChromeTab::new(headless_tab, device, tab_id)));
             let tab_lock = tab.lock().await;
             let tab_log = Arc::clone(&tab_lock.tab_log);
@@ -384,7 +579,7 @@ async fn session_open_tab(
                 }
             })).map_err(|e| e.to_string())?;
             chrome_session.tabs.insert(tab_id.clone(), tab.clone());
-            Ok(format!("opened a new tab: {}\n", tab_lock.state_string()))
+            Ok(format!("Opened a new tab: {}\n", tab_lock.state_string()))
         }
     }
 }
@@ -403,18 +598,24 @@ async fn session_get_tab_arc(
 enum Command {
     OpenTab(OpenTabArgs),
     NavigateTo(NavigateToArgs),
-    Screenshot(ScreenshotArgs),
-    Html(HtmlArgs),
-    Reload(ReloadArgs),
-    ClickAt(ClickAtArgs),
+    ScrollTo(TabElementArgs),
+    Screenshot(TabArgs),
+    Html(TabElementArgs),
+    Reload(TabArgs),
+    ClickAtPoint(ClickAtPointArgs),
+    ClickAtElement(TabElementArgs),
     TypeTextAt(TypeTextAtArgs),
-    PressKeyAt(PressKeyAtArgs),
-    TabLog(TabLogArgs),
+    PressKey(PressKeyArgs),
+    TabLog(TabArgs),
+    Eval(EvalArgs),
+    Styles(StylesArgs),
+    WaitFor(WaitForArgs),
 }
 
 async fn chrome_command_exec(
     cmd: &Command,
     chrome_session: Arc<AMutex<Box<dyn IntegrationSession>>>,
+    settings_chrome: &SettingsChrome,
 ) -> Result<(Vec<String>, Vec<MultimodalElement>), String> {
     let mut tool_log = vec![];
     let mut multimodal_els = vec![];
@@ -424,7 +625,7 @@ async fn chrome_command_exec(
             let log = {
                 let mut chrome_session_locked = chrome_session.lock().await;
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
-                session_open_tab(chrome_session, &args.tab_id, &args.device).await?
+                session_open_tab(chrome_session, &args.tab_id, &args.device, &settings_chrome).await?
             };
             tool_log.push(log);
         },
@@ -451,6 +652,29 @@ async fn chrome_command_exec(
             };
             tool_log.push(log);
         },
+        Command::ScrollTo(args) => {
+            let tab: Arc<AMutex<ChromeTab>> = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = {
+                let tab_lock = tab.lock().await;
+                match {
+                    let element = tab_lock.headless_tab.find_element(&args.selector).map_err(|e| e.to_string())?;
+                    element.scroll_into_view().map_err(|e| e.to_string())?;
+                    Ok::<(), String>(())
+                } {
+                    Ok(_) => {
+                        format!("scroll_to `{}` successful: {}.", args.selector, tab_lock.state_string())
+                    },
+                    Err(e) => {
+                        format!("scroll_to `{}` failed: {}.", args.selector, e.to_string())
+                    },
+                }
+            };
+            tool_log.push(log);
+        },
         Command::Screenshot(args) => {
             let tab = {
                 let mut chrome_session_locked = chrome_session.lock().await;
@@ -463,18 +687,17 @@ async fn chrome_command_exec(
                     Ok(multimodal_el) => {
                         multimodal_els.push(multimodal_el);
                         let tab_lock = tab.lock().await;
-                        format!("made a screenshot of {}", tab_lock.state_string())
+                        format!("Made a screenshot of {}", tab_lock.state_string())
                     },
                     Err(e) => {
                         let tab_lock = tab.lock().await;
-                        format!("screenshot failed for {}: {}", tab_lock.state_string(), e.to_string())
+                        format!("Screenshot failed for {}: {}", tab_lock.state_string(), e.to_string())
                     },
                 }
             };
             tool_log.push(log);
         },
         Command::Html(args) => {
-            // NOTE: removed from commands list, please rewrite me...
             let tab = {
                 let mut chrome_session_locked = chrome_session.lock().await;
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
@@ -482,24 +705,25 @@ async fn chrome_command_exec(
             };
             let log = {
                 let tab_lock = tab.lock().await;
-                let url = tab_lock.headless_tab.get_url();
                 match {
-                    let client = Client::builder()
-                        .build()
-                        .map_err(|e| e.to_string())?;
-                    let response = client.get(url.clone()).send().await.map_err(|e| e.to_string())?;
-                    if response.status().is_success() {
-                        let html = response.text().await.map_err(|e| e.to_string())?;
-                        Ok(html)
+                    let elements = tab_lock.headless_tab.find_elements(&args.selector).map_err(|e| e.to_string())?;
+                    if elements.len() == 0 {
+                        Err("No elements found".to_string())
                     } else {
-                        Err(format!("status: {}", response.status()))
+                        let mut elements_log = vec![];
+                        let first_element = elements.first().unwrap();
+                        elements_log.push(get_inner_html(first_element)?);
+                        if elements.len() > 2 {
+                            elements_log.push(format!("\n\nShown html for first of {} elements", elements.len()));
+                        }
+                        Ok::<String, String>(elements_log.join("\n"))
                     }
                 } {
                     Ok(html) => {
-                        format!("innerHtml of {}:\n\n{}", tab_lock.state_string(), html)
+                        format!("html of `{}`:\n\n{}", args.selector, html)
                     },
                     Err(e) => {
-                        format!("can't fetch innerHtml of {}: {}", tab_lock.state_string(), e.to_string())
+                        format!("can't fetch html of `{}`: {}", args.selector, e.to_string())
                     },
                 }
             };
@@ -525,7 +749,7 @@ async fn chrome_command_exec(
             };
             tool_log.push(log);
         },
-        Command::ClickAt(args) => {
+        Command::ClickAtPoint(args) => {
             let tab = {
                 let mut chrome_session_locked = chrome_session.lock().await;
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
@@ -552,6 +776,29 @@ async fn chrome_command_exec(
             };
             tool_log.push(log);
         },
+        Command::ClickAtElement(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = {
+                let tab_lock = tab.lock().await;
+                match {
+                    let element = tab_lock.headless_tab.find_element(&args.selector).map_err(|e| e.to_string())?;
+                    element.click().map_err(|e| e.to_string())?;
+                    Ok::<(), String>(())
+                } {
+                    Ok(_) => {
+                        format!("clicked `{}` at {}", args.selector, tab_lock.state_string())
+                    },
+                    Err(e) => {
+                        format!("click at element `{}` failed at {}: {}", args.selector, tab_lock.state_string(), e.to_string())
+                    },
+                }
+            };
+            tool_log.push(log);
+        },
         Command::TypeTextAt(args) => {
             let tab = {
                 let mut chrome_session_locked = chrome_session.lock().await;
@@ -571,7 +818,7 @@ async fn chrome_command_exec(
             };
             tool_log.push(log);
         },
-        Command::PressKeyAt(args) => {
+        Command::PressKey(args) => {
             let tab = {
                 let mut chrome_session_locked = chrome_session.lock().await;
                 let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
@@ -580,17 +827,17 @@ async fn chrome_command_exec(
             let log = {
                 let tab_lock = tab.lock().await;
                 match {
-                    tab_lock.headless_tab.press_key(args.key.to_string().as_str()).map_err(|e| e.to_string())?;
+                    tab_lock.headless_tab.press_key_with_modifiers(
+                        args.key.as_str(), args.key_modifiers.as_deref())
+                        .map_err(|e| e.to_string())?;
                     tab_lock.headless_tab.wait_until_navigated().map_err(|e| e.to_string())?;
-                    // TODO: sometimes page isn't ready for next step
-                    sleep(Duration::from_secs(1)).await;
                     Ok::<(), String>(())
                 } {
                     Ok(_) => {
-                        format!("press `{}` at {}", args.key, tab_lock.state_string())
+                        format!("press_key at {}", tab_lock.state_string())
                     },
                     Err(e) => {
-                        format!("press `{}` failed at {}: {}", args.key, tab_lock.state_string(), e.to_string())
+                        format!("press_key failed at {}: {}", tab_lock.state_string(), e.to_string())
                     },
                 }
             };
@@ -604,20 +851,104 @@ async fn chrome_command_exec(
             };
             let tab_log = {
                 let tab_lock = tab.lock().await;
-                // NOTE: we're waiting for log to be collected for 3 seconds
-                sleep(Duration::from_secs(3)).await;
                 let mut tab_log_lock = tab_lock.tab_log.lock().unwrap();
                 let tab_log = tab_log_lock.join("\n");
                 tab_log_lock.clear();
                 tab_log
             };
-            let filter = CmdlineOutputFilter::default();
+            // let filter = CmdlineOutputFilter::default();
+            let filter = CmdlineOutputFilter {
+                limit_lines: 100,
+                limit_chars: 10000,
+                valuable_top_or_bottom: "top".to_string(),
+                grep: "".to_string(),
+                grep_context_lines: 0,
+                remove_from_output: "".to_string(),
+            };
             let filtered_log = output_mini_postprocessing(&filter, tab_log.as_str());
             tool_log.push(filtered_log.clone());
-        }
+        },
+        Command::Eval(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = {
+                let tab_lock = tab.lock().await;
+                match tab_lock.headless_tab.evaluate(args.expression.as_str(), false) {
+                    Ok(remote_object) => {
+                        format_remote_object(&remote_object)
+                    },
+                    Err(e) => {
+                        format!("eval failed at {}: {}", tab_lock.state_string(), e.to_string())
+                    },
+                }
+            };
+            tool_log.push(log);
+        },
+        Command::Styles(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = {
+                let tab_lock = tab.lock().await;
+                match {
+                    tab_lock.headless_tab.call_method(DOMEnable(None)).map_err(|e| e.to_string())?;
+                    tab_lock.headless_tab.call_method(CSSEnable(None)).map_err(|e| e.to_string())?;
+                    let element = tab_lock.headless_tab.find_element(&args.selector).map_err(|e| e.to_string())?;
+                    let computed_styles = element.get_computed_styles().map_err(|e| e.to_string())?;
+                    let mut styles_filtered = computed_styles.iter()
+                        .filter(|s| s.name.contains(args.property_filter.as_str()))
+                        .map(|s| format!("{}: {}", s.name, s.value))
+                        .collect::<Vec<String>>();
+                    let max_lines_output = 30;
+                    if styles_filtered.len() > max_lines_output {
+                        let skipped_message = format!("Skipped {} properties. Specify filter if you need to see more.", styles_filtered.len() - max_lines_output);
+                        styles_filtered = styles_filtered[..max_lines_output].to_vec();
+                        styles_filtered.push(skipped_message)
+                    }
+                    if styles_filtered.is_empty() {
+                        styles_filtered.push("No properties for given filter.".to_string());
+                    }
+                    Ok::<String, String>(styles_filtered.join("\n"))
+                } {
+                    Ok(styles_str) => {
+                        format!("Style properties for element `{}` at {}:\n{}", args.selector, tab_lock.state_string(), styles_str)
+                    },
+                    Err(e) => {
+                        format!("Styles get failed at {}: {}", tab_lock.state_string(), e.to_string())
+                    },
+                }
+            };
+            tool_log.push(log);
+        },
+        Command::WaitFor(args) => {
+            let tab = {
+                let mut chrome_session_locked = chrome_session.lock().await;
+                let chrome_session = chrome_session_locked.as_any_mut().downcast_mut::<ChromeSession>().ok_or("Failed to downcast to ChromeSession")?;
+                session_get_tab_arc(chrome_session, &args.tab_id).await?
+            };
+            let log = {
+                let tab_lock = tab.lock().await;
+                if args.seconds < 1.0 && args.seconds > 5.0 {
+                    return Err(format!("wait_for at {} failed: `seconds` should be integer in interval [1, 5]", tab_lock.state_string()))
+                }
+                sleep(Duration::from_secs(3)).await;
+                format!("wait_for {} seconds at {} successful.", args.seconds, tab_lock.state_string())
+            };
+            tool_log.push(log);
+        },
     }
 
     Ok((tool_log, multimodal_els))
+}
+
+#[derive(Debug)]
+struct TabArgs {
+    tab_id: String,
 }
 
 #[derive(Debug)]
@@ -633,22 +964,7 @@ struct NavigateToArgs {
 }
 
 #[derive(Debug)]
-struct ScreenshotArgs {
-    tab_id: String,
-}
-
-#[derive(Debug)]
-struct HtmlArgs {
-    tab_id: String,
-}
-
-#[derive(Debug)]
-struct ReloadArgs {
-    tab_id: String,
-}
-
-#[derive(Debug)]
-struct ClickAtArgs {
+struct ClickAtPointArgs {
     point: Point,
     tab_id: String,
 }
@@ -659,39 +975,36 @@ struct TypeTextAtArgs {
     tab_id: String,
 }
 
-#[derive(Clone, Debug)]
-enum Key {
-    ENTER,
-    ESC,
-    PAGEUP,
-    PAGEDOWN,
-    HOME,
-    END,
-}
-
-impl fmt::Display for Key {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Key::ENTER => write!(f, "Enter"),
-            Key::ESC => write!(f, "Escape"),
-            Key::PAGEUP => write!(f, "PageUp"),
-            Key::PAGEDOWN => write!(f, "PageDown"),
-            Key::HOME => write!(f, "Home"),
-            Key::END => write!(f, "End"),
-        }
-    }
-}
-
 #[derive(Debug)]
-struct PressKeyAtArgs {
-    key: Key,
+struct PressKeyArgs {
+    key: String,
+    key_modifiers: Option<Vec<ModifierKey>>,
     tab_id: String,
 }
 
 #[derive(Debug)]
-struct TabLogArgs {
-    // wait_secs: u32,
+struct EvalArgs {
     tab_id: String,
+    expression: String,
+}
+
+#[derive(Debug)]
+struct TabElementArgs {
+    tab_id: String,
+    selector: String,
+}
+
+#[derive(Debug)]
+struct StylesArgs {
+    tab_id: String,
+    selector: String,
+    property_filter: String,
+}
+
+#[derive(Debug)]
+struct WaitForArgs {
+    tab_id: String,
+    seconds: f64,
 }
 
 fn parse_single_command(command: &String) -> Result<Command, String> {
@@ -704,115 +1017,304 @@ fn parse_single_command(command: &String) -> Result<Command, String> {
 
     match command_name.as_str() {
         "open_tab" => {
-            if parsed_args.len() < 2 {
-                return Err(format!("`open_tab` requires 2 arguments: `<device|mobile>` and `tab_id`. Provided: {:?}", parsed_args));
+            match parsed_args.as_slice() {
+                [tab_id, device_str] => {
+                    let device = match device_str.as_str() {
+                        "desktop" => DeviceType::DESKTOP,
+                        "mobile" => DeviceType::MOBILE,
+                        "tablet" => DeviceType::TABLET,
+                        _ => return Err(format!("unknown device type: {}. Should be `desktop`, `mobile` or `tablet`.", parsed_args[0]))
+                    };
+                    Ok(Command::OpenTab(OpenTabArgs {
+                        device: device.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `<device|mobile|tablet>`".to_string())
+                }
             }
-            let device = match parsed_args[0].as_str() {
-                "desktop" => DeviceType::DESKTOP,
-                "mobile" => DeviceType::MOBILE,
-                _ => return Err(format!("unknown device type: {}. Should be either `desktop` or `mobile`.", parsed_args[0]))
-            };
-            Ok(Command::OpenTab(OpenTabArgs {
-                device,
-                tab_id: parsed_args[1].clone(),
-            }))
         },
         "navigate_to" => {
-            if parsed_args.len() < 2 {
-                return Err(format!("`navigate_to` requires 2 arguments: `uri` and `tab_id`. Provided: {:?}", parsed_args));
+            match parsed_args.as_slice() {
+                [tab_id, uri] => {
+                    Ok(Command::NavigateTo(NavigateToArgs {
+                        uri: uri.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `uri`".to_string())
+                }
             }
-            Ok(Command::NavigateTo(NavigateToArgs {
-                uri: parsed_args[0].clone(),
-                tab_id: parsed_args[1].clone(),
-            }))
+        },
+        "scroll_to" => {
+            match parsed_args.as_slice() {
+                [tab_id, selector] => {
+                    Ok(Command::ScrollTo(TabElementArgs {
+                        selector: selector.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `selector`".to_string())
+                }
+            }
         },
         "screenshot" => {
-            if parsed_args.len() < 1 {
-                return Err(format!("`screenshot` requires 1 argument: `tab_id`. Provided: {:?}", parsed_args));
+            match parsed_args.as_slice() {
+                [tab_id] => {
+                    Ok(Command::Screenshot(TabArgs {
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`".to_string())
+                }
             }
-            Ok(Command::Screenshot(ScreenshotArgs {
-                tab_id: parsed_args[0].clone(),
-            }))
         },
         "html" => {
-            if parsed_args.len() < 1 {
-                return Err(format!("`html` requires 1 argument: `tab_id`. Provided: {:?}", parsed_args));
+            match parsed_args.as_slice() {
+                [tab_id, selector] => {
+                    Ok(Command::Html(TabElementArgs {
+                        selector: selector.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `selector`".to_string())
+                }
             }
-            Ok(Command::Html(HtmlArgs {
-                tab_id: parsed_args[0].clone(),
-            }))
         },
         "reload" => {
-            if parsed_args.len() < 1 {
-                return Err(format!("`reload` requires 1 argument: `tab_id`. Provided: {:?}", parsed_args));
-            }
-            Ok(Command::Reload(ReloadArgs {
-                tab_id: parsed_args[0].clone(),
-            }))
-        },
-        "click_at" => {
             match parsed_args.as_slice() {
-                [x_str, y_str, tab_id] => {
+                [tab_id] => {
+                    Ok(Command::Reload(TabArgs {
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`".to_string())
+                }
+            }
+        },
+        "click_at_point" => {
+            match parsed_args.as_slice() {
+                [tab_id, x_str, y_str] => {
                     let x = x_str.parse::<f64>().map_err(|e| format!("Failed to parse x: {}", e))?;
                     let y = y_str.parse::<f64>().map_err(|e| format!("Failed to parse y: {}", e))?;
                     let point = Point { x, y };
-                    Ok(Command::ClickAt(ClickAtArgs {
+                    Ok(Command::ClickAtPoint(ClickAtPointArgs {
                         point,
                         tab_id: tab_id.clone(),
                     }))
                 },
                 _ => {
-                    Err("Missing one or several arguments 'x', 'y', 'tab_id'".to_string())
+                    Err("Missing one or several arguments `tab_id`, `x`, 'y`".to_string())
+                }
+            }
+        },
+        "click_at_element" => {
+            match parsed_args.as_slice() {
+                [tab_id, selector] => {
+                    Ok(Command::ClickAtElement(TabElementArgs {
+                        selector: selector.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `selector`".to_string())
                 }
             }
         },
         "type_text_at" => {
             match parsed_args.as_slice() {
-                [text, tab_id] => {
+                [tab_id, text] => {
                     Ok(Command::TypeTextAt(TypeTextAtArgs {
                         text: text.clone(),
                         tab_id: tab_id.clone(),
                     }))
                 },
                 _ => {
-                    Err("Missing one or several arguments 'text', 'tab_id'".to_string())
+                    Err("Missing one or several arguments `tab_id`, `text`".to_string())
                 }
             }
         },
-        "press_key_at" => {
+        "press_key" => {
             match parsed_args.as_slice() {
-                [key_str, tab_id] => {
-                    let key = match key_str.to_lowercase().as_str() {
-                        "enter" => Key::ENTER,
-                        "esc" => Key::ESC,
-                        "pageup" => Key::PAGEUP,
-                        "pagedown" => Key::PAGEDOWN,
-                        "home" => Key::HOME,
-                        "end" => Key::END,
-                        _ => return Err(format!("Unknown key: {}", key_str)),
-                    };
-                    Ok(Command::PressKeyAt(PressKeyAtArgs {
-                        key,
+                [tab_id, key] => {
+                    Ok(Command::PressKey(PressKeyArgs {
+                        key: key.clone(),
+                        key_modifiers: None,
                         tab_id: tab_id.clone(),
                     }))
                 },
+                [tab_id, key, key_modifiers] => {
+                    let modifiers: Result<Vec<ModifierKey>, String> = key_modifiers.split(',')
+                        .map(|modifier_str| match modifier_str.trim() {
+                            "Alt" => Ok(ModifierKey::Alt),
+                            "Ctrl" => Ok(ModifierKey::Ctrl),
+                            "Meta" => Ok(ModifierKey::Meta),
+                            "Shift" => Ok(ModifierKey::Shift),
+                            _ => Err(format!("Unknown key modifier: {}", modifier_str)),
+                        })
+                        .collect();
+
+                    match modifiers {
+                        Ok(modifiers) => Ok(Command::PressKey(PressKeyArgs {
+                            key: key.clone(),
+                            key_modifiers: Some(modifiers),
+                            tab_id: tab_id.clone(),
+                        })),
+                        Err(e) => Err(e),
+                    }
+                },
                 _ => {
-                    Err("Missing one or several arguments 'key', 'tab_id'".to_string())
+                    Err("Missing one or several arguments `tab_id`, `key`".to_string())
                 }
             }
         },
         "tab_log" => {
             match parsed_args.as_slice() {
                 [tab_id] => {
-                    Ok(Command::TabLog(TabLogArgs {
+                    Ok(Command::TabLog(TabArgs {
                         tab_id: tab_id.clone(),
                     }))
                 },
                 _ => {
-                    Err("Missing one or several arguments 'tab_id'".to_string())
+                    Err("Missing one or several arguments `tab_id`".to_string())
+                }
+            }
+        },
+        "eval" => {
+            match parsed_args.as_slice() {
+                [tab_id, expression] => {
+                    Ok(Command::Eval(EvalArgs {
+                        expression: expression.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `expression`.".to_string())
+                }
+            }
+        },
+        "styles" => {
+            match parsed_args.as_slice() {
+                [tab_id, selector, property_filter] => {
+                    Ok(Command::Styles(StylesArgs {
+                        selector: selector.clone(),
+                        tab_id: tab_id.clone(),
+                        property_filter: property_filter.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `selector`.".to_string())
+                }
+            }
+        },
+        "wait_for" => {
+            match parsed_args.as_slice() {
+                [tab_id, seconds_str] => {
+                    let seconds = seconds_str.parse::<f64>().map_err(|e| format!("Failed to parse seconds: {}", e))?;
+                    Ok(Command::WaitFor(WaitForArgs {
+                        seconds: seconds.clone(),
+                        tab_id: tab_id.clone(),
+                    }))
+                },
+                _ => {
+                    Err("Missing one or several arguments `tab_id`, `seconds`.".to_string())
                 }
             }
         },
         _ => Err(format!("Unknown command: {:?}.", command_name)),
     }
 }
+
+const CHROME_INTEGRATION_SCHEMA: &str = r#"
+fields:
+  chrome_path:
+    f_type: string_long
+    f_desc: "Path to Google Chrome, Chromium or Edge binary. If empty, it searches for binary in your system"
+  idle_browser_timeout:
+    f_type: string_short
+    f_desc: "Idle timeout for the browser in seconds."
+    f_extra: true
+  headless:
+    f_type: string_short
+    f_desc: "Run Chrome in headless mode."
+    f_default: "true"
+    f_extra: true
+  window_width:
+    f_type: string_short
+    f_desc: "Width of the browser window."
+    f_extra: true
+  window_height:
+    f_type: string_short
+    f_desc: "Height of the browser window."
+    f_extra: true
+  scale_factor:
+    f_type: string_short
+    f_desc: "Scale factor of the browser window."
+    f_extra: true
+  mobile_window_width:
+    f_type: string_short
+    f_desc: "Width of the browser window in mobile mode."
+    f_extra: true
+  mobile_window_height:
+    f_type: string_short
+    f_desc: "Height of the browser window in mobile mode."
+    f_extra: true
+  mobile_scale_factor:
+    f_type: string_short
+    f_desc: "Scale factor of the browser window in mobile mode."
+    f_extra: true
+  tablet_window_width:
+    f_type: string_short
+    f_desc: "Width of the browser window in tablet mode."
+    f_extra: true
+  tablet_window_height:
+    f_type: string_short
+    f_desc: "Height of the browser window in tablet mode."
+    f_extra: true
+  tablet_scale_factor:
+    f_type: string_short
+    f_desc: "Scale factor of the browser window in tablet mode."
+    f_extra: true
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: []
+  deny_default: []
+smartlinks:
+  - sl_label: "Test"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 The chrome tool should be visible now. To test the tool, navigate to a website like https://example.com/ take a screenshot, and express happiness if it works. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+    sl_enable_only_with_tool: true
+  - sl_label: "Help me install Chrome for Testing"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 Help the user to install Chrome for Testing using npm, once that is done rewrite the current config file %CURRENT_CONFIG% to use chrome_path to use it.
+docker:
+  filter_label: ""
+  filter_image: "standalone-chrome"
+  new_container_default:
+    image: "selenium/standalone-chrome:latest"
+    environment: {}
+  smartlinks:
+    - sl_label: "Add Chrome Container"
+      sl_chat:
+        - role: "user"
+          content: |
+            🔧 Your job is to create a chrome container, using the image and environment from new_container_default section in the current config file: %CURRENT_CONFIG%. Follow the system prompt.
+  smartlinks_for_each_container:
+    - sl_label: "Use for integration"
+      sl_chat:
+        - role: "user"
+          content: |
+            🔧 Your job is to modify chrome config in the current file to connect through websockets to the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
+"#;

@@ -1,18 +1,21 @@
+use std::fs;
 use std::sync::Arc;
 use std::path::PathBuf;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
+use crate::call_validation;
 use crate::global_context::GlobalContext;
 use crate::http::http_post_json;
 use crate::http::routers::v1::system_prompt::{SystemPromptPost, SystemPromptResponse};
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
+use crate::scratchpads::scratchpad_utils::HasRagResults;
+use crate::call_validation::{ChatMessage, ChatContent, ChatMode};
 
 
 pub async fn get_default_system_prompt(
     gcx: Arc<ARwLock<GlobalContext>>,
-    have_exploration_tools: bool,
-    have_agentic_tools: bool,
+    chat_mode: ChatMode,
 ) -> String {
     let tconfig = match crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true).await {
         Ok(tconfig) => tconfig,
@@ -21,18 +24,17 @@ pub async fn get_default_system_prompt(
             return String::new();
         },
     };
-    let prompt_key = if have_agentic_tools {
-        "agentic_tools"
-    } else if have_exploration_tools {
-        "exploration_tools"
-    } else {
-        "default"
+    let prompt_key = match chat_mode {
+        ChatMode::NO_TOOLS => "default",
+        ChatMode::EXPLORE => "exploration_tools",
+        ChatMode::AGENT => "agentic_tools",
+        ChatMode::CONFIGURE => "configurator",
+        ChatMode::PROJECT_SUMMARY => "project_summary",
     };
     let system_prompt = tconfig.system_prompts.get(prompt_key).map_or_else(|| {
         tracing::error!("cannot find system prompt `{}`", prompt_key);
         String::new()
     }, |x| x.text.clone());
-    // tracing::info!("system_prompt:\n{}", system_prompt);
     system_prompt
 }
 
@@ -88,6 +90,56 @@ async fn _workspace_info(
     info
 }
 
+pub async fn dig_for_project_summarization_file(gcx: Arc<ARwLock<GlobalContext>>) -> (bool, Option<String>) {
+    match crate::files_correction::get_active_project_path(gcx.clone()).await {
+        Some(active_project_path) => {
+            let summary_path = active_project_path.join(".refact").join("project_summary.yaml");
+            if !summary_path.exists() {
+                (false, Some(summary_path.to_string_lossy().to_string()))
+            } else {
+                (true, Some(summary_path.to_string_lossy().to_string()))
+            }
+        }
+        None => {
+            tracing::info!("No projects found, project summarization is not relevant.");
+            (false, None)
+        }
+    }
+}
+
+async fn _read_project_summary(
+    summary_path: String,
+) -> Option<String> {
+    match fs::read_to_string(summary_path) {
+        Ok(content) => {
+            match serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                Ok(yaml) => {
+                    if let Some(project_summary) = yaml.get("project_summary") {
+                        match serde_yaml::to_string(project_summary) {
+                            Ok(summary_str) => return Some(summary_str),
+                            Err(e) => {
+                                tracing::error!("Failed to convert project summary to string: {}", e);
+                                return None;
+                            }
+                        }
+                    } else {
+                        tracing::error!("Key 'project_summary' not found in YAML file.");
+                        return None;
+                    }
+                },
+                Err(e) => {
+                    tracing::error!("Failed to parse project summary YAML file: {}", e);
+                    return None;
+                }
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to read project summary file: {}", e);
+            return None;
+        }
+    }
+}
+
 pub async fn system_prompt_add_workspace_info(
     gcx: Arc<ARwLock<GlobalContext>>,
     system_prompt: &String,
@@ -102,13 +154,86 @@ pub async fn system_prompt_add_workspace_info(
     }
 
     let mut system_prompt = system_prompt.clone();
-
     if system_prompt.contains("%WORKSPACE_INFO%") {
         let (workspace_dirs, active_file_path) = workspace_files_info(&gcx).await;
         let info = _workspace_info(&workspace_dirs, &active_file_path).await;
         system_prompt = system_prompt.replace("%WORKSPACE_INFO%", &info);
     }
 
+    if system_prompt.contains("%PROJECT_SUMMARY%") {
+        let (exists, summary_path_option) = dig_for_project_summarization_file(gcx.clone()).await;
+        if exists {
+            if let Some(summary_path) = summary_path_option {
+                if let Some(project_info) = _read_project_summary(summary_path).await {
+                    system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", &project_info);
+                } else {
+                    system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", "");
+                }
+            }
+        } else {
+            system_prompt = system_prompt.replace("%PROJECT_SUMMARY%", "");
+        }
+    }
+
     system_prompt
 }
 
+pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    mut messages: Vec<call_validation::ChatMessage>,
+    chat_post: &call_validation::ChatPost,
+    stream_back_to_user: &mut HasRagResults,
+) -> Vec<call_validation::ChatMessage> {
+    let have_system = !messages.is_empty() && messages[0].role == "system";
+    if have_system {
+        return messages;
+    }
+    if messages.len() == 0 {
+        tracing::error!("What's that? Messages list is empty");
+        return messages;
+    }
+
+    let exploration_tools = chat_post.meta.chat_mode != ChatMode::NO_TOOLS;
+    let agentic_tools = matches!(chat_post.meta.chat_mode, ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY);
+
+    if chat_post.meta.chat_remote {
+        // XXX this should call a remote analog of prepend_the_right_system_prompt_and_maybe_more_initial_messages
+        let _ = get_default_system_prompt_from_remote(gcx.clone(), exploration_tools, agentic_tools, &chat_post.meta.chat_id).await.map_err(|e|
+            tracing::error!("failed to get default system prompt from remote: {}", e)
+        );
+        return messages;
+    }
+
+    match chat_post.meta.chat_mode {
+        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {
+            let system_message_content = system_prompt_add_workspace_info(gcx.clone(),
+                &get_default_system_prompt(gcx.clone(), chat_post.meta.chat_mode.clone()).await
+            ).await;
+            let msg = ChatMessage {
+                role: "system".to_string(),
+                content: ChatContent::SimpleText(system_message_content),
+                ..Default::default()
+            };
+            stream_back_to_user.push_in_json(serde_json::json!(msg));
+            messages.insert(0, msg);
+        },
+        ChatMode::CONFIGURE => {
+            crate::integrations::config_chat::mix_config_messages(
+                gcx.clone(),
+                &chat_post.meta,
+                &mut messages,
+                stream_back_to_user,
+            ).await;
+        },
+        ChatMode::PROJECT_SUMMARY => {
+            crate::integrations::project_summary_chat::mix_project_summary_messages(
+                gcx.clone(),
+                &chat_post.meta,
+                &mut messages,
+                stream_back_to_user,
+            ).await;
+        },
+    }
+    tracing::info!("\n\nSYSTEM PROMPT MIXER chat_mode={:?}\n{:#?}", chat_post.meta.chat_mode, messages);
+    messages
+}

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 use serde_json::json;
-use indexmap::IndexMap;
 
 use axum::Extension;
 use axum::response::Result;
@@ -16,7 +15,8 @@ struct MemAddRequest {
     mem_type: String,
     goal: String,
     project: String,
-    payload: String,   // TODO: upgrade to serde_json::Value
+    payload: String,
+    origin: String,   // TODO: upgrade to serde_json::Value
 }
 
 #[derive(Deserialize)]
@@ -54,7 +54,8 @@ pub async fn handle_mem_add(
         &post.mem_type,
         &post.goal,
         &post.project,
-        &post.payload
+        &post.payload,
+        &post.origin
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
@@ -146,11 +147,10 @@ pub async fn handle_mem_query(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let vec_db = gcx.read().await.vec_db.clone();
     let memories = crate::vecdb::vdb_highlev::memories_search(
-        vec_db,
+        gcx.clone(),
         &post.goal,
-        post.top_n
+        post.top_n,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{e}"))
     })?;
@@ -184,51 +184,3 @@ pub async fn handle_mem_list(
     Ok(response)
 }
 
-#[derive(Deserialize)]
-struct OngoingUpdateRequest {
-    goal: String,
-    ongoing_progress: IndexMap<String, serde_json::Value>,
-    ongoing_action_new_sequence: IndexMap<String, serde_json::Value>,
-    ongoing_output: IndexMap<String, IndexMap<String, serde_json::Value>>,
-}
-
-pub async fn handle_ongoing_update_or_create(
-    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
-    body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let post: OngoingUpdateRequest = serde_json::from_slice(&body_bytes).map_err(|e| {
-        tracing::info!("cannot parse input:\n{:?}", body_bytes);
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-    let vec_db = gcx.read().await.vec_db.clone();
-
-    crate::vecdb::vdb_highlev::ongoing_update_or_create(
-        vec_db,
-        post.goal,
-        post.ongoing_progress,
-        post.ongoing_action_new_sequence,
-        post.ongoing_output,
-    ).await.map_err(|e| {
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
-    })?;
-    let response = Response::builder()
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&json!({"success": true})).unwrap()))
-        .unwrap();
-    Ok(response)
-}
-
-pub async fn handle_ongoing_dump(
-    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
-    _body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let vec_db = gcx.read().await.vec_db.clone();
-    let output = crate::vecdb::vdb_highlev::ongoing_dump(vec_db).await.map_err(|e| {
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
-    })?;
-    let response = Response::builder()
-        .header("Content-Type", "text/plain")
-        .body(Body::from(output))
-        .unwrap();
-    Ok(response)
-}

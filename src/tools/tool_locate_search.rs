@@ -95,6 +95,8 @@ Don't write backquotes, json format only.
 
 #[async_trait]
 impl Tool for ToolLocateSearch {
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
