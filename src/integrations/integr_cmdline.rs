@@ -40,7 +40,7 @@ pub struct CmdlineToolConfig {
     #[serde(default = "_default_startup_wait", serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
     pub startup_wait: u64,
     #[serde(default)]
-    pub startup_wait_keyword: Option<String>,
+    pub startup_wait_keyword: String,
 }
 
 fn _default_startup_wait() -> u64 {

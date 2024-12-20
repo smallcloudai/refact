@@ -199,10 +199,9 @@ async fn execute_background_command(
             accumulated_stdout.push_str(&stdout_out);
             accumulated_stderr.push_str(&stderr_out);
 
-            // XXX rename keyword to phrase or something
-            if let Some(keyword) = &cfg.startup_wait_keyword {
-                if accumulated_stdout.contains(keyword) || accumulated_stderr.contains(keyword) {
-                    actions_log.push_str(&format!("Startup keyword '{}' found in output, success!\n\n", keyword));
+            if !cfg.startup_wait_keyword.is_empty() {
+                if accumulated_stdout.contains(&cfg.startup_wait_keyword) || accumulated_stderr.contains(&cfg.startup_wait_keyword) {
+                    actions_log.push_str(&format!("Startup keyword '{}' found in output, success!\n\n", cfg.startup_wait_keyword));
                     break;
                 }
             }
