@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { IconButton, Button, Flex } from "@radix-ui/themes";
 import {
   PaperPlaneIcon,
@@ -8,6 +8,7 @@ import {
 } from "@radix-ui/react-icons";
 import classNames from "classnames";
 import styles from "./button.module.css";
+import { useOpenUrl } from "../../hooks/useOpenUrl";
 
 type IconButtonProps = React.ComponentProps<typeof IconButton>;
 type ButtonProps = React.ComponentProps<typeof Button>;
@@ -72,8 +73,13 @@ export const LinkButton: React.FC<
     onClick?: () => void;
   }
 > = ({ href, target, onClick, ...rest }) => {
+  const openUrl = useOpenUrl();
+  const handleClick = useCallback(() => {
+    if (onClick) onClick();
+    if (href) openUrl(href);
+  }, [href, onClick, openUrl]);
   return (
-    <form action={href} target={target} onSubmit={onClick}>
+    <form action={href} target={target} onSubmit={handleClick}>
       <Button type="submit" {...rest}>
         Upgrade to our pro plan
       </Button>
