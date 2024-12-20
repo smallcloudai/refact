@@ -318,6 +318,20 @@ pub const KNOWN_MODELS: &str = r####"
                 "PASSTHROUGH": {}
             }
         },
+        "gemini-2.0-flash-exp": {
+            "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": false,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
+                "gemini-1.5-flash",
+                "gemini-1.5-flash-8b",
+                "gemini-1.5-pro"
+            ]
+        },
         "llama3/8b/instruct": {
             "n_ctx": 4096,
             "supports_scratchpads": {
@@ -546,15 +560,25 @@ pub const KNOWN_MODELS: &str = r####"
         "claude-3-5-sonnet-20241022": "Xenova/claude-tokenizer",
         "groq-llama-3.1-8b":      "Xenova/Meta-Llama-3.1-Tokenizer",
         "cerebras-llama3.1-8b":     "Xenova/Meta-Llama-3.1-Tokenizer",
-        
+
         "grok-beta": "Xenova/grok-1-tokenizer",
         "grok-vision-beta": "Xenova/grok-1-tokenizer",
         "grok-2-vision-1212": "Xenova/grok-1-tokenizer",
-        "grok-2-1212": "Xenova/grok-1-tokenizer"
+        "grok-2-1212": "Xenova/grok-1-tokenizer",
+
+        "gemini-2.0-flash-exp": "Xenova/gemma2-tokenizer",
+        "gemini-1.5-flash": "Xenova/gemma2-tokenizer",
+        "gemini-1.5-flash-8b": "Xenova/gemma2-tokenizer",
+        "gemini-1.5-pro": "Xenova/gemma2-tokenizer"
     }
 }
 "####;
 
-// XAI WARNING: tokenizer is non-precise as there's no publicly available tokenizer for these models 
+// gemini and gemma bear the same tokenizer
+// according to https://medium.com/google-cloud/a-gemini-and-gemma-tokenizer-in-java-e18831ac9677
+// downloadable tokenizer.json does not exist for gemini, the only precise way is to use web-requests
+
+
+// XAI WARNING: tokenizer is non-precise as there's no publicly available tokenizer for these models
 // XAI says that for exact same model different tokenizers could be used
 // therefore, using tokenizer for grok-1 which may or may not provide proximate enough results
