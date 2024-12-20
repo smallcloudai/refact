@@ -281,23 +281,6 @@ pub const KNOWN_MODELS: &str = r####"
         }
     },
     "code_chat_models": {
-        "gpt-3.5-turbo": {
-            "n_ctx": 16384,
-            "supports_tools": true,
-            "supports_scratchpads": {
-                "PASSTHROUGH": {}
-            },
-            "similar_models": [
-                "gpt-3.5-turbo-1106",
-                "gpt-3.5-turbo-0125",
-                "gpt-4",
-                "gpt-4-turbo",
-                "gpt-4-turbo-2024-04-09",
-                "openai/gpt-3.5-turbo",
-                "openai/gpt-4",
-                "openai/gpt-4-turbo"
-            ]
-        },
         "gpt-4o": {
             "n_ctx": 128000,
             "supports_tools": true,
@@ -586,27 +569,20 @@ pub const KNOWN_MODELS: &str = r####"
     "tokenizer_rewrite_path": {
         "Refact/1.6B": "smallcloudai/Refact-1_6B-fim",
         "starcoder2/3b": "bigcode/starcoder2-3b",
+
         "text-embedding-3-small": "Xenova/text-embedding-ada-002",
-        "gpt-3.5-turbo":          "Xenova/gpt-3.5-turbo-16k",
-        "gpt-3.5-turbo-1106":     "Xenova/gpt-3.5-turbo-16k",
-        "gpt-3.5-turbo-0125":     "Xenova/gpt-3.5-turbo-16k",
-        "openai/gpt-3.5-turbo":   "Xenova/gpt-3.5-turbo-16k",
-        "gpt-4":                  "Xenova/gpt-4",
-        "gpt-4-turbo":            "Xenova/gpt-4",
-        "gpt-4-turbo-2024-04-09": "Xenova/gpt-4",
         "gpt-4o":                 "Xenova/gpt-4o",
         "gpt-4o-2024-05-13":      "Xenova/gpt-4o",
         "gpt-4o-2024-08-06":      "Xenova/gpt-4o",
         "gpt-4o-mini":            "Xenova/gpt-4o",
         "gpt-4o-mini-2024-07-18": "Xenova/gpt-4o",
         "o1-mini":                "Xenova/gpt-4o",
-        "openai/gpt-4":           "Xenova/gpt-4",
-        "openai/gpt-4-turbo":     "Xenova/gpt-4",
         "openai/gpt-4o":          "Xenova/gpt-4o",
-        "openai/gpt-4o-mini":     "Xenova/gpt-4o",
+
         "claude-3-5-sonnet":          "Xenova/claude-tokenizer",
         "claude-3-5-sonnet-20240620": "Xenova/claude-tokenizer",
         "claude-3-5-sonnet-20241022": "Xenova/claude-tokenizer",
+
         "groq-llama-3.1-8b":      "Xenova/Meta-Llama-3.1-Tokenizer",
         "cerebras-llama3.1-8b":     "Xenova/Meta-Llama-3.1-Tokenizer",
 
