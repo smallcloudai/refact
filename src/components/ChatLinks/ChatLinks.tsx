@@ -5,6 +5,7 @@ import { useAppSelector, useLinksFromLsp } from "../../hooks";
 import { Spinner } from "@radix-ui/themes";
 import { TruncateRight } from "../Text/TruncateRight";
 import { selectThreadToolUse } from "../../features/Chat";
+import styles from "./ChatLinks.module.css";
 
 function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
   const hasAction = "link_action" in link;
@@ -64,7 +65,7 @@ const ChatLinkButton: React.FC<{
       variant="surface"
       title={title}
       onClick={handleClick}
-      style={{ maxWidth: "100%" }}
+      className={styles.chat_link_button}
     >
       <TruncateRight>{link.link_text}</TruncateRight>
     </Button>
