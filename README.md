@@ -1,4 +1,4 @@
-# Refact Agent (Rust)
+# Refact Agent
 
 This is a small executable written in Rust, a part of the Refact Agent project. Its main job is to live
 inside your IDE quietly and keep AST and VecDB indexes up to date. It is well-written: it will not break if
@@ -11,17 +11,8 @@ check out the [Text UI](#cli) below, you can talk about your project in the comm
 
 ---
 
-# Key Features
-*this would be added soon*
 
----
-
-# Demo Video
-*this would be added soon*
-
----
-
-# Table of Contents 
+# Table of Contents
 
 - [Installation](#installation)
   - [VS Code](#vs-code)
@@ -41,35 +32,62 @@ check out the [Text UI](#cli) below, you can talk about your project in the comm
 - [Follow Us and FAQ](#follow-us-and-faq)
 - [License](#license)
 
----
+
+# Key Features
+
+* Integrates with the IDE you are already using, like VSCode or JetBrains
+* Offers assistant functionality: code completion and chat
+* Keeps track of your source files, keeps AST and vector database up to date
+* Integrates browser, databases, debuggers for the model to use
+* Ask it anything! It will use the tools available to make changes to your project
+
 
 ## Installation
 
 Installable by the end user:
 
-### VS Code
-https://github.com/smallcloudai/refact-vscode/
+ * VS Code https://github.com/smallcloudai/refact-vscode/
 
-### JetBrains IDEs
-https://github.com/smallcloudai/refact-intellij
+ * JetBrains IDEs https://github.com/smallcloudai/refact-intellij
 
-### VS Classic 
-https://github.com/smallcloudai/refact-vs-classic/
+ * VS Classic https://github.com/smallcloudai/refact-vs-classic/
 
-### Sublime Text
-https://github.com/smallcloudai/refact-sublime/
+ * Sublime Text https://github.com/smallcloudai/refact-sublime/
 
-### Neovim 
-https://github.com/smallcloudai/refact-neovim
+ * Neovim https://github.com/smallcloudai/refact-neovim
 
-### Refact Self-Hosting Server:
+ * Refact Self-Hosting Server https://github.com/smallcloudai/refact/
 
-* [Refact](https://github.com/smallcloudai/refact/)
 
-### Other important repos:
+### Other Important Repos
 
 * [Documentation](https://github.com/smallcloudai/web_docs_refact_ai)
 * [Chat UI](https://github.com/smallcloudai/refact-chat-js)
+
+
+## Progress
+
+- [x] Code completion with RAG
+- [x] Chat with tool usage
+- [x] definition() references() tools
+- [x] vecdb search() with scope
+- [x] @file @tree @web @definition @references @search mentions in chat
+- [x] locate() uses test-time compute to find good project cross-section
+- [x] Latest gpt-4o gpt-4o-mini
+- [x] Claude-3-5-sonnet
+- [x] Llama-3.1 (passthrough)
+- [ ] Llama-3.2 (passthrough)
+- [ ] Llama-3.2 (scratchpad)
+- [x] [Bring-your-own-key](https://docs.refact.ai/byok/)
+- [ ] Memory (--experimental)
+- [ ] Docker integration (--experimental)
+- [ ] git integration (--experimental)
+- [x] pdb python debugger integration (--experimental)
+- [ ] More debuggers
+- [x] Github integration (--experimental)
+- [ ] Gitlab integration
+- [ ] Jira integration
+
 
 ### Compiling and Running
 
@@ -84,7 +102,7 @@ target/debug/refact-lsp --address-url http://my-refact-self-hosting/ --api-key $
 
 Try `--help` for more options.
 
----
+
 
 ## Things to Try
 
@@ -132,7 +150,8 @@ curl http://127.0.0.1:8001/v1/chat -k \
   "max_tokens": 20
 }'
 ```
----
+
+
 
 ## Telemetry
 
@@ -148,17 +167,15 @@ you see it in `.cache/refact/telemetry`. The files are human-readable.
 
 When using Refact self-hosted server, telemetry goes to the self-hosted server, not to the cloud.
 
----
+
 
 ## Caps File
 
 The capabilities file stores the same things as [bring-your-own-key.yaml](bring_your_own_key), the file describes how to access AI models.
-The `--address-url` parameter controls where to get this file, it defaults to `~/.cache/refact/bring-your-own-key.yaml`.
+The `--address-url` parameter controls where to get this file, it defaults to `~/.config/refact/bring-your-own-key.yaml`.
 If it's a URL, the executable fetches `$URL/refact-caps` to know what to do. This is especially useful to connect to Refact Self-Hosting Server,
 because the configuration does not need to be copy-pasted among engineers who use the server.
 
-
----
 
 ## AST
 
@@ -173,7 +190,7 @@ Supported languages:
 
 You can still use Refact for other languages, just the AST capabilities will be missing.
 
----
+
 
 ## CLI
 
@@ -185,39 +202,10 @@ cp target/release/refact-lsp python_binding_and_cmdline/refact/bin/
 pip install -e python_binding_and_cmdline/
 ```
 
----
-
-## Progress and Future Plans
-
-- [x] Code completion with RAG
-- [x] Chat with tool usage
-- [x] definition() references() tools
-- [x] vecdb search() with scope
-- [x] @file @tree @web @definition @references @search mentions in chat
-- [x] locate() uses test-time compute to find good project cross-section
-- [x] Latest gpt-4o gpt-4o-mini
-- [x] Claude-3-5-sonnet
-- [x] Llama-3.1 (passthrough)
-- [ ] Llama-3.2 (passthrough)
-- [ ] Llama-3.2 (scratchpad)
-- [x] [Bring-your-own-key](https://docs.refact.ai/byok/)
-- [ ] Memory (--experimental)
-- [ ] Docker integration (--experimental)
-- [ ] git integration (--experimental)
-- [x] pdb python debugger integration (--experimental)
-- [ ] More debuggers
-- [x] Github integration (--experimental)
-- [ ] Gitlab integration
-- [ ] Jira integration
-
----
-
-## Archiecture
-*this would be added soon*
 
 ___
 
-## Contributing 
+## Contributing
 
 - Contributing [CONTRIBUTING.md](CONTRIBUTING.md)
 - [GitHub issues](https://github.com/smallcloudai/refact/issues) for bugs and errors
@@ -225,9 +213,7 @@ ___
 If you wish to contribute to this project, feel free to explore our [current issues](https://github.com/smallcloudai/refact/issues) or open new issues related to (bugs/features) using our [CONTRIBUTING.md](CONTRIBUTING.md).
 
 
----
-
-## Follow Us and FAQ 
+## Follow Us and FAQ
 
 - [Contributing](CONTRIBUTING.md)
 - [Refact Docs](https://docs.refact.ai/)
@@ -236,9 +222,8 @@ If you wish to contribute to this project, feel free to explore our [current iss
 - [Discord](https://www.smallcloud.ai/discord) for chatting with community members
 - [Twitter](https://twitter.com/refact_ai) for product news and updates
 
----
 
-## License 
+## License
 
 Refact is free to use for individuals and small teams under the BSD-3-Clause license. If you wish to use Refact for Enterprise, please [contact us](https://refact.ai/contact/).
 
