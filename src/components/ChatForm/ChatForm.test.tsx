@@ -2,7 +2,6 @@ import { render } from "../../utils/test-utils";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ChatForm, ChatFormProps } from "./ChatForm";
 import React from "react";
-import { SYSTEM_PROMPTS } from "../../__fixtures__";
 
 import {
   server,
@@ -33,10 +32,7 @@ const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
     onSubmit: (_str: string) => ({}),
     isStreaming: false,
     showControls: true,
-    prompts: SYSTEM_PROMPTS,
-    onSetSystemPrompt: noop,
     onToolConfirm: noop,
-    selectedSystemPrompt: {},
     ...props,
   };
 

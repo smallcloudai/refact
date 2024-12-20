@@ -2,7 +2,7 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Chat } from "./Chat";
 import { ChatThread } from "../../features/Chat/Thread/types";
-import { setUpStore } from "../../app/store";
+import { RootState, setUpStore } from "../../app/store";
 import { Provider } from "react-redux";
 import { Theme } from "../Theme";
 import { AbortControllerProvider } from "../../contexts/AbortControllers";
@@ -21,7 +21,8 @@ import { Flex } from "@radix-ui/themes";
 
 const Template: React.FC<{
   thread?: ChatThread;
-}> = ({ thread }) => {
+  config?: RootState["config"];
+}> = ({ thread, config }) => {
   const threadData = thread ?? {
     id: "test",
     model: "gpt-4o", // or any model from STUB CAPS REQUEst
@@ -42,6 +43,7 @@ const Template: React.FC<{
       system_prompt: {},
       thread: threadData,
     },
+    config,
   });
 
   return (
@@ -101,4 +103,14 @@ export const Configuration: Story = {
   //       },
   //     },
   //   },
+};
+
+export const IDE: Story = {
+  args: {
+    config: {
+      host: "ide",
+      lspPort: 8001,
+      themeProps: {},
+    },
+  },
 };

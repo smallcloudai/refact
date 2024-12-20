@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
 import { ChatForm } from "./ChatForm";
-import { SYSTEM_PROMPTS } from "../../__fixtures__";
 import { useDebounceCallback } from "usehooks-ts";
 
 // const _testCommands = [
@@ -42,7 +41,7 @@ import { useDebounceCallback } from "usehooks-ts";
 //   "@Zucchini",
 // ];
 
-const noop = () => ({});
+// const noop = () => ({});
 
 const meta: Meta<typeof ChatForm> = {
   title: "Chat Form",
@@ -58,8 +57,6 @@ const meta: Meta<typeof ChatForm> = {
     },
     isStreaming: false,
     showControls: true,
-    prompts: SYSTEM_PROMPTS,
-    onSetSystemPrompt: noop,
   },
   decorators: [
     (Children) => {

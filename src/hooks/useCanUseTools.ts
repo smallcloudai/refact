@@ -10,6 +10,7 @@ export const useCanUseTools = () => {
   const toolsRequest = useGetToolsQuery();
   const chatModel = useAppSelector(selectModel);
 
+  // TODO: loading state.
   const canUseTools = useMemo(() => {
     if (!capsRequest.data) return false;
     if (!toolsRequest.data) return false;
