@@ -103,10 +103,10 @@ pub async fn handle_v1_links(
         let mut project_changes = Vec::new();
         for commit in &commits {
             project_changes.push(format!(
-                "In project {}: {}\n{}",
+                "In project {}:\n{}{}",
                 commit.get_project_name(),
                 commit.file_changes.iter().take(3).map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
-                if commit.file_changes.len() > 3 { "\n..." } else { "\n" },
+                if commit.file_changes.len() > 3 { "\n...\n" } else { "\n" },
             ));
         }
         if !project_changes.is_empty() && post.messages.is_empty() {
