@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
 use axum::Extension;
@@ -8,11 +9,11 @@ use tokio::sync::RwLock as ARwLock;
 use regex::Regex;
 use axum::extract::Path;
 use axum::extract::Query;
-
-
+use rust_embed::RustEmbed;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::setting_up_integrations::split_path_into_project_and_integration;
+
 
 pub async fn handle_v1_integrations(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
@@ -130,29 +131,29 @@ pub async fn handle_v1_integration_save(
        .unwrap())
 }
 
-mod generated {
-    include!(concat!(env!("OUT_DIR"), "/available_icons.rs"));
-}
+#[derive(RustEmbed)]
+#[folder = "assets/integrations/"]
+struct IntegrationAsset;
 
 pub async fn handle_v1_integration_icon(
     Path(icon_name): Path<String>,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
-    let icons = generated::get_available_icons();
     let sanitized_icon_name = icon_name
         .split('/').last()
         .map(|x| x.replace("_TEMPLATE", "")).ok_or(
         ScratchError::new(StatusCode::BAD_REQUEST, "invalid file name".to_string())
     )?;
-    if let Some(icon_bytes) = icons.get(sanitized_icon_name.as_str()) {
+    if let Some(icon_bytes) = IntegrationAsset::get(&sanitized_icon_name).map(|file| file.data) {
         return Ok(Response::builder()
             .status(StatusCode::OK)
             .header("Content-Type", "image/png")
             .header("Content-Disposition", "inline")
-            .body(Body::from(*icon_bytes))
+            .body(Body::from(icon_bytes))
             .unwrap());
     }
-    Err(ScratchError::new(StatusCode::NOT_FOUND, "icon not found".to_string()))
+    Err(ScratchError::new(StatusCode::NOT_FOUND, format!("icon {} not found", sanitized_icon_name)))
 }
+
 // Define a structure to match query parameters
 #[derive(Deserialize)]
 pub struct HTTPIntegrationDeleteQueryParams {
