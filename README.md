@@ -15,12 +15,6 @@ check out the [Text UI](#cli) below, you can talk about your project in the comm
 # Table of Contents
 
 - [Installation](#installation)
-  - [VS Code](#vs-code)
-  - [JetBrains IDEs](#jetbrains-ides)
-  - [VS Classic](#vs-classic)
-  - [Sublime Text](#sublime-text)
-  - [Neovim](#neovim)
-  - [Compiling and Running](#compiling-and-running)
 - [Things to Try](#things-to-try)
 - [Telemetry](#telemetry)
 - [Caps File](#caps-file)
