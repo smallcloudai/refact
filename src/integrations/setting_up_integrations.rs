@@ -269,10 +269,6 @@ pub fn read_integrations_d(
 pub async fn get_integrations_yaml_path(gcx: Arc<ARwLock<GlobalContext>>) -> String {
     let gcx_locked = gcx.read().await;
     let r = gcx_locked.cmdline.integrations_yaml.clone();
-    // if r.is_empty() {
-    //     let config_dir = gcx_locked.config_dir.join("integrations.yaml");
-    //     return config_dir.to_string_lossy().to_string();
-    // }
     r
 }
 
@@ -433,7 +429,7 @@ pub async fn integration_config_get(
 pub async fn integration_config_save(
     integr_config_path: &String,
     integr_values: &serde_json::Value,
-) -> Result<(), String> {    
+) -> Result<(), String> {
     let config_path = crate::files_correction::canonical_path(integr_config_path);
     let (integr_name, _project_path) = crate::integrations::setting_up_integrations::split_path_into_project_and_integration(&config_path)
         .map_err(|e| format!("Failed to split path: {}", e))?;

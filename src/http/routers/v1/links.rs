@@ -95,7 +95,7 @@ pub async fn handle_v1_links(
     // GIT uncommitted
     if post.meta.chat_mode == ChatMode::AGENT {
         let commits = get_commit_information_from_current_changes(gcx.clone()).await;
-        
+
         let mut project_changes = Vec::new();
         for commit in &commits {
             project_changes.push(format!(
@@ -133,7 +133,7 @@ pub async fn handle_v1_links(
         }
     }
 
-    // Failures above
+    // Failures in integrations
     if post.meta.chat_mode == ChatMode::AGENT {
         for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
             links.push(Link {

@@ -55,7 +55,7 @@ async def welcome_message(settings: cli_settings.CmdlineArgs, tip: str):
     text = f"""
 ~/.cache/refact/cli.yaml                -- set up this program
 ~/.cache/refact/bring-your-own-key.yaml -- set up models you want to use
-~/.cache/refact/integrations.yaml       -- set up github, jira, make, gdb, and other tools, including which actions require confirmation
+~/.cache/refact/integrations.d/*        -- set up github, jira, make, gdb, and other tools, including which actions require confirmation
 ~/.cache/refact/privacy.yaml            -- which files should never leave your computer
 Project: {settings.project_path}
 To exit, type 'exit' or Ctrl+D. {tip}.

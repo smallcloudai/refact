@@ -82,7 +82,7 @@ pub struct CommandLine {
     #[structopt(long, short="w", default_value="", help="Workspace folder to find all the files. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
 
-    #[structopt(long, help="create manually bring-your-own-key.yaml, integrations.yaml, customization.yaml and privacy.yaml and EXIT")]
+    #[structopt(long, help="create manually bring-your-own-key.yaml, customization.yaml and privacy.yaml and exit.")]
     pub only_create_yaml_configs: bool,
     #[structopt(long, help="Print combined customization settings from both system defaults and customization.yaml.")]
     pub print_customization: bool,
@@ -93,7 +93,7 @@ pub struct CommandLine {
     #[structopt(long, help="A way to tell this binary it can run more tools without confirmation.")]
     pub inside_container: bool,
 
-    #[structopt(long, default_value="", help="Specify an alternative integrations.yaml, this also disables the global integrations.d")]
+    #[structopt(long, default_value="", help="Specify the integrations.yaml, this also disables the global integrations.d")]
     pub integrations_yaml: String,
 }
 
