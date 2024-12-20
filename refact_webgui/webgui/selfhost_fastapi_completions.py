@@ -270,7 +270,7 @@ class BaseCompletionsRouter(APIRouter):
             "telemetry_basic_dest": "/stats/telemetry-basic",
             "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
             "telemetry_basic_retrieve_my_own": "/stats/rh-stats",
-            "running_models": [r for r in [*running['completion'], *running['chat']]],
+            "running_models": list(set(r for r in [*running['completion'], *running['chat']])),
             "code_completion_default_model": code_completion_default_model,
             "multiline_code_completion_default_model": multiline_code_completion_default_model,
             "code_chat_default_model": code_chat_default_model,
