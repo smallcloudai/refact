@@ -127,19 +127,24 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "gpt-4o-2024-05-13",
                 "gpt-4o-2024-08-06",
-                "openai/gpt-4o"
+                "openai/gpt-4o",
+                "gpt-4o-mini",
+                "gpt-4o-mini-2024-07-18"
             ]
         },
-        "gpt-4o-mini": {
-            "n_ctx": 128000,
+        "claude-3-sonnet": {
+            "n_ctx": 200000,
             "supports_scratchpads": {
-                "REPLACE_PASSTHROUGH": { 
+                "REPLACE_PASSTHROUGH": {
                     "context_format": "chat",
                     "rag_ratio": 0.5
                 }
             },
             "similar_models": [
-                "gpt-4o-mini-2024-07-18"
+                "claude-3-haiku",
+                "claude-3-opus",
+                "claude-3-5-sonnet",
+                "claude-3-5-sonnet-20241022"
             ]
         },
         "groq-llama-3.1-8b": {
@@ -169,6 +174,50 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "cerebras-llama3.1-70b"
             ]
+        },
+        "gemini-2.0-flash-exp": {
+            "n_ctx": 128000,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": {
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            },
+            "similar_models": [
+                "gemini-1.5-flash",
+                "gemini-1.5-flash-8b",
+                "gemini-1.5-pro"
+            ]
+        },
+        "grok-beta": {
+            "n_ctx": 128000,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": {
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            },
+            "similar_models": [
+                "grok-2-1212"
+            ]
+        },
+        "grok-vision-beta": {
+            "n_ctx": 8192,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": {
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            }
+        },
+        "grok-2-vision-1212": {
+            "n_ctx": 32000,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": {
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            }
         },
         "qwen2.5/coder/0.5b/instruct": {
             "n_ctx": 8192,
