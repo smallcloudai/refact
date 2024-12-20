@@ -474,6 +474,7 @@ export type SmartLink = {
   sl_label: string;
   sl_chat?: LspChatMessage[];
   sl_goto?: string;
+  sl_enable_only_with_tool?: boolean;
 };
 
 function isSmartLink(json: unknown): json is SmartLink {
@@ -482,6 +483,11 @@ function isSmartLink(json: unknown): json is SmartLink {
   if (!("sl_label" in json)) return false;
   if (typeof json.sl_label !== "string") return false;
   if (!("sl_chat" in json)) return false;
+  if (
+    "sl_enable_only_with_tool" in json &&
+    typeof json.sl_enable_only_with_tool !== "boolean"
+  )
+    return false;
   if (!Array.isArray(json.sl_chat)) return false;
   if (!json.sl_chat.every(isLspChatMessage)) return false;
   return true;

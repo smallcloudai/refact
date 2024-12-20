@@ -332,6 +332,12 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                       integrationPath={
                         integration.data?.integr_config_path ?? ""
                       }
+                      shouldBeDisabled={
+                        smartlink.sl_enable_only_with_tool
+                          ? integration.data?.integr_values === null ||
+                            !shouldIntegrationFormBeDisabled
+                          : false
+                      }
                     />
                   );
                 },

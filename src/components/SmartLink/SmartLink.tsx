@@ -12,6 +12,7 @@ export const SmartLink: FC<{
   integrationProject: string;
   isSmall?: boolean;
   isDockerSmartlink?: boolean;
+  shouldBeDisabled?: boolean;
 }> = ({
   smartlink,
   integrationName,
@@ -19,6 +20,7 @@ export const SmartLink: FC<{
   integrationProject,
   isSmall = false,
   isDockerSmartlink = false,
+  shouldBeDisabled,
 }) => {
   const { handleGoTo, handleSmartLink } = useSmartLinks();
 
@@ -69,6 +71,7 @@ export const SmartLink: FC<{
       type="button"
       variant="outline"
       className={styles.magicButton}
+      disabled={shouldBeDisabled}
     >
       {smartlink.sl_chat ? "✨ " : ""}
       {smartlink.sl_label}
