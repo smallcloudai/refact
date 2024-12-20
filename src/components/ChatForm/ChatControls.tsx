@@ -27,12 +27,14 @@ const CapsSelect: React.FC = () => {
       gap="2"
       align="center"
       wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
       ref={(x) => refs.setUseModel(x)}
-      style={{ alignSelf: "flex-start" }}
     >
       <Text size="2">Use model:</Text>
       <Skeleton loading={caps.loading}>
-        <Box minWidth="50px">
+        <Box>
           {allDisabled ? (
             <Text size="1" color="gray">
               No models available
@@ -164,6 +166,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
       pb="2"
       gap="2"
       direction="column"
+      align="start"
       className={classNames(styles.controls)}
     >
       {Object.entries(checkboxes).map(([key, checkbox]) => {
@@ -174,47 +177,33 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           return null;
         }
         return (
-          <Flex
-            style={{
-              // TODO: lots of `align` self
-              alignSelf: "flex-start",
-            }}
+          <ChatControlCheckBox
             key={key}
-          >
-            <ChatControlCheckBox
-              name={checkbox.name}
-              label={checkbox.label}
-              checked={checkbox.checked}
-              disabled={checkbox.disabled}
-              onCheckChange={(value) => onCheckedChange(key, value)}
-              infoText={checkbox.info?.text}
-              href={checkbox.info?.link}
-              linkText={checkbox.info?.linkText}
-              fileName={checkbox.fileName}
-            />
-          </Flex>
+            name={checkbox.name}
+            label={checkbox.label}
+            checked={checkbox.checked}
+            disabled={checkbox.disabled}
+            onCheckChange={(value) => onCheckedChange(key, value)}
+            infoText={checkbox.info?.text}
+            href={checkbox.info?.link}
+            linkText={checkbox.info?.linkText}
+            fileName={checkbox.fileName}
+          />
         );
       })}
 
       {showControls && (
-        <Flex
+        <ToolUseSwitch
           ref={(x) => refs.setUseTools(x)}
-          style={{ alignSelf: "flex-start" }}
-        >
-          <ToolUseSwitch toolUse={toolUse} setToolUse={onSetToolUse} />
-        </Flex>
+          toolUse={toolUse}
+          setToolUse={onSetToolUse}
+        />
       )}
 
-      {showControls && (
-        <Flex style={{ alignSelf: "flex-start" }}>
-          <CapsSelect />
-        </Flex>
-      )}
-      {showControls && (
-        <Flex style={{ alignSelf: "flex-start" }}>
-          <PromptSelect />
-        </Flex>
-      )}
+      <Flex gap="2" direction="column">
+        {showControls && <CapsSelect />}
+        {showControls && <PromptSelect />}
+      </Flex>
     </Flex>
   );
 };

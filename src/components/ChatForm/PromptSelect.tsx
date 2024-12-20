@@ -49,13 +49,15 @@ export const PromptSelect: React.FC = () => {
       gap="2"
       align="center"
       wrap="wrap"
-      style={{ alignSelf: "flex-start" }}
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
     >
       <Text size="2" wrap="nowrap">
         System Prompt:
       </Text>
       <Skeleton loading={promptsRequest.isLoading || promptsRequest.isFetching}>
-        <Box minWidth="80px">
+        <Box flexGrow="1" flexShrink="0">
           <Select
             name="system prompt"
             disabled={promptsRequest.isLoading}
