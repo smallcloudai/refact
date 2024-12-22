@@ -7,7 +7,6 @@ use sha2::{Sha256, Digest};
 use serde_yaml;
 use std::path::{Path, PathBuf};
 use crate::global_context::GlobalContext;
-// use crate::integrations::{get_empty_integrations, get_integration_path};
 
 
 const DEFAULT_CHECKSUM_FILE: &str = "default-checksums.yaml";
@@ -17,14 +16,26 @@ pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) -> St
     let mut results = Vec::new();
     let config_dir = gcx.read().await.config_dir.clone();
 
+    let integrations_d = config_dir.join("integrations.d");
+    if let Err(e) = tokio::fs::create_dir_all(&integrations_d).await {
+        tracing::warn!("Failed to create directory {:?}: {}", integrations_d, e);
+        results.push(format!("Error creating directory {:?}: {}", integrations_d, e));
+    }
+
     let files = vec![
         ("bring-your-own-key.yaml", crate::caps::BRING_YOUR_OWN_KEY_SAMPLE),
         ("customization.yaml", crate::yaml_configs::customization_compiled_in::COMPILED_IN_INITIAL_USER_YAML),
-        ("privacy.yaml", crate::privacy_compiled_in::COMPILED_IN_INITIAL_PRIVACY_YAML)
+        ("privacy.yaml", include_str!("default_privacy.yaml")),
+        ("integrations.d/shell.yaml", include_str!("default_shell.yaml")),
     ];
 
     for (file_name, content) in files {
-        let file_path = config_dir.join(file_name);
+        let file_path = if file_name == "integrations.d/shell.yaml" {
+            integrations_d.join("shell.yaml")
+        } else {
+            config_dir.join(file_name)
+        };
+
         if let Err(e) = _yaml_file_exists_or_create(gcx.clone(), &file_path, content).await {
             tracing::warn!("{}", e);
             results.push(format!("Error processing {:?}: {}", file_path, e));
@@ -32,36 +43,6 @@ pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) -> St
             results.push(file_path.to_string_lossy().to_string());
         }
     }
-
-    let integrations_d = config_dir.join("integrations.d");
-    if let Err(e) = tokio::fs::create_dir_all(&integrations_d).await {
-        tracing::warn!("Failed to create directory {:?}: {}", integrations_d, e);
-        results.push(format!("Error creating directory {:?}: {}", integrations_d, e));
-    }
-
-    // let integrations_enabled = config_dir.join("integrations-enabled.yaml");
-    // let integrations = get_empty_integrations();
-
-    // for (file_name, content) in integrations.iter().map(|(k, v)| (k.clone(), v.integr_settings_default())) {
-    //     let file_path = get_integration_path(&config_dir, &file_name);
-    //     if let Err(e) = _yaml_file_exists_or_create(gcx.clone(), &file_path, &content).await {
-    //         tracing::warn!("{}", e);
-    //         results.push(format!("Error processing {:?}: {}", file_path, e));
-    //     } else {
-    //         results.push(file_path.to_string_lossy().to_string());
-    //     }
-    //     let integr_name = file_path.file_stem().unwrap().to_string_lossy().to_string();
-    //     let mut enabled_cfg = integrations_enabled_cfg(&integrations_enabled).await;
-    //     if let None = enabled_cfg.get(&integr_name) {
-    //         if let serde_yaml::Value::Mapping(ref mut map) = enabled_cfg {
-    //             map.insert(serde_yaml::Value::String(integr_name), serde_yaml::Value::Bool(false));
-    //         }
-    //         if let Err(e) = write_yaml_value(&integrations_enabled, &enabled_cfg).await {
-    //             error!("Failed to write {}: {}", integrations_enabled.display(), e);
-    //             panic!("{}", e);
-    //         }
-    //     }
-    // }
 
     results.get(0).cloned().unwrap_or_default()
 }
@@ -137,38 +118,3 @@ async fn update_checksum(config_dir: &Path, config_name: String, checksum: &str)
         .map_err(|e| format!("failed to write {}: {}", DEFAULT_CHECKSUM_FILE, e))?;
     Ok(())
 }
-
-// pub async fn integrations_enabled_cfg(
-//     integrations_enabled_path: &PathBuf,
-// ) -> serde_yaml::Value {
-//     read_yaml_into_value(integrations_enabled_path).await.unwrap_or_else(|_| serde_yaml::Value::Mapping(Default::default()))
-// }
-
-// pub async fn read_yaml_into_value(yaml_path: &PathBuf) -> Result<serde_yaml::Value, String> {
-//     let file = std::fs::File::open(&yaml_path).map_err(
-//         |e| format!("Failed to open {}: {}", yaml_path.display(), e)
-//     )?;
-
-//     let reader = std::io::BufReader::new(file);
-//     serde_yaml::from_reader(reader).map_err(
-//         |e| {
-//             let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-//             format!("Failed to parse {}{}: {}", yaml_path.display(), location, e)
-//         }
-//     )
-// }
-
-// pub async fn write_yaml_value(path: &Path, value: &serde_yaml::Value) -> Result<(), String> {
-//     let content = serde_yaml::to_string(value).map_err(|e| format!("Failed to serialize YAML: {}", e))?;
-
-//     let mut file = tokio::fs::OpenOptions::new()
-//         .write(true)
-//         .truncate(true)
-//         .create(true)
-//         .open(path)
-//         .await
-//         .map_err(|e| format!("Failed to open file {}: {}", path.display(), e))?;
-
-//     AsyncWriteExt::write_all(&mut file, content.as_bytes()).await
-//         .map_err(|e| format!("Failed to write to file {}: {}", path.display(), e))
-// }

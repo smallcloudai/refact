@@ -1,19 +1,21 @@
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::Mutex as AMutex;
 use serde::Deserialize;
 use serde::Serialize;
-use async_trait::async_trait;
 use serde_json::Value;
+use tokio::sync::Mutex as AMutex;
+use async_trait::async_trait;
+use std::process::Stdio;
+use tokio::process::Command;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, MatchConfirmDeny, MatchConfirmDenyResult};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
-use crate::integrations::integr_cmdline::{execute_blocking_command, CmdlineToolConfig};
 use crate::tools::tools_execute::command_should_be_denied;
+
 
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct SettingsShell {
@@ -80,22 +82,21 @@ impl Tool for ToolShell {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let gcx = {
-            let ccx_lock = ccx.lock().await;
-            ccx_lock.global_context.clone()
-        };
-
         let (command, workdir) = parse_args(args)?;
+        let timeout = self.cfg.timeout.parse::<u64>().unwrap_or(10);
+
+        let gcx = ccx.lock().await.global_context.clone();
         let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
         let project_dirs = crate::files_correction::get_project_dirs(gcx.clone()).await;
 
-        let cmdline_cfg = CmdlineToolConfig {
-            timeout: self.cfg.timeout.clone(), output_filter: self.cfg.output_filter.clone(),
-            command: "".to_string(), command_workdir: "".to_string(), description: "".to_string(),
-            parameters: vec![], parameters_required: None,
-            startup_wait_port: None, startup_wait: 0u64, startup_wait_keyword: None,
-        };
-        let tool_output = execute_blocking_command(&command, &cmdline_cfg, &workdir, &env_variables, project_dirs).await?;
+        let tool_output = execute_shell_command(
+            &command,
+            &workdir,
+            timeout,
+            &self.cfg.output_filter,
+            &env_variables,
+            project_dirs
+        ).await?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
@@ -117,10 +118,7 @@ impl Tool for ToolShell {
             name: "shell".to_string(),
             agentic: true,
             experimental: false,
-            description: vec![
-                "Execute single shell command with user's confirmation.",
-                "Use it for external agent calls like deps installation.",
-            ].join("\n"),
+            description: "Execute a single command, using the \"sh\" on unix-like systems and \"cmd.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step.".to_string(),
             parameters: vec![
                 ToolParam {
                     name: "command".to_string(),
@@ -177,6 +175,53 @@ impl Tool for ToolShell {
     }
 }
 
+pub async fn execute_shell_command(
+    command: &str,
+    workdir: &str,
+    timeout: u64,
+    output_filter: &CmdlineOutputFilter,
+    env_variables: &HashMap<String, String>,
+    project_dirs: Vec<PathBuf>,
+) -> Result<String, String> {
+    let shell = if cfg!(target_os = "windows") { "cmd.exe" } else { "sh" };
+    let shell_arg = if cfg!(target_os = "windows") { "/C" } else { "-c" };
+    let mut cmd = Command::new(shell);
+
+    if workdir.is_empty() {
+        if let Some(first_project_dir) = project_dirs.first() {
+            cmd.current_dir(first_project_dir);
+        } else {
+            tracing::warn!("no working directory, using whatever directory this binary is run :/");
+        }
+    } else {
+        cmd.current_dir(workdir);
+    }
+
+    for (key, value) in env_variables {
+        cmd.env(key, value);
+    }
+
+    cmd.arg(shell_arg).arg(command);
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    let output = tokio::time::timeout(tokio::time::Duration::from_secs(timeout), cmd.output())
+        .await
+        .map_err(|_| format!("Command timed out after {} seconds", timeout))?
+        .map_err(|e| format!("Failed to execute command: {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    let filtered_stdout = crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, &stdout);
+    let filtered_stderr = crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, &stderr);
+
+    if !filtered_stderr.is_empty() {
+        return Err(filtered_stderr);
+    }
+
+    Ok(filtered_stdout)
+}
+
 fn parse_args(args: &HashMap<String, Value>) -> Result<(String, String), String> {
     let command = match args.get("command") {
         Some(Value::String(s)) => {
@@ -192,15 +237,19 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<(String, String), String>
 
     let workdir = match args.get("workdir") {
         Some(Value::String(s)) => {
-            let workdir = PathBuf::from(s.clone());
-            if !workdir.exists() {
-                return Err("Workdir doesn't exist".to_string());
+            if s.is_empty() {
+                "".to_string()
             } else {
-                s.clone()
+                let workdir = PathBuf::from(s.clone());
+                if !workdir.exists() {
+                    return Err("Workdir doesn't exist".to_string());
+                } else {
+                    s.clone()
+                }
             }
         },
         Some(v) => return Err(format!("argument `workdir` is not a string: {:?}", v)),
-        None => return Err("Missing argument `workdir`".to_string())
+        None => "".to_string()
     };
 
     Ok((command, workdir))
@@ -216,7 +265,6 @@ fields:
   output_filter:
     f_type: "output_filter"
     f_desc: "The output from the command can be long or even quasi-infinite. This section allows to set limits, prioritize top or bottom, or use regexp to show the model the relevant part."
-    f_default: "{\"limit_lines\":100,\"limit_chars\":10000,\"valuable_top_or_bottom\":\"bottom\",\"grep\":\"\",\"grep_context_lines\":0,\"remove_from_output\":\"\"}"
     f_extra: true
 description: |
   Allows to execute any command line tool with confirmation from the chat itself.
@@ -225,5 +273,5 @@ available:
   when_isolated_possible: true
 confirmation:
   ask_user_default: ["*"]
-  deny_default: ["sudo*", "rm*"]
+  deny_default: ["sudo*"]
 "#;
