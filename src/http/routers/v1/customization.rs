@@ -1,10 +1,8 @@
 use axum::response::Result;
 use axum::Extension;
-use serde_json::json;
 use hyper::{Body, Response, StatusCode};
 use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
-use tracing::error;
 
 use crate::global_context::GlobalContext;
 use crate::custom_error::ScratchError;
@@ -26,18 +24,14 @@ pub async fn handle_v1_customization(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-	let tconfig = match load_customization(global_context.clone(), false).await {
-		Ok(config) => config,
-		Err(err) => {
-			error!("load_customization: {}", err);
-			return Ok(Response::builder()
-				.status(StatusCode::INTERNAL_SERVER_ERROR)
-				.body(Body::from(serde_json::to_string_pretty(&json!({ "detail": err.to_string() })).unwrap()))
-				.unwrap());
-		}
-	};
+    let mut error_log: Vec<crate::integrations::setting_up_integrations::YamlError> = Vec::new();
+    let tconfig = load_customization(global_context.clone(), false, &mut error_log).await;
+
+    let mut response_body = serde_json::to_value(tconfig).unwrap();
+    response_body["error_log"] = serde_json::to_value(error_log).unwrap();
+
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .body(Body::from(serde_json::to_string_pretty(&tconfig).unwrap()))
+        .body(Body::from(serde_json::to_string_pretty(&response_body).unwrap()))
         .unwrap())
 }

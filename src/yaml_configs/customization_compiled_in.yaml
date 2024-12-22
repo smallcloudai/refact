@@ -1,4 +1,4 @@
-pub const COMPILED_IN_CUSTOMIZATION_YAML: &str = r####"# Customization will merge this compiled-in config and the user config.
+# Customization will merge this compiled-in config and the user config.
 #
 # There are magic keys:
 #    %ARGS%
@@ -379,33 +379,3 @@ toolbox_commands:
   help:
     description: "Show available commands"
     messages: []
-
-"####;
-
-
-pub const COMPILED_IN_INITIAL_USER_YAML : &str = r#"# You can find the compiled-in config by searching for COMPILED_IN_CUSTOMIZATION_YAML in the `refact-lsp` repo.
-#
-# This customization will override any defaults.
-
-#system_prompts:
-#  insert_jokes:
-#    description: "User-defined: write funny comments"
-#    text: |
-#      You are a programming assistant. Use backquotes for code blocks, but insert into comments inside code blocks funny remarks,
-#      a joke inspired by the code or play on words. For example ```\n// Hocus, pocus\ngetTheFocus();\n```.
-
-#code_lens:
-#  my_custom:
-#    label: My Custom
-#    auto_submit: true
-#    new_tab: true
-#    messages:
-#    - role: "user"
-#      content: |
-#        ```
-#        %CODE_SELECTION%
-#        ```
-#        Replace all variables with animal names, such that they lose any original meaning.
-
-"#;
-

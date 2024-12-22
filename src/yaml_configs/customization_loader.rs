@@ -7,7 +7,7 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, SubchatParameters};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
-use crate::yaml_configs::customization_compiled_in::COMPILED_IN_CUSTOMIZATION_YAML;
+use crate::integrations::setting_up_integrations::YamlError;
 
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -121,27 +121,46 @@ fn _replace_variables_in_system_prompts(config: &mut CustomizationYaml, variable
 pub fn load_and_mix_with_users_config(
     user_yaml: &str,
     caps_yaml: &str,
-    caps_default_system_prompt: &str,
     skip_visibility_filtering: bool,
     allow_experimental: bool,
-    competency_vars: &HashMap<String, String>,
-) -> Result<CustomizationYaml, String> {
-    let default_unstructured: serde_yaml::Value = serde_yaml::from_str(COMPILED_IN_CUSTOMIZATION_YAML)
-        .map_err(|e| format!("Error parsing default YAML: {}\n{}", e, COMPILED_IN_CUSTOMIZATION_YAML))?;
+    error_log: &mut Vec<YamlError>,
+) -> CustomizationYaml {
+    let compiled_in_customization = include_str!("customization_compiled_in.yaml");
+
+    let default_unstructured: serde_yaml::Value = serde_yaml::from_str(compiled_in_customization).unwrap();   // compiled-in cannot fail
     let user_unstructured: serde_yaml::Value = serde_yaml::from_str(user_yaml)
-        .map_err(|e| format!("Error parsing customization.yaml: {}\n{}", e, user_yaml))?;
+        .map_err(|e| {
+            error_log.push(YamlError {
+                integr_config_path: "customization.yaml".to_string(),
+                error_line: 0,
+                error_msg: e.to_string(),
+            });
+            format!("Error parsing customization.yaml: {}\n{}", e, user_yaml)
+        }).unwrap_or_default();
 
     let mut variables = HashMap::new();
     _extract_mapping_values(&default_unstructured.as_mapping(), &mut variables);
     _extract_mapping_values(&user_unstructured.as_mapping(), &mut variables);
-    variables.extend(competency_vars.iter().map(|(k, v)| (k.clone(), v.clone())));
 
-    let mut work_config: CustomizationYaml = serde_yaml::from_str(COMPILED_IN_CUSTOMIZATION_YAML)
-        .map_err(|e| format!("Error parsing default ToolboxConfig: {}\n{}", e, COMPILED_IN_CUSTOMIZATION_YAML))?;
+    let mut work_config: CustomizationYaml = serde_yaml::from_str(compiled_in_customization).unwrap();
     let mut user_config: CustomizationYaml = serde_yaml::from_str(user_yaml)
-        .map_err(|e| format!("Error parsing user ToolboxConfig: {}\n{}", e, user_yaml))?;
+        .map_err(|e| {
+            error_log.push(YamlError {
+                integr_config_path: "customization.yaml".to_string(),
+                error_line: 0,
+                error_msg: e.to_string(),
+            });
+            format!("Error parsing user ToolboxConfig: {}\n{}", e, user_yaml)
+        }).unwrap_or_default();
     let caps_config: CustomizationYaml = serde_yaml::from_str(caps_yaml)
-        .map_err(|e| format!("Error parsing default ToolboxConfig: {}\n{}", e, caps_yaml))?;
+        .map_err(|e| {
+            error_log.push(YamlError {
+                integr_config_path: "caps.yaml".to_string(),
+                error_line: 0,
+                error_msg: e.to_string(),
+            });
+            format!("Error parsing default ToolboxConfig: {}\n{}", e, caps_yaml)
+        }).unwrap_or_default();
 
     _replace_variables_in_messages(&mut work_config, &variables);
     _replace_variables_in_messages(&mut user_config, &variables);
@@ -171,10 +190,12 @@ pub fn load_and_mix_with_users_config(
 
     work_config.system_prompts = filtered_system_prompts;
 
-    if let Some(default_system_prompt) = work_config.system_prompts.get(caps_default_system_prompt) {
-        work_config.system_prompts.insert("default".to_string(), default_system_prompt.clone());
-    }
-    Ok(work_config)
+    println!("caps_config: {:?}", caps_config);
+    println!("user_config: {:?}", user_config);
+    println!("work_config: {:?}", work_config);
+    println!("compiled_in_customization: {:?}", compiled_in_customization);
+
+    work_config
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -186,67 +207,60 @@ struct Competency {
 pub async fn load_customization(
     gcx: Arc<ARwLock<GlobalContext>>,
     skip_visibility_filtering: bool,
-) -> Result<CustomizationYaml, String> {
+    error_log: &mut Vec<YamlError>,
+) -> CustomizationYaml {
     let allow_experimental = gcx.read().await.cmdline.experimental;
-    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|e|format!("error loading caps: {e}"))?;
-
-    let (caps_config_text, caps_default_system_prompt) = {
-        let caps_locked = caps.read().unwrap();
-        (caps_locked.customization.clone(), caps_locked.code_chat_default_system_prompt.clone())
+    let caps = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => caps,
+        Err(e) => {
+            error_log.push(YamlError {
+                integr_config_path: "bring-your-own-key.yaml".to_string(),
+                error_line: 0,
+                error_msg: format!("error loading caps: {e}"),
+            });
+            return CustomizationYaml::default();
+        }
     };
-    // let competency_path = gcx.read().await.cmdline.competency.clone();
+
+    let caps_config_text = {
+        let caps_locked = caps.read().unwrap();
+        caps_locked.customization.clone()
+    };
 
     let config_dir = gcx.read().await.config_dir.clone();
     let customization_yaml_path = config_dir.join("customization.yaml");
+    let user_config_text = std::fs::read_to_string(&customization_yaml_path)
+        .map_err(|e| format!("Failed to read file: {}", e))
+        .unwrap_or_default();
 
-    let user_config_text = std::fs::read_to_string(&customization_yaml_path).map_err(|e| format!("Failed to read file: {}", e))?;
-
-    // let competency_yaml = if !competency_path.is_empty() {
-    //     std::fs::read_to_string(&competency_path).map_err(|e| format!("Failed to read file: {}", e))?
-    // } else {
-    //     let global_competency_path = cache_dir.join("competency.yaml");
-    //     if let Ok(content) = std::fs::read_to_string(&global_competency_path) {
-    //         content
-    //     } else {
-    //         tracing::info!("there is no competency.yaml supplied in the command line, and couldn't read {} either", global_competency_path.display());
-    //         String::new()
-    //     }
-    // };
-    let system_prompt_vars = HashMap::new();
-
-    // let system_prompt_vars = if competency_yaml.is_empty() {
-    //     let mut map = HashMap::new();
-    //     map.insert("SPECIALIZATION".to_string(), "".to_string());
-    //     map
-    // } else {
-    //     let competency: Competency = serde_yaml::from_str(&competency_yaml)
-    //         .map_err(|e| format!("Error parsing competency YAML: {}\n{}", e, competency_yaml))?;
-    //     competency.system_prompt_vars
-    // };
-
-    load_and_mix_with_users_config(&user_config_text, &caps_config_text, &caps_default_system_prompt, skip_visibility_filtering, allow_experimental, &system_prompt_vars).map_err(|e| e.to_string())
+    load_and_mix_with_users_config(
+        &user_config_text,
+        &caps_config_text,
+        skip_visibility_filtering,
+        allow_experimental,
+        error_log,
+    )
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::yaml_configs::customization_compiled_in::COMPILED_IN_INITIAL_USER_YAML;
-    #[test]
-    fn is_compiled_in_toolbox_valid_yaml() {
-        let cyaml_vars = HashMap::new();
-        let _config = load_and_mix_with_users_config(COMPILED_IN_INITIAL_USER_YAML, "", "", false, true, &cyaml_vars);
-    }
 
     #[test]
     fn are_all_system_prompts_present() {
-        let cyaml_vars = HashMap::new();
+        let mut error_log = Vec::new();
         let config = load_and_mix_with_users_config(
-            COMPILED_IN_INITIAL_USER_YAML, "", "", true, true, &cyaml_vars,
+            "", "", true, true, &mut error_log,
         );
-        assert_eq!(config.is_ok(), true);
-        let config = config.unwrap();
-
+        for e in error_log.iter() {
+            eprintln!(
+                "{}:{} {:?}",
+                crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
+                e.error_line,
+                e.error_msg,
+            );
+        }
+        assert!(error_log.is_empty(), "There were errors in the error_log");
         assert_eq!(config.system_prompts.get("default").is_some(), true);
         assert_eq!(config.system_prompts.get("exploration_tools").is_some(), true);
         assert_eq!(config.system_prompts.get("agentic_tools").is_some(), true);

@@ -203,6 +203,7 @@ pub async fn try_load_caps_quickly_if_not_present(
     let caps_reading_lock: Arc<AMutex<bool>> = gcx.read().await.caps_reading_lock.clone();
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
     let caps_last_attempted_ts;
+
     {
         // gcx is not locked, but a specialized async mutex is, up until caps are saved
         let _caps_reading_locked = caps_reading_lock.lock().await;

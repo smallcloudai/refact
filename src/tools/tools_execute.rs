@@ -20,17 +20,28 @@ use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::get_model_record;
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
+
 pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_name: &str) -> Result<SubchatParameters, String> {
     let (gcx, params_mb) = {
         let ccx_locked = ccx.lock().await;
         let gcx = ccx_locked.global_context.clone();
-        let params = ccx_locked.subchat_tool_parameters.get(tool_name).cloned();
+        let params = ccx_locked.subchat_tool_parameters.get(tool_name).cloned();  // comes from the request, the request has specified parameters
         (gcx, params)
     };
+
     let mut params = match params_mb {
         Some(params) => params,
         None => {
-            let tconfig = load_customization(gcx.clone(), true).await?;
+            let mut error_log = Vec::new();
+            let tconfig = load_customization(gcx.clone(), true, &mut error_log).await;
+            for e in error_log.iter() {
+                tracing::error!(
+                    "{}:{} {:?}",
+                    crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
+                    e.error_line,
+                    e.error_msg,
+                );
+            }
             tconfig.subchat_tool_parameters.get(tool_name).cloned()
                 .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
         }
@@ -172,7 +183,7 @@ pub async fn run_tools(
             }
         };
         info!("tool use {}({:?})", &t_call.function.name, args);
-        
+
         {
             let cmd_lock = cmd.lock().await;
             match cmd_lock.match_against_confirm_deny(&args) {
@@ -194,7 +205,7 @@ pub async fn run_tools(
                 }
             }
         };
-        
+
         let (corrections, tool_execute_results) = {
             let mut cmd_lock = cmd.lock().await;
             match cmd_lock.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::fs;
 use tokio::sync::RwLock as ARwLock;
-use std::collections::HashMap;
 
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextFile, ChatMeta};
@@ -113,17 +112,18 @@ pub async fn mix_config_messages(
         }
     };
 
-    // XXX should be a better way to load the prompt
-    let custom: crate::yaml_configs::customization_loader::CustomizationYaml = match crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true).await {
-        Ok(x) => x,
-        Err(why) => {
-            tracing::error!("Failed to load customization.yaml, will use compiled-in default for the configurator system prompt:\n{:?}", why);
-            crate::yaml_configs::customization_loader::load_and_mix_with_users_config(
-                crate::yaml_configs::customization_compiled_in::COMPILED_IN_INITIAL_USER_YAML,
-                "", "", true, true, &HashMap::new(),
-            ).unwrap()
-        }
-    };
+    let mut error_log = Vec::new();
+    let custom = crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true, &mut error_log).await;
+    // XXX: let model know there are errors
+    for e in error_log.iter() {
+        tracing::error!(
+            "{}:{} {:?}",
+            crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
+            e.error_line,
+            e.error_msg,
+        );
+    }
+
     let sp: &crate::yaml_configs::customization_loader::SystemPrompt = custom.system_prompts.get("configurator").unwrap();
 
     let context_file_message = ChatMessage {

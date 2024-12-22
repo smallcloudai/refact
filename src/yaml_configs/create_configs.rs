@@ -6,6 +6,7 @@ use tokio::io::AsyncWriteExt;
 use sha2::{Sha256, Digest};
 use serde_yaml;
 use std::path::{Path, PathBuf};
+
 use crate::global_context::GlobalContext;
 
 
@@ -24,7 +25,7 @@ pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) -> St
 
     let files = vec![
         ("bring-your-own-key.yaml", crate::caps::BRING_YOUR_OWN_KEY_SAMPLE),
-        ("customization.yaml", crate::yaml_configs::customization_compiled_in::COMPILED_IN_INITIAL_USER_YAML),
+        ("customization.yaml", include_str!("default_customization.yaml")),
         ("privacy.yaml", include_str!("default_privacy.yaml")),
         ("integrations.d/shell.yaml", include_str!("default_shell.yaml")),
     ];

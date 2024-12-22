@@ -135,17 +135,20 @@ async fn main() {
         println!("{}", byok_config_path);
         std::process::exit(0);
     }
-    if cmdline.print_customization {
-        match load_customization(gcx.clone(), false).await {
-            Ok(customization) => {
-                println!("{}", serde_json::to_string(&customization).unwrap());
-                std::process::exit(0);
-            }
-            Err(_) => {
-                println!("Failed to load customization, exiting");
-                std::process::exit(1);
-            }
+
+    if cmdline.print_customization {  // used in JB
+        let mut error_log = Vec::new();
+        let cust = load_customization(gcx.clone(), false, &mut error_log).await;
+        for e in error_log.iter() {
+            eprintln!(
+                "{}:{} {:?}",
+                crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
+                e.error_line,
+                e.error_msg,
+            );
         }
+        println!("{}", serde_json::to_string_pretty(&cust).unwrap());
+        std::process::exit(0);
     }
 
     if cmdline.ast {
