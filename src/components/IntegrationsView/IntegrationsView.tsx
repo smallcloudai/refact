@@ -673,6 +673,8 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       const formData = new FormData(event.currentTarget);
       const rawFormValues = Object.fromEntries(formData.entries());
       debugIntegrations(`[DEBUG]: rawFormValues: `, rawFormValues);
+      const [type, rest] =
+        currentNotConfiguredIntegration.integr_name.split("_");
       if (
         "integr_config_path" in rawFormValues &&
         typeof rawFormValues.integr_config_path === "string" &&
@@ -682,19 +684,19 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         // making integration-get call and setting the result as currentIntegration
         const commandName = rawFormValues.command_name;
         const configPath = rawFormValues.integr_config_path.replace(
-          "TEMPLATE",
+          rest,
           commandName,
         );
 
         debugIntegrations(
-          `[DEBUG]: config path for \`v1/integration-get\`: `,
+          `[DEBUG INTERMEDIATE PAGE]: config path for \`v1/integration-get\`: `,
           configPath,
         );
 
         const customIntegration: IntegrationWithIconRecord = {
           when_isolated: false,
           on_your_laptop: false,
-          integr_name: `cmdline_${commandName}`,
+          integr_name: `${type}_${commandName}`,
           integr_config_path: configPath,
           project_path: rawFormValues.integr_config_path
             .toString()
