@@ -455,6 +455,8 @@ class BaseCompletionsRouter(APIRouter):
 
     async def _embeddings_style_openai(self, post: EmbeddingsStyleOpenAI, authorization: str = Header(None)):
         account = await self._account_from_bearer(authorization)
+        # TODO: we'll implement caps_version logic later
+
         data = [
             {
                 "embedding": res["embedding"],
@@ -511,6 +513,8 @@ class BaseCompletionsRouter(APIRouter):
             return usage_dict
 
         _account = await self._account_from_bearer(authorization)
+        caps_version = self._caps_version
+
         messages = []
         for m in (i.dict() for i in post.messages):
             # drop tool_calls if empty, otherwise litellm tokenizing won't work
@@ -519,6 +523,16 @@ class BaseCompletionsRouter(APIRouter):
             messages.append(m)
 
         prefix, postfix = "data: ", "\n\n"
+
+        def _patch_caps_version(data: Dict) -> Dict:
+            return {
+                **data,
+                "caps_version": caps_version,
+            }
+
+        def _wrap_output(output: str) -> str:
+            return prefix + output + postfix
+
         model_dict = self._model_assigner.models_db_with_passthrough.get(post.model, {})
 
         async def litellm_streamer():
@@ -546,19 +560,19 @@ class BaseCompletionsRouter(APIRouter):
 
                     except json.JSONDecodeError:
                         data = {"choices": [{"finish_reason": finish_reason}]}
-                    yield prefix + json.dumps(data) + postfix
+                    yield _wrap_output(json.dumps(_patch_caps_version(data)))
 
                 final_msg = {"choices": []}
                 usage_dict = compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n)
                 final_msg.update(usage_dict)
-                yield prefix + json.dumps(final_msg) + postfix
+                yield _wrap_output(json.dumps(_patch_caps_version(final_msg)))
 
                 # NOTE: DONE needed by refact-lsp server
-                yield prefix + "[DONE]" + postfix
+                yield _wrap_output("[DONE]")
             except BaseException as e:
                 err_msg = f"litellm error (1): {e}"
                 log(err_msg)
-                yield prefix + json.dumps({"error": err_msg}) + postfix
+                yield _wrap_output(json.dumps(_patch_caps_version({"error": err_msg})))
 
         async def litellm_non_streamer():
             generated_tokens_n = 0
@@ -613,11 +627,11 @@ class BaseCompletionsRouter(APIRouter):
                                 data["choices"][0]["finish_reason"] = None
                             except json.JSONDecodeError:
                                 data = {"choices": [{"finish_reason": finish_reason}]}
-                            yield prefix + json.dumps(data) + postfix
+                            yield _wrap_output(json.dumps(_patch_caps_version(data)))
                 except aiohttp.ClientConnectorError as e:
                     err_msg = f"LSP server is not ready yet: {e}"
                     log(err_msg)
-                    yield prefix + json.dumps({"error": err_msg}) + postfix
+                    yield _wrap_output(json.dumps(_patch_caps_version({"error": err_msg})))
 
         if model_dict.get('backend') == 'litellm':
             model_name = model_dict.get('resolve_as', post.model)
@@ -629,6 +643,7 @@ class BaseCompletionsRouter(APIRouter):
                 prompt_tokens_n += litellm.token_counter(model_name, text=json.dumps(post.tools))
             response_streamer = litellm_streamer() if post.stream else litellm_non_streamer()
         else:
+            # TODO: unused refact-lsp logic, remove ASAP
             response_streamer = chat_completion_streamer()
 
         return StreamingResponse(response_streamer, media_type="text/event-stream")
