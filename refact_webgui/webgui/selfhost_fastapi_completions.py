@@ -598,11 +598,11 @@ class BaseCompletionsRouter(APIRouter):
                     data.update(usage_dict)
                 except json.JSONDecodeError:
                     data = {"choices": [{"finish_reason": finish_reason}]}
-                yield json.dumps(data)
+                yield json.dumps(_patch_caps_version(data))
             except BaseException as e:
                 err_msg = f"litellm error (2): {e}"
                 log(err_msg)
-                yield json.dumps({"error": err_msg})
+                yield json.dumps(_patch_caps_version({"error": err_msg}))
 
         async def chat_completion_streamer():
             post_url = "http://127.0.0.1:8001/v1/chat"
