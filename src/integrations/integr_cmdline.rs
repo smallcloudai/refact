@@ -326,10 +326,16 @@ confirmation:
   ask_user_default: ["*"]
   deny_default: ["sudo*"]
 smartlinks:
-  - sl_label: "Auto Configure"
+  - sl_label: "Test"
     sl_chat:
       - role: "user"
         content: |
           🔧 Test the tool that corresponds to %CURRENT_CONFIG%
           If the tool isn't available or doesn't work, go through the usual plan in the system prompt. If it works express happiness, and change nothing.
+    sl_enable_only_with_tool: true
+  - sl_label: "Auto Configure"
+    sl_chat:
+      - role: "user"
+        content: |
+          🔧 Please write %CURRENT_CONFIG% based on what you see in the project. Follow the plan in the system prompt.
 "#;

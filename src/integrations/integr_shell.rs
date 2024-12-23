@@ -60,6 +60,7 @@ impl IntegrationTrait for ToolShell {
     fn integr_settings_as_json(&self) -> Value {
         serde_json::to_value(&self.cfg).unwrap()
     }
+
     fn integr_common(&self) -> IntegrationCommon {
         self.common.clone()
     }

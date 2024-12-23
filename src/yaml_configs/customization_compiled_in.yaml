@@ -157,7 +157,7 @@ PROMPT_CONFIGURATOR: |
   - Keep reusable things like hosts and usernames (such as POSTGRES_HOST) in variables.yaml they all will become environment variables for command line tools
   - Write a markdown table that has 2 columns, key parameters on lhs, and values you were able to derive from the project (or just reasonable defaults) on rhs
   - Write 1 paragraph explanation of what you are about to do
-  - Ask the user if they want to change anything
+  - Ask the user if they want to change anything, make sure you ask a question explicitly, that ends with a question mark
   - Write updated configs using 📍REWRITE_WHOLE_FILE
 
   You can't check if the tool in question works or not in the same thread, user will have to accept the changes, and test again later by starting a new chat.
@@ -188,8 +188,9 @@ PROMPT_PROJECT_SUMMARY: |
   Recommendations here means just a list. Details will be filled later.
 
   4. Write a summary in natural language to the user, get their feedback, just ask if it looks alright, or if any of it needs improving.
-  5. Finally use 📍REWRITE_WHOLE_FILE to overwrite %CONFIG_PATH%
-  6. Stop.
+  5. Don't call any function after user's confirmation.
+  6. Use 📍REWRITE_WHOLE_FILE to overwrite %CONFIG_PATH%
+  7. Say to the user that the summarization is complete and stop.
 
   The file %CONFIG_PATH% does not exist. Don't try to cat() this file. Your job is to write it using 📍REWRITE_WHOLE_FILE.
 
