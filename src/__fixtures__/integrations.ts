@@ -36,6 +36,10 @@ export const INTEGRATIONS_RESPONSE: Integration = {
         f_placeholder: "marketing_db",
       },
     },
+    confirmation: {
+      ask_user_default: [],
+      deny_default: [],
+    },
     available: {
       on_your_laptop_possible: true,
       when_isolated_possible: true,

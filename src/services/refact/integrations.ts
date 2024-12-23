@@ -170,7 +170,7 @@ export type ToolConfirmation = {
 export type SchemaToolConfirmation = {
   ask_user_default: string[];
   deny_default: string[];
-  not_applicable: boolean;
+  not_applicable?: boolean;
 };
 
 export type Integration = {
