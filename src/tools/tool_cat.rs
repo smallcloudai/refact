@@ -21,6 +21,9 @@ use image::{ImageFormat, ImageReader};
 pub struct ToolCat;
 
 
+const CAT_MAX_IMAGES_CNT: usize = 1;
+
+
 #[async_trait]
 impl Tool for ToolCat {
     fn as_any(&self) -> &dyn std::any::Any { self }
@@ -81,7 +84,7 @@ impl Tool for ToolCat {
             }
         }
         if !not_found_messages.is_empty() {
-            content.push_str(&format!("Path problems:\n\n{}\n\n", not_found_messages.join("\n\n")));
+            content.push_str(&format!("Problems:\n\n{}\n\n", not_found_messages.join("\n\n")));
             corrections = true;
         }
 
@@ -260,6 +263,7 @@ pub async fn paths_and_symbols_to_cat(
         .filter_map(|x| if let ContextEnum::ContextFile(cf) = x { Some(cf.file_name.clone()) } else { None })
         .collect::<Vec<_>>();
 
+    let mut image_counter = 0;
     for p in unique_paths.iter().filter(|x|!filenames_got_symbols_for.contains(x)) {
         // don't have symbols for these, so we need to mention them as files, without a symbol, analog of @file
         let f_type = get_file_type(&PathBuf::from(p));
@@ -267,6 +271,11 @@ pub async fn paths_and_symbols_to_cat(
         if f_type.starts_with("image/") {
             match load_image(p, &f_type).await {
                 Ok(mm) => {
+                    if image_counter == CAT_MAX_IMAGES_CNT {
+                        not_found_messages.push(format!("{}: cat can show only 1 image per call", p));
+                        continue;
+                    }
+                    image_counter += 1;
                     filenames_present.push(p.clone());
                     multimodal.push(mm);
                 },
