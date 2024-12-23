@@ -11,6 +11,7 @@ use crate::tools::tools_description::Tool;
 pub struct SettingsIsolation {
     pub container_workspace_folder: String,
     pub docker_image_id: String,
+    pub docker_network: String,
     pub host_lsp_path: String,
     #[serde(serialize_with = "serialize_ports", deserialize_with = "deserialize_ports")]
     pub ports: Vec<Port>,

@@ -233,9 +233,14 @@ async fn docker_container_create(
 
     let ports_to_forward_as_arg_list = ports_to_forward.iter()
         .map(|p| format!("--publish={}:{}", p.published, p.target)).collect::<Vec<_>>().join(" ");
+    let network_if_set = if !isolation.docker_network.is_empty() {
+        format!("--network {}", isolation.docker_network)
+    } else {
+        String::new()
+    };
     let run_command = format!(
         "container create --name=refact-{chat_id} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
-        {ports_to_forward_as_arg_list} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
+        {ports_to_forward_as_arg_list} {network_if_set} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
     );
 
     info!("Executing docker command: {}", &run_command);
