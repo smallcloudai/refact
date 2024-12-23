@@ -57,6 +57,7 @@ import type { ToolParameterEntity } from "../../services/refact";
 import isEqual from "lodash.isequal";
 import { convertRawIntegrationFormValues } from "../../features/Integrations/convertRawIntegrationFormValues";
 import { validateSnakeCase } from "../../utils/validateSnakeCase";
+import { setIntegrationData } from "../../features/Chat";
 
 type IntegrationViewProps = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -93,25 +94,36 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
   const maybeIntegration = useMemo(() => {
     if (!currentThreadIntegration) return null;
     if (!integrationsMap) return null;
+    debugIntegrations(
+      `[DEBUG LINKS]: currentThreadIntegration: `,
+      currentThreadIntegration,
+    );
     const integrationName = currentThreadIntegration.integrationName;
     const integrationPath = currentThreadIntegration.integrationPath;
-    if (!integrationName) return null;
-    const isCmdline = integrationName.startsWith("cmdline");
-    const isService = integrationName.startsWith("service");
+    const isCmdline = integrationName
+      ? integrationName.startsWith("cmdline")
+      : false;
+    const isService = integrationName
+      ? integrationName.startsWith("service")
+      : false;
     const shouldIntermediatePageShowUp =
       currentThreadIntegration.shouldIntermediatePageShowUp;
 
     // TODO: check for extra flag in currentThreadIntegration to return different find() call from notConfiguredGrouped integrations if it's set to true
     const integration =
       integrationsMap.integrations.find((integration) => {
-        if (isCmdline) return integration.integr_name === "cmdline_TEMPLATE";
-        if (isService) return integration.integr_name === "service_TEMPLATE";
+        if (!integrationPath) {
+          if (isCmdline) return integration.integr_name === "cmdline_TEMPLATE";
+          if (isService) return integration.integr_name === "service_TEMPLATE";
+        }
         if (!shouldIntermediatePageShowUp)
-          return (
-            integration.integr_name === integrationName &&
-            integration.integr_config_path === integrationPath
-          );
-        return integration.integr_name === integrationName;
+          return integrationName
+            ? integration.integr_name === integrationName &&
+                integration.integr_config_path === integrationPath
+            : integration.integr_config_path === integrationPath;
+        return integrationName
+          ? integration.integr_name === integrationName
+          : integration.integr_config_path === integrationPath;
       }) ?? null;
     if (!integration) {
       debugIntegrations(`[DEBUG INTEGRATIONS] not found integration`);
@@ -121,7 +133,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     const integrationWithFlag = {
       ...integration,
       commandName:
-        isCmdline || isService
+        (isCmdline || isService) && integrationName
           ? integrationName.split("_").slice(1).join("_")
           : undefined,
       shouldIntermediatePageShowUp: shouldIntermediatePageShowUp ?? false,
@@ -481,8 +493,15 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       debugIntegrations(`[DEBUG]: formValues: `, formValues);
 
       formValues.available = availabilityValues;
-      formValues.parameters = toolParameters;
-      formValues.confirmation = confirmationRules;
+      if (
+        currentIntegration.integr_name.includes("cmdline") ||
+        currentIntegration.integr_name.includes("service")
+      ) {
+        formValues.parameters = toolParameters;
+      }
+      if (!currentIntegrationSchema.confirmation.not_applicable) {
+        formValues.confirmation = confirmationRules;
+      }
 
       const response = await saveIntegrationMutationTrigger(
         currentIntegration.integr_config_path,
@@ -791,6 +810,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     dispatch(clearError());
     setCurrentIntegration(null);
     setCurrentNotConfiguredIntegration(null);
+    dispatch(setIntegrationData(null));
   };
 
   const handleIntegrationShowUp = (

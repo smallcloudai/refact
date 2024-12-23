@@ -140,17 +140,32 @@ export function useLinksFromLsp() {
         "link_goto" in link &&
         link.link_goto !== undefined
       ) {
-        const [action, payload] = link.link_goto.split(":");
+        const isIntegrationNameInPayload = (name: string) => {
+          return !/[\\:]/.test(name);
+        };
+
+        const [action, ...payloadParts] = link.link_goto.split(":");
+        const payload = payloadParts.join(":");
         if (action.toLowerCase() === "settings") {
           debugIntegrations(
             `[DEBUG]: this goto is integrations one, dispatching integration data`,
           );
-          dispatch(
-            setIntegrationData({
-              name: payload,
-              shouldIntermediatePageShowUp: payload !== "DEFAULT",
-            }),
-          );
+          if (isIntegrationNameInPayload(payload)) {
+            dispatch(
+              setIntegrationData({
+                name: payload,
+                path: undefined,
+                shouldIntermediatePageShowUp: payload !== "DEFAULT",
+              }),
+            );
+          } else {
+            dispatch(
+              setIntegrationData({
+                path: payload,
+                shouldIntermediatePageShowUp: false,
+              }),
+            );
+          }
           setPendingIntegrationGoto(link.link_goto);
         }
         handleGoTo({

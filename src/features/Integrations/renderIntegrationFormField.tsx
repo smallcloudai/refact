@@ -10,12 +10,13 @@ import type {
   IntegrationPrimitive,
 } from "../../services/refact";
 import styles from "./renderIntegrationFormField.module.css";
-import { Flex } from "@radix-ui/themes";
+import { Box, Flex } from "@radix-ui/themes";
 import { toPascalCase } from "../../utils/toPascalCase";
 import { SmartLink } from "../../components/SmartLink";
 // import { Markdown } from "../../components/Markdown";
 import { ParametersTable } from "../../components/IntegrationsView/IntegrationsTable/ParametersTable";
 import type { ToolParameterEntity } from "../../services/refact";
+import { Markdown } from "../../components/Markdown";
 
 type FieldType = "string" | "bool" | "int" | "tool" | "output";
 
@@ -139,6 +140,16 @@ export const renderIntegrationFormField = ({
             }
             onToolParameters={onToolParameters}
           />
+        )}
+        {/* TODO: make output filter rendering better */}
+        {f_type === "output" && (
+          <Box>
+            <Markdown>
+              {"```json\n" +
+                JSON.stringify(values ? values[fieldKey] : {}, null, 2) +
+                "\n```"}
+            </Markdown>
+          </Box>
         )}
         {field.f_desc && (
           <CustomDescriptionField>{field.f_desc}</CustomDescriptionField>

@@ -98,7 +98,7 @@ export const setSendImmediately = createAction<boolean>(
 
 export const setChatMode = createAction<LspChatMode>("chatThread/setChatMode");
 
-export const setIntegrationData = createAction<Partial<IntegrationMeta>>(
+export const setIntegrationData = createAction<Partial<IntegrationMeta> | null>(
   "chatThread/setIntegrationData",
 );
 

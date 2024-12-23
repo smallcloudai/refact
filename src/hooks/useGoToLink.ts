@@ -18,8 +18,8 @@ export function useGoToLink() {
     ({ goto }: { goto?: string }) => {
       if (!goto) return;
       // TODO:  duplicated in smart links.
-      const [action, payload] = goto.split(":");
-
+      const [action, ...payloadParts] = goto.split(":");
+      const payload = payloadParts.join(":");
       switch (action.toLowerCase()) {
         case "editor": {
           void queryPathThenOpenFile({ file_name: payload });
@@ -46,6 +46,7 @@ export function useGoToLink() {
                 payload !== "DEFAULT"
                   ? maybeIntegration.shouldIntermediatePageShowUp
                   : false,
+              wasOpenedThroughChat: true,
             }),
           );
           // TODO: open in the integrations

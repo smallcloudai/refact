@@ -167,6 +167,12 @@ export type ToolConfirmation = {
   deny: string[];
 };
 
+export type SchemaToolConfirmation = {
+  ask_user_default: string[];
+  deny_default: string[];
+  not_applicable: boolean;
+};
+
 export type Integration = {
   project_path: string;
   integr_name: string;
@@ -282,6 +288,7 @@ type IntegrationSchema = {
   description?: string;
   fields: Record<string, IntegrationField<NonNullable<IntegrationPrimitive>>>;
   available: Record<string, boolean>;
+  confirmation: SchemaToolConfirmation;
   smartlinks?: SmartLink[];
   docker?: SchemaDocker;
 };
@@ -360,6 +367,9 @@ function isIntegrationSchema(json: unknown): json is IntegrationSchema {
   if (!Object.values(json.fields).every(isIntegrationField)) {
     return false;
   }
+  if (!("confirmation" in json)) return false;
+  if (!json.confirmation) return false;
+  if (!(typeof json.confirmation === "object")) return false;
   if (!("available" in json)) {
     return false;
   }

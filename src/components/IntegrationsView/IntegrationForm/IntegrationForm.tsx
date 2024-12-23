@@ -30,7 +30,6 @@ import {
   areToolParameters,
 } from "../../../services/refact";
 import { Confirmation } from "../Confirmation";
-import isEqual from "lodash.isequal";
 
 type IntegrationFormProps = {
   integrationPath: string;
@@ -257,24 +256,23 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                 : "Show advanced configuration"}
             </Button>
           )}
-          {integration.data.integr_values && (
+          {!integration.data.integr_schema.confirmation.not_applicable && (
             <Flex gap="4" mb="3">
-              {integration.data.integr_values.confirmation &&
-                areToolConfirmation(
-                  integration.data.integr_values.confirmation,
-                ) && (
-                  <Confirmation
-                    confirmationObject={
-                      isEqual(
-                        integration.data.integr_values.confirmation,
-                        confirmationRules,
-                      )
-                        ? confirmationRules
-                        : integration.data.integr_values.confirmation
-                    }
-                    onChange={handleConfirmationChange}
-                  />
-                )}
+              <Confirmation
+                confirmationByUser={confirmationRules}
+                confirmationFromValues={
+                  integration.data.integr_values !== null &&
+                  areToolConfirmation(
+                    integration.data.integr_values.confirmation,
+                  )
+                    ? integration.data.integr_values.confirmation
+                    : null
+                }
+                defaultConfirmationObject={
+                  integration.data.integr_schema.confirmation
+                }
+                onChange={handleConfirmationChange}
+              />
             </Flex>
           )}
           <Flex justify="end" width="100%">

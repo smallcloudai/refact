@@ -9,6 +9,8 @@ import { Button, Flex, Table, TextField } from "@radix-ui/themes";
 import { PlusIcon } from "@radix-ui/react-icons";
 import { toPascalCase } from "../../../utils/toPascalCase";
 
+import styles from "./ConfirmationTable.module.css";
+
 type ConfirmationTableProps = {
   tableName: string;
   initialData: string[];
@@ -175,7 +177,7 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
             ) : (
               <Table.Row>
                 <Table.Cell colSpan={columns.length}>
-                  No parameters set yet
+                  No rules set yet
                 </Table.Cell>
               </Table.Row>
             )}
@@ -188,6 +190,7 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
             size="1"
             variant="surface"
             color="gray"
+            className={styles.addRowButton}
           >
             <Flex align="stretch" gap="1">
               <PlusIcon /> Add row
