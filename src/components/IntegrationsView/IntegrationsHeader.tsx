@@ -44,7 +44,7 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
           align="center"
         >
           {width > 500 ? (
-            <Button size="1" variant="surface" onClick={handleButtonClick}>
+            <Button size="2" variant="surface" onClick={handleButtonClick}>
               <ArrowLeftIcon width="16" height="16" />
               {instantBackReturnment ? "Back to chat" : "Configurations"}
             </Button>
