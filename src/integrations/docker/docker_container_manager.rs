@@ -218,15 +218,18 @@ async fn docker_container_create(
     }
     let host_lsp_path  = isolation.host_lsp_path.clone();
 
-    let (address_url, api_key) = {
+    let (address_url, api_key, integrations_yaml) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.cmdline.address_url.clone(), gcx_locked.cmdline.api_key.clone())
+        (gcx_locked.cmdline.address_url.clone(), gcx_locked.cmdline.api_key.clone(), gcx_locked.cmdline.integrations_yaml.clone())
     };
 
-    let lsp_command = format!(
+    let mut lsp_command = format!(
         "{DEFAULT_CONTAINER_LSP_PATH} --http-port {lsp_port} --logs-stderr --inside-container \
         --address-url {address_url} --api-key {api_key} --vecdb --reset-memory --ast --experimental",
     );
+    if !integrations_yaml.is_empty() { 
+        lsp_command.push_str(" --integrations-yaml ~/.config/refact/integrations.yaml"); 
+    }
 
     let ports_to_forward_as_arg_list = ports_to_forward.iter()
         .map(|p| format!("--publish={}:{}", p.published, p.target)).collect::<Vec<_>>().join(" ");
@@ -251,7 +254,10 @@ async fn docker_container_sync_config_folder(
     container_id: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(), String> {
-    let config_dir = gcx.read().await.config_dir.clone();
+    let (config_dir, integrations_yaml) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.integrations_yaml.clone())
+    };
     let config_dir_string = config_dir.to_string_lossy().to_string();
     let container_home_dir = docker_container_get_home_dir(&docker, &container_id, gcx.clone()).await?;
 
@@ -261,6 +267,11 @@ async fn docker_container_sync_config_folder(
     let temp_dir_path = temp_dir.path().to_string_lossy().to_string();
     docker.command_execute(&format!("container cp {temp_dir_path} {container_id}:{container_home_dir}/.config/"), gcx.clone(), true, true).await?;
     docker.command_execute(&format!("container cp {config_dir_string} {container_id}:{container_home_dir}/.config/refact"), gcx.clone(), true, true).await?;
+
+    if !integrations_yaml.is_empty() {
+        let cp_integrations_command = format!("container cp {integrations_yaml} {container_id}:{container_home_dir}/.config/refact/integrations.yaml");
+        docker.command_execute(&cp_integrations_command, gcx.clone(), true, true).await?;
+    }
 
     Ok(())
 }

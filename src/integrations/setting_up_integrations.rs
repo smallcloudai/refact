@@ -265,13 +265,6 @@ pub fn read_integrations_d(
     result
 }
 
-
-pub async fn get_integrations_yaml_path(gcx: Arc<ARwLock<GlobalContext>>) -> String {
-    let gcx_locked = gcx.read().await;
-    let r = gcx_locked.cmdline.integrations_yaml.clone();
-    r
-}
-
 pub async fn get_vars_for_replacements(
     gcx: Arc<ARwLock<GlobalContext>>,
     error_log: &mut Vec<YamlError>,
@@ -374,10 +367,12 @@ pub async fn integrations_all(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> IntegrationResult {
     let (config_dirs, global_config_dir) = get_config_dirs(gcx.clone()).await;
-    let allow_experimental = gcx.read().await.cmdline.experimental;
+    let (allow_experimental, integrations_yaml_path) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.cmdline.experimental, gcx_locked.cmdline.integrations_yaml.clone())
+    };
     let lst: Vec<&str> = crate::integrations::integrations_list(allow_experimental);
     let mut error_log: Vec<YamlError> = Vec::new();
-    let integrations_yaml_path = get_integrations_yaml_path(gcx.clone()).await;
     let vars_for_replacements = get_vars_for_replacements(gcx.clone(), &mut error_log).await;
     let integrations = read_integrations_d(&config_dirs, &global_config_dir, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log);
     IntegrationResult { integrations, error_log }
