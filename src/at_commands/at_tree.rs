@@ -258,6 +258,11 @@ impl AtCommand for AtTree {
             warn!("{}", err);
             err
         })?;
+        let tree = if tree.is_empty() {
+            "tree(): directory is empty".to_string()
+        } else {
+            tree
+        };
 
         let context = ContextEnum::ChatMessage(ChatMessage::new(
             "plain_text".to_string(),
