@@ -26,6 +26,7 @@ import { setError } from "../features/Errors/errorsSlice";
 import { setInformation } from "../features/Errors/informationSlice";
 import { debugIntegrations } from "../debugConfig";
 import { telemetryApi } from "../services/refact/telemetry";
+import { isAbsolutePath } from "../utils";
 
 export function useGetLinksFromLsp() {
   const isStreaming = useAppSelector(selectIsStreaming);
@@ -140,17 +141,13 @@ export function useLinksFromLsp() {
         "link_goto" in link &&
         link.link_goto !== undefined
       ) {
-        const isIntegrationNameInPayload = (name: string) => {
-          return !/[\\:]/.test(name);
-        };
-
         const [action, ...payloadParts] = link.link_goto.split(":");
         const payload = payloadParts.join(":");
         if (action.toLowerCase() === "settings") {
           debugIntegrations(
             `[DEBUG]: this goto is integrations one, dispatching integration data`,
           );
-          if (isIntegrationNameInPayload(payload)) {
+          if (!isAbsolutePath(payload)) {
             dispatch(
               setIntegrationData({
                 name: payload,
