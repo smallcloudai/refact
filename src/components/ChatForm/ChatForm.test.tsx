@@ -28,10 +28,7 @@ const noop = () => ({});
 
 const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
-    chatId: "chatId",
     onSubmit: (_str: string) => ({}),
-    isStreaming: false,
-    showControls: true,
     onToolConfirm: noop,
     ...props,
   };
@@ -81,23 +78,20 @@ describe("ChatForm", () => {
       path: "/Users/refact/projects/print1.py",
       basename: "print1.py",
     };
-    const { user, ...app } = render(
-      <App chatId="test-3" onSubmit={fakeOnSubmit} />,
-      {
-        preloadedState: {
-          selected_snippet: snippet,
-          active_file: {
-            name: "foo.txt",
-            cursor: 2,
-            path: "foo.txt",
-            line1: 1,
-            line2: 3,
-            can_paste: true,
-          },
-          config: { host: "vscode", themeProps: {}, lspPort: 8001 },
+    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />, {
+      preloadedState: {
+        selected_snippet: snippet,
+        active_file: {
+          name: "foo.txt",
+          cursor: 2,
+          path: "foo.txt",
+          line1: 1,
+          line2: 3,
+          can_paste: true,
         },
+        config: { host: "vscode", themeProps: {}, lspPort: 8001 },
       },
-    );
+    });
 
     const label = app.queryByText(/Selected \d* lines/);
     expect(label).not.toBeNull();

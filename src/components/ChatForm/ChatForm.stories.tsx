@@ -55,8 +55,6 @@ const meta: Meta<typeof ChatForm> = {
       // eslint-disable-next-line no-console
       console.log("onclose called");
     },
-    isStreaming: false,
-    showControls: true,
   },
   decorators: [
     (Children) => {
