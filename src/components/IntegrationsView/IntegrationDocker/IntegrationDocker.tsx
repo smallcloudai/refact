@@ -239,15 +239,16 @@ const NoConnectionError: FC<{
   <>
     <Flex gap="3" align="center" justify="start" width="100%">
       <img src={dockerIcon} className={styles.DockerIcon} alt={"Docker"} />
-      <Heading as="h4" size="3" align="left">
+      <Text as="p" size="3">
         You can set up docker integration{" "}
         <Link
           color="indigo"
+          weight="bold"
           onClick={() => handleSwitchIntegration("docker", integrationPath)}
         >
           here
         </Link>
-      </Heading>
+      </Text>
     </Flex>
   </>
 );
