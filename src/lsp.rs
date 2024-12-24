@@ -185,7 +185,7 @@ impl LspBackend {
             let gcx_locked = self.gcx.write().await;
             (gcx_locked.cmdline.http_port, gcx_locked.http_client.clone())
         };
-        
+
         let url = "http://127.0.0.1:".to_string() + &port.to_string() + &"/v1/ping".to_string();
         let mut attempts = 0;
         while attempts < 15 {
@@ -243,10 +243,10 @@ impl LanguageServer for LspBackend {
                 }
             }],
         };
-        
-        
+
+
         // wait for http server to be ready
-        self.ping_http_server().await?;      
+        self.ping_http_server().await?;
 
         Ok(InitializeResult {
             server_info: Some(ServerInfo {
@@ -286,6 +286,9 @@ impl LanguageServer for LspBackend {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let cpath = crate::files_correction::canonical_path(&params.text_document.uri.to_file_path().unwrap_or_default().display().to_string());
+        if cpath.to_string_lossy().contains("keybindings.json") {
+            return;
+        }
         files_in_workspace::on_did_open(
             self.gcx.clone(),
             &cpath,
