@@ -259,9 +259,9 @@ async fn docker_container_sync_config_folder(
     container_id: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(), String> {
-    let (config_dir, integrations_yaml) = {
+    let (config_dir, integrations_yaml, variables_yaml) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.integrations_yaml.clone())
+        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.integrations_yaml.clone(), gcx_locked.cmdline.variables_yaml.clone())
     };
     let config_dir_string = config_dir.to_string_lossy().to_string();
     let container_home_dir = docker_container_get_home_dir(&docker, &container_id, gcx.clone()).await?;
@@ -276,6 +276,10 @@ async fn docker_container_sync_config_folder(
     if !integrations_yaml.is_empty() {
         let cp_integrations_command = format!("container cp {integrations_yaml} {container_id}:{container_home_dir}/.config/refact/integrations.yaml");
         docker.command_execute(&cp_integrations_command, gcx.clone(), true, true).await?;
+    }
+    if !variables_yaml.is_empty() {
+        let cp_variables_command = format!("container cp {variables_yaml} {container_id}:{container_home_dir}/.config/refact/variables.yaml");
+        docker.command_execute(&cp_variables_command, gcx.clone(), true, true).await?;
     }
 
     Ok(())
