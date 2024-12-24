@@ -38,8 +38,11 @@ export function useCapsForToolUse() {
     const models = caps.data?.code_chat_models ?? {};
     const items = Object.entries(models).reduce<string[]>(
       (acc, [key, value]) => {
-        if (toolUse !== "agent") return [...acc, key];
-        if (value.supports_agent) return [...acc, key];
+        if (toolUse === "explore" && value.supports_tools) {
+          return [...acc, key];
+        }
+        if (toolUse === "agent" && value.supports_agent) return [...acc, key];
+        if (toolUse === "quick") return [...acc, key];
         return acc;
       },
       [],

@@ -121,10 +121,6 @@ export const Chat: React.FC<ChatProps> = ({
 
         <ChatForm
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
-          chatId={chatId}
-          isStreaming={isStreaming}
-          // TODO: move this
-          showControls={messages.length === 0 && !isStreaming}
           onSubmit={handleSummit}
           onClose={maybeSendToSidebar}
           onToolConfirm={confirmToolUsage}

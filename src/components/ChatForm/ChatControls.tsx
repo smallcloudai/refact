@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Text, Flex, HoverCard, Link, Skeleton, Box } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
@@ -10,7 +10,13 @@ import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
-import { ToolUse, selectToolUse, setToolUse } from "../../features/Chat/Thread";
+import {
+  ToolUse,
+  selectIsStreaming,
+  selectMessages,
+  selectToolUse,
+  setToolUse,
+} from "../../features/Chat/Thread";
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 
 const CapsSelect: React.FC = () => {
@@ -78,7 +84,6 @@ export type ChatControlsProps = {
   ) => void;
 
   host: Config["host"];
-  showControls: boolean;
 };
 
 const ChatControlCheckBox: React.FC<{
@@ -150,14 +155,20 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   checkboxes,
   onCheckedChange,
   host,
-  showControls,
 }) => {
   const refs = useTourRefs();
   const dispatch = useAppDispatch();
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const messages = useAppSelector(selectMessages);
   const toolUse = useAppSelector(selectToolUse);
   const onSetToolUse = useCallback(
     (value: ToolUse) => dispatch(setToolUse(value)),
     [dispatch],
+  );
+
+  const showControls = useMemo(
+    () => messages.length > 0 && !isStreaming,
+    [isStreaming, messages],
   );
 
   return (

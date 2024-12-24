@@ -33,14 +33,12 @@ import { ToolConfirmation } from "./ToolConfirmation";
 import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { AttachFileButton, FileList } from "../Dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
+import { selectIsStreaming } from "../../features/Chat";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
-  isStreaming: boolean;
-  showControls: boolean;
-  chatId: string;
   onToolConfirm: () => void;
 };
 
@@ -48,11 +46,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
-  isStreaming,
-  showControls,
   onToolConfirm,
 }) => {
   const dispatch = useAppDispatch();
+  const isStreaming = useAppSelector(selectIsStreaming);
   const config = useConfig();
   const error = useAppSelector(getErrorMessage);
   const information = useAppSelector(getInformationMessage);
@@ -297,7 +294,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       <ChatControls
         host={config.host}
         checkboxes={checkboxes}
-        showControls={showControls}
         onCheckedChange={onToggleCheckbox}
       />
     </Card>
