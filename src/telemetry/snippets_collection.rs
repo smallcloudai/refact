@@ -1,19 +1,19 @@
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use serde::{Serialize, Deserialize};
 
 use tokio::sync::RwLock as ARwLock;
 use tracing::debug;
 
-use crate::global_context;
-use crate::completion_cache;
 use crate::call_validation::CodeCompletionPost;
-use crate::telemetry::telemetry_structs;
-use crate::telemetry::basic_robot_human;
+use crate::completion_cache;
+use crate::files_correction::to_pathbuf_normalize;
+use crate::global_context;
 use crate::telemetry::basic_comp_counters;
+use crate::telemetry::basic_robot_human;
+use crate::telemetry::telemetry_structs;
 use crate::telemetry::telemetry_structs::SnippetTracker;
 use crate::telemetry::utils;
-
 
 // How it works:
 // 1. Rust returns {"snippet_telemetry_id":101,"choices":[{"code_completion":"\n    return \"Hello World!\"\n"}] ...}
@@ -115,7 +115,9 @@ pub async fn sources_changed(
 
     let mut accepted_snippets = vec![];
     for snip in storage_locked.tele_snippets.iter_mut() {
-        if snip.accepted_ts == 0 || !uri.ends_with(&snip.inputs.cursor.file) {
+        let uri_path = to_pathbuf_normalize(uri).to_string_lossy().to_string();
+        let cursor_file_path = to_pathbuf_normalize(&snip.inputs.cursor.file).to_string_lossy().to_string();
+        if snip.accepted_ts == 0 || !uri_path.ends_with(&cursor_file_path) {
             continue;
         }
         if snip.finished_ts > 0 {
