@@ -75,6 +75,9 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
 }) => {
   const [areExtraFieldsRevealed, setAreExtraFieldsRevealed] = useState(false);
 
+  const [hasConnectionToDockerEngine, setHasConnectionToDockerEngine] =
+    useState(true);
+
   const { integration } = useGetIntegrationDataByPathQuery(integrationPath);
 
   const theme = useAppSelector(selectThemeMode);
@@ -104,6 +107,10 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
     },
     [setToolParameters],
   );
+
+  const handleDockerConnection = (state: boolean) => {
+    setHasConnectionToDockerEngine(state);
+  };
 
   const shouldIntegrationFormBeDisabled = useMemo(() => {
     if (!integration.data?.integr_values) return false;
@@ -343,7 +350,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
             </Flex>
           </Flex>
         )}
-      {integration.data.integr_schema.docker && (
+      {integration.data.integr_schema.docker && hasConnectionToDockerEngine && (
         <Flex mt="6" direction="column" align="start" gap="5">
           <Flex gap="2" align="center" justify="center" width="100%">
             <img
@@ -361,6 +368,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
             integrationProject={integration.data.project_path}
             integrationPath={integration.data.integr_config_path}
             handleSwitchIntegration={handleSwitchIntegration}
+            onDockerConnection={handleDockerConnection}
           />
         </Flex>
       )}

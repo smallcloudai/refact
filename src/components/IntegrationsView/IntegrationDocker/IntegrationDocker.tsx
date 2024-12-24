@@ -26,6 +26,7 @@ type IntegrationDockerProps = {
     integrationName: string,
     integrationConfigPath: string,
   ) => void;
+  onDockerConnection: (state: boolean) => void;
 };
 
 export const IntegrationDocker: FC<IntegrationDockerProps> = ({
@@ -34,6 +35,7 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
   integrationPath,
   integrationProject,
   handleSwitchIntegration,
+  onDockerConnection,
 }) => {
   const dispatch = useAppDispatch();
   const { dockerContainersResponse } = useGetDockerContainersByImageQuery(
@@ -55,6 +57,9 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
     let timeoutId: NodeJS.Timeout;
     if (!dockerContainersResponse.isLoading) {
       if (dockerContainersResponse.data) {
+        onDockerConnection(
+          dockerContainersResponse.data.has_connection_to_docker_daemon,
+        );
         setDockerContainersList(dockerContainersResponse.data.containers);
       }
       timeoutId = setTimeout(() => {
@@ -65,7 +70,7 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [dockerContainersResponse, areContainersLoaded]);
+  }, [dockerContainersResponse, areContainersLoaded, onDockerConnection]);
 
   if (dockerContainersResponse.isLoading || !areContainersLoaded) {
     return <Spinner spinning />;
