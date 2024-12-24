@@ -7,16 +7,18 @@ export const debugApp = createDebug("app");
 export const debugComponent = createDebug("component");
 export const debugIntegrations = createDebug("integrations");
 
-createDebug.enable("refact");
-debugRefact(
-  `Debugging: ${debugNamespaces !== "undefined" ? "enabled" : "disabled"}`,
-);
-if (debugNamespaces && debugNamespaces !== "undefined") {
-  if (debugNamespaces === "*") {
-    debugRefact("Enabling debug logging for all namespaces");
-    createDebug.enable("*");
-  } else {
-    debugRefact(`Enabling debug logging for namespaces [${debugNamespaces}]`);
-    createDebug.enable(debugNamespaces);
+if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+  createDebug.enable("refact");
+  debugRefact(
+    `Debugging: ${debugNamespaces !== "undefined" ? "enabled" : "disabled"}`,
+  );
+  if (debugNamespaces && debugNamespaces !== "undefined") {
+    if (debugNamespaces === "*") {
+      debugRefact("Enabling debug logging for all namespaces");
+      createDebug.enable("*");
+    } else {
+      debugRefact(`Enabling debug logging for namespaces [${debugNamespaces}]`);
+      createDebug.enable(debugNamespaces);
+    }
   }
 }
