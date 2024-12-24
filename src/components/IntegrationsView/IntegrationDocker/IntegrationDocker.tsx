@@ -13,9 +13,10 @@ import { useExecuteActionForDockerContainerMutation } from "../../../hooks/useEx
 import { useAppDispatch } from "../../../hooks";
 import { setInformation } from "../../../features/Errors/informationSlice";
 import { setError } from "../../../features/Errors/errorsSlice";
-import { Button, Card, Flex, Heading, Text } from "@radix-ui/themes";
+import { Card, Flex, Heading, Text } from "@radix-ui/themes";
 import { DockerContainerCard } from "./DockerContainerCard";
 import { SmartLink } from "../../SmartLink";
+import { Link } from "../../Link";
 
 type IntegrationDockerProps = {
   dockerData: SchemaDocker;
@@ -26,7 +27,6 @@ type IntegrationDockerProps = {
     integrationName: string,
     integrationConfigPath: string,
   ) => void;
-  onDockerConnection: (state: boolean) => void;
 };
 
 export const IntegrationDocker: FC<IntegrationDockerProps> = ({
@@ -35,7 +35,6 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
   integrationPath,
   integrationProject,
   handleSwitchIntegration,
-  onDockerConnection,
 }) => {
   const dispatch = useAppDispatch();
   const { dockerContainersResponse } = useGetDockerContainersByImageQuery(
@@ -57,9 +56,6 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
     let timeoutId: NodeJS.Timeout;
     if (!dockerContainersResponse.isLoading) {
       if (dockerContainersResponse.data) {
-        onDockerConnection(
-          dockerContainersResponse.data.has_connection_to_docker_daemon,
-        );
         setDockerContainersList(dockerContainersResponse.data.containers);
       }
       timeoutId = setTimeout(() => {
@@ -70,7 +66,7 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [dockerContainersResponse, areContainersLoaded, onDockerConnection]);
+  }, [dockerContainersResponse, areContainersLoaded]);
 
   if (dockerContainersResponse.isLoading || !areContainersLoaded) {
     return <Spinner spinning />;
@@ -220,44 +216,65 @@ const NoConnectionError: FC<{
   ) => void;
   integrationPath: string;
 }> = ({ handleSwitchIntegration, integrationPath }) => (
-  <>
-    <Heading as="h6" size="3" weight="bold" align="center">
-      No connection to Docker Daemon
-    </Heading>
-    <Text size="2">
-      Seems, that there is no connection to Docker Daemon. Please, setup Docker
-      properly or check if Docker Engine is running
-    </Text>
-    <Button
-      variant="outline"
-      color="gray"
+  <Text size="2" color="gray">
+    Seems, like there is an issue with connection to your Docker Daemon.
+    Consider reviewing your{" "}
+    <Link
+      color="indigo"
       onClick={() => handleSwitchIntegration("docker", integrationPath)}
     >
-      Setup docker
-    </Button>
-  </>
+      Docker Configuration
+    </Link>{" "}
+    or check if the Docker Engine is running.
+  </Text>
 );
 
 const UnexpectedError: FC = () => (
-  <>
-    <Heading as="h6" size="3" weight="bold" align="center">
-      Unexpected error
-    </Heading>
-    <Text size="2">
-      Something went wrong during connection or listing containers
-    </Text>
-  </>
+  <Card
+    style={{
+      margin: "1rem auto 0",
+      width: "100%",
+    }}
+  >
+    <Flex
+      direction="column"
+      align="stretch"
+      justify="center"
+      gap="4"
+      width="100%"
+    >
+      <Heading as="h6" size="3" weight="bold" align="center">
+        Unexpected error
+      </Heading>
+      <Text size="2">
+        Something went wrong during connection or listing containers
+      </Text>
+    </Flex>
+  </Card>
 );
 
 const NoContainersError: FC = () => (
-  <>
-    <Heading as="h6" size="3" weight="bold" align="center">
-      No containers
-    </Heading>
-    <Text size="2">
-      No Docker containers found. Please, ensure that containers are running.
-    </Text>
-  </>
+  <Card
+    style={{
+      margin: "1rem auto 0",
+      width: "100%",
+    }}
+  >
+    <Flex
+      direction="column"
+      align="stretch"
+      justify="center"
+      gap="4"
+      width="100%"
+    >
+      <Heading as="h6" size="3" weight="bold" align="center">
+        No containers
+      </Heading>
+      <Text size="2">
+        No Docker containers found. Please, ensure that containers are running.
+      </Text>
+    </Flex>
+  </Card>
 );
 
 const errorComponents = {
@@ -273,24 +290,9 @@ const DockerErrorCard: FC<DockerErrorCardProps> = ({
 }) => {
   const ErrorComponent = errorComponents[errorType];
   return (
-    <Card
-      style={{
-        margin: "1rem auto 0",
-        width: "100%",
-      }}
-    >
-      <Flex
-        direction="column"
-        align="stretch"
-        justify="center"
-        gap="4"
-        width="100%"
-      >
-        <ErrorComponent
-          handleSwitchIntegration={handleSwitchIntegration}
-          integrationPath={integrationPath}
-        />
-      </Flex>
-    </Card>
+    <ErrorComponent
+      handleSwitchIntegration={handleSwitchIntegration}
+      integrationPath={integrationPath}
+    />
   );
 };
