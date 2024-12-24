@@ -167,7 +167,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   );
 
   const showControls = useMemo(
-    () => messages.length > 0 && !isStreaming,
+    () => messages.length === 0 && !isStreaming,
     [isStreaming, messages],
   );
 
