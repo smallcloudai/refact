@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isAbsolutePath } from "./isAbsolutePath";
+import { isAbsolutePath } from "../utils/isAbsolutePath";
 
 describe("isAbsolutePath", () => {
   it("should return true for Windows absolute paths", () => {

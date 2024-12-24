@@ -57,6 +57,19 @@ startListening({
   },
 });
 
+// TODO: think about better cache invalidation approach instead of listening for an action dispatching globally
+startListening({
+  matcher: isAnyOf((d: unknown): d is ReturnType<typeof newIntegrationChat> =>
+    newIntegrationChat.match(d),
+  ),
+  effect: (_action, listenerApi) => {
+    [integrationsApi.util.resetApiState()].forEach((api) =>
+      listenerApi.dispatch(api),
+    );
+    listenerApi.dispatch(clearError());
+  },
+});
+
 startListening({
   // TODO: figure out why this breaks the tests when it's not a function :/
   matcher: isAnyOf(isRejected),
