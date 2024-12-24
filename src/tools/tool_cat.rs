@@ -272,10 +272,12 @@ pub async fn paths_and_symbols_to_cat(
             match load_image(p, &f_type).await {
                 Ok(mm) => {
                     if image_counter == CAT_MAX_IMAGES_CNT {
-                        not_found_messages.push(format!("{}: cat can show only 1 image per call", p));
-                        continue;
+                        not_found_messages.push("cat can show only 1 image per call. cat(image_path) in parallel if need to show all images".to_string());
                     }
                     image_counter += 1;
+                    if image_counter > CAT_MAX_IMAGES_CNT {
+                        continue
+                    }
                     filenames_present.push(p.clone());
                     multimodal.push(mm);
                 },
