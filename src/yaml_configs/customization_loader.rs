@@ -189,12 +189,6 @@ pub fn load_and_mix_with_users_config(
         .collect();
 
     work_config.system_prompts = filtered_system_prompts;
-
-    println!("caps_config: {:?}", caps_config);
-    println!("user_config: {:?}", user_config);
-    println!("work_config: {:?}", work_config);
-    println!("compiled_in_customization: {:?}", compiled_in_customization);
-
     work_config
 }
 
