@@ -213,7 +213,7 @@ smartlinks:
   - sl_label: "Test"
     sl_chat:
       - role: "user"
-        content: |
+        content: >
           🔧 The postgres tool should be visible now. To test the tool, list the tables available, briefly describe the tables and express
           happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
     sl_enable_only_with_tool: true
@@ -239,14 +239,16 @@ docker:
     - sl_label: "Add Database Container"
       sl_chat:
         - role: "user"
-          content: |
-            🔧 Your job is to create a postgres container, using the image and environment from new_container_default section in the current config file: %CURRENT_CONFIG%. Follow the system prompt.
+          content: >
+            🔧 Your job is to create a postgres container, using the image and environment from new_container_default section in the current config schema. Follow the system prompt.
   smartlinks_for_each_container:
     - sl_label: "Use for integration"
       sl_chat:
         - role: "user"
-          content: |
-            🔧 Your job is to modify postgres connection config in the current file to match the variables from the container, use docker tool to inspect the container if needed. Current config file: %CURRENT_CONFIG%.
+          content: >
+            🔧 Your job is to modify postgres() tool config in %CURRENT_CONFIG% to match the variables from the container. Use docker() tool to inspect the container if needed.
+            Ask user before proceeding with the changes. After re-writing the config, test it to see if works. If it does, also update variables.yaml but
+            ask the user first.
 "#;
 
 // To think about: PGPASSWORD PGHOST PGUSER PGPORT PGDATABASE maybe tell the model to set that in variables.yaml as well
