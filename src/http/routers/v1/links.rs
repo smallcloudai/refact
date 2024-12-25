@@ -3,7 +3,7 @@ use std::fs;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, ChatMeta, ChatMode};
@@ -13,7 +13,7 @@ use crate::integrations::go_to_configuration_message;
 use crate::tools::tool_patch_aux::tickets_parsing::get_tickets_from_messages;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
 use crate::git::{get_commit_information_from_current_changes, generate_commit_messages};
-use crate::http::routers::v1::git::GitCommitPost;
+// use crate::http::routers::v1::git::GitCommitPost;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct LinksPost {
@@ -22,17 +22,19 @@ pub struct LinksPost {
     meta: ChatMeta,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Default, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
 enum LinkAction {
+    #[default]
     PatchAll,
     FollowUp,
     Commit,
     Goto,
     SummarizeProject,
+    PostChat,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Default, Serialize, Debug)]
 pub struct Link {
     link_action: LinkAction,
     link_text: String,
@@ -41,19 +43,12 @@ pub struct Link {
     #[serde(skip_serializing_if = "Option::is_none")]
     link_summary_path: Option<String>,
     link_tooltip: String,
-    link_payload: Option<LinkPayload>,
+    #[serde(default, skip_serializing_if = "is_default_json_value")]
+    link_payload: serde_json::Value,
 }
 
-#[derive(Debug)]
-pub enum LinkPayload {
-    CommitPayload(GitCommitPost),
-}
-impl Serialize for LinkPayload {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match self {
-            LinkPayload::CommitPayload(post) => post.serialize(serializer),
-        }
-    }
+fn is_default_json_value(value: &serde_json::Value) -> bool {
+    value == &serde_json::Value::Null
 }
 
 
@@ -91,7 +86,7 @@ pub async fn handle_v1_links(
                 link_goto: Some("NEWCHAT".to_string()),
                 link_summary_path: None,
                 link_tooltip: format!(""),
-                link_payload: None,
+                ..Default::default()
             });
         }
     }
@@ -131,7 +126,7 @@ pub async fn handle_v1_links(
                     link_goto: Some("LINKS_AGAIN".to_string()),
                     link_summary_path: None,
                     link_tooltip: tooltip_message,
-                    link_payload: Some(LinkPayload::CommitPayload(GitCommitPost { commits: vec![commit_with_msg] })),
+                    link_payload: serde_json::json!({ "commits": [commit_with_msg] }),
                 });
             }
         }
@@ -146,7 +141,7 @@ pub async fn handle_v1_links(
                 link_goto: Some(format!("SETTINGS:{failed_integr_name}")),
                 link_summary_path: None,
                 link_tooltip: format!(""),
-                link_payload: None,
+                ..Default::default()
             })
         }
     }
@@ -159,14 +154,14 @@ pub async fn handle_v1_links(
             link_goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
             link_summary_path: None,
             link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
-            link_payload: None,
+            ..Default::default()
         });
     }
 
     // Tool recommendations
     if post.messages.is_empty() {
-        let (already_exists, summary_path_option) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
-        if !already_exists {
+        let (summary_exists, summary_path_option) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
+        if !summary_exists {
             // doesn't exist
             links.push(Link {
                 link_action: LinkAction::SummarizeProject,
@@ -174,7 +169,7 @@ pub async fn handle_v1_links(
                 link_goto: None,
                 link_summary_path: summary_path_option,
                 link_tooltip: format!("Project summary is a starting point for Refact Agent."),
-                link_payload: None,
+                ..Default::default()
             });
         } else {
             // exists
@@ -184,6 +179,7 @@ pub async fn handle_v1_links(
                         match serde_yaml::from_str::<serde_yaml::Value>(&content) {
                             Ok(yaml) => {
                                 if let Some(recommended_integrations) = yaml.get("recommended_integrations").and_then(|rt| rt.as_sequence()) {
+                                    let mut any_recommended = false;
                                     for igname_value in recommended_integrations {
                                         if let Some(igname) = igname_value.as_str() {
                                             if igname == "isolation" || igname == "docker" {
@@ -197,12 +193,37 @@ pub async fn handle_v1_links(
                                                     link_goto: Some(format!("SETTINGS:{igname}")),
                                                     link_summary_path: None,
                                                     link_tooltip: format!(""),
-                                                    link_payload: None,
+                                                    ..Default::default()
                                                 });
+                                                any_recommended = true;
                                             } else {
                                                 tracing::info!("tool {} present => happy", igname);
                                             }
                                         }
+                                    }
+                                    if any_recommended {
+                                        links.push(Link {
+                                            link_action: LinkAction::PostChat,
+                                            link_text: format!("Stop recommending integrations"),
+                                            link_goto: None,
+                                            link_summary_path: None,
+                                            link_tooltip: format!(""),
+                                            link_payload: serde_json::json!({
+                                                "chat_meta": crate::call_validation::ChatMeta {
+                                                    chat_id: "".to_string(),
+                                                    chat_remote: false,
+                                                    chat_mode: crate::call_validation::ChatMode::CONFIGURE,
+                                                    current_config_file: summary_path.clone(),
+                                                },
+                                                "messages": [
+                                                    crate::call_validation::ChatMessage {
+                                                        role: "user".to_string(),
+                                                        content: crate::call_validation::ChatContent::SimpleText(format!("Make recommended_integrations an empty list, follow the system prompt.")),
+                                                        ..Default::default()
+                                                    },
+                                                ]
+                                            }),
+                                        });
                                     }
                                 }
                             },
@@ -232,13 +253,13 @@ pub async fn handle_v1_links(
                     link_goto: None,
                     link_summary_path: None,
                     link_tooltip: format!(""),
-                    link_payload: None,
+                    ..Default::default()
                 });
             }
         }
     }
 
-    tracing::info!("generated links2: {:?}", links);
+    tracing::info!("generated links2\n{}", serde_json::to_string_pretty(&links).unwrap());
 
     Ok(Response::builder()
         .status(StatusCode::OK)

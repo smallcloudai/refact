@@ -196,7 +196,7 @@ pub struct ChatPost {
     pub style: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ChatMeta {
     #[serde(default)]
     pub chat_id: String,
