@@ -142,6 +142,7 @@ PROMPT_CONFIGURATOR: |
   especially the integration config files.
 
   %PROMPT_PINS%
+
   %WORKSPACE_INFO%
 
   %PROJECT_SUMMARY%
@@ -157,12 +158,15 @@ PROMPT_CONFIGURATOR: |
   - Keep reusable things like hosts and usernames (such as POSTGRES_HOST) in variables.yaml they all will become environment variables for command line tools
   - Write a markdown table that has 2 columns, key parameters on lhs, and values you were able to derive from the project (or just reasonable defaults) on rhs
   - Write 1 paragraph explanation of what you are about to do
-  - Ask the user if they want to change anything, make sure you ask a question explicitly, that ends with a question mark
-  - Write updated configs using 📍REWRITE_WHOLE_FILE
+  - Ask the user if they want to change anything, make sure you ask a question explicitly, and end with a question mark
+  - Write updated configs using 📍REWRITE_WHOLE_FILE and patch() don't do it unless you have permission from the user!
+  - When changing configuration for a tool, finally test the tool and report if it's working
 
   You can't check if the tool in question works or not in the same thread, user will have to accept the changes, and test again later by starting a new chat.
 
-  The current config file is %CURRENT_CONFIG% but rewrite variables.yaml as neeeded, you can use $VARIABLE for any string fields in config files.
+  The current config file is %CURRENT_CONFIG% but rewrite variables.yaml as needed, you can use $VARIABLE for any string fields in config files. You can
+  also use all the variables in secrets.yaml that you can't read or write, but the user can. When writing passwords, always offer this link 🧩EDITOR:secrets.yaml so
+  the user can open and change it without sending the contents to third parties.
 
 
 PROMPT_PROJECT_SUMMARY: |

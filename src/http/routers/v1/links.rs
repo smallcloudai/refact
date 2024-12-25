@@ -70,18 +70,18 @@ pub async fn handle_v1_links(
     let experimental = gcx.read().await.cmdline.experimental;
     let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), experimental).await;
 
-    if post.meta.chat_mode == ChatMode::CONFIGURE {
-        if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
-            links.push(Link {
-                link_action: LinkAction::PatchAll,
-                link_text: "Save and return".to_string(),
-                link_goto: Some("SETTINGS:DEFAULT".to_string()),
-                link_summary_path: None,
-                link_tooltip: format!(""),
-                link_payload: None,
-            });
-        }
-    }
+    // if post.meta.chat_mode == ChatMode::CONFIGURE {
+    //     if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
+    //         links.push(Link {
+    //             link_action: LinkAction::PatchAll,
+    //             link_text: "Save and return".to_string(),
+    //             link_goto: Some("SETTINGS:DEFAULT".to_string()),
+    //             link_summary_path: None,
+    //             link_tooltip: format!(""),
+    //             link_payload: None,
+    //         });
+    //     }
+    // }
 
     if post.meta.chat_mode == ChatMode::PROJECT_SUMMARY {
         if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
