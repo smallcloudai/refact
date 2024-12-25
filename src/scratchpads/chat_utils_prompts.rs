@@ -115,30 +115,27 @@ async fn _read_project_summary(
 ) -> Option<String> {
     match fs::read_to_string(summary_path) {
         Ok(content) => {
-            match serde_yaml::from_str::<serde_yaml::Value>(&content) {
-                Ok(yaml) => {
-                    if let Some(project_summary) = yaml.get("project_summary") {
-                        match serde_yaml::to_string(project_summary) {
-                            Ok(summary_str) => return Some(summary_str),
-                            Err(e) => {
-                                tracing::error!("Failed to convert project summary to string: {}", e);
-                                return None;
-                            }
+            if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                if let Some(project_summary) = yaml.get("project_summary") {
+                    match project_summary {
+                        serde_yaml::Value::String(s) => Some(s.clone()),
+                        _ => {
+                            tracing::error!("'project_summary' is not a string in YAML file.");
+                            None
                         }
-                    } else {
-                        tracing::error!("Key 'project_summary' not found in YAML file.");
-                        return None;
                     }
-                },
-                Err(e) => {
-                    tracing::error!("Failed to parse project summary YAML file: {}", e);
-                    return None;
+                } else {
+                    tracing::error!("Key 'project_summary' not found in YAML file.");
+                    None
                 }
+            } else {
+                tracing::error!("Failed to parse project summary YAML file.");
+                None
             }
         },
         Err(e) => {
             tracing::error!("Failed to read project summary file: {}", e);
-            return None;
+            None
         }
     }
 }
