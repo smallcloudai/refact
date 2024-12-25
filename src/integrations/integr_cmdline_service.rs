@@ -12,11 +12,12 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{Tool, ToolParam, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::global_context::GlobalContext;
+use crate::postprocessing::pp_command_output::output_mini_postprocessing;
 use crate::integrations::process_io_utils::{blocking_read_until_token_or_timeout, is_someone_listening_on_that_tcp_port};
 use crate::integrations::sessions::IntegrationSession;
-use crate::postprocessing::pp_command_output::output_mini_postprocessing;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::integr_cmdline::*;
+use crate::integrations::setting_up_integrations::YamlError;
 
 
 const REALLY_HORRIBLE_ROUNDTRIP: u64 = 3000;   // 3000 should be a really bad ping via internet, just in rare case it's a remote port
@@ -284,7 +285,8 @@ impl Tool for ToolService {
 
         let command = replace_args(self.cfg.command.as_str(), &args_str);
         let workdir = replace_args(self.cfg.command_workdir.as_str(), &args_str);
-        let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
+        let mut error_log = Vec::<YamlError>::new();
+        let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone(), &mut error_log).await;
 
         let tool_ouput = {
             let action = args_str.get("action").cloned().unwrap_or("start".to_string());

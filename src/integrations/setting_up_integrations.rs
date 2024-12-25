@@ -272,30 +272,67 @@ pub async fn get_integrations_yaml_path(gcx: Arc<ARwLock<GlobalContext>>) -> Str
     r
 }
 
-pub async fn get_vars_for_replacements(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, String>
-{
+pub async fn get_vars_for_replacements(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    error_log: &mut Vec<YamlError>,
+) -> HashMap<String, String> {
     let gcx_locked = gcx.read().await;
     let secrets_yaml_path = gcx_locked.config_dir.join("secrets.yaml");
     let variables_yaml_path = gcx_locked.config_dir.join("variables.yaml");
     let mut variables = HashMap::new();
-    if let Ok(secrets_content) = fs::read_to_string(&secrets_yaml_path) {
-        if let Ok(secrets_yaml) = serde_yaml::from_str::<HashMap<String, String>>(&secrets_content) {
-            variables.extend(secrets_yaml);
-        } else {
-            tracing::warn!("cannot parse secrets.yaml");
+
+    match fs::read_to_string(&secrets_yaml_path) {
+        Ok(secrets_content) => {
+            match serde_yaml::from_str::<HashMap<String, String>>(&secrets_content) {
+                Ok(secrets_yaml) => {
+                    variables.extend(secrets_yaml);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to parse secrets.yaml: {}", e);
+                    error_log.push(YamlError {
+                        integr_config_path: secrets_yaml_path.to_string_lossy().to_string(),
+                        error_line: e.location().map(|loc| loc.line()).unwrap_or(0),
+                        error_msg: format!("Failed to parse secrets.yaml: {}", e),
+                    });
+                }
+            }
         }
-    } else {
-        tracing::info!("cannot read secrets.yaml");
-    }
-    if let Ok(variables_content) = fs::read_to_string(&variables_yaml_path) {
-        if let Ok(variables_yaml) = serde_yaml::from_str::<HashMap<String, String>>(&variables_content) {
-            variables.extend(variables_yaml);
-        } else {
-            tracing::warn!("cannot parse variables.yaml");
+        Err(e) => {
+            tracing::info!("Failed to read secrets.yaml: {}", e);
+            error_log.push(YamlError {
+                integr_config_path: secrets_yaml_path.to_string_lossy().to_string(),
+                error_line: 0,
+                error_msg: format!("Failed to read secrets.yaml: {}", e),
+            });
         }
-    } else {
-        tracing::info!("cannot read variables.yaml");
     }
+
+    match fs::read_to_string(&variables_yaml_path) {
+        Ok(variables_content) => {
+            match serde_yaml::from_str::<HashMap<String, String>>(&variables_content) {
+                Ok(variables_yaml) => {
+                    variables.extend(variables_yaml);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to parse variables.yaml: {}", e);
+                    error_log.push(YamlError {
+                        integr_config_path: variables_yaml_path.to_string_lossy().to_string(),
+                        error_line: e.location().map(|loc| loc.line()).unwrap_or(0),
+                        error_msg: format!("Failed to parse variables.yaml: {}", e),
+                    });
+                }
+            }
+        }
+        Err(e) => {
+            tracing::info!("Failed to read variables.yaml: {}", e);
+            error_log.push(YamlError {
+                integr_config_path: variables_yaml_path.to_string_lossy().to_string(),
+                error_line: 0,
+                error_msg: format!("Failed to read variables.yaml: {}", e),
+            });
+        }
+    }
+
     variables
 }
 
@@ -341,12 +378,9 @@ pub async fn integrations_all(
     let lst: Vec<&str> = crate::integrations::integrations_list(allow_experimental);
     let mut error_log: Vec<YamlError> = Vec::new();
     let integrations_yaml_path = get_integrations_yaml_path(gcx.clone()).await;
-    let vars_for_replacements = get_vars_for_replacements(gcx.clone()).await;
+    let vars_for_replacements = get_vars_for_replacements(gcx.clone(), &mut error_log).await;
     let integrations = read_integrations_d(&config_dirs, &global_config_dir, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log);
-    IntegrationResult {
-        integrations,
-        error_log,
-    }
+    IntegrationResult { integrations, error_log }
 }
 
 #[derive(Serialize, Default)]
@@ -396,25 +430,31 @@ pub async fn integration_config_get(
                         let j = serde_json::to_value(y).unwrap();
                         match integration_box.integr_settings_apply(&j) {
                             Ok(_) => {
-                                let common_settings = integration_box.integr_common();
-                                result.integr_values = integration_box.integr_settings_as_json();
-                                result.integr_values["available"]["on_your_laptop"] = common_settings.available.on_your_laptop.into();
-                                result.integr_values["available"]["when_isolated"] = common_settings.available.when_isolated.into();
-                                result.integr_values["confirmation"]["ask_user"] = common_settings.confirmation.ask_user.into();
-                                result.integr_values["confirmation"]["deny"] = common_settings.confirmation.deny.into();
                             }
                             Err(err) => {
-                                tracing::error!("cannot deserialize some fields in the integration cfg correctly: `{err}`. Use default empty values instead");
-                                result.integr_values = integration_box.integr_settings_as_json();
-                                result.integr_values["available"]["on_your_laptop"] = false.into();
-                                result.integr_values["available"]["when_isolated"] = false.into();
-                                result.integr_values["confirmation"]["ask_user"] = Vec::<String>::new().into();
-                                result.integr_values["confirmation"]["deny"] = Vec::<String>::new().into();
+                                result.error_log.push(YamlError {
+                                    integr_config_path: integr_config_path.clone(),
+                                    error_line: 0,
+                                    error_msg: err.to_string(),
+                                });
+                                tracing::warn!("cannot deserialize some fields in the integration cfg {integr_config_path}: {err}");
                             }
                         }
+                        let common_settings = integration_box.integr_common();
+                        result.integr_values = integration_box.integr_settings_as_json();
+                        result.integr_values["available"]["on_your_laptop"] = common_settings.available.on_your_laptop.into();
+                        result.integr_values["available"]["when_isolated"] = common_settings.available.when_isolated.into();
+                        result.integr_values["confirmation"]["ask_user"] = common_settings.confirmation.ask_user.into();
+                        result.integr_values["confirmation"]["deny"] = common_settings.confirmation.deny.into();
                     }
-                    Err(e) => {
-                        return Err(format!("failed to parse: {}", e.to_string()));
+                    Err(err) => {
+                        result.error_log.push(YamlError {
+                            integr_config_path: integr_config_path.clone(),
+                            error_line: err.location().map(|loc| loc.line()).unwrap_or(0),
+                            error_msg: err.to_string(),
+                        });
+                        tracing::warn!("cannot parse {integr_config_path}: {err}");
+                        return Ok(result);
                     }
                 };
             }

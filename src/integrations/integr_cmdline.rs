@@ -15,6 +15,7 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_opt_num_to_str, deserialize_str_to_opt_num};
+use crate::integrations::setting_up_integrations::YamlError;
 
 
 #[derive(Deserialize, Serialize, Clone, Default)]
@@ -243,7 +244,8 @@ impl Tool for ToolCmdline {
         let (command, workdir) = parse_command_args(args, &self.cfg)?;
 
         let gcx = ccx.lock().await.global_context.clone();
-        let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
+        let mut error_log = Vec::<YamlError>::new();
+        let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone(), &mut error_log).await;
         let project_dirs = crate::files_correction::get_project_dirs(gcx.clone()).await;
 
         let tool_output = execute_blocking_command(&command, &self.cfg, &workdir, &env_variables, project_dirs).await?;

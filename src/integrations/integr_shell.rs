@@ -14,6 +14,7 @@ use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, MatchConfirmDen
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
+use crate::integrations::setting_up_integrations::YamlError;
 use crate::tools::tools_execute::command_should_be_denied;
 
 
@@ -87,7 +88,8 @@ impl Tool for ToolShell {
         let timeout = self.cfg.timeout.parse::<u64>().unwrap_or(10);
 
         let gcx = ccx.lock().await.global_context.clone();
-        let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone()).await;
+        let mut error_log = Vec::<YamlError>::new();
+        let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone(), &mut error_log).await;
         let project_dirs = crate::files_correction::get_project_dirs(gcx.clone()).await;
 
         let tool_output = execute_shell_command(
