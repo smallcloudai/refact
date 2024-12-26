@@ -24,12 +24,9 @@ const handlers = [
 
 server.use(...handlers);
 
-const noop = () => ({});
-
 const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
     onSubmit: (_str: string) => ({}),
-    onToolConfirm: noop,
     ...props,
   };
 
