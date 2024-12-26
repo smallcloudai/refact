@@ -18,18 +18,20 @@ type LinkActions =
   | "follow-up"
   | "commit"
   | "goto"
-  | "summarize-project";
+  | "summarize-project"
+  | "post-chat";
 
-export type ChatLink = BaseLink | CommitLink;
+export type ChatLink = BaseLink | CommitLink | PostChatLink;
 
 interface BaseLink {
   link_action: LinkActions;
   link_text: string;
   link_goto?: string;
   link_tooltip?: string;
-  link_payload?: CommitLinkPayload | null;
+  link_payload?: CommitLinkPayload | PostChatLinkPayload | null;
   link_summary_path?: string;
 }
+
 export interface CommitLink extends BaseLink {
   link_text: string;
   link_action: "commit";
@@ -38,10 +40,28 @@ export interface CommitLink extends BaseLink {
   link_payload: CommitLinkPayload;
 }
 
+export interface PostChatLink extends BaseLink {
+  link_action: "post-chat";
+  link_payload: PostChatLinkPayload;
+}
+
 export type CommitLinkPayload = {
   project_path: string;
   commit_message: string;
   file_changes: { path: string; status: string }[];
+};
+
+export type PostChatLinkPayload = {
+  chat_meta: {
+    chat_id: string;
+    chat_remote: boolean;
+    chat_mode: "CONFIGURE";
+    current_config_file: string;
+  };
+  messages: {
+    role: string;
+    content: string;
+  }[];
 };
 
 function isChatLink(json: unknown): json is ChatLink {
@@ -56,11 +76,27 @@ function isChatLink(json: unknown): json is ChatLink {
 
   if ("link_goto" in json && typeof json.link_goto !== "string") return false;
 
+  if (json.link_action === "post-chat") {
+    return isPostChatLink(json as PostChatLink);
+  }
+
   return true;
 }
 
 export function isCommitLink(chatLink: ChatLink): chatLink is CommitLink {
   return "link_action" in chatLink && chatLink.link_action === "commit";
+}
+
+export function isPostChatLink(chatLink: ChatLink): chatLink is PostChatLink {
+  return (
+    "link_action" in chatLink &&
+    chatLink.link_action === "post-chat" &&
+    "link_payload" in chatLink &&
+    typeof chatLink.link_payload === "object" &&
+    chatLink.link_payload !== null &&
+    "chat_meta" in chatLink.link_payload &&
+    "messages" in chatLink.link_payload
+  );
 }
 
 export type LinksForChatResponse = {

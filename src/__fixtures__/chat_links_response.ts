@@ -29,7 +29,27 @@ export const STUB_LINKS_FOR_CHAT_RESPONSE: LinksForChatResponse = {
       link_action: "summarize-project",
       link_tooltip: "",
     },
-
+    {
+      link_action: "post-chat",
+      link_text: "Stop recommending integrations",
+      link_tooltip: "",
+      link_payload: {
+        chat_meta: {
+          chat_id: "",
+          chat_remote: false,
+          chat_mode: "CONFIGURE",
+          current_config_file:
+            "/Users/kot/code_aprojects/demotest/.refact/project_summary.yaml",
+        },
+        messages: [
+          {
+            role: "user",
+            content:
+              "Make recommended_integrations an empty list, follow the system prompt.",
+          },
+        ],
+      },
+    },
     // {
     //   text: "long long long long long long long long long long long long long long long long long long ",
     //   action: "summarize-project",
