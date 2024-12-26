@@ -1,3 +1,11 @@
-.addRowButton {
+.addRowButtonAlignedOnEnd {
   align-self: flex-end;
+}
+
+.addRowButtonAlignedOnStart {
+  align-self: flex-start;
+}
+
+.actionCell {
+  width: 75px;
 }

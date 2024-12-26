@@ -46,7 +46,7 @@ export const Confirmation: FC<ConfirmationProps> = ({
         of patterns such that if a command matches one, you&apos;ll see a
         confirmation request or the command will be blocked completely.
       </Text>
-      <Flex direction="column" width="100%">
+      <Flex direction="column" width="100%" gap="3">
         {Object.entries(confirmationObjectToRender).map(([key, values]) => (
           <ConfirmationTable
             key={key}

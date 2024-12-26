@@ -56,10 +56,6 @@ export const Integrations: React.FC<IntegrationsProps> = ({
   const [isInnerIntegrationSelected, setIsInnerIntegrationSelected] =
     useState<boolean>(false);
 
-  // useEffect(() => {
-  //   console.log(`[DEBUG]: icons: `, icons);
-  // }, [icons]);
-
   const handleIfInnerIntegrationWasSet = useCallback(
     (state: boolean) => {
       setIsInnerIntegrationSelected(state);

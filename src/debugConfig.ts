@@ -6,6 +6,7 @@ export const debugRefact = createDebug("refact"); // debugRoot is to log verbose
 export const debugApp = createDebug("app");
 export const debugComponent = createDebug("component");
 export const debugIntegrations = createDebug("integrations");
+export const debugTables = createDebug("tables");
 
 if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   createDebug.enable("refact");

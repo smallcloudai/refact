@@ -1,15 +1,18 @@
-import React, { FC, useEffect, useState } from "react";
+// TODO: a lot of duplicative code is here between ParametersTable and ConfirmationTable components
+
+import React, { FC, useEffect, useState, useMemo } from "react";
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Flex, Table, Text, TextField } from "@radix-ui/themes";
+import { Button, Flex, Table, Text } from "@radix-ui/themes";
 import { ToolParameterEntity } from "../../../services/refact";
 import { PlusIcon } from "@radix-ui/react-icons";
 import { validateSnakeCase } from "../../../utils/validateSnakeCase";
-import { debugIntegrations } from "../../../debugConfig";
+import { debugTables } from "../../../debugConfig";
+import { DefaultCell } from "./DefaultCell";
 
 type ParametersTableProps = {
   initialData: ToolParameterEntity[];
@@ -36,12 +39,14 @@ export const ParametersTable: FC<ParametersTableProps> = ({
     field: keyof ToolParameterEntity,
     value: string,
   ) => {
-    setValidateError(null);
+    debugTables(`[DEBUG]: updating data of the table`);
     if (field === "name" && !validateSnakeCase(value)) {
-      debugIntegrations(
+      debugTables(
         `[DEBUG VALIDATION]: field ${field} is not written in snake case`,
       );
       setValidateError(`The field "${value}" must be written in snake case.`);
+    } else if (field === "name" && validateSnakeCase(value)) {
+      setValidateError(null);
     }
 
     setData((prev) =>
@@ -54,10 +59,12 @@ export const ParametersTable: FC<ParametersTableProps> = ({
     isLastRow: boolean,
     rowIndex: number,
     field: keyof ToolParameterEntity,
+    value: string,
   ) => {
     if (e.key === "Enter") {
       e.preventDefault();
       if (isLastRow) {
+        updateRow(rowIndex, field, value);
         addRow();
       } else {
         const nextInput = document.querySelector<HTMLElement>(
@@ -75,64 +82,50 @@ export const ParametersTable: FC<ParametersTableProps> = ({
   const defaultColumn: Partial<ColumnDef<ToolParameterEntity>> = {
     cell: ({ getValue, row: { index }, column: { id } }) => {
       const initialValue = getValue() as string;
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const [value, setValue] = useState(initialValue);
-
-      const onBlur = () => {
-        updateRow(index, id as keyof ToolParameterEntity, value);
-      };
-
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      useEffect(() => {
-        setValue(initialValue);
-      }, [initialValue]);
 
       return (
-        <TextField.Root
-          value={value}
-          size="1"
-          data-row-index={index}
-          data-field={id}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={onBlur}
-          onKeyDown={(e) =>
-            handleKeyPress(
-              e,
-              index === data.length - 1,
-              index,
-              id as keyof ToolParameterEntity,
-            )
-          }
+        <DefaultCell
+          initialValue={initialValue}
+          data={data}
+          index={index}
+          id={id}
+          updateRow={updateRow}
+          handleKeyPress={handleKeyPress}
         />
       );
     },
   };
 
-  const columns: ColumnDef<ToolParameterEntity>[] = [
-    {
-      accessorKey: "name",
-      header: "Name",
-    },
-    {
-      accessorKey: "description",
-      header: "Description",
-    },
-    {
-      id: "actions",
-      header: "",
-      cell: ({ row }) => (
-        <Button
-          size="1"
-          type="button"
-          onClick={() => removeRow(row.index)}
-          variant="outline"
-          color="red"
-        >
-          Remove
-        </Button>
-      ),
-    },
-  ];
+  const columns = useMemo<ColumnDef<ToolParameterEntity>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+      },
+      {
+        accessorKey: "description",
+        header: "Description",
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => (
+          <Button
+            size="1"
+            type="button"
+            onClick={() => removeRow(row.index)}
+            variant="outline"
+            color="red"
+          >
+            Remove
+          </Button>
+        ),
+      },
+    ],
+    // need to keep track of length of data array to be sure that it is always up to date
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.length],
+  );
 
   const table = useReactTable({
     data,

@@ -1,13 +1,14 @@
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useEffect, useState, useMemo } from "react";
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Flex, Table, TextField } from "@radix-ui/themes";
+import { Button, Flex, Table } from "@radix-ui/themes";
 import { PlusIcon } from "@radix-ui/react-icons";
 import { toPascalCase } from "../../../utils/toPascalCase";
+import { DefaultCell } from "./DefaultCell";
 
 import styles from "./ConfirmationTable.module.css";
 
@@ -34,7 +35,7 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
     setData((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateRow = (index: number, _field: string, value: string) => {
+  const updateRow = (index: number, _field: keyof string, value: string) => {
     setData((prev) => {
       return prev.map((row, i) => {
         if (i === index) {
@@ -49,15 +50,18 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
     e: React.KeyboardEvent<HTMLInputElement>,
     isLastRow: boolean,
     rowIndex: number,
-    field: string,
+    field: keyof string,
+    value: string,
   ) => {
     if (e.key === "Enter") {
       e.preventDefault();
       if (isLastRow) {
+        updateRow(rowIndex, field, value);
         addRow();
       } else {
+        // TODO: since we cannot not listen for data.length change, reference is dropped and we cannot focus on the next input
         const nextInput = document.querySelector<HTMLElement>(
-          `[data-row-index="${rowIndex + 1}"][data-field="${field}"]`,
+          `[data-row-index="${rowIndex + 1}"][data-field="${field as string}"]`,
         );
         nextInput?.focus();
       }
@@ -71,75 +75,55 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
   const defaultColumn: Partial<ColumnDef<string>> = {
     cell: ({ row: { index }, column: { id } }) => {
       const initialValue = data[index];
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const [value, setValue] = useState(initialValue);
-
-      const onBlur = () => {
-        updateRow(index, id, value);
-      };
-
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      useEffect(() => {
-        setValue(initialValue);
-      }, [initialValue]);
 
       return (
-        <TextField.Root
-          value={value}
-          size="1"
-          data-row-index={index}
-          data-field={id}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={onBlur}
-          onKeyDown={(e) =>
-            handleKeyPress(e, index === data.length - 1, index, id)
-          }
+        <DefaultCell
+          initialValue={initialValue}
+          data={data}
+          index={index}
+          id={id}
+          updateRow={updateRow}
+          handleKeyPress={handleKeyPress}
         />
       );
     },
   };
 
-  const columns: ColumnDef<string>[] = [
-    {
-      accessorKey: tableName,
-      header: toPascalCase(tableName),
-      size: 75,
-    },
-    {
-      id: "actions",
-      header: "",
-      cell: ({ row }) => (
-        <Flex gap="3" justify="start">
-          <Button
-            size="1"
-            type="button"
-            onClick={() => removeRow(row.index)}
-            variant="outline"
-            color="red"
-          >
-            Remove
-          </Button>
-          <Button
-            onClick={addRow}
-            type="button"
-            size="1"
-            variant="surface"
-            color="gray"
-          >
-            <Flex align="stretch" gap="1">
-              <PlusIcon /> Add row
-            </Flex>
-          </Button>
-        </Flex>
-      ),
-    },
-  ];
+  const columns = useMemo<ColumnDef<string>[]>(
+    () => [
+      {
+        accessorKey: tableName,
+        header: toPascalCase(tableName),
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => (
+          <Flex gap="3" width="100%">
+            <Button
+              size="1"
+              type="button"
+              onClick={() => removeRow(row.index)}
+              variant="outline"
+              color="red"
+            >
+              Remove
+            </Button>
+          </Flex>
+        ),
+      },
+    ],
+    // need to keep track of length of data array to be sure that it is always up to date
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tableName, data.length],
+  );
 
   const table = useReactTable({
     data,
     columns,
     defaultColumn,
     getCoreRowModel: getCoreRowModel(),
+    debugTable: true,
   });
 
   return (
@@ -165,7 +149,14 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
               table.getRowModel().rows.map((row) => (
                 <Table.Row key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <Table.Cell key={cell.id}>
+                    <Table.Cell
+                      key={cell.id}
+                      className={
+                        cell.column.id === "actions"
+                          ? styles.actionCell
+                          : undefined
+                      }
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),
@@ -183,20 +174,18 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
             )}
           </Table.Body>
         </Table.Root>
-        {table.getRowModel().rows.length < 1 && (
-          <Button
-            onClick={addRow}
-            type="button"
-            size="1"
-            variant="surface"
-            color="gray"
-            className={styles.addRowButton}
-          >
-            <Flex align="stretch" gap="1">
-              <PlusIcon /> Add row
-            </Flex>
-          </Button>
-        )}
+        <Button
+          onClick={addRow}
+          type="button"
+          size="1"
+          variant="surface"
+          color="gray"
+          className={styles.addRowButtonAlignedOnStart}
+        >
+          <Flex align="stretch" gap="1">
+            <PlusIcon /> Add row
+          </Flex>
+        </Button>
       </Flex>
     </Flex>
   );
