@@ -9,7 +9,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 use crate::tools::tool_ast_definition::there_are_definitions_with_similar_names_though;
-
+use crate::tools::tool_cat::parse_skeleton_from_args;
 
 pub struct ToolAstReference;
 
@@ -32,20 +32,7 @@ impl Tool for ToolAstReference {
 
         symbol = symbol.replace('.', "::");
 
-        let skeleton = match args.get("skeleton") {
-            Some(Value::Bool(s)) => *s,
-            Some(Value::String(s)) => {
-                if s == "true" {
-                    true
-                } else if s == "false" {
-                    false
-                } else {
-                    return Err(format!("argument `skeleton` is not a bool: {:?}", s));
-                }
-            }
-            Some(v) => return Err(format!("argument `skeleton` is not a bool: {:?}", v)),
-            None => false,
-        };
+        let skeleton = parse_skeleton_from_args(args)?;
         ccx.lock().await.pp_skeleton = skeleton;
 
         let gcx = ccx.lock().await.global_context.clone();

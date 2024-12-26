@@ -36,6 +36,7 @@ pub struct FileLine {
     pub useful: f32,
     pub color: String,
     pub take: bool,
+    pub ignore_take_floor: bool,
 }
 
 
@@ -53,6 +54,7 @@ fn collect_lines_from_files(
                 useful: 0.0,
                 color: "".to_string(),
                 take: false,
+                ignore_take_floor: false,
             };
             let lines_in_files_mut = lines_in_files.entry(file_ref.cpath.clone()).or_insert(vec![]);
             lines_in_files_mut.push(a);
@@ -83,6 +85,14 @@ fn collect_lines_from_files(
         }
         colorize_if_more_useful(lines, 0, lines.len(), "empty".to_string(), settings.useful_background);
     }
+
+    for (file_name, lines) in lines_in_files.iter_mut() {
+        if lines.iter().all(|x| x.useful < settings.take_floor) {
+            info!("pp: FN {file_name} ignoring skeletonize=true: take_floor > all_lines.useful");
+            lines.iter_mut().for_each(|x| x.ignore_take_floor = true);
+        }
+    }
+
     lines_in_files
 }
 
@@ -245,7 +255,7 @@ async fn pp_limit_and_merge(
     let mut files_mentioned_set = HashSet::new();
     let mut files_mentioned_sequence = vec![];
     for line_ref in lines_by_useful.iter_mut() {
-        if line_ref.useful <= settings.take_floor {
+        if !line_ref.ignore_take_floor && line_ref.useful <= settings.take_floor {
             continue;
         }
         let mut ntokens = count_tokens(&tokenizer.read().unwrap(), &line_ref.line_content);

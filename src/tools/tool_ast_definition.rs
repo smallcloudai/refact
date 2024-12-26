@@ -9,7 +9,7 @@ use crate::ast::ast_structs::AstDB;
 use crate::ast::ast_db::fetch_counters;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
-
+use crate::tools::tool_cat::parse_skeleton_from_args;
 
 pub struct ToolAstDefinition;
 
@@ -32,20 +32,7 @@ impl Tool for ToolAstDefinition {
 
         symbol = symbol.replace('.', "::");
 
-        let skeleton = match args.get("skeleton") {
-            Some(Value::Bool(s)) => *s,
-            Some(Value::String(s)) => {
-                if s == "true" {
-                    true
-                } else if s == "false" {
-                    false
-                } else {
-                    return Err(format!("argument `skeleton` is not a bool: {:?}", s));
-                }
-            }
-            Some(v) => return Err(format!("argument `skeleton` is not a bool: {:?}", v)),
-            None => false,
-        };
+        let skeleton = parse_skeleton_from_args(args)?;
         ccx.lock().await.pp_skeleton = skeleton;
 
         let gcx = ccx.lock().await.global_context.clone();
