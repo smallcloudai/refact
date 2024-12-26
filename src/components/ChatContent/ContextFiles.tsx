@@ -14,6 +14,7 @@ import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import { Chevron } from "../Collapsible";
 import { filename } from "../../utils";
 import { useEventsBusForIDE } from "../../hooks";
+import { debugApp } from "../../debugConfig";
 
 export const Markdown: React.FC<{
   children: string;
@@ -53,6 +54,8 @@ function getFileInfoFromName(name: string) {
   }
   const lineIndex = extendsionAndLines.lastIndexOf(":");
   const lines = extendsionAndLines.substring(lineIndex + 1);
+
+  debugApp(`[DEBUG]: lines: `, lines);
 
   const [start] = lines.split("-");
   const maybeNumber = Number(start);
@@ -112,7 +115,9 @@ const ContextFilesContent: React.FC<{
         <Flex wrap="nowrap" direction="column">
           {files.map((file, index) => {
             const lineText =
-              file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
+              file.line1 && file.line2 && file.line1 !== 0 && file.line2 !== 0
+                ? `:${file.line1}-${file.line2}`
+                : "";
             const key = file.file_name + lineText + index;
             return (
               <ContextFile
