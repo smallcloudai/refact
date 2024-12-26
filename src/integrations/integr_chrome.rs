@@ -341,6 +341,20 @@ async fn setup_chrome_session(
         let debug_ws_url: String = args.chrome_path.clone();
         setup_log.push("Connect to existing web socket.".to_string());
         Browser::connect_with_timeout(debug_ws_url, idle_browser_timeout).map_err(|e| e.to_string())
+    } else if args.chrome_path.clone().starts_with("http://") {
+        // To support dynamic ws_url that chrome starts, we need to get it from http://<chrome_ip_or_container_name>:<port>/json
+        let response = reqwest::get(&args.chrome_path).await.map_err(|e| e.to_string())?;
+        if response.status().is_success() {
+            let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+            if let Some(ws_url) = json["webSocketDebuggerUrl"].as_str() {
+                setup_log.push("Extracted webSocketDebuggerUrl from HTTP response.".to_string());
+                Browser::connect_with_timeout(ws_url.to_string(), idle_browser_timeout).map_err(|e| e.to_string())
+            } else {
+                return Err("webSocketDebuggerUrl not found in the response JSON".to_string());
+            }
+        } else {
+            return Err(format!("Response from {} resulted in status code: {}", args.chrome_path, response.status().as_u16()));
+        }
     } else {
         let mut path: Option<PathBuf> = None;
         if !args.chrome_path.is_empty() {
