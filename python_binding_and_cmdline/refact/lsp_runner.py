@@ -115,7 +115,7 @@ class LSPServerRunner:
         try:
             self._refact_lsp_process.terminate()
             try:
-                await asyncio.wait_for(self._refact_lsp_process.wait(), timeout=5.0)
+                await asyncio.wait_for(self._refact_lsp_process.wait(), timeout=30.0)
             except asyncio.TimeoutError:
                 print("LSP server did not terminate in time, forcefully killing")
                 self._refact_lsp_process.kill()
