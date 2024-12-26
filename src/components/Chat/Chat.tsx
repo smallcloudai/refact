@@ -45,8 +45,7 @@ export const Chat: React.FC<ChatProps> = ({
   const caps = useGetCapsQuery();
 
   const chatId = useAppSelector(selectChatId);
-  const { submit, abort, retryFromIndex, confirmToolUsage } =
-    useSendChatRequest();
+  const { submit, abort, retryFromIndex } = useSendChatRequest();
 
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const dispatch = useAppDispatch();
@@ -123,7 +122,6 @@ export const Chat: React.FC<ChatProps> = ({
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
           onSubmit={handleSummit}
           onClose={maybeSendToSidebar}
-          onToolConfirm={confirmToolUsage}
         />
 
         <Flex justify="between" pl="1" pr="1" pt="1">

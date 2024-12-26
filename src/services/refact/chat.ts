@@ -45,6 +45,7 @@ type SendChatArgs = {
   port?: number;
   apiKey?: string | null;
   // isConfig?: boolean;
+  toolsConfirmed?: boolean;
   integration?: IntegrationMeta | null;
   mode?: LspChatMode; // used for chat actions
 } & StreamArgs;
@@ -113,6 +114,7 @@ export async function sendChat({
   tools,
   port = 8001,
   apiKey,
+  toolsConfirmed = true,
   // isConfig = false,
   integration,
   mode,
@@ -137,6 +139,7 @@ export async function sendChat({
     tools,
     max_tokens: 2048,
     only_deterministic_messages,
+    tools_confirmation: toolsConfirmed,
     // chat_id,
     meta: {
       chat_id,

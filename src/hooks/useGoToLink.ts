@@ -7,7 +7,7 @@ import { useAppSelector } from "./useAppSelector";
 import { selectIntegration } from "../features/Chat/Thread/selectors";
 import { debugIntegrations } from "../debugConfig";
 import { newChatAction } from "../features/Chat/Thread/actions";
-import { clearPauseReasonsAndConfirmTools } from "../features/ToolConfirmation/confirmationSlice";
+import { clearPauseReasonsAndHandleToolsStatus } from "../features/ToolConfirmation/confirmationSlice";
 
 export function useGoToLink() {
   const dispatch = useAppDispatch();
@@ -55,7 +55,12 @@ export function useGoToLink() {
 
         case "newchat": {
           dispatch(newChatAction());
-          dispatch(clearPauseReasonsAndConfirmTools(false));
+          dispatch(
+            clearPauseReasonsAndHandleToolsStatus({
+              wasInteracted: false,
+              confirmationStatus: true,
+            }),
+          );
           dispatch(popBackTo({ name: "history" }));
           dispatch(push({ name: "chat" }));
           return;

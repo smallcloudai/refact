@@ -36,8 +36,9 @@ import {
 import { selectAllImages } from "../features/AttachedImages";
 import { useAbortControllers } from "./useAbortControllers";
 import {
-  clearPauseReasonsAndConfirmTools,
+  clearPauseReasonsAndHandleToolsStatus,
   getToolsConfirmationStatus,
+  getToolsInteractionStatus,
   setPauseReasons,
 } from "../features/ToolConfirmation/confirmationSlice";
 import { useAgentUsage } from "./useAgentUsage";
@@ -69,6 +70,7 @@ export const useSendChatRequest = () => {
   const attachedImages = useAppSelector(selectAllImages);
   const threadMode = useAppSelector(selectThreadMode);
   const threadIntegration = useAppSelector(selectIntegration);
+  const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
 
   const messagesWithSystemPrompt = useMemo(() => {
@@ -105,7 +107,7 @@ export const useSendChatRequest = () => {
       const lastMessage = messages.slice(-1)[0];
       if (
         !isWaiting &&
-        !areToolsConfirmed &&
+        !wasInteracted &&
         isAssistantMessage(lastMessage) &&
         lastMessage.tool_calls
       ) {
@@ -126,6 +128,7 @@ export const useSendChatRequest = () => {
       const action = chatAskQuestionThunk({
         messages,
         tools,
+        toolsConfirmed: areToolsConfirmed,
         chatId,
         mode,
       });
@@ -138,10 +141,11 @@ export const useSendChatRequest = () => {
       triggerGetTools,
       toolUse,
       isWaiting,
-      areToolsConfirmed,
       dispatch,
       chatId,
       threadMode,
+      wasInteracted,
+      areToolsConfirmed,
       abortControllers,
       incrementIfLastMessageIsFromUser,
       triggerCheckForConfirmation,
@@ -215,16 +219,37 @@ export const useSendChatRequest = () => {
   const retry = useCallback(
     (messages: ChatMessages) => {
       abort();
-      dispatch(clearPauseReasonsAndConfirmTools(false));
+      dispatch(
+        clearPauseReasonsAndHandleToolsStatus({
+          wasInteracted: false,
+          confirmationStatus: areToolsConfirmed,
+        }),
+      );
       void sendMessages(messages);
     },
-    [abort, sendMessages, dispatch],
+    [abort, sendMessages, dispatch, areToolsConfirmed],
   );
 
   const confirmToolUsage = useCallback(() => {
     abort();
-    dispatch(clearPauseReasonsAndConfirmTools(true));
+    dispatch(
+      clearPauseReasonsAndHandleToolsStatus({
+        wasInteracted: true,
+        confirmationStatus: true,
+      }),
+    );
 
+    dispatch(setIsWaitingForResponse(false));
+  }, [abort, dispatch]);
+
+  const rejectToolUsage = useCallback(() => {
+    abort();
+    dispatch(
+      clearPauseReasonsAndHandleToolsStatus({
+        wasInteracted: true,
+        confirmationStatus: false,
+      }),
+    );
     dispatch(setIsWaitingForResponse(false));
   }, [abort, dispatch]);
 
@@ -245,6 +270,7 @@ export const useSendChatRequest = () => {
     retry,
     retryFromIndex,
     confirmToolUsage,
+    rejectToolUsage,
     sendMessages,
   };
 };
@@ -257,6 +283,7 @@ export function useAutoSend() {
   const errored = useAppSelector(selectChatError);
   const preventSend = useAppSelector(selectPreventSend);
   const isWaiting = useAppSelector(selectIsWaiting);
+  const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
   const { sendMessages, abort } = useSendChatRequest();
   // TODO: make a selector for this, or show tool formation
@@ -277,7 +304,7 @@ export function useAutoSend() {
         lastMessage.tool_calls &&
         lastMessage.tool_calls.length > 0
       ) {
-        if (!isIntegration && !areToolsConfirmed) {
+        if (!isIntegration && !wasInteracted) {
           abort();
           if (recallCounter < 1) {
             recallCounter++;
@@ -285,7 +312,12 @@ export function useAutoSend() {
           }
         }
 
-        dispatch(clearPauseReasonsAndConfirmTools(false));
+        dispatch(
+          clearPauseReasonsAndHandleToolsStatus({
+            wasInteracted: false,
+            confirmationStatus: areToolsConfirmed,
+          }),
+        );
         void sendMessages(currentMessages, thread.mode);
         recallCounter = 0;
       }
@@ -298,6 +330,7 @@ export function useAutoSend() {
     sendMessages,
     abort,
     streaming,
+    wasInteracted,
     areToolsConfirmed,
     isWaiting,
     isIntegration,

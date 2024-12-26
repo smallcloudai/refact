@@ -10,13 +10,24 @@ export type PauseReason = {
 export type ConfirmationState = {
   pauseReasons: PauseReason[];
   pause: boolean;
-  toolsConfirmed: boolean;
+  status: {
+    wasInteracted: boolean;
+    confirmationStatus: boolean;
+  };
 };
 
 const initialState: ConfirmationState = {
   pauseReasons: [],
   pause: false,
-  toolsConfirmed: false,
+  status: {
+    wasInteracted: false,
+    confirmationStatus: true,
+  },
+};
+
+type ConfirmationActionPayload = {
+  wasInteracted: boolean;
+  confirmationStatus: boolean;
 };
 
 export const confirmationSlice = createSlice({
@@ -27,23 +38,28 @@ export const confirmationSlice = createSlice({
       state.pause = true;
       state.pauseReasons = action.payload;
     },
-    clearPauseReasonsAndConfirmTools(state, action: PayloadAction<boolean>) {
+    clearPauseReasonsAndHandleToolsStatus(
+      state,
+      action: PayloadAction<ConfirmationActionPayload>,
+    ) {
       state.pause = false;
       state.pauseReasons = [];
-      state.toolsConfirmed = action.payload;
+      state.status = action.payload;
     },
   },
   selectors: {
     getPauseReasonsWithPauseStatus: (state) => state,
-    getToolsConfirmationStatus: (state) => state.toolsConfirmed,
+    getToolsInteractionStatus: (state) => state.status.wasInteracted,
+    getToolsConfirmationStatus: (state) => state.status.confirmationStatus,
     getConfirmationPauseStatus: (state) => state.pause,
   },
 });
 
-export const { setPauseReasons, clearPauseReasonsAndConfirmTools } =
+export const { setPauseReasons, clearPauseReasonsAndHandleToolsStatus } =
   confirmationSlice.actions;
 export const {
   getPauseReasonsWithPauseStatus,
   getToolsConfirmationStatus,
+  getToolsInteractionStatus,
   getConfirmationPauseStatus,
 } = confirmationSlice.selectors;

@@ -2,6 +2,7 @@ import React from "react";
 import type { PauseReason } from "../../features/ToolConfirmation/confirmationSlice";
 import {
   useAppDispatch,
+  useSendChatRequest,
   // useEventsBusForIDE
 } from "../../hooks";
 import { Card, Button, Text, Flex } from "@radix-ui/themes";
@@ -12,7 +13,6 @@ import { push } from "../../features/Pages/pagesSlice";
 
 type ToolConfirmationProps = {
   pauseReasons: PauseReason[];
-  onConfirm: () => void;
 };
 
 const getConfirmationalMessage = (
@@ -50,7 +50,6 @@ const getConfirmationalMessage = (
 
 export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
   pauseReasons,
-  onConfirm,
 }) => {
   const dispatch = useAppDispatch();
 
@@ -66,6 +65,8 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
     (_, i) => types[i] === "confirmation",
   );
   const denialCommands = commands.filter((_, i) => types[i] === "denial");
+
+  const { rejectToolUsage, confirmToolUsage } = useSendChatRequest();
 
   const message = getConfirmationalMessage(
     commands,
@@ -107,10 +108,25 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
             </Text>
           </Text>
         </Flex>
-        <Flex align="end" justify="center" gap="1" direction="row">
-          <Button color="grass" variant="surface" size="1" onClick={onConfirm}>
+        <Flex align="end" justify="start" gap="2" direction="row">
+          <Button
+            color="grass"
+            variant="surface"
+            size="1"
+            onClick={confirmToolUsage}
+          >
             {allConfirmational ? "Confirm" : "Continue"}
           </Button>
+          {allConfirmational && (
+            <Button
+              color="red"
+              variant="surface"
+              size="1"
+              onClick={rejectToolUsage}
+            >
+              Deny
+            </Button>
+          )}
         </Flex>
       </Flex>
     </Card>

@@ -39,14 +39,12 @@ export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
-  onToolConfirm: () => void;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
-  onToolConfirm,
 }) => {
   const dispatch = useAppDispatch();
   const isStreaming = useAppSelector(selectIsStreaming);
@@ -180,10 +178,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [handleHelpInfo, setValue, setFileInteracted, setLineSelectionInteracted],
   );
 
-  const handleToolConfirmation = useCallback(() => {
-    onToolConfirm();
-  }, [onToolConfirm]);
-
   useEffect(() => {
     if (isSendImmediately) {
       handleSubmit();
@@ -212,10 +206,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (!isStreaming && pauseReasonsWithPause.pause) {
     return (
-      <ToolConfirmation
-        pauseReasons={pauseReasonsWithPause.pauseReasons}
-        onConfirm={handleToolConfirmation}
-      />
+      <ToolConfirmation pauseReasons={pauseReasonsWithPause.pauseReasons} />
     );
   }
 

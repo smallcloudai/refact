@@ -21,7 +21,7 @@ import {
   useEventsBusForIDE,
 } from "../../hooks";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
-import { clearPauseReasonsAndConfirmTools } from "../../features/ToolConfirmation/confirmationSlice";
+import { clearPauseReasonsAndHandleToolsStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { telemetryApi } from "../../services/refact/telemetry";
 
 export type DashboardTab = {
@@ -121,7 +121,12 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
 
   const onCreateNewChat = useCallback(() => {
     dispatch(newChatAction());
-    dispatch(clearPauseReasonsAndConfirmTools(false));
+    dispatch(
+      clearPauseReasonsAndHandleToolsStatus({
+        wasInteracted: false,
+        confirmationStatus: true,
+      }),
+    );
     handleNavigation("chat");
     void sendTelemetryEvent({
       scope: `openNewChat`,
