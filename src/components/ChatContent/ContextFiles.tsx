@@ -14,7 +14,6 @@ import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import { Chevron } from "../Collapsible";
 import { filename } from "../../utils";
 import { useEventsBusForIDE } from "../../hooks";
-import { debugApp } from "../../debugConfig";
 
 export const Markdown: React.FC<{
   children: string;
@@ -54,8 +53,6 @@ function getFileInfoFromName(name: string) {
   }
   const lineIndex = extendsionAndLines.lastIndexOf(":");
   const lines = extendsionAndLines.substring(lineIndex + 1);
-
-  debugApp(`[DEBUG]: lines: `, lines);
 
   const [start] = lines.split("-");
   const maybeNumber = Number(start);
