@@ -343,12 +343,17 @@ async fn setup_chrome_session(
         Browser::connect_with_timeout(debug_ws_url, idle_browser_timeout).map_err(|e| e.to_string())
     } else if args.chrome_path.clone().starts_with("http://") {
         // To support dynamic ws_url that chrome starts, we need to get it from http://<chrome_ip_or_container_name>:<port>/json
-        let response = reqwest::get(&args.chrome_path).await.map_err(|e| e.to_string())?;
+        let response = reqwest::get(&format!("{}/json", args.chrome_path)).await.map_err(|e| e.to_string())?;
         if response.status().is_success() {
             let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
-            if let Some(ws_url) = json["webSocketDebuggerUrl"].as_str() {
+            if let Some(ws_url_returned) = json[0]["webSocketDebuggerUrl"].as_str() {
                 setup_log.push("Extracted webSocketDebuggerUrl from HTTP response.".to_string());
-                Browser::connect_with_timeout(ws_url.to_string(), idle_browser_timeout).map_err(|e| e.to_string())
+                let mut ws_url_parts: Vec<&str> = ws_url_returned.split('/').collect();
+                if ws_url_parts.len() > 2 {
+                    ws_url_parts[2] = args.chrome_path.strip_prefix("http://").unwrap();
+                }
+                let ws_url = ws_url_parts.join("/");
+                Browser::connect_with_timeout(ws_url, idle_browser_timeout).map_err(|e| e.to_string())
             } else {
                 return Err("webSocketDebuggerUrl not found in the response JSON".to_string());
             }
