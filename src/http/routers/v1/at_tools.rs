@@ -49,6 +49,7 @@ pub struct ToolsExecutePost {
     pub model_name: String,
     pub chat_id: String,
     pub style: Option<String>,
+    pub tools_confirmation: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -194,7 +195,7 @@ pub async fn handle_v1_tools_execute(
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error getting at_tools: {}", e))
     })?;
     let (messages, tools_runned) = run_tools( // todo: fix typo "runned"
-        ccx_arc.clone(), at_tools, tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style
+        ccx_arc.clone(), at_tools, tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style, tools_execute_post.tools_confirmation
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error running tools: {}", e)))?;
 
     let response = ToolExecuteResponse {

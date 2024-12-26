@@ -239,6 +239,7 @@ async def ask_using_http(
         "tool_choice": tool_choice,
         "max_tokens": max_tokens,
         "only_deterministic_messages": only_deterministic_messages,
+        "tools_confirmation": True
     }
     if postprocess_parameters is not None:
         post_me["postprocess_parameters"] = postprocess_parameters

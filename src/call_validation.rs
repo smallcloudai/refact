@@ -185,6 +185,8 @@ pub struct ChatPost {
     #[serde(default)]
     pub tool_choice: Option<String>,
     #[serde(default)]
+    pub tools_confirmation: bool,
+    #[serde(default)]
     pub only_deterministic_messages: bool,  // means don't sample from the model
     #[serde(default)]
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
